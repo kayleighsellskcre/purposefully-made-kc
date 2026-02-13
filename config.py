@@ -7,8 +7,12 @@ load_dotenv(os.path.join(basedir, '.env'))
 class Config:
     """Base configuration"""
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
+    _db_url = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + os.path.join(basedir, 'apparel.db')
+    # Railway/Heroku use postgres:// but SQLAlchemy 1.4+ needs postgresql://
+    if _db_url.startswith('postgres://'):
+        _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
+    SQLALCHEMY_DATABASE_URI = _db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Upload settings

@@ -121,7 +121,8 @@ gunicorn -w 4 -b 0.0.0.0:$PORT "app:create_app()"
 
 ## Troubleshooting
 
-- **App won't start**: Check the start command and that `PORT` is used (Railway sets it)
+- **502 Bad Gateway**: Check Railway **Logs** for crash errors. Common causes: missing `SECRET_KEY`, database connection (we auto-fix `postgres://` → `postgresql://`), or import errors.
+- **App won't start**: Check the start command and that `PORT` is used (Railway sets it). Procfile provides: `gunicorn -w 4 -b 0.0.0.0:$PORT "app:create_app()"`
 - **Database errors**: Ensure PostgreSQL is added and `DATABASE_URL` is set
 - **No emails**: Verify MAIL_* variables and Gmail App Password
 - **Design request texts not sending**: Check ADMIN_PHONE_CARRIER matches your carrier
