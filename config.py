@@ -49,3 +49,4 @@ class Config:
     
     # Application settings
     ITEMS_PER_PAGE = 20
+    ADMIN_BASE_URL = os.environ.get('ADMIN_BASE_URL', 'http://localhost:5000')
