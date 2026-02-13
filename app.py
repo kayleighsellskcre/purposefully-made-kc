@@ -18,6 +18,10 @@ def create_app(config_class=Config):
     db.init_app(app)
     mail.init_app(app)
     
+    # Create tables if they don't exist (needed for fresh Railway/PostgreSQL deploys)
+    with app.app_context():
+        db.create_all()
+    
     # Flask-Login setup
     login_manager = LoginManager()
     login_manager.init_app(app)
