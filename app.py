@@ -195,8 +195,10 @@ def create_app(config_class=Config):
     
     return app
 
+# Module-level app for gunicorn (app:app)
+app = create_app()
+
 if __name__ == '__main__':
-    app = create_app()
     with app.app_context():
         db.create_all()
     app.run(debug=True)
