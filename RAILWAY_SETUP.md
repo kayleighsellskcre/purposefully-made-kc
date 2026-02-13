@@ -103,19 +103,44 @@ SHIPPING_FLAT_RATE=11.00
 In **Settings** → **Deploy**, set:
 
 ```
-gunicorn -w 4 -b 0.0.0.0:$PORT "app:create_app()"
+gunicorn -w 4 -b 0.0.0.0:$PORT app:app
 ```
-
-*(The parentheses are required so gunicorn invokes the factory to create the app.)*
 
 ---
 
-## Step 5: Deploy & Create Admin
+## Step 5: Make Your Account Admin
 
-1. Click **Deploy** (or push to GitHub to trigger auto-deploy)
-2. Once live, create your admin user. Run in **Railway CLI** or add a one-time setup:
+After registering on the live site, set your email as admin:
 
-   You'll need to run `python set_admin.py` or use the Flask shell. Easiest: add a temporary route or run a migration. Alternatively, register a new account on the live site, then in Railway's PostgreSQL console (or a script), set that user's `is_admin = true`.
+1. In Railway, click your **Postgres** service
+2. Go to **Data** tab (or **Query**)
+3. Run this SQL (replace with your email):
+
+```sql
+UPDATE "user" SET is_admin = true WHERE email = 'purposefullymadekc@gmail.com';
+```
+
+4. Refresh the site — you should now see the Admin link when logged in.
+
+---
+
+## Step 6: Migrate Products from Local
+
+Your old products are in `apparel.db` on your computer. To copy them to Railway:
+
+1. In Railway: **Postgres** → **Connect** → copy **DATABASE_URL**
+2. On your computer, open PowerShell in the project folder:
+
+```powershell
+$env:DATABASE_URL = "postgresql://..."   # paste the URL
+python migrate_to_railway.py
+```
+
+*(Fix `postgres://` to `postgresql://` in the URL if needed.)*
+
+3. The script copies products from local SQLite to Railway PostgreSQL.
+
+**Note:** Product images (mockups) are local files — they won't transfer. Use **Sync from S&S Activewear** in Admin to refresh images, or re-upload mockups.
 
 ---
 
