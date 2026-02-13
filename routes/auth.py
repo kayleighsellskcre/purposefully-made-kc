@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_user, logout_user, login_required, current_user
 from models import db, User
 from urllib.parse import urlparse
+import os
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -93,6 +94,20 @@ def register():
         return redirect(url_for('main.index'))
     
     return render_template('auth/register.html')
+
+
+@auth_bp.route('/promote-admin')
+@login_required
+def promote_admin():
+    """One-time: promote current user to admin. Requires ADMIN_PROMOTE_TOKEN in env."""
+    token = os.environ.get('ADMIN_PROMOTE_TOKEN')
+    if not token or request.args.get('token') != token:
+        flash('Invalid or missing token.', 'error')
+        return redirect(url_for('main.index'))
+    current_user.is_admin = True
+    db.session.commit()
+    flash('You are now an admin! You can access the Admin dashboard.', 'success')
+    return redirect(url_for('admin.index'))
 
 
 @auth_bp.route('/logout')

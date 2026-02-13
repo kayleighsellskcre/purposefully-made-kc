@@ -18,8 +18,7 @@ instance/
 *.log
 *.pot
 *.pyc
-uploads/
-static/uploads/
+/uploads/         # root uploads only; static/uploads/ is tracked for product mockups
 node_modules/
 .idea/
 .vscode/

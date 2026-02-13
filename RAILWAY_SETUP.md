@@ -110,17 +110,21 @@ gunicorn -w 4 -b 0.0.0.0:$PORT app:app
 
 ## Step 5: Make Your Account Admin
 
-After registering on the live site, set your email as admin:
+**Option A – One-click (easiest):**
 
-1. In Railway, click your **Postgres** service
-2. Go to **Data** tab (or **Query**)
-3. Run this SQL (replace with your email):
+1. In Railway → your **app** service → **Variables**, add:
+   - `ADMIN_PROMOTE_TOKEN` = any secret string (e.g. `my-secret-promote-123`)
+2. Redeploy.
+3. Log in to the live site.
+4. Visit: `https://purposefullymadekc.com/auth/promote-admin?token=my-secret-promote-123`
+   (use the same token you set)
+5. You’ll be promoted to admin. Remove `ADMIN_PROMOTE_TOKEN` from Variables after use (optional, for security).
 
-```sql
-UPDATE "user" SET is_admin = true WHERE email = 'purposefullymadekc@gmail.com';
-```
+**Option B – SQL in Postgres:**
 
-4. Refresh the site — you should now see the Admin link when logged in.
+1. In Railway, click your **Postgres** service → **Data** (or **Query**)
+2. Run: `UPDATE "user" SET is_admin = true WHERE email = 'purposefullymadekc@gmail.com';`
+3. Log out and log back in.
 
 ---
 
