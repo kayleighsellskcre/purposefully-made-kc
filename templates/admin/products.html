@@ -8,6 +8,9 @@
         <div class="admin-header">
             <h1>Manage Products</h1>
             <div class="admin-actions">
+                <form action="{{ url_for('admin.seed_demo_products') }}" method="POST" style="display:inline;">
+                    <button type="submit" class="btn btn-outline">Add Demo Products</button>
+                </form>
                 {% if api_configured %}
                 <button class="btn btn-outline" onclick="showSyncModal()">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;">
@@ -68,10 +71,13 @@
                     <tr>
                         <td colspan="8" style="text-align: center; padding: 3rem;">
                             <p>No products yet.</p>
+                            <form action="{{ url_for('admin.seed_demo_products') }}" method="POST" style="display:inline; margin-right: 8px;">
+                                <button type="submit" class="btn btn-primary">Add Demo Products (5 samples)</button>
+                            </form>
                             {% if api_configured %}
-                            <button class="btn btn-primary" onclick="showSyncModal()">Sync from S&S Activewear</button>
+                            <button class="btn btn-outline" onclick="showSyncModal()">Sync from S&S Activewear</button>
                             {% else %}
-                            <a href="{{ url_for('admin.add_product') }}" class="btn btn-primary">Add Your First Product</a>
+                            <a href="{{ url_for('admin.add_product') }}" class="btn btn-outline">Add Product Manually</a>
                             {% endif %}
                         </td>
                     </tr>
