@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}About Us - Purposefully Made KC{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1>About Purposefully Made KC</h1>
+        <p class="lead">Luxury custom apparel for teams, schools, and events</p>
+    </div>
+</div>
+
+<section class="content-section">
+    <div class="container">
+        <div class="content-grid">
+            <div class="content-text">
+                <h2>Our Story</h2>
+                <p>Purposefully Made KC specializes in high-quality custom apparel using premium Bella+Canvas garments and state-of-the-art DTF (Direct-to-Film) printing technology.</p>
+                <p>We work exclusively with teams, schools, and organizations to create custom apparel that looks professional and feels amazing to wear.</p>
+                
+                <h2>Why Choose Us?</h2>
+                <ul class="feature-list">
+                    <li><strong>Premium Quality:</strong> Bella+Canvas apparel only</li>
+                    <li><strong>Advanced Printing:</strong> DTF technology for vibrant, durable prints</li>
+                    <li><strong>Live Preview:</strong> See your design before you order</li>
+                    <li><strong>Easy Ordering:</strong> Streamlined checkout with multiple payment options</li>
+                    <li><strong>Team Stores:</strong> Create shareable collections for groups</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.page-header {
+    background: var(--secondary-color);
+    padding: 4rem 0;
+    text-align: center;
+}
+
+.page-header h1 {
+    margin-bottom: 1rem;
+}
+
+.lead {
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+}
+
+.content-section {
+    padding: 4rem 0;
+}
+
+.content-text h2 {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+.feature-list {
+    list-style: none;
+    padding: 0;
+}
+
+.feature-list li {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.feature-list li:last-child {
+    border-bottom: none;
+}
+</style>
+{% endblock %}

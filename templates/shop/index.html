@@ -1,0 +1,598 @@
+{% extends "base.html" %}
+
+{% block title %}Shop - Purposefully Made KC{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1>Shop Custom Apparel</h1>
+        <p class="lead">Premium Bella+Canvas garments with your custom designs</p>
+        <a href="{{ url_for('shop.group_orders') }}" class="btn btn-group-order">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            Start a Group Order
+        </a>
+        <p class="group-order-hint">For teams, schools, and organizations — create your selective options and share with your group</p>
+        {% if design_id %}
+        <p style="margin-top: 0.5rem; padding: 0.75rem 1rem; background: rgba(184, 124, 111, 0.15); border-radius: 8px; display: inline-block;">
+            <strong>You selected a design from the gallery.</strong> Choose a product below to customize with it.
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<section class="shop-section">
+    <div class="container">
+        <div class="shop-layout">
+            <!-- Filters Sidebar -->
+            <aside class="shop-filters">
+                <h3>Categories</h3>
+                <ul class="filter-list">
+                    <li>
+                        <a href="{{ url_for('shop.index', design_id=design_id) }}" 
+                           class="filter-link {% if not selected_category and not selected_age_group %}active{% endif %}">
+                            All Products
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('shop.index', age_group='adult', design_id=design_id) }}" 
+                           class="filter-link {% if selected_age_group == 'adult' %}active{% endif %}">
+                            Adult
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('shop.index', age_group='youth', design_id=design_id) }}" 
+                           class="filter-link {% if selected_age_group == 'youth' %}active{% endif %}">
+                            Youth
+                        </a>
+                    </li>
+                    {% for category in categories %}
+                    <li>
+                        <a href="{{ url_for('shop.index', category=category, age_group=selected_age_group or none, design_id=design_id) }}" 
+                           class="filter-link {% if selected_category == category %}active{% endif %}">
+                            {{ category }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </aside>
+            
+            <!-- Products Grid -->
+            <div class="shop-content">
+                {% if products %}
+                <div class="shop-header">
+                    <p class="product-count">{{ products|length }} products</p>
+                </div>
+                
+                <div class="products-grid">
+                    {% for product in products %}
+                    <div class="product-card">
+                        <a href="{{ url_for('shop.customize', product_id=product.id) }}{% if design_id %}?design_id={{ design_id }}{% endif %}" class="product-link">
+                            <div class="product-image-wrapper">
+                                <!-- Color Preview Carousel -->
+                                {% if product.carousel_colors and product.carousel_colors|length > 0 %}
+                                <div class="color-carousel" data-product-id="{{ product.id }}">
+                                    <div class="carousel-images">
+                                        {% for variant in product.carousel_colors %}
+                                        <div class="carousel-slide {% if loop.first %}active{% endif %}" 
+                                             data-color="{{ variant.color_name }}">
+                                            <img src="{{ variant.front_image_url }}" 
+                                                 alt="{{ product.name }} - {{ variant.color_name }}"
+                                                 onerror="this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'">
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    
+                                    <!-- Navigation Arrows (only show if more than 1 color) -->
+                                    {% if product.carousel_colors|length > 1 %}
+                                    <button class="carousel-btn carousel-prev" type="button" aria-label="Previous color">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                            <polyline points="15 18 9 12 15 6"></polyline>
+                                        </svg>
+                                    </button>
+                                    <button class="carousel-btn carousel-next" type="button" aria-label="Next color">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                            <polyline points="9 18 15 12 9 6"></polyline>
+                                        </svg>
+                                    </button>
+                                    
+                                    <!-- Color Indicator -->
+                                    <div class="color-indicator">
+                                        <span class="current-color">{{ product.carousel_colors[0].color_name }}</span>
+                                        <span class="color-count">{{ product.carousel_colors|length }} colors</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% else %}
+                                <div class="product-image">
+                                    <img src="{{ url_for('static', filename='img/products/' + product.style_number + '.jpg') }}" 
+                                         alt="{{ product.name }}"
+                                         onerror="this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'">
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="product-info">
+                                <h3 class="product-name">{{ product.name }}</h3>
+                                <p class="product-style">Style {{ product.style_number }}</p>
+                                {% if product.category %}
+                                <p class="product-category">{{ product.category }}</p>
+                                {% endif %}
+                                <p class="product-price">${{ "%.2f"|format(product.base_price) }}</p>
+                                <span class="btn btn-customize btn-sm">Customize</span>
+                            </div>
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <h2>No products found</h2>
+                    <p>Try adjusting your filters or check back later.</p>
+                    <a href="{{ url_for('shop.index') }}" class="btn btn-primary">View All Products</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+.page-header {
+    background: var(--secondary-color);
+    padding: 4rem 0;
+    text-align: center;
+}
+
+.page-header h1 {
+    margin-bottom: 1rem;
+}
+
+.lead {
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+}
+
+.btn-group-order {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--accent-color);
+    color: #fff;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    font-size: 1rem;
+    transition: var(--transition);
+}
+.btn-group-order:hover {
+    background: var(--accent-secondary);
+    color: #fff;
+    transform: translateY(-2px);
+}
+.group-order-hint {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+}
+
+.shop-section {
+    padding: 4rem 0;
+}
+
+.shop-layout {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 3rem;
+}
+
+.shop-filters {
+    position: sticky;
+    top: 100px;
+    height: fit-content;
+    background: var(--secondary-color);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+}
+
+.shop-filters h3 {
+    margin-bottom: 1.5rem;
+    font-size: 1.25rem;
+}
+
+.filter-list {
+    list-style: none;
+}
+
+.filter-list li {
+    margin-bottom: 0.75rem;
+}
+
+.filter-link {
+    display: block;
+    padding: 0.5rem 0;
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+
+.filter-link:hover,
+.filter-link.active {
+    color: var(--accent-color);
+}
+
+.shop-content {
+    min-height: 400px;
+}
+
+.shop-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.product-count {
+    color: var(--text-secondary);
+}
+
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 2rem;
+}
+
+.product-link {
+    text-decoration: none;
+    color: inherit;
+}
+
+.product-card {
+    background: #FFFFFF;
+    border: 1px solid rgba(184, 124, 111, 0.2);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    transition: var(--transition);
+    box-shadow: 0 4px 12px rgba(58, 61, 72, 0.06);
+}
+
+.product-card:hover {
+    box-shadow: var(--box-shadow-hover);
+    transform: translateY(-4px);
+}
+
+.product-image-wrapper {
+    position: relative;
+    width: 100%;
+    height: 320px;
+    overflow: hidden;
+    background: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.product-image {
+    width: 100%;
+    height: 320px;
+    overflow: hidden;
+    background: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 0.5rem;
+    transition: var(--transition);
+    mix-blend-mode: multiply;
+}
+
+.product-card:hover .product-image img {
+    transform: scale(1.08);
+}
+
+/* Color Carousel Styles */
+.color-carousel {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.carousel-images {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: #FFFFFF;
+}
+
+.carousel-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+}
+
+.carousel-slide.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.carousel-slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 0.5rem;
+    transition: transform 0.3s ease;
+    mix-blend-mode: multiply;
+}
+
+.product-card:hover .carousel-slide.active img {
+    transform: scale(1.08);
+}
+
+/* Carousel Navigation Buttons */
+.carousel-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.3s ease;
+    opacity: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.product-card:hover .carousel-btn {
+    opacity: 1;
+}
+
+.carousel-btn:hover {
+    background: var(--accent-color);
+    color: #fff;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.carousel-prev {
+    left: 10px;
+}
+
+.carousel-next {
+    right: 10px;
+}
+
+.carousel-btn svg {
+    display: block;
+}
+
+/* Color Indicator */
+.color-indicator {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(58, 61, 72, 0.85);
+    backdrop-filter: blur(8px);
+    color: #F5F0E1;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    border: 1px solid rgba(184, 124, 111, 0.3);
+}
+
+.product-card:hover .color-indicator {
+    opacity: 1;
+}
+
+.current-color {
+    text-transform: capitalize;
+}
+
+.color-count {
+    opacity: 0.8;
+    font-size: 0.8rem;
+}
+
+.product-info {
+    padding: 1.5rem;
+}
+
+.product-name {
+    font-size: 1.125rem;
+    margin-bottom: 0.5rem;
+}
+
+.product-style {
+    color: var(--text-light);
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.product-category {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.75rem;
+}
+
+.product-price {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--accent-color);
+    margin-bottom: 1rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.empty-state svg {
+    color: var(--text-light);
+    margin-bottom: 2rem;
+}
+
+.empty-state h2 {
+    margin-bottom: 1rem;
+}
+
+.empty-state p {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 1024px) {
+    .shop-layout {
+        grid-template-columns: 200px 1fr;
+        gap: 2rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .shop-layout {
+        grid-template-columns: 1fr;
+    }
+    
+    .shop-filters {
+        position: static;
+    }
+    
+    .filter-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .filter-list li {
+        margin-bottom: 0;
+    }
+    
+    .filter-link {
+        padding: 0.5rem 1rem;
+        background: #fff;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+    }
+    
+    .filter-link.active {
+        background: var(--accent-color);
+        color: #fff;
+        border-color: var(--accent-color);
+    }
+    
+    .carousel-btn {
+        width: 32px;
+        height: 32px;
+        opacity: 1;
+    }
+    
+    .carousel-prev {
+        left: 8px;
+    }
+    
+    .carousel-next {
+        right: 8px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize all color carousels
+    const carousels = document.querySelectorAll('.color-carousel');
+    
+    carousels.forEach(carousel => {
+        const slides = carousel.querySelectorAll('.carousel-slide');
+        const prevBtn = carousel.querySelector('.carousel-prev');
+        const nextBtn = carousel.querySelector('.carousel-next');
+        const colorIndicator = carousel.querySelector('.current-color');
+        let currentIndex = 0;
+        
+        if (slides.length <= 1) return; // Skip if only one color
+        
+        function showSlide(index) {
+            // Remove active class from all slides
+            slides.forEach(slide => slide.classList.remove('active'));
+            
+            // Add active class to current slide
+            slides[index].classList.add('active');
+            
+            // Update color indicator
+            if (colorIndicator) {
+                const colorName = slides[index].getAttribute('data-color');
+                colorIndicator.textContent = colorName;
+            }
+            
+            currentIndex = index;
+        }
+        
+        function nextSlide(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const nextIndex = (currentIndex + 1) % slides.length;
+            showSlide(nextIndex);
+        }
+        
+        function prevSlide(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const prevIndex = (currentIndex - 1 + slides.length) % slides.length;
+            showSlide(prevIndex);
+        }
+        
+        // Add event listeners
+        if (nextBtn) {
+            nextBtn.addEventListener('click', nextSlide);
+        }
+        
+        if (prevBtn) {
+            prevBtn.addEventListener('click', prevSlide);
+        }
+        
+        // Optional: Auto-rotate on hover (uncomment if desired)
+        /*
+        let autoRotateInterval;
+        carousel.addEventListener('mouseenter', () => {
+            autoRotateInterval = setInterval(() => {
+                nextSlide(new Event('click'));
+            }, 2000);
+        });
+        carousel.addEventListener('mouseleave', () => {
+            clearInterval(autoRotateInterval);
+        });
+        */
+    });
+});
+</script>
+{% endblock %}
+

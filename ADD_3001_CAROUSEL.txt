@@ -1,0 +1,90 @@
+================================================================================
+✨ ADD CAROUSEL TO STYLE 3001 (JERSEY TEE)
+================================================================================
+
+GOOD NEWS: The carousel system is already built and ready!
+You just need to upload mockup images for Style 3001.
+
+================================================================================
+🎯 QUICK STEPS
+================================================================================
+
+STEP 1: Prepare Your 3001 Mockup Images
+----------------------------------------
+Name them exactly like:
+
+3001_ColorName_front.jpg
+3001_ColorName_back.jpg
+
+Examples:
+- 3001_White_front.jpg
+- 3001_White_back.jpg
+- 3001_Black_front.jpg
+- 3001_Black_back.jpg
+
+(Notice: 3001 instead of 3001CVC)
+
+STEP 2: Copy to Same Folder
+----------------------------
+Put them in the SAME folder as before:
+
+uploads/mockups/3001/
+
+Yes, same folder! The filename (3001 vs 3001CVC) tells
+them apart, so they can share the folder!
+
+STEP 3: Run Import Script
+--------------------------
+Tell me "ready to import 3001" and I'll run:
+
+python import_mockup_images.py 3001
+
+STEP 4: Refresh & See Carousel
+-------------------------------
+Hard refresh (Ctrl+Shift+R)
+Visit shop page
+See carousel on BOTH products!
+
+================================================================================
+📋 WHAT COLORS DOES 3001 HAVE?
+================================================================================
+
+Let me check which colors are available for Style 3001...
+(I'll list them for you)
+
+================================================================================
+🎨 RESULT
+================================================================================
+
+After uploading, you'll have:
+✅ Carousel on 3001CVC (already done!)
+✅ Carousel on 3001 (new!)
+✅ Both products look professional
+✅ Customers can browse all colors
+✅ Consistent user experience
+
+================================================================================
+💡 QUESTIONS?
+================================================================================
+
+Q: Can I use the same folder?
+A: YES! uploads/mockups/3001/ for both
+
+Q: How many images do I need?
+A: Depends on how many colors 3001 has
+   (Usually similar to 3001CVC, could be 85+ colors)
+
+Q: Will it work automatically?
+A: YES! Same carousel system, just needs images
+
+================================================================================
+🚀 READY TO ADD 3001 MOCKUPS?
+================================================================================
+
+1. Get your 3001 mockup images
+2. Rename them: 3001_ColorName_view.jpg
+3. Copy to: uploads/mockups/3001/
+4. Tell me "ready to import 3001"
+5. Watch the magic happen!
+
+================================================================================

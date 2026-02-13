@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Share {{ collection.name }} - Purposefully Made KC{% endblock %}
+{% block content %}
+<div class="share-page">
+    <div class="container">
+        <div class="share-card">
+            <h1>{{ collection.name }}</h1>
+            <p class="share-subtitle">Share this link with your team or customers</p>
+            
+            <div class="share-url-box">
+                <input type="text" id="share-url" readonly 
+                       value="{{ request.url_root.rstrip('/') }}{{ url_for('collection.view', slug=collection.slug) }}">
+                <button type="button" class="btn btn-primary" onclick="copyLink()">Copy Link</button>
+            </div>
+            
+            <p class="share-hint">Anyone with this link can view and order from this collection.</p>
+            
+            <a href="{{ url_for('collection.view', slug=collection.slug) }}" class="btn btn-outline">View Collection</a>
+        </div>
+    </div>
+</div>
+<style>
+.share-page { padding: 4rem 0; min-height: 60vh; }
+.share-card { max-width: 560px; margin: 0 auto; background: #fff; padding: 2.5rem; border-radius: var(--border-radius); box-shadow: var(--box-shadow); }
+.share-card h1 { font-family: var(--font-heading); margin-bottom: 0.5rem; }
+.share-subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
+.share-url-box { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.share-url-box input { flex: 1; padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.9rem; }
+.share-hint { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.5rem; }
+</style>
+<script>
+function copyLink() {
+    const input = document.getElementById('share-url');
+    input.select();
+    document.execCommand('copy');
+    const btn = event.target;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy Link', 2000);
+}
+</script>
+{% endblock %}

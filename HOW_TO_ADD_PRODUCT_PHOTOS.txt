@@ -1,0 +1,194 @@
+╔══════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║         📸 HOW TO ADD PRODUCT PHOTOS - SUPER SIMPLE! 📸        ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+
+
+🎯 TWO WAYS TO GET PRODUCT PHOTOS:
+
+
+═══════════════════════════════════════════════════════════════════
+  METHOD 1: AUTOMATIC (FROM S&S API) ✨ EASIEST!
+═══════════════════════════════════════════════════════════════════
+
+When you sync products from S&S Activewear, ALL PHOTOS DOWNLOAD
+AUTOMATICALLY and MATCH TO THE CORRECT PRODUCTS!
+
+STEPS:
+1. Add your S&S API key to `.env` file (line 20-21)
+2. Go to: http://localhost:5000/admin/products  
+3. Click "Sync from S&S Activewear" button
+4. Click "Sync Now"
+5. Wait a few minutes...
+6. DONE! ✅ All products now have front & back photos!
+
+WHAT HAPPENS:
+✓ Product info syncs (names, sizes, colors, prices)
+✓ Front photos download automatically
+✓ Back photos download automatically
+✓ Photos automatically link to correct product by style #
+✓ Photos saved to: static/uploads/products/
+
+EXAMPLE:
+- Product: Bella+Canvas 3001 Tee
+- Style #: 3001
+- Front Photo: 3001_front.jpg ← Auto-downloaded & linked!
+- Back Photo: 3001_back.jpg ← Auto-downloaded & linked!
+
+
+═══════════════════════════════════════════════════════════════════
+  METHOD 2: MANUAL UPLOAD (YOUR OWN PHOTOS) 📤
+═══════════════════════════════════════════════════════════════════
+
+Upload your own custom mockup photos or lifestyle shots.
+
+STEPS:
+1. Go to: http://localhost:5000/admin
+2. Click "Products"
+3. Find a product → Click "Edit"
+4. Scroll down to "Product Images" section
+5. Click "Choose File" to upload front photo
+6. Click "Choose File" to upload back photo  
+7. Click "Save Changes"
+8. DONE! ✅ Your photos are now live!
+
+PHOTO REQUIREMENTS:
+- Format: JPG, PNG, or GIF
+- Size: 1000x1000px recommended (square)
+- Background: White or transparent (best)
+- File size: Under 5MB
+
+
+═══════════════════════════════════════════════════════════════════
+  🤔 WHICH METHOD SHOULD I USE?
+═══════════════════════════════════════════════════════════════════
+
+USE METHOD 1 (AUTOMATIC) IF:
+✓ You want product photos FAST
+✓ You're selling standard Bella+Canvas items
+✓ You want S&S stock photos
+✓ You want everything automated
+
+USE METHOD 2 (MANUAL) IF:
+✓ You have custom mockup templates
+✓ You want lifestyle photography
+✓ You want styled/branded photos
+✓ You want to replace S&S photos
+
+YOU CAN MIX BOTH!
+✓ Sync from S&S for most products (quick!)
+✓ Upload custom photos for featured items
+✓ Best of both worlds!
+
+
+═══════════════════════════════════════════════════════════════════
+  ✅ VERIFY PHOTOS ARE WORKING
+═══════════════════════════════════════════════════════════════════
+
+1. Check File System:
+   - Go to: static/uploads/products/
+   - You should see: 3001_front.jpg, 3719_back.jpg, etc.
+
+2. Check Shop:
+   - Go to: http://localhost:5000/shop
+   - Click any product
+   - You should see the front photo
+   - Click thumbnails to see back view
+
+3. Check Admin:
+   - Go to: Admin → Products → Edit
+   - Scroll to "Product Images"
+   - You'll see current photos displayed
+
+
+═══════════════════════════════════════════════════════════════════
+  🔗 HOW PHOTOS MATCH TO PRODUCTS
+═══════════════════════════════════════════════════════════════════
+
+AUTOMATIC MATCHING (S&S SYNC):
+When syncing from S&S, the system:
+1. Gets product data (style #, name, sizes, colors)
+2. Gets image URLs from S&S API
+3. Downloads images
+4. Names them: {style_number}_front.jpg
+5. Saves path to database
+6. Links to correct product automatically!
+
+EXAMPLE FLOW:
+S&S API → "Style 3001 has front photo at URL..."
+System → Downloads photo
+System → Saves as: 3001_front.jpg
+Database → Links photo to Style 3001 product
+Shop → Shows correct photo for Style 3001 ✅
+
+MANUAL MATCHING:
+When you upload manually:
+1. You edit a specific product (e.g., Style 3001)
+2. Upload front photo
+3. System names it: 3001_front_yourfilename.jpg
+4. Database links it to that product
+5. Done!
+
+
+═══════════════════════════════════════════════════════════════════
+  🚀 QUICK START RIGHT NOW
+═══════════════════════════════════════════════════════════════════
+
+TO GET ALL PHOTOS IN 5 MINUTES:
+
+1. Open: .env file
+2. Add your S&S API credentials:
+   SSACTIVEWEAR_API_KEY=your_actual_key
+   SSACTIVEWEAR_ACCOUNT_NUMBER=your_account_number
+3. Save file
+4. Go to: http://localhost:5000/admin/products
+5. Click: "Sync from S&S Activewear"
+6. Click: "Sync Now"
+7. Wait...
+8. DONE! All photos ready! ✨
+
+
+═══════════════════════════════════════════════════════════════════
+  📂 WHERE PHOTOS ARE STORED
+═══════════════════════════════════════════════════════════════════
+
+LOCATION:
+static/uploads/products/
+
+NAMING:
+- S&S synced: 3001_front.jpg, 3001_back.jpg
+- Manual: 3001_front_yourfilename.jpg
+
+DATABASE:
+- Column: front_mockup_template
+- Value: uploads/products/3001_front.jpg
+
+
+═══════════════════════════════════════════════════════════════════
+  ❓ TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════
+
+PHOTOS NOT DOWNLOADING FROM S&S?
+- Check API key in .env is correct
+- Make sure static/uploads/products/ folder exists
+- Check internet connection
+
+MANUAL UPLOAD NOT WORKING?
+- Check file size (under 5MB)
+- Check format (JPG, PNG, or GIF only)
+- Make sure you clicked "Save Changes"
+
+PHOTOS NOT SHOWING ON SHOP?
+- Check file exists in static/uploads/products/
+- Clear browser cache
+- Refresh page
+
+
+═══════════════════════════════════════════════════════════════════
+
+🎉 THAT'S IT! 
+
+Add your S&S API key and sync to get all product photos instantly!
+
+═══════════════════════════════════════════════════════════════════

@@ -1,0 +1,90 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Inventory - Operations - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<h1 class="ops-title">Inventory Management</h1>
+<p class="ops-subtitle">Track apparel, transfers, and supplies.</p>
+
+<div class="ops-grid">
+    <div class="ops-card">
+        <h2>Apparel Inventory</h2>
+        <form method="POST" action="{{ url_for('admin.add_apparel_inventory') }}" class="ops-form-inline">
+            <input type="text" name="brand" placeholder="Brand (e.g. 3001)" required>
+            <input type="text" name="color" placeholder="Color" required>
+            <input type="text" name="size" placeholder="Size" required>
+            <input type="number" name="quantity" placeholder="Qty" value="0" min="0">
+            <input type="number" name="cost_per_unit" step="0.01" placeholder="Cost">
+            <input type="number" name="reorder_threshold" placeholder="Reorder" value="5">
+            <button type="submit" class="btn btn-primary">Add</button>
+        </form>
+        <table class="admin-table">
+            <thead><tr><th>Brand</th><th>Color</th><th>Size</th><th>Qty</th><th>Cost</th><th>Reorder</th><th></th></tr></thead>
+            <tbody>
+                {% for item in apparel %}
+                <tr>
+                    <td>{{ item.brand }}</td><td>{{ item.color }}</td><td>{{ item.size }}</td>
+                    <td>{{ item.quantity }}</td><td>{{ "$%.2f"|format(item.cost_per_unit or 0) }}</td><td>{{ item.reorder_threshold }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('admin.update_apparel_inventory', id=item.id) }}" style="display:inline">
+                            <input type="number" name="quantity" value="{{ item.quantity }}" min="0" style="width:60px">
+                            <button type="submit" class="btn btn-sm">Update</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}<tr><td colspan="7" class="text-muted">No apparel yet.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="ops-card">
+        <h2>Blanks + Supplies</h2>
+        <form method="POST" action="{{ url_for('admin.add_supply') }}" class="ops-form-inline">
+            <input type="text" name="category" placeholder="Category" required>
+            <input type="text" name="name" placeholder="Name" required>
+            <input type="number" name="quantity" placeholder="Qty" value="0" min="0">
+            <input type="text" name="unit" placeholder="Unit" value="ea">
+            <input type="number" name="cost_per_unit" step="0.01" placeholder="Cost">
+            <input type="number" name="reorder_threshold" placeholder="Reorder" value="0">
+            <button type="submit" class="btn btn-primary">Add</button>
+        </form>
+        <table class="admin-table">
+            <thead><tr><th>Category</th><th>Name</th><th>Qty</th><th>Unit</th><th>Cost</th><th>Reorder</th><th></th></tr></thead>
+            <tbody>
+                {% for item in supplies %}
+                <tr>
+                    <td>{{ item.category }}</td><td>{{ item.name }}</td><td>{{ item.quantity }}</td><td>{{ item.unit }}</td>
+                    <td>{{ "$%.2f"|format(item.cost_per_unit or 0) }}</td><td>{{ item.reorder_threshold }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('admin.update_supply', id=item.id) }}" style="display:inline">
+                            <input type="number" name="quantity" value="{{ item.quantity }}" min="0" style="width:60px">
+                            <button type="submit" class="btn btn-sm">Update</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}<tr><td colspan="7" class="text-muted">No supplies yet.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="ops-card">
+    <h2>Transfer Inventory (DTF / Screen Print)</h2>
+    <form method="POST" action="{{ url_for('admin.add_transfer_inventory') }}" class="ops-form-inline">
+        <input type="text" name="design_name" placeholder="Design name" required>
+        <input type="text" name="size" placeholder="Size (adult/youth)">
+        <input type="number" name="quantity" placeholder="Qty" value="0" min="0">
+        <input type="number" name="cost_per_sheet" step="0.01" placeholder="Cost/sheet">
+        <select name="vendor_id"><option value="">Vendor</option>{% for v in vendors %}<option value="{{ v.id }}">{{ v.name }}</option>{% endfor %}</select>
+        <input type="text" name="delivery_time" placeholder="Delivery time">
+        <button type="submit" class="btn btn-primary">Add</button>
+    </form>
+    <table class="admin-table">
+        <thead><tr><th>Design</th><th>Size</th><th>Qty</th><th>Cost</th><th>Vendor</th></tr></thead>
+        <tbody>
+            {% for t in transfers %}
+            <tr><td>{{ t.design_name }}</td><td>{{ t.size or '-' }}</td><td>{{ t.quantity }}</td>
+                <td>{{ "$%.2f"|format(t.cost_per_sheet or 0) }}</td><td>{{ t.vendor.name if t.vendor else '-' }}</td></tr>
+            {% else %}<tr><td colspan="5" class="text-muted">No transfers yet.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

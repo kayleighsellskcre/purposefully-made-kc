@@ -1,0 +1,117 @@
+╔══════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║      ❌ CAN'T SEE "SYNC FROM S&S ACTIVEWEAR" BUTTON? ❌         ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+
+
+WHY YOU DON'T SEE THE BUTTON:
+═══════════════════════════════════════════════════════════════════
+
+The button only appears AFTER you add your S&S API key!
+
+It's hidden until you configure the API because there's nothing 
+to sync without an API key.
+
+
+HOW TO MAKE THE BUTTON APPEAR:
+═══════════════════════════════════════════════════════════════════
+
+STEP 1: Open the .env file
+   Location: c:\Users\Kayle\OneDrive\Desktop\kb_apparel_site\.env
+
+STEP 2: Find these lines (20-21):
+   SSACTIVEWEAR_API_KEY=your_ss_activewear_api_key_here
+   SSACTIVEWEAR_ACCOUNT_NUMBER=your_account_number_here
+
+STEP 3: Replace with YOUR real credentials:
+   SSACTIVEWEAR_API_KEY=ABC123YOURREALKEY
+   SSACTIVEWEAR_ACCOUNT_NUMBER=123456
+
+STEP 4: Save the file
+
+STEP 5: Refresh the products page
+   Go to: http://localhost:5000/admin/products
+   Press F5 to refresh
+
+STEP 6: ✨ THE BUTTON WILL NOW BE VISIBLE! ✨
+
+
+WHAT YOU'LL SEE AFTER ADDING API KEY:
+═══════════════════════════════════════════════════════════════════
+
+At the top right of the Products page, you'll see:
+
+   [🔄 Sync from S&S Activewear]  [+ Add Product]
+
+Click the "Sync from S&S Activewear" button!
+
+
+VISUAL GUIDE:
+═══════════════════════════════════════════════════════════════════
+
+BEFORE (No API key):
+┌────────────────────────────────────────────────────┐
+│ Manage Products                    [+ Add Product] │ ← Only this button
+└────────────────────────────────────────────────────┘
+
+AFTER (API key added):
+┌────────────────────────────────────────────────────┐
+│ Manage Products  [🔄 Sync from S&S]  [+ Add Product] │ ← Both buttons!
+└────────────────────────────────────────────────────┘
+
+
+IF YOU DON'T HAVE AN S&S API KEY:
+═══════════════════════════════════════════════════════════════════
+
+You have 2 options:
+
+OPTION 1: Get S&S API credentials
+   1. Sign up at https://www.ssactivewear.com
+   2. Contact their support for API access
+   3. Get your API key and account number
+   4. Add to .env file
+   5. Sync button appears!
+
+OPTION 2: Add products manually (No API needed)
+   1. Click "Add Product" button
+   2. Fill in product details:
+      - Style number (e.g., 3001)
+      - Name (e.g., Bella+Canvas Unisex Tee)
+      - Price, sizes, colors
+   3. Upload front/back photos
+   4. Save!
+
+
+QUICK TEST TO SEE IF API IS CONFIGURED:
+═══════════════════════════════════════════════════════════════════
+
+Run this command:
+
+   .\venv\Scripts\python -c "from services.ssactivewear_api import test_api_connection; test_api_connection()"
+
+If it says "✓ API connection successful!" → Button will appear!
+If it says "✗ API connection failed" → Add your API key first
+
+
+SUMMARY:
+═══════════════════════════════════════════════════════════════════
+
+1. The sync button IS there in the code ✅
+2. It's just hidden until you add your API key 🔑
+3. Add API key to .env → Button appears automatically ✨
+4. No API key? Use "Add Product" to add manually instead 📝
+
+
+═══════════════════════════════════════════════════════════════════
+
+NEED THE .env FILE PATH?
+
+Full path: c:\Users\Kayle\OneDrive\Desktop\kb_apparel_site\.env
+
+Open it with:
+- Cursor/VS Code (already open in your IDE)
+- Notepad
+- Any text editor
+
+═══════════════════════════════════════════════════════════════════

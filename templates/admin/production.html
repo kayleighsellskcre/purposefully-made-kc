@@ -1,0 +1,195 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Production Center - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<div class="admin-page">
+    <div class="container">
+        <h1>Production Center</h1>
+        <p class="page-subtitle">Export production-ready lists and batch sheets</p>
+        
+        <div class="production-grid">
+            <!-- Production Master -->
+            <div class="production-card production-card-featured">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                <h2>Production Master</h2>
+                <p>Master copy of all blanks + designs. Order everything at once, then move to production.</p>
+                <a href="{{ url_for('admin.production_master') }}" class="btn btn-primary">View Master</a>
+            </div>
+            
+            <!-- Blank Apparel List -->
+            <div class="production-card">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                </svg>
+                <h2>Blank Apparel Purchase List</h2>
+                <p>See exactly what blanks to order, organized by style, color, and size</p>
+                <a href="{{ url_for('admin.blank_apparel_list') }}" class="btn btn-primary">View List</a>
+            </div>
+            
+            <!-- Print Order Labels -->
+            <div class="production-card">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                    <path d="M2 10h20"></path>
+                    <path d="M6 14h2"></path>
+                    <path d="M10 14h2"></path>
+                </svg>
+                <h2>Print Order Labels</h2>
+                <p>Print customer labels for 3×10 sticker paper—shipping addresses or pickup contact info</p>
+                <a href="{{ url_for('admin.print_labels') }}" class="btn btn-primary">Print Labels</a>
+            </div>
+            
+            <!-- Production Bulk Sheet -->
+            <div class="production-card">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                    <path d="M3 9h18"></path>
+                    <path d="M9 21V9"></path>
+                </svg>
+                <h2>Production Bulk Sheet</h2>
+                <p>Design images + quantities by size. Only shows orders marked In Production—drops off when marked Ready/Shipped.</p>
+                <a href="{{ url_for('admin.production_bulk_sheet') }}" class="btn btn-primary">View Bulk Sheet</a>
+            </div>
+            
+            <!-- DTF Batch Sheets -->
+            <div class="production-card">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <path d="M21 15l-5-5L5 21"></path>
+                </svg>
+                <h2>DTF Transfer Batch Sheets</h2>
+                <p>Gang sheet instructions grouped by design, placement, and size</p>
+                <a href="{{ url_for('admin.dtf_batch_sheets') }}" class="btn btn-primary">View Sheets</a>
+            </div>
+            
+            <!-- Designs Library -->
+            <div class="production-card">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
+                <h2>Designs Library</h2>
+                <p>View all uploaded customer designs and artwork</p>
+                <a href="{{ url_for('admin.designs') }}" class="btn btn-primary">View Designs</a>
+            </div>
+            
+            <!-- Orders by Status -->
+            <div class="production-card">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 6v6l4 2"></path>
+                </svg>
+                <h2>Orders in Production</h2>
+                <p>View all orders currently being produced</p>
+                <a href="{{ url_for('admin.orders', status='in_production') }}" class="btn btn-primary">View Orders</a>
+            </div>
+        </div>
+        
+        <!-- Filter by Collection -->
+        <div class="production-filters">
+            <h2>Filter by Collection</h2>
+            <div class="collection-list">
+                {% for order in orders %}
+                {% if order.collection %}
+                <a href="{{ url_for('admin.production', collection_id=order.collection.id) }}" class="collection-filter-item">
+                    {{ order.collection.name }}
+                </a>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-page {
+    padding: 4rem 0;
+}
+
+.page-subtitle {
+    color: var(--text-secondary);
+    margin-bottom: 3rem;
+}
+
+.production-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-bottom: 4rem;
+}
+
+.production-card {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 3rem 2rem;
+    text-align: center;
+    transition: var(--transition);
+}
+
+.production-card:hover {
+    box-shadow: var(--box-shadow);
+    transform: translateY(-4px);
+}
+
+.production-card-featured {
+    border-color: var(--accent-color);
+    border-width: 2px;
+}
+
+.production-card svg {
+    color: var(--accent-color);
+    margin-bottom: 1.5rem;
+}
+
+.production-card h2 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.production-card p {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+.production-filters {
+    background: var(--secondary-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+}
+
+.production-filters h2 {
+    margin-bottom: 1.5rem;
+}
+
+.collection-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.collection-filter-item {
+    padding: 0.75rem 1.5rem;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.collection-filter-item:hover {
+    border-color: var(--accent-color);
+    background: var(--accent-color);
+    color: #fff;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,194 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}DTF Transfer Batch Sheets - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<div class="admin-page">
+    <div class="container">
+        <div class="admin-header">
+            <h1>DTF Transfer Batch Sheets</h1>
+            <button onclick="window.print()" class="btn btn-primary">Print Sheets</button>
+        </div>
+        
+        <p class="page-subtitle">Gang sheet instructions for DTF printing</p>
+        
+        {% if batch_groups %}
+        <div class="batch-sheets">
+            {% for group in batch_groups %}
+            <div class="batch-sheet">
+                <div class="batch-header">
+                    <h2>Batch #{{ loop.index }}</h2>
+                    <span class="batch-qty">{{ group.total_quantity }} transfers</span>
+                </div>
+                
+                <div class="batch-info">
+                    <p><strong>Design:</strong> {{ group.design_name or 'No design name' }}</p>
+                    <p><strong>Placement:</strong> {{ group.placement.replace('_', ' ').title() }}</p>
+                    <p><strong>Print Size:</strong> {{ group.print_width }}" × {{ group.print_height }}"</p>
+                </div>
+                
+                <table class="batch-table">
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>Size</th>
+                            <th>Quantity</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in group.items %}
+                        <tr>
+                            <td>{{ item.order.order_number }}</td>
+                            <td>{{ item.size }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>{{ item.notes or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                
+                <div class="batch-notes">
+                    <p><strong>Special Instructions:</strong></p>
+                    <ul>
+                        <li>Mirror image for DTF transfer</li>
+                        <li>Ensure transparent background</li>
+                        <li>Check DPI for print quality</li>
+                    </ul>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>No designs to print. Orders with custom designs will appear here.</p>
+            <a href="{{ url_for('admin.orders') }}" class="btn btn-primary">View Orders</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+@media print {
+    .admin-header button,
+    .page-subtitle {
+        display: none;
+    }
+    
+    .batch-sheet {
+        page-break-after: always;
+    }
+}
+
+.admin-page {
+    padding: 4rem 0;
+}
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.page-subtitle {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+.batch-sheets {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+}
+
+.batch-sheet {
+    background: #fff;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+}
+
+.batch-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--accent-color);
+}
+
+.batch-header h2 {
+    color: var(--accent-color);
+}
+
+.batch-qty {
+    background: var(--accent-color);
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+}
+
+.batch-info {
+    background: var(--secondary-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.batch-info p {
+    margin: 0.5rem 0;
+}
+
+.batch-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 2rem;
+}
+
+.batch-table thead {
+    background: var(--secondary-color);
+}
+
+.batch-table th,
+.batch-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.batch-notes {
+    background: #fff9e5;
+    border-left: 4px solid #f59e0b;
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+}
+
+.batch-notes ul {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0 0;
+}
+
+.batch-notes li {
+    padding: 0.5rem 0;
+    padding-left: 2rem;
+    position: relative;
+}
+
+.batch-notes li::before {
+    content: "⚠";
+    position: absolute;
+    left: 0;
+    color: #f59e0b;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: #fff;
+    border-radius: var(--border-radius);
+}
+</style>
+{% endblock %}

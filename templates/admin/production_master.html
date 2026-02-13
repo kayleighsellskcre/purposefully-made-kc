@@ -1,0 +1,129 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Production Master - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<div class="admin-page">
+    <div class="container">
+        <div class="admin-header">
+            <div>
+                <h1>Production Master</h1>
+                <p class="page-subtitle">Master copy of all blanks + designs from New/Paid orders. Order everything at once, then move to production.</p>
+            </div>
+            <div class="master-actions">
+                <a href="{{ url_for('admin.orders', status='new') }}" class="btn btn-outline">View Orders</a>
+                <form method="post" action="{{ url_for('admin.production_master_move') }}" style="display: inline;">
+                    <input type="hidden" name="status" value="new">
+                    <input type="hidden" name="status" value="paid">
+                    {% if selected_collection %}<input type="hidden" name="collection" value="{{ selected_collection }}">{% endif %}
+                    <button type="submit" class="btn btn-primary" {% if not orders %}disabled{% endif %}>
+                        Move All to Production
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        {% if orders %}
+        <div class="master-summary">
+            <p><strong>{{ orders|length }}</strong> order(s) · <strong>{{ apparel_list|length }}</strong> blank SKUs · <strong>{{ design_list|length }}</strong> design/placement combos</p>
+        </div>
+        
+        <div class="master-grid">
+            <!-- Blank Apparel -->
+            <div class="master-section">
+                <h2>Blank Apparel to Order</h2>
+                <p class="section-hint">Order these from your blank supplier (S&S, Bella+Canvas, etc.)</p>
+                <div class="table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Style #</th>
+                                <th>Product</th>
+                                <th>Color</th>
+                                <th>Size</th>
+                                <th>Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in apparel_list %}
+                            <tr>
+                                <td><strong>{{ item.style_number }}</strong></td>
+                                <td>{{ item.product_name }}</td>
+                                <td>{{ item.color }}</td>
+                                <td>{{ item.size }}</td>
+                                <td class="qty">{{ item.quantity }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Designs / Logos -->
+            <div class="master-section">
+                <h2>Designs & Logos to Print</h2>
+                <p class="section-hint">DTF transfers needed — grouped by design, placement, and print size</p>
+                <div class="design-cards">
+                    {% for group in design_list %}
+                    <div class="design-master-card">
+                        {% if group.design and group.design.file_path %}
+                        <a href="{{ url_for('static', filename=group.design.file_path) }}" target="_blank" rel="noopener" class="design-master-preview design-master-preview-link" title="Click to open full size — right-click to save">
+                            <img src="{{ url_for('static', filename=group.design.file_path) }}" alt="{{ group.design.filename or 'Design' }}">
+                            <span class="design-click-hint">Click to open & save</span>
+                        </a>
+                        {% else %}
+                        <div class="design-master-preview">
+                            <div class="no-design">No image</div>
+                        </div>
+                        {% endif %}
+                        <div class="design-master-info">
+                            <p><strong>{{ group.design.filename if group.design else '—' }}</strong></p>
+                            <p>Placement: {{ group.placement.replace('_', ' ')|title }}</p>
+                            <p>Print size: {% if group.print_width %}{{ "%.1f"|format(group.print_width) }}" × {{ "%.1f"|format(group.print_height or group.print_width) }}"{% else %}—{% endif %}</p>
+                            <p class="qty-badge">Qty: {{ group.quantity }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        {% else %}
+        <div class="empty-state">
+            <p>No New or Paid orders. Orders will appear here once placed.</p>
+            <a href="{{ url_for('admin.orders') }}" class="btn btn-primary">View All Orders</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.admin-page { padding: 4rem 0; }
+.admin-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 2rem; }
+.page-subtitle { color: var(--text-secondary); margin-top: 0.5rem; }
+.master-actions { display: flex; gap: 1rem; align-items: center; }
+.master-summary { margin-bottom: 2rem; padding: 1rem; background: var(--secondary-color); border-radius: var(--border-radius); }
+.master-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+@media (max-width: 968px) { .master-grid { grid-template-columns: 1fr; } }
+.master-section { background: #fff; border-radius: var(--border-radius); padding: 2rem; box-shadow: var(--box-shadow); border: 1px solid var(--border-color); }
+.master-section h2 { font-family: var(--font-heading); font-size: 1.25rem; margin-bottom: 0.5rem; }
+.section-hint { color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem; }
+.table-container { overflow-x: auto; }
+.admin-table { width: 100%; border-collapse: collapse; }
+.admin-table th, .admin-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+.admin-table thead { background: var(--secondary-color); }
+.qty { font-weight: 600; }
+.design-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+.design-master-card { border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); overflow: hidden; }
+.design-master-preview { aspect-ratio: 1; background: var(--ivory-silk); display: flex; align-items: center; justify-content: center; padding: 0.5rem; position: relative; text-decoration: none; color: inherit; }
+.design-master-preview-link { cursor: pointer; transition: var(--transition, 0.2s ease); }
+.design-master-preview-link:hover { background: var(--cashmere-sand); outline: 2px solid var(--accent-color); outline-offset: 2px; }
+.design-master-preview-link:hover .design-click-hint { opacity: 1; }
+.design-master-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.design-click-hint { position: absolute; bottom: 0.5rem; left: 0; right: 0; font-size: 0.75rem; font-weight: 600; color: var(--accent-color); background: rgba(255,255,255,0.9); padding: 0.25rem; opacity: 0; transition: opacity 0.2s; }
+.no-design { color: var(--text-secondary); font-size: 0.85rem; }
+.design-master-info { padding: 1rem; font-size: 0.9rem; }
+.qty-badge { font-weight: 600; color: var(--accent-color); margin-top: 0.5rem; }
+.empty-state { text-align: center; padding: 4rem 2rem; background: #fff; border-radius: var(--border-radius); }
+</style>
+{% endblock %}

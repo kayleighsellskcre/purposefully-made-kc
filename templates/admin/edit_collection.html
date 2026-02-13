@@ -1,0 +1,385 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Edit {{ collection.name }} - Admin - Purposefully Made KC{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@500;600;700&family=Anton&family=Teko:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% endblock %}
+
+{% block admin_content %}
+<div class="admin-page">
+    <div class="container">
+        <div class="admin-header">
+            <h1>Edit Collection</h1>
+            <a href="{{ url_for('admin.collections') }}" class="btn btn-outline">Back to Collections</a>
+        </div>
+        
+        <form method="POST" class="collection-form" enctype="multipart/form-data">
+            <div class="form-section">
+                <h2>Basic Information</h2>
+                
+                <div class="form-group">
+                    <label for="name">Collection Name</label>
+                    <input type="text" id="name" name="name" class="form-control" value="{{ collection.name }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="slug">URL Slug</label>
+                    <input type="text" id="slug" name="slug" class="form-control" value="{{ collection.slug }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description" class="form-control" rows="4">{{ collection.description or '' }}</textarea>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h2>Items Available to Order</h2>
+                <p class="form-hint">Select which products the team or organizer can choose from. These appear on the design board.</p>
+                {% if products %}
+                <div class="product-checkboxes">
+                    {% for product in products %}
+                    <label class="product-checkbox">
+                        <input type="checkbox" name="products" value="{{ product.id }}" {% if product in collection.products %}checked{% endif %}>
+                        <span>{{ product.name }}</span>
+                        <small>Style {{ product.style_number }} · ${{ "%.2f"|format(product.base_price) }}</small>
+                    </label>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No products yet. <a href="{{ url_for('admin.add_product') }}">Add products</a> first.</p>
+                {% endif %}
+            </div>
+            
+            <div class="form-section">
+                <h2>Organizer's Choices</h2>
+                <p class="form-hint">Lock down style, color, and logo so your team orders matching apparel. The organizer or admin picks these—team members only choose size.</p>
+                
+                <div class="form-check">
+                    <input type="checkbox" id="restrict_options" name="restrict_options" {% if collection.restrict_options %}checked{% endif %}>
+                    <label for="restrict_options">Restrict options — team can only order what you choose below</label>
+                </div>
+                
+                <div id="organizer-choices" class="organizer-choices" style="{% if not collection.restrict_options %}display: none;{% endif %}">
+                    <div class="form-group">
+                        <label>Allowed colors (team picks from these)</label>
+                        {% if collection_colors %}
+                        <div class="choice-checkboxes">
+                            {% for color in collection_colors %}
+                            <label class="choice-checkbox">
+                                <input type="checkbox" name="allowed_colors" value="{{ color }}" {% if color in allowed_colors_list %}checked{% endif %}>
+                                <span>{{ color }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted">Add products to this collection first to see color options.</p>
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label>Designs for this collection</label>
+                        <p class="form-hint">Upload designs the team can use, or let them upload their own.</p>
+                        
+                        <div class="collection-upload-area" id="uploadArea" onclick="document.getElementById('design_uploads').click()">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <p><strong>Click to upload</strong> or drag and drop</p>
+                            <p class="text-muted">PNG, JPG, WEBP — designs will be added when you save</p>
+                        </div>
+                        <input type="file" id="design_uploads" name="design_uploads" accept=".png,.jpg,.jpeg,.webp" multiple style="display: none;">
+                        <div id="uploadPreview" class="upload-preview-list" style="display: none;"></div>
+                        
+                        {% if gallery_designs %}
+                        <p class="form-hint" style="margin-top: 1rem;">Or pick from existing designs:</p>
+                        <div class="design-choice-grid">
+                            {% for d in gallery_designs %}
+                            <label class="design-choice-card">
+                                <input type="checkbox" name="allowed_designs" value="{{ d.id }}" {% if d.id in allowed_design_ids_list %}checked{% endif %}>
+                                <div class="design-choice-preview">
+                                    <img src="{{ url_for('static', filename=d.file_path) }}" alt="{{ d.title or d.original_filename }}">
+                                </div>
+                                <span>{{ d.title or d.original_filename or 'Design' }}{% if (d.title or d.original_filename)|length > 18 %}...{% endif %}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label>Allowed placements (where logo/design can go on the item)</label>
+                        <p class="form-hint">Select which spots the team can put the logo on. Leave all checked to allow any placement.</p>
+                        <div class="placement-checkboxes">
+                            <label class="placement-checkbox">
+                                <input type="checkbox" name="allowed_placements" value="center_chest" {% if 'center_chest' in allowed_placements_list %}checked{% endif %}>
+                                <span>Center Chest</span>
+                                <small>Medium size, centered</small>
+                            </label>
+                            <label class="placement-checkbox">
+                                <input type="checkbox" name="allowed_placements" value="left_chest" {% if 'left_chest' in allowed_placements_list %}checked{% endif %}>
+                                <span>Left Chest</span>
+                                <small>Small pocket-style</small>
+                            </label>
+                            <label class="placement-checkbox">
+                                <input type="checkbox" name="allowed_placements" value="right_chest" {% if 'right_chest' in allowed_placements_list %}checked{% endif %}>
+                                <span>Right Chest</span>
+                                <small>Small pocket-style</small>
+                            </label>
+                            <label class="placement-checkbox">
+                                <input type="checkbox" name="allowed_placements" value="center_back" {% if 'center_back' in allowed_placements_list %}checked{% endif %}>
+                                <span>Center Back</span>
+                                <small>Medium size, centered</small>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Back design font (name & number on back)</label>
+                        <p class="form-hint">Choose the font for name/number on the back. Team members will use this font. Click to preview each style.</p>
+                        <div class="font-choice-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; margin-top: 0.5rem;">
+                            {% for font_value, font_label in back_design_fonts %}
+                            <label class="font-choice-card" style="cursor: pointer; border: 2px solid var(--border-color); border-radius: 8px; padding: 1.25rem; text-align: center; transition: var(--transition);">
+                                <input type="radio" name="back_design_font" value="{{ font_value }}" {% if collection.back_design_font == font_value %}checked{% endif %} style="display: none;">
+                                <div style="font-family: '{{ font_value }}', sans-serif; font-size: 1.25rem; font-weight: 700; color: #333; letter-spacing: 0.02em;">NAME 12</div>
+                                <small style="display: block; margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.75rem;">{{ font_label }}</small>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h2>Settings</h2>
+                
+                <div class="form-group">
+                    <label for="order_deadline">Order Deadline (optional)</label>
+                    <input type="date" id="order_deadline" name="order_deadline" class="form-control" value="{{ collection.order_deadline.strftime('%Y-%m-%d') if collection.order_deadline else '' }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="pickup_address">Pickup Address</label>
+                    <textarea id="pickup_address" name="pickup_address" class="form-control" rows="3">{{ collection.pickup_address or '' }}</textarea>
+                </div>
+                
+                <div class="form-check">
+                    <input type="checkbox" id="shipping_enabled" name="shipping_enabled" {% if collection.shipping_enabled %}checked{% endif %}>
+                    <label for="shipping_enabled">Allow shipping (+$11)</label>
+                </div>
+                
+                <div class="form-check">
+                    <input type="checkbox" id="password_protected" name="password_protected" {% if collection.is_password_protected %}checked{% endif %}>
+                    <label for="password_protected">Password protected</label>
+                </div>
+                
+                <div class="form-group" id="password-field" style="{% if not collection.is_password_protected %}display: none;{% endif %}">
+                    <label for="password">Access Password</label>
+                    <input type="password" id="password" name="password" class="form-control" placeholder="Leave blank to keep current; enter new to change">
+                </div>
+                
+                <div class="form-check">
+                    <input type="checkbox" id="is_active" name="is_active" {% if collection.is_active %}checked{% endif %}>
+                    <label for="is_active">Active</label>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary btn-lg">Save Changes</button>
+                <button type="button" class="btn btn-outline btn-danger" onclick="confirmDelete()">Delete</button>
+            </div>
+        </form>
+        <form id="delete-form" action="{{ url_for('admin.delete_collection', collection_id=collection.id) }}" method="POST" style="display: none;">
+        </form>
+    </div>
+</div>
+
+<script>
+// Show password field
+document.getElementById('password_protected').addEventListener('change', (e) => {
+    document.getElementById('password-field').style.display = e.target.checked ? 'block' : 'none';
+});
+// Show organizer choices when restrict is checked
+document.getElementById('restrict_options').addEventListener('change', (e) => {
+    document.getElementById('organizer-choices').style.display = e.target.checked ? 'block' : 'none';
+});
+// Show preview of selected files before submit
+document.getElementById('design_uploads').addEventListener('change', function() {
+    const preview = document.getElementById('uploadPreview');
+    preview.innerHTML = '';
+    const files = this.files;
+    if (files.length > 0) {
+        preview.style.display = 'block';
+        for (let i = 0; i < files.length; i++) {
+            const f = files[i];
+            const div = document.createElement('div');
+            div.className = 'upload-preview-item';
+            if (f.type.startsWith('image/')) {
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(f);
+                img.alt = f.name;
+                div.appendChild(img);
+            }
+            const span = document.createElement('span');
+            span.textContent = f.name;
+            div.appendChild(span);
+            preview.appendChild(div);
+        }
+    } else {
+        preview.style.display = 'none';
+    }
+});
+// Delete collection (form was nested - browsers submit outer form instead)
+function confirmDelete() {
+    if (confirm('Delete this collection? This cannot be undone.')) {
+        document.getElementById('delete-form').submit();
+    }
+}
+</script>
+
+<style>
+.admin-page {
+    padding: 4rem 0;
+}
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.collection-form {
+    max-width: 700px;
+}
+
+.form-section {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.form-section h2 {
+    font-size: 1.125rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-hint {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.product-checkboxes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.75rem;
+}
+
+.product-checkbox {
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem 1rem;
+    background: var(--secondary-color);
+    border-radius: 8px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: var(--transition);
+}
+
+.product-checkbox:hover {
+    border-color: var(--border-color);
+}
+
+.product-checkbox input:checked + span {
+    font-weight: 600;
+}
+
+.product-checkbox input { margin-right: 0.5rem; }
+.product-checkbox small { color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.15rem; }
+
+.organizer-choices { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color); }
+.font-choice-card { cursor: pointer; border: 2px solid var(--border-color); border-radius: 8px; padding: 1rem; text-align: center; transition: var(--transition); }
+.font-choice-card:hover { border-color: var(--accent-color); }
+.font-choice-card:has(input:checked) { border-color: var(--accent-color); background: rgba(184, 124, 111, 0.08); }
+.font-choice-card input { display: none; }
+.choice-checkboxes { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+.choice-checkbox { display: flex; align-items: center; padding: 0.35rem 0.75rem; background: var(--secondary-color); border-radius: 8px; cursor: pointer; }
+.choice-checkbox input { margin-right: 0.5rem; }
+.design-choice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.75rem; margin-top: 0.5rem; }
+.design-choice-card { cursor: pointer; border: 2px solid var(--border-color); border-radius: 8px; overflow: hidden; text-align: center; transition: var(--transition); }
+.design-choice-card:hover { border-color: var(--accent-color); }
+.design-choice-card input:checked + .design-choice-preview { border-color: var(--accent-color); }
+.design-choice-card input { display: none; }
+.design-choice-card:has(input:checked) { border-color: var(--accent-color); background: rgba(184, 124, 111, 0.08); }
+.design-choice-preview { aspect-ratio: 1; padding: 0.5rem; background: #f9f9f9; }
+.design-choice-preview img { width: 100%; height: 100%; object-fit: contain; }
+.design-choice-card span { display: block; font-size: 0.75rem; padding: 0.35rem; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.placement-checkboxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; margin-top: 0.5rem; }
+.placement-checkbox { display: flex; flex-direction: column; padding: 0.75rem 1rem; background: var(--secondary-color); border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: var(--transition); }
+.placement-checkbox:hover { border-color: var(--border-color); }
+.placement-checkbox input { margin-right: 0.5rem; }
+.placement-checkbox input:checked + span { font-weight: 600; }
+.placement-checkbox span { font-size: 0.9rem; }
+.placement-checkbox small { color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.2rem; }
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.btn-danger {
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+.btn-danger:hover {
+    background: #ef4444;
+    color: #fff;
+}
+.collection-upload-area {
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    margin-top: 0.5rem;
+}
+.collection-upload-area:hover {
+    border-color: var(--accent-color);
+    background: rgba(184, 124, 111, 0.05);
+}
+.upload-preview-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+.upload-preview-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.5rem;
+    background: #fff;
+}
+.upload-preview-item img {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    margin-bottom: 0.25rem;
+}
+.upload-preview-item span {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Customers & Marketing - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<h1 class="ops-title">Customer & Marketing Tracker</h1>
+<p class="ops-subtitle">Repeat customers, school/team groups, event contacts.</p>
+
+<div class="ops-grid">
+    <div class="ops-card">
+        <h2>Repeat Customers</h2>
+        <p class="text-muted">Customers with 2+ orders</p>
+        <table class="admin-table">
+            <thead><tr><th>Name</th><th>Email</th><th>Orders</th></tr></thead>
+            <tbody>
+                {% for r in repeat_customers %}
+                <tr><td>{{ r.user.full_name }}</td><td>{{ r.user.email }}</td><td>{{ r.order_count }}</td></tr>
+                {% else %}<tr><td colspan="3" class="text-muted">No repeat customers yet.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="ops-card">
+        <h2>School / Team / Event Collections</h2>
+        <p class="text-muted">Shareable collection links</p>
+        <table class="admin-table">
+            <thead><tr><th>Name</th><th>Orders</th><th>Link</th></tr></thead>
+            <tbody>
+                {% for c in collections %}
+                <tr><td>{{ c.name }}</td><td>{{ c.orders.count() }}</td>
+                    <td><a href="{{ url_for('collection.view', slug=c.slug) }}" target="_blank">View</a></td></tr>
+                {% else %}<tr><td colspan="3" class="text-muted">No collections yet.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

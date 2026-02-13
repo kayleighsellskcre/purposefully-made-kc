@@ -1,0 +1,358 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Design Gallery - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<div class="admin-page design-gallery-admin">
+    <div class="container">
+        <h1 class="gallery-page-title">Design Gallery</h1>
+        <p class="gallery-page-subtitle">Upload designs for customers to use on their custom apparel</p>
+        
+        <!-- Upload Form - Luxury Card -->
+        <div class="gallery-upload-card">
+            <h2 class="gallery-upload-title">Add Design to Gallery</h2>
+            <p class="gallery-upload-subtitle">Upload a new design to make it available in the customizer</p>
+            
+            <form method="post" action="{{ url_for('admin.design_gallery_upload') }}" enctype="multipart/form-data" class="gallery-upload-form">
+                <div class="gallery-form-grid">
+                    <div class="form-group">
+                        <label for="title" class="form-label">Display Name</label>
+                        <input type="text" id="title" name="title" class="form-control" placeholder="e.g. Falcons Logo">
+                    </div>
+                    <div class="form-group">
+                        <label for="folder" class="form-label">Folder</label>
+                        <select id="folder" name="folder" class="form-control">
+                            <option value="custom_orders">Custom Orders</option>
+                            <option value="evergreen">Evergreen</option>
+                            <option value="school">School</option>
+                            <option value="holiday">Holiday</option>
+                            <option value="sports">Sports</option>
+                            <option value="funny">Funny</option>
+                            <option value="luxury_basics">Luxury Basics</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="sku" class="form-label">SKU</label>
+                        <input type="text" id="sku" name="sku" class="form-control" placeholder="e.g. DSG-001">
+                    </div>
+                </div>
+                
+                <div class="form-group gallery-file-group">
+                    <label class="form-label">Design File</label>
+                    <div class="gallery-file-zone" id="fileZone">
+                        <input type="file" name="file" id="designFile" accept=".png,.jpg,.jpeg,.webp" required class="gallery-file-input">
+                        <div class="gallery-file-placeholder">
+                            <svg class="gallery-file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <span class="gallery-file-text">Choose file or drag here</span>
+                            <span class="gallery-file-hint">PNG, JPG, or WEBP</span>
+                        </div>
+                        <div class="gallery-file-selected" id="fileSelected" style="display: none;">
+                            <span class="gallery-file-name" id="fileName"></span>
+                            <button type="button" class="gallery-file-clear" id="fileClear" aria-label="Clear file">×</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-lg gallery-upload-btn">
+                    <span>Upload to Gallery</span>
+                </button>
+            </form>
+        </div>
+        
+        {% if designs %}
+        <h2 class="gallery-list-title">Gallery Designs <span class="gallery-count">({{ designs|length }})</span></h2>
+        <div class="designs-grid">
+            {% for design in designs %}
+            <div class="design-card">
+                <div class="design-card-image">
+                    <img src="{{ url_for('static', filename=design.file_path) }}" alt="{{ design.title or design.original_filename }}">
+                </div>
+                <div class="design-card-body">
+                    <strong class="design-card-name">{{ design.title or design.original_filename }}</strong>
+                    <p class="design-card-meta">{{ design.folder or '—' }} · {{ design.sku or '—' }}</p>
+                    <div class="design-card-actions">
+                        <form method="post" action="{{ url_for('admin.design_gallery_remove', design_id=design.id) }}" class="design-action-form" onsubmit="return confirm('Remove from gallery?');">
+                            <button type="submit" class="btn btn-outline btn-sm">Remove from Gallery</button>
+                        </form>
+                        <form method="post" action="{{ url_for('admin.design_gallery_delete', design_id=design.id) }}" class="design-action-form" onsubmit="return confirm('Permanently delete this design? This cannot be undone.');">
+                            <button type="submit" class="btn btn-outline btn-sm btn-danger">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="gallery-empty-state">
+            <div class="gallery-empty-icon">✦</div>
+            <p class="gallery-empty-title">No designs in gallery yet</p>
+            <p class="gallery-empty-text">Upload your first design above. Customers can browse and use these designs when customizing products.</p>
+        </div>
+        {% endif %}
+        
+        <p class="gallery-back-link">
+            <a href="{{ url_for('admin.index') }}" class="btn btn-outline">← Back to Admin</a>
+        </p>
+    </div>
+</div>
+
+<style>
+.design-gallery-admin { padding: 2rem 0 4rem; }
+
+.gallery-page-title {
+    font-family: var(--font-heading);
+    font-size: 2.25rem;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+.gallery-page-subtitle {
+    color: var(--text-secondary);
+    margin-bottom: 2.5rem;
+    font-size: 1rem;
+}
+
+/* Upload Card - Luxury */
+.gallery-upload-card {
+    background: linear-gradient(180deg, #fff 0%, var(--ivory-silk) 100%);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow-luxury);
+    padding: 2.5rem;
+    margin-bottom: 3rem;
+    border: 1px solid var(--border-color);
+    position: relative;
+    overflow: hidden;
+}
+.gallery-upload-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--terra-cotta) 0%, var(--aged-bronze) 100%);
+}
+.gallery-upload-title {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    color: var(--primary-color);
+    margin-bottom: 0.25rem;
+}
+.gallery-upload-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+}
+.gallery-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+@media (max-width: 640px) {
+    .gallery-form-grid { grid-template-columns: 1fr; }
+}
+
+/* File Upload Zone - Luxury */
+.gallery-file-group { margin-bottom: 2rem; }
+.gallery-file-zone {
+    position: relative;
+    border: 2px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 2.5rem;
+    background: rgba(255, 255, 255, 0.6);
+    transition: var(--transition);
+    cursor: pointer;
+}
+.gallery-file-zone:hover {
+    border-color: var(--terra-cotta);
+    background: rgba(245, 240, 225, 0.8);
+}
+.gallery-file-zone.drag-over {
+    border-color: var(--terra-cotta);
+    background: rgba(184, 124, 111, 0.08);
+}
+.gallery-file-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+}
+.gallery-file-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    pointer-events: none;
+}
+.gallery-file-icon {
+    width: 48px;
+    height: 48px;
+    color: var(--text-light);
+}
+.gallery-file-text {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+.gallery-file-hint {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+.gallery-file-selected {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+}
+.gallery-file-name {
+    font-weight: 500;
+    color: var(--primary-color);
+}
+.gallery-file-clear {
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0 0.25rem;
+    line-height: 1;
+}
+.gallery-file-clear:hover { color: var(--terra-cotta); }
+.gallery-upload-btn { margin-top: 0.5rem; }
+
+/* Gallery List */
+.gallery-list-title {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    color: var(--primary-color);
+    margin-bottom: 1.5rem;
+}
+.gallery-count { color: var(--text-secondary); font-weight: 400; }
+.designs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.5rem;
+}
+.design-card {
+    background: #fff;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--box-shadow);
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+}
+.design-card:hover { box-shadow: var(--box-shadow-hover); }
+.design-card-image {
+    aspect-ratio: 1;
+    background: var(--ivory-silk);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+.design-card-image img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+.design-card-body { padding: 1.25rem; }
+.design-card-name { display: block; margin-bottom: 0.25rem; }
+.design-card-meta {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+.design-action-form { display: inline; }
+.design-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.btn-danger {
+    color: var(--terra-cotta) !important;
+    border-color: var(--terra-cotta) !important;
+}
+.btn-danger:hover {
+    background: rgba(184, 124, 111, 0.1) !important;
+    color: var(--terra-cotta) !important;
+}
+
+/* Empty State */
+.gallery-empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: linear-gradient(180deg, var(--ivory-silk) 0%, var(--cashmere-sand) 30%, var(--ivory-silk) 100%);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+.gallery-empty-icon {
+    font-size: 2.5rem;
+    color: var(--terra-cotta);
+    margin-bottom: 1rem;
+    opacity: 0.8;
+}
+.gallery-empty-title {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+.gallery-empty-text {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+.gallery-back-link { margin-top: 2.5rem; }
+</style>
+
+<script>
+(function() {
+    const zone = document.getElementById('fileZone');
+    const input = document.getElementById('designFile');
+    const placeholder = zone.querySelector('.gallery-file-placeholder');
+    const selected = document.getElementById('fileSelected');
+    const fileName = document.getElementById('fileName');
+    const clearBtn = document.getElementById('fileClear');
+
+    function updateFileDisplay() {
+        const file = input.files[0];
+        if (file) {
+            placeholder.style.display = 'none';
+            selected.style.display = 'flex';
+            fileName.textContent = file.name;
+        } else {
+            placeholder.style.display = 'flex';
+            selected.style.display = 'none';
+        }
+    }
+
+    input.addEventListener('change', updateFileDisplay);
+    clearBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        input.value = '';
+        updateFileDisplay();
+    });
+
+    zone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        zone.classList.add('drag-over');
+    });
+    zone.addEventListener('dragleave', function() {
+        zone.classList.remove('drag-over');
+    });
+    zone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        if (e.dataTransfer.files.length) {
+            input.files = e.dataTransfer.files;
+            updateFileDisplay();
+        }
+    });
+})();
+</script>
+{% endblock %}

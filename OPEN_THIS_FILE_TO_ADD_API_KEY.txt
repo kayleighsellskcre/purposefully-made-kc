@@ -1,0 +1,49 @@
+═══════════════════════════════════════════════════════════════
+  👉 OPEN THIS FILE TO ADD YOUR S&S ACTIVEWEAR API KEY 👈
+═══════════════════════════════════════════════════════════════
+
+THE FILE YOU NEED TO EDIT IS:
+
+    .env
+
+It's located in the same folder as this file!
+
+═══════════════════════════════════════════════════════════════
+
+HOW TO OPEN IT:
+
+1. Look in your project folder:
+   C:\Users\Kayle\OneDrive\Desktop\kb_apparel_site\
+
+2. Find the file called: .env
+   (It starts with a dot)
+
+3. Open it with Notepad or your code editor
+
+4. Scroll down to line 20 and you'll see:
+   
+   SSACTIVEWEAR_API_KEY=your_ss_activewear_api_key_here
+   SSACTIVEWEAR_ACCOUNT_NUMBER=your_account_number_here
+
+5. Replace with YOUR credentials:
+   
+   SSACTIVEWEAR_API_KEY=ABC123YOUR_REAL_KEY
+   SSACTIVEWEAR_ACCOUNT_NUMBER=12345
+
+6. Save the file
+
+7. Done! ✅
+
+═══════════════════════════════════════════════════════════════
+
+CAN'T FIND THE .env FILE?
+
+If you can't see it, it might be hidden. Here's how to show it:
+
+In File Explorer:
+• Click "View" at the top
+• Check the box "Hidden items"
+
+Now you'll see the .env file!
+
+═══════════════════════════════════════════════════════════════

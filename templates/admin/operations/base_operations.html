@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="ops-page">
+    <div class="container">
+        <nav class="ops-nav">
+            <a href="{{ url_for('admin.index') }}" class="ops-nav-home">← Dashboard</a>
+            <a href="{{ url_for('admin.orders') }}" class="ops-nav-link">Orders</a>
+            <a href="{{ url_for('admin.production_workflow') }}" class="ops-nav-link">Workflow</a>
+            <a href="{{ url_for('admin.inventory') }}" class="ops-nav-link">Inventory</a>
+            <a href="{{ url_for('admin.vendors') }}" class="ops-nav-link">Vendors</a>
+            <a href="{{ url_for('admin.financial') }}" class="ops-nav-link">Financial</a>
+            <a href="{{ url_for('admin.growth') }}" class="ops-nav-link">Growth</a>
+            <a href="{{ url_for('admin.customers') }}" class="ops-nav-link">Customers</a>
+            <a href="{{ url_for('admin.packaging_sop') }}" class="ops-nav-link">Packaging SOP</a>
+        </nav>
+        {% block ops_content %}{% endblock %}
+    </div>
+</div>
+<style>
+.ops-page { padding: 2rem 0 4rem; }
+.ops-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 2rem; padding: 1rem; background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow); }
+.ops-nav-home, .ops-nav-link { padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; color: var(--text-primary); font-size: 0.9rem; }
+.ops-nav-home { color: var(--accent-color); font-weight: 600; }
+.ops-nav-link:hover { background: var(--secondary-color); color: var(--accent-color); }
+.ops-card { background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow); padding: 2rem; margin-bottom: 2rem; border: 1px solid var(--border-color); }
+.ops-card h2 { font-size: 1.25rem; margin-bottom: 1.5rem; color: var(--primary-color); border-bottom: 2px solid var(--accent-color); padding-bottom: 0.5rem; }
+.ops-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; }
+.ops-title { font-family: var(--font-heading); font-size: 2rem; margin-bottom: 0.5rem; }
+.ops-subtitle { color: var(--text-secondary); margin-bottom: 2rem; }
+.ops-form-inline { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+.ops-form-inline input, .ops-form-inline select { padding: 0.5rem; border-radius: 8px; border: 1px solid var(--border-color); }
+.ops-form-inline input[type="text"], .ops-form-inline input[type="number"] { min-width: 80px; }
+.admin-table { width: 100%; border-collapse: collapse; }
+.admin-table th, .admin-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+.admin-table thead { background: var(--secondary-color); font-weight: 600; }
+.text-muted { color: var(--text-secondary); }
+.form-inline { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.form-inline input, .form-inline select { padding: 0.5rem; border-radius: 8px; border: 1px solid var(--border-color); }
+.btn-sm { padding: 0.25rem 0.5rem; font-size: 0.875rem; }
+</style>
+{% endblock %}

@@ -1,0 +1,106 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Request #{{ req.id }} - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<div class="admin-page">
+    <div class="container">
+        <a href="{{ url_for('admin.custom_design_requests') }}" class="back-link">← Back to Requests</a>
+        
+        <h1>Design Request from {{ req.user.full_name }}</h1>
+        <p class="request-date">{{ req.created_at.strftime('%B %d, %Y at %I:%M %p') }} · <span class="badge badge-{{ req.status }}">{{ req.status.title() }}</span></p>
+        
+        <div class="detail-grid">
+            <div class="detail-section">
+                <h2>Reference Image</h2>
+                <div class="reference-preview">
+                    <a href="{{ url_for('static', filename=req.reference_file_path) }}" target="_blank" rel="noopener">
+                        <img src="{{ url_for('static', filename=req.reference_file_path) }}" alt="Reference">
+                    </a>
+                </div>
+            </div>
+            
+            <div class="detail-section">
+                <h2>Customer Description</h2>
+                <p class="description-text">{{ req.description }}</p>
+                
+                <h3>Customer</h3>
+                <p>{{ req.user.full_name }} · {{ req.user.email }}</p>
+                
+                {% if req.status == 'pending' %}
+                <div class="upload-section">
+                    <h3>Upload Design for Customer</h3>
+                    <p class="section-hint">The design will appear in their My Designs. They can then order any style, color, or shirt.</p>
+                    <form method="post" enctype="multipart/form-data" class="upload-form">
+                        <input type="hidden" name="action" value="upload_design">
+                        <div class="form-group">
+                            <label>Display Name (optional)</label>
+                            <input type="text" name="title" class="form-control" placeholder="e.g. Birthday Logo">
+                        </div>
+                        <div class="form-group">
+                            <label>Design Fee</label>
+                            <select name="design_fee" class="form-control">
+                                <option value="0">No charge — Exact copy of their image</option>
+                                <option value="4">$4 — Lots of changes</option>
+                                <option value="20">$20 — Created from scratch</option>
+                            </select>
+                            <p class="fee-hint">Fee is added to their order when they use this design.</p>
+                        </div>
+                        <div class="form-group">
+                            <label>Design File (PNG, JPG, WEBP)</label>
+                            <input type="file" name="design_file" accept=".png,.jpg,.jpeg,.webp" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Upload to {{ req.user.first_name or 'Customer' }}'s Profile</button>
+                    </form>
+                </div>
+                
+                <form method="post" style="margin-top: 1.5rem;">
+                    <input type="hidden" name="action" value="decline">
+                    <div class="form-group">
+                        <label>Decline reason (optional)</label>
+                        <input type="text" name="decline_reason" class="form-control" placeholder="e.g. Cannot recreate">
+                    </div>
+                    <button type="submit" class="btn btn-outline" onclick="return confirm('Decline this request?');">Decline Request</button>
+                </form>
+                {% elif req.created_design %}
+                <div class="completed-info">
+                    <p><strong>Design uploaded:</strong> {{ req.created_design.filename }}</p>
+                    {% if req.design_fee and req.design_fee > 0 %}
+                    <p><strong>Design fee:</strong> ${{ "%.0f"|format(req.design_fee) }} (added to order when they use it)</p>
+                    {% endif %}
+                    <a href="{{ url_for('static', filename=req.created_design.file_path) }}" target="_blank" class="btn btn-outline btn-sm">View Design</a>
+                </div>
+                {% endif %}
+                
+                <div class="admin-notes-section">
+                    <h3>Admin Notes</h3>
+                    <form method="post">
+                        <input type="hidden" name="action" value="add_notes">
+                        <textarea name="admin_notes" class="form-control" rows="3">{{ req.admin_notes or '' }}</textarea>
+                        <button type="submit" class="btn btn-outline btn-sm" style="margin-top: 0.5rem;">Save Notes</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-page { padding: 2rem 0; }
+.back-link { display: inline-block; margin-bottom: 1rem; color: var(--accent-color); }
+.request-date { color: var(--text-secondary); margin-bottom: 2rem; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+@media (max-width: 968px) { .detail-grid { grid-template-columns: 1fr; } }
+.detail-section { background: #fff; padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid var(--border-color); }
+.detail-section h2 { font-size: 1.25rem; margin-bottom: 1rem; }
+.reference-preview { background: var(--ivory-silk); border-radius: 8px; padding: 1rem; }
+.reference-preview img { max-width: 100%; max-height: 300px; object-fit: contain; display: block; margin: 0 auto; }
+.description-text { white-space: pre-wrap; margin-bottom: 1rem; }
+.section-hint { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem; }
+.upload-form .form-group { margin-bottom: 1rem; }
+.fee-hint { font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem; }
+.completed-info { padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 8px; margin-bottom: 1rem; }
+.admin-notes-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); }
+.badge-pending, .badge-completed, .badge-declined { padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.85rem; }
+</style>
+{% endblock %}

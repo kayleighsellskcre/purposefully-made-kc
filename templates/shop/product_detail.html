@@ -1,0 +1,441 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }} - Purposefully Made KC{% endblock %}
+
+{% block content %}
+<div class="product-detail-page">
+    <div class="container">
+        <div class="product-detail-grid">
+            <!-- Product Image -->
+            <div class="product-gallery">
+                {% if product.front_mockup_template %}
+                <div class="product-image">
+                    <img src="{{ url_for('static', filename=product.front_mockup_template) }}" 
+                         alt="{{ product.name }}" 
+                         id="main-image">
+                </div>
+                {% if product.back_mockup_template %}
+                <div class="image-thumbnails">
+                    <img src="{{ url_for('static', filename=product.front_mockup_template) }}" 
+                         alt="Front" 
+                         class="thumbnail active"
+                         onclick="changeImage('{{ url_for('static', filename=product.front_mockup_template) }}', this)">
+                    <img src="{{ url_for('static', filename=product.back_mockup_template) }}" 
+                         alt="Back" 
+                         class="thumbnail"
+                         onclick="changeImage('{{ url_for('static', filename=product.back_mockup_template) }}', this)">
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="product-image placeholder">
+                    <svg width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                        <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                    <p>Product Image Coming Soon</p>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Product Info -->
+            <div class="product-info">
+                <h1>{{ product.name }}</h1>
+                
+                {% if product.brand %}
+                <p class="product-brand">{{ product.brand }}</p>
+                {% endif %}
+                
+                <p class="product-style">Style #{{ product.style_number }}</p>
+                
+                <div class="product-price">
+                    <span class="price">${{ "%.2f"|format(product.base_price) }}</span>
+                    {% if product.category %}
+                    <span class="category-badge">{{ product.category }}</span>
+                    {% endif %}
+                </div>
+                
+                {% if product.description %}
+                <div class="product-description">
+                    <p>{{ product.description }}</p>
+                </div>
+                {% endif %}
+                
+                <!-- Size Selection -->
+                {% if available_sizes %}
+                <div class="product-option">
+                    <label>Size</label>
+                    <div class="size-selector">
+                        {% for size in available_sizes %}
+                        <button class="size-option" data-size="{{ size }}">{{ size }}</button>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Color Selection -->
+                {% if available_colors %}
+                <div class="product-option">
+                    <label>Color</label>
+                    <div class="color-selector">
+                        {% for color in available_colors %}
+                        <button class="color-option" 
+                                data-color="{{ color }}" 
+                                title="{{ color }}">
+                            <span>{{ color }}</span>
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Quantity -->
+                <div class="product-option">
+                    <label>Quantity</label>
+                    <div class="quantity-selector">
+                        <button onclick="changeQuantity(-1)">-</button>
+                        <input type="number" id="quantity" value="1" min="1" readonly>
+                        <button onclick="changeQuantity(1)">+</button>
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div class="product-actions">
+                    <a href="{{ url_for('shop.customize', product_id=product.id) }}" class="btn btn-customize btn-block">
+                        Customize & Add Design
+                    </a>
+                    <button onclick="addToCart()" class="btn btn-outline btn-block">
+                        Add to Cart (No Design)
+                    </button>
+                </div>
+                
+                <!-- Features -->
+                <div class="product-features">
+                    <h3>Features</h3>
+                    <ul>
+                        <li>High-quality {{ product.brand or 'apparel' }}</li>
+                        <li>Custom design printing available</li>
+                        <li>Multiple placement options</li>
+                        <li>Professional DTF transfer printing</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedSize = null;
+let selectedColor = null;
+
+// Size selection
+document.querySelectorAll('.size-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.size-option').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedSize = btn.dataset.size;
+    });
+});
+
+// Color selection
+document.querySelectorAll('.color-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.color-option').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedColor = btn.dataset.color;
+    });
+});
+
+// Image gallery
+function changeImage(src, thumbnail) {
+    document.getElementById('main-image').src = src;
+    document.querySelectorAll('.thumbnail').forEach(t => t.classList.remove('active'));
+    thumbnail.classList.add('active');
+}
+
+// Quantity
+function changeQuantity(change) {
+    const input = document.getElementById('quantity');
+    const newValue = parseInt(input.value) + change;
+    if (newValue >= 1) {
+        input.value = newValue;
+    }
+}
+
+// Add to cart
+async function addToCart() {
+    if (!selectedSize || !selectedColor) {
+        alert('Please select size and color');
+        return;
+    }
+    
+    const quantity = parseInt(document.getElementById('quantity').value);
+    
+    try {
+        const response = await fetch('/cart/add', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                product_id: {{ product.id }},
+                size: selectedSize,
+                color: selectedColor,
+                quantity: quantity
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Added to cart!');
+            window.location.href = '/cart';
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Failed to add to cart');
+    }
+}
+</script>
+
+<style>
+.product-detail-page {
+    padding: 4rem 0;
+}
+
+.product-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+}
+
+.product-gallery {
+    position: sticky;
+    top: 100px;
+    height: fit-content;
+}
+
+.product-image {
+    width: 100%;
+    aspect-ratio: 1;
+    background: var(--secondary-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.product-image.placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-light);
+}
+
+.image-thumbnails {
+    display: flex;
+    gap: 1rem;
+}
+
+.thumbnail {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: var(--border-radius);
+    border: 2px solid var(--border-color);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.thumbnail.active {
+    border-color: var(--accent-color);
+}
+
+.product-info h1 {
+    margin-bottom: 0.5rem;
+}
+
+.product-brand {
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.product-style {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: 1.5rem;
+}
+
+.product-price {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.price {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent-color);
+}
+
+.category-badge {
+    padding: 0.25rem 0.75rem;
+    background: var(--secondary-color);
+    border-radius: 12px;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.product-description {
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 2rem;
+}
+
+.product-option {
+    margin-bottom: 2rem;
+}
+
+.product-option label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.size-selector,
+.color-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.size-option {
+    padding: 0.75rem 1.5rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: #fff;
+    cursor: pointer;
+    transition: var(--transition);
+    font-weight: 600;
+}
+
+.size-option:hover,
+.size-option.active {
+    border-color: var(--accent-color);
+    background: var(--accent-color);
+    color: #fff;
+}
+
+.color-option {
+    padding: 0.75rem 1.25rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: #fff;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.color-option:hover,
+.color-option.active {
+    border-color: var(--accent-color);
+    background: var(--secondary-color);
+}
+
+.quantity-selector {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    width: fit-content;
+}
+
+.quantity-selector button {
+    width: 40px;
+    height: 40px;
+    border: 2px solid var(--border-color);
+    background: #fff;
+    cursor: pointer;
+    font-size: 1.25rem;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.quantity-selector button:first-child {
+    border-radius: var(--border-radius) 0 0 var(--border-radius);
+}
+
+.quantity-selector button:last-child {
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+}
+
+.quantity-selector button:hover {
+    background: var(--secondary-color);
+}
+
+.quantity-selector input {
+    width: 60px;
+    height: 40px;
+    border: 2px solid var(--border-color);
+    border-left: none;
+    border-right: none;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.product-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.product-features {
+    padding: 2rem;
+    background: var(--secondary-color);
+    border-radius: var(--border-radius);
+}
+
+.product-features h3 {
+    margin-bottom: 1rem;
+}
+
+.product-features ul {
+    list-style: none;
+    padding: 0;
+}
+
+.product-features li {
+    padding: 0.5rem 0;
+    padding-left: 2rem;
+    position: relative;
+}
+
+.product-features li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: var(--accent-color);
+    font-weight: 700;
+}
+
+@media (max-width: 1024px) {
+    .product-detail-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .product-gallery {
+        position: static;
+    }
+}
+</style>
+{% endblock %}

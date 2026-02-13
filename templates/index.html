@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Purposefully Made KC - Custom Apparel{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero">
+    <div class="hero-content">
+        <h1 class="hero-title">Luxury Custom Apparel</h1>
+        <p class="hero-subtitle">Premium Bella+Canvas garments with your custom designs</p>
+        <div class="hero-actions">
+            <a href="{{ url_for('shop.index') }}" class="btn btn-primary btn-lg">Start Shopping</a>
+            <a href="#collections" class="btn btn-outline btn-lg">View Collections</a>
+        </div>
+    </div>
+</section>
+
+<!-- Features -->
+<section class="features">
+    <div class="container">
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                </div>
+                <h3 class="feature-title">Live Preview</h3>
+                <p class="feature-text">See your design on the actual garment in real-time</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                    </svg>
+                </div>
+                <h3 class="feature-title">Premium Quality</h3>
+                <p class="feature-text">Exclusively Bella+Canvas apparel with DTF printing</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </div>
+                <h3 class="feature-title">Team Orders</h3>
+                <p class="feature-text">Create shareable collections for schools and teams</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                        <line x1="1" y1="10" x2="23" y2="10"></line>
+                    </svg>
+                </div>
+                <h3 class="feature-title">Easy Checkout</h3>
+                <p class="feature-text">Apple Pay, card, PayPal & Venmo accepted</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Collections -->
+{% if active_collections %}
+<section class="collections" id="collections">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Active Collections</h2>
+            <p class="section-subtitle">Team stores and group orders</p>
+        </div>
+        
+        <div class="collections-grid">
+            {% for collection in active_collections %}
+            <div class="collection-card">
+                <div class="collection-content">
+                    <h3 class="collection-name">{{ collection.name }}</h3>
+                    <p class="collection-description">{{ collection.description }}</p>
+                    {% if collection.order_deadline %}
+                    <p class="collection-deadline">Order by: {{ collection.order_deadline.strftime('%B %d, %Y') }}</p>
+                    {% endif %}
+                    <a href="{{ url_for('collection.view', slug=collection.slug) }}" class="btn btn-outline">
+                        Shop Collection
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- CTA Section -->
+<section class="cta">
+    <div class="container">
+        <div class="cta-content">
+            <h2 class="cta-title">Ready to Create Your Custom Apparel?</h2>
+            <p class="cta-text">Choose from premium Bella+Canvas products and bring your designs to life</p>
+            <a href="{{ url_for('shop.index') }}" class="btn btn-primary btn-lg">Get Started</a>
+        </div>
+    </div>
+</section>
+{% endblock %}

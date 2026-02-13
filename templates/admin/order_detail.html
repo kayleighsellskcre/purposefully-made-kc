@@ -1,0 +1,301 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Order #{{ order.order_number }} - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<div class="admin-page">
+    <div class="container">
+        <div class="admin-header">
+            <div>
+                <h1>Order #{{ order.order_number }}</h1>
+                <p>Placed on {{ order.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+            </div>
+            <a href="{{ url_for('admin.orders') }}" class="btn btn-outline">Back to Orders</a>
+        </div>
+        
+        <div class="order-detail-grid">
+            <!-- Order Status -->
+            <div class="detail-card">
+                <h2>Order Status</h2>
+                <form method="POST" action="{{ url_for('admin.update_order_status', order_id=order.id) }}">
+                    <div class="form-group">
+                        <label>Current Status</label>
+                        <select name="status" class="form-control">
+                            <option value="new" {% if order.status == 'new' %}selected{% endif %}>New</option>
+                            <option value="paid" {% if order.status == 'paid' %}selected{% endif %}>Paid</option>
+                            <option value="in_production" {% if order.status == 'in_production' %}selected{% endif %}>In Production</option>
+                            <option value="ready" {% if order.status == 'ready' %}selected{% endif %}>Ready (awaiting pickup/ship)</option>
+                            <option value="shipped" {% if order.status == 'shipped' %}selected{% endif %}>Shipped</option>
+                            <option value="picked_up" {% if order.status == 'picked_up' %}selected{% endif %}>Picked Up</option>
+                            <option value="completed" {% if order.status == 'completed' %}selected{% endif %}>Completed</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Status</button>
+                </form>
+            </div>
+            
+            <!-- Customer Info -->
+            <div class="detail-card">
+                <h2>Customer Information</h2>
+                <p><strong>Name:</strong> {{ order.full_name }}</p>
+                <p><strong>Email:</strong> {{ order.email }}</p>
+                {% if order.phone %}<p><strong>Phone:</strong> {{ order.phone }}</p>{% endif %}
+                {% if order.user %}
+                <p><strong>Account:</strong> <a href="{{ url_for('account.orders') }}">View Customer</a></p>
+                {% endif %}
+            </div>
+            
+            <!-- Fulfillment -->
+            <div class="detail-card">
+                <h2>Fulfillment</h2>
+                <p><strong>Method:</strong> {{ order.fulfillment_method.title() }}</p>
+                {% if order.fulfillment_method == 'shipping' %}
+                <p><strong>Address:</strong></p>
+                <address>
+                    {{ order.shipping_recipient }}<br>
+                    {{ order.shipping_street }}<br>
+                    {% if order.shipping_street_2 %}{{ order.shipping_street_2 }}<br>{% endif %}
+                    {{ order.shipping_city }}, {{ order.shipping_state }} {{ order.shipping_zip }}
+                </address>
+                {% if order.tracking_number %}
+                <p><strong>Tracking:</strong> {{ order.tracking_number }}</p>
+                {% endif %}
+                {% endif %}
+            </div>
+            
+            <!-- Payment Info -->
+            <div class="detail-card">
+                <h2>Payment</h2>
+                <p><strong>Method:</strong> {{ (order.payment_method or '—').title() }}</p>
+                <p><strong>Status:</strong> <span class="badge badge-{{ order.payment_status }}">{{ order.payment_status.title() }}</span></p>
+                {% if order.payment_intent_id %}
+                <p><strong>Stripe ID:</strong> {{ order.payment_intent_id }}</p>
+                {% endif %}
+                {% if order.paid_at %}
+                <p><strong>Paid at:</strong> {{ order.paid_at.strftime('%b %d, %Y %I:%M %p') }}</p>
+                {% endif %}
+            </div>
+            
+            <!-- Order Details & Revenue -->
+            <div class="detail-card">
+                <h2>Order Details & Profit</h2>
+                <form method="POST" action="{{ url_for('admin.update_order_details', order_id=order.id) }}">
+                    <div class="form-group">
+                        <label>Order Type</label>
+                        <select name="order_type">
+                            <option value="retail" {% if (order.order_type or 'retail') == 'retail' %}selected{% endif %}>Retail</option>
+                            <option value="wholesale" {% if order.order_type == 'wholesale' %}selected{% endif %}>Wholesale</option>
+                            <option value="event" {% if order.order_type == 'event' %}selected{% endif %}>Event</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Due Date</label>
+                        <input type="date" name="due_date" value="{{ order.due_date.strftime('%Y-%m-%d') if order.due_date else '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label>Cost of Goods</label>
+                        <input type="number" name="cost_of_goods" step="0.01" value="{{ order.cost_of_goods or '' }}" placeholder="COGS">
+                    </div>
+                    <div class="form-group">
+                        <label>Profit</label>
+                        <input type="number" name="profit" step="0.01" value="{{ order.profit or '' }}" placeholder="Auto from COGS">
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" name="is_refunded" {% if order.is_refunded %}checked{% endif %}> Refunded</label>
+                    </div>
+                    <div class="form-group">
+                        <label>Refund Notes</label>
+                        <textarea name="refund_notes" rows="2">{{ order.refund_notes or '' }}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update</button>
+                </form>
+                {% if order.profit is not none %}<p class="profit-display"><strong>Profit:</strong> ${{ "%.2f"|format(order.profit) }}</p>{% endif %}
+            </div>
+        </div>
+        
+        <!-- Order Items -->
+        <div class="detail-card">
+            <h2>Order Items</h2>
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Design</th>
+                        <th>Product</th>
+                        <th>Style #</th>
+                        <th>Color</th>
+                        <th>Size</th>
+                        <th>Print Type</th>
+                        <th>Design File</th>
+                        <th>Back Design</th>
+                        <th>Print Width</th>
+                        <th>Placement</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in order.items %}
+                    <tr>
+                        <td>
+                            {% if item.design %}
+                            <a href="{{ url_for('static', filename=item.design.file_path) }}" target="_blank" class="design-thumb-link">
+                                <img src="{{ url_for('static', filename=item.design.file_path) }}" alt="Design" class="design-thumb" title="Click to view full size">
+                            </a>
+                            {% elif item.proof_image %}
+                            <a href="{{ url_for('static', filename=item.proof_image) }}" target="_blank" class="design-thumb-link">
+                                <img src="{{ url_for('static', filename=item.proof_image) }}" alt="Proof" class="design-thumb">
+                            </a>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ item.product_name }}</strong></td>
+                        <td>{{ item.style_number }}</td>
+                        <td>{{ item.color }}</td>
+                        <td>{{ item.size }}</td>
+                        <td>{{ item.print_type or 'DTF' }}</td>
+                        <td>{{ item.design_file_name or (item.design.filename if item.design else '—') }}</td>
+                        <td>{{ item.back_design_file_name or '—' }}</td>
+                        <td>
+                            {% set pw = get_display_print_width(item) if get_display_print_width else (item.print_width or (get_print_width(item.size, item.product) if get_print_width else none)) %}
+                            {% if pw %}{{ "%.2f"|format(pw) }}"{% else %}—{% endif %}
+                        </td>
+                        <td>{{ item.placement or '-' }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>${{ "%.2f"|format(item.unit_price) }}</td>
+                        <td>${{ "%.2f"|format(item.subtotal) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <div class="order-totals">
+                <div class="total-row">
+                    <span>Subtotal:</span>
+                    <span>${{ "%.2f"|format(order.subtotal) }}</span>
+                </div>
+                <div class="total-row">
+                    <span>Shipping:</span>
+                    <span>${{ "%.2f"|format(order.shipping_cost) }}</span>
+                </div>
+                {% if order.tax > 0 %}
+                <div class="total-row">
+                    <span>Tax:</span>
+                    <span>${{ "%.2f"|format(order.tax) }}</span>
+                </div>
+                {% endif %}
+                <div class="total-row grand-total">
+                    <strong>Total:</strong>
+                    <strong>${{ "%.2f"|format(order.total) }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-page {
+    padding: 4rem 0;
+}
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+}
+
+.admin-header p {
+    color: var(--text-secondary);
+}
+
+.order-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.detail-card {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+}
+
+.detail-card h2 {
+    font-size: 1.125rem;
+    margin-bottom: 1.5rem;
+}
+
+.detail-card p {
+    margin: 0.5rem 0;
+}
+
+.detail-card address {
+    font-style: normal;
+    line-height: 1.6;
+    margin: 1rem 0;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-table thead {
+    background: var(--secondary-color);
+}
+
+.admin-table th,
+.admin-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.order-totals {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 2px solid var(--border-color);
+    max-width: 400px;
+    margin-left: auto;
+}
+
+.total-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+}
+
+.total-row.grand-total {
+    font-size: 1.25rem;
+    padding-top: 1rem;
+    margin-top: 1rem;
+    border-top: 2px solid var(--border-color);
+}
+
+.design-thumb {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: #f9f9f9;
+}
+
+.design-thumb-link {
+    display: inline-block;
+}
+
+.design-thumb-link:hover .design-thumb {
+    border-color: var(--accent-color);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.text-muted {
+    color: var(--text-secondary);
+}
+</style>
+{% endblock %}

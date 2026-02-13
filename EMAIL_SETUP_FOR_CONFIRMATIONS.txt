@@ -1,0 +1,43 @@
+===========================================
+CONFIGURING EMAIL FOR ORDER CONFIRMATIONS
+===========================================
+
+Your order confirmation page now accurately reflects whether an email was sent.
+Previously it said "We've sent a confirmation email" but no email was actually sent.
+Now it only says that when an email is actually delivered.
+
+TO RECEIVE CONFIRMATION EMAILS:
+-------------------------------
+
+1. Open your .env file
+2. Add or update these lines with REAL values (not placeholders):
+
+   MAIL_SERVER=smtp.gmail.com
+   MAIL_PORT=587
+   MAIL_USE_TLS=True
+   MAIL_USERNAME=your-actual-email@gmail.com
+   MAIL_PASSWORD=your-gmail-app-password
+   MAIL_DEFAULT_SENDER=your-actual-email@gmail.com
+
+3. For Gmail, you MUST use an "App Password" (not your regular password):
+   - Go to Google Account → Security → 2-Step Verification (enable it)
+   - Then: Google Account → Security → App passwords
+   - Generate a new app password for "Mail"
+   - Use that 16-character password as MAIL_PASSWORD
+
+4. Restart your Flask server after changing .env
+
+WHAT HAPPENS NOW:
+-----------------
+- When email IS configured: Customers receive a confirmation email with order
+  details (items, totals, shipping address). The confirmation page says
+  "We've sent a confirmation email to [their email]."
+
+- When email is NOT configured: The confirmation page says "Save this page for
+  your records" and explains how to configure SMTP. No false promise.
+
+The confirmation email includes:
+- Order number and date
+- Full list of items (product, size, color, quantity, price)
+- Subtotal, shipping, total
+- Shipping address (or "Local Pickup")

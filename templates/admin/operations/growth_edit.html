@@ -1,0 +1,33 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Edit Weekly Metric - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<h1 class="ops-title">Edit Weekly Metric</h1>
+<p class="ops-subtitle">Week of {{ metric.week_start.strftime('%B %d, %Y') }}</p>
+
+<div class="ops-card">
+    <form method="POST" action="{{ url_for('admin.edit_growth_metric', id=metric.id) }}">
+        <div class="form-inline" style="flex-direction: column; align-items: stretch; gap: 1rem;">
+            <div>
+                <label for="week_start" style="display: block; margin-bottom: 0.25rem;">Week start</label>
+                <input type="date" name="week_start" id="week_start" value="{{ metric.week_start.strftime('%Y-%m-%d') }}" required>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                <input type="number" name="units_sold" placeholder="Units sold" value="{{ metric.units_sold }}">
+                <input type="number" name="revenue" step="0.01" placeholder="Revenue" value="{{ metric.revenue }}">
+                <input type="number" name="website_traffic" placeholder="Traffic" value="{{ metric.website_traffic }}">
+                <input type="number" name="events_booked" placeholder="Events" value="{{ metric.events_booked }}">
+                <input type="number" name="wholesale_inquiries" placeholder="Wholesale" value="{{ metric.wholesale_inquiries }}">
+                <input type="number" name="social_reach" placeholder="Social reach" value="{{ metric.social_reach }}">
+            </div>
+            <div>
+                <label for="notes" style="display: block; margin-bottom: 0.25rem;">Notes</label>
+                <input type="text" name="notes" id="notes" placeholder="Notes" value="{{ metric.notes or '' }}" style="width: 100%;">
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <a href="{{ url_for('admin.growth') }}" class="btn btn-outline">Cancel</a>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

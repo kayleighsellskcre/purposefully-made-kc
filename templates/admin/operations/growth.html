@@ -1,0 +1,54 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Growth Dashboard - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<h1 class="ops-title">Growth Dashboard</h1>
+<p class="ops-subtitle">Weekly metrics — units sold, revenue, traffic, events, wholesale, social.</p>
+
+<div class="growth-auto-sync">
+    <form method="POST" action="{{ url_for('admin.sync_growth_metrics') }}" style="display:inline">
+        <button type="submit" class="btn btn-primary">▶ Auto-Sync Now</button>
+    </form>
+    <span class="growth-sync-hint">Pulls units sold, revenue, events, wholesale from your orders & collections. Traffic & social need manual entry or external integration.</span>
+</div>
+
+<div class="ops-card">
+    <h2>Add Weekly Metric</h2>
+    <form method="POST" action="{{ url_for('admin.add_growth_metric') }}">
+        <div class="form-inline">
+            <input type="date" name="week_start" required>
+            <input type="number" name="units_sold" placeholder="Units sold" value="0">
+            <input type="number" name="revenue" step="0.01" placeholder="Revenue" value="0">
+            <input type="number" name="website_traffic" placeholder="Traffic" value="0">
+            <input type="number" name="events_booked" placeholder="Events" value="0">
+            <input type="number" name="wholesale_inquiries" placeholder="Wholesale" value="0">
+            <input type="number" name="social_reach" placeholder="Social reach" value="0">
+            <input type="text" name="notes" placeholder="Notes">
+            <button type="submit" class="btn btn-primary">Add</button>
+        </div>
+    </form>
+</div>
+
+<div class="ops-card">
+    <table class="admin-table">
+        <thead><tr><th>Week</th><th>Units</th><th>Revenue</th><th>Traffic</th><th>Events</th><th>Wholesale</th><th>Social</th><th></th></tr></thead>
+        <tbody>
+            {% for m in metrics %}
+            <tr>
+                <td>{{ m.week_start.strftime('%b %d, %Y') }}</td>
+                <td>{{ m.units_sold }}</td>
+                <td>${{ "%.2f"|format(m.revenue) }}</td>
+                <td>{{ m.website_traffic }}</td>
+                <td>{{ m.events_booked }}</td>
+                <td>{{ m.wholesale_inquiries }}</td>
+                <td>{{ m.social_reach }}</td>
+                <td><a href="{{ url_for('admin.edit_growth_metric', id=m.id) }}" class="btn btn-outline btn-sm">Edit</a></td>
+            </tr>
+            {% else %}<tr><td colspan="8" class="text-muted">No metrics yet. Click "Auto-Sync Now" to pull from your data.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+</div>
+<style>
+.growth-auto-sync { margin-bottom: 2rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.growth-sync-hint { color: var(--text-secondary); font-size: 0.9rem; }
+</style>
+{% endblock %}

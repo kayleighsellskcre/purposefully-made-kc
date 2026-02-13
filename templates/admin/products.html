@@ -1,0 +1,274 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Manage Products - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="admin-page">
+    <div class="container">
+        <div class="admin-header">
+            <h1>Manage Products</h1>
+            <div class="admin-actions">
+                {% if api_configured %}
+                <button class="btn btn-outline" onclick="showSyncModal()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                    Sync from S&S Activewear
+                </button>
+                {% endif %}
+                <a href="{{ url_for('admin.add_product') }}" class="btn btn-primary">Add Product</a>
+            </div>
+        </div>
+
+        <div class="products-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Style #</th>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Price</th>
+                        <th>Sizes</th>
+                        <th>Colors</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in products %}
+                    <tr>
+                        <td><strong>{{ product.style_number }}</strong></td>
+                        <td>{{ product.name }}</td>
+                        <td>{{ product.category or '-' }}</td>
+                        <td>${{ "%.2f"|format(product.base_price) }}</td>
+                        <td>
+                            {% set sizes = product.available_sizes|tojson|safe if product.available_sizes else '[]' %}
+                            {% set size_list = sizes|length %}
+                            {{ size_list }} sizes
+                        </td>
+                        <td>
+                            {% set colors = product.available_colors|tojson|safe if product.available_colors else '[]' %}
+                            {% set color_list = colors|length %}
+                            {{ color_list }} colors
+                        </td>
+                        <td>
+                            <span class="badge badge-{{ 'success' if product.is_active else 'secondary' }}">
+                                {{ 'Active' if product.is_active else 'Inactive' }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('admin.edit_product', product_id=product.id) }}" class="btn-link">Edit</a>
+                            <form action="{{ url_for('admin.delete_product', product_id=product.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Delete this product?');">
+                                <button type="submit" class="btn-link text-danger">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 3rem;">
+                            <p>No products yet.</p>
+                            {% if api_configured %}
+                            <button class="btn btn-primary" onclick="showSyncModal()">Sync from S&S Activewear</button>
+                            {% else %}
+                            <a href="{{ url_for('admin.add_product') }}" class="btn btn-primary">Add Your First Product</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Sync Modal -->
+<div id="syncModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Sync from S&S Activewear</h2>
+            <button class="modal-close" onclick="closeSyncModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>This will sync Bella+Canvas products from S&S Activewear API.</p>
+            <p><strong>What happens:</strong></p>
+            <ul>
+                <li>New products will be added</li>
+                <li>Existing products will be updated with latest colors, sizes, and pricing</li>
+                <li>Your custom mockups and settings will be preserved</li>
+            </ul>
+            
+            <form action="{{ url_for('admin.sync_api') }}" method="POST">
+                <div class="form-group">
+                    <label for="limit">Limit (optional, for testing):</label>
+                    <input type="number" id="limit" name="limit" class="form-control" placeholder="Leave empty for full sync">
+                    <small>Enter a number like 10 to test with limited products first</small>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeSyncModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Start Sync</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-page {
+    padding: 2rem 0;
+}
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.admin-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.products-table {
+    background: #fff;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    overflow: hidden;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead {
+    background: var(--secondary-color);
+}
+
+th, td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+th {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+tbody tr:hover {
+    background: var(--secondary-color);
+}
+
+.badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.badge-success {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-color);
+}
+
+.badge-secondary {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--text-secondary);
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--accent-color);
+    cursor: pointer;
+    text-decoration: none;
+    padding: 0.25rem 0.5rem;
+}
+
+.btn-link:hover {
+    text-decoration: underline;
+}
+
+.text-danger {
+    color: var(--error-color);
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.modal-content {
+    background: #fff;
+    border-radius: var(--border-radius);
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-body ul {
+    margin: 1rem 0;
+    padding-left: 1.5rem;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+</style>
+
+<script>
+function showSyncModal() {
+    document.getElementById('syncModal').style.display = 'flex';
+}
+
+function closeSyncModal() {
+    document.getElementById('syncModal').style.display = 'none';
+}
+
+// Close modal on outside click
+document.getElementById('syncModal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeSyncModal();
+    }
+});
+</script>
+{% endblock %}

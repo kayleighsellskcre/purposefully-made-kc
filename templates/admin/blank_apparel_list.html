@@ -1,0 +1,176 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Blank Apparel Purchase List - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<div class="admin-page">
+    <div class="container">
+        <div class="admin-header">
+            <h1>Blank Apparel Purchase List</h1>
+            <button onclick="window.print()" class="btn btn-primary">Print List</button>
+        </div>
+        
+        <p class="page-subtitle">Total quantities needed by style, color, and size</p>
+        
+        {% if apparel_totals %}
+        <div class="apparel-table-container">
+            <table class="apparel-table">
+                <thead>
+                    <tr>
+                        <th>Style #</th>
+                        <th>Product Name</th>
+                        <th>Color</th>
+                        <th>Size</th>
+                        <th>Quantity</th>
+                        <th>Cost Each</th>
+                        <th>Total Cost</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in apparel_totals %}
+                    <tr>
+                        <td><strong>{{ item.style_number }}</strong></td>
+                        <td>{{ item.product_name }}</td>
+                        <td>{{ item.color }}</td>
+                        <td>{{ item.size }}</td>
+                        <td class="qty">{{ item.quantity }}</td>
+                        <td>${{ "%.2f"|format(item.cost_each or 0) }}</td>
+                        <td>${{ "%.2f"|format((item.cost_each or 0) * item.quantity) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="total-row">
+                        <td colspan="4"><strong>TOTAL</strong></td>
+                        <td class="qty"><strong>{{ total_quantity }}</strong></td>
+                        <td></td>
+                        <td><strong>${{ "%.2f"|format(total_cost) }}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        
+        <div class="purchase-notes">
+            <h3>Purchase Notes</h3>
+            <ul>
+                <li>Order from your preferred blank supplier (e.g., S&S Activewear, Bella+Canvas direct)</li>
+                <li>Check inventory availability before placing order</li>
+                <li>Consider ordering 5-10% extra for potential replacements</li>
+            </ul>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>No orders to process. Start taking orders to generate your purchase list!</p>
+            <a href="{{ url_for('admin.orders') }}" class="btn btn-primary">View Orders</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+@media print {
+    .admin-header button,
+    .page-subtitle,
+    .purchase-notes {
+        display: none;
+    }
+}
+
+.admin-page {
+    padding: 4rem 0;
+}
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.page-subtitle {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+.apparel-table-container {
+    background: #fff;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    overflow-x: auto;
+    margin-bottom: 3rem;
+}
+
+.apparel-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.apparel-table thead {
+    background: var(--secondary-color);
+}
+
+.apparel-table th,
+.apparel-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.apparel-table td.qty {
+    text-align: center;
+    font-weight: 600;
+    color: var(--accent-color);
+}
+
+.apparel-table tfoot {
+    background: var(--accent-color);
+    color: #fff;
+}
+
+.apparel-table tfoot td {
+    border: none;
+    padding: 1.5rem 1rem;
+}
+
+.total-row {
+    font-size: 1.125rem;
+}
+
+.purchase-notes {
+    background: var(--secondary-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+}
+
+.purchase-notes h3 {
+    margin-bottom: 1rem;
+}
+
+.purchase-notes ul {
+    list-style: none;
+    padding: 0;
+}
+
+.purchase-notes li {
+    padding: 0.5rem 0;
+    padding-left: 2rem;
+    position: relative;
+}
+
+.purchase-notes li::before {
+    content: "•";
+    position: absolute;
+    left: 0.5rem;
+    color: var(--accent-color);
+    font-weight: 700;
+    font-size: 1.5rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: #fff;
+    border-radius: var(--border-radius);
+}
+</style>
+{% endblock %}

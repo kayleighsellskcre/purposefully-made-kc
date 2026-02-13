@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Purposefully Made KC - Custom Apparel{% endblock %}</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    {% block extra_css %}{% endblock %}
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-content">
+                <a href="{{ url_for('main.index') }}" class="logo">
+                    <span class="logo-text">Purposefully Made</span>
+                    <span class="logo-accent">KC</span>
+                </a>
+                
+                <div class="nav-links">
+                    <a href="{{ url_for('shop.index') }}" class="nav-link">Shop</a>
+                    <a href="{{ url_for('shop.design_gallery') }}" class="nav-link">Design Gallery</a>
+                    <a href="{{ url_for('custom_request.index') }}" class="nav-link">Have Us Recreate</a>
+                    <a href="{{ url_for('main.about') }}" class="nav-link">About</a>
+                    <a href="{{ url_for('main.contact') }}" class="nav-link">Contact</a>
+                    
+                    {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('account.index') }}" class="nav-link">Account</a>
+                        {% if current_user.is_admin %}
+                            <a href="{{ url_for('admin.index') }}" class="nav-link admin-link">Admin</a>
+                        {% endif %}
+                        <a href="{{ url_for('auth.logout') }}" class="nav-link">Logout</a>
+                    {% else %}
+                        <a href="{{ url_for('auth.login') }}" class="nav-link">Login</a>
+                        <a href="{{ url_for('auth.register') }}" class="nav-link">Register</a>
+                    {% endif %}
+                    
+                    <a href="{{ url_for('cart.index') }}" class="cart-link">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 2L3 8v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8l-6-6H9z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
+                        {% if cart_count > 0 %}
+                            <span class="cart-count">{{ cart_count }}</span>
+                        {% endif %}
+                    </a>
+                </div>
+                
+                <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}">
+                        <div class="container">
+                            <span>{{ message }}</span>
+                            <button class="flash-close">&times;</button>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    
+    <!-- Main Content -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3 class="footer-title">Purposefully Made KC</h3>
+                    <p class="footer-text">Luxury custom apparel for teams, schools, and events.</p>
+                </div>
+                
+                <div class="footer-section">
+                    <h4 class="footer-heading">Shop</h4>
+                    <ul class="footer-links">
+                        <li><a href="{{ url_for('shop.index') }}">All Products</a></li>
+                        <li><a href="{{ url_for('shop.group_orders') }}">Group Orders</a></li>
+                        <li><a href="{{ url_for('shop.index', category='Tee') }}">T-Shirts</a></li>
+                        <li><a href="{{ url_for('shop.index', category='Hoodie') }}">Hoodies</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4 class="footer-heading">Company</h4>
+                    <ul class="footer-links">
+                        <li><a href="{{ url_for('main.about') }}">About Us</a></li>
+                        <li><a href="{{ url_for('main.contact') }}">Contact</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4 class="footer-heading">Legal</h4>
+                    <ul class="footer-links">
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Terms of Service</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; {{ current_year }} Purposefully Made KC. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

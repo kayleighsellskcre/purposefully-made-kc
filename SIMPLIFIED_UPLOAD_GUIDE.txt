@@ -1,0 +1,101 @@
+================================================================================
+✨ SIMPLIFIED MOCKUP UPLOAD - JUST USE THE "3001" FOLDER!
+================================================================================
+
+PERFECT! You're right - we only need ONE folder for the 3001 style!
+
+NEW SIMPLIFIED STRUCTURE:
+-------------------------
+uploads/mockups/3001/  ← Put ALL 3001 variations here!
+
+Why this works:
+• The filename includes the full style (3001CVC)
+• No need for separate folders per variation
+• Cleaner, simpler structure
+• Easy to find all images
+
+================================================================================
+📁 FOLDER LOCATION
+================================================================================
+
+uploads/mockups/3001/
+
+Put all your images here:
+✓ 3001CVC images (what you have now)
+✓ Future 3001 variations (if you add them later)
+✓ All in one place!
+
+================================================================================
+🎯 WHAT TO DO NOW
+================================================================================
+
+STEP 1: Copy Your Images
+------------------------
+Copy all 170 mockup images (85 colors × 2 views) to:
+
+c:\Users\Kayle\OneDrive\Desktop\kb_apparel_site\uploads\mockups\3001\
+
+STEP 2: Make Sure Names Are Correct
+-----------------------------------
+3001CVC_Athletic_Heather_front.jpg
+3001CVC_Athletic_Heather_back.jpg
+3001CVC_Heather_Aqua_front.jpg
+3001CVC_Heather_Aqua_back.jpg
+... (and so on for all 85 colors)
+
+STEP 3: Tell Me When Ready
+---------------------------
+Just say "ready to import" or "run the script"
+
+I'll run: python import_mockup_images.py 3001CVC
+
+STEP 4: Check Results
+---------------------
+Go to: http://localhost:5000/shop
+See your beautiful carousel with all 85 colors!
+
+================================================================================
+✅ BENEFITS OF THIS SIMPLER STRUCTURE
+================================================================================
+
+CLEANER:
+• One folder instead of many
+• Easy to navigate
+• Simple to understand
+
+FLEXIBLE:
+• Add more 3001 variations later
+• No folder reorganization needed
+• Future-proof
+
+EFFICIENT:
+• All related products together
+• Quick to find images
+• Easy to manage
+
+================================================================================
+📊 YOUR 85 COLORS
+================================================================================
+
+All these need front + back images (170 total):
+
+1. Athletic Heather
+2. Black Heather
+3. Dark Grey Heather
+4. Deep Heather
+5. Heather Aqua
+... (all 85 colors from the list above)
+
+================================================================================
+🚀 READY?
+================================================================================
+
+1. ✅ Copy all 170 images to: uploads/mockups/3001/
+2. ✅ Make sure names match format
+3. ✅ Tell me "ready to import"
+4. ✅ I'll run the script
+5. ✅ Check your shop page!
+
+Much simpler! 🎨
+
+================================================================================

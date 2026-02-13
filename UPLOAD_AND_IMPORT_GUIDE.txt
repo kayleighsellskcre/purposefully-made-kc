@@ -1,0 +1,38 @@
+================================================================================
+UPLOAD MOCKUPS - YOU UPLOAD, SCRIPT DOES THE REST
+================================================================================
+
+SIMPLE WORKFLOW:
+----------------
+1. YOU: Copy images into each style's folder (uploads/mockups/STYLE/)
+2. YOU: Say "import mockups" or "run the import"
+3. DONE: Images are linked to products, carousels work!
+
+CURRENT STATUS (just ran):
+--------------------------
+[OK] 3001   - 192 images imported
+[OK] 3001CVC - 162 images imported  
+[SKIP] 3001Y, 3001YCVC, 3413, 3413Y, 3501, 3501CVC, 3501Y, 3501YCVC,
+      3513, 3513Y, 3719, 3719Y, 3729, 3901, 3901Y, 3945, 4711, 4719, 6400
+      (no images yet - add them and run again!)
+
+TO ADD MORE IMAGES:
+------------------
+1. Copy images to the right folder, e.g.:
+   uploads/mockups/3413/3413_Black_front.jpg
+   uploads/mockups/3413/3413_Black_back.jpg
+
+2. Run:  python import_all_mockups.py
+
+   Or:    .\venv\Scripts\python.exe import_all_mockups.py
+
+3. Done! Refresh your shop page.
+
+NAMING FORMAT:
+--------------
+STYLE_ColorName_front.jpg
+STYLE_ColorName_back.jpg
+
+Examples for 3413: 3413_Black_front.jpg, 3413_Heather_Grey_back.jpg
+
+================================================================================

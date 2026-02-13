@@ -1,0 +1,153 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Designs Library - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<div class="admin-page">
+    <div class="container">
+        <h1>Designs Library</h1>
+        <p class="page-subtitle">All uploaded customer designs and artwork</p>
+        
+        {% if designs %}
+        <div class="designs-grid">
+            {% for design in designs %}
+            <div class="design-card">
+                <div class="design-preview">
+                    {% if design.file_path %}
+                    <img src="{{ url_for('static', filename=design.file_path) }}" alt="Design">
+                    {% else %}
+                    <div class="no-preview">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <path d="M21 15l-5-5L5 21"></path>
+                        </svg>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="design-info">
+                    <h3>{{ design.original_filename or 'Untitled Design' }}</h3>
+                    <p><strong>Uploaded:</strong> {{ design.uploaded_at.strftime('%b %d, %Y') }}</p>
+                    {% if design.user %}
+                    <p><strong>Customer:</strong> {{ design.user.full_name }}</p>
+                    {% endif %}
+                    <p><strong>Used in:</strong> {{ design.order_items.count() }} orders</p>
+                </div>
+                
+                <div class="design-actions">
+                    {% if design.file_path %}
+                    <a href="{{ url_for('static', filename=design.file_path) }}" download class="btn btn-outline btn-sm">Download</a>
+                    {% endif %}
+                    <form method="post" action="{{ url_for('admin.design_delete', design_id=design.id) }}" style="display: inline; margin-left: 0.5rem;" onsubmit="return confirm('Permanently delete this design? This cannot be undone.');">
+                        <button type="submit" class="btn btn-outline btn-sm" style="color: #dc3545; border-color: #dc3545;">Delete</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <path d="M21 15l-5-5L5 21"></path>
+            </svg>
+            <h2>No designs yet</h2>
+            <p>Customer-uploaded designs will appear here</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.admin-page {
+    padding: 4rem 0;
+}
+
+.page-subtitle {
+    color: var(--text-secondary);
+    margin-bottom: 3rem;
+}
+
+.designs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 2rem;
+}
+
+.design-card {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.design-card:hover {
+    box-shadow: var(--box-shadow);
+}
+
+.design-preview {
+    width: 100%;
+    aspect-ratio: 1;
+    background: var(--secondary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.design-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 1rem;
+}
+
+.no-preview {
+    color: var(--text-light);
+}
+
+.design-info {
+    padding: 1.5rem;
+}
+
+.design-info h3 {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.design-info p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin: 0.5rem 0;
+}
+
+.design-actions {
+    padding: 0 1.5rem 1.5rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: #fff;
+    border-radius: var(--border-radius);
+}
+
+.empty-state svg {
+    color: var(--text-light);
+    margin-bottom: 2rem;
+}
+
+.empty-state h2 {
+    margin-bottom: 1rem;
+}
+
+.empty-state p {
+    color: var(--text-secondary);
+}
+</style>
+{% endblock %}

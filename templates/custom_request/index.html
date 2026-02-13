@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Have Us Recreate - Purposefully Made KC{% endblock %}
+
+{% block content %}
+<div class="page-header recreate-header">
+    <div class="container">
+        <h1>Have Us Recreate</h1>
+        <p class="lead">See an image online you love? Screenshot it or save it — we'll recreate it for you.</p>
+    </div>
+</div>
+
+<section class="content-section recreate-section">
+    <div class="container">
+        <div class="recreate-flow">
+            <div class="recreate-step">
+                <span class="step-num">1</span>
+                <h3>Upload Your Reference</h3>
+                <p>Screenshot or save the image you want recreated. Upload it here.</p>
+            </div>
+            <div class="recreate-step">
+                <span class="step-num">2</span>
+                <h3>Describe What You Want</h3>
+                <p>Tell us any changes, colors, or details. We'll create it for you.</p>
+            </div>
+            <div class="recreate-step">
+                <span class="step-num">3</span>
+                <h3>We Add It to Your Profile</h3>
+                <p>Once ready, your design appears in My Designs. Order any style, color, or shirt!</p>
+            </div>
+        </div>
+        
+        <div class="recreate-cta">
+            {% if current_user.is_authenticated %}
+            <a href="{{ url_for('custom_request.submit') }}" class="btn btn-primary btn-lg">Submit Your Request</a>
+            <p class="cta-hint"><a href="{{ url_for('account.my_designs') }}">View My Designs</a> — designs we've created for you</p>
+            {% else %}
+            <p class="login-prompt">Please log in to submit a design request.</p>
+            <a href="{{ url_for('auth.login', next=url_for('custom_request.submit')) }}" class="btn btn-primary btn-lg">Log In</a>
+            <a href="{{ url_for('auth.register', next=url_for('custom_request.submit')) }}" class="btn btn-outline btn-lg">Create Account</a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<style>
+.recreate-header { background: linear-gradient(135deg, var(--ivory-silk) 0%, var(--cashmere-sand) 100%); padding: 4rem 0; text-align: center; }
+.recreate-header h1 { font-family: var(--font-heading); margin-bottom: 0.5rem; }
+.lead { font-size: 1.25rem; color: var(--text-secondary); }
+.recreate-section { padding: 4rem 0; }
+.recreate-flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-bottom: 3rem; }
+@media (max-width: 768px) { .recreate-flow { grid-template-columns: 1fr; } }
+.recreate-step { text-align: center; padding: 1.5rem; background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow); border: 1px solid var(--border-color); }
+.step-num { display: inline-block; width: 40px; height: 40px; line-height: 40px; background: linear-gradient(135deg, var(--terra-cotta) 0%, var(--aged-bronze) 100%); color: #fff; border-radius: 50%; font-weight: 700; margin-bottom: 1rem; }
+.recreate-step h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+.recreate-step p { color: var(--text-secondary); font-size: 0.95rem; }
+.recreate-cta { text-align: center; }
+.recreate-cta .btn { margin: 0 0.5rem 0.5rem 0; }
+.cta-hint { margin-top: 1rem; font-size: 0.95rem; color: var(--text-secondary); }
+.login-prompt { margin-bottom: 1rem; }
+</style>
+{% endblock %}

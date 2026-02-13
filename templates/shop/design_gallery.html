@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Design Gallery - Purposefully Made KC{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1>Design Gallery</h1>
+        <p class="lead">Choose from designs we've created over the years. Use them on any product!</p>
+    </div>
+</div>
+
+<section class="shop-section">
+    <div class="container">
+        {% if designs %}
+        <div class="designs-gallery-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.5rem;">
+            {% for design in designs %}
+            <div class="design-gallery-card" style="background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.08); border: 1px solid #eee;">
+                <div style="aspect-ratio: 1; background: linear-gradient(135deg, #f8f8f8, #f0f0f0); padding: 1rem; display: flex; align-items: center; justify-content: center;">
+                    <img src="{{ url_for('static', filename=design.file_path) }}" alt="{{ design.title or design.original_filename }}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                </div>
+                <div style="padding: 1rem;">
+                    <h3 style="margin: 0 0 0.75rem 0; font-size: 1rem;">{{ design.title or design.original_filename }}</h3>
+                    {% if product_id %}
+                    <a href="{{ url_for('shop.customize', product_id=product_id, design_id=design.id) }}" class="btn btn-primary btn-sm btn-block">Use on Product</a>
+                    {% else %}
+                    <a href="{{ url_for('shop.index', design_id=design.id) }}" class="btn btn-primary btn-sm btn-block">Choose Product</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <p style="text-align: center; margin-top: 2rem;">
+            <a href="{{ url_for('shop.index') }}" class="btn btn-outline">Browse Products</a>
+        </p>
+        {% else %}
+        <div style="text-align: center; padding: 4rem 2rem; background: #f9f9f9; border-radius: 12px;">
+            <p style="font-size: 1.1rem; color: #666;">No designs in the gallery yet.</p>
+            <p style="margin-top: 0.5rem;">Check back soon, or <a href="{{ url_for('shop.index') }}">upload your own design</a> when customizing a product!</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

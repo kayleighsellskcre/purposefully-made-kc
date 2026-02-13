@@ -1,0 +1,225 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Orders - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<div class="admin-page">
+    <div class="container">
+        <div class="admin-header">
+            <h1>Orders</h1>
+            <div class="admin-stats">
+                <span class="stat">Total: <strong>{{ orders.total }}</strong></span>
+                <a href="{{ url_for('admin.production_master', collection=request.args.get('collection')) }}" class="btn btn-primary btn-sm">Production Master</a>
+                <a href="{{ url_for('admin.print_labels') }}" class="btn btn-outline btn-sm">Print Labels</a>
+            </div>
+        </div>
+        
+        <!-- Filters -->
+        <div class="filters-bar">
+            <div class="filter-tabs">
+                {% set _status = request.args.get('status') %}
+                {% set _order_type = request.args.get('order_type') %}
+                {% set _collection = request.args.get('collection') %}
+                <a href="{{ url_for('admin.orders', status='all', order_type=_order_type, collection=_collection) }}" class="filter-tab {% if _status == 'all' %}active{% endif %}">All</a>
+                <a href="{{ url_for('admin.orders', status='new', order_type=_order_type, collection=_collection) }}" class="filter-tab {% if _status == 'new' %}active{% endif %}">New</a>
+                <a href="{{ url_for('admin.orders', status='paid', order_type=_order_type, collection=_collection) }}" class="filter-tab {% if _status == 'paid' %}active{% endif %}">Paid</a>
+                <a href="{{ url_for('admin.orders', status='in_production', order_type=_order_type, collection=_collection) }}" class="filter-tab {% if _status == 'in_production' %}active{% endif %}">In Production</a>
+                <a href="{{ url_for('admin.orders', status='ready', order_type=_order_type, collection=_collection) }}" class="filter-tab {% if _status == 'ready' %}active{% endif %}">Ready</a>
+                <a href="{{ url_for('admin.orders', status='completed', order_type=_order_type, collection=_collection) }}" class="filter-tab {% if _status == 'completed' %}active{% endif %}">Completed</a>
+                <a href="{{ url_for('admin.orders_completed') }}" class="filter-tab filter-tab-completed {% if request.endpoint == 'admin.orders_completed' %}active{% endif %}">All Completed</a>
+            </div>
+            <div class="filter-tabs filter-type">
+                <a href="{{ url_for('admin.orders', status=_status, order_type='retail', collection=_collection) }}" class="filter-tab {% if _order_type == 'retail' or (not _order_type) %}active{% endif %}">Retail</a>
+                <a href="{{ url_for('admin.orders', status=_status, order_type='wholesale', collection=_collection) }}" class="filter-tab {% if _order_type == 'wholesale' %}active{% endif %}">Wholesale</a>
+                <a href="{{ url_for('admin.orders', status=_status, order_type='event', collection=_collection) }}" class="filter-tab {% if _order_type == 'event' %}active{% endif %}">Event</a>
+            </div>
+        </div>
+        
+        <!-- Orders Table -->
+        {% if orders.items %}
+        <div class="table-container">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Order #</th>
+                        <th>Customer</th>
+                        <th>Email</th>
+                        <th>Items</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Type</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders.items %}
+                    <tr>
+                        <td><strong>{{ order.order_number }}</strong></td>
+                        <td>{{ order.full_name }}</td>
+                        <td>{{ order.email }}</td>
+                        <td>{{ order.items.count() }}</td>
+                        <td>${{ "%.2f"|format(order.total) }}</td>
+                        <td><span class="badge badge-{{ order.status }}">{{ order.status.replace('_', ' ').title() }}</span></td>
+                        <td><span class="badge-type">{{ (order.order_type or 'retail').title() }}</span></td>
+                        <td>{{ order.created_at.strftime('%b %d, %Y') }}</td>
+                        <td>
+                            <a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="btn-link">View</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if orders.has_prev or orders.has_next %}
+        <div class="pagination">
+            {% if orders.has_prev %}
+            <a href="{{ url_for('admin.orders', page=orders.prev_num, status=_status, order_type=_order_type, collection=_collection) }}" class="btn btn-outline">Previous</a>
+            {% endif %}
+            <span>Page {{ orders.page }} of {{ orders.pages }}</span>
+            {% if orders.has_next %}
+            <a href="{{ url_for('admin.orders', page=orders.next_num, status=_status, order_type=_order_type, collection=_collection) }}" class="btn btn-outline">Next</a>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        {% else %}
+        <div class="empty-state">
+            <p>No orders found</p>
+            {% if _status == 'new' %}
+            <p class="empty-state-hint">New orders appear here after checkout. Try <a href="{{ url_for('admin.orders', status='all') }}">All</a> to see every order.</p>
+            {% endif %}
+            <p class="empty-state-cta"><a href="{{ url_for('admin.production_master') }}" class="btn btn-primary">Production Master</a> — Master copy of blanks + designs to order everything at once</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.admin-page {
+    padding: 4rem 0;
+}
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.admin-stats {
+    display: flex;
+    gap: 2rem;
+}
+
+.stat {
+    color: var(--text-secondary);
+}
+
+.filters-bar {
+    margin-bottom: 2rem;
+}
+
+.filter-tabs {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.filter-tab {
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--border-radius);
+    background: #fff;
+    border: 2px solid var(--border-color);
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.filter-tab.active,
+.filter-tab:hover {
+    border-color: var(--accent-color);
+    background: var(--accent-color);
+    color: #fff;
+}
+
+.table-container {
+    background: #fff;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    overflow-x: auto;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-table thead {
+    background: var(--secondary-color);
+}
+
+.admin-table th,
+.admin-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.admin-table tbody tr:hover {
+    background: var(--secondary-color);
+}
+
+.badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.badge-new,
+.badge-paid {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+.badge-in_production {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+}
+
+.badge-ready,
+.badge-completed {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.btn-link {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.btn-link:hover {
+    text-decoration: underline;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: #fff;
+    border-radius: var(--border-radius);
+}
+.empty-state-hint { color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.95rem; }
+.empty-state-cta { margin-top: 1.5rem; }
+</style>
+{% endblock %}

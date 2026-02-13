@@ -1,0 +1,28 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Packaging SOP - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<h1 class="ops-title">Packaging & Fulfillment SOP</h1>
+<p class="ops-subtitle">Print this checklist and hang it in your workspace.</p>
+
+<div class="ops-card sop-card">
+    <h2>Pre-Pack Checklist</h2>
+    <ul class="sop-checklist">
+        <li><input type="checkbox"> Quality check seams</li>
+        <li><input type="checkbox"> Check sizing</li>
+        <li><input type="checkbox"> Press alignment check</li>
+        <li><input type="checkbox"> Remove dust</li>
+        <li><input type="checkbox"> Fold uniformly</li>
+        <li><input type="checkbox"> Insert thank you card</li>
+        <li><input type="checkbox"> Apply sticker/freebie</li>
+        <li><input type="checkbox"> Label correctly</li>
+    </ul>
+    <p class="sop-print"><button onclick="window.print()" class="btn btn-primary">Print Checklist</button></p>
+</div>
+<style>
+.sop-checklist{list-style:none;padding:0;font-size:1.1rem;}
+.sop-checklist li{margin:0.75rem 0;padding:0.5rem;}
+.sop-checklist input{margin-right:1rem;}
+.sop-print{margin-top:2rem;}
+@media print{.ops-nav,.btn,.sop-print{display:none!important}}
+</style>
+{% endblock %}

@@ -1,0 +1,32 @@
+════════════════════════════════════════════════════════════
+    PURPOSEFULLY MADE KC - LOGIN CREDENTIALS
+════════════════════════════════════════════════════════════
+
+YOUR ADMIN ACCOUNT
+══════════════════════════════════════════════════════════
+
+Email:    kayleighsellskcre@gmail.com
+Password: admin123
+
+⚠️  IMPORTANT: Change your password after first login!
+    Go to: Account -> Profile -> Change Password
+
+════════════════════════════════════════════════════════════
+
+WEBSITE: http://localhost:5000
+
+Admin Dashboard: http://localhost:5000/admin
+
+════════════════════════════════════════════════════════════
+
+FIXED ISSUES:
+✓ Database recreated with correct schema
+✓ All account templates created (orders, addresses, profile)
+✓ Your email set as admin account
+✓ Server restarted
+
+════════════════════════════════════════════════════════════
+
+NEXT: Refresh your browser and try again!
+
+════════════════════════════════════════════════════════════

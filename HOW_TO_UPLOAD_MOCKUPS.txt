@@ -1,0 +1,198 @@
+================================================================================
+BULK MOCKUP IMAGE UPLOAD SYSTEM - SETUP COMPLETE!
+================================================================================
+
+WHAT I CREATED FOR YOU:
+✓ Upload folder: uploads/mockups/3001CVC/
+✓ Import script: import_mockup_images.py
+✓ Color list tool: list_3001CVC_colors.py
+✓ Instructions: README.txt in upload folder
+
+================================================================================
+STEP-BY-STEP GUIDE
+================================================================================
+
+STEP 1: PREPARE YOUR IMAGES
+----------------------------
+Name your mockup files using this exact format:
+
+  3001CVC_Color_Name_view.png
+
+Examples:
+  3001CVC_Athletic_Heather_front.png
+  3001CVC_Athletic_Heather_back.png
+  3001CVC_Black_Heather_front.png
+  3001CVC_Black_Heather_back.png
+  3001CVC_Heather_Columbia_Blue_front.png
+  3001CVC_Heather_Columbia_Blue_back.png
+
+NAMING RULES:
+- Style: 3001CVC
+- Color: Use underscores instead of spaces (Athletic_Heather)
+- View: front, back, or side
+- Format: .png, .jpg, .jpeg, or .webp
+
+STEP 2: GET THE EXACT COLOR NAMES
+----------------------------------
+To see all 85 color names in the correct format, run:
+
+  .\venv\Scripts\python list_3001CVC_colors.py
+
+This shows you EXACTLY how to name each file!
+
+STEP 3: COPY YOUR IMAGES
+-------------------------
+Place all your mockup images into this folder:
+
+  uploads/mockups/3001CVC/
+
+You can add:
+- All 170 images at once (85 colors x 2 views)
+- OR work in batches (just do 10-20 colors at a time)
+
+STEP 4: RUN THE IMPORT SCRIPT
+------------------------------
+After adding your images, run:
+
+  .\venv\Scripts\python import_mockup_images.py 3001CVC
+
+The script will:
+- Scan the upload folder for images
+- Match each image to the correct color in the database
+- Copy images to static/images/products/3001CVC/
+- Update the database with image URLs
+- Show you a detailed report
+
+STEP 5: VIEW RESULTS
+--------------------
+The import script shows:
+✓ IMPORTED: Successfully added to database
+⚠️  SKIPPED: Filename doesn't match format
+❌ ERROR: Color name not found
+
+If you see errors, fix the filenames and run the import again!
+
+================================================================================
+EXAMPLE WORKFLOW
+================================================================================
+
+1. You have mockups from Printful for 10 colors
+2. Rename them following the format above
+3. Copy them to uploads/mockups/3001CVC/
+4. Run: .\venv\Scripts\python import_mockup_images.py 3001CVC
+5. See the results - maybe 20 imported (10 front + 10 back)
+6. Later, add 10 more colors and run the script again
+7. The script only updates new/changed images
+
+================================================================================
+SAMPLE OUTPUT FROM IMPORT SCRIPT
+================================================================================
+
+================================================================================
+IMPORTING MOCKUP IMAGES FOR STYLE: 3001CVC
+================================================================================
+
+✓ Found product: BELLA + CANVAS CVC Jersey Tee (ID: 32)
+
+✓ Found 20 image files
+
+================================================================================
+PROCESSING IMAGES...
+================================================================================
+
+✓ IMPORTED: 3001CVC_Athletic_Heather_front.png
+   → Athletic Heather (front)
+   → /static/images/products/3001CVC/3001CVC_Athletic_Heather_front.png
+
+✓ IMPORTED: 3001CVC_Athletic_Heather_back.png
+   → Athletic Heather (back)
+   → /static/images/products/3001CVC/3001CVC_Athletic_Heather_back.png
+
+... (continues for all images) ...
+
+================================================================================
+IMPORT COMPLETE!
+================================================================================
+✓ Imported: 20 images
+⚠️  Skipped: 0 files
+❌ Errors: 0 files
+
+Images saved to: static\images\products\3001CVC
+
+================================================================================
+
+TIPS & TRICKS
+================================================================================
+
+TIP 1: Work in Batches
+- Don't feel pressured to upload all 85 colors at once
+- Start with your most popular colors
+- Add more as you create them
+
+TIP 2: Test with a Few First
+- Upload 2-3 colors first to test the process
+- Make sure naming is correct
+- Then do the rest in larger batches
+
+TIP 3: Rerun Anytime
+- The script is safe to run multiple times
+- It will update existing images if you upload new versions
+- Great for fixing/improving mockups later
+
+TIP 4: Check Your Website
+- After importing, refresh your product page
+- Select the colors you uploaded
+- You should see your mockup images!
+
+TIP 5: Color Names Must Match EXACTLY
+- Run list_3001CVC_colors.py to see exact names
+- Copy/paste the color names to avoid typos
+- Spaces become underscores in filenames
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+PROBLEM: "Color not found in database"
+SOLUTION: Check color name spelling. Run list_3001CVC_colors.py to see correct names.
+
+PROBLEM: "Invalid filename format"
+SOLUTION: Make sure filename is: 3001CVC_Color_Name_view.png
+
+PROBLEM: "Images not showing on website"
+SOLUTION: 
+  1. Hard refresh browser (Ctrl+Shift+R)
+  2. Check Flask server is running
+  3. Verify images were imported (check summary)
+
+PROBLEM: "Want to replace an image"
+SOLUTION: Just overwrite the file in uploads/mockups/3001CVC/ and run import again!
+
+================================================================================
+ALTERNATIVE: MANUAL UPLOAD VIA ADMIN PANEL
+================================================================================
+
+If you prefer, you can still upload images individually:
+
+1. Go to Admin Panel > Products
+2. Click on "BELLA + CANVAS CVC Jersey Tee"
+3. Scroll to color variants
+4. Click "Edit" on each color
+5. Upload front/back images
+6. Save
+
+But this would require 85 individual edits, so the bulk upload is MUCH faster!
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+1. Prepare your first batch of mockup images
+2. Rename them using the format above
+3. Copy to uploads/mockups/3001CVC/
+4. Run the import script
+5. Check your website to see the results!
+
+Questions? The script provides detailed feedback at every step!
+
+================================================================================

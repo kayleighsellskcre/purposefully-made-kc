@@ -1,0 +1,169 @@
+================================================================================
+CUSTOMIZER FEATURES - CURRENT STATUS & FIXES APPLIED
+================================================================================
+
+ISSUES REPORTED BY USER:
+1. ❌ Can't add to cart - "Error adding to cart. Please try again"
+2. ❌ Uploaded design doesn't show on the mockup shirt
+3. ❌ Need drag/resize functionality for design placement
+4. ❌ Need automatic background removal for uploaded designs
+
+================================================================================
+FIXES APPLIED (Session in Progress)
+================================================================================
+
+✅ FIX 1: CART ADD FUNCTIONALITY
+--------------------------------
+PROBLEM: Cart route expected JSON but customize page was sending FormData (for file uploads)
+
+SOLUTION:
+- Updated `/cart/add` route to handle both JSON and FormData
+- Added file upload handling to save design files
+- Files now save to `static/uploads/designs/` with unique timestamps
+- Cart items now include `design_url` field
+
+FILES MODIFIED:
+- routes/cart.py (lines 43-95)
+
+✅ FIX 2: BACKGROUND REMOVAL CAPABILITY
+---------------------------------------
+SOLUTION:
+- Created new `/design/upload` route for design processing
+- Integrated `rembg` library for automatic background removal
+- Automatically removes backgrounds from uploaded designs
+- Falls back to original if background removal fails
+
+FILES CREATED:
+- routes/design.py (new file)
+
+FILES MODIFIED:
+- requirements.txt (added rembg==2.0.59)
+- app.py (registered design_bp blueprint)
+
+⏳ FIX 3: DESIGN PREVIEW ON MOCKUP (In Progress)
+-------------------------------------------------
+WHAT'S NEEDED:
+- Upload design via new /design/upload endpoint
+- Display processed design on mockup image as an overlay
+- Position design based on selected placement
+- Update design when switching between front/back views
+
+FILES TO MODIFY:
+- templates/shop/customize.html (JavaScript section)
+
+⏳ FIX 4: DRAG/RESIZE FUNCTIONALITY (In Progress)
+-------------------------------------------------
+WHAT'S NEEDED:
+- Make design layer draggable with mouse
+- Add resize handles to design layer
+- Show design bounds/guides
+- Constrain movement to safe print area
+- Save position/size when adding to cart
+
+RECOMMENDED LIBRARY:
+- interact.js (simple drag/resize library)
+- OR custom implementation with mouse events
+
+FILES TO MODIFY:
+- templates/shop/customize.html (JavaScript + CSS)
+
+================================================================================
+INSTALLATION INSTRUCTIONS
+================================================================================
+
+STEP 1: Install New Dependencies
+---------------------------------
+cd c:\Users\Kayle\OneDrive\Desktop\kb_apparel_site
+.\venv\Scripts\pip install rembg Pillow
+
+This will install:
+- rembg: Background removal library
+- Pillow: Image processing library (likely already installed)
+
+STEP 2: Restart Flask Server
+-----------------------------
+1. Stop the current server (Ctrl+C in terminal)
+2. Restart: .\venv\Scripts\python app.py
+
+STEP 3: Test Cart Functionality
+--------------------------------
+1. Go to http://localhost:5000/shop/customize/32
+2. Select a color and size
+3. Click "Add to Cart"
+4. Should now work without errors!
+
+================================================================================
+NEXT STEPS TO COMPLETE DESIGN FEATURES
+================================================================================
+
+TO IMPLEMENT DESIGN PREVIEW:
+1. Update uploadDesign() function to use /design/upload endpoint
+2. Display returned image URL on designLayer element
+3. Position based on selected placement
+
+TO IMPLEMENT DRAG/RESIZE:
+1. Add interact.js library OR custom mouse event handlers
+2. Make designLayer draggable within previewCanvas
+3. Add resize handles (corners + edges)
+4. Constrain to print area bounds
+5. Save position/size to print_specs when adding to cart
+
+ESTIMATED COMPLEXITY:
+- Design Preview: 30-50 lines of JavaScript
+- Drag/Resize: 100-150 lines of JavaScript + CSS
+
+================================================================================
+TESTING THE FIXES
+================================================================================
+
+TEST 1: Cart Functionality
+---------------------------
+1. Select color + size
+2. Click "Add to Cart"
+3. Expected: Success message, redirect to cart
+4. Actual: (TEST NEEDED)
+
+TEST 2: Background Removal
+---------------------------
+1. Upload a design with a background
+2. POST to /design/upload with remove_background=true
+3. Expected: Returns processed_url with transparent background
+4. Actual: (TEST NEEDED - need to implement upload button first)
+
+================================================================================
+CURRENT BLOCKERS
+================================================================================
+
+The customize page JavaScript still uses the old upload method.
+Need to:
+1. Update JavaScript to call /design/upload endpoint
+2. Handle the returned URL and dimensions
+3. Display on mockup
+4. Add drag/resize controls
+
+This requires a significant JavaScript rewrite of the design upload section.
+
+================================================================================
+RECOMMENDED NEXT ACTION
+================================================================================
+
+Option A (Quick Fix): Get cart working first
+- Test that "Add to Cart" now works
+- Proceed with design features after confirming cart works
+
+Option B (Complete Solution): Update entire design system
+- Rewrite design upload JavaScript
+- Implement preview display
+- Add drag/resize controls
+- Comprehensive testing
+
+================================================================================
+USER: Please test the cart functionality now!
+================================================================================
+1. Hard refresh your browser (Ctrl+Shift+R)
+2. Go to customize page
+3. Select color + size  
+4. Try adding to cart
+5. Let me know if it works or what error you see!
+
+================================================================================

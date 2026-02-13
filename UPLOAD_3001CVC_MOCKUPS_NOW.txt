@@ -1,0 +1,223 @@
+================================================================================
+📸 UPLOAD ALL 3001CVC MOCKUP IMAGES - QUICK GUIDE
+================================================================================
+
+Follow these steps to upload all your front and back mockup images!
+
+================================================================================
+STEP 1: PREPARE YOUR IMAGES
+================================================================================
+
+IMAGE NAMING FORMAT:
+--------------------
+Your images MUST be named exactly like this:
+
+3001CVC_ColorName_front.jpg
+3001CVC_ColorName_back.jpg
+
+EXAMPLES:
+---------
+✓ 3001CVC_White_front.jpg
+✓ 3001CVC_White_back.jpg
+✓ 3001CVC_Black_front.jpg
+✓ 3001CVC_Black_back.jpg
+✓ 3001CVC_Heather_Aqua_front.jpg
+✓ 3001CVC_Heather_Aqua_back.jpg
+
+IMPORTANT RULES:
+----------------
+• Style number: 3001CVC (must match exactly)
+• Color names: Use underscores for spaces (Heather_Aqua)
+• View: front or back (lowercase)
+• Extension: .jpg, .jpeg, or .png
+
+================================================================================
+STEP 2: PUT IMAGES IN UPLOAD FOLDER
+================================================================================
+
+FOLDER LOCATION:
+----------------
+c:\Users\Kayle\OneDrive\Desktop\kb_apparel_site\uploads\mockups\3001CVC\
+
+WHAT TO DO:
+-----------
+1. Open File Explorer
+2. Navigate to the folder above
+3. Copy ALL your mockup images into this folder
+4. Both front AND back images for each color
+
+HOW MANY IMAGES?
+----------------
+• Each color needs 2 images (front + back)
+• If you have 77 colors, you need 154 images total
+• All images go in the same folder
+
+================================================================================
+STEP 3: RUN THE IMPORT SCRIPT
+================================================================================
+
+OPTION A: Using Command (Recommended)
+--------------------------------------
+1. Make sure Flask server is running
+2. Open a NEW PowerShell/Command Prompt
+3. Navigate to project folder:
+   cd "c:\Users\Kayle\OneDrive\Desktop\kb_apparel_site"
+
+4. Run the import script:
+   python import_mockup_images.py
+
+OPTION B: I'll Run It For You
+------------------------------
+Just say "run the import script" and I'll execute it!
+
+================================================================================
+STEP 4: WHAT THE SCRIPT DOES
+================================================================================
+
+AUTOMATIC PROCESS:
+------------------
+✓ Scans the uploads/mockups/3001CVC/ folder
+✓ Reads each image filename
+✓ Matches to product and color in database
+✓ Updates ProductColorVariant records
+✓ Stores image URLs
+✓ Reports success/errors
+
+WHAT YOU'LL SEE:
+----------------
+Processing: 3001CVC_White_front.jpg... ✓
+Processing: 3001CVC_White_back.jpg... ✓
+Processing: 3001CVC_Black_front.jpg... ✓
+...
+
+Summary:
+✓ Successfully imported: 154 images
+✓ Skipped: 0
+✓ Errors: 0
+
+================================================================================
+STEP 5: VERIFY UPLOAD
+================================================================================
+
+CHECK YOUR SHOP PAGE:
+---------------------
+1. Go to: http://localhost:5000/shop
+2. Find the 3001CVC product
+3. Hover over it
+4. Click carousel arrows
+5. See all your colors cycling!
+
+CHECK CUSTOMIZER:
+-----------------
+1. Click on the product
+2. Select different colors
+3. See front and back images
+4. Switch between Front View and Back View
+
+================================================================================
+🎨 COLOR LIST FOR 3001CVC
+================================================================================
+
+I'll run the script to show you all available colors...
+
+TIP: Use this list to make sure your image filenames match!
+
+================================================================================
+❓ COMMON ISSUES & SOLUTIONS
+================================================================================
+
+ISSUE: "File not found"
+SOLUTION: Check image names match EXACTLY with color names
+
+ISSUE: "Product not found"
+SOLUTION: Make sure 3001CVC is synced from S&S API
+
+ISSUE: "Color not found"
+SOLUTION: Color name must match database exactly
+
+ISSUE: Images not showing
+SOLUTION: 
+  • Hard refresh browser (Ctrl+Shift+R)
+  • Check image paths
+  • Verify import script completed successfully
+
+================================================================================
+📋 QUICK CHECKLIST
+================================================================================
+
+Before importing:
+☐ All images renamed correctly (3001CVC_ColorName_view.jpg)
+☐ All images copied to uploads/mockups/3001CVC/ folder
+☐ Both front AND back for each color
+☐ Flask server is running
+
+After importing:
+☐ Import script completed successfully
+☐ Check shop page for carousel
+☐ Check customizer for color switching
+☐ Verify all colors show correctly
+
+================================================================================
+🚀 READY TO UPLOAD?
+================================================================================
+
+METHOD 1: Do It Yourself
+-------------------------
+1. Copy images to: uploads/mockups/3001CVC/
+2. Run: python import_mockup_images.py
+3. Check results!
+
+METHOD 2: Let Me Help
+---------------------
+1. Tell me when images are in the folder
+2. I'll run the import script
+3. We'll verify together!
+
+================================================================================
+💡 PRO TIPS
+================================================================================
+
+BATCH UPLOAD:
+-------------
+• Upload all images at once (faster!)
+• Don't worry about order
+• Script handles everything automatically
+
+IMAGE QUALITY:
+--------------
+• Use high-resolution images
+• PNG for transparency (if available)
+• Consistent sizing preferred
+• But script accepts various formats
+
+NAMING SHORTCUTS:
+-----------------
+If you have Printful-style names, use rename_mockups.py script
+to convert them automatically!
+
+================================================================================
+🎯 EXPECTED RESULTS
+================================================================================
+
+AFTER SUCCESSFUL UPLOAD:
+------------------------
+✓ Shop page shows carousel with all colors
+✓ Customizer displays each color's mockup
+✓ Front and back views switch correctly
+✓ No missing images
+✓ Professional product showcase
+
+CAROUSEL FEATURES:
+------------------
+✓ Arrow buttons to browse colors
+✓ Color indicator shows current color
+✓ "X colors" count displays
+✓ Smooth transitions
+✓ Full shirt visibility
+✓ No white boxes (thanks to blend mode!)
+
+================================================================================
+
+LET ME KNOW WHEN YOU'RE READY TO IMPORT! 🚀
+
+================================================================================

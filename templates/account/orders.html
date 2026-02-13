@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+
+{% block title %}My Orders - Purposefully Made KC{% endblock %}
+
+{% block content %}
+<div class="account-page">
+    <div class="container">
+        <div class="account-layout">
+            <!-- Sidebar -->
+            <aside class="account-sidebar">
+                <h2>My Account</h2>
+                <nav class="account-nav">
+                    <a href="{{ url_for('account.orders') }}" class="account-nav-link active">Orders</a>
+                    <a href="{{ url_for('account.my_designs') }}" class="account-nav-link">My Designs</a>
+                    <a href="{{ url_for('custom_request.my_requests') }}" class="account-nav-link">My Requests</a>
+                    <a href="{{ url_for('account.addresses') }}" class="account-nav-link">Addresses</a>
+                    <a href="{{ url_for('account.profile') }}" class="account-nav-link">Profile</a>
+                    {% if current_user.is_admin %}
+                    <a href="{{ url_for('admin.index') }}" class="account-nav-link admin">Admin Dashboard</a>
+                    {% endif %}
+                    <a href="{{ url_for('auth.logout') }}" class="account-nav-link">Logout</a>
+                </nav>
+            </aside>
+            
+            <!-- Main Content -->
+            <div class="account-content">
+                <h1>My Orders</h1>
+                
+                {% if orders.items %}
+                <div class="orders-list">
+                    {% for order in orders.items %}
+                    <div class="order-card">
+                        <div class="order-header">
+                            <div>
+                                <h3>Order #{{ order.order_number }}</h3>
+                                <p class="order-date">{{ order.created_at.strftime('%B %d, %Y') }}</p>
+                            </div>
+                            <div class="order-status">
+                                <span class="badge badge-{{ order.status }}">{{ order.status.replace('_', ' ').title() }}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="order-body">
+                            <div class="order-items">
+                                {% for item in order.items %}
+                                <div class="order-item">
+                                    <div>
+                                        <strong>{{ item.product_name }}</strong>
+                                        <p>{{ item.color }} | {{ item.size }} | Qty: {{ item.quantity }}</p>
+                                    </div>
+                                    <div class="order-item-price">${{ "%.2f"|format(item.subtotal) }}</div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            
+                            <div class="order-total">
+                                <strong>Total:</strong> ${{ "%.2f"|format(order.total) }}
+                            </div>
+                        </div>
+                        
+                        <div class="order-actions">
+                            <a href="{{ url_for('account.order_detail', order_number=order.order_number) }}" class="btn btn-outline btn-sm">View Details</a>
+                            <form action="{{ url_for('account.reorder', order_number=order.order_number) }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-primary btn-sm">Reorder</button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Pagination -->
+                {% if orders.has_prev or orders.has_next %}
+                <div class="pagination">
+                    {% if orders.has_prev %}
+                    <a href="{{ url_for('account.orders', page=orders.prev_num) }}" class="btn btn-outline">Previous</a>
+                    {% endif %}
+                    <span>Page {{ orders.page }} of {{ orders.pages }}</span>
+                    {% if orders.has_next %}
+                    <a href="{{ url_for('account.orders', page=orders.next_num) }}" class="btn btn-outline">Next</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+                
+                {% else %}
+                <div class="empty-state">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M9 2L3 8v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8l-6-6H9z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                    <h2>No orders yet</h2>
+                    <p>Start shopping to see your orders here</p>
+                    <a href="{{ url_for('shop.index') }}" class="btn btn-primary">Shop Now</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.account-page {
+    padding: 4rem 0;
+    min-height: calc(100vh - 400px);
+}
+
+.account-layout {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 3rem;
+}
+
+.account-sidebar {
+    position: sticky;
+    top: 100px;
+    height: fit-content;
+}
+
+.account-sidebar h2 {
+    margin-bottom: 1.5rem;
+}
+
+.account-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.account-nav-link {
+    padding: 0.75rem 1rem;
+    border-radius: var(--border-radius);
+    color: var(--text-primary);
+    transition: var(--transition);
+}
+
+.account-nav-link:hover,
+.account-nav-link.active {
+    background: var(--secondary-color);
+    color: var(--accent-color);
+}
+
+.account-nav-link.admin {
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+.account-content h1 {
+    margin-bottom: 2rem;
+}
+
+.orders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.order-card {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+
+.order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 1.5rem;
+    background: var(--secondary-color);
+}
+
+.order-header h3 {
+    margin-bottom: 0.25rem;
+}
+
+.order-date {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.badge-new,
+.badge-paid {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+.badge-in_production {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+}
+
+.badge-ready,
+.badge-completed {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.badge-shipped {
+    background: rgba(139, 92, 246, 0.1);
+    color: #8b5cf6;
+}
+
+.order-body {
+    padding: 1.5rem;
+}
+
+.order-items {
+    margin-bottom: 1rem;
+}
+
+.order-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.order-item:last-child {
+    border-bottom: none;
+}
+
+.order-item p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin: 0.25rem 0 0;
+}
+
+.order-item-price {
+    font-weight: 600;
+    color: var(--accent-color);
+}
+
+.order-total {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 1rem;
+    border-top: 2px solid var(--border-color);
+    font-size: 1.25rem;
+}
+
+.order-actions {
+    display: flex;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: var(--secondary-color);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.empty-state svg {
+    color: var(--text-light);
+    margin-bottom: 2rem;
+}
+
+.empty-state h2 {
+    margin-bottom: 1rem;
+}
+
+.empty-state p {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+@media (max-width: 768px) {
+    .account-layout {
+        grid-template-columns: 1fr;
+    }
+    
+    .account-sidebar {
+        position: static;
+    }
+    
+    .account-nav {
+        flex-direction: row;
+        overflow-x: auto;
+    }
+}
+</style>
+{% endblock %}

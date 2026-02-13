@@ -1,0 +1,173 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Collections - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<div class="admin-page">
+    <div class="container">
+        <div class="admin-header">
+            <h1>Collections</h1>
+            <a href="{{ url_for('admin.add_collection') }}" class="btn btn-primary">Create Collection</a>
+        </div>
+        
+        {% if collections %}
+        <div class="collections-grid">
+            {% for collection in collections %}
+            <div class="collection-card">
+                <div class="collection-header">
+                    <h3>{{ collection.name }}</h3>
+                    <div class="collection-badges">
+                        {% if collection.restrict_options %}
+                        <span class="badge badge-restricted" title="Organizer chose specific colors & designs">Restricted</span>
+                        {% endif %}
+                        {% if collection.is_active %}
+                        <span class="badge badge-active">Active</span>
+                        {% else %}
+                        <span class="badge badge-inactive">Inactive</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="collection-info">
+                    <p><strong>Slug:</strong> {{ collection.slug }}</p>
+                    <p><strong>Orders:</strong> {{ collection.orders.count() }}</p>
+                    {% if collection.order_deadline %}
+                    <p><strong>Deadline:</strong> {{ collection.order_deadline.strftime('%b %d, %Y') }}</p>
+                    {% endif %}
+                </div>
+                
+                <div class="collection-link">
+                    <input type="text" readonly value="{{ request.url_root.rstrip('/') }}{{ url_for('collection.view', slug=collection.slug) }}" class="link-input">
+                    <button onclick="copyLink('{{ request.url_root.rstrip('/') }}{{ url_for('collection.view', slug=collection.slug) }}')" class="btn btn-sm btn-outline">Copy</button>
+                </div>
+                
+                <div class="collection-actions">
+                    <a href="{{ url_for('admin.edit_collection', collection_id=collection.id) }}" class="btn btn-outline btn-sm">Edit</a>
+                    <a href="{{ url_for('collection.view', slug=collection.slug) }}" class="btn btn-outline btn-sm" target="_blank">View</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <h2>No collections yet</h2>
+            <p>Create your first collection to organize team/school orders</p>
+            <a href="{{ url_for('admin.add_collection') }}" class="btn btn-primary">Create Collection</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function copyLink(url) {
+    navigator.clipboard.writeText(url).then(() => {
+        alert('Link copied!');
+    });
+}
+</script>
+
+<style>
+.admin-page {
+    padding: 4rem 0;
+}
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.collections-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 2rem;
+}
+
+.collection-card {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+}
+
+.collection-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+}
+
+.collection-header h3 {
+    font-size: 1.25rem;
+}
+
+.badge-active {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.badge-inactive {
+    background: rgba(156, 163, 175, 0.1);
+    color: #6b7280;
+}
+.badge-restricted {
+    background: rgba(184, 124, 111, 0.2);
+    color: var(--accent-color);
+}
+.collection-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+.collection-info {
+    margin-bottom: 1.5rem;
+}
+
+.collection-info p {
+    margin: 0.5rem 0;
+    color: var(--text-secondary);
+}
+
+.collection-link {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.link-input {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 0.875rem;
+    background: var(--secondary-color);
+}
+
+.collection-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: #fff;
+    border-radius: var(--border-radius);
+}
+
+.empty-state svg {
+    color: var(--text-light);
+    margin-bottom: 2rem;
+}
+
+.empty-state h2 {
+    margin-bottom: 1rem;
+}
+
+.empty-state p {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+</style>
+{% endblock %}

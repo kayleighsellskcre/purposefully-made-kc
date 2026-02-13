@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Purposefully Made KC{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="container">
+        <div class="auth-container">
+            <div class="auth-card">
+                <h1 class="auth-title">Welcome Back</h1>
+                <p class="auth-subtitle">Sign in to your account</p>
+                
+                <form method="POST" action="{{ url_for('auth.login') }}" class="auth-form">
+                    <div class="form-group">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" id="email" name="email" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" id="password" name="password" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group form-check">
+                        <input type="checkbox" id="remember" name="remember" value="true">
+                        <label for="remember">Remember me</label>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+                </form>
+                
+                <div class="auth-footer">
+                    <p>Don't have an account? <a href="{{ url_for('auth.register') }}">Register here</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.auth-page {
+    min-height: calc(100vh - 400px);
+    display: flex;
+    align-items: center;
+    padding: 4rem 0;
+    background: var(--secondary-color);
+}
+
+.auth-container {
+    max-width: 450px;
+    margin: 0 auto;
+}
+
+.auth-card {
+    background: #fff;
+    padding: 3rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+.auth-title {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    text-align: center;
+}
+
+.auth-subtitle {
+    color: var(--text-secondary);
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.auth-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.btn-block {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.auth-footer {
+    margin-top: 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.auth-footer a {
+    color: var(--accent-color);
+    font-weight: 500;
+}
+</style>
+{% endblock %}

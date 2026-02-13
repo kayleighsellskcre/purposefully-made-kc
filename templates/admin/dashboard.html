@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Purposefully Made KC{% endblock %}
+
+{% block content %}
+<div class="admin-page">
+    <div class="container">
+        <h1>Admin Dashboard</h1>
+        
+        {% if pending_design_requests and pending_design_requests > 0 %}
+        <div class="dashboard-alert dashboard-alert-design-requests">
+            <strong>New design request{{ 's' if pending_design_requests > 1 else '' }}!</strong>
+            {{ pending_design_requests }} pending — 
+            <a href="{{ url_for('admin.custom_design_requests', status='pending') }}">View & respond</a>
+        </div>
+        {% endif %}
+        
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Orders</h3>
+                <p class="stat-number">{{ total_orders }}</p>
+            </div>
+            
+            <div class="stat-card">
+                <h3>Pending Orders</h3>
+                <p class="stat-number pending">{{ pending_orders }}</p>
+            </div>
+            
+            <div class="stat-card">
+                <h3>In Production</h3>
+                <p class="stat-number production">{{ in_production }}</p>
+            </div>
+            
+            <div class="stat-card">
+                <h3>Total Revenue</h3>
+                <p class="stat-number revenue">${{ "%.2f"|format(total_revenue) }}</p>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <h2>Quick Actions</h2>
+            <div class="actions-grid">
+                <a href="{{ url_for('admin.orders') }}" class="action-card">
+                    <h3>Orders & Revenue</h3>
+                    <p>Master order log, payments, status</p>
+                </a>
+                
+                <a href="{{ url_for('admin.production_workflow') }}" class="action-card">
+                    <h3>Production Workflow</h3>
+                    <p>5-stage Kanban board</p>
+                </a>
+                
+                <a href="{{ url_for('admin.inventory') }}" class="action-card">
+                    <h3>Inventory</h3>
+                    <p>Apparel, transfers, supplies</p>
+                </a>
+                
+                <a href="{{ url_for('admin.vendors') }}" class="action-card">
+                    <h3>Vendors</h3>
+                    <p>Supplier database</p>
+                </a>
+                
+                <a href="{{ url_for('admin.financial') }}" class="action-card">
+                    <h3>Financial</h3>
+                    <p>Revenue, profit, expenses</p>
+                </a>
+                
+                <a href="{{ url_for('admin.growth') }}" class="action-card">
+                    <h3>Growth Dashboard</h3>
+                    <p>Weekly metrics</p>
+                </a>
+                
+                <a href="{{ url_for('admin.customers') }}" class="action-card">
+                    <h3>Customers</h3>
+                    <p>Repeat customers, groups</p>
+                </a>
+                
+                <a href="{{ url_for('admin.products') }}" class="action-card">
+                    <h3>Products</h3>
+                    <p>Manage product catalog</p>
+                </a>
+                
+                <a href="{{ url_for('admin.collections') }}" class="action-card">
+                    <h3>Collections</h3>
+                    <p>Create team stores</p>
+                </a>
+                
+                <a href="{{ url_for('admin.design_gallery') }}" class="action-card">
+                    <h3>Design Gallery</h3>
+                    <p>Upload designs for customers</p>
+                </a>
+                
+                <a href="{{ url_for('admin.custom_design_requests') }}" class="action-card">
+                    <h3>Have Us Recreate</h3>
+                    <p>Customer design requests — upload to their profile</p>
+                </a>
+                
+                <a href="{{ url_for('admin.production') }}" class="action-card">
+                    <h3>Production Center</h3>
+                    <p>Export lists and batch sheets</p>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Recent Orders -->
+        <div class="recent-orders">
+            <h2>Recent Orders</h2>
+            <div class="orders-table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>Customer</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in recent_orders %}
+                        <tr>
+                            <td><strong>{{ order.order_number }}</strong></td>
+                            <td>{{ order.full_name }}</td>
+                            <td>${{ "%.2f"|format(order.total) }}</td>
+                            <td><span class="badge badge-{{ order.status }}">{{ order.status.replace('_', ' ').title() }}</span></td>
+                            <td>{{ order.created_at.strftime('%b %d, %Y') }}</td>
+                            <td>
+                                <a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="btn-link">View</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 2rem;">No orders yet</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.dashboard-alert {
+    padding: 1rem 1.5rem;
+    margin-bottom: 2rem;
+    border-radius: var(--border-radius);
+    background: linear-gradient(135deg, rgba(184, 124, 111, 0.2) 0%, rgba(127, 108, 80, 0.2) 100%);
+    border: 2px solid var(--accent-color);
+    color: var(--text-primary);
+}
+.dashboard-alert a { color: var(--accent-color); font-weight: 600; }
+.dashboard-alert a:hover { text-decoration: underline; }
+
+.admin-page {
+    padding: 4rem 0;
+}
+
+.admin-page h1 {
+    margin-bottom: 2rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+.stat-card {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    text-align: center;
+}
+
+.stat-card h3 {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+.stat-number {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--accent-color);
+}
+
+.stat-number.pending {
+    color: var(--info-color);
+}
+
+.stat-number.production {
+    color: var(--warning-color);
+}
+
+.stat-number.revenue {
+    color: var(--success-color);
+}
+
+.quick-actions,
+.recent-orders {
+    margin-bottom: 3rem;
+}
+
+.quick-actions h2,
+.recent-orders h2 {
+    margin-bottom: 1.5rem;
+}
+
+.actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.action-card {
+    background: var(--secondary-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    text-decoration: none;
+    color: inherit;
+    transition: var(--transition);
+}
+
+.action-card:hover {
+    background: var(--accent-color);
+    color: #fff;
+    transform: translateY(-4px);
+}
+
+.action-card h3 {
+    margin-bottom: 0.5rem;
+}
+
+.action-card p {
+    color: var(--text-secondary);
+}
+
+.action-card:hover p {
+    color: rgba(255,255,255,0.9);
+}
+
+.orders-table-wrapper {
+    background: #fff;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    overflow: hidden;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead {
+    background: var(--secondary-color);
+}
+
+th, td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+th {
+    font-weight: 600;
+}
+
+tbody tr:hover {
+    background: var(--secondary-color);
+}
+
+.badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.badge-new,
+.badge-paid {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+.badge-in_production {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+}
+
+.badge-ready,
+.badge-completed {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.badge-shipped {
+    background: rgba(139, 92, 246, 0.1);
+    color: #8b5cf6;
+}
+
+.btn-link {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.btn-link:hover {
+    text-decoration: underline;
+}
+</style>
+{% endblock %}

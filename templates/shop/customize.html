@@ -1,0 +1,2559 @@
+{% extends "base.html" %}
+
+{% block title %}Customize {{ product.name }} - Purposefully Made KC{% endblock %}
+
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@500;600;700&family=Anton&family=Teko:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+.customizer-page {
+    padding: 2rem 0;
+}
+
+@media (max-width: 768px) {
+    .customizer-page {
+        padding: 1rem 0;
+    }
+}
+
+.customizer-container {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+@media (max-width: 1200px) {
+    .customizer-container {
+        grid-template-columns: 1fr 380px;
+        gap: 1.5rem;
+    }
+}
+
+@media (max-width: 968px) {
+    .customizer-container {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .preview-section {
+        position: relative !important;
+        top: 0 !important;
+        order: -1;
+    }
+}
+
+.collection-restricted-banner {
+    background: rgba(184, 124, 111, 0.12);
+    border: 1px solid rgba(184, 124, 111, 0.3);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.preview-section {
+    background: linear-gradient(135deg, #F5F0E1 0%, #E8D0B1 100%);
+    padding: 2rem;
+    border-radius: 12px;
+    position: sticky;
+    top: 100px;
+    height: fit-content;
+    box-shadow: 0 8px 24px rgba(58, 61, 72, 0.08);
+    border: 1px solid rgba(184, 124, 111, 0.2);
+}
+
+@media (max-width: 968px) {
+    .preview-section {
+        padding: 1.5rem;
+        position: relative !important;
+        top: 0 !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .preview-section {
+        padding: 1rem;
+    }
+}
+
+.preview-canvas {
+    position: relative;
+    background: #fff;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    aspect-ratio: 1;
+}
+
+.mockup-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition: opacity 0.3s ease;
+    position: relative;
+    z-index: 1;
+}
+
+#mockupImage {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.design-layer {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    transition: all 0.3s ease;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.design-layer.visible {
+    display: flex !important;
+}
+
+/* Draggable - user can reposition design on any style */
+.design-layer.visible.draggable {
+    cursor: move;
+    pointer-events: auto;
+    user-select: none;
+}
+.design-layer.dragging {
+    transition: none !important;
+}
+
+.design-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
+/* Placement-specific sizing - Professional proportions, all horizontally centered */
+.design-layer[data-placement="center_chest"] {
+    width: 32%;
+    max-width: 250px;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Left chest = appears on RIGHT side of mockup (wearer's left when wearing) */
+.design-layer[data-placement="left_chest"] {
+    width: 12%;
+    max-width: 95px;
+    top: 34%;
+    left: 62%;
+    transform: translate(-50%, -50%);
+}
+
+/* Right chest = appears on LEFT side of mockup (wearer's right when wearing) */
+.design-layer[data-placement="right_chest"] {
+    width: 12%;
+    max-width: 95px;
+    top: 34%;
+    left: 38%;
+    transform: translate(-50%, -50%);
+}
+
+.design-layer[data-placement="center_back"] {
+    width: 32%;
+    max-width: 250px;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+/* Back design name/number: higher default position, larger text */
+.design-layer-back {
+    flex-direction: column;
+    width: 42%;
+    max-width: 320px;
+    top: 28%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    cursor: grab;
+}
+.design-layer-back.dragging { cursor: grabbing; }
+.preview-canvas.showing-back #designLayer { display: none !important; visibility: hidden !important; }
+.back-design-text-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #fff;
+    width: 100%;
+    max-width: 100%;
+    /* Strong outline so name/number visible on both light and dark shirts */
+    text-shadow: 
+        -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000,
+        -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000,
+        0 0 8px rgba(0,0,0,0.9);
+}
+/* Name and number centered horizontally with each other and the item */
+.back-design-name { line-height: 1.1; text-align: center; display: block; width: 100%; }
+.back-design-number { font-weight: 700; line-height: 1; text-align: center; display: block; width: 100%; }
+
+.preview-controls {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.preview-controls button {
+    flex: 1;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.preview-controls button.active {
+    background: #B87C6F;
+    color: #fff;
+    border-color: #B87C6F;
+}
+
+.customizer-panel {
+    background: #fff;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(58, 61, 72, 0.08);
+    border: 1px solid rgba(232, 208, 177, 0.3);
+}
+
+@media (max-width: 768px) {
+    .customizer-panel {
+        padding: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .customizer-panel {
+        padding: 1rem;
+        border-radius: 0;
+        box-shadow: none;
+        border-top: 1px solid var(--border-color);
+    }
+}
+
+.panel-section {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.panel-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+@media (max-width: 768px) {
+    .panel-section {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+    }
+    
+    .panel-section h3 {
+        font-size: 1.25rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .panel-section {
+        margin-bottom: 1.25rem;
+        padding-bottom: 1.25rem;
+    }
+}
+
+.panel-section h3 {
+    font-size: 1.25rem;
+    margin-bottom: 1.25rem;
+    color: #1a1a1a;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.panel-section h3::after {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 3px;
+    background: linear-gradient(90deg, #B87C6F, transparent);
+    margin-top: 0.5rem;
+}
+
+.color-grid-professional {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 1rem;
+    background: rgba(245, 240, 225, 0.3);
+    border-radius: 12px;
+    border: 1px solid rgba(232, 208, 177, 0.3);
+}
+
+.color-grid-professional::-webkit-scrollbar {
+    width: 8px;
+}
+
+.color-grid-professional::-webkit-scrollbar-track {
+    background: rgba(232, 208, 177, 0.2);
+    border-radius: 4px;
+}
+
+.color-grid-professional::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #B87C6F 0%, #7F6C50 100%);
+    border-radius: 4px;
+}
+
+.color-grid-professional::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #7F6C50 0%, #B87C6F 100%);
+}
+
+@media (max-width: 768px) {
+    .color-grid-professional {
+        grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+        gap: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .color-grid-professional {
+        grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+        gap: 0.5rem;
+        max-height: 300px;
+    }
+}
+
+/* Color Filter Tabs */
+.color-filter-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.filter-tab {
+    padding: 0.625rem 1.25rem;
+    background: #fff;
+    border: 2px solid #E8D0B1;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    min-height: 44px;
+    touch-action: manipulation;
+}
+
+.filter-tab:hover {
+    border-color: #B87C6F;
+    background: rgba(184, 124, 111, 0.05);
+    transform: translateY(-2px);
+}
+
+.filter-tab.active {
+    background: linear-gradient(135deg, #B87C6F 0%, #7F6C50 100%);
+    border-color: #B87C6F;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(184, 124, 111, 0.3);
+}
+.back-design-tab.active {
+    background: linear-gradient(135deg, #B87C6F 0%, #7F6C50 100%);
+    color: #fff;
+    border-color: #B87C6F;
+}
+
+@media (max-width: 768px) {
+    .filter-tab {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+    }
+    
+    .color-grid-professional {
+        max-height: 350px;
+    }
+    
+    .color-search-input {
+        padding: 0.75rem 1rem 0.75rem 2.75rem;
+        font-size: 0.9rem;
+    }
+    
+    .search-icon {
+        width: 16px;
+        height: 16px;
+        left: 0.875rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .color-filter-tabs {
+        gap: 0.375rem;
+    }
+    
+    .filter-tab {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.75rem;
+        flex: 1 1 auto;
+        min-width: 70px;
+    }
+}
+
+/* Step sections - simple, organized flow */
+.step-section {
+    position: relative;
+    padding-left: 3rem;
+}
+.step-badge {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 2rem;
+    height: 2rem;
+    background: var(--accent-color);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+.step-hint {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: -0.25rem 0 0.75rem 0;
+}
+.color-filter-tabs-simple {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Logo gallery inline */
+.logo-gallery-inline {
+    margin-bottom: 1rem;
+}
+.logo-gallery-label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+.logo-gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+    max-height: 160px;
+    overflow-y: auto;
+}
+.logo-gallery-item {
+    cursor: pointer;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.5rem;
+    text-align: center;
+    transition: var(--transition);
+    background: #fff;
+}
+.logo-gallery-item:hover {
+    border-color: var(--accent-color);
+}
+.logo-gallery-item.selected {
+    border-color: var(--accent-color);
+    background: rgba(184, 124, 111, 0.08);
+}
+.logo-gallery-item img {
+    width: 100%;
+    height: 48px;
+    object-fit: contain;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+.logo-gallery-item span {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.or-divider {
+    text-align: center;
+    color: var(--text-light);
+    font-size: 0.85rem;
+    margin: 1rem 0;
+}
+
+/* Color Search Box */
+.color-search-box {
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+.color-search-input {
+    width: 100%;
+    padding: 0.875rem 1rem 0.875rem 3rem;
+    border: 2px solid #E8D0B1;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    background: #fff;
+}
+
+.color-search-input:focus {
+    outline: none;
+    border-color: #B87C6F;
+    box-shadow: 0 0 0 3px rgba(184, 124, 111, 0.15);
+    background: #F5F0E1;
+}
+
+.search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-light);
+    pointer-events: none;
+}
+
+.color-card {
+    cursor: pointer;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #fff;
+    border: 3px solid #e8e8e8;
+    position: relative;
+}
+
+.color-card:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 8px 24px rgba(184, 124, 111, 0.25);
+    border-color: #B87C6F;
+}
+
+@media (max-width: 480px) {
+    .color-card {
+        min-height: 44px;
+    }
+}
+
+.color-card.hidden {
+    display: none !important;
+}
+
+.color-card.selected {
+    border-color: #B87C6F;
+    box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.25), 0 8px 24px rgba(0, 0, 0, 0.15);
+    transform: scale(1.05);
+}
+
+.color-image-wrapper {
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    background: #f9f9f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.color-preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.color-placeholder {
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+}
+.color-placeholder.color-fallback {
+    position: absolute;
+    inset: 0;
+}
+
+.color-name {
+    padding: 0.75rem 0.5rem;
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #333;
+    background: #fff;
+    border-top: 1px solid #f0f0f0;
+    text-transform: capitalize;
+}
+
+.color-checkmark {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    background: #B87C6F;
+    color: white;
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.color-card.selected .color-checkmark {
+    display: flex;
+}
+
+.size-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap: 0.5rem;
+}
+
+.size-grid-professional {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .size-grid-professional {
+        grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+        gap: 0.6rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .size-grid-professional {
+        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+        gap: 0.5rem;
+    }
+}
+
+.size-card {
+    padding: 1.25rem 0.75rem;
+    text-align: center;
+    border: 3px solid #e8e8e8;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #fff;
+    position: relative;
+    min-height: 48px;
+    touch-action: manipulation;
+}
+
+@media (max-width: 480px) {
+    .size-card {
+        padding: 1rem 0.5rem;
+    }
+    
+    .size-label {
+        font-size: 1.1rem;
+    }
+    
+    .stock-badge {
+        font-size: 0.65rem;
+    }
+}
+
+.size-card:hover {
+    border-color: #B87C6F;
+    background: rgba(212, 175, 55, 0.05);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}
+
+.size-card.selected {
+    background: linear-gradient(135deg, #B87C6F, #7F6C50);
+    color: #fff;
+    border-color: #B87C6F;
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
+}
+
+.size-card.out-of-stock {
+    opacity: 0.35;
+    cursor: not-allowed;
+    background: #f9f9f9;
+}
+
+.size-card.out-of-stock:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: #e8e8e8;
+}
+
+.size-label {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.stock-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+}
+
+.size-card.selected .size-label,
+.size-card.selected .stock-badge {
+    color: #fff;
+}
+
+.placement-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+@media (max-width: 480px) {
+    .placement-grid {
+        grid-template-columns: 1fr;
+        gap: 0.6rem;
+    }
+    
+    .placement-option {
+        padding: 1rem;
+    }
+}
+
+.placement-option {
+    padding: 1.25rem 1rem;
+    text-align: center;
+    border: 3px solid #e8e8e8;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #fff;
+    position: relative;
+}
+
+.placement-option strong {
+    font-size: 1rem;
+    color: #333;
+}
+
+.placement-option small {
+    font-size: 0.75rem;
+    color: #666;
+}
+
+.placement-option:hover {
+    border-color: #B87C6F;
+    background: rgba(212, 175, 55, 0.05);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.placement-option.selected {
+    border-color: #B87C6F;
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.05));
+    box-shadow: 0 4px 16px rgba(212, 175, 55, 0.3);
+    transform: scale(1.03);
+}
+
+.placement-option.selected strong {
+    color: #B87C6F;
+}
+
+.placement-option.selected::after {
+    content: '✓';
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 24px;
+    height: 24px;
+    background: #B87C6F;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.875rem;
+}
+
+.upload-area {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    min-height: 48px;
+    touch-action: manipulation;
+}
+
+@media (max-width: 768px) {
+    .upload-area {
+        padding: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .upload-area {
+        padding: 1.25rem;
+    }
+    
+    .upload-area svg {
+        width: 36px !important;
+        height: 36px !important;
+    }
+    
+    .upload-area p {
+        font-size: 0.9rem;
+    }
+}
+
+.upload-area:hover {
+    border-color: var(--accent-color);
+    background: rgba(212, 175, 55, 0.05);
+}
+
+.upload-area.dragover {
+    border-color: var(--accent-color);
+    background: rgba(212, 175, 55, 0.1);
+}
+
+.design-preview {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--secondary-color);
+    border-radius: var(--border-radius);
+    display: none;
+}
+
+.design-preview.active {
+    display: block;
+}
+
+.design-preview img {
+    max-width: 100%;
+    max-height: 150px;
+    object-fit: contain;
+}
+
+.design-warnings {
+    margin-top: 1rem;
+}
+
+.warning-item {
+    padding: 0.75rem;
+    background: rgba(245, 158, 11, 0.1);
+    border-left: 3px solid var(--warning-color);
+    border-radius: var(--border-radius);
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.price-summary {
+    background: var(--secondary-color);
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+}
+
+.price-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.price-total {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--accent-color);
+    border-top: 2px solid var(--border-color);
+    padding-top: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+@media (max-width: 1024px) {
+    .customizer-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .preview-section {
+        position: static;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="customizer-page">
+    <div class="container">
+        <div class="customizer-container">
+            <!-- Preview Section -->
+            <div class="preview-section" data-product-style="{{ product.style_number }}">
+                <div class="preview-canvas" id="previewCanvas">
+                    <img src="" 
+                         alt="Product Mockup" 
+                         class="mockup-image" 
+                         id="mockupImage"
+                         style="opacity: 0;">
+                    
+                    <div class="design-layer" id="designLayer" style="display: none;">
+                        <img src="" alt="Design" class="design-image" id="designImage">
+                    </div>
+                    <div class="design-layer design-layer-back" id="backDesignLayer" style="display: none;" data-placement="center_back">
+                        <div id="backDesignTextContainer" class="back-design-text-container">
+                            <span id="backDesignName" class="back-design-name"></span>
+                            <span id="backDesignNumber" class="back-design-number"></span>
+                        </div>
+                        <img src="" alt="Back Design" class="design-image" id="backDesignImage" style="display: none;">
+                    </div>
+                </div>
+                
+                <div class="preview-controls">
+                    <button class="btn btn-outline btn-sm active" id="viewFront">Front View</button>
+                    <button class="btn btn-outline btn-sm" id="viewBack">Back View</button>
+                </div>
+                
+                <div class="preview-info" style="margin-top: 1rem; padding: 1rem; background: rgba(212, 175, 55, 0.1); border-radius: 8px; text-align: center;">
+                    <p style="margin: 0; font-size: 0.9rem; color: #666;">
+                        <strong>Selected:</strong> <span id="selectedColorName" style="color: #B87C6F; font-weight: 700;">Loading...</span>
+                    </p>
+                    <p id="dragHint" style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: #999; display: none;">Drag up or down to reposition</p>
+                    <button type="button" id="resetBackPositionBtn" style="display: none; margin-top: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem; background: transparent; border: 1px solid #B87C6F; color: #B87C6F; border-radius: 4px; cursor: pointer;">Reset back position</button>
+                    <button type="button" id="resetPositionBtn" style="display: none; margin-top: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem; background: transparent; border: 1px solid #B87C6F; color: #B87C6F; border-radius: 4px; cursor: pointer;">Reset position</button>
+                </div>
+            </div>
+            
+            <!-- Customizer Panel -->
+            <div class="customizer-panel">
+                {% if collection_restricted %}
+                <div class="collection-restricted-banner">
+                    <strong>Your organizer has chosen the options below.</strong> Pick your color, size, and logo from the selections — then add to your order. Everyone stays matching!
+                </div>
+                {% endif %}
+                <h2>{{ product.name }}</h2>
+                <p class="product-style">Style {{ product.style_number }}</p>
+                
+                <!-- Step 1: Color Selection -->
+                <div class="panel-section step-section">
+                    <div class="step-badge">1</div>
+                    <h3>Choose Color</h3>
+                    <p class="step-hint">Select your color — {{ color_variants|length if color_variants else available_colors|length }} available</p>
+                    
+                    <div class="color-search-box" style="margin-bottom: 0.75rem;">
+                        <input type="text" id="colorSearch" class="color-search-input" placeholder="Search colors..." autocomplete="off">
+                        <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                    </div>
+                    
+                    <div class="color-filter-tabs-simple" id="colorFilterTabs">
+                        <button class="filter-tab active" data-filter="all">All</button>
+                        <button class="filter-tab" data-filter="heather">Heather</button>
+                        <button class="filter-tab" data-filter="solid">Solid</button>
+                        <button class="filter-tab" data-filter="neon">Neon</button>
+                        <button class="filter-tab" data-filter="vintage">Vintage</button>
+                    </div>
+                    
+                    <div class="color-grid-professional" id="colorGrid">
+                        {% if color_variants %}
+                            {% for variant in color_variants %}
+                            <div class="color-card" 
+                                 data-color="{{ variant.color_name }}"
+                                 data-front-image="{{ variant.front_image or '' }}"
+                                 data-back-image="{{ variant.back_image or '' }}"
+                                 data-inventory='{{ variant.inventory|tojson }}'
+                                 onclick="selectColor(this)">
+                                <div class="color-image-wrapper">
+                                    {% if variant.front_image %}
+                                    <img src="{{ variant.front_image }}" alt="{{ variant.color_name }}" class="color-preview-img" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <div class="color-placeholder color-fallback" style="display: none; {% if variant.color_hex %}background-color: {{ variant.color_hex }};{% elif variant.color_name|color_hex_fallback %}background-color: {{ variant.color_name|color_hex_fallback }};{% else %}background: linear-gradient(135deg, #ddd, #bbb);{% endif %}"></div>
+                                    {% else %}
+                                    <div class="color-placeholder" style="{% if variant.color_hex %}background-color: {{ variant.color_hex }};{% elif variant.color_name|color_hex_fallback %}background-color: {{ variant.color_name|color_hex_fallback }};{% else %}background: linear-gradient(135deg, #ddd, #bbb);{% endif %}"></div>
+                                    {% endif %}
+                                </div>
+                                <div class="color-name">{{ variant.color_name }}</div>
+                                <div class="color-checkmark">✓</div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            {% for color in available_colors %}
+                            <div class="color-card" 
+                                 data-color="{{ color }}" 
+                                 onclick="selectColor(this)">
+                                <div class="color-image-wrapper">
+                                    <div class="color-placeholder" style="background-color: {{ color.lower() }};"></div>
+                                </div>
+                                <div class="color-name">{{ color }}</div>
+                                <div class="color-checkmark">✓</div>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                    
+                    <p class="showing-colors-text" id="showingText" style="color: var(--text-light); font-size: 0.875rem; margin-top: 0.75rem; text-align: center;"></p>
+                </div>
+                
+                <!-- Step 2: Size Selection -->
+                <div class="panel-section step-section">
+                    <div class="step-badge">2</div>
+                    <h3>Choose Size</h3>
+                    <p class="step-hint">Select your size — pick a color first to see availability</p>
+                    <div class="size-grid-professional" id="sizeGrid">
+                        {% for size in available_sizes %}
+                        <div class="size-card" data-size="{{ size }}" onclick="selectSize(this)">
+                            <div class="size-label">{{ size }}</div>
+                            <div class="stock-badge"></div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Step 3: Logo / Design -->
+                <div class="panel-section step-section">
+                    <div class="step-badge">3</div>
+                    <h3>Choose Logo or Design</h3>
+                    <p class="step-hint">{% if collection_restricted %}Pick a design from the gallery below{% else %}Upload your own or pick from the gallery{% endif %}</p>
+                    
+                    {% if not collection_restricted %}
+                    <div class="upload-own-section" style="margin-bottom: 1.25rem;">
+                        <div class="upload-area" id="uploadAreaMain" onclick="document.getElementById('designFileMain').click()">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <p><strong>Upload your own design</strong></p>
+                            <p class="text-muted">PNG, JPG, WEBP — background removed automatically</p>
+                        </div>
+                        <input type="file" id="designFileMain" accept=".png,.jpg,.jpeg,.webp" style="display: none;">
+                        {% if current_user and current_user.is_authenticated %}
+                        <div class="share-gallery-option" id="shareGalleryOption" style="margin-top: 0.75rem; padding: 0.75rem; background: #f8f9fa; border-radius: 8px;">
+                            <label style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; font-size: 0.9rem;">
+                                <input type="checkbox" id="shareInGalleryCheckbox" style="margin-top: 0.2rem;">
+                                <span>Share this design in our gallery for others to use</span>
+                            </label>
+                            <p class="text-muted" style="margin: 0.25rem 0 0 1.75rem; font-size: 0.8rem;">Leave unchecked to keep it with your profile only.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if my_designs and current_user and current_user.is_authenticated %}
+                    <p class="logo-gallery-label" style="margin-bottom: 0.5rem;">Your designs:</p>
+                    <div class="logo-gallery-inline" id="myDesignsInline">
+                        <div class="logo-gallery-grid" id="myDesignsGrid">
+                            {% for d in my_designs %}
+                            <div class="logo-gallery-item" data-design-id="{{ d.id }}" data-design-url="{{ d.url }}" data-design-title="{{ d.title }}" role="button" tabindex="0">
+                                <img src="{{ d.url }}" alt="{{ d.title }}" draggable="false">
+                                <span>{{ d.title[:20] }}{% if d.title|length > 20 %}…{% endif %}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if gallery_designs %}
+                    <p class="logo-gallery-label" style="margin-bottom: 0.5rem;">Or pick from gallery:</p>
+                    {% endif %}
+                    {% endif %}
+                    
+                    {% if gallery_designs %}
+                    <div class="logo-gallery-inline" id="logoGalleryInline">
+                        <p class="logo-gallery-label">Gallery designs — click to use</p>
+                        <div class="logo-gallery-grid" id="logoGalleryGrid">
+                            {% for d in gallery_designs %}
+                            <div class="logo-gallery-item{% if preset_design and preset_design.id == d.id %} selected{% endif %}" data-design-id="{{ d.id }}" data-design-url="{{ d.url }}" data-design-title="{{ d.title }}" role="button" tabindex="0">
+                                <img src="{{ d.url }}" alt="{{ d.title }}" draggable="false">
+                                <span>{{ d.title[:20] }}{% if d.title|length > 20 %}…{% endif %}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="design-preview" id="designPreview">
+                        <img src="" alt="Design Preview" id="designPreviewImage">
+                        <button class="btn btn-outline btn-sm" id="removeDesign">Remove Design</button>
+                    </div>
+                    
+                    <div class="design-warnings" id="designWarnings"></div>
+                    
+                    <a href="{{ url_for('shop.design_gallery', product_id=product.id) }}" class="btn btn-outline btn-sm" style="margin-top: 0.75rem; display: inline-block;">Browse full design gallery</a>
+                </div>
+                
+                <!-- Placement Selection -->
+                <div class="panel-section" id="placementSection" style="display: none;">
+                    <h3>Placement</h3>
+                    <p style="font-size: 0.85rem; color: #666; margin-bottom: 1rem;">Choose where you want your design placed when wearing the shirt</p>
+                    <div class="placement-grid" id="placementGrid">
+                        <div class="placement-option" data-placement="center_chest">
+                            <strong>Center Chest</strong>
+                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Medium size, centered</small>
+                        </div>
+                        <div class="placement-option" data-placement="left_chest">
+                            <strong>Left Chest</strong>
+                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Small logo, your left</small>
+                        </div>
+                        <div class="placement-option" data-placement="right_chest">
+                            <strong>Right Chest</strong>
+                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Small logo, your right</small>
+                        </div>
+                        <div class="placement-option" data-placement="center_back">
+                            <strong>Center Back</strong>
+                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Medium size, centered</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Add Back Design Option - always visible so users can add name/number without front design -->
+                <div class="panel-section" id="backDesignSection" style="display: block;">
+                    <div style="padding: 1.25rem; background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.05)); border-radius: 12px; border: 2px solid #e8e8e8;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                            <div>
+                                <strong style="font-size: 1.1rem; color: #333;">Add Design on Other Side</strong>
+                                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #666;">Front + Back printing</p>
+                            </div>
+                            <div style="text-align: right;">
+                                <strong style="font-size: 1.25rem; color: #B87C6F;">+$6.00</strong>
+                            </div>
+                        </div>
+                        <button class="btn btn-outline btn-block" id="addBackDesignBtn" onclick="toggleBackDesign()" style="margin-top: 0.75rem;">
+                            <span id="backDesignBtnText">Add Back Design</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Back Design Options - only visible after Add Back Design is confirmed -->
+                    <div id="backDesignUploadArea" style="display: none; margin-top: 1rem;">
+                        <h4 style="margin-bottom: 0.75rem;">Back Design</h4>
+                        
+                        {% if not collection_restricted %}
+                        <div class="back-design-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                            <button type="button" class="btn btn-outline btn-sm back-design-tab active" data-mode="name_number">Name & Number</button>
+                            <button type="button" class="btn btn-outline btn-sm back-design-tab" data-mode="upload">Upload Image</button>
+                        </div>
+                        {% endif %}
+                        
+                        <div id="backDesignNameNumber" class="back-design-mode">
+                            <p class="form-hint" style="margin-bottom: 1rem;">Perfect for jerseys — enter name and number to preview on the back.</p>
+                            <div class="form-group" style="margin-bottom: 0.75rem;">
+                                <label for="backDesignNameInput">Name</label>
+                                <input type="text" id="backDesignNameInput" class="form-control" placeholder="e.g. SMITH" maxlength="20" style="text-transform: uppercase;">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0.75rem;">
+                                <label for="backDesignNumberInput">Number</label>
+                                <input type="text" id="backDesignNumberInput" class="form-control" placeholder="e.g. 23" maxlength="3" pattern="[0-9]*" inputmode="numeric">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0.75rem;">
+                                <label for="backDesignFont">Font style</label>
+                                {% if collection_restricted and back_design_font %}
+                                <div class="font-locked-display" style="padding: 1rem; background: rgba(184, 124, 111, 0.1); border-radius: 8px; border: 1px solid rgba(184, 124, 111, 0.3);">
+                                    <span style="font-family: '{{ back_design_font }}', sans-serif; font-size: 1.5rem; font-weight: 700; color: #333;">NAME 12</span>
+                                    <small style="display: block; margin-top: 0.25rem; color: #666;">Font set by organizer</small>
+                                </div>
+                                <input type="hidden" id="backDesignFont" value="{{ back_design_font }}">
+                                {% else %}
+                                <select id="backDesignFont" class="form-control">
+                                    <option value="Bebas Neue">Bebas Neue — Classic jersey</option>
+                                    <option value="Oswald">Oswald — Bold athletic</option>
+                                    <option value="Anton">Anton — Strong block</option>
+                                    <option value="Teko">Teko — College jersey</option>
+                                </select>
+                                {% endif %}
+                            </div>
+                            <p class="form-hint" style="margin-top: 0.5rem; font-size: 0.8rem;">Select "Back View" above to see the back. Name, number, and font update instantly as you type.</p>
+                        </div>
+                        
+                        <div id="backDesignUpload" class="back-design-mode" style="display: none;">
+                            {% if not collection_restricted %}
+                            <div class="upload-area" id="uploadAreaBack">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 1rem;">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="17 8 12 3 7 8"></polyline>
+                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                </svg>
+                                <p><strong>Upload back design</strong></p>
+                                <p class="text-muted">PNG, JPG, WEBP (Max 16MB)</p>
+                            </div>
+                            <input type="file" id="designFileBack" accept=".png,.jpg,.jpeg,.svg,.pdf" style="display: none;">
+                            {% endif %}
+                        </div>
+                        
+                        <div class="design-preview" id="designPreviewBack" style="display: none;">
+                            <img src="" alt="Back Design Preview" id="designPreviewImageBack">
+                            <button class="btn btn-outline btn-sm" id="removeDesignBack">Remove Back Design</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quantity -->
+                <div class="panel-section">
+                    <h3>Quantity</h3>
+                    <div class="form-group">
+                        <input type="number" id="quantity" class="form-control" value="1" min="1" max="100">
+                    </div>
+                </div>
+                
+                <!-- Price Summary -->
+                <div class="price-summary">
+                    <div class="price-row">
+                        <span>Unit Price:</span>
+                        <span id="unitPrice">${{ "%.2f"|format(product.base_price) }}</span>
+                    </div>
+                    <div class="price-row" id="placementDiscountRow" style="display: none;">
+                        <span>Small logo discount:</span>
+                        <span style="color: #22c55e; font-weight: 600;">-$2.00</span>
+                    </div>
+                    <div class="price-row" id="sizeUpchargeRow" style="display: none;">
+                        <span>Size upcharge (<span id="sizeUpchargeLabel"></span>):</span>
+                        <span style="color: #B87C6F; font-weight: 600;" id="sizeUpchargeAmount"></span>
+                    </div>
+                    <div class="price-row" id="backDesignFeeRow" style="display: none;">
+                        <span>Back Design Fee:</span>
+                        <span style="color: #B87C6F; font-weight: 600;">+$6.00</span>
+                    </div>
+                    <div class="price-row">
+                        <span>Quantity:</span>
+                        <span id="quantityDisplay">1</span>
+                    </div>
+                    <div class="price-row price-total">
+                        <span>Total:</span>
+                        <span id="totalPrice">${{ "%.2f"|format(product.base_price) }}</span>
+                    </div>
+                </div>
+                
+                <button class="btn btn-primary btn-block" id="addToCart">Add to Cart</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Professional Product Customizer
+(function() {
+    const state = {
+        selectedColor: null,
+        selectedSize: null,
+        selectedPlacement: 'center_chest',
+        quantity: 1,
+        currentView: 'front',
+        designFile: null,
+        designUrl: null,
+        designWidth: null,
+        designHeight: null,
+        backDesignEnabled: false,
+        backDesignMode: 'name_number',
+        backDesignName: '',
+        backDesignNumber: '',
+        backDesignFont: {% if collection_restricted and back_design_font %}"{{ back_design_font }}"{% else %}"Bebas Neue"{% endif %},
+        backDesignFile: null,
+        backDesignUrl: null,
+        backDesignPlacement: 'center_back',
+        backDesignFee: 6.00,
+        backDesignDefaultUpOffset: 60,
+        backDesignDragOffset: { y: -60 },
+        colorVariants: {{ color_variants | tojson }} || [],
+        basePrice: {{ product.base_price }},
+        isAdult: {{ 'true' if is_adult else 'false' }},
+        designDragOffset: { center_chest: { x: 0, y: 0 }, left_chest: { x: 0, y: 0 }, right_chest: { x: 0, y: 0 }, center_back: { x: 0, y: 0 } },
+        presetDesignId: {{ preset_design.id if preset_design else 'null' }},
+        allowedPlacements: {{ (allowed_placements | tojson) if allowed_placements else 'null' }}
+    };
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        filterPlacementOptions();
+        setupColorSelection();
+        setupSizeSelection();
+        setupViewToggle();
+        setupQuantity();
+        setupDesignUpload();
+        setupBackDesignUpload();
+        setupPlacement();
+        setupDesignDrag();
+        setupBackDesignDrag();
+        setupAddToCart();
+        setupLogoGalleryClicks();
+        setupMyDesignsClicks();
+        
+        // Apply preset design from gallery if present
+        const presetDesign = {{ preset_design | tojson if preset_design else 'null' }};
+        if (presetDesign && presetDesign.url) {
+            applyPresetDesign(presetDesign);
+        }
+        
+        // Pre-select first color if available
+        if (state.colorVariants.length > 0) {
+            const firstColor = document.querySelector('.color-option');
+            if (firstColor) {
+                firstColor.click();
+            }
+        }
+    });
+    
+    function filterPlacementOptions() {
+        const allowed = state.allowedPlacements;
+        if (!allowed || !Array.isArray(allowed) || allowed.length === 0) return;
+        
+        const options = document.querySelectorAll('.placement-option');
+        options.forEach(opt => {
+            const placement = opt.dataset.placement;
+            if (!allowed.includes(placement)) {
+                opt.style.display = 'none';
+                opt.classList.add('placement-disabled');
+            } else {
+                opt.style.display = '';
+                opt.classList.remove('placement-disabled');
+            }
+        });
+        
+        if (!allowed.includes(state.selectedPlacement)) {
+            state.selectedPlacement = allowed[0];
+            document.querySelectorAll('.placement-option').forEach(o => o.classList.remove('selected'));
+            const first = document.querySelector(`.placement-option[data-placement="${allowed[0]}"]`);
+            if (first) first.classList.add('selected');
+        }
+    }
+    
+    function setupLogoGalleryClicks() {
+        const grid = document.getElementById('logoGalleryGrid');
+        if (!grid) return;
+        grid.addEventListener('click', function(e) {
+            const card = e.target.closest('.logo-gallery-item');
+            if (!card || !card.dataset.designUrl) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const design = { id: card.dataset.designId, url: card.dataset.designUrl, title: card.dataset.designTitle };
+            try {
+                applyPresetDesign(design);
+                document.querySelectorAll('.logo-gallery-item').forEach(el => el.classList.remove('selected'));
+                card.classList.add('selected');
+            } catch (err) {
+                console.error('Gallery design error:', err);
+            }
+        });
+        grid.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                const card = e.target.closest('.logo-gallery-item');
+                if (card) {
+                    e.preventDefault();
+                    card.click();
+                }
+            }
+        });
+    }
+    
+    function setupMyDesignsClicks() {
+        const grid = document.getElementById('myDesignsGrid');
+        if (!grid) return;
+        grid.addEventListener('click', function(e) {
+            const card = e.target.closest('.logo-gallery-item');
+            if (!card || !card.dataset.designUrl) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const design = { id: card.dataset.designId, url: card.dataset.designUrl, title: card.dataset.designTitle };
+            try {
+                applyPresetDesign(design);
+                document.querySelectorAll('.logo-gallery-item').forEach(el => el.classList.remove('selected'));
+                card.classList.add('selected');
+            } catch (err) {
+                console.error('My design error:', err);
+            }
+        });
+        grid.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                const card = e.target.closest('.logo-gallery-item');
+                if (card) {
+                    e.preventDefault();
+                    card.click();
+                }
+            }
+        });
+    }
+    
+    // Global function for color selection
+    window.selectColor = function(element) {
+        console.log('Color clicked:', element.dataset.color);
+        
+        // Remove selected from all
+        document.querySelectorAll('.color-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        
+        // Add selected to clicked
+        element.classList.add('selected');
+        
+        // Get color data
+        const colorName = element.dataset.color;
+        const frontImage = element.dataset.frontImage || '';
+        const backImage = element.dataset.backImage || '';
+        const inventoryStr = element.dataset.inventory || '{}';
+        
+        console.log('Color data:', {
+            colorName,
+            frontImage: frontImage.substring(0, 50),
+            backImage: backImage.substring(0, 50),
+            inventoryStr: inventoryStr.substring(0, 100)
+        });
+        
+        let inventory = {};
+        try {
+            inventory = JSON.parse(inventoryStr);
+        } catch (e) {
+            console.error('Failed to parse inventory:', e);
+        }
+        
+        // Update state
+        state.selectedColor = {
+            name: colorName,
+            frontImage: frontImage,
+            backImage: backImage,
+            inventory: inventory
+        };
+        
+        // Update mockup image with smooth transition
+        const mockupImg = document.getElementById('mockupImage');
+        mockupImg.style.opacity = '0';
+        
+        setTimeout(() => {
+            updateMockupImage();
+        }, 150);
+        
+        // Update selected color display
+        const colorNameEl = document.getElementById('selectedColorName');
+        colorNameEl.textContent = colorName;
+        colorNameEl.style.color = '#B87C6F';
+        colorNameEl.style.fontWeight = '700';
+        
+        // Update size inventory
+        updateSizeInventory(inventory);
+    };
+    
+    function setupColorSelection() {
+        // Initialize color filtering
+        initializeColorFiltering();
+        
+        // Pre-select first color on load
+        const firstColor = document.querySelector('.color-card:not(.hidden)');
+        if (firstColor) {
+            setTimeout(() => {
+                firstColor.click();
+            }, 300);
+        }
+    }
+    
+    function initializeColorFiltering() {
+        const colorCards = document.querySelectorAll('.color-card');
+        const filterTabs = document.querySelectorAll('.filter-tab');
+        const searchInput = document.getElementById('colorSearch');
+        const showingText = document.getElementById('showingText');
+        
+        // Categorize colors based on name
+        function categorizeColor(colorName) {
+            const name = colorName.toLowerCase();
+            const categories = [];
+            
+            if (name.includes('heather')) categories.push('heather');
+            if (name.includes('neon')) categories.push('neon');
+            if (name.includes('vintage')) categories.push('vintage');
+            
+            // If no special category, it's a solid
+            if (categories.length === 0) categories.push('solid');
+            
+            return categories;
+        }
+        
+        // Add category data to each card and count categories
+        const categoryCounts = { all: 0, heather: 0, solid: 0, neon: 0, vintage: 0 };
+        
+        colorCards.forEach(card => {
+            const colorName = card.dataset.color;
+            const categories = categorizeColor(colorName);
+            card.dataset.categories = categories.join(',');
+            
+            categoryCounts.all++;
+            categories.forEach(cat => categoryCounts[cat]++);
+        });
+        
+        // Update count badges
+        Object.keys(categoryCounts).forEach(cat => {
+            const countEl = document.getElementById(cat + 'Count');
+            if (countEl) countEl.textContent = categoryCounts[cat];
+        });
+        
+        // Filter function
+        function applyFilters() {
+            const activeFilter = document.querySelector('.filter-tab.active')?.dataset.filter || 'all';
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            
+            let visibleCount = 0;
+            
+            colorCards.forEach(card => {
+                const colorName = card.dataset.color.toLowerCase();
+                const categories = card.dataset.categories || '';
+                
+                // Check filter
+                const matchesFilter = activeFilter === 'all' || categories.includes(activeFilter);
+                
+                // Check search
+                const matchesSearch = !searchTerm || colorName.includes(searchTerm);
+                
+                // Show/hide card
+                if (matchesFilter && matchesSearch) {
+                    card.classList.remove('hidden');
+                    visibleCount++;
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+            
+            // Update showing text
+            const totalCount = colorCards.length;
+            if (visibleCount === totalCount) {
+                showingText.textContent = `Showing all ${totalCount} colors`;
+            } else {
+                showingText.textContent = `Showing ${visibleCount} of ${totalCount} colors`;
+            }
+        }
+        
+        // Filter tab click handlers
+        filterTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Update active state
+                filterTabs.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Apply filters
+                applyFilters();
+                
+                // If a color was selected but is now hidden, select first visible
+                const selectedColor = document.querySelector('.color-card.selected');
+                if (selectedColor && selectedColor.classList.contains('hidden')) {
+                    const firstVisible = document.querySelector('.color-card:not(.hidden)');
+                    if (firstVisible) firstVisible.click();
+                }
+            });
+        });
+        
+        // Search input handler
+        searchInput.addEventListener('input', function() {
+            applyFilters();
+            
+            // If selected color is hidden, select first visible
+            const selectedColor = document.querySelector('.color-card.selected');
+            if (selectedColor && selectedColor.classList.contains('hidden')) {
+                const firstVisible = document.querySelector('.color-card:not(.hidden)');
+                if (firstVisible) firstVisible.click();
+            }
+        });
+        
+        // Initial filter application
+        applyFilters();
+    }
+    
+    window.selectSize = function(element) {
+        if (element.classList.contains('out-of-stock')) return;
+        
+        document.querySelectorAll('.size-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        
+        element.classList.add('selected');
+        state.selectedSize = element.dataset.size;
+        updateTotalPrice();
+    };
+    
+    function setupSizeSelection() {
+        // Sizes handled by onclick in HTML
+    }
+    
+    function setupViewToggle() {
+        const frontBtn = document.getElementById('viewFront');
+        const backBtn = document.getElementById('viewBack');
+        
+        frontBtn.addEventListener('click', function() {
+            state.currentView = 'front';
+            frontBtn.classList.add('active');
+            backBtn.classList.remove('active');
+            updateMockupImage();
+            applyDesignPosition();
+        });
+        
+        backBtn.addEventListener('click', function() {
+            state.currentView = 'back';
+            backBtn.classList.add('active');
+            frontBtn.classList.remove('active');
+            // Sync name/number from inputs before updating preview
+            const nameIn = document.getElementById('backDesignNameInput');
+            const numIn = document.getElementById('backDesignNumberInput');
+            const fontIn = document.getElementById('backDesignFont');
+            if (nameIn) state.backDesignName = (nameIn.value || '').trim();
+            if (numIn) state.backDesignNumber = (numIn.value || '').trim();
+            if (fontIn) state.backDesignFont = fontIn.value || 'Bebas Neue';
+            updateMockupImage();
+            applyDesignPosition();
+            applyBackDesignPosition();
+        });
+    }
+    
+    function updateMockupImage() {
+        const mockupImg = document.getElementById('mockupImage');
+        if (!state.selectedColor) {
+            console.log('No color selected');
+            return;
+        }
+        
+        const imageUrl = state.currentView === 'front' 
+            ? state.selectedColor.frontImage 
+            : state.selectedColor.backImage;
+        
+        console.log('Updating mockup:', {
+            color: state.selectedColor.name,
+            view: state.currentView,
+            imageUrl: imageUrl
+        });
+        
+        if (imageUrl && imageUrl !== '') {
+            mockupImg.src = imageUrl;
+            mockupImg.style.opacity = '1';
+            mockupImg.onerror = function() {
+                console.error('Failed to load image:', imageUrl);
+                this.style.opacity = '0.3';
+            };
+        } else {
+            console.warn('No image URL for', state.currentView);
+            mockupImg.style.opacity = '0.3';
+        }
+        
+        updateDesignLayerVisibility();
+    }
+    
+    function updateDesignLayerVisibility() {
+        const designLayer = document.getElementById('designLayer');
+        const backDesignLayer = document.getElementById('backDesignLayer');
+        if (!designLayer || !backDesignLayer) return;
+        
+        const isFrontView = state.currentView === 'front';
+        const frontHasDesign = designLayer.classList.contains('visible');
+        const placement = state.selectedPlacement || 'center_chest';
+        const isCenterBack = placement === 'center_back';
+        // Show preview only when Add Back Design is confirmed AND user has name/number or uploaded image
+        const backHasDesign = state.backDesignEnabled && (
+            (state.backDesignMode === 'name_number' && (state.backDesignName || state.backDesignNumber)) ||
+            (state.backDesignMode === 'upload' && state.backDesignUrl)
+        );
+        
+        const previewCanvas = document.getElementById('previewCanvas');
+        if (isFrontView) {
+            designLayer.style.visibility = '';
+            designLayer.style.pointerEvents = '';
+            if (previewCanvas) previewCanvas.classList.remove('showing-back');
+            const resetBackBtn = document.getElementById('resetBackPositionBtn');
+            if (resetBackBtn) resetBackBtn.style.display = 'none';
+            const dragHint = document.getElementById('dragHint');
+            if (dragHint && !frontHasDesign) dragHint.style.display = 'none';
+            if (dragHint && frontHasDesign) dragHint.textContent = 'Drag up or down to reposition';
+            if (isCenterBack) {
+                designLayer.style.display = 'none';
+                backDesignLayer.style.display = 'none';
+            } else {
+                designLayer.style.display = frontHasDesign ? 'flex' : 'none';
+                backDesignLayer.style.display = 'none';
+            }
+        } else {
+            designLayer.style.visibility = 'hidden';
+            designLayer.style.pointerEvents = 'none';
+            if (previewCanvas) previewCanvas.classList.add('showing-back');
+            if (isCenterBack) {
+                designLayer.style.display = frontHasDesign ? 'flex' : 'none';
+                backDesignLayer.style.display = backHasDesign ? 'flex' : 'none';
+                if (backHasDesign) {
+                    updateBackDesignPreview();
+                    applyBackDesignPosition();
+                }
+            } else {
+                designLayer.style.display = 'none';
+                backDesignLayer.style.display = backHasDesign ? 'flex' : 'none';
+                if (backHasDesign) {
+                    updateBackDesignPreview();
+                    applyBackDesignPosition();
+                }
+            }
+        }
+    }
+    
+    function applyBackDesignPosition() {
+        const backDesignLayer = document.getElementById('backDesignLayer');
+        if (!backDesignLayer) return;
+        const defaultUp = state.backDesignDefaultUpOffset ?? 60;
+        const offset = state.backDesignDragOffset || { y: -defaultUp };
+        backDesignLayer.style.transform = `translate(-50%, -50%) translate(0, ${offset.y}px)`;
+        const dragHint = document.getElementById('dragHint');
+        const resetBackBtn = document.getElementById('resetBackPositionBtn');
+        if (state.currentView === 'back' && backDesignLayer.style.display !== 'none') {
+            if (dragHint) {
+                dragHint.style.display = 'block';
+                dragHint.textContent = 'Drag up or down to reposition name & number';
+            }
+            if (resetBackBtn) resetBackBtn.style.display = (offset.y !== -defaultUp) ? 'inline-block' : 'none';
+        } else {
+            if (resetBackBtn) resetBackBtn.style.display = 'none';
+        }
+    }
+    
+    const BACK_FONT_CONFIG = {
+        'Bebas Neue': { nameSize: '2.5em', numberSize: '5.1em', nameSpacing: '0.06em', numberSpacing: '0.02em', nameNumberGap: '0.35em' },
+        'Oswald': { nameSize: '2.45em', numberSize: '5em', nameSpacing: '0.07em', numberSpacing: '0.04em', nameNumberGap: '0.32em' },
+        'Anton': { nameSize: '2.6em', numberSize: '5.2em', nameSpacing: '0.05em', numberSpacing: '0.18em', nameNumberGap: '0.3em' },
+        'Teko': { nameSize: '2.55em', numberSize: '5em', nameSpacing: '0.06em', numberSpacing: '0.12em', nameNumberGap: '0.32em' }
+    };
+    
+    function updateBackDesignPreview() {
+        const backDesignLayer = document.getElementById('backDesignLayer');
+        const textContainer = document.getElementById('backDesignTextContainer');
+        const backDesignImage = document.getElementById('backDesignImage');
+        const nameEl = document.getElementById('backDesignName');
+        const numberEl = document.getElementById('backDesignNumber');
+        const nameInput = document.getElementById('backDesignNameInput');
+        const numberInput = document.getElementById('backDesignNumberInput');
+        const fontSelect = document.getElementById('backDesignFont');
+        if (!backDesignLayer || !textContainer || !backDesignImage) return;
+        
+        if (state.backDesignMode === 'name_number') {
+            textContainer.style.display = 'flex';
+            backDesignImage.style.display = 'none';
+            // Read directly from inputs for instant updates (no state sync delay)
+            const name = (nameInput && nameInput.value) ? nameInput.value.trim().toUpperCase() : '';
+            const number = (numberInput && numberInput.value) ? numberInput.value.trim() : '';
+            const font = (fontSelect && fontSelect.value) ? fontSelect.value : 'Bebas Neue';
+            const cfg = BACK_FONT_CONFIG[font] || BACK_FONT_CONFIG['Bebas Neue'];
+            nameEl.textContent = name;
+            numberEl.textContent = number;
+            textContainer.style.fontFamily = `"${font}", sans-serif`;
+            nameEl.style.fontSize = cfg.nameSize;
+            nameEl.style.letterSpacing = cfg.nameSpacing;
+            nameEl.style.marginBottom = cfg.nameNumberGap;
+            numberEl.style.fontSize = cfg.numberSize;
+            numberEl.style.letterSpacing = cfg.numberSpacing;
+            numberEl.style.marginTop = '0';
+            // Keep state in sync for add-to-cart
+            state.backDesignName = name;
+            state.backDesignNumber = number;
+            state.backDesignFont = font;
+        } else if (state.backDesignUrl) {
+            textContainer.style.display = 'none';
+            backDesignImage.style.display = 'block';
+            backDesignImage.src = state.backDesignUrl;
+        }
+    }
+    
+    function updateSizeInventory(inventory) {
+        const sizeCards = document.querySelectorAll('.size-card');
+        sizeCards.forEach(card => {
+            const size = card.dataset.size;
+            const qty = inventory[size] || 0;
+            const stockBadge = card.querySelector('.stock-badge');
+            
+            if (stockBadge) {
+                card.classList.remove('out-of-stock');
+                
+                if (qty > 0) {
+                    stockBadge.textContent = `${qty} in stock`;
+                    stockBadge.style.color = '#22c55e';
+                    card.style.opacity = '1';
+                    card.style.cursor = 'pointer';
+                } else {
+                    stockBadge.textContent = 'Out of Stock';
+                    stockBadge.style.color = '#ef4444';
+                    card.classList.add('out-of-stock');
+                }
+            }
+        });
+    }
+    
+    function setupQuantity() {
+        const quantityInput = document.getElementById('quantity');
+        const quantityDisplay = document.getElementById('quantityDisplay');
+        const totalPrice = document.getElementById('totalPrice');
+        
+        quantityInput.addEventListener('input', function() {
+            const qty = parseInt(this.value) || 1;
+            state.quantity = qty;
+            quantityDisplay.textContent = qty;
+            updateTotalPrice();
+        });
+    }
+    
+    function getSizeUpcharge() {
+        if (!state.isAdult || !state.selectedSize) return 0;
+        const s = String(state.selectedSize).toUpperCase();
+        if (s === '2XL' || s === '2X' || s === 'XXL') return 2;
+        if (s === '3XL' || s === '3X' || s === 'XXXL') return 3;
+        if (s === '4XL' || s === '4X') return 4;
+        return 0;
+    }
+    
+    function updateTotalPrice() {
+        const totalPrice = document.getElementById('totalPrice');
+        const unitPrice = document.getElementById('unitPrice');
+        const placementDiscountRow = document.getElementById('placementDiscountRow');
+        const sizeUpchargeRow = document.getElementById('sizeUpchargeRow');
+        const sizeUpchargeLabel = document.getElementById('sizeUpchargeLabel');
+        const sizeUpchargeAmount = document.getElementById('sizeUpchargeAmount');
+        let itemPrice = state.basePrice;
+        
+        // $2 off for left chest or right chest (small logo)
+        const smallLogoDiscount = (state.selectedPlacement === 'left_chest' || state.selectedPlacement === 'right_chest') ? 2 : 0;
+        itemPrice -= smallLogoDiscount;
+        
+        if (placementDiscountRow) {
+            placementDiscountRow.style.display = smallLogoDiscount ? 'flex' : 'none';
+        }
+        
+        // Size upcharge for adult 2XL+ ($2, $3, $4)
+        const sizeUpcharge = getSizeUpcharge();
+        if (sizeUpcharge > 0 && sizeUpchargeRow) {
+            itemPrice += sizeUpcharge;
+            sizeUpchargeRow.style.display = 'flex';
+            if (sizeUpchargeLabel) sizeUpchargeLabel.textContent = state.selectedSize;
+            if (sizeUpchargeAmount) sizeUpchargeAmount.textContent = '+$' + sizeUpcharge.toFixed(2);
+        } else if (sizeUpchargeRow) {
+            sizeUpchargeRow.style.display = 'none';
+        }
+        
+        // Add back design fee if enabled
+        if (state.backDesignEnabled) {
+            itemPrice += state.backDesignFee;
+        }
+        
+        if (unitPrice) unitPrice.textContent = '$' + (state.basePrice - smallLogoDiscount).toFixed(2);
+        const total = itemPrice * state.quantity;
+        totalPrice.textContent = '$' + total.toFixed(2);
+    }
+    
+    window.toggleBackDesign = function() {
+        state.backDesignEnabled = !state.backDesignEnabled;
+        
+        const backDesignUploadArea = document.getElementById('backDesignUploadArea');
+        const backDesignFeeRow = document.getElementById('backDesignFeeRow');
+        const btn = document.getElementById('addBackDesignBtn');
+        const btnText = document.getElementById('backDesignBtnText');
+        
+        if (state.backDesignEnabled) {
+            if (backDesignUploadArea) backDesignUploadArea.style.display = 'block';
+            backDesignFeeRow.style.display = 'flex';
+            // Sync name/number from inputs in case they were entered before
+            const nameIn = document.getElementById('backDesignNameInput');
+            const numIn = document.getElementById('backDesignNumberInput');
+            const fontIn = document.getElementById('backDesignFont');
+            if (nameIn) state.backDesignName = (nameIn.value || '').trim();
+            if (numIn) state.backDesignNumber = (numIn.value || '').trim();
+            if (fontIn) state.backDesignFont = fontIn.value || 'Bebas Neue';
+            updateDesignLayerVisibility();
+            btn.style.background = 'linear-gradient(135deg, #B87C6F, #7F6C50)';
+            btn.style.color = '#fff';
+            btn.style.borderColor = '#B87C6F';
+            btnText.textContent = 'Remove Back Design (-$6.00)';
+        } else {
+            if (backDesignUploadArea) backDesignUploadArea.style.display = 'none';
+            backDesignFeeRow.style.display = 'none';
+            btn.style.background = '';
+            btn.style.color = '';
+            btn.style.borderColor = '';
+            btnText.textContent = 'Add Back Design (+$6.00)';
+            // Clear back design state when removed
+            state.backDesignFile = null;
+            state.backDesignUrl = null;
+            state.backDesignName = '';
+            state.backDesignNumber = '';
+        }
+        
+        updateDesignLayerVisibility();
+        updateTotalPrice();
+    }
+    
+    function applyPresetDesign(preset) {
+        if (!preset || !preset.url) return;
+        const designImage = document.getElementById('designImage');
+        const designPreviewImage = document.getElementById('designPreviewImage');
+        const designPreview = document.getElementById('designPreview');
+        const designLayer = document.getElementById('designLayer');
+        const placementSection = document.getElementById('placementSection');
+        if (!designImage || !designLayer) return;
+        
+        state.designUrl = preset.url;
+        state.designFile = null;
+        state.presetDesignId = preset.id || null;
+        const allowed = state.allowedPlacements;
+        state.selectedPlacement = (allowed && allowed.length) ? allowed[0] : 'center_chest';
+        
+        designImage.src = preset.url;
+        designPreviewImage.src = preset.url;
+        designPreview.classList.add('active');
+        designLayer.classList.add('visible');
+        designLayer.classList.add('draggable');
+        designLayer.style.display = 'flex';
+        designLayer.setAttribute('data-placement', state.selectedPlacement);
+        placementSection.style.display = 'block';
+        const backSection = document.getElementById('backDesignSection');
+        if (backSection) backSection.style.display = 'block';
+        
+        document.querySelectorAll('.placement-option').forEach(o => o.classList.remove('selected'));
+        const selectedOpt = document.querySelector(`[data-placement="${state.selectedPlacement}"]`);
+        if (selectedOpt) selectedOpt.classList.add('selected');
+        
+        applyDesignPosition();
+        if (typeof updateTotalPrice === 'function') updateTotalPrice();
+        
+        const dragHint = document.getElementById('dragHint');
+        if (dragHint) dragHint.style.display = 'block';
+    }
+    
+    function setupDesignUpload() {
+        const designPreview = document.getElementById('designPreview');
+        const designLayer = document.getElementById('designLayer');
+        const placementSection = document.getElementById('placementSection');
+        const designWarnings = document.getElementById('designWarnings');
+        const uploadAreaMain = document.getElementById('uploadAreaMain');
+        const fileInputMain = document.getElementById('designFileMain');
+        
+        if (uploadAreaMain && fileInputMain) {
+            fileInputMain.addEventListener('change', async function() {
+                const file = this.files[0];
+                if (!file) return;
+                
+                uploadAreaMain.innerHTML = '<p style="margin: 2rem 0;">Processing design…</p><p style="color: #999;">Removing background</p>';
+                uploadAreaMain.style.pointerEvents = 'none';
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('remove_background', 'true');
+                    const shareCheckbox = document.getElementById('shareInGalleryCheckbox');
+                    if (shareCheckbox) {
+                        formData.append('share_in_gallery', shareCheckbox.checked ? 'true' : 'false');
+                    }
+                    const response = await fetch('/design/upload', { method: 'POST', body: formData });
+                    if (!response.ok) throw new Error('Upload failed');
+                    const data = await response.json();
+                    
+                    state.designUrl = data.url;
+                    state.presetDesignId = data.design_id || null;
+                    state.designFile = data.design_id ? null : file;
+                    const designImage = document.getElementById('designImage');
+                    const designPreviewImage = document.getElementById('designPreviewImage');
+                    if (designImage && designPreviewImage && designLayer && placementSection) {
+                        designImage.src = data.url;
+                        designPreviewImage.src = data.url;
+                        designPreview.classList.add('active');
+                        designLayer.classList.add('visible');
+                        designLayer.classList.add('draggable');
+                        designLayer.style.display = 'flex';
+                        designLayer.setAttribute('data-placement', (state.allowedPlacements && state.allowedPlacements[0]) || 'center_chest');
+                        placementSection.style.display = 'block';
+                        const backSection = document.getElementById('backDesignSection');
+                        if (backSection) backSection.style.display = 'block';
+                        state.selectedPlacement = (state.allowedPlacements && state.allowedPlacements[0]) || 'center_chest';
+                        document.querySelectorAll('.placement-option').forEach(o => o.classList.remove('selected'));
+                        const selectedOpt = document.querySelector(`[data-placement="${state.selectedPlacement}"]`);
+                        if (selectedOpt) selectedOpt.classList.add('selected');
+                        applyDesignPosition();
+                        updateTotalPrice();
+                        const dragHint = document.getElementById('dragHint');
+                        if (dragHint) dragHint.style.display = 'block';
+                    }
+                    
+                    uploadAreaMain.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Design uploaded!</strong></p><p class="text-muted">Click to change</p>';
+                } catch (err) {
+                    console.error(err);
+                    alert('Upload failed. Please try again.');
+                    uploadAreaMain.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Upload your own design</strong></p><p class="text-muted">PNG, JPG, WEBP</p>';
+                }
+                uploadAreaMain.style.pointerEvents = '';
+                fileInputMain.value = '';
+            });
+        }
+        
+        const removeBtn = document.getElementById('removeDesign');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                designPreview.classList.remove('active');
+                designLayer.classList.remove('visible');
+                designLayer.classList.remove('draggable');
+                designLayer.style.display = 'none';
+                if (placementSection) placementSection.style.display = 'none';
+                // Keep back design section visible - users can add name/number without front design
+                if (designWarnings) designWarnings.innerHTML = '';
+                state.designFile = null;
+                state.designUrl = null;
+                state.presetDesignId = null;
+                const dragHint = document.getElementById('dragHint');
+                const resetBtn = document.getElementById('resetPositionBtn');
+                if (dragHint) dragHint.style.display = 'none';
+                if (resetBtn) resetBtn.style.display = 'none';
+                if (uploadAreaMain) {
+                    uploadAreaMain.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Upload your own design</strong></p><p class="text-muted">PNG, JPG, WEBP — background removed automatically</p>';
+                }
+            });
+        }
+    }
+    
+    function setupBackDesignUpload() {
+        const uploadAreaBack = document.getElementById('uploadAreaBack');
+        const fileInputBack = document.getElementById('designFileBack');
+        const designPreviewBack = document.getElementById('designPreviewBack');
+        const nameNumberPanel = document.getElementById('backDesignNameNumber');
+        const uploadPanel = document.getElementById('backDesignUpload');
+        const tabs = document.querySelectorAll('.back-design-tab');
+        const nameInput = document.getElementById('backDesignNameInput');
+        const numberInput = document.getElementById('backDesignNumberInput');
+        const fontSelect = document.getElementById('backDesignFont');
+        
+        // Name & number live preview - set up FIRST so it works even if upload area missing
+        function syncBackDesignPreview() {
+            updateBackDesignPreview();
+            updateDesignLayerVisibility();
+        }
+        const backDesignContainer = document.getElementById('backDesignUploadArea');
+        if (backDesignContainer) {
+            backDesignContainer.addEventListener('input', function(e) {
+                if (e.target.id === 'backDesignNameInput' || e.target.id === 'backDesignNumberInput' || e.target.id === 'backDesignFont') {
+                    syncBackDesignPreview();
+                }
+            });
+            backDesignContainer.addEventListener('change', function(e) {
+                if (e.target.id === 'backDesignNameInput' || e.target.id === 'backDesignNumberInput' || e.target.id === 'backDesignFont') {
+                    syncBackDesignPreview();
+                }
+            });
+            backDesignContainer.addEventListener('keyup', function(e) {
+                if (e.target.id === 'backDesignNameInput' || e.target.id === 'backDesignNumberInput') {
+                    syncBackDesignPreview();
+                }
+            });
+            backDesignContainer.addEventListener('paste', function(e) {
+                if (e.target.id === 'backDesignNameInput' || e.target.id === 'backDesignNumberInput') {
+                    setTimeout(syncBackDesignPreview, 0);
+                }
+            });
+        }
+        if (nameInput) {
+            nameInput.addEventListener('input', syncBackDesignPreview);
+            nameInput.addEventListener('change', syncBackDesignPreview);
+            nameInput.addEventListener('keyup', syncBackDesignPreview);
+            nameInput.addEventListener('paste', () => setTimeout(syncBackDesignPreview, 0));
+        }
+        if (numberInput) {
+            numberInput.addEventListener('input', syncBackDesignPreview);
+            numberInput.addEventListener('change', syncBackDesignPreview);
+            numberInput.addEventListener('keyup', syncBackDesignPreview);
+            numberInput.addEventListener('paste', () => setTimeout(syncBackDesignPreview, 0));
+        }
+        if (fontSelect) {
+            fontSelect.addEventListener('change', syncBackDesignPreview);
+            fontSelect.addEventListener('input', syncBackDesignPreview);
+        }
+        
+        if (!uploadAreaBack || !fileInputBack) return;
+        
+        // Tab switching
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const mode = this.dataset.mode;
+                state.backDesignMode = mode;
+                tabs.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                nameNumberPanel.style.display = mode === 'name_number' ? 'block' : 'none';
+                uploadPanel.style.display = mode === 'upload' ? 'block' : 'none';
+                if (mode === 'upload' && state.backDesignUrl) {
+                    designPreviewBack.classList.add('active');
+                    designPreviewBack.style.display = 'block';
+                } else {
+                    designPreviewBack.classList.remove('active');
+                    designPreviewBack.style.display = 'none';
+                }
+                updateDesignLayerVisibility();
+            });
+        });
+        
+        uploadAreaBack.addEventListener('click', () => fileInputBack.click());
+        
+        fileInputBack.addEventListener('change', async function() {
+            const file = this.files[0];
+            if (!file) return;
+            
+            // Show loading
+            uploadAreaBack.innerHTML = '<p style="margin: 2rem 0;">Processing back design...</p><p style="color: #999;">Removing background...</p>';
+            uploadAreaBack.style.pointerEvents = 'none';
+            
+            try {
+                // Upload with background removal
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('remove_background', 'true');
+                
+                const response = await fetch('/design/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Upload failed');
+                }
+                
+                const data = await response.json();
+                
+                // Store back design info
+                state.backDesignFile = file;
+                state.backDesignUrl = data.url;
+                
+                // Show preview
+                document.getElementById('designPreviewImageBack').src = data.url;
+                designPreviewBack.classList.add('active');
+                
+                // Reset upload area
+                uploadAreaBack.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 1rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Back design uploaded!</strong></p><p class="text-muted">Click to change</p>';
+                uploadAreaBack.style.pointerEvents = '';
+                
+            } catch (error) {
+                console.error('Back upload error:', error);
+                alert('Error uploading back design. Please try again.');
+                
+                uploadAreaBack.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 1rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Upload back design</strong></p><p class="text-muted">PNG, JPG, WEBP (Max 16MB)</p>';
+                uploadAreaBack.style.pointerEvents = '';
+            }
+        });
+        
+        const removeBackBtn = document.getElementById('removeDesignBack');
+        if (removeBackBtn) {
+            removeBackBtn.addEventListener('click', function() {
+                fileInputBack.value = '';
+                designPreviewBack.classList.remove('active');
+                designPreviewBack.style.display = 'none';
+                state.backDesignFile = null;
+                state.backDesignUrl = null;
+                updateDesignLayerVisibility();
+                
+                // Reset upload area
+                uploadAreaBack.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 1rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Upload back design</strong></p><p class="text-muted">PNG, JPG, WEBP (Max 16MB)</p>';
+            });
+        }
+    }
+    
+    function applyDesignPosition() {
+        const designLayer = document.getElementById('designLayer');
+        if (!designLayer || !designLayer.classList.contains('visible')) return;
+        
+        const placement = state.selectedPlacement;
+        const offset = state.designDragOffset[placement] || { x: 0, y: 0 };
+        designLayer.style.transform = `translate(-50%, -50%) translate(${offset.x}px, ${offset.y}px)`;
+        
+        const resetBtn = document.getElementById('resetPositionBtn');
+        const dragHint = document.getElementById('dragHint');
+        if (state.currentView === 'front' && resetBtn && dragHint) {
+            const hasOffset = offset.y !== 0;
+            resetBtn.style.display = hasOffset ? 'inline-block' : 'none';
+            dragHint.style.display = 'block';
+            dragHint.textContent = 'Drag up or down to reposition';
+        } else if (state.currentView === 'back' && resetBtn) {
+            resetBtn.style.display = 'none';
+        }
+    }
+    
+    function setupPlacement() {
+        const placementOptions = document.querySelectorAll('.placement-option');
+        const designLayer = document.getElementById('designLayer');
+        
+        placementOptions.forEach(option => {
+            option.addEventListener('click', function() {
+                placementOptions.forEach(o => o.classList.remove('selected'));
+                this.classList.add('selected');
+                
+                const placement = this.dataset.placement;
+                state.selectedPlacement = placement;
+                
+                designLayer.setAttribute('data-placement', placement);
+                applyDesignPosition();
+                updateTotalPrice();
+            });
+        });
+        
+        document.getElementById('resetPositionBtn')?.addEventListener('click', function() {
+            const placement = state.selectedPlacement;
+            state.designDragOffset[placement] = { x: 0, y: 0 };
+            applyDesignPosition();
+        });
+        document.getElementById('resetBackPositionBtn')?.addEventListener('click', function() {
+            const defaultUp = state.backDesignDefaultUpOffset ?? 60;
+            state.backDesignDragOffset = { y: -defaultUp };
+            applyBackDesignPosition();
+        });
+    }
+    
+    function setupDesignDrag() {
+        const designLayer = document.getElementById('designLayer');
+        const previewCanvas = document.getElementById('previewCanvas');
+        if (!designLayer || !previewCanvas) return;
+        
+        let isDragging = false;
+        let startX = 0, startY = 0;
+        let startOffsetX = 0, startOffsetY = 0;
+        
+        function onMouseDown(e) {
+            if (!designLayer.classList.contains('visible') || !designLayer.classList.contains('draggable')) return;
+            e.preventDefault();
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            const placement = state.selectedPlacement;
+            const offset = state.designDragOffset[placement] || { x: 0, y: 0 };
+            startOffsetX = offset.x;
+            startOffsetY = offset.y;
+        }
+        
+        function onMouseMove(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            const placement = state.selectedPlacement;
+            state.designDragOffset[placement] = {
+                x: 0,
+                y: startOffsetY + (e.clientY - startY)
+            };
+            applyDesignPosition();
+        }
+        
+        function onMouseUp() {
+            if (isDragging) {
+                isDragging = false;
+                designLayer.classList.remove('dragging');
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            }
+        }
+        
+        designLayer.addEventListener('mousedown', function(e) {
+            if (!designLayer.classList.contains('visible') || !designLayer.classList.contains('draggable')) return;
+            e.preventDefault();
+            isDragging = true;
+            designLayer.classList.add('dragging');
+            startX = e.clientX;
+            startY = e.clientY;
+            const placement = state.selectedPlacement;
+            const offset = state.designDragOffset[placement] || { x: 0, y: 0 };
+            startOffsetX = offset.x;
+            startOffsetY = offset.y;
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+        
+        designLayer.addEventListener('touchstart', function(e) {
+            if (!designLayer.classList.contains('visible') || !designLayer.classList.contains('draggable')) return;
+            e.preventDefault();
+            isDragging = true;
+            designLayer.classList.add('dragging');
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            const placement = state.selectedPlacement;
+            const offset = state.designDragOffset[placement] || { x: 0, y: 0 };
+            startOffsetX = offset.x;
+            startOffsetY = offset.y;
+            document.addEventListener('touchmove', onTouchMove, { passive: false });
+            document.addEventListener('touchend', onTouchEnd);
+        }, { passive: false });
+        
+        function onTouchMove(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            const placement = state.selectedPlacement;
+            state.designDragOffset[placement] = {
+                x: 0,
+                y: startOffsetY + (e.touches[0].clientY - startY)
+            };
+            applyDesignPosition();
+        }
+        
+        function onTouchEnd() {
+            if (isDragging) {
+                isDragging = false;
+                designLayer.classList.remove('dragging');
+                document.removeEventListener('touchmove', onTouchMove);
+                document.removeEventListener('touchend', onTouchEnd);
+            }
+        }
+    }
+    
+    function setupBackDesignDrag() {
+        const backDesignLayer = document.getElementById('backDesignLayer');
+        const previewCanvas = document.getElementById('previewCanvas');
+        if (!backDesignLayer || !previewCanvas) return;
+        
+        let isDragging = false;
+        let startY = 0, startOffsetY = 0;
+        
+        function onMouseMove(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            state.backDesignDragOffset = { y: startOffsetY + (e.clientY - startY) };
+            applyBackDesignPosition();
+        }
+        
+        function onMouseUp() {
+            if (isDragging) {
+                isDragging = false;
+                backDesignLayer.classList.remove('dragging');
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            }
+        }
+        
+        function onTouchMove(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            state.backDesignDragOffset = { y: startOffsetY + (e.touches[0].clientY - startY) };
+            applyBackDesignPosition();
+        }
+        
+        function onTouchEnd() {
+            if (isDragging) {
+                isDragging = false;
+                backDesignLayer.classList.remove('dragging');
+                document.removeEventListener('touchmove', onTouchMove);
+                document.removeEventListener('touchend', onTouchEnd);
+            }
+        }
+        
+        backDesignLayer.addEventListener('mousedown', function(e) {
+            if (state.currentView !== 'back') return;
+            if (!state.backDesignEnabled || !(state.backDesignName || state.backDesignNumber)) return;
+            if (state.backDesignMode !== 'name_number') return;
+            e.preventDefault();
+            isDragging = true;
+            backDesignLayer.classList.add('dragging');
+            startY = e.clientY;
+            const defaultUp = state.backDesignDefaultUpOffset ?? 60;
+            startOffsetY = (state.backDesignDragOffset || { y: -defaultUp }).y;
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+        
+        backDesignLayer.addEventListener('touchstart', function(e) {
+            if (state.currentView !== 'back') return;
+            if (!state.backDesignEnabled || !(state.backDesignName || state.backDesignNumber)) return;
+            if (state.backDesignMode !== 'name_number') return;
+            e.preventDefault();
+            isDragging = true;
+            backDesignLayer.classList.add('dragging');
+            startY = e.touches[0].clientY;
+            const defaultUp = state.backDesignDefaultUpOffset ?? 60;
+            startOffsetY = (state.backDesignDragOffset || { y: -defaultUp }).y;
+            document.addEventListener('touchmove', onTouchMove, { passive: false });
+            document.addEventListener('touchend', onTouchEnd);
+        }, { passive: false });
+    }
+    
+    const CANVAS_FONT_CONFIG = {
+        'Bebas Neue': { nameSize: 84, numberSize: 202, numberSpacing: 4, nameSpacing: 3, gap: 120 },
+        'Oswald': { nameSize: 80, numberSize: 198, numberSpacing: 8, nameSpacing: 4, gap: 118 },
+        'Anton': { nameSize: 86, numberSize: 206, numberSpacing: 26, nameSpacing: 4, gap: 122 },
+        'Teko': { nameSize: 84, numberSize: 202, numberSpacing: 18, nameSpacing: 4, gap: 120 }
+    };
+    
+    function generateBackDesignNameNumberImage() {
+        return new Promise((resolve) => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const name = (state.backDesignName || '').toUpperCase().trim();
+            const number = (state.backDesignNumber || '').trim();
+            const font = state.backDesignFont || 'Bebas Neue';
+            if (!name && !number) return resolve(null);
+            
+            const cfg = CANVAS_FONT_CONFIG[font] || CANVAS_FONT_CONFIG['Bebas Neue'];
+            
+            canvas.width = 800;
+            canvas.height = 600;
+            ctx.fillStyle = 'transparent';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 3;
+            
+            const centerX = canvas.width / 2;
+            const upOffset = 60;
+            let y = canvas.height / 2 - upOffset;
+            
+            function drawTextWithSpacing(text, yPos, fontSize, charSpacing) {
+                if (!text) return;
+                ctx.font = `bold ${fontSize}px "${font}", sans-serif`;
+                if (charSpacing > 0 && text.length > 1) {
+                    let totalWidth = 0;
+                    const widths = [];
+                    for (let i = 0; i < text.length; i++) {
+                        const w = ctx.measureText(text[i]).width;
+                        widths.push(w);
+                        totalWidth += w + (i < text.length - 1 ? charSpacing : 0);
+                    }
+                    let x = centerX - totalWidth / 2 + widths[0] / 2;
+                    for (let i = 0; i < text.length; i++) {
+                        ctx.strokeText(text[i], x, yPos);
+                        ctx.fillText(text[i], x, yPos);
+                        x += widths[i] + charSpacing;
+                    }
+                } else {
+                    ctx.strokeText(text, centerX, yPos);
+                    ctx.fillText(text, centerX, yPos);
+                }
+            }
+            
+            if (number) {
+                drawTextWithSpacing(number, y, cfg.numberSize, cfg.numberSpacing);
+                y -= cfg.gap;
+            }
+            if (name) {
+                drawTextWithSpacing(name, y, cfg.nameSize, cfg.nameSpacing);
+            }
+            
+            canvas.toBlob(function(blob) {
+                if (blob) {
+                    const f = new File([blob], 'back_name_number.png', { type: 'image/png' });
+                    resolve(f);
+                } else resolve(null);
+            }, 'image/png');
+        });
+    }
+    
+    function setupAddToCart() {
+        document.getElementById('addToCart').addEventListener('click', async function() {
+            // Validation
+            if (!state.selectedColor) {
+                alert('Please select a color');
+                return;
+            }
+            if (!state.selectedSize) {
+                alert('Please select a size');
+                return;
+            }
+            if (!state.designUrl && !state.designFile) {
+                alert('Please upload a design or choose one from the gallery');
+                return;
+            }
+            if (state.backDesignEnabled) {
+                if (state.backDesignMode === 'name_number') {
+                    if (!state.backDesignName && !state.backDesignNumber) {
+                        alert('Please enter a name and/or number for the back design');
+                        return;
+                    }
+                } else if (state.backDesignMode === 'upload' && !state.backDesignFile && !state.backDesignUrl) {
+                    alert('Please upload a back design image');
+                    return;
+                }
+            }
+            
+            // Show loading
+            this.textContent = 'Adding to Cart...';
+            this.disabled = true;
+            
+            try {
+                const smallLogoDiscount = (state.selectedPlacement === 'left_chest' || state.selectedPlacement === 'right_chest') ? 2 : 0;
+                const unitPrice = state.basePrice - smallLogoDiscount + getSizeUpcharge() + (state.backDesignEnabled ? state.backDesignFee : 0);
+                
+                const formData = new FormData();
+                formData.append('product_id', {{ product.id }});
+                formData.append('color', state.selectedColor.name);
+                formData.append('size', state.selectedSize);
+                formData.append('quantity', state.quantity);
+                formData.append('placement', state.selectedPlacement);
+                formData.append('unit_price', unitPrice);
+                
+                if (state.designFile) {
+                    formData.append('design', state.designFile);
+                }
+                if (state.presetDesignId) {
+                    formData.append('design_id', state.presetDesignId);
+                }
+                
+                if (state.backDesignEnabled) {
+                    if (state.backDesignMode === 'name_number') {
+                        const backFile = await generateBackDesignNameNumberImage();
+                        if (backFile) formData.append('back_design', backFile);
+                    } else if (state.backDesignFile) {
+                        formData.append('back_design', state.backDesignFile);
+                    } else if (state.backDesignUrl) {
+                        formData.append('back_design_url', state.backDesignUrl);
+                    }
+                }
+                
+                // Capture proof images (design on shirt) for cart display
+                if (typeof html2canvas === 'function') {
+                    const previewEl = document.getElementById('previewCanvas');
+                    const frontHasDesign = state.designUrl || state.designFile || state.presetDesignId;
+                    const backHasDesign = state.backDesignEnabled && (
+                        (state.backDesignMode === 'name_number' && (state.backDesignName || state.backDesignNumber)) ||
+                        (state.backDesignMode === 'upload' && state.backDesignUrl)
+                    );
+                    try {
+                        state.currentView = 'front';
+                        updateMockupImage();
+                        updateDesignLayerVisibility();
+                        await new Promise(r => setTimeout(r, 150));
+                        const frontCanvas = await html2canvas(previewEl, { scale: 1, useCORS: true, allowTaint: true, backgroundColor: '#f5f0e1' });
+                        const frontBlob = await new Promise(res => frontCanvas.toBlob(res, 'image/png'));
+                        if (frontBlob && frontHasDesign) {
+                            formData.append('proof_front', new File([frontBlob], 'proof_front.png', { type: 'image/png' }));
+                        }
+                        if (backHasDesign) {
+                            state.currentView = 'back';
+                            updateMockupImage();
+                            updateDesignLayerVisibility();
+                            await new Promise(r => setTimeout(r, 200));
+                            const backCanvas = await html2canvas(previewEl, { scale: 1, useCORS: true, allowTaint: true, backgroundColor: '#f5f0e1' });
+                            const backBlob = await new Promise(res => backCanvas.toBlob(res, 'image/png'));
+                            if (backBlob) formData.append('proof_back', new File([backBlob], 'proof_back.png', { type: 'image/png' }));
+                        }
+                        state.currentView = 'front';
+                        updateMockupImage();
+                        updateDesignLayerVisibility();
+                        await new Promise(r => setTimeout(r, 50));
+                    } catch (e) { console.warn('Proof capture failed:', e); }
+                }
+                
+                const response = await fetch('/cart/add', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    // Success animation
+                    this.textContent = '✓ Added to Cart!';
+                    this.style.background = '#22c55e';
+                    
+                    setTimeout(() => {
+                        window.location.href = '/cart';
+                    }, 800);
+                } else {
+                    throw new Error('Failed to add to cart');
+                }
+            } catch (error) {
+                alert('Error adding to cart. Please try again.');
+                this.textContent = 'Add to Cart';
+                this.disabled = false;
+                this.style.background = '';
+            }
+        });
+    }
+})();
+</script>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGbGmf9ot8AxyG5nqCTX7oG/s8E8Vg8A==" crossorigin="anonymous"></script>
+{% endblock %}

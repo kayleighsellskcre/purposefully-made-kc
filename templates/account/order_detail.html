@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}Order #{{ order.order_number }} - Purposefully Made KC{% endblock %}
+
+{% block content %}
+<div class="account-page">
+    <div class="container">
+        <div class="order-detail">
+            <div class="order-detail-header">
+                <div>
+                    <h1>Order #{{ order.order_number }}</h1>
+                    <p>Placed on {{ order.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+                </div>
+                <span class="badge badge-{{ order.status }}">{{ order.status.replace('_', ' ').title() }}</span>
+            </div>
+            
+            <div class="order-detail-grid">
+                <!-- Order Items -->
+                <div class="detail-section">
+                    <h2>Order Items</h2>
+                    <div class="items-list">
+                        {% for item in order.items %}
+                        <div class="item-detail">
+                            <div class="item-info">
+                                <h3>{{ item.product_name }}</h3>
+                                <p class="item-specs">Style: {{ item.style_number }}</p>
+                                <p class="item-specs">Color: {{ item.color }} | Size: {{ item.size }}</p>
+                                <p class="item-specs">Quantity: {{ item.quantity }}</p>
+                                {% if item.placement %}
+                                <p class="item-specs">Placement: {{ item.placement.replace('_', ' ').title() }}</p>
+                                {% endif %}
+                            </div>
+                            <div class="item-price">
+                                <p class="unit-price">${{ "%.2f"|format(item.unit_price) }} each</p>
+                                <p class="item-total">${{ "%.2f"|format(item.subtotal) }}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Order Summary -->
+                <div class="detail-sidebar">
+                    <div class="detail-section">
+                        <h2>Order Summary</h2>
+                        <div class="summary-row">
+                            <span>Subtotal:</span>
+                            <span>${{ "%.2f"|format(order.subtotal) }}</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Shipping:</span>
+                            <span>${{ "%.2f"|format(order.shipping_cost) }}</span>
+                        </div>
+                        {% if order.tax > 0 %}
+                        <div class="summary-row">
+                            <span>Tax:</span>
+                            <span>${{ "%.2f"|format(order.tax) }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="summary-row total">
+                            <span>Total:</span>
+                            <span>${{ "%.2f"|format(order.total) }}</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Delivery Info -->
+                    <div class="detail-section">
+                        <h2>Delivery</h2>
+                        {% if order.fulfillment_method == 'shipping' %}
+                        <p><strong>Shipping to:</strong></p>
+                        <address>
+                            {{ order.shipping_recipient }}<br>
+                            {{ order.shipping_street }}<br>
+                            {% if order.shipping_street_2 %}{{ order.shipping_street_2 }}<br>{% endif %}
+                            {{ order.shipping_city }}, {{ order.shipping_state }} {{ order.shipping_zip }}
+                        </address>
+                        {% if order.tracking_number %}
+                        <p class="tracking">
+                            <strong>Tracking:</strong><br>
+                            {{ order.tracking_number }}
+                            {% if order.carrier %}
+                            <br><small>({{ order.carrier }})</small>
+                            {% endif %}
+                        </p>
+                        {% endif %}
+                        {% else %}
+                        <p><strong>Local Pickup</strong></p>
+                        <p>{{ order.collection.pickup_address if order.collection else 'Pickup location will be provided' }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Actions -->
+                    <div class="detail-actions">
+                        <form action="{{ url_for('account.reorder', order_number=order.order_number) }}" method="POST">
+                            <button type="submit" class="btn btn-primary btn-block">Reorder</button>
+                        </form>
+                        <a href="{{ url_for('account.orders') }}" class="btn btn-outline btn-block">Back to Orders</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.account-page {
+    padding: 4rem 0;
+}
+
+.order-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 3rem;
+}
+
+.order-detail-header h1 {
+    margin-bottom: 0.5rem;
+}
+
+.order-detail-header p {
+    color: var(--text-secondary);
+}
+
+.order-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 2rem;
+}
+
+.detail-section {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.detail-section h2 {
+    margin-bottom: 1.5rem;
+    font-size: 1.25rem;
+}
+
+.items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.item-detail {
+    display: flex;
+    justify-content: space-between;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.item-detail:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.item-info h3 {
+    font-size: 1.125rem;
+    margin-bottom: 0.5rem;
+}
+
+.item-specs {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin: 0.25rem 0;
+}
+
+.item-price {
+    text-align: right;
+}
+
+.unit-price {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.item-total {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--accent-color);
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.summary-row.total {
+    font-size: 1.25rem;
+    font-weight: 600;
+    border-top: 2px solid var(--border-color);
+    border-bottom: none;
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+}
+
+.summary-row.total span:last-child {
+    color: var(--accent-color);
+}
+
+.detail-section address {
+    font-style: normal;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+.tracking {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.detail-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.btn-block {
+    width: 100%;
+}
+
+@media (max-width: 1024px) {
+    .order-detail-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

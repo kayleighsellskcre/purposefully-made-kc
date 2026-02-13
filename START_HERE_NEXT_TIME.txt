@@ -1,0 +1,19 @@
+🚀 START HERE NEXT TIME
+=======================
+
+Quick start commands:
+
+1. Open PowerShell in project folder
+2. Run these commands:
+
+cd c:\Users\Kayle\OneDrive\Desktop\kb_apparel_site
+.\venv\Scripts\Activate.ps1
+python app.py
+
+3. Open browser:
+http://localhost:5000
+
+4. Read this for full context:
+SESSION_SAVE_POINT_FEB_10_2026.txt
+
+✅ Everything is working and ready to go!

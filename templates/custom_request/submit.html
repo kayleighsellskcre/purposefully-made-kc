@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Submit Design Request - Purposefully Made KC{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1>Submit Your Design Request</h1>
+        <p class="lead">Upload a reference image and describe what you want us to create.</p>
+    </div>
+</div>
+
+<section class="content-section">
+    <div class="container">
+        <div class="submit-form-card">
+            <form method="post" action="{{ url_for('custom_request.submit') }}" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="reference_image" class="form-label">Reference Image</label>
+                    <p class="form-hint">Screenshot or save the image you want recreated (PNG, JPG, WEBP)</p>
+                    <input type="file" id="reference_image" name="reference_image" accept=".png,.jpg,.jpeg,.webp" required class="form-control-file">
+                </div>
+                
+                <div class="form-group">
+                    <label for="description" class="form-label">Describe What You Want</label>
+                    <textarea id="description" name="description" class="form-control" rows="5" required placeholder="e.g. Recreate this logo but in navy blue. Add 'Class of 2025' below. Make it suitable for a t-shirt."></textarea>
+                    <p class="form-hint">Any colors, text changes, or details you want — the more the better!</p>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-lg">Submit Request</button>
+                <a href="{{ url_for('custom_request.index') }}" class="btn btn-outline btn-lg">Cancel</a>
+            </form>
+        </div>
+        
+        <p class="submit-note">We'll recreate your design and add it to <a href="{{ url_for('account.my_designs') }}">My Designs</a>. From there you can order any style, color, or shirt you want!</p>
+    </div>
+</section>
+
+<style>
+.page-header { background: var(--secondary-color); padding: 3rem 0; text-align: center; }
+.page-header h1 { font-family: var(--font-heading); }
+.lead { color: var(--text-secondary); }
+.submit-form-card { max-width: 600px; margin: 0 auto 2rem; background: #fff; padding: 2.5rem; border-radius: var(--border-radius); box-shadow: var(--box-shadow); border: 1px solid var(--border-color); }
+.form-hint { font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem; }
+.form-control-file { display: block; margin-top: 0.5rem; }
+.submit-note { text-align: center; color: var(--text-secondary); }
+.submit-note a { color: var(--accent-color); }
+</style>
+{% endblock %}

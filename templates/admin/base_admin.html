@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="ops-page">
+    <div class="container">
+        <nav class="ops-nav">
+            <a href="{{ url_for('admin.index') }}" class="ops-nav-home">← Dashboard</a>
+            <a href="{{ url_for('admin.orders') }}" class="ops-nav-link">Orders</a>
+            <a href="{{ url_for('admin.production_workflow') }}" class="ops-nav-link">Workflow</a>
+            <a href="{{ url_for('admin.inventory') }}" class="ops-nav-link">Inventory</a>
+            <a href="{{ url_for('admin.vendors') }}" class="ops-nav-link">Vendors</a>
+            <a href="{{ url_for('admin.financial') }}" class="ops-nav-link">Financial</a>
+            <a href="{{ url_for('admin.growth') }}" class="ops-nav-link">Growth</a>
+            <a href="{{ url_for('admin.customers') }}" class="ops-nav-link">Customers</a>
+            <a href="{{ url_for('admin.packaging_sop') }}" class="ops-nav-link">Packaging SOP</a>
+        </nav>
+        {% block admin_content %}{% endblock %}
+    </div>
+</div>
+<style>
+.ops-page { padding: 2rem 0 4rem; }
+.ops-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 2rem; padding: 1rem; background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow); }
+.ops-nav-home, .ops-nav-link { padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; color: var(--text-primary); font-size: 0.9rem; }
+.ops-nav-home { color: var(--accent-color); font-weight: 600; }
+.ops-nav-link:hover { background: var(--secondary-color); color: var(--accent-color); }
+</style>
+{% endblock %}

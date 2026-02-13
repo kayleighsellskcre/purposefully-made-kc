@@ -1,0 +1,123 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}{{ 'Edit' if vendor else 'Add' }} Vendor - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<h1 class="ops-title">{{ 'Edit' if vendor else 'Add' }} Vendor</h1>
+<p class="ops-subtitle">Track contacts, lead times, MOQ, pricing — never scramble or re-research.</p>
+
+<form method="POST" class="vendor-form-luxury">
+    <div class="vendor-form-card">
+        <h3 class="vendor-form-section-title">Contact Information</h3>
+        <div class="vendor-form-grid">
+            <div class="form-group">
+                <label class="form-label">Vendor Name</label>
+                <input type="text" name="name" class="form-control" value="{{ vendor.name if vendor else '' }}" placeholder="e.g. S&S Activewear" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Contact Name</label>
+                <input type="text" name="contact_name" class="form-control" value="{{ vendor.contact_name if vendor else '' }}" placeholder="Account rep or contact">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" name="contact_email" class="form-control" value="{{ vendor.contact_email if vendor else '' }}" placeholder="contact@vendor.com">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Phone</label>
+                <input type="text" name="contact_phone" class="form-control" value="{{ vendor.contact_phone if vendor else '' }}" placeholder="(555) 123-4567">
+            </div>
+        </div>
+    </div>
+
+    <div class="vendor-form-card">
+        <h3 class="vendor-form-section-title">Website & Credentials</h3>
+        <div class="vendor-form-grid">
+            <div class="form-group">
+                <label class="form-label">Website</label>
+                <input type="url" name="website" class="form-control" value="{{ vendor.website if vendor else '' }}" placeholder="https://...">
+            </div>
+            <div class="form-group form-group-full">
+                <label class="form-label">Website Login</label>
+                <input type="text" name="website_login" class="form-control" value="{{ vendor.website_login if vendor else '' }}" placeholder="Login URL or notes">
+            </div>
+        </div>
+    </div>
+
+    <div class="vendor-form-card">
+        <h3 class="vendor-form-section-title">Ordering & Quality</h3>
+        <div class="vendor-form-grid">
+            <div class="form-group">
+                <label class="form-label">Lead Time (days)</label>
+                <input type="number" name="lead_time_days" class="form-control" value="{{ vendor.lead_time_days if vendor else '' }}" placeholder="e.g. 5" min="0">
+            </div>
+            <div class="form-group">
+                <label class="form-label">MOQ</label>
+                <input type="number" name="moq" class="form-control" value="{{ vendor.moq if vendor else '' }}" placeholder="Minimum order" min="0">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Pricing Tier</label>
+                <input type="text" name="pricing_tier" class="form-control" value="{{ vendor.pricing_tier if vendor else '' }}" placeholder="e.g. Wholesale, Premium">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Quality (1–5)</label>
+                <input type="number" name="quality_rating" class="form-control" min="1" max="5" value="{{ vendor.quality_rating if vendor else '' }}" placeholder="★">
+            </div>
+        </div>
+    </div>
+
+    <div class="vendor-form-card">
+        <h3 class="vendor-form-section-title">Notes</h3>
+        <div class="form-group">
+            <label class="form-label">Additional notes, backup vendor, or special instructions</label>
+            <textarea name="notes" class="form-control" rows="4" placeholder="Backup vendor, special instructions, etc.">{{ vendor.notes if vendor else '' }}</textarea>
+        </div>
+    </div>
+
+    <div class="vendor-form-actions">
+        <button type="submit" class="btn btn-primary">Save Vendor</button>
+        <a href="{{ url_for('admin.vendors') }}" class="btn btn-outline">Cancel</a>
+    </div>
+</form>
+
+<style>
+.vendor-form-luxury { max-width: 900px; }
+.vendor-form-card {
+    background: #fff;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+}
+.vendor-form-card:hover { box-shadow: var(--box-shadow-hover); }
+.vendor-form-section-title {
+    font-family: var(--font-heading);
+    font-size: 1.125rem;
+    color: var(--accent-color);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--border-light);
+    font-weight: 600;
+}
+.vendor-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+}
+.form-group { margin-bottom: 0; }
+.form-group-full { grid-column: 1 / -1; }
+.form-label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+.vendor-form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+</style>
+{% endblock %}

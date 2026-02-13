@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}Order Confirmation - Purposefully Made KC{% endblock %}
+
+{% block content %}
+<div class="confirmation-page">
+    <div class="container">
+        <div class="confirmation-card">
+            <div class="confirmation-header">
+                <svg class="success-icon" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M8 12l2 2 4-4"></path>
+                </svg>
+                <h1>Order Confirmed!</h1>
+                <p>Thank you for your order</p>
+            </div>
+            
+            <div class="order-info">
+                <div class="info-row">
+                    <strong>Order Number:</strong>
+                    <span class="order-number">{{ order.order_number }}</span>
+                </div>
+                <div class="info-row">
+                    <strong>Order Date:</strong>
+                    <span>{{ order.created_at.strftime('%B %d, %Y at %I:%M %p') }}</span>
+                </div>
+                <div class="info-row">
+                    <strong>Email:</strong>
+                    <span>{{ order.email }}</span>
+                </div>
+                <div class="info-row">
+                    <strong>Total:</strong>
+                    <span class="total-amount">${{ "%.2f"|format(order.total) }}</span>
+                </div>
+            </div>
+            
+            <div class="confirmation-message">
+                <h2>What's Next?</h2>
+                {% if email_sent %}
+                <p>We've sent a confirmation email to <strong>{{ order.email }}</strong></p>
+                {% else %}
+                <p><strong>Save this page for your records.</strong> To receive confirmation emails, add your SMTP settings (MAIL_SERVER, MAIL_USERNAME, MAIL_PASSWORD) to the <code>.env</code> file.</p>
+                {% endif %}
+                
+                {% if order.fulfillment_method == 'shipping' %}
+                <p>Your order will be shipped to:</p>
+                <address>
+                    {{ order.shipping_recipient }}<br>
+                    {{ order.shipping_street }}<br>
+                    {% if order.shipping_street_2 %}{{ order.shipping_street_2 }}<br>{% endif %}
+                    {{ order.shipping_city }}, {{ order.shipping_state }} {{ order.shipping_zip }}
+                </address>
+                <p>You'll receive a shipping notification with tracking information once your order ships.</p>
+                {% else %}
+                <p><strong>Pickup Instructions:</strong></p>
+                <p>Your order will be ready for pickup soon. We'll email you when it's ready!</p>
+                {% endif %}
+            </div>
+            
+            <div class="order-items">
+                <h3>Order Items</h3>
+                {% for item in order.items %}
+                <div class="confirmation-item">
+                    <div>
+                        <strong>{{ item.product_name }}</strong>
+                        <p>Style: {{ item.style_number }} | Size: {{ item.size }} | Color: {{ item.color }}</p>
+                        <p>Quantity: {{ item.quantity }}</p>
+                    </div>
+                    <div class="item-total">${{ "%.2f"|format(item.subtotal) }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="confirmation-actions">
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('account.orders') }}" class="btn btn-primary">View My Orders</a>
+                {% endif %}
+                <a href="{{ url_for('shop.index') }}" class="btn btn-outline">Continue Shopping</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.confirmation-page {
+    padding: 4rem 0;
+    min-height: calc(100vh - 300px);
+}
+
+.confirmation-card {
+    max-width: 700px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    overflow: hidden;
+}
+
+.confirmation-header {
+    text-align: center;
+    padding: 3rem 2rem;
+    background: linear-gradient(135deg, var(--accent-color), #2d3748);
+    color: #fff;
+}
+
+.success-icon {
+    color: #fff;
+    margin-bottom: 1rem;
+    animation: scaleIn 0.5s ease-out;
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.confirmation-header h1 {
+    margin-bottom: 0.5rem;
+    color: #fff;
+}
+
+.confirmation-header p {
+    color: rgba(255,255,255,0.9);
+}
+
+.order-info {
+    padding: 2rem;
+    background: var(--secondary-color);
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.info-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.order-number {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: var(--accent-color);
+}
+
+.total-amount {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--accent-color);
+}
+
+.confirmation-message {
+    padding: 2rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.confirmation-message h2 {
+    margin-bottom: 1rem;
+}
+
+.confirmation-message code {
+    background: rgba(0,0,0,0.06);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.confirmation-message address {
+    font-style: normal;
+    padding: 1rem;
+    background: var(--secondary-color);
+    border-radius: var(--border-radius);
+    margin: 1rem 0;
+    line-height: 1.6;
+}
+
+.order-items {
+    padding: 2rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.order-items h3 {
+    margin-bottom: 1.5rem;
+}
+
+.confirmation-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.confirmation-item:last-child {
+    border-bottom: none;
+}
+
+.confirmation-item p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin: 0.25rem 0 0;
+}
+
+.item-total {
+    font-weight: 600;
+    color: var(--accent-color);
+}
+
+.confirmation-actions {
+    padding: 2rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+@media (max-width: 768px) {
+    .confirmation-actions {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}

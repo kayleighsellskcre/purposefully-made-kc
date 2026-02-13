@@ -1,0 +1,204 @@
+================================================================================
+PROFESSIONAL PLACEMENT SYSTEM - ALL UPDATES COMPLETE!
+================================================================================
+
+✅ ALL CHANGES IMPLEMENTED
+================================================================================
+
+1. ✅ DESIGN MOVED DOWN 2 INCHES
+   - All placements lowered by ~10% for better positioning
+   - Designs now sit at more realistic chest/back positions
+
+2. ✅ CENTER CHEST MADE LARGER
+   - Increased from 28% to 32% width
+   - Perfect size for main logos like Riverview Falcons
+
+3. ✅ "FULL BACK" REMOVED
+   - Replaced with "Center Back" for more professional positioning
+
+4. ✅ "CENTER BACK" ADDED
+   - Same size as Center Chest (32% width)
+   - Perfect for back logos and team names
+
+5. ✅ FRONT + BACK DESIGN OPTION
+   - New "Add Design on Other Side" button appears after uploading
+   - Adds exactly $6.00 to the order
+   - Separate upload area for back design
+   - Can upload different designs for front and back
+
+6. ✅ AUTOMATIC PRICING
+   - Base price shown
+   - +$6.00 fee appears when back design is enabled
+   - Total updates automatically
+
+================================================================================
+NEW PLACEMENT OPTIONS
+================================================================================
+
+OPTION 1: CENTER CHEST
+   Size: 32% width (~250px)
+   Position: Center, 42% from top
+   Best for: Main logos, team names
+   View: Front
+
+OPTION 2: LEFT CHEST (Your left = mockup right)
+   Size: 12% width (~95px)
+   Position: Right side, 30% from top
+   Best for: Small logos, names
+   View: Front
+
+OPTION 3: RIGHT CHEST (Your right = mockup left)
+   Size: 12% width (~95px)
+   Position: Left side, 30% from top
+   Best for: Small logos, sponsor logos
+   View: Front
+
+OPTION 4: CENTER BACK
+   Size: 32% width (~250px)
+   Position: Center, 42% from top
+   Best for: Back logos, numbers, team names
+   View: Back
+
+================================================================================
+FRONT + BACK DESIGN WORKFLOW
+================================================================================
+
+CUSTOMER EXPERIENCE:
+
+1. Upload Front Design
+   → Design appears on mockup
+   → Choose placement (Center/Left/Right Chest)
+
+2. Click "Add Design on Other Side (+$6.00)"
+   → Button turns gold and shows "-$6.00" to remove
+   → Back design upload area appears
+   → Price updates to show +$6.00 fee
+
+3. Upload Back Design
+   → Different design for the back
+   → Automatically uses "Center Back" placement
+   → Can switch to Back View to preview
+
+4. Add to Cart
+   → Both designs saved
+   → Total price includes $6.00 back design fee
+   → Order shows both placements
+
+PRICING EXAMPLES:
+- T-Shirt ($25) + Front Only = $25
+- T-Shirt ($25) + Front + Back = $31 ($25 + $6)
+- T-Shirt ($25) + Front + Back, Qty 5 = $155 (($25 + $6) × 5)
+
+================================================================================
+VISUAL LAYOUT
+================================================================================
+
+PLACEMENT BUTTONS:
+┌─────────────────────┐  ┌─────────────────────┐
+│  **Center Chest**   │  │  **Left Chest**     │
+│  Medium, centered   │  │  Small, your left   │
+└─────────────────────┘  └─────────────────────┘
+
+┌─────────────────────┐  ┌─────────────────────┐
+│  **Right Chest**    │  │  **Center Back**    │
+│  Small, your right  │  │  Medium, centered   │
+└─────────────────────┘  └─────────────────────┘
+
+BACK DESIGN TOGGLE:
+┌────────────────────────────────────────────┐
+│  Add Design on Other Side       +$6.00    │
+│  Front + Back printing                    │
+│                                            │
+│  [Add Back Design (+$6.00)]    ← Button   │
+└────────────────────────────────────────────┘
+
+When clicked:
+┌────────────────────────────────────────────┐
+│  Add Design on Other Side       +$6.00    │
+│  Front + Back printing                    │
+│                                            │
+│  [Remove Back Design (-$6.00)] ← Gold btn │
+│                                            │
+│  Back Design                               │
+│  ┌──────────────────────────────────────┐ │
+│  │  [Upload Area for Back Design]       │ │
+│  └──────────────────────────────────────┘ │
+└────────────────────────────────────────────┘
+
+================================================================================
+DESIGN POSITIONING (After moving down 2 inches)
+================================================================================
+
+OLD POSITIONS:
+- Center: top: 32%
+- Pocket: top: 22%
+
+NEW POSITIONS (Moved down ~2 inches):
+- Center Chest: top: 42% (was 32%, moved down 10%)
+- Left/Right Chest: top: 30% (was 22%, moved down 8%)
+- Center Back: top: 42% (same as center chest)
+
+Result: More realistic placement on the garment!
+
+================================================================================
+PRICING BREAKDOWN
+================================================================================
+
+PRICE CALCULATION:
+Base Price: ${{ product.base_price }}
+Back Design Fee: $6.00 (if enabled)
+Quantity: User selected
+
+Formula:
+Total = (Base Price + Back Design Fee) × Quantity
+
+Example with $25 shirt:
+- Front only × 1 = $25
+- Front + Back × 1 = $31
+- Front only × 10 = $250
+- Front + Back × 10 = $310
+
+================================================================================
+WHAT TO TEST
+================================================================================
+
+1. HARD REFRESH BROWSER (Ctrl+Shift+R)
+
+2. Upload a front design (like Riverview Falcons)
+   ✓ Should appear lower on shirt (moved down)
+   ✓ Should be good size for center chest
+
+3. Try different placements:
+   ✓ Center Chest - Nice centered logo
+   ✓ Left Chest - Small, on right of mockup
+   ✓ Right Chest - Small, on left of mockup
+   ✓ Center Back - Centered (switch to Back View to see)
+
+4. Click "Add Design on Other Side"
+   ✓ Button should turn gold
+   ✓ Upload area should appear
+   ✓ Price should show +$6.00
+   ✓ Total should update
+
+5. Upload a back design
+   ✓ Should process and show preview
+   ✓ Switch to Back View to see it on mockup
+
+6. Add to cart
+   ✓ Should include both designs
+   ✓ Price should reflect back design fee
+
+================================================================================
+REFRESH YOUR BROWSER NOW!
+================================================================================
+
+All changes are live:
+✓ Better positioning (moved down)
+✓ Larger center chest
+✓ Center Back option
+✓ Front + Back design capability
+✓ Automatic $6 pricing
+
+Hard refresh (Ctrl+Shift+R) and test it out!
+
+================================================================================

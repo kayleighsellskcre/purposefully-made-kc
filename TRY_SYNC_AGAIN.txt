@@ -1,0 +1,44 @@
+═══════════════════════════════════════════════════════════════════
+    🔧 SERVER RESTARTED WITH BETTER LOGGING 🔧
+═══════════════════════════════════════════════════════════════════
+
+I've updated the code to show detailed debug information.
+
+
+WHAT TO DO NOW:
+═══════════════════════════════════════════════════════════════════
+
+1. REFRESH YOUR BROWSER
+   Go to: http://localhost:5000/admin/products
+   Press: F5
+
+2. CLICK "SYNC FROM S&S ACTIVEWEAR"
+
+3. ENTER "5" (just 5 products for quick test)
+
+4. CLICK "START SYNC"
+
+5. WAIT AND WATCH
+   - The sync might take 30-60 seconds
+   - Don't refresh the page while it's working
+   - You'll see a message when it completes
+
+
+WHAT I'M CHECKING:
+═══════════════════════════════════════════════════════════════════
+
+The server logs will now show exactly what's happening:
+- Is the API being called?
+- Is it returning data?
+- Are products being processed?
+- Where is it failing?
+
+After you click "Start Sync", let it finish completely, then
+let me know what message you see.
+
+
+═══════════════════════════════════════════════════════════════════
+
+TRY SYNCING 5 PRODUCTS NOW AND TELL ME WHAT HAPPENS! 🚀
+
+═══════════════════════════════════════════════════════════════════

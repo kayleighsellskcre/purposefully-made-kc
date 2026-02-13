@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+
+{% block title %}Shopping Cart - Purposefully Made KC{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <h1>Shopping Cart</h1>
+    </div>
+</div>
+
+<section class="cart-section">
+    <div class="container">
+        {% if cart_items %}
+        <div class="cart-container">
+            <div class="cart-items">
+                {% for item in cart_items %}
+                <div class="cart-item">
+                    <div class="item-image">
+                        {% if item.display_image %}
+                        <div class="shirt-composite">
+                            <img src="{{ item.display_image }}" alt="{{ item.product.name }}" class="shirt-base"
+                                 onerror="this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'">
+                            {% if item.design_overlay %}
+                            <img src="{{ item.design_overlay }}" alt="Design" class="design-overlay design-overlay-{{ item.placement }}"
+                                 onerror="this.style.display='none'">
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <img src="{{ url_for('static', filename='img/placeholder-product.svg') }}" 
+                             alt="{{ item.product.name }}">
+                        {% endif %}
+                    </div>
+                    
+                    <div class="item-details">
+                        <h3>{{ item.product.name }}</h3>
+                        <p class="item-specs">
+                            Color: {{ item.color }} | Size: {{ item.size }}
+                            {% if item.placement %}
+                            | Placement: {{ item.placement.replace('_', ' ').title() }}
+                            {% endif %}
+                            {% if item.back_design_url %}
+                            | Back design
+                            {% endif %}
+                        </p>
+                        
+                        <div class="item-quantity">
+                            <label>Quantity:</label>
+                            <input type="number" 
+                                   value="{{ item.quantity }}" 
+                                   min="1" 
+                                   max="100"
+                                   data-index="{{ loop.index0 }}"
+                                   class="quantity-input">
+                        </div>
+                    </div>
+                    
+                    <div class="item-price">
+                        <p class="price">${{ "%.2f"|format(item.item_total) }}</p>
+                        <button class="btn-remove" data-index="{{ loop.index0 }}">Remove</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="cart-summary">
+                <h2>Order Summary</h2>
+                
+                <div class="summary-row">
+                    <span>Subtotal:</span>
+                    <span class="subtotal">${{ "%.2f"|format(subtotal) }}</span>
+                </div>
+                
+                <div class="summary-row">
+                    <span>Shipping:</span>
+                    <span class="shipping">Calculated at checkout</span>
+                </div>
+                
+                <div class="summary-row total">
+                    <span>Total:</span>
+                    <span class="total-amount">${{ "%.2f"|format(subtotal) }}</span>
+                </div>
+                
+                <a href="{{ url_for('checkout.index') }}" class="btn btn-primary btn-block">
+                    Proceed to Checkout
+                </a>
+                
+                <a href="{{ url_for('shop.index') }}" class="btn btn-outline btn-block">
+                    Continue Shopping
+                </a>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-cart">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M9 2L3 8v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8l-6-6H9z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            <h2>Your cart is empty</h2>
+            <p>Start adding some custom apparel!</p>
+            <a href="{{ url_for('shop.index') }}" class="btn btn-primary">Shop Now</a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<style>
+.page-header {
+    background: var(--secondary-color);
+    padding: 3rem 0;
+    text-align: center;
+}
+
+.cart-section {
+    padding: 4rem 0;
+    min-height: 400px;
+}
+
+.cart-container {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 2rem;
+}
+
+.cart-items {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.cart-item {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    display: grid;
+    grid-template-columns: 100px 1fr auto;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.item-image {
+    position: relative;
+    width: 100px;
+    min-width: 100px;
+    height: 120px;
+    overflow: hidden;
+    border-radius: var(--border-radius);
+}
+
+.item-image > img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--border-radius);
+}
+
+/* Shirt + design composite */
+.item-image .shirt-composite {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.shirt-composite .shirt-base {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.shirt-composite .design-overlay {
+    position: absolute;
+    object-fit: contain;
+    object-position: center;
+}
+
+/* Front logos: soft shadow */
+.shirt-composite .design-overlay-center_chest,
+.shirt-composite .design-overlay-left_chest,
+.shirt-composite .design-overlay-right_chest {
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));
+}
+
+/* Placement positioning - scaled for cart thumbnail ~100x120, design moved up a touch */
+.design-overlay-center_chest {
+    width: 36%;
+    max-width: 42px;
+    top: 36%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.design-overlay-left_chest {
+    width: 14%;
+    max-width: 18px;
+    top: 30%;
+    left: 62%;
+    transform: translate(-50%, -50%);
+}
+
+.design-overlay-right_chest {
+    width: 14%;
+    max-width: 18px;
+    top: 30%;
+    left: 38%;
+    transform: translate(-50%, -50%);
+}
+
+
+.item-details h3 {
+    margin-bottom: 0.5rem;
+}
+
+.item-specs {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+.item-quantity {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.quantity-input {
+    width: 80px;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+}
+
+.item-price {
+    text-align: right;
+}
+
+.item-price .price {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--accent-color);
+    margin-bottom: 0.5rem;
+}
+
+.btn-remove {
+    background: none;
+    border: none;
+    color: var(--error-color);
+    cursor: pointer;
+    font-size: 0.875rem;
+    text-decoration: underline;
+}
+
+.cart-summary {
+    background: var(--secondary-color);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    height: fit-content;
+    position: sticky;
+    top: 100px;
+}
+
+.cart-summary h2 {
+    margin-bottom: 1.5rem;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.summary-row.total {
+    border-top: 2px solid var(--border-color);
+    padding-top: 1rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.total-amount {
+    color: var(--accent-color);
+}
+
+.btn-block {
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+.empty-cart {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.empty-cart svg {
+    color: var(--text-light);
+    margin-bottom: 2rem;
+}
+
+.empty-cart h2 {
+    margin-bottom: 1rem;
+}
+
+.empty-cart p {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 1024px) {
+    .cart-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .cart-summary {
+        position: static;
+    }
+}
+
+@media (max-width: 768px) {
+    .cart-item {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+    
+    .item-image {
+        margin: 0 auto;
+    }
+}
+</style>
+
+<script>
+// Update quantity
+document.querySelectorAll('.quantity-input').forEach(input => {
+    input.addEventListener('change', async function() {
+        const index = this.dataset.index;
+        const quantity = parseInt(this.value);
+        
+        try {
+            const response = await fetch(`/cart/update/${index}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ quantity })
+            });
+            
+            if (response.ok) {
+                window.location.reload();
+            }
+        } catch (error) {
+            PMKC.showFlash('Failed to update quantity', 'error');
+        }
+    });
+});
+
+// Remove item
+document.querySelectorAll('.btn-remove').forEach(button => {
+    button.addEventListener('click', async function() {
+        const index = this.dataset.index;
+        
+        if (confirm('Remove this item from cart?')) {
+            try {
+                const response = await fetch(`/cart/remove/${index}`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    window.location.reload();
+                }
+            } catch (error) {
+                PMKC.showFlash('Failed to remove item', 'error');
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

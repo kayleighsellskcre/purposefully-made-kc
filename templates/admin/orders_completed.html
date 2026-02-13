@@ -1,0 +1,79 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}All Completed - Orders - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<div class="admin-page">
+    <div class="container">
+        <div class="admin-header">
+            <h1>All Completed</h1>
+            <p class="page-subtitle">Shipped & completed orders — removed from production workflow. Organized by month and year.</p>
+            <div class="admin-stats">
+                <a href="{{ url_for('admin.orders') }}" class="btn btn-outline">← Back to Orders</a>
+                <a href="{{ url_for('admin.production_workflow') }}" class="btn btn-outline">Production Workflow</a>
+            </div>
+        </div>
+        
+        {% if by_month %}
+        {% for (year, month), orders in by_month.items() %}
+        <div class="completed-month-section">
+            <h2 class="month-header">{% if orders %}{{ (orders[0].updated_at or orders[0].created_at).strftime('%B %Y') }}{% endif %}</h2>
+            <div class="table-container">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>Customer</th>
+                            <th>Email</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                            <th>Completed</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr>
+                            <td><strong>{{ order.order_number }}</strong></td>
+                            <td>{{ order.full_name }}</td>
+                            <td>{{ order.email }}</td>
+                            <td>{{ order.items.count() }}</td>
+                            <td>${{ "%.2f"|format(order.total) }}</td>
+                            <td><span class="badge badge-{{ order.status }}">{{ order.status.replace('_', ' ').title() }}</span></td>
+                            <td>{{ (order.updated_at or order.created_at).strftime('%b %d, %Y') }}</td>
+                            <td>
+                                <a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="btn-link">View</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="empty-state">
+            <p>No completed or shipped orders yet.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+<style>
+.admin-page { padding: 2rem 0; }
+.page-subtitle { color: var(--text-secondary); margin-bottom: 1rem; }
+.admin-header { margin-bottom: 2rem; }
+.admin-stats { display: flex; gap: 1rem; margin-top: 1rem; }
+.completed-month-section { margin-bottom: 3rem; }
+.month-header { font-family: var(--font-heading); font-size: 1.5rem; margin-bottom: 1rem; color: var(--accent-color); }
+.table-container { background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow); overflow-x: auto; }
+.admin-table { width: 100%; border-collapse: collapse; }
+.admin-table thead { background: var(--secondary-color); }
+.admin-table th, .admin-table td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+.badge { padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.875rem; }
+.badge-shipped, .badge-completed, .badge-picked_up { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+.btn-link { color: var(--accent-color); text-decoration: none; }
+.btn-link:hover { text-decoration: underline; }
+.empty-state { text-align: center; padding: 4rem 2rem; }
+</style>
+{% endblock %}

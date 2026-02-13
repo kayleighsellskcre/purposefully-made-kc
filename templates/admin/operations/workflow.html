@@ -1,0 +1,55 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Production Workflow - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<h1 class="ops-title">Production Workflow</h1>
+<p class="ops-subtitle">5-stage Kanban — move orders through production. <a href="{{ url_for('admin.orders_completed') }}" class="ops-completed-link">View All Completed →</a></p>
+
+<div class="workflow-board">
+    {% for stage_id, stage_name, stage_desc in stages %}
+    <div class="workflow-column" data-stage="{{ stage_id }}">
+        <div class="workflow-column-header">
+            <span class="workflow-dot workflow-{{ stage_id }}"></span>
+            <h3>{{ stage_name }}</h3>
+            <p>{{ stage_desc }}</p>
+        </div>
+        <div class="workflow-cards">
+            {% for order in orders_by_stage.get(stage_id, []) %}
+            <div class="workflow-card">
+                <a href="{{ url_for('admin.order_detail', order_id=order.id) }}"><strong>{{ order.order_number }}</strong></a>
+                <p>{{ order.full_name }}</p>
+                <p class="small">${{ "%.2f"|format(order.total) }} · {{ order.items.count() }} item(s)</p>
+                {% if stage_id != 'packaged_ready' %}
+                <form method="POST" action="{{ url_for('admin.update_order_stage', order_id=order.id) }}">
+                    <select name="stage" onchange="this.form.submit()">
+                        <option value="">Move to...</option>
+                        {% for sid, sname, _ in stages %}{% if sid != stage_id %}
+                        <option value="{{ sid }}">{{ sname }}</option>
+                        {% endif %}{% endfor %}
+                    </select>
+                </form>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="workflow-empty">No orders</div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+<style>
+.workflow-board{display:flex;gap:1rem;overflow-x:auto;padding-bottom:1rem;}
+.workflow-column{min-width:240px;background:#fff;border-radius:var(--border-radius);box-shadow:var(--box-shadow);padding:1rem;}
+.workflow-column-header{margin-bottom:1rem;}
+.workflow-dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:8px;}
+.workflow-order_received{background:#3b82f6;}
+.workflow-waiting_supplies{background:#f59e0b;}
+.workflow-ready_to_press{background:#f97316;}
+.workflow-pressed{background:#ef4444;}
+.workflow-packaged_ready{background:#10b981;}
+.workflow-card{background:var(--secondary-color);padding:1rem;border-radius:8px;margin-bottom:0.5rem;}
+.workflow-card p{margin:0.25rem 0;font-size:0.9rem;}
+.workflow-empty{color:var(--text-secondary);padding:1rem;text-align:center;}
+.ops-completed-link{color:var(--accent-color);font-weight:500;}
+.ops-completed-link:hover{text-decoration:underline;}
+</style>
+{% endblock %}

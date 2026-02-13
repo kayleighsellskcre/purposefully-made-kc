@@ -1,0 +1,551 @@
+{% extends "base.html" %}
+
+{% block title %}Checkout - Purposefully Made KC{% endblock %}
+
+{% block content %}
+<div class="checkout-page">
+    <div class="container">
+        <h1>Checkout</h1>
+        
+        <div class="checkout-grid">
+            <!-- Left Column: Forms -->
+            <div class="checkout-forms">
+                <!-- Contact Information -->
+                <div class="checkout-section">
+                    <h2>Contact Information</h2>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" class="form-control" 
+                               value="{{ current_user.email if current_user.is_authenticated else '' }}" 
+                               {% if current_user.is_authenticated %}readonly{% endif %}>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="first_name">First Name</label>
+                            <input type="text" id="first_name" class="form-control" 
+                                   value="{{ current_user.first_name if current_user.is_authenticated else '' }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="last_name">Last Name</label>
+                            <input type="text" id="last_name" class="form-control" 
+                                   value="{{ current_user.last_name if current_user.is_authenticated else '' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="phone">Phone</label>
+                        <input type="tel" id="phone" class="form-control" 
+                               value="{{ current_user.phone if current_user.is_authenticated else '' }}">
+                    </div>
+                </div>
+                
+                <!-- Fulfillment Method -->
+                <div class="checkout-section">
+                    <h2>Fulfillment Method</h2>
+                    <div class="fulfillment-options">
+                        <label class="fulfillment-option active">
+                            <input type="radio" name="fulfillment" value="pickup" checked>
+                            <div>
+                                <strong>Local Pickup</strong>
+                                <p>Free - Pick up at our location</p>
+                            </div>
+                        </label>
+                        
+                        <label class="fulfillment-option">
+                            <input type="radio" name="fulfillment" value="shipping">
+                            <div>
+                                <strong>Shipping</strong>
+                                <p>+$11.00 flat rate</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Shipping Address (hidden by default) -->
+                <div class="checkout-section shipping-section" style="display: none;">
+                    <h2>Shipping Address</h2>
+                    
+                    {% if addresses %}
+                    <div class="saved-addresses">
+                        <label for="saved_address">Use saved address</label>
+                        <select id="saved_address" class="form-control">
+                            <option value="">Enter new address</option>
+                            {% for address in addresses %}
+                            <option value="{{ address.id }}" 
+                                    data-recipient="{{ address.recipient_name }}"
+                                    data-street="{{ address.street_address }}"
+                                    data-street2="{{ address.street_address_2 or '' }}"
+                                    data-city="{{ address.city }}"
+                                    data-state="{{ address.state }}"
+                                    data-zip="{{ address.zip_code }}">
+                                {{ address.label or 'Address' }} - {{ address.street_address }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="form-group">
+                        <label for="ship_recipient">Full Name</label>
+                        <input type="text" id="ship_recipient" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="ship_street">Street Address</label>
+                        <input type="text" id="ship_street" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="ship_street_2">Apartment, suite, etc. (optional)</label>
+                        <input type="text" id="ship_street_2" class="form-control">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ship_city">City</label>
+                            <input type="text" id="ship_city" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="ship_state">State</label>
+                            <input type="text" id="ship_state" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="ship_zip">ZIP Code</label>
+                            <input type="text" id="ship_zip" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Payment Method -->
+                <div class="checkout-section">
+                    <h2>Payment Method</h2>
+                    <div class="payment-tabs">
+                        <button class="payment-tab active" data-method="card">Card / Apple Pay</button>
+                        <button class="payment-tab" data-method="paypal">PayPal / Venmo</button>
+                        <button class="payment-tab" data-method="cash">Cash</button>
+                    </div>
+                    
+                    <div class="payment-content">
+                        <!-- Stripe Card Payment -->
+                        <div class="payment-panel" id="card-panel">
+                            <div id="card-element"></div>
+                            <div id="card-errors" class="error-message"></div>
+                        </div>
+                        
+                        <!-- PayPal Payment -->
+                        <div class="payment-panel" id="paypal-panel" style="display: none;">
+                            <div id="paypal-button-container"></div>
+                        </div>
+                        
+                        <!-- Cash Payment -->
+                        <div class="payment-panel" id="cash-panel" style="display: none;">
+                            <div class="cash-payment-info">
+                                <p><strong>Pay at pickup or when order is ready.</strong></p>
+                                <p>Your order will be created and you can pay with cash when you collect your items.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="submit-payment" class="btn btn-primary btn-block btn-lg">
+                    Complete Order - $<span id="total-amount">{{ "%.2f"|format(totals.total) }}</span>
+                </button>
+            </div>
+            
+            <!-- Right Column: Order Summary -->
+            <div class="order-summary">
+                <h2>Order Summary</h2>
+                
+                <div class="summary-items">
+                    {% for item in cart %}
+                    <div class="summary-item">
+                        <div>
+                            <strong>{{ item.quantity }}x Item</strong>
+                            <p>Size: {{ item.size }} | Color: {{ item.color }}</p>
+                        </div>
+                        <div class="item-price">${{ "%.2f"|format(item.quantity * item.unit_price) }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="summary-totals">
+                    <div class="summary-row">
+                        <span>Subtotal:</span>
+                        <span id="subtotal-amount">${{ "%.2f"|format(totals.subtotal) }}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Shipping:</span>
+                        <span id="shipping-amount">${{ "%.2f"|format(totals.shipping_cost) }}</span>
+                    </div>
+                    <div class="summary-row total">
+                        <strong>Total:</strong>
+                        <strong id="summary-total">${{ "%.2f"|format(totals.total) }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+// Stripe setup
+const stripe = Stripe('{{ stripe_public_key }}');
+const elements = stripe.elements();
+const cardElement = elements.create('card');
+cardElement.mount('#card-element');
+
+let currentMethod = 'card';
+let currentFulfillment = 'pickup';
+
+// Fulfillment method switching
+document.querySelectorAll('input[name="fulfillment"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        currentFulfillment = e.target.value;
+        
+        // Update active state
+        document.querySelectorAll('.fulfillment-option').forEach(opt => {
+            opt.classList.remove('active');
+        });
+        e.target.closest('.fulfillment-option').classList.add('active');
+        
+        // Show/hide shipping form
+        const shippingSection = document.querySelector('.shipping-section');
+        if (currentFulfillment === 'shipping') {
+            shippingSection.style.display = 'block';
+            updateTotals(11.00);
+        } else {
+            shippingSection.style.display = 'none';
+            updateTotals(0);
+        }
+    });
+});
+
+// Payment method tabs
+document.querySelectorAll('.payment-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        const method = tab.dataset.method;
+        currentMethod = method;
+        
+        // Update tabs
+        document.querySelectorAll('.payment-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        // Update panels
+        document.getElementById('card-panel').style.display = method === 'card' ? 'block' : 'none';
+        document.getElementById('paypal-panel').style.display = method === 'paypal' ? 'block' : 'none';
+        document.getElementById('cash-panel').style.display = method === 'cash' ? 'block' : 'none';
+    });
+});
+
+// Saved address selection
+const savedAddressSelect = document.getElementById('saved_address');
+if (savedAddressSelect) {
+    savedAddressSelect.addEventListener('change', (e) => {
+        const option = e.target.selectedOptions[0];
+        if (option.value) {
+            document.getElementById('ship_recipient').value = option.dataset.recipient;
+            document.getElementById('ship_street').value = option.dataset.street;
+            document.getElementById('ship_street_2').value = option.dataset.street2;
+            document.getElementById('ship_city').value = option.dataset.city;
+            document.getElementById('ship_state').value = option.dataset.state;
+            document.getElementById('ship_zip').value = option.dataset.zip;
+        }
+    });
+}
+
+function updateTotals(shippingCost) {
+    const subtotal = {{ totals.subtotal }};
+    const total = subtotal + shippingCost;
+    
+    document.getElementById('shipping-amount').textContent = '$' + shippingCost.toFixed(2);
+    document.getElementById('total-amount').textContent = total.toFixed(2);
+    document.getElementById('summary-total').textContent = '$' + total.toFixed(2);
+}
+
+// Submit payment
+document.getElementById('submit-payment').addEventListener('click', async () => {
+    if (currentMethod === 'card') {
+        await handleStripePayment();
+    } else if (currentMethod === 'cash') {
+        await handleCashPayment();
+    } else {
+        alert('PayPal integration coming soon!');
+    }
+});
+
+async function handleStripePayment() {
+    const button = document.getElementById('submit-payment');
+    button.disabled = true;
+    button.textContent = 'Processing...';
+    
+    try {
+        // Create payment intent
+        const response = await fetch('/checkout/create-payment-intent', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                shipping_method: currentFulfillment
+            })
+        });
+        
+        const {clientSecret} = await response.json();
+        
+        // Confirm payment
+        const {error, paymentIntent} = await stripe.confirmCardPayment(clientSecret, {
+            payment_method: {
+                card: cardElement,
+                billing_details: {
+                    email: document.getElementById('email').value,
+                    name: document.getElementById('first_name').value + ' ' + document.getElementById('last_name').value
+                }
+            }
+        });
+        
+        if (error) {
+            document.getElementById('card-errors').textContent = error.message;
+            button.disabled = false;
+            button.innerHTML = 'Complete Order - $<span id="total-amount">{{ "%.2f"|format(totals.total) }}</span>';
+        } else {
+            // Complete order
+            await completeOrder(paymentIntent.id);
+        }
+    } catch (error) {
+        alert('Payment failed: ' + error.message);
+        button.disabled = false;
+        button.innerHTML = 'Complete Order - $<span id="total-amount">{{ "%.2f"|format(totals.total) }}</span>';
+    }
+}
+
+async function handleCashPayment() {
+    const button = document.getElementById('submit-payment');
+    button.disabled = true;
+    button.textContent = 'Creating order...';
+    
+    try {
+        await completeOrder(null, 'cash');
+    } catch (error) {
+        alert('Order failed: ' + error.message);
+        button.disabled = false;
+        button.innerHTML = 'Complete Order - $<span id="total-amount">{{ "%.2f"|format(totals.total) }}</span>';
+    }
+}
+
+async function completeOrder(paymentId, paymentMethodOverride) {
+    const paymentMethod = paymentMethodOverride || (paymentId ? 'stripe' : 'cash');
+    const shippingInfo = currentFulfillment === 'shipping' ? {
+        recipient: document.getElementById('ship_recipient').value,
+        street: document.getElementById('ship_street').value,
+        street_2: document.getElementById('ship_street_2').value,
+        city: document.getElementById('ship_city').value,
+        state: document.getElementById('ship_state').value,
+        zip: document.getElementById('ship_zip').value
+    } : null;
+    
+    const response = await fetch('/checkout/complete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            payment_method: paymentMethod,
+            payment_id: paymentId,
+            shipping_method: currentFulfillment,
+            email: document.getElementById('email').value,
+            first_name: document.getElementById('first_name').value,
+            last_name: document.getElementById('last_name').value,
+            phone: document.getElementById('phone').value,
+            shipping_info: shippingInfo
+        })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+        window.location.href = data.redirect_url;
+    } else {
+        alert('Order failed: ' + data.error);
+    }
+}
+</script>
+
+<style>
+.checkout-page {
+    padding: 4rem 0;
+    min-height: calc(100vh - 300px);
+}
+
+.checkout-grid {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 3rem;
+}
+
+.checkout-section {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.checkout-section h2 {
+    font-size: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-row.three {
+    grid-template-columns: 2fr 1fr 1fr;
+}
+
+.fulfillment-options {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.fulfillment-option {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.fulfillment-option.active {
+    border-color: var(--accent-color);
+    background: rgba(0,0,0,0.02);
+}
+
+.fulfillment-option input[type="radio"] {
+    width: 20px;
+    height: 20px;
+}
+
+.fulfillment-option strong {
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.fulfillment-option p {
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.payment-tabs {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.payment-tab {
+    flex: 1;
+    padding: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: #fff;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.payment-tab.active {
+    border-color: var(--accent-color);
+    background: var(--secondary-color);
+    color: var(--accent-color);
+}
+
+#card-element {
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: #fff;
+}
+
+.error-message {
+    color: var(--error-color);
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.cash-payment-info {
+    padding: 1rem;
+    background: rgba(184, 124, 111, 0.08);
+    border-radius: 8px;
+    border: 1px solid rgba(184, 124, 111, 0.2);
+}
+
+.cash-payment-info p {
+    margin: 0 0 0.5rem;
+    color: var(--text-secondary);
+}
+
+.cash-payment-info p:last-child {
+    margin-bottom: 0;
+}
+
+.order-summary {
+    position: sticky;
+    top: 100px;
+    height: fit-content;
+    background: var(--secondary-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+}
+
+.order-summary h2 {
+    margin-bottom: 1.5rem;
+}
+
+.summary-items {
+    margin-bottom: 1.5rem;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.summary-item p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin: 0.25rem 0 0;
+}
+
+.summary-totals {
+    padding-top: 1rem;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+}
+
+.summary-row.total {
+    border-top: 2px solid var(--border-color);
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+    font-size: 1.25rem;
+}
+
+@media (max-width: 1024px) {
+    .checkout-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .order-summary {
+        position: static;
+    }
+}
+</style>
+{% endblock %}

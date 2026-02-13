@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}My Addresses - Purposefully Made KC{% endblock %}
+
+{% block content %}
+<div class="account-page">
+    <div class="container">
+        <div class="account-layout">
+            <!-- Sidebar -->
+            <aside class="account-sidebar">
+                <h2>My Account</h2>
+                <nav class="account-nav">
+                    <a href="{{ url_for('account.orders') }}" class="account-nav-link">Orders</a>
+                    <a href="{{ url_for('account.my_designs') }}" class="account-nav-link">My Designs</a>
+                    <a href="{{ url_for('custom_request.my_requests') }}" class="account-nav-link">My Requests</a>
+                    <a href="{{ url_for('account.addresses') }}" class="account-nav-link active">Addresses</a>
+                    <a href="{{ url_for('account.profile') }}" class="account-nav-link">Profile</a>
+                    {% if current_user.is_admin %}
+                    <a href="{{ url_for('admin.index') }}" class="account-nav-link admin">Admin Dashboard</a>
+                    {% endif %}
+                    <a href="{{ url_for('auth.logout') }}" class="account-nav-link">Logout</a>
+                </nav>
+            </aside>
+            
+            <!-- Main Content -->
+            <div class="account-content">
+                <div class="content-header">
+                    <h1>My Addresses</h1>
+                    <a href="{{ url_for('account.add_address') }}" class="btn btn-primary">Add Address</a>
+                </div>
+                
+                {% if addresses %}
+                <div class="addresses-grid">
+                    {% for address in addresses %}
+                    <div class="address-card">
+                        {% if address.is_default %}
+                        <span class="badge badge-default">Default</span>
+                        {% endif %}
+                        <h3>{{ address.label or 'Address' }}</h3>
+                        <address>
+                            {{ address.recipient_name }}<br>
+                            {{ address.street_address }}<br>
+                            {% if address.street_address_2 %}{{ address.street_address_2 }}<br>{% endif %}
+                            {{ address.city }}, {{ address.state }} {{ address.zip_code }}
+                        </address>
+                        <div class="address-actions">
+                            <a href="{{ url_for('account.edit_address', address_id=address.id) }}" class="btn btn-outline btn-sm">Edit</a>
+                            <form action="{{ url_for('account.delete_address', address_id=address.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Delete this address?');">
+                                <button type="submit" class="btn btn-outline btn-sm">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                    <h2>No saved addresses</h2>
+                    <p>Add an address for faster checkout</p>
+                    <a href="{{ url_for('account.add_address') }}" class="btn btn-primary">Add Address</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.account-page {
+    padding: 4rem 0;
+}
+
+.account-layout {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 3rem;
+}
+
+.account-sidebar {
+    position: sticky;
+    top: 100px;
+    height: fit-content;
+}
+
+.account-sidebar h2 {
+    margin-bottom: 1.5rem;
+}
+
+.account-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.account-nav-link {
+    padding: 0.75rem 1rem;
+    border-radius: var(--border-radius);
+    color: var(--text-primary);
+    transition: var(--transition);
+}
+
+.account-nav-link:hover,
+.account-nav-link.active {
+    background: var(--secondary-color);
+    color: var(--accent-color);
+}
+
+.account-nav-link.admin {
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+.content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.addresses-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.address-card {
+    position: relative;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+}
+
+.badge-default {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: var(--accent-color);
+    color: #fff;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.address-card h3 {
+    margin-bottom: 1rem;
+    font-size: 1.125rem;
+}
+
+.address-card address {
+    font-style: normal;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+}
+
+.address-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.empty-state svg {
+    color: var(--text-light);
+    margin-bottom: 2rem;
+}
+
+.empty-state h2 {
+    margin-bottom: 1rem;
+}
+
+.empty-state p {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+    .account-layout {
+        grid-template-columns: 1fr;
+    }
+    
+    .account-sidebar {
+        position: static;
+    }
+    
+    .account-nav {
+        flex-direction: row;
+        overflow-x: auto;
+    }
+}
+</style>
+{% endblock %}

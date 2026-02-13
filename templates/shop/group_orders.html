@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Group Orders - Purposefully Made KC{% endblock %}
+{% block extra_css %}
+<style>
+.group-orders-hero {
+    background: linear-gradient(135deg, var(--ivory-silk) 0%, var(--cashmere-sand) 50%, rgba(184, 124, 111, 0.15) 100%);
+    padding: 4rem 0;
+    text-align: center;
+    border-bottom: 1px solid var(--border-light);
+}
+.group-orders-hero h1 {
+    font-family: var(--font-heading);
+    font-size: clamp(2rem, 5vw, 3rem);
+    color: var(--midnight-charcoal);
+    margin-bottom: 0.5rem;
+}
+.group-orders-hero .lead {
+    font-size: 1.15rem;
+    color: var(--text-secondary);
+    max-width: 560px;
+    margin: 0 auto;
+}
+.group-orders-content {
+    padding: 4rem 0 6rem;
+}
+.steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 2rem;
+    max-width: 900px;
+    margin: 0 auto 3rem;
+}
+.step-card {
+    background: #fff;
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    text-align: center;
+    box-shadow: var(--box-shadow);
+    border: 1px solid var(--border-light);
+}
+.step-card .step-num {
+    width: 48px;
+    height: 48px;
+    background: var(--accent-color);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.25rem;
+    margin: 0 auto 1rem;
+}
+.step-card h3 {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+.step-card p {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin: 0;
+}
+.cta-section {
+    text-align: center;
+    max-width: 500px;
+    margin: 0 auto;
+}
+.cta-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+.cta-buttons .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+.cta-buttons .btn-secondary {
+    background: transparent;
+    border: 2px solid var(--accent-color);
+    color: var(--accent-color);
+}
+.cta-buttons .btn-secondary:hover {
+    background: var(--accent-color);
+    color: #fff;
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="group-orders-hero">
+    <div class="container">
+        <h1>Group Orders</h1>
+        <p class="lead">Custom apparel for teams, schools, and organizations. Create your selective options and share one link — everyone stays matching.</p>
+    </div>
+</div>
+
+<section class="group-orders-content">
+    <div class="container">
+        <div class="steps-grid">
+            <div class="step-card">
+                <div class="step-num">1</div>
+                <h3>Choose your options</h3>
+                <p>Select the styles, colors, and logos your group can order from.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-num">2</div>
+                <h3>Get your share link</h3>
+                <p>We create a custom link for your collection.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-num">3</div>
+                <h3>Share with your group</h3>
+                <p>Team members pick their size and order — no confusion.</p>
+            </div>
+        </div>
+
+        <div class="cta-section">
+            <h2>Get started</h2>
+            <p>Ready to set up a group order for your team, school, or organization?</p>
+            <div class="cta-buttons">
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('shop.create_group_order') }}" class="btn btn-primary btn-lg">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Create Group Order
+                </a>
+                {% if is_admin %}
+                <a href="{{ url_for('admin.collections') }}" class="btn btn-secondary">Manage all collections</a>
+                {% endif %}
+                {% else %}
+                <a href="{{ url_for('auth.login') }}?next={{ url_for('shop.group_orders') }}" class="btn btn-primary btn-lg">
+                    Log in to create a group order
+                </a>
+                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 1rem;">Create an account or log in to set up your group order and get a shareable link.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

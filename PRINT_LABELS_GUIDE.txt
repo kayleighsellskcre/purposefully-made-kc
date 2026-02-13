@@ -1,0 +1,63 @@
+===========================================
+PRINT ORDER LABELS - PRODUCTION GUIDE
+===========================================
+
+OVERVIEW
+--------
+Print customer labels for your 3×10 sticker paper. Each sheet holds 30 labels 
+(3 columns × 10 rows). Labels auto-fill in order—when a sheet is full, a new 
+sheet starts.
+
+LABEL FORMATS
+-------------
+• SHIPPING ORDERS: Name + full address (street, city, state, zip)
+• PICKUP ORDERS: Name, phone, email
+
+Each label includes the order number (e.g., KB20260210ABC1) for production reference.
+
+HOW TO ACCESS
+-------------
+1. Admin → Production Center → "Print Labels"
+2. Or Admin → Orders → "Print Labels" button
+
+HOW TO USE
+----------
+1. Go to Admin → Production Center → Print Labels
+2. Select which orders to include:
+   - Status: Check Paid, In Production, New, and/or Ready
+   - Collection: Filter by collection (or All)
+3. Click "Apply Filters" to refresh the list
+4. Review the preview—each rectangle shows one order's info
+5. Load your 3×10 sticker paper in the printer
+6. Click "Print Labels"
+7. In the print dialog, ensure:
+   - Paper size: Letter (8.5" × 11")
+   - Scale: 100% (no scaling)
+   - Margins: Default
+8. Print
+
+LABEL SHEET LAYOUT
+------------------
+• 3 columns × 10 rows = 30 labels per sheet
+• Matches Avery 5160 / similar 3×10 address label sheets
+• Labels fill left-to-right, top-to-bottom
+• Empty slots on the last sheet show as dashed boxes (don't print on those)
+
+TIPS
+----
+• Print "Paid" + "In Production" to get orders ready for fulfillment
+• Use Collection filter when fulfilling a specific team/event order
+• Order number on each label helps you match labels to orders
+• Do a test print on plain paper first to verify alignment
+
+TROUBLESHOOTING
+---------------
+Labels don't align with stickers?
+→ Check printer margins (set to minimum/default)
+→ Verify paper size is Letter (8.5" × 11")
+→ Try "Fit to page" OFF—use 100% scale
+
+No orders showing?
+→ Ensure at least one status checkbox is selected
+→ Click "Apply Filters" after changing options
+→ Check that you have orders in those statuses

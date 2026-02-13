@@ -1,0 +1,34 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Vendors - Operations - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<h1 class="ops-title">Vendor & Supplier Database</h1>
+<p class="ops-subtitle">Never scramble or re-research — track contacts, lead times, MOQ, pricing.</p>
+
+<div class="ops-header-actions">
+    <a href="{{ url_for('admin.add_vendor') }}" class="btn btn-primary">+ Add Vendor</a>
+</div>
+
+<div class="ops-card vendor-list-card">
+    <table class="admin-table">
+        <thead><tr><th>Name</th><th>Contact</th><th>Lead Time</th><th>MOQ</th><th>Quality</th><th>Actions</th></tr></thead>
+        <tbody>
+            {% for v in vendors %}
+            <tr>
+                <td><strong>{{ v.name }}</strong></td>
+                <td>{{ v.contact_name or '-' }}<br><small>{{ v.contact_email or '' }}</small></td>
+                <td>{{ v.lead_time_days or '-' }} days</td>
+                <td>{{ v.moq or '-' }}</td>
+                <td>{% if v.quality_rating %}{{ '★' * v.quality_rating }}{% else %}-{% endif %}</td>
+                <td><a href="{{ url_for('admin.edit_vendor', id=v.id) }}" class="btn-link">Edit</a></td>
+            </tr>
+            {% else %}<tr><td colspan="6" class="text-muted">No vendors yet.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+</div>
+<style>
+.ops-header-actions { margin-bottom: 2rem; }
+.vendor-list-card { overflow: hidden; }
+.vendor-list-card .admin-table td { vertical-align: middle; }
+.vendor-list-card td small { color: var(--text-secondary); font-size: 0.85rem; }
+</style>
+{% endblock %}

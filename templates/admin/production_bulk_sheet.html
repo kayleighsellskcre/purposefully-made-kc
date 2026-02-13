@@ -1,0 +1,169 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Production Bulk Sheet - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<div class="admin-page">
+    <div class="container">
+        <div class="admin-header">
+            <div>
+                <h1>Production Bulk Sheet</h1>
+                <p class="page-subtitle">Orders marked <strong>In Production</strong> only. Mark as Ready/Shipped/Completed to remove from this list.</p>
+            </div>
+            <button onclick="window.print()" class="btn btn-primary">Print Sheet</button>
+        </div>
+        
+        {% if bulk_list %}
+        <div class="bulk-sheets">
+            {% for group in bulk_list %}
+            <div class="bulk-sheet">
+                <div class="bulk-header">
+                    <div class="design-preview">
+                        {% if group.design and group.design.file_path %}
+                        <img src="{{ url_for('static', filename=group.design.file_path) }}" alt="Design" class="bulk-design-img">
+                        {% else %}
+                        <div class="no-design">No image</div>
+                        {% endif %}
+                    </div>
+                    <div class="bulk-info">
+                        <h2>Design {{ loop.index }}</h2>
+                        <p><strong>Placement:</strong> {{ group.placement.replace('_', ' ')|title }}</p>
+                        <p><strong>Total items:</strong> {{ group.total_qty }}</p>
+                    </div>
+                </div>
+                
+                <table class="bulk-table">
+                    <thead>
+                        <tr>
+                            <th>Size</th>
+                            <th>Print Width</th>
+                            <th>Quantity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for size_key, qty in group.size_qty|dictsort %}
+                        <tr>
+                            <td><strong>{{ size_key[0] }}</strong></td>
+                            <td>{% if size_key[1] %}{{ "%.2f"|format(size_key[1]) }}"{% else %}—{% endif %}</td>
+                            <td>{{ qty }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                
+                <div class="bulk-orders">
+                    <strong>Orders:</strong>
+                    {% for item in group.items %}
+                    <a href="{{ url_for('admin.order_detail', order_id=item.order_id) }}">{{ item.order.order_number }}</a>{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>No orders in production. Mark orders as "In Production" to see them here.</p>
+            <a href="{{ url_for('admin.orders', status='paid') }}" class="btn btn-primary">View Paid Orders</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+@media print {
+    .admin-header button, .bulk-orders a { display: none; }
+    .bulk-sheet { page-break-after: always; }
+}
+
+.admin-page { padding: 4rem 0; }
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+}
+
+.page-subtitle {
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+}
+
+.bulk-sheets { display: flex; flex-direction: column; gap: 2rem; }
+
+.bulk-sheet {
+    background: #fff;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    padding: 2rem;
+}
+
+.bulk-header {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.design-preview {
+    flex-shrink: 0;
+    width: 180px;
+    height: 180px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f9f9f9;
+}
+
+.bulk-design-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.no-design {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+}
+
+.bulk-info h2 { margin-bottom: 0.5rem; }
+
+.bulk-info p { margin: 0.25rem 0; }
+
+.bulk-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+}
+
+.bulk-table thead { background: var(--secondary-color); }
+
+.bulk-table th, .bulk-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.bulk-orders {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.bulk-orders a { color: var(--accent-color); }
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: #fff;
+    border-radius: 12px;
+    border: 2px dashed var(--border-color);
+}
+
+.empty-state p { margin-bottom: 1.5rem; }
+</style>
+{% endblock %}
