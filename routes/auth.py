@@ -52,6 +52,12 @@ def login():
             flash('Invalid email or password', 'error')
             return redirect(url_for('auth.login'))
         
+        # Ensure the designated admin email always has admin access (fixes deploy/fresh DB)
+        admin_email = os.environ.get('ADMIN_EMAIL', 'purposefullymadekc@gmail.com')
+        if user.email == admin_email and not getattr(user, 'is_admin', False):
+            user.is_admin = True
+            db.session.commit()
+        
         login_user(user, remember=remember)
         _clear_cart_for_new_user()
         

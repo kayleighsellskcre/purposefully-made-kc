@@ -5,10 +5,12 @@ from flask_mail import Mail
 from werkzeug.utils import secure_filename
 from config import Config
 from models import db, User, Address, Collection, Product, Design, Order, OrderItem
+from utils.seed_data import seed_products_if_empty
 import stripe
 import paypalrestsdk
 
 mail = Mail()
+
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -21,6 +23,7 @@ def create_app(config_class=Config):
     # Create tables if they don't exist (needed for fresh Railway/PostgreSQL deploys)
     with app.app_context():
         db.create_all()
+        seed_products_if_empty()
     
     # Flask-Login setup
     login_manager = LoginManager()

@@ -10,13 +10,18 @@ shop_bp = Blueprint('shop', __name__, url_prefix='/shop')
 def index():
     """Shop page - browse all products"""
     from models import ProductColorVariant
-    
+    from utils.seed_data import seed_products_if_empty
+
+    # If DB is empty (e.g. after deploy), seed demo products so the shop is never blank
+    if Product.query.count() == 0:
+        seed_products_if_empty()
+
     # Clear collection context so user sees full catalog with all colors
     session.pop('collection_id', None)
-    
+
     category = request.args.get('category')
     age_group = request.args.get('age_group')
-    
+
     query = Product.query.filter_by(is_active=True)
     
     if age_group == 'youth':
