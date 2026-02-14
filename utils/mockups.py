@@ -56,3 +56,45 @@ def get_mockup_url_for_variant(product, variant, view, app):
         from flask import url_for
         return url_for('main.serve_mockup', path=rel)
     return None
+
+
+def discover_colors_from_mockup_folder(app, style_number):
+    """
+    Scan uploads/mockups/{style_number}/ for image files and return unique colors with their mockup URLs.
+    Filename format: {style_number}_{Color_Name}_front.jpg (or _back). Returns list of dicts:
+    [{'color_name': 'Aqua', 'front_image': url or None, 'back_image': url or None, 'inventory': {}}, ...]
+    so that ALL mockups in the folder show up with the product even if there's no DB variant yet.
+    """
+    from flask import url_for
+    # Parse filenames like 3001_Aqua_front.jpg -> color "Aqua", view "front"
+    colors_seen = {}
+    for mockup_dir in _mockup_dirs(app):
+        if not mockup_dir or not os.path.isdir(mockup_dir):
+            continue
+        style_dir = os.path.join(mockup_dir, str(style_number))
+        if not os.path.isdir(style_dir):
+            continue
+        for ext in ('.jpg', '.jpeg', '.png', '.webp'):
+            for f in Path(style_dir).glob('*' + ext):
+                name = f.stem
+                parts = name.split('_')
+                if len(parts) < 3:
+                    continue
+                if parts[0] != str(style_number):
+                    continue
+                view = parts[-1].lower()
+                if view not in ('front', 'back', 'side'):
+                    continue
+                color_parts = parts[1:-1]
+                color_name = ' '.join(color_parts).title()
+                if not color_name:
+                    continue
+                rel = f"{style_number}/{f.name}"
+                url = url_for('main.serve_mockup', path=rel)
+                if color_name not in colors_seen:
+                    colors_seen[color_name] = {'color_name': color_name, 'color_hex': None, 'front_image': None, 'back_image': None, 'inventory': {}}
+                if view == 'front':
+                    colors_seen[color_name]['front_image'] = url
+                elif view == 'back':
+                    colors_seen[color_name]['back_image'] = url
+    return list(colors_seen.values())

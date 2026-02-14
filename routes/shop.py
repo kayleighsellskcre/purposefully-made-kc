@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, url_for, session, redirect, flash, current_app
 from models import db, Product, Design, Collection
 from flask_login import login_required, current_user
-from utils.mockups import get_mockup_url_for_variant
+from utils.mockups import get_mockup_url_for_variant, discover_colors_from_mockup_folder
 import json
 
 shop_bp = Blueprint('shop', __name__, url_prefix='/shop')
@@ -196,6 +196,7 @@ def product_detail(product_id):
     
     # Parse inventory for each variant; use DB mockup URLs or resolve from uploads/mockups
     color_variants_data = []
+    seen_colors = set()
     for variant in color_variants:
         inventory = json.loads(variant.size_inventory) if variant.size_inventory else {}
         front_image = get_mockup_url_for_variant(product, variant, 'front', current_app) or variant.front_image_url
@@ -207,6 +208,12 @@ def product_detail(product_id):
             'back_image': back_image,
             'inventory': inventory
         })
+        seen_colors.add(variant.color_name)
+    # Add any colors that have mockups in uploads/mockups but no DB variant (so ALL mockups show)
+    for extra in discover_colors_from_mockup_folder(current_app, product.style_number):
+        if extra['color_name'] not in seen_colors and (extra.get('front_image') or extra.get('back_image')):
+            seen_colors.add(extra['color_name'])
+            color_variants_data.append(extra)
     
     return render_template('shop/product_detail.html',
                          product=product,
@@ -235,6 +242,7 @@ def customize(product_id):
     
     # Parse inventory for each variant; use DB mockup URLs or resolve from uploads/mockups
     color_variants_data = []
+    seen_colors = set()
     for variant in color_variants:
         inventory = json.loads(variant.size_inventory) if variant.size_inventory else {}
         front_image = get_mockup_url_for_variant(product, variant, 'front', current_app) or variant.front_image_url
@@ -246,6 +254,12 @@ def customize(product_id):
             'back_image': back_image,
             'inventory': inventory
         })
+        seen_colors.add(variant.color_name)
+    # Add any colors that have mockups in uploads/mockups but no DB variant (so ALL mockups show)
+    for extra in discover_colors_from_mockup_folder(current_app, product.style_number):
+        if extra['color_name'] not in seen_colors and (extra.get('front_image') or extra.get('back_image')):
+            seen_colors.add(extra['color_name'])
+            color_variants_data.append(extra)
     
     # Collection restrictions: organizer chose specific colors/designs/placements - filter options
     collection_restricted = False
