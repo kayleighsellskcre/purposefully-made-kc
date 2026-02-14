@@ -18,7 +18,7 @@ instance/
 *.log
 *.pot
 *.pyc
-/uploads/         # root uploads only; static/uploads/ is tracked for product mockups
+# uploads/ and static/uploads/ - INCLUDE in git so product mockups deploy to Railway
 node_modules/
 .idea/
 .vscode/

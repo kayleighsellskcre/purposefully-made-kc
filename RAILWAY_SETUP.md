@@ -116,8 +116,8 @@ gunicorn -w 4 -b 0.0.0.0:$PORT app:app
    - `ADMIN_PROMOTE_TOKEN` = any secret string (e.g. `my-secret-promote-123`)
 2. Redeploy.
 3. Log in to the live site.
-4. Visit: `https://purposefullymadekc.com/auth/promote-admin?token=my-secret-promote-123`
-   (use the same token you set)
+4. Visit: `https://purposefullymadekc.com/auth/promote-admin?token=my-secret-promote-123&email=purposefullymadekc@gmail.com`
+   (use your token and email)
 5. You’ll be promoted to admin. Remove `ADMIN_PROMOTE_TOKEN` from Variables after use (optional, for security).
 
 **Option B – SQL in Postgres:**
@@ -128,7 +128,18 @@ gunicorn -w 4 -b 0.0.0.0:$PORT app:app
 
 ---
 
-## Step 6: Migrate Products from Local
+## Step 6: Include Product Images (uploads folder)
+
+Your `uploads/` and `static/uploads/` folders are now tracked in git. After you:
+
+1. Add and commit the uploads: `git add uploads/ static/uploads/` (if they exist)
+2. Push to GitHub
+
+…your product mockups will deploy with the app. No re-upload needed.
+
+---
+
+## Step 7: Migrate Products from Local
 
 Your old products are in `apparel.db` on your computer. To copy them to Railway:
 

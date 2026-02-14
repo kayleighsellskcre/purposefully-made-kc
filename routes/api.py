@@ -1,8 +1,9 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, url_for
 from flask_login import current_user
 from werkzeug.utils import secure_filename
-from models import db, Design, Product
+from models import db, Design, Product, ProductColorVariant
 from PIL import Image
+from utils.mockups import get_mockup_url_for_variant, _find_mockup_file
 import os
 import secrets
 import json
@@ -143,14 +144,25 @@ def generate_proof():
 
 @api_bp.route('/products/<int:product_id>/mockup')
 def get_product_mockup(product_id):
-    """Get product mockup data"""
+    """Get product mockup data; when color is provided, use color-specific mockup from variant or uploads/mockups."""
     product = Product.query.get_or_404(product_id)
     
     color = request.args.get('color')
     view = request.args.get('view', 'front')  # front or back
     
-    # Get mockup template path
-    mockup_path = product.front_mockup_template if view == 'front' else product.back_mockup_template
+    mockup_path = None
+    if color:
+        variant = ProductColorVariant.query.filter_by(
+            product_id=product.id, color_name=color
+        ).first()
+        if variant:
+            mockup_path = get_mockup_url_for_variant(product, variant, view, current_app)
+        if not mockup_path:
+            rel = _find_mockup_file(current_app, product.style_number, color, view)
+            if rel:
+                mockup_path = url_for('main.serve_mockup', path=rel)
+    if not mockup_path:
+        mockup_path = product.front_mockup_template if view == 'front' else product.back_mockup_template
     
     # Get print area configuration
     print_area_config = json.loads(product.print_area_config) if product.print_area_config else {}

@@ -99,9 +99,11 @@ def create_app(config_class=Config):
         cart_count = 0
         if 'cart' in session:
             cart_count = sum(item['quantity'] for item in session['cart'])
+        admin_email = os.environ.get('ADMIN_EMAIL', 'purposefullymadekc@gmail.com')
         return {
             'cart_count': cart_count,
-            'current_year': 2026
+            'current_year': 2026,
+            'admin_email': admin_email,
         }
     
     # Error handlers
@@ -123,17 +125,17 @@ def create_app(config_class=Config):
     
     @app.cli.command()
     def create_admin():
-        """Create admin user."""
-        email = input('Admin email: ')
-        password = input('Admin password: ')
-        
-        existing_user = User.query.filter_by(email=email).first()
-        if existing_user:
-            print('User already exists.')
+        """Create or ensure the designated admin user (purposefullymadekc@gmail.com). Only this email can access admin."""
+        admin_email = os.environ.get('ADMIN_EMAIL', 'purposefullymadekc@gmail.com')
+        existing = User.query.filter_by(email=admin_email).first()
+        if existing:
+            existing.is_admin = True
+            db.session.commit()
+            print(f'Admin access confirmed for: {admin_email}')
             return
-        
+        password = input(f'Create password for {admin_email}: ')
         admin = User(
-            email=email,
+            email=admin_email,
             first_name='Admin',
             last_name='User',
             is_admin=True
@@ -141,7 +143,7 @@ def create_app(config_class=Config):
         admin.set_password(password)
         db.session.add(admin)
         db.session.commit()
-        print(f'Admin user created: {email}')
+        print(f'Admin user created: {admin_email}')
     
     @app.cli.command()
     def sync_catalog():

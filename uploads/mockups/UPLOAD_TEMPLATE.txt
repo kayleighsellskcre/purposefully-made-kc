@@ -1,0 +1,22 @@
+================================================================================
+UPLOAD MOCKUP IMAGES FOR STYLE: {STYLE}
+================================================================================
+
+FOLDER: uploads/mockups/{STYLE}/
+
+NAMING FORMAT:
+{STYLE}_ColorName_front.jpg
+{STYLE}_ColorName_back.jpg
+
+Examples:
+{STYLE}_Black_front.jpg
+{STYLE}_Black_back.jpg
+{STYLE}_Heather_Grey_front.jpg
+{STYLE}_Athletic_Heather_back.jpg
+
+Rules: Style number | Color (underscores for spaces) | front or back
+Formats: .jpg, .jpeg, .png, .webp
+
+After uploading, run: python import_mockup_images.py {STYLE}
+
+================================================================================

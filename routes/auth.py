@@ -1,10 +1,30 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, session
+from flask import Blueprint, render_template, redirect, url_for, flash, request, session, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from models import db, User
 from urllib.parse import urlparse
 import os
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+
+@auth_bp.route('/promote-admin')
+def promote_admin():
+    """One-time: promote purposefullymadekc@gmail.com to admin. Requires ADMIN_PROMOTE_TOKEN in env. No other account can be promoted."""
+    token = request.args.get('token')
+    expected = os.environ.get('ADMIN_PROMOTE_TOKEN')
+    if not expected or token != expected:
+        flash('Invalid or missing token.', 'error')
+        return redirect(url_for('main.index'))
+    admin_email = os.environ.get('ADMIN_EMAIL', 'purposefullymadekc@gmail.com')
+    # Only allow promoting this single admin email; ignore any ?email= from request
+    user = User.query.filter_by(email=admin_email).first()
+    if not user:
+        flash(f'No user found with email {admin_email}. Create an account with that email first, then use this link.', 'error')
+        return redirect(url_for('main.index'))
+    user.is_admin = True
+    db.session.commit()
+    flash(f'{admin_email} is now an admin. Log in with that account to access Admin.', 'success')
+    return redirect(url_for('auth.login'))
 
 
 def _clear_cart_for_new_user():
@@ -94,20 +114,6 @@ def register():
         return redirect(url_for('main.index'))
     
     return render_template('auth/register.html')
-
-
-@auth_bp.route('/promote-admin')
-@login_required
-def promote_admin():
-    """One-time: promote current user to admin. Requires ADMIN_PROMOTE_TOKEN in env."""
-    token = os.environ.get('ADMIN_PROMOTE_TOKEN')
-    if not token or request.args.get('token') != token:
-        flash('Invalid or missing token.', 'error')
-        return redirect(url_for('main.index'))
-    current_user.is_admin = True
-    db.session.commit()
-    flash('You are now an admin! You can access the Admin dashboard.', 'success')
-    return redirect(url_for('admin.index'))
 
 
 @auth_bp.route('/logout')

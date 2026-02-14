@@ -1,6 +1,7 @@
-from flask import Blueprint, render_template, request, jsonify, url_for, session, redirect, flash
+from flask import Blueprint, render_template, request, jsonify, url_for, session, redirect, flash, current_app
 from models import db, Product, Design, Collection
 from flask_login import login_required, current_user
+from utils.mockups import get_mockup_url_for_variant
 import json
 
 shop_bp = Blueprint('shop', __name__, url_prefix='/shop')
@@ -193,15 +194,17 @@ def product_detail(product_id):
     # Get color variants with mockup images and inventory
     color_variants = ProductColorVariant.query.filter_by(product_id=product.id).all()
     
-    # Parse inventory for each variant
+    # Parse inventory for each variant; use DB mockup URLs or resolve from uploads/mockups
     color_variants_data = []
     for variant in color_variants:
         inventory = json.loads(variant.size_inventory) if variant.size_inventory else {}
+        front_image = get_mockup_url_for_variant(product, variant, 'front', current_app) or variant.front_image_url
+        back_image = get_mockup_url_for_variant(product, variant, 'back', current_app) or variant.back_image_url
         color_variants_data.append({
             'color_name': variant.color_name,
             'color_hex': variant.color_hex,
-            'front_image': variant.front_image_url,
-            'back_image': variant.back_image_url,
+            'front_image': front_image,
+            'back_image': back_image,
             'inventory': inventory
         })
     
@@ -230,15 +233,17 @@ def customize(product_id):
     # Get color variants with mockup images and inventory
     color_variants = ProductColorVariant.query.filter_by(product_id=product.id).all()
     
-    # Parse inventory for each variant
+    # Parse inventory for each variant; use DB mockup URLs or resolve from uploads/mockups
     color_variants_data = []
     for variant in color_variants:
         inventory = json.loads(variant.size_inventory) if variant.size_inventory else {}
+        front_image = get_mockup_url_for_variant(product, variant, 'front', current_app) or variant.front_image_url
+        back_image = get_mockup_url_for_variant(product, variant, 'back', current_app) or variant.back_image_url
         color_variants_data.append({
             'color_name': variant.color_name,
             'color_hex': variant.color_hex,
-            'front_image': variant.front_image_url,
-            'back_image': variant.back_image_url,
+            'front_image': front_image,
+            'back_image': back_image,
             'inventory': inventory
         })
     

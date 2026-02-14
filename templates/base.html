@@ -36,7 +36,7 @@
                     
                     {% if current_user.is_authenticated %}
                         <a href="{{ url_for('account.index') }}" class="nav-link">Account</a>
-                        {% if current_user.is_admin %}
+                        {% if current_user.is_admin and current_user.email == admin_email %}
                             <a href="{{ url_for('admin.index') }}" class="nav-link admin-link">Admin</a>
                         {% endif %}
                         <a href="{{ url_for('auth.logout') }}" class="nav-link">Logout</a>
