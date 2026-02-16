@@ -174,29 +174,28 @@ def create_app(config_class=Config):
     
     @app.cli.command()
     def sync_catalog():
-        """Sync product catalog from S&S Activewear API."""
+        """Sync product catalog from S&S Activewear (mockup styles only)."""
         try:
             from services.ssactivewear_api import SSActivewearAPI
-            
-            print('Syncing catalog from S&S Activewear...')
+
+            print('Syncing mockup styles from S&S Activewear...')
             api = SSActivewearAPI()
-            products_data = api.sync_bella_canvas_catalog()
+            products_data = api.sync_mockup_styles()
             
             added = 0
             updated = 0
             
             for product_data in products_data:
-                existing = Product.query.filter_by(style_number=product_data['style_number']).first()
-                
+                color_variants = product_data.pop('color_variants', [])
+                style_num = product_data['style_number']
+                existing = Product.query.filter_by(style_number=style_num).first()
                 if existing:
-                    # Update existing
                     for key, value in product_data.items():
-                        setattr(existing, key, value)
+                        if hasattr(existing, key):
+                            setattr(existing, key, value)
                     updated += 1
                 else:
-                    # Add new
-                    new_product = Product(**product_data)
-                    db.session.add(new_product)
+                    db.session.add(Product(**product_data))
                     added += 1
             
             db.session.commit()

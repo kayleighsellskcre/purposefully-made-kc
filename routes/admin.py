@@ -299,18 +299,49 @@ def products():
     """Manage products"""
     import os
     products = Product.query.order_by(Product.style_number).all()
-    
+
+    # Compute size/color counts - use ProductColorVariant for colors (authoritative for display)
+    for p in products:
+        try:
+            p.size_count = len(json.loads(p.available_sizes)) if p.available_sizes else 0
+        except (TypeError, ValueError):
+            p.size_count = 0
+        # Color count: prefer ProductColorVariant count (what we actually show); fallback to JSON
+        variant_count = ProductColorVariant.query.filter_by(product_id=p.id).count()
+        try:
+            parsed = json.loads(p.available_colors) if p.available_colors else []
+            json_count = len(parsed) if isinstance(parsed, list) else 0
+        except (TypeError, ValueError):
+            json_count = 0
+        p.color_count = variant_count if variant_count > 0 else min(json_count, 200)
+
     # Check if S&S API is configured - check environment variable directly
     api_key = os.getenv('SSACTIVEWEAR_API_KEY')
     api_configured = bool(api_key) and api_key != 'your_ss_activewear_api_key_here'
-    
-    print(f"DEBUG: API Key exists: {bool(api_key)}")
-    print(f"DEBUG: API Key value: {api_key[:20] if api_key else 'None'}...")
-    print(f"DEBUG: API Configured: {api_configured}")
-    
-    return render_template('admin/products.html', 
+
+    return render_template('admin/products.html',
                          products=products,
                          api_configured=api_configured)
+
+
+@admin_bp.route('/products/link-mockups', methods=['POST'])
+@admin_required
+def link_mockup_images():
+    """Create missing products from mockup folders and link all color images. No S&S API needed."""
+    from utils.mockups import create_products_from_mockup_folders, ensure_variant_mockup_urls
+    try:
+        created = create_products_from_mockup_folders(current_app)
+        db.session.commit()
+        ensure_variant_mockup_urls(current_app)
+        db.session.commit()
+        msg = f'Linked mockup images for all products.'
+        if created:
+            msg = f'Created {created} products from mockup folders. ' + msg
+        flash(msg, 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error: {str(e)}', 'error')
+    return redirect(url_for('admin.products'))
 
 
 @admin_bp.route('/products/sync-api', methods=['POST'])
@@ -344,21 +375,19 @@ def sync_api():
         try:
             products_data = api.sync_mockup_styles()
         except ValueError as e:
-            flash(f'S&S API: {str(e)}', 'error')
-            return redirect(url_for('admin.products'))
+            flash(f'S&S API: {str(e)}. Creating products from mockup folders only.', 'warning')
+            products_data = []
         print(f"PRODUCTS DATA RETURNED: {len(products_data) if products_data else 0}", file=sys.stderr, flush=True)
 
         if not products_data:
-            print("WARNING: No products data!", file=sys.stderr, flush=True)
-            flash('No products returned from S&S API. Check your API credentials or try again later.', 'warning')
-            return redirect(url_for('admin.products'))
+            print("No products from S&S - will create from mockup folders only", file=sys.stderr, flush=True)
         
         added = 0
         updated = 0
         color_variants_added = 0
         
-        print(f"PROCESSING {len(products_data)} PRODUCTS...", file=sys.stderr, flush=True)
-        for product_data in products_data:
+        print(f"PROCESSING {len(products_data)} PRODUCTS FROM S&S...", file=sys.stderr, flush=True)
+        for product_data in (products_data or []):
             # Extract color variants before saving product
             color_variants_data = product_data.pop('color_variants', [])
             
@@ -426,9 +455,24 @@ def sync_api():
             print(f"    {len(color_variants_data)} color variants synced", file=sys.stderr, flush=True)
         
         db.session.commit()
-        print(f"COMMIT SUCCESSFUL! Added: {added}, Updated: {updated}, Color Variants: {color_variants_added}", file=sys.stderr, flush=True)
+
+        # Create products from mockup folders when S&S doesn't have them
+        from utils.mockups import create_products_from_mockup_folders
+        created_from_mockups = create_products_from_mockup_folders(current_app)
+        if created_from_mockups:
+            db.session.commit()
+            print(f"  CREATED {created_from_mockups} PRODUCTS FROM MOCKUP FOLDERS", file=sys.stderr, flush=True)
+
+        from utils.mockups import ensure_variant_mockup_urls
+        ensure_variant_mockup_urls(current_app)
+        db.session.commit()
+
+        print(f"COMMIT SUCCESSFUL! Added: {added}, Updated: {updated}, Color Variants: {color_variants_added}, From mockups: {created_from_mockups}", file=sys.stderr, flush=True)
         print("="*80, file=sys.stderr, flush=True)
-        flash(f'✅ Synced {len(products_data)} products with {color_variants_added} color variants (mockups + inventory)!', 'success')
+        msg = f'✅ Synced {len(products_data)} products with {color_variants_added} color variants!'
+        if created_from_mockups:
+            msg += f' Created {created_from_mockups} products from mockup folders.'
+        flash(msg, 'success')
         
     except Exception as e:
         db.session.rollback()

@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, url_for, session, redirect, flash, current_app
 from models import db, Product, Design, Collection
 from flask_login import login_required, current_user
-from utils.mockups import get_mockup_url_for_variant, discover_colors_from_mockup_folder
+from utils.mockups import get_carousel_colors_for_product, get_color_variants_data_for_product
 import json
 
 shop_bp = Blueprint('shop', __name__, url_prefix='/shop')
@@ -9,8 +9,6 @@ shop_bp = Blueprint('shop', __name__, url_prefix='/shop')
 @shop_bp.route('/')
 def index():
     """Shop page - browse all products. Products come from S&S Activewear sync (Admin → Products)."""
-    from models import ProductColorVariant
-
     # Clear collection context so user sees full catalog with all colors
     session.pop('collection_id', None)
 
@@ -27,15 +25,12 @@ def index():
     if category:
         query = query.filter_by(category=category)
     
-    products = query.order_by(Product.style_number).all()
-    
-    # Attach color variants to each product for the preview carousel
+    from sqlalchemy.orm import joinedload
+    products = query.options(joinedload(Product.color_variants)).order_by(Product.style_number).all()
+
+    # Attach carousel colors: DB variants + mockup folder (all colors with front images)
     for product in products:
-        product.carousel_colors = ProductColorVariant.query.filter_by(
-            product_id=product.id
-        ).filter(
-            ProductColorVariant.front_image_url.isnot(None)
-        ).all()
+        product.carousel_colors = get_carousel_colors_for_product(product, current_app)
     
     # Get unique categories
     categories = db.session.query(Product.category).filter(
@@ -179,42 +174,12 @@ def design_gallery():
 @shop_bp.route('/product/<int:product_id>')
 def product_detail(product_id):
     """Product detail page with customizer"""
-    from models import ProductColorVariant
-    
-    # Clear collection context so user sees full product options
     session.pop('collection_id', None)
-    
     product = Product.query.get_or_404(product_id)
-    
-    # Parse JSON fields
     available_sizes = json.loads(product.available_sizes) if product.available_sizes else []
     available_colors = json.loads(product.available_colors) if product.available_colors else []
     print_area_config = json.loads(product.print_area_config) if product.print_area_config else {}
-    
-    # Get color variants with mockup images and inventory
-    color_variants = ProductColorVariant.query.filter_by(product_id=product.id).all()
-    
-    # Parse inventory for each variant; use DB mockup URLs or resolve from uploads/mockups
-    color_variants_data = []
-    seen_colors = set()
-    for variant in color_variants:
-        inventory = json.loads(variant.size_inventory) if variant.size_inventory else {}
-        front_image = get_mockup_url_for_variant(product, variant, 'front', current_app) or variant.front_image_url
-        back_image = get_mockup_url_for_variant(product, variant, 'back', current_app) or variant.back_image_url
-        color_variants_data.append({
-            'color_name': variant.color_name,
-            'color_hex': variant.color_hex,
-            'front_image': front_image,
-            'back_image': back_image,
-            'inventory': inventory
-        })
-        seen_colors.add(variant.color_name)
-    # Add any colors that have mockups in uploads/mockups but no DB variant (so ALL mockups show)
-    for extra in discover_colors_from_mockup_folder(current_app, product.style_number):
-        if extra['color_name'] not in seen_colors and (extra.get('front_image') or extra.get('back_image')):
-            seen_colors.add(extra['color_name'])
-            color_variants_data.append(extra)
-    
+    color_variants_data = get_color_variants_data_for_product(product, current_app)
     return render_template('shop/product_detail.html',
                          product=product,
                          available_sizes=available_sizes,
@@ -226,40 +191,14 @@ def product_detail(product_id):
 @shop_bp.route('/customize/<int:product_id>')
 def customize(product_id):
     """Product customizer interface"""
-    from models import ProductColorVariant, Collection
-    from flask import session
+    from models import Collection
     from flask_login import current_user
-    
+
     product = Product.query.get_or_404(product_id)
-    
-    # Parse JSON fields
     available_sizes = json.loads(product.available_sizes) if product.available_sizes else []
     available_colors = json.loads(product.available_colors) if product.available_colors else []
     print_area_config = json.loads(product.print_area_config) if product.print_area_config else {}
-    
-    # Get color variants with mockup images and inventory
-    color_variants = ProductColorVariant.query.filter_by(product_id=product.id).all()
-    
-    # Parse inventory for each variant; use DB mockup URLs or resolve from uploads/mockups
-    color_variants_data = []
-    seen_colors = set()
-    for variant in color_variants:
-        inventory = json.loads(variant.size_inventory) if variant.size_inventory else {}
-        front_image = get_mockup_url_for_variant(product, variant, 'front', current_app) or variant.front_image_url
-        back_image = get_mockup_url_for_variant(product, variant, 'back', current_app) or variant.back_image_url
-        color_variants_data.append({
-            'color_name': variant.color_name,
-            'color_hex': variant.color_hex,
-            'front_image': front_image,
-            'back_image': back_image,
-            'inventory': inventory
-        })
-        seen_colors.add(variant.color_name)
-    # Add any colors that have mockups in uploads/mockups but no DB variant (so ALL mockups show)
-    for extra in discover_colors_from_mockup_folder(current_app, product.style_number):
-        if extra['color_name'] not in seen_colors and (extra.get('front_image') or extra.get('back_image')):
-            seen_colors.add(extra['color_name'])
-            color_variants_data.append(extra)
+    color_variants_data = get_color_variants_data_for_product(product, current_app)
     
     # Collection restrictions: organizer chose specific colors/designs/placements - filter options
     collection_restricted = False

@@ -29,12 +29,12 @@ def cron_sync_ss():
 
         api = SSActivewearAPI()
         # Sync only styles that have mockup folders - fetches each directly from S&S Products API
-        products_data = api.sync_mockup_styles()
+        try:
+            products_data = api.sync_mockup_styles()
+        except ValueError:
+            products_data = []
 
-        if not products_data:
-            return jsonify({'ok': False, 'error': 'No products returned from S&S API'}), 200
-
-        added = updated = color_variants_added = 0
+        added = updated = color_variants_added = created_from_mockups = 0
         for product_data in products_data:
             color_variants_data = product_data.pop('color_variants', [])
             style_num = product_data.get('style_number')
@@ -80,12 +80,24 @@ def cron_sync_ss():
                     color_variants_added += 1
 
         db.session.commit()
+
+        # Create products from mockup folders when S&S doesn't have them
+        from utils.mockups import create_products_from_mockup_folders, _find_mockup_file
+        created_from_mockups = create_products_from_mockup_folders(current_app)
+        if created_from_mockups:
+            db.session.commit()
+
+        from utils.mockups import ensure_variant_mockup_urls
+        ensure_variant_mockup_urls(current_app)
+        db.session.commit()
+
         return jsonify({
             'ok': True,
             'products_added': added,
             'products_updated': updated,
             'color_variants_added': color_variants_added,
-            'total': len(products_data),
+            'created_from_mockups': created_from_mockups,
+            'total': len(products_data or []) + created_from_mockups,
         })
     except ValueError as e:
         return jsonify({'ok': False, 'error': str(e)}), 200

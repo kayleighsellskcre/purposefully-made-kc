@@ -1,5 +1,7 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
 from models import db, Collection, Product, ProductColorVariant
+from utils.mockups import get_carousel_colors_for_product
+from sqlalchemy.orm import joinedload
 import json
 
 collection_bp = Blueprint('collection', __name__, url_prefix='/c')
@@ -7,7 +9,9 @@ collection_bp = Blueprint('collection', __name__, url_prefix='/c')
 @collection_bp.route('/<slug>')
 def view(slug):
     """View collection landing page - design board of available items"""
-    collection = Collection.query.filter_by(slug=slug, is_active=True).first_or_404()
+    collection = Collection.query.options(
+        joinedload(Collection.products).joinedload(Product.color_variants)
+    ).filter_by(slug=slug, is_active=True).first_or_404()
     
     # Check password if protected
     if collection.is_password_protected:
@@ -22,19 +26,12 @@ def view(slug):
     if collection.restrict_options and collection.allowed_colors:
         allowed_colors = set(json.loads(collection.allowed_colors))
     
-    # Get products in this collection with color variants and sizes for design board
+    # Get products in this collection with carousel colors (DB + mockup folder)
     all_products = collection.products
     products = []
     unavailable_products = []  # Products that don't have any of the chosen colors
     for product in all_products:
-        variants = ProductColorVariant.query.filter_by(
-            product_id=product.id
-        ).filter(
-            ProductColorVariant.front_image_url.isnot(None)
-        ).all()
-        # Filter to organizer's chosen colors when collection is restricted
-        if allowed_colors:
-            variants = [v for v in variants if v.color_name in allowed_colors]
+        variants = get_carousel_colors_for_product(product, current_app, allowed_colors=allowed_colors)
         product.carousel_colors = variants
         product.available_sizes_list = json.loads(product.available_sizes) if product.available_sizes else []
         # When colors are restricted: only show products that have at least one matching color

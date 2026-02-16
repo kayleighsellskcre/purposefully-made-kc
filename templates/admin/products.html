@@ -8,6 +8,11 @@
         <div class="admin-header">
             <h1>Manage Products</h1>
             <div class="admin-actions">
+                <form action="{{ url_for('admin.link_mockup_images') }}" method="POST" style="display:inline;">
+                    <button type="submit" class="btn btn-outline" title="Create products from mockup folders and link color images">
+                        Link Mockup Images
+                    </button>
+                </form>
                 {% if api_configured %}
                 <button class="btn btn-outline" onclick="showSyncModal()">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;">
@@ -43,14 +48,10 @@
                         <td>{{ product.category or '-' }}</td>
                         <td>${{ "%.2f"|format(product.base_price) }}</td>
                         <td>
-                            {% set sizes = product.available_sizes|tojson|safe if product.available_sizes else '[]' %}
-                            {% set size_list = sizes|length %}
-                            {{ size_list }} sizes
+                            {{ product.size_count }} sizes
                         </td>
                         <td>
-                            {% set colors = product.available_colors|tojson|safe if product.available_colors else '[]' %}
-                            {% set color_list = colors|length %}
-                            {{ color_list }} colors
+                            {{ product.color_count }} colors
                         </td>
                         <td>
                             <span class="badge badge-{{ 'success' if product.is_active else 'secondary' }}">
@@ -94,10 +95,11 @@
             <p><strong>What happens:</strong></p>
             <ul>
                 <li>Discovers style folders (e.g. 3001, 3001CVC) from your mockups</li>
-                <li>Fetches each style directly from S&S Products API (colors, sizes, inventory)</li>
-                <li>Creates or updates products with live inventory</li>
-                <li>Your mockup images in uploads/mockups/ are used for display</li>
+                <li>Fetches each style from S&S (colors, sizes, inventory)</li>
+                <li>Creates products for any mockup folders S&S doesn't have</li>
+                <li>Links your mockup images so customers see each color when customizing</li>
             </ul>
+            <p><strong>Tip:</strong> Use <em>Link Mockup Images</em> to add missing styles and link color images without S&S API.</p>
             
             <form action="{{ url_for('admin.sync_api') }}" method="POST">
                 <div class="modal-actions">
