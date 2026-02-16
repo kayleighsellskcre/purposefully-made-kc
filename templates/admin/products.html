@@ -8,9 +8,6 @@
         <div class="admin-header">
             <h1>Manage Products</h1>
             <div class="admin-actions">
-                <form action="{{ url_for('admin.seed_demo_products') }}" method="POST" style="display:inline;">
-                    <button type="submit" class="btn btn-outline">Add Demo Products</button>
-                </form>
                 {% if api_configured %}
                 <button class="btn btn-outline" onclick="showSyncModal()">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;">
@@ -71,13 +68,10 @@
                     <tr>
                         <td colspan="8" style="text-align: center; padding: 3rem;">
                             <p>No products yet.</p>
-                            <form action="{{ url_for('admin.seed_demo_products') }}" method="POST" style="display:inline; margin-right: 8px;">
-                                <button type="submit" class="btn btn-primary">Add Demo Products (5 samples)</button>
-                            </form>
                             {% if api_configured %}
-                            <button class="btn btn-outline" onclick="showSyncModal()">Sync from S&S Activewear</button>
+                            <button class="btn btn-primary" onclick="showSyncModal()">Sync from S&S Activewear</button>
                             {% else %}
-                            <a href="{{ url_for('admin.add_product') }}" class="btn btn-outline">Add Product Manually</a>
+                            <a href="{{ url_for('admin.add_product') }}" class="btn btn-primary">Add Product Manually</a>
                             {% endif %}
                         </td>
                     </tr>
@@ -96,21 +90,16 @@
             <button class="modal-close" onclick="closeSyncModal()">&times;</button>
         </div>
         <div class="modal-body">
-            <p>This will sync Bella+Canvas products from S&S Activewear API.</p>
+            <p>This will sync <strong>only styles that have mockup folders</strong> in <code>uploads/mockups/</code> from S&S Activewear.</p>
             <p><strong>What happens:</strong></p>
             <ul>
-                <li>New products will be added</li>
-                <li>Existing products will be updated with latest colors, sizes, and pricing</li>
-                <li>Your custom mockups and settings will be preserved</li>
+                <li>Discovers style folders (e.g. 3001, 3001CVC) from your mockups</li>
+                <li>Fetches each style directly from S&S Products API (colors, sizes, inventory)</li>
+                <li>Creates or updates products with live inventory</li>
+                <li>Your mockup images in uploads/mockups/ are used for display</li>
             </ul>
             
             <form action="{{ url_for('admin.sync_api') }}" method="POST">
-                <div class="form-group">
-                    <label for="limit">Limit (optional, for testing):</label>
-                    <input type="number" id="limit" name="limit" class="form-control" placeholder="Leave empty for full sync">
-                    <small>Enter a number like 10 to test with limited products first</small>
-                </div>
-                
                 <div class="modal-actions">
                     <button type="button" class="btn btn-outline" onclick="closeSyncModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary">Start Sync</button>

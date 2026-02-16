@@ -19,8 +19,8 @@ with app.app_context():
         api = SSActivewearAPI()
         print("\nFetching products from S&S Activewear...")
         
-        # Sync 10 products to start
-        products_data = api.sync_bella_canvas_catalog(limit=10)
+        # Sync all styles that have mockup folders in uploads/mockups/
+        products_data = api.sync_mockup_styles()
         
         if not products_data:
             print("ERROR: No products returned from API")

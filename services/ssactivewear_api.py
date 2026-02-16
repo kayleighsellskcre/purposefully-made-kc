@@ -14,9 +14,9 @@ class SSActivewearAPI:
     """S&S Activewear API client"""
     
     def __init__(self, api_key=None, account_number=None, api_url=None):
-        self.api_key = api_key or os.getenv('SSACTIVEWEAR_API_KEY')
-        self.account_number = account_number or os.getenv('SSACTIVEWEAR_ACCOUNT_NUMBER')
-        self.api_url = api_url or os.getenv('SSACTIVEWEAR_API_URL', 'https://api.ssactivewear.com')
+        self.api_key = str(api_key or os.getenv('SSACTIVEWEAR_API_KEY') or '').strip()
+        self.account_number = str(account_number or os.getenv('SSACTIVEWEAR_ACCOUNT_NUMBER') or '').strip()
+        self.api_url = (api_url or os.getenv('SSACTIVEWEAR_API_URL') or 'https://api.ssactivewear.com').rstrip('/')
         
         if not self.api_key:
             raise ValueError("S&S Activewear API key not configured. Add SSACTIVEWEAR_API_KEY to .env")
@@ -45,25 +45,34 @@ class SSActivewearAPI:
             List of style dictionaries
         """
         try:
-            # S&S API endpoint for styles
             endpoint = f"{self.api_url}/v2/styles"
-            
-            params = {
-                'brandName': brand_name
-            }
-            
-            response = requests.get(endpoint, auth=(self.account_number, self.api_key), params=params, timeout=30)
+            params = {'brandName': brand_name} if brand_name else {}
+
+            response = requests.get(endpoint, auth=(self.account_number, self.api_key), params=params, timeout=60)
+
+            if response.status_code == 401:
+                raise ValueError("Invalid S&S API credentials (401). Check SSACTIVEWEAR_API_KEY and SSACTIVEWEAR_ACCOUNT_NUMBER in Railway.")
+            if response.status_code == 403:
+                raise ValueError("S&S API access denied (403). Your account may not have API access enabled.")
             response.raise_for_status()
-            
+
             data = response.json()
-            # API returns list directly, not wrapped in object
             if isinstance(data, list):
                 return data
-            return data.get('Styles', [])
-            
-        except requests.exceptions.RequestException as e:
-            print(f"Error fetching styles from S&S API: {e}")
+            for key in ('Styles', 'styles', 'data'):
+                if key in data and isinstance(data[key], list):
+                    return data[key]
             return []
+        except requests.exceptions.RequestException as e:
+            err_msg = str(e)
+            if hasattr(e, 'response') and e.response is not None:
+                try:
+                    body = e.response.text[:200] if e.response.text else ''
+                    err_msg = f"{err_msg} | Response: {body}"
+                except Exception:
+                    pass
+            print(f"Error fetching styles from S&S API: {err_msg}")
+            raise ValueError(f"S&S API error: {err_msg}")
     
     def get_style_details(self, style_id):
         """
@@ -156,6 +165,65 @@ class SSActivewearAPI:
             print(f"Error fetching style {style_id} from S&S API: {e}", file=sys.stderr, flush=True)
             return None
     
+    def get_products_by_style_number(self, style_number):
+        """
+        Fetch all products (SKUs) for a specific style by style number.
+        Uses /v2/products/?style= or ?partnumber= - works even when full catalog fails.
+        
+        Args:
+            style_number: Style number e.g. "3001", "3001CVC"
+        
+        Returns:
+            List of product SKU dicts, or empty list if not found
+        """
+        try:
+            endpoint = f"{self.api_url}/v2/products"
+            # Try multiple identifiers - S&S uses different formats per brand
+            attempts = [
+                ('partnumber', style_number),
+                ('style', style_number),
+                ('style', f'bella + canvas {style_number}'),  # Full style name for Bella+Canvas
+            ]
+            for param_name, param_value in attempts:
+                try:
+                    params = {param_name: param_value}
+                    response = requests.get(endpoint, auth=(self.account_number, self.api_key), params=params, timeout=60)
+                    if response.status_code == 401:
+                        raise ValueError("Invalid S&S API credentials (401).")
+                    if response.status_code == 403:
+                        raise ValueError("S&S API access denied (403).")
+                    response.raise_for_status()
+                    data = response.json()
+                    products = data if isinstance(data, list) else data.get('products', data.get('data', []))
+                    if products and isinstance(products, list):
+                        return products
+                except requests.exceptions.HTTPError:
+                    continue  # 404 or similar - try next identifier
+            return []
+        except ValueError:
+            raise
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching products for style {style_number}: {e}")
+            return []
+
+    def get_style_by_part_number(self, part_number):
+        """
+        Fetch style metadata (title, description) by part number.
+        /v2/styles/?partnumber=3001
+        """
+        try:
+            endpoint = f"{self.api_url}/v2/styles"
+            params = {'partnumber': part_number}
+            response = requests.get(endpoint, auth=(self.account_number, self.api_key), params=params, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            styles = data if isinstance(data, list) else data.get('Styles', data.get('styles', []))
+            if styles and isinstance(styles, list) and len(styles) > 0:
+                return styles[0]
+            return None
+        except Exception:
+            return None
+
     def get_inventory(self, style_id=None, style_number=None, warehouse=None):
         """
         Get real-time inventory levels
@@ -244,6 +312,77 @@ class SSActivewearAPI:
             print(f"Error downloading image from {image_url}: {e}")
             return None
     
+    def fetch_style_data_by_style_number(self, style_number):
+        """
+        Fetch full style data (colors, sizes, inventory) for a style by its number.
+        Uses Products API directly - works when full catalog sync fails.
+        
+        Returns:
+            Style dict in same format as get_style_details, or None
+        """
+        products = self.get_products_by_style_number(style_number)
+        if not products:
+            return None
+
+        # Build style_data from products
+        first = products[0]
+        style_id = first.get('styleID')
+        style_name = first.get('styleName', style_number)
+        brand_name = first.get('brandName', 'Bella+Canvas')
+
+        # Get style metadata (title, description) if available
+        meta = self.get_style_by_part_number(style_number) or {}
+        title = meta.get('title', first.get('styleName', style_number))
+        description = meta.get('description', '')
+
+        color_variants = {}
+        all_colors = set()
+        all_sizes = set()
+        size_order = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL']
+
+        for p in products:
+            color_name = p.get('colorName')
+            size_name = p.get('sizeName')
+            qty = p.get('qty', 0) or p.get('inventory', 0) or 0
+            if not color_name:
+                continue
+            all_colors.add(color_name)
+            if color_name not in color_variants:
+                color_variants[color_name] = {
+                    'color_name': color_name,
+                    'color_id': p.get('colorID'),
+                    'front_image': p.get('colorFrontImage') or p.get('frontImage'),
+                    'back_image': p.get('colorBackImage') or p.get('backImage'),
+                    'side_image': p.get('colorSideImage'),
+                    'sizes': {}
+                }
+            if size_name:
+                all_sizes.add(size_name)
+                color_variants[color_name]['sizes'][size_name] = int(qty)
+
+        sizes = sorted(all_sizes, key=lambda x: size_order.index(x) if x in size_order else 999)
+        style_data = {
+            'styleID': style_id,
+            'styleName': style_name,
+            'styleNumber': style_number,
+            'brandName': brand_name,
+            'title': title,
+            'description': description,
+            'baseCategory': meta.get('baseCategory', 'T-Shirts'),
+            'colors': sorted(list(all_colors)),
+            'sizes': sizes,
+            'color_variants': list(color_variants.values()),
+        }
+        # Add wholesale from first product with price
+        for p in products:
+            price = p.get('customerPrice') or p.get('piecePrice') or p.get('mapPrice')
+            if price is not None:
+                style_data['wholesalePrice'] = float(price)
+                break
+        if 'wholesalePrice' not in style_data:
+            style_data['wholesalePrice'] = 10
+        return style_data
+
     def parse_style_to_product(self, style_data):
         """
         Convert S&S API style data to our Product model format
@@ -355,12 +494,23 @@ class SSActivewearAPI:
         print("FETCHING STYLES FROM S&S...", file=sys.stderr, flush=True)
         print("="*80, file=sys.stderr, flush=True)
         
+        # Quick connectivity test first
+        try:
+            cats = self.get_categories()
+            print(f"API connection OK (categories: {len(cats) if cats else 0})", file=sys.stderr, flush=True)
+        except Exception as e:
+            print(f"API connection test failed: {e}", file=sys.stderr, flush=True)
+            raise
+
         styles = self.get_styles(brand_name='Bella+Canvas')
-        print(f"RAW STYLES RETURNED: {len(styles) if styles else 0}", file=sys.stderr, flush=True)
-        
+        # Fallback: if brand filter returns nothing, try fetching all styles
+        if not styles:
+            print("No styles with brand filter, trying all styles...", file=sys.stderr, flush=True)
+            styles = self.get_styles(brand_name='')
         if not styles:
             print("ERROR: No styles returned from API!", file=sys.stderr, flush=True)
-            return []
+            raise ValueError("S&S API returned no styles. Check: 1) API key and account number are correct, 2) Your S&S account has API access enabled at ssactivewear.com.")
+        print(f"RAW STYLES RETURNED: {len(styles) if styles else 0}", file=sys.stderr, flush=True)
         
         # Filter for Bella+Canvas only (API returns mixed brands)
         bella_canvas_styles = [s for s in styles if 'bella' in s.get('brandName', '').lower() and 'canvas' in s.get('brandName', '').lower()]
@@ -394,6 +544,53 @@ class SSActivewearAPI:
                 print(f"    WARNING: No details for {style_name}", file=sys.stderr, flush=True)
         
         print(f"SUCCESSFULLY PROCESSED {len(products)} PRODUCTS", file=sys.stderr, flush=True)
+        print("="*80, file=sys.stderr, flush=True)
+        return products
+
+    def sync_mockup_styles(self, style_numbers=None):
+        """
+        Sync only styles that have mockup folders. Fetches each style directly from
+        S&S Products API - works even when full catalog returns nothing.
+        
+        Args:
+            style_numbers: Optional list of style numbers. If None, discovers from
+                           uploads/mockups/ and static/uploads/mockups/
+        
+        Returns:
+            List of parsed product dicts (same format as sync_bella_canvas_catalog)
+        """
+        import sys
+        from pathlib import Path
+
+        if style_numbers is None:
+            styles = set()
+            for base in (Path('uploads/mockups'), Path('static/uploads/mockups')):
+                if base.is_dir():
+                    for p in base.iterdir():
+                        if p.is_dir() and not p.name.startswith('.'):
+                            styles.add(p.name)
+            style_numbers = sorted(styles)
+
+        if not style_numbers:
+            print("No mockup style folders found.", file=sys.stderr, flush=True)
+            return []
+
+        print("="*80, file=sys.stderr, flush=True)
+        print(f"SYNCING {len(style_numbers)} MOCKUP STYLES FROM S&S", file=sys.stderr, flush=True)
+        print("="*80, file=sys.stderr, flush=True)
+
+        products = []
+        for i, style_num in enumerate(style_numbers, 1):
+            print(f"  [{i}/{len(style_numbers)}] {style_num}...", file=sys.stderr, flush=True)
+            style_data = self.fetch_style_data_by_style_number(style_num)
+            if style_data:
+                product_data = self.parse_style_to_product(style_data)
+                products.append(product_data)
+                print(f"    ✓ {len(style_data.get('colors', []))} colors, {len(style_data.get('sizes', []))} sizes", file=sys.stderr, flush=True)
+            else:
+                print(f"    ✗ Not found in S&S", file=sys.stderr, flush=True)
+
+        print(f"SYNCED {len(products)} PRODUCTS", file=sys.stderr, flush=True)
         print("="*80, file=sys.stderr, flush=True)
         return products
 

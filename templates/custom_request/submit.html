@@ -3,21 +3,32 @@
 {% block title %}Submit Design Request - Purposefully Made KC{% endblock %}
 
 {% block content %}
-<div class="page-header">
+<div class="submit-page-header">
     <div class="container">
         <h1>Submit Your Design Request</h1>
         <p class="lead">Upload a reference image and describe what you want us to create.</p>
     </div>
 </div>
 
-<section class="content-section">
+<section class="submit-section">
     <div class="container">
         <div class="submit-form-card">
             <form method="post" action="{{ url_for('custom_request.submit') }}" enctype="multipart/form-data">
                 <div class="form-group">
                     <label for="reference_image" class="form-label">Reference Image</label>
                     <p class="form-hint">Screenshot or save the image you want recreated (PNG, JPG, WEBP)</p>
-                    <input type="file" id="reference_image" name="reference_image" accept=".png,.jpg,.jpeg,.webp" required class="form-control-file">
+                    <div class="file-upload-wrapper">
+                        <input type="file" id="reference_image" name="reference_image" accept=".png,.jpg,.jpeg,.webp" required class="file-input-hidden">
+                        <label for="reference_image" class="file-upload-label">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <span class="file-upload-text">Choose file</span>
+                            <span class="file-upload-chosen">No file chosen</span>
+                        </label>
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -26,8 +37,10 @@
                     <p class="form-hint">Any colors, text changes, or details you want — the more the better!</p>
                 </div>
                 
-                <button type="submit" class="btn btn-primary btn-lg">Submit Request</button>
-                <a href="{{ url_for('custom_request.index') }}" class="btn btn-outline btn-lg">Cancel</a>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-lg">Submit Request</button>
+                    <a href="{{ url_for('custom_request.index') }}" class="btn btn-outline btn-lg">Cancel</a>
+                </div>
             </form>
         </div>
         
@@ -36,13 +49,201 @@
 </section>
 
 <style>
-.page-header { background: var(--secondary-color); padding: 3rem 0; text-align: center; }
-.page-header h1 { font-family: var(--font-heading); }
-.lead { color: var(--text-secondary); }
-.submit-form-card { max-width: 600px; margin: 0 auto 2rem; background: #fff; padding: 2.5rem; border-radius: var(--border-radius); box-shadow: var(--box-shadow); border: 1px solid var(--border-color); }
-.form-hint { font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem; }
-.form-control-file { display: block; margin-top: 0.5rem; }
-.submit-note { text-align: center; color: var(--text-secondary); }
-.submit-note a { color: var(--accent-color); }
+.submit-page-header {
+    background: linear-gradient(135deg, var(--ivory-silk) 0%, var(--cashmere-sand) 100%);
+    padding: 4rem 0;
+    text-align: center;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.submit-page-header h1 {
+    font-family: var(--font-heading);
+    font-size: 2.75rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.submit-page-header .lead {
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+}
+
+.submit-section {
+    padding: 4rem 0;
+}
+
+.submit-form-card {
+    max-width: 640px;
+    margin: 0 auto 2.5rem;
+    background: #fff;
+    padding: 3rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow-luxury);
+    border: 1px solid var(--border-light);
+}
+
+.submit-form-card .form-group {
+    margin-bottom: 2rem;
+}
+
+.submit-form-card .form-label {
+    display: block;
+    font-family: var(--font-heading);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.submit-form-card .form-hint {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-top: 0.35rem;
+}
+
+/* Custom file upload - luxurious */
+.file-input-hidden {
+    position: absolute;
+    width: 0.1px;
+    height: 0.1px;
+    opacity: 0;
+    overflow: hidden;
+    z-index: -1;
+}
+
+.file-upload-wrapper {
+    margin-top: 0.5rem;
+}
+
+.file-upload-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 2rem;
+    background: linear-gradient(135deg, rgba(245, 240, 225, 0.6) 0%, rgba(232, 208, 177, 0.4) 100%);
+    border: 2px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.file-upload-label:hover {
+    border-color: var(--terra-cotta);
+    background: linear-gradient(135deg, rgba(245, 240, 225, 0.9) 0%, rgba(232, 208, 177, 0.6) 100%);
+}
+
+.file-upload-label svg {
+    color: var(--terra-cotta);
+}
+
+.file-upload-text {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.file-upload-chosen {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.file-upload-label.has-file .file-upload-chosen {
+    color: var(--success-color);
+    font-weight: 500;
+}
+
+/* Textarea styling */
+.submit-form-card textarea.form-control {
+    width: 100%;
+    padding: 1rem 1.25rem;
+    font-family: var(--font-primary);
+    font-size: 1rem;
+    line-height: 1.6;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: #fff;
+    transition: var(--transition);
+    min-height: 140px;
+    resize: vertical;
+}
+
+.submit-form-card textarea.form-control:focus {
+    outline: none;
+    border-color: var(--terra-cotta);
+    box-shadow: 0 0 0 3px rgba(184, 124, 111, 0.15);
+}
+
+.submit-form-card textarea.form-control::placeholder {
+    color: var(--text-light);
+}
+
+/* Form actions */
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.form-actions .btn-lg {
+    padding: 1rem 2rem;
+}
+
+/* Submit note */
+.submit-note {
+    text-align: center;
+    font-size: 1rem;
+    color: var(--text-secondary);
+    max-width: 520px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+.submit-note a {
+    color: var(--accent-color);
+    font-weight: 500;
+}
+
+.submit-note a:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+    .submit-page-header h1 {
+        font-size: 2rem;
+    }
+    
+    .submit-form-card {
+        padding: 2rem 1.5rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .form-actions .btn {
+        width: 100%;
+    }
+}
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('reference_image');
+    const label = document.querySelector('.file-upload-label');
+    const chosenSpan = label.querySelector('.file-upload-chosen');
+    
+    fileInput.addEventListener('change', function() {
+        if (this.files && this.files.length > 0) {
+            chosenSpan.textContent = this.files[0].name;
+            label.classList.add('has-file');
+        } else {
+            chosenSpan.textContent = 'No file chosen';
+            label.classList.remove('has-file');
+        }
+    });
+});
+</script>
 {% endblock %}

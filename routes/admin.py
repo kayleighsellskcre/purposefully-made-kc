@@ -313,48 +313,6 @@ def products():
                          api_configured=api_configured)
 
 
-@admin_bp.route('/products/seed-demo', methods=['POST'])
-@admin_required
-def seed_demo_products():
-    """Add sample demo products (no API needed)"""
-    import json
-    sample_products = [
-        {"style_number": "3001", "name": "Bella+Canvas Unisex Jersey Tee", "category": "Tee",
-         "description": "Pre-shrunk 100% combed ring-spun cotton.", "base_price": 25.00,
-         "available_sizes": json.dumps(["XS", "S", "M", "L", "XL", "2XL", "3XL"]),
-         "available_colors": json.dumps(["White", "Black", "Navy", "Red", "Heather Gray", "Royal Blue"]),
-         "is_active": True},
-        {"style_number": "3719", "name": "Bella+Canvas Unisex Sponge Fleece Hoodie", "category": "Hoodie",
-         "description": "Cozy sponge fleece with retail fit.", "base_price": 45.00,
-         "available_sizes": json.dumps(["S", "M", "L", "XL", "2XL"]),
-         "available_colors": json.dumps(["Black", "Navy", "Heather Gray", "Maroon"]),
-         "is_active": True},
-        {"style_number": "8800", "name": "Bella+Canvas Unisex Crewneck Sweatshirt", "category": "Crew",
-         "description": "Classic crew neck sweatshirt.", "base_price": 38.00,
-         "available_sizes": json.dumps(["S", "M", "L", "XL", "2XL"]),
-         "available_colors": json.dumps(["White", "Black", "Navy", "Heather Gray"]),
-         "is_active": True},
-        {"style_number": "3501", "name": "Bella+Canvas Long Sleeve Tee", "category": "Tee",
-         "description": "Long sleeve jersey tee.", "base_price": 28.00,
-         "available_sizes": json.dumps(["S", "M", "L", "XL", "2XL"]),
-         "available_colors": json.dumps(["White", "Black", "Navy", "Heather Gray"]),
-         "is_active": True},
-        {"style_number": "6004", "name": "Bella+Canvas Jersey Tank", "category": "Tank",
-         "description": "Relaxed fit tank.", "base_price": 22.00,
-         "available_sizes": json.dumps(["S", "M", "L", "XL"]),
-         "available_colors": json.dumps(["White", "Black", "Navy", "Heather Gray"]),
-         "is_active": True},
-    ]
-    added = 0
-    for p_data in sample_products:
-        if not Product.query.filter_by(style_number=p_data["style_number"]).first():
-            db.session.add(Product(**p_data))
-            added += 1
-    db.session.commit()
-    flash(f'Added {added} demo products. Shop is ready!', 'success')
-    return redirect(url_for('admin.products'))
-
-
 @admin_bp.route('/products/sync-api', methods=['POST'])
 @admin_required
 def sync_api():
@@ -379,13 +337,17 @@ def sync_api():
         api = SSActivewearAPI()
         print("API CLIENT INITIALIZED", file=sys.stderr, flush=True)
         
-        limit = request.form.get('limit', type=int)
-        print(f"LIMIT REQUESTED: {limit}", file=sys.stderr, flush=True)
         
-        print("CALLING sync_bella_canvas_catalog...", file=sys.stderr, flush=True)
-        products_data = api.sync_bella_canvas_catalog(limit=limit)
+        # Use mockup-styles sync: only syncs styles that have mockup folders in uploads/mockups
+        # Works even when full catalog returns nothing (fetches each style directly)
+        print("CALLING sync_mockup_styles...", file=sys.stderr, flush=True)
+        try:
+            products_data = api.sync_mockup_styles()
+        except ValueError as e:
+            flash(f'S&S API: {str(e)}', 'error')
+            return redirect(url_for('admin.products'))
         print(f"PRODUCTS DATA RETURNED: {len(products_data) if products_data else 0}", file=sys.stderr, flush=True)
-        
+
         if not products_data:
             print("WARNING: No products data!", file=sys.stderr, flush=True)
             flash('No products returned from S&S API. Check your API credentials or try again later.', 'warning')

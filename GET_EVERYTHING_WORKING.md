@@ -92,7 +92,19 @@ After saving variables, Railway redeploys automatically. Wait for it to finish.
 
 ---
 
-## Step 6: Verify everything
+## Step 6: Daily auto-sync (optional)
+
+To have styles, colors, sizes, and inventory update automatically every day:
+
+1. Add `SYNC_CRON_TOKEN` = any secret (e.g. `my-daily-sync-2024`) in Railway Variables
+2. Go to [cron-job.org](https://cron-job.org) (free)
+3. Create a job: URL = `https://purposefullymadekc.com/api/cron/sync-ss?token=my-daily-sync-2024`, schedule = Daily
+
+See **DAILY_SYNC_SETUP.md** for full details.
+
+---
+
+## Step 7: Verify everything
 
 - [ ] **Accounts persist** — Log out, redeploy, log back in. Your account should still exist.
 - [ ] **Admin works** — You see Admin in the header when logged in as purposefullymadekc@gmail.com

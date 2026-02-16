@@ -10,6 +10,89 @@ import json
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
+
+@api_bp.route('/cron/sync-ss', methods=['GET', 'POST'])
+def cron_sync_ss():
+    """
+    Daily S&S Activewear sync. Call from cron-job.org or similar.
+    Requires SYNC_CRON_TOKEN in env and ?token=XXX in request.
+    Syncs full catalog (styles, colors, sizes, inventory) from S&S.
+    """
+    token = request.args.get('token') or (request.get_json() or {}).get('token')
+    expected = os.environ.get('SYNC_CRON_TOKEN')
+    if not expected or token != expected:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    try:
+        from services.ssactivewear_api import SSActivewearAPI
+        from models import Product
+
+        api = SSActivewearAPI()
+        # Sync only styles that have mockup folders - fetches each directly from S&S Products API
+        products_data = api.sync_mockup_styles()
+
+        if not products_data:
+            return jsonify({'ok': False, 'error': 'No products returned from S&S API'}), 200
+
+        added = updated = color_variants_added = 0
+        for product_data in products_data:
+            color_variants_data = product_data.pop('color_variants', [])
+            style_num = product_data.get('style_number')
+            existing = Product.query.filter_by(style_number=style_num).first()
+
+            if existing:
+                existing.name = product_data['name']
+                existing.category = product_data['category']
+                existing.description = product_data['description']
+                existing.base_price = product_data['base_price']
+                existing.wholesale_cost = product_data.get('wholesale_cost', 0)
+                existing.available_sizes = product_data['available_sizes']
+                existing.available_colors = product_data['available_colors']
+                existing.brand = product_data.get('brand', 'Bella+Canvas')
+                existing.api_data = product_data.get('api_data')
+                existing.front_mockup_template = product_data.get('front_mockup_template') or existing.front_mockup_template
+                existing.back_mockup_template = product_data.get('back_mockup_template') or existing.back_mockup_template
+                updated += 1
+            else:
+                existing = Product(**product_data)
+                db.session.add(existing)
+                db.session.flush()
+                added += 1
+
+            for variant_data in color_variants_data:
+                cv = ProductColorVariant.query.filter_by(
+                    product_id=existing.id, color_name=variant_data['color_name']
+                ).first()
+                if cv:
+                    cv.front_image_url = variant_data.get('front_image') or cv.front_image_url
+                    cv.back_image_url = variant_data.get('back_image') or cv.back_image_url
+                    cv.size_inventory = variant_data.get('size_inventory')
+                else:
+                    db.session.add(ProductColorVariant(
+                        product_id=existing.id,
+                        color_name=variant_data['color_name'],
+                        color_hex=variant_data.get('color_hex'),
+                        front_image_url=variant_data.get('front_image'),
+                        back_image_url=variant_data.get('back_image'),
+                        size_inventory=variant_data.get('size_inventory'),
+                        ss_color_id=variant_data.get('color_id'),
+                    ))
+                    color_variants_added += 1
+
+        db.session.commit()
+        return jsonify({
+            'ok': True,
+            'products_added': added,
+            'products_updated': updated,
+            'color_variants_added': color_variants_added,
+            'total': len(products_data),
+        })
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 200
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 def allowed_file(filename):
     """Check if file extension is allowed"""
     return '.' in filename and \

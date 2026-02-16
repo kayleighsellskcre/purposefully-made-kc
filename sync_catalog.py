@@ -39,7 +39,8 @@ def sync_products(dry_run=False, limit=None, update_existing=True):
         if limit:
             print(f"   (Limited to {limit} products for testing)")
         
-        products_data = api.sync_bella_canvas_catalog(limit=limit)
+        # Sync only styles that have mockup folders in uploads/mockups/
+        products_data = api.sync_mockup_styles()
         
         if not products_data:
             print("\n❌ No products fetched from API")
