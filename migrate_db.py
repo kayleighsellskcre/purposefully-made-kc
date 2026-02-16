@@ -1,71 +1,45 @@
 """
-Add new columns to existing database
-Run this once to add brand and api_data columns
+Auto-migration script for Railway deployment
+Adds new columns safely if they don't exist
 """
 from app import create_app
 from models import db
-import sqlite3
+import sys
 
 app = create_app()
 
-with app.app_context():
-    print("Adding new columns to Product table...")
-    
+def add_column_if_not_exists(table_name, column_name, column_type):
+    """Add a column to a table if it doesn't already exist"""
+    with app.app_context():
+        try:
+            # Check if column exists by trying to query it
+            result = db.engine.execute(f"SELECT {column_name} FROM {table_name} LIMIT 1")
+            print(f"✓ Column {table_name}.{column_name} already exists")
+        except Exception as e:
+            # Column doesn't exist, add it
+            try:
+                db.engine.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
+                print(f"✓ Added column {table_name}.{column_name} ({column_type})")
+            except Exception as alter_error:
+                print(f"✗ Error adding {table_name}.{column_name}: {alter_error}")
+
+def run_migrations():
+    """Run all pending migrations"""
+    with app.app_context():
+        print("Running database migrations...")
+        print("="*60)
+        
+        # Add new Product columns
+        add_column_if_not_exists('product', 'size_chart', 'TEXT')
+        add_column_if_not_exists('product', 'fit_guide', 'TEXT')
+        add_column_if_not_exists('product', 'fabric_details', 'TEXT')
+        
+        print("="*60)
+        print("✅ Migration complete!")
+
+if __name__ == '__main__':
     try:
-        # Get database path
-        db_path = 'apparel.db'
-        
-        # Connect directly to SQLite
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        
-        # Add brand column
-        try:
-            cursor.execute("ALTER TABLE product ADD COLUMN brand VARCHAR(100)")
-            print("✓ Added 'brand' column")
-        except sqlite3.OperationalError as e:
-            if 'duplicate column name' in str(e).lower():
-                print("  'brand' column already exists")
-            else:
-                raise
-        
-        # Add api_data column
-        try:
-            cursor.execute("ALTER TABLE product ADD COLUMN api_data TEXT")
-            print("✓ Added 'api_data' column")
-        except sqlite3.OperationalError as e:
-            if 'duplicate column name' in str(e).lower():
-                print("  'api_data' column already exists")
-            else:
-                raise
-        
-        # Add Design gallery columns
-        try:
-            cursor.execute("ALTER TABLE design ADD COLUMN is_gallery BOOLEAN DEFAULT 0")
-            print("✓ Added 'is_gallery' column to design")
-        except sqlite3.OperationalError as e:
-            if 'duplicate column name' in str(e).lower():
-                print("  'is_gallery' column already exists")
-            else:
-                raise
-        try:
-            cursor.execute("ALTER TABLE design ADD COLUMN title VARCHAR(200)")
-            print("✓ Added 'title' column to design")
-        except sqlite3.OperationalError as e:
-            if 'duplicate column name' in str(e).lower():
-                print("  'title' column already exists")
-            else:
-                raise
-        
-        conn.commit()
-        conn.close()
-        
-        print("\n✓ Database migration complete!")
-        print("You can now refresh your browser")
-        
+        run_migrations()
     except Exception as e:
-        print(f"✗ Error: {e}")
-        print("\nIf you see 'table locked' error, stop the Flask server first:")
-        print("  1. Press CTRL+C in the terminal running Flask")
-        print("  2. Run this script again")
-        print("  3. Restart Flask: .\\venv\\Scripts\\python app.py")
+        print(f"❌ Migration failed: {e}")
+        sys.exit(1)

@@ -49,6 +49,31 @@ def create_app(config_class=Config):
             print("WARNING: Using SQLite. All accounts and data are DELETED on every deploy.", file=sys.stderr)
             print("Add PostgreSQL in Railway (New -> Database -> PostgreSQL) so data persists.", file=sys.stderr)
         db.create_all()
+        
+        # Run migrations for new columns (safe to run multiple times)
+        try:
+            from sqlalchemy import text
+            with db.engine.connect() as conn:
+                # Add new Product columns if they don't exist
+                try:
+                    conn.execute(text("ALTER TABLE product ADD COLUMN size_chart TEXT"))
+                    print("Added size_chart column", file=sys.stderr)
+                except Exception:
+                    pass  # Column already exists
+                try:
+                    conn.execute(text("ALTER TABLE product ADD COLUMN fit_guide TEXT"))
+                    print("Added fit_guide column", file=sys.stderr)
+                except Exception:
+                    pass
+                try:
+                    conn.execute(text("ALTER TABLE product ADD COLUMN fabric_details TEXT"))
+                    print("Added fabric_details column", file=sys.stderr)
+                except Exception:
+                    pass
+                conn.commit()
+        except Exception as e:
+            print(f"Migration check: {e}", file=sys.stderr)
+        
         # Ensure purposefullymadekc@gmail.com has admin on every app start (fixes fresh deploy)
         admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').strip()
         if admin_email:
