@@ -15,9 +15,9 @@ def promote_admin():
     if not expected or token != expected:
         flash('Invalid or missing token.', 'error')
         return redirect(url_for('main.index'))
-    admin_email = os.environ.get('ADMIN_EMAIL', 'purposefullymadekc@gmail.com')
+    admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').strip().lower()
     # Only allow promoting this single admin email; ignore any ?email= from request
-    user = User.query.filter_by(email=admin_email).first()
+    user = User.query.filter(db.func.lower(User.email) == admin_email).first()
     if not user:
         flash(f'No user found with email {admin_email}. Create an account with that email first, then use this link.', 'error')
         return redirect(url_for('main.index'))
@@ -53,8 +53,8 @@ def login():
             return redirect(url_for('auth.login'))
         
         # Ensure the designated admin email always has admin access (fixes deploy/fresh DB)
-        admin_email = os.environ.get('ADMIN_EMAIL', 'purposefullymadekc@gmail.com')
-        if user.email == admin_email and not getattr(user, 'is_admin', False):
+        admin_email = os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com'
+        if user.email.lower() == admin_email.lower():
             user.is_admin = True
             db.session.commit()
         
@@ -103,17 +103,19 @@ def register():
             return redirect(url_for('auth.register'))
         
         # Create new user
+        admin_email = os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com'
         user = User(
             email=email,
             first_name=first_name,
             last_name=last_name,
-            phone=phone
+            phone=phone,
+            is_admin=(email.lower() == admin_email.lower())
         )
         user.set_password(password)
-        
+
         db.session.add(user)
         db.session.commit()
-        
+
         login_user(user)
         _clear_cart_for_new_user()
         flash('Account created successfully!', 'success')

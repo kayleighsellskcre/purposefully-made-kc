@@ -8,13 +8,8 @@ shop_bp = Blueprint('shop', __name__, url_prefix='/shop')
 
 @shop_bp.route('/')
 def index():
-    """Shop page - browse all products"""
+    """Shop page - browse all products. Products come from S&S Activewear sync (Admin → Products)."""
     from models import ProductColorVariant
-    from utils.seed_data import seed_products_if_empty
-
-    # If DB is empty (e.g. after deploy), seed demo products so the shop is never blank
-    if Product.query.count() == 0:
-        seed_products_if_empty()
 
     # Clear collection context so user sees full catalog with all colors
     session.pop('collection_id', None)

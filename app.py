@@ -5,7 +5,6 @@ from flask_mail import Mail
 from werkzeug.utils import secure_filename
 from config import Config
 from models import db, User, Address, Collection, Product, Design, Order, OrderItem
-from utils.seed_data import seed_products_if_empty
 import stripe
 import paypalrestsdk
 
@@ -22,9 +21,20 @@ def create_app(config_class=Config):
     
     # Create tables if they don't exist (needed for fresh Railway/PostgreSQL deploys)
     with app.app_context():
+        db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+        if 'sqlite' in db_url.lower():
+            import sys
+            print("WARNING: Using SQLite. All accounts and data are DELETED on every deploy.", file=sys.stderr)
+            print("Add PostgreSQL in Railway (New -> Database -> PostgreSQL) so data persists.", file=sys.stderr)
         db.create_all()
-        seed_products_if_empty()
-    
+        # Ensure purposefullymadekc@gmail.com has admin on every app start (fixes fresh deploy)
+        admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').strip()
+        if admin_email:
+            admin_user = User.query.filter(db.func.lower(User.email) == admin_email.lower()).first()
+            if admin_user and not getattr(admin_user, 'is_admin', False):
+                admin_user.is_admin = True
+                db.session.commit()
+
     # Flask-Login setup
     login_manager = LoginManager()
     login_manager.init_app(app)
@@ -78,7 +88,21 @@ def create_app(config_class=Config):
     app.register_blueprint(admin_bp)
     app.register_blueprint(collection_bp)
     app.register_blueprint(api_bp)
-    
+
+    @app.before_request
+    def ensure_admin_email_has_admin():
+        """On every request: if logged-in user is purposefullymadekc@gmail.com, force is_admin=True.
+        Ensures admin access even if DB was reset or grant was missed on login."""
+        from flask_login import current_user
+        if not current_user.is_authenticated:
+            return
+        admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').lower().strip()
+        user_email = (current_user.email or '').lower().strip()
+        if user_email and user_email == admin_email:
+            if not getattr(current_user, 'is_admin', False):
+                current_user.is_admin = True
+                db.session.commit()
+
     # Template filter: color name to hex (fallback when color_hex not in DB)
     COMMON_COLOR_HEX = {
         'navy': '#1e3a5f', 'black': '#000000', 'white': '#ffffff', 'red': '#c41e3a',
@@ -102,7 +126,7 @@ def create_app(config_class=Config):
         cart_count = 0
         if 'cart' in session:
             cart_count = sum(item['quantity'] for item in session['cart'])
-        admin_email = os.environ.get('ADMIN_EMAIL', 'purposefullymadekc@gmail.com')
+        admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').lower()
         return {
             'cart_count': cart_count,
             'current_year': 2026,
@@ -129,7 +153,7 @@ def create_app(config_class=Config):
     @app.cli.command()
     def create_admin():
         """Create or ensure the designated admin user (purposefullymadekc@gmail.com). Only this email can access admin."""
-        admin_email = os.environ.get('ADMIN_EMAIL', 'purposefullymadekc@gmail.com')
+        admin_email = os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com'
         existing = User.query.filter_by(email=admin_email).first()
         if existing:
             existing.is_admin = True

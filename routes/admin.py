@@ -16,7 +16,7 @@ from pathlib import Path
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 # Only this email is allowed to access admin. All other users get customer portals only.
-ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'purposefullymadekc@gmail.com')
+ADMIN_EMAIL = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').lower()
 
 def admin_required(f):
     @wraps(f)
@@ -26,7 +26,7 @@ def admin_required(f):
             flash('Please log in to continue.', 'error')
             return redirect(url_for('auth.login'))
         # Restrict admin to the single admin email only; no one else can use admin.
-        if current_user.email != ADMIN_EMAIL or not getattr(current_user, 'is_admin', False):
+        if (current_user.email or '').lower() != ADMIN_EMAIL or not getattr(current_user, 'is_admin', False):
             flash('Access denied. Admin access is restricted.', 'error')
             return redirect(url_for('main.index'))
         return f(*args, **kwargs)

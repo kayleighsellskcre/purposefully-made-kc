@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Status - Purposefully Made KC{% endblock %}
+{% block content %}
+<div class="container" style="max-width: 700px; margin: 3rem auto; padding: 2rem; background: #f9f9f9; border-radius: 12px;">
+    <h1 style="margin-bottom: 0.5rem;">Connection Status</h1>
+    <p style="color: #666; margin-bottom: 2rem;">Visit <a href="{{ url_for('main.status') }}">/status</a> anytime to see what's configured.</p>
+
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #ddd;">
+            <td style="padding: 12px 0; font-weight: 500;">Database (PostgreSQL)</td>
+            <td style="padding: 12px 0; text-align: right;">
+                {% if db_using_postgres and db_ok %}
+                    <span style="color: green;">✓ Connected</span>
+                {% elif db_using_postgres and not db_ok %}
+                    <span style="color: orange;">Postgres set but connection failed</span>
+                {% else %}
+                    <span style="color: red;">✗ Using SQLite (data lost on deploy)</span>
+                {% endif %}
+            </td>
+        </tr>
+        <tr style="border-bottom: 1px solid #ddd;">
+            <td style="padding: 12px 0; font-weight: 500;">Admin email</td>
+            <td style="padding: 12px 0; text-align: right;">
+                {% if admin_email_set %}
+                    <span style="color: green;">✓ {{ admin_email_value }}</span>
+                {% else %}
+                    <span style="color: red;">✗ Not set</span>
+                {% endif %}
+            </td>
+        </tr>
+        <tr style="border-bottom: 1px solid #ddd;">
+            <td style="padding: 12px 0; font-weight: 500;">Your admin account exists</td>
+            <td style="padding: 12px 0; text-align: right;">
+                {% if admin_user_exists %}
+                    <span style="color: green;">✓ Yes</span>
+                {% else %}
+                    <span style="color: orange;">No — register with {{ admin_email_value }}</span>
+                {% endif %}
+            </td>
+        </tr>
+        <tr style="border-bottom: 1px solid #ddd;">
+            <td style="padding: 12px 0; font-weight: 500;">Your account has admin</td>
+            <td style="padding: 12px 0; text-align: right;">
+                {% if admin_user_is_admin %}
+                    <span style="color: green;">✓ Yes</span>
+                {% elif admin_user_exists %}
+                    <span style="color: orange;">No — log out and back in, or use promote URL</span>
+                {% else %}
+                    <span style="color: gray;">—</span>
+                {% endif %}
+            </td>
+        </tr>
+        <tr style="border-bottom: 1px solid #ddd;">
+            <td style="padding: 12px 0; font-weight: 500;">S&amp;S Activewear API</td>
+            <td style="padding: 12px 0; text-align: right;">
+                {% if ss_key_set and ss_account_set %}
+                    <span style="color: green;">✓ Configured</span>
+                {% elif ss_key_set or ss_account_set %}
+                    <span style="color: orange;">Partial — need both key and account number</span>
+                {% else %}
+                    <span style="color: red;">✗ Not configured</span>
+                {% endif %}
+            </td>
+        </tr>
+        <tr style="border-bottom: 1px solid #ddd;">
+            <td style="padding: 12px 0; font-weight: 500;">Products in shop</td>
+            <td style="padding: 12px 0; text-align: right;">
+                {% if product_count > 0 %}
+                    <span style="color: green;">✓ {{ product_count }} products</span>
+                {% else %}
+                    <span style="color: orange;">0 — sync from Admin → Products</span>
+                {% endif %}
+            </td>
+        </tr>
+    </table>
+
+    <div style="margin-top: 2rem; padding: 1rem; background: #fff; border-radius: 8px; font-size: 0.95rem;">
+        <strong>Next steps:</strong>
+        <ul style="margin: 0.5rem 0 0 1rem; padding: 0;">
+            {% if not db_using_postgres or not db_ok %}
+            <li>Add PostgreSQL in Railway so accounts persist.</li>
+            {% endif %}
+            {% if not admin_user_exists %}
+            <li><a href="{{ url_for('auth.register') }}">Register</a> with {{ admin_email_value }}.</li>
+            {% elif not admin_user_is_admin %}
+            <li>Log out and log back in. Or add <code>ADMIN_PROMOTE_TOKEN</code> in Railway, then visit <code>/auth/promote-admin?token=YOUR_TOKEN</code>.</li>
+            {% endif %}
+            {% if not ss_key_set or not ss_account_set %}
+            <li>Add <code>SSACTIVEWEAR_API_KEY</code> and <code>SSACTIVEWEAR_ACCOUNT_NUMBER</code> in Railway Variables.</li>
+            {% endif %}
+            {% if admin_user_is_admin and product_count == 0 and ss_key_set and ss_account_set %}
+            <li><a href="{{ url_for('admin.products') }}">Go to Admin → Products</a> and click "Sync from S&amp;S Activewear".</li>
+            {% endif %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

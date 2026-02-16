@@ -15,7 +15,7 @@
                     <a href="{{ url_for('custom_request.my_requests') }}" class="account-nav-link">My Requests</a>
                     <a href="{{ url_for('account.addresses') }}" class="account-nav-link">Addresses</a>
                     <a href="{{ url_for('account.profile') }}" class="account-nav-link active">Profile</a>
-                    {% if current_user.is_admin and current_user.email == admin_email %}
+                    {% if current_user.is_admin and (current_user.email or '')|lower == admin_email %}
                     <a href="{{ url_for('admin.index') }}" class="account-nav-link admin">Admin Dashboard</a>
                     {% endif %}
                     <a href="{{ url_for('auth.logout') }}" class="account-nav-link">Logout</a>

@@ -1,14 +1,20 @@
 # Railway Deployment Guide
 
-## Step 1: Add a Database (Recommended)
+## Accounts lost after every deploy?
 
-Railway's filesystem is ephemeral—SQLite data is lost on redeploy. Add PostgreSQL:
+**You must add PostgreSQL.** Without it, Railway uses SQLite and wipes all data on each deploy. Add PostgreSQL once and all accounts, orders, and products will persist.
+
+---
+
+## Step 1: Add a Database (REQUIRED for account persistence)
+
+**Without PostgreSQL, your account and all data are deleted on every deploy.** You will have to register again after each deployment.
 
 1. In your Railway project, click **+ New** → **Database** → **PostgreSQL**
 2. Railway creates a database and sets `DATABASE_URL` automatically
 3. You don't need to add `DATABASE_URL` yourself—Railway injects it
 
-*(If you skip this, the app will use SQLite and work, but data resets on each deploy.)*
+**Important:** Link the PostgreSQL database to your app service so `DATABASE_URL` is available. Your users, products, and orders persist only when using PostgreSQL.
 
 ---
 
@@ -68,12 +74,29 @@ Railway's filesystem is ephemeral—SQLite data is lost on redeploy. Add Postgre
 | `PAYPAL_CLIENT_SECRET` | Your PayPal secret |
 | `PAYPAL_MODE` | `live` |
 
+### Admin account (purposefullymadekc@gmail.com)
+
+| Variable | Value |
+|----------|-------|
+| `ADMIN_EMAIL` | `purposefullymadekc@gmail.com` |
+
+This email gets admin access automatically when you log in or register. Add it so the app knows which account is admin.
+
+### S&S Activewear (products from S&S only—no placeholders)
+
+| Variable | Value |
+|----------|-------|
+| `SSACTIVEWEAR_API_KEY` | Your S&S API key |
+| `SSACTIVEWEAR_ACCOUNT_NUMBER` | Your S&S account number |
+| `SSACTIVEWEAR_API_URL` | `https://api.ssactivewear.com` (optional, this is the default) |
+
+**Where to get these:** Log in at [ssactivewear.com](https://www.ssactivewear.com) → Account → API Access. Products come only from S&S—sync via Admin → Products → "Sync from S&S Activewear".
+
 ### Optional
 
 | Variable | Value |
 |----------|-------|
 | `SHIPPING_FLAT_RATE` | `11.00` |
-| `ADMIN_EMAIL` | `admin@yourdomain.com` |
 
 ---
 
@@ -85,6 +108,9 @@ In the Variables tab, click **Raw Editor** and paste (replace values):
 SECRET_KEY=generate-a-long-random-string-here
 FLASK_ENV=production
 ADMIN_BASE_URL=https://your-app-name.up.railway.app
+ADMIN_EMAIL=purposefullymadekc@gmail.com
+SSACTIVEWEAR_API_KEY=your_ss_api_key
+SSACTIVEWEAR_ACCOUNT_NUMBER=your_ss_account_number
 MAIL_SERVER=smtp.gmail.com
 MAIL_PORT=587
 MAIL_USE_TLS=True
@@ -110,14 +136,17 @@ gunicorn -w 4 -b 0.0.0.0:$PORT app:app
 
 ## Step 5: Make Your Account Admin
 
-**Option A – One-click (easiest):**
+With `ADMIN_EMAIL=purposefullymadekc@gmail.com` in Variables, log in or register with that email to get admin automatically. The Admin link will appear in the header.
+
+**If it still does not work:**
+
+**Option A – Promote URL (one-time):**
 
 1. In Railway → your **app** service → **Variables**, add:
    - `ADMIN_PROMOTE_TOKEN` = any secret string (e.g. `my-secret-promote-123`)
 2. Redeploy.
 3. Log in to the live site.
-4. Visit: `https://purposefullymadekc.com/auth/promote-admin?token=my-secret-promote-123&email=purposefullymadekc@gmail.com`
-   (use your token and email)
+4. Visit: `https://purposefullymadekc.com/auth/promote-admin?token=my-secret-promote-123`
 5. You’ll be promoted to admin. Remove `ADMIN_PROMOTE_TOKEN` from Variables after use (optional, for security).
 
 **Option B – SQL in Postgres:**
