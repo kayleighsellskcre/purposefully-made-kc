@@ -50,6 +50,13 @@
                     <div class="form-group">
                         <label for="description">Description</label>
                         <textarea id="description" name="description" class="form-control" rows="4">{{ product.description or '' }}</textarea>
+                        <small>Product description shown to customers</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="fabric_details">Fabric Details</label>
+                        <textarea id="fabric_details" name="fabric_details" class="form-control" rows="2">{{ product.fabric_details or '' }}</textarea>
+                        <small>Fabric composition (e.g., "100% cotton")</small>
                     </div>
                 </div>
                 

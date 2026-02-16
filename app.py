@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_from_directory
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_mail import Mail
 from werkzeug.utils import secure_filename
@@ -9,6 +9,28 @@ import stripe
 import paypalrestsdk
 
 mail = Mail()
+
+
+def _sync_mockups_to_static(app):
+    """Copy mockups from uploads/mockups to static/uploads/mockups so they're served by Flask."""
+    import shutil
+    src = os.path.join(app.root_path, 'uploads', 'mockups')
+    dst = os.path.join(app.config['UPLOAD_FOLDER'], 'mockups')
+    if not os.path.isdir(src):
+        return
+    for name in os.listdir(src):
+        src_path = os.path.join(src, name)
+        dst_path = os.path.join(dst, name)
+        if os.path.isdir(src_path):
+            os.makedirs(dst_path, exist_ok=True)
+            for f in os.listdir(src_path):
+                s = os.path.join(src_path, f)
+                d = os.path.join(dst_path, f)
+                if os.path.isfile(s) and (not os.path.exists(d) or os.path.getmtime(s) > os.path.getmtime(d)):
+                    shutil.copy2(s, d)
+        elif os.path.isfile(src_path):
+            if not os.path.exists(dst_path) or os.path.getmtime(src_path) > os.path.getmtime(dst_path):
+                shutil.copy2(src_path, dst_path)
 
 
 def create_app(config_class=Config):
@@ -63,6 +85,9 @@ def create_app(config_class=Config):
     os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'proofs'), exist_ok=True)
     os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'mockups'), exist_ok=True)
     os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'custom_requests'), exist_ok=True)
+
+    # Sync mockups from uploads/mockups to static/uploads/mockups so Flask serves them
+    _sync_mockups_to_static(app)
     
     # Register blueprints
     from routes.auth import auth_bp
@@ -77,6 +102,23 @@ def create_app(config_class=Config):
     from routes.design import design_bp
     from routes.custom_request import custom_request_bp
     
+    # Serve uploads (mockups, designs) - register FIRST so /uploads/mockups/... works
+    @app.route('/uploads/<path:path>')
+    def serve_uploads(path):
+        """Serve files from uploads/ or static/uploads/."""
+        path = path.replace('..', '').replace('\\', '/')
+        for base_name in ('uploads', 'static/uploads'):
+            uploads_dir = os.path.normpath(os.path.join(app.root_path, *base_name.split('/')))
+            if not os.path.isdir(uploads_dir):
+                continue
+            full = os.path.normpath(os.path.join(uploads_dir, path.replace('/', os.sep)))
+            try:
+                if os.path.isfile(full) and os.path.commonpath([uploads_dir, full]) == uploads_dir:
+                    return send_from_directory(os.path.dirname(full), os.path.basename(full))
+            except ValueError:
+                pass
+        return '', 404
+
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(shop_bp)
@@ -88,6 +130,18 @@ def create_app(config_class=Config):
     app.register_blueprint(admin_bp)
     app.register_blueprint(collection_bp)
     app.register_blueprint(api_bp)
+    
+    # Add custom template filters
+    @app.template_filter('from_json')
+    def from_json_filter(value):
+        """Convert JSON string to Python object"""
+        if not value:
+            return {}
+        import json
+        try:
+            return json.loads(value)
+        except (ValueError, TypeError):
+            return {}
 
     @app.before_request
     def ensure_admin_email_has_admin():

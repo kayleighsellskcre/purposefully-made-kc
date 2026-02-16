@@ -10,7 +10,7 @@ collection_bp = Blueprint('collection', __name__, url_prefix='/c')
 def view(slug):
     """View collection landing page - design board of available items"""
     collection = Collection.query.options(
-        joinedload(Collection.products).joinedload(Product.color_variants)
+        joinedload(Collection.products)
     ).filter_by(slug=slug, is_active=True).first_or_404()
     
     # Check password if protected

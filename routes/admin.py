@@ -405,6 +405,10 @@ def sync_api():
                 existing.available_colors = product_data['available_colors']
                 existing.brand = product_data.get('brand', 'Bella+Canvas')
                 existing.api_data = product_data.get('api_data')
+                # Update sizing and fabric details
+                existing.size_chart = product_data.get('size_chart')
+                existing.fit_guide = product_data.get('fit_guide')
+                existing.fabric_details = product_data.get('fabric_details')
                 # Update images if provided
                 if product_data.get('front_mockup_template'):
                     existing.front_mockup_template = product_data['front_mockup_template']
@@ -535,6 +539,10 @@ def edit_product(product_id):
         product.available_sizes = request.form.get('available_sizes')
         product.available_colors = request.form.get('available_colors')
         product.print_area_config = request.form.get('print_area_config')
+        
+        # Sizing and fabric details
+        product.fit_guide = request.form.get('fit_guide')
+        product.fabric_details = request.form.get('fabric_details')
         
         # Handle front image upload
         if 'front_image' in request.files:

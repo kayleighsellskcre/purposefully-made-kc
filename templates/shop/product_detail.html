@@ -61,6 +61,40 @@
                 </div>
                 {% endif %}
                 
+                <!-- Size Chart Link (if available) -->
+                {% if product.size_chart %}
+                <div class="size-chart-link">
+                    <a href="javascript:void(0)" onclick="toggleSizeChart()" class="size-chart-btn">
+                        📏 Size Chart
+                    </a>
+                </div>
+                <div id="sizeChartModal" class="size-chart-modal" style="display: none;">
+                    <div class="size-chart-content">
+                        <h3>Size Chart</h3>
+                        <table class="size-chart-table">
+                            <thead>
+                                <tr>
+                                    <th>Size</th>
+                                    <th>Chest Width (in)</th>
+                                    <th>Body Length (in)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set size_chart_data = product.size_chart|from_json %}
+                                {% for size, measurements in size_chart_data.items() %}
+                                <tr>
+                                    <td><strong>{{ size }}</strong></td>
+                                    <td>{{ measurements.chest }}</td>
+                                    <td>{{ measurements.length }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <button class="btn btn-outline btn-sm" onclick="toggleSizeChart()">Close</button>
+                    </div>
+                </div>
+                {% endif %}
+                
                 <!-- Size Selection -->
                 {% if available_sizes %}
                 <div class="product-option">
@@ -195,6 +229,16 @@ async function addToCart() {
         alert('Failed to add to cart');
     }
 }
+
+// Size chart toggle
+function toggleSizeChart() {
+    const modal = document.getElementById('sizeChartModal');
+    if (modal.style.display === 'none' || !modal.style.display) {
+        modal.style.display = 'flex';
+    } else {
+        modal.style.display = 'none';
+    }
+}
 </script>
 
 <style>
@@ -300,6 +344,77 @@ async function addToCart() {
     border-top: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
     margin-bottom: 2rem;
+}
+
+.size-chart-link {
+    margin-bottom: 2rem;
+}
+
+.size-chart-btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    background: var(--accent-color);
+    color: #fff;
+    text-decoration: none;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.size-chart-btn:hover {
+    background: var(--accent-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.size-chart-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 2rem;
+}
+
+.size-chart-content {
+    background: #fff;
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    max-width: 600px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.size-chart-content h3 {
+    margin-bottom: 1.5rem;
+}
+
+.size-chart-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+}
+
+.size-chart-table th,
+.size-chart-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.size-chart-table th {
+    background: var(--secondary-color);
+    font-weight: 600;
+}
+
+.size-chart-table tr:last-child td {
+    border-bottom: none;
 }
 
 .product-option {

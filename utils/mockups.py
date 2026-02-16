@@ -23,12 +23,13 @@ def _mockup_dirs(app):
 def _find_mockup_file(app, style_number, color_name, view):
     """
     Look for a mockup file in uploads/mockups for the given style, color, and view.
-    Filename format: {style_number}_{Color_Name}_front.jpg or _back.jpg (underscores in color).
+    Tries format A (3001_Aqua_front.jpg) first, then scans for format B (BELLA_+_CANVAS_3001Y_Ash_Front_High.jpg).
     Returns the relative path for URL (e.g. 3001/3001_Aqua_front.jpg) if found, else None.
     """
     safe_color = (color_name or '').replace(' ', '_').strip()
     if not safe_color:
         return None
+    # Format A: 3001_Aqua_front.jpg
     base_name = f"{style_number}_{safe_color}_{view}"
     for ext in ('.jpg', '.jpeg', '.png', '.webp'):
         filename = base_name + ext
@@ -39,7 +40,29 @@ def _find_mockup_file(app, style_number, color_name, view):
             filepath = os.path.join(style_dir, filename)
             if os.path.isfile(filepath):
                 return f"{style_number}/{filename}"
+    # Format B: scan folder for BELLA_+_CANVAS_3001Y_Ash_Front_High style
+    color_lower = (color_name or '').lower().replace(' ', '_')
+    view_needle = view.lower()
+    for mockup_dir in _mockup_dirs(app):
+        if not mockup_dir or not os.path.isdir(mockup_dir):
+            continue
+        style_dir = os.path.join(mockup_dir, str(style_number))
+        if not os.path.isdir(style_dir):
+            continue
+        for ext in ('.jpg', '.jpeg', '.png', '.webp'):
+            for f in Path(style_dir).glob('*' + ext):
+                parsed_color, parsed_view = _parse_mockup_filename(style_number, f.stem)
+                if parsed_color and parsed_view == view_needle:
+                    color_match = parsed_color.lower().replace(' ', '_') == color_lower
+                    if color_match:
+                        return f"{style_number}/{f.name}"
     return None
+
+
+def _mockup_url(app, rel):
+    """Return URL for mockup - uses static path directly."""
+    # Return path like /static/uploads/mockups/3001/3001_Aqua_front.jpg
+    return f"/static/uploads/mockups/{rel}"
 
 
 def get_mockup_url_for_variant(product, variant, view, app):
@@ -49,8 +72,7 @@ def get_mockup_url_for_variant(product, variant, view, app):
     """
     rel = _find_mockup_file(app, product.style_number, getattr(variant, 'color_name', None), view)
     if rel:
-        from flask import url_for
-        return url_for('main.serve_mockup', path=rel)
+        return _mockup_url(app, rel)
     if view == 'front' and getattr(variant, 'front_image_url', None):
         return variant.front_image_url
     if view == 'back' and getattr(variant, 'back_image_url', None):
@@ -58,15 +80,52 @@ def get_mockup_url_for_variant(product, variant, view, app):
     return None
 
 
+def _parse_mockup_filename(style_number, stem):
+    """
+    Parse mockup filename to extract color and view.
+    Supports:
+      - 3001_Aqua_front -> color "Aqua", view "front"
+      - BELLA_+_CANVAS_3001Y_Ash_Front_High -> color "Ash", view "front" (when style is 3001Y)
+    Returns (color_name, view) or (None, None).
+    """
+    parts = stem.split('_')
+    if len(parts) < 3:
+        return None, None
+    style_str = str(style_number)
+    # Format A: 3001_Aqua_front
+    if parts[0] == style_str:
+        view = parts[-1].lower()
+        if view not in ('front', 'back', 'side'):
+            return None, None
+        color_parts = parts[1:-1]
+        color_name = ' '.join(color_parts).title()
+        return color_name if color_name else None, view
+    # Format B: BELLA_+_CANVAS_3001Y_Ash_Front_High - style number somewhere in middle
+    if style_str in parts:
+        idx = parts.index(style_str)
+        # View is last part or last two (Front_High -> front)
+        last = parts[-1].lower()
+        if last in ('front', 'back', 'side'):
+            view = last
+        elif last == 'high' and len(parts) >= 2 and parts[-2].lower() == 'front':
+            view = 'front'
+        elif last == 'high' and len(parts) >= 2 and parts[-2].lower() == 'back':
+            view = 'back'
+        else:
+            return None, None
+        color_parts = parts[idx + 1:-1] if last != 'high' else parts[idx + 1:-2]
+        color_name = ' '.join(color_parts).title()
+        return color_name if color_name else None, view
+    return None, None
+
+
 def discover_colors_from_mockup_folder(app, style_number):
     """
     Scan uploads/mockups/{style_number}/ for image files and return unique colors with their mockup URLs.
-    Filename format: {style_number}_{Color_Name}_front.jpg (or _back). Returns list of dicts:
+    Supports formats: 3001_Aqua_front.jpg and BELLA_+_CANVAS_3001Y_Ash_Front_High.jpg
+    Returns list of dicts:
     [{'color_name': 'Aqua', 'front_image': url or None, 'back_image': url or None, 'inventory': {}}, ...]
-    so that ALL mockups in the folder show up with the product even if there's no DB variant yet.
     """
-    from flask import url_for
-    # Parse filenames like 3001_Aqua_front.jpg -> color "Aqua", view "front"
     colors_seen = {}
     for mockup_dir in _mockup_dirs(app):
         if not mockup_dir or not os.path.isdir(mockup_dir):
@@ -76,21 +135,11 @@ def discover_colors_from_mockup_folder(app, style_number):
             continue
         for ext in ('.jpg', '.jpeg', '.png', '.webp'):
             for f in Path(style_dir).glob('*' + ext):
-                name = f.stem
-                parts = name.split('_')
-                if len(parts) < 3:
-                    continue
-                if parts[0] != str(style_number):
-                    continue
-                view = parts[-1].lower()
-                if view not in ('front', 'back', 'side'):
-                    continue
-                color_parts = parts[1:-1]
-                color_name = ' '.join(color_parts).title()
-                if not color_name:
+                color_name, view = _parse_mockup_filename(style_number, f.stem)
+                if not color_name or not view:
                     continue
                 rel = f"{style_number}/{f.name}"
-                url = url_for('main.serve_mockup', path=rel)
+                url = _mockup_url(app, rel)
                 if color_name not in colors_seen:
                     colors_seen[color_name] = {'color_name': color_name, 'color_hex': None, 'front_image': None, 'back_image': None, 'front_image_url': None, 'back_image_url': None, 'inventory': {}}
                 if view == 'front':
@@ -144,7 +193,6 @@ def ensure_variant_mockup_urls(app):
     Call after sync so customers see mockup images when selecting colors.
     """
     from models import Product, ProductColorVariant, db
-    from flask import url_for
     import json
 
     for product in Product.query.filter_by(is_active=True).all():
@@ -154,11 +202,11 @@ def ensure_variant_mockup_urls(app):
             if not v.front_image_url:
                 rel = _find_mockup_file(app, product.style_number, v.color_name, 'front')
                 if rel:
-                    v.front_image_url = url_for('main.serve_mockup', path=rel)
+                    v.front_image_url = _mockup_url(app, rel)
             if not v.back_image_url:
                 rel = _find_mockup_file(app, product.style_number, v.color_name, 'back')
                 if rel:
-                    v.back_image_url = url_for('main.serve_mockup', path=rel)
+                    v.back_image_url = _mockup_url(app, rel)
 
         # 2. Create variants for mockup folder colors not yet in DB
         for c in discover_colors_from_mockup_folder(app, product.style_number):
@@ -187,21 +235,19 @@ def get_carousel_colors_for_product(product, app, allowed_colors=None):
     Ensures ALL colors from uploads/mockups show in carousel with correct images.
     allowed_colors: optional set to filter (e.g. for collection restrictions)
     """
-    from flask import url_for
     result = []
     seen = set()
 
-    # 1. DB variants with front_image_url
+    # 1. DB variants - prefer mockup folder URL over DB URL (DB may have old S&S CDN links)
     for v in getattr(product, 'color_variants', []) or []:
         if v.color_name in seen:
             continue
         if allowed_colors and v.color_name not in allowed_colors:
             continue
         seen.add(v.color_name)
-        url = v.front_image_url
-        if not url:
-            rel = _find_mockup_file(app, product.style_number, v.color_name, 'front')
-            url = url_for('main.serve_mockup', path=rel) if rel else None
+        # Try mockup folder FIRST
+        rel = _find_mockup_file(app, product.style_number, v.color_name, 'front')
+        url = _mockup_url(app, rel) if rel else v.front_image_url
         if url:
             result.append({'color_name': v.color_name, 'front_image_url': url})
 
@@ -218,6 +264,23 @@ def get_carousel_colors_for_product(product, app, allowed_colors=None):
         result.append({'color_name': c['color_name'], 'front_image_url': url})
 
     return result
+
+
+def get_first_shop_image_url(product, app):
+    """
+    Get a single image URL for shop display when carousel is empty.
+    Returns first available front mockup from folder or DB, else None.
+    """
+    colors = get_carousel_colors_for_product(product, app)
+    if colors:
+        return colors[0].get('front_image_url')
+    # Fallback: scan folder for any front image
+    discovered = discover_colors_from_mockup_folder(app, product.style_number)
+    for c in discovered:
+        url = c.get('front_image_url') or c.get('front_image')
+        if url:
+            return url
+    return None
 
 
 def create_products_from_mockup_folders(app):

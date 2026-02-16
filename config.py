@@ -18,7 +18,7 @@ class Config:
     # Upload settings
     UPLOAD_FOLDER = os.path.join(basedir, 'static', 'uploads')
     MAX_CONTENT_LENGTH = int(os.environ.get('MAX_CONTENT_LENGTH', 16 * 1024 * 1024))  # 16MB default
-    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'svg', 'pdf'}
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'pdf'}
     
     # Stripe settings
     STRIPE_PUBLIC_KEY = os.environ.get('STRIPE_PUBLIC_KEY')

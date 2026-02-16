@@ -134,10 +134,11 @@
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 
-/* Placement-specific sizing - Professional proportions, all horizontally centered */
+/* Placement-specific sizing - Slightly smaller for a cleaner look */
 .design-layer[data-placement="center_chest"] {
-    width: 32%;
-    max-width: 250px;
+    width: 28%;
+    max-width: 220px;
+    min-height: 60px;
     top: 40%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -145,8 +146,8 @@
 
 /* Left chest = appears on RIGHT side of mockup (wearer's left when wearing) */
 .design-layer[data-placement="left_chest"] {
-    width: 12%;
-    max-width: 95px;
+    width: 10%;
+    max-width: 85px;
     top: 34%;
     left: 62%;
     transform: translate(-50%, -50%);
@@ -154,16 +155,16 @@
 
 /* Right chest = appears on LEFT side of mockup (wearer's right when wearing) */
 .design-layer[data-placement="right_chest"] {
-    width: 12%;
-    max-width: 95px;
+    width: 10%;
+    max-width: 85px;
     top: 34%;
     left: 38%;
     transform: translate(-50%, -50%);
 }
 
 .design-layer[data-placement="center_back"] {
-    width: 32%;
-    max-width: 250px;
+    width: 28%;
+    max-width: 220px;
     top: 40%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -171,8 +172,8 @@
 /* Back design name/number: higher default position, larger text */
 .design-layer-back {
     flex-direction: column;
-    width: 42%;
-    max-width: 320px;
+    width: 38%;
+    max-width: 300px;
     top: 28%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -892,6 +893,84 @@
         position: static;
     }
 }
+
+/* Size Chart Button & Modal */
+.size-chart-btn-customize {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--accent-color);
+    color: #fff;
+    border: none;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.size-chart-btn-customize:hover {
+    background: var(--accent-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.size-chart-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    padding: 1rem;
+}
+
+.size-chart-content {
+    background: #fff;
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    max-width: 600px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+.size-chart-content h3 {
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.size-chart-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+}
+
+.size-chart-table th,
+.size-chart-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.size-chart-table th {
+    background: var(--secondary-color);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.size-chart-table tbody tr:hover {
+    background: var(--secondary-color);
+}
+
+.size-chart-table tr:last-child td {
+    border-bottom: none;
+}
 </style>
 {% endblock %}
 
@@ -944,6 +1023,15 @@
                 {% endif %}
                 <h2>{{ product.name }}</h2>
                 <p class="product-style">Style {{ product.style_number }}</p>
+                
+                <!-- Size Chart Button -->
+                {% if product.size_chart %}
+                <div style="margin: 1rem 0;">
+                    <button onclick="toggleSizeChart()" class="size-chart-btn-customize">
+                        📏 Size Chart
+                    </button>
+                </div>
+                {% endif %}
                 
                 <!-- Step 1: Color Selection -->
                 <div class="panel-section step-section">
@@ -1036,7 +1124,7 @@
                                 <line x1="12" y1="3" x2="12" y2="15"></line>
                             </svg>
                             <p><strong>Upload your own design</strong></p>
-                            <p class="text-muted">PNG, JPG, WEBP — background removed automatically</p>
+                            <p class="text-muted">PNG, JPG, WEBP</p>
                         </div>
                         <input type="file" id="designFileMain" accept=".png,.jpg,.jpeg,.webp" style="display: none;">
                         {% if current_user and current_user.is_authenticated %}
@@ -1236,6 +1324,38 @@
         </div>
     </div>
 </div>
+
+<!-- Size Chart Modal -->
+{% if product.size_chart %}
+<div id="sizeChartModal" class="size-chart-modal" style="display: none;">
+    <div class="size-chart-content">
+        <h3>Size Chart - {{ product.style_number }}</h3>
+        <table class="size-chart-table">
+            <thead>
+                <tr>
+                    <th>Size</th>
+                    <th>Chest Width (in)</th>
+                    <th>Body Length (in)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set size_chart_data = product.size_chart|from_json %}
+                {% for size, measurements in size_chart_data.items() %}
+                <tr>
+                    <td><strong>{{ size }}</strong></td>
+                    <td>{{ measurements.chest }}</td>
+                    <td>{{ measurements.length }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <p style="font-size: 0.85rem; color: #666; margin-top: 1rem;">
+            <strong>Note:</strong> Measurements are taken with garment laying flat. Chest width measured 1" below armhole.
+        </p>
+        <button class="btn btn-outline" onclick="toggleSizeChart()" style="margin-top: 1rem;">Close</button>
+    </div>
+</div>
+{% endif %}
 
 <script>
 // Professional Product Customizer
@@ -1930,36 +2050,40 @@
             fileInputMain.addEventListener('change', async function() {
                 const file = this.files[0];
                 if (!file) return;
-                
-                uploadAreaMain.innerHTML = '<p style="margin: 2rem 0;">Processing design…</p><p style="color: #999;">Removing background</p>';
+                if (file.size > 15 * 1024 * 1024) {
+                    uploadAreaMain.innerHTML = '<p style="margin: 1rem 0; color: #dc3545;"><strong>File too large</strong></p><p class="text-muted" style="font-size: 0.85rem;">Maximum size is 16MB. Please choose a smaller image.</p><p class="text-muted" style="font-size: 0.8rem;">Click to try again</p>';
+                    return;
+                }
+                uploadAreaMain.innerHTML = '<p style="margin: 2rem 0;">Uploading design…</p>';
                 uploadAreaMain.style.pointerEvents = 'none';
                 
                 try {
                     const formData = new FormData();
                     formData.append('file', file);
-                    formData.append('remove_background', 'true');
                     const shareCheckbox = document.getElementById('shareInGalleryCheckbox');
-                    if (shareCheckbox) {
-                        formData.append('share_in_gallery', shareCheckbox.checked ? 'true' : 'false');
-                    }
+                    if (shareCheckbox) formData.append('share_in_gallery', shareCheckbox.checked ? 'true' : 'false');
                     const response = await fetch('/design/upload', { method: 'POST', body: formData });
-                    if (!response.ok) throw new Error('Upload failed');
-                    const data = await response.json();
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) throw new Error(data.error || 'Upload failed');
                     
                     state.designUrl = data.url;
                     state.presetDesignId = data.design_id || null;
                     state.designFile = data.design_id ? null : file;
                     const designImage = document.getElementById('designImage');
                     const designPreviewImage = document.getElementById('designPreviewImage');
-                    if (designImage && designPreviewImage && designLayer && placementSection) {
+                    if (designImage && designLayer) {
+                        designImage.onerror = function() { console.error('Design image failed to load:', data.url); };
                         designImage.src = data.url;
-                        designPreviewImage.src = data.url;
-                        designPreview.classList.add('active');
+                        if (designPreviewImage) {
+                            designPreviewImage.onerror = function() { console.error('Design preview failed to load:', data.url); };
+                            designPreviewImage.src = data.url;
+                        }
+                        if (designPreview) designPreview.classList.add('active');
                         designLayer.classList.add('visible');
                         designLayer.classList.add('draggable');
                         designLayer.style.display = 'flex';
                         designLayer.setAttribute('data-placement', (state.allowedPlacements && state.allowedPlacements[0]) || 'center_chest');
-                        placementSection.style.display = 'block';
+                        if (placementSection) placementSection.style.display = 'block';
                         const backSection = document.getElementById('backDesignSection');
                         if (backSection) backSection.style.display = 'block';
                         state.selectedPlacement = (state.allowedPlacements && state.allowedPlacements[0]) || 'center_chest';
@@ -1975,8 +2099,8 @@
                     uploadAreaMain.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Design uploaded!</strong></p><p class="text-muted">Click to change</p>';
                 } catch (err) {
                     console.error(err);
-                    alert('Upload failed. Please try again.');
-                    uploadAreaMain.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Upload your own design</strong></p><p class="text-muted">PNG, JPG, WEBP</p>';
+                    const msg = err.message || 'Upload failed. Please try again.';
+                    uploadAreaMain.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#dc3545" stroke-width="2" style="margin-bottom: 0.5rem;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><p><strong>Upload failed</strong></p><p class="text-muted" style="font-size: 0.85rem;">' + msg.replace(/</g, '&lt;') + '</p><p class="text-muted" style="font-size: 0.8rem; margin-top: 0.5rem;">Click to try again</p>';
                 }
                 uploadAreaMain.style.pointerEvents = '';
                 fileInputMain.value = '';
@@ -2001,7 +2125,7 @@
                 if (dragHint) dragHint.style.display = 'none';
                 if (resetBtn) resetBtn.style.display = 'none';
                 if (uploadAreaMain) {
-                    uploadAreaMain.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Upload your own design</strong></p><p class="text-muted">PNG, JPG, WEBP — background removed automatically</p>';
+                    uploadAreaMain.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Upload your own design</strong></p><p class="text-muted">PNG, JPG, WEBP</p>';
                 }
             });
         }
@@ -2090,27 +2214,19 @@
         fileInputBack.addEventListener('change', async function() {
             const file = this.files[0];
             if (!file) return;
-            
-            // Show loading
-            uploadAreaBack.innerHTML = '<p style="margin: 2rem 0;">Processing back design...</p><p style="color: #999;">Removing background...</p>';
+            if (file.size > 15 * 1024 * 1024) {
+                uploadAreaBack.innerHTML = '<p style="margin: 1rem 0; color: #dc3545;"><strong>File too large</strong></p><p class="text-muted" style="font-size: 0.85rem;">Maximum 16MB. Click to try again.</p>';
+                return;
+            }
+            uploadAreaBack.innerHTML = '<p style="margin: 2rem 0;">Uploading back design...</p>';
             uploadAreaBack.style.pointerEvents = 'none';
             
             try {
-                // Upload with background removal
                 const formData = new FormData();
                 formData.append('file', file);
-                formData.append('remove_background', 'true');
-                
-                const response = await fetch('/design/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Upload failed');
-                }
-                
-                const data = await response.json();
+                const response = await fetch('/design/upload', { method: 'POST', body: formData });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error || 'Upload failed');
                 
                 // Store back design info
                 state.backDesignFile = file;
@@ -2126,9 +2242,8 @@
                 
             } catch (error) {
                 console.error('Back upload error:', error);
-                alert('Error uploading back design. Please try again.');
-                
-                uploadAreaBack.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 1rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Upload back design</strong></p><p class="text-muted">PNG, JPG, WEBP (Max 16MB)</p>';
+                const msg = (error.message || 'Upload failed').replace(/</g, '&lt;');
+                uploadAreaBack.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#dc3545" stroke-width="2" style="margin: 0 auto 1rem;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><p><strong>Upload failed</strong></p><p class="text-muted" style="font-size: 0.85rem;">' + msg + '</p><p class="text-muted" style="font-size: 0.8rem;">Click to try again</p>';
                 uploadAreaBack.style.pointerEvents = '';
             }
         });
@@ -2552,6 +2667,18 @@
         });
     }
 })();
+
+// Size chart modal toggle
+function toggleSizeChart() {
+    const modal = document.getElementById('sizeChartModal');
+    if (modal) {
+        if (modal.style.display === 'none' || !modal.style.display) {
+            modal.style.display = 'flex';
+        } else {
+            modal.style.display = 'none';
+        }
+    }
+}
 </script>
 {% endblock %}
 {% block extra_js %}

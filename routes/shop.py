@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, url_for, session, redirect, flash, current_app
 from models import db, Product, Design, Collection
 from flask_login import login_required, current_user
-from utils.mockups import get_carousel_colors_for_product, get_color_variants_data_for_product
+from utils.mockups import get_carousel_colors_for_product, get_color_variants_data_for_product, get_first_shop_image_url
 import json
 
 shop_bp = Blueprint('shop', __name__, url_prefix='/shop')
@@ -25,12 +25,12 @@ def index():
     if category:
         query = query.filter_by(category=category)
     
-    from sqlalchemy.orm import joinedload
-    products = query.options(joinedload(Product.color_variants)).order_by(Product.style_number).all()
+    products = query.order_by(Product.style_number).all()
 
     # Attach carousel colors: DB variants + mockup folder (all colors with front images)
     for product in products:
         product.carousel_colors = get_carousel_colors_for_product(product, current_app)
+        product.fallback_image_url = get_first_shop_image_url(product, current_app)
     
     # Get unique categories
     categories = db.session.query(Product.category).filter(

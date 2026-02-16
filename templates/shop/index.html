@@ -109,7 +109,7 @@
                                 </div>
                                 {% else %}
                                 <div class="product-image">
-                                    <img src="{{ url_for('static', filename='img/products/' + product.style_number + '.jpg') }}" 
+                                    <img src="{{ product.fallback_image_url or url_for('static', filename='img/products/' + product.style_number + '.jpg') }}" 
                                          alt="{{ product.name }}"
                                          onerror="this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'">
                                 </div>

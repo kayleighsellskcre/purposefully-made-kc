@@ -146,6 +146,11 @@ class Product(db.Model):
     brand = db.Column(db.String(100))  # Brand name (e.g., "Bella+Canvas")
     api_data = db.Column(db.Text)  # JSON: API sync data and metadata
     
+    # Size specifications and fit guide
+    size_chart = db.Column(db.Text)  # JSON: Size chart data from S&S
+    fit_guide = db.Column(db.Text)  # Fit description (e.g., "Unisex sizing", "Runs small")
+    fabric_details = db.Column(db.Text)  # Fabric composition and care
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

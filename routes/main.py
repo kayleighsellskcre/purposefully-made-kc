@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, session, current_app, send_file
+from flask import Blueprint, render_template, session, current_app, send_file, send_from_directory
 from models import Product, Collection
 import os
 
@@ -8,21 +8,23 @@ main_bp = Blueprint('main', __name__)
 @main_bp.route('/uploads/mockups/<path:path>')
 def serve_mockup(path):
     """Serve mockup images from uploads/mockups (static/uploads/mockups or project uploads/mockups)."""
-    path = path.strip('/').replace('..', '')
+    path = path.strip('/').replace('..', '').replace('\\', '/')
     if not path:
         return '', 404
+    # Check both locations: static/uploads/mockups and project uploads/mockups
     bases = [
-        os.path.realpath(os.path.join(current_app.root_path, '..', 'static', 'uploads', 'mockups')),
-        os.path.realpath(os.path.join(current_app.root_path, '..', 'uploads', 'mockups')),
+        os.path.join(current_app.root_path, 'static', 'uploads', 'mockups'),
+        os.path.join(current_app.root_path, 'uploads', 'mockups'),
     ]
     for base in bases:
+        base = os.path.normpath(base)
         if not os.path.isdir(base):
             continue
-        filepath = os.path.normpath(os.path.join(base, path))
-        filepath = os.path.realpath(filepath)
-        if not filepath.startswith(base) or not os.path.isfile(filepath):
-            continue
-        return send_file(filepath)
+        full_path = os.path.normpath(os.path.join(base, path.replace('/', os.sep)))
+        if os.path.isfile(full_path) and full_path.startswith(base):
+            directory = os.path.dirname(full_path)
+            filename = os.path.basename(full_path)
+            return send_from_directory(directory, filename)
     return '', 404
 
 

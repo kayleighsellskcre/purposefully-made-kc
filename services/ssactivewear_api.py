@@ -208,7 +208,7 @@ class SSActivewearAPI:
 
     def get_style_by_part_number(self, part_number):
         """
-        Fetch style metadata (title, description) by part number.
+        Fetch style metadata (title, description, sizing) by part number.
         /v2/styles/?partnumber=3001
         """
         try:
@@ -221,6 +221,19 @@ class SSActivewearAPI:
             if styles and isinstance(styles, list) and len(styles) > 0:
                 return styles[0]
             return None
+        except Exception:
+            return None
+
+    def get_style_spec_sheet(self, style_id):
+        """
+        Fetch detailed spec sheet for a style including size chart, fabric details, etc.
+        /v2/styles/{styleID}/specsheet
+        """
+        try:
+            endpoint = f"{self.api_url}/v2/styles/{style_id}/specsheet"
+            response = requests.get(endpoint, auth=(self.account_number, self.api_key), timeout=30)
+            response.raise_for_status()
+            return response.json()
         except Exception:
             return None
 
@@ -314,7 +327,7 @@ class SSActivewearAPI:
     
     def fetch_style_data_by_style_number(self, style_number):
         """
-        Fetch full style data (colors, sizes, inventory) for a style by its number.
+        Fetch full style data (colors, sizes, inventory, descriptions, sizing) for a style by its number.
         Uses Products API directly - works when full catalog sync fails.
         
         Returns:
@@ -330,10 +343,15 @@ class SSActivewearAPI:
         style_name = first.get('styleName', style_number)
         brand_name = first.get('brandName', 'Bella+Canvas')
 
-        # Get style metadata (title, description) if available
+        # Get style metadata (title, description, sizing) if available
         meta = self.get_style_by_part_number(style_number) or {}
         title = meta.get('title', first.get('styleName', style_number))
-        description = meta.get('description', '')
+        description = meta.get('description', first.get('description', ''))
+        
+        # Get sizing/spec sheet data
+        spec_sheet = None
+        if style_id:
+            spec_sheet = self.get_style_spec_sheet(style_id)
 
         color_variants = {}
         all_colors = set()
@@ -372,6 +390,9 @@ class SSActivewearAPI:
             'colors': sorted(list(all_colors)),
             'sizes': sizes,
             'color_variants': list(color_variants.values()),
+            'spec_sheet': spec_sheet,  # NEW: spec sheet with sizing
+            'fit_guide': meta.get('fitType', ''),
+            'fabric': meta.get('fabric', ''),
         }
         # Add wholesale from first product with price
         for p in products:
@@ -471,6 +492,10 @@ class SSActivewearAPI:
             'front_mockup_template': front_image,
             'back_mockup_template': None,  # Back images can be added later
             'color_variants': color_variants_data,  # NEW: Color-specific images + inventory
+            # NEW: Sizing and fabric information
+            'size_chart': json.dumps(style_data.get('spec_sheet')) if style_data.get('spec_sheet') else None,
+            'fit_guide': style_data.get('fit_guide', ''),
+            'fabric_details': style_data.get('fabric', ''),
             # Store raw API data for reference
             'api_data': json.dumps({
                 'last_synced': datetime.utcnow().isoformat(),

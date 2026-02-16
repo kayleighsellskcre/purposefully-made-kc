@@ -161,7 +161,9 @@ def upload_design():
     filename = f"{secrets.token_hex(16)}.{extension}"
     
     # Save file
-    upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'designs', filename)
+    upload_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'designs')
+    os.makedirs(upload_dir, exist_ok=True)
+    upload_path = os.path.join(upload_dir, filename)
     file.save(upload_path)
     
     # Get file size
@@ -169,7 +171,7 @@ def upload_design():
     
     # Analyze image (if it's an image)
     image_info = None
-    if extension in ['png', 'jpg', 'jpeg']:
+    if extension in ['png', 'jpg', 'jpeg', 'webp', 'gif']:
         image_info = analyze_image(upload_path)
     
     # Create design record
@@ -200,6 +202,8 @@ def upload_design():
     
     return jsonify({
         'success': True,
+        'url': url_for('static', filename=design.file_path),
+        'design_id': design.id,
         'design': {
             'id': design.id,
             'filename': design.filename,
