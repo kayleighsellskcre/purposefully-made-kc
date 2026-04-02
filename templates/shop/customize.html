@@ -894,6 +894,36 @@
     }
 }
 
+/* Position Control Buttons */
+.position-btn, .position-btn-reset {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.75rem;
+    background: #fff;
+    border: 1px solid #B87C6F;
+    color: #B87C6F;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-weight: 600;
+}
+
+.position-btn:hover, .position-btn-reset:hover {
+    background: #B87C6F;
+    color: #fff;
+}
+
+.position-btn:active {
+    transform: scale(0.95);
+}
+
+.position-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
 /* Size Chart Button & Modal */
 .size-chart-btn-customize {
     display: inline-flex;
@@ -1009,7 +1039,26 @@
                         <strong>Selected:</strong> <span id="selectedColorName" style="color: #B87C6F; font-weight: 700;">Loading...</span>
                     </p>
                     <p id="dragHint" style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: #999; display: none;">Drag up or down to reposition</p>
-                    <button type="button" id="resetBackPositionBtn" style="display: none; margin-top: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem; background: transparent; border: 1px solid #B87C6F; color: #B87C6F; border-radius: 4px; cursor: pointer;">Reset back position</button>
+                    
+                    <!-- Back Design Position Controls -->
+                    <div id="backPositionControls" style="display: none; margin-top: 0.75rem;">
+                        <div style="display: flex; gap: 0.5rem; align-items: center; justify-content: center;">
+                            <button type="button" id="moveBackUpBtn" class="position-btn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="18 15 12 9 6 15"></polyline>
+                                </svg>
+                                Up
+                            </button>
+                            <button type="button" id="moveBackDownBtn" class="position-btn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                                Down
+                            </button>
+                            <button type="button" id="resetBackPositionBtn" class="position-btn-reset">Reset</button>
+                        </div>
+                    </div>
+                    
                     <button type="button" id="resetPositionBtn" style="display: none; margin-top: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem; background: transparent; border: 1px solid #B87C6F; color: #B87C6F; border-radius: 4px; cursor: pointer;">Reset position</button>
                 </div>
             </div>
@@ -1778,7 +1827,9 @@
             designLayer.style.pointerEvents = '';
             if (previewCanvas) previewCanvas.classList.remove('showing-back');
             const resetBackBtn = document.getElementById('resetBackPositionBtn');
+            const backPositionControls = document.getElementById('backPositionControls');
             if (resetBackBtn) resetBackBtn.style.display = 'none';
+            if (backPositionControls) backPositionControls.style.display = 'none';
             const dragHint = document.getElementById('dragHint');
             if (dragHint && !frontHasDesign) dragHint.style.display = 'none';
             if (dragHint && frontHasDesign) dragHint.textContent = 'Drag up or down to reposition';
@@ -1819,14 +1870,17 @@
         backDesignLayer.style.transform = `translate(-50%, -50%) translate(0, ${offset.y}px)`;
         const dragHint = document.getElementById('dragHint');
         const resetBackBtn = document.getElementById('resetBackPositionBtn');
+        const backPositionControls = document.getElementById('backPositionControls');
         if (state.currentView === 'back' && backDesignLayer.style.display !== 'none') {
             if (dragHint) {
                 dragHint.style.display = 'block';
                 dragHint.textContent = 'Drag up or down to reposition name & number';
             }
             if (resetBackBtn) resetBackBtn.style.display = (offset.y !== -defaultUp) ? 'inline-block' : 'none';
+            if (backPositionControls) backPositionControls.style.display = 'block';
         } else {
             if (resetBackBtn) resetBackBtn.style.display = 'none';
+            if (backPositionControls) backPositionControls.style.display = 'none';
         }
     }
     
@@ -2236,6 +2290,10 @@
                 document.getElementById('designPreviewImageBack').src = data.url;
                 designPreviewBack.classList.add('active');
                 
+                // Update the back design preview on the mockup
+                updateBackDesignPreview();
+                updateDesignLayerVisibility();
+                
                 // Reset upload area
                 uploadAreaBack.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 1rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Back design uploaded!</strong></p><p class="text-muted">Click to change</p>';
                 uploadAreaBack.style.pointerEvents = '';
@@ -2310,6 +2368,18 @@
         document.getElementById('resetBackPositionBtn')?.addEventListener('click', function() {
             const defaultUp = state.backDesignDefaultUpOffset ?? 60;
             state.backDesignDragOffset = { y: -defaultUp };
+            applyBackDesignPosition();
+        });
+        
+        // Back design up/down buttons
+        document.getElementById('moveBackUpBtn')?.addEventListener('click', function() {
+            const currentY = state.backDesignDragOffset.y || 0;
+            state.backDesignDragOffset.y = currentY - 10; // Move up 10px
+            applyBackDesignPosition();
+        });
+        document.getElementById('moveBackDownBtn')?.addEventListener('click', function() {
+            const currentY = state.backDesignDragOffset.y || 0;
+            state.backDesignDragOffset.y = currentY + 10; // Move down 10px
             applyBackDesignPosition();
         });
     }
