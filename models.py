@@ -140,6 +140,7 @@ class Product(db.Model):
     style_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     name = db.Column(db.String(200), nullable=False)
     category = db.Column(db.String(50))  # Tee, Hoodie, Crew, Tank, Youth
+    age_group = db.Column(db.String(20))  # 'adult' or 'youth'
     description = db.Column(db.Text)
     
     # Pricing

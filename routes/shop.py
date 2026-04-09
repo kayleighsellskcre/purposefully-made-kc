@@ -14,18 +14,30 @@ def index():
 
     category = request.args.get('category')
     age_group = request.args.get('age_group')
+    color = request.args.get('color')
 
     query = Product.query.filter_by(is_active=True)
     
+    # Filter by age group using new field
     if age_group == 'youth':
-        query = query.filter(Product.name.ilike('%youth%'))
+        query = query.filter(Product.age_group == 'youth')
     elif age_group == 'adult':
-        query = query.filter(~Product.name.ilike('%youth%'))
+        query = query.filter(Product.age_group == 'adult')
     
     if category:
         query = query.filter_by(category=category)
     
     products = query.order_by(Product.style_number).all()
+    
+    # Filter by color if specified (using ProductColorVariant)
+    if color:
+        from models import ProductColorVariant
+        # Get product IDs that have this color
+        product_ids = db.session.query(ProductColorVariant.product_id).filter(
+            ProductColorVariant.color_name.ilike(f'%{color}%')
+        ).distinct().all()
+        product_ids = [pid[0] for pid in product_ids]
+        products = [p for p in products if p.id in product_ids]
 
     # Attach carousel colors: DB variants + mockup folder (all colors with front images)
     for product in products:
@@ -38,13 +50,20 @@ def index():
     ).distinct().all()
     categories = [c[0] for c in categories if c[0]]
     
+    # Get unique colors from ProductColorVariant
+    from models import ProductColorVariant
+    colors = db.session.query(ProductColorVariant.color_name).distinct().order_by(ProductColorVariant.color_name).all()
+    colors = [c[0] for c in colors if c[0]]
+    
     design_id = request.args.get('design_id', type=int)
     
     return render_template('shop/index.html', 
                          products=products,
                          categories=categories,
+                         colors=colors,
                          selected_category=category,
                          selected_age_group=age_group,
+                         selected_color=color,
                          design_id=design_id)
 
 

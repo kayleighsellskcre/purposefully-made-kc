@@ -72,6 +72,11 @@ def create_app(config_class=Config):
                     print("Added fabric_details column", file=sys_module.stderr)
                 except Exception:
                     pass
+                try:
+                    conn.execute(text("ALTER TABLE product ADD COLUMN age_group VARCHAR(20)"))
+                    print("Added age_group column", file=sys_module.stderr)
+                except Exception:
+                    pass
                 conn.commit()
             
             # Create favorites table if it doesn't exist

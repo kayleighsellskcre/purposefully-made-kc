@@ -34,7 +34,7 @@
                 <ul class="filter-list">
                     <li>
                         <a href="{{ url_for('shop.index', design_id=design_id) }}" 
-                           class="filter-link {% if not selected_category and not selected_age_group %}active{% endif %}">
+                           class="filter-link {% if not selected_category and not selected_age_group and not selected_color %}active{% endif %}">
                             All Products
                         </a>
                     </li>
@@ -52,9 +52,21 @@
                     </li>
                     {% for category in categories %}
                     <li>
-                        <a href="{{ url_for('shop.index', category=category, age_group=selected_age_group or none, design_id=design_id) }}" 
+                        <a href="{{ url_for('shop.index', category=category, age_group=selected_age_group or none, color=selected_color or none, design_id=design_id) }}" 
                            class="filter-link {% if selected_category == category %}active{% endif %}">
                             {{ category }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                
+                <h3 style="margin-top: 2rem;">Colors</h3>
+                <ul class="filter-list">
+                    {% for color in colors %}
+                    <li>
+                        <a href="{{ url_for('shop.index', color=color, category=selected_category or none, age_group=selected_age_group or none, design_id=design_id) }}" 
+                           class="filter-link {% if selected_color == color %}active{% endif %}">
+                            {{ color }}
                         </a>
                     </li>
                     {% endfor %}

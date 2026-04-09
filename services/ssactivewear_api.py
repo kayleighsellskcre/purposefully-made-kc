@@ -436,22 +436,31 @@ class SSActivewearAPI:
             size_order = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL']
             sizes = sorted(sizes, key=lambda x: size_order.index(x) if x in size_order else 999)
         
-        # Determine category from baseCategory
+        # Determine category from baseCategory and title
         base_category = style_data.get('baseCategory', '')
         title = style_data.get('title', '').lower()
+        style_number = style_data.get('styleNumber', '') or style_data.get('styleName', '')
         
-        if 'hoodie' in title or 'hoodie' in base_category.lower():
+        # Improved category detection
+        if 'hoodie' in title or 'hood' in title or 'hoodie' in base_category.lower():
             category = 'Hoodie'
-        elif 'sweatshirt' in title or 'crew' in title:
+        elif 'sweatshirt' in title or 'crew' in title or 'fleece' in title:
             category = 'Sweatshirt'
-        elif 'tank' in title:
+        elif 'tank' in title or 'muscle' in title:
             category = 'Tank'
-        elif 'long sleeve' in title:
+        elif 'long sleeve' in title or 'long-sleeve' in title or 'ls' in title:
             category = 'Long Sleeve'
-        elif 'tee' in title or 't-shirt' in title:
+        elif 'polo' in title:
+            category = 'Polo'
+        elif 'zip' in title:
+            category = 'Zip-Up'
+        elif 'tee' in title or 't-shirt' in title or 'shirt' in title:
             category = 'Tee'
         else:
             category = 'Tee'
+        
+        # Detect youth products (style number contains Y)
+        age_group = 'youth' if 'Y' in style_number.upper() else 'adult'
         
         # Get pricing - default markup of 2.5x if no price
         wholesale_price = style_data.get('wholesalePrice', 10)
@@ -482,6 +491,7 @@ class SSActivewearAPI:
             'style_number': style_number,
             'name': f"{style_data.get('brandName', 'Bella+Canvas')} {style_data.get('title', style_number)}",
             'category': category,
+            'age_group': age_group,
             'description': style_data.get('description', ''),
             'base_price': round(retail_price, 2),
             'wholesale_cost': round(wholesale_price, 2),
