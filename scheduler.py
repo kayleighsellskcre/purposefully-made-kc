@@ -100,7 +100,18 @@ def init_scheduler(app):
     """
     # Only start scheduler in production or if explicitly enabled
     # Don't start in debug mode to avoid duplicate jobs
-    if app.config.get('SCHEDULER_ENABLED', True) and not app.debug:
+    # Don't start if SCHEDULER_ENABLED=False
+    enabled = app.config.get('SCHEDULER_ENABLED', True)
+    
+    if not enabled:
+        print("Scheduler disabled (SCHEDULER_ENABLED=False)", file=sys.stderr, flush=True)
+        return None
+        
+    if app.debug:
+        print("Scheduler disabled (debug mode)", file=sys.stderr, flush=True)
+        return None
+    
+    try:
         scheduler = BackgroundScheduler(daemon=True)
         
         # Add daily inventory sync at 1 AM
@@ -116,7 +127,7 @@ def init_scheduler(app):
         scheduler.start()
         
         print("="*80, file=sys.stderr, flush=True)
-        print("SCHEDULER STARTED", file=sys.stderr, flush=True)
+        print("SCHEDULER STARTED SUCCESSFULLY", file=sys.stderr, flush=True)
         print("Scheduled Jobs:", file=sys.stderr, flush=True)
         print("  - Daily Inventory Sync: 1:00 AM", file=sys.stderr, flush=True)
         print("="*80, file=sys.stderr, flush=True)
@@ -126,6 +137,10 @@ def init_scheduler(app):
         atexit.register(lambda: scheduler.shutdown())
         
         return scheduler
-    else:
-        print("Scheduler disabled (debug mode or SCHEDULER_ENABLED=False)", file=sys.stderr, flush=True)
+        
+    except Exception as e:
+        print(f"ERROR: Failed to start scheduler: {e}", file=sys.stderr, flush=True)
+        import traceback
+        traceback.print_exc()
+        # Don't crash the app if scheduler fails to start
         return None

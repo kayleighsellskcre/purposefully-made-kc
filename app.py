@@ -165,9 +165,13 @@ def create_app(config_class=Config):
     
     # Initialize background scheduler for automated tasks
     # (daily inventory sync, etc.)
-    if not app.config.get('TESTING', False):
-        from scheduler import init_scheduler
-        init_scheduler(app)
+    # Only in production with gunicorn (not during migration or testing)
+    if not app.config.get('TESTING', False) and os.environ.get('DYNO') or os.environ.get('RAILWAY_ENVIRONMENT'):
+        try:
+            from scheduler import init_scheduler
+            init_scheduler(app)
+        except Exception as e:
+            print(f"Scheduler initialization failed (non-fatal): {e}", file=sys.stderr)
     
     # Add custom template filters
     @app.template_filter('from_json')
