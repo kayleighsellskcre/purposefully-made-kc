@@ -46,7 +46,15 @@
                 <p class="product-brand">{{ product.brand }}</p>
                 {% endif %}
                 
-                <p class="product-style">Style #{{ product.style_number }}</p>
+                <p class="product-style">
+                    Style #{{ product.style_number }}
+                    <a href="https://www.bellacanvas.com/spec/{{ product.style_number | urlencode }}%20specs.pdf" 
+                       target="_blank" 
+                       class="spec-sheet-link"
+                       title="View official spec sheet">
+                        📄 Spec Sheet
+                    </a>
+                </p>
                 
                 <div class="product-price">
                     <span class="price">${{ "%.2f"|format(product.base_price) }}</span>
@@ -316,6 +324,32 @@ function toggleSizeChart() {
     color: var(--text-secondary);
     font-size: 0.875rem;
     margin-bottom: 1.5rem;
+}
+
+.spec-sheet-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: 0.75rem;
+    padding: 0.25rem 0.75rem;
+    background: var(--accent-color);
+    color: #fff;
+    text-decoration: none;
+    border-radius: var(--border-radius);
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+.spec-sheet-link:hover {
+    background: var(--accent-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(184, 124, 111, 0.3);
+}
+
+.spec-sheet-link:active {
+    transform: translateY(0);
 }
 
 .product-price {

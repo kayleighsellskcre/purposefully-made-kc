@@ -699,6 +699,43 @@
     border-color: #e8e8e8;
 }
 
+/* Spec Sheet Link */
+.spec-sheet-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: 1rem;
+    padding: 0.25rem 0.75rem;
+    background: #B87C6F;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+.spec-sheet-link:hover {
+    background: #9a6a5e;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(184, 124, 111, 0.3);
+}
+
+.spec-sheet-link:active {
+    transform: translateY(0);
+}
+
+/* Responsive spec sheet link */
+@media (max-width: 768px) {
+    .spec-sheet-link {
+        display: block;
+        margin: 0.5rem 0 0 0;
+        text-align: center;
+        width: fit-content;
+    }
+}
+
 .size-label {
     font-size: 1.25rem;
     font-weight: 700;
@@ -1071,7 +1108,15 @@
                 </div>
                 {% endif %}
                 <h2>{{ product.name }}</h2>
-                <p class="product-style">Style {{ product.style_number }}</p>
+                <p class="product-style">
+                    Style {{ product.style_number }}
+                    <a href="https://www.bellacanvas.com/spec/{{ product.style_number | urlencode }}%20specs.pdf" 
+                       target="_blank" 
+                       class="spec-sheet-link"
+                       title="View official spec sheet">
+                        📄 Spec Sheet
+                    </a>
+                </p>
                 
                 <!-- Size Chart Button -->
                 {% if product.size_chart %}
