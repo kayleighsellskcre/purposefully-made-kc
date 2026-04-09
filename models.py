@@ -20,6 +20,7 @@ class User(UserMixin, db.Model):
     # Relationships
     addresses = db.relationship('Address', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     orders = db.relationship('Order', backref='user', lazy='dynamic')
+    favorites = db.relationship('Favorite', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -54,6 +55,21 @@ class Address(db.Model):
     
     def __repr__(self):
         return f'<Address {self.city}, {self.state}>'
+
+
+class Favorite(db.Model):
+    """User's favorite products"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    color_name = db.Column(db.String(100))  # Optional: save specific color
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship to product
+    product = db.relationship('Product', backref='favorited_by')
+    
+    def __repr__(self):
+        return f'<Favorite user={self.user_id} product={self.product_id}>'
 
 
 class Collection(db.Model):

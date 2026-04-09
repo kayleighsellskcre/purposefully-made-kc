@@ -71,6 +71,17 @@
                 <div class="products-grid">
                     {% for product in products %}
                     <div class="product-card">
+                        <!-- Favorite Button -->
+                        <button class="btn-favorite" 
+                                data-product-id="{{ product.id }}"
+                                data-color-name=""
+                                onclick="toggleFavorite(event, {{ product.id }}, '')"
+                                title="Add to favorites">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                            </svg>
+                        </button>
+                        
                         <a href="{{ url_for('shop.customize', product_id=product.id) }}{% if design_id %}?design_id={{ design_id }}{% endif %}" class="product-link">
                             <div class="product-image-wrapper">
                                 <!-- Color Preview Carousel -->
@@ -261,10 +272,55 @@
     overflow: hidden;
     transition: var(--transition);
     box-shadow: 0 4px 12px rgba(58, 61, 72, 0.06);
+    position: relative;
 }
 
 .product-card:hover {
     box-shadow: var(--box-shadow-hover);
+    transform: translateY(-4px);
+}
+
+/* Favorite Button */
+.btn-favorite {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    color: #999;
+}
+
+.btn-favorite:hover {
+    background: #fff;
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.btn-favorite.active {
+    color: #e74c3c;
+}
+
+.btn-favorite.active:hover {
+    color: #c0392b;
+}
+
+.btn-favorite svg {
+    transition: all 0.2s ease;
+}
+
+.btn-favorite:active {
+    transform: scale(0.95);
+}
     transform: translateY(-4px);
 }
 
@@ -592,6 +648,66 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         */
     });
+});
+
+// Favorites functionality
+async function toggleFavorite(event, productId, colorName) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const btn = event.currentTarget;
+    const isActive = btn.classList.contains('active');
+    
+    try {
+        const endpoint = isActive ? '/favorites/remove' : '/favorites/add';
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                product_id: productId,
+                color_name: colorName
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            btn.classList.toggle('active');
+            btn.querySelector('path').setAttribute('fill', isActive ? 'none' : 'currentColor');
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Favorite error:', error);
+    }
+}
+
+// Load favorite states on page load
+document.addEventListener('DOMContentLoaded', async () => {
+    const favBtns = document.querySelectorAll('.btn-favorite');
+    for (const btn of favBtns) {
+        const productId = parseInt(btn.dataset.productId);
+        const colorName = btn.dataset.colorName || '';
+        
+        try {
+            const response = await fetch('/favorites/check', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    product_id: productId,
+                    color_name: colorName
+                })
+            });
+            
+            const data = await response.json();
+            if (data.is_favorite) {
+                btn.classList.add('active');
+                btn.querySelector('path').setAttribute('fill', 'currentColor');
+            }
+        } catch (error) {
+            console.error('Check favorite error:', error);
+        }
+    }
 });
 </script>
 {% endblock %}

@@ -4,7 +4,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from flask_mail import Mail
 from werkzeug.utils import secure_filename
 from config import Config
-from models import db, User, Address, Collection, Product, Design, Order, OrderItem
+from models import db, User, Address, Collection, Product, Design, Order, OrderItem, Favorite
 import stripe
 import paypalrestsdk
 
@@ -71,6 +71,11 @@ def create_app(config_class=Config):
                 except Exception:
                     pass
                 conn.commit()
+            
+            # Create favorites table if it doesn't exist
+            from models import Favorite
+            db.create_all()  # Creates any missing tables including favorites
+            print("Checked/created favorites table", file=sys.stderr)
         except Exception as e:
             print(f"Migration check: {e}", file=sys.stderr)
         
@@ -126,6 +131,7 @@ def create_app(config_class=Config):
     from routes.api import api_bp
     from routes.design import design_bp
     from routes.custom_request import custom_request_bp
+    from routes.favorites import favorites_bp
     
     # Serve uploads (mockups, designs) - register FIRST so /uploads/mockups/... works
     @app.route('/uploads/<path:path>')
@@ -155,6 +161,7 @@ def create_app(config_class=Config):
     app.register_blueprint(admin_bp)
     app.register_blueprint(collection_bp)
     app.register_blueprint(api_bp)
+    app.register_blueprint(favorites_bp)
     
     # Add custom template filters
     @app.template_filter('from_json')

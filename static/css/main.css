@@ -210,6 +210,27 @@ a:hover {
     background: rgba(184, 124, 111, 0.06);
 }
 
+.favorites-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    margin-left: 0.5rem;
+    border-radius: 6px;
+    color: var(--text-primary);
+    transition: var(--transition);
+}
+
+.favorites-link:hover {
+    color: #e74c3c;
+    background: rgba(231, 76, 60, 0.06);
+    transform: scale(1.05);
+}
+
+.favorites-link svg {
+    transition: all 0.2s ease;
+}
+
 .cart-count {
     position: absolute;
     top: -8px;

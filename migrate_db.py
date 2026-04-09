@@ -34,6 +34,14 @@ def run_migrations():
         add_column_if_not_exists('product', 'fit_guide', 'TEXT')
         add_column_if_not_exists('product', 'fabric_details', 'TEXT')
         
+        # Create favorites table if it doesn't exist
+        try:
+            from models import Favorite
+            db.create_all()  # This will create the favorites table
+            print("✓ Favorites table ready")
+        except Exception as e:
+            print(f"Note: {e}")
+        
         print("="*60)
         print("✅ Migration complete!")
 
