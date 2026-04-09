@@ -54,21 +54,22 @@ def create_app(config_class=Config):
         # Run migrations for new columns (safe to run multiple times)
         try:
             from sqlalchemy import text
+            import sys as sys_module
             with db.engine.connect() as conn:
                 # Add new Product columns if they don't exist
                 try:
                     conn.execute(text("ALTER TABLE product ADD COLUMN size_chart TEXT"))
-                    print("Added size_chart column", file=sys.stderr)
+                    print("Added size_chart column", file=sys_module.stderr)
                 except Exception:
                     pass  # Column already exists
                 try:
                     conn.execute(text("ALTER TABLE product ADD COLUMN fit_guide TEXT"))
-                    print("Added fit_guide column", file=sys.stderr)
+                    print("Added fit_guide column", file=sys_module.stderr)
                 except Exception:
                     pass
                 try:
                     conn.execute(text("ALTER TABLE product ADD COLUMN fabric_details TEXT"))
-                    print("Added fabric_details column", file=sys.stderr)
+                    print("Added fabric_details column", file=sys_module.stderr)
                 except Exception:
                     pass
                 conn.commit()
@@ -76,9 +77,10 @@ def create_app(config_class=Config):
             # Create favorites table if it doesn't exist
             from models import Favorite
             db.create_all()  # Creates any missing tables including favorites
-            print("Checked/created favorites table", file=sys.stderr)
+            print("Checked/created favorites table", file=sys_module.stderr)
         except Exception as e:
-            print(f"Migration check: {e}", file=sys.stderr)
+            import sys as sys_module
+            print(f"Migration check: {e}", file=sys_module.stderr)
         
         # Ensure purposefullymadekc@gmail.com has admin on every app start (fixes fresh deploy)
         admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').strip()
@@ -167,12 +169,14 @@ def create_app(config_class=Config):
     # Initialize background scheduler for automated tasks
     # (daily inventory sync, etc.)
     # Only in production with gunicorn (not during migration or testing)
-    if not app.config.get('TESTING', False) and os.environ.get('DYNO') or os.environ.get('RAILWAY_ENVIRONMENT'):
+    if not app.config.get('TESTING', False) and (os.environ.get('DYNO') or os.environ.get('RAILWAY_ENVIRONMENT')):
         try:
+            import sys as sys_module
             from scheduler import init_scheduler
             init_scheduler(app)
         except Exception as e:
-            print(f"Scheduler initialization failed (non-fatal): {e}", file=sys.stderr)
+            import sys as sys_module
+            print(f"Scheduler initialization failed (non-fatal): {e}", file=sys_module.stderr)
     
     # Add custom template filters
     @app.template_filter('from_json')
