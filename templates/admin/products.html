@@ -25,6 +25,17 @@
                 <a href="{{ url_for('admin.add_product') }}" class="btn btn-primary">Add Product</a>
             </div>
         </div>
+        
+        {% if last_sync_time %}
+        <div class="sync-status">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            Last inventory sync: {{ last_sync_time.strftime('%B %d, %Y at %I:%M %p') }}
+            <span style="color: #939F80; margin-left: 1rem;">Next automatic sync: 1:00 AM daily</span>
+        </div>
+        {% endif %}
 
         <div class="products-table">
             <table>
@@ -249,6 +260,16 @@ tbody tr:hover {
     gap: 1rem;
     justify-content: flex-end;
     margin-top: 1.5rem;
+}
+
+.sync-status {
+    background: rgba(147, 159, 128, 0.1);
+    border-left: 3px solid #939F80;
+    padding: 0.75rem 1rem;
+    margin: 1rem 0 2rem 0;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    color: #3A3D48;
 }
 </style>
 

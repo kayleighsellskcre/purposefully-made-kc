@@ -20,6 +20,10 @@ class Config:
     MAX_CONTENT_LENGTH = int(os.environ.get('MAX_CONTENT_LENGTH', 16 * 1024 * 1024))  # 16MB default
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'pdf'}
     
+    # Scheduler settings
+    SCHEDULER_ENABLED = True  # Set to False to disable automated background jobs
+    SCHEDULER_API_ENABLED = False  # Don't expose scheduler API endpoints
+    
     # Stripe settings
     STRIPE_PUBLIC_KEY = os.environ.get('STRIPE_PUBLIC_KEY')
     STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')

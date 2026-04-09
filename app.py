@@ -163,6 +163,12 @@ def create_app(config_class=Config):
     app.register_blueprint(api_bp)
     app.register_blueprint(favorites_bp)
     
+    # Initialize background scheduler for automated tasks
+    # (daily inventory sync, etc.)
+    if not app.config.get('TESTING', False):
+        from scheduler import init_scheduler
+        init_scheduler(app)
+    
     # Add custom template filters
     @app.template_filter('from_json')
     def from_json_filter(value):

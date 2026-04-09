@@ -15,3 +15,4 @@ psycopg2-binary>=2.9.0
 rembg>=2.0.62
 requests>=2.31.0
 twilio>=8.0.0
+APScheduler>=3.10.0

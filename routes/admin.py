@@ -318,10 +318,15 @@ def products():
     # Check if S&S API is configured - check environment variable directly
     api_key = os.getenv('SSACTIVEWEAR_API_KEY')
     api_configured = bool(api_key) and api_key != 'your_ss_activewear_api_key_here'
+    
+    # Get last sync time
+    last_sync = ProductColorVariant.query.order_by(ProductColorVariant.last_synced.desc()).first()
+    last_sync_time = last_sync.last_synced if last_sync else None
 
     return render_template('admin/products.html',
                          products=products,
-                         api_configured=api_configured)
+                         api_configured=api_configured,
+                         last_sync_time=last_sync_time)
 
 
 @admin_bp.route('/products/link-mockups', methods=['POST'])
