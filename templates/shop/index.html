@@ -42,7 +42,7 @@
                 <div class="filter-group">
                     <label for="ageGroupFilter">Age Group</label>
                     <div class="select-wrap">
-                        <select id="ageGroupFilter" class="filter-dropdown" onchange="applyFilters()">
+                        <select id="ageGroupFilter" class="filter-dropdown" onchange="updateFitLabels(); applyFilters()">
                             <option value="">All Ages</option>
                             <option value="adult" {% if selected_age_group == 'adult' %}selected{% endif %}>Adult</option>
                             <option value="youth" {% if selected_age_group == 'youth' %}selected{% endif %}>Youth</option>
@@ -60,9 +60,12 @@
                     <div class="select-wrap">
                         <select id="categoryFilter" class="filter-dropdown" onchange="applyFilters()">
                             <option value="">All Styles</option>
-                            {% for category in categories %}
-                            <option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>{{ category }}</option>
-                            {% endfor %}
+                            <option value="Hoodie" {% if selected_category == 'Hoodie' %}selected{% endif %}>Hoodie</option>
+                            <option value="Long Sleeve" {% if selected_category == 'Long Sleeve' %}selected{% endif %}>Long Sleeve T-Shirt</option>
+                            <option value="Sweatshirt" {% if selected_category == 'Sweatshirt' %}selected{% endif %}>Sweatshirt</option>
+                            <option value="Tee" {% if selected_category == 'Tee' %}selected{% endif %}>T-Shirt</option>
+                            <option value="Tank" {% if selected_category == 'Tank' %}selected{% endif %}>Tank Top</option>
+                            <option value="V-Neck" {% if selected_category == 'V-Neck' %}selected{% endif %}>V-Neck T-Shirt</option>
                         </select>
                         <svg class="select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </div>
@@ -74,40 +77,9 @@
                     <label for="fitTypeFilter">Fit</label>
                     <div class="select-wrap">
                         <select id="fitTypeFilter" class="filter-dropdown" onchange="applyFilters()">
-                            <option value="">All Fits</option>
-                            {% for fit in fit_types %}
-                            <option value="{{ fit }}" {% if selected_fit_type == fit %}selected{% endif %}>{{ fit }}</option>
-                            {% endfor %}
-                        </select>
-                        <svg class="select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                    </div>
-                </div>
-
-                <div class="filter-divider"></div>
-
-                <div class="filter-group">
-                    <label for="neckStyleFilter">Neckline</label>
-                    <div class="select-wrap">
-                        <select id="neckStyleFilter" class="filter-dropdown" onchange="applyFilters()">
-                            <option value="">All Necklines</option>
-                            {% for neck in neck_styles %}
-                            <option value="{{ neck }}" {% if selected_neck_style == neck %}selected{% endif %}>{{ neck }}</option>
-                            {% endfor %}
-                        </select>
-                        <svg class="select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                    </div>
-                </div>
-
-                <div class="filter-divider"></div>
-
-                <div class="filter-group">
-                    <label for="sleeveFilter">Sleeve</label>
-                    <div class="select-wrap">
-                        <select id="sleeveFilter" class="filter-dropdown" onchange="applyFilters()">
-                            <option value="">All Sleeves</option>
-                            {% for sleeve in sleeve_lengths %}
-                            <option value="{{ sleeve }}" {% if selected_sleeve_length == sleeve %}selected{% endif %}>{{ sleeve }}</option>
-                            {% endfor %}
+                            <option value="">All</option>
+                            <option value="Unisex" {% if selected_fit_type == 'Unisex' %}selected{% endif %} class="fit-unisex-label">Men's (Unisex)</option>
+                            <option value="Women's" {% if selected_fit_type == "Women's" %}selected{% endif %} class="fit-womens-label">Women's</option>
                         </select>
                         <svg class="select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </div>
@@ -886,13 +858,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+// Update Fit labels based on age group
+function updateFitLabels() {
+    const ageGroup = document.getElementById('ageGroupFilter').value;
+    const fitSelect = document.getElementById('fitTypeFilter');
+    const unisexOpt = fitSelect.querySelector('.fit-unisex-label');
+    const womensOpt = fitSelect.querySelector('.fit-womens-label');
+    const isKids = ageGroup === 'youth' || ageGroup === 'toddler' || ageGroup === 'baby';
+
+    if (unisexOpt) unisexOpt.textContent = isKids ? "Boys (Unisex)" : "Men's (Unisex)";
+    if (womensOpt) womensOpt.textContent = isKids ? "Girls" : "Women's";
+}
+
+// Run on page load to reflect any pre-selected age group
+document.addEventListener('DOMContentLoaded', updateFitLabels);
+
 // Filter functions
 function applyFilters() {
     const ageGroup = document.getElementById('ageGroupFilter').value;
     const category = document.getElementById('categoryFilter').value;
     const fitType = document.getElementById('fitTypeFilter').value;
-    const neckStyle = document.getElementById('neckStyleFilter').value;
-    const sleeve = document.getElementById('sleeveFilter').value;
     const color = document.getElementById('colorFilter').value;
     const designId = new URLSearchParams(window.location.search).get('design_id');
 
@@ -900,11 +885,9 @@ function applyFilters() {
     if (ageGroup) params.append('age_group', ageGroup);
     if (category) params.append('category', category);
     if (fitType) params.append('fit_type', fitType);
-    if (neckStyle) params.append('neck_style', neckStyle);
-    if (sleeve) params.append('sleeve_length', sleeve);
     if (color) params.append('color', color);
     if (designId) params.append('design_id', designId);
-    
+
     window.location.href = '/shop' + (params.toString() ? '?' + params.toString() : '');
 }
 
