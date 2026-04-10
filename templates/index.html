@@ -11,7 +11,7 @@
         <p class="lead">Premium Bella+Canvas garments with your custom designs</p>
         <div class="hero-actions" style="justify-content:center;margin-top:1.25rem;">
             <a href="{{ url_for('shop.index') }}" class="btn btn-primary">Start Shopping</a>
-            <a href="#collections" class="btn btn-outline">View Collections</a>
+            <a href="{{ url_for('shop.design_gallery') }}" class="btn btn-outline">View Collections</a>
         </div>
     </div>
 </div>
@@ -74,8 +74,8 @@
 </section>
 
 <!-- Collections -->
-{% if active_collections %}
 <section class="collections" id="collections">
+    {% if active_collections %}
     <div class="container">
         <div class="section-header">
             <h2 class="section-title">Active Collections</h2>
@@ -99,8 +99,15 @@
             {% endfor %}
         </div>
     </div>
+    {% else %}
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Collections</h2>
+            <p class="section-subtitle">No active collections at this time. Check back soon!</p>
+        </div>
+    </div>
+    {% endif %}
 </section>
-{% endif %}
 
 <!-- CTA Section -->
 <section class="cta">
