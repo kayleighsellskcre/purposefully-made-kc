@@ -142,7 +142,7 @@ a:hover {
 }
 
 .logo-image {
-    height: 80px;
+    height: 120px;
     width: auto;
     transition: var(--transition);
 }
@@ -843,7 +843,7 @@ textarea.form-control {
     }
 
     .logo-image {
-        height: 60px;
+        height: 80px;
     }
 
     /* Hero - Mobile */
