@@ -113,9 +113,10 @@ a:hover {
     position: sticky;
     top: 0;
     z-index: 1000;
-    padding: 0.5rem 0;
+    padding: 0.25rem 0;
     box-shadow: 0 2px 20px rgba(58, 61, 72, 0.06);
     transition: var(--transition-smooth);
+    overflow: visible;
 }
 
 .navbar::after {
@@ -142,11 +143,15 @@ a:hover {
 }
 
 .logo-image {
-    height: 90px;
+    height: 140px;
     width: auto;
     transition: var(--transition);
-    max-width: 300px;
+    max-width: 380px;
     object-fit: contain;
+    position: relative;
+    z-index: 1001;
+    margin: -30px 0;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.08));
 }
 
 .logo:hover .logo-image {
@@ -845,7 +850,8 @@ textarea.form-control {
     }
 
     .logo-image {
-        height: 80px;
+        height: 100px;
+        margin: -20px 0;
     }
 
     /* Hero - Mobile */
