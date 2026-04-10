@@ -8,7 +8,13 @@
         <div class="account-layout">
             <!-- Sidebar -->
             <aside class="account-sidebar">
-                <h2>My Account</h2>
+                <div class="account-sidebar-user">
+                    <div class="account-avatar">{{ (current_user.first_name or current_user.email)[0] | upper }}</div>
+                    <div>
+                        <p class="account-user-name">{{ (current_user.first_name or '') + ' ' + (current_user.last_name or '') | trim or 'My Account' }}</p>
+                        <p class="account-user-email">{{ current_user.email }}</p>
+                    </div>
+                </div>
                 <nav class="account-nav">
                     <a href="{{ url_for('account.orders') }}" class="account-nav-link">Orders</a>
                     <a href="{{ url_for('account.my_designs') }}" class="account-nav-link">My Designs</a>
@@ -18,63 +24,63 @@
                     {% if current_user.is_admin and (current_user.email or '')|lower == admin_email %}
                     <a href="{{ url_for('admin.index') }}" class="account-nav-link admin">Admin Dashboard</a>
                     {% endif %}
-                    <a href="{{ url_for('auth.logout') }}" class="account-nav-link">Logout</a>
+                    <a href="{{ url_for('auth.logout') }}" class="account-nav-link logout">Log Out</a>
                 </nav>
             </aside>
             
             <!-- Main Content -->
             <div class="account-content">
-                <h1>My Profile</h1>
-                
-                <form method="POST" action="{{ url_for('account.profile') }}" class="profile-form">
-                    <div class="form-section">
+                <div class="account-content-header">
+                    <div>
+                        <span class="account-content-eyebrow">Account</span>
+                        <h1>My Profile</h1>
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ url_for('account.profile') }}">
+                    <div class="account-form-card">
                         <h2>Personal Information</h2>
-                        
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="first_name" class="form-label">First Name</label>
-                                <input type="text" id="first_name" name="first_name" class="form-control" value="{{ current_user.first_name or '' }}">
+                        <div class="account-field-row">
+                            <div class="account-field">
+                                <label for="first_name">First Name</label>
+                                <input type="text" id="first_name" name="first_name" value="{{ current_user.first_name or '' }}" placeholder="First name">
                             </div>
-                            
-                            <div class="form-group">
-                                <label for="last_name" class="form-label">Last Name</label>
-                                <input type="text" id="last_name" name="last_name" class="form-control" value="{{ current_user.last_name or '' }}">
+                            <div class="account-field">
+                                <label for="last_name">Last Name</label>
+                                <input type="text" id="last_name" name="last_name" value="{{ current_user.last_name or '' }}" placeholder="Last name">
                             </div>
                         </div>
-                        
-                        <div class="form-group">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" id="email" class="form-control" value="{{ current_user.email }}" disabled>
-                            <small class="form-text">Email cannot be changed</small>
+                        <div class="account-field">
+                            <label for="email">Email Address</label>
+                            <input type="email" id="email" value="{{ current_user.email }}" disabled>
+                            <small>Email address cannot be changed</small>
                         </div>
-                        
-                        <div class="form-group">
-                            <label for="phone" class="form-label">Phone</label>
-                            <input type="tel" id="phone" name="phone" class="form-control" value="{{ current_user.phone or '' }}">
+                        <div class="account-field">
+                            <label for="phone">Phone</label>
+                            <input type="tel" id="phone" name="phone" value="{{ current_user.phone or '' }}" placeholder="(555) 000-0000">
                         </div>
                     </div>
-                    
-                    <div class="form-section">
+
+                    <div class="account-form-card">
                         <h2>Change Password</h2>
-                        <p class="form-help">Leave blank to keep your current password</p>
-                        
-                        <div class="form-group">
-                            <label for="current_password" class="form-label">Current Password</label>
-                            <input type="password" id="current_password" name="current_password" class="form-control">
+                        <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1.25rem;">Leave all fields blank to keep your current password.</p>
+                        <div class="account-field">
+                            <label for="current_password">Current Password</label>
+                            <input type="password" id="current_password" name="current_password">
                         </div>
-                        
-                        <div class="form-group">
-                            <label for="new_password" class="form-label">New Password</label>
-                            <input type="password" id="new_password" name="new_password" class="form-control" minlength="8">
-                            <small class="form-text">At least 8 characters</small>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="confirm_password" class="form-label">Confirm New Password</label>
-                            <input type="password" id="confirm_password" name="confirm_password" class="form-control" minlength="8">
+                        <div class="account-field-row">
+                            <div class="account-field">
+                                <label for="new_password">New Password</label>
+                                <input type="password" id="new_password" name="new_password" minlength="8">
+                                <small>At least 8 characters</small>
+                            </div>
+                            <div class="account-field">
+                                <label for="confirm_password">Confirm New Password</label>
+                                <input type="password" id="confirm_password" name="confirm_password" minlength="8">
+                            </div>
                         </div>
                     </div>
-                    
+
                     <button type="submit" class="btn btn-primary">Save Changes</button>
                 </form>
             </div>
@@ -82,107 +88,4 @@
     </div>
 </div>
 
-<style>
-.account-page {
-    padding: 4rem 0;
-}
-
-.account-layout {
-    display: grid;
-    grid-template-columns: 250px 1fr;
-    gap: 3rem;
-}
-
-.account-sidebar {
-    position: sticky;
-    top: 100px;
-    height: fit-content;
-}
-
-.account-sidebar h2 {
-    margin-bottom: 1.5rem;
-}
-
-.account-nav {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.account-nav-link {
-    padding: 0.75rem 1rem;
-    border-radius: var(--border-radius);
-    color: var(--text-primary);
-    transition: var(--transition);
-}
-
-.account-nav-link:hover,
-.account-nav-link.active {
-    background: var(--secondary-color);
-    color: var(--accent-color);
-}
-
-.account-nav-link.admin {
-    color: var(--accent-color);
-    font-weight: 600;
-}
-
-.account-content h1 {
-    margin-bottom: 2rem;
-}
-
-.profile-form {
-    max-width: 600px;
-}
-
-.form-section {
-    background: #fff;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 2rem;
-    margin-bottom: 2rem;
-}
-
-.form-section h2 {
-    font-size: 1.25rem;
-    margin-bottom: 1.5rem;
-}
-
-.form-help {
-    color: var(--text-secondary);
-    margin-bottom: 1.5rem;
-}
-
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-}
-
-.form-text {
-    display: block;
-    margin-top: 0.25rem;
-    color: var(--text-light);
-    font-size: 0.875rem;
-}
-
-@media (max-width: 768px) {
-    .account-layout {
-        grid-template-columns: 1fr;
-    }
-    
-    .account-sidebar {
-        position: static;
-    }
-    
-    .account-nav {
-        flex-direction: row;
-        overflow-x: auto;
-    }
-    
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-}
-</style>
 {% endblock %}
