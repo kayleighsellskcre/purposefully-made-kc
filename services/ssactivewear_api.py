@@ -146,10 +146,32 @@ class SSActivewearAPI:
                     # S&S API includes qty in the products endpoint
                     qty = product.get('qty', 0) or product.get('inventory', 0) or product.get('availableQty', 0)
                     
-                    # Get mockup images for this color
-                    front_image = product.get('frontImage') or product.get('frontmodel')
-                    back_image = product.get('backImage') or product.get('backmodel')
-                    side_image = product.get('sideImage')
+                    # Get flat/ghost product images (no model) in priority order
+                    front_image = (
+                        product.get('ghostFrontImage') or
+                        product.get('colorFrontImage') or
+                        product.get('frontImage') or
+                        product.get('frontmodel')
+                    )
+                    back_image = (
+                        product.get('ghostBackImage') or
+                        product.get('colorBackImage') or
+                        product.get('backImage') or
+                        product.get('backmodel')
+                    )
+                    side_image = (
+                        product.get('ghostSideImage') or
+                        product.get('colorSideImage') or
+                        product.get('sideImage')
+                    )
+                    # Prepend CDN base if the URL is a relative path
+                    cdn = 'https://cdn.ssactivewear.com/'
+                    if front_image and not front_image.startswith('http'):
+                        front_image = cdn + front_image.lstrip('/')
+                    if back_image and not back_image.startswith('http'):
+                        back_image = cdn + back_image.lstrip('/')
+                    if side_image and not side_image.startswith('http'):
+                        side_image = cdn + side_image.lstrip('/')
                     
                     if color_name:
                         all_colors.add(color_name)
@@ -388,12 +410,23 @@ class SSActivewearAPI:
                 continue
             all_colors.add(color_name)
             if color_name not in color_variants:
+                cdn = 'https://cdn.ssactivewear.com/'
+                def _img(url):
+                    if not url:
+                        return None
+                    return url if url.startswith('http') else cdn + url.lstrip('/')
                 color_variants[color_name] = {
                     'color_name': color_name,
                     'color_id': p.get('colorID'),
-                    'front_image': p.get('colorFrontImage') or p.get('frontImage'),
-                    'back_image': p.get('colorBackImage') or p.get('backImage'),
-                    'side_image': p.get('colorSideImage'),
+                    'front_image': _img(
+                        p.get('ghostFrontImage') or p.get('colorFrontImage') or p.get('frontImage') or p.get('frontmodel')
+                    ),
+                    'back_image': _img(
+                        p.get('ghostBackImage') or p.get('colorBackImage') or p.get('backImage') or p.get('backmodel')
+                    ),
+                    'side_image': _img(
+                        p.get('ghostSideImage') or p.get('colorSideImage') or p.get('sideImage')
+                    ),
                     'sizes': {}
                 }
             if size_name:

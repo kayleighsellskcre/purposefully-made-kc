@@ -28,6 +28,12 @@
                     </svg>
                     Sync ALL Bella+Canvas
                 </button>
+                <button class="btn btn-outline" onclick="showBackfillModal()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 5px;">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    Fill Missing Images
+                </button>
                 {% endif %}
                 <a href="{{ url_for('admin.add_product') }}" class="btn btn-primary">Add Product</a>
             </div>
@@ -97,6 +103,32 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- Backfill Missing Images Modal -->
+<div id="backfillModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Fill Missing Product Images</h2>
+            <button class="modal-close" onclick="closeBackfillModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>This will find every color variant that is <strong>missing a front or back image</strong> and fetch the correct flat/ghost product image from S&amp;S Activewear.</p>
+            <p><strong>What you get:</strong></p>
+            <ul>
+                <li>Clean flat product shots of each color — <strong>no models or people</strong></li>
+                <li>Front and back images for every color variant</li>
+                <li>Only fills in gaps — existing images are not overwritten</li>
+            </ul>
+            <p><strong>Note:</strong> May take a few minutes depending on how many images are missing. Do not close this tab.</p>
+            <form action="{{ url_for('admin.backfill_images') }}" method="POST">
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeBackfillModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Fill Missing Images</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -322,6 +354,14 @@ function showFullSyncModal() {
 
 function closeFullSyncModal() {
     document.getElementById('fullSyncModal').style.display = 'none';
+}
+
+function showBackfillModal() {
+    document.getElementById('backfillModal').style.display = 'flex';
+}
+
+function closeBackfillModal() {
+    document.getElementById('backfillModal').style.display = 'none';
 }
 
 // Close modal on outside click

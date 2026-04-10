@@ -640,6 +640,107 @@ def sync_all_bella_canvas():
     return redirect(url_for('admin.products'))
 
 
+@admin_bp.route('/products/backfill-images', methods=['POST'])
+@admin_required
+def backfill_images():
+    """
+    For every color variant that is missing a front or back image URL,
+    fetch fresh ghost/flat images from S&S Activewear and save them.
+    Uses ghost/flat images only — no model shots.
+    """
+    import sys
+    from services.ssactivewear_api import SSActivewearAPI
+    from models import ProductColorVariant
+    from datetime import datetime
+
+    print("=" * 80, file=sys.stderr, flush=True)
+    print("ADMIN: BACKFILLING MISSING COLOR VARIANT IMAGES", file=sys.stderr, flush=True)
+    print("=" * 80, file=sys.stderr, flush=True)
+
+    try:
+        api = SSActivewearAPI()
+
+        # Find all products that have at least one variant missing a front image
+        products_needing_images = (
+            Product.query
+            .join(ProductColorVariant)
+            .filter(
+                (ProductColorVariant.front_image_url == None) |
+                (ProductColorVariant.front_image_url == '')
+            )
+            .distinct()
+            .all()
+        )
+
+        print(f"Found {len(products_needing_images)} products with missing variant images",
+              file=sys.stderr, flush=True)
+
+        filled = 0
+        skipped = 0
+        errors = []
+
+        for product in products_needing_images:
+            try:
+                print(f"  Fetching images for {product.style_number}...", file=sys.stderr, flush=True)
+                style_data = api.fetch_style_data_by_style_number(product.style_number)
+                if not style_data:
+                    skipped += 1
+                    continue
+
+                # Build a lookup: color_name -> {front_image, back_image, side_image}
+                image_map = {}
+                for v in style_data.get('color_variants', []):
+                    cname = v.get('color_name', '')
+                    if cname:
+                        image_map[cname] = v
+
+                # Update only variants that are missing images
+                for variant in product.color_variants:
+                    if variant.front_image_url and variant.back_image_url:
+                        continue  # already has both — skip
+
+                    img_data = image_map.get(variant.color_name, {})
+                    changed = False
+
+                    if not variant.front_image_url and img_data.get('front_image'):
+                        variant.front_image_url = img_data['front_image']
+                        changed = True
+                    if not variant.back_image_url and img_data.get('back_image'):
+                        variant.back_image_url = img_data['back_image']
+                        changed = True
+                    if not variant.side_image_url and img_data.get('side_image'):
+                        variant.side_image_url = img_data['side_image']
+                        changed = True
+
+                    if changed:
+                        variant.last_synced = datetime.utcnow()
+                        filled += 1
+
+                db.session.commit()
+
+            except Exception as e:
+                db.session.rollback()
+                print(f"  Error on {product.style_number}: {e}", file=sys.stderr, flush=True)
+                errors.append(product.style_number)
+                continue
+
+        msg = f'Image backfill complete! {filled} variants updated across {len(products_needing_images)} products.'
+        if skipped:
+            msg += f' {skipped} products skipped (not found in S&S).'
+        if errors:
+            msg += f' {len(errors)} products had errors.'
+        flash(msg, 'success')
+        print(f"BACKFILL DONE: {filled} variants filled", file=sys.stderr, flush=True)
+
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        flash(f'Error during image backfill: {str(e)}', 'error')
+
+    return redirect(url_for('admin.products'))
+
+
 @admin_bp.route('/products/add', methods=['GET', 'POST'])
 @admin_required
 def add_product():
