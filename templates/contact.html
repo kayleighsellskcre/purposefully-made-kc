@@ -1,121 +1,396 @@
 {% extends "base.html" %}
-
 {% block title %}Contact Us - Purposefully Made KC{% endblock %}
 
 {% block content %}
+
+<!-- Page Header -->
 <div class="page-header">
     <div class="container">
-        <h1>Contact Us</h1>
-        <p class="lead">Get in touch with our team</p>
+        <span class="eyebrow">We'd Love to Hear From You</span>
+        <h1>Let's Connect</h1>
+        <p class="lead">Whether you have a question, a big idea, or just need some help getting started, we are always happy to talk.</p>
     </div>
 </div>
 
-<section class="content-section">
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="container" style="padding-top: 1.5rem;">
+    {% for category, message in messages %}
+    <div class="contact-flash contact-flash-{{ category }}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<!-- Contact Body -->
+<section class="contact-section">
     <div class="container">
-        <div class="contact-grid">
-            <div class="contact-info">
-                <h2>Get In Touch</h2>
-                <p>Have questions about our products or services? We're here to help!</p>
-                
+        <div class="contact-layout">
+
+            <!-- Left: Info -->
+            <div class="contact-info-col">
+                <span class="contact-col-eyebrow">Reach Out</span>
+                <h2>We Are a Real Team<br>That Really Cares</h2>
+                <p class="contact-intro">We are not a big box operation. We are a small business based in Kansas City that puts genuine care into every order and every conversation. When you reach out, a real person reads it and responds.</p>
+
                 <div class="contact-methods">
                     <div class="contact-method">
-                        <h4>Email</h4>
-                        <p><a href="mailto:purposefullymadekc@gmail.com">purposefullymadekc@gmail.com</a></p>
+                        <div class="contact-method-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                <polyline points="22,6 12,13 2,6"/>
+                            </svg>
+                        </div>
+                        <div class="contact-method-text">
+                            <span class="contact-method-label">Email</span>
+                            <a href="mailto:purposefullymadekc@gmail.com" class="contact-method-value">purposefullymadekc@gmail.com</a>
+                        </div>
                     </div>
-                    
+
                     <div class="contact-method">
-                        <h4>Phone</h4>
-                        <p><a href="tel:+1234567890">(123) 456-7890</a></p>
+                        <div class="contact-method-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                        </div>
+                        <div class="contact-method-text">
+                            <span class="contact-method-label">Response Time</span>
+                            <span class="contact-method-value">Within 1 to 2 business days</span>
+                        </div>
                     </div>
-                    
+
                     <div class="contact-method">
-                        <h4>Hours</h4>
-                        <p>Monday - Friday: 9am - 5pm</p>
-                        <p>Saturday - Sunday: Closed</p>
+                        <div class="contact-method-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                        </div>
+                        <div class="contact-method-text">
+                            <span class="contact-method-label">Hours</span>
+                            <span class="contact-method-value">Monday through Friday, 9am to 5pm CST</span>
+                        </div>
                     </div>
                 </div>
+
+                <div class="contact-reassurance">
+                    <p>Not sure what you need? That is completely okay. Tell us about your occasion and we will figure it out together.</p>
+                </div>
             </div>
-            
-            <div class="contact-form-wrapper">
-                <h2>Send Us A Message</h2>
-                <form class="contact-form">
-                    <div class="form-group">
-                        <label for="name" class="form-label">Name</label>
-                        <input type="text" id="name" name="name" class="form-control" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="email" class="form-label">Email</label>
-                        <input type="email" id="email" name="email" class="form-control" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="subject" class="form-label">Subject</label>
-                        <input type="text" id="subject" name="subject" class="form-control" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="message" class="form-label">Message</label>
-                        <textarea id="message" name="message" class="form-control" rows="5" required></textarea>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-primary">Send Message</button>
-                </form>
+
+            <!-- Right: Form -->
+            <div class="contact-form-col">
+                <div class="contact-form-card">
+                    <h3 class="contact-form-title">Send Us a Message</h3>
+                    <p class="contact-form-subtitle">Fill in the details below and we will be in touch soon.</p>
+
+                    <form class="contact-form" method="POST" action="{{ url_for('main.contact') }}">
+                        <div class="cf-row">
+                            <div class="cf-group">
+                                <label for="name">Your Name</label>
+                                <input type="text" id="name" name="name" placeholder="Jane Smith" required>
+                            </div>
+                            <div class="cf-group">
+                                <label for="email">Email Address</label>
+                                <input type="email" id="email" name="email" placeholder="jane@example.com" required>
+                            </div>
+                        </div>
+
+                        <div class="cf-group">
+                            <label for="subject">What is This About?</label>
+                            <input type="text" id="subject" name="subject" placeholder="e.g. Wedding party shirts, group order question..." required>
+                        </div>
+
+                        <div class="cf-group">
+                            <label for="message">Your Message</label>
+                            <textarea id="message" name="message" rows="5" placeholder="Tell us what you are thinking. The more detail the better!" required></textarea>
+                        </div>
+
+                        <button type="submit" class="contact-submit">
+                            Send Message
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- Bottom Strip -->
+<section class="contact-bottom">
+    <div class="container">
+        <div class="contact-bottom-inner">
+            <p>Prefer to just browse? No pressure at all.</p>
+            <div class="contact-bottom-links">
+                <a href="{{ url_for('shop.index') }}" class="btn btn-primary">Shop Now</a>
+                <a href="{{ url_for('custom_request.index') }}" class="btn btn-outline">Have Us Recreate a Design</a>
             </div>
         </div>
     </div>
 </section>
 
 <style>
-.page-header {
-    background: var(--secondary-color);
-    padding: 4rem 0;
-    text-align: center;
+/* ── Contact Section ── */
+.contact-section {
+    padding: 5rem 0 4rem;
 }
 
-.page-header h1 {
-    margin-bottom: 1rem;
-}
-
-.lead {
-    font-size: 1.25rem;
-    color: var(--text-secondary);
-}
-
-.content-section {
-    padding: 4rem 0;
-}
-
-.contact-grid {
+.contact-layout {
     display: grid;
-    grid-template-columns: 1fr 1.5fr;
-    gap: 4rem;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 5rem;
+    align-items: start;
+}
+
+/* ── Info Column ── */
+.contact-col-eyebrow {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent-color);
+    margin-bottom: 0.85rem;
+}
+
+.contact-info-col h2 {
+    font-size: 2rem;
+    line-height: 1.25;
+    margin-bottom: 1.25rem;
+    color: var(--text-primary);
+}
+
+.contact-intro {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    line-height: 1.8;
+    margin-bottom: 2.5rem;
 }
 
 .contact-methods {
-    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
 }
 
 .contact-method {
-    margin-bottom: 2rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
 }
 
-.contact-method h4 {
-    margin-bottom: 0.5rem;
+.contact-method-icon {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, var(--ivory-silk), var(--cashmere-sand));
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-color);
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.contact-method-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.contact-method-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.contact-method-value {
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+a.contact-method-value:hover {
     color: var(--accent-color);
 }
 
-.contact-form-wrapper {
-    background: var(--secondary-color);
-    padding: 2rem;
-    border-radius: var(--border-radius);
+.contact-reassurance {
+    background: linear-gradient(135deg, var(--ivory-silk), var(--cashmere-sand));
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    border-left: 3px solid var(--accent-color);
 }
 
-@media (max-width: 768px) {
-    .contact-grid {
+.contact-reassurance p {
+    font-size: 0.92rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin: 0;
+    font-style: italic;
+}
+
+/* ── Form Column ── */
+.contact-form-card {
+    background: #fff;
+    border: 1px solid rgba(232, 208, 177, 0.6);
+    border-radius: 16px;
+    padding: 2.5rem;
+    box-shadow: 0 4px 24px rgba(58, 61, 72, 0.07);
+}
+
+.contact-form-title {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    margin-bottom: 0.4rem;
+}
+
+.contact-form-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+.cf-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+}
+
+.cf-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 1.25rem;
+}
+
+.cf-group label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.cf-group input,
+.cf-group textarea {
+    font-family: var(--font-primary);
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    background: var(--ivory-silk);
+    border: 1.5px solid transparent;
+    border-radius: 10px;
+    padding: 0.8rem 1rem;
+    transition: border-color 0.2s, background 0.2s;
+    resize: vertical;
+}
+
+.cf-group input::placeholder,
+.cf-group textarea::placeholder {
+    color: var(--text-light);
+    font-size: 0.88rem;
+}
+
+.cf-group input:focus,
+.cf-group textarea:focus {
+    outline: none;
+    background: #fff;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(184, 124, 111, 0.1);
+}
+
+.contact-submit {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.9rem 2rem;
+    background: var(--accent-color);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-family: var(--font-primary);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+    width: 100%;
+    justify-content: center;
+    margin-top: 0.5rem;
+}
+
+.contact-submit:hover {
+    background: var(--aged-bronze);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(184, 124, 111, 0.3);
+}
+
+/* ── Flash Message ── */
+.contact-flash {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.contact-flash-success {
+    background: rgba(147, 159, 128, 0.12);
+    color: #3a5a2a;
+    border: 1px solid rgba(147, 159, 128, 0.35);
+}
+
+/* ── Bottom Strip ── */
+.contact-bottom {
+    background: linear-gradient(135deg, var(--ivory-silk) 0%, var(--cashmere-sand) 100%);
+    padding: 4rem 2rem;
+}
+
+.contact-bottom-inner {
+    text-align: center;
+}
+
+.contact-bottom-inner p {
+    font-size: 1.05rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+}
+
+.contact-bottom-links {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* ── Mobile ── */
+@media (max-width: 900px) {
+    .contact-layout {
         grid-template-columns: 1fr;
-        gap: 2rem;
+        gap: 2.5rem;
     }
+    .contact-form-card { padding: 1.75rem; }
+}
+
+@media (max-width: 580px) {
+    .cf-row { grid-template-columns: 1fr; gap: 0; }
+    .contact-section { padding: 3rem 0 2rem; }
 }
 </style>
 {% endblock %}

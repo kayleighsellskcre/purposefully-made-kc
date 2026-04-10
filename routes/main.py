@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, session, current_app, send_file, send_from_directory
+from flask import Blueprint, render_template, session, current_app, send_file, send_from_directory, request, flash, redirect, url_for
 from models import Product, Collection
 import os
 
@@ -52,9 +52,18 @@ def about():
     """About page"""
     return render_template('about.html')
 
-@main_bp.route('/contact')
+@main_bp.route('/contact', methods=['GET', 'POST'])
 def contact():
     """Contact page"""
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip()
+        subject = request.form.get('subject', '').strip()
+        message = request.form.get('message', '').strip()
+        import sys
+        print(f"Contact form submission — Name: {name}, Email: {email}, Subject: {subject}", file=sys.stderr)
+        flash('Thank you for reaching out! We will get back to you within 1 to 2 business days.', 'success')
+        return redirect(url_for('main.contact'))
     return render_template('contact.html')
 
 
