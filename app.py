@@ -52,58 +52,36 @@ def create_app(config_class=Config):
         db.create_all()
         
         # Run migrations for new columns (safe to run multiple times)
-        with app.app_context():
-            try:
-                from sqlalchemy import text
-                with db.engine.connect() as conn:
-                    # Add new Product columns if they don't exist
+        try:
+            from sqlalchemy import text
+            with db.engine.connect() as conn:
+                # ALL migrations inside the same connection block
+                all_migrations = [
+                    "ALTER TABLE product ADD COLUMN IF NOT EXISTS size_chart TEXT",
+                    "ALTER TABLE product ADD COLUMN IF NOT EXISTS fit_guide TEXT",
+                    "ALTER TABLE product ADD COLUMN IF NOT EXISTS fabric_details TEXT",
+                    "ALTER TABLE product ADD COLUMN IF NOT EXISTS age_group VARCHAR(20)",
+                    "ALTER TABLE product ADD COLUMN IF NOT EXISTS fit_type VARCHAR(30)",
+                    "ALTER TABLE product ADD COLUMN IF NOT EXISTS neck_style VARCHAR(30)",
+                    "ALTER TABLE product ADD COLUMN IF NOT EXISTS sleeve_length VARCHAR(30)",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS design_fee DOUBLE PRECISION DEFAULT 0",
+                ]
+                for migration in all_migrations:
                     try:
-                        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS size_chart TEXT"))
+                        conn.execute(text(migration))
                         conn.commit()
                     except Exception:
-                        pass
-                    try:
-                        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS fit_guide TEXT"))
-                        conn.commit()
-                    except Exception:
-                        pass
-                    try:
-                        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS fabric_details TEXT"))
-                        conn.commit()
-                    except Exception:
-                        pass
-                try:
-                    conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS age_group VARCHAR(20)"))
-                    conn.commit()
-                except Exception:
-                    pass
-                try:
-                    conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS fit_type VARCHAR(30)"))
-                    conn.commit()
-                except Exception:
-                    pass
-                try:
-                    conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS neck_style VARCHAR(30)"))
-                    conn.commit()
-                except Exception:
-                    pass
-                try:
-                    conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS sleeve_length VARCHAR(30)"))
-                    conn.commit()
-                except Exception:
-                    pass
-                try:
-                    conn.execute(text("ALTER TABLE design ADD COLUMN IF NOT EXISTS design_fee DOUBLE PRECISION DEFAULT 0"))
-                    conn.commit()
-                except Exception:
-                    pass
-                
-                # Create favorites table if it doesn't exist
-                from models import Favorite
-                db.create_all()  # Creates any missing tables including favorites
-            except Exception:
-                # Migration errors shouldn't crash the app
-                pass
+                        try:
+                            conn.rollback()
+                        except Exception:
+                            pass
+
+            # Create favorites table if it doesn't exist
+            from models import Favorite
+            db.create_all()
+        except Exception:
+            # Migration errors shouldn't crash the app
+            pass
         
         # Ensure purposefullymadekc@gmail.com has admin on every app start (fixes fresh deploy)
         admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').strip()
