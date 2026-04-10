@@ -427,7 +427,7 @@ a.btn-customize:hover {
 .page-header {
     background: linear-gradient(160deg, #fff 0%, var(--ivory-silk) 60%, var(--cashmere-sand) 100%);
     padding: 5rem 2rem 4rem;
-    text-align: center;
+    text-align: center !important;
     position: relative;
     overflow: hidden;
 }
@@ -446,6 +446,15 @@ a.btn-customize:hover {
 .page-header .container {
     position: relative;
     z-index: 1;
+    text-align: center !important;
+}
+
+.page-header *,
+.page-header h1,
+.page-header h2,
+.page-header p,
+.page-header span {
+    text-align: center !important;
 }
 
 .page-header h1 {
@@ -455,7 +464,8 @@ a.btn-customize:hover {
     letter-spacing: -0.01em;
 }
 
-.page-header .eyebrow {
+.page-header .eyebrow,
+.eyebrow {
     display: block;
     font-size: 0.72rem;
     font-weight: 700;
@@ -463,6 +473,7 @@ a.btn-customize:hover {
     text-transform: uppercase;
     color: var(--accent-color);
     margin-bottom: 1rem;
+    text-align: center !important;
 }
 
 .lead {
@@ -471,6 +482,7 @@ a.btn-customize:hover {
     max-width: 520px;
     margin: 0 auto 1.5rem;
     line-height: 1.75;
+    text-align: center !important;
 }
 
 @media (max-width: 768px) {
