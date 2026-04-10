@@ -41,6 +41,9 @@ def run_migrations():
         add_column_if_not_exists('product', 'neck_style', 'VARCHAR(30)')
         add_column_if_not_exists('product', 'sleeve_length', 'VARCHAR(30)')
         
+        # Add design_fee column to Design table
+        add_column_if_not_exists('design', 'design_fee', 'FLOAT DEFAULT 0')
+        
         # Create favorites table if it doesn't exist
         try:
             from models import Favorite

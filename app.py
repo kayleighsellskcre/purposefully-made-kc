@@ -92,6 +92,11 @@ def create_app(config_class=Config):
                     conn.commit()
                 except Exception:
                     pass
+                try:
+                    conn.execute(text("ALTER TABLE design ADD COLUMN IF NOT EXISTS design_fee FLOAT DEFAULT 0"))
+                    conn.commit()
+                except Exception:
+                    pass
                 
                 # Create favorites table if it doesn't exist
                 from models import Favorite
