@@ -2,25 +2,15 @@
 {% block title %}{{ collection.name }} - Purposefully Made KC{% endblock %}
 {% block extra_css %}
 <style>
-.collection-hero {
-    background: linear-gradient(135deg, var(--ivory-silk) 0%, var(--cashmere-sand) 50%, rgba(184, 124, 111, 0.2) 100%);
-    padding: 4rem 0;
-    text-align: center;
-    border-bottom: 1px solid var(--border-light);
-}
-.collection-hero h1 {
-    font-family: var(--font-heading);
-    font-size: clamp(2rem, 5vw, 3.5rem);
-    color: var(--midnight-charcoal);
-    margin-bottom: 0.5rem;
-}
+/* page header uses global .page-header styles from main.css */
 
-.collection-hero .subtitle {
+.collection-header-subtitle {
     color: var(--text-secondary);
     font-size: 1.1rem;
+    text-align: center;
 }
 
-.collection-hero .subtitle a {
+.collection-header-subtitle a {
     color: var(--accent-color);
 }
 
@@ -271,21 +261,21 @@
 }
 
 @media (max-width: 768px) {
-    .collection-hero { padding: 2.5rem 0; }
     .design-board { padding: 2rem 0 4rem; }
     .design-board-grid { gap: 1.5rem; }
 }
 </style>
 {% endblock %}
 {% block content %}
-<div class="collection-hero">
+<div class="page-header">
     <div class="container">
+        <span class="eyebrow">Group Order</span>
         <h1>{{ collection.name }}</h1>
         {% if collection.description %}
-        <p class="subtitle">{{ collection.description }}</p>
+        <p class="collection-header-subtitle">{{ collection.description }}</p>
         {% endif %}
         {% if collection.order_deadline %}
-        <p class="subtitle">Order deadline: {{ collection.order_deadline.strftime('%B %d, %Y') }}</p>
+        <p class="collection-header-subtitle" style="margin-top:0.5rem;">Order deadline: {{ collection.order_deadline.strftime('%B %d, %Y') }}</p>
         {% endif %}
     </div>
 </div>

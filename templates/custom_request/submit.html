@@ -3,8 +3,9 @@
 {% block title %}Submit Design Request - Purposefully Made KC{% endblock %}
 
 {% block content %}
-<div class="submit-page-header">
+<div class="page-header">
     <div class="container">
+        <span class="eyebrow">Custom Design Service</span>
         <h1>Submit Your Design Request</h1>
         <p class="lead">Upload a reference image and describe what you want us to create.</p>
     </div>
@@ -49,25 +50,7 @@
 </section>
 
 <style>
-.submit-page-header {
-    background: linear-gradient(135deg, var(--ivory-silk) 0%, var(--cashmere-sand) 100%);
-    padding: 4rem 0;
-    text-align: center;
-    border-bottom: 1px solid var(--border-light);
-}
-
-.submit-page-header h1 {
-    font-family: var(--font-heading);
-    font-size: 2.75rem;
-    margin-bottom: 0.5rem;
-    color: var(--text-primary);
-}
-
-.submit-page-header .lead {
-    font-size: 1.2rem;
-    color: var(--text-secondary);
-}
-
+/* page header now uses global .page-header styles from main.css */
 .submit-section {
     padding: 4rem 0;
 }

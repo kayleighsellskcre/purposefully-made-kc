@@ -425,8 +425,8 @@ a.btn-customize:hover {
 
 /* ── Global Page Header (used across shop, gallery, about, contact, etc.) ── */
 .page-header {
-    background: linear-gradient(160deg, #fff 0%, var(--ivory-silk) 60%, var(--cashmere-sand) 100%);
-    padding: 5rem 2rem 4rem;
+    background: linear-gradient(135deg, var(--ivory-silk) 0%, var(--cashmere-sand) 100%);
+    padding: 4.5rem 2rem 4rem;
     text-align: center !important;
     position: relative;
     overflow: hidden;

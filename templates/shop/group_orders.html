@@ -2,24 +2,7 @@
 {% block title %}Group Orders - Purposefully Made KC{% endblock %}
 {% block extra_css %}
 <style>
-.group-orders-hero {
-    background: linear-gradient(135deg, var(--ivory-silk) 0%, var(--cashmere-sand) 50%, rgba(184, 124, 111, 0.15) 100%);
-    padding: 4rem 0;
-    text-align: center;
-    border-bottom: 1px solid var(--border-light);
-}
-.group-orders-hero h1 {
-    font-family: var(--font-heading);
-    font-size: clamp(2rem, 5vw, 3rem);
-    color: var(--midnight-charcoal);
-    margin-bottom: 0.5rem;
-}
-.group-orders-hero .lead {
-    font-size: 1.15rem;
-    color: var(--text-secondary);
-    max-width: 560px;
-    margin: 0 auto;
-}
+/* page header uses global .page-header styles from main.css */
 .group-orders-content {
     padding: 4rem 0 6rem;
 }
@@ -90,10 +73,11 @@
 </style>
 {% endblock %}
 {% block content %}
-<div class="group-orders-hero">
+<div class="page-header">
     <div class="container">
+        <span class="eyebrow">Bulk Ordering</span>
         <h1>Group Orders</h1>
-        <p class="lead">Custom apparel for teams, schools, and organizations. Create your selective options and share one link. Everyone stays matching.</p>
+        <p class="lead">Custom apparel for teams, schools, and organizations. Create your options and share one link. Everyone stays matching.</p>
     </div>
 </div>
 

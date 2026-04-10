@@ -3,8 +3,9 @@
 {% block title %}Have Us Recreate - Purposefully Made KC{% endblock %}
 
 {% block content %}
-<div class="page-header recreate-header">
+<div class="page-header">
     <div class="container">
+        <span class="eyebrow">Custom Design Service</span>
         <h1>Have Us Recreate</h1>
         <p class="lead">See an image online you love? Screenshot it or save it and we'll recreate it for you.</p>
     </div>
@@ -44,9 +45,7 @@
 </section>
 
 <style>
-.recreate-header { background: linear-gradient(135deg, var(--ivory-silk) 0%, var(--cashmere-sand) 100%); padding: 4rem 0; text-align: center; }
-.recreate-header h1 { font-family: var(--font-heading); margin-bottom: 0.5rem; }
-/* .lead now global in main.css */
+/* header styles from global .page-header in main.css */
 .recreate-section { padding: 4rem 0; }
 .recreate-flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-bottom: 3rem; }
 @media (max-width: 768px) { .recreate-flow { grid-template-columns: 1fr; } }
