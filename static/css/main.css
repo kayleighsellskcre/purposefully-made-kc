@@ -137,30 +137,19 @@ a:hover {
 
 .logo {
     display: flex;
-    align-items: baseline;
-    gap: 0.35rem;
+    align-items: center;
     text-decoration: none;
 }
 
-.logo-text {
-    font-family: var(--font-heading);
-    font-size: 1.4rem;
-    font-weight: 600;
-    color: var(--primary-color);
-    letter-spacing: 0.02em;
+.logo-image {
+    height: 50px;
+    width: auto;
+    transition: var(--transition);
 }
 
-.logo-accent {
-    font-family: var(--font-heading);
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--terra-cotta);
-    letter-spacing: 0.15em;
-}
-
-.logo:hover .logo-text,
-.logo:hover .logo-accent {
-    color: var(--terra-cotta);
+.logo:hover .logo-image {
+    opacity: 0.8;
+    transform: scale(1.02);
 }
 
 .nav-links {
@@ -852,11 +841,11 @@ textarea.form-control {
     .mobile-menu-toggle {
         display: flex;
     }
-    
-    .logo-text {
-        font-size: 1.25rem;
+
+    .logo-image {
+        height: 40px;
     }
-    
+
     /* Hero - Mobile */
     .hero {
         padding: 3rem 1rem;

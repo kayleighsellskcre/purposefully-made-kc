@@ -27,52 +27,45 @@
 
 <section class="shop-section">
     <div class="container">
-        <div class="shop-layout">
-            <!-- Filters Sidebar -->
-            <aside class="shop-filters">
-                <h3>Categories</h3>
-                <ul class="filter-list">
-                    <li>
-                        <a href="{{ url_for('shop.index', design_id=design_id) }}" 
-                           class="filter-link {% if not selected_category and not selected_age_group and not selected_color %}active{% endif %}">
-                            All Products
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('shop.index', age_group='adult', design_id=design_id) }}" 
-                           class="filter-link {% if selected_age_group == 'adult' %}active{% endif %}">
-                            Adult
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ url_for('shop.index', age_group='youth', design_id=design_id) }}" 
-                           class="filter-link {% if selected_age_group == 'youth' %}active{% endif %}">
-                            Youth
-                        </a>
-                    </li>
-                    {% for category in categories %}
-                    <li>
-                        <a href="{{ url_for('shop.index', category=category, age_group=selected_age_group or none, color=selected_color or none, design_id=design_id) }}" 
-                           class="filter-link {% if selected_category == category %}active{% endif %}">
-                            {{ category }}
-                        </a>
-                    </li>
-                    {% endfor %}
-                </ul>
-                
-                <h3 style="margin-top: 2rem;">Colors</h3>
-                <ul class="filter-list">
-                    {% for color in colors %}
-                    <li>
-                        <a href="{{ url_for('shop.index', color=color, category=selected_category or none, age_group=selected_age_group or none, design_id=design_id) }}" 
-                           class="filter-link {% if selected_color == color %}active{% endif %}">
-                            {{ color }}
-                        </a>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </aside>
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label for="ageGroupFilter">Age Group:</label>
+                <select id="ageGroupFilter" class="filter-dropdown" onchange="applyFilters()">
+                    <option value="">All</option>
+                    <option value="adult" {% if selected_age_group == 'adult' %}selected{% endif %}>Adult</option>
+                    <option value="youth" {% if selected_age_group == 'youth' %}selected{% endif %}>Youth</option>
+                </select>
+            </div>
             
+            <div class="filter-group">
+                <label for="categoryFilter">Category:</label>
+                <select id="categoryFilter" class="filter-dropdown" onchange="applyFilters()">
+                    <option value="">All Categories</option>
+                    {% for category in categories %}
+                    <option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>{{ category }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="colorFilter">Color:</label>
+                <select id="colorFilter" class="filter-dropdown" onchange="applyFilters()">
+                    <option value="">All Colors</option>
+                    {% for color in colors %}
+                    <option value="{{ color }}" {% if selected_color == color %}selected{% endif %}>{{ color }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            {% if selected_category or selected_age_group or selected_color %}
+            <button class="clear-filters-btn" onclick="clearFilters()">
+                Clear Filters
+            </button>
+            {% endif %}
+        </div>
+        
+        <div class="shop-layout">
             <!-- Products Grid -->
             <div class="shop-content">
                 {% if products %}
@@ -212,48 +205,76 @@
     padding: 4rem 0;
 }
 
-.shop-layout {
-    display: grid;
-    grid-template-columns: 250px 1fr;
-    gap: 3rem;
-}
-
-.shop-filters {
-    position: sticky;
-    top: 100px;
-    height: fit-content;
-    background: var(--secondary-color);
+/* Filter Bar Styles */
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: flex-end;
     padding: 2rem;
+    background: var(--secondary-color);
     border-radius: var(--border-radius);
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 
-.shop-filters h3 {
-    margin-bottom: 1.5rem;
-    font-size: 1.25rem;
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 180px;
 }
 
-.filter-list {
-    list-style: none;
+.filter-group label {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
 }
 
-.filter-list li {
-    margin-bottom: 0.75rem;
-}
-
-.filter-link {
-    display: block;
-    padding: 0.5rem 0;
-    color: var(--text-secondary);
+.filter-dropdown {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background: white;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    cursor: pointer;
     transition: var(--transition);
 }
 
-.filter-link:hover,
-.filter-link.active {
-    color: var(--accent-color);
+.filter-dropdown:hover {
+    border-color: var(--accent-color);
+}
+
+.filter-dropdown:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(184, 124, 111, 0.1);
+}
+
+.clear-filters-btn {
+    padding: 0.75rem 1.5rem;
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition);
+    align-self: flex-end;
+}
+
+.clear-filters-btn:hover {
+    background: var(--aged-bronze);
+    transform: translateY(-2px);
+}
+
+.shop-layout {
+    display: block;
 }
 
 .shop-content {
-    min-height: 400px;
+    width: 100%;
 }
 
 .shop-header {
@@ -721,6 +742,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 });
+
+// Filter functions
+function applyFilters() {
+    const ageGroup = document.getElementById('ageGroupFilter').value;
+    const category = document.getElementById('categoryFilter').value;
+    const color = document.getElementById('colorFilter').value;
+    const designId = new URLSearchParams(window.location.search).get('design_id');
+    
+    const params = new URLSearchParams();
+    if (ageGroup) params.append('age_group', ageGroup);
+    if (category) params.append('category', category);
+    if (color) params.append('color', color);
+    if (designId) params.append('design_id', designId);
+    
+    window.location.href = '/shop' + (params.toString() ? '?' + params.toString() : '');
+}
+
+function clearFilters() {
+    const designId = new URLSearchParams(window.location.search).get('design_id');
+    window.location.href = '/shop' + (designId ? '?design_id=' + designId : '');
+}
+
 </script>
 {% endblock %}
 
