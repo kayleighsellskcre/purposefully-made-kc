@@ -3,316 +3,378 @@
 {% block title %}Admin Dashboard - Purposefully Made KC{% endblock %}
 
 {% block content %}
-<div class="admin-page">
+
+<div class="page-header">
     <div class="container">
-        <h1>Admin Dashboard</h1>
-        
+        <span class="eyebrow">Admin</span>
+        <h1>Business Dashboard</h1>
+        <p class="lead">Your complete overview of orders, revenue, and operations.</p>
+    </div>
+</div>
+<style>
+.page-header, .page-header .container { text-align: center; }
+.page-header h1, .page-header p, .page-header span { text-align: center; display: block; }
+</style>
+
+<div class="adm-page">
+    <div class="container">
+
         {% if pending_design_requests and pending_design_requests > 0 %}
-        <div class="dashboard-alert dashboard-alert-design-requests">
-            <strong>New design request{{ 's' if pending_design_requests > 1 else '' }}!</strong>
-            {{ pending_design_requests }} pending. 
-            <a href="{{ url_for('admin.custom_design_requests', status='pending') }}">View & respond</a>
+        <div class="adm-alert">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span><strong>{{ pending_design_requests }} new design request{{ 's' if pending_design_requests > 1 else '' }}</strong> waiting for your response.</span>
+            <a href="{{ url_for('admin.custom_design_requests', status='pending') }}" class="adm-alert-link">View &amp; Respond</a>
         </div>
         {% endif %}
-        
-        <!-- Stats Cards -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h3>Total Orders</h3>
-                <p class="stat-number">{{ total_orders }}</p>
-            </div>
-            
-            <div class="stat-card">
-                <h3>Pending Orders</h3>
-                <p class="stat-number pending">{{ pending_orders }}</p>
-            </div>
-            
-            <div class="stat-card">
-                <h3>In Production</h3>
-                <p class="stat-number production">{{ in_production }}</p>
-            </div>
-            
-            <div class="stat-card">
-                <h3>Total Revenue</h3>
-                <p class="stat-number revenue">${{ "%.2f"|format(total_revenue) }}</p>
+
+        <!-- Stats -->
+        <div class="adm-section">
+            <span class="adm-eyebrow">At a Glance</span>
+            <div class="adm-stats">
+                <div class="adm-stat">
+                    <p class="adm-stat-label">Total Orders</p>
+                    <p class="adm-stat-value">{{ total_orders }}</p>
+                </div>
+                <div class="adm-stat">
+                    <p class="adm-stat-label">Pending Orders</p>
+                    <p class="adm-stat-value adm-stat-pending">{{ pending_orders }}</p>
+                </div>
+                <div class="adm-stat">
+                    <p class="adm-stat-label">In Production</p>
+                    <p class="adm-stat-value adm-stat-production">{{ in_production }}</p>
+                </div>
+                <div class="adm-stat">
+                    <p class="adm-stat-label">Total Revenue</p>
+                    <p class="adm-stat-value adm-stat-revenue">${{ "%.2f"|format(total_revenue) }}</p>
+                </div>
             </div>
         </div>
-        
+
         <!-- Quick Actions -->
-        <div class="quick-actions">
-            <h2>Quick Actions</h2>
-            <div class="actions-grid">
-                <a href="{{ url_for('admin.orders') }}" class="action-card">
-                    <h3>Orders & Revenue</h3>
+        <div class="adm-section">
+            <span class="adm-eyebrow">Quick Actions</span>
+            <div class="adm-actions">
+                <a href="{{ url_for('admin.orders') }}" class="adm-action-card">
+                    <div class="adm-action-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+                    </div>
+                    <h3>Orders &amp; Revenue</h3>
                     <p>Master order log, payments, status</p>
                 </a>
-                
-                <a href="{{ url_for('admin.production_workflow') }}" class="action-card">
+                <a href="{{ url_for('admin.production_workflow') }}" class="adm-action-card">
+                    <div class="adm-action-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    </div>
                     <h3>Production Workflow</h3>
                     <p>5-stage Kanban board</p>
                 </a>
-                
-                <a href="{{ url_for('admin.inventory') }}" class="action-card">
-                    <h3>Inventory</h3>
-                    <p>Apparel, transfers, supplies</p>
-                </a>
-                
-                <a href="{{ url_for('admin.vendors') }}" class="action-card">
-                    <h3>Vendors</h3>
-                    <p>Supplier database</p>
-                </a>
-                
-                <a href="{{ url_for('admin.financial') }}" class="action-card">
-                    <h3>Financial</h3>
-                    <p>Revenue, profit, expenses</p>
-                </a>
-                
-                <a href="{{ url_for('admin.growth') }}" class="action-card">
-                    <h3>Growth Dashboard</h3>
-                    <p>Weekly metrics</p>
-                </a>
-                
-                <a href="{{ url_for('admin.customers') }}" class="action-card">
-                    <h3>Customers</h3>
-                    <p>Repeat customers, groups</p>
-                </a>
-                
-                <a href="{{ url_for('admin.products') }}" class="action-card">
+                <a href="{{ url_for('admin.products') }}" class="adm-action-card">
+                    <div class="adm-action-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                    </div>
                     <h3>Products</h3>
                     <p>Manage product catalog</p>
                 </a>
-                
-                <a href="{{ url_for('admin.collections') }}" class="action-card">
+                <a href="{{ url_for('admin.collections') }}" class="adm-action-card">
+                    <div class="adm-action-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    </div>
                     <h3>Collections</h3>
                     <p>Create team stores</p>
                 </a>
-                
-                <a href="{{ url_for('admin.design_gallery') }}" class="action-card">
+                <a href="{{ url_for('admin.design_gallery') }}" class="adm-action-card">
+                    <div class="adm-action-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    </div>
                     <h3>Design Gallery</h3>
                     <p>Upload designs for customers</p>
                 </a>
-                
-                <a href="{{ url_for('admin.custom_design_requests') }}" class="action-card">
+                <a href="{{ url_for('admin.custom_design_requests') }}" class="adm-action-card">
+                    <div class="adm-action-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                    </div>
                     <h3>Have Us Recreate</h3>
-                    <p>Customer design requests. Upload to their profile.</p>
+                    <p>Customer design requests</p>
                 </a>
-                
-                <a href="{{ url_for('admin.production') }}" class="action-card">
+                <a href="{{ url_for('admin.financial') }}" class="adm-action-card">
+                    <div class="adm-action-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                    </div>
+                    <h3>Financial</h3>
+                    <p>Revenue, profit, expenses</p>
+                </a>
+                <a href="{{ url_for('admin.customers') }}" class="adm-action-card">
+                    <div class="adm-action-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                    </div>
+                    <h3>Customers</h3>
+                    <p>Repeat customers, groups</p>
+                </a>
+                <a href="{{ url_for('admin.production') }}" class="adm-action-card">
+                    <div class="adm-action-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    </div>
                     <h3>Production Center</h3>
                     <p>Export lists and batch sheets</p>
                 </a>
+                <a href="{{ url_for('admin.growth') }}" class="adm-action-card">
+                    <div class="adm-action-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    </div>
+                    <h3>Growth Dashboard</h3>
+                    <p>Weekly metrics</p>
+                </a>
+                <a href="{{ url_for('admin.inventory') }}" class="adm-action-card">
+                    <div class="adm-action-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+                    </div>
+                    <h3>Inventory</h3>
+                    <p>Apparel, transfers, supplies</p>
+                </a>
+                <a href="{{ url_for('admin.vendors') }}" class="adm-action-card">
+                    <div class="adm-action-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+                    </div>
+                    <h3>Vendors</h3>
+                    <p>Supplier database</p>
+                </a>
             </div>
         </div>
-        
+
         <!-- Recent Orders -->
-        <div class="recent-orders">
-            <h2>Recent Orders</h2>
-            <div class="orders-table-wrapper">
-                <table>
+        <div class="adm-section">
+            <span class="adm-eyebrow">Recent Orders</span>
+            <div class="adm-table-wrap">
+                <table class="adm-table">
                     <thead>
                         <tr>
-                            <th>Order #</th>
+                            <th>Order</th>
                             <th>Customer</th>
                             <th>Total</th>
                             <th>Status</th>
                             <th>Date</th>
-                            <th>Actions</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for order in recent_orders %}
                         <tr>
-                            <td><strong>{{ order.order_number }}</strong></td>
+                            <td><strong>#{{ order.order_number }}</strong></td>
                             <td>{{ order.full_name }}</td>
                             <td>${{ "%.2f"|format(order.total) }}</td>
-                            <td><span class="badge badge-{{ order.status }}">{{ order.status.replace('_', ' ').title() }}</span></td>
+                            <td><span class="status-pill status-{{ order.status }}">{{ order.status.replace('_', ' ').title() }}</span></td>
                             <td>{{ order.created_at.strftime('%b %d, %Y') }}</td>
-                            <td>
-                                <a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="btn-link">View</a>
-                            </td>
+                            <td><a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="adm-view-link">View</a></td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="6" style="text-align: center; padding: 2rem;">No orders yet</td>
+                            <td colspan="6" class="adm-table-empty">No orders yet</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
+
     </div>
 </div>
 
 <style>
-.dashboard-alert {
-    padding: 1rem 1.5rem;
-    margin-bottom: 2rem;
-    border-radius: var(--border-radius);
-    background: linear-gradient(135deg, rgba(184, 124, 111, 0.2) 0%, rgba(127, 108, 80, 0.2) 100%);
-    border: 2px solid var(--accent-color);
+/* ── Admin Dashboard ── */
+.adm-page {
+    padding: 3rem 0 5rem;
+    background: linear-gradient(180deg, #fff 0%, var(--ivory-silk) 100%);
+}
+
+.adm-alert {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: linear-gradient(135deg, rgba(184,124,111,0.12) 0%, rgba(127,108,80,0.08) 100%);
+    border: 1.5px solid rgba(184,124,111,0.35);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 2.5rem;
+    font-size: 0.92rem;
     color: var(--text-primary);
 }
-.dashboard-alert a { color: var(--accent-color); font-weight: 600; }
-.dashboard-alert a:hover { text-decoration: underline; }
-
-.admin-page {
-    padding: 4rem 0;
-}
-
-.admin-page h1 {
-    margin-bottom: 2rem;
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 2rem;
-    margin-bottom: 3rem;
-}
-
-.stat-card {
-    background: #fff;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 2rem;
-    text-align: center;
-}
-
-.stat-card h3 {
-    font-size: 0.875rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-secondary);
-    margin-bottom: 1rem;
-}
-
-.stat-number {
-    font-size: 3rem;
+.adm-alert svg { flex-shrink: 0; color: var(--terra-cotta); }
+.adm-alert-link {
+    margin-left: auto;
+    font-size: 0.8rem;
     font-weight: 700;
-    color: var(--accent-color);
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--terra-cotta);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(184,124,111,0.35);
+    white-space: nowrap;
 }
 
-.stat-number.pending {
-    color: var(--info-color);
+.adm-section { margin-bottom: 3rem; }
+
+.adm-eyebrow {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--terra-cotta);
+    margin-bottom: 1.25rem;
+    font-family: var(--font-secondary);
 }
 
-.stat-number.production {
-    color: var(--warning-color);
-}
-
-.stat-number.revenue {
-    color: var(--success-color);
-}
-
-.quick-actions,
-.recent-orders {
-    margin-bottom: 3rem;
-}
-
-.quick-actions h2,
-.recent-orders h2 {
-    margin-bottom: 1.5rem;
-}
-
-.actions-grid {
+/* Stats */
+.adm-stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+}
+@media (max-width: 900px) { .adm-stats { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .adm-stats { grid-template-columns: 1fr; } }
+
+.adm-stat {
+    background: #fff;
+    border: 1px solid rgba(232,208,177,0.6);
+    border-radius: 16px;
+    padding: 1.75rem 1.5rem;
+    text-align: center;
+    box-shadow: 0 2px 12px rgba(58,61,72,0.05);
+    transition: box-shadow 0.2s;
+}
+.adm-stat:hover { box-shadow: 0 6px 22px rgba(58,61,72,0.09); }
+
+.adm-stat-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+    font-family: var(--font-secondary);
 }
 
-.action-card {
-    background: var(--secondary-color);
-    border-radius: var(--border-radius);
-    padding: 2rem;
+.adm-stat-value {
+    font-size: 2.75rem;
+    font-weight: 700;
+    font-family: var(--font-heading);
+    color: var(--aged-bronze);
+    line-height: 1;
+}
+.adm-stat-pending  { color: #7a9bbf; }
+.adm-stat-production { color: #c8954a; }
+.adm-stat-revenue  { color: #7aab8c; }
+
+/* Quick Actions */
+.adm-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.15rem;
+}
+
+.adm-action-card {
+    background: #fff;
+    border: 1px solid rgba(232,208,177,0.55);
+    border-radius: 14px;
+    padding: 1.5rem 1.25rem;
     text-decoration: none;
     color: inherit;
-    transition: var(--transition);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    box-shadow: 0 2px 10px rgba(58,61,72,0.04);
+    transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+}
+.adm-action-card:hover {
+    box-shadow: 0 8px 28px rgba(58,61,72,0.1);
+    transform: translateY(-3px);
+    border-color: rgba(184,124,111,0.4);
 }
 
-.action-card:hover {
-    background: var(--accent-color);
-    color: #fff;
-    transform: translateY(-4px);
+.adm-action-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--ivory-silk) 0%, var(--cashmere-sand) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.25rem;
+    color: var(--aged-bronze);
 }
 
-.action-card h3 {
-    margin-bottom: 0.5rem;
+.adm-action-card h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    font-family: var(--font-primary);
+    color: var(--text-primary);
+    margin: 0;
 }
-
-.action-card p {
+.adm-action-card p {
+    font-size: 0.8rem;
     color: var(--text-secondary);
+    line-height: 1.5;
+    margin: 0;
 }
 
-.action-card:hover p {
-    color: rgba(255,255,255,0.9);
-}
-
-.orders-table-wrapper {
+/* Recent Orders Table */
+.adm-table-wrap {
     background: #fff;
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
+    border: 1px solid rgba(232,208,177,0.55);
+    border-radius: 16px;
     overflow: hidden;
+    box-shadow: 0 2px 12px rgba(58,61,72,0.05);
 }
 
-table {
+.adm-table {
     width: 100%;
     border-collapse: collapse;
 }
 
-thead {
-    background: var(--secondary-color);
+.adm-table thead {
+    background: linear-gradient(135deg, var(--ivory-silk) 0%, var(--cashmere-sand) 100%);
 }
 
-th, td {
-    padding: 1rem;
+.adm-table th {
+    padding: 0.85rem 1.25rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    font-family: var(--font-secondary);
     text-align: left;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid rgba(232,208,177,0.55);
 }
 
-th {
-    font-weight: 600;
+.adm-table td {
+    padding: 1rem 1.25rem;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    border-bottom: 1px solid rgba(232,208,177,0.3);
 }
 
-tbody tr:hover {
-    background: var(--secondary-color);
+.adm-table tbody tr:last-child td { border-bottom: none; }
+.adm-table tbody tr:hover { background: var(--ivory-silk); }
+
+.adm-table-empty {
+    text-align: center;
+    padding: 3rem !important;
+    color: var(--text-secondary);
+    font-style: italic;
 }
 
-.badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.875rem;
-    font-weight: 500;
-}
-
-.badge-new,
-.badge-paid {
-    background: rgba(59, 130, 246, 0.1);
-    color: #3b82f6;
-}
-
-.badge-in_production {
-    background: rgba(245, 158, 11, 0.1);
-    color: #f59e0b;
-}
-
-.badge-ready,
-.badge-completed {
-    background: rgba(16, 185, 129, 0.1);
-    color: #10b981;
-}
-
-.badge-shipped {
-    background: rgba(139, 92, 246, 0.1);
-    color: #8b5cf6;
-}
-
-.btn-link {
-    color: var(--accent-color);
+.adm-view-link {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--terra-cotta);
     text-decoration: none;
+    border-bottom: 1px solid rgba(184,124,111,0.3);
+    transition: border-color 0.2s;
 }
-
-.btn-link:hover {
-    text-decoration: underline;
-}
+.adm-view-link:hover { border-color: var(--terra-cotta); }
 </style>
+
 {% endblock %}
