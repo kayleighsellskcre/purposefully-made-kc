@@ -831,7 +831,7 @@ a.btn-customize:hover {
 .footer-rule {
     height: 1px;
     background: linear-gradient(90deg, transparent, rgba(127,108,80,0.3), transparent);
-    margin-bottom: 2rem;
+    margin-bottom: 0.75rem;
 }
 
 /* Nav columns row */
@@ -839,7 +839,7 @@ a.btn-customize:hover {
     display: flex;
     justify-content: center;
     gap: 5rem;
-    padding-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
 }
 
 .footer-col { text-align: center; }
