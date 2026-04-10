@@ -31,15 +31,71 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="category">Category</label>
-                        <select id="category" name="category" class="form-control">
-                            <option value="Tee" {% if product.category == 'Tee' %}selected{% endif %}>T-Shirt</option>
+                        <label for="category">Category *</label>
+                        <select id="category" name="category" class="form-control" required>
+                            <option value="">Select Category</option>
+                            <option value="Tee" {% if product.category == 'Tee' %}selected{% endif %}>Tee</option>
+                            <option value="V-Neck Tee" {% if product.category == 'V-Neck Tee' %}selected{% endif %}>V-Neck Tee</option>
+                            <option value="Tri-Blend Tee" {% if product.category == 'Tri-Blend Tee' %}selected{% endif %}>Tri-Blend Tee</option>
+                            <option value="Long Sleeve" {% if product.category == 'Long Sleeve' %}selected{% endif %}>Long Sleeve</option>
+                            <option value="Raglan" {% if product.category == 'Raglan' %}selected{% endif %}>Raglan</option>
+                            <option value="Tank" {% if product.category == 'Tank' %}selected{% endif %}>Tank</option>
                             <option value="Hoodie" {% if product.category == 'Hoodie' %}selected{% endif %}>Hoodie</option>
                             <option value="Sweatshirt" {% if product.category == 'Sweatshirt' %}selected{% endif %}>Sweatshirt</option>
-                            <option value="Tank" {% if product.category == 'Tank' %}selected{% endif %}>Tank Top</option>
-                            <option value="Long Sleeve" {% if product.category == 'Long Sleeve' %}selected{% endif %}>Long Sleeve</option>
-                            <option value="Youth" {% if product.category == 'Youth' %}selected{% endif %}>Youth</option>
+                            <option value="Zip-Up" {% if product.category == 'Zip-Up' %}selected{% endif %}>Zip-Up</option>
+                            <option value="Polo" {% if product.category == 'Polo' %}selected{% endif %}>Polo</option>
                         </select>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="age_group">Age Group *</label>
+                            <select id="age_group" name="age_group" class="form-control" required>
+                                <option value="adult" {% if product.age_group == 'adult' %}selected{% endif %}>Adult</option>
+                                <option value="youth" {% if product.age_group == 'youth' %}selected{% endif %}>Youth</option>
+                                <option value="toddler" {% if product.age_group == 'toddler' %}selected{% endif %}>Toddler</option>
+                                <option value="baby" {% if product.age_group == 'baby' %}selected{% endif %}>Baby</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="fit_type">Fit Type</label>
+                            <select id="fit_type" name="fit_type" class="form-control">
+                                <option value="">Select Fit</option>
+                                <option value="Unisex" {% if product.fit_type == 'Unisex' %}selected{% endif %}>Unisex</option>
+                                <option value="Men's" {% if product.fit_type == "Men's" %}selected{% endif %}>Men's</option>
+                                <option value="Women's" {% if product.fit_type == "Women's" %}selected{% endif %}>Women's</option>
+                                <option value="Fitted" {% if product.fit_type == 'Fitted' %}selected{% endif %}>Fitted</option>
+                                <option value="Relaxed" {% if product.fit_type == 'Relaxed' %}selected{% endif %}>Relaxed</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="neck_style">Neck Style</label>
+                            <select id="neck_style" name="neck_style" class="form-control">
+                                <option value="">Select Neck Style</option>
+                                <option value="Crew Neck" {% if product.neck_style == 'Crew Neck' %}selected{% endif %}>Crew Neck</option>
+                                <option value="V-Neck" {% if product.neck_style == 'V-Neck' %}selected{% endif %}>V-Neck</option>
+                                <option value="Scoop Neck" {% if product.neck_style == 'Scoop Neck' %}selected{% endif %}>Scoop Neck</option>
+                                <option value="Hooded" {% if product.neck_style == 'Hooded' %}selected{% endif %}>Hooded</option>
+                                <option value="Collar" {% if product.neck_style == 'Collar' %}selected{% endif %}>Collar</option>
+                                <option value="Tank" {% if product.neck_style == 'Tank' %}selected{% endif %}>Tank</option>
+                                <option value="Zip-Up" {% if product.neck_style == 'Zip-Up' %}selected{% endif %}>Zip-Up</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="sleeve_length">Sleeve Length</label>
+                            <select id="sleeve_length" name="sleeve_length" class="form-control">
+                                <option value="">Select Sleeve Length</option>
+                                <option value="Short Sleeve" {% if product.sleeve_length == 'Short Sleeve' %}selected{% endif %}>Short Sleeve</option>
+                                <option value="Long Sleeve" {% if product.sleeve_length == 'Long Sleeve' %}selected{% endif %}>Long Sleeve</option>
+                                <option value="Sleeveless" {% if product.sleeve_length == 'Sleeveless' %}selected{% endif %}>Sleeveless</option>
+                                <option value="3/4 Sleeve" {% if product.sleeve_length == '3/4 Sleeve' %}selected{% endif %}>3/4 Sleeve</option>
+                            </select>
+                        </div>
                     </div>
                     
                     <div class="form-group">
@@ -161,6 +217,12 @@
 .form-section h2 {
     font-size: 1.125rem;
     margin-bottom: 1.5rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
 }
 
 .form-actions {

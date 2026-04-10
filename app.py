@@ -72,11 +72,26 @@ def create_app(config_class=Config):
                         conn.commit()
                     except Exception:
                         pass
-                    try:
-                        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS age_group VARCHAR(20)"))
-                        conn.commit()
-                    except Exception:
-                        pass
+                try:
+                    conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS age_group VARCHAR(20)"))
+                    conn.commit()
+                except Exception:
+                    pass
+                try:
+                    conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS fit_type VARCHAR(30)"))
+                    conn.commit()
+                except Exception:
+                    pass
+                try:
+                    conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS neck_style VARCHAR(30)"))
+                    conn.commit()
+                except Exception:
+                    pass
+                try:
+                    conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS sleeve_length VARCHAR(30)"))
+                    conn.commit()
+                except Exception:
+                    pass
                 
                 # Create favorites table if it doesn't exist
                 from models import Favorite

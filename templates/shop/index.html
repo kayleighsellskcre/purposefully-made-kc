@@ -35,6 +35,8 @@
                     <option value="">All</option>
                     <option value="adult" {% if selected_age_group == 'adult' %}selected{% endif %}>Adult</option>
                     <option value="youth" {% if selected_age_group == 'youth' %}selected{% endif %}>Youth</option>
+                    <option value="toddler" {% if selected_age_group == 'toddler' %}selected{% endif %}>Toddler</option>
+                    <option value="baby" {% if selected_age_group == 'baby' %}selected{% endif %}>Baby</option>
                 </select>
             </div>
             
@@ -49,6 +51,36 @@
             </div>
             
             <div class="filter-group">
+                <label for="fitTypeFilter">Fit:</label>
+                <select id="fitTypeFilter" class="filter-dropdown" onchange="applyFilters()">
+                    <option value="">All Fits</option>
+                    {% for fit in fit_types %}
+                    <option value="{{ fit }}" {% if selected_fit_type == fit %}selected{% endif %}>{{ fit }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="neckStyleFilter">Neck:</label>
+                <select id="neckStyleFilter" class="filter-dropdown" onchange="applyFilters()">
+                    <option value="">All Necks</option>
+                    {% for neck in neck_styles %}
+                    <option value="{{ neck }}" {% if selected_neck_style == neck %}selected{% endif %}>{{ neck }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="sleeveFilter">Sleeve:</label>
+                <select id="sleeveFilter" class="filter-dropdown" onchange="applyFilters()">
+                    <option value="">All Sleeves</option>
+                    {% for sleeve in sleeve_lengths %}
+                    <option value="{{ sleeve }}" {% if selected_sleeve_length == sleeve %}selected{% endif %}>{{ sleeve }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
                 <label for="colorFilter">Color:</label>
                 <select id="colorFilter" class="filter-dropdown" onchange="applyFilters()">
                     <option value="">All Colors</option>
@@ -58,7 +90,7 @@
                 </select>
             </div>
             
-            {% if selected_category or selected_age_group or selected_color %}
+            {% if selected_category or selected_age_group or selected_color or selected_fit_type or selected_neck_style or selected_sleeve_length %}
             <button class="clear-filters-btn" onclick="clearFilters()">
                 Clear Filters
             </button>
@@ -747,12 +779,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 function applyFilters() {
     const ageGroup = document.getElementById('ageGroupFilter').value;
     const category = document.getElementById('categoryFilter').value;
+    const fitType = document.getElementById('fitTypeFilter').value;
+    const neckStyle = document.getElementById('neckStyleFilter').value;
+    const sleeve = document.getElementById('sleeveFilter').value;
     const color = document.getElementById('colorFilter').value;
     const designId = new URLSearchParams(window.location.search).get('design_id');
-    
+
     const params = new URLSearchParams();
     if (ageGroup) params.append('age_group', ageGroup);
     if (category) params.append('category', category);
+    if (fitType) params.append('fit_type', fitType);
+    if (neckStyle) params.append('neck_style', neckStyle);
+    if (sleeve) params.append('sleeve_length', sleeve);
     if (color) params.append('color', color);
     if (designId) params.append('design_id', designId);
     

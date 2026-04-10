@@ -441,26 +441,75 @@ class SSActivewearAPI:
         title = style_data.get('title', '').lower()
         style_number = style_data.get('styleNumber', '') or style_data.get('styleName', '')
         
-        # Improved category detection
-        if 'hoodie' in title or 'hood' in title or 'hoodie' in base_category.lower():
+        # Detect detailed product attributes
+        
+        # 1. Category (main product type)
+        if 'hoodie' in title or 'hood' in title:
             category = 'Hoodie'
+            neck_style = 'Hooded'
         elif 'sweatshirt' in title or 'crew' in title or 'fleece' in title:
             category = 'Sweatshirt'
+            neck_style = 'Crew Neck'
         elif 'tank' in title or 'muscle' in title:
             category = 'Tank'
-        elif 'long sleeve' in title or 'long-sleeve' in title or 'ls' in title:
+            neck_style = 'Tank'
+        elif 'long sleeve' in title or 'long-sleeve' in title:
             category = 'Long Sleeve'
+            neck_style = 'Crew Neck'
         elif 'polo' in title:
             category = 'Polo'
+            neck_style = 'Collar'
         elif 'zip' in title:
             category = 'Zip-Up'
+            neck_style = 'Zip-Up'
+        elif 'v-neck' in title or 'vneck' in title:
+            category = 'V-Neck Tee'
+            neck_style = 'V-Neck'
+        elif 'raglan' in title:
+            category = 'Raglan'
+            neck_style = 'Crew Neck'
         elif 'tee' in title or 't-shirt' in title or 'shirt' in title:
             category = 'Tee'
+            neck_style = 'Crew Neck'
         else:
             category = 'Tee'
+            neck_style = 'Crew Neck'
         
-        # Detect youth products (style number contains Y)
-        age_group = 'youth' if 'Y' in style_number.upper() else 'adult'
+        # 2. Sleeve Length
+        if 'tank' in title or 'muscle' in title or 'sleeveless' in title:
+            sleeve_length = 'Sleeveless'
+        elif 'long sleeve' in title or 'long-sleeve' in title:
+            sleeve_length = 'Long Sleeve'
+        elif '3/4' in title:
+            sleeve_length = '3/4 Sleeve'
+        else:
+            sleeve_length = 'Short Sleeve'
+        
+        # 3. Age Group (more granular)
+        style_upper = style_number.upper()
+        if 'INFANT' in title or 'BABY' in title or 'ONESIE' in title:
+            age_group = 'baby'
+        elif 'TODDLER' in title or 'T' in style_upper and len(style_number) <= 5:
+            age_group = 'toddler'
+        elif 'Y' in style_upper and 'YOUTH' not in title:
+            # Y suffix means youth
+            age_group = 'youth'
+        elif 'YOUTH' in title:
+            age_group = 'youth'
+        else:
+            age_group = 'adult'
+        
+        # 4. Fit Type
+        if 'women' in title or 'ladies' in title or 'bella' in title.lower():
+            fit_type = "Women's"
+        elif 'men' in title:
+            fit_type = "Men's"
+        elif 'fitted' in title or 'slim' in title:
+            fit_type = 'Fitted'
+        elif 'relaxed' in title or 'comfort' in title:
+            fit_type = 'Relaxed'
+        else:
+            fit_type = 'Unisex'
         
         # Get pricing - default markup of 2.5x if no price
         wholesale_price = style_data.get('wholesalePrice', 10)
@@ -492,6 +541,9 @@ class SSActivewearAPI:
             'name': f"{style_data.get('brandName', 'Bella+Canvas')} {style_data.get('title', style_number)}",
             'category': category,
             'age_group': age_group,
+            'fit_type': fit_type,
+            'neck_style': neck_style,
+            'sleeve_length': sleeve_length,
             'description': style_data.get('description', ''),
             'base_price': round(retail_price, 2),
             'wholesale_cost': round(wholesale_price, 2),

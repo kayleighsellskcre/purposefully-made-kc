@@ -403,6 +403,10 @@ def sync_api():
                 # Update existing
                 existing.name = product_data['name']
                 existing.category = product_data['category']
+                existing.age_group = product_data.get('age_group')
+                existing.fit_type = product_data.get('fit_type')
+                existing.neck_style = product_data.get('neck_style')
+                existing.sleeve_length = product_data.get('sleeve_length')
                 existing.description = product_data['description']
                 existing.base_price = product_data['base_price']
                 existing.wholesale_cost = product_data.get('wholesale_cost', 0)
@@ -410,7 +414,6 @@ def sync_api():
                 existing.available_colors = product_data['available_colors']
                 existing.brand = product_data.get('brand', 'Bella+Canvas')
                 existing.api_data = product_data.get('api_data')
-                # Update sizing and fabric details
                 existing.size_chart = product_data.get('size_chart')
                 existing.fit_guide = product_data.get('fit_guide')
                 existing.fabric_details = product_data.get('fabric_details')
@@ -537,6 +540,10 @@ def edit_product(product_id):
         product.name = request.form.get('name')
         product.brand = request.form.get('brand')
         product.category = request.form.get('category')
+        product.age_group = request.form.get('age_group')
+        product.fit_type = request.form.get('fit_type')
+        product.neck_style = request.form.get('neck_style')
+        product.sleeve_length = request.form.get('sleeve_length')
         product.description = request.form.get('description')
         product.base_price = float(request.form.get('base_price'))
         product.wholesale_cost = float(request.form.get('wholesale_cost') or 0)

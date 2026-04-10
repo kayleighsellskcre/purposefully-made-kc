@@ -139,8 +139,14 @@ class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     style_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     name = db.Column(db.String(200), nullable=False)
-    category = db.Column(db.String(50))  # Tee, Hoodie, Crew, Tank, Youth
-    age_group = db.Column(db.String(20))  # 'adult' or 'youth'
+    
+    # Detailed categorization
+    category = db.Column(db.String(50))  # Tee, Hoodie, Sweatshirt, Tank, Long Sleeve, etc.
+    age_group = db.Column(db.String(20))  # 'baby', 'toddler', 'youth', 'adult'
+    fit_type = db.Column(db.String(30))  # 'Unisex', 'Men\'s', 'Women\'s', 'Fitted', etc.
+    neck_style = db.Column(db.String(30))  # 'Crew Neck', 'V-Neck', 'Scoop Neck', 'Hooded', etc.
+    sleeve_length = db.Column(db.String(30))  # 'Short Sleeve', 'Long Sleeve', 'Sleeveless', '3/4 Sleeve'
+    
     description = db.Column(db.Text)
     
     # Pricing
