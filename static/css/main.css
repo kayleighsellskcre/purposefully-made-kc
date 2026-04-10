@@ -146,7 +146,7 @@ a:hover {
 }
 
 .logo-image {
-    height: 115px;
+    height: 145px;
     width: auto;
     display: block;
     transition: var(--transition);
@@ -1027,7 +1027,7 @@ textarea.form-control {
     }
 
     .logo { transform: translate(-6px, 32px); }
-    .logo-image { height: 88px; }
+    .logo-image { height: 110px; }
 
     /* Hero - Mobile */
     .hero {
