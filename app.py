@@ -52,34 +52,38 @@ def create_app(config_class=Config):
         db.create_all()
         
         # Run migrations for new columns (safe to run multiple times)
-        try:
-            from sqlalchemy import text
-            with db.engine.connect() as conn:
-                # Add new Product columns if they don't exist
-                try:
-                    conn.execute(text("ALTER TABLE product ADD COLUMN size_chart TEXT"))
-                except Exception:
-                    pass  # Column already exists
-                try:
-                    conn.execute(text("ALTER TABLE product ADD COLUMN fit_guide TEXT"))
-                except Exception:
-                    pass
-                try:
-                    conn.execute(text("ALTER TABLE product ADD COLUMN fabric_details TEXT"))
-                except Exception:
-                    pass
-                try:
-                    conn.execute(text("ALTER TABLE product ADD COLUMN age_group VARCHAR(20)"))
-                except Exception:
-                    pass
-                conn.commit()
-            
-            # Create favorites table if it doesn't exist
-            from models import Favorite
-            db.create_all()  # Creates any missing tables including favorites
-        except Exception:
-            # Migration errors shouldn't crash the app
-            pass
+        with app.app_context():
+            try:
+                from sqlalchemy import text
+                with db.engine.connect() as conn:
+                    # Add new Product columns if they don't exist
+                    try:
+                        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS size_chart TEXT"))
+                        conn.commit()
+                    except Exception:
+                        pass
+                    try:
+                        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS fit_guide TEXT"))
+                        conn.commit()
+                    except Exception:
+                        pass
+                    try:
+                        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS fabric_details TEXT"))
+                        conn.commit()
+                    except Exception:
+                        pass
+                    try:
+                        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS age_group VARCHAR(20)"))
+                        conn.commit()
+                    except Exception:
+                        pass
+                
+                # Create favorites table if it doesn't exist
+                from models import Favorite
+                db.create_all()  # Creates any missing tables including favorites
+            except Exception:
+                # Migration errors shouldn't crash the app
+                pass
         
         # Ensure purposefullymadekc@gmail.com has admin on every app start (fixes fresh deploy)
         admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').strip()
