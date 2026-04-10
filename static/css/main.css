@@ -140,7 +140,7 @@ a:hover {
     display: flex;
     align-items: center;
     text-decoration: none;
-    transform: translate(-10px, 48px);
+    transform: translate(-10px, 32px);
     position: relative;
     z-index: 10;
 }
@@ -1026,7 +1026,7 @@ textarea.form-control {
         display: flex;
     }
 
-    .logo { transform: translate(-6px, 32px); }
+    .logo { transform: translate(-6px, 20px); }
     .logo-image { height: 110px; }
 
     /* Hero - Mobile */
