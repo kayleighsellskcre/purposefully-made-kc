@@ -94,41 +94,45 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3 class="footer-title">Purposefully Made KC</h3>
-                    <p class="footer-text">Luxury custom apparel for teams, schools, and events.</p>
+            <div class="footer-inner">
+
+                <div>
+                    <p class="footer-brand-name">Purposefully Made KC</p>
+                    <p class="footer-brand-desc">Luxury custom apparel for teams, schools, and every occasion that deserves something special.</p>
                 </div>
-                
-                <div class="footer-section">
-                    <h4 class="footer-heading">Shop</h4>
+
+                <div>
+                    <p class="footer-col-title">Shop</p>
                     <ul class="footer-links">
                         <li><a href="{{ url_for('shop.index') }}">All Products</a></li>
                         <li><a href="{{ url_for('shop.group_orders') }}">Group Orders</a></li>
                         <li><a href="{{ url_for('shop.index', category='Tee') }}">T-Shirts</a></li>
                         <li><a href="{{ url_for('shop.index', category='Hoodie') }}">Hoodies</a></li>
+                        <li><a href="{{ url_for('shop.design_gallery') }}">Design Gallery</a></li>
                     </ul>
                 </div>
-                
-                <div class="footer-section">
-                    <h4 class="footer-heading">Company</h4>
+
+                <div>
+                    <p class="footer-col-title">Company</p>
                     <ul class="footer-links">
                         <li><a href="{{ url_for('main.about') }}">About Us</a></li>
                         <li><a href="{{ url_for('main.contact') }}">Contact</a></li>
+                        <li><a href="{{ url_for('custom_request.index') }}">Have Us Recreate</a></li>
                     </ul>
                 </div>
-                
-                <div class="footer-section">
-                    <h4 class="footer-heading">Legal</h4>
+
+                <div>
+                    <p class="footer-col-title">Legal</p>
                     <ul class="footer-links">
                         <li><a href="#">Privacy Policy</a></li>
                         <li><a href="#">Terms of Service</a></li>
                     </ul>
                 </div>
+
             </div>
-            
+
             <div class="footer-bottom">
-                <p>&copy; {{ current_year }} Purposefully Made KC. All rights reserved.</p>
+                &copy; {{ current_year }} Purposefully Made KC. All rights reserved.
             </div>
         </div>
     </footer>
