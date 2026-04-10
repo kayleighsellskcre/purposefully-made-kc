@@ -740,7 +740,7 @@ a.btn-customize:hover {
 
 .footer-logo-link { display: inline-block; }
 .footer-logo-img {
-    height: 200px;
+    height: 300px;
     width: auto;
     display: block;
     margin: 0 auto 0.75rem;
@@ -815,7 +815,7 @@ a.btn-customize:hover {
 
 @media (max-width: 768px) {
     .footer-nav { gap: 2.5rem; flex-wrap: wrap; }
-    .footer-logo-img { height: 150px; }
+    .footer-logo-img { height: 220px; }
 }
 
 @media (max-width: 480px) {
