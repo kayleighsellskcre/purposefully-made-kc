@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Terms of Service - Purposefully Made KC{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div class="container">
+        <span class="eyebrow">Legal</span>
+        <h1>Terms of Service</h1>
+        <p class="lead">These terms are straightforward and written in plain language because we believe in being honest with our customers.</p>
+    </div>
+</div>
+
+<style>
+.page-header, .page-header .container { text-align: center; }
+.page-header h1, .page-header p, .page-header span { text-align: center; display: block; }
+</style>
+
+<section class="legal-page">
+    <div class="container">
+        <div class="legal-content">
+
+            <p class="legal-updated">Last updated: February 2026</p>
+
+            <div class="legal-section">
+                <h2>Welcome</h2>
+                <p>By using the Purposefully Made KC website and placing an order with us, you agree to the terms outlined below. If you have any questions about anything here, please do not hesitate to <a href="{{ url_for('main.contact') }}">reach out to us</a> directly.</p>
+            </div>
+
+            <div class="legal-section">
+                <h2>Custom Orders and Production</h2>
+                <p>All of our products are made to order specifically for you. Because of this, production typically begins within 1 to 3 business days after your order is confirmed. Please double-check your size, color, and design selections before placing your order, as changes may not be possible once production has started.</p>
+            </div>
+
+            <div class="legal-section">
+                <h2>Design Uploads and Artwork</h2>
+                <p>When you upload a design or logo to our site, you confirm that you have the legal right to use that artwork. We are not responsible for any copyright or trademark issues related to designs you submit. We reserve the right to decline any order that contains content we determine to be offensive, unlawful, or in violation of third-party rights.</p>
+                <p>We will always do our best to produce your design as submitted. If we notice a potential quality issue with your artwork, we will contact you before proceeding.</p>
+            </div>
+
+            <div class="legal-section">
+                <h2>Pricing and Payment</h2>
+                <p>All prices are listed in US dollars. Payment is due at the time of order placement. We accept all major credit cards and any other payment methods displayed at checkout. Prices are subject to change, but any price shown at the time you place your order is the price you will pay.</p>
+            </div>
+
+            <div class="legal-section">
+                <h2>Shipping and Delivery</h2>
+                <p>Shipping timelines are estimates and not guarantees. Once your order leaves our facility, we are not responsible for carrier delays. We will provide a tracking number as soon as your order ships so you can follow its journey to you.</p>
+            </div>
+
+            <div class="legal-section">
+                <h2>Returns and Exchanges</h2>
+                <p>Because every order is custom-made just for you, we are unable to accept returns or exchanges unless there is a defect in the product or a printing error on our part. If something is wrong with your order, please contact us within 7 days of receiving it and we will make it right. We stand behind our work completely.</p>
+            </div>
+
+            <div class="legal-section">
+                <h2>Color Accuracy</h2>
+                <p>Colors on your screen may vary slightly from the final printed product due to differences in monitor settings and the nature of DTF printing on fabric. We do our absolute best to match colors accurately, but slight variations are a normal part of the printing process.</p>
+            </div>
+
+            <div class="legal-section">
+                <h2>Account Responsibility</h2>
+                <p>If you create an account with us, you are responsible for keeping your login information secure. Please notify us immediately if you believe your account has been compromised.</p>
+            </div>
+
+            <div class="legal-section">
+                <h2>Limitation of Liability</h2>
+                <p>Purposefully Made KC is not liable for any indirect, incidental, or consequential damages arising from the use of our products or services. Our total liability for any claim related to an order is limited to the amount paid for that order.</p>
+            </div>
+
+            <div class="legal-section">
+                <h2>Changes to These Terms</h2>
+                <p>We may update these terms from time to time. When we do, we will update the date at the top of this page. Continued use of our site after any changes means you accept the updated terms.</p>
+            </div>
+
+            <div class="legal-section">
+                <h2>Questions?</h2>
+                <p>We are a small, real business and we genuinely care about every person who orders with us. If anything here is unclear or you just want to talk through something, please <a href="{{ url_for('main.contact') }}">contact us</a>. We are always happy to help.</p>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+{% endblock %}

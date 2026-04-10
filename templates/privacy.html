@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Privacy Policy - Purposefully Made KC{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div class="container">
+        <span class="eyebrow">Legal</span>
+        <h1>Privacy Policy</h1>
+        <p class="lead">We take your privacy seriously and want you to feel completely comfortable shopping with us.</p>
+    </div>
+</div>
+
+<style>
+.page-header, .page-header .container { text-align: center; }
+.page-header h1, .page-header p, .page-header span { text-align: center; display: block; }
+</style>
+
+<section class="legal-page">
+    <div class="container">
+        <div class="legal-content">
+
+            <p class="legal-updated">Last updated: February 2026</p>
+
+            <div class="legal-section">
+                <h2>Who We Are</h2>
+                <p>Purposefully Made KC is a Kansas City-based custom apparel business run by Kayleigh Biggs. We are committed to protecting your personal information and being transparent about how we use it. If you ever have questions, please reach out directly at <a href="{{ url_for('main.contact') }}">our contact page</a>.</p>
+            </div>
+
+            <div class="legal-section">
+                <h2>What Information We Collect</h2>
+                <p>When you place an order or create an account with us, we may collect the following:</p>
+                <ul>
+                    <li>Your name and email address</li>
+                    <li>Shipping and billing address</li>
+                    <li>Payment information (processed securely through our payment provider and never stored on our servers)</li>
+                    <li>Order history and design uploads</li>
+                    <li>Messages you send us through our contact form</li>
+                </ul>
+                <p>We only collect what we need to fulfill your order and give you a great experience.</p>
+            </div>
+
+            <div class="legal-section">
+                <h2>How We Use Your Information</h2>
+                <p>Your information is used to:</p>
+                <ul>
+                    <li>Process and fulfill your orders</li>
+                    <li>Communicate with you about your order status</li>
+                    <li>Respond to your questions and requests</li>
+                    <li>Improve our website and services</li>
+                    <li>Send you occasional updates (only if you opt in)</li>
+                </ul>
+                <p>We will never sell your personal information to third parties. Ever.</p>
+            </div>
+
+            <div class="legal-section">
+                <h2>How We Protect Your Information</h2>
+                <p>We use industry-standard security measures to protect your data. All payment processing is handled by trusted, PCI-compliant third-party providers. Your financial details are never stored on our servers.</p>
+            </div>
+
+            <div class="legal-section">
+                <h2>Cookies</h2>
+                <p>Our website uses cookies to keep your cart active and to understand how visitors use our site so we can make it better. You can disable cookies in your browser settings, though some features may not work as expected if you do.</p>
+            </div>
+
+            <div class="legal-section">
+                <h2>Third-Party Services</h2>
+                <p>We may use trusted third-party services to help run our business, such as payment processors and email platforms. These partners have their own privacy policies and are only given the information they need to do their job.</p>
+            </div>
+
+            <div class="legal-section">
+                <h2>Your Rights</h2>
+                <p>You have the right to:</p>
+                <ul>
+                    <li>Access the personal information we hold about you</li>
+                    <li>Request that we correct or delete your information</li>
+                    <li>Opt out of any marketing communications at any time</li>
+                </ul>
+                <p>To make any of these requests, just <a href="{{ url_for('main.contact') }}">contact us</a> and we will take care of it promptly.</p>
+            </div>
+
+            <div class="legal-section">
+                <h2>Changes to This Policy</h2>
+                <p>If we ever make significant changes to this policy, we will update the date at the top of this page. We encourage you to check back periodically, but we promise we will always be straightforward about how we handle your information.</p>
+            </div>
+
+            <div class="legal-section">
+                <h2>Contact Us</h2>
+                <p>If you have any questions about this privacy policy or how we handle your data, we would love to hear from you. Just head to our <a href="{{ url_for('main.contact') }}">contact page</a> and send us a message.</p>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+{% endblock %}

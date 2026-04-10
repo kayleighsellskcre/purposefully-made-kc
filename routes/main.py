@@ -67,6 +67,16 @@ def contact():
     return render_template('contact.html')
 
 
+@main_bp.route('/privacy')
+def privacy():
+    """Privacy Policy page"""
+    return render_template('privacy.html')
+
+@main_bp.route('/terms')
+def terms():
+    """Terms of Service page"""
+    return render_template('terms.html')
+
 @main_bp.route('/status')
 def status():
     """Diagnostics: what's configured (no secrets shown). Visit /status to see why things might not connect."""
