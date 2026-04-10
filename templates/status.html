@@ -34,7 +34,7 @@
                 {% if admin_user_exists %}
                     <span style="color: green;">✓ Yes</span>
                 {% else %}
-                    <span style="color: orange;">No — register with {{ admin_email_value }}</span>
+                    <span style="color: orange;">No. Register with {{ admin_email_value }}</span>
                 {% endif %}
             </td>
         </tr>
@@ -44,9 +44,9 @@
                 {% if admin_user_is_admin %}
                     <span style="color: green;">✓ Yes</span>
                 {% elif admin_user_exists %}
-                    <span style="color: orange;">No — log out and back in, or use promote URL</span>
+                    <span style="color: orange;">No. Log out and back in, or use promote URL.</span>
                 {% else %}
-                    <span style="color: gray;">—</span>
+                    <span style="color: gray;">N/A</span>
                 {% endif %}
             </td>
         </tr>
@@ -56,7 +56,7 @@
                 {% if ss_key_set and ss_account_set %}
                     <span style="color: green;">✓ Configured</span>
                 {% elif ss_key_set or ss_account_set %}
-                    <span style="color: orange;">Partial — need both key and account number</span>
+                    <span style="color: orange;">Partial. Need both key and account number.</span>
                 {% else %}
                     <span style="color: red;">✗ Not configured</span>
                 {% endif %}
@@ -68,7 +68,7 @@
                 {% if product_count > 0 %}
                     <span style="color: green;">✓ {{ product_count }} products</span>
                 {% else %}
-                    <span style="color: orange;">0 — sync from Admin → Products</span>
+                    <span style="color: orange;">0. Sync from Admin: Products.</span>
                 {% endif %}
             </td>
         </tr>

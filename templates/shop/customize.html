@@ -1104,7 +1104,7 @@
             <div class="customizer-panel">
                 {% if collection_restricted %}
                 <div class="collection-restricted-banner">
-                    <strong>Your organizer has chosen the options below.</strong> Pick your color, size, and logo from the selections — then add to your order. Everyone stays matching!
+                    <strong>Your organizer has chosen the options below.</strong> Pick your color, size, and logo from the selections and add to your order. Everyone stays matching!
                 </div>
                 {% endif %}
                 <h2>{{ product.name }}</h2>
@@ -1131,7 +1131,7 @@
                 <div class="panel-section step-section">
                     <div class="step-badge">1</div>
                     <h3>Choose Color</h3>
-                    <p class="step-hint">Select your color — {{ color_variants|length if color_variants else available_colors|length }} available</p>
+                    <p class="step-hint">Select your color. {{ color_variants|length if color_variants else available_colors|length }} available.</p>
                     
                     <div class="color-search-box" style="margin-bottom: 0.75rem;">
                         <input type="text" id="colorSearch" class="color-search-input" placeholder="Search colors..." autocomplete="off">
@@ -1192,7 +1192,7 @@
                 <div class="panel-section step-section">
                     <div class="step-badge">2</div>
                     <h3>Choose Size</h3>
-                    <p class="step-hint">Select your size — pick a color first to see availability</p>
+                    <p class="step-hint">Select your size. Pick a color first to see availability.</p>
                     <div class="size-grid-professional" id="sizeGrid">
                         {% for size in available_sizes %}
                         <div class="size-card" data-size="{{ size }}" onclick="selectSize(this)">
@@ -1251,7 +1251,7 @@
                     
                     {% if gallery_designs %}
                     <div class="logo-gallery-inline" id="logoGalleryInline">
-                        <p class="logo-gallery-label">Gallery designs — click to use</p>
+                        <p class="logo-gallery-label">Gallery designs. Click to use.</p>
                         <div class="logo-gallery-grid" id="logoGalleryGrid">
                             {% for d in gallery_designs %}
                             <div class="logo-gallery-item{% if preset_design and preset_design.id == d.id %} selected{% endif %}" data-design-id="{{ d.id }}" data-design-url="{{ d.url }}" data-design-title="{{ d.title }}" role="button" tabindex="0">
@@ -1326,7 +1326,7 @@
                         {% endif %}
                         
                         <div id="backDesignNameNumber" class="back-design-mode">
-                            <p class="form-hint" style="margin-bottom: 1rem;">Perfect for jerseys — enter name and number to preview on the back.</p>
+                            <p class="form-hint" style="margin-bottom: 1rem;">Perfect for jerseys. Enter name and number to preview on the back.</p>
                             <div class="form-group" style="margin-bottom: 0.75rem;">
                                 <label for="backDesignNameInput">Name</label>
                                 <input type="text" id="backDesignNameInput" class="form-control" placeholder="e.g. SMITH" maxlength="20" style="text-transform: uppercase;">
@@ -1345,10 +1345,10 @@
                                 <input type="hidden" id="backDesignFont" value="{{ back_design_font }}">
                                 {% else %}
                                 <select id="backDesignFont" class="form-control">
-                                    <option value="Bebas Neue">Bebas Neue — Classic jersey</option>
-                                    <option value="Oswald">Oswald — Bold athletic</option>
-                                    <option value="Anton">Anton — Strong block</option>
-                                    <option value="Teko">Teko — College jersey</option>
+                                    <option value="Bebas Neue">Bebas Neue (Classic jersey)</option>
+                                    <option value="Oswald">Oswald (Bold athletic)</option>
+                                    <option value="Anton">Anton (Strong block)</option>
+                                    <option value="Teko">Teko (College jersey)</option>
                                 </select>
                                 {% endif %}
                             </div>

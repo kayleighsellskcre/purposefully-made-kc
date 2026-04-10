@@ -2,7 +2,7 @@
 {% block title %}Production Workflow - Purposefully Made KC{% endblock %}
 {% block ops_content %}
 <h1 class="ops-title">Production Workflow</h1>
-<p class="ops-subtitle">5-stage Kanban — move orders through production. <a href="{{ url_for('admin.orders_completed') }}" class="ops-completed-link">View All Completed →</a></p>
+<p class="ops-subtitle">5-stage Kanban. Move orders through production stages. <a href="{{ url_for('admin.orders_completed') }}" class="ops-completed-link">View All Completed →</a></p>
 
 <div class="workflow-board">
     {% for stage_id, stage_name, stage_desc in stages %}

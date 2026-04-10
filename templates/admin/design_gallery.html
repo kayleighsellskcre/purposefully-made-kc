@@ -73,7 +73,7 @@
                 </div>
                 <div class="design-card-body">
                     <strong class="design-card-name">{{ design.title or design.original_filename }}</strong>
-                    <p class="design-card-meta">{{ design.folder or '—' }} · {{ design.sku or '—' }}</p>
+                    <p class="design-card-meta">{{ design.folder or 'No folder' }} · {{ design.sku or 'No SKU' }}</p>
                     <div class="design-card-actions">
                         <form method="post" action="{{ url_for('admin.design_gallery_remove', design_id=design.id) }}" class="design-action-form" onsubmit="return confirm('Remove from gallery?');">
                             <button type="submit" class="btn btn-outline btn-sm">Remove from Gallery</button>

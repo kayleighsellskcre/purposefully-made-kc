@@ -62,12 +62,12 @@
             <!-- Designs / Logos -->
             <div class="master-section">
                 <h2>Designs & Logos to Print</h2>
-                <p class="section-hint">DTF transfers needed — grouped by design, placement, and print size</p>
+                <p class="section-hint">DTF transfers needed, grouped by design, placement, and print size.</p>
                 <div class="design-cards">
                     {% for group in design_list %}
                     <div class="design-master-card">
                         {% if group.design and group.design.file_path %}
-                        <a href="{{ url_for('static', filename=group.design.file_path) }}" target="_blank" rel="noopener" class="design-master-preview design-master-preview-link" title="Click to open full size — right-click to save">
+                        <a href="{{ url_for('static', filename=group.design.file_path) }}" target="_blank" rel="noopener" class="design-master-preview design-master-preview-link" title="Click to open full size. Right-click to save.">
                             <img src="{{ url_for('static', filename=group.design.file_path) }}" alt="{{ group.design.filename or 'Design' }}">
                             <span class="design-click-hint">Click to open & save</span>
                         </a>
@@ -77,9 +77,9 @@
                         </div>
                         {% endif %}
                         <div class="design-master-info">
-                            <p><strong>{{ group.design.filename if group.design else '—' }}</strong></p>
+                            <p><strong>{{ group.design.filename if group.design else 'No file' }}</strong></p>
                             <p>Placement: {{ group.placement.replace('_', ' ')|title }}</p>
-                            <p>Print size: {% if group.print_width %}{{ "%.1f"|format(group.print_width) }}" × {{ "%.1f"|format(group.print_height or group.print_width) }}"{% else %}—{% endif %}</p>
+                            <p>Print size: {% if group.print_width %}{{ "%.1f"|format(group.print_width) }}" x {{ "%.1f"|format(group.print_height or group.print_width) }}"{% else %}N/A{% endif %}</p>
                             <p class="qty-badge">Qty: {{ group.quantity }}</p>
                         </div>
                     </div>

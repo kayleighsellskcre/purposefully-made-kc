@@ -44,7 +44,7 @@
                         {% for size_key, qty in group.size_qty|dictsort %}
                         <tr>
                             <td><strong>{{ size_key[0] }}</strong></td>
-                            <td>{% if size_key[1] %}{{ "%.2f"|format(size_key[1]) }}"{% else %}—{% endif %}</td>
+                            <td>{% if size_key[1] %}{{ "%.2f"|format(size_key[1]) }}"{% else %}N/A{% endif %}</td>
                             <td>{{ qty }}</td>
                         </tr>
                         {% endfor %}

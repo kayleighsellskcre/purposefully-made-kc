@@ -54,11 +54,11 @@
             
             <div class="form-section">
                 <h2>Organizer's Choices</h2>
-                <p class="form-hint">Lock down style, color, and logo so your team orders matching apparel. The organizer or admin picks these—team members only choose size.</p>
+                <p class="form-hint">Lock down style, color, and logo so your team orders matching apparel. The organizer or admin picks these. Team members only choose size.</p>
                 
                 <div class="form-check">
                     <input type="checkbox" id="restrict_options" name="restrict_options" {% if collection.restrict_options %}checked{% endif %}>
-                    <label for="restrict_options">Restrict options — team can only order what you choose below</label>
+                    <label for="restrict_options">Restrict options: team can only order what you choose below</label>
                 </div>
                 
                 <div id="organizer-choices" class="organizer-choices" style="{% if not collection.restrict_options %}display: none;{% endif %}">
@@ -88,7 +88,7 @@
                                 <line x1="12" y1="3" x2="12" y2="15"></line>
                             </svg>
                             <p><strong>Click to upload</strong> or drag and drop</p>
-                            <p class="text-muted">PNG, JPG, WEBP — designs will be added when you save</p>
+                            <p class="text-muted">PNG, JPG, WEBP. Designs will be added when you save.</p>
                         </div>
                         <input type="file" id="design_uploads" name="design_uploads" accept=".png,.jpg,.jpeg,.webp" multiple style="display: none;">
                         <div id="uploadPreview" class="upload-preview-list" style="display: none;"></div>

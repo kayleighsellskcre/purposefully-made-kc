@@ -16,7 +16,7 @@
             </svg>
             Start a Group Order
         </a>
-        <p class="group-order-hint">For teams, schools, and organizations — create your selective options and share with your group</p>
+        <p class="group-order-hint">For teams, schools, and organizations. Create your selective options and share with your group.</p>
         {% if design_id %}
         <p style="margin-top: 0.5rem; padding: 0.75rem 1rem; background: rgba(184, 124, 111, 0.15); border-radius: 8px; display: inline-block;">
             <strong>You selected a design from the gallery.</strong> Choose a product below to customize with it.
@@ -29,72 +29,105 @@
     <div class="container">
         <!-- Filter Bar -->
         <div class="filter-bar">
-            <div class="filter-group">
-                <label for="ageGroupFilter">Age Group:</label>
-                <select id="ageGroupFilter" class="filter-dropdown" onchange="applyFilters()">
-                    <option value="">All</option>
-                    <option value="adult" {% if selected_age_group == 'adult' %}selected{% endif %}>Adult</option>
-                    <option value="youth" {% if selected_age_group == 'youth' %}selected{% endif %}>Youth</option>
-                    <option value="toddler" {% if selected_age_group == 'toddler' %}selected{% endif %}>Toddler</option>
-                    <option value="baby" {% if selected_age_group == 'baby' %}selected{% endif %}>Baby</option>
-                </select>
+            <div class="filter-bar-header">
+                <span class="filter-bar-title">Refine Your Selection</span>
+                {% if selected_category or selected_age_group or selected_color or selected_fit_type or selected_neck_style or selected_sleeve_length %}
+                <button class="clear-filters-btn" onclick="clearFilters()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    Clear Filters
+                </button>
+                {% endif %}
             </div>
-            
-            <div class="filter-group">
-                <label for="categoryFilter">Category:</label>
-                <select id="categoryFilter" class="filter-dropdown" onchange="applyFilters()">
-                    <option value="">All Categories</option>
-                    {% for category in categories %}
-                    <option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>{{ category }}</option>
-                    {% endfor %}
-                </select>
+            <div class="filter-controls">
+                <div class="filter-group">
+                    <label for="ageGroupFilter">Age Group</label>
+                    <div class="select-wrap">
+                        <select id="ageGroupFilter" class="filter-dropdown" onchange="applyFilters()">
+                            <option value="">All Ages</option>
+                            <option value="adult" {% if selected_age_group == 'adult' %}selected{% endif %}>Adult</option>
+                            <option value="youth" {% if selected_age_group == 'youth' %}selected{% endif %}>Youth</option>
+                            <option value="toddler" {% if selected_age_group == 'toddler' %}selected{% endif %}>Toddler</option>
+                            <option value="baby" {% if selected_age_group == 'baby' %}selected{% endif %}>Baby</option>
+                        </select>
+                        <svg class="select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </div>
+                </div>
+
+                <div class="filter-divider"></div>
+
+                <div class="filter-group">
+                    <label for="categoryFilter">Category</label>
+                    <div class="select-wrap">
+                        <select id="categoryFilter" class="filter-dropdown" onchange="applyFilters()">
+                            <option value="">All Styles</option>
+                            {% for category in categories %}
+                            <option value="{{ category }}" {% if selected_category == category %}selected{% endif %}>{{ category }}</option>
+                            {% endfor %}
+                        </select>
+                        <svg class="select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </div>
+                </div>
+
+                <div class="filter-divider"></div>
+
+                <div class="filter-group">
+                    <label for="fitTypeFilter">Fit</label>
+                    <div class="select-wrap">
+                        <select id="fitTypeFilter" class="filter-dropdown" onchange="applyFilters()">
+                            <option value="">All Fits</option>
+                            {% for fit in fit_types %}
+                            <option value="{{ fit }}" {% if selected_fit_type == fit %}selected{% endif %}>{{ fit }}</option>
+                            {% endfor %}
+                        </select>
+                        <svg class="select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </div>
+                </div>
+
+                <div class="filter-divider"></div>
+
+                <div class="filter-group">
+                    <label for="neckStyleFilter">Neckline</label>
+                    <div class="select-wrap">
+                        <select id="neckStyleFilter" class="filter-dropdown" onchange="applyFilters()">
+                            <option value="">All Necklines</option>
+                            {% for neck in neck_styles %}
+                            <option value="{{ neck }}" {% if selected_neck_style == neck %}selected{% endif %}>{{ neck }}</option>
+                            {% endfor %}
+                        </select>
+                        <svg class="select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </div>
+                </div>
+
+                <div class="filter-divider"></div>
+
+                <div class="filter-group">
+                    <label for="sleeveFilter">Sleeve</label>
+                    <div class="select-wrap">
+                        <select id="sleeveFilter" class="filter-dropdown" onchange="applyFilters()">
+                            <option value="">All Sleeves</option>
+                            {% for sleeve in sleeve_lengths %}
+                            <option value="{{ sleeve }}" {% if selected_sleeve_length == sleeve %}selected{% endif %}>{{ sleeve }}</option>
+                            {% endfor %}
+                        </select>
+                        <svg class="select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </div>
+                </div>
+
+                <div class="filter-divider"></div>
+
+                <div class="filter-group">
+                    <label for="colorFilter">Color</label>
+                    <div class="select-wrap">
+                        <select id="colorFilter" class="filter-dropdown" onchange="applyFilters()">
+                            <option value="">All Colors</option>
+                            {% for color in colors %}
+                            <option value="{{ color }}" {% if selected_color == color %}selected{% endif %}>{{ color }}</option>
+                            {% endfor %}
+                        </select>
+                        <svg class="select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </div>
+                </div>
             </div>
-            
-            <div class="filter-group">
-                <label for="fitTypeFilter">Fit:</label>
-                <select id="fitTypeFilter" class="filter-dropdown" onchange="applyFilters()">
-                    <option value="">All Fits</option>
-                    {% for fit in fit_types %}
-                    <option value="{{ fit }}" {% if selected_fit_type == fit %}selected{% endif %}>{{ fit }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <div class="filter-group">
-                <label for="neckStyleFilter">Neck:</label>
-                <select id="neckStyleFilter" class="filter-dropdown" onchange="applyFilters()">
-                    <option value="">All Necks</option>
-                    {% for neck in neck_styles %}
-                    <option value="{{ neck }}" {% if selected_neck_style == neck %}selected{% endif %}>{{ neck }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <div class="filter-group">
-                <label for="sleeveFilter">Sleeve:</label>
-                <select id="sleeveFilter" class="filter-dropdown" onchange="applyFilters()">
-                    <option value="">All Sleeves</option>
-                    {% for sleeve in sleeve_lengths %}
-                    <option value="{{ sleeve }}" {% if selected_sleeve_length == sleeve %}selected{% endif %}>{{ sleeve }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <div class="filter-group">
-                <label for="colorFilter">Color:</label>
-                <select id="colorFilter" class="filter-dropdown" onchange="applyFilters()">
-                    <option value="">All Colors</option>
-                    {% for color in colors %}
-                    <option value="{{ color }}" {% if selected_color == color %}selected{% endif %}>{{ color }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            {% if selected_category or selected_age_group or selected_color or selected_fit_type or selected_neck_style or selected_sleeve_length %}
-            <button class="clear-filters-btn" onclick="clearFilters()">
-                Clear Filters
-            </button>
-            {% endif %}
         </div>
         
         <div class="shop-layout">
@@ -241,68 +274,139 @@
     padding: 4rem 0;
 }
 
-/* Filter Bar Styles */
+/* ── Luxury Filter Bar ── */
 .filter-bar {
+    background: linear-gradient(135deg, #fff 0%, var(--ivory-silk) 100%);
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(58, 61, 72, 0.07), 0 1px 4px rgba(184, 124, 111, 0.08);
+    margin-bottom: 2.5rem;
+    overflow: hidden;
+}
+
+.filter-bar-header {
     display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.75rem 0.75rem;
+    border-bottom: 1px solid rgba(232, 208, 177, 0.5);
+}
+
+.filter-bar-title {
+    font-family: var(--font-heading);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.filter-controls {
+    display: flex;
+    align-items: stretch;
     flex-wrap: wrap;
-    gap: 1.5rem;
-    align-items: flex-end;
-    padding: 2rem;
-    background: var(--secondary-color);
-    border-radius: var(--border-radius);
-    margin-bottom: 2rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    padding: 0;
+}
+
+.filter-divider {
+    width: 1px;
+    background: rgba(232, 208, 177, 0.6);
+    margin: 0.75rem 0;
+    flex-shrink: 0;
 }
 
 .filter-group {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    min-width: 180px;
+    gap: 0.3rem;
+    padding: 0.85rem 1.5rem;
+    flex: 1;
+    min-width: 130px;
 }
 
 .filter-group label {
-    font-weight: 600;
-    color: var(--text-primary);
-    font-size: 0.9rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.select-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.select-arrow {
+    position: absolute;
+    right: 0;
+    pointer-events: none;
+    color: var(--accent-color);
+    opacity: 0.7;
+    flex-shrink: 0;
 }
 
 .filter-dropdown {
-    padding: 0.75rem 1rem;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-sm);
-    background: white;
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    border: none;
+    border-bottom: 1.5px solid var(--border-color);
+    border-radius: 0;
     color: var(--text-primary);
-    font-size: 0.95rem;
+    font-family: var(--font-primary);
+    font-size: 0.88rem;
+    font-weight: 500;
     cursor: pointer;
-    transition: var(--transition);
+    padding: 0.3rem 1.4rem 0.3rem 0;
+    width: 100%;
+    transition: border-color 0.2s ease, color 0.2s ease;
 }
 
 .filter-dropdown:hover {
     border-color: var(--accent-color);
+    color: var(--accent-color);
 }
 
 .filter-dropdown:focus {
     outline: none;
     border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(184, 124, 111, 0.1);
+}
+
+.filter-dropdown option {
+    font-family: var(--font-primary);
+    color: var(--text-primary);
+    background: #fff;
 }
 
 .clear-filters-btn {
-    padding: 0.75rem 1.5rem;
-    background: var(--accent-color);
-    color: white;
-    border: none;
-    border-radius: var(--border-radius-sm);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.8rem;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
     cursor: pointer;
+    font-size: 0.75rem;
     font-weight: 600;
-    transition: var(--transition);
-    align-self: flex-end;
+    letter-spacing: 0.04em;
+    transition: all 0.2s ease;
 }
 
 .clear-filters-btn:hover {
-    background: var(--aged-bronze);
-    transform: translateY(-2px);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    background: rgba(184, 124, 111, 0.06);
+}
+
+@media (max-width: 768px) {
+    .filter-controls { flex-direction: column; }
+    .filter-divider { width: 100%; height: 1px; margin: 0; }
+    .filter-group { padding: 0.7rem 1.25rem; min-width: unset; }
+    .filter-bar-header { padding: 0.85rem 1.25rem 0.65rem; }
 }
 
 .shop-layout {

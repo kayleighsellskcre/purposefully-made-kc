@@ -10,7 +10,7 @@
         {% if pending_design_requests and pending_design_requests > 0 %}
         <div class="dashboard-alert dashboard-alert-design-requests">
             <strong>New design request{{ 's' if pending_design_requests > 1 else '' }}!</strong>
-            {{ pending_design_requests }} pending — 
+            {{ pending_design_requests }} pending. 
             <a href="{{ url_for('admin.custom_design_requests', status='pending') }}">View & respond</a>
         </div>
         {% endif %}
@@ -94,7 +94,7 @@
                 
                 <a href="{{ url_for('admin.custom_design_requests') }}" class="action-card">
                     <h3>Have Us Recreate</h3>
-                    <p>Customer design requests — upload to their profile</p>
+                    <p>Customer design requests. Upload to their profile.</p>
                 </a>
                 
                 <a href="{{ url_for('admin.production') }}" class="action-card">

@@ -66,7 +66,7 @@
             <!-- Payment Info -->
             <div class="detail-card">
                 <h2>Payment</h2>
-                <p><strong>Method:</strong> {{ (order.payment_method or '—').title() }}</p>
+                <p><strong>Method:</strong> {{ (order.payment_method or 'N/A').title() }}</p>
                 <p><strong>Status:</strong> <span class="badge badge-{{ order.payment_status }}">{{ order.payment_status.title() }}</span></p>
                 {% if order.payment_intent_id %}
                 <p><strong>Stripe ID:</strong> {{ order.payment_intent_id }}</p>
@@ -147,7 +147,7 @@
                                 <img src="{{ url_for('static', filename=item.proof_image) }}" alt="Proof" class="design-thumb">
                             </a>
                             {% else %}
-                            <span class="text-muted">—</span>
+                            <span class="text-muted">None</span>
                             {% endif %}
                         </td>
                         <td><strong>{{ item.product_name }}</strong></td>
@@ -155,11 +155,11 @@
                         <td>{{ item.color }}</td>
                         <td>{{ item.size }}</td>
                         <td>{{ item.print_type or 'DTF' }}</td>
-                        <td>{{ item.design_file_name or (item.design.filename if item.design else '—') }}</td>
-                        <td>{{ item.back_design_file_name or '—' }}</td>
+                        <td>{{ item.design_file_name or (item.design.filename if item.design else 'None') }}</td>
+                        <td>{{ item.back_design_file_name or 'None' }}</td>
                         <td>
                             {% set pw = get_display_print_width(item) if get_display_print_width else (item.print_width or (get_print_width(item.size, item.product) if get_print_width else none)) %}
-                            {% if pw %}{{ "%.2f"|format(pw) }}"{% else %}—{% endif %}
+                            {% if pw %}{{ "%.2f"|format(pw) }}"{% else %}N/A{% endif %}
                         </td>
                         <td>{{ item.placement or '-' }}</td>
                         <td>{{ item.quantity }}</td>

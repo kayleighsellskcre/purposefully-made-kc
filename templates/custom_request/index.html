@@ -6,7 +6,7 @@
 <div class="page-header recreate-header">
     <div class="container">
         <h1>Have Us Recreate</h1>
-        <p class="lead">See an image online you love? Screenshot it or save it — we'll recreate it for you.</p>
+        <p class="lead">See an image online you love? Screenshot it or save it and we'll recreate it for you.</p>
     </div>
 </div>
 
@@ -33,7 +33,7 @@
         <div class="recreate-cta">
             {% if current_user.is_authenticated %}
             <a href="{{ url_for('custom_request.submit') }}" class="btn btn-primary btn-lg">Submit Your Request</a>
-            <p class="cta-hint"><a href="{{ url_for('account.my_designs') }}">View My Designs</a> — designs we've created for you</p>
+            <p class="cta-hint"><a href="{{ url_for('account.my_designs') }}">View My Designs</a> to see designs we've created for you.</p>
             {% else %}
             <p class="login-prompt">Please log in to submit a design request.</p>
             <a href="{{ url_for('auth.login', next=url_for('custom_request.submit')) }}" class="btn btn-primary btn-lg">Log In</a>
