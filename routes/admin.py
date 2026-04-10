@@ -297,36 +297,61 @@ def update_order_item(order_id, item_id):
 @admin_required
 def products():
     """Manage products"""
-    import os
-    products = Product.query.order_by(Product.style_number).all()
+    try:
+        import os
+        products = Product.query.order_by(Product.style_number).all()
 
-    # Compute size/color counts - use ProductColorVariant for colors (authoritative for display)
-    for p in products:
-        try:
-            p.size_count = len(json.loads(p.available_sizes)) if p.available_sizes else 0
-        except (TypeError, ValueError):
-            p.size_count = 0
-        # Color count: prefer ProductColorVariant count (what we actually show); fallback to JSON
-        variant_count = ProductColorVariant.query.filter_by(product_id=p.id).count()
-        try:
-            parsed = json.loads(p.available_colors) if p.available_colors else []
-            json_count = len(parsed) if isinstance(parsed, list) else 0
-        except (TypeError, ValueError):
-            json_count = 0
-        p.color_count = variant_count if variant_count > 0 else min(json_count, 200)
+        # Compute size/color counts - use ProductColorVariant for colors (authoritative for display)
+        for p in products:
+            try:
+                p.size_count = len(json.loads(p.available_sizes)) if p.available_sizes else 0
+            except (TypeError, ValueError):
+                p.size_count = 0
+            # Color count: prefer ProductColorVariant count (what we actually show); fallback to JSON
+            variant_count = ProductColorVariant.query.filter_by(product_id=p.id).count()
+            try:
+                parsed = json.loads(p.available_colors) if p.available_colors else []
+                json_count = len(parsed) if isinstance(parsed, list) else 0
+            except (TypeError, ValueError):
+                json_count = 0
+            p.color_count = variant_count if variant_count > 0 else min(json_count, 200)
 
-    # Check if S&S API is configured - check environment variable directly
-    api_key = os.getenv('SSACTIVEWEAR_API_KEY')
-    api_configured = bool(api_key) and api_key != 'your_ss_activewear_api_key_here'
+        # Check if S&S API is configured - check environment variable directly
+        api_key = os.getenv('SSACTIVEWEAR_API_KEY')
+        api_configured = bool(api_key) and api_key != 'your_ss_activewear_api_key_here'
+        
+        # Get last sync time
+        last_sync = ProductColorVariant.query.order_by(ProductColorVariant.last_synced.desc()).first()
+        last_sync_time = last_sync.last_synced if last_sync else None
+
+        return render_template('admin/products.html',
+                             products=products,
+                             api_configured=api_configured,
+                             last_sync_time=last_sync_time)
     
-    # Get last sync time
-    last_sync = ProductColorVariant.query.order_by(ProductColorVariant.last_synced.desc()).first()
-    last_sync_time = last_sync.last_synced if last_sync else None
-
-    return render_template('admin/products.html',
-                         products=products,
-                         api_configured=api_configured,
-                         last_sync_time=last_sync_time)
+    except Exception as e:
+        # Comprehensive error handling for admin products page
+        import sys
+        import traceback
+        print(f"ERROR in admin products: {e}", file=sys.stderr)
+        traceback.print_exc()
+        
+        # Try to determine if it's a schema issue
+        error_msg = str(e).lower()
+        if 'no such column' in error_msg or 'column' in error_msg and 'does not exist' in error_msg:
+            flash('Database schema is updating. Please wait 30 seconds and refresh the page.', 'warning')
+        else:
+            flash(f'Error loading products page: {str(e)}', 'error')
+        
+        # Return empty page with API configured check
+        import os
+        api_key = os.getenv('SSACTIVEWEAR_API_KEY')
+        api_configured = bool(api_key) and api_key != 'your_ss_activewear_api_key_here'
+        
+        return render_template('admin/products.html',
+                             products=[],
+                             api_configured=api_configured,
+                             last_sync_time=None)
 
 
 @admin_bp.route('/products/link-mockups', methods=['POST'])
