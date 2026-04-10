@@ -1494,11 +1494,19 @@ textarea.form-control {
     text-transform: uppercase;
 }
 
-.status-new, .status-paid { background: rgba(59,130,246,0.1); color: #3b82f6; }
-.status-in_production { background: rgba(245,158,11,0.1); color: #d97706; }
-.status-ready, .status-completed, .status-picked_up { background: rgba(16,185,129,0.1); color: #059669; }
-.status-shipped { background: rgba(139,92,246,0.1); color: #7c3aed; }
-.status-cancelled { background: rgba(184,124,111,0.1); color: var(--accent-color); }
+/* Production stage pills */
+.status-new, .status-paid,
+.status-order_received   { background: rgba(59,130,246,0.1);  color: #3b82f6; }
+.status-waiting_supplies { background: rgba(245,158,11,0.12); color: #c07a00; }
+.status-in_production,
+.status-ready_to_press   { background: rgba(234,132,58,0.12); color: #c05c00; }
+.status-pressed          { background: rgba(139,92,246,0.1);  color: #7c3aed; }
+.status-ready,
+.status-packaged_ready,
+.status-completed,
+.status-picked_up        { background: rgba(16,185,129,0.1);  color: #059669; }
+.status-shipped          { background: rgba(139,92,246,0.1);  color: #7c3aed; }
+.status-cancelled        { background: rgba(184,124,111,0.1); color: var(--accent-color); }
 
 /* ── Form Fields (account-wide) ── */
 .account-form-card {

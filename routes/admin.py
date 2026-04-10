@@ -225,31 +225,32 @@ def order_detail(order_id):
 @admin_bp.route('/orders/<int:order_id>/update-status', methods=['POST'])
 @admin_required
 def update_order_status(order_id):
-    """Update order status and production stage"""
+    """Update order production stage (maps to both status and production_stage)."""
     order = Order.query.get_or_404(order_id)
-    new_status = request.form.get('status')
+    stage = request.form.get('status')  # form field named 'status' but now holds stage value
     admin_notes = request.form.get('admin_notes')
-    
-    # Map status to production stage
-    stage_map = {'new': 'order_received', 'paid': 'order_received', 'in_production': 'ready_to_press',
-                 'ready': 'packaged_ready', 'shipped': 'packaged_ready', 'completed': 'packaged_ready'}
-    order.status = new_status
-    order.production_stage = stage_map.get(new_status, order.production_stage)
-    
+
+    # Map production stage → order status + production_stage
+    stage_map = {
+        'order_received':   ('new',           'order_received'),
+        'waiting_supplies': ('new',            'waiting_supplies'),
+        'ready_to_press':   ('in_production',  'ready_to_press'),
+        'pressed':          ('in_production',  'pressed'),
+        'packaged_ready':   ('ready',          'packaged_ready'),
+    }
+
+    if stage in stage_map:
+        order.status, order.production_stage = stage_map[stage]
+
     if admin_notes:
         order.admin_notes = admin_notes
-    
-    # Update tracking info if shipped
-    if new_status == 'shipped':
-        tracking_number = request.form.get('tracking_number')
-        carrier = request.form.get('carrier')
-        if tracking_number:
-            order.tracking_number = tracking_number
-        if carrier:
-            order.carrier = carrier
-    
+
     db.session.commit()
-    flash(f'Order status updated to {new_status}', 'success')
+    stage_labels = {
+        'order_received': 'Order Received', 'waiting_supplies': 'Waiting on Supplies',
+        'ready_to_press': 'Ready to Press', 'pressed': 'Pressed', 'packaged_ready': 'Packaged & Ready'
+    }
+    flash(f'Order moved to: {stage_labels.get(stage, stage)}', 'success')
     return redirect(url_for('admin.order_detail', order_id=order_id))
 
 

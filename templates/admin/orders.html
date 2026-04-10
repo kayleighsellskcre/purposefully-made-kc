@@ -70,7 +70,7 @@
                     <td class="hide-sm text-muted">{{ order.email }}</td>
                     <td class="text-center">{{ order.items.count() }}</td>
                     <td><strong>${{ "%.2f"|format(order.total) }}</strong></td>
-                    <td><span class="badge badge-{{ order.status }}">{{ order.status.replace('_', ' ').title() }}</span></td>
+                    <td><span class="badge badge-{{ order.production_stage or order.status }}">{{ {'order_received':'Order Received','waiting_supplies':'Waiting on Supplies','ready_to_press':'Ready to Press','pressed':'Pressed','packaged_ready':'Packaged & Ready'}.get(order.production_stage, order.status.replace('_',' ').title()) }}</span></td>
                     <td class="hide-sm"><span class="type-label">{{ (order.order_type or 'retail').title() }}</span></td>
                     <td class="hide-sm text-muted">{{ order.created_at.strftime('%b %d, %Y') }}</td>
                     <td><a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="btn-view">View</a></td>

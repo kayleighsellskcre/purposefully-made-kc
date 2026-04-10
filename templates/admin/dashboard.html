@@ -162,7 +162,7 @@
                             <td><strong>#{{ order.order_number }}</strong></td>
                             <td>{{ order.full_name }}</td>
                             <td>${{ "%.2f"|format(order.total) }}</td>
-                            <td><span class="status-pill status-{{ order.status }}">{{ order.status.replace('_', ' ').title() }}</span></td>
+                            <td><span class="status-pill status-{{ order.production_stage or order.status }}">{{ {'order_received':'Order Received','waiting_supplies':'Waiting on Supplies','ready_to_press':'Ready to Press','pressed':'Pressed','packaged_ready':'Packaged & Ready'}.get(order.production_stage, order.status.replace('_',' ').title()) }}</span></td>
                             <td>{{ order.created_at.strftime('%b %d, %Y') }}</td>
                             <td><a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="adm-view-link">View</a></td>
                         </tr>

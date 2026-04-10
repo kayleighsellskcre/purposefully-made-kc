@@ -38,13 +38,11 @@
                     <label>Move to Stage</label>
                     <div class="od-select-wrap">
                         <select name="status" class="od-select">
-                            <option value="new"           {% if order.status == 'new' %}selected{% endif %}>New</option>
-                            <option value="paid"          {% if order.status == 'paid' %}selected{% endif %}>Paid</option>
-                            <option value="in_production" {% if order.status == 'in_production' %}selected{% endif %}>In Production</option>
-                            <option value="ready"         {% if order.status == 'ready' %}selected{% endif %}>Ready for Pickup / Ship</option>
-                            <option value="shipped"       {% if order.status == 'shipped' %}selected{% endif %}>Shipped</option>
-                            <option value="picked_up"     {% if order.status == 'picked_up' %}selected{% endif %}>Picked Up</option>
-                            <option value="completed"     {% if order.status == 'completed' %}selected{% endif %}>Completed</option>
+                            <option value="order_received"    {% if order.production_stage == 'order_received' or (not order.production_stage and order.status in ['new','paid']) %}selected{% endif %}>Order Received</option>
+                            <option value="waiting_supplies"  {% if order.production_stage == 'waiting_supplies' %}selected{% endif %}>Waiting on Supplies</option>
+                            <option value="ready_to_press"    {% if order.production_stage == 'ready_to_press' %}selected{% endif %}>Ready to Press</option>
+                            <option value="pressed"           {% if order.production_stage == 'pressed' %}selected{% endif %}>Pressed</option>
+                            <option value="packaged_ready"    {% if order.production_stage == 'packaged_ready' %}selected{% endif %}>Packaged &amp; Ready</option>
                         </select>
                         <svg class="od-select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </div>
