@@ -426,7 +426,7 @@ a.btn-customize:hover {
 /* ── Global Page Header (used across shop, gallery, about, contact, etc.) ── */
 .page-header {
     background: linear-gradient(150deg, var(--cashmere-sand) 0%, #c9a47a 55%, var(--cashmere-sand) 100%);
-    padding: 5rem 2rem 4.5rem;
+    padding: 2.5rem 2rem 2rem;
     text-align: center !important;
     position: relative;
     overflow: hidden;
@@ -465,9 +465,9 @@ a.btn-customize:hover {
 }
 
 .page-header h1 {
-    font-size: 3.25rem;
+    font-size: 2.5rem;
     color: var(--text-primary);
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
     letter-spacing: -0.01em;
 }
 
@@ -484,18 +484,18 @@ a.btn-customize:hover {
 }
 
 .lead {
-    font-size: 1.15rem;
+    font-size: 1rem;
     color: var(--text-secondary);
     max-width: 520px;
-    margin: 0 auto 1.5rem;
-    line-height: 1.75;
+    margin: 0 auto 0.5rem;
+    line-height: 1.65;
     text-align: center !important;
 }
 
 @media (max-width: 768px) {
-    .page-header { padding: 3.5rem 1.25rem 3rem; }
-    .page-header h1 { font-size: 2.25rem; }
-    .lead { font-size: 1rem; }
+    .page-header { padding: 1.75rem 1.25rem 1.5rem; }
+    .page-header h1 { font-size: 1.85rem; }
+    .lead { font-size: 0.9rem; }
 }
 
 /* Hero Section - Luxury */
