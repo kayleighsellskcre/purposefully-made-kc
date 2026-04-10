@@ -9,86 +9,105 @@ shop_bp = Blueprint('shop', __name__, url_prefix='/shop')
 @shop_bp.route('/')
 def index():
     """Shop page - browse all products. Products come from S&S Activewear sync (Admin → Products)."""
-    session.pop('collection_id', None)
+    try:
+        session.pop('collection_id', None)
 
-    category = request.args.get('category')
-    age_group = request.args.get('age_group')
-    fit_type = request.args.get('fit_type')
-    neck_style = request.args.get('neck_style')
-    sleeve_length = request.args.get('sleeve_length')
-    color = request.args.get('color')
+        category = request.args.get('category')
+        age_group = request.args.get('age_group')
+        fit_type = request.args.get('fit_type')
+        neck_style = request.args.get('neck_style')
+        sleeve_length = request.args.get('sleeve_length')
+        color = request.args.get('color')
 
-    query = Product.query.filter_by(is_active=True)
-    
-    if age_group:
-        query = query.filter(Product.age_group == age_group)
-    
-    if category:
-        query = query.filter_by(category=category)
-    
-    if fit_type:
-        query = query.filter(Product.fit_type == fit_type)
-    
-    if neck_style:
-        query = query.filter(Product.neck_style == neck_style)
-    
-    if sleeve_length:
-        query = query.filter(Product.sleeve_length == sleeve_length)
-    
-    products = query.order_by(Product.style_number).all()
-    
-    if color:
+        query = Product.query.filter_by(is_active=True)
+        
+        if age_group:
+            query = query.filter(Product.age_group == age_group)
+        
+        if category:
+            query = query.filter_by(category=category)
+        
+        if fit_type:
+            query = query.filter(Product.fit_type == fit_type)
+        
+        if neck_style:
+            query = query.filter(Product.neck_style == neck_style)
+        
+        if sleeve_length:
+            query = query.filter(Product.sleeve_length == sleeve_length)
+        
+        products = query.order_by(Product.style_number).all()
+        
+        if color:
+            from models import ProductColorVariant
+            product_ids = db.session.query(ProductColorVariant.product_id).filter(
+                ProductColorVariant.color_name.ilike(f'%{color}%')
+            ).distinct().all()
+            product_ids = [pid[0] for pid in product_ids]
+            products = [p for p in products if p.id in product_ids]
+
+        for product in products:
+            product.carousel_colors = get_carousel_colors_for_product(product, current_app)
+            product.fallback_image_url = get_first_shop_image_url(product, current_app)
+        
+        categories = db.session.query(Product.category).filter(
+            Product.is_active == True
+        ).distinct().order_by(Product.category).all()
+        categories = [c[0] for c in categories if c[0]]
+        
+        fit_types = db.session.query(Product.fit_type).filter(
+            Product.is_active == True, Product.fit_type != None
+        ).distinct().order_by(Product.fit_type).all()
+        fit_types = [f[0] for f in fit_types if f[0]]
+        
+        neck_styles = db.session.query(Product.neck_style).filter(
+            Product.is_active == True, Product.neck_style != None
+        ).distinct().order_by(Product.neck_style).all()
+        neck_styles = [n[0] for n in neck_styles if n[0]]
+        
+        sleeve_lengths = db.session.query(Product.sleeve_length).filter(
+            Product.is_active == True, Product.sleeve_length != None
+        ).distinct().order_by(Product.sleeve_length).all()
+        sleeve_lengths = [s[0] for s in sleeve_lengths if s[0]]
+        
         from models import ProductColorVariant
-        product_ids = db.session.query(ProductColorVariant.product_id).filter(
-            ProductColorVariant.color_name.ilike(f'%{color}%')
-        ).distinct().all()
-        product_ids = [pid[0] for pid in product_ids]
-        products = [p for p in products if p.id in product_ids]
-
-    for product in products:
-        product.carousel_colors = get_carousel_colors_for_product(product, current_app)
-        product.fallback_image_url = get_first_shop_image_url(product, current_app)
-    
-    categories = db.session.query(Product.category).filter(
-        Product.is_active == True
-    ).distinct().order_by(Product.category).all()
-    categories = [c[0] for c in categories if c[0]]
-    
-    fit_types = db.session.query(Product.fit_type).filter(
-        Product.is_active == True, Product.fit_type != None
-    ).distinct().order_by(Product.fit_type).all()
-    fit_types = [f[0] for f in fit_types if f[0]]
-    
-    neck_styles = db.session.query(Product.neck_style).filter(
-        Product.is_active == True, Product.neck_style != None
-    ).distinct().order_by(Product.neck_style).all()
-    neck_styles = [n[0] for n in neck_styles if n[0]]
-    
-    sleeve_lengths = db.session.query(Product.sleeve_length).filter(
-        Product.is_active == True, Product.sleeve_length != None
-    ).distinct().order_by(Product.sleeve_length).all()
-    sleeve_lengths = [s[0] for s in sleeve_lengths if s[0]]
-    
-    from models import ProductColorVariant
-    colors = db.session.query(ProductColorVariant.color_name).distinct().order_by(ProductColorVariant.color_name).all()
-    colors = [c[0] for c in colors if c[0]]
-    
-    design_id = request.args.get('design_id', type=int)
-    
-    return render_template('shop/index.html', 
-                         products=products,
-                         categories=categories,
-                         fit_types=fit_types,
-                         neck_styles=neck_styles,
-                         sleeve_lengths=sleeve_lengths,
-                         colors=colors,
-                         selected_category=category,
-                         selected_age_group=age_group,
-                         selected_fit_type=fit_type,
-                         selected_neck_style=neck_style,
-                         selected_sleeve_length=sleeve_length,
-                         selected_color=color,
-                         design_id=design_id)
+        colors = db.session.query(ProductColorVariant.color_name).distinct().order_by(ProductColorVariant.color_name).all()
+        colors = [c[0] for c in colors if c[0]]
+        
+        design_id = request.args.get('design_id', type=int)
+        
+        return render_template('shop/index.html', 
+                             products=products,
+                             categories=categories,
+                             fit_types=fit_types,
+                             neck_styles=neck_styles,
+                             sleeve_lengths=sleeve_lengths,
+                             colors=colors,
+                             selected_category=category,
+                             selected_age_group=age_group,
+                             selected_fit_type=fit_type,
+                             selected_neck_style=neck_style,
+                             selected_sleeve_length=sleeve_length,
+                             selected_color=color,
+                             design_id=design_id)
+    except Exception as e:
+        # If there's a database error, log it and show empty shop
+        import sys
+        print(f"Error in shop index: {e}", file=sys.stderr)
+        return render_template('shop/index.html', 
+                             products=[],
+                             categories=[],
+                             fit_types=[],
+                             neck_styles=[],
+                             sleeve_lengths=[],
+                             colors=[],
+                             selected_category=None,
+                             selected_age_group=None,
+                             selected_fit_type=None,
+                             selected_neck_style=None,
+                             selected_sleeve_length=None,
+                             selected_color=None,
+                             design_id=None)
 
 
 @shop_bp.route('/group-orders')

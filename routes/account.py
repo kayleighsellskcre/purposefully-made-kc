@@ -166,11 +166,18 @@ def delete_address(address_id):
 @login_required
 def my_designs():
     """My Designs - designs created for this customer (from custom requests) + their uploads"""
-    designs = Design.query.filter(
-        Design.uploaded_by_user_id == current_user.id,
-        Design.is_gallery == False
-    ).order_by(Design.uploaded_at.desc()).all()
-    return render_template('account/my_designs.html', designs=designs)
+    try:
+        designs = Design.query.filter(
+            Design.uploaded_by_user_id == current_user.id,
+            Design.is_gallery == False
+        ).order_by(Design.uploaded_at.desc()).all()
+        return render_template('account/my_designs.html', designs=designs)
+    except Exception as e:
+        # If there's a database error (like missing column), show empty list
+        import sys
+        print(f"Error in my_designs: {e}", file=sys.stderr)
+        flash('Unable to load designs at this time. Please contact support if this persists.', 'error')
+        return render_template('account/my_designs.html', designs=[])
 
 
 @account_bp.route('/profile', methods=['GET', 'POST'])
