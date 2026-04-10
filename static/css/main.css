@@ -419,7 +419,7 @@ a.btn-customize:hover {
 /* Hero Section - Luxury */
 .hero {
     background: linear-gradient(135deg, var(--ivory-silk) 0%, var(--cashmere-sand) 50%, var(--ivory-silk) 100%);
-    padding: 10rem 2rem;
+    padding: 4rem 2rem;
     text-align: center;
     position: relative;
     overflow: hidden;
@@ -781,7 +781,7 @@ textarea.form-control {
     }
     
     .hero {
-        padding: 5rem 1.5rem;
+        padding: 2.5rem 1.5rem;
     }
     
     .hero-title {
@@ -848,7 +848,7 @@ textarea.form-control {
 
     /* Hero - Mobile */
     .hero {
-        padding: 3rem 1rem;
+        padding: 2rem 1rem;
     }
     
     .hero-title {
@@ -941,7 +941,7 @@ textarea.form-control {
     }
     
     .hero {
-        padding: 2rem 0.75rem;
+        padding: 1.5rem 0.75rem;
     }
     
     .hero-title {
