@@ -113,7 +113,7 @@ a:hover {
     position: sticky;
     top: 0;
     z-index: 1000;
-    padding: 1rem 0;
+    padding: 0.75rem 0;
     box-shadow: 0 2px 20px rgba(58, 61, 72, 0.06);
     transition: var(--transition-smooth);
 }
@@ -142,9 +142,11 @@ a:hover {
 }
 
 .logo-image {
-    height: 120px;
+    height: 70px;
     width: auto;
     transition: var(--transition);
+    max-width: 250px;
+    object-fit: contain;
 }
 
 .logo:hover .logo-image {

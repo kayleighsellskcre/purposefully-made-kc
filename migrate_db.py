@@ -8,7 +8,7 @@ from sqlalchemy import text
 app = create_app()
 
 def add_column_if_not_exists(table_name, column_name, column_type):
-    """Add column to table if it doesn't already exist"""
+    """Add column to table if it doesn't already exist - works for both SQLite and PostgreSQL"""
     with app.app_context():
         try:
             # Try to select the column to see if it exists
@@ -19,7 +19,13 @@ def add_column_if_not_exists(table_name, column_name, column_type):
             # Column doesn't exist, add it
             try:
                 with db.engine.connect() as conn:
-                    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}"))
+                    # Use IF NOT EXISTS for PostgreSQL, or try-catch for SQLite
+                    if 'postgresql' in str(db.engine.url):
+                        # PostgreSQL syntax
+                        conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {column_name} {column_type}"))
+                    else:
+                        # SQLite syntax
+                        conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}"))
                     conn.commit()
                 print(f"Added {table_name}.{column_name}")
             except Exception as alter_error:
