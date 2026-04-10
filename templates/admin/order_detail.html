@@ -1,133 +1,232 @@
 {% extends "admin/base_admin.html" %}
-
-{% block title %}Order #{{ order.order_number }} - Admin - Purposefully Made KC{% endblock %}
+{% block title %}Order #{{ order.order_number }} - Admin{% endblock %}
 
 {% block admin_content %}
-<div class="admin-page">
-    <div class="container">
-        <div class="admin-header">
+<div class="od-page">
+
+    <!-- Page Header -->
+    <div class="od-header">
+        <div class="od-header-left">
+            <a href="{{ url_for('admin.orders') }}" class="od-back">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                All Orders
+            </a>
             <div>
-                <h1>Order #{{ order.order_number }}</h1>
-                <p>Placed on {{ order.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+                <h1>Order <span class="od-number">#{{ order.order_number }}</span></h1>
+                <p class="od-date">Placed {{ order.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
             </div>
-            <a href="{{ url_for('admin.orders') }}" class="btn btn-outline">Back to Orders</a>
         </div>
-        
-        <div class="order-detail-grid">
-            <!-- Order Status -->
-            <div class="detail-card">
-                <h2>Order Status</h2>
-                <form method="POST" action="{{ url_for('admin.update_order_status', order_id=order.id) }}">
-                    <div class="form-group">
-                        <label>Current Status</label>
-                        <select name="status" class="form-control">
-                            <option value="new" {% if order.status == 'new' %}selected{% endif %}>New</option>
-                            <option value="paid" {% if order.status == 'paid' %}selected{% endif %}>Paid</option>
+        <div class="od-header-badges">
+            <span class="od-status-badge od-status-{{ order.status }}">{{ order.status.replace('_',' ').title() }}</span>
+            <span class="od-status-badge od-payment-{{ order.payment_status }}">{{ order.payment_status.title() }}</span>
+        </div>
+    </div>
+
+    <!-- Top Grid: 4 info cards -->
+    <div class="od-grid">
+
+        <!-- Status -->
+        <div class="od-card">
+            <span class="od-card-eyebrow">Production</span>
+            <h2 class="od-card-title">Order Status</h2>
+            <form method="POST" action="{{ url_for('admin.update_order_status', order_id=order.id) }}">
+                <div class="od-field">
+                    <label>Move to Stage</label>
+                    <div class="od-select-wrap">
+                        <select name="status" class="od-select">
+                            <option value="new"           {% if order.status == 'new' %}selected{% endif %}>New</option>
+                            <option value="paid"          {% if order.status == 'paid' %}selected{% endif %}>Paid</option>
                             <option value="in_production" {% if order.status == 'in_production' %}selected{% endif %}>In Production</option>
-                            <option value="ready" {% if order.status == 'ready' %}selected{% endif %}>Ready (awaiting pickup/ship)</option>
-                            <option value="shipped" {% if order.status == 'shipped' %}selected{% endif %}>Shipped</option>
-                            <option value="picked_up" {% if order.status == 'picked_up' %}selected{% endif %}>Picked Up</option>
-                            <option value="completed" {% if order.status == 'completed' %}selected{% endif %}>Completed</option>
+                            <option value="ready"         {% if order.status == 'ready' %}selected{% endif %}>Ready for Pickup / Ship</option>
+                            <option value="shipped"       {% if order.status == 'shipped' %}selected{% endif %}>Shipped</option>
+                            <option value="picked_up"     {% if order.status == 'picked_up' %}selected{% endif %}>Picked Up</option>
+                            <option value="completed"     {% if order.status == 'completed' %}selected{% endif %}>Completed</option>
                         </select>
+                        <svg class="od-select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </div>
-                    <button type="submit" class="btn btn-primary">Update Status</button>
-                </form>
-            </div>
-            
-            <!-- Customer Info -->
-            <div class="detail-card">
-                <h2>Customer Information</h2>
-                <p><strong>Name:</strong> {{ order.full_name }}</p>
-                <p><strong>Email:</strong> {{ order.email }}</p>
-                {% if order.phone %}<p><strong>Phone:</strong> {{ order.phone }}</p>{% endif %}
+                </div>
+                <button type="submit" class="od-btn">Update Status</button>
+            </form>
+        </div>
+
+        <!-- Customer -->
+        <div class="od-card">
+            <span class="od-card-eyebrow">Client</span>
+            <h2 class="od-card-title">Customer</h2>
+            <div class="od-info-rows">
+                <div class="od-info-row">
+                    <span class="od-info-label">Name</span>
+                    <span class="od-info-val">{{ order.full_name }}</span>
+                </div>
+                <div class="od-info-row">
+                    <span class="od-info-label">Email</span>
+                    <a href="mailto:{{ order.email }}" class="od-info-val od-link">{{ order.email }}</a>
+                </div>
+                {% if order.phone %}
+                <div class="od-info-row">
+                    <span class="od-info-label">Phone</span>
+                    <a href="tel:{{ order.phone }}" class="od-info-val od-link">{{ order.phone }}</a>
+                </div>
+                {% endif %}
                 {% if order.user %}
-                <p><strong>Account:</strong> <a href="{{ url_for('account.orders') }}">View Customer</a></p>
+                <div class="od-info-row">
+                    <span class="od-info-label">Account</span>
+                    <a href="{{ url_for('account.orders') }}" class="od-info-val od-link">View Profile</a>
+                </div>
                 {% endif %}
-            </div>
-            
-            <!-- Fulfillment -->
-            <div class="detail-card">
-                <h2>Fulfillment</h2>
-                <p><strong>Method:</strong> {{ order.fulfillment_method.title() }}</p>
-                {% if order.fulfillment_method == 'shipping' %}
-                <p><strong>Address:</strong></p>
-                <address>
-                    {{ order.shipping_recipient }}<br>
-                    {{ order.shipping_street }}<br>
-                    {% if order.shipping_street_2 %}{{ order.shipping_street_2 }}<br>{% endif %}
-                    {{ order.shipping_city }}, {{ order.shipping_state }} {{ order.shipping_zip }}
-                </address>
-                {% if order.tracking_number %}
-                <p><strong>Tracking:</strong> {{ order.tracking_number }}</p>
-                {% endif %}
-                {% endif %}
-            </div>
-            
-            <!-- Payment Info -->
-            <div class="detail-card">
-                <h2>Payment</h2>
-                <p><strong>Method:</strong> {{ (order.payment_method or 'N/A').title() }}</p>
-                <p><strong>Status:</strong> <span class="badge badge-{{ order.payment_status }}">{{ order.payment_status.title() }}</span></p>
-                {% if order.payment_intent_id %}
-                <p><strong>Stripe ID:</strong> {{ order.payment_intent_id }}</p>
-                {% endif %}
-                {% if order.paid_at %}
-                <p><strong>Paid at:</strong> {{ order.paid_at.strftime('%b %d, %Y %I:%M %p') }}</p>
-                {% endif %}
-            </div>
-            
-            <!-- Order Details & Revenue -->
-            <div class="detail-card">
-                <h2>Order Details & Profit</h2>
-                <form method="POST" action="{{ url_for('admin.update_order_details', order_id=order.id) }}">
-                    <div class="form-group">
-                        <label>Order Type</label>
-                        <select name="order_type">
-                            <option value="retail" {% if (order.order_type or 'retail') == 'retail' %}selected{% endif %}>Retail</option>
-                            <option value="wholesale" {% if order.order_type == 'wholesale' %}selected{% endif %}>Wholesale</option>
-                            <option value="event" {% if order.order_type == 'event' %}selected{% endif %}>Event</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Due Date</label>
-                        <input type="date" name="due_date" value="{{ order.due_date.strftime('%Y-%m-%d') if order.due_date else '' }}">
-                    </div>
-                    <div class="form-group">
-                        <label>Cost of Goods</label>
-                        <input type="number" name="cost_of_goods" step="0.01" value="{{ order.cost_of_goods or '' }}" placeholder="COGS">
-                    </div>
-                    <div class="form-group">
-                        <label>Profit</label>
-                        <input type="number" name="profit" step="0.01" value="{{ order.profit or '' }}" placeholder="Auto from COGS">
-                    </div>
-                    <div class="form-group">
-                        <label><input type="checkbox" name="is_refunded" {% if order.is_refunded %}checked{% endif %}> Refunded</label>
-                    </div>
-                    <div class="form-group">
-                        <label>Refund Notes</label>
-                        <textarea name="refund_notes" rows="2">{{ order.refund_notes or '' }}</textarea>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Update</button>
-                </form>
-                {% if order.profit is not none %}<p class="profit-display"><strong>Profit:</strong> ${{ "%.2f"|format(order.profit) }}</p>{% endif %}
             </div>
         </div>
-        
-        <!-- Order Items -->
-        <div class="detail-card">
-            <h2>Order Items</h2>
-            <table class="admin-table">
+
+        <!-- Fulfillment -->
+        <div class="od-card">
+            <span class="od-card-eyebrow">Delivery</span>
+            <h2 class="od-card-title">Fulfillment</h2>
+            <div class="od-info-rows">
+                <div class="od-info-row">
+                    <span class="od-info-label">Method</span>
+                    <span class="od-info-val">{{ order.fulfillment_method.replace('_',' ').title() }}</span>
+                </div>
+                {% if order.fulfillment_method == 'shipping' %}
+                <div class="od-info-row">
+                    <span class="od-info-label">Recipient</span>
+                    <span class="od-info-val">{{ order.shipping_recipient }}</span>
+                </div>
+                <div class="od-info-row">
+                    <span class="od-info-label">Address</span>
+                    <span class="od-info-val">
+                        {{ order.shipping_street }},
+                        {% if order.shipping_street_2 %}{{ order.shipping_street_2 }},{% endif %}
+                        {{ order.shipping_city }}, {{ order.shipping_state }} {{ order.shipping_zip }}
+                    </span>
+                </div>
+                {% if order.tracking_number %}
+                <div class="od-info-row">
+                    <span class="od-info-label">Tracking</span>
+                    <span class="od-info-val">{{ order.tracking_number }}</span>
+                </div>
+                {% endif %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Payment -->
+        <div class="od-card">
+            <span class="od-card-eyebrow">Financials</span>
+            <h2 class="od-card-title">Payment</h2>
+            <div class="od-info-rows">
+                <div class="od-info-row">
+                    <span class="od-info-label">Method</span>
+                    <span class="od-info-val">{{ (order.payment_method or 'N/A').title() }}</span>
+                </div>
+                <div class="od-info-row">
+                    <span class="od-info-label">Status</span>
+                    <span class="od-pay-pill od-payment-{{ order.payment_status }}">{{ order.payment_status.title() }}</span>
+                </div>
+                {% if order.paid_at %}
+                <div class="od-info-row">
+                    <span class="od-info-label">Paid At</span>
+                    <span class="od-info-val">{{ order.paid_at.strftime('%b %d, %Y %I:%M %p') }}</span>
+                </div>
+                {% endif %}
+                {% if order.payment_intent_id %}
+                <div class="od-info-row">
+                    <span class="od-info-label">Stripe ID</span>
+                    <span class="od-info-val od-mono">{{ order.payment_intent_id[:20] }}...</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+    </div><!-- /od-grid -->
+
+    <!-- Order Details & Profit (full width) -->
+    <div class="od-card od-card-wide">
+        <div class="od-profit-layout">
+            <div class="od-profit-left">
+                <span class="od-card-eyebrow">Management</span>
+                <h2 class="od-card-title">Order Details &amp; Profit</h2>
+                <p class="od-card-hint">Track cost of goods, profit margin, due date, and refund status for this order.</p>
+            </div>
+            <div class="od-profit-right">
+                <form method="POST" action="{{ url_for('admin.update_order_details', order_id=order.id) }}" class="od-profit-form">
+                    <div class="od-form-row">
+                        <div class="od-field">
+                            <label>Order Type</label>
+                            <div class="od-select-wrap">
+                                <select name="order_type" class="od-select">
+                                    <option value="retail"    {% if (order.order_type or 'retail') == 'retail' %}selected{% endif %}>Retail</option>
+                                    <option value="wholesale" {% if order.order_type == 'wholesale' %}selected{% endif %}>Wholesale</option>
+                                    <option value="event"     {% if order.order_type == 'event' %}selected{% endif %}>Event</option>
+                                </select>
+                                <svg class="od-select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                            </div>
+                        </div>
+                        <div class="od-field">
+                            <label>Due Date</label>
+                            <input type="date" name="due_date" class="od-input" value="{{ order.due_date.strftime('%Y-%m-%d') if order.due_date else '' }}">
+                        </div>
+                    </div>
+                    <div class="od-form-row">
+                        <div class="od-field">
+                            <label>Cost of Goods (COGS)</label>
+                            <div class="od-input-prefix-wrap">
+                                <span class="od-input-prefix">$</span>
+                                <input type="number" name="cost_of_goods" class="od-input od-input-has-prefix" step="0.01" min="0" value="{{ order.cost_of_goods or '' }}" placeholder="0.00">
+                            </div>
+                        </div>
+                        <div class="od-field">
+                            <label>Profit Override</label>
+                            <div class="od-input-prefix-wrap">
+                                <span class="od-input-prefix">$</span>
+                                <input type="number" name="profit" class="od-input od-input-has-prefix" step="0.01" value="{{ order.profit or '' }}" placeholder="Auto from COGS">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Refund Row -->
+                    <div class="od-refund-row">
+                        <label class="od-checkbox-label">
+                            <input type="checkbox" name="is_refunded" {% if order.is_refunded %}checked{% endif %}>
+                            <span class="od-checkbox-custom"></span>
+                            Mark as Refunded
+                        </label>
+                    </div>
+                    <div class="od-field">
+                        <label>Refund Notes</label>
+                        <textarea name="refund_notes" class="od-textarea" rows="2" placeholder="Optional notes about this refund...">{{ order.refund_notes or '' }}</textarea>
+                    </div>
+
+                    <div class="od-profit-actions">
+                        <button type="submit" class="od-btn">Save Changes</button>
+                        {% if order.profit is not none %}
+                        <div class="od-profit-stat">
+                            <span class="od-profit-label">Net Profit</span>
+                            <span class="od-profit-value {% if order.profit >= 0 %}od-profit-pos{% else %}od-profit-neg{% endif %}">${{ "%.2f"|format(order.profit) }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Items -->
+    <div class="od-card od-card-wide od-items-card">
+        <span class="od-card-eyebrow">Line Items</span>
+        <h2 class="od-card-title">Order Items</h2>
+        <div class="od-table-wrap">
+            <table class="od-table">
                 <thead>
                     <tr>
                         <th>Design</th>
                         <th>Product</th>
-                        <th>Style #</th>
+                        <th>Style</th>
                         <th>Color</th>
                         <th>Size</th>
-                        <th>Print Type</th>
+                        <th>Print</th>
                         <th>Design File</th>
-                        <th>Back Design</th>
-                        <th>Print Width</th>
+                        <th>Back</th>
+                        <th>Width</th>
                         <th>Placement</th>
                         <th>Qty</th>
                         <th>Price</th>
@@ -139,163 +238,371 @@
                     <tr>
                         <td>
                             {% if item.design %}
-                            <a href="{{ url_for('static', filename=item.design.file_path) }}" target="_blank" class="design-thumb-link">
-                                <img src="{{ url_for('static', filename=item.design.file_path) }}" alt="Design" class="design-thumb" title="Click to view full size">
+                            <a href="{{ url_for('static', filename=item.design.file_path) }}" target="_blank" class="od-thumb-link">
+                                <img src="{{ url_for('static', filename=item.design.file_path) }}" alt="Design" class="od-thumb">
                             </a>
                             {% elif item.proof_image %}
-                            <a href="{{ url_for('static', filename=item.proof_image) }}" target="_blank" class="design-thumb-link">
-                                <img src="{{ url_for('static', filename=item.proof_image) }}" alt="Proof" class="design-thumb">
+                            <a href="{{ url_for('static', filename=item.proof_image) }}" target="_blank" class="od-thumb-link">
+                                <img src="{{ url_for('static', filename=item.proof_image) }}" alt="Proof" class="od-thumb">
                             </a>
                             {% else %}
-                            <span class="text-muted">None</span>
+                            <span class="od-none">None</span>
                             {% endif %}
                         </td>
-                        <td><strong>{{ item.product_name }}</strong></td>
-                        <td>{{ item.style_number }}</td>
+                        <td class="od-product-name">{{ item.product_name }}</td>
+                        <td class="od-mono">{{ item.style_number }}</td>
                         <td>{{ item.color }}</td>
-                        <td>{{ item.size }}</td>
+                        <td><span class="od-size-pill">{{ item.size }}</span></td>
                         <td>{{ item.print_type or 'DTF' }}</td>
-                        <td>{{ item.design_file_name or (item.design.filename if item.design else 'None') }}</td>
-                        <td>{{ item.back_design_file_name or 'None' }}</td>
+                        <td class="od-file-name">{{ item.design_file_name or (item.design.filename if item.design else 'None') }}</td>
+                        <td class="od-file-name">{{ item.back_design_file_name or 'None' }}</td>
                         <td>
                             {% set pw = get_display_print_width(item) if get_display_print_width else (item.print_width or (get_print_width(item.size, item.product) if get_print_width else none)) %}
                             {% if pw %}{{ "%.2f"|format(pw) }}"{% else %}N/A{% endif %}
                         </td>
-                        <td>{{ item.placement or '-' }}</td>
-                        <td>{{ item.quantity }}</td>
+                        <td>{{ item.placement or 'N/A' }}</td>
+                        <td class="od-qty">{{ item.quantity }}</td>
                         <td>${{ "%.2f"|format(item.unit_price) }}</td>
-                        <td>${{ "%.2f"|format(item.subtotal) }}</td>
+                        <td class="od-subtotal">${{ "%.2f"|format(item.subtotal) }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
-            
-            <div class="order-totals">
-                <div class="total-row">
-                    <span>Subtotal:</span>
-                    <span>${{ "%.2f"|format(order.subtotal) }}</span>
-                </div>
-                <div class="total-row">
-                    <span>Shipping:</span>
-                    <span>${{ "%.2f"|format(order.shipping_cost) }}</span>
-                </div>
-                {% if order.tax > 0 %}
-                <div class="total-row">
-                    <span>Tax:</span>
-                    <span>${{ "%.2f"|format(order.tax) }}</span>
-                </div>
-                {% endif %}
-                <div class="total-row grand-total">
-                    <strong>Total:</strong>
-                    <strong>${{ "%.2f"|format(order.total) }}</strong>
-                </div>
+        </div>
+
+        <!-- Totals -->
+        <div class="od-totals">
+            <div class="od-total-row">
+                <span>Subtotal</span>
+                <span>${{ "%.2f"|format(order.subtotal) }}</span>
+            </div>
+            <div class="od-total-row">
+                <span>Shipping</span>
+                <span>${{ "%.2f"|format(order.shipping_cost) }}</span>
+            </div>
+            {% if order.tax > 0 %}
+            <div class="od-total-row">
+                <span>Tax</span>
+                <span>${{ "%.2f"|format(order.tax) }}</span>
+            </div>
+            {% endif %}
+            <div class="od-total-row od-grand-total">
+                <strong>Order Total</strong>
+                <strong>${{ "%.2f"|format(order.total) }}</strong>
             </div>
         </div>
     </div>
-</div>
+
+</div><!-- /od-page -->
 
 <style>
-.admin-page {
-    padding: 4rem 0;
-}
+/* ── Page ── */
+.od-page { padding: 2rem 0 5rem; }
 
-.admin-header {
+/* ── Header ── */
+.od-header {
     display: flex;
-    justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 2rem;
-}
-
-.admin-header p {
-    color: var(--text-secondary);
-}
-
-.order-detail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 2rem;
-    margin-bottom: 2rem;
-}
-
-.detail-card {
-    background: #fff;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 2rem;
-}
-
-.detail-card h2 {
-    font-size: 1.125rem;
-    margin-bottom: 1.5rem;
-}
-
-.detail-card p {
-    margin: 0.5rem 0;
-}
-
-.detail-card address {
-    font-style: normal;
-    line-height: 1.6;
-    margin: 1rem 0;
-}
-
-.admin-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.admin-table thead {
-    background: var(--secondary-color);
-}
-
-.admin-table th,
-.admin-table td {
-    padding: 1rem;
-    text-align: left;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.order-totals {
-    margin-top: 2rem;
-    padding-top: 2rem;
-    border-top: 2px solid var(--border-color);
-    max-width: 400px;
-    margin-left: auto;
-}
-
-.total-row {
-    display: flex;
     justify-content: space-between;
-    padding: 0.5rem 0;
+    margin-bottom: 2rem;
+    gap: 1rem;
+    flex-wrap: wrap;
 }
-
-.total-row.grand-total {
-    font-size: 1.25rem;
-    padding-top: 1rem;
-    margin-top: 1rem;
-    border-top: 2px solid var(--border-color);
-}
-
-.design-thumb {
-    width: 60px;
-    height: 60px;
-    object-fit: contain;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    background: #f9f9f9;
-}
-
-.design-thumb-link {
-    display: inline-block;
-}
-
-.design-thumb-link:hover .design-thumb {
-    border-color: var(--accent-color);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.text-muted {
+.od-header-left { display: flex; flex-direction: column; gap: 0.5rem; }
+.od-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.8rem;
+    font-weight: 600;
     color: var(--text-secondary);
+    text-decoration: none;
+    letter-spacing: 0.04em;
+    transition: color 0.2s;
+}
+.od-back:hover { color: var(--accent-color); }
+.od-header h1 { font-size: 1.75rem; margin: 0; }
+.od-number { color: var(--accent-color); }
+.od-date { font-size: 0.85rem; color: var(--text-secondary); margin: 0.2rem 0 0; }
+.od-header-badges { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; padding-top: 0.25rem; }
+
+/* ── Status Badges ── */
+.od-status-badge, .od-pay-pill {
+    display: inline-block;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.od-status-new, .od-status-paid { background: rgba(59,130,246,0.1); color: #3b82f6; }
+.od-status-in_production { background: rgba(245,158,11,0.1); color: #d97706; }
+.od-status-ready, .od-status-completed, .od-status-picked_up, .od-status-shipped { background: rgba(16,185,129,0.1); color: #059669; }
+.od-payment-paid { background: rgba(16,185,129,0.1); color: #059669; }
+.od-payment-pending, .od-payment-unpaid { background: rgba(245,158,11,0.1); color: #d97706; }
+.od-payment-refunded, .od-payment-failed { background: rgba(184,124,111,0.1); color: var(--accent-color); }
+
+/* ── Grid ── */
+.od-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+/* ── Cards ── */
+.od-card {
+    background: #fff;
+    border: 1px solid rgba(232, 208, 177, 0.6);
+    border-radius: 14px;
+    padding: 1.75rem;
+    box-shadow: 0 2px 12px rgba(58,61,72,0.05);
+}
+.od-card-wide { margin-bottom: 1.25rem; }
+
+.od-card-eyebrow {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent-color);
+    margin-bottom: 0.3rem;
+}
+.od-card-title {
+    font-family: var(--font-heading);
+    font-size: 1.15rem;
+    color: var(--text-primary);
+    margin: 0 0 1.25rem;
+}
+.od-card-hint {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin: 0.25rem 0 0;
+}
+
+/* ── Info Rows ── */
+.od-info-rows { display: flex; flex-direction: column; gap: 0.75rem; }
+.od-info-row { display: flex; flex-direction: column; gap: 0.1rem; }
+.od-info-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+.od-info-val { font-size: 0.9rem; color: var(--text-primary); font-weight: 500; }
+.od-link { color: var(--accent-color); text-decoration: none; }
+.od-link:hover { text-decoration: underline; }
+.od-mono { font-family: monospace; font-size: 0.8rem; }
+
+/* ── Form Fields ── */
+.od-field { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
+.od-field label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+.od-select-wrap { position: relative; }
+.od-select {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    padding: 0.7rem 2.2rem 0.7rem 0.9rem;
+    background: var(--ivory-silk);
+    border: 1.5px solid transparent;
+    border-radius: 10px;
+    font-family: var(--font-primary);
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+.od-select:focus { outline: none; background: #fff; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(184,124,111,0.1); }
+.od-select-arrow { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--accent-color); opacity: 0.7; }
+
+.od-input {
+    width: 100%;
+    padding: 0.7rem 0.9rem;
+    background: var(--ivory-silk);
+    border: 1.5px solid transparent;
+    border-radius: 10px;
+    font-family: var(--font-primary);
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    transition: border-color 0.2s, background 0.2s;
+}
+.od-input:focus { outline: none; background: #fff; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(184,124,111,0.1); }
+.od-textarea {
+    width: 100%;
+    padding: 0.7rem 0.9rem;
+    background: var(--ivory-silk);
+    border: 1.5px solid transparent;
+    border-radius: 10px;
+    font-family: var(--font-primary);
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    resize: vertical;
+    transition: border-color 0.2s, background 0.2s;
+}
+.od-textarea:focus { outline: none; background: #fff; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(184,124,111,0.1); }
+
+.od-input-prefix-wrap { position: relative; display: flex; align-items: center; }
+.od-input-prefix { position: absolute; left: 0.9rem; color: var(--text-secondary); font-size: 0.88rem; pointer-events: none; }
+.od-input-has-prefix { padding-left: 1.7rem; }
+
+/* ── Checkbox ── */
+.od-refund-row { margin-bottom: 1rem; }
+.od-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+.od-checkbox-label input[type="checkbox"] { display: none; }
+.od-checkbox-custom {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border-color);
+    border-radius: 5px;
+    background: var(--ivory-silk);
+    flex-shrink: 0;
+    position: relative;
+    transition: border-color 0.2s, background 0.2s;
+}
+.od-checkbox-label input:checked + .od-checkbox-custom {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+}
+.od-checkbox-label input:checked + .od-checkbox-custom::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 6px;
+    height: 9px;
+    border: 2px solid #fff;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg);
+}
+
+/* ── Profit Layout ── */
+.od-profit-layout {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 3rem;
+    align-items: start;
+}
+.od-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+.od-profit-actions { display: flex; align-items: center; gap: 1.5rem; margin-top: 0.5rem; flex-wrap: wrap; }
+.od-profit-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.1rem;
+}
+.od-profit-label { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-secondary); }
+.od-profit-value { font-family: var(--font-heading); font-size: 1.5rem; font-weight: 700; }
+.od-profit-pos { color: #059669; }
+.od-profit-neg { color: var(--accent-color); }
+
+/* ── Button ── */
+.od-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.7rem 1.5rem;
+    background: var(--accent-color);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-family: var(--font-primary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+    white-space: nowrap;
+}
+.od-btn:hover { background: var(--aged-bronze); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(184,124,111,0.3); }
+
+/* ── Items Table ── */
+.od-items-card .od-card-title { margin-bottom: 1.5rem; }
+.od-table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid rgba(232,208,177,0.5); }
+.od-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.od-table thead { background: var(--ivory-silk); }
+.od-table th {
+    padding: 0.75rem 0.9rem;
+    text-align: left;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    border-bottom: 1px solid rgba(232,208,177,0.5);
+    white-space: nowrap;
+}
+.od-table td {
+    padding: 0.85rem 0.9rem;
+    border-bottom: 1px solid rgba(232,208,177,0.3);
+    vertical-align: middle;
+    color: var(--text-primary);
+}
+.od-table tbody tr:last-child td { border-bottom: none; }
+.od-table tbody tr:hover { background: rgba(245,240,225,0.4); }
+.od-product-name { font-weight: 600; max-width: 160px; }
+.od-file-name { font-size: 0.78rem; color: var(--text-secondary); max-width: 120px; word-break: break-all; }
+.od-qty { text-align: center; font-weight: 700; }
+.od-subtotal { font-weight: 700; }
+.od-none { font-size: 0.78rem; color: var(--text-light); }
+.od-size-pill { display: inline-block; padding: 0.15rem 0.5rem; background: var(--ivory-silk); border-radius: 6px; font-size: 0.78rem; font-weight: 600; }
+
+.od-thumb {
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+    border-radius: 8px;
+    border: 1px solid rgba(232,208,177,0.5);
+    background: var(--ivory-silk);
+    transition: transform 0.2s;
+}
+.od-thumb-link:hover .od-thumb { transform: scale(1.1); border-color: var(--accent-color); }
+
+/* ── Totals ── */
+.od-totals {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(232,208,177,0.6);
+    max-width: 320px;
+    margin-left: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+.od-total-row { display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-secondary); padding: 0.25rem 0; }
+.od-grand-total {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    border-top: 2px solid var(--border-color);
+    margin-top: 0.5rem;
+    padding-top: 0.75rem;
+}
+
+/* ── Mobile ── */
+@media (max-width: 900px) {
+    .od-profit-layout { grid-template-columns: 1fr; gap: 1.5rem; }
+}
+@media (max-width: 600px) {
+    .od-form-row { grid-template-columns: 1fr; }
+    .od-grid { grid-template-columns: 1fr; }
+    .od-card { padding: 1.25rem; }
 }
 </style>
 {% endblock %}
