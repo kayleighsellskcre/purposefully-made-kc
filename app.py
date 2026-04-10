@@ -167,23 +167,17 @@ def create_app(config_class=Config):
     app.register_blueprint(api_bp)
     app.register_blueprint(favorites_bp)
     
-    # Initialize background scheduler for automated tasks (optional - won't crash app if fails)
+    # Initialize background scheduler and run startup seed (optional - won't crash app if fails)
     try:
-        # Only try to start scheduler in Railway production environment
-        if os.environ.get('RAILWAY_ENVIRONMENT'):
-            try:
-                import sys as sys_module
-                from scheduler import init_scheduler
-                scheduler = init_scheduler(app)
-                if scheduler:
-                    print("Background scheduler initialized successfully", file=sys_module.stderr)
-            except ImportError as e:
-                print(f"Scheduler module not available: {e}", file=sys_module.stderr)
-            except Exception as e:
-                print(f"Scheduler init skipped: {e}", file=sys_module.stderr)
+        import sys as sys_module
+        from scheduler import init_scheduler
+        scheduler = init_scheduler(app)
+        if scheduler:
+            print("Background scheduler initialized successfully", file=sys_module.stderr)
+    except ImportError as e:
+        print(f"Scheduler module not available: {e}", file=sys_module.stderr)
     except Exception as e:
-        # Catch any errors and continue - scheduler is optional
-        pass
+        print(f"Scheduler init skipped: {e}", file=sys_module.stderr)
     
     # Add custom template filters
     @app.template_filter('from_json')
