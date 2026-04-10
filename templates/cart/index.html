@@ -130,29 +130,38 @@
 
 .cart-item {
     background: #fff;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 1.5rem;
+    border: 1px solid rgba(232, 208, 177, 0.6);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
     display: grid;
-    grid-template-columns: 100px 1fr auto;
+    grid-template-columns: 120px 1fr auto;
     gap: 1.5rem;
     align-items: center;
+    box-shadow: 0 2px 10px rgba(58,61,72,0.04);
+    transition: box-shadow 0.2s;
+}
+
+.cart-item:hover {
+    box-shadow: 0 4px 18px rgba(58,61,72,0.08);
 }
 
 .item-image {
     position: relative;
-    width: 100px;
-    min-width: 100px;
-    height: 120px;
+    width: 120px;
+    min-width: 120px;
+    height: 140px;
     overflow: hidden;
-    border-radius: var(--border-radius);
+    border-radius: 10px;
+    background: var(--ivory-silk);
+    border: 1px solid rgba(232,208,177,0.5);
 }
 
 .item-image > img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
-    border-radius: var(--border-radius);
+    object-fit: contain;
+    border-radius: 10px;
+    padding: 4px;
 }
 
 /* Shirt + design composite */
@@ -165,8 +174,9 @@
 .shirt-composite .shirt-base {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     display: block;
+    padding: 4px;
 }
 
 .shirt-composite .design-overlay {
@@ -252,31 +262,43 @@
 }
 
 .cart-summary {
-    background: var(--secondary-color);
+    background: #fff;
+    border: 1px solid rgba(232,208,177,0.6);
+    border-radius: 16px;
     padding: 2rem;
-    border-radius: var(--border-radius);
     height: fit-content;
     position: sticky;
     top: 100px;
+    box-shadow: 0 4px 20px rgba(58,61,72,0.06);
 }
 
 .cart-summary h2 {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
     margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(232,208,177,0.4);
 }
 
 .summary-row {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--border-color);
+    align-items: center;
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid rgba(232,208,177,0.3);
+    font-size: 0.9rem;
+    color: var(--text-secondary);
 }
 
 .summary-row.total {
-    border-top: 2px solid var(--border-color);
+    border-top: 2px solid rgba(232,208,177,0.6);
+    border-bottom: none;
     padding-top: 1rem;
-    font-size: 1.25rem;
-    font-weight: 600;
+    margin-top: 0.25rem;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
 }
 
 .total-amount {

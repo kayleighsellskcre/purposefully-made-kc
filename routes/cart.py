@@ -58,6 +58,19 @@ def index():
                     front_image = variant.front_image_url if variant.front_image_url.startswith(('/', 'http')) else f"/static/{variant.front_image_url}"
                 if variant.back_image_url:
                     back_image = variant.back_image_url if variant.back_image_url.startswith(('/', 'http')) else f"/static/{variant.back_image_url}"
+
+            # Fallback: construct mockup URL from style number + color name
+            # Files live at /uploads/mockups/{style}/{style}_{Color_Name}_front.jpg
+            if not front_image and product.style_number:
+                color_slug = (item.get('color') or '').replace(' ', '_')
+                style = product.style_number
+                front_image = f"/uploads/mockups/{style}/{style}_{color_slug}_front.jpg"
+                back_image = back_image or f"/uploads/mockups/{style}/{style}_{color_slug}_back.jpg"
+
+            # Final fallback: product-level mockup template
+            if not front_image and product.front_mockup_template:
+                front_image = product.front_mockup_template if product.front_mockup_template.startswith(('/', 'http')) else f"/static/{product.front_mockup_template}"
+
             # Front of shirt only, with design overlay when placement is front
             placement = item.get('placement') or 'center_chest'
             front_placements = ('center_chest', 'left_chest', 'right_chest')
