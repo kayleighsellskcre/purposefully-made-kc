@@ -34,28 +34,58 @@ class SSActivewearAPI:
             'Content-Type': 'application/json'
         }
     
+    def _api_get(self, endpoint, params=None, timeout=60, retries=4):
+        """
+        GET request with automatic retry/back-off for 503 throttle responses.
+        Waits 65 s on first throttle, then doubles each retry.
+        """
+        import time, sys
+        wait = 65
+        last_err = None
+        for attempt in range(1, retries + 1):
+            try:
+                response = requests.get(
+                    endpoint,
+                    auth=(self.account_number, self.api_key),
+                    params=params,
+                    timeout=timeout
+                )
+                if response.status_code == 503:
+                    try:
+                        msg = response.json().get('message', '')
+                    except Exception:
+                        msg = response.text[:120]
+                    print(
+                        f"  S&S throttle (attempt {attempt}/{retries}): {msg} "
+                        f"— waiting {wait}s ...",
+                        file=sys.stderr, flush=True
+                    )
+                    time.sleep(wait)
+                    wait = min(wait * 2, 300)
+                    continue
+                if response.status_code == 401:
+                    raise ValueError("Invalid S&S API credentials (401). Check SSACTIVEWEAR_API_KEY and SSACTIVEWEAR_ACCOUNT_NUMBER.")
+                if response.status_code == 403:
+                    raise ValueError("S&S API access denied (403). Your account may not have API access enabled.")
+                response.raise_for_status()
+                return response
+            except requests.exceptions.RequestException as e:
+                last_err = e
+                if attempt < retries:
+                    print(f"  S&S request error (attempt {attempt}/{retries}): {e} — retrying in {wait}s ...",
+                          file=sys.stderr, flush=True)
+                    time.sleep(wait)
+                    wait = min(wait * 2, 300)
+        raise ValueError(f"S&S API error after {retries} attempts: {last_err}")
+
     def get_styles(self, brand_name='Bella+Canvas'):
         """
-        Get all styles for a specific brand
-        
-        Args:
-            brand_name: Brand name (default: Bella+Canvas)
-        
-        Returns:
-            List of style dictionaries
+        Get all styles for a specific brand.
         """
         try:
             endpoint = f"{self.api_url}/v2/styles"
             params = {'brandName': brand_name} if brand_name else {}
-
-            response = requests.get(endpoint, auth=(self.account_number, self.api_key), params=params, timeout=60)
-
-            if response.status_code == 401:
-                raise ValueError("Invalid S&S API credentials (401). Check SSACTIVEWEAR_API_KEY and SSACTIVEWEAR_ACCOUNT_NUMBER in Railway.")
-            if response.status_code == 403:
-                raise ValueError("S&S API access denied (403). Your account may not have API access enabled.")
-            response.raise_for_status()
-
+            response = self._api_get(endpoint, params=params, timeout=60)
             data = response.json()
             if isinstance(data, list):
                 return data
@@ -63,16 +93,10 @@ class SSActivewearAPI:
                 if key in data and isinstance(data[key], list):
                     return data[key]
             return []
-        except requests.exceptions.RequestException as e:
-            err_msg = str(e)
-            if hasattr(e, 'response') and e.response is not None:
-                try:
-                    body = e.response.text[:200] if e.response.text else ''
-                    err_msg = f"{err_msg} | Response: {body}"
-                except Exception:
-                    pass
-            print(f"Error fetching styles from S&S API: {err_msg}")
-            raise ValueError(f"S&S API error: {err_msg}")
+        except ValueError:
+            raise
+        except Exception as e:
+            raise ValueError(f"S&S API error: {e}")
     
     def get_style_details(self, style_id):
         """
@@ -89,8 +113,7 @@ class SSActivewearAPI:
         try:
             # Get basic style info
             endpoint = f"{self.api_url}/v2/styles/{style_id}"
-            response = requests.get(endpoint, auth=(self.account_number, self.api_key), timeout=30)
-            response.raise_for_status()
+            response = self._api_get(endpoint, timeout=30)
             style_data = response.json()
             
             # If it's a list, get first item
@@ -102,8 +125,7 @@ class SSActivewearAPI:
             # Now get all color/size variations (SKUs) with inventory
             endpoint = f"{self.api_url}/v2/products"
             params = {'styleID': style_id}
-            response = requests.get(endpoint, auth=(self.account_number, self.api_key), params=params, timeout=30)
-            response.raise_for_status()
+            response = self._api_get(endpoint, params=params, timeout=30)
             products = response.json()
             
             print(f"  Got {len(products) if isinstance(products, list) else 0} SKUs", file=sys.stderr, flush=True)
