@@ -142,22 +142,11 @@ a:hover {
     text-decoration: none;
 }
 
-/* Navbar PM monogram clip */
-.logo-pm-wrap {
-    height: 54px;
-    overflow: hidden;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-}
-
 .logo-image {
-    height: 160px;
+    height: 52px;
     width: auto;
     display: block;
-    margin-top: -14px;
     transition: var(--transition);
-    max-width: none;
 }
 
 .logo:hover .logo-image {
@@ -964,8 +953,7 @@ textarea.form-control {
         display: flex;
     }
 
-    .logo-pm-wrap { height: 42px; }
-    .logo-image { height: 125px; margin-top: -11px; }
+    .logo-image { height: 40px; }
 
     /* Hero - Mobile */
     .hero {
