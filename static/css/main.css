@@ -425,7 +425,7 @@ a.btn-customize:hover {
 
 /* ── Global Page Header (used across shop, gallery, about, contact, etc.) ── */
 .page-header {
-    background: linear-gradient(150deg, var(--cashmere-sand) 0%, #c9a47a 55%, var(--cashmere-sand) 100%);
+    background: linear-gradient(135deg, var(--ivory-silk) 0%, var(--cashmere-sand) 50%, var(--ivory-silk) 100%);
     padding: 2.5rem 2rem 2rem;
     text-align: center !important;
     position: relative;
@@ -435,8 +435,11 @@ a.btn-customize:hover {
 .page-header::before {
     content: '';
     position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse at 60% 40%, rgba(255,255,255,0.32) 0%, transparent 70%);
+    top: -50%;
+    right: -50%;
+    width: 100%;
+    height: 200%;
+    background: radial-gradient(ellipse at center, rgba(255,255,255,0.25) 0%, transparent 65%);
     pointer-events: none;
 }
 
