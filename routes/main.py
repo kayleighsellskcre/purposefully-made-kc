@@ -31,12 +31,21 @@ def serve_mockup(path):
 @main_bp.route('/')
 def index():
     """Homepage"""
-    session.pop('collection_id', None)
-    featured_products = Product.query.filter_by(is_active=True).order_by(Product.style_number).limit(8).all()
-    active_collections = Collection.query.filter_by(is_active=True).order_by(Collection.created_at.desc()).limit(6).all()
-    return render_template('index.html', 
-                         featured_products=featured_products,
-                         active_collections=active_collections)
+    try:
+        session.pop('collection_id', None)
+        featured_products = Product.query.filter_by(is_active=True).order_by(Product.style_number).limit(8).all()
+        active_collections = Collection.query.filter_by(is_active=True).order_by(Collection.created_at.desc()).limit(6).all()
+        return render_template('index.html', 
+                             featured_products=featured_products,
+                             active_collections=active_collections)
+    except Exception as e:
+        # Log the error but don't crash
+        import sys
+        print(f"Error in index route: {e}", file=sys.stderr)
+        # Return a simple homepage without products if there's an error
+        return render_template('index.html', 
+                             featured_products=[],
+                             active_collections=[])
 
 @main_bp.route('/about')
 def about():
