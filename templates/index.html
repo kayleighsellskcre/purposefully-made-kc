@@ -4,16 +4,22 @@
 
 {% block content %}
 <!-- Hero Section -->
-<section class="hero">
-    <div class="hero-content">
-        <h1 class="hero-title">Luxury Custom Apparel</h1>
-        <p class="hero-subtitle">Premium Bella+Canvas garments with your custom designs</p>
-        <div class="hero-actions">
-            <a href="{{ url_for('shop.index') }}" class="btn btn-primary btn-lg">Start Shopping</a>
-            <a href="#collections" class="btn btn-outline btn-lg">View Collections</a>
+<div class="page-header">
+    <div class="container">
+        <span class="eyebrow">Premium Custom Apparel</span>
+        <h1>Luxury Custom Apparel</h1>
+        <p class="lead">Premium Bella+Canvas garments with your custom designs</p>
+        <div class="hero-actions" style="justify-content:center;margin-top:1.25rem;">
+            <a href="{{ url_for('shop.index') }}" class="btn btn-primary">Start Shopping</a>
+            <a href="#collections" class="btn btn-outline">View Collections</a>
         </div>
     </div>
-</section>
+</div>
+
+<style>
+.page-header, .page-header .container { text-align: center; }
+.page-header h1, .page-header p, .page-header span { text-align: center; display: block; }
+</style>
 
 <!-- Features -->
 <section class="features">
