@@ -23,7 +23,9 @@
         <div class="container">
             <div class="nav-content">
                 <a href="{{ url_for('main.index') }}" class="logo">
-                    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Purposefully Made KC" class="logo-image">
+                    <div class="logo-pm-wrap">
+                        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="PM" class="logo-image">
+                    </div>
                 </a>
                 
                 <div class="nav-links">
@@ -97,7 +99,9 @@
             <div class="footer-inner">
 
                 <div>
-                    <p class="footer-brand-name">Purposefully Made KC</p>
+                    <a href="{{ url_for('main.index') }}" class="footer-logo-link">
+                        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Purposefully Made KC" class="footer-logo-img">
+                    </a>
                     <p class="footer-brand-desc">Luxury custom apparel for teams, schools, and every occasion that deserves something special.</p>
                 </div>
 

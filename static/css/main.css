@@ -142,16 +142,22 @@ a:hover {
     text-decoration: none;
 }
 
+/* Navbar PM monogram clip */
+.logo-pm-wrap {
+    height: 54px;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+}
+
 .logo-image {
-    height: 140px;
+    height: 160px;
     width: auto;
+    display: block;
+    margin-top: -14px;
     transition: var(--transition);
-    max-width: 380px;
-    object-fit: contain;
-    position: relative;
-    z-index: 1001;
-    margin: -30px 0;
-    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.08));
+    max-width: none;
 }
 
 .logo:hover .logo-image {
@@ -743,12 +749,13 @@ a.btn-customize:hover {
     border-bottom: 1px solid rgba(127, 108, 80, 0.2);
 }
 
-.footer-brand-name {
-    font-family: var(--font-heading);
-    font-size: 1.35rem;
-    color: var(--midnight-charcoal);
-    margin: 0 0 0.75rem;
-    letter-spacing: -0.01em;
+.footer-logo-link { display: inline-block; margin-bottom: 0.75rem; }
+.footer-logo-img {
+    height: 90px;
+    width: auto;
+    display: block;
+    filter: brightness(0.15) sepia(1) hue-rotate(5deg) saturate(0.6);
+    opacity: 0.75;
 }
 
 .footer-brand-desc {
@@ -939,10 +946,8 @@ textarea.form-control {
         display: flex;
     }
 
-    .logo-image {
-        height: 100px;
-        margin: -20px 0;
-    }
+    .logo-pm-wrap { height: 42px; }
+    .logo-image { height: 125px; margin-top: -11px; }
 
     /* Hero - Mobile */
     .hero {
