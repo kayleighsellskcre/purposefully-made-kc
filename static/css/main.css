@@ -824,6 +824,7 @@ a.btn-customize:hover {
     font-size: 0.82rem;
     color: rgba(44, 32, 22, 0.6);
     line-height: 1.65;
+    margin-bottom: 0.5rem;
     max-width: 300px;
     margin: 0 auto;
     letter-spacing: 0.02em;
@@ -833,7 +834,7 @@ a.btn-customize:hover {
 .footer-rule {
     height: 1px;
     background: linear-gradient(90deg, transparent, rgba(127,108,80,0.3), transparent);
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.35rem;
 }
 
 /* Nav columns row */
@@ -841,6 +842,7 @@ a.btn-customize:hover {
     display: flex;
     justify-content: center;
     gap: 5rem;
+    padding-top: 0.25rem;
     padding-bottom: 1.5rem;
 }
 
