@@ -253,6 +253,23 @@ def update_order_status(order_id):
     return redirect(url_for('admin.order_detail', order_id=order_id))
 
 
+@admin_bp.route('/orders/<int:order_id>/delete', methods=['POST'])
+@admin_required
+def delete_order(order_id):
+    """Permanently delete an order and all its items."""
+    order = Order.query.get_or_404(order_id)
+    try:
+        for item in order.items:
+            db.session.delete(item)
+        db.session.delete(order)
+        db.session.commit()
+        flash(f'Order #{order.order_number} has been permanently deleted.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Could not delete order: {e}', 'error')
+    return redirect(url_for('admin.orders'))
+
+
 @admin_bp.route('/orders/<int:order_id>/update-details', methods=['POST'])
 @admin_required
 def update_order_details(order_id):

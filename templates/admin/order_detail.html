@@ -19,6 +19,10 @@
         <div class="od-header-badges">
             <span class="od-status-badge od-status-{{ order.status }}">{{ order.status.replace('_',' ').title() }}</span>
             <span class="od-status-badge od-payment-{{ order.payment_status }}">{{ order.payment_status.title() }}</span>
+            <form method="POST" action="{{ url_for('admin.delete_order', order_id=order.id) }}"
+                  onsubmit="return confirm('Permanently delete order #{{ order.order_number }}? This cannot be undone.');">
+                <button type="submit" class="od-delete-btn">Delete Order</button>
+            </form>
         </div>
     </div>
 
@@ -325,6 +329,21 @@
 .od-number { color: var(--accent-color); }
 .od-date { font-size: 0.85rem; color: var(--text-secondary); margin: 0.2rem 0 0; }
 .od-header-badges { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; padding-top: 0.25rem; }
+.od-delete-btn {
+    background: none;
+    border: 1.5px solid rgba(180,60,60,0.35);
+    border-radius: 8px;
+    color: #b43c3c;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.4rem 0.9rem;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    font-family: var(--font-secondary);
+}
+.od-delete-btn:hover { background: rgba(180,60,60,0.08); border-color: #b43c3c; }
 
 /* ── Status Badges ── */
 .od-status-badge, .od-pay-pill {
