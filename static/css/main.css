@@ -150,6 +150,8 @@ a:hover {
     width: auto;
     display: block;
     transition: var(--transition);
+    border: 1.5px solid rgba(184, 124, 111, 0.4);
+    border-radius: 4px;
 }
 
 .logo:hover .logo-image {
