@@ -140,13 +140,13 @@ a:hover {
     display: flex;
     align-items: center;
     text-decoration: none;
-    transform: translate(-24px, 48px);
+    transform: translate(-10px, 48px);
     position: relative;
     z-index: 10;
 }
 
 .logo-image {
-    height: 100px;
+    height: 115px;
     width: auto;
     display: block;
     transition: var(--transition);
@@ -956,8 +956,8 @@ textarea.form-control {
         display: flex;
     }
 
-    .logo { transform: translate(-12px, 32px); }
-    .logo-image { height: 75px; }
+    .logo { transform: translate(-6px, 32px); }
+    .logo-image { height: 88px; }
 
     /* Hero - Mobile */
     .hero {
