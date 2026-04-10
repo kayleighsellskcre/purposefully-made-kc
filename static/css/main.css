@@ -423,6 +423,62 @@ a.btn-customize:hover {
     opacity: 0.95;
 }
 
+/* ── Global Page Header (used across shop, gallery, about, contact, etc.) ── */
+.page-header {
+    background: linear-gradient(160deg, #fff 0%, var(--ivory-silk) 60%, var(--cashmere-sand) 100%);
+    padding: 5rem 2rem 4rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.page-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
+}
+
+.page-header .container {
+    position: relative;
+    z-index: 1;
+}
+
+.page-header h1 {
+    font-size: 3.25rem;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.01em;
+}
+
+.page-header .eyebrow {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent-color);
+    margin-bottom: 1rem;
+}
+
+.lead {
+    font-size: 1.15rem;
+    color: var(--text-secondary);
+    max-width: 520px;
+    margin: 0 auto 1.5rem;
+    line-height: 1.75;
+}
+
+@media (max-width: 768px) {
+    .page-header { padding: 3.5rem 1.25rem 3rem; }
+    .page-header h1 { font-size: 2.25rem; }
+    .lead { font-size: 1rem; }
+}
+
 /* Hero Section - Luxury */
 .hero {
     background: linear-gradient(135deg, var(--ivory-silk) 0%, var(--cashmere-sand) 50%, var(--ivory-silk) 100%);
