@@ -1243,12 +1243,13 @@ textarea.form-control {
 }
 
 .account-user-email {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     color: var(--text-secondary);
     margin: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 160px;
 }
 
 .account-nav {
