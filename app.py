@@ -93,7 +93,7 @@ def create_app(config_class=Config):
                 except Exception:
                     pass
                 try:
-                    conn.execute(text("ALTER TABLE design ADD COLUMN IF NOT EXISTS design_fee FLOAT DEFAULT 0"))
+                    conn.execute(text("ALTER TABLE design ADD COLUMN IF NOT EXISTS design_fee DOUBLE PRECISION DEFAULT 0"))
                     conn.commit()
                 except Exception:
                     pass
