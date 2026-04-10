@@ -184,8 +184,12 @@
                         <path d="m21 21-4.35-4.35"></path>
                     </svg>
                     <h2>No products found</h2>
+                    {% if selected_category or selected_age_group or selected_color or selected_fit_type or selected_neck_style or selected_sleeve_length %}
                     <p>Try adjusting your filters or check back later.</p>
                     <a href="{{ url_for('shop.index') }}" class="btn btn-primary">View All Products</a>
+                    {% else %}
+                    <p>Products are being added to the catalog. Check back soon!</p>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>

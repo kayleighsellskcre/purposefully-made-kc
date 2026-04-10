@@ -38,6 +38,10 @@ def index():
         
         products = query.order_by(Product.style_number).all()
         
+        # Log for debugging
+        import sys
+        print(f"Shop query returned {len(products)} products", file=sys.stderr)
+        
         if color:
             from models import ProductColorVariant
             product_ids = db.session.query(ProductColorVariant.product_id).filter(
@@ -93,7 +97,9 @@ def index():
     except Exception as e:
         # If there's a database error, log it and show empty shop
         import sys
-        print(f"Error in shop index: {e}", file=sys.stderr)
+        print(f"ERROR in shop index: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
         return render_template('shop/index.html', 
                              products=[],
                              categories=[],
