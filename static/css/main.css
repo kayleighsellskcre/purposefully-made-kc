@@ -425,22 +425,29 @@ a.btn-customize:hover {
 
 /* ── Global Page Header (used across shop, gallery, about, contact, etc.) ── */
 .page-header {
-    background: linear-gradient(135deg, var(--ivory-silk) 0%, var(--cashmere-sand) 100%);
-    padding: 4.5rem 2rem 4rem;
+    background: linear-gradient(150deg, var(--cashmere-sand) 0%, #c9a47a 55%, var(--cashmere-sand) 100%);
+    padding: 5rem 2rem 4.5rem;
     text-align: center !important;
     position: relative;
     overflow: hidden;
+}
+
+.page-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 60% 40%, rgba(255,255,255,0.32) 0%, transparent 70%);
+    pointer-events: none;
 }
 
 .page-header::after {
     content: '';
     position: absolute;
     bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 80px;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(184,124,111,0.45), transparent);
 }
 
 .page-header .container {
