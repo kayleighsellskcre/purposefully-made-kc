@@ -96,16 +96,21 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <div class="footer-inner">
 
-                <div>
-                    <a href="{{ url_for('main.index') }}" class="footer-logo-link">
-                        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Purposefully Made KC" class="footer-logo-img">
-                    </a>
-                    <p class="footer-brand-desc">Luxury custom apparel for teams, schools, and every occasion that deserves something special.</p>
-                </div>
+            <!-- Logo + tagline centered -->
+            <div class="footer-brand">
+                <a href="{{ url_for('main.index') }}" class="footer-logo-link">
+                    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Purposefully Made KC" class="footer-logo-img">
+                </a>
+                <p class="footer-brand-desc">Luxury custom apparel for every occasion that deserves something special.</p>
+            </div>
 
-                <div>
+            <!-- Divider -->
+            <div class="footer-rule"></div>
+
+            <!-- Nav columns -->
+            <div class="footer-nav">
+                <div class="footer-col">
                     <p class="footer-col-title">Shop</p>
                     <ul class="footer-links">
                         <li><a href="{{ url_for('shop.index') }}">All Products</a></li>
@@ -116,7 +121,7 @@
                     </ul>
                 </div>
 
-                <div>
+                <div class="footer-col">
                     <p class="footer-col-title">Company</p>
                     <ul class="footer-links">
                         <li><a href="{{ url_for('main.about') }}">About Us</a></li>
@@ -125,19 +130,19 @@
                     </ul>
                 </div>
 
-                <div>
+                <div class="footer-col">
                     <p class="footer-col-title">Legal</p>
                     <ul class="footer-links">
                         <li><a href="#">Privacy Policy</a></li>
                         <li><a href="#">Terms of Service</a></li>
                     </ul>
                 </div>
-
             </div>
 
             <div class="footer-bottom">
                 &copy; {{ current_year }} Purposefully Made KC. All rights reserved.
             </div>
+
         </div>
     </footer>
     
