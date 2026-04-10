@@ -1177,9 +1177,15 @@ textarea.form-control {
    ACCOUNT SECTION — Global Styles
    ════════════════════════════════ */
 .account-page {
-    padding: 2.5rem 0 5rem;
-    min-height: calc(100vh - 400px);
-    background: linear-gradient(180deg, var(--ivory-silk) 0%, #fff 40%, var(--ivory-silk) 100%);
+    padding: 3.5rem 0 5rem;
+    min-height: calc(100vh - 300px);
+    background:
+        linear-gradient(180deg,
+            var(--cashmere-sand) 0%,
+            var(--ivory-silk) 120px,
+            #fff 300px,
+            var(--ivory-silk) 100%
+        );
 }
 
 .account-layout {
@@ -1192,7 +1198,7 @@ textarea.form-control {
 /* ── Sidebar ── */
 .account-sidebar {
     position: sticky;
-    top: 100px;
+    top: 24px;
     height: fit-content;
     background: #fff;
     border: 1px solid rgba(232, 208, 177, 0.6);
