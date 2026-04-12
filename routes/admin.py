@@ -1673,7 +1673,8 @@ def production_workflow():
     orders_by_stage['packaged_ready'] = Order.query.filter(
         Order.status == 'ready'
     ).order_by(Order.created_at).all()
-    return render_template('admin/operations/workflow.html', stages=stages, orders_by_stage=orders_by_stage)
+    from datetime import datetime
+    return render_template('admin/operations/workflow.html', stages=stages, orders_by_stage=orders_by_stage, now=datetime.utcnow())
 
 
 @admin_bp.route('/orders/<int:order_id>/update-stage', methods=['POST'])

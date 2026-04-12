@@ -1,60 +1,652 @@
 {% extends "admin/operations/base_operations.html" %}
-{% block title %}Production Workflow - Purposefully Made KC{% endblock %}
-{% block ops_content %}
-<h1 class="ops-title">Production Workflow</h1>
-<p class="ops-subtitle">5-stage Kanban. Move orders through production stages. <a href="{{ url_for('admin.orders_completed') }}" class="ops-completed-link">View All Completed →</a></p>
+{% block title %}Production Workflow - Admin - Purposefully Made KC{% endblock %}
 
-<div class="workflow-board">
+{% block ops_content %}
+
+<!-- ── Page Header ── -->
+<div class="wf-page-header">
+    <div>
+        <span class="adm-eyebrow">Admin / Operations</span>
+        <h1 class="wf-title">Production Workflow</h1>
+        <p class="wf-lead">5-stage Kanban board — move orders through production from received to packaged.</p>
+    </div>
+    <div class="wf-header-actions">
+        <a href="{{ url_for('admin.orders_completed') }}" class="btn btn-outline wf-header-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            All Completed
+        </a>
+        <a href="{{ url_for('admin.orders') }}" class="btn btn-outline wf-header-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+            All Orders
+        </a>
+    </div>
+</div>
+
+<!-- ── Stage Summary Pills ── -->
+<div class="wf-summary">
     {% for stage_id, stage_name, stage_desc in stages %}
-    <div class="workflow-column" data-stage="{{ stage_id }}">
-        <div class="workflow-column-header">
-            <span class="workflow-dot workflow-{{ stage_id }}"></span>
-            <h3>{{ stage_name }}</h3>
-            <p>{{ stage_desc }}</p>
-        </div>
-        <div class="workflow-cards">
-            {% for order in orders_by_stage.get(stage_id, []) %}
-            <div class="workflow-card">
-                <a href="{{ url_for('admin.order_detail', order_id=order.id) }}"><strong>{{ order.order_number }}</strong></a>
-                <p>{{ order.full_name }}</p>
-                <p class="small">${{ "%.2f"|format(order.total) }} · {{ order.items.count() }} item(s)</p>
-                {% if stage_id != 'packaged_ready' %}
-                <form method="POST" action="{{ url_for('admin.update_order_stage', order_id=order.id) }}">
-                    <select name="stage" onchange="this.form.submit()">
-                        <option value="">Move to...</option>
-                        {% for sid, sname, _ in stages %}{% if sid != stage_id %}
-                        <option value="{{ sid }}">{{ sname }}</option>
-                        {% endif %}{% endfor %}
-                    </select>
-                </form>
-                {% endif %}
-            </div>
-            {% else %}
-            <div class="workflow-empty">No orders</div>
-            {% endfor %}
-        </div>
+    {% set count = orders_by_stage.get(stage_id, [])|length %}
+    <div class="wf-summary-pill wf-summary-{{ stage_id }}">
+        <span class="wf-summary-dot wf-dot-{{ stage_id }}"></span>
+        <span class="wf-summary-name">{{ stage_name }}</span>
+        <span class="wf-summary-count">{{ count }}</span>
     </div>
     {% endfor %}
 </div>
+
+<!-- ══════════════════════════════════════
+     DESKTOP: Horizontal Kanban Board
+══════════════════════════════════════ -->
+<div class="wf-board-scroll">
+    <div class="wf-board">
+        {% for stage_id, stage_name, stage_desc in stages %}
+        {% set stage_orders = orders_by_stage.get(stage_id, []) %}
+        <div class="wf-col" data-stage="{{ stage_id }}">
+
+            <!-- Column Header -->
+            <div class="wf-col-header wf-col-header-{{ stage_id }}">
+                <div class="wf-col-header-top">
+                    <span class="wf-dot wf-dot-{{ stage_id }}"></span>
+                    <h3 class="wf-col-title">{{ stage_name }}</h3>
+                    <span class="wf-col-count">{{ stage_orders|length }}</span>
+                </div>
+                <p class="wf-col-desc">{{ stage_desc }}</p>
+            </div>
+
+            <!-- Cards -->
+            <div class="wf-cards">
+                {% for order in stage_orders %}
+                <div class="wf-card">
+                    <div class="wf-card-top">
+                        <a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="wf-order-num">#{{ order.order_number }}</a>
+                        {% if order.due_date %}
+                        <span class="wf-due {% if order.due_date < now %}wf-due--overdue{% endif %}">
+                            {{ order.due_date.strftime('%b %d') }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <p class="wf-card-name">{{ order.full_name }}</p>
+                    <div class="wf-card-meta">
+                        <span>${{ "%.2f"|format(order.total) }}</span>
+                        <span class="wf-meta-sep">&bull;</span>
+                        <span>{{ order.items.count() }} item{% if order.items.count() != 1 %}s{% endif %}</span>
+                        <span class="wf-meta-sep">&bull;</span>
+                        <span>{{ order.created_at.strftime('%b %d') }}</span>
+                    </div>
+                    {% if stage_id != 'packaged_ready' %}
+                    <form method="POST" action="{{ url_for('admin.update_order_stage', order_id=order.id) }}" class="wf-move-form">
+                        <div class="wf-select-wrap">
+                            <select name="stage" class="wf-select" onchange="this.form.submit()">
+                                <option value="" disabled selected>Move to stage…</option>
+                                {% for sid, sname, _ in stages %}{% if sid != stage_id %}
+                                <option value="{{ sid }}">→ {{ sname }}</option>
+                                {% endif %}{% endfor %}
+                            </select>
+                            <svg class="wf-select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                        </div>
+                    </form>
+                    {% else %}
+                    <div class="wf-packaged-label">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        Packaged &amp; Ready
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="wf-empty">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                    <span>No orders</span>
+                </div>
+                {% endfor %}
+            </div>
+
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MOBILE: Vertical Accordion Stages
+══════════════════════════════════════ -->
+<div class="wf-mobile">
+    {% for stage_id, stage_name, stage_desc in stages %}
+    {% set stage_orders = orders_by_stage.get(stage_id, []) %}
+    <div class="wf-stage" data-stage="{{ stage_id }}">
+
+        <button class="wf-stage-header {% if stage_orders %}wf-stage-header--has-orders{% endif %}"
+                onclick="toggleStage('{{ stage_id }}')"
+                aria-expanded="{% if stage_orders %}true{% else %}false{% endif %}"
+                id="stage-btn-{{ stage_id }}">
+            <div class="wf-stage-header-left">
+                <span class="wf-dot wf-dot-{{ stage_id }}"></span>
+                <div>
+                    <span class="wf-stage-name">{{ stage_name }}</span>
+                    <span class="wf-stage-desc">{{ stage_desc }}</span>
+                </div>
+            </div>
+            <div class="wf-stage-header-right">
+                <span class="wf-stage-count wf-count-{{ stage_id }}">{{ stage_orders|length }}</span>
+                <svg class="wf-chevron {% if stage_orders %}wf-chevron--open{% endif %}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+        </button>
+
+        <div class="wf-stage-body {% if stage_orders %}wf-stage-body--open{% endif %}" id="stage-body-{{ stage_id }}">
+            {% for order in stage_orders %}
+            <div class="wf-card">
+                <div class="wf-card-top">
+                    <a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="wf-order-num">#{{ order.order_number }}</a>
+                    {% if order.due_date %}
+                    <span class="wf-due {% if order.due_date < now %}wf-due--overdue{% endif %}">
+                        {{ order.due_date.strftime('%b %d') }}
+                    </span>
+                    {% endif %}
+                </div>
+                <p class="wf-card-name">{{ order.full_name }}</p>
+                <div class="wf-card-meta">
+                    <span>${{ "%.2f"|format(order.total) }}</span>
+                    <span class="wf-meta-sep">&bull;</span>
+                    <span>{{ order.items.count() }} item{% if order.items.count() != 1 %}s{% endif %}</span>
+                    <span class="wf-meta-sep">&bull;</span>
+                    <span>{{ order.created_at.strftime('%b %d') }}</span>
+                </div>
+                {% if stage_id != 'packaged_ready' %}
+                <form method="POST" action="{{ url_for('admin.update_order_stage', order_id=order.id) }}" class="wf-move-form">
+                    <div class="wf-select-wrap">
+                        <select name="stage" class="wf-select" onchange="this.form.submit()">
+                            <option value="" disabled selected>Move to stage…</option>
+                            {% for sid, sname, _ in stages %}{% if sid != stage_id %}
+                            <option value="{{ sid }}">→ {{ sname }}</option>
+                            {% endif %}{% endfor %}
+                        </select>
+                        <svg class="wf-select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                    </div>
+                </form>
+                {% else %}
+                <div class="wf-packaged-label">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Packaged &amp; Ready
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="wf-empty">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                <span>No orders in this stage</span>
+            </div>
+            {% endfor %}
+        </div>
+
+    </div>
+    {% endfor %}
+</div>
+
+
 <style>
-.workflow-board{display:flex;gap:0.75rem;padding-bottom:0.5rem;width:100%;}
-.workflow-column{flex:1 1 0;min-width:0;background:#fff;border-radius:var(--border-radius);box-shadow:var(--box-shadow);padding:0.75rem;overflow:hidden;}
-.workflow-column-header{margin-bottom:0.75rem;}
-.workflow-column-header h3{font-size:0.95rem;margin:0.25rem 0 0.15rem;}
-.workflow-column-header p{font-size:0.78rem;color:var(--text-secondary);margin:0;}
-.workflow-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;}
-.workflow-order_received{background:#3b82f6;}
-.workflow-waiting_supplies{background:#f59e0b;}
-.workflow-ready_to_press{background:#f97316;}
-.workflow-pressed{background:#ef4444;}
-.workflow-packaged_ready{background:#10b981;}
-.workflow-card{background:var(--secondary-color);padding:0.6rem 0.75rem;border-radius:8px;margin-bottom:0.4rem;}
-.workflow-card strong{font-size:0.78rem;word-break:break-all;}
-.workflow-card p{margin:0.15rem 0;font-size:0.8rem;}
-.workflow-card p.small{font-size:0.75rem;}
-.workflow-card select{font-size:0.75rem;padding:0.2rem 0.3rem;width:100%;margin-top:0.3rem;}
-.workflow-empty{color:var(--text-secondary);padding:0.75rem;text-align:center;font-size:0.85rem;}
-.ops-completed-link{color:var(--accent-color);font-weight:500;}
-.ops-completed-link:hover{text-decoration:underline;}
+/* ═══════════════════════
+   Workflow Page
+═══════════════════════ */
+
+/* ── Page Header ── */
+.wf-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.wf-title {
+    font-family: var(--font-heading);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0.25rem 0 0.4rem;
+    line-height: 1.1;
+}
+
+.wf-lead {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.wf-header-actions {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    align-self: center;
+}
+
+.wf-header-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    white-space: nowrap;
+    font-size: 0.82rem;
+}
+
+/* ── Summary Pills ── */
+.wf-summary {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.wf-summary-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.9rem;
+    background: #fff;
+    border: 1px solid rgba(232,208,177,0.6);
+    border-radius: 20px;
+    font-size: 0.78rem;
+    box-shadow: 0 1px 4px rgba(58,61,72,0.04);
+}
+
+.wf-summary-name { font-weight: 600; color: var(--text-primary); }
+.wf-summary-count {
+    font-weight: 800;
+    font-family: var(--font-heading);
+    font-size: 0.9rem;
+    min-width: 18px;
+    text-align: center;
+}
+
+/* ── Stage Color Dots ── */
+.wf-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+.wf-dot-order_received   { background: #3b82f6; }
+.wf-dot-waiting_supplies { background: #f59e0b; }
+.wf-dot-ready_to_press   { background: #f97316; }
+.wf-dot-pressed          { background: #ef4444; }
+.wf-dot-packaged_ready   { background: #10b981; }
+
+.wf-summary-order_received   .wf-summary-count { color: #2563eb; }
+.wf-summary-waiting_supplies .wf-summary-count { color: #d97706; }
+.wf-summary-ready_to_press   .wf-summary-count { color: #ea580c; }
+.wf-summary-pressed          .wf-summary-count { color: #dc2626; }
+.wf-summary-packaged_ready   .wf-summary-count { color: #059669; }
+
+/* ═══════════════════════
+   Desktop Kanban Board
+═══════════════════════ */
+.wf-board-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.wf-board {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(220px, 1fr));
+    gap: 0.85rem;
+    min-width: 1000px;
+}
+
+/* ── Column ── */
+.wf-col {
+    background: #fff;
+    border: 1px solid rgba(232,208,177,0.55);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(58,61,72,0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Column header accent bar */
+.wf-col-header {
+    padding: 1rem 1rem 0.75rem;
+    border-bottom: 1px solid rgba(232,208,177,0.4);
+}
+
+.wf-col-header-order_received   { border-top: 3px solid #3b82f6; }
+.wf-col-header-waiting_supplies { border-top: 3px solid #f59e0b; }
+.wf-col-header-ready_to_press   { border-top: 3px solid #f97316; }
+.wf-col-header-pressed          { border-top: 3px solid #ef4444; }
+.wf-col-header-packaged_ready   { border-top: 3px solid #10b981; }
+
+.wf-col-header-top {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.wf-col-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    flex: 1;
+    line-height: 1.3;
+}
+
+.wf-col-count {
+    font-size: 0.75rem;
+    font-weight: 800;
+    background: var(--ivory-silk);
+    color: var(--text-secondary);
+    border-radius: 10px;
+    padding: 0.1rem 0.5rem;
+    flex-shrink: 0;
+}
+
+.wf-col-desc {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* ── Cards ── */
+.wf-cards {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    flex: 1;
+    min-height: 80px;
+}
+
+.wf-card {
+    background: var(--ivory-silk);
+    border: 1px solid rgba(232,208,177,0.7);
+    border-radius: 12px;
+    padding: 0.85rem 0.9rem;
+    transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.wf-card:hover {
+    box-shadow: 0 4px 14px rgba(58,61,72,0.1);
+    transform: translateY(-1px);
+}
+
+.wf-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.3rem;
+}
+
+.wf-order-num {
+    font-family: 'Courier New', monospace;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--aged-bronze);
+    text-decoration: none;
+    transition: color 0.15s;
+}
+.wf-order-num:hover { color: var(--terra-cotta); text-decoration: underline; }
+
+.wf-due {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.12rem 0.45rem;
+    border-radius: 6px;
+    background: rgba(232,208,177,0.5);
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+.wf-due--overdue {
+    background: rgba(239,68,68,0.12);
+    color: #dc2626;
+}
+
+.wf-card-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.35rem;
+    line-height: 1.3;
+}
+
+.wf-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+    margin-bottom: 0.6rem;
+}
+
+.wf-meta-sep { opacity: 0.4; }
+
+/* Move stage select */
+.wf-move-form { margin-top: 0.1rem; }
+
+.wf-select-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.wf-select {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    padding: 0.5rem 2rem 0.5rem 0.7rem;
+    min-height: 36px;
+    background: #fff;
+    border: 1.5px solid rgba(232,208,177,0.8);
+    border-radius: 9px;
+    font-family: var(--font-primary);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.wf-select:hover,
+.wf-select:focus {
+    outline: none;
+    border-color: var(--terra-cotta);
+    color: var(--terra-cotta);
+    background: rgba(184,124,111,0.04);
+}
+
+.wf-select-arrow {
+    position: absolute;
+    right: 0.55rem;
+    pointer-events: none;
+    color: var(--text-secondary);
+}
+
+/* Packaged label */
+.wf-packaged-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #059669;
+    padding: 0.35rem 0.6rem;
+    background: rgba(16,185,129,0.08);
+    border-radius: 8px;
+    margin-top: 0.1rem;
+}
+
+/* Empty column */
+.wf-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 1.5rem 0.75rem;
+    color: var(--text-light);
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+/* ═══════════════════════
+   Mobile: hide desktop board, show accordion
+═══════════════════════ */
+.wf-mobile { display: none; }
+
+.wf-stage {
+    background: #fff;
+    border: 1px solid rgba(232,208,177,0.55);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(58,61,72,0.04);
+    margin-bottom: 0.75rem;
+}
+
+.wf-stage-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1rem 1.1rem;
+    min-height: 56px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    touch-action: manipulation;
+    transition: background 0.15s;
+}
+
+.wf-stage-header:hover { background: var(--ivory-silk); }
+.wf-stage-header--has-orders { background: var(--ivory-silk); }
+
+.wf-stage-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.wf-stage-name {
+    display: block;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.wf-stage-desc {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    line-height: 1.3;
+    margin-top: 0.1rem;
+}
+
+.wf-stage-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.wf-stage-count {
+    font-size: 0.82rem;
+    font-weight: 800;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--secondary-color);
+}
+
+.wf-count-order_received   { background: rgba(59,130,246,0.1);  color: #2563eb; }
+.wf-count-waiting_supplies { background: rgba(245,158,11,0.1);  color: #d97706; }
+.wf-count-ready_to_press   { background: rgba(249,115,22,0.1);  color: #ea580c; }
+.wf-count-pressed          { background: rgba(239,68,68,0.1);   color: #dc2626; }
+.wf-count-packaged_ready   { background: rgba(16,185,129,0.1);  color: #059669; }
+
+.wf-chevron {
+    color: var(--text-secondary);
+    transition: transform 0.25s ease;
+}
+.wf-chevron--open { transform: rotate(180deg); }
+
+/* Stage body (accordion) */
+.wf-stage-body {
+    display: none;
+    padding: 0 0.85rem 0.85rem;
+    flex-direction: column;
+    gap: 0.55rem;
+    border-top: 1px solid rgba(232,208,177,0.4);
+}
+
+.wf-stage-body--open { display: flex; }
+
+/* In the mobile body, make cards full width */
+.wf-stage-body .wf-card {
+    background: var(--ivory-silk);
+}
+
+/* ═══════════════════════
+   Responsive
+═══════════════════════ */
+@media (max-width: 768px) {
+    .wf-page-header   { flex-direction: column; align-items: flex-start; }
+    .wf-header-actions { width: 100%; }
+    .wf-header-btn    { flex: 1; justify-content: center; min-height: 48px; }
+    .wf-title         { font-size: 1.65rem; }
+
+    /* Hide desktop board, show mobile accordion */
+    .wf-board-scroll  { display: none; }
+    .wf-mobile        { display: block; }
+
+    .wf-summary { gap: 0.4rem; }
+    .wf-summary-pill { font-size: 0.72rem; padding: 0.4rem 0.75rem; }
+
+    /* Mobile card tweaks */
+    .wf-card { padding: 1rem; }
+    .wf-select { min-height: 44px; font-size: 0.85rem; padding: 0.6rem 2rem 0.6rem 0.8rem; }
+}
+
+@media (max-width: 480px) {
+    .wf-title { font-size: 1.45rem; }
+    .wf-summary-name { display: none; }
+    .wf-summary-pill { padding: 0.4rem 0.65rem; }
+}
+
+/* Landscape phone: show compact board instead of full accordion */
+@media (max-width: 900px) and (orientation: landscape) {
+    .wf-board-scroll { display: block; }
+    .wf-mobile       { display: none; }
+    .wf-board        { min-width: 800px; grid-template-columns: repeat(5, minmax(180px, 1fr)); }
+}
 </style>
+
+<script>
+function toggleStage(stageId) {
+    var body = document.getElementById('stage-body-' + stageId);
+    var btn  = document.getElementById('stage-btn-'  + stageId);
+    var chevron = btn.querySelector('.wf-chevron');
+    var isOpen = body.classList.contains('wf-stage-body--open');
+
+    if (isOpen) {
+        body.classList.remove('wf-stage-body--open');
+        chevron.classList.remove('wf-chevron--open');
+        btn.setAttribute('aria-expanded', 'false');
+    } else {
+        body.classList.add('wf-stage-body--open');
+        chevron.classList.add('wf-chevron--open');
+        btn.setAttribute('aria-expanded', 'true');
+    }
+}
+</script>
+
 {% endblock %}

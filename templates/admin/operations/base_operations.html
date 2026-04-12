@@ -4,38 +4,130 @@
     <div class="container">
         <nav class="ops-nav">
             <a href="{{ url_for('admin.index') }}" class="ops-nav-home">← Dashboard</a>
-            <a href="{{ url_for('admin.orders') }}" class="ops-nav-link">Orders</a>
-            <a href="{{ url_for('admin.production_workflow') }}" class="ops-nav-link">Workflow</a>
-            <a href="{{ url_for('admin.inventory') }}" class="ops-nav-link">Inventory</a>
-            <a href="{{ url_for('admin.vendors') }}" class="ops-nav-link">Vendors</a>
-            <a href="{{ url_for('admin.financial') }}" class="ops-nav-link">Financial</a>
-            <a href="{{ url_for('admin.growth') }}" class="ops-nav-link">Growth</a>
-            <a href="{{ url_for('admin.customers') }}" class="ops-nav-link">Customers</a>
-            <a href="{{ url_for('admin.packaging_sop') }}" class="ops-nav-link">Packaging SOP</a>
+            <a href="{{ url_for('admin.orders') }}" class="ops-nav-link {% if request.endpoint == 'admin.orders' %}ops-nav-active{% endif %}">Orders</a>
+            <a href="{{ url_for('admin.production_workflow') }}" class="ops-nav-link {% if request.endpoint == 'admin.production_workflow' %}ops-nav-active{% endif %}">Workflow</a>
+            <a href="{{ url_for('admin.inventory') }}" class="ops-nav-link {% if request.endpoint == 'admin.inventory' %}ops-nav-active{% endif %}">Inventory</a>
+            <a href="{{ url_for('admin.vendors') }}" class="ops-nav-link {% if request.endpoint == 'admin.vendors' %}ops-nav-active{% endif %}">Vendors</a>
+            <a href="{{ url_for('admin.financial') }}" class="ops-nav-link {% if request.endpoint == 'admin.financial' %}ops-nav-active{% endif %}">Financial</a>
+            <a href="{{ url_for('admin.growth') }}" class="ops-nav-link {% if request.endpoint == 'admin.growth' %}ops-nav-active{% endif %}">Growth</a>
+            <a href="{{ url_for('admin.customers') }}" class="ops-nav-link {% if request.endpoint == 'admin.customers' %}ops-nav-active{% endif %}">Customers</a>
+            <a href="{{ url_for('admin.packaging_sop') }}" class="ops-nav-link {% if request.endpoint == 'admin.packaging_sop' %}ops-nav-active{% endif %}">Packaging SOP</a>
         </nav>
         {% block ops_content %}{% endblock %}
     </div>
 </div>
 <style>
-.ops-page { padding: 2rem 0 4rem; }
-.ops-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 2rem; padding: 1rem; background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow); }
-.ops-nav-home, .ops-nav-link { padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; color: var(--text-primary); font-size: 0.9rem; }
-.ops-nav-home { color: var(--accent-color); font-weight: 600; }
-.ops-nav-link:hover { background: var(--secondary-color); color: var(--accent-color); }
-.ops-card { background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow); padding: 2rem; margin-bottom: 2rem; border: 1px solid var(--border-color); }
-.ops-card h2 { font-size: 1.25rem; margin-bottom: 1.5rem; color: var(--primary-color); border-bottom: 2px solid var(--accent-color); padding-bottom: 0.5rem; }
-.ops-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; }
-.ops-title { font-family: var(--font-heading); font-size: 2rem; margin-bottom: 0.5rem; }
-.ops-subtitle { color: var(--text-secondary); margin-bottom: 2rem; }
-.ops-form-inline { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
-.ops-form-inline input, .ops-form-inline select { padding: 0.5rem; border-radius: 8px; border: 1px solid var(--border-color); }
-.ops-form-inline input[type="text"], .ops-form-inline input[type="number"] { min-width: 80px; }
-.admin-table { width: 100%; border-collapse: collapse; }
-.admin-table th, .admin-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color); }
-.admin-table thead { background: var(--secondary-color); font-weight: 600; }
+/* ═══════════════════════
+   Operations Base Layout
+═══════════════════════ */
+.ops-page { padding: 2rem 0 5rem; }
+
+.ops-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-bottom: 2rem;
+    padding: 0.65rem 0.85rem;
+    background: #fff;
+    border: 1px solid rgba(232,208,177,0.55);
+    border-radius: 14px;
+    box-shadow: 0 2px 10px rgba(58,61,72,0.04);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+.ops-nav::-webkit-scrollbar { display: none; }
+
+.ops-nav-home,
+.ops-nav-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 0.9rem;
+    min-height: 38px;
+    border-radius: 9px;
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+    touch-action: manipulation;
+}
+
+.ops-nav-home {
+    color: var(--terra-cotta);
+    font-weight: 700;
+    font-size: 0.8rem;
+    letter-spacing: 0.02em;
+    margin-right: 0.25rem;
+    padding-right: 1.1rem;
+    border-right: 1px solid rgba(232,208,177,0.6);
+    border-radius: 0;
+}
+
+.ops-nav-link:hover  { background: var(--ivory-silk); color: var(--terra-cotta); }
+.ops-nav-active      { background: rgba(184,124,111,0.1); color: var(--terra-cotta); font-weight: 700; }
+
+/* Shared card style */
+.ops-card {
+    background: #fff;
+    border: 1px solid rgba(232,208,177,0.55);
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(58,61,72,0.05);
+    padding: 1.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.ops-card h2 {
+    font-family: var(--font-heading);
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(232,208,177,0.5);
+}
+
+/* Shared table */
+.admin-table  { width: 100%; border-collapse: collapse; }
+.admin-table th,
+.admin-table td { padding: 0.85rem 1rem; text-align: left; border-bottom: 1px solid rgba(232,208,177,0.3); font-size: 0.88rem; }
+.admin-table thead { background: linear-gradient(135deg, var(--ivory-silk) 0%, var(--cashmere-sand) 100%); }
+.admin-table th { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-secondary); white-space: nowrap; }
+.admin-table tbody tr:hover { background: var(--ivory-silk); }
+.admin-table tbody tr:last-child td { border-bottom: none; }
+
+/* Utility */
+.ops-grid  { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
 .text-muted { color: var(--text-secondary); }
-.form-inline { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
-.form-inline input, .form-inline select { padding: 0.5rem; border-radius: 8px; border: 1px solid var(--border-color); }
-.btn-sm { padding: 0.25rem 0.5rem; font-size: 0.875rem; }
+.btn-sm    { padding: 0.4rem 0.9rem; font-size: 0.82rem; min-height: 36px; }
+
+/* Inline form helpers */
+.ops-form-inline { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+.ops-form-inline input,
+.ops-form-inline select {
+    padding: 0.5rem 0.75rem;
+    border-radius: 9px;
+    border: 1.5px solid rgba(232,208,177,0.8);
+    background: var(--ivory-silk);
+    font-family: var(--font-primary);
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    min-height: 40px;
+}
+.ops-form-inline input:focus,
+.ops-form-inline select:focus {
+    outline: none;
+    border-color: var(--terra-cotta);
+    background: #fff;
+}
+
+@media (max-width: 768px) {
+    .ops-nav { padding: 0.55rem 0.75rem; }
+    .ops-nav-home,
+    .ops-nav-link { font-size: 0.78rem; padding: 0.5rem 0.75rem; min-height: 44px; }
+    .ops-card { padding: 1.25rem; }
+}
 </style>
 {% endblock %}
