@@ -117,25 +117,39 @@ def _save_design_for_user(file, user_id, title=None, design_fee=0):
 @admin_required
 def index():
     """Admin dashboard"""
+    from datetime import datetime
     # Statistics
-    total_orders = Order.query.count()
-    pending_orders = Order.query.filter(Order.status.in_(['new', 'paid'])).count()
-    in_production = Order.query.filter_by(status='in_production').count()
-    total_revenue = db.session.query(db.func.sum(Order.total)).filter(
+    total_orders    = Order.query.count()
+    pending_orders  = Order.query.filter(Order.status.in_(['new', 'paid'])).count()
+    in_production   = Order.query.filter_by(status='in_production').count()
+    ready_for_pickup = Order.query.filter_by(status='ready').count()
+    total_revenue   = db.session.query(db.func.sum(Order.total)).filter(
         Order.payment_status == 'paid'
     ).scalar() or 0
     pending_design_requests = CustomDesignRequest.query.filter_by(status='pending').count()
-    
+
     # Recent orders
-    recent_orders = Order.query.order_by(Order.created_at.desc()).limit(10).all()
-    
+    recent_orders = Order.query.order_by(Order.created_at.desc()).limit(8).all()
+
+    # Greeting
+    hour = datetime.now().hour
+    if hour < 12:
+        greeting = 'Good morning'
+    elif hour < 17:
+        greeting = 'Good afternoon'
+    else:
+        greeting = 'Good evening'
+
     return render_template('admin/dashboard.html',
                          total_orders=total_orders,
                          pending_orders=pending_orders,
                          in_production=in_production,
+                         ready_for_pickup=ready_for_pickup,
                          total_revenue=total_revenue,
                          recent_orders=recent_orders,
-                         pending_design_requests=pending_design_requests)
+                         pending_design_requests=pending_design_requests,
+                         greeting=greeting,
+                         now=datetime.now())
 
 
 # ===== ORDERS =====
