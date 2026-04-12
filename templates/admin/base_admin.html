@@ -18,9 +18,35 @@
 </div>
 <style>
 .ops-page { padding: 2rem 0 4rem; }
-.ops-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 2rem; padding: 1rem; background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow); }
-.ops-nav-home, .ops-nav-link { padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none; color: var(--text-primary); font-size: 0.9rem; }
+.ops-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 2rem;
+    padding: 0.75rem 1rem;
+    background: #fff;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.ops-nav-home, .ops-nav-link {
+    padding: 0.55rem 1rem;
+    min-height: 40px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    touch-action: manipulation;
+}
 .ops-nav-home { color: var(--accent-color); font-weight: 600; }
 .ops-nav-link:hover { background: var(--secondary-color); color: var(--accent-color); }
+@media (max-width: 768px) {
+    .ops-nav { flex-wrap: nowrap; padding: 0.6rem 0.75rem; }
+    .ops-nav-home, .ops-nav-link { font-size: 0.8rem; padding: 0.5rem 0.75rem; min-height: 44px; }
+}
 </style>
 {% endblock %}

@@ -186,19 +186,7 @@
     background: linear-gradient(180deg, #fff 0%, var(--ivory-silk) 100%);
 }
 
-.adm-alert {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    background: linear-gradient(135deg, rgba(184,124,111,0.12) 0%, rgba(127,108,80,0.08) 100%);
-    border: 1.5px solid rgba(184,124,111,0.35);
-    border-radius: 12px;
-    padding: 1rem 1.25rem;
-    margin-bottom: 2.5rem;
-    font-size: 0.92rem;
-    color: var(--text-primary);
-}
-.adm-alert svg { flex-shrink: 0; color: var(--terra-cotta); }
+/* .adm-alert now in main.css */
 .adm-alert-link {
     margin-left: auto;
     font-size: 0.8rem;
@@ -211,18 +199,7 @@
     white-space: nowrap;
 }
 
-.adm-section { margin-bottom: 3rem; }
-
-.adm-eyebrow {
-    display: block;
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--terra-cotta);
-    margin-bottom: 1.25rem;
-    font-family: var(--font-secondary);
-}
+/* .adm-section and .adm-eyebrow now in main.css */
 
 /* Stats */
 .adm-stats {
@@ -317,64 +294,7 @@
     margin: 0;
 }
 
-/* Recent Orders Table */
-.adm-table-wrap {
-    background: #fff;
-    border: 1px solid rgba(232,208,177,0.55);
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 2px 12px rgba(58,61,72,0.05);
-}
-
-.adm-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.adm-table thead {
-    background: linear-gradient(135deg, var(--ivory-silk) 0%, var(--cashmere-sand) 100%);
-}
-
-.adm-table th {
-    padding: 0.85rem 1.25rem;
-    font-size: 0.65rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    font-family: var(--font-secondary);
-    text-align: left;
-    border-bottom: 1px solid rgba(232,208,177,0.55);
-}
-
-.adm-table td {
-    padding: 1rem 1.25rem;
-    font-size: 0.9rem;
-    color: var(--text-primary);
-    border-bottom: 1px solid rgba(232,208,177,0.3);
-}
-
-.adm-table tbody tr:last-child td { border-bottom: none; }
-.adm-table tbody tr:hover { background: var(--ivory-silk); }
-
-.adm-table-empty {
-    text-align: center;
-    padding: 3rem !important;
-    color: var(--text-secondary);
-    font-style: italic;
-}
-
-.adm-view-link {
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: var(--terra-cotta);
-    text-decoration: none;
-    border-bottom: 1px solid rgba(184,124,111,0.3);
-    transition: border-color 0.2s;
-}
-.adm-view-link:hover { border-color: var(--terra-cotta); }
+/* Recent Orders Table — shared styles now in main.css (.adm-table-wrap etc.) */
 </style>
 
 {% endblock %}
