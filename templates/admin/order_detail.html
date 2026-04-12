@@ -1,32 +1,36 @@
 {% extends "admin/base_admin.html" %}
-{% block title %}Order #{{ order.order_number }} - Admin{% endblock %}
+{% block title %}Order #{{ order.order_number }} - Admin - Purposefully Made KC{% endblock %}
 
 {% block admin_content %}
 <div class="od-page">
 
-    <!-- Page Header -->
+    <!-- ── Page Header ── -->
     <div class="od-header">
         <div class="od-header-left">
             <a href="{{ url_for('admin.orders') }}" class="od-back">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
                 All Orders
             </a>
             <div>
-                <h1>Order <span class="od-number">#{{ order.order_number }}</span></h1>
+                <span class="adm-eyebrow">Admin / Orders</span>
+                <h1 class="od-title">Order <span class="od-number">#{{ order.order_number }}</span></h1>
                 <p class="od-date">Placed {{ order.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
             </div>
         </div>
-        <div class="od-header-badges">
+        <div class="od-header-right">
             <span class="od-status-badge od-status-{{ order.status }}">{{ order.status.replace('_',' ').title() }}</span>
             <span class="od-status-badge od-payment-{{ order.payment_status }}">{{ order.payment_status.title() }}</span>
             <form method="POST" action="{{ url_for('admin.delete_order', order_id=order.id) }}"
                   onsubmit="return confirm('Permanently delete order #{{ order.order_number }}? This cannot be undone.');">
-                <button type="submit" class="od-delete-btn">Delete Order</button>
+                <button type="submit" class="od-delete-btn">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                    Delete
+                </button>
             </form>
         </div>
     </div>
 
-    <!-- Top Grid: 4 info cards -->
+    <!-- ── 4-card Info Grid ── -->
     <div class="od-grid">
 
         <!-- Status -->
@@ -38,11 +42,11 @@
                     <label>Move to Stage</label>
                     <div class="od-select-wrap">
                         <select name="status" class="od-select">
-                            <option value="order_received"    {% if order.production_stage == 'order_received' or (not order.production_stage and order.status in ['new','paid']) %}selected{% endif %}>Order Received</option>
-                            <option value="waiting_supplies"  {% if order.production_stage == 'waiting_supplies' %}selected{% endif %}>Waiting on Supplies</option>
-                            <option value="ready_to_press"    {% if order.production_stage == 'ready_to_press' %}selected{% endif %}>Ready to Press</option>
-                            <option value="pressed"           {% if order.production_stage == 'pressed' %}selected{% endif %}>Pressed</option>
-                            <option value="packaged_ready"    {% if order.production_stage == 'packaged_ready' %}selected{% endif %}>Packaged &amp; Ready</option>
+                            <option value="order_received"   {% if order.production_stage == 'order_received'  or (not order.production_stage and order.status in ['new','paid']) %}selected{% endif %}>Order Received</option>
+                            <option value="waiting_supplies" {% if order.production_stage == 'waiting_supplies' %}selected{% endif %}>Waiting on Supplies</option>
+                            <option value="ready_to_press"   {% if order.production_stage == 'ready_to_press'   %}selected{% endif %}>Ready to Press</option>
+                            <option value="pressed"          {% if order.production_stage == 'pressed'          %}selected{% endif %}>Pressed</option>
+                            <option value="packaged_ready"   {% if order.production_stage == 'packaged_ready'   %}selected{% endif %}>Packaged &amp; Ready</option>
                         </select>
                         <svg class="od-select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </div>
@@ -96,15 +100,14 @@
                 <div class="od-info-row">
                     <span class="od-info-label">Address</span>
                     <span class="od-info-val">
-                        {{ order.shipping_street }},
-                        {% if order.shipping_street_2 %}{{ order.shipping_street_2 }},{% endif %}
+                        {{ order.shipping_street }}{% if order.shipping_street_2 %}, {{ order.shipping_street_2 }}{% endif %},
                         {{ order.shipping_city }}, {{ order.shipping_state }} {{ order.shipping_zip }}
                     </span>
                 </div>
                 {% if order.tracking_number %}
                 <div class="od-info-row">
                     <span class="od-info-label">Tracking</span>
-                    <span class="od-info-val">{{ order.tracking_number }}</span>
+                    <span class="od-info-val od-mono">{{ order.tracking_number }}</span>
                 </div>
                 {% endif %}
                 {% endif %}
@@ -122,7 +125,7 @@
                 </div>
                 <div class="od-info-row">
                     <span class="od-info-label">Status</span>
-                    <span class="od-pay-pill od-payment-{{ order.payment_status }}">{{ order.payment_status.title() }}</span>
+                    <span class="od-status-badge od-payment-{{ order.payment_status }}">{{ order.payment_status.title() }}</span>
                 </div>
                 {% if order.paid_at %}
                 <div class="od-info-row">
@@ -133,7 +136,7 @@
                 {% if order.payment_intent_id %}
                 <div class="od-info-row">
                     <span class="od-info-label">Stripe ID</span>
-                    <span class="od-info-val od-mono">{{ order.payment_intent_id[:20] }}...</span>
+                    <span class="od-info-val od-mono">{{ order.payment_intent_id[:20] }}…</span>
                 </div>
                 {% endif %}
             </div>
@@ -141,13 +144,13 @@
 
     </div><!-- /od-grid -->
 
-    <!-- Order Details & Profit (full width) -->
-    <div class="od-card od-card-wide">
+    <!-- ── Order Details & Profit ── -->
+    <div class="od-card od-wide">
         <div class="od-profit-layout">
             <div class="od-profit-left">
                 <span class="od-card-eyebrow">Management</span>
-                <h2 class="od-card-title">Order Details &amp; Profit</h2>
-                <p class="od-card-hint">Track cost of goods, profit margin, due date, and refund status for this order.</p>
+                <h2 class="od-card-title">Details &amp; Profit</h2>
+                <p class="od-card-hint">Track cost of goods, profit margin, due date, and refund status.</p>
             </div>
             <div class="od-profit-right">
                 <form method="POST" action="{{ url_for('admin.update_order_details', order_id=order.id) }}" class="od-profit-form">
@@ -156,9 +159,9 @@
                             <label>Order Type</label>
                             <div class="od-select-wrap">
                                 <select name="order_type" class="od-select">
-                                    <option value="retail"    {% if (order.order_type or 'retail') == 'retail' %}selected{% endif %}>Retail</option>
+                                    <option value="retail"    {% if (order.order_type or 'retail') == 'retail'    %}selected{% endif %}>Retail</option>
                                     <option value="wholesale" {% if order.order_type == 'wholesale' %}selected{% endif %}>Wholesale</option>
-                                    <option value="event"     {% if order.order_type == 'event' %}selected{% endif %}>Event</option>
+                                    <option value="event"     {% if order.order_type == 'event'     %}selected{% endif %}>Event</option>
                                 </select>
                                 <svg class="od-select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                             </div>
@@ -171,21 +174,19 @@
                     <div class="od-form-row">
                         <div class="od-field">
                             <label>Cost of Goods (COGS)</label>
-                            <div class="od-input-prefix-wrap">
-                                <span class="od-input-prefix">$</span>
-                                <input type="number" name="cost_of_goods" class="od-input od-input-has-prefix" step="0.01" min="0" value="{{ order.cost_of_goods or '' }}" placeholder="0.00">
+                            <div class="od-prefix-wrap">
+                                <span class="od-prefix">$</span>
+                                <input type="number" name="cost_of_goods" class="od-input od-input-prefixed" step="0.01" min="0" value="{{ order.cost_of_goods or '' }}" placeholder="0.00">
                             </div>
                         </div>
                         <div class="od-field">
                             <label>Profit Override</label>
-                            <div class="od-input-prefix-wrap">
-                                <span class="od-input-prefix">$</span>
-                                <input type="number" name="profit" class="od-input od-input-has-prefix" step="0.01" value="{{ order.profit or '' }}" placeholder="Auto from COGS">
+                            <div class="od-prefix-wrap">
+                                <span class="od-prefix">$</span>
+                                <input type="number" name="profit" class="od-input od-input-prefixed" step="0.01" value="{{ order.profit or '' }}" placeholder="Auto from COGS">
                             </div>
                         </div>
                     </div>
-
-                    <!-- Refund Row -->
                     <div class="od-refund-row">
                         <label class="od-checkbox-label">
                             <input type="checkbox" name="is_refunded" {% if order.is_refunded %}checked{% endif %}>
@@ -195,9 +196,8 @@
                     </div>
                     <div class="od-field">
                         <label>Refund Notes</label>
-                        <textarea name="refund_notes" class="od-textarea" rows="2" placeholder="Optional notes about this refund...">{{ order.refund_notes or '' }}</textarea>
+                        <textarea name="refund_notes" class="od-textarea" rows="2" placeholder="Optional notes about this refund…">{{ order.refund_notes or '' }}</textarea>
                     </div>
-
                     <div class="od-profit-actions">
                         <button type="submit" class="od-btn">Save Changes</button>
                         {% if order.profit is not none %}
@@ -212,64 +212,71 @@
         </div>
     </div>
 
-    <!-- Order Items -->
-    <div class="od-card od-card-wide od-items-card">
+    <!-- ── Order Items ── -->
+    <div class="od-card od-wide od-items-card">
         <span class="od-card-eyebrow">Line Items</span>
         <h2 class="od-card-title">Order Items</h2>
-        <div class="od-table-wrap">
-            <table class="od-table">
-                <thead>
-                    <tr>
-                        <th>Design</th>
-                        <th>Product</th>
-                        <th>Style</th>
-                        <th>Color</th>
-                        <th>Size</th>
-                        <th>Print</th>
-                        <th>Design File</th>
-                        <th>Back</th>
-                        <th>Width</th>
-                        <th>Placement</th>
-                        <th>Qty</th>
-                        <th>Price</th>
-                        <th>Subtotal</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in order.items %}
-                    <tr>
-                        <td>
-                            {% if item.design %}
-                            <a href="{{ url_for('static', filename=item.design.file_path) }}" target="_blank" class="od-thumb-link">
-                                <img src="{{ url_for('static', filename=item.design.file_path) }}" alt="Design" class="od-thumb">
-                            </a>
-                            {% elif item.proof_image %}
-                            <a href="{{ url_for('static', filename=item.proof_image) }}" target="_blank" class="od-thumb-link">
-                                <img src="{{ url_for('static', filename=item.proof_image) }}" alt="Proof" class="od-thumb">
-                            </a>
-                            {% else %}
-                            <span class="od-none">None</span>
-                            {% endif %}
-                        </td>
-                        <td class="od-product-name">{{ item.product_name }}</td>
-                        <td class="od-mono">{{ item.style_number }}</td>
-                        <td>{{ item.color }}</td>
-                        <td><span class="od-size-pill">{{ item.size }}</span></td>
-                        <td>{{ item.print_type or 'DTF' }}</td>
-                        <td class="od-file-name">{{ item.design_file_name or (item.design.filename if item.design else 'None') }}</td>
-                        <td class="od-file-name">{{ item.back_design_file_name or 'None' }}</td>
-                        <td>
-                            {% set pw = get_display_print_width(item) if get_display_print_width else (item.print_width or (get_print_width(item.size, item.product) if get_print_width else none)) %}
-                            {% if pw %}{{ "%.2f"|format(pw) }}"{% else %}N/A{% endif %}
-                        </td>
-                        <td>{{ item.placement or 'N/A' }}</td>
-                        <td class="od-qty">{{ item.quantity }}</td>
-                        <td>${{ "%.2f"|format(item.unit_price) }}</td>
-                        <td class="od-subtotal">${{ "%.2f"|format(item.subtotal) }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+
+        <div class="od-table-scroll-wrap">
+            <div class="od-scroll-hint">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><polyline points="12 5 19 12 12 19"/></svg>
+                Scroll to see all columns
+            </div>
+            <div class="od-table-wrap">
+                <table class="od-table">
+                    <thead>
+                        <tr>
+                            <th>Design</th>
+                            <th>Product</th>
+                            <th>Style</th>
+                            <th>Color</th>
+                            <th>Size</th>
+                            <th>Print</th>
+                            <th>Design File</th>
+                            <th>Back File</th>
+                            <th>Width</th>
+                            <th>Placement</th>
+                            <th class="od-center">Qty</th>
+                            <th>Price</th>
+                            <th>Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in order.items %}
+                        <tr>
+                            <td>
+                                {% if item.design %}
+                                <a href="{{ url_for('static', filename=item.design.file_path) }}" target="_blank" class="od-thumb-link">
+                                    <img src="{{ url_for('static', filename=item.design.file_path) }}" alt="Design" class="od-thumb">
+                                </a>
+                                {% elif item.proof_image %}
+                                <a href="{{ url_for('static', filename=item.proof_image) }}" target="_blank" class="od-thumb-link">
+                                    <img src="{{ url_for('static', filename=item.proof_image) }}" alt="Proof" class="od-thumb">
+                                </a>
+                                {% else %}
+                                <span class="od-none">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="od-product-name">{{ item.product_name }}</td>
+                            <td class="od-mono">{{ item.style_number }}</td>
+                            <td>{{ item.color }}</td>
+                            <td><span class="od-size-pill">{{ item.size }}</span></td>
+                            <td>{{ item.print_type or 'DTF' }}</td>
+                            <td class="od-file-name">{{ item.design_file_name or (item.design.filename if item.design else '—') }}</td>
+                            <td class="od-file-name">{{ item.back_design_file_name or '—' }}</td>
+                            <td>
+                                {% set pw = get_display_print_width(item) if get_display_print_width else (item.print_width or (get_print_width(item.size, item.product) if get_print_width else none)) %}
+                                {% if pw %}{{ "%.2f"|format(pw) }}"{% else %}N/A{% endif %}
+                            </td>
+                            <td>{{ item.placement or 'N/A' }}</td>
+                            <td class="od-center od-qty">{{ item.quantity }}</td>
+                            <td>${{ "%.2f"|format(item.unit_price) }}</td>
+                            <td class="od-subtotal">${{ "%.2f"|format(item.subtotal) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <!-- Totals -->
@@ -297,8 +304,11 @@
 
 </div><!-- /od-page -->
 
+
 <style>
-/* ── Page ── */
+/* ═══════════════════════
+   Order Detail Page
+═══════════════════════ */
 .od-page { padding: 2rem 0 5rem; }
 
 /* ── Header ── */
@@ -306,64 +316,98 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    margin-bottom: 2rem;
     gap: 1rem;
+    margin-bottom: 2rem;
     flex-wrap: wrap;
 }
-.od-header-left { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.od-header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    min-width: 0;
+}
+
 .od-back {
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
-    font-size: 0.8rem;
-    font-weight: 600;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
     color: var(--text-secondary);
     text-decoration: none;
-    letter-spacing: 0.04em;
     transition: color 0.2s;
 }
-.od-back:hover { color: var(--accent-color); }
-.od-header h1 { font-size: 1.75rem; margin: 0; }
-.od-number { color: var(--accent-color); }
-.od-date { font-size: 0.85rem; color: var(--text-secondary); margin: 0.2rem 0 0; }
-.od-header-badges { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; padding-top: 0.25rem; }
-.od-delete-btn {
-    background: none;
-    border: 1.5px solid rgba(180,60,60,0.35);
-    border-radius: 8px;
-    color: #b43c3c;
-    font-size: 0.75rem;
+.od-back:hover { color: var(--terra-cotta); }
+
+.od-title {
+    font-family: var(--font-heading);
+    font-size: 1.9rem;
     font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    padding: 0.4rem 0.9rem;
-    cursor: pointer;
-    transition: background 0.2s, border-color 0.2s;
-    font-family: var(--font-secondary);
+    margin: 0.2rem 0 0.25rem;
+    line-height: 1.1;
 }
-.od-delete-btn:hover { background: rgba(180,60,60,0.08); border-color: #b43c3c; }
+
+.od-number { color: var(--terra-cotta); }
+.od-date { font-size: 0.85rem; color: var(--text-secondary); margin: 0; }
+
+.od-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding-top: 0.5rem;
+    flex-shrink: 0;
+}
 
 /* ── Status Badges ── */
-.od-status-badge, .od-pay-pill {
-    display: inline-block;
+.od-status-badge {
+    display: inline-flex;
+    align-items: center;
     padding: 0.3rem 0.8rem;
     border-radius: 20px;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 700;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
+    white-space: nowrap;
 }
-.od-status-new, .od-status-paid { background: rgba(59,130,246,0.1); color: #3b82f6; }
-.od-status-in_production { background: rgba(245,158,11,0.1); color: #d97706; }
-.od-status-ready, .od-status-completed, .od-status-picked_up, .od-status-shipped { background: rgba(16,185,129,0.1); color: #059669; }
-.od-payment-paid { background: rgba(16,185,129,0.1); color: #059669; }
+.od-status-new, .od-status-paid       { background: rgba(59,130,246,0.1);  color: #2563eb; }
+.od-status-in_production              { background: rgba(245,158,11,0.1);  color: #d97706; }
+.od-status-ready, .od-status-completed,
+.od-status-picked_up, .od-status-shipped { background: rgba(16,185,129,0.1); color: #059669; }
+.od-payment-paid                      { background: rgba(16,185,129,0.1);  color: #059669; }
 .od-payment-pending, .od-payment-unpaid { background: rgba(245,158,11,0.1); color: #d97706; }
-.od-payment-refunded, .od-payment-failed { background: rgba(184,124,111,0.1); color: var(--accent-color); }
+.od-payment-refunded, .od-payment-failed { background: rgba(184,124,111,0.12); color: var(--terra-cotta); }
 
-/* ── Grid ── */
+/* ── Delete btn ── */
+.od-delete-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: none;
+    border: 1.5px solid rgba(180,60,60,0.3);
+    border-radius: 10px;
+    color: #b43c3c;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0.45rem 0.9rem;
+    min-height: 36px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: var(--font-primary);
+    touch-action: manipulation;
+}
+.od-delete-btn:hover { background: rgba(180,60,60,0.07); border-color: #b43c3c; }
+
+/* ── 4-card Grid ── */
 .od-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 1.25rem;
     margin-bottom: 1.25rem;
 }
@@ -372,11 +416,12 @@
 .od-card {
     background: #fff;
     border: 1px solid rgba(232, 208, 177, 0.6);
-    border-radius: 14px;
+    border-radius: 16px;
     padding: 1.75rem;
     box-shadow: 0 2px 12px rgba(58,61,72,0.05);
 }
-.od-card-wide { margin-bottom: 1.25rem; }
+
+.od-wide { margin-bottom: 1.25rem; }
 
 .od-card-eyebrow {
     display: block;
@@ -384,202 +429,294 @@
     font-weight: 700;
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    color: var(--accent-color);
-    margin-bottom: 0.3rem;
+    color: var(--terra-cotta);
+    margin-bottom: 0.25rem;
 }
+
 .od-card-title {
     font-family: var(--font-heading);
-    font-size: 1.15rem;
+    font-size: 1.1rem;
+    font-weight: 700;
     color: var(--text-primary);
     margin: 0 0 1.25rem;
 }
+
 .od-card-hint {
-    font-size: 0.85rem;
+    font-size: 0.83rem;
     color: var(--text-secondary);
-    line-height: 1.7;
-    margin: 0.25rem 0 0;
+    line-height: 1.65;
+    margin: 0.2rem 0 0;
 }
 
-/* ── Info Rows ── */
-.od-info-rows { display: flex; flex-direction: column; gap: 0.75rem; }
-.od-info-row { display: flex; flex-direction: column; gap: 0.1rem; }
+/* ── Info rows ── */
+.od-info-rows { display: flex; flex-direction: column; gap: 0.85rem; }
+.od-info-row  { display: flex; flex-direction: column; gap: 0.1rem; }
+
 .od-info-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.od-info-val  { font-size: 0.88rem; color: var(--text-primary); font-weight: 500; }
+.od-link      { color: var(--terra-cotta); text-decoration: none; }
+.od-link:hover { text-decoration: underline; }
+.od-mono      { font-family: 'Courier New', monospace; font-size: 0.82rem; }
+
+/* ── Fields ── */
+.od-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+}
+
+.od-field label {
     font-size: 0.65rem;
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--text-secondary);
 }
-.od-info-val { font-size: 0.9rem; color: var(--text-primary); font-weight: 500; }
-.od-link { color: var(--accent-color); text-decoration: none; }
-.od-link:hover { text-decoration: underline; }
-.od-mono { font-family: monospace; font-size: 0.8rem; }
 
-/* ── Form Fields ── */
-.od-field { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
-.od-field label {
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-}
 .od-select-wrap { position: relative; }
+
 .od-select {
     appearance: none;
     -webkit-appearance: none;
     width: 100%;
-    padding: 0.7rem 2.2rem 0.7rem 0.9rem;
+    padding: 0.75rem 2.25rem 0.75rem 0.9rem;
+    min-height: 48px;
     background: var(--ivory-silk);
     border: 1.5px solid transparent;
     border-radius: 10px;
     font-family: var(--font-primary);
-    font-size: 0.88rem;
+    font-size: 0.9rem;
     color: var(--text-primary);
     cursor: pointer;
+    touch-action: manipulation;
     transition: border-color 0.2s, background 0.2s;
 }
-.od-select:focus { outline: none; background: #fff; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(184,124,111,0.1); }
-.od-select-arrow { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--accent-color); opacity: 0.7; }
+.od-select:focus { outline: none; background: #fff; border-color: var(--terra-cotta); box-shadow: 0 0 0 3px rgba(184,124,111,0.12); }
+.od-select-arrow { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--terra-cotta); opacity: 0.7; }
 
 .od-input {
     width: 100%;
-    padding: 0.7rem 0.9rem;
+    padding: 0.75rem 0.9rem;
+    min-height: 48px;
     background: var(--ivory-silk);
     border: 1.5px solid transparent;
     border-radius: 10px;
     font-family: var(--font-primary);
-    font-size: 0.88rem;
+    font-size: 0.9rem;
     color: var(--text-primary);
     transition: border-color 0.2s, background 0.2s;
 }
-.od-input:focus { outline: none; background: #fff; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(184,124,111,0.1); }
+.od-input:focus { outline: none; background: #fff; border-color: var(--terra-cotta); box-shadow: 0 0 0 3px rgba(184,124,111,0.12); }
+
 .od-textarea {
     width: 100%;
-    padding: 0.7rem 0.9rem;
+    padding: 0.75rem 0.9rem;
     background: var(--ivory-silk);
     border: 1.5px solid transparent;
     border-radius: 10px;
     font-family: var(--font-primary);
-    font-size: 0.88rem;
+    font-size: 0.9rem;
     color: var(--text-primary);
     resize: vertical;
+    min-height: 72px;
     transition: border-color 0.2s, background 0.2s;
 }
-.od-textarea:focus { outline: none; background: #fff; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(184,124,111,0.1); }
+.od-textarea:focus { outline: none; background: #fff; border-color: var(--terra-cotta); box-shadow: 0 0 0 3px rgba(184,124,111,0.12); }
 
-.od-input-prefix-wrap { position: relative; display: flex; align-items: center; }
-.od-input-prefix { position: absolute; left: 0.9rem; color: var(--text-secondary); font-size: 0.88rem; pointer-events: none; }
-.od-input-has-prefix { padding-left: 1.7rem; }
+.od-prefix-wrap { position: relative; display: flex; align-items: center; }
+.od-prefix { position: absolute; left: 0.9rem; color: var(--text-secondary); font-size: 0.9rem; pointer-events: none; z-index: 1; }
+.od-input-prefixed { padding-left: 1.75rem; }
 
 /* ── Checkbox ── */
 .od-refund-row { margin-bottom: 1rem; }
 .od-checkbox-label {
     display: inline-flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.65rem;
     cursor: pointer;
-    font-size: 0.88rem;
-    color: var(--text-primary);
+    font-size: 0.9rem;
     font-weight: 500;
+    color: var(--text-primary);
+    min-height: 44px;
+    touch-action: manipulation;
 }
 .od-checkbox-label input[type="checkbox"] { display: none; }
 .od-checkbox-custom {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     border: 2px solid var(--border-color);
-    border-radius: 5px;
+    border-radius: 6px;
     background: var(--ivory-silk);
     flex-shrink: 0;
     position: relative;
     transition: border-color 0.2s, background 0.2s;
 }
 .od-checkbox-label input:checked + .od-checkbox-custom {
-    background: var(--accent-color);
-    border-color: var(--accent-color);
+    background: var(--terra-cotta);
+    border-color: var(--terra-cotta);
 }
 .od-checkbox-label input:checked + .od-checkbox-custom::after {
     content: '';
     position: absolute;
-    left: 4px;
-    top: 1px;
+    left: 5px;
+    top: 2px;
     width: 6px;
-    height: 9px;
+    height: 10px;
     border: 2px solid #fff;
     border-top: none;
     border-left: none;
     transform: rotate(45deg);
 }
 
-/* ── Profit Layout ── */
+/* ── Profit layout ── */
 .od-profit-layout {
     display: grid;
     grid-template-columns: 1fr 2fr;
     gap: 3rem;
     align-items: start;
 }
-.od-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-.od-profit-actions { display: flex; align-items: center; gap: 1.5rem; margin-top: 0.5rem; flex-wrap: wrap; }
+
+.od-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+}
+
+.od-profit-actions {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+}
+
 .od-profit-stat {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
+    align-items: flex-start;
     gap: 0.1rem;
 }
-.od-profit-label { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-secondary); }
-.od-profit-value { font-family: var(--font-heading); font-size: 1.5rem; font-weight: 700; }
-.od-profit-pos { color: #059669; }
-.od-profit-neg { color: var(--accent-color); }
 
-/* ── Button ── */
+.od-profit-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.od-profit-value {
+    font-family: var(--font-heading);
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.od-profit-pos { color: #059669; }
+.od-profit-neg { color: var(--terra-cotta); }
+
+/* ── Primary button ── */
 .od-btn {
     display: inline-flex;
     align-items: center;
-    padding: 0.7rem 1.5rem;
-    background: var(--accent-color);
+    justify-content: center;
+    padding: 0.75rem 1.5rem;
+    min-height: 48px;
+    background: linear-gradient(135deg, var(--terra-cotta) 0%, var(--aged-bronze) 100%);
     color: #fff;
     border: none;
     border-radius: 10px;
     font-family: var(--font-primary);
-    font-size: 0.85rem;
+    font-size: 0.88rem;
     font-weight: 600;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.03em;
     cursor: pointer;
-    transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+    touch-action: manipulation;
+    transition: box-shadow 0.2s, transform 0.2s;
     white-space: nowrap;
 }
-.od-btn:hover { background: var(--aged-bronze); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(184,124,111,0.3); }
+.od-btn:hover { box-shadow: 0 4px 16px rgba(184,124,111,0.35); transform: translateY(-1px); }
 
 /* ── Items Table ── */
-.od-items-card .od-card-title { margin-bottom: 1.5rem; }
-.od-table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid rgba(232,208,177,0.5); }
-.od-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-.od-table thead { background: var(--ivory-silk); }
+.od-items-card .od-card-title { margin-bottom: 1.25rem; }
+
+.od-table-scroll-wrap { position: relative; }
+
+.od-scroll-hint {
+    display: none;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    background: rgba(232,208,177,0.25);
+    border-radius: 6px;
+    width: fit-content;
+}
+
+.od-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+    border: 1px solid rgba(232,208,177,0.5);
+}
+
+.od-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    min-width: 900px;
+}
+
+.od-table thead { background: linear-gradient(135deg, var(--ivory-silk) 0%, var(--cashmere-sand) 100%); }
+
 .od-table th {
     padding: 0.75rem 0.9rem;
     text-align: left;
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--text-secondary);
     border-bottom: 1px solid rgba(232,208,177,0.5);
     white-space: nowrap;
 }
+
 .od-table td {
     padding: 0.85rem 0.9rem;
     border-bottom: 1px solid rgba(232,208,177,0.3);
     vertical-align: middle;
     color: var(--text-primary);
 }
+
 .od-table tbody tr:last-child td { border-bottom: none; }
-.od-table tbody tr:hover { background: rgba(245,240,225,0.4); }
-.od-product-name { font-weight: 600; max-width: 160px; }
-.od-file-name { font-size: 0.78rem; color: var(--text-secondary); max-width: 120px; word-break: break-all; }
-.od-qty { text-align: center; font-weight: 700; }
-.od-subtotal { font-weight: 700; }
-.od-none { font-size: 0.78rem; color: var(--text-light); }
-.od-size-pill { display: inline-block; padding: 0.15rem 0.5rem; background: var(--ivory-silk); border-radius: 6px; font-size: 0.78rem; font-weight: 600; }
+.od-table tbody tr:hover { background: rgba(245,240,225,0.5); }
+
+.od-product-name { font-weight: 600; min-width: 140px; }
+.od-file-name    { font-size: 0.76rem; color: var(--text-secondary); max-width: 110px; word-break: break-all; }
+.od-center       { text-align: center; }
+.od-qty          { font-weight: 700; }
+.od-subtotal     { font-weight: 700; white-space: nowrap; }
+.od-none         { font-size: 0.76rem; color: var(--text-light); }
+
+.od-size-pill {
+    display: inline-block;
+    padding: 0.18rem 0.55rem;
+    background: var(--ivory-silk);
+    border: 1px solid rgba(232,208,177,0.6);
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
 
 .od-thumb {
     width: 52px;
@@ -589,21 +726,32 @@
     border: 1px solid rgba(232,208,177,0.5);
     background: var(--ivory-silk);
     transition: transform 0.2s;
+    display: block;
 }
-.od-thumb-link:hover .od-thumb { transform: scale(1.1); border-color: var(--accent-color); }
+.od-thumb-link:hover .od-thumb { transform: scale(1.1); border-color: var(--terra-cotta); }
 
 /* ── Totals ── */
 .od-totals {
     margin-top: 1.5rem;
     padding-top: 1.5rem;
     border-top: 1px solid rgba(232,208,177,0.6);
-    max-width: 320px;
+    max-width: 300px;
     margin-left: auto;
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0.35rem;
 }
-.od-total-row { display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-secondary); padding: 0.25rem 0; }
+
+.od-total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    padding: 0.2rem 0;
+}
+
 .od-grand-total {
     font-size: 1.1rem;
     color: var(--text-primary);
@@ -612,14 +760,30 @@
     padding-top: 0.75rem;
 }
 
-/* ── Mobile ── */
+/* ═══════════════════════
+   Responsive
+═══════════════════════ */
 @media (max-width: 900px) {
     .od-profit-layout { grid-template-columns: 1fr; gap: 1.5rem; }
+    .od-scroll-hint { display: flex; }
 }
-@media (max-width: 600px) {
-    .od-form-row { grid-template-columns: 1fr; }
-    .od-grid { grid-template-columns: 1fr; }
+
+@media (max-width: 768px) {
+    .od-title { font-size: 1.5rem; }
+    .od-header { flex-direction: column; }
+    .od-header-right { width: 100%; justify-content: flex-start; }
+    .od-delete-btn { min-height: 44px; }
     .od-card { padding: 1.25rem; }
 }
+
+@media (max-width: 600px) {
+    .od-grid { grid-template-columns: 1fr; }
+    .od-form-row { grid-template-columns: 1fr; }
+    .od-profit-actions { flex-direction: column; align-items: flex-start; gap: 1rem; }
+    .od-profit-stat { align-items: flex-start; }
+    .od-totals { max-width: 100%; }
+    .od-btn { width: 100%; }
+}
 </style>
+
 {% endblock %}

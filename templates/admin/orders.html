@@ -3,352 +3,489 @@
 {% block title %}Orders - Admin - Purposefully Made KC{% endblock %}
 
 {% block admin_content %}
-<div class="orders-page">
 
-    <!-- Page Header -->
-    <div class="orders-header">
-        <div class="orders-header-left">
-            <h1>Orders</h1>
-            <span class="orders-count">{{ orders.total }} total</span>
-        </div>
-        <div class="orders-header-actions">
-            <a href="{{ url_for('admin.production_master', collection=request.args.get('collection')) }}" class="btn btn-primary btn-sm">Production Master</a>
-            <a href="{{ url_for('admin.print_labels') }}" class="btn btn-outline btn-sm">Print Labels</a>
-        </div>
+{% set _status = request.args.get('status') %}
+{% set _order_type = request.args.get('order_type') %}
+{% set _collection = request.args.get('collection') %}
+
+<!-- Page Header -->
+<div class="ord-page-header">
+    <div>
+        <span class="adm-eyebrow">Admin / Operations</span>
+        <h1 class="ord-title">Orders</h1>
+        <p class="ord-lead">
+            {% if orders.total == 1 %}1 order{% else %}{{ orders.total }} orders{% endif %}
+            {% if _status and _status != 'all' %}&nbsp;&mdash; filtered by <strong>{{ _status.replace('_',' ').title() }}</strong>{% endif %}
+        </p>
     </div>
-
-    <!-- Filters -->
-    {% set _status = request.args.get('status') %}
-    {% set _order_type = request.args.get('order_type') %}
-    {% set _collection = request.args.get('collection') %}
-
-    <div class="orders-filters">
-        <div class="filter-group">
-            <span class="filter-label">Status</span>
-            <div class="filter-chips">
-                <a href="{{ url_for('admin.orders', status='all', order_type=_order_type, collection=_collection) }}" class="chip {% if _status == 'all' %}chip-active{% endif %}">All</a>
-                <a href="{{ url_for('admin.orders', status='new', order_type=_order_type, collection=_collection) }}" class="chip {% if _status == 'new' %}chip-active{% endif %}">New</a>
-                <a href="{{ url_for('admin.orders', status='paid', order_type=_order_type, collection=_collection) }}" class="chip {% if _status == 'paid' %}chip-active{% endif %}">Paid</a>
-                <a href="{{ url_for('admin.orders', status='in_production', order_type=_order_type, collection=_collection) }}" class="chip {% if _status == 'in_production' %}chip-active{% endif %}">In Production</a>
-                <a href="{{ url_for('admin.orders', status='ready', order_type=_order_type, collection=_collection) }}" class="chip {% if _status == 'ready' %}chip-active{% endif %}">Ready</a>
-                <a href="{{ url_for('admin.orders', status='completed', order_type=_order_type, collection=_collection) }}" class="chip {% if _status == 'completed' %}chip-active{% endif %}">Completed</a>
-                <a href="{{ url_for('admin.orders_completed') }}" class="chip chip-muted">All Completed</a>
-            </div>
-        </div>
-        <div class="filter-group">
-            <span class="filter-label">Type</span>
-            <div class="filter-chips">
-                <a href="{{ url_for('admin.orders', status=_status, order_type='retail', collection=_collection) }}" class="chip {% if _order_type == 'retail' or (not _order_type) %}chip-active{% endif %}">Retail</a>
-                <a href="{{ url_for('admin.orders', status=_status, order_type='wholesale', collection=_collection) }}" class="chip {% if _order_type == 'wholesale' %}chip-active{% endif %}">Wholesale</a>
-                <a href="{{ url_for('admin.orders', status=_status, order_type='event', collection=_collection) }}" class="chip {% if _order_type == 'event' %}chip-active{% endif %}">Event</a>
-            </div>
-        </div>
+    <div class="ord-header-actions">
+        <a href="{{ url_for('admin.production_master', collection=request.args.get('collection')) }}" class="btn btn-primary ord-action-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Production Master
+        </a>
+        <a href="{{ url_for('admin.print_labels') }}" class="btn btn-outline ord-action-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Print Labels
+        </a>
     </div>
-
-    <!-- Orders Table (desktop) / Cards (mobile) -->
-    {% if orders.items %}
-    <div class="orders-table-wrap">
-        <table class="orders-table">
-            <thead>
-                <tr>
-                    <th>Order #</th>
-                    <th>Customer</th>
-                    <th class="hide-sm">Email</th>
-                    <th>Items</th>
-                    <th>Total</th>
-                    <th>Status</th>
-                    <th class="hide-sm">Type</th>
-                    <th class="hide-sm">Date</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for order in orders.items %}
-                <tr>
-                    <td><strong>{{ order.order_number }}</strong></td>
-                    <td>{{ order.full_name }}</td>
-                    <td class="hide-sm text-muted">{{ order.email }}</td>
-                    <td class="text-center">{{ order.items.count() }}</td>
-                    <td><strong>${{ "%.2f"|format(order.total) }}</strong></td>
-                    <td><span class="badge badge-{{ order.production_stage or order.status }}">{{ {'order_received':'Order Received','waiting_supplies':'Waiting on Supplies','ready_to_press':'Ready to Press','pressed':'Pressed','packaged_ready':'Packaged & Ready'}.get(order.production_stage, order.status.replace('_',' ').title()) }}</span></td>
-                    <td class="hide-sm"><span class="type-label">{{ (order.order_type or 'retail').title() }}</span></td>
-                    <td class="hide-sm text-muted">{{ order.created_at.strftime('%b %d, %Y') }}</td>
-                    <td><a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="btn-view">View</a></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Pagination -->
-    {% if orders.has_prev or orders.has_next %}
-    <div class="orders-pagination">
-        {% if orders.has_prev %}
-        <a href="{{ url_for('admin.orders', page=orders.prev_num, status=_status, order_type=_order_type, collection=_collection) }}" class="btn btn-outline btn-sm">Previous</a>
-        {% endif %}
-        <span class="pagination-info">Page {{ orders.page }} of {{ orders.pages }}</span>
-        {% if orders.has_next %}
-        <a href="{{ url_for('admin.orders', page=orders.next_num, status=_status, order_type=_order_type, collection=_collection) }}" class="btn btn-outline btn-sm">Next</a>
-        {% endif %}
-    </div>
-    {% endif %}
-
-    {% else %}
-    <!-- Empty State -->
-    <div class="orders-empty">
-        <div class="orders-empty-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3">
-                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"></path>
-                <rect x="9" y="3" width="6" height="4" rx="1"></rect>
-            </svg>
-        </div>
-        <p class="orders-empty-title">No orders found</p>
-        {% if _status == 'new' %}
-        <p class="orders-empty-hint">New orders appear here after checkout. Try <a href="{{ url_for('admin.orders', status='all') }}">All</a> to see every order.</p>
-        {% endif %}
-        <div class="orders-empty-actions">
-            <a href="{{ url_for('admin.production_master') }}" class="btn btn-primary">Production Master</a>
-            <p class="orders-empty-cta-hint">Master copy of blanks and designs to order everything at once</p>
-        </div>
-    </div>
-    {% endif %}
-
 </div>
 
+<!-- Filters -->
+<div class="ord-filters">
+    <div class="ord-filter-row">
+        <span class="ord-filter-label">Status</span>
+        <div class="ord-chips">
+            <a href="{{ url_for('admin.orders', status='all', order_type=_order_type, collection=_collection) }}"
+               class="ord-chip {% if _status == 'all' or not _status %}ord-chip--active{% endif %}">All</a>
+            <a href="{{ url_for('admin.orders', status='new', order_type=_order_type, collection=_collection) }}"
+               class="ord-chip {% if _status == 'new' %}ord-chip--active{% endif %}">New</a>
+            <a href="{{ url_for('admin.orders', status='paid', order_type=_order_type, collection=_collection) }}"
+               class="ord-chip {% if _status == 'paid' %}ord-chip--active{% endif %}">Paid</a>
+            <a href="{{ url_for('admin.orders', status='in_production', order_type=_order_type, collection=_collection) }}"
+               class="ord-chip {% if _status == 'in_production' %}ord-chip--active{% endif %}">In Production</a>
+            <a href="{{ url_for('admin.orders', status='ready', order_type=_order_type, collection=_collection) }}"
+               class="ord-chip {% if _status == 'ready' %}ord-chip--active{% endif %}">Ready</a>
+            <a href="{{ url_for('admin.orders', status='completed', order_type=_order_type, collection=_collection) }}"
+               class="ord-chip {% if _status == 'completed' %}ord-chip--active{% endif %}">Completed</a>
+            <a href="{{ url_for('admin.orders_completed') }}" class="ord-chip ord-chip--muted">All Completed</a>
+        </div>
+    </div>
+    <div class="ord-filter-row">
+        <span class="ord-filter-label">Type</span>
+        <div class="ord-chips">
+            <a href="{{ url_for('admin.orders', status=_status, order_type='retail', collection=_collection) }}"
+               class="ord-chip {% if _order_type == 'retail' or not _order_type %}ord-chip--active{% endif %}">Retail</a>
+            <a href="{{ url_for('admin.orders', status=_status, order_type='wholesale', collection=_collection) }}"
+               class="ord-chip {% if _order_type == 'wholesale' %}ord-chip--active{% endif %}">Wholesale</a>
+            <a href="{{ url_for('admin.orders', status=_status, order_type='event', collection=_collection) }}"
+               class="ord-chip {% if _order_type == 'event' %}ord-chip--active{% endif %}">Event</a>
+        </div>
+    </div>
+</div>
+
+{% if orders.items %}
+
+<!-- Desktop Table -->
+<div class="adm-table-wrap ord-table-only">
+    <table class="adm-table">
+        <thead>
+            <tr>
+                <th>Order #</th>
+                <th>Customer</th>
+                <th>Email</th>
+                <th>Items</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Type</th>
+                <th>Date</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders.items %}
+            {% set stage_labels = {'order_received':'Order Received','waiting_supplies':'Waiting on Supplies','ready_to_press':'Ready to Press','pressed':'Pressed','packaged_ready':'Packaged & Ready'} %}
+            {% set stage_label = stage_labels.get(order.production_stage, order.status.replace('_',' ').title()) %}
+            {% set stage_key = order.production_stage or order.status %}
+            <tr onclick="window.location='{{ url_for('admin.order_detail', order_id=order.id) }}'" style="cursor:pointer;">
+                <td><strong class="ord-num">{{ order.order_number }}</strong></td>
+                <td class="ord-name">{{ order.full_name }}</td>
+                <td class="ord-email">{{ order.email }}</td>
+                <td class="ord-center">{{ order.items.count() }}</td>
+                <td><strong>${{ "%.2f"|format(order.total) }}</strong></td>
+                <td><span class="ord-badge ord-badge--{{ stage_key }}">{{ stage_label }}</span></td>
+                <td><span class="ord-type">{{ (order.order_type or 'retail').title() }}</span></td>
+                <td class="ord-date">{{ order.created_at.strftime('%b %d') }}</td>
+                <td><a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="adm-view-link" onclick="event.stopPropagation()">View</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Mobile Card List -->
+<div class="ord-card-list">
+    {% for order in orders.items %}
+    {% set stage_labels = {'order_received':'Order Received','waiting_supplies':'Waiting on Supplies','ready_to_press':'Ready to Press','pressed':'Pressed','packaged_ready':'Packaged & Ready'} %}
+    {% set stage_label = stage_labels.get(order.production_stage, order.status.replace('_',' ').title()) %}
+    {% set stage_key = order.production_stage or order.status %}
+    <a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="ord-card">
+        <div class="ord-card-top">
+            <div class="ord-card-num-row">
+                <strong class="ord-num">#{{ order.order_number }}</strong>
+                <span class="ord-badge ord-badge--{{ stage_key }}">{{ stage_label }}</span>
+            </div>
+            <p class="ord-card-name">{{ order.full_name }}</p>
+            <p class="ord-card-email">{{ order.email }}</p>
+        </div>
+        <div class="ord-card-footer">
+            <div class="ord-card-meta">
+                <span>{{ order.items.count() }} item{% if order.items.count() != 1 %}s{% endif %}</span>
+                <span class="ord-card-sep">&bull;</span>
+                <span>{{ (order.order_type or 'retail').title() }}</span>
+                <span class="ord-card-sep">&bull;</span>
+                <span>{{ order.created_at.strftime('%b %d, %Y') }}</span>
+            </div>
+            <strong class="ord-card-total">${{ "%.2f"|format(order.total) }}</strong>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if orders.has_prev or orders.has_next %}
+<div class="ord-pagination">
+    {% if orders.has_prev %}
+    <a href="{{ url_for('admin.orders', page=orders.prev_num, status=_status, order_type=_order_type, collection=_collection) }}" class="btn btn-outline btn-sm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        Previous
+    </a>
+    {% endif %}
+    <span class="ord-page-info">Page {{ orders.page }} of {{ orders.pages }}</span>
+    {% if orders.has_next %}
+    <a href="{{ url_for('admin.orders', page=orders.next_num, status=_status, order_type=_order_type, collection=_collection) }}" class="btn btn-outline btn-sm">
+        Next
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+
+<!-- Empty State -->
+<div class="adm-table-wrap ord-empty">
+    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25">
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+        <rect x="9" y="3" width="6" height="4" rx="1"/>
+        <line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/>
+    </svg>
+    <h3>No orders found</h3>
+    {% if _status and _status != 'all' %}
+    <p>No orders with status <strong>{{ _status.replace('_',' ').title() }}</strong>.
+       <a href="{{ url_for('admin.orders', status='all') }}">View all orders</a></p>
+    {% else %}
+    <p>Orders placed by customers will appear here.</p>
+    {% endif %}
+    <a href="{{ url_for('admin.production_master') }}" class="btn btn-primary" style="margin-top:1rem;">Production Master</a>
+</div>
+
+{% endif %}
+
+
 <style>
-/* ── Page Layout ── */
-.orders-page {
-    padding: 2rem 0 4rem;
-}
+/* ═══════════════════════
+   Orders List Page
+═══════════════════════ */
 
-/* ── Header ── */
-.orders-header {
+/* Page header */
+.ord-page-header {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    margin-bottom: 1.75rem;
-    gap: 1rem;
-    flex-wrap: wrap;
-}
-.orders-header-left {
-    display: flex;
-    align-items: baseline;
-    gap: 0.75rem;
-}
-.orders-header-left h1 {
-    margin: 0;
-    font-size: 1.75rem;
-}
-.orders-count {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-}
-.orders-header-actions {
-    display: flex;
-    gap: 0.5rem;
+    align-items: flex-start;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
     flex-wrap: wrap;
 }
 
-/* ── Filters ── */
-.orders-filters {
+.ord-title {
+    font-size: 2rem;
+    font-weight: 700;
+    font-family: var(--font-heading);
+    color: var(--text-primary);
+    margin: 0.25rem 0 0.4rem;
+    line-height: 1.1;
+}
+
+.ord-lead {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.ord-header-actions {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    align-self: center;
+}
+
+.ord-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    white-space: nowrap;
+}
+
+/* Filters card */
+.ord-filters {
     background: #fff;
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
+    border: 1px solid rgba(232, 208, 177, 0.55);
+    border-radius: 14px;
     padding: 1rem 1.25rem;
     margin-bottom: 1.5rem;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.85rem;
+    box-shadow: 0 2px 10px rgba(58,61,72,0.04);
 }
-.filter-group {
+
+.ord-filter-row {
     display: flex;
     align-items: center;
     gap: 0.75rem;
     flex-wrap: wrap;
 }
-.filter-label {
-    font-size: 0.75rem;
-    font-weight: 600;
+
+.ord-filter-label {
+    font-size: 0.65rem;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.12em;
     color: var(--text-secondary);
-    min-width: 46px;
+    min-width: 42px;
+    flex-shrink: 0;
 }
-.filter-chips {
+
+.ord-chips {
     display: flex;
     gap: 0.4rem;
     flex-wrap: wrap;
 }
-.chip {
-    padding: 0.35rem 0.85rem;
+
+.ord-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.9rem;
+    min-height: 34px;
     border-radius: 20px;
-    font-size: 0.82rem;
-    font-weight: 500;
-    border: 1.5px solid var(--border-color);
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1.5px solid rgba(232,208,177,0.8);
     background: transparent;
-    color: var(--text-primary);
+    color: var(--text-secondary);
     text-decoration: none;
     transition: all 0.15s ease;
     white-space: nowrap;
+    touch-action: manipulation;
 }
-.chip:hover {
-    border-color: var(--accent-color);
-    color: var(--accent-color);
+
+.ord-chip:hover {
+    border-color: var(--terra-cotta);
+    color: var(--terra-cotta);
+    background: rgba(184,124,111,0.05);
 }
-.chip-active {
-    background: var(--accent-color);
-    border-color: var(--accent-color);
+
+.ord-chip--active {
+    background: var(--terra-cotta);
+    border-color: var(--terra-cotta);
     color: #fff;
 }
-.chip-muted {
+
+.ord-chip--active:hover {
+    background: var(--aged-bronze);
+    border-color: var(--aged-bronze);
+    color: #fff;
+}
+
+.ord-chip--muted {
     border-style: dashed;
-    color: var(--text-secondary);
-}
-.chip-muted:hover {
-    border-color: var(--accent-color);
-    color: var(--accent-color);
-    border-style: solid;
+    color: var(--text-light);
 }
 
-/* ── Table ── */
-.orders-table-wrap {
-    background: #fff;
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
-    overflow-x: auto;
-}
-.orders-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9rem;
-}
-.orders-table thead {
-    background: var(--secondary-color);
-}
-.orders-table th {
-    padding: 0.85rem 1rem;
-    text-align: left;
-    font-size: 0.75rem;
+/* Table extras */
+.ord-num { font-family: 'Courier New', monospace; font-weight: 700; color: var(--aged-bronze); font-size: 0.85rem; }
+.ord-name { font-weight: 600; }
+.ord-email { font-size: 0.82rem; color: var(--text-secondary); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ord-center { text-align: center; }
+.ord-date { font-size: 0.82rem; color: var(--text-secondary); white-space: nowrap; }
+.ord-type { font-size: 0.78rem; color: var(--text-secondary); }
+
+/* Status badges */
+.ord-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.22rem 0.65rem;
+    border-radius: 20px;
+    font-size: 0.72rem;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-secondary);
-    border-bottom: 1px solid var(--border-color);
+    letter-spacing: 0.04em;
     white-space: nowrap;
 }
-.orders-table td {
-    padding: 0.9rem 1rem;
-    border-bottom: 1px solid var(--border-color);
-    vertical-align: middle;
-}
-.orders-table tbody tr:last-child td {
-    border-bottom: none;
-}
-.orders-table tbody tr:hover {
-    background: var(--secondary-color);
-}
-.text-muted { color: var(--text-secondary); font-size: 0.85rem; }
-.text-center { text-align: center; }
 
-/* ── Badges ── */
-.badge {
-    display: inline-block;
-    padding: 0.25rem 0.65rem;
-    border-radius: 12px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    white-space: nowrap;
-}
-.badge-new, .badge-paid {
+.ord-badge--new,
+.ord-badge--paid {
     background: rgba(59, 130, 246, 0.1);
-    color: #3b82f6;
+    color: #2563eb;
 }
-.badge-in_production {
+
+.ord-badge--in_production,
+.ord-badge--order_received,
+.ord-badge--waiting_supplies,
+.ord-badge--ready_to_press {
     background: rgba(245, 158, 11, 0.1);
     color: #d97706;
 }
-.badge-ready, .badge-completed {
+
+.ord-badge--pressed,
+.ord-badge--packaged_ready,
+.ord-badge--ready {
     background: rgba(16, 185, 129, 0.1);
     color: #059669;
 }
-.type-label {
+
+.ord-badge--completed,
+.ord-badge--shipped,
+.ord-badge--picked_up {
+    background: rgba(127, 108, 80, 0.1);
+    color: var(--aged-bronze);
+}
+
+/* Desktop only table */
+.ord-table-only { display: block; }
+
+/* Mobile card list — hidden on desktop */
+.ord-card-list { display: none; }
+
+.ord-card {
+    display: block;
+    padding: 1.1rem 1.25rem;
+    border-bottom: 1px solid rgba(232,208,177,0.5);
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.15s;
+}
+
+.ord-card:last-child { border-bottom: none; }
+.ord-card:hover { background: var(--ivory-silk); }
+
+.ord-card-top { margin-bottom: 0.6rem; }
+
+.ord-card-num-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.3rem;
+}
+
+.ord-card-name {
+    font-weight: 600;
+    font-size: 0.97rem;
+    color: var(--text-primary);
+    margin: 0 0 0.15rem;
+}
+
+.ord-card-email {
     font-size: 0.8rem;
     color: var(--text-secondary);
-}
-
-/* ── View Button ── */
-.btn-view {
-    display: inline-block;
-    padding: 0.3rem 0.75rem;
-    border-radius: 8px;
-    font-size: 0.82rem;
-    font-weight: 500;
-    color: var(--accent-color);
-    border: 1.5px solid var(--accent-color);
-    text-decoration: none;
-    transition: all 0.15s ease;
+    margin: 0;
     white-space: nowrap;
-}
-.btn-view:hover {
-    background: var(--accent-color);
-    color: #fff;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-/* ── Pagination ── */
-.orders-pagination {
+.ord-card-footer {
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.ord-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+}
+
+.ord-card-sep { opacity: 0.4; }
+.ord-card-total { font-size: 1rem; color: var(--text-primary); }
+
+/* Pagination */
+.ord-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     gap: 1rem;
     margin-top: 1.5rem;
+    flex-wrap: wrap;
 }
-.pagination-info {
+
+.ord-page-info {
     font-size: 0.875rem;
     color: var(--text-secondary);
 }
 
-/* ── Empty State ── */
-.orders-empty {
-    background: #fff;
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
+/* Empty state */
+.ord-empty {
     text-align: center;
     padding: 4rem 2rem;
-}
-.orders-empty-icon {
-    margin-bottom: 1rem;
-}
-.orders-empty-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 0.5rem;
-}
-.orders-empty-hint {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    margin-bottom: 1.5rem;
-}
-.orders-empty-hint a {
-    color: var(--accent-color);
-}
-.orders-empty-actions {
-    margin-top: 1.5rem;
-}
-.orders-empty-cta-hint {
-    margin-top: 0.5rem;
-    font-size: 0.82rem;
     color: var(--text-secondary);
 }
 
-/* ── Mobile ── */
+.ord-empty svg {
+    color: var(--border-color);
+    margin-bottom: 1.5rem;
+}
+
+.ord-empty h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.6rem;
+}
+
+.ord-empty p {
+    font-size: 0.9rem;
+    margin-bottom: 0;
+}
+
+.ord-empty a { color: var(--terra-cotta); }
+
+/* ═══════════════════════
+   Responsive
+═══════════════════════ */
+@media (max-width: 900px) {
+    .ord-table-only { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
 @media (max-width: 768px) {
-    .orders-header-left h1 { font-size: 1.4rem; }
-    .filter-label { display: none; }
-    .orders-filters { padding: 0.75rem 1rem; }
-    .orders-table th,
-    .orders-table td { padding: 0.75rem 0.6rem; }
-    .hide-sm { display: none; }
+    .ord-page-header { flex-direction: column; align-items: flex-start; }
+    .ord-header-actions { width: 100%; }
+    .ord-action-btn { flex: 1; justify-content: center; min-height: 48px; }
+
+    /* Hide desktop table, show cards */
+    .ord-table-only { display: none; }
+    .ord-card-list {
+        display: block;
+        background: #fff;
+        border: 1px solid rgba(232,208,177,0.55);
+        border-radius: 16px;
+        box-shadow: 0 2px 12px rgba(58,61,72,0.05);
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+
+    .ord-chip {
+        min-height: 40px;
+        padding: 0.5rem 1rem;
+        font-size: 0.82rem;
+    }
+
+    .ord-filters { padding: 0.85rem 1rem; }
+    .ord-filter-label { display: none; }
+
+    .ord-pagination .btn { min-height: 48px; }
+}
+
+@media (max-width: 480px) {
+    .ord-title { font-size: 1.65rem; }
+    .ord-action-btn { font-size: 0.82rem; }
+    .ord-card { padding: 1rem; }
 }
 </style>
+
 {% endblock %}
