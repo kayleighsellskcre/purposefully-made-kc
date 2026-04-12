@@ -1683,13 +1683,10 @@ textarea.form-control {
     background: #fff;
     border: 1px solid rgba(232, 208, 177, 0.55);
     border-radius: 16px;
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
     box-shadow: 0 2px 12px rgba(58, 61, 72, 0.05);
-}
-
-/* Scrollable on small screens */
-@media (max-width: 900px) {
-    .adm-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
 
 .adm-table {
