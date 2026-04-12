@@ -9,7 +9,7 @@
     <div class="dash-topbar">
         <div class="dash-topbar-left">
             <span class="adm-eyebrow" style="margin-bottom:0;">Admin Dashboard</span>
-            <h1 class="dash-greeting">{{ greeting }}, Kayla</h1>
+            <h1 class="dash-greeting">{{ greeting }}{% if admin_name %}, {{ admin_name }}{% endif %}</h1>
             <p class="dash-date">{{ now.strftime('%A, %B %d, %Y') }}</p>
         </div>
         <div class="dash-topbar-right">

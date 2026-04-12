@@ -140,6 +140,8 @@ def index():
     else:
         greeting = 'Good evening'
 
+    admin_name = (current_user.first_name or '').strip() or None
+
     return render_template('admin/dashboard.html',
                          total_orders=total_orders,
                          pending_orders=pending_orders,
@@ -149,6 +151,7 @@ def index():
                          recent_orders=recent_orders,
                          pending_design_requests=pending_design_requests,
                          greeting=greeting,
+                         admin_name=admin_name,
                          now=datetime.now())
 
 
