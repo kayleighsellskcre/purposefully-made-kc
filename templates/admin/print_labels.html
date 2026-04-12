@@ -231,9 +231,9 @@
                     </div>
                 </div>
                 <div class="filters-row" style="margin-top: 1rem;">
-                    <label for="collection">Collection:</label>
+                    <label for="collection">Group Order:</label>
                     <select name="collection" id="collection">
-                        <option value="">All Collections</option>
+                        <option value="">All Group Orders</option>
                         {% for c in collections %}
                         <option value="{{ c.id }}" {% if selected_collection == (c.id|string) %}selected{% endif %}>{{ c.name }}</option>
                         {% endfor %}
@@ -260,7 +260,7 @@
         
         {% if orders|length == 0 %}
         <div class="empty-state no-print" style="text-align: center; padding: 3rem; background: #fff; border-radius: 8px; border: 1px solid #E8D0B1;">
-            <p style="font-size: 1.1rem; color: var(--text-secondary);">No orders match your filters. Adjust the status or collection above.</p>
+            <p style="font-size: 1.1rem; color: var(--text-secondary);">No orders match your filters. Adjust the status or group order above.</p>
         </div>
         {% else %}
         <!-- Label Sheets -->

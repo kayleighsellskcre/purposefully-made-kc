@@ -11,7 +11,7 @@
         <p class="lead">Premium Bella+Canvas garments with your custom designs</p>
         <div class="hero-actions" style="justify-content:center;margin-top:1.25rem;">
             <a href="{{ url_for('shop.index') }}" class="btn btn-primary">Start Shopping</a>
-            <a href="{{ url_for('shop.design_gallery') }}" class="btn btn-outline">View Collections</a>
+            <a href="{{ url_for('shop.group_orders') }}" class="btn btn-outline">View Group Orders</a>
         </div>
     </div>
 </div>
@@ -56,7 +56,7 @@
                     </svg>
                 </div>
                 <h3 class="feature-title">Team Orders</h3>
-                <p class="feature-text">Create shareable collections for schools and teams</p>
+                <p class="feature-text">Create shareable group orders for schools and teams</p>
             </div>
             
             <div class="feature-card">
@@ -78,8 +78,8 @@
     {% if active_collections %}
     <div class="container">
         <div class="section-header">
-            <h2 class="section-title">Active Collections</h2>
-            <p class="section-subtitle">Team stores and group orders</p>
+            <h2 class="section-title">Active Group Orders</h2>
+            <p class="section-subtitle">Team stores and group orders open for ordering</p>
         </div>
         
         <div class="collections-grid">
@@ -92,7 +92,7 @@
                     <p class="collection-deadline">Order by: {{ collection.order_deadline.strftime('%B %d, %Y') }}</p>
                     {% endif %}
                     <a href="{{ url_for('collection.view', slug=collection.slug) }}" class="btn btn-outline">
-                        Shop Collection
+                        Shop This Group Order
                     </a>
                 </div>
             </div>
@@ -100,12 +100,12 @@
         </div>
     </div>
     {% else %}
-    <div class="container">
-        <div class="section-header">
-            <h2 class="section-title">Collections</h2>
-            <p class="section-subtitle">No active collections at this time. Check back soon!</p>
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Group Orders</h2>
+                <p class="section-subtitle">No active group orders at this time. Check back soon!</p>
+            </div>
         </div>
-    </div>
     {% endif %}
 </section>
 

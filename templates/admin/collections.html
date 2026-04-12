@@ -1,13 +1,13 @@
 {% extends "admin/base_admin.html" %}
 
-{% block title %}Collections - Admin - Purposefully Made KC{% endblock %}
+{% block title %}Group Orders - Admin - Purposefully Made KC{% endblock %}
 
 {% block admin_content %}
 <div class="admin-page">
     <div class="container">
         <div class="admin-header">
-            <h1>Collections</h1>
-            <a href="{{ url_for('admin.add_collection') }}" class="btn btn-primary">Create Collection</a>
+            <h1>Group Orders</h1>
+            <a href="{{ url_for('admin.add_collection') }}" class="btn btn-primary">Create Group Order</a>
         </div>
         
         {% if collections %}
@@ -53,9 +53,9 @@
             <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
             </svg>
-            <h2>No collections yet</h2>
-            <p>Create your first collection to organize team/school orders</p>
-            <a href="{{ url_for('admin.add_collection') }}" class="btn btn-primary">Create Collection</a>
+            <h2>No group orders yet</h2>
+            <p>Create your first group order to organize team/school orders</p>
+            <a href="{{ url_for('admin.add_collection') }}" class="btn btn-primary">Create Group Order</a>
         </div>
         {% endif %}
     </div>

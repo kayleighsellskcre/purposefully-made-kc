@@ -18,15 +18,15 @@
         </table>
     </div>
     <div class="ops-card">
-        <h2>School / Team / Event Collections</h2>
-        <p class="text-muted">Shareable collection links</p>
+        <h2>School / Team / Event Group Orders</h2>
+        <p class="text-muted">Shareable group order links</p>
         <table class="admin-table">
             <thead><tr><th>Name</th><th>Orders</th><th>Link</th></tr></thead>
             <tbody>
                 {% for c in collections %}
                 <tr><td>{{ c.name }}</td><td>{{ c.orders.count() }}</td>
                     <td><a href="{{ url_for('collection.view', slug=c.slug) }}" target="_blank">View</a></td></tr>
-                {% else %}<tr><td colspan="3" class="text-muted">No collections yet.</td></tr>{% endfor %}
+                {% else %}<tr><td colspan="3" class="text-muted">No group orders yet.</td></tr>{% endfor %}
             </tbody>
         </table>
     </div>

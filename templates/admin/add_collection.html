@@ -1,6 +1,6 @@
 {% extends "admin/base_admin.html" if not is_user_create else "base.html" %}
 
-{% block title %}{% if is_user_create %}Create Group Order - Purposefully Made KC{% else %}Create Collection - Admin - Purposefully Made KC{% endif %}{% endblock %}
+{% block title %}Create Group Order - Purposefully Made KC{% endblock %}
 
 {% block extra_css %}
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@500;600;700&family=Anton&family=Teko:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -10,11 +10,11 @@
 <div class="admin-page">
     <div class="container">
         <div class="admin-header">
-            <h1>{% if is_user_create %}Create Group Order{% else %}Create New Collection{% endif %}</h1>
+            <h1>Create Group Order</h1>
             {% if is_user_create %}
             <a href="{{ url_for('shop.group_orders') }}" class="btn btn-outline">Back to Group Orders</a>
             {% else %}
-            <a href="{{ url_for('admin.collections') }}" class="btn btn-outline">Back to Collections</a>
+            <a href="{{ url_for('admin.collections') }}" class="btn btn-outline">Back to Group Orders</a>
             {% endif %}
         </div>
         
@@ -23,7 +23,7 @@
                 <h2>Basic Information</h2>
                 
                 <div class="form-group">
-                    <label for="name">Collection Name</label>
+                    <label for="name">Group Order Name</label>
                     <input type="text" id="name" name="name" class="form-control" required placeholder="e.g., Silver Lake Spirit Wear 2026">
                 </div>
                 
@@ -83,7 +83,7 @@
                         {% endif %}
                     </div>
                     <div class="form-group">
-                        <label>Designs for this collection</label>
+                        <label>Designs for this group order</label>
                         <p class="form-hint">Upload designs the team can use, or let them upload their own.</p>
                         
                         <div class="collection-upload-area" id="uploadArea" onclick="document.getElementById('design_uploads').click()">
@@ -189,7 +189,7 @@
                 </div>
             </div>
             
-            <button type="submit" class="btn btn-primary btn-lg">Create Collection</button>
+            <button type="submit" class="btn btn-primary btn-lg">Create Group Order</button>
         </form>
     </div>
 </div>

@@ -10,8 +10,8 @@
 <div class="admin-page">
     <div class="container">
         <div class="admin-header">
-            <h1>Edit Collection</h1>
-            <a href="{{ url_for('admin.collections') }}" class="btn btn-outline">Back to Collections</a>
+            <h1>Edit Group Order</h1>
+            <a href="{{ url_for('admin.collections') }}" class="btn btn-outline">Back to Group Orders</a>
         </div>
         
         <form method="POST" class="collection-form" enctype="multipart/form-data">
@@ -19,7 +19,7 @@
                 <h2>Basic Information</h2>
                 
                 <div class="form-group">
-                    <label for="name">Collection Name</label>
+                    <label for="name">Group Order Name</label>
                     <input type="text" id="name" name="name" class="form-control" value="{{ collection.name }}" required>
                 </div>
                 
@@ -74,11 +74,11 @@
                             {% endfor %}
                         </div>
                         {% else %}
-                        <p class="text-muted">Add products to this collection first to see color options.</p>
+                        <p class="text-muted">Add products to this group order first to see color options.</p>
                         {% endif %}
                     </div>
                     <div class="form-group">
-                        <label>Designs for this collection</label>
+                        <label>Designs for this group order</label>
                         <p class="form-hint">Upload designs the team can use, or let them upload their own.</p>
                         
                         <div class="collection-upload-area" id="uploadArea" onclick="document.getElementById('design_uploads').click()">
@@ -231,7 +231,7 @@ document.getElementById('design_uploads').addEventListener('change', function() 
 });
 // Delete collection (form was nested - browsers submit outer form instead)
 function confirmDelete() {
-    if (confirm('Delete this collection? This cannot be undone.')) {
+    if (confirm('Delete this group order? This cannot be undone.')) {
         document.getElementById('delete-form').submit();
     }
 }

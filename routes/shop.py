@@ -199,7 +199,7 @@ def create_group_order():
             return redirect(url_for('collection.share', slug=collection.slug))
         except IntegrityError:
             db.session.rollback()
-            flash('A collection with that name or URL already exists. Try a different name.', 'error')
+            flash('A group order with that name or URL already exists. Try a different name.', 'error')
             return redirect(url_for('shop.create_group_order'))
     
     products = Product.query.filter_by(is_active=True).order_by(Product.style_number).all()

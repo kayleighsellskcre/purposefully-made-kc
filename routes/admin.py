@@ -924,14 +924,14 @@ def add_collection():
         
         try:
             db.session.commit()
-            msg = 'Collection created successfully'
+            msg = 'Group order created successfully'
             if upload_count:
                 msg += f' with {upload_count} design(s) uploaded'
             flash(msg + '.', 'success')
             return redirect(url_for('admin.collections'))
         except IntegrityError:
             db.session.rollback()
-            flash('A collection with that name or URL already exists. Try a different name.', 'error')
+            flash('A group order with that name or URL already exists. Try a different name.', 'error')
             return redirect(url_for('admin.add_collection'))
     
     products = Product.query.filter_by(is_active=True).order_by(Product.style_number).all()
@@ -973,7 +973,7 @@ def edit_collection(collection_id):
         if new_slug:
             existing = Collection.query.filter_by(slug=new_slug).first()
             if existing and existing.id != collection.id:
-                flash(f'URL slug "{new_slug}" is already used by another collection. Choose a different slug.', 'error')
+                flash(f'URL slug "{new_slug}" is already used by another group order. Choose a different slug.', 'error')
                 return redirect(url_for('admin.edit_collection', collection_id=collection.id))
             collection.slug = new_slug
         collection.description = request.form.get('description')
@@ -1027,14 +1027,14 @@ def edit_collection(collection_id):
         
         try:
             db.session.commit()
-            msg = 'Collection updated successfully'
+            msg = 'Group order updated successfully'
             if upload_count:
                 msg += f' with {upload_count} new design(s) uploaded'
             flash(msg + '.', 'success')
             return redirect(url_for('admin.collections'))
         except IntegrityError:
             db.session.rollback()
-            flash('A collection with that URL slug already exists. Choose a different slug.', 'error')
+            flash('A group order with that URL slug already exists. Choose a different slug.', 'error')
             return redirect(url_for('admin.edit_collection', collection_id=collection.id))
     
     products = Product.query.filter_by(is_active=True).order_by(Product.style_number).all()
@@ -1073,7 +1073,7 @@ def delete_collection(collection_id):
     collection = Collection.query.get_or_404(collection_id)
     db.session.delete(collection)
     db.session.commit()
-    flash('Collection deleted', 'success')
+    flash('Group order deleted', 'success')
     return redirect(url_for('admin.collections'))
 
 
