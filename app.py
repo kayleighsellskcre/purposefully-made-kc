@@ -225,14 +225,33 @@ def create_app(config_class=Config):
     # Context processors
     @app.context_processor
     def inject_globals():
+        from flask_login import current_user as cu
         cart_count = 0
         if 'cart' in session:
             cart_count = sum(item['quantity'] for item in session['cart'])
-        admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').lower()
+        admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').lower().strip()
+
+        # Do a fresh DB lookup every request so is_site_admin is always accurate
+        # (bypasses SQLAlchemy object expiry / caching issues across devices)
+        is_site_admin = False
+        if cu.is_authenticated:
+            try:
+                fresh = User.query.get(cu.id)
+                if fresh:
+                    is_site_admin = bool(fresh.is_admin)
+                    # Auto-promote the designated admin email if flag isn't set yet
+                    if not is_site_admin and (fresh.email or '').lower().strip() == admin_email:
+                        fresh.is_admin = True
+                        db.session.commit()
+                        is_site_admin = True
+            except Exception:
+                is_site_admin = False
+
         return {
             'cart_count': cart_count,
             'current_year': 2026,
             'admin_email': admin_email,
+            'is_site_admin': is_site_admin,
         }
     
     # Error handlers
