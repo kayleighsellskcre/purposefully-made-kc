@@ -137,8 +137,21 @@
 .info-row {
     display: flex;
     justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
     padding: 0.75rem 0;
     border-bottom: 1px solid var(--border-color);
+}
+
+.info-row strong {
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.info-row span {
+    text-align: right;
+    word-break: break-word;
+    min-width: 0;
 }
 
 .info-row:last-child {

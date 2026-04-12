@@ -542,9 +542,29 @@ async function completeOrder(paymentId, paymentMethodOverride) {
     .checkout-grid {
         grid-template-columns: 1fr;
     }
-    
     .order-summary {
         position: static;
+    }
+}
+
+@media (max-width: 640px) {
+    .form-row,
+    .form-row.three {
+        grid-template-columns: 1fr;
+    }
+    .payment-tabs {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    .payment-tab {
+        min-height: 52px;
+        font-size: 1rem;
+    }
+    .checkout-section {
+        padding: 1.25rem;
+    }
+    .fulfillment-option {
+        padding: 1rem;
     }
 }
 </style>

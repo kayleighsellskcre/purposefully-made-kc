@@ -729,17 +729,29 @@
     }
     
     .carousel-btn {
-        width: 32px;
-        height: 32px;
+        width: 44px;
+        height: 44px;
         opacity: 1;
+        touch-action: manipulation;
     }
-    
-    .carousel-prev {
-        left: 8px;
+
+    .carousel-prev { left: 4px; }
+    .carousel-next { right: 4px; }
+
+    .filter-dropdown {
+        min-height: 44px;
+        padding: 0.5rem 0.25rem;
+        font-size: 0.9rem;
     }
-    
-    .carousel-next {
-        right: 8px;
+
+    .clear-filters-btn {
+        min-height: 44px;
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
+
+    .filter-group label {
+        font-size: 0.75rem;
     }
 }
 </style>
