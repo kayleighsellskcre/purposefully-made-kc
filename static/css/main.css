@@ -154,18 +154,18 @@ a:hover {
     display: flex;
     align-items: center;
     text-decoration: none;
-    transform: translate(-10px, 32px);
+    transform: translate(-10px, 48px);
     position: relative;
     z-index: 10;
 }
 
 .logo-image {
-    height: 145px;
-    width: auto;
+    height: 248px !important;
+    width: auto !important;
     display: block;
     transition: var(--transition);
-    border: 1.5px solid rgba(184, 124, 111, 0.4);
-    border-radius: 4px;
+    border: 2px solid rgba(184, 124, 111, 0.5);
+    border-radius: 6px;
 }
 
 .logo:hover .logo-image {
@@ -1087,8 +1087,8 @@ textarea.form-control {
         display: flex;
     }
 
-    .logo { transform: translate(-4px, 14px); }
-    .logo-image { height: 90px; }
+    .logo { transform: translate(-4px, 24px); }
+    .logo-image { height: 160px !important; }
 
     /* Hero - Mobile */
     .hero {
@@ -1220,8 +1220,8 @@ textarea.form-control {
     .hero { padding: 2rem 1rem; }
     .hero-title { font-size: 1.75rem; }
     .features { padding: 2rem 0; }
-    .logo-image { height: 70px; }
-    .logo { transform: translate(-4px, 8px); }
+    .logo-image { height: 120px !important; }
+    .logo { transform: translate(-4px, 14px); }
 
     /* Nav menu must scroll in landscape since height is very small */
     .nav-links {
