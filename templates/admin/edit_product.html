@@ -40,15 +40,17 @@
                         <select name="category" required>
                             <option value="">Select Category</option>
                             <option value="Tee" {% if product.category == 'Tee' %}selected{% endif %}>T-Shirt</option>
+                            <option value="Baseball Tee" {% if product.category == 'Baseball Tee' %}selected{% endif %}>Baseball Tee</option>
                             <option value="V-Neck Tee" {% if product.category == 'V-Neck Tee' %}selected{% endif %}>V-Neck T-Shirt</option>
                             <option value="Tri-Blend Tee" {% if product.category == 'Tri-Blend Tee' %}selected{% endif %}>Tri-Blend Tee</option>
                             <option value="Long Sleeve" {% if product.category == 'Long Sleeve' %}selected{% endif %}>Long Sleeve T-Shirt</option>
-                            <option value="Raglan" {% if product.category == 'Raglan' %}selected{% endif %}>Raglan</option>
                             <option value="Tank" {% if product.category == 'Tank' %}selected{% endif %}>Tank Top</option>
                             <option value="Hoodie" {% if product.category == 'Hoodie' %}selected{% endif %}>Hoodie</option>
                             <option value="Sweatshirt" {% if product.category == 'Sweatshirt' %}selected{% endif %}>Sweatshirt</option>
                             <option value="Zip-Up" {% if product.category == 'Zip-Up' %}selected{% endif %}>Zip-Up</option>
                             <option value="Polo" {% if product.category == 'Polo' %}selected{% endif %}>Polo</option>
+                            <option value="Shorts" {% if product.category == 'Shorts' %}selected{% endif %}>Shorts</option>
+                            <option value="Pants" {% if product.category == 'Pants' %}selected{% endif %}>Pants</option>
                         </select>
                         <svg class="ep-select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </div>
@@ -83,35 +85,17 @@
                     </div>
                 </div>
 
-                <div class="ep-field-row">
-                    <div class="ep-field">
-                        <label>Neck Style</label>
-                        <div class="ep-select-wrap">
-                            <select name="neck_style">
-                                <option value="">Select Neck Style</option>
-                                <option value="Crew Neck" {% if product.neck_style == 'Crew Neck' %}selected{% endif %}>Crew Neck</option>
-                                <option value="V-Neck" {% if product.neck_style == 'V-Neck' %}selected{% endif %}>V-Neck</option>
-                                <option value="Scoop Neck" {% if product.neck_style == 'Scoop Neck' %}selected{% endif %}>Scoop Neck</option>
-                                <option value="Hooded" {% if product.neck_style == 'Hooded' %}selected{% endif %}>Hooded</option>
-                                <option value="Collar" {% if product.neck_style == 'Collar' %}selected{% endif %}>Collar</option>
-                                <option value="Tank" {% if product.neck_style == 'Tank' %}selected{% endif %}>Tank</option>
-                                <option value="Zip-Up" {% if product.neck_style == 'Zip-Up' %}selected{% endif %}>Zip-Up</option>
-                            </select>
-                            <svg class="ep-select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                        </div>
-                    </div>
-                    <div class="ep-field">
-                        <label>Sleeve Length</label>
-                        <div class="ep-select-wrap">
-                            <select name="sleeve_length">
-                                <option value="">Select Sleeve</option>
-                                <option value="Short Sleeve" {% if product.sleeve_length == 'Short Sleeve' %}selected{% endif %}>Short Sleeve</option>
-                                <option value="Long Sleeve" {% if product.sleeve_length == 'Long Sleeve' %}selected{% endif %}>Long Sleeve</option>
-                                <option value="Sleeveless" {% if product.sleeve_length == 'Sleeveless' %}selected{% endif %}>Sleeveless</option>
-                                <option value="3/4 Sleeve" {% if product.sleeve_length == '3/4 Sleeve' %}selected{% endif %}>3/4 Sleeve</option>
-                            </select>
-                            <svg class="ep-select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                        </div>
+                <div class="ep-field">
+                    <label>Sleeve Length</label>
+                    <div class="ep-select-wrap">
+                        <select name="sleeve_length">
+                            <option value="">Select Sleeve</option>
+                            <option value="Short Sleeve" {% if product.sleeve_length == 'Short Sleeve' %}selected{% endif %}>Short Sleeve</option>
+                            <option value="Long Sleeve" {% if product.sleeve_length == 'Long Sleeve' %}selected{% endif %}>Long Sleeve</option>
+                            <option value="Sleeveless" {% if product.sleeve_length == 'Sleeveless' %}selected{% endif %}>Sleeveless</option>
+                            <option value="3/4 Sleeve" {% if product.sleeve_length == '3/4 Sleeve' %}selected{% endif %}>3/4 Sleeve</option>
+                        </select>
+                        <svg class="ep-select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </div>
                 </div>
 

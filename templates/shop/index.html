@@ -63,8 +63,11 @@
                     <div class="select-wrap">
                         <select id="categoryFilter" class="filter-dropdown" onchange="applyFilters()">
                             <option value="">All Styles</option>
+                            <option value="Baseball Tee" {% if selected_category == 'Baseball Tee' %}selected{% endif %}>Baseball Tee</option>
                             <option value="Hoodie" {% if selected_category == 'Hoodie' %}selected{% endif %}>Hoodie</option>
                             <option value="Long Sleeve" {% if selected_category == 'Long Sleeve' %}selected{% endif %}>Long Sleeve T-Shirt</option>
+                            <option value="Pants" {% if selected_category == 'Pants' %}selected{% endif %}>Pants</option>
+                            <option value="Shorts" {% if selected_category == 'Shorts' %}selected{% endif %}>Shorts</option>
                             <option value="Sweatshirt" {% if selected_category == 'Sweatshirt' %}selected{% endif %}>Sweatshirt</option>
                             <option value="Tee" {% if selected_category == 'Tee' %}selected{% endif %}>T-Shirt</option>
                             <option value="Tank" {% if selected_category == 'Tank' %}selected{% endif %}>Tank Top</option>
