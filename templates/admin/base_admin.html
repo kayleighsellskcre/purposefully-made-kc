@@ -4,15 +4,15 @@
     <div class="container">
         <nav class="ops-nav">
             <a href="{{ url_for('admin.index') }}" class="ops-nav-home">← Dashboard</a>
-            <a href="{{ url_for('admin.orders') }}" class="ops-nav-link">Orders</a>
-            <a href="{{ url_for('admin.production_workflow') }}" class="ops-nav-link">Workflow</a>
-            <a href="{{ url_for('admin.inventory') }}" class="ops-nav-link">Inventory</a>
-            <a href="{{ url_for('admin.vendors') }}" class="ops-nav-link">Vendors</a>
-            <a href="{{ url_for('admin.financial') }}" class="ops-nav-link">Financial</a>
-            <a href="{{ url_for('admin.growth') }}" class="ops-nav-link">Growth</a>
-            <a href="{{ url_for('admin.customers') }}" class="ops-nav-link">Customers</a>
-            <a href="{{ url_for('admin.packaging_sop') }}" class="ops-nav-link">Packaging SOP</a>
-            <a href="{{ url_for('admin.affirmations') }}" class="ops-nav-link">Affirmations</a>
+            <a href="{{ url_for('admin.orders') }}" class="ops-nav-link {% if request.endpoint and 'order' in request.endpoint %}ops-nav-active{% endif %}">Orders</a>
+            <a href="{{ url_for('admin.production_workflow') }}" class="ops-nav-link {% if request.endpoint == 'admin.production_workflow' %}ops-nav-active{% endif %}">Workflow</a>
+            <a href="{{ url_for('admin.inventory') }}" class="ops-nav-link {% if request.endpoint == 'admin.inventory' %}ops-nav-active{% endif %}">Inventory</a>
+            <a href="{{ url_for('admin.vendors') }}" class="ops-nav-link {% if request.endpoint == 'admin.vendors' %}ops-nav-active{% endif %}">Vendors</a>
+            <a href="{{ url_for('admin.financial') }}" class="ops-nav-link {% if request.endpoint == 'admin.financial' %}ops-nav-active{% endif %}">Financial</a>
+            <a href="{{ url_for('admin.growth') }}" class="ops-nav-link {% if request.endpoint == 'admin.growth' %}ops-nav-active{% endif %}">Growth</a>
+            <a href="{{ url_for('admin.customers') }}" class="ops-nav-link {% if request.endpoint == 'admin.customers' %}ops-nav-active{% endif %}">Customers</a>
+            <a href="{{ url_for('admin.packaging_sop') }}" class="ops-nav-link {% if request.endpoint == 'admin.packaging_sop' %}ops-nav-active{% endif %}">Packaging SOP</a>
+            <a href="{{ url_for('admin.affirmations') }}" class="ops-nav-link {% if request.endpoint == 'admin.affirmations' %}ops-nav-active{% endif %}">Affirmations</a>
         </nav>
         {% block admin_content %}{% endblock %}
     </div>
@@ -21,33 +21,104 @@
 .ops-page { padding: 2rem 0 4rem; }
 .ops-nav {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
+    align-items: center;
+    gap: 0.25rem;
     margin-bottom: 2rem;
-    padding: 0.75rem 1rem;
+    padding: 0.65rem 0.85rem;
     background: #fff;
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
+    border: 1px solid rgba(232,208,177,0.55);
+    border-radius: 14px;
+    box-shadow: 0 2px 10px rgba(58,61,72,0.04);
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
 }
+.ops-nav::-webkit-scrollbar { display: none; }
 .ops-nav-home, .ops-nav-link {
-    padding: 0.55rem 1rem;
-    min-height: 40px;
-    border-radius: 8px;
-    text-decoration: none;
-    color: var(--text-primary);
-    font-size: 0.85rem;
-    white-space: nowrap;
     display: inline-flex;
     align-items: center;
+    padding: 0.5rem 0.9rem;
+    min-height: 38px;
+    border-radius: 9px;
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
     touch-action: manipulation;
 }
-.ops-nav-home { color: var(--accent-color); font-weight: 600; }
-.ops-nav-link:hover { background: var(--secondary-color); color: var(--accent-color); }
+.ops-nav-home {
+    color: var(--terra-cotta);
+    font-weight: 700;
+    font-size: 0.8rem;
+    letter-spacing: 0.02em;
+    margin-right: 0.25rem;
+    padding-right: 1.1rem;
+    border-right: 1px solid rgba(232,208,177,0.6);
+    border-radius: 0;
+}
+.ops-nav-link:hover { background: var(--ivory-silk); color: var(--terra-cotta); }
+.ops-nav-active { background: rgba(184,124,111,0.1); color: var(--terra-cotta); font-weight: 700; }
 @media (max-width: 768px) {
-    .ops-nav { flex-wrap: nowrap; padding: 0.6rem 0.75rem; }
-    .ops-nav-home, .ops-nav-link { font-size: 0.8rem; padding: 0.5rem 0.75rem; min-height: 44px; }
+    .ops-nav { padding: 0.55rem 0.75rem; }
+    .ops-nav-home, .ops-nav-link { font-size: 0.78rem; padding: 0.5rem 0.75rem; min-height: 44px; }
+}
+
+/* ── Shared admin page typography ──────────────────────────────────────────
+   Overrides the global h1/h2 sizes (3.5rem / 2.5rem) so every admin page
+   gets the same consistent scale without touching individual templates.
+   Individual pages may still use their own classes on top of these.
+─────────────────────────────────────────────────────────────────────────── */
+.ops-page h1,
+.ops-page .adm-page-title,
+.ops-page .prod-title,
+.ops-page .ord-title,
+.ops-page .aff-title,
+.ops-page .gallery-page-title,
+.ops-page .wf-title {
+    font-family: var(--font-heading);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0.25rem 0 0.4rem;
+    line-height: 1.15;
+}
+
+.ops-page h2,
+.ops-page .adm-section-title,
+.ops-page .gallery-upload-title,
+.ops-page .gallery-list-title {
+    font-family: var(--font-heading);
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.25rem;
+    line-height: 1.3;
+}
+
+.ops-page .page-subtitle,
+.ops-page .adm-page-lead,
+.ops-page .prod-lead,
+.ops-page .ord-lead,
+.ops-page .aff-lead,
+.ops-page .gallery-page-subtitle,
+.ops-page .wf-lead {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    line-height: 1.55;
+    margin: 0;
+}
+
+@media (max-width: 480px) {
+    .ops-page h1,
+    .ops-page .adm-page-title,
+    .ops-page .prod-title,
+    .ops-page .ord-title,
+    .ops-page .aff-title,
+    .ops-page .gallery-page-title,
+    .ops-page .wf-title { font-size: 1.65rem; }
 }
 </style>
 {% endblock %}

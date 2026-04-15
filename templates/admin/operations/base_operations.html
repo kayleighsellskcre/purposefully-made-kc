@@ -12,6 +12,7 @@
             <a href="{{ url_for('admin.growth') }}" class="ops-nav-link {% if request.endpoint == 'admin.growth' %}ops-nav-active{% endif %}">Growth</a>
             <a href="{{ url_for('admin.customers') }}" class="ops-nav-link {% if request.endpoint == 'admin.customers' %}ops-nav-active{% endif %}">Customers</a>
             <a href="{{ url_for('admin.packaging_sop') }}" class="ops-nav-link {% if request.endpoint == 'admin.packaging_sop' %}ops-nav-active{% endif %}">Packaging SOP</a>
+            <a href="{{ url_for('admin.affirmations') }}" class="ops-nav-link {% if request.endpoint == 'admin.affirmations' %}ops-nav-active{% endif %}">Affirmations</a>
         </nav>
         {% block ops_content %}{% endblock %}
     </div>
@@ -97,6 +98,45 @@
 .admin-table th { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-secondary); white-space: nowrap; }
 .admin-table tbody tr:hover { background: var(--ivory-silk); }
 .admin-table tbody tr:last-child td { border-bottom: none; }
+
+/* ── Shared admin page typography ──────────────────────────────────────────
+   Normalises h1/h2 and lead text so all pages share the same scale.
+─────────────────────────────────────────────────────────────────────────── */
+.ops-page h1,
+.ops-page .wf-title,
+.ops-page .adm-page-title {
+    font-family: var(--font-heading);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0.25rem 0 0.4rem;
+    line-height: 1.15;
+}
+
+.ops-page h2,
+.ops-page .adm-section-title {
+    font-family: var(--font-heading);
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.25rem;
+    line-height: 1.3;
+}
+
+.ops-page .page-subtitle,
+.ops-page .wf-lead,
+.ops-page .adm-page-lead {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    line-height: 1.55;
+    margin: 0;
+}
+
+@media (max-width: 480px) {
+    .ops-page h1,
+    .ops-page .wf-title,
+    .ops-page .adm-page-title { font-size: 1.65rem; }
+}
 
 /* Utility */
 .ops-grid  { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
