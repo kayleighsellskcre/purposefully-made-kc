@@ -1,4 +1,4 @@
-{% extends "admin/base_admin.html" if not is_user_create else "base.html" %}
+{% extends "base.html" %}
 
 {% block title %}Create Group Order - Purposefully Made KC{% endblock %}
 
@@ -6,7 +6,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@500;600;700&family=Anton&family=Teko:wght@400;500;600;700&display=swap" rel="stylesheet">
 {% endblock %}
 
-{% block admin_content %}
+{% block content %}
 <div class="admin-page">
     <div class="container">
         <div class="admin-header">
@@ -370,4 +370,4 @@ document.getElementById('design_uploads').addEventListener('change', function() 
     white-space: nowrap;
 }
 </style>
-{% endblock %}
+{% endblock content %}
