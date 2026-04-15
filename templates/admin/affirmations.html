@@ -81,12 +81,6 @@
                                 {{ 'Deactivate' if aff.is_active else 'Activate' }}
                             </button>
                         </form>
-                        <button type="button"
-                                class="adm-view-link prod-delete-link aff-delete-btn"
-                                data-text="{{ aff.text[:60] }}{% if aff.text|length > 60 %}...{% endif %}"
-                                data-url="{{ url_for('admin.affirmation_delete', aff_id=aff.id) }}">
-                            Delete
-                        </button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -100,26 +94,6 @@
     </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
-<div id="affDeleteModal" class="prod-modal" role="dialog" aria-modal="true">
-    <div class="prod-modal-card">
-        <div class="prod-modal-header">
-            <h2>Delete Affirmation?</h2>
-            <button class="prod-modal-close" onclick="closeAffModal()" aria-label="Close">&times;</button>
-        </div>
-        <div class="prod-modal-body">
-            <p style="font-size:0.88rem;color:var(--text-secondary);margin-bottom:1.25rem;" id="affDeletePreview"></p>
-            <div class="prod-modal-actions">
-                <button type="button" class="btn btn-outline" onclick="closeAffModal()">Cancel</button>
-                <form id="affDeleteForm" method="POST">
-                    <button type="submit" class="btn" style="background:var(--error-color);color:#fff;border-color:var(--error-color);">
-                        Yes, Delete
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
 
 <style>
 .aff-page-header {
@@ -227,28 +201,6 @@ document.querySelectorAll('.aff-cancel-edit').forEach(function(btn) {
     });
 });
 
-// ── Delete modal ──────────────────────────────────────────────────────────────
-function closeAffModal() {
-    document.getElementById('affDeleteModal').classList.remove('is-open');
-    document.body.style.overflow = '';
-}
-
-document.querySelectorAll('.aff-delete-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-        document.getElementById('affDeletePreview').textContent = this.dataset.text;
-        document.getElementById('affDeleteForm').action = this.dataset.url;
-        document.getElementById('affDeleteModal').classList.add('is-open');
-        document.body.style.overflow = 'hidden';
-    });
-});
-
-document.getElementById('affDeleteModal').addEventListener('click', function(e) {
-    if (e.target === this) closeAffModal();
-});
-
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeAffModal();
-});
 </script>
 
 {% endblock %}
