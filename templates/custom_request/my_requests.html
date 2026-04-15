@@ -3,69 +3,379 @@
 {% block title %}My Design Requests - Purposefully Made KC{% endblock %}
 
 {% block content %}
+<div class="page-header" style="text-align:center;">
+    <div class="container" style="text-align:center;">
+        <span class="eyebrow" style="display:block;text-align:center;">My Account</span>
+        <h1 style="text-align:center;">My Design Requests</h1>
+        <p class="lead" style="text-align:center;">Requests you've submitted for us to recreate.</p>
+    </div>
+</div>
+
 <div class="account-page">
     <div class="container">
         <div class="account-layout">
+
+            <!-- Sidebar -->
             <aside class="account-sidebar">
-                <h2>My Account</h2>
+                <div class="account-sidebar-user">
+                    <div class="account-avatar">{{ (current_user.first_name or current_user.email)[0] | upper }}</div>
+                    <div>
+                        <p class="account-user-name">{{ (current_user.first_name or '') + ' ' + (current_user.last_name or '') | trim or 'My Account' }}</p>
+                        <p class="account-user-email">{{ current_user.email }}</p>
+                    </div>
+                </div>
                 <nav class="account-nav">
                     <a href="{{ url_for('account.orders') }}" class="account-nav-link">Orders</a>
                     <a href="{{ url_for('account.my_designs') }}" class="account-nav-link">My Designs</a>
                     <a href="{{ url_for('custom_request.my_requests') }}" class="account-nav-link active">My Requests</a>
                     <a href="{{ url_for('account.addresses') }}" class="account-nav-link">Addresses</a>
                     <a href="{{ url_for('account.profile') }}" class="account-nav-link">Profile</a>
-                    <a href="{{ url_for('auth.logout') }}" class="account-nav-link">Logout</a>
+                    <a href="{{ url_for('auth.logout') }}" class="account-nav-link logout">Log Out</a>
                 </nav>
             </aside>
-            
+
+            <!-- Main content -->
             <div class="account-content">
-                <h1>My Design Requests</h1>
-                <p class="page-sub">Requests you've submitted for us to recreate.</p>
-                
-                <a href="{{ url_for('custom_request.submit') }}" class="btn btn-primary btn-sm" style="margin-bottom: 1.5rem;">+ New Request</a>
-                
+                <div class="account-content-header">
+                    <div>
+                        <span class="account-content-eyebrow">Account</span>
+                        <h1>My Requests</h1>
+                    </div>
+                    <a href="{{ url_for('custom_request.submit') }}" class="btn btn-primary btn-sm">+ New Request</a>
+                </div>
+                <p class="page-sub" style="color:var(--text-secondary);margin-bottom:1.75rem;font-size:0.9rem;">
+                    Requests you've submitted for us to recreate into print-ready designs.
+                </p>
+
                 {% if requests %}
-                <div class="requests-list">
+                <div class="rq-list" id="rqList">
                     {% for r in requests %}
-                    <div class="request-card">
-                        <div class="request-preview">
+                    <div class="rq-card" id="rq-card-{{ r.id }}">
+
+                        <!-- Reference image -->
+                        <div class="rq-image">
                             <img src="{{ r.reference_file_path | image_url }}" alt="Reference">
+                            <!-- Delete button — reveals on hover -->
+                            <button type="button"
+                                    class="rq-delete-btn"
+                                    onclick="confirmRqDelete({{ r.id }}, '{{ r.description[:40]|replace("'","\\'")|replace('"','\\"') }}…')"
+                                    aria-label="Remove this request">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                                    <path d="M10 11v6M14 11v6"/>
+                                    <path d="M9 6V4h6v2"/>
+                                </svg>
+                            </button>
                         </div>
-                        <div class="request-info">
-                            <p class="request-desc">{{ r.description[:150] }}{% if r.description|length > 150 %}...{% endif %}</p>
-                            <p class="request-meta">{{ r.created_at.strftime('%b %d, %Y') }} · <span class="badge badge-{{ r.status }}">{{ r.status.title() }}</span></p>
+
+                        <!-- Info -->
+                        <div class="rq-info">
+                            <p class="rq-desc">{{ r.description[:160] }}{% if r.description|length > 160 %}…{% endif %}</p>
+                            <div class="rq-meta-row">
+                                <span class="rq-date">{{ r.created_at.strftime('%b %d, %Y') }}</span>
+                                <span class="rq-badge rq-badge-{{ r.status }}">{{ r.status.title() }}</span>
+                            </div>
+
                             {% if r.created_design %}
-                            <a href="{{ url_for('shop.index') }}" class="btn btn-outline btn-sm">Shop with this design →</a>
+                            <a href="{{ url_for('shop.index', design_id=r.created_design_id) }}" class="rq-shop-cta">
+                                Shop With This Design
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <line x1="5" y1="12" x2="19" y2="12"/>
+                                    <polyline points="12 5 19 12 12 19"/>
+                                </svg>
+                            </a>
                             {% endif %}
                         </div>
+
                     </div>
                     {% endfor %}
                 </div>
+
                 {% else %}
-                <p class="empty-msg">No requests yet. <a href="{{ url_for('custom_request.submit') }}">Submit your first request</a>!</p>
+                <div class="account-empty">
+                    <div class="account-empty-icon">
+                        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25">
+                            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                        </svg>
+                    </div>
+                    <h2>No requests yet</h2>
+                    <p>Have an image or idea you love? Send it to us — we'll recreate it as a print-ready design for your wardrobe.</p>
+                    <a href="{{ url_for('custom_request.submit') }}" class="btn btn-primary">Submit a Request</a>
+                </div>
                 {% endif %}
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- ── Styles ── -->
+<style>
+/* Request list */
+.rq-list { display: flex; flex-direction: column; gap: 1.1rem; }
+
+/* Card */
+.rq-card {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+    background: #fff;
+    border: 1px solid rgba(232,208,177,0.5);
+    border-radius: 16px;
+    padding: 1.25rem;
+    box-shadow: 0 2px 12px rgba(58,61,72,0.04);
+    transition: box-shadow 0.25s, transform 0.25s;
+}
+.rq-card:hover {
+    box-shadow: 0 8px 28px rgba(58,61,72,0.1);
+    transform: translateY(-2px);
+}
+
+/* Image column */
+.rq-image {
+    position: relative;
+    flex-shrink: 0;
+    width: 90px;
+    height: 90px;
+    background: var(--ivory-silk, #faf7f2);
+    border-radius: 12px;
+    overflow: hidden;
+}
+.rq-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 6px;
+    transition: transform 0.3s ease;
+}
+.rq-card:hover .rq-image img { transform: scale(1.05); }
+
+/* Delete button — overlay top-right of image */
+.rq-delete-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(4px);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #b0b0b0;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity 0.2s, transform 0.2s, color 0.15s, background 0.15s;
+}
+.rq-card:hover .rq-delete-btn {
+    opacity: 1;
+    transform: scale(1);
+}
+.rq-delete-btn:hover {
+    color: #ef4444;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.14);
+}
+
+/* Info column */
+.rq-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+.rq-desc {
+    font-size: 0.93rem;
+    color: var(--text-primary, #3a3d48);
+    line-height: 1.55;
+    margin: 0;
+}
+.rq-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+.rq-date {
+    font-size: 0.78rem;
+    color: var(--text-secondary, #888);
+    letter-spacing: 0.02em;
+}
+
+/* Status badge */
+.rq-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.55rem;
+    border-radius: 20px;
+}
+.rq-badge-pending  { background: rgba(245,158,11,0.12);  color: #d97706; }
+.rq-badge-completed{ background: rgba(16,185,129,0.12);  color: #059669; }
+.rq-badge-declined { background: rgba(239,68,68,0.12);   color: #dc2626; }
+
+/* Shop CTA */
+.rq-shop-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--terra-cotta, #b87c6f);
+    text-decoration: none;
+    border: 1.5px solid rgba(184,124,111,0.35);
+    border-radius: 8px;
+    padding: 0.45rem 0.8rem;
+    width: fit-content;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.rq-shop-cta svg { transition: transform 0.2s; }
+.rq-shop-cta:hover {
+    background: var(--terra-cotta, #b87c6f);
+    border-color: var(--terra-cotta, #b87c6f);
+    color: #fff;
+}
+.rq-shop-cta:hover svg { transform: translateX(3px); }
+
+/* Mobile */
+@media (max-width: 500px) {
+    .rq-card { flex-direction: column; gap: 1rem; }
+    .rq-image { width: 100%; height: 160px; }
+}
+</style>
+
+<!-- ── Delete confirmation modal ── -->
+<div id="rqDeleteModal" class="md-overlay" role="dialog" aria-modal="true">
+    <div class="md-card">
+        <div class="md-header">
+            <h3>Remove Request?</h3>
+            <button class="md-close" onclick="closeRqModal()" aria-label="Close">&times;</button>
+        </div>
+        <div class="md-body">
+            <p>
+                <strong id="rqModalDesc"></strong><br>
+                This will remove the request from your list. Your reference image and any design we've already created for you will stay safe in your account.
+            </p>
+            <div class="md-actions">
+                <button type="button" class="btn btn-outline btn-sm" onclick="closeRqModal()">Keep It</button>
+                <button type="button" id="rqConfirmBtn" class="btn btn-sm" style="background:#ef4444;color:#fff;border-color:#ef4444;">
+                    Yes, Remove
+                </button>
             </div>
         </div>
     </div>
 </div>
 
+<div id="rqToast"></div>
+
 <style>
-.account-layout { display: grid; grid-template-columns: 220px 1fr; gap: 2rem; }
-@media (max-width: 768px) { .account-layout { grid-template-columns: 1fr; } }
-.account-sidebar { background: #fff; padding: 1.5rem; border-radius: var(--border-radius); height: fit-content; box-shadow: var(--box-shadow); }
-.account-nav { display: flex; flex-direction: column; gap: 0.25rem; }
-.account-nav-link { padding: 0.5rem 0; color: var(--text-primary); }
-.account-nav-link.active { font-weight: 600; color: var(--accent-color); }
-.page-sub { color: var(--text-secondary); margin-bottom: 1rem; }
-.requests-list { display: flex; flex-direction: column; gap: 1rem; }
-.request-card { display: flex; gap: 1.5rem; padding: 1rem; background: #fff; border-radius: var(--border-radius); border: 1px solid var(--border-color); }
-.request-preview { width: 80px; height: 80px; flex-shrink: 0; background: var(--ivory-silk); border-radius: 8px; overflow: hidden; }
-.request-preview img { width: 100%; height: 100%; object-fit: contain; }
-.request-desc { margin-bottom: 0.5rem; }
-.request-meta { font-size: 0.9rem; color: var(--text-secondary); }
-.badge-pending { background: rgba(245, 158, 11, 0.2); color: #d97706; }
-.badge-completed { background: rgba(16, 185, 129, 0.2); color: #059669; }
-.badge-declined { background: rgba(239, 68, 68, 0.2); color: #dc2626; }
-.empty-msg { color: var(--text-secondary); }
+/* Shared modal styles (matches my_designs.html) */
+.md-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(30,25,20,0.55);
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    z-index: 9999; align-items: center; justify-content: center; padding: 1rem;
+}
+.md-overlay.is-open { display: flex; }
+.md-card {
+    background: #fff; border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(30,25,20,0.25);
+    width: 100%; max-width: 440px;
+    animation: mdIn 0.2s ease;
+}
+@keyframes mdIn { from { opacity:0; transform:scale(0.96) translateY(10px); } to { opacity:1; transform:none; } }
+.md-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 1.4rem 1.5rem 1.1rem;
+    border-bottom: 1px solid rgba(232,208,177,0.5);
+}
+.md-header h3 { margin:0; font-size:1.1rem; font-weight:700; }
+.md-close {
+    background:none; border:none; font-size:1.6rem; line-height:1;
+    cursor:pointer; color:var(--text-secondary,#888);
+    min-width:36px; min-height:36px; display:flex; align-items:center; justify-content:center;
+    border-radius:8px;
+}
+.md-close:hover { background: rgba(232,208,177,0.3); }
+.md-body { padding: 1.25rem 1.5rem 1.5rem; }
+.md-body p { font-size:0.92rem; color:var(--text-secondary,#666); margin:0 0 1.25rem; line-height:1.6; }
+.md-body p strong { color: var(--text-primary,#222); display:block; margin-bottom:0.35rem; }
+.md-actions { display:flex; gap:0.75rem; justify-content:flex-end; flex-wrap:wrap; }
+
+/* Toast */
+#rqToast {
+    position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%);
+    background:#1e1914; color:#fff; padding:0.7rem 1.4rem;
+    border-radius:10px; font-size:0.88rem; font-weight:600;
+    box-shadow:0 6px 24px rgba(0,0,0,0.25); z-index:99999;
+    opacity:0; transition:opacity 0.25s; pointer-events:none; white-space:nowrap;
+}
 </style>
+
+<script>
+(function () {
+    let _rqId = 0, _rqDesc = '';
+
+    window.confirmRqDelete = function (id, desc) {
+        _rqId = id;
+        _rqDesc = desc;
+        document.getElementById('rqModalDesc').textContent = desc;
+        document.getElementById('rqDeleteModal').classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+    };
+
+    window.closeRqModal = function () {
+        document.getElementById('rqDeleteModal').classList.remove('is-open');
+        document.body.style.overflow = '';
+    };
+
+    document.getElementById('rqDeleteModal').addEventListener('click', function (e) {
+        if (e.target === this) window.closeRqModal();
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') window.closeRqModal();
+    });
+
+    document.getElementById('rqConfirmBtn').addEventListener('click', function () {
+        const btn = this;
+        btn.disabled = true;
+        btn.textContent = 'Removing…';
+
+        fetch('/custom-design/requests/' + _rqId + '/delete', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { alert(data.error); return; }
+            window.closeRqModal();
+            const card = document.getElementById('rq-card-' + _rqId);
+            if (card) {
+                card.style.transition = 'opacity 0.3s, transform 0.3s';
+                card.style.opacity = '0';
+                card.style.transform = 'translateX(20px)';
+                setTimeout(() => card.remove(), 320);
+            }
+            showRqToast(data.message || 'Request removed');
+        })
+        .catch(() => alert('Something went wrong. Please try again.'))
+        .finally(() => { btn.disabled = false; btn.textContent = 'Yes, Remove'; });
+    });
+
+    function showRqToast(msg) {
+        const t = document.getElementById('rqToast');
+        t.textContent = msg;
+        t.style.opacity = '1';
+        clearTimeout(t._t);
+        t._t = setTimeout(() => { t.style.opacity = '0'; }, 3200);
+    }
+})();
+</script>
 {% endblock %}

@@ -273,9 +273,12 @@ class CustomDesignRequest(db.Model):
     # Admin notes (internal)
     admin_notes = db.Column(db.Text)
     
+    # Soft-delete: True = customer dismissed the request card (reference image stays in account)
+    is_deleted = db.Column(db.Boolean, default=False, nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # Relationships
     user = db.relationship('User', backref='custom_design_requests')
     created_design = db.relationship('Design', foreign_keys=[created_design_id])

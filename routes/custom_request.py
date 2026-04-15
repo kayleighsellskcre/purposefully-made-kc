@@ -1,5 +1,5 @@
 """Custom design requests - customers upload reference images for recreation"""
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
 from flask_login import login_required, current_user
 from models import db, CustomDesignRequest, Design
 
@@ -72,8 +72,25 @@ def submit():
 @custom_request_bp.route('/my-requests')
 @login_required
 def my_requests():
-    """View customer's own design requests"""
-    requests = CustomDesignRequest.query.filter_by(user_id=current_user.id).order_by(
-        CustomDesignRequest.created_at.desc()
-    ).all()
-    return render_template('custom_request/my_requests.html', requests=requests)
+    """View customer's own design requests — excludes soft-deleted cards."""
+    reqs = (
+        CustomDesignRequest.query
+        .filter_by(user_id=current_user.id)
+        .filter(CustomDesignRequest.is_deleted != True)
+        .order_by(CustomDesignRequest.created_at.desc())
+        .all()
+    )
+    return render_template('custom_request/my_requests.html', requests=reqs)
+
+
+@custom_request_bp.route('/requests/<int:req_id>/delete', methods=['POST'])
+@login_required
+def delete_request(req_id):
+    """Soft-delete a request card. The reference image and any linked design stay
+    in the customer's account — only the request entry is hidden."""
+    req = CustomDesignRequest.query.get_or_404(req_id)
+    if req.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    req.is_deleted = True
+    db.session.commit()
+    return jsonify({'ok': True, 'message': 'Request removed from your list'})
