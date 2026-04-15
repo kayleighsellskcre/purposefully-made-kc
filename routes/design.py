@@ -171,17 +171,26 @@ def delete(design_id):
     if attached:
         return jsonify({'error': 'This design is attached to an order and cannot be deleted'}), 400
 
-    # If this design was created in response to a custom design request,
-    # clear that FK reference so the delete isn't blocked by a constraint.
+    name = design.title or design.original_filename or 'Design'
+
+    # Check whether this design was created by admin in response to a custom request.
+    # If so, only unlink it from the customer — keep the design record so it can be
+    # re-assigned later. The customer can always come back and use it again.
     try:
         from models import CustomDesignRequest
-        CustomDesignRequest.query.filter_by(created_design_id=design.id).update(
-            {'created_design_id': None}
-        )
-        db.session.flush()
+        linked_request = CustomDesignRequest.query.filter_by(
+            created_design_id=design.id
+        ).first()
     except Exception:
-        pass
+        linked_request = None
 
+    if linked_request:
+        # Soft-unlink: remove from "My Designs" view but preserve the design record
+        design.uploaded_by_user_id = None
+        db.session.commit()
+        return jsonify({'ok': True, 'message': f'"{name}" removed from your designs'})
+
+    # For customer-uploaded designs (no admin request), do a full hard delete.
     # Remove file from local disk (R2 objects are not purged to avoid breaking CDN links)
     if design.file_path:
         local = Path('static') / design.file_path
@@ -191,7 +200,6 @@ def delete(design_id):
             except OSError:
                 pass
 
-    name = design.title or design.original_filename or 'Design'
     db.session.delete(design)
     db.session.commit()
 
