@@ -171,6 +171,17 @@ def delete(design_id):
     if attached:
         return jsonify({'error': 'This design is attached to an order and cannot be deleted'}), 400
 
+    # If this design was created in response to a custom design request,
+    # clear that FK reference so the delete isn't blocked by a constraint.
+    try:
+        from models import CustomDesignRequest
+        CustomDesignRequest.query.filter_by(created_design_id=design.id).update(
+            {'created_design_id': None}
+        )
+        db.session.flush()
+    except Exception:
+        pass
+
     # Remove file from local disk (R2 objects are not purged to avoid breaking CDN links)
     if design.file_path:
         local = Path('static') / design.file_path
