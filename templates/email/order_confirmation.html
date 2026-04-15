@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Confirmation – {{ order.order_number }}</title>
+</head>
+<body style="margin:0;padding:0;background:#f5f0e8;font-family:'Georgia',serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0e8;padding:40px 16px;">
+  <tr>
+    <td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+        <!-- ── Header ── -->
+        <tr>
+          <td align="center" style="padding-bottom:32px;">
+            <p style="margin:0;font-family:'Georgia',serif;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#b87c6f;">Purposefully Made KC</p>
+            <h1 style="margin:8px 0 0;font-family:'Georgia',serif;font-size:28px;font-weight:400;color:#3a3d48;letter-spacing:0.04em;">Your Order is Confirmed</h1>
+            <p style="margin:8px 0 0;font-size:14px;color:#888;font-family:Arial,sans-serif;">Thank you, {{ order.first_name or 'friend' }}. We can't wait to create this for you.</p>
+          </td>
+        </tr>
+
+        <!-- ── Order number card ── -->
+        <tr>
+          <td>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#b87c6f;border-radius:14px;margin-bottom:20px;">
+              <tr>
+                <td align="center" style="padding:28px 24px;">
+                  <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.75);font-family:Arial,sans-serif;">Order Number</p>
+                  <p style="margin:0;font-family:'Georgia',serif;font-size:30px;font-weight:700;color:#fff;letter-spacing:0.06em;">{{ order.order_number }}</p>
+                  <p style="margin:10px 0 0;font-size:13px;color:rgba(255,255,255,0.8);font-family:Arial,sans-serif;">Placed on {{ order.created_at.strftime('%B %d, %Y') }} at {{ order.created_at.strftime('%I:%M %p') }} UTC</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ── Main card ── -->
+        <tr>
+          <td>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;border:1px solid #e8d0b1;overflow:hidden;margin-bottom:20px;">
+
+              <!-- Items section -->
+              <tr>
+                <td style="padding:28px 28px 0;">
+                  <p style="margin:0 0 16px;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#b87c6f;font-family:Arial,sans-serif;">Items Ordered</p>
+                </td>
+              </tr>
+
+              {% for item in order.items %}
+              <tr>
+                <td style="padding:0 28px;">
+                  <table width="100%" cellpadding="0" cellspacing="0" style="border-bottom:1px solid #f0e8da;padding-bottom:14px;margin-bottom:14px;">
+                    <tr>
+                      <td style="vertical-align:top;padding:12px 0;">
+                        <p style="margin:0 0 3px;font-size:15px;font-weight:700;color:#3a3d48;font-family:'Georgia',serif;">{{ item.product_name }}</p>
+                        <p style="margin:0 0 2px;font-size:13px;color:#888;font-family:Arial,sans-serif;">{{ item.color }} · Size {{ item.size }}{% if item.placement %} · {{ item.placement.replace('_',' ').title() }}{% endif %}</p>
+                        {% if item.style_number %}
+                        <p style="margin:0;font-size:12px;color:#aaa;font-family:Arial,sans-serif;">Style {{ item.style_number }}</p>
+                        {% endif %}
+                      </td>
+                      <td align="right" style="vertical-align:top;padding:12px 0;white-space:nowrap;">
+                        <p style="margin:0 0 3px;font-size:14px;color:#888;font-family:Arial,sans-serif;">Qty {{ item.quantity }} × ${{ '%.2f'|format(item.unit_price) }}</p>
+                        <p style="margin:0;font-size:16px;font-weight:700;color:#3a3d48;font-family:'Georgia',serif;">${{ '%.2f'|format(item.subtotal) }}</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              {% endfor %}
+
+              <!-- Totals -->
+              <tr>
+                <td style="padding:8px 28px 24px;">
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="padding:6px 0;font-size:13px;color:#888;font-family:Arial,sans-serif;">Subtotal</td>
+                      <td align="right" style="padding:6px 0;font-size:13px;color:#888;font-family:Arial,sans-serif;">${{ '%.2f'|format(order.subtotal) }}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:6px 0;font-size:13px;color:#888;font-family:Arial,sans-serif;">Shipping</td>
+                      <td align="right" style="padding:6px 0;font-size:13px;color:#888;font-family:Arial,sans-serif;">
+                        {% if order.shipping_cost and order.shipping_cost > 0 %}${{ '%.2f'|format(order.shipping_cost) }}{% else %}Free (Local Pickup){% endif %}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:12px 0 6px;border-top:2px solid #e8d0b1;font-size:16px;font-weight:700;color:#3a3d48;font-family:'Georgia',serif;">Total Paid</td>
+                      <td align="right" style="padding:12px 0 6px;border-top:2px solid #e8d0b1;font-size:18px;font-weight:700;color:#b87c6f;font-family:'Georgia',serif;">${{ '%.2f'|format(order.total) }}</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+
+            </table>
+          </td>
+        </tr>
+
+        <!-- ── Payment + Delivery side by side ── -->
+        <tr>
+          <td style="padding-bottom:20px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+
+                <!-- Payment -->
+                <td width="48%" style="vertical-align:top;">
+                  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:14px;border:1px solid #e8d0b1;">
+                    <tr>
+                      <td style="padding:20px;">
+                        <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#b87c6f;font-family:Arial,sans-serif;">Payment</p>
+                        <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#3a3d48;font-family:'Georgia',serif;">
+                          {% if order.payment_method == 'stripe' %}Credit / Debit Card
+                          {% elif order.payment_method == 'paypal' %}PayPal
+                          {% else %}{{ (order.payment_method or 'Card')|title }}{% endif %}
+                        </p>
+                        <p style="margin:0;font-size:13px;color:#059669;font-weight:600;font-family:Arial,sans-serif;">✓ Payment Received</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+
+                <td width="4%"></td>
+
+                <!-- Delivery -->
+                <td width="48%" style="vertical-align:top;">
+                  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:14px;border:1px solid #e8d0b1;">
+                    <tr>
+                      <td style="padding:20px;">
+                        <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#b87c6f;font-family:Arial,sans-serif;">Delivery</p>
+                        {% if order.fulfillment_method == 'shipping' %}
+                          <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#3a3d48;font-family:'Georgia',serif;">Shipping</p>
+                          <p style="margin:0;font-size:12px;color:#888;font-family:Arial,sans-serif;line-height:1.5;">
+                            {{ order.shipping_recipient or order.full_name }}<br>
+                            {{ order.shipping_street }}<br>
+                            {% if order.shipping_street_2 %}{{ order.shipping_street_2 }}<br>{% endif %}
+                            {{ order.shipping_city }}, {{ order.shipping_state }} {{ order.shipping_zip }}
+                          </p>
+                        {% else %}
+                          <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#3a3d48;font-family:'Georgia',serif;">Local Pickup</p>
+                          <p style="margin:0;font-size:12px;color:#888;font-family:Arial,sans-serif;">We'll reach out when your order is ready!</p>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ── What happens next ── -->
+        <tr>
+          <td>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:14px;border:1px solid #e8d0b1;margin-bottom:28px;">
+              <tr>
+                <td style="padding:24px 28px;">
+                  <p style="margin:0 0 14px;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#b87c6f;font-family:Arial,sans-serif;">What Happens Next</p>
+                  <table cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="padding:5px 0;vertical-align:top;">
+                        <span style="display:inline-block;width:22px;height:22px;border-radius:50%;background:#b87c6f;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:22px;font-family:Arial,sans-serif;margin-right:10px;">1</span>
+                      </td>
+                      <td style="padding:5px 0;font-size:13px;color:#555;font-family:Arial,sans-serif;line-height:1.55;vertical-align:top;">We receive your order and begin preparing your items.</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:5px 0;vertical-align:top;">
+                        <span style="display:inline-block;width:22px;height:22px;border-radius:50%;background:#b87c6f;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:22px;font-family:Arial,sans-serif;margin-right:10px;">2</span>
+                      </td>
+                      <td style="padding:5px 0;font-size:13px;color:#555;font-family:Arial,sans-serif;line-height:1.55;vertical-align:top;">Your design is pressed and quality-checked with care.</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:5px 0;vertical-align:top;">
+                        <span style="display:inline-block;width:22px;height:22px;border-radius:50%;background:#b87c6f;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:22px;font-family:Arial,sans-serif;margin-right:10px;">3</span>
+                      </td>
+                      <td style="padding:5px 0;font-size:13px;color:#555;font-family:Arial,sans-serif;line-height:1.55;vertical-align:top;">
+                        {% if order.fulfillment_method == 'shipping' %}We ship it to you and send tracking info.{% else %}We'll contact you when it's ready for pickup!{% endif %}
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ── Footer ── -->
+        <tr>
+          <td align="center" style="padding-bottom:40px;">
+            <p style="margin:0 0 6px;font-size:13px;color:#888;font-family:Arial,sans-serif;">Questions? Reply to this email or reach out at</p>
+            <p style="margin:0 0 20px;font-size:13px;font-weight:600;color:#b87c6f;font-family:Arial,sans-serif;">purposefullymadekc@gmail.com</p>
+            <p style="margin:0;font-family:'Georgia',serif;font-size:15px;color:#b87c6f;font-style:italic;">Made with purpose, for you.</p>
+            <p style="margin:6px 0 0;font-size:11px;color:#ccc;font-family:Arial,sans-serif;">© {{ order.created_at.year }} Purposefully Made KC · Kansas City, MO</p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>

@@ -11,53 +11,86 @@ checkout_bp = Blueprint('checkout', __name__, url_prefix='/checkout')
 
 
 def send_order_confirmation_email(order):
-    """Send order confirmation email to customer. Returns True if sent, False otherwise."""
+    """Send a branded HTML receipt to the customer and a copy to the admin."""
     if not order.email:
         return False
     mail = current_app.extensions.get('mail')
     if not mail or not current_app.config.get('MAIL_SERVER') or not current_app.config.get('MAIL_USERNAME'):
         return False
+
     try:
+        # ── Build plain-text fallback ──────────────────────────────────────
         items_text = '\n'.join(
-            f"  • {item.product_name} - {item.color} {item.size} x{item.quantity} = ${item.subtotal:.2f}"
+            f"  • {item.product_name} – {item.color}, Size {item.size}"
+            f" × {item.quantity}  =  ${item.subtotal:.2f}"
             for item in order.items
         )
         if order.fulfillment_method == 'shipping':
-            addr_lines = [
+            addr_parts = filter(None, [
                 order.shipping_recipient or order.full_name,
                 order.shipping_street,
-                order.shipping_street_2 or '',
+                order.shipping_street_2,
                 f"{order.shipping_city}, {order.shipping_state} {order.shipping_zip}",
-                order.shipping_country or 'USA'
-            ]
-            shipping_text = '\n'.join(line for line in addr_lines if line)
+                order.shipping_country if order.shipping_country and order.shipping_country != 'USA' else None,
+            ])
+            delivery_text = '\n'.join(addr_parts)
         else:
-            shipping_text = "Local Pickup"
-        body = f"""Thank you for your order!
+            delivery_text = "Local Pickup — we'll reach out when your order is ready!"
 
-Order Number: {order.order_number}
-Order Date: {order.created_at.strftime('%B %d, %Y at %I:%M %p')}
+        plain_body = (
+            f"Hi {order.first_name or 'there'},\n\n"
+            f"Your order is confirmed! Here's your receipt.\n\n"
+            f"Order Number : {order.order_number}\n"
+            f"Date         : {order.created_at.strftime('%B %d, %Y at %I:%M %p')} UTC\n"
+            f"Payment      : {(order.payment_method or 'Card').title()} — PAID\n\n"
+            f"Items:\n{items_text}\n\n"
+            f"Subtotal : ${order.subtotal:.2f}\n"
+            f"Shipping : {'$' + f'{order.shipping_cost:.2f}' if order.shipping_cost else 'Free (Pickup)'}\n"
+            f"Total    : ${order.total:.2f}\n\n"
+            f"Delivery:\n{delivery_text}\n\n"
+            f"Questions? Email us at purposefullymadekc@gmail.com\n\n"
+            f"Made with purpose, for you.\n"
+            f"— Purposefully Made KC"
+        )
 
-Items:
-{items_text}
+        # ── HTML body from template ────────────────────────────────────────
+        html_body = render_template('email/order_confirmation.html', order=order)
 
-Subtotal: ${order.subtotal:.2f}
-Shipping: ${order.shipping_cost:.2f}
-Total: ${order.total:.2f}
-
-Shipping to:
-{shipping_text}
-
-We'll notify you when your order ships (or when it's ready for pickup).
-"""
+        # ── Customer receipt ───────────────────────────────────────────────
         msg = Message(
-            subject=f"Order Confirmation - {order.order_number}",
+            subject=f"Your Order is Confirmed ✓ — {order.order_number}",
             recipients=[order.email],
-            body=body
+            body=plain_body,
+            html=html_body,
         )
         mail.send(msg)
+
+        # ── Admin copy (new order alert) ───────────────────────────────────
+        admin_email = current_app.config.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com'
+        if admin_email and admin_email != order.email:
+            admin_msg = Message(
+                subject=f"New Order — {order.order_number} · ${order.total:.2f}",
+                recipients=[admin_email],
+                body=(
+                    f"New order received!\n\n"
+                    f"Order : {order.order_number}\n"
+                    f"From  : {order.full_name} <{order.email}>\n"
+                    f"Total : ${order.total:.2f}\n\n"
+                    f"Items:\n{items_text}\n\n"
+                    f"Delivery: {delivery_text}"
+                ),
+                html=html_body,
+            )
+            try:
+                mail.send(admin_msg)
+            except Exception:
+                pass  # Don't fail the customer email if admin copy fails
+
         return True
-    except Exception:
+
+    except Exception as e:
+        import sys
+        print(f"Order confirmation email error: {e}", file=sys.stderr)
         return False
 
 def get_cart():
