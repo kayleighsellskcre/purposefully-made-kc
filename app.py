@@ -65,6 +65,10 @@ def create_app(config_class=Config):
                     "ALTER TABLE product ADD COLUMN IF NOT EXISTS neck_style VARCHAR(30)",
                     "ALTER TABLE product ADD COLUMN IF NOT EXISTS sleeve_length VARCHAR(30)",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS design_fee DOUBLE PRECISION DEFAULT 0",
+                    # order_item.design_id — links a design to a line item (needed for delete guard)
+                    "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS design_id INTEGER REFERENCES design(id)",
+                    # custom_design_request.is_deleted — soft-delete flag so dismissed cards stay gone
+                    "ALTER TABLE custom_design_request ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE",
                 ]
                 for migration in all_migrations:
                     try:

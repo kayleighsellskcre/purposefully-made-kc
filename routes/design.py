@@ -164,7 +164,11 @@ def delete(design_id):
         return jsonify({'error': 'Not authorised'}), 403
 
     # Guard against deleting designs that are part of existing orders
-    if design.order_items.count() > 0:
+    try:
+        attached = design.order_items.count() > 0
+    except Exception:
+        attached = False
+    if attached:
         return jsonify({'error': 'This design is attached to an order and cannot be deleted'}), 400
 
     # Remove file from local disk (R2 objects are not purged to avoid breaking CDN links)
