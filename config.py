@@ -7,6 +7,24 @@ load_dotenv(os.path.join(basedir, '.env'))
 class Config:
     """Base configuration"""
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
+
+    # ── Session / Cookie Security ──────────────────────────────────────────────
+    # HttpOnly: JS cannot read the cookie (blocks XSS cookie theft)
+    SESSION_COOKIE_HTTPONLY = True
+    # SameSite Lax: cookie not sent on cross-site requests (blocks CSRF)
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    # Secure: cookie only over HTTPS. True in production, False in local dev.
+    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'true').lower() == 'true'
+    # Remember-me cookie gets the same treatment
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SECURE = SESSION_COOKIE_SECURE
+    REMEMBER_COOKIE_SAMESITE = 'Lax'
+    # Sessions expire after 8 hours of inactivity
+    PERMANENT_SESSION_LIFETIME = 28800  # seconds
+
+    # ── CSRF Protection (Flask-WTF) ────────────────────────────────────────────
+    WTF_CSRF_ENABLED = True
+    WTF_CSRF_TIME_LIMIT = 3600  # token valid for 1 hour
     _db_url = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + os.path.join(basedir, 'apparel.db')
     # Railway/Heroku use postgres:// but SQLAlchemy 1.4+ needs postgresql://

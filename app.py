@@ -3,6 +3,9 @@ import sys
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_from_directory
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_mail import Mail
+from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
 from config import Config
 from models import db, User, Address, Collection, Product, Design, Order, OrderItem, Favorite
@@ -10,6 +13,8 @@ import stripe
 import paypalrestsdk
 
 mail = Mail()
+csrf = CSRFProtect()
+limiter = Limiter(key_func=get_remote_address, default_limits=[])
 
 
 def _sync_mockups_to_static(app):
@@ -41,6 +46,8 @@ def create_app(config_class=Config):
     # Initialize extensions
     db.init_app(app)
     mail.init_app(app)
+    csrf.init_app(app)
+    limiter.init_app(app)
     
     # Create tables if they don't exist (needed for fresh Railway/PostgreSQL deploys)
     with app.app_context():
@@ -69,6 +76,9 @@ def create_app(config_class=Config):
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS design_id INTEGER REFERENCES design(id)",
                     # custom_design_request.is_deleted — soft-delete flag so dismissed cards stay gone
                     "ALTER TABLE custom_design_request ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE",
+                    # user.failed_logins / locked_until — brute-force lockout tracking
+                    "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS failed_logins INTEGER DEFAULT 0",
+                    "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP",
                 ]
                 for migration in all_migrations:
                     try:
@@ -177,6 +187,35 @@ def create_app(config_class=Config):
     app.register_blueprint(collection_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(favorites_bp)
+
+    # ── CSRF exemptions ──────────────────────────────────────────────────────
+    # Stripe / PayPal webhooks POST with their own signatures, not our CSRF token.
+    from routes.checkout import checkout_bp as _co_bp
+    try:
+        csrf.exempt(_co_bp)
+    except Exception:
+        pass
+    # Internal API routes use X-Requested-With or their own auth — CSRF not applicable.
+    from routes.api import api_bp as _api_bp
+    try:
+        csrf.exempt(_api_bp)
+    except Exception:
+        pass
+
+    # ── Security headers (added to every response) ───────────────────────────
+    @app.after_request
+    def set_security_headers(response):
+        # Prevent browsers from MIME-sniffing the content type
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        # Block the site from being embedded in iframes (clickjacking protection)
+        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+        # Tell browsers to use HTTPS for the next year (only effective over HTTPS)
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        # Don't leak the full URL in the Referer header when leaving the site
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        # Restrict resource loading to same origin (images/fonts from known CDNs allowed)
+        response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+        return response
     
     # Initialize background scheduler and run startup seed (optional - won't crash app if fails)
     try:

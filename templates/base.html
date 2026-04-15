@@ -16,6 +16,8 @@
     
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <!-- CSRF token available to JS -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
     <!-- Navigation -->
@@ -147,5 +149,49 @@
     <!-- Scripts -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     {% block extra_js %}{% endblock %}
+
+    <!-- ── CSRF auto-protection ─────────────────────────────────────────────
+         1. Inject a hidden csrf_token field into every HTML form on the page
+            so standard form submissions are protected automatically.
+         2. Intercept every fetch() call and add X-CSRFToken header so AJAX
+            requests (delete buttons, toggles, etc.) are also protected.
+    ──────────────────────────────────────────────────────────────────────── -->
+    <script>
+    (function () {
+        var csrfToken = document.querySelector('meta[name="csrf-token"]')
+                        && document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        if (!csrfToken) return;
+
+        /* 1 — Inject hidden input into every form that will POST */
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('form[method="post"], form[method="POST"]').forEach(function (form) {
+                if (!form.querySelector('input[name="csrf_token"]')) {
+                    var inp = document.createElement('input');
+                    inp.type  = 'hidden';
+                    inp.name  = 'csrf_token';
+                    inp.value = csrfToken;
+                    form.insertBefore(inp, form.firstChild);
+                }
+            });
+        });
+
+        /* 2 — Patch fetch() to include X-CSRFToken on same-origin requests */
+        var _fetch = window.fetch;
+        window.fetch = function (url, opts) {
+            opts = opts || {};
+            var method = (opts.method || 'GET').toUpperCase();
+            if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+                /* Only add header for same-origin requests */
+                var isSameOrigin = typeof url === 'string'
+                    ? (url.startsWith('/') || url.startsWith(window.location.origin))
+                    : true;
+                if (isSameOrigin) {
+                    opts.headers = Object.assign({ 'X-CSRFToken': csrfToken }, opts.headers || {});
+                }
+            }
+            return _fetch.call(this, url, opts);
+        };
+    })();
+    </script>
 </body>
 </html>

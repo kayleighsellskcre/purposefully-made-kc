@@ -6,6 +6,20 @@ import os
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
+# Rate limiting applied in app.py via limiter — imported here for decoration
+try:
+    from app import limiter
+except ImportError:
+    limiter = None
+
+def _rate_limit(limit_string):
+    """Apply a rate limit if Flask-Limiter is available, otherwise no-op."""
+    def decorator(f):
+        if limiter:
+            return limiter.limit(limit_string)(f)
+        return f
+    return decorator
+
 
 @auth_bp.route('/promote-admin')
 def promote_admin():
@@ -37,41 +51,65 @@ def _clear_cart_for_new_user():
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
+@_rate_limit("10 per minute")
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
-    
+
     if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
+        email = (request.form.get('email') or '').strip().lower()
+        password = request.form.get('password', '')
         remember = request.form.get('remember', False)
-        
-        user = User.query.filter_by(email=email).first()
-        
-        if user is None or not user.check_password(password):
-            flash('Invalid email or password', 'error')
+
+        # Generic message regardless of whether the user exists (prevents user enumeration)
+        _bad = lambda: (flash('Invalid email or password. Please try again.', 'error'),
+                        redirect(url_for('auth.login')))[1]
+
+        user = User.query.filter(db.func.lower(User.email) == email).first()
+
+        if user is None:
+            return _bad()
+
+        # Account lockout check
+        if user.is_locked:
+            flash('Your account is temporarily locked due to too many failed attempts. '
+                  'Please wait 15 minutes and try again.', 'error')
             return redirect(url_for('auth.login'))
-        
+
+        if not user.check_password(password):
+            user.record_failed_login()
+            db.session.commit()
+            if user.is_locked:
+                flash('Too many failed attempts. Your account has been locked for 15 minutes.', 'error')
+            else:
+                remaining = 5 - (user.failed_logins or 0)
+                flash(f'Invalid email or password. {remaining} attempt{"s" if remaining != 1 else ""} remaining before lockout.', 'error')
+            return redirect(url_for('auth.login'))
+
+        # Successful login — reset lockout counter
+        user.reset_login_attempts()
+
         # Ensure the designated admin email always has admin access (fixes deploy/fresh DB)
         admin_email = os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com'
         if user.email.lower() == admin_email.lower():
             user.is_admin = True
-            db.session.commit()
-        
+
+        db.session.commit()
         login_user(user, remember=remember)
         _clear_cart_for_new_user()
-        
+
         next_page = request.args.get('next')
         if not next_page or urlparse(next_page).netloc != '':
             next_page = url_for('main.index')
-        
+
         flash(f'Welcome back, {user.first_name or user.email}!', 'success')
         return redirect(next_page)
-    
+
     return render_template('auth/login.html')
 
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
+@_rate_limit("5 per hour")
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))

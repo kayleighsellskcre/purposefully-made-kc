@@ -16,17 +16,38 @@ class User(UserMixin, db.Model):
     phone = db.Column(db.String(20))
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
+    # Brute-force lockout: track consecutive bad passwords
+    failed_logins = db.Column(db.Integer, default=0, nullable=True)
+    locked_until  = db.Column(db.DateTime, nullable=True)
+
     # Relationships
     addresses = db.relationship('Address', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     orders = db.relationship('Order', backref='user', lazy='dynamic')
     favorites = db.relationship('Favorite', backref='user', lazy='dynamic', cascade='all, delete-orphan')
-    
+
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
-    
+
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    @property
+    def is_locked(self):
+        if self.locked_until and self.locked_until > datetime.utcnow():
+            return True
+        return False
+
+    def record_failed_login(self):
+        self.failed_logins = (self.failed_logins or 0) + 1
+        # Lock for 15 minutes after 5 consecutive failures
+        if self.failed_logins >= 5:
+            from datetime import timedelta
+            self.locked_until = datetime.utcnow() + timedelta(minutes=15)
+
+    def reset_login_attempts(self):
+        self.failed_logins = 0
+        self.locked_until = None
     
     @property
     def full_name(self):
