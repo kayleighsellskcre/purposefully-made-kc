@@ -79,7 +79,35 @@ def index():
         colors = [c[0] for c in colors if c[0]]
         
         design_id = request.args.get('design_id', type=int)
-        
+
+        # Daily affirmation: same message for every visitor on the same calendar date
+        daily_affirmation = None
+        try:
+            from datetime import date
+            today = date.today()
+            day_index = (today - date(today.year, 1, 1)).days
+
+            # Try DB first (admin-managed list)
+            try:
+                from models import Affirmation
+                db_affirmations = (
+                    Affirmation.query
+                    .filter_by(is_active=True)
+                    .order_by(Affirmation.sort_order, Affirmation.id)
+                    .all()
+                )
+                if db_affirmations:
+                    daily_affirmation = db_affirmations[day_index % len(db_affirmations)].text
+            except Exception:
+                pass
+
+            # Fallback: use seed list directly if DB had nothing
+            if not daily_affirmation:
+                from affirmations_seed import AFFIRMATIONS
+                daily_affirmation = AFFIRMATIONS[day_index % len(AFFIRMATIONS)]
+        except Exception:
+            pass
+
         return render_template('shop/index.html', 
                              products=products,
                              categories=categories,
@@ -93,7 +121,8 @@ def index():
                              selected_neck_style=neck_style,
                              selected_sleeve_length=sleeve_length,
                              selected_color=color,
-                             design_id=design_id)
+                             design_id=design_id,
+                             daily_affirmation=daily_affirmation)
     except Exception as e:
         # If there's a database error, log it and show empty shop
         import sys

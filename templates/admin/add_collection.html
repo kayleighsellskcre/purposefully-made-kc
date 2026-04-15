@@ -105,7 +105,7 @@
                             <label class="design-choice-card">
                                 <input type="checkbox" name="allowed_designs" value="{{ d.id }}">
                                 <div class="design-choice-preview">
-                                    <img src="{{ url_for('static', filename=d.file_path) }}" alt="{{ d.title or d.original_filename }}">
+                                    <img src="{{ d.file_path | image_url }}" alt="{{ d.title or d.original_filename }}">
                                 </div>
                                 <span>{{ (d.title or d.original_filename or 'Design')[:18] }}{% if ((d.title or d.original_filename or '')|length) > 18 %}...{% endif %}</span>
                             </label>

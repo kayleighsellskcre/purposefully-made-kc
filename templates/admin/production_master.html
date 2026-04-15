@@ -67,8 +67,8 @@
                     {% for group in design_list %}
                     <div class="design-master-card">
                         {% if group.design and group.design.file_path %}
-                        <a href="{{ url_for('static', filename=group.design.file_path) }}" target="_blank" rel="noopener" class="design-master-preview design-master-preview-link" title="Click to open full size. Right-click to save.">
-                            <img src="{{ url_for('static', filename=group.design.file_path) }}" alt="{{ group.design.filename or 'Design' }}">
+                            <a href="{{ group.design.file_path | image_url }}" target="_blank" rel="noopener" class="design-master-preview design-master-preview-link" title="Click to open full size. Right-click to save.">
+                            <img src="{{ group.design.file_path | image_url }}" alt="{{ group.design.filename or 'Design' }}">
                             <span class="design-click-hint">Click to open & save</span>
                         </a>
                         {% else %}

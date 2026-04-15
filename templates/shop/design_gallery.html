@@ -25,7 +25,7 @@
             {% for design in designs %}
             <div class="gallery-card">
                 <div class="gallery-card-image">
-                    <img src="{{ url_for('static', filename=design.file_path) }}"
+                    <img src="{{ design.file_path | image_url }}"
                          alt="{{ design.title or design.original_filename }}"
                          loading="lazy">
                     <div class="gallery-card-overlay">

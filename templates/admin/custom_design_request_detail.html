@@ -14,8 +14,8 @@
             <div class="detail-section">
                 <h2>Reference Image</h2>
                 <div class="reference-preview">
-                    <a href="{{ url_for('static', filename=req.reference_file_path) }}" target="_blank" rel="noopener">
-                        <img src="{{ url_for('static', filename=req.reference_file_path) }}" alt="Reference">
+                    <a href="{{ req.reference_file_path | image_url }}" target="_blank" rel="noopener">
+                        <img src="{{ req.reference_file_path | image_url }}" alt="Reference">
                     </a>
                 </div>
             </div>
@@ -68,7 +68,7 @@
                     {% if req.design_fee and req.design_fee > 0 %}
                     <p><strong>Design fee:</strong> ${{ "%.0f"|format(req.design_fee) }} (added to order when they use it)</p>
                     {% endif %}
-                    <a href="{{ url_for('static', filename=req.created_design.file_path) }}" target="_blank" class="btn btn-outline btn-sm">View Design</a>
+                    <a href="{{ req.created_design.file_path | image_url }}" target="_blank" class="btn btn-outline btn-sm">View Design</a>
                 </div>
                 {% endif %}
                 

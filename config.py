@@ -55,6 +55,16 @@ class Config:
     TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
     TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER')
     
+    # Cloudflare R2 (cloud image storage - prevents image loss on server restarts)
+    # Sign up at cloudflare.com → R2 Object Storage → create bucket + API token
+    R2_ACCOUNT_ID = os.environ.get('R2_ACCOUNT_ID')           # Cloudflare Account ID
+    R2_ACCESS_KEY_ID = os.environ.get('R2_ACCESS_KEY_ID')     # R2 API token → Access Key ID
+    R2_SECRET_ACCESS_KEY = os.environ.get('R2_SECRET_ACCESS_KEY')  # R2 API token → Secret
+    R2_BUCKET_NAME = os.environ.get('R2_BUCKET_NAME')         # e.g. kb-apparel-uploads
+    # Public base URL — set after enabling "Public access" on the bucket in R2 dashboard
+    # Looks like: https://pub-xxxxxxxxxxxxxxxx.r2.dev  (or a custom domain you connect)
+    R2_PUBLIC_URL = os.environ.get('R2_PUBLIC_URL', '').rstrip('/')
+
     # Application settings
     ITEMS_PER_PAGE = 20
     ADMIN_BASE_URL = os.environ.get('ADMIN_BASE_URL', 'http://localhost:5000')

@@ -19,7 +19,7 @@
             {% for r in requests %}
             <div class="request-card">
                 <div class="request-preview">
-                    <img src="{{ url_for('static', filename=r.reference_file_path) }}" alt="Reference">
+                    <img src="{{ r.reference_file_path | image_url }}" alt="Reference">
                 </div>
                 <div class="request-body">
                     <p class="request-desc">{{ r.description[:120] }}{% if r.description|length > 120 %}...{% endif %}</p>

@@ -83,7 +83,7 @@
             </thead>
             <tbody>
                 {% for product in products %}
-                <tr>
+                <tr data-product-id="{{ product.id }}">
                     <td><strong class="prod-style">{{ product.style_number }}</strong></td>
                     <td class="prod-name-cell">{{ product.name }}</td>
                     <td>{{ product.category or '—' }}</td>
@@ -97,9 +97,11 @@
                     </td>
                     <td class="prod-actions-cell">
                         <a href="{{ url_for('admin.edit_product', product_id=product.id) }}" class="adm-view-link">Edit</a>
-                        <form action="{{ url_for('admin.delete_product', product_id=product.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Delete {{ product.name }}?');">
-                            <button type="submit" class="adm-view-link prod-delete-link">Delete</button>
-                        </form>
+                        <button type="button"
+                                class="adm-view-link prod-delete-link"
+                                onclick="confirmDelete({{ product.id }}, '{{ product.name|replace("'", "\\'") }}', '{{ url_for('admin.delete_product', product_id=product.id) }}')">
+                            Delete
+                        </button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -109,7 +111,7 @@
         <!-- Mobile card list (hidden on desktop) -->
         <div class="prod-card-list">
             {% for product in products %}
-            <div class="prod-card">
+            <div class="prod-card" data-product-id="{{ product.id }}">
                 <div class="prod-card-top">
                     <div class="prod-card-meta">
                         <span class="prod-card-style">{{ product.style_number }}</span>
@@ -139,9 +141,12 @@
                 </div>
                 <div class="prod-card-actions">
                     <a href="{{ url_for('admin.edit_product', product_id=product.id) }}" class="btn btn-outline btn-sm" style="flex:1; text-align:center;">Edit</a>
-                    <form action="{{ url_for('admin.delete_product', product_id=product.id) }}" method="POST" style="flex:1;" onsubmit="return confirm('Delete {{ product.name }}?');">
-                        <button type="submit" class="btn btn-sm prod-delete-btn" style="width:100%;">Delete</button>
-                    </form>
+                    <button type="button"
+                            class="btn btn-sm prod-delete-btn"
+                            style="flex:1;"
+                            onclick="confirmDelete({{ product.id }}, '{{ product.name|replace("'", "\\'") }}', '{{ url_for('admin.delete_product', product_id=product.id) }}')">
+                        Delete
+                    </button>
                 </div>
             </div>
             {% endfor %}
@@ -759,6 +764,109 @@ document.addEventListener('keydown', function(e) {
         });
     }
 });
+
+// ── Delete confirmation ───────────────────────────────────────────────────────
+
+let _deleteUrl   = '';
+let _deleteId    = 0;
+
+function confirmDelete(productId, productName, deleteUrl) {
+    _deleteId  = productId;
+    _deleteUrl = deleteUrl;
+
+    document.getElementById('deleteModalProductName').textContent = productName;
+    document.getElementById('deleteModalBody').textContent =
+        '"' + productName + '" will be hidden from your store. You can reactivate it later by editing the product.';
+
+    openModal('deleteModal');
+}
+
+document.getElementById('deleteModalConfirmBtn').addEventListener('click', function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Removing…';
+
+    fetch(_deleteUrl, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        closeModal('deleteModal');
+
+        // Remove the desktop table row
+        const row = document.querySelector('tr[data-product-id="' + _deleteId + '"]');
+        if (row) {
+            row.style.transition = 'opacity 0.3s';
+            row.style.opacity    = '0';
+            setTimeout(function() { row.remove(); }, 300);
+        }
+
+        // Remove the mobile card
+        const card = document.querySelector('.prod-card[data-product-id="' + _deleteId + '"]');
+        if (card) {
+            card.style.transition = 'opacity 0.3s';
+            card.style.opacity    = '0';
+            setTimeout(function() { card.remove(); }, 300);
+        }
+
+        // Brief success toast so there's clear feedback
+        showToast(data.message || 'Product removed');
+    })
+    .catch(function() {
+        closeModal('deleteModal');
+        alert('Something went wrong. Please try again.');
+    })
+    .finally(function() {
+        btn.disabled = false;
+        btn.textContent = 'Yes, Remove';
+    });
+});
+
+function showToast(msg) {
+    let t = document.getElementById('prodDeleteToast');
+    if (!t) {
+        t = document.createElement('div');
+        t.id = 'prodDeleteToast';
+        t.style.cssText = [
+            'position:fixed','bottom:1.5rem','left:50%','transform:translateX(-50%)',
+            'background:#1e1914','color:#fff','padding:0.7rem 1.4rem',
+            'border-radius:10px','font-size:0.88rem','font-weight:600',
+            'box-shadow:0 6px 24px rgba(0,0,0,0.25)','z-index:99999',
+            'opacity:0','transition:opacity 0.25s','pointer-events:none'
+        ].join(';');
+        document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.opacity = '1';
+    clearTimeout(t._hide);
+    t._hide = setTimeout(function() { t.style.opacity = '0'; }, 3000);
+}
 </script>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="prod-modal" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+    <div class="prod-modal-card">
+        <div class="prod-modal-header">
+            <h2 id="deleteModalTitle">Remove Product?</h2>
+            <button class="prod-modal-close" onclick="closeModal('deleteModal')" aria-label="Close">&times;</button>
+        </div>
+        <div class="prod-modal-body">
+            <p style="font-weight:600; color:var(--text-primary); margin-bottom:0.5rem;">
+                <span id="deleteModalProductName"></span>
+            </p>
+            <p id="deleteModalBody"></p>
+            <div class="prod-modal-actions">
+                <button type="button" class="btn btn-outline" onclick="closeModal('deleteModal')">Cancel</button>
+                <button type="button" id="deleteModalConfirmBtn" class="btn" style="background:var(--error-color);color:#fff;border-color:var(--error-color);">
+                    Yes, Remove
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 {% endblock %}

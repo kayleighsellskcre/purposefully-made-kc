@@ -43,10 +43,12 @@ def sync_full_catalog_job(app):
                 try:
                     existing = Product.query.filter_by(style_number=style_num).first()
                     if existing:
+                        # Sync only non-pricing, non-status fields — preserve admin-set
+                        # prices and the active/inactive state set in the dashboard.
+                        protected = {'base_price', 'wholesale_cost', 'is_active'}
                         for key, value in product_data.items():
-                            if hasattr(existing, key) and value is not None:
+                            if hasattr(existing, key) and value is not None and key not in protected:
                                 setattr(existing, key, value)
-                        existing.is_active = True
                         product = existing
                         updated += 1
                     else:

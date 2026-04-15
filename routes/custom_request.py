@@ -1,10 +1,7 @@
 """Custom design requests - customers upload reference images for recreation"""
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
-from werkzeug.utils import secure_filename
 from models import db, CustomDesignRequest, Design
-from pathlib import Path
-import time
 
 custom_request_bp = Blueprint('custom_request', __name__, url_prefix='/custom-design')
 
@@ -40,16 +37,14 @@ def submit():
             flash('Please upload a PNG, JPG, or WEBP image.', 'error')
             return redirect(url_for('custom_request.submit'))
         
-        # Save reference image
-        filename = secure_filename(file.filename)
-        name_base = filename.rsplit('.', 1)[0][:50]
-        ext = filename.rsplit('.', 1)[-1].lower()
-        unique_name = f"request_{current_user.id}_{int(time.time())}_{name_base}.{ext}"
-        upload_dir = Path(current_app.config['UPLOAD_FOLDER']) / 'custom_requests'
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        filepath = upload_dir / unique_name
-        file.save(str(filepath))
-        relative_path = f"uploads/custom_requests/{unique_name}"
+        # Save reference image (Cloudinary if configured, local fallback for dev)
+        from utils.cloud_storage import upload_image
+        relative_path = upload_image(
+            file,
+            current_app._get_current_object(),
+            subfolder='custom_requests',
+            public_id_prefix=f'request_{current_user.id}',
+        )
         
         req = CustomDesignRequest(
             user_id=current_user.id,

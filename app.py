@@ -91,6 +91,13 @@ def create_app(config_class=Config):
                 admin_user.is_admin = True
                 db.session.commit()
 
+        # Seed daily affirmations if the table is empty
+        try:
+            from affirmations_seed import seed_affirmations
+            seed_affirmations(app)
+        except Exception:
+            pass
+
     # Flask-Login setup
     login_manager = LoginManager()
     login_manager.init_app(app)
@@ -180,6 +187,16 @@ def create_app(config_class=Config):
         print(f"Scheduler init skipped: {e}", file=sys_module.stderr)
     
     # Add custom template filters
+    @app.template_filter('image_url')
+    def image_url_filter(path_or_url):
+        """Return the correct src for a stored image — Cloudinary URL or local static path."""
+        if not path_or_url:
+            return ''
+        if path_or_url.startswith('http'):
+            return path_or_url
+        from flask import url_for
+        return url_for('static', filename=path_or_url)
+
     @app.template_filter('from_json')
     def from_json_filter(value):
         """Convert JSON string to Python object"""

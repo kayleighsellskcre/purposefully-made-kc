@@ -20,7 +20,7 @@
                 <div class="bulk-header">
                     <div class="design-preview">
                         {% if group.design and group.design.file_path %}
-                        <img src="{{ url_for('static', filename=group.design.file_path) }}" alt="Design" class="bulk-design-img">
+                        <img src="{{ group.design.file_path | image_url }}" alt="Design" class="bulk-design-img">
                         {% else %}
                         <div class="no-design">No image</div>
                         {% endif %}

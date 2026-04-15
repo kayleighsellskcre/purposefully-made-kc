@@ -44,18 +44,22 @@ def _save_uploaded_design(file, user_id):
     ext = ext.lower()
     if ext not in ['.png', '.jpg', '.jpeg', '.webp']:
         return None
-    upload_dir = Path('static/uploads/designs')
-    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    from utils.cloud_storage import upload_image
     import time
     timestamp = int(time.time())
     unique_name = f"gallery_{name}_{timestamp}{ext}"
-    filepath = upload_dir / unique_name
-    file.save(str(filepath))
+    file_path = upload_image(
+        file,
+        current_app._get_current_object(),
+        subfolder='designs',
+        public_id_prefix='gallery',
+    )
     title = name.replace('_', ' ').title()
     design = Design(
         filename=unique_name,
         original_filename=file.filename,
-        file_path=f"uploads/designs/{unique_name}",
+        file_path=file_path,
         is_gallery=True,
         title=title,
         folder='custom_orders',
@@ -63,9 +67,12 @@ def _save_uploaded_design(file, user_id):
     )
     try:
         from PIL import Image
-        img = Image.open(filepath)
-        design.width, design.height = img.size
-        design.file_size = filepath.stat().st_size
+        if not file_path.startswith('http'):
+            from pathlib import Path as _Path
+            filepath = _Path('static') / file_path
+            img = Image.open(filepath)
+            design.width, design.height = img.size
+            design.file_size = filepath.stat().st_size
     except Exception:
         pass
     db.session.add(design)
@@ -84,17 +91,23 @@ def _save_design_for_user(file, user_id, title=None, design_fee=0):
     ext = ext.lower()
     if ext not in ['.png', '.jpg', '.jpeg', '.webp']:
         return None
-    upload_dir = Path('static/uploads/designs')
-    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    from utils.cloud_storage import upload_image
+    file_path = upload_image(
+        file,
+        current_app._get_current_object(),
+        subfolder='designs',
+        public_id_prefix=f'user_{user_id}',
+    )
+
     import time
     timestamp = int(time.time())
     unique_name = f"user_{user_id}_{name}_{timestamp}{ext}"
-    filepath = upload_dir / unique_name
-    file.save(str(filepath))
+
     design = Design(
         filename=unique_name,
         original_filename=file.filename,
-        file_path=f"uploads/designs/{unique_name}",
+        file_path=file_path,
         is_gallery=False,
         title=title or name.replace('_', ' ').title(),
         folder='custom_orders',
@@ -103,9 +116,14 @@ def _save_design_for_user(file, user_id, title=None, design_fee=0):
     )
     try:
         from PIL import Image
-        img = Image.open(filepath)
-        design.width, design.height = img.size
-        design.file_size = filepath.stat().st_size
+        import io
+        # For local paths, try to read from disk; for Cloudinary URLs, skip size detection
+        if not file_path.startswith('http'):
+            from pathlib import Path as _Path
+            filepath = _Path('static') / file_path
+            img = Image.open(filepath)
+            design.width, design.height = img.size
+            design.file_size = filepath.stat().st_size
     except Exception:
         pass
     db.session.add(design)
@@ -845,17 +863,25 @@ def edit_product(product_id):
 @admin_bp.route('/products/<int:product_id>/delete', methods=['POST'])
 @admin_required
 def delete_product(product_id):
-    """Delete product"""
+    """Soft-delete a product by marking it inactive.
+
+    We keep the row so the nightly catalog sync cannot re-add it with
+    is_active=True.  The product is hidden from the storefront but its
+    order history is preserved.
+
+    Returns JSON when the request carries X-Requested-With: XMLHttpRequest
+    (AJAX delete from the products page) so the row can be removed in-place
+    without a full page reload.
+    """
+    from flask import request as flask_request, jsonify
     product = Product.query.get_or_404(product_id)
-    
-    # Check if product has orders
-    if product.order_items.count() > 0:
-        flash('Cannot delete product with existing orders. Deactivate instead.', 'error')
-        return redirect(url_for('admin.products'))
-    
-    db.session.delete(product)
+    product.is_active = False
     db.session.commit()
-    flash('Product deleted', 'success')
+
+    if flask_request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'ok': True, 'message': f'"{product.name}" removed from store'})
+
+    flash('Product removed from store', 'success')
     return redirect(url_for('admin.products'))
 
 
@@ -1362,6 +1388,76 @@ def designs():
     return render_template('admin/designs.html', designs=designs)
 
 
+# ===== DAILY AFFIRMATIONS =====
+
+@admin_bp.route('/affirmations')
+@admin_required
+def affirmations():
+    """List all affirmations with edit/add/delete."""
+    from models import Affirmation
+    items = Affirmation.query.order_by(Affirmation.sort_order, Affirmation.id).all()
+    return render_template('admin/affirmations.html', affirmations=items)
+
+
+@admin_bp.route('/affirmations/add', methods=['POST'])
+@admin_required
+def affirmation_add():
+    """Add a new affirmation."""
+    from models import Affirmation
+    text = request.form.get('text', '').strip()
+    if not text:
+        flash('Affirmation text cannot be empty.', 'error')
+        return redirect(url_for('admin.affirmations'))
+    max_order = db.session.query(db.func.max(Affirmation.sort_order)).scalar() or 0
+    db.session.add(Affirmation(text=text, is_active=True, sort_order=max_order + 1))
+    db.session.commit()
+    flash('Affirmation added.', 'success')
+    return redirect(url_for('admin.affirmations'))
+
+
+@admin_bp.route('/affirmations/<int:aff_id>/edit', methods=['POST'])
+@admin_required
+def affirmation_edit(aff_id):
+    """Update the text of an existing affirmation."""
+    from models import Affirmation
+    aff = Affirmation.query.get_or_404(aff_id)
+    text = request.form.get('text', '').strip()
+    if not text:
+        flash('Affirmation text cannot be empty.', 'error')
+        return redirect(url_for('admin.affirmations'))
+    aff.text = text
+    db.session.commit()
+    flash('Affirmation updated.', 'success')
+    return redirect(url_for('admin.affirmations'))
+
+
+@admin_bp.route('/affirmations/<int:aff_id>/toggle', methods=['POST'])
+@admin_required
+def affirmation_toggle(aff_id):
+    """Toggle active/inactive state."""
+    from models import Affirmation
+    aff = Affirmation.query.get_or_404(aff_id)
+    aff.is_active = not aff.is_active
+    db.session.commit()
+    state = 'activated' if aff.is_active else 'deactivated'
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'ok': True, 'is_active': aff.is_active})
+    flash(f'Affirmation {state}.', 'success')
+    return redirect(url_for('admin.affirmations'))
+
+
+@admin_bp.route('/affirmations/<int:aff_id>/delete', methods=['POST'])
+@admin_required
+def affirmation_delete(aff_id):
+    """Permanently delete an affirmation."""
+    from models import Affirmation
+    aff = Affirmation.query.get_or_404(aff_id)
+    db.session.delete(aff)
+    db.session.commit()
+    flash('Affirmation deleted.', 'success')
+    return redirect(url_for('admin.affirmations'))
+
+
 # ===== DESIGN GALLERY (for customers to use) =====
 
 @admin_bp.route('/design-gallery')
@@ -1438,10 +1534,13 @@ def design_gallery_upload():
 def design_gallery_remove(design_id):
     """Remove design from gallery (does not delete file)"""
     design = Design.query.get_or_404(design_id)
+    name = design.title or design.original_filename or 'Design'
     if design.is_gallery:
         design.is_gallery = False
         db.session.commit()
         flash('Design removed from gallery', 'success')
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'ok': True, 'message': f'"{name}" removed from gallery'})
     return redirect(url_for('admin.design_gallery'))
 
 
@@ -1450,10 +1549,13 @@ def design_gallery_remove(design_id):
 def design_gallery_delete(design_id):
     """Permanently delete a design and its file (admin only)"""
     design = Design.query.get_or_404(design_id)
+    name = design.title or design.original_filename or 'Design'
     _delete_design_file(design)
     db.session.delete(design)
     db.session.commit()
     flash('Design deleted permanently', 'success')
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'ok': True, 'message': f'"{name}" permanently deleted'})
     return redirect(url_for('admin.design_gallery'))
 
 
@@ -1515,10 +1617,13 @@ def custom_design_request_detail(request_id):
 def design_delete(design_id):
     """Permanently delete a design (admin only) - used for Designs Library"""
     design = Design.query.get_or_404(design_id)
+    name = design.title or design.original_filename or 'Design'
     _delete_design_file(design)
     db.session.delete(design)
     db.session.commit()
     flash('Design deleted permanently', 'success')
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'ok': True, 'message': f'"{name}" permanently deleted'})
     return redirect(url_for('admin.designs'))
 
 

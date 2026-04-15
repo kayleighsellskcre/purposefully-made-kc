@@ -86,7 +86,19 @@ def upload():
         # Make white/near-white backgrounds transparent for shirt mockups
         filepath, unique_name = _make_white_transparent(filepath)
 
-        url = f"/static/uploads/designs/{unique_name}"
+        # Upload to R2 if configured; otherwise fall back to local static path
+        from utils.cloud_storage import r2_configured, _upload_to_r2
+        stored_path = f"uploads/designs/{unique_name}"
+        if r2_configured(current_app._get_current_object()):
+            try:
+                with open(filepath, 'rb') as f_obj:
+                    from werkzeug.datastructures import FileStorage
+                    fs = FileStorage(stream=f_obj, filename=unique_name)
+                    stored_path = _upload_to_r2(fs, current_app._get_current_object(), 'designs', 'design')
+            except Exception:
+                pass
+
+        url = stored_path if stored_path.startswith('http') else f"/static/{stored_path}"
         width, height = None, None
 
         try:
@@ -105,7 +117,7 @@ def upload():
                 design = Design(
                     filename=unique_name,
                     original_filename=file.filename,
-                    file_path=f"uploads/designs/{unique_name}",
+                    file_path=stored_path,
                     is_gallery=share_val,
                     title=title,
                     uploaded_by_user_id=current_user.id,
@@ -134,3 +146,38 @@ def upload():
         if current_app.debug:
             current_app.logger.exception('Design upload failed')
         return jsonify({'error': str(e) or 'Upload failed'}), 500
+
+
+@design_bp.route('/<int:design_id>/delete', methods=['POST'])
+def delete(design_id):
+    """Let an authenticated user permanently delete one of their own uploaded designs."""
+    from flask_login import login_required
+    from models import Design, db
+
+    if not current_user.is_authenticated:
+        return jsonify({'error': 'Login required'}), 401
+
+    design = Design.query.get_or_404(design_id)
+
+    # Only the owner (or an admin) may delete a design
+    if design.uploaded_by_user_id != current_user.id and not getattr(current_user, 'is_admin', False):
+        return jsonify({'error': 'Not authorised'}), 403
+
+    # Guard against deleting designs that are part of existing orders
+    if design.order_items.count() > 0:
+        return jsonify({'error': 'This design is attached to an order and cannot be deleted'}), 400
+
+    # Remove file from local disk (R2 objects are not purged to avoid breaking CDN links)
+    if design.file_path:
+        local = Path('static') / design.file_path
+        if local.exists():
+            try:
+                local.unlink()
+            except OSError:
+                pass
+
+    name = design.title or design.original_filename or 'Design'
+    db.session.delete(design)
+    db.session.commit()
+
+    return jsonify({'ok': True, 'message': f'"{name}" deleted'})

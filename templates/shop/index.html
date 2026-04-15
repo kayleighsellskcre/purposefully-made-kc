@@ -28,6 +28,16 @@
     </div>
 </div>
 
+{% if daily_affirmation %}
+<div class="daily-affirmation-wrap">
+    <div class="daily-affirmation-inner">
+        <span class="daily-affirmation-rule"></span>
+        <p class="daily-affirmation-text">{{ daily_affirmation }}</p>
+        <span class="daily-affirmation-rule"></span>
+    </div>
+</div>
+{% endif %}
+
 <section class="shop-section">
     <div class="container">
         <!-- Filter Bar -->
@@ -209,6 +219,38 @@
 </section>
 
 <style>
+/* ── Daily Affirmation ── */
+.daily-affirmation-wrap {
+    background: var(--ivory-silk, #faf7f2);
+    padding: 2.25rem 1.5rem;
+    text-align: center;
+}
+.daily-affirmation-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    max-width: 640px;
+    margin: 0 auto;
+}
+.daily-affirmation-rule {
+    display: block;
+    width: 56px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--terra-cotta, #b87c6f), transparent);
+    opacity: 0.55;
+}
+.daily-affirmation-text {
+    font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+    font-style: italic;
+    font-size: clamp(1.25rem, 3.5vw, 1.65rem);
+    font-weight: 400;
+    color: var(--primary-color, #3a3d48);
+    line-height: 1.55;
+    letter-spacing: 0.01em;
+    margin: 0;
+}
+
 /* ── Shop Page Header ── */
 .shop-page-header,
 .shop-page-header .container,

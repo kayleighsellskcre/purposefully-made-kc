@@ -1,0 +1,254 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Daily Affirmations - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+
+<div class="aff-page-header">
+    <div>
+        <span class="adm-eyebrow">Admin / Content</span>
+        <h1 class="aff-title">Daily Affirmations</h1>
+        <p class="aff-lead">One affirmation cycles per day on the shop page. Everyone who visits on the same day sees the same message.</p>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="adm-alert {% if category == 'error' %}adm-alert--error{% endif %}" style="margin-bottom:1rem;">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<!-- Add New Affirmation -->
+<div class="adm-section" style="margin-bottom:1.75rem;">
+    <div class="adm-section-header">
+        <h2 class="adm-section-title">Add New Affirmation</h2>
+    </div>
+    <div style="padding:1.25rem 1.5rem;">
+        <form method="POST" action="{{ url_for('admin.affirmation_add') }}" class="aff-add-form">
+            <div style="display:flex;gap:0.75rem;align-items:flex-end;flex-wrap:wrap;">
+                <div style="flex:1;min-width:260px;">
+                    <label class="adm-label" for="newAffText">Message <span style="color:var(--text-secondary);font-weight:400;">(1–2 lines, no em-dashes)</span></label>
+                    <input type="text" id="newAffText" name="text" class="adm-input" placeholder="e.g. You are exactly enough, right now." required maxlength="300">
+                </div>
+                <button type="submit" class="btn btn-primary" style="min-height:44px;white-space:nowrap;">Add Affirmation</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Affirmations List -->
+<div class="adm-section">
+    <div class="adm-section-header">
+        <h2 class="adm-section-title">All Affirmations <span class="aff-count">({{ affirmations|length }} total, {{ affirmations|selectattr('is_active')|list|length }} active)</span></h2>
+    </div>
+    <div class="adm-table-wrap">
+        {% if affirmations %}
+        <table class="adm-table aff-table">
+            <thead>
+                <tr>
+                    <th style="width:40px;">#</th>
+                    <th>Message</th>
+                    <th style="width:90px;text-align:center;">Status</th>
+                    <th style="width:160px;text-align:right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for aff in affirmations %}
+                <tr class="aff-row {% if not aff.is_active %}aff-row--inactive{% endif %}" data-aff-id="{{ aff.id }}">
+                    <td class="aff-num">{{ loop.index }}</td>
+                    <td class="aff-text-cell">
+                        <span class="aff-display-text">{{ aff.text }}</span>
+                        <form method="POST"
+                              action="{{ url_for('admin.affirmation_edit', aff_id=aff.id) }}"
+                              class="aff-edit-form"
+                              style="display:none;">
+                            <input type="text" name="text" class="adm-input aff-edit-input" value="{{ aff.text }}" maxlength="300" required>
+                            <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                                <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                                <button type="button" class="btn btn-outline btn-sm aff-cancel-edit">Cancel</button>
+                            </div>
+                        </form>
+                    </td>
+                    <td style="text-align:center;">
+                        <span class="prod-badge prod-badge--{{ 'active' if aff.is_active else 'inactive' }}">
+                            {{ 'Active' if aff.is_active else 'Inactive' }}
+                        </span>
+                    </td>
+                    <td class="aff-actions">
+                        <button type="button" class="adm-view-link aff-edit-btn">Edit</button>
+                        <form method="POST" action="{{ url_for('admin.affirmation_toggle', aff_id=aff.id) }}" style="display:inline;">
+                            <button type="submit" class="adm-view-link" style="color:var(--text-secondary);">
+                                {{ 'Deactivate' if aff.is_active else 'Activate' }}
+                            </button>
+                        </form>
+                        <button type="button"
+                                class="adm-view-link prod-delete-link aff-delete-btn"
+                                data-text="{{ aff.text[:60] }}{% if aff.text|length > 60 %}...{% endif %}"
+                                data-url="{{ url_for('admin.affirmation_delete', aff_id=aff.id) }}">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align:center;padding:3rem 2rem;color:var(--text-secondary);">
+            <p>No affirmations yet. Add your first one above.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="affDeleteModal" class="prod-modal" role="dialog" aria-modal="true">
+    <div class="prod-modal-card">
+        <div class="prod-modal-header">
+            <h2>Delete Affirmation?</h2>
+            <button class="prod-modal-close" onclick="closeAffModal()" aria-label="Close">&times;</button>
+        </div>
+        <div class="prod-modal-body">
+            <p style="font-size:0.88rem;color:var(--text-secondary);margin-bottom:1.25rem;" id="affDeletePreview"></p>
+            <div class="prod-modal-actions">
+                <button type="button" class="btn btn-outline" onclick="closeAffModal()">Cancel</button>
+                <form id="affDeleteForm" method="POST">
+                    <button type="submit" class="btn" style="background:var(--error-color);color:#fff;border-color:var(--error-color);">
+                        Yes, Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.aff-page-header {
+    margin-bottom: 1.75rem;
+}
+.aff-title {
+    font-size: 2rem;
+    font-weight: 700;
+    font-family: var(--font-heading);
+    color: var(--text-primary);
+    margin: 0.25rem 0 0.4rem;
+    line-height: 1.1;
+}
+.aff-lead {
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+    margin: 0;
+    max-width: 560px;
+}
+.aff-count {
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+    margin-left: 0.35rem;
+}
+.aff-table th, .aff-table td {
+    padding: 0.85rem 1rem;
+    font-size: 0.88rem;
+    vertical-align: middle;
+}
+.aff-num {
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+}
+.aff-text-cell {
+    max-width: 560px;
+}
+.aff-display-text {
+    font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+    font-style: italic;
+    font-size: 1.05rem;
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+.aff-row--inactive .aff-display-text {
+    opacity: 0.4;
+}
+.aff-edit-input {
+    width: 100%;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-style: italic;
+    font-size: 1rem;
+}
+.aff-actions {
+    display: flex;
+    gap: 0.15rem;
+    align-items: center;
+    justify-content: flex-end;
+    white-space: nowrap;
+    flex-wrap: wrap;
+}
+.adm-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 0.4rem;
+}
+.adm-input {
+    width: 100%;
+    padding: 0.6rem 0.85rem;
+    border: 1.5px solid rgba(232,208,177,0.7);
+    border-radius: 10px;
+    font-family: var(--font-primary);
+    font-size: 0.9rem;
+    background: #fff;
+    color: var(--text-primary);
+    transition: border-color 0.15s;
+}
+.adm-input:focus {
+    outline: none;
+    border-color: var(--terra-cotta);
+    box-shadow: 0 0 0 3px rgba(184,124,111,0.12);
+}
+</style>
+
+<script>
+// ── Inline edit toggle ────────────────────────────────────────────────────────
+document.querySelectorAll('.aff-edit-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        const row = this.closest('tr');
+        row.querySelector('.aff-display-text').style.display = 'none';
+        row.querySelector('.aff-edit-form').style.display = 'block';
+        row.querySelector('.aff-edit-input').focus();
+    });
+});
+
+document.querySelectorAll('.aff-cancel-edit').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        const row = this.closest('tr');
+        row.querySelector('.aff-display-text').style.display = '';
+        row.querySelector('.aff-edit-form').style.display = 'none';
+    });
+});
+
+// ── Delete modal ──────────────────────────────────────────────────────────────
+function closeAffModal() {
+    document.getElementById('affDeleteModal').classList.remove('is-open');
+    document.body.style.overflow = '';
+}
+
+document.querySelectorAll('.aff-delete-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        document.getElementById('affDeletePreview').textContent = this.dataset.text;
+        document.getElementById('affDeleteForm').action = this.dataset.url;
+        document.getElementById('affDeleteModal').classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+    });
+});
+
+document.getElementById('affDeleteModal').addEventListener('click', function(e) {
+    if (e.target === this) closeAffModal();
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeAffModal();
+});
+</script>
+
+{% endblock %}

@@ -11,10 +11,10 @@
         {% if designs %}
         <div class="designs-grid">
             {% for design in designs %}
-            <div class="design-card">
+            <div class="design-card" data-design-id="{{ design.id }}">
                 <div class="design-preview">
                     {% if design.file_path %}
-                    <img src="{{ url_for('static', filename=design.file_path) }}" alt="Design">
+                    <img src="{{ design.file_path | image_url }}" alt="Design">
                     {% else %}
                     <div class="no-preview">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -37,11 +37,14 @@
                 
                 <div class="design-actions">
                     {% if design.file_path %}
-                    <a href="{{ url_for('static', filename=design.file_path) }}" download class="btn btn-outline btn-sm">Download</a>
+                    <a href="{{ design.file_path | image_url }}" download class="btn btn-outline btn-sm">Download</a>
                     {% endif %}
-                    <form method="post" action="{{ url_for('admin.design_delete', design_id=design.id) }}" style="display: inline; margin-left: 0.5rem;" onsubmit="return confirm('Permanently delete this design? This cannot be undone.');">
-                        <button type="submit" class="btn btn-outline btn-sm" style="color: #dc3545; border-color: #dc3545;">Delete</button>
-                    </form>
+                    <button type="button"
+                            class="btn btn-outline btn-sm"
+                            style="color:#dc3545;border-color:#dc3545;margin-left:0.5rem;"
+                            onclick="libConfirmDelete({{ design.id }}, '{{ (design.original_filename or 'Design')|replace("'", "\\'") }}', '{{ url_for('admin.design_delete', design_id=design.id) }}')">
+                        Delete
+                    </button>
                 </div>
             </div>
             {% endfor %}
@@ -149,5 +152,110 @@
 .empty-state p {
     color: var(--text-secondary);
 }
+
+/* Delete modal */
+.lib-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(30,25,20,0.55); backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px); z-index: 9999;
+    align-items: center; justify-content: center; padding: 1rem;
+}
+.lib-overlay.is-open { display: flex; }
+.lib-card {
+    background: #fff; border-radius: 18px; width: 100%; max-width: 420px;
+    box-shadow: 0 20px 60px rgba(30,25,20,0.25);
+    animation: libIn 0.2s ease;
+}
+@keyframes libIn { from { opacity:0; transform:scale(0.96) translateY(10px); } to { opacity:1; transform:none; } }
+.lib-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 1.4rem 1.5rem 1.1rem; border-bottom: 1px solid var(--border-color);
+}
+.lib-header h3 { margin: 0; font-size: 1.1rem; font-weight: 700; }
+.lib-close {
+    background: none; border: none; font-size: 1.6rem; line-height: 1; cursor: pointer;
+    color: var(--text-secondary); min-width: 36px; min-height: 36px;
+    display: flex; align-items: center; justify-content: center; border-radius: 8px;
+}
+.lib-close:hover { background: var(--secondary-color); }
+.lib-body { padding: 1.25rem 1.5rem 1.5rem; }
+.lib-body p { font-size: 0.92rem; color: var(--text-secondary); margin: 0 0 1.25rem; line-height: 1.6; }
+.lib-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
 </style>
+
+<!-- Delete Confirmation Modal -->
+<div id="libDeleteModal" class="lib-overlay" role="dialog" aria-modal="true">
+    <div class="lib-card">
+        <div class="lib-header">
+            <h3>Delete Design?</h3>
+            <button class="lib-close" onclick="closeLibModal()" aria-label="Close">&times;</button>
+        </div>
+        <div class="lib-body">
+            <p><strong id="libDesignName"></strong> will be permanently deleted and cannot be recovered.</p>
+            <div class="lib-actions">
+                <button type="button" class="btn btn-outline btn-sm" onclick="closeLibModal()">Cancel</button>
+                <button type="button" id="libConfirmBtn" class="btn btn-sm" style="background:#dc3545;color:#fff;border-color:#dc3545;">
+                    Yes, Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="libToast" style="position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1e1914;color:#fff;padding:0.7rem 1.4rem;border-radius:10px;font-size:0.88rem;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,0.25);z-index:99999;opacity:0;transition:opacity 0.25s;pointer-events:none;white-space:nowrap;"></div>
+
+<script>
+(function() {
+    let _url = '', _id = 0;
+
+    window.libConfirmDelete = function(id, name, url) {
+        _id = id; _url = url;
+        document.getElementById('libDesignName').textContent = name;
+        document.getElementById('libDeleteModal').classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+    };
+
+    window.closeLibModal = function() {
+        document.getElementById('libDeleteModal').classList.remove('is-open');
+        document.body.style.overflow = '';
+    };
+
+    document.getElementById('libDeleteModal').addEventListener('click', function(e) {
+        if (e.target === this) window.closeLibModal();
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') window.closeLibModal();
+    });
+
+    document.getElementById('libConfirmBtn').addEventListener('click', function() {
+        const btn = this;
+        btn.disabled = true;
+        btn.textContent = 'Deleting…';
+
+        fetch(_url, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) { alert(data.error); return; }
+            window.closeLibModal();
+            const card = document.querySelector('.design-card[data-design-id="' + _id + '"]');
+            if (card) {
+                card.style.transition = 'opacity 0.3s';
+                card.style.opacity = '0';
+                setTimeout(function() { card.remove(); }, 300);
+            }
+            const t = document.getElementById('libToast');
+            t.textContent = data.message || 'Design deleted';
+            t.style.opacity = '1';
+            clearTimeout(t._h);
+            t._h = setTimeout(function() { t.style.opacity = '0'; }, 3000);
+        })
+        .catch(function() { alert('Something went wrong. Please try again.'); })
+        .finally(function() { btn.disabled = false; btn.textContent = 'Yes, Delete'; });
+    });
+})();
+</script>
 {% endblock %}

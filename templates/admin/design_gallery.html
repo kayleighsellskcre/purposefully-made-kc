@@ -67,20 +67,22 @@
         <h2 class="gallery-list-title">Gallery Designs <span class="gallery-count">({{ designs|length }})</span></h2>
         <div class="designs-grid">
             {% for design in designs %}
-            <div class="design-card">
+            <div class="design-card" data-design-id="{{ design.id }}">
                 <div class="design-card-image">
-                    <img src="{{ url_for('static', filename=design.file_path) }}" alt="{{ design.title or design.original_filename }}">
+                    <img src="{{ design.file_path | image_url }}" alt="{{ design.title or design.original_filename }}">
                 </div>
                 <div class="design-card-body">
                     <strong class="design-card-name">{{ design.title or design.original_filename }}</strong>
                     <p class="design-card-meta">{{ design.folder or 'No folder' }} · {{ design.sku or 'No SKU' }}</p>
                     <div class="design-card-actions">
-                        <form method="post" action="{{ url_for('admin.design_gallery_remove', design_id=design.id) }}" class="design-action-form" onsubmit="return confirm('Remove from gallery?');">
-                            <button type="submit" class="btn btn-outline btn-sm">Remove from Gallery</button>
-                        </form>
-                        <form method="post" action="{{ url_for('admin.design_gallery_delete', design_id=design.id) }}" class="design-action-form" onsubmit="return confirm('Permanently delete this design? This cannot be undone.');">
-                            <button type="submit" class="btn btn-outline btn-sm btn-danger">Delete</button>
-                        </form>
+                        <button type="button" class="btn btn-outline btn-sm"
+                                onclick="galleryConfirm('remove', {{ design.id }}, '{{ (design.title or design.original_filename or 'Design')|replace("'", "\\'") }}', '{{ url_for('admin.design_gallery_remove', design_id=design.id) }}')">
+                            Remove from Gallery
+                        </button>
+                        <button type="button" class="btn btn-outline btn-sm btn-danger"
+                                onclick="galleryConfirm('delete', {{ design.id }}, '{{ (design.title or design.original_filename or 'Design')|replace("'", "\\'") }}', '{{ url_for('admin.design_gallery_delete', design_id=design.id) }}')">
+                            Delete
+                        </button>
                     </div>
                 </div>
             </div>
@@ -309,7 +311,101 @@
 .gallery-back-link { margin-top: 2.5rem; }
 </style>
 
+<!-- Gallery Action Confirmation Modal -->
+<div id="galleryActionModal" class="prod-modal" role="dialog" aria-modal="true" aria-labelledby="galleryModalTitle">
+    <div class="prod-modal-card">
+        <div class="prod-modal-header">
+            <h2 id="galleryModalTitle">Confirm Action</h2>
+            <button class="prod-modal-close" onclick="closeGalleryModal()" aria-label="Close">&times;</button>
+        </div>
+        <div class="prod-modal-body">
+            <p style="font-weight:600;color:var(--text-primary);margin-bottom:0.4rem;" id="galleryModalName"></p>
+            <p id="galleryModalBody" style="margin-bottom:0;"></p>
+            <div class="prod-modal-actions">
+                <button type="button" class="btn btn-outline" onclick="closeGalleryModal()">Cancel</button>
+                <button type="button" id="galleryModalConfirmBtn" class="btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="galleryToast" style="position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1e1914;color:#fff;padding:0.7rem 1.4rem;border-radius:10px;font-size:0.88rem;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,0.25);z-index:99999;opacity:0;transition:opacity 0.25s;pointer-events:none;white-space:nowrap;"></div>
+
 <script>
+// ── Gallery confirmation modal ────────────────────────────────────────────────
+let _gUrl = '', _gId = 0, _gAction = '';
+
+function galleryConfirm(action, id, name, url) {
+    _gAction = action; _gId = id; _gUrl = url;
+    const isDelete = action === 'delete';
+    document.getElementById('galleryModalTitle').textContent = isDelete ? 'Delete Design?' : 'Remove from Gallery?';
+    document.getElementById('galleryModalName').textContent  = name;
+    document.getElementById('galleryModalBody').textContent  = isDelete
+        ? 'This will permanently delete the file and cannot be undone.'
+        : 'This will hide the design from the public gallery. The file is kept and can be re-added later.';
+    const btn = document.getElementById('galleryModalConfirmBtn');
+    btn.textContent = isDelete ? 'Yes, Delete' : 'Yes, Remove';
+    btn.style.cssText = isDelete
+        ? 'background:#ef4444;color:#fff;border-color:#ef4444;'
+        : 'background:var(--terra-cotta,#b87c6f);color:#fff;border-color:transparent;';
+    document.getElementById('galleryActionModal').classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeGalleryModal() {
+    document.getElementById('galleryActionModal').classList.remove('is-open');
+    document.body.style.overflow = '';
+}
+
+document.getElementById('galleryActionModal').addEventListener('click', function(e) {
+    if (e.target === this) closeGalleryModal();
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeGalleryModal();
+});
+
+document.getElementById('galleryModalConfirmBtn').addEventListener('click', function() {
+    const btn = this;
+    btn.disabled = true;
+    const origText = btn.textContent;
+    btn.textContent = 'Working…';
+
+    fetch(_gUrl, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) { alert(data.error); return; }
+        closeGalleryModal();
+        if (_gAction === 'delete') {
+            const card = document.querySelector('.design-card[data-design-id="' + _gId + '"]');
+            if (card) {
+                card.style.transition = 'opacity 0.3s';
+                card.style.opacity = '0';
+                setTimeout(function() { card.remove(); }, 300);
+            }
+        } else {
+            // Just visually mark it removed — badge or fade
+            const card = document.querySelector('.design-card[data-design-id="' + _gId + '"]');
+            if (card) {
+                card.style.transition = 'opacity 0.3s';
+                card.style.opacity = '0';
+                setTimeout(function() { card.remove(); }, 300);
+            }
+        }
+        const t = document.getElementById('galleryToast');
+        t.textContent = data.message || 'Done';
+        t.style.opacity = '1';
+        clearTimeout(t._h);
+        t._h = setTimeout(function() { t.style.opacity = '0'; }, 3000);
+    })
+    .catch(function() { alert('Something went wrong. Please try again.'); })
+    .finally(function() { btn.disabled = false; btn.textContent = origText; });
+});
+
+// ── File zone (existing) ──────────────────────────────────────────────────────
 (function() {
     const zone = document.getElementById('fileZone');
     const input = document.getElementById('designFile');

@@ -160,7 +160,7 @@ def upload_design():
     extension = original_filename.rsplit('.', 1)[1].lower()
     filename = f"{secrets.token_hex(16)}.{extension}"
     
-    # Save file
+    # Save file locally first (needed for PIL analysis and background removal)
     upload_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'designs')
     os.makedirs(upload_dir, exist_ok=True)
     upload_path = os.path.join(upload_dir, filename)
@@ -173,12 +173,24 @@ def upload_design():
     image_info = None
     if extension in ['png', 'jpg', 'jpeg', 'webp', 'gif']:
         image_info = analyze_image(upload_path)
-    
+
+    # Upload to R2 if configured; otherwise use local static path
+    stored_path = f"uploads/designs/{filename}"
+    from utils.cloud_storage import r2_configured, _upload_to_r2
+    if r2_configured(current_app._get_current_object()):
+        try:
+            with open(upload_path, 'rb') as f_obj:
+                from werkzeug.datastructures import FileStorage
+                fs = FileStorage(stream=f_obj, filename=filename)
+                stored_path = _upload_to_r2(fs, current_app._get_current_object(), 'designs', 'design')
+        except Exception:
+            pass
+
     # Create design record
     design = Design(
         filename=filename,
         original_filename=original_filename,
-        file_path=f"uploads/designs/{filename}",
+        file_path=stored_path,
         file_size=file_size,
         uploaded_by_user_id=current_user.id if current_user.is_authenticated else None
     )
@@ -200,9 +212,10 @@ def upload_design():
         if not image_info['has_transparency']:
             warnings.append('No transparent background detected. Consider removing background for best results.')
     
+    design_url = stored_path if stored_path.startswith('http') else url_for('static', filename=stored_path)
     return jsonify({
         'success': True,
-        'url': url_for('static', filename=design.file_path),
+        'url': design_url,
         'design_id': design.id,
         'design': {
             'id': design.id,
