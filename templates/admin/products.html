@@ -781,50 +781,57 @@ function confirmDelete(productId, productName, deleteUrl) {
     openModal('deleteModal');
 }
 
-document.getElementById('deleteModalConfirmBtn').addEventListener('click', function() {
-    const btn = this;
+// Called directly from onclick on the modal confirm button.
+// Function declarations are hoisted so this works even though the button
+// HTML appears later in the document than this script block.
+function executeProductDelete(btn) {
     btn.disabled = true;
     btn.textContent = 'Removing…';
+
+    var csrfToken = '';
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    if (csrfMeta) { csrfToken = csrfMeta.getAttribute('content') || ''; }
 
     fetch(_deleteUrl, {
         method: 'POST',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
-            'Content-Type': 'application/x-www-form-urlencoded'
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
         }
     })
-    .then(function(res) { return res.json(); })
+    .then(function(res) {
+        if (!res.ok) { throw new Error('Server error ' + res.status); }
+        return res.json();
+    })
     .then(function(data) {
         closeModal('deleteModal');
 
-        // Remove the desktop table row
-        const row = document.querySelector('tr[data-product-id="' + _deleteId + '"]');
+        var row = document.querySelector('tr[data-product-id="' + _deleteId + '"]');
         if (row) {
             row.style.transition = 'opacity 0.3s';
             row.style.opacity    = '0';
             setTimeout(function() { row.remove(); }, 300);
         }
 
-        // Remove the mobile card
-        const card = document.querySelector('.prod-card[data-product-id="' + _deleteId + '"]');
+        var card = document.querySelector('.prod-card[data-product-id="' + _deleteId + '"]');
         if (card) {
             card.style.transition = 'opacity 0.3s';
             card.style.opacity    = '0';
             setTimeout(function() { card.remove(); }, 300);
         }
 
-        // Brief success toast so there's clear feedback
         showToast(data.message || 'Product removed');
     })
     .catch(function() {
         closeModal('deleteModal');
-        alert('Something went wrong. Please try again.');
+        showToast('Something went wrong — please try again.');
     })
     .finally(function() {
         btn.disabled = false;
         btn.textContent = 'Yes, Remove';
     });
-});
+}
 
 function showToast(msg) {
     let t = document.getElementById('prodDeleteToast');
@@ -861,7 +868,7 @@ function showToast(msg) {
             <p id="deleteModalBody"></p>
             <div class="prod-modal-actions">
                 <button type="button" class="btn btn-outline" onclick="closeModal('deleteModal')">Cancel</button>
-                <button type="button" id="deleteModalConfirmBtn" class="btn" style="background:var(--error-color);color:#fff;border-color:var(--error-color);">
+                <button type="button" id="deleteModalConfirmBtn" class="btn" onclick="executeProductDelete(this)" style="background:var(--error-color);color:#fff;border-color:var(--error-color);">
                     Yes, Remove
                 </button>
             </div>
