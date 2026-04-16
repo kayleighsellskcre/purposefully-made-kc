@@ -84,6 +84,12 @@
                         {% if order.shipping_cost and order.shipping_cost > 0 %}${{ '%.2f'|format(order.shipping_cost) }}{% else %}Free (Local Pickup){% endif %}
                       </td>
                     </tr>
+                    {% if order.tax and order.tax > 0 %}
+                    <tr>
+                      <td style="padding:6px 0;font-size:13px;color:#888;font-family:Arial,sans-serif;">Tax (KS 6.5%)</td>
+                      <td align="right" style="padding:6px 0;font-size:13px;color:#888;font-family:Arial,sans-serif;">${{ '%.2f'|format(order.tax) }}</td>
+                    </tr>
+                    {% endif %}
                     <tr>
                       <td style="padding:12px 0 6px;border-top:2px solid #e8d0b1;font-size:16px;font-weight:700;color:#3a3d48;font-family:'Georgia',serif;">Total Paid</td>
                       <td align="right" style="padding:12px 0 6px;border-top:2px solid #e8d0b1;font-size:18px;font-weight:700;color:#b87c6f;font-family:'Georgia',serif;">${{ '%.2f'|format(order.total) }}</td>

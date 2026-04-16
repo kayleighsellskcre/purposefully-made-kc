@@ -178,6 +178,10 @@
                         <span>Shipping:</span>
                         <span id="shipping-amount">${{ "%.2f"|format(totals.shipping_cost) }}</span>
                     </div>
+                    <div class="summary-row">
+                        <span>Tax (KS 6.5%):</span>
+                        <span id="tax-amount">${{ "%.2f"|format(totals.tax) }}</span>
+                    </div>
                     <div class="summary-row total">
                         <strong>Total:</strong>
                         <strong id="summary-total">${{ "%.2f"|format(totals.total) }}</strong>
@@ -257,9 +261,11 @@ if (savedAddressSelect) {
 
 function updateTotals(shippingCost) {
     const subtotal = {{ totals.subtotal }};
-    const total = subtotal + shippingCost;
+    const tax = Math.round(subtotal * 0.065 * 100) / 100;  // KS 6.5%
+    const total = subtotal + shippingCost + tax;
     
     document.getElementById('shipping-amount').textContent = '$' + shippingCost.toFixed(2);
+    document.getElementById('tax-amount').textContent = '$' + tax.toFixed(2);
     document.getElementById('total-amount').textContent = total.toFixed(2);
     document.getElementById('summary-total').textContent = '$' + total.toFixed(2);
 }
