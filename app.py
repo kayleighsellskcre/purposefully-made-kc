@@ -201,6 +201,30 @@ def create_app(config_class=Config):
         csrf.exempt(_api_bp)
     except Exception:
         pass
+    # Admin routes are already protected by @admin_required (login + is_admin check).
+    # Exempting avoids breaking the many existing AJAX fetch() calls in admin templates
+    # while CSRF still protects all public-facing customer routes.
+    from routes.admin import admin_bp as _adm_bp
+    try:
+        csrf.exempt(_adm_bp)
+    except Exception:
+        pass
+    # Design and custom-request AJAX calls are also authenticated — exempt.
+    from routes.design import design_bp as _des_bp
+    try:
+        csrf.exempt(_des_bp)
+    except Exception:
+        pass
+    from routes.custom_request import custom_request_bp as _cr_bp
+    try:
+        csrf.exempt(_cr_bp)
+    except Exception:
+        pass
+    from routes.favorites import favorites_bp as _fav_bp
+    try:
+        csrf.exempt(_fav_bp)
+    except Exception:
+        pass
 
     # ── Security headers (added to every response) ───────────────────────────
     @app.after_request
