@@ -193,9 +193,17 @@ def add():
             pb.save(str(upload_dir / pb_name))
             proof_back_url = f"/static/uploads/proofs/{pb_name}"
     
+    # Determine whether this item is blank (no design / transfer)
+    has_design = bool(design_url or design_id or
+                      'design' in request.files and request.files['design'].filename)
+    is_blank = not has_design
+
     # Unit price: use override from customizer (includes placement discount, back design fee, size upcharge) or calculate
     if unit_price_override is not None:
         unit_price = float(unit_price_override)
+        # If blank, subtract $12 from whatever the customizer sent (customizer may not know about this discount)
+        if is_blank:
+            unit_price = max(0.0, unit_price - 12.0)
     else:
         unit_price = product.base_price
         if placement in ('left_chest', 'right_chest'):
@@ -209,6 +217,9 @@ def add():
                 unit_price += 3
             elif s in ('4XL', '4X'):
                 unit_price += 4
+        # Blank item discount — no design/transfer ordered
+        if is_blank:
+            unit_price = max(0.0, unit_price - 12.0)
     # Add custom design fee ($4 or $20) when design was created from "Have Us Recreate"
     if design_id:
         design = Design.query.get(design_id)
@@ -238,6 +249,7 @@ def add():
         'color': color,
         'quantity': quantity,
         'unit_price': unit_price,
+        'is_blank': is_blank,
         'design_id': design_id,
         'design_url': design_url,
         'placement': placement,

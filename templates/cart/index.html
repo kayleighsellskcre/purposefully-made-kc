@@ -45,6 +45,9 @@
                             | Back design
                             {% endif %}
                         </p>
+                        {% if item.get('is_blank') %}
+                        <p class="item-blank-badge">Blank (no transfer) &mdash; $12 discount applied</p>
+                        {% endif %}
                         
                         <div class="item-quantity">
                             <label>Quantity:</label>
@@ -110,6 +113,19 @@
 /* ── Force center page header ── */
 .page-header, .page-header .container { text-align: center; }
 .page-header h1, .page-header h2, .page-header p, .page-header span { text-align: center; display: block; }
+
+.item-blank-badge {
+    display: inline-block;
+    margin-top: 0.35rem;
+    padding: 0.2rem 0.65rem;
+    background: #f0f7ee;
+    color: #4a7c59;
+    border: 1px solid #b6d9b0;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
 
 .cart-section {
     padding: 4rem 0;
