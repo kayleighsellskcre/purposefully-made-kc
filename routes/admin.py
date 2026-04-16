@@ -863,25 +863,26 @@ def edit_product(product_id):
 @admin_bp.route('/products/<int:product_id>/delete', methods=['POST'])
 @admin_required
 def delete_product(product_id):
-    """Soft-delete a product by marking it inactive.
+    """Legacy route — kept so any existing bookmarks still work. Redirects to toggle."""
+    return toggle_product_active(product_id)
 
-    We keep the row so the nightly catalog sync cannot re-add it with
-    is_active=True.  The product is hidden from the storefront but its
-    order history is preserved.
 
-    Returns JSON when the request carries X-Requested-With: XMLHttpRequest
-    (AJAX delete from the products page) so the row can be removed in-place
-    without a full page reload.
-    """
+@admin_bp.route('/products/<int:product_id>/toggle-active', methods=['POST'])
+@admin_required
+def toggle_product_active(product_id):
+    """Toggle a product's is_active flag and return the new state as JSON."""
     from flask import request as flask_request, jsonify
     product = Product.query.get_or_404(product_id)
-    product.is_active = False
+    product.is_active = not product.is_active
     db.session.commit()
 
-    if flask_request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({'ok': True, 'message': f'"{product.name}" removed from store'})
+    label   = 'Active' if product.is_active else 'Inactive'
+    message = f'"{product.name}" is now {label.lower()}'
 
-    flash('Product removed from store', 'success')
+    if flask_request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'ok': True, 'is_active': product.is_active, 'label': label, 'message': message})
+
+    flash(message, 'success')
     return redirect(url_for('admin.products'))
 
 

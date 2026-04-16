@@ -91,17 +91,23 @@
                     <td>{{ product.size_count }}</td>
                     <td>{{ product.color_count }}</td>
                     <td>
-                        <span class="prod-badge prod-badge--{{ 'active' if product.is_active else 'inactive' }}">
-                            {{ 'Active' if product.is_active else 'Inactive' }}
-                        </span>
+                        <label class="prod-toggle" title="Toggle active / inactive">
+                            <input type="checkbox"
+                                   class="prod-toggle-input"
+                                   {% if product.is_active %}checked{% endif %}
+                                   data-product-id="{{ product.id }}"
+                                   data-toggle-url="{{ url_for('admin.toggle_product_active', product_id=product.id) }}"
+                                   data-product-name="{{ product.name|replace('"', '&quot;') }}">
+                            <span class="prod-toggle-track">
+                                <span class="prod-toggle-thumb"></span>
+                            </span>
+                            <span class="prod-toggle-label prod-badge prod-badge--{{ 'active' if product.is_active else 'inactive' }}">
+                                {{ 'Active' if product.is_active else 'Inactive' }}
+                            </span>
+                        </label>
                     </td>
                     <td class="prod-actions-cell">
                         <a href="{{ url_for('admin.edit_product', product_id=product.id) }}" class="adm-view-link">Edit</a>
-                        <button type="button"
-                                class="adm-view-link prod-delete-link"
-                                onclick="confirmDelete({{ product.id }}, '{{ product.name|replace("'", "\\'") }}', '{{ url_for('admin.delete_product', product_id=product.id) }}')">
-                            Delete
-                        </button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -115,9 +121,6 @@
                 <div class="prod-card-top">
                     <div class="prod-card-meta">
                         <span class="prod-card-style">{{ product.style_number }}</span>
-                        <span class="prod-badge prod-badge--{{ 'active' if product.is_active else 'inactive' }}">
-                            {{ 'Active' if product.is_active else 'Inactive' }}
-                        </span>
                     </div>
                     <h4 class="prod-card-name">{{ product.name }}</h4>
                 </div>
@@ -141,12 +144,20 @@
                 </div>
                 <div class="prod-card-actions">
                     <a href="{{ url_for('admin.edit_product', product_id=product.id) }}" class="btn btn-outline btn-sm" style="flex:1; text-align:center;">Edit</a>
-                    <button type="button"
-                            class="btn btn-sm prod-delete-btn"
-                            style="flex:1;"
-                            onclick="confirmDelete({{ product.id }}, '{{ product.name|replace("'", "\\'") }}', '{{ url_for('admin.delete_product', product_id=product.id) }}')">
-                        Delete
-                    </button>
+                    <label class="prod-toggle prod-toggle--card" title="Toggle active / inactive" style="flex:1; justify-content:center;">
+                        <input type="checkbox"
+                               class="prod-toggle-input"
+                               {% if product.is_active %}checked{% endif %}
+                               data-product-id="{{ product.id }}"
+                               data-toggle-url="{{ url_for('admin.toggle_product_active', product_id=product.id) }}"
+                               data-product-name="{{ product.name|replace('"', '&quot;') }}">
+                        <span class="prod-toggle-track">
+                            <span class="prod-toggle-thumb"></span>
+                        </span>
+                        <span class="prod-toggle-label prod-badge prod-badge--{{ 'active' if product.is_active else 'inactive' }}">
+                            {{ 'Active' if product.is_active else 'Inactive' }}
+                        </span>
+                    </label>
                 </div>
             </div>
             {% endfor %}
@@ -416,19 +427,53 @@
     white-space: nowrap;
 }
 
-.prod-delete-link {
-    background: none;
-    border: none;
+/* ── Active / Inactive toggle switch ─────────────────────────────────── */
+.prod-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
     cursor: pointer;
-    font-family: var(--font-primary);
-    font-size: inherit;
-    padding: 0.25rem 0.5rem;
-    color: var(--error-color);
-    text-decoration: none;
-    transition: opacity 0.15s;
+    user-select: none;
 }
 
-.prod-delete-link:hover { opacity: 0.7; text-decoration: underline; }
+.prod-toggle-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.prod-toggle-track {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    background: #d1d5db;
+    border-radius: 20px;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.prod-toggle-input:checked + .prod-toggle-track {
+    background: #10b981;
+}
+
+.prod-toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: left 0.2s;
+}
+
+.prod-toggle-input:checked + .prod-toggle-track .prod-toggle-thumb {
+    left: 18px;
+}
+
+.prod-toggle-label { transition: background 0.2s, color 0.2s; }
 
 /* Status badges */
 .prod-badge {
@@ -517,10 +562,9 @@
     gap: 0.6rem;
 }
 
-.prod-delete-btn {
-    background: rgba(239,68,68,0.06);
-    color: var(--error-color);
-    border: 1.5px solid rgba(239,68,68,0.2);
+.prod-toggle--card {
+    background: rgba(127,108,80,0.05);
+    border: 1.5px solid var(--border-color);
     border-radius: var(--border-radius);
     font-family: var(--font-primary);
     font-size: 0.82rem;
@@ -531,9 +575,9 @@
     touch-action: manipulation;
 }
 
-.prod-delete-btn:hover {
-    background: rgba(239,68,68,0.12);
-    border-color: rgba(239,68,68,0.4);
+.prod-toggle--card:hover {
+    background: rgba(127,108,80,0.1);
+    border-color: var(--accent-color);
 }
 
 /* Empty state */
@@ -765,34 +809,20 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// ── Delete confirmation ───────────────────────────────────────────────────────
+// ── Active / Inactive toggle ──────────────────────────────────────────────────
+document.addEventListener('change', function(e) {
+    var input = e.target;
+    if (!input.classList.contains('prod-toggle-input')) return;
 
-let _deleteUrl   = '';
-let _deleteId    = 0;
+    var productId   = input.dataset.productId;
+    var toggleUrl   = input.dataset.toggleUrl;
+    var productName = input.dataset.productName;
+    var csrfToken   = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
 
-function confirmDelete(productId, productName, deleteUrl) {
-    _deleteId  = productId;
-    _deleteUrl = deleteUrl;
+    // Optimistically update all toggles for this product (desktop + mobile)
+    var allInputs = document.querySelectorAll('.prod-toggle-input[data-product-id="' + productId + '"]');
 
-    document.getElementById('deleteModalProductName').textContent = productName;
-    document.getElementById('deleteModalBody').textContent =
-        '"' + productName + '" will be hidden from your store. You can reactivate it later by editing the product.';
-
-    openModal('deleteModal');
-}
-
-// Called directly from onclick on the modal confirm button.
-// Function declarations are hoisted so this works even though the button
-// HTML appears later in the document than this script block.
-function executeProductDelete(btn) {
-    btn.disabled = true;
-    btn.textContent = 'Removing…';
-
-    var csrfToken = '';
-    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
-    if (csrfMeta) { csrfToken = csrfMeta.getAttribute('content') || ''; }
-
-    fetch(_deleteUrl, {
+    fetch(toggleUrl, {
         method: 'POST',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -801,37 +831,27 @@ function executeProductDelete(btn) {
         }
     })
     .then(function(res) {
-        if (!res.ok) { throw new Error('Server error ' + res.status); }
+        if (!res.ok) throw new Error('Server error ' + res.status);
         return res.json();
     })
     .then(function(data) {
-        closeModal('deleteModal');
-
-        var row = document.querySelector('tr[data-product-id="' + _deleteId + '"]');
-        if (row) {
-            row.style.transition = 'opacity 0.3s';
-            row.style.opacity    = '0';
-            setTimeout(function() { row.remove(); }, 300);
-        }
-
-        var card = document.querySelector('.prod-card[data-product-id="' + _deleteId + '"]');
-        if (card) {
-            card.style.transition = 'opacity 0.3s';
-            card.style.opacity    = '0';
-            setTimeout(function() { card.remove(); }, 300);
-        }
-
-        showToast(data.message || 'Product removed');
+        // Sync all badge labels + checked state for this product
+        allInputs.forEach(function(inp) {
+            inp.checked = data.is_active;
+            var label = inp.closest('.prod-toggle').querySelector('.prod-toggle-label');
+            if (label) {
+                label.textContent = data.label;
+                label.className = 'prod-toggle-label prod-badge prod-badge--' + (data.is_active ? 'active' : 'inactive');
+            }
+        });
+        showToast(data.message);
     })
     .catch(function() {
-        closeModal('deleteModal');
+        // Revert the toggle on failure
+        allInputs.forEach(function(inp) { inp.checked = !inp.checked; });
         showToast('Something went wrong — please try again.');
-    })
-    .finally(function() {
-        btn.disabled = false;
-        btn.textContent = 'Yes, Remove';
     });
-}
+});
 
 function showToast(msg) {
     let t = document.getElementById('prodDeleteToast');
@@ -854,26 +874,5 @@ function showToast(msg) {
 }
 </script>
 
-<!-- Delete Confirmation Modal -->
-<div id="deleteModal" class="prod-modal" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
-    <div class="prod-modal-card">
-        <div class="prod-modal-header">
-            <h2 id="deleteModalTitle">Remove Product?</h2>
-            <button class="prod-modal-close" onclick="closeModal('deleteModal')" aria-label="Close">&times;</button>
-        </div>
-        <div class="prod-modal-body">
-            <p style="font-weight:600; color:var(--text-primary); margin-bottom:0.5rem;">
-                <span id="deleteModalProductName"></span>
-            </p>
-            <p id="deleteModalBody"></p>
-            <div class="prod-modal-actions">
-                <button type="button" class="btn btn-outline" onclick="closeModal('deleteModal')">Cancel</button>
-                <button type="button" id="deleteModalConfirmBtn" class="btn" onclick="executeProductDelete(this)" style="background:var(--error-color);color:#fff;border-color:var(--error-color);">
-                    Yes, Remove
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
 
 {% endblock %}
