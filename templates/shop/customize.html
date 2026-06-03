@@ -22,6 +22,16 @@
     max-width: 1400px;
     margin: 0 auto;
     padding: 0 1rem;
+    width: 100%;
+}
+
+/* Let both columns shrink below their content size. Without this,
+   grid items default to min-width:auto and a single wide child can
+   force the track wider than the screen, overflowing to the right
+   (which the site's global overflow-x:hidden then clips off). */
+.customizer-container > * {
+    min-width: 0;
+    max-width: 100%;
 }
 
 @media (max-width: 1200px) {
@@ -85,6 +95,24 @@
     border-radius: var(--border-radius);
     overflow: hidden;
     aspect-ratio: 1;
+    width: 100%;
+    max-width: 100%;
+}
+
+/* Fallback for browsers that don't support aspect-ratio (older mobile)
+   so the preview never collapses to zero height and disappears. */
+@supports not (aspect-ratio: 1) {
+    .preview-canvas { min-height: 320px; }
+}
+
+/* On phones/tablets keep the square preview from filling the whole
+   screen, so the color/size/design controls below stay visible. */
+@media (max-width: 968px) {
+    .preview-canvas {
+        max-width: min(100%, 62vh);
+        margin-left: auto;
+        margin-right: auto;
+    }
 }
 
 .mockup-image {
