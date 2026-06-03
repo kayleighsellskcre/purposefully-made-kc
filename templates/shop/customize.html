@@ -43,7 +43,7 @@
 
 @media (max-width: 968px) {
     .customizer-container {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
         gap: 1.5rem;
     }
     
@@ -51,6 +51,15 @@
         position: relative !important;
         top: 0 !important;
         order: -1;
+    }
+
+    /* Hard guard: nothing in the customizer may exceed the screen width */
+    .customizer-page,
+    .customizer-container,
+    .preview-section,
+    .customizer-panel {
+        max-width: 100%;
+        overflow-x: hidden;
     }
 }
 
@@ -966,7 +975,7 @@
 
 @media (max-width: 1024px) {
     .customizer-container {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
     
     .preview-section {
