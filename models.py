@@ -176,6 +176,9 @@ class Product(db.Model):
     
     # Availability
     is_active = db.Column(db.Boolean, default=True)
+
+    # Merchandising: highlight popular / best-selling products
+    is_customer_favorite = db.Column(db.Boolean, default=False)
     
     # Product specs
     available_sizes = db.Column(db.Text)  # JSON string: ["XS", "S", "M", "L", "XL", "2XL", "3XL"]

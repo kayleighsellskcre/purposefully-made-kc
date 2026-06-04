@@ -61,6 +61,18 @@
 </div>
 {% endif %}
 
+<!-- Filter: All / Customer Favorites -->
+<div class="prod-filter-bar">
+    <a href="{{ url_for('admin.products') }}" class="prod-filter-chip {% if not fav_filter %}is-active{% endif %}">
+        All Products
+    </a>
+    <a href="{{ url_for('admin.products', favorites=1) }}" class="prod-filter-chip {% if fav_filter %}is-active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 7.1-1.01L12 2z"/></svg>
+        Customer Favorites
+        <span class="prod-filter-count">{{ favorite_count }}</span>
+    </a>
+</div>
+
 <!-- Products Table -->
 <div class="adm-section">
     <div class="adm-table-wrap">
@@ -78,6 +90,7 @@
                     <th>Sizes</th>
                     <th>Colors</th>
                     <th>Status</th>
+                    <th>Favorite</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -85,7 +98,7 @@
                 {% for product in products %}
                 <tr data-product-id="{{ product.id }}">
                     <td><strong class="prod-style">{{ product.style_number }}</strong></td>
-                    <td class="prod-name-cell">{{ product.name }}</td>
+                    <td class="prod-name-cell">{{ product.name }} <span class="prod-fav-flag" data-fav-flag {% if not product.is_customer_favorite %}hidden{% endif %}>Customer Favorite</span></td>
                     <td>{{ product.category or '—' }}</td>
                     <td>${{ "%.2f"|format(product.base_price) }}</td>
                     <td>{{ product.size_count }}</td>
@@ -106,6 +119,16 @@
                             </span>
                         </label>
                     </td>
+                    <td>
+                        <button type="button"
+                                class="prod-fav-btn {% if product.is_customer_favorite %}is-fav{% endif %}"
+                                data-product-id="{{ product.id }}"
+                                data-toggle-url="{{ url_for('admin.toggle_product_favorite', product_id=product.id) }}"
+                                title="{% if product.is_customer_favorite %}Remove from Customer Favorites{% else %}Mark as Customer Favorite{% endif %}"
+                                aria-label="Toggle Customer Favorite">
+                            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 7.1-1.01L12 2z"/></svg>
+                        </button>
+                    </td>
                     <td class="prod-actions-cell">
                         <a href="{{ url_for('admin.edit_product', product_id=product.id) }}" class="adm-view-link">Edit</a>
                     </td>
@@ -122,7 +145,7 @@
                     <div class="prod-card-meta">
                         <span class="prod-card-style">{{ product.style_number }}</span>
                     </div>
-                    <h4 class="prod-card-name">{{ product.name }}</h4>
+                    <h4 class="prod-card-name">{{ product.name }} <span class="prod-fav-flag" data-fav-flag {% if not product.is_customer_favorite %}hidden{% endif %}>Customer Favorite</span></h4>
                 </div>
                 <div class="prod-card-details">
                     <div class="prod-card-detail">
@@ -143,6 +166,14 @@
                     </div>
                 </div>
                 <div class="prod-card-actions">
+                    <button type="button"
+                            class="prod-fav-btn {% if product.is_customer_favorite %}is-fav{% endif %}"
+                            data-product-id="{{ product.id }}"
+                            data-toggle-url="{{ url_for('admin.toggle_product_favorite', product_id=product.id) }}"
+                            title="{% if product.is_customer_favorite %}Remove from Customer Favorites{% else %}Mark as Customer Favorite{% endif %}"
+                            aria-label="Toggle Customer Favorite">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 7.1-1.01L12 2z"/></svg>
+                    </button>
                     <a href="{{ url_for('admin.edit_product', product_id=product.id) }}" class="btn btn-outline btn-sm" style="flex:1; text-align:center;">Edit</a>
                     <label class="prod-toggle prod-toggle--card" title="Toggle active / inactive" style="flex:1; justify-content:center;">
                         <input type="checkbox"
@@ -402,6 +433,99 @@
     border-color: transparent;
 }
 
+/* Filter chips (All / Customer Favorites) */
+.prod-filter-bar {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+}
+
+.prod-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.5rem 0.95rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: #fff;
+    border: 1.5px solid rgba(232, 208, 177, 0.8);
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+
+.prod-filter-chip:hover {
+    border-color: var(--terra-cotta);
+    color: var(--terra-cotta);
+}
+
+.prod-filter-chip.is-active {
+    background: linear-gradient(135deg, var(--terra-cotta) 0%, var(--aged-bronze) 100%);
+    color: #fff;
+    border-color: transparent;
+}
+
+.prod-filter-chip svg { width: 14px; height: 14px; }
+
+.prod-filter-count {
+    background: rgba(0, 0, 0, 0.12);
+    padding: 0.05rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.prod-filter-chip.is-active .prod-filter-count { background: rgba(255, 255, 255, 0.25); }
+
+/* Inline "Customer Favorite" flag next to product names */
+.prod-fav-flag {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.4rem;
+    padding: 0.12rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--terra-cotta);
+    background: rgba(184, 124, 111, 0.12);
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+/* Star toggle button */
+.prod-fav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    border: 1.5px solid rgba(232, 208, 177, 0.8);
+    background: #fff;
+    color: #c9c2b6;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    touch-action: manipulation;
+    flex-shrink: 0;
+}
+
+.prod-fav-btn svg { width: 18px; height: 18px; }
+
+.prod-fav-btn:hover {
+    border-color: var(--terra-cotta);
+    color: var(--terra-cotta);
+}
+
+.prod-fav-btn.is-fav {
+    color: #fff;
+    background: linear-gradient(135deg, var(--terra-cotta) 0%, var(--aged-bronze) 100%);
+    border-color: transparent;
+}
+
 /* Table */
 .prod-table th,
 .prod-table td {
@@ -560,6 +684,8 @@
 .prod-card-actions {
     display: flex;
     gap: 0.6rem;
+    flex-wrap: wrap;
+    align-items: center;
 }
 
 .prod-toggle--card {
@@ -849,6 +975,45 @@ document.addEventListener('change', function(e) {
     .catch(function() {
         // Revert the toggle on failure
         allInputs.forEach(function(inp) { inp.checked = !inp.checked; });
+        showToast('Something went wrong — please try again.');
+    });
+});
+
+// ── Customer Favorite toggle (star button) ───────────────────────────────────
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.prod-fav-btn');
+    if (!btn) return;
+
+    var productId = btn.dataset.productId;
+    var toggleUrl = btn.dataset.toggleUrl;
+    var csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+
+    fetch(toggleUrl, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+        }
+    })
+    .then(function(res) {
+        if (!res.ok) throw new Error('Server error ' + res.status);
+        return res.json();
+    })
+    .then(function(data) {
+        // Sync every favorite button for this product (desktop + mobile)
+        document.querySelectorAll('.prod-fav-btn[data-product-id="' + productId + '"]').forEach(function(b) {
+            b.classList.toggle('is-fav', data.is_favorite);
+            b.title = data.is_favorite ? 'Remove from Customer Favorites' : 'Mark as Customer Favorite';
+        });
+        // Show/hide the inline "Customer Favorite" flags for this product
+        document.querySelectorAll(
+            'tr[data-product-id="' + productId + '"] [data-fav-flag], ' +
+            '.prod-card[data-product-id="' + productId + '"] [data-fav-flag]'
+        ).forEach(function(flag) { flag.hidden = !data.is_favorite; });
+        showToast(data.message);
+    })
+    .catch(function() {
         showToast('Something went wrong — please try again.');
     });
 });

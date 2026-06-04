@@ -140,6 +140,11 @@
                         <input type="checkbox" name="is_active" {% if product.is_active %}checked{% endif %}>
                         <span>Active (visible in shop)</span>
                     </label>
+
+                    <label class="ep-checkbox-label">
+                        <input type="checkbox" name="is_customer_favorite" {% if product.is_customer_favorite %}checked{% endif %}>
+                        <span>Customer Favorite (shows a badge in the shop &amp; on the product page)</span>
+                    </label>
                 </div>
 
                 <!-- Images -->

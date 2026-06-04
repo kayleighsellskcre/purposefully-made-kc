@@ -143,6 +143,12 @@
                         
                         <a href="{{ url_for('shop.customize', product_id=product.id) }}{% if design_id %}?design_id={{ design_id }}{% endif %}" class="product-link">
                             <div class="product-image-wrapper">
+                                {% if product.is_customer_favorite %}
+                                <span class="fav-badge fav-badge-overlay">
+                                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 7.1-1.01L12 2z"/></svg>
+                                    Customer Favorite
+                                </span>
+                                {% endif %}
                                 <!-- Color Preview Carousel -->
                                 {% if product.carousel_colors and product.carousel_colors|length > 0 %}
                                 <div class="color-carousel" data-product-id="{{ product.id }}">

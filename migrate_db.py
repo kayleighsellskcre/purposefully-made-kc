@@ -46,6 +46,7 @@ def run_migrations():
         add_column_if_not_exists('product', 'fit_type', 'VARCHAR(30)')
         add_column_if_not_exists('product', 'neck_style', 'VARCHAR(30)')
         add_column_if_not_exists('product', 'sleeve_length', 'VARCHAR(30)')
+        add_column_if_not_exists('product', 'is_customer_favorite', 'BOOLEAN DEFAULT FALSE')
         
         # Add design_fee column to Design table (use DOUBLE PRECISION for PostgreSQL)
         add_column_if_not_exists('design', 'design_fee', 'DOUBLE PRECISION DEFAULT 0')

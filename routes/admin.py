@@ -352,7 +352,15 @@ def products():
     """Manage products"""
     try:
         import os
-        products = Product.query.order_by(Product.style_number).all()
+        # Optional filter/sort by Customer Favorite status
+        fav_filter = request.args.get('favorites') == '1'
+        query = Product.query
+        if fav_filter:
+            query = query.filter(Product.is_customer_favorite.is_(True))
+        # Always surface favorites first, then by style number
+        products = query.order_by(Product.is_customer_favorite.desc(),
+                                  Product.style_number).all()
+        favorite_count = Product.query.filter(Product.is_customer_favorite.is_(True)).count()
 
         # Compute size/color counts - use ProductColorVariant for colors (authoritative for display)
         for p in products:
@@ -380,7 +388,9 @@ def products():
         return render_template('admin/products.html',
                              products=products,
                              api_configured=api_configured,
-                             last_sync_time=last_sync_time)
+                             last_sync_time=last_sync_time,
+                             fav_filter=fav_filter,
+                             favorite_count=favorite_count)
     
     except Exception as e:
         # Comprehensive error handling for admin products page
@@ -789,6 +799,7 @@ def add_product():
             base_price=float(request.form.get('base_price')),
             wholesale_cost=float(request.form.get('wholesale_cost') or 0),
             is_active=request.form.get('is_active') == 'on',
+            is_customer_favorite=request.form.get('is_customer_favorite') == 'on',
             available_sizes=request.form.get('available_sizes'),  # JSON string
             available_colors=request.form.get('available_colors'),  # JSON string
             print_area_config=request.form.get('print_area_config')  # JSON string
@@ -825,6 +836,7 @@ def edit_product(product_id):
         product.base_price = float(request.form.get('base_price'))
         product.wholesale_cost = float(request.form.get('wholesale_cost') or 0)
         product.is_active = request.form.get('is_active') == 'on'
+        product.is_customer_favorite = request.form.get('is_customer_favorite') == 'on'
         product.available_sizes = request.form.get('available_sizes')
         product.available_colors = request.form.get('available_colors')
         product.print_area_config = request.form.get('print_area_config')
@@ -884,6 +896,28 @@ def toggle_product_active(product_id):
 
     flash(message, 'success')
     return redirect(url_for('admin.products'))
+
+
+@admin_bp.route('/products/<int:product_id>/toggle-favorite', methods=['POST'])
+@admin_required
+def toggle_product_favorite(product_id):
+    """Toggle a product's Customer Favorite flag and return the new state as JSON."""
+    from flask import request as flask_request, jsonify
+    product = Product.query.get_or_404(product_id)
+    product.is_customer_favorite = not product.is_customer_favorite
+    db.session.commit()
+
+    label = 'Customer Favorite' if product.is_customer_favorite else 'Not featured'
+    message = (f'"{product.name}" is now a Customer Favorite'
+               if product.is_customer_favorite
+               else f'"{product.name}" removed from Customer Favorites')
+
+    if flask_request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'ok': True, 'is_favorite': product.is_customer_favorite,
+                        'label': label, 'message': message})
+
+    flash(message, 'success')
+    return redirect(request.referrer or url_for('admin.products'))
 
 
 # ===== COLLECTIONS =====

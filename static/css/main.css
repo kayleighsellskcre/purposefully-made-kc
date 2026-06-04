@@ -1890,3 +1890,46 @@ table { max-width: 100%; }
     .legal-page,
     .error-page { padding-top: 1.5rem; padding-bottom: 1.5rem; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   CUSTOMER FAVORITE BADGE (merchandising highlight)
+   Reusable across shop listings, product detail and customizer.
+   ════════════════════════════════════════════════════════════ */
+.fav-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.32rem 0.72rem;
+    background: linear-gradient(135deg, var(--terra-cotta) 0%, var(--aged-bronze) 100%);
+    color: #fff;
+    font-family: var(--font-primary);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(184, 124, 111, 0.35);
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.fav-badge svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+/* Overlay placement on top of a product image (card-style listings).
+   Sits top-left so it never collides with the top-right favorite heart. */
+.fav-badge-overlay {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 9;
+    pointer-events: none;
+}
+
+@media (max-width: 480px) {
+    .fav-badge { font-size: 0.6rem; padding: 0.28rem 0.6rem; }
+    .fav-badge-overlay { top: 0.5rem; left: 0.5rem; }
+}
