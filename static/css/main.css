@@ -57,8 +57,11 @@
 html {
     font-size: 16px;
     scroll-behavior: smooth;
-    /* Prevent horizontal overflow on all mobile devices */
+    /* Prevent horizontal overflow on all mobile devices.
+       Use `clip` (with `hidden` fallback) so we don't create a scroll
+       container, which would break position: sticky for descendants. */
     overflow-x: hidden;
+    overflow-x: clip;
 }
 
 body {
@@ -70,6 +73,7 @@ body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+    overflow-x: clip;
 }
 
 /* Ensure images and media never bust out of their containers */

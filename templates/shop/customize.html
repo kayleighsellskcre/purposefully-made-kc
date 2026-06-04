@@ -23,6 +23,9 @@
     margin: 0 auto;
     padding: 0 1rem;
     width: 100%;
+    /* Don't stretch columns to equal height, so the sticky preview
+       has room to scroll within its (taller) options column. */
+    align-items: start;
 }
 
 /* Let both columns shrink below their content size. Without this,
@@ -79,7 +82,10 @@
     border-radius: 12px;
     position: sticky;
     top: 100px;
+    align-self: start;
     height: fit-content;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
     box-shadow: 0 8px 24px rgba(58, 61, 72, 0.08);
     border: 1px solid rgba(184, 124, 111, 0.2);
 }
@@ -89,6 +95,8 @@
         padding: 1.5rem;
         position: relative !important;
         top: 0 !important;
+        max-height: none;
+        overflow-y: visible;
     }
 }
 
@@ -980,6 +988,8 @@
     
     .preview-section {
         position: static;
+        max-height: none;
+        overflow-y: visible;
     }
 }
 
