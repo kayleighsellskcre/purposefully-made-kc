@@ -1058,6 +1058,51 @@
     padding: 1rem;
 }
 .ai-zoom-modal[hidden] { display: none; }
+
+/* Live camera capture modal */
+.cam-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(15, 18, 22, 0.94);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+.cam-modal[hidden] { display: none; }
+.cam-card {
+    background: #11151c;
+    border-radius: 14px;
+    padding: 0.85rem;
+    width: min(560px, 96vw);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+.cam-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: #000;
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.cam-stage video { width: 100%; height: 100%; object-fit: cover; }
+.cam-error {
+    color: #ffb4b4;
+    font-size: 0.85rem;
+    margin: 0.6rem 0.2rem 0;
+    text-align: center;
+}
+.cam-bar {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: space-between;
+    margin-top: 0.75rem;
+}
+.cam-bar .btn { flex: 1 1 auto; }
 .ai-zoom-stage {
     max-width: 92vw;
     max-height: 86vh;
@@ -1425,9 +1470,17 @@
                                 <line x1="12" y1="3" x2="12" y2="15"></line>
                             </svg>
                             <p><strong>Upload your own design</strong></p>
-                            <p class="text-muted">PNG, JPG, WEBP</p>
+                            <p class="text-muted">PNG, JPG, HEIC, WEBP — or take a photo</p>
                         </div>
-                        <input type="file" id="designFileMain" accept=".png,.jpg,.jpeg,.webp" style="display: none;">
+                        <input type="file" id="designFileMain" accept="image/png,image/jpeg,image/webp,image/heic,image/heif,.png,.jpg,.jpeg,.webp,.heic,.heif" style="display: none;">
+                        <input type="file" id="designFileCamera" accept="image/*" capture="environment" style="display: none;">
+                        <div class="upload-actions" style="display:flex; gap:0.5rem; margin-top:0.6rem; flex-wrap:wrap;">
+                            <button type="button" class="btn btn-outline btn-sm" id="chooseFileBtn" style="flex:1 1 auto;" onclick="document.getElementById('designFileMain').click()">Choose file</button>
+                            <button type="button" class="btn btn-outline btn-sm" id="takePhotoBtn" style="flex:1 1 auto; display:inline-flex; align-items:center; justify-content:center; gap:0.4rem;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                Take photo
+                            </button>
+                        </div>
                         {% if current_user and current_user.is_authenticated %}
                         <div class="share-gallery-option" id="shareGalleryOption" style="margin-top: 0.75rem; padding: 0.75rem; background: #f8f9fa; border-radius: 8px;">
                             <label style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; font-size: 0.9rem;">
@@ -1515,7 +1568,23 @@
                         </div>
                         <div class="ai-zoom-hint">Scroll to pan &bull; use + / &minus; to zoom &bull; click the background to close</div>
                     </div>
-                    
+
+                    <!-- Live camera capture -->
+                    <div class="cam-modal" id="camModal" hidden>
+                        <div class="cam-card">
+                            <div class="cam-stage">
+                                <video id="camVideo" playsinline autoplay muted></video>
+                                <canvas id="camCanvas" hidden></canvas>
+                            </div>
+                            <p class="cam-error" id="camError" hidden></p>
+                            <div class="cam-bar">
+                                <button type="button" class="btn btn-outline btn-sm" id="camCancel">Cancel</button>
+                                <button type="button" class="btn btn-outline btn-sm" id="camSwitch" title="Switch camera">Flip</button>
+                                <button type="button" class="btn btn-primary btn-sm" id="camShoot">Capture</button>
+                            </div>
+                        </div>
+                    </div>
+
                     <a href="{{ url_for('shop.design_gallery', product_id=product.id) }}" class="btn btn-outline btn-sm" style="margin-top: 0.75rem; display: inline-block;">Browse full design gallery</a>
                 </div>
                 
@@ -2529,7 +2598,7 @@
         const uploadAreaMain = document.getElementById('uploadAreaMain');
         const fileInputMain = document.getElementById('designFileMain');
 
-        const UPLOAD_PROMPT = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Upload your own design</strong></p><p class="text-muted">PNG, JPG, WEBP</p>';
+        const UPLOAD_PROMPT = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Upload your own design</strong></p><p class="text-muted">PNG, JPG, HEIC, WEBP — or take a photo</p>';
 
         async function frontUpload(file, mode) {
             if (!file || !uploadAreaMain) return;
@@ -2587,18 +2656,120 @@
                 uploadAreaMain.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Design uploaded!</strong></p><p class="text-muted">Click to change</p>';
             } catch (err) {
                 console.error(err);
-                const msg = err.message || 'Upload failed. Please try again.';
+                let msg = err.message || 'Upload failed. Please try again.';
+                // Distinguish a dropped connection from a server-side error so the
+                // customer gets a clear, actionable message instead of silence.
+                if (err instanceof TypeError || /failed to fetch|networkerror/i.test(msg)) {
+                    msg = 'Network error — please check your connection and try again.';
+                }
                 uploadAreaMain.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#dc3545" stroke-width="2" style="margin-bottom: 0.5rem;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><p><strong>Upload failed</strong></p><p class="text-muted" style="font-size: 0.85rem;">' + msg.replace(/</g, '&lt;') + '</p><p class="text-muted" style="font-size: 0.8rem; margin-top: 0.5rem;">Click to try again</p>';
             }
             uploadAreaMain.style.pointerEvents = '';
             if (fileInputMain) fileInputMain.value = '';
         }
 
+        function handlePickedFile(file) {
+            if (!file) return;
+            // Light client-side type guard with a clear message; the server is
+            // the source of truth and validates again.
+            const okType = (file.type && file.type.indexOf('image/') === 0)
+                || /\.(png|jpe?g|webp|gif|heic|heif)$/i.test(file.name || '');
+            if (!okType) {
+                if (uploadAreaMain) uploadAreaMain.innerHTML = '<p style="margin:1rem 0;color:#dc3545;"><strong>Unsupported file</strong></p><p class="text-muted" style="font-size:0.85rem;">Please choose a PNG, JPG, HEIC, or WEBP image.</p><p class="text-muted" style="font-size:0.8rem;">Click to try again</p>';
+                return;
+            }
+            frontUpload(file, 'auto');
+        }
+
         if (uploadAreaMain && fileInputMain) {
             fileInputMain.addEventListener('change', function() {
-                frontUpload(this.files[0], 'auto');
+                handlePickedFile(this.files[0]);
             });
         }
+
+        const fileInputCamera = document.getElementById('designFileCamera');
+        if (fileInputCamera) {
+            fileInputCamera.addEventListener('change', function() {
+                handlePickedFile(this.files[0]);
+                this.value = '';
+            });
+        }
+
+        // ── Live camera capture (getUserMedia) with graceful fallbacks ──────────
+        (function setupCamera() {
+            const takeBtn = document.getElementById('takePhotoBtn');
+            const modal = document.getElementById('camModal');
+            const video = document.getElementById('camVideo');
+            const canvas = document.getElementById('camCanvas');
+            const errEl = document.getElementById('camError');
+            const shootBtn = document.getElementById('camShoot');
+            const cancelBtn = document.getElementById('camCancel');
+            const switchBtn = document.getElementById('camSwitch');
+            if (!takeBtn) return;
+
+            const hasGUM = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+            let stream = null;
+            let facing = 'environment';
+
+            function stopStream() {
+                if (stream) { stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; }
+            }
+            function closeModal() {
+                stopStream();
+                if (modal) modal.hidden = true;
+                document.body.style.overflow = '';
+            }
+            async function openStream() {
+                if (errEl) { errEl.hidden = true; errEl.textContent = ''; }
+                stopStream();
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: facing }, audio: false
+                    });
+                    if (video) { video.srcObject = stream; }
+                } catch (e) {
+                    let m = 'Could not access the camera.';
+                    if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) {
+                        m = 'Camera permission was blocked. Please allow camera access in your browser settings, then try again.';
+                    } else if (e && e.name === 'NotFoundError') {
+                        m = 'No camera was found on this device. Use “Choose file” instead.';
+                    } else if (!window.isSecureContext) {
+                        m = 'The camera needs a secure (https) connection. Use “Choose file” instead.';
+                    }
+                    if (errEl) { errEl.textContent = m; errEl.hidden = false; }
+                }
+            }
+            takeBtn.addEventListener('click', function() {
+                // Fallback: no in-browser camera API → use native capture input
+                if (!hasGUM) {
+                    if (fileInputCamera) fileInputCamera.click();
+                    else if (fileInputMain) fileInputMain.click();
+                    return;
+                }
+                if (modal) modal.hidden = false;
+                document.body.style.overflow = 'hidden';
+                openStream();
+            });
+            if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+            if (modal) modal.addEventListener('click', function(e){ if (e.target === modal) closeModal(); });
+            document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && modal && !modal.hidden) closeModal(); });
+            if (switchBtn) switchBtn.addEventListener('click', function() {
+                facing = (facing === 'environment') ? 'user' : 'environment';
+                openStream();
+            });
+            if (shootBtn) shootBtn.addEventListener('click', function() {
+                if (!video || !video.videoWidth) return;
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob(function(blob) {
+                    if (!blob) { if (errEl){ errEl.textContent='Could not capture the photo. Please try again.'; errEl.hidden=false; } return; }
+                    const file = new File([blob], 'camera_' + Date.now() + '.png', { type: 'image/png' });
+                    closeModal();
+                    handlePickedFile(file);
+                }, 'image/png');
+            });
+        })();
 
         const reprocessBtn = document.getElementById('reprocessDesign');
         if (reprocessBtn) {

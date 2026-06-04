@@ -1529,8 +1529,8 @@ def design_gallery_upload():
     
     name, ext = os.path.splitext(filename)
     ext = ext.lower()
-    if ext not in ['.png', '.jpg', '.jpeg', '.webp']:
-        flash('Use PNG, JPG, or WEBP format', 'error')
+    if ext not in ['.png', '.jpg', '.jpeg', '.webp', '.heic', '.heif']:
+        flash('Use PNG, JPG, WEBP, or HEIC format', 'error')
         return redirect(url_for('admin.design_gallery'))
     
     upload_dir = Path('static/uploads/designs')

@@ -25,6 +25,13 @@ import os
 
 from PIL import Image, ImageDraw, ImageFilter, ImageChops, ImageOps
 
+# Enable HEIC/HEIF decoding (iPhone photos) when pillow-heif is available.
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+except Exception:  # pragma: no cover - optional dependency
+    pass
+
 try:
     import numpy as np
     _HAS_NUMPY = True
@@ -109,8 +116,10 @@ def process_artwork_bytes(data, mode='auto', engine=None):
     if mode == 'none':
         out = img
     else:
-        # If the art already has a real transparent background, keep it.
-        if _already_transparent(img):
+        # If the art already has a real transparent background, keep it — unless
+        # the caller asked for an aggressive re-cut (to clear leftover holes /
+        # remnants), in which case we re-process from scratch.
+        if _already_transparent(img) and mode != 'aggressive':
             out = _cleanup_existing_alpha(img)
             result_engine = 'preserved'
             changed = True
@@ -274,16 +283,21 @@ def _border_profile(rgb):
 def _remove_bg_algorithmic(img_rgba, mode='auto'):
     """Edge-seeded flood-fill background removal.
 
-    The background is the region *connected to the image border*, found by
-    flood-filling from seeds placed all the way around the perimeter. Because
-    the fill detects which pixels *changed* (not a target colour), it removes
-    backgrounds of ANY colour — white, off-white, grey, vivid colours, even
-    non-uniform / gradient backdrops — while light/white areas *inside* the
-    artwork are preserved (they are not border-connected).
+    Two complementary signals are combined:
 
-    The result is then despeckled (stray pixels removed), pinhole-filled, and
-    colour-bled at the edge so there are no white outlines, grey artefacts, or
-    colour fringing — and thin text / hairlines survive intact.
+    1. Edge-connected flood fill from seeds around the whole perimeter. This
+       clears the *outside* background of ANY colour — white, off-white, grey,
+       vivid colours, even non-uniform / gradient backdrops — and the gaps
+       *between* letters/elements that connect out to the edge.
+    2. A global colour key against the detected background colour. This clears
+       background trapped *inside* the artwork — letter openings (A, B, D, O,
+       e, g, o ...), circular elements, enclosed shapes, cutouts and negative
+       spaces — which the flood fill alone cannot reach.
+
+    The union is then despeckled (stray pixels removed), tiny pinholes filled,
+    and colour-bled at every edge so there are no white outlines, grey
+    artefacts, anti-aliased remnants or colour fringing — while thin text /
+    hairlines and all interior artwork detail survive intact.
     """
     try:
         rgb = img_rgba.convert('RGB')
@@ -326,30 +340,44 @@ def _remove_bg_algorithmic(img_rgba, mode='auto'):
             except Exception:
                 pass
 
-        # Background = pixels the flood fill changed.
+        # Background = pixels the flood fill changed (outer / between-letter bg).
         diff = ImageChops.difference(rgb, work).convert('L')
         bg_mask = diff.point(lambda p: 255 if p > 0 else 0)  # 255 = background
 
         if _HAS_NUMPY:
-            return _compose_with_numpy(rgb, bg_mask, mode)
+            flood_bg = np.asarray(bg_mask) > 127
+            # Global colour key: anything close to the background colour ANYWHERE
+            # in the image (incl. enclosed letter holes / negative spaces). The
+            # tolerance also catches the bg-side of anti-aliased edges so no
+            # white/grey halo or remnant is left behind.
+            ck_tol = int(min(95, max(36, 30 + mad * 1.7)))
+            if mode == 'aggressive':
+                ck_tol = min(135, ck_tol + 45)
+            rgb_i = np.asarray(rgb).astype(np.int16)
+            dist = (np.abs(rgb_i[..., 0] - bg_color[0])
+                    + np.abs(rgb_i[..., 1] - bg_color[1])
+                    + np.abs(rgb_i[..., 2] - bg_color[2]))
+            color_bg = dist <= ck_tol
+            bg_bool = flood_bg | color_bg
+            return _compose_from_bool(rgb, bg_bool, mode)
         return _compose_with_pil(img_rgba, bg_mask, mode)
     except Exception:
         # Last-resort: at least return an RGBA PNG unchanged.
         return img_rgba
 
 
-def _compose_with_numpy(rgb, bg_mask, mode):
+def _compose_from_bool(rgb, bg_bool, mode):
+    """Build a clean RGBA cutout from a boolean background mask."""
     rgb_arr = np.asarray(rgb).astype(np.uint8)
-    bg = np.asarray(bg_mask) > 127           # True where background
-    opaque = ~bg                              # True where artwork
+    opaque = ~bg_bool                          # True where artwork
 
-    # Remove stray single-pixel specks / 1px spurs left by the fill. A pixel is
-    # only dropped when it has <2 opaque neighbours, so genuine thin lines and
-    # text strokes (>=2 connected pixels) are fully preserved.
+    # Remove stray single-pixel specks / 1px spurs. A pixel is only dropped when
+    # it has <2 opaque neighbours, so genuine thin lines and text strokes
+    # (>=2 connected pixels) are fully preserved.
     opaque = _despeckle(opaque)
-    # Re-fill pinholes that are completely enclosed by artwork so solid fills
-    # stay solid. Large, intentionally-transparent interior areas are untouched
-    # (they have many transparent neighbours), preserving real internal detail.
+    # Re-fill 1px pinholes fully enclosed by artwork so solid fills stay solid.
+    # Real letter openings / negative spaces are large and have many transparent
+    # neighbours, so they are NOT re-filled — they stay transparent.
     opaque = _fill_pinholes(opaque)
 
     # Defringe: bleed foreground colour outward so any edge pixel carries the

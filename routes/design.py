@@ -11,7 +11,7 @@ import secrets
 
 design_bp = Blueprint('design', __name__, url_prefix='/design')
 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'heic', 'heif'}
 
 
 def _allowed_file(filename):
@@ -80,7 +80,7 @@ def upload():
         upload_dir.mkdir(parents=True, exist_ok=True)
 
         ext = _safe_ext(file.filename)
-        if ext not in ('.png', '.jpg', '.jpeg', '.webp', '.gif'):
+        if ext not in ('.png', '.jpg', '.jpeg', '.webp', '.gif', '.heic', '.heif'):
             ext = '.png'
         unique_name = f"design_{int(time.time())}_{secrets.token_hex(8)}{ext}"
         filepath = upload_dir / unique_name
