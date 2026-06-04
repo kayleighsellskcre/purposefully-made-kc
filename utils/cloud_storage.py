@@ -35,16 +35,64 @@ def r2_configured(app):
     ])
 
 
-def upload_image(file_storage, app, subfolder='uploads', public_id_prefix='img'):
+def upload_image(file_storage, app, subfolder='uploads', public_id_prefix='img',
+                 process_artwork=False):
     """Upload a FileStorage object and return a persistent URL or relative path.
+
+    Args:
+        process_artwork: when True, raster images are run through the
+            background-removal pipeline first and stored as clean transparent
+            PNGs. Use for printable artwork/logos (not reference photos).
 
     Returns:
         str: Full https:// URL when R2 is configured, otherwise a relative
              path like 'uploads/<subfolder>/filename.ext' (local dev fallback).
     """
+    if process_artwork:
+        file_storage = _maybe_process_artwork(file_storage)
     if r2_configured(app):
         return _upload_to_r2(file_storage, app, subfolder, public_id_prefix)
     return _save_locally(file_storage, app, subfolder, public_id_prefix)
+
+
+def _maybe_process_artwork(file_storage):
+    """Return a FileStorage holding a clean transparent PNG, or the original.
+
+    Defensive: any failure returns the original FileStorage unchanged so
+    uploads never break.
+    """
+    try:
+        import io
+        from werkzeug.datastructures import FileStorage
+        filename = (file_storage.filename or '').lower()
+        ext = filename.rsplit('.', 1)[-1] if '.' in filename else ''
+        if ext not in ('png', 'jpg', 'jpeg', 'webp', 'gif'):
+            return file_storage  # vector/pdf/unknown — leave alone
+
+        data = file_storage.read()
+        try:
+            file_storage.stream.seek(0)
+        except Exception:
+            pass
+        if not data:
+            return file_storage
+
+        from services.image_processing import process_artwork_bytes
+        result = process_artwork_bytes(data, mode='auto')
+        png_bytes = result.get('data')
+        if not png_bytes:
+            return file_storage
+
+        base = filename.rsplit('.', 1)[0] if '.' in filename else (filename or 'artwork')
+        new_name = f"{base}.png"
+        return FileStorage(stream=io.BytesIO(png_bytes), filename=new_name,
+                           content_type='image/png')
+    except Exception:
+        try:
+            file_storage.stream.seek(0)
+        except Exception:
+            pass
+        return file_storage
 
 
 def image_url(path_or_url):

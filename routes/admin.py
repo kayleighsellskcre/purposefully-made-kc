@@ -54,6 +54,7 @@ def _save_uploaded_design(file, user_id):
         current_app._get_current_object(),
         subfolder='designs',
         public_id_prefix='gallery',
+        process_artwork=True,
     )
     title = name.replace('_', ' ').title()
     design = Design(
@@ -63,7 +64,8 @@ def _save_uploaded_design(file, user_id):
         is_gallery=True,
         title=title,
         folder='custom_orders',
-        uploaded_by_user_id=user_id
+        uploaded_by_user_id=user_id,
+        has_transparency=True,
     )
     try:
         from PIL import Image
@@ -98,6 +100,7 @@ def _save_design_for_user(file, user_id, title=None, design_fee=0):
         current_app._get_current_object(),
         subfolder='designs',
         public_id_prefix=f'user_{user_id}',
+        process_artwork=True,
     )
 
     import time
@@ -112,7 +115,8 @@ def _save_design_for_user(file, user_id, title=None, design_fee=0):
         title=title or name.replace('_', ' ').title(),
         folder='custom_orders',
         uploaded_by_user_id=user_id,
-        design_fee=float(design_fee or 0)
+        design_fee=float(design_fee or 0),
+        has_transparency=True,
     )
     try:
         from PIL import Image
@@ -1535,7 +1539,17 @@ def design_gallery_upload():
     unique_name = f"gallery_{name}_{timestamp}{ext}"
     filepath = upload_dir / unique_name
     file.save(str(filepath))
-    
+
+    # Clean transparent-PNG cutout for the gallery design.
+    try:
+        from services.image_processing import process_artwork_file
+        _res = process_artwork_file(filepath, mode='auto')
+        if _res.get('path') is not None:
+            filepath = _res['path']
+            unique_name = filepath.name
+    except Exception:
+        pass
+
     title = request.form.get('title') or name.replace('_', ' ').title()
     folder = request.form.get('folder') or 'custom_orders'
     sku = request.form.get('sku')
@@ -1548,7 +1562,8 @@ def design_gallery_upload():
         title=title,
         folder=folder,
         sku=sku,
-        uploaded_by_user_id=current_user.id
+        uploaded_by_user_id=current_user.id,
+        has_transparency=True,
     )
     try:
         from PIL import Image

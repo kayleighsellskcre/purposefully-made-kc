@@ -959,6 +959,142 @@
     font-size: 0.875rem;
 }
 
+/* ===== Artwork inspector (background-removal preview) ===== */
+.artwork-inspector .ai-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    border-radius: var(--border-radius);
+    padding: 0.55rem 0.75rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+.artwork-inspector .ai-status svg { width: 18px; height: 18px; flex-shrink: 0; }
+.ai-stage {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+    max-height: 280px;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    background-color: #fff;
+}
+.ai-stage.bg-checker {
+    background-color: #fff;
+    background-image:
+        linear-gradient(45deg, #d9dde3 25%, transparent 25%),
+        linear-gradient(-45deg, #d9dde3 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #d9dde3 75%),
+        linear-gradient(-45deg, transparent 75%, #d9dde3 75%);
+    background-size: 18px 18px;
+    background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+}
+.ai-stage.bg-light { background-color: #e9ecef; background-image: none; }
+.ai-stage.bg-dark { background-color: #2b2f36; background-image: none; }
+.ai-stage .ai-img {
+    max-width: 100%;
+    max-height: 260px;
+    object-fit: contain;
+    display: block;
+}
+.ai-img-original { display: none; }
+.ai-stage.show-before .ai-img-original { display: block; }
+.ai-stage.show-before .ai-img-result { display: none; }
+.ai-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 0.6rem;
+}
+.ai-toggle, .ai-bg-toggle {
+    display: inline-flex;
+    border: 1px solid #dcdfe4;
+    border-radius: 999px;
+    overflow: hidden;
+    background: #fff;
+}
+.ai-toggle-btn, .ai-bg-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 0.32rem 0.72rem;
+    font-size: 0.78rem;
+    color: #555;
+}
+.ai-toggle-btn.active, .ai-bg-btn.active {
+    background: var(--primary-color, #111);
+    color: #fff;
+}
+.ai-zoom-btn {
+    margin-left: auto;
+    border: 1px solid #dcdfe4;
+    background: #fff;
+    border-radius: 999px;
+    cursor: pointer;
+    padding: 0.32rem 0.8rem;
+    font-size: 0.78rem;
+    color: #555;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+.ai-white-note { font-size: 0.8rem; color: #555; margin-top: 0.5rem; }
+.ai-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+.ai-zoom-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(15, 18, 22, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+.ai-zoom-modal[hidden] { display: none; }
+.ai-zoom-stage {
+    max-width: 92vw;
+    max-height: 86vh;
+    overflow: auto;
+    border-radius: 10px;
+    background-color: #fff;
+    background-image:
+        linear-gradient(45deg, #d9dde3 25%, transparent 25%),
+        linear-gradient(-45deg, #d9dde3 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #d9dde3 75%),
+        linear-gradient(-45deg, transparent 75%, #d9dde3 75%);
+    background-size: 22px 22px;
+    background-position: 0 0, 0 11px, 11px -11px, -11px 0;
+}
+.ai-zoom-stage img { display: block; max-width: none; image-rendering: -webkit-optimize-contrast; }
+.ai-zoom-bar { position: fixed; top: 1rem; right: 1rem; display: flex; gap: 0.5rem; }
+.ai-zoom-bar button {
+    background: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1;
+}
+.ai-zoom-hint {
+    position: fixed;
+    bottom: 1rem;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #cfd3da;
+    font-size: 0.8rem;
+}
+
 .price-summary {
     background: var(--secondary-color);
     padding: 1.5rem;
@@ -1334,12 +1470,50 @@
                     </div>
                     {% endif %}
                     
-                    <div class="design-preview" id="designPreview">
-                        <img src="" alt="Design Preview" id="designPreviewImage">
-                        <button class="btn btn-outline btn-sm" id="removeDesign">Remove Design</button>
+                    <div class="design-preview artwork-inspector" id="designPreview">
+                        <div class="ai-status" id="aiStatus" hidden>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            <span id="aiStatusText">Background removed — transparent PNG ready</span>
+                        </div>
+                        <div class="ai-stage bg-checker" id="aiStage">
+                            <img src="" alt="Original upload" id="designOriginalImage" class="ai-img ai-img-original">
+                            <img src="" alt="Design preview" id="designPreviewImage" class="ai-img ai-img-result">
+                        </div>
+                        <div class="ai-controls">
+                            <div class="ai-toggle" id="aiViewToggle" role="group" aria-label="Compare before and after">
+                                <button type="button" class="ai-toggle-btn active" data-view="after">After</button>
+                                <button type="button" class="ai-toggle-btn" data-view="before">Before</button>
+                            </div>
+                            <div class="ai-bg-toggle" id="aiBgToggle" role="group" aria-label="Preview background">
+                                <button type="button" class="ai-bg-btn active" data-bg="checker" title="Transparency checkerboard">Checker</button>
+                                <button type="button" class="ai-bg-btn" data-bg="light" title="Light background">Light</button>
+                                <button type="button" class="ai-bg-btn" data-bg="dark" title="Dark background">Dark</button>
+                            </div>
+                            <button type="button" class="ai-zoom-btn" id="aiZoomBtn" title="Zoom in to inspect edges">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                                Zoom
+                            </button>
+                        </div>
+                        <p class="ai-white-note" id="aiWhiteNote" hidden>White artwork detected — shown on a contrasting background so you can see it. The final print file stays transparent.</p>
+                        <div class="ai-actions">
+                            <button class="btn btn-outline btn-sm" id="reprocessDesign" hidden>Reprocess (stronger cut)</button>
+                            <button class="btn btn-outline btn-sm" id="removeDesign">Remove Design</button>
+                        </div>
                     </div>
                     
                     <div class="design-warnings" id="designWarnings"></div>
+
+                    <div class="ai-zoom-modal" id="aiZoomModal" hidden>
+                        <div class="ai-zoom-bar">
+                            <button type="button" id="aiZoomOut" aria-label="Zoom out">&minus;</button>
+                            <button type="button" id="aiZoomIn" aria-label="Zoom in">+</button>
+                            <button type="button" id="aiZoomClose" aria-label="Close">&times;</button>
+                        </div>
+                        <div class="ai-zoom-stage" id="aiZoomStage">
+                            <img src="" alt="Zoomed artwork" id="aiZoomImg">
+                        </div>
+                        <div class="ai-zoom-hint">Scroll to pan &bull; use + / &minus; to zoom &bull; click the background to close</div>
+                    </div>
                     
                     <a href="{{ url_for('shop.design_gallery', product_id=product.id) }}" class="btn btn-outline btn-sm" style="margin-top: 0.75rem; display: inline-block;">Browse full design gallery</a>
                 </div>
@@ -2188,6 +2362,8 @@
         
         designImage.src = preset.url;
         designPreviewImage.src = preset.url;
+        if (typeof resetArtworkInspector === 'function') resetArtworkInspector();
+        state.lastUploadedFile = null;
         designPreview.classList.add('active');
         designLayer.classList.add('visible');
         designLayer.classList.add('draggable');
@@ -2208,6 +2384,142 @@
         if (dragHint) dragHint.style.display = 'block';
     }
     
+    function setStageBg(bg) {
+        const aiStage = document.getElementById('aiStage');
+        const aiBgToggle = document.getElementById('aiBgToggle');
+        if (aiStage) {
+            aiStage.classList.remove('bg-checker', 'bg-light', 'bg-dark');
+            aiStage.classList.add('bg-' + bg);
+        }
+        if (aiBgToggle) aiBgToggle.querySelectorAll('.ai-bg-btn').forEach(b => b.classList.toggle('active', b.dataset.bg === bg));
+    }
+
+    function resetArtworkInspector() {
+        const aiStatus = document.getElementById('aiStatus');
+        const aiWhiteNote = document.getElementById('aiWhiteNote');
+        const reprocessBtn = document.getElementById('reprocessDesign');
+        const viewToggle = document.getElementById('aiViewToggle');
+        const aiStage = document.getElementById('aiStage');
+        const designWarnings = document.getElementById('designWarnings');
+        if (aiStatus) aiStatus.hidden = true;
+        if (aiWhiteNote) aiWhiteNote.hidden = true;
+        if (reprocessBtn) reprocessBtn.hidden = true;
+        if (viewToggle) {
+            viewToggle.style.display = 'none';
+            viewToggle.querySelectorAll('.ai-toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'after'));
+        }
+        if (aiStage) aiStage.classList.remove('show-before');
+        if (designWarnings) designWarnings.innerHTML = '';
+        setStageBg('checker');
+    }
+
+    function applyInspectorResult(data, file) {
+        const aiStatus = document.getElementById('aiStatus');
+        const aiStatusText = document.getElementById('aiStatusText');
+        const aiWhiteNote = document.getElementById('aiWhiteNote');
+        const aiStage = document.getElementById('aiStage');
+        const designOriginalImage = document.getElementById('designOriginalImage');
+        const viewToggle = document.getElementById('aiViewToggle');
+        const reprocessBtn = document.getElementById('reprocessDesign');
+        const designWarnings = document.getElementById('designWarnings');
+
+        // Before image (only for fresh uploads where we still hold the raw file)
+        if (file && designOriginalImage) {
+            if (state._beforeUrl) { try { URL.revokeObjectURL(state._beforeUrl); } catch (e) {} }
+            state._beforeUrl = URL.createObjectURL(file);
+            designOriginalImage.src = state._beforeUrl;
+            if (viewToggle) viewToggle.style.display = '';
+        } else if (viewToggle) {
+            viewToggle.style.display = 'none';
+        }
+        if (aiStage) aiStage.classList.remove('show-before');
+        if (viewToggle) viewToggle.querySelectorAll('.ai-toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'after'));
+
+        // Success status
+        if (aiStatus) {
+            if (data && data.background_removed) {
+                aiStatus.hidden = false;
+                if (aiStatusText) {
+                    aiStatusText.textContent = data.engine === 'ai'
+                        ? 'AI background removal complete — transparent PNG ready'
+                        : (data.engine === 'preserved'
+                            ? 'Transparent artwork ready'
+                            : 'Background removed — transparent PNG ready');
+                }
+            } else {
+                aiStatus.hidden = true;
+            }
+        }
+
+        // White-artwork detection -> contrasting preview background
+        const isWhite = !!(data && data.white_artwork);
+        if (aiWhiteNote) aiWhiteNote.hidden = !isWhite;
+        setStageBg(isWhite ? 'dark' : 'checker');
+
+        // Validation messages + optional reprocess
+        const validation = (data && data.validation) || { ok: true };
+        const messages = (data && (data.messages || data.warnings)) || [];
+        if (designWarnings) {
+            designWarnings.innerHTML = '';
+            messages.forEach(function (m) {
+                const div = document.createElement('div');
+                div.className = 'warning-item';
+                div.textContent = m;
+                designWarnings.appendChild(div);
+            });
+        }
+        if (reprocessBtn) reprocessBtn.hidden = validation.ok !== false;
+    }
+
+    function setupArtworkInspector() {
+        const viewToggle = document.getElementById('aiViewToggle');
+        const aiStage = document.getElementById('aiStage');
+        if (viewToggle && aiStage) {
+            viewToggle.querySelectorAll('.ai-toggle-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    viewToggle.querySelectorAll('.ai-toggle-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    aiStage.classList.toggle('show-before', btn.dataset.view === 'before');
+                });
+            });
+        }
+        const aiBgToggle = document.getElementById('aiBgToggle');
+        if (aiBgToggle) {
+            aiBgToggle.querySelectorAll('.ai-bg-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () { setStageBg(btn.dataset.bg); });
+            });
+        }
+        const zoomBtn = document.getElementById('aiZoomBtn');
+        const modal = document.getElementById('aiZoomModal');
+        const zoomImg = document.getElementById('aiZoomImg');
+        let zoom = 2;
+        function setZoom(z) {
+            zoom = Math.min(8, Math.max(1, z));
+            if (zoomImg) zoomImg.style.width = (zoom * 100) + '%';
+        }
+        if (zoomBtn && modal && zoomImg) {
+            zoomBtn.addEventListener('click', function () {
+                const showBefore = aiStage && aiStage.classList.contains('show-before');
+                const resultImg = document.getElementById('designPreviewImage');
+                const beforeImg = document.getElementById('designOriginalImage');
+                zoomImg.src = (showBefore && beforeImg) ? beforeImg.src : (resultImg ? resultImg.src : '');
+                setZoom(2);
+                modal.hidden = false;
+            });
+            const zin = document.getElementById('aiZoomIn');
+            const zout = document.getElementById('aiZoomOut');
+            const zclose = document.getElementById('aiZoomClose');
+            if (zin) zin.addEventListener('click', function () { setZoom(zoom + 0.5); });
+            if (zout) zout.addEventListener('click', function () { setZoom(zoom - 0.5); });
+            if (zclose) zclose.addEventListener('click', function () { modal.hidden = true; });
+            modal.addEventListener('click', function (e) { if (e.target === modal) modal.hidden = true; });
+            zoomImg.addEventListener('wheel', function (e) {
+                e.preventDefault();
+                setZoom(zoom + (e.deltaY < 0 ? 0.3 : -0.3));
+            }, { passive: false });
+        }
+    }
+
     function setupDesignUpload() {
         const designPreview = document.getElementById('designPreview');
         const designLayer = document.getElementById('designLayer');
@@ -2215,68 +2527,83 @@
         const designWarnings = document.getElementById('designWarnings');
         const uploadAreaMain = document.getElementById('uploadAreaMain');
         const fileInputMain = document.getElementById('designFileMain');
-        
-        if (uploadAreaMain && fileInputMain) {
-            fileInputMain.addEventListener('change', async function() {
-                const file = this.files[0];
-                if (!file) return;
-                if (file.size > 15 * 1024 * 1024) {
-                    uploadAreaMain.innerHTML = '<p style="margin: 1rem 0; color: #dc3545;"><strong>File too large</strong></p><p class="text-muted" style="font-size: 0.85rem;">Maximum size is 16MB. Please choose a smaller image.</p><p class="text-muted" style="font-size: 0.8rem;">Click to try again</p>';
-                    return;
-                }
-                uploadAreaMain.innerHTML = '<p style="margin: 2rem 0;">Uploading design…</p>';
-                uploadAreaMain.style.pointerEvents = 'none';
-                
-                try {
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    const shareCheckbox = document.getElementById('shareInGalleryCheckbox');
-                    if (shareCheckbox) formData.append('share_in_gallery', shareCheckbox.checked ? 'true' : 'false');
-                    const response = await fetch('/design/upload', { method: 'POST', body: formData });
-                    const data = await response.json().catch(() => ({}));
-                    if (!response.ok) throw new Error(data.error || 'Upload failed');
-                    
-                    state.designUrl = data.url;
-                    state.presetDesignId = data.design_id || null;
-                    state.designFile = data.design_id ? null : file;
-                    const designImage = document.getElementById('designImage');
-                    const designPreviewImage = document.getElementById('designPreviewImage');
-                    if (designImage && designLayer) {
-                        designImage.onerror = function() { console.error('Design image failed to load:', data.url); };
-                        designImage.src = data.url;
-                        if (designPreviewImage) {
-                            designPreviewImage.onerror = function() { console.error('Design preview failed to load:', data.url); };
-                            designPreviewImage.src = data.url;
-                        }
-                        if (designPreview) designPreview.classList.add('active');
-                        designLayer.classList.add('visible');
-                        designLayer.classList.add('draggable');
-                        designLayer.style.display = 'flex';
-                        designLayer.setAttribute('data-placement', (state.allowedPlacements && state.allowedPlacements[0]) || 'center_chest');
-                        if (placementSection) placementSection.style.display = 'block';
-                        const backSection = document.getElementById('backDesignSection');
-                        if (backSection) backSection.style.display = 'block';
-                        state.selectedPlacement = (state.allowedPlacements && state.allowedPlacements[0]) || 'center_chest';
-                        document.querySelectorAll('.placement-option').forEach(o => o.classList.remove('selected'));
-                        const selectedOpt = document.querySelector(`[data-placement="${state.selectedPlacement}"]`);
-                        if (selectedOpt) selectedOpt.classList.add('selected');
-                        applyDesignPosition();
-                        updateTotalPrice();
-                        const dragHint = document.getElementById('dragHint');
-                        if (dragHint) dragHint.style.display = 'block';
+
+        const UPLOAD_PROMPT = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Upload your own design</strong></p><p class="text-muted">PNG, JPG, WEBP</p>';
+
+        async function frontUpload(file, mode) {
+            if (!file || !uploadAreaMain) return;
+            if (file.size > 15 * 1024 * 1024) {
+                uploadAreaMain.innerHTML = '<p style="margin: 1rem 0; color: #dc3545;"><strong>File too large</strong></p><p class="text-muted" style="font-size: 0.85rem;">Maximum size is 16MB. Please choose a smaller image.</p><p class="text-muted" style="font-size: 0.8rem;">Click to try again</p>';
+                return;
+            }
+            uploadAreaMain.innerHTML = '<p style="margin: 2rem 0;">' + (mode === 'aggressive' ? 'Reprocessing &amp; removing background…' : 'Uploading &amp; removing background…') + '</p>';
+            uploadAreaMain.style.pointerEvents = 'none';
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                if (mode) formData.append('bg_removal', mode);
+                const shareCheckbox = document.getElementById('shareInGalleryCheckbox');
+                if (shareCheckbox) formData.append('share_in_gallery', shareCheckbox.checked ? 'true' : 'false');
+                const response = await fetch('/design/upload', { method: 'POST', body: formData });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error || 'Upload failed');
+
+                state.designUrl = data.url;
+                state.presetDesignId = data.design_id || null;
+                state.designFile = data.design_id ? null : file;
+                state.lastUploadedFile = file;
+                const designImage = document.getElementById('designImage');
+                const designPreviewImage = document.getElementById('designPreviewImage');
+                if (designImage && designLayer) {
+                    designImage.onerror = function() { console.error('Design image failed to load:', data.url); };
+                    designImage.src = data.url;
+                    if (designPreviewImage) {
+                        designPreviewImage.onerror = function() { console.error('Design preview failed to load:', data.url); };
+                        designPreviewImage.src = data.url;
                     }
-                    
-                    uploadAreaMain.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Design uploaded!</strong></p><p class="text-muted">Click to change</p>';
-                } catch (err) {
-                    console.error(err);
-                    const msg = err.message || 'Upload failed. Please try again.';
-                    uploadAreaMain.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#dc3545" stroke-width="2" style="margin-bottom: 0.5rem;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><p><strong>Upload failed</strong></p><p class="text-muted" style="font-size: 0.85rem;">' + msg.replace(/</g, '&lt;') + '</p><p class="text-muted" style="font-size: 0.8rem; margin-top: 0.5rem;">Click to try again</p>';
+                    if (designPreview) designPreview.classList.add('active');
+                    designLayer.classList.add('visible');
+                    designLayer.classList.add('draggable');
+                    designLayer.style.display = 'flex';
+                    designLayer.setAttribute('data-placement', (state.allowedPlacements && state.allowedPlacements[0]) || 'center_chest');
+                    if (placementSection) placementSection.style.display = 'block';
+                    const backSection = document.getElementById('backDesignSection');
+                    if (backSection) backSection.style.display = 'block';
+                    state.selectedPlacement = (state.allowedPlacements && state.allowedPlacements[0]) || 'center_chest';
+                    document.querySelectorAll('.placement-option').forEach(o => o.classList.remove('selected'));
+                    const selectedOpt = document.querySelector(`[data-placement="${state.selectedPlacement}"]`);
+                    if (selectedOpt) selectedOpt.classList.add('selected');
+                    applyDesignPosition();
+                    updateTotalPrice();
+                    const dragHint = document.getElementById('dragHint');
+                    if (dragHint) dragHint.style.display = 'block';
                 }
-                uploadAreaMain.style.pointerEvents = '';
-                fileInputMain.value = '';
+
+                applyInspectorResult(data, file);
+                uploadAreaMain.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Design uploaded!</strong></p><p class="text-muted">Click to change</p>';
+            } catch (err) {
+                console.error(err);
+                const msg = err.message || 'Upload failed. Please try again.';
+                uploadAreaMain.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#dc3545" stroke-width="2" style="margin-bottom: 0.5rem;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><p><strong>Upload failed</strong></p><p class="text-muted" style="font-size: 0.85rem;">' + msg.replace(/</g, '&lt;') + '</p><p class="text-muted" style="font-size: 0.8rem; margin-top: 0.5rem;">Click to try again</p>';
+            }
+            uploadAreaMain.style.pointerEvents = '';
+            if (fileInputMain) fileInputMain.value = '';
+        }
+
+        if (uploadAreaMain && fileInputMain) {
+            fileInputMain.addEventListener('change', function() {
+                frontUpload(this.files[0], 'auto');
             });
         }
-        
+
+        const reprocessBtn = document.getElementById('reprocessDesign');
+        if (reprocessBtn) {
+            reprocessBtn.addEventListener('click', function() {
+                if (state.lastUploadedFile) frontUpload(state.lastUploadedFile, 'aggressive');
+            });
+        }
+
         const removeBtn = document.getElementById('removeDesign');
         if (removeBtn) {
             removeBtn.addEventListener('click', function() {
@@ -2286,19 +2613,22 @@
                 designLayer.style.display = 'none';
                 if (placementSection) placementSection.style.display = 'none';
                 // Keep back design section visible - users can add name/number without front design
-                if (designWarnings) designWarnings.innerHTML = '';
+                resetArtworkInspector();
                 state.designFile = null;
                 state.designUrl = null;
                 state.presetDesignId = null;
+                state.lastUploadedFile = null;
                 const dragHint = document.getElementById('dragHint');
                 const resetBtn = document.getElementById('resetPositionBtn');
                 if (dragHint) dragHint.style.display = 'none';
                 if (resetBtn) resetBtn.style.display = 'none';
                 if (uploadAreaMain) {
-                    uploadAreaMain.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Upload your own design</strong></p><p class="text-muted">PNG, JPG, WEBP</p>';
+                    uploadAreaMain.innerHTML = UPLOAD_PROMPT;
                 }
             });
         }
+
+        setupArtworkInspector();
     }
     
     function setupBackDesignUpload() {

@@ -28,32 +28,35 @@ def _safe_ext(filename):
     return '.' + filename.rsplit('.', 1)[1].lower()
 
 
-def _make_white_transparent(filepath, threshold=240):
+def _remove_background(filepath, mode='auto'):
     """
-    Make white/near-white pixels transparent so designs blend with shirt.
-    Saves as PNG. Returns (new_filepath, new_filename) or (original, original_name) on failure.
+    Produce a clean, true-transparent PNG cutout of the uploaded artwork.
+
+    Uses the shared image-processing pipeline (algorithmic by default, optional
+    rembg AI engine, defringe + anti-aliased edges, white-artwork detection and
+    validation). Returns (new_filepath, new_filename, meta_dict). On any failure
+    it falls back to leaving the original file in place.
     """
     try:
-        from PIL import Image
-        with Image.open(filepath) as img:
-            img = img.convert("RGBA")
-            data = img.getdata()
-            new_data = []
-            for item in data:
-                r, g, b, a = item
-                if r >= threshold and g >= threshold and b >= threshold:
-                    new_data.append((r, g, b, 0))
-                else:
-                    new_data.append(item)
-            img.putdata(new_data)
-            png_name = filepath.stem + '.png'
-            png_path = filepath.parent / png_name
-            img.save(str(png_path), 'PNG')
-            if png_path != filepath and filepath.exists():
-                filepath.unlink()
-            return png_path, png_name
+        from services.image_processing import process_artwork_file, issue_messages
+        result = process_artwork_file(filepath, mode=mode)
+        new_path = result.get('path') or filepath
+        meta = {
+            'engine': result.get('engine'),
+            'white_artwork': bool(result.get('white_artwork')),
+            'validation': result.get('validation') or {'ok': True, 'issues': [], 'metrics': {}},
+            'messages': issue_messages(result.get('validation') or {}),
+            'has_transparency': True,
+        }
+        return new_path, new_path.name, meta
     except Exception:
-        return filepath, filepath.name
+        return filepath, filepath.name, {
+            'engine': 'none',
+            'white_artwork': False,
+            'validation': {'ok': True, 'issues': [], 'metrics': {}},
+            'messages': [],
+            'has_transparency': False,
+        }
 
 
 @design_bp.route('/upload', methods=['POST'])
@@ -83,8 +86,14 @@ def upload():
         filepath = upload_dir / unique_name
         file.save(str(filepath))
 
-        # Make white/near-white backgrounds transparent for shirt mockups
-        filepath, unique_name = _make_white_transparent(filepath)
+        # Background removal mode: 'auto' (default), 'aggressive' (reprocess),
+        # or 'none' (keep the uploaded image as-is).
+        mode = (request.form.get('bg_removal') or 'auto').strip().lower()
+        if mode not in ('auto', 'aggressive', 'none'):
+            mode = 'auto'
+
+        # Produce a clean transparent-PNG cutout with crisp, print-ready edges.
+        filepath, unique_name, art_meta = _remove_background(filepath, mode=mode)
 
         # Upload to R2 if configured; otherwise fall back to local static path
         from utils.cloud_storage import r2_configured, _upload_to_r2
@@ -123,6 +132,7 @@ def upload():
                     uploaded_by_user_id=current_user.id,
                     width=width,
                     height=height,
+                    has_transparency=bool(art_meta.get('has_transparency')),
                 )
                 if filepath.exists():
                     design.file_size = filepath.stat().st_size
@@ -138,6 +148,11 @@ def upload():
             'width': width,
             'height': height,
             'design_id': design_id,
+            'engine': art_meta.get('engine'),
+            'white_artwork': art_meta.get('white_artwork', False),
+            'background_removed': art_meta.get('engine') not in (None, 'none'),
+            'validation': art_meta.get('validation', {'ok': True, 'issues': [], 'metrics': {}}),
+            'messages': art_meta.get('messages', []),
         })
 
     except OSError as e:

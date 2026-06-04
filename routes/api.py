@@ -165,7 +165,27 @@ def upload_design():
     os.makedirs(upload_dir, exist_ok=True)
     upload_path = os.path.join(upload_dir, filename)
     file.save(upload_path)
-    
+
+    # Background removal -> clean transparent PNG (skip vector/pdf)
+    art_meta = {}
+    if extension in ['png', 'jpg', 'jpeg', 'webp', 'gif']:
+        try:
+            from services.image_processing import process_artwork_file, issue_messages
+            result = process_artwork_file(upload_path, mode='auto')
+            new_path = result.get('path')
+            if new_path is not None:
+                upload_path = str(new_path)
+                filename = new_path.name
+                extension = 'png'
+            art_meta = {
+                'engine': result.get('engine'),
+                'white_artwork': bool(result.get('white_artwork')),
+                'validation': result.get('validation') or {},
+                'messages': issue_messages(result.get('validation') or {}),
+            }
+        except Exception:
+            pass
+
     # Get file size
     file_size = os.path.getsize(upload_path)
     
@@ -209,8 +229,7 @@ def upload_design():
     if image_info:
         if image_info['dpi'] < 150:
             warnings.append('Low resolution detected. Image may not print clearly.')
-        if not image_info['has_transparency']:
-            warnings.append('No transparent background detected. Consider removing background for best results.')
+    warnings.extend(art_meta.get('messages', []))
     
     design_url = stored_path if stored_path.startswith('http') else url_for('static', filename=stored_path)
     return jsonify({
@@ -226,6 +245,10 @@ def upload_design():
             'has_transparency': design.has_transparency,
             'dpi': design.dpi
         },
+        'engine': art_meta.get('engine'),
+        'white_artwork': art_meta.get('white_artwork', False),
+        'background_removed': art_meta.get('engine') not in (None, 'none'),
+        'validation': art_meta.get('validation', {'ok': True, 'issues': [], 'metrics': {}}),
         'warnings': warnings
     })
 
