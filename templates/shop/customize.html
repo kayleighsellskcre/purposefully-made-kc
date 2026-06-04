@@ -1432,9 +1432,10 @@
                         <div class="share-gallery-option" id="shareGalleryOption" style="margin-top: 0.75rem; padding: 0.75rem; background: #f8f9fa; border-radius: 8px;">
                             <label style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; font-size: 0.9rem;">
                                 <input type="checkbox" id="shareInGalleryCheckbox" style="margin-top: 0.2rem;">
-                                <span>Share this design in our gallery for others to use</span>
+                                <span>Submit this design to our public gallery for others to use</span>
                             </label>
-                            <p class="text-muted" style="margin: 0.25rem 0 0 1.75rem; font-size: 0.8rem;">Leave unchecked to keep it with your profile only.</p>
+                            <p class="text-muted" style="margin: 0.25rem 0 0 1.75rem; font-size: 0.8rem;">Submissions are reviewed by our team before they're published. Leave unchecked to keep it with your profile only.</p>
+                            <p id="gallerySubmitNote" style="display:none; margin: 0.5rem 0 0 1.75rem; font-size: 0.8rem; color:#1d7a3e; font-weight:600;">✓ Submitted for review — we'll publish it to the gallery once approved.</p>
                         </div>
                         {% endif %}
                     </div>
@@ -2581,6 +2582,8 @@
                 }
 
                 applyInspectorResult(data, file);
+                const gNote = document.getElementById('gallerySubmitNote');
+                if (gNote) gNote.style.display = data.submitted_to_gallery ? 'block' : 'none';
                 uploadAreaMain.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Design uploaded!</strong></p><p class="text-muted">Click to change</p>';
             } catch (err) {
                 console.error(err);

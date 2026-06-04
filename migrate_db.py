@@ -50,6 +50,26 @@ def run_migrations():
         
         # Add design_fee column to Design table (use DOUBLE PRECISION for PostgreSQL)
         add_column_if_not_exists('design', 'design_fee', 'DOUBLE PRECISION DEFAULT 0')
+
+        # Public-gallery moderation workflow columns on Design
+        add_column_if_not_exists('design', 'gallery_submitted', 'BOOLEAN DEFAULT FALSE')
+        add_column_if_not_exists('design', 'gallery_status', 'VARCHAR(20)')
+        add_column_if_not_exists('design', 'gallery_rejection_reason', 'TEXT')
+        add_column_if_not_exists('design', 'gallery_submitted_at', 'TIMESTAMP')
+        add_column_if_not_exists('design', 'gallery_reviewed_at', 'TIMESTAMP')
+        add_column_if_not_exists('design', 'gallery_reviewed_by_id', 'INTEGER')
+
+        # Backfill: existing published gallery designs are already approved.
+        try:
+            with db.engine.connect() as conn:
+                conn.execute(text(
+                    "UPDATE design SET gallery_status='approved' "
+                    "WHERE is_gallery = TRUE AND gallery_status IS NULL"
+                ))
+                conn.commit()
+            print("Backfilled gallery_status='approved' for published designs")
+        except Exception as e:
+            print(f"Note (gallery_status backfill): {e}")
         
         # Create favorites table if it doesn't exist
         try:

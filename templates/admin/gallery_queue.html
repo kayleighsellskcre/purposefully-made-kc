@@ -1,0 +1,244 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Gallery Approval Queue - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<div class="admin-page gallery-queue-admin">
+    <div class="container">
+        <span class="adm-eyebrow">Admin / Catalog</span>
+        <h1 class="gallery-page-title">Gallery Approval Queue</h1>
+        <p class="gallery-page-subtitle">
+            Review customer designs before they appear in the public gallery. Check that the
+            artwork is appropriate, the background is fully removed, and the image has true transparency.
+        </p>
+
+        {% if queue %}
+        <h2 class="gq-section-title">Awaiting Review <span class="gallery-count">({{ queue|length }})</span></h2>
+        <div class="gq-grid">
+            {% for item in queue %}
+            {% set design = item.design %}
+            {% set meta = item.meta %}
+            <div class="gq-card" data-design-id="{{ design.id }}">
+                <div class="gq-preview checker">
+                    <img src="{{ design.file_path | image_url }}" alt="{{ design.title or design.original_filename }}">
+                </div>
+                <div class="gq-body">
+                    <strong class="gq-name">{{ design.title or design.original_filename or 'Untitled design' }}</strong>
+                    <p class="gq-meta">
+                        {% if design.user %}{{ design.user.email }}{% else %}Unknown user{% endif %}
+                        {% if design.width and design.height %} · {{ design.width }}×{{ design.height }}px{% endif %}
+                    </p>
+
+                    {% if design.gallery_status == 'changes_requested' %}
+                    <span class="gq-flag gq-flag-warn">Changes requested — resubmitted</span>
+                    {% endif %}
+
+                    <div class="gq-checks">
+                        {% if meta.has_transparency %}
+                        <span class="gq-flag gq-flag-ok">✓ Transparent PNG</span>
+                        {% else %}
+                        <span class="gq-flag gq-flag-bad">⚠ No transparency detected</span>
+                        {% endif %}
+                        {% if meta.validation and meta.validation.issues %}
+                            {% if 'background_artifacts' in meta.validation.issues or 'background_may_remain' in meta.validation.issues %}
+                            <span class="gq-flag gq-flag-bad">⚠ Possible leftover background</span>
+                            {% endif %}
+                            {% if 'low_resolution' in meta.validation.issues %}
+                            <span class="gq-flag gq-flag-warn">Low resolution</span>
+                            {% endif %}
+                        {% else %}
+                        <span class="gq-flag gq-flag-ok">✓ Background looks clean</span>
+                        {% endif %}
+                    </div>
+                    {% if meta.validation and meta.validation.messages %}
+                    <ul class="gq-msgs">
+                        {% for m in meta.validation.messages %}<li>{{ m }}</li>{% endfor %}
+                    </ul>
+                    {% endif %}
+
+                    <div class="gq-actions">
+                        <button type="button" class="btn btn-primary btn-sm"
+                                onclick="gqAction('approve', {{ design.id }})">Approve &amp; Publish</button>
+                        <button type="button" class="btn btn-outline btn-sm"
+                                onclick="gqAction('request-changes', {{ design.id }})">Request Changes</button>
+                        <button type="button" class="btn btn-outline btn-sm btn-danger"
+                                onclick="gqAction('reject', {{ design.id }})">Reject</button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="gallery-empty-state">
+            <div class="gallery-empty-icon">✓</div>
+            <p class="gallery-empty-title">Nothing waiting for review</p>
+            <p class="gallery-empty-text">When a customer shares a design to the public gallery, it will appear here for your approval before going live.</p>
+        </div>
+        {% endif %}
+
+        {% if recent %}
+        <h2 class="gq-section-title" style="margin-top:3rem;">Recently Reviewed</h2>
+        <div class="gq-recent">
+            {% for d in recent %}
+            <div class="gq-recent-item">
+                <div class="gq-recent-thumb checker"><img src="{{ d.file_path | image_url }}" alt=""></div>
+                <div class="gq-recent-info">
+                    <span class="gq-recent-name">{{ d.title or d.original_filename or 'Design' }}</span>
+                    {% if d.gallery_status == 'approved' %}
+                    <span class="gq-flag gq-flag-ok">Approved</span>
+                    {% elif d.gallery_status == 'rejected' %}
+                    <span class="gq-flag gq-flag-bad">Rejected</span>
+                    {% endif %}
+                    {% if d.gallery_rejection_reason %}
+                    <span class="gq-recent-reason">{{ d.gallery_rejection_reason }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <p class="gallery-back-link">
+            <a href="{{ url_for('admin.design_gallery') }}" class="btn btn-outline">← Manage Gallery</a>
+        </p>
+    </div>
+</div>
+
+<!-- Reason modal (reject / request changes) -->
+<div id="gqReasonModal" class="prod-modal" role="dialog" aria-modal="true" aria-labelledby="gqReasonTitle">
+    <div class="prod-modal-card">
+        <div class="prod-modal-header">
+            <h2 id="gqReasonTitle">Provide a reason</h2>
+            <button class="prod-modal-close" onclick="gqCloseReason()" aria-label="Close">&times;</button>
+        </div>
+        <div class="prod-modal-body">
+            <p id="gqReasonHelp" style="margin-bottom:0.5rem;color:var(--text-secondary);font-size:0.9rem;"></p>
+            <textarea id="gqReasonText" rows="3" class="form-control" placeholder="Internal note (the customer's design stays hidden)…"></textarea>
+            <div class="prod-modal-actions">
+                <button type="button" class="btn btn-outline" onclick="gqCloseReason()">Cancel</button>
+                <button type="button" id="gqReasonConfirm" class="btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="gqToast" style="position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1e1914;color:#fff;padding:0.7rem 1.4rem;border-radius:10px;font-size:0.88rem;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,0.25);z-index:99999;opacity:0;transition:opacity 0.25s;pointer-events:none;"></div>
+
+<style>
+.gallery-queue-admin { padding: 2rem 0 4rem; }
+.gallery-page-title { font-family: var(--font-heading); font-size: 2.25rem; color: var(--primary-color); margin-bottom: 0.5rem; }
+.gallery-page-subtitle { color: var(--text-secondary); margin-bottom: 2.5rem; font-size: 1rem; max-width: 60ch; }
+.gq-section-title { font-family: var(--font-heading); font-size: 1.4rem; color: var(--primary-color); margin-bottom: 1.25rem; }
+.gallery-count { color: var(--text-secondary); font-weight: 400; }
+
+.gq-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.5rem; }
+.gq-card { background:#fff; border-radius: var(--border-radius); overflow:hidden; box-shadow: var(--box-shadow); border:1px solid var(--border-color); }
+.checker {
+    background-image:
+        linear-gradient(45deg, #d8d8d8 25%, transparent 25%),
+        linear-gradient(-45deg, #d8d8d8 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #d8d8d8 75%),
+        linear-gradient(-45deg, transparent 75%, #d8d8d8 75%);
+    background-size: 18px 18px;
+    background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+    background-color: #f0f0f0;
+}
+.gq-preview { aspect-ratio: 1; display:flex; align-items:center; justify-content:center; padding:1rem; }
+.gq-preview img { max-width:100%; max-height:100%; object-fit:contain; }
+.gq-body { padding: 1.1rem 1.25rem 1.25rem; }
+.gq-name { display:block; margin-bottom:0.15rem; }
+.gq-meta { font-size:0.8rem; color: var(--text-secondary); margin-bottom:0.6rem; word-break: break-word; }
+
+.gq-checks { display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:0.5rem; }
+.gq-flag { font-size:0.72rem; font-weight:600; padding:0.15rem 0.5rem; border-radius:999px; display:inline-block; }
+.gq-flag-ok { background:#e7f6ec; color:#1d7a3e; }
+.gq-flag-bad { background:#fdecec; color:#c0392b; }
+.gq-flag-warn { background:#fff4e0; color:#a86a16; }
+.gq-msgs { margin:0 0 0.75rem; padding-left:1.1rem; font-size:0.78rem; color: var(--text-secondary); }
+.gq-actions { display:flex; flex-wrap:wrap; gap:0.5rem; }
+.btn-danger { color: var(--terra-cotta) !important; border-color: var(--terra-cotta) !important; }
+.btn-danger:hover { background: rgba(184,124,111,0.1) !important; }
+
+.gq-recent { display:flex; flex-direction:column; gap:0.6rem; }
+.gq-recent-item { display:flex; align-items:center; gap:0.85rem; background:#fff; border:1px solid var(--border-color); border-radius:10px; padding:0.6rem 0.85rem; }
+.gq-recent-thumb { width:48px; height:48px; border-radius:8px; flex-shrink:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.gq-recent-thumb img { max-width:100%; max-height:100%; object-fit:contain; }
+.gq-recent-info { display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; }
+.gq-recent-name { font-weight:600; font-size:0.9rem; }
+.gq-recent-reason { font-size:0.8rem; color: var(--text-secondary); font-style: italic; }
+
+.gallery-empty-state { text-align:center; padding:4rem 2rem; background: linear-gradient(180deg, var(--ivory-silk) 0%, var(--cashmere-sand) 30%, var(--ivory-silk) 100%); border-radius: var(--border-radius); border:1px solid var(--border-color); }
+.gallery-empty-icon { font-size:2.5rem; color: var(--terra-cotta); margin-bottom:1rem; }
+.gallery-empty-title { font-family: var(--font-heading); font-size:1.25rem; color: var(--primary-color); margin-bottom:0.5rem; }
+.gallery-empty-text { color: var(--text-secondary); font-size:0.95rem; }
+.gallery-back-link { margin-top: 2.5rem; }
+</style>
+
+<script>
+const GQ_URLS = {
+    'approve': function(id){ return '{{ url_for("admin.gallery_approve", design_id=0) }}'.replace('/0/', '/'+id+'/'); },
+    'reject': function(id){ return '{{ url_for("admin.gallery_reject", design_id=0) }}'.replace('/0/', '/'+id+'/'); },
+    'request-changes': function(id){ return '{{ url_for("admin.gallery_request_changes", design_id=0) }}'.replace('/0/', '/'+id+'/'); }
+};
+
+let _gqPending = null; // {action, id}
+
+function gqToast(msg){
+    const t = document.getElementById('gqToast');
+    t.textContent = msg; t.style.opacity = '1';
+    clearTimeout(t._h); t._h = setTimeout(function(){ t.style.opacity='0'; }, 3000);
+}
+
+function gqSubmit(action, id, reason){
+    const body = new URLSearchParams();
+    if (reason) body.append('reason', reason);
+    fetch(GQ_URLS[action](id), {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+        if (data && data.error) { alert(data.error); return; }
+        const card = document.querySelector('.gq-card[data-design-id="' + id + '"]');
+        if (card){ card.style.transition='opacity .3s'; card.style.opacity='0'; setTimeout(function(){ card.remove(); }, 300); }
+        gqToast((data && data.message) || 'Done');
+    })
+    .catch(function(){ alert('Something went wrong. Please try again.'); });
+}
+
+function gqAction(action, id){
+    if (action === 'approve'){ gqSubmit('approve', id, ''); return; }
+    // reject / request-changes need a reason
+    _gqPending = { action: action, id: id };
+    document.getElementById('gqReasonTitle').textContent = action === 'reject' ? 'Reject design' : 'Request changes';
+    document.getElementById('gqReasonHelp').textContent = action === 'reject'
+        ? 'This design will stay hidden from the public gallery. Add an internal reason.'
+        : 'Let the team know what needs to change. The design stays hidden until re-reviewed.';
+    document.getElementById('gqReasonText').value = '';
+    const btn = document.getElementById('gqReasonConfirm');
+    btn.textContent = action === 'reject' ? 'Reject' : 'Request Changes';
+    btn.style.cssText = action === 'reject'
+        ? 'background:#ef4444;color:#fff;border-color:#ef4444;'
+        : 'background:var(--terra-cotta,#b87c6f);color:#fff;border-color:transparent;';
+    document.getElementById('gqReasonModal').classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+}
+
+function gqCloseReason(){
+    document.getElementById('gqReasonModal').classList.remove('is-open');
+    document.body.style.overflow = '';
+    _gqPending = null;
+}
+
+document.getElementById('gqReasonConfirm').addEventListener('click', function(){
+    if (!_gqPending) return;
+    const reason = document.getElementById('gqReasonText').value.trim();
+    gqSubmit(_gqPending.action, _gqPending.id, reason);
+    gqCloseReason();
+});
+
+document.getElementById('gqReasonModal').addEventListener('click', function(e){ if (e.target === this) gqCloseReason(); });
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') gqCloseReason(); });
+</script>
+{% endblock %}

@@ -1609,6 +1609,131 @@ def design_gallery_delete(design_id):
     return redirect(url_for('admin.design_gallery'))
 
 
+# ===== PUBLIC GALLERY APPROVAL QUEUE =====
+
+def _design_validation_meta(design):
+    """Best-effort transparency/background check for a queued design, used to
+    help admins verify the cutout before publishing. Reads the local file when
+    available; otherwise falls back to the stored transparency flag."""
+    meta = {
+        'has_transparency': bool(getattr(design, 'has_transparency', False)),
+        'validation': None,
+    }
+    try:
+        fp = design.file_path or ''
+        data = None
+        if not fp.startswith('http'):
+            p = Path('static') / fp
+            if p.exists():
+                data = p.read_bytes()
+        if data:
+            from services.image_processing import process_artwork_bytes, issue_messages
+            res = process_artwork_bytes(data, mode='none')
+            meta['has_transparency'] = bool(res.get('has_transparency'))
+            v = res.get('validation') or {}
+            meta['validation'] = {
+                'issues': v.get('issues', []),
+                'messages': issue_messages(v),
+                'metrics': v.get('metrics', {}),
+            }
+    except Exception:
+        pass
+    return meta
+
+
+@admin_bp.route('/gallery-queue')
+@admin_required
+def gallery_queue():
+    """Review queue: customer designs awaiting approval before publication."""
+    pending = (Design.query
+               .filter(Design.gallery_status.in_(['pending', 'changes_requested']))
+               .order_by(Design.uploaded_at.desc())
+               .all())
+    recent = (Design.query
+              .filter(Design.gallery_status.in_(['approved', 'rejected']))
+              .order_by(Design.uploaded_at.desc())
+              .limit(24).all())
+    queue = [{'design': d, 'meta': _design_validation_meta(d)} for d in pending]
+    return render_template('admin/gallery_queue.html', queue=queue, recent=recent)
+
+
+def _review_design(design_id):
+    design = Design.query.get_or_404(design_id)
+    return design
+
+
+@admin_bp.route('/gallery-queue/<int:design_id>/approve', methods=['POST'])
+@admin_required
+def gallery_approve(design_id):
+    """Approve a submitted design and publish it to the public gallery."""
+    design = _review_design(design_id)
+    design.gallery_status = 'approved'
+    design.gallery_submitted = True
+    design.is_gallery = True            # now visible on public-facing pages
+    design.gallery_rejection_reason = None
+    design.gallery_reviewed_at = datetime.utcnow()
+    design.gallery_reviewed_by_id = current_user.id
+    if not design.folder:
+        design.folder = request.form.get('folder') or 'custom_orders'
+    db.session.commit()
+    name = design.title or design.original_filename or 'Design'
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'ok': True, 'message': f'"{name}" approved & published'})
+    flash(f'"{name}" approved and published to the gallery.', 'success')
+    return redirect(url_for('admin.gallery_queue'))
+
+
+@admin_bp.route('/gallery-queue/<int:design_id>/reject', methods=['POST'])
+@admin_required
+def gallery_reject(design_id):
+    """Reject a submitted design. It stays hidden from the public gallery."""
+    design = _review_design(design_id)
+    reason = (request.form.get('reason') or '').strip()
+    design.gallery_status = 'rejected'
+    design.is_gallery = False           # ensure it is not public
+    design.gallery_rejection_reason = reason or 'Did not meet gallery guidelines.'
+    design.gallery_reviewed_at = datetime.utcnow()
+    design.gallery_reviewed_by_id = current_user.id
+    db.session.commit()
+    name = design.title or design.original_filename or 'Design'
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'ok': True, 'message': f'"{name}" rejected'})
+    flash(f'"{name}" rejected and kept hidden.', 'success')
+    return redirect(url_for('admin.gallery_queue'))
+
+
+@admin_bp.route('/gallery-queue/<int:design_id>/request-changes', methods=['POST'])
+@admin_required
+def gallery_request_changes(design_id):
+    """Ask the submitter for changes. Design stays hidden until re-reviewed."""
+    design = _review_design(design_id)
+    reason = (request.form.get('reason') or '').strip()
+    design.gallery_status = 'changes_requested'
+    design.is_gallery = False
+    design.gallery_rejection_reason = reason or 'Changes requested before publication.'
+    design.gallery_reviewed_at = datetime.utcnow()
+    design.gallery_reviewed_by_id = current_user.id
+    db.session.commit()
+    name = design.title or design.original_filename or 'Design'
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'ok': True, 'message': f'Changes requested for "{name}"'})
+    flash(f'Changes requested for "{name}".', 'success')
+    return redirect(url_for('admin.gallery_queue'))
+
+
+@admin_bp.context_processor
+def _inject_gallery_pending_count():
+    """Expose the pending-review count to admin templates (nav badge)."""
+    count = 0
+    try:
+        count = (Design.query
+                 .filter(Design.gallery_status.in_(['pending', 'changes_requested']))
+                 .count())
+    except Exception:
+        count = 0
+    return {'gallery_pending_count': count}
+
+
 # ===== CUSTOM DESIGN REQUESTS (Have Us Recreate) =====
 
 @admin_bp.route('/custom-design-requests')

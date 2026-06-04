@@ -252,9 +252,22 @@ class Design(db.Model):
     dpi = db.Column(db.Integer)
     has_transparency = db.Column(db.Boolean, default=False)
     
-    # Gallery: designs available for customers to use (uploaded by admin)
+    # Gallery: designs available for customers to use.
+    # is_gallery == True means the design is PUBLISHED to the public gallery.
+    # Admin uploads are published directly; customer submissions must be
+    # approved first (see gallery_status below) before is_gallery is set True.
     is_gallery = db.Column(db.Boolean, default=False)
     title = db.Column(db.String(200))  # Display name for gallery
+
+    # Public-gallery submission / moderation workflow
+    # gallery_submitted: customer asked to share this design publicly
+    gallery_submitted = db.Column(db.Boolean, default=False)
+    # gallery_status: None (never submitted) | pending | approved | rejected | changes_requested
+    gallery_status = db.Column(db.String(20))
+    gallery_rejection_reason = db.Column(db.Text)  # internal note shown to admins/owner
+    gallery_submitted_at = db.Column(db.DateTime)
+    gallery_reviewed_at = db.Column(db.DateTime)
+    gallery_reviewed_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     
     # Design organization
     folder = db.Column(db.String(100))  # custom_orders, evergreen, school, holiday, sports, etc.

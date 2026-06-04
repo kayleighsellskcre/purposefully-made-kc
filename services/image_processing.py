@@ -94,6 +94,7 @@ def process_artwork_bytes(data, mode='auto', engine=None):
             'engine': 'none',
             'white_artwork': False,
             'validation': {'ok': True, 'issues': [], 'metrics': {}},
+            'has_transparency': False,
             'width': None,
             'height': None,
             'changed': False,
@@ -129,6 +130,7 @@ def process_artwork_bytes(data, mode='auto', engine=None):
 
     white_artwork = _detect_white_artwork(out)
     validation = _validate(out, original_size, changed)
+    has_transparency = _has_transparency(out)
 
     buf = io.BytesIO()
     out.save(buf, 'PNG', optimize=True)
@@ -137,6 +139,7 @@ def process_artwork_bytes(data, mode='auto', engine=None):
         'engine': result_engine,
         'white_artwork': white_artwork,
         'validation': validation,
+        'has_transparency': has_transparency,
         'width': out.size[0],
         'height': out.size[1],
         'changed': changed,
@@ -176,6 +179,7 @@ def process_artwork_file(path, mode='auto', engine=None):
             'engine': 'none',
             'white_artwork': False,
             'validation': {'ok': True, 'issues': [], 'metrics': {}},
+            'has_transparency': False,
             'width': None,
             'height': None,
             'changed': False,
@@ -270,27 +274,53 @@ def _border_profile(rgb):
 def _remove_bg_algorithmic(img_rgba, mode='auto'):
     """Edge-seeded flood-fill background removal.
 
-    Removing only the background region that is *connected to the image edges*
-    means white/light areas inside the artwork are preserved (fixing the old
-    "white logos disappear" problem). Edges are then defringed + anti-aliased.
+    The background is the region *connected to the image border*, found by
+    flood-filling from seeds placed all the way around the perimeter. Because
+    the fill detects which pixels *changed* (not a target colour), it removes
+    backgrounds of ANY colour — white, off-white, grey, vivid colours, even
+    non-uniform / gradient backdrops — while light/white areas *inside* the
+    artwork are preserved (they are not border-connected).
+
+    The result is then despeckled (stray pixels removed), pinhole-filled, and
+    colour-bled at the edge so there are no white outlines, grey artefacts, or
+    colour fringing — and thin text / hairlines survive intact.
     """
     try:
         rgb = img_rgba.convert('RGB')
         w, h = rgb.size
         bg_color, mad = _border_profile(rgb)
 
-        # Tolerance adapts to how uniform the background is.
-        tol = int(min(90, max(22, 30 + mad * 1.4)))
+        # Tolerance adapts to how uniform the background is. A noisier border
+        # (textured / gradient bg) needs a wider tolerance to fully clear.
+        tol = int(min(100, max(24, 32 + mad * 1.6)))
         if mode == 'aggressive':
-            tol = min(120, tol + 40)
+            tol = min(150, tol + 50)
 
         work = rgb.copy()
+        px = rgb.load()
         sentinel = (0, 254, 1)  # arbitrary; we detect *changed* pixels, not colour
-        seeds = [
-            (0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1),
-            (w // 2, 0), (w // 2, h - 1), (0, h // 2), (w - 1, h // 2),
-        ]
+
+        # Seed densely around the WHOLE perimeter so disconnected or multi-tone
+        # background regions are all reached — not just the four corners.
+        step = max(1, min(w, h) // 80)
+        margin = tol * 2.6  # only seed from border pixels that look background-ish
+        corners = {(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)}
+        seeds = set(corners)
+        for x in range(0, w, step):
+            seeds.add((x, 0))
+            seeds.add((x, h - 1))
+        for y in range(0, h, step):
+            seeds.add((0, y))
+            seeds.add((w - 1, y))
+
         for sx, sy in seeds:
+            c = px[sx, sy]
+            close = (abs(c[0] - bg_color[0]) + abs(c[1] - bg_color[1])
+                     + abs(c[2] - bg_color[2])) <= margin
+            # Always trust the corners; otherwise only seed background-ish edges
+            # so artwork that bleeds to an edge is not eaten by the fill.
+            if not (close or (sx, sy) in corners):
+                continue
             try:
                 ImageDraw.floodfill(work, (sx, sy), sentinel, thresh=tol)
             except Exception:
@@ -313,19 +343,70 @@ def _compose_with_numpy(rgb, bg_mask, mode):
     bg = np.asarray(bg_mask) > 127           # True where background
     opaque = ~bg                              # True where artwork
 
-    # Defringe: bleed foreground colour outward so edge (semi-transparent)
-    # pixels don't carry leftover background colour -> no halos/fringing.
-    bled = _bleed_colors(rgb_arr, opaque, iters=3)
+    # Remove stray single-pixel specks / 1px spurs left by the fill. A pixel is
+    # only dropped when it has <2 opaque neighbours, so genuine thin lines and
+    # text strokes (>=2 connected pixels) are fully preserved.
+    opaque = _despeckle(opaque)
+    # Re-fill pinholes that are completely enclosed by artwork so solid fills
+    # stay solid. Large, intentionally-transparent interior areas are untouched
+    # (they have many transparent neighbours), preserving real internal detail.
+    opaque = _fill_pinholes(opaque)
 
-    # Alpha from the mask, anti-aliased for smooth (not jagged) edges.
+    # Defringe: bleed foreground colour outward so any edge pixel carries the
+    # artwork's colour instead of leftover background -> no halo / colour fringe
+    # / white outline, even after anti-aliasing.
+    bled = _bleed_colors(rgb_arr, opaque, iters=4)
+
+    # Alpha from the mask, lightly feathered for smooth (not jagged) edges.
     alpha = np.where(opaque, 255, 0).astype(np.uint8)
     alpha_img = Image.fromarray(alpha, 'L')
-    if mode == 'aggressive':
-        alpha_img = alpha_img.filter(ImageFilter.MinFilter(3))  # erode 1px ring
-    alpha_img = alpha_img.filter(ImageFilter.GaussianBlur(0.6))
+    alpha_img = alpha_img.filter(ImageFilter.GaussianBlur(0.5))
 
     out = np.dstack([bled, np.asarray(alpha_img)])
-    return Image.fromarray(out, 'RGBA')
+    return Image.fromarray(out.astype(np.uint8), 'RGBA')
+
+
+def _neighbor_count(mask_bool):
+    """Count the 8-connected True neighbours of every cell (numpy)."""
+    m = mask_bool.astype(np.uint16)
+    c = np.zeros(m.shape, dtype=np.uint16)
+    for dy in (-1, 0, 1):
+        for dx in (-1, 0, 1):
+            if dx == 0 and dy == 0:
+                continue
+            c += np.roll(np.roll(m, dy, axis=0), dx, axis=1)
+    return c
+
+
+def _despeckle(opaque):
+    """Drop isolated opaque specks/spurs; keep anything with >=2 fg neighbours."""
+    try:
+        nc = _neighbor_count(opaque)
+        return opaque & (nc >= 2)
+    except Exception:
+        return opaque
+
+
+def _fill_pinholes(opaque):
+    """Fill transparent pixels that are almost fully enclosed by artwork."""
+    try:
+        nc = _neighbor_count(opaque)
+        return opaque | ((~opaque) & (nc >= 7))
+    except Exception:
+        return opaque
+
+
+def _has_transparency(img_rgba):
+    """True when the result has a meaningful amount of transparency."""
+    try:
+        alpha = img_rgba.getchannel('A')
+        if _HAS_NUMPY:
+            a = np.asarray(alpha)
+            return bool((a < 250).mean() > 0.003)
+        lo, _hi = alpha.getextrema()
+        return lo < 250
+    except Exception:
+        return False
 
 
 def _bleed_colors(rgb_arr, opaque, iters=3):
@@ -430,6 +511,16 @@ def _validate(img_rgba, original_size, changed):
                 alpha[0, :], alpha[-1, :], alpha[:, 0], alpha[:, -1]
             ])
             border_opaque_frac = float((border > 200).mean())
+            # Corners are almost always background; opacity there is a strong
+            # signal that the background was not fully removed.
+            ch, cw = alpha.shape
+            cs = max(2, min(ch, cw) // 10)
+            corner_opaque_frac = float(np.mean([
+                (alpha[:cs, :cs] > 200).mean(),
+                (alpha[:cs, -cs:] > 200).mean(),
+                (alpha[-cs:, :cs] > 200).mean(),
+                (alpha[-cs:, -cs:] > 200).mean(),
+            ]))
         else:
             px = small.load()
             w, h = small.size
@@ -453,12 +544,14 @@ def _validate(img_rgba, original_size, changed):
             transp_frac = tr / total
             soft_frac = soft / total
             border_opaque_frac = (border_opq / border_n) if border_n else 0.0
+            corner_opaque_frac = border_opaque_frac
 
         metrics = {
             'opaque_pct': round(opaque_frac * 100, 1),
             'transparent_pct': round(transp_frac * 100, 1),
             'soft_edge_pct': round(soft_frac * 100, 1),
             'border_opaque_pct': round(border_opaque_frac * 100, 1),
+            'corner_opaque_pct': round(corner_opaque_frac * 100, 1),
         }
 
         if changed and transp_frac < 0.01:
@@ -467,6 +560,11 @@ def _validate(img_rgba, original_size, changed):
             issues.append('artwork_mostly_removed')
         if changed and border_opaque_frac > 0.55:
             issues.append('background_may_remain')
+        # Leftover background artefacts: opaque pixels lingering at the frame /
+        # corners after a cut that *did* remove something.
+        if (changed and 'background_may_remain' not in issues
+                and (corner_opaque_frac > 0.18 or border_opaque_frac > 0.28)):
+            issues.append('background_artifacts')
         if soft_frac > 0.22:
             issues.append('soft_or_blurry_edges')
 
@@ -488,6 +586,7 @@ ISSUE_MESSAGES = {
     'no_background_removed': "We couldn't detect a background to remove. Try the 'Reprocess (stronger)' option.",
     'artwork_mostly_removed': 'Most of the artwork was removed — the background may be too similar to the design. Try reprocessing.',
     'background_may_remain': 'Some background pixels may remain around the edges. You can reprocess for a stronger cut.',
+    'background_artifacts': 'A few background artefacts may remain near the edges or corners. Reprocess for a cleaner cut if needed.',
     'soft_or_blurry_edges': 'Edges look a little soft. A higher-resolution file will give sharper print edges.',
     'low_resolution': 'This image is low resolution and may look blurry when printed. 300 DPI / 1500px+ is recommended.',
 }

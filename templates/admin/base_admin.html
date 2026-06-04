@@ -54,7 +54,7 @@
             </div>
 
             {# ── Storefront & Content ──────────────────────────────────────── #}
-            {% set store_eps = ['admin.products','admin.add_product','admin.edit_product','admin.collections','admin.add_collection','admin.edit_collection','admin.design_gallery','admin.designs','admin.affirmations'] %}
+            {% set store_eps = ['admin.products','admin.add_product','admin.edit_product','admin.collections','admin.add_collection','admin.edit_collection','admin.design_gallery','admin.gallery_queue','admin.designs','admin.affirmations'] %}
             <div class="ops-dropdown {% if request.endpoint in store_eps %}ops-dropdown-active{% endif %}">
                 <button class="ops-dropdown-btn" aria-haspopup="true">
                     Storefront &amp; Content
@@ -72,6 +72,11 @@
                     <a href="{{ url_for('admin.design_gallery') }}" class="ops-drop-item {% if request.endpoint == 'admin.design_gallery' %}ops-drop-active{% endif %}" role="menuitem">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                         Design Gallery
+                    </a>
+                    <a href="{{ url_for('admin.gallery_queue') }}" class="ops-drop-item {% if request.endpoint == 'admin.gallery_queue' %}ops-drop-active{% endif %}" role="menuitem">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        Gallery Queue
+                        {% if gallery_pending_count and gallery_pending_count > 0 %}<span class="ops-drop-badge">{{ gallery_pending_count }}</span>{% endif %}
                     </a>
                     <a href="{{ url_for('admin.designs') }}" class="ops-drop-item {% if request.endpoint == 'admin.designs' %}ops-drop-active{% endif %}" role="menuitem">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
@@ -243,6 +248,18 @@
     font-weight: 500;
     transition: background 0.13s, color 0.13s;
     white-space: nowrap;
+}
+.ops-drop-badge {
+    margin-left: auto;
+    background: var(--terra-cotta, #b87c6f);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0.18rem 0.42rem;
+    border-radius: 999px;
+    min-width: 1.1rem;
+    text-align: center;
 }
 .ops-drop-item:hover {
     background: var(--ivory-silk, #faf7f2);

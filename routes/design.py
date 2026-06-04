@@ -46,7 +46,7 @@ def _remove_background(filepath, mode='auto'):
             'white_artwork': bool(result.get('white_artwork')),
             'validation': result.get('validation') or {'ok': True, 'issues': [], 'metrics': {}},
             'messages': issue_messages(result.get('validation') or {}),
-            'has_transparency': True,
+            'has_transparency': bool(result.get('has_transparency', True)),
         }
         return new_path, new_path.name, meta
     except Exception:
@@ -118,22 +118,32 @@ def upload():
             pass
 
         design_id = None
+        submitted_to_gallery = False
         if current_user.is_authenticated:
             share_val = request.form.get('share_in_gallery', 'false').lower() == 'true'
             try:
                 from models import Design, db
+                from datetime import datetime
                 title = (file.filename or 'Design').rsplit('.', 1)[0].replace('_', ' ').title()[:50]
                 design = Design(
                     filename=unique_name,
                     original_filename=file.filename,
                     file_path=stored_path,
-                    is_gallery=share_val,
+                    # Customer submissions are NEVER published directly — they go
+                    # into the admin approval queue. is_gallery stays False until
+                    # an admin approves it.
+                    is_gallery=False,
                     title=title,
                     uploaded_by_user_id=current_user.id,
                     width=width,
                     height=height,
                     has_transparency=bool(art_meta.get('has_transparency')),
                 )
+                if share_val:
+                    design.gallery_submitted = True
+                    design.gallery_status = 'pending'
+                    design.gallery_submitted_at = datetime.utcnow()
+                    submitted_to_gallery = True
                 if filepath.exists():
                     design.file_size = filepath.stat().st_size
                 db.session.add(design)
@@ -153,6 +163,8 @@ def upload():
             'background_removed': art_meta.get('engine') not in (None, 'none'),
             'validation': art_meta.get('validation', {'ok': True, 'issues': [], 'metrics': {}}),
             'messages': art_meta.get('messages', []),
+            'submitted_to_gallery': submitted_to_gallery,
+            'gallery_status': 'pending' if submitted_to_gallery else None,
         })
 
     except OSError as e:
