@@ -51,6 +51,17 @@ def run_migrations():
         # Add design_fee column to Design table (use DOUBLE PRECISION for PostgreSQL)
         add_column_if_not_exists('design', 'design_fee', 'DOUBLE PRECISION DEFAULT 0')
 
+        # Design metadata / gallery columns
+        add_column_if_not_exists('design', 'original_filename', 'VARCHAR(500)')
+        add_column_if_not_exists('design', 'file_size', 'INTEGER')
+        add_column_if_not_exists('design', 'width', 'INTEGER')
+        add_column_if_not_exists('design', 'height', 'INTEGER')
+        add_column_if_not_exists('design', 'dpi', 'INTEGER')
+        add_column_if_not_exists('design', 'has_transparency', 'BOOLEAN DEFAULT FALSE')
+        add_column_if_not_exists('design', 'title', 'VARCHAR(200)')
+        add_column_if_not_exists('design', 'folder', 'VARCHAR(100)')
+        add_column_if_not_exists('design', 'sku', 'VARCHAR(50)')
+
         # Back design name/number color + outline metadata on order items
         add_column_if_not_exists('order_item', 'back_design_meta', 'TEXT')
 

@@ -1628,72 +1628,60 @@ def design_gallery():
 @admin_required
 def design_gallery_upload():
     """Upload a design to the customer gallery"""
+    from sqlalchemy.exc import SQLAlchemyError
+
     if 'file' not in request.files:
-        flash('No file provided', 'error')
+        flash('No file provided.', 'error')
         return redirect(url_for('admin.design_gallery'))
-    
+
     file = request.files['file']
-    if file.filename == '':
-        flash('No file selected', 'error')
+    if not file or not file.filename:
+        flash('No file selected.', 'error')
         return redirect(url_for('admin.design_gallery'))
-    
-    from werkzeug.utils import secure_filename
-    import time
+
     filename = secure_filename(file.filename)
     if '.' not in filename:
-        flash('File must have an extension (PNG, JPG, etc.)', 'error')
+        flash('File must have an extension (PNG, JPG, etc.).', 'error')
         return redirect(url_for('admin.design_gallery'))
-    
-    name, ext = os.path.splitext(filename)
-    ext = ext.lower()
-    if ext not in ['.png', '.jpg', '.jpeg', '.webp', '.heic', '.heif']:
-        flash('Use PNG, JPG, WEBP, or HEIC format', 'error')
+
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in _ALLOWED_DESIGN_EXTS:
+        flash('Unsupported format. Use PNG, JPG, WEBP, or HEIC.', 'error')
         return redirect(url_for('admin.design_gallery'))
-    
-    upload_dir = Path('static/uploads/designs')
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = int(time.time())
-    unique_name = f"gallery_{name}_{timestamp}{ext}"
-    filepath = upload_dir / unique_name
-    file.save(str(filepath))
 
-    # Clean transparent-PNG cutout for the gallery design.
     try:
-        from services.image_processing import process_artwork_file
-        _res = process_artwork_file(filepath, mode='auto')
-        if _res.get('path') is not None:
-            filepath = _res['path']
-            unique_name = filepath.name
-    except Exception:
-        pass
+        # Use _save_uploaded_design so cloud storage (R2) and background
+        # removal are handled exactly the same way as every other upload path.
+        design = _save_uploaded_design(file, current_user.id)
+        if design is None:
+            flash('Upload failed — file could not be stored. Please try again.', 'error')
+            return redirect(url_for('admin.design_gallery'))
 
-    title = request.form.get('title') or name.replace('_', ' ').title()
-    folder = request.form.get('folder') or 'custom_orders'
-    sku = request.form.get('sku')
-    
-    design = Design(
-        filename=unique_name,
-        original_filename=file.filename,
-        file_path=f"uploads/designs/{unique_name}",
-        is_gallery=True,
-        title=title,
-        folder=folder,
-        sku=sku,
-        uploaded_by_user_id=current_user.id,
-        has_transparency=True,
-    )
-    try:
-        from PIL import Image
-        img = Image.open(filepath)
-        design.width, design.height = img.size
-        design.file_size = filepath.stat().st_size
-    except Exception:
-        pass
-    
-    db.session.add(design)
-    db.session.commit()
-    flash(f'Design "{title}" added to gallery!', 'success')
-    return redirect(url_for('admin.design_gallery'))
+        # Override defaults with values from the form
+        title = (request.form.get('title') or '').strip()
+        if title:
+            design.title = title
+        folder = (request.form.get('folder') or 'custom_orders').strip()
+        design.folder = folder
+        sku = (request.form.get('sku') or '').strip()
+        if sku:
+            design.sku = sku
+
+        db.session.commit()
+        flash(f'Design "{design.title or design.original_filename}" added to gallery!', 'success')
+        return redirect(url_for('admin.design_gallery'))
+
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        current_app.logger.exception('design_gallery_upload DB error: %s', e)
+        flash('The design could not be saved — a database error occurred. '
+              'If this keeps happening, run the database migration script.', 'error')
+        return redirect(url_for('admin.design_gallery'))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('design_gallery_upload unexpected error: %s', e)
+        flash('Something went wrong while uploading the design. Please try again.', 'error')
+        return redirect(url_for('admin.design_gallery'))
 
 
 @admin_bp.route('/design-gallery/<int:design_id>/remove', methods=['POST'])
