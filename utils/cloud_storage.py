@@ -66,7 +66,7 @@ def _maybe_process_artwork(file_storage):
         from werkzeug.datastructures import FileStorage
         filename = (file_storage.filename or '').lower()
         ext = filename.rsplit('.', 1)[-1] if '.' in filename else ''
-        if ext not in ('png', 'jpg', 'jpeg', 'webp', 'gif'):
+        if ext not in ('png', 'jpg', 'jpeg', 'webp', 'gif', 'heic', 'heif'):
             return file_storage  # vector/pdf/unknown — leave alone
 
         data = file_storage.read()
@@ -101,12 +101,26 @@ def image_url(path_or_url):
     Handles:
       - Full https:// R2 (or any CDN) URLs  → returned as-is
       - Legacy relative paths like 'uploads/designs/foo.png' → /static/uploads/...
+      - Missing/blank values → a tiny transparent placeholder so a single bad
+        record never raises a BuildError and crashes the whole page.
     Used as a Jinja2 template filter registered in app.py.
     """
-    if path_or_url and path_or_url.startswith('http'):
+    # Empty/None path: return a safe inline transparent pixel rather than
+    # building a static URL with filename=None (which raises BuildError).
+    if not path_or_url or not isinstance(path_or_url, str) or not path_or_url.strip():
+        return ('data:image/svg+xml;charset=utf-8,'
+                '%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20'
+                'width%3D%221%22%20height%3D%221%22%2F%3E')
+    path_or_url = path_or_url.strip()
+    if path_or_url.startswith('http') or path_or_url.startswith('data:'):
         return path_or_url
     from flask import url_for
-    return url_for('static', filename=path_or_url)
+    try:
+        return url_for('static', filename=path_or_url)
+    except Exception:
+        return ('data:image/svg+xml;charset=utf-8,'
+                '%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20'
+                'width%3D%221%22%20height%3D%221%22%2F%3E')
 
 
 # ---------------------------------------------------------------------------

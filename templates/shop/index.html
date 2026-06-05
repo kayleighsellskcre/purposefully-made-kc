@@ -30,8 +30,9 @@
 
 {% if daily_affirmation %}
 <div class="daily-affirmation-wrap">
-    <div class="daily-affirmation-inner">
-        <span class="daily-affirmation-rule"></span>
+    <div class="daily-affirmation-card">
+        <span class="daily-affirmation-eyebrow">Daily Inspiration</span>
+        <span class="daily-affirmation-mark" aria-hidden="true">&ldquo;</span>
         <p class="daily-affirmation-text">{{ daily_affirmation }}</p>
         <span class="daily-affirmation-rule"></span>
     </div>
@@ -228,34 +229,74 @@
 <style>
 /* ── Daily Affirmation ── */
 .daily-affirmation-wrap {
-    background: var(--ivory-silk, #faf7f2);
-    padding: 2.25rem 1.5rem;
+    background: linear-gradient(180deg, var(--ivory-silk, #faf7f2) 0%, #fff 100%);
+    padding: clamp(2.5rem, 6vw, 4.5rem) 1.25rem;
     text-align: center;
 }
-.daily-affirmation-inner {
+.daily-affirmation-card {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
-    max-width: 640px;
+    gap: clamp(1rem, 2.5vw, 1.5rem);
+    max-width: 880px;
     margin: 0 auto;
+    padding: clamp(2.25rem, 5vw, 3.5rem) clamp(1.5rem, 5vw, 3.5rem);
+    background: #fff;
+    border: 1px solid rgba(184, 124, 111, 0.18);
+    border-radius: 20px;
+    box-shadow: 0 18px 45px -22px rgba(58, 61, 72, 0.35);
 }
-.daily-affirmation-rule {
-    display: block;
-    width: 56px;
-    height: 1px;
+.daily-affirmation-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: clamp(60px, 30%, 160px);
+    height: 4px;
+    border-radius: 0 0 4px 4px;
     background: linear-gradient(90deg, transparent, var(--terra-cotta, #b87c6f), transparent);
-    opacity: 0.55;
+}
+.daily-affirmation-eyebrow {
+    font-family: var(--font-primary, inherit);
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    font-size: clamp(0.7rem, 1.6vw, 0.8rem);
+    font-weight: 700;
+    color: var(--terra-cotta, #b87c6f);
+}
+.daily-affirmation-mark {
+    font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+    font-size: clamp(3.5rem, 9vw, 5.5rem);
+    line-height: 0.5;
+    color: var(--terra-cotta, #b87c6f);
+    opacity: 0.28;
+    margin-bottom: -0.35em;
 }
 .daily-affirmation-text {
     font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
     font-style: italic;
-    font-size: clamp(1.25rem, 3.5vw, 1.65rem);
-    font-weight: 400;
+    font-size: clamp(1.65rem, 5vw, 2.85rem);
+    font-weight: 600;
     color: var(--primary-color, #3a3d48);
-    line-height: 1.55;
-    letter-spacing: 0.01em;
+    line-height: 1.4;
+    letter-spacing: 0.005em;
     margin: 0;
+    max-width: 22ch;
+    text-wrap: balance;
+}
+.daily-affirmation-rule {
+    display: block;
+    width: 72px;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, transparent, var(--terra-cotta, #b87c6f), transparent);
+    opacity: 0.6;
+}
+
+@media (max-width: 600px) {
+    .daily-affirmation-text { max-width: 100%; }
 }
 
 /* ── Shop Page Header ── */

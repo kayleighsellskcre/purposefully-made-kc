@@ -162,73 +162,132 @@ def create_group_order():
     
     if request.method == 'POST':
         from slugify import slugify
-        from sqlalchemy.exc import IntegrityError
-        
-        name = request.form.get('name')
-        slug = (request.form.get('slug') or slugify(name)).strip() or slugify(name)
-        base_slug = slug
-        n = 1
-        while Collection.query.filter_by(slug=slug).first():
-            slug = f"{base_slug}-{n}"
-            n += 1
-        if slug != base_slug:
-            flash(f'URL slug adjusted to "{slug}" (original was already in use).', 'info')
-        
-        collection = Collection(
-            name=name,
-            slug=slug,
-            description=request.form.get('description'),
-            is_active=request.form.get('is_active') == 'on',
-            pickup_address=request.form.get('pickup_address'),
-            pickup_instructions=request.form.get('pickup_instructions'),
-            shipping_enabled=request.form.get('shipping_enabled') == 'on',
-            tax_rate=float(request.form.get('tax_rate') or 0)
-        )
-        
-        collection.restrict_options = request.form.get('restrict_options') == 'on'
-        collection.allow_custom_upload = True
-        allowed_colors = request.form.getlist('allowed_colors')
-        collection.allowed_colors = json.dumps(allowed_colors) if allowed_colors else None
-        allowed_placements = request.form.getlist('allowed_placements')
-        collection.allowed_placements = json.dumps(allowed_placements) if allowed_placements else None
-        allowed_design_ids = list(request.form.getlist('allowed_designs'))
-        upload_count = 0
-        for f in request.files.getlist('design_uploads'):
-            if f and f.filename:
-                design = _save_uploaded_design(f, current_user.id)
-                if design:
-                    allowed_design_ids.append(str(design.id))
-                    upload_count += 1
-        if allowed_design_ids:
-            collection.allowed_design_ids = json.dumps([int(x) for x in allowed_design_ids])
-        collection.back_design_font = request.form.get('back_design_font') or None
-        
-        password = request.form.get('password')
-        if password:
-            collection.set_password(password)
-        
-        deadline_str = request.form.get('order_deadline')
-        if deadline_str:
-            collection.order_deadline = datetime.fromisoformat(deadline_str)
-        
-        db.session.add(collection)
-        db.session.flush()
-        
-        for product_id in request.form.getlist('products'):
-            product = Product.query.get(int(product_id))
-            if product:
-                collection.products.append(product)
-        
+        from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+
+        # ── 1. Validate required fields up front (clear, user-facing messages) ──
+        name = (request.form.get('name') or '').strip()
+        if not name:
+            flash('Please enter a name for your group order.', 'error')
+            return redirect(url_for('shop.create_group_order'))
+
         try:
+            # ── 2. Build a unique slug ──────────────────────────────────────
+            requested_slug = (request.form.get('slug') or '').strip()
+            base_slug = slugify(requested_slug) or slugify(name) or 'group-order'
+            slug = base_slug
+            n = 1
+            while Collection.query.filter_by(slug=slug).first():
+                slug = f"{base_slug}-{n}"
+                n += 1
+            if slug != base_slug:
+                flash(f'URL slug adjusted to "{slug}" (original was already in use).', 'info')
+
+            # ── 3. Parse + validate optional settings with specific errors ──
+            try:
+                tax_rate = float(request.form.get('tax_rate') or 0)
+            except (TypeError, ValueError):
+                flash('Tax rate must be a number (e.g. 8.5). Please correct it and try again.', 'error')
+                return redirect(url_for('shop.create_group_order'))
+
+            order_deadline = None
+            deadline_str = (request.form.get('order_deadline') or '').strip()
+            if deadline_str:
+                try:
+                    order_deadline = datetime.fromisoformat(deadline_str)
+                except ValueError:
+                    flash('The order deadline date is invalid. Please pick a valid date.', 'error')
+                    return redirect(url_for('shop.create_group_order'))
+
+            # ── 4. Create the collection ────────────────────────────────────
+            collection = Collection(
+                name=name,
+                slug=slug,
+                description=request.form.get('description'),
+                # New group orders are always created live so the share link
+                # works immediately (the share page only serves active orders).
+                is_active=True,
+                pickup_address=request.form.get('pickup_address'),
+                pickup_instructions=request.form.get('pickup_instructions'),
+                shipping_enabled=request.form.get('shipping_enabled') == 'on',
+                tax_rate=tax_rate,
+            )
+            collection.restrict_options = request.form.get('restrict_options') == 'on'
+            collection.allow_custom_upload = True
+            allowed_colors = request.form.getlist('allowed_colors')
+            collection.allowed_colors = json.dumps(allowed_colors) if allowed_colors else None
+            allowed_placements = request.form.getlist('allowed_placements')
+            collection.allowed_placements = json.dumps(allowed_placements) if allowed_placements else None
+
+            # Collect chosen gallery designs + any newly uploaded artwork
+            allowed_design_ids = []
+            for raw in request.form.getlist('allowed_designs'):
+                try:
+                    allowed_design_ids.append(int(raw))
+                except (TypeError, ValueError):
+                    continue
+            upload_count = 0
+            for f in request.files.getlist('design_uploads'):
+                if f and f.filename:
+                    try:
+                        design = _save_uploaded_design(f, current_user.id)
+                    except Exception as e:
+                        current_app.logger.exception('Group order artwork upload failed: %s', e)
+                        design = None
+                    if design:
+                        allowed_design_ids.append(design.id)
+                        upload_count += 1
+            if allowed_design_ids:
+                collection.allowed_design_ids = json.dumps(allowed_design_ids)
+            collection.back_design_font = request.form.get('back_design_font') or None
+
+            password = request.form.get('password')
+            if password:
+                collection.set_password(password)
+            if order_deadline:
+                collection.order_deadline = order_deadline
+
+            db.session.add(collection)
+            db.session.flush()
+
+            # ── 5. Link selected products ───────────────────────────────────
+            for product_id in request.form.getlist('products'):
+                try:
+                    pid = int(product_id)
+                except (TypeError, ValueError):
+                    continue
+                product = Product.query.get(pid)
+                if product:
+                    collection.products.append(product)
+
+            # ── 6. Commit ───────────────────────────────────────────────────
             db.session.commit()
+
+            # ── 7. Verify it saved with a valid, accessible ID ──────────────
+            if not collection.id:
+                raise SQLAlchemyError('Collection was not assigned an ID after commit')
+
             msg = 'Group order created successfully'
             if upload_count:
                 msg += f' with {upload_count} design(s) uploaded'
             flash(msg + '. Share your link below!', 'success')
             return redirect(url_for('collection.share', slug=collection.slug))
-        except IntegrityError:
+
+        except IntegrityError as e:
             db.session.rollback()
+            current_app.logger.warning('Group order create IntegrityError for user %s: %s', current_user.id, e)
             flash('A group order with that name or URL already exists. Try a different name.', 'error')
+            return redirect(url_for('shop.create_group_order'))
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            current_app.logger.exception('Group order create database error for user %s: %s', current_user.id, e)
+            flash('We could not save your group order due to a server issue. Please try again, '
+                  'and contact us if it keeps happening.', 'error')
+            return redirect(url_for('shop.create_group_order'))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.exception('Unexpected error creating group order for user %s: %s', current_user.id, e)
+            flash('Something went wrong while creating your group order. Please review your '
+                  'details and try again.', 'error')
             return redirect(url_for('shop.create_group_order'))
     
     products = Product.query.filter_by(is_active=True).order_by(Product.style_number).all()

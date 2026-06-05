@@ -17,9 +17,9 @@
             <form method="post" action="{{ url_for('custom_request.submit') }}" enctype="multipart/form-data">
                 <div class="form-group">
                     <label for="reference_image" class="form-label">Reference Image</label>
-                    <p class="form-hint">Screenshot or save the image you want recreated (PNG, JPG, WEBP)</p>
+                    <p class="form-hint">Screenshot or save the image you want recreated (PNG, JPG, WEBP, HEIC)</p>
                     <div class="file-upload-wrapper">
-                        <input type="file" id="reference_image" name="reference_image" accept=".png,.jpg,.jpeg,.webp" required class="file-input-hidden">
+                        <input type="file" id="reference_image" name="reference_image" accept=".png,.jpg,.jpeg,.webp,.heic,.heif,image/*" required class="file-input-hidden">
                         <label for="reference_image" class="file-upload-label">
                             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>

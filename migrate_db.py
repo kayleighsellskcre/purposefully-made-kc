@@ -59,6 +59,26 @@ def run_migrations():
         add_column_if_not_exists('design', 'gallery_reviewed_at', 'TIMESTAMP')
         add_column_if_not_exists('design', 'gallery_reviewed_by_id', 'INTEGER')
 
+        # Collection / Group Order settings columns. Older production tables may
+        # predate these fields; without them, creating a group order 500s on insert.
+        add_column_if_not_exists('collection', 'description', 'TEXT')
+        add_column_if_not_exists('collection', 'is_active', 'BOOLEAN DEFAULT TRUE')
+        add_column_if_not_exists('collection', 'is_password_protected', 'BOOLEAN DEFAULT FALSE')
+        add_column_if_not_exists('collection', 'password_hash', 'VARCHAR(256)')
+        add_column_if_not_exists('collection', 'pickup_address', 'TEXT')
+        add_column_if_not_exists('collection', 'pickup_instructions', 'TEXT')
+        add_column_if_not_exists('collection', 'order_deadline', 'TIMESTAMP')
+        add_column_if_not_exists('collection', 'shipping_enabled', 'BOOLEAN DEFAULT TRUE')
+        add_column_if_not_exists('collection', 'tax_rate', 'DOUBLE PRECISION DEFAULT 0')
+        add_column_if_not_exists('collection', 'restrict_options', 'BOOLEAN DEFAULT FALSE')
+        add_column_if_not_exists('collection', 'allowed_colors', 'TEXT')
+        add_column_if_not_exists('collection', 'allowed_design_ids', 'TEXT')
+        add_column_if_not_exists('collection', 'allowed_placements', 'TEXT')
+        add_column_if_not_exists('collection', 'allow_custom_upload', 'BOOLEAN DEFAULT TRUE')
+        add_column_if_not_exists('collection', 'back_design_font', 'VARCHAR(50)')
+        add_column_if_not_exists('collection', 'share_token', 'VARCHAR(64)')
+        add_column_if_not_exists('collection', 'updated_at', 'TIMESTAMP')
+
         # Backfill: existing published gallery designs are already approved.
         try:
             with db.engine.connect() as conn:

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from models import db, Order, Address, Design
 from datetime import datetime
@@ -173,10 +173,9 @@ def my_designs():
         ).order_by(Design.uploaded_at.desc()).all()
         return render_template('account/my_designs.html', designs=designs)
     except Exception as e:
-        # If there's a database error (like missing column), show empty list
-        import sys
-        print(f"Error in my_designs: {e}", file=sys.stderr)
-        flash('Unable to load designs at this time. Please contact support if this persists.', 'error')
+        # Defensive: a transient DB error should never look like an upload
+        # failure. Log full detail for troubleshooting and render an empty list.
+        current_app.logger.exception('Error loading My Designs for user %s: %s', current_user.id, e)
         return render_template('account/my_designs.html', designs=[])
 
 

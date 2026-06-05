@@ -33,6 +33,13 @@ def admin_required(f):
     return decorated_function
 
 
+_ALLOWED_DESIGN_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.heic', '.heif']
+
+
+class DesignUploadError(Exception):
+    """Raised when an artwork upload genuinely fails to store."""
+
+
 def _save_uploaded_design(file, user_id):
     """Save an uploaded file to the Design gallery. Returns Design or None."""
     if not file or not file.filename:
@@ -42,20 +49,27 @@ def _save_uploaded_design(file, user_id):
         return None
     name, ext = os.path.splitext(filename)
     ext = ext.lower()
-    if ext not in ['.png', '.jpg', '.jpeg', '.webp']:
+    if ext not in _ALLOWED_DESIGN_EXTS:
         return None
 
     from utils.cloud_storage import upload_image
     import time
     timestamp = int(time.time())
     unique_name = f"gallery_{name}_{timestamp}{ext}"
-    file_path = upload_image(
-        file,
-        current_app._get_current_object(),
-        subfolder='designs',
-        public_id_prefix='gallery',
-        process_artwork=True,
-    )
+    try:
+        file_path = upload_image(
+            file,
+            current_app._get_current_object(),
+            subfolder='designs',
+            public_id_prefix='gallery',
+            process_artwork=True,
+        )
+    except Exception as e:
+        current_app.logger.exception('Gallery design upload failed (%s): %s', filename, e)
+        return None
+    if not file_path:
+        current_app.logger.error('Gallery design upload returned no path (%s)', filename)
+        return None
     title = name.replace('_', ' ').title()
     design = Design(
         filename=unique_name,
@@ -83,7 +97,12 @@ def _save_uploaded_design(file, user_id):
 
 
 def _save_design_for_user(file, user_id, title=None, design_fee=0):
-    """Save an uploaded file as a design for a specific user (not gallery). Returns Design or None."""
+    """Save an uploaded file as a design for a specific user (not gallery).
+
+    Returns the Design on success, or None when no usable file / unsupported
+    type was provided. Raises DesignUploadError when a valid file was given but
+    storage genuinely failed (so the caller can show an accurate error).
+    """
     if not file or not file.filename:
         return None
     filename = secure_filename(file.filename)
@@ -91,17 +110,28 @@ def _save_design_for_user(file, user_id, title=None, design_fee=0):
         return None
     name, ext = os.path.splitext(filename)
     ext = ext.lower()
-    if ext not in ['.png', '.jpg', '.jpeg', '.webp']:
+    if ext not in _ALLOWED_DESIGN_EXTS:
         return None
 
     from utils.cloud_storage import upload_image
-    file_path = upload_image(
-        file,
-        current_app._get_current_object(),
-        subfolder='designs',
-        public_id_prefix=f'user_{user_id}',
-        process_artwork=True,
-    )
+    try:
+        file_path = upload_image(
+            file,
+            current_app._get_current_object(),
+            subfolder='designs',
+            public_id_prefix=f'user_{user_id}',
+            process_artwork=True,
+        )
+    except Exception as e:
+        current_app.logger.exception(
+            'Design upload to user %s profile failed (%s): %s', user_id, filename, e,
+        )
+        raise DesignUploadError('storage_failed') from e
+    if not file_path:
+        current_app.logger.error(
+            'Design upload to user %s profile returned no path (%s)', user_id, filename,
+        )
+        raise DesignUploadError('storage_failed')
 
     import time
     timestamp = int(time.time())
@@ -1503,7 +1533,14 @@ def affirmation_delete(aff_id):
 @admin_required
 def design_gallery():
     """Upload and manage designs for customer gallery"""
-    gallery_designs = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).all()
+    try:
+        gallery_designs = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).all()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Failed to load admin design gallery: %s', e)
+        flash('We could not load the design gallery (a database issue). '
+              'If this persists, a database migration may be pending.', 'error')
+        gallery_designs = []
     return render_template('admin/design_gallery.html', designs=gallery_designs)
 
 
@@ -1585,12 +1622,21 @@ def design_gallery_remove(design_id):
     """Remove design from gallery (does not delete file)"""
     design = Design.query.get_or_404(design_id)
     name = design.title or design.original_filename or 'Design'
-    if design.is_gallery:
-        design.is_gallery = False
-        db.session.commit()
-        flash('Design removed from gallery', 'success')
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    try:
+        if design.is_gallery:
+            design.is_gallery = False
+            db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Failed to remove design %s from gallery: %s', design_id, e)
+        if is_ajax:
+            return jsonify({'ok': False, 'error': 'Could not remove the design. Please try again.'}), 500
+        flash('Could not remove the design. Please try again.', 'error')
+        return redirect(url_for('admin.design_gallery'))
+    if is_ajax:
         return jsonify({'ok': True, 'message': f'"{name}" removed from gallery'})
+    flash('Design removed from gallery', 'success')
     return redirect(url_for('admin.design_gallery'))
 
 
@@ -1600,12 +1646,21 @@ def design_gallery_delete(design_id):
     """Permanently delete a design and its file (admin only)"""
     design = Design.query.get_or_404(design_id)
     name = design.title or design.original_filename or 'Design'
-    _delete_design_file(design)
-    db.session.delete(design)
-    db.session.commit()
-    flash('Design deleted permanently', 'success')
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    try:
+        _delete_design_file(design)
+        db.session.delete(design)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Failed to delete design %s: %s', design_id, e)
+        if is_ajax:
+            return jsonify({'ok': False, 'error': 'Could not delete the design. Please try again.'}), 500
+        flash('Could not delete the design. Please try again.', 'error')
+        return redirect(url_for('admin.design_gallery'))
+    if is_ajax:
         return jsonify({'ok': True, 'message': f'"{name}" permanently deleted'})
+    flash('Design deleted permanently', 'success')
     return redirect(url_for('admin.design_gallery'))
 
 
@@ -1645,21 +1700,59 @@ def _design_validation_meta(design):
 @admin_required
 def gallery_queue():
     """Review queue: customer designs awaiting approval before publication."""
-    pending = (Design.query
-               .filter(Design.gallery_status.in_(['pending', 'changes_requested']))
-               .order_by(Design.uploaded_at.desc())
-               .all())
-    recent = (Design.query
-              .filter(Design.gallery_status.in_(['approved', 'rejected']))
-              .order_by(Design.uploaded_at.desc())
-              .limit(24).all())
-    queue = [{'design': d, 'meta': _design_validation_meta(d)} for d in pending]
+    try:
+        pending = (Design.query
+                   .filter(Design.gallery_status.in_(['pending', 'changes_requested']))
+                   .order_by(Design.uploaded_at.desc())
+                   .all())
+        recent = (Design.query
+                  .filter(Design.gallery_status.in_(['approved', 'rejected']))
+                  .order_by(Design.uploaded_at.desc())
+                  .limit(24).all())
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Failed to load gallery approval queue: %s', e)
+        flash('We could not load the approval queue (a database issue). '
+              'If this persists, a database migration may be pending.', 'error')
+        pending, recent = [], []
+
+    # Build per-design validation metadata defensively — a single bad record or
+    # unreadable image must never crash the whole queue.
+    queue = []
+    for d in pending:
+        try:
+            meta = _design_validation_meta(d)
+        except Exception as e:
+            current_app.logger.exception('Validation meta failed for design %s: %s', getattr(d, 'id', '?'), e)
+            meta = {'has_transparency': False, 'validation': None}
+        queue.append({'design': d, 'meta': meta})
     return render_template('admin/gallery_queue.html', queue=queue, recent=recent)
 
 
 def _review_design(design_id):
     design = Design.query.get_or_404(design_id)
     return design
+
+
+def _commit_review(design, success_msg):
+    """Commit a review action, returning a JSON/redirect response. Handles
+    failures gracefully so a single bad action never 500s the admin."""
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Gallery review action failed for design %s: %s',
+                                     getattr(design, 'id', '?'), e)
+        err = 'Could not save this action due to a server issue. Please try again.'
+        if is_ajax:
+            return jsonify({'ok': False, 'error': err}), 500
+        flash(err, 'error')
+        return redirect(url_for('admin.gallery_queue'))
+    if is_ajax:
+        return jsonify({'ok': True, 'message': success_msg})
+    flash(success_msg, 'success')
+    return redirect(url_for('admin.gallery_queue'))
 
 
 @admin_bp.route('/gallery-queue/<int:design_id>/approve', methods=['POST'])
@@ -1675,12 +1768,8 @@ def gallery_approve(design_id):
     design.gallery_reviewed_by_id = current_user.id
     if not design.folder:
         design.folder = request.form.get('folder') or 'custom_orders'
-    db.session.commit()
     name = design.title or design.original_filename or 'Design'
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({'ok': True, 'message': f'"{name}" approved & published'})
-    flash(f'"{name}" approved and published to the gallery.', 'success')
-    return redirect(url_for('admin.gallery_queue'))
+    return _commit_review(design, f'"{name}" approved and published to the gallery.')
 
 
 @admin_bp.route('/gallery-queue/<int:design_id>/reject', methods=['POST'])
@@ -1694,12 +1783,8 @@ def gallery_reject(design_id):
     design.gallery_rejection_reason = reason or 'Did not meet gallery guidelines.'
     design.gallery_reviewed_at = datetime.utcnow()
     design.gallery_reviewed_by_id = current_user.id
-    db.session.commit()
     name = design.title or design.original_filename or 'Design'
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({'ok': True, 'message': f'"{name}" rejected'})
-    flash(f'"{name}" rejected and kept hidden.', 'success')
-    return redirect(url_for('admin.gallery_queue'))
+    return _commit_review(design, f'"{name}" rejected and kept hidden.')
 
 
 @admin_bp.route('/gallery-queue/<int:design_id>/request-changes', methods=['POST'])
@@ -1713,12 +1798,8 @@ def gallery_request_changes(design_id):
     design.gallery_rejection_reason = reason or 'Changes requested before publication.'
     design.gallery_reviewed_at = datetime.utcnow()
     design.gallery_reviewed_by_id = current_user.id
-    db.session.commit()
     name = design.title or design.original_filename or 'Design'
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({'ok': True, 'message': f'Changes requested for "{name}"'})
-    flash(f'Changes requested for "{name}".', 'success')
-    return redirect(url_for('admin.gallery_queue'))
+    return _commit_review(design, f'Changes requested for "{name}".')
 
 
 @admin_bp.context_processor
@@ -1730,6 +1811,10 @@ def _inject_gallery_pending_count():
                  .filter(Design.gallery_status.in_(['pending', 'changes_requested']))
                  .count())
     except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
         count = 0
     return {'gallery_pending_count': count}
 
@@ -1760,19 +1845,46 @@ def custom_design_request_detail(request_id):
             file = request.files.get('design_file')
             title = request.form.get('title', '').strip() or (req.description[:50] + '...' if len(req.description or '') > 50 else req.description)
             design_fee = request.form.get('design_fee', '0')
-            if file and file.filename:
-                design = _save_design_for_user(file, req.user_id, title=title or None, design_fee=design_fee)
-                if design:
-                    req.created_design_id = design.id
-                    req.status = 'completed'
-                    req.design_fee = float(design_fee or 0)
-                    req.admin_notes = (req.admin_notes or '') + f"\n[Design uploaded: {design.filename}, fee: ${design.design_fee:.0f}]"
-                    db.session.commit()
-                    flash(f'Design uploaded to {req.user.full_name}\'s profile! They can now order any style/color.', 'success')
-                else:
-                    flash('Invalid file. Use PNG, JPG, or WEBP.', 'error')
-            else:
+            if not file or not file.filename:
                 flash('Please select a design file to upload.', 'error')
+            else:
+                try:
+                    design = _save_design_for_user(file, req.user_id, title=title or None, design_fee=design_fee)
+                except DesignUploadError:
+                    db.session.rollback()
+                    design = None
+                    flash('The image could not be stored. Please try uploading it again.', 'error')
+                except Exception as e:
+                    db.session.rollback()
+                    design = None
+                    current_app.logger.exception(
+                        'Unexpected error uploading design to user %s profile: %s',
+                        req.user_id, e,
+                    )
+                    flash('Something went wrong while saving the design. Please try again.', 'error')
+                else:
+                    if design is None:
+                        flash('Unsupported file type. Use PNG, JPG, WEBP, or HEIC.', 'error')
+                    else:
+                        try:
+                            req.created_design_id = design.id
+                            req.status = 'completed'
+                            req.design_fee = float(design_fee or 0)
+                            req.admin_notes = (req.admin_notes or '') + f"\n[Design uploaded: {design.filename}, fee: ${design.design_fee:.0f}]"
+                            db.session.commit()
+                        except Exception as e:
+                            db.session.rollback()
+                            current_app.logger.exception(
+                                'Failed to link design %s to request %s: %s',
+                                getattr(design, 'id', '?'), req.id, e,
+                            )
+                            flash('The image uploaded but could not be linked to the request. Please try again.', 'error')
+                        else:
+                            flash(
+                                f"Image added to {req.user.full_name}'s profile successfully! "
+                                "It's now in their My Designs and they can order any style or color.",
+                                'success',
+                            )
         elif action == 'add_notes':
             req.admin_notes = request.form.get('admin_notes', '')
             db.session.commit()

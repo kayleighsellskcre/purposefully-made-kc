@@ -1933,3 +1933,147 @@ table { max-width: 100%; }
     .fav-badge { font-size: 0.6rem; padding: 0.28rem 0.6rem; }
     .fav-badge-overlay { top: 0.5rem; left: 0.5rem; }
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   DESIGN SYSTEM CONSISTENCY & READABILITY LAYER
+   ------------------------------------------------------------------------
+   Site-wide defaults that unify typography, color, forms, buttons and
+   notifications. Declared last so it standardizes the global baseline while
+   still allowing any intentional per-page <style> overrides to take effect.
+   ════════════════════════════════════════════════════════════════════════ */
+:root {
+    /* Type scale — consistent, readable sizing across every page */
+    --fs-body: 1rem;            /* 16px base — comfortable default          */
+    --fs-small: 0.9rem;         /* 14.4px — smallest comfortably readable   */
+    --fs-label: 0.95rem;        /* form labels                              */
+    --fs-button: 0.95rem;       /* buttons                                  */
+    --line-body: 1.7;
+    --line-tight: 1.35;
+
+    /* Notification palette — clear semantics, harmonized with the brand */
+    --notice-success-bg: #eef1e9;
+    --notice-success-fg: #4f5d3a;
+    --notice-success-bd: var(--olive-stone);
+    --notice-error-bg: #fbeeec;
+    --notice-error-fg: #9a4436;
+    --notice-error-bd: #c0584a;
+    --notice-warning-bg: #f6efe3;
+    --notice-warning-fg: #7a6338;
+    --notice-warning-bd: var(--aged-bronze);
+    --notice-info-bg: #eef1ee;
+    --notice-info-fg: #455047;
+    --notice-info-bd: var(--olive-stone);
+}
+
+/* ── Readable utility text (used heavily across templates) ─────────────── */
+.text-muted {
+    color: var(--text-secondary);
+    font-size: var(--fs-small);
+    line-height: 1.6;
+}
+small, .text-small { font-size: var(--fs-small); line-height: 1.6; }
+
+/* ── Consistent form controls ─────────────────────────────────────────── */
+.form-label {
+    font-size: var(--fs-label);
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.4;
+}
+/* 16px floor prevents iOS Safari from auto-zooming on focus */
+.form-control,
+input.form-control,
+select.form-control,
+textarea.form-control {
+    font-size: max(1rem, var(--fs-body));
+    line-height: 1.5;
+    border-radius: var(--border-radius-sm);
+    background-color: #fff;
+}
+/* Native dropdowns get a consistent chevron + spacing to match text inputs */
+select.form-control {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%237F6C50' stroke-width='2'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    padding-right: 2.5rem;
+}
+/* Keep the chevron visible while the select is focused (base :focus uses the
+   `background` shorthand, which would otherwise clear the chevron image). */
+select.form-control:focus {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%237F6C50' stroke-width='2'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-color: var(--ivory-silk);
+}
+.form-control::placeholder { color: var(--text-light); }
+.form-control:disabled,
+.form-control[readonly] { background-color: var(--ivory-silk); cursor: not-allowed; }
+
+/* ── Consistent buttons ───────────────────────────────────────────────── */
+button.btn { font-family: var(--font-primary); font-size: var(--fs-button); }
+.btn:disabled,
+.btn[disabled],
+.btn.is-disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+/* Secondary button alias — maps to the outline treatment for consistency */
+.btn-secondary {
+    background: transparent;
+    border-color: var(--aged-bronze);
+    color: var(--aged-bronze);
+}
+.btn-secondary:hover {
+    background: linear-gradient(135deg, var(--aged-bronze) 0%, var(--terra-cotta) 100%);
+    border-color: transparent;
+    color: #fff;
+}
+
+/* ── Clearer, consistent notifications (success / error / warning / info) ─ */
+.flash-message { gap: 1rem; line-height: 1.5; font-size: var(--fs-body); }
+.flash-success {
+    background: var(--notice-success-bg);
+    border-left: 4px solid var(--notice-success-bd);
+    color: var(--notice-success-fg);
+}
+.flash-error {
+    background: var(--notice-error-bg);
+    border-left: 4px solid var(--notice-error-bd);
+    color: var(--notice-error-fg);
+}
+.flash-warning {
+    background: var(--notice-warning-bg);
+    border-left: 4px solid var(--notice-warning-bd);
+    color: var(--notice-warning-fg);
+}
+.flash-info {
+    background: var(--notice-info-bg);
+    border-left: 4px solid var(--notice-info-bd);
+    color: var(--notice-info-fg);
+}
+.flash-message .flash-close { color: inherit; opacity: 0.7; }
+.flash-message .flash-close:hover { opacity: 1; }
+
+/* ── Accessibility: a single, consistent keyboard focus ring ──────────── */
+a:focus-visible,
+button:focus-visible,
+.btn:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+    outline: 3px solid rgba(184, 124, 111, 0.45);
+    outline-offset: 2px;
+}
+
+/* ── Mobile readability floor: keep core text comfortably legible ─────── */
+@media (max-width: 480px) {
+    body { font-size: 1rem; line-height: 1.65; }
+    .text-muted, small, .text-small { font-size: 0.875rem; }
+    .btn, button.btn { font-size: 0.9rem; }
+}
