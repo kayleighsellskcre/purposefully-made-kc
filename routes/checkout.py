@@ -174,107 +174,124 @@ def create_payment_intent():
 @checkout_bp.route('/complete', methods=['POST'])
 def complete():
     """Complete order after payment"""
-    data = request.get_json()
-    
+    from sqlalchemy.exc import SQLAlchemyError
+
+    data = request.get_json(silent=True) or {}
+
     cart = get_cart()
     if not cart:
         return jsonify({'error': 'Cart is empty'}), 400
-    
-    payment_method = data.get('payment_method')  # 'stripe', 'paypal', or 'cash'
-    payment_id = data.get('payment_id')  # Payment intent ID or PayPal order ID (null for cash)
+
+    payment_method = data.get('payment_method')
+    payment_id = data.get('payment_id')
     shipping_method = data.get('shipping_method', 'pickup')
-    
-    # Customer info
+
     email = data.get('email') or (current_user.email if current_user.is_authenticated else None)
     first_name = data.get('first_name')
     last_name = data.get('last_name')
     phone = data.get('phone')
-    
-    # Shipping info (if applicable)
-    shipping_info = data.get('shipping_info', {})
-    
-    # Calculate totals
+    shipping_info = data.get('shipping_info') or {}
+
     totals = calculate_totals(cart, shipping_method)
-    
-    # Create order
-    order = Order(
-        user_id=current_user.id if current_user.is_authenticated else None,
-        collection_id=session.get('collection_id'),
-        email=email,
-        first_name=first_name,
-        last_name=last_name,
-        phone=phone,
-        fulfillment_method=shipping_method,
-        subtotal=totals['subtotal'],
-        shipping_cost=totals['shipping_cost'],
-        tax=totals['tax'],
-        total=totals['total'],
-        payment_method=payment_method,
-        payment_status='paid',
-        payment_intent_id=payment_id if payment_method == 'stripe' and payment_id else None,
-        paypal_order_id=payment_id if payment_method == 'paypal' and payment_id else None,
-        paid_at=datetime.utcnow(),
-        status='paid'
-    )
-    
-    # Add shipping address if applicable
-    if shipping_method == 'shipping':
-        order.shipping_recipient = shipping_info.get('recipient')
-        order.shipping_street = shipping_info.get('street')
-        order.shipping_street_2 = shipping_info.get('street_2')
-        order.shipping_city = shipping_info.get('city')
-        order.shipping_state = shipping_info.get('state')
-        order.shipping_zip = shipping_info.get('zip')
-        order.shipping_country = shipping_info.get('country', 'USA')
-    
-    db.session.add(order)
-    db.session.flush()  # Get order ID
-    
-    # Create order items
-    for cart_item in cart:
-        product = Product.query.get(cart_item['product_id'])
-        
-        design = Design.query.get(cart_item['design_id']) if cart_item.get('design_id') else None
-        back_url = cart_item.get('back_design_url')
-        back_filename = back_url.split('/')[-1] if back_url else None
-        back_meta = cart_item.get('back_design_meta')
-        back_meta_json = json.dumps(back_meta) if back_meta else None
-        order_item = OrderItem(
-            order_id=order.id,
-            product_id=product.id,
-            design_id=cart_item.get('design_id'),
-            product_name=product.name,
-            style_number=product.style_number,
-            size=cart_item['size'],
-            color=cart_item['color'],
-            quantity=cart_item['quantity'],
-            unit_price=cart_item['unit_price'],
-            subtotal=cart_item['quantity'] * cart_item['unit_price'],
-            placement=cart_item.get('placement'),
-            print_type=cart_item.get('print_type') or 'DTF',
-            design_file_name=design.filename if design else None,
-            back_design_file_name=back_filename,
-            back_design_meta=back_meta_json,
-            print_width=cart_item.get('print_width'),
-            print_height=cart_item.get('print_height'),
-            position_x=cart_item.get('position_x'),
-            position_y=cart_item.get('position_y'),
-            rotation=cart_item.get('rotation', 0),
-            proof_image=cart_item.get('proof_image')
+
+    try:
+        order = Order(
+            user_id=current_user.id if current_user.is_authenticated else None,
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            phone=phone,
+            fulfillment_method=shipping_method,
+            subtotal=totals['subtotal'],
+            shipping_cost=totals['shipping_cost'],
+            tax=totals['tax'],
+            total=totals['total'],
+            payment_method=payment_method,
+            payment_status='paid',
+            payment_intent_id=payment_id if payment_method == 'stripe' and payment_id else None,
+            paypal_order_id=payment_id if payment_method == 'paypal' and payment_id else None,
+            paid_at=datetime.utcnow(),
+            status='paid',
         )
-        db.session.add(order_item)
-    
-    db.session.commit()
-    
-    # Send confirmation email and store result for confirmation page
+
+        # collection_id is optional — skip if the column isn't in the DB yet
+        try:
+            order.collection_id = session.get('collection_id')
+        except Exception:
+            pass
+
+        if shipping_method == 'shipping':
+            order.shipping_recipient = shipping_info.get('recipient')
+            order.shipping_street = shipping_info.get('street')
+            order.shipping_street_2 = shipping_info.get('street_2')
+            order.shipping_city = shipping_info.get('city')
+            order.shipping_state = shipping_info.get('state')
+            order.shipping_zip = shipping_info.get('zip')
+            order.shipping_country = shipping_info.get('country', 'USA')
+
+        db.session.add(order)
+        db.session.flush()
+
+        for cart_item in cart:
+            try:
+                product = Product.query.get(cart_item['product_id'])
+                if not product:
+                    continue
+                design = Design.query.get(cart_item['design_id']) if cart_item.get('design_id') else None
+                back_url = cart_item.get('back_design_url')
+                back_filename = back_url.split('/')[-1] if back_url else None
+                back_meta = cart_item.get('back_design_meta')
+                back_meta_json = json.dumps(back_meta) if back_meta else None
+                order_item = OrderItem(
+                    order_id=order.id,
+                    product_id=product.id,
+                    design_id=cart_item.get('design_id'),
+                    product_name=product.name,
+                    style_number=product.style_number,
+                    size=cart_item['size'],
+                    color=cart_item['color'],
+                    quantity=cart_item['quantity'],
+                    unit_price=cart_item['unit_price'],
+                    subtotal=cart_item['quantity'] * cart_item['unit_price'],
+                    placement=cart_item.get('placement'),
+                    print_type=cart_item.get('print_type') or 'DTF',
+                    design_file_name=design.filename if design else None,
+                    back_design_file_name=back_filename,
+                    print_width=cart_item.get('print_width'),
+                    print_height=cart_item.get('print_height'),
+                    position_x=cart_item.get('position_x'),
+                    position_y=cart_item.get('position_y'),
+                    rotation=cart_item.get('rotation', 0),
+                    proof_image=cart_item.get('proof_image'),
+                )
+                # back_design_meta optional — may not exist in older DB schemas
+                try:
+                    order_item.back_design_meta = back_meta_json
+                except Exception:
+                    pass
+                db.session.add(order_item)
+            except Exception as item_err:
+                current_app.logger.exception('Error building order item: %s', item_err)
+
+        db.session.commit()
+
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        current_app.logger.exception('checkout.complete DB error: %s', e)
+        return jsonify({'error': 'Your order could not be saved due to a server issue. '
+                                 'Please try again or contact us at purposefullymadekc@gmail.com.'}), 500
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('checkout.complete unexpected error: %s', e)
+        return jsonify({'error': 'Something went wrong while placing your order. '
+                                 'Please try again or contact us.'}), 500
+
     email_sent = send_order_confirmation_email(order)
     session['confirmation_email_sent'] = email_sent
     session['confirmation_email_sent_for'] = order.order_number
-    
-    # Clear cart
     session['cart'] = []
     session.modified = True
-    
+
     return jsonify({
         'success': True,
         'order_number': order.order_number,
