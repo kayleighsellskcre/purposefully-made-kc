@@ -1196,6 +1196,14 @@
     height: 14px;
 }
 
+.pos-controls-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
 /* Size Chart Button & Modal */
 .size-chart-btn-customize {
     display: inline-flex;
@@ -1312,26 +1320,35 @@
                     </p>
                     <p id="dragHint" style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: #999; display: none;">Drag up or down to reposition</p>
                     
+                    <!-- Front Design Position Controls -->
+                    <div id="frontPositionControls" style="display: none; margin-top: 0.75rem;">
+                        <div class="pos-controls-row">
+                            <button type="button" id="moveFrontUpBtn" class="position-btn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                                Up
+                            </button>
+                            <button type="button" id="moveFrontDownBtn" class="position-btn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                Down
+                            </button>
+                            <button type="button" id="resetPositionBtn" class="position-btn-reset">Reset</button>
+                        </div>
+                    </div>
+
                     <!-- Back Design Position Controls -->
                     <div id="backPositionControls" style="display: none; margin-top: 0.75rem;">
-                        <div style="display: flex; gap: 0.5rem; align-items: center; justify-content: center;">
+                        <div class="pos-controls-row">
                             <button type="button" id="moveBackUpBtn" class="position-btn">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="18 15 12 9 6 15"></polyline>
-                                </svg>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
                                 Up
                             </button>
                             <button type="button" id="moveBackDownBtn" class="position-btn">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="6 9 12 15 18 9"></polyline>
-                                </svg>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                 Down
                             </button>
                             <button type="button" id="resetBackPositionBtn" class="position-btn-reset">Reset</button>
                         </div>
                     </div>
-                    
-                    <button type="button" id="resetPositionBtn" class="position-btn-reset" style="display: none; margin-top: 0.5rem;">Reset position</button>
                 </div>
             </div>
             
@@ -2199,11 +2216,13 @@
             if (previewCanvas) previewCanvas.classList.remove('showing-back');
             const resetBackBtn = document.getElementById('resetBackPositionBtn');
             const backPositionControls = document.getElementById('backPositionControls');
+            const frontPositionControls = document.getElementById('frontPositionControls');
             if (resetBackBtn) resetBackBtn.style.display = 'none';
             if (backPositionControls) backPositionControls.style.display = 'none';
+            if (frontPositionControls) frontPositionControls.style.display = frontHasDesign ? 'block' : 'none';
             const dragHint = document.getElementById('dragHint');
             if (dragHint && !frontHasDesign) dragHint.style.display = 'none';
-            if (dragHint && frontHasDesign) dragHint.textContent = 'Drag up or down to reposition';
+            if (dragHint && frontHasDesign) dragHint.textContent = 'Drag or use ▲▼ to reposition';
             if (isCenterBack) {
                 designLayer.style.display = 'none';
                 backDesignLayer.style.display = 'none';
@@ -2215,6 +2234,8 @@
             designLayer.style.visibility = 'hidden';
             designLayer.style.pointerEvents = 'none';
             if (previewCanvas) previewCanvas.classList.add('showing-back');
+            const frontPositionControls2 = document.getElementById('frontPositionControls');
+            if (frontPositionControls2) frontPositionControls2.style.display = 'none';
             if (isCenterBack) {
                 designLayer.style.display = frontHasDesign ? 'flex' : 'none';
                 backDesignLayer.style.display = backHasDesign ? 'flex' : 'none';
@@ -2245,9 +2266,7 @@
         if (state.currentView === 'back' && backDesignLayer.style.display !== 'none') {
             if (dragHint) {
                 dragHint.style.display = 'block';
-                dragHint.textContent = (state.backDesignMode === 'upload')
-                    ? 'Drag up or down to reposition the back image'
-                    : 'Drag up or down to reposition name & number';
+                dragHint.textContent = 'Drag or use ▲▼ to reposition';
             }
             if (resetBackBtn) resetBackBtn.style.display = (offset.y !== -defaultUp) ? 'inline-block' : 'none';
             if (backPositionControls) backPositionControls.style.display = 'block';
@@ -2740,8 +2759,10 @@
                 state.lastUploadedFile = null;
                 const dragHint = document.getElementById('dragHint');
                 const resetBtn = document.getElementById('resetPositionBtn');
+                const frontControls = document.getElementById('frontPositionControls');
                 if (dragHint) dragHint.style.display = 'none';
                 if (resetBtn) resetBtn.style.display = 'none';
+                if (frontControls) frontControls.style.display = 'none';
                 if (uploadAreaMain) {
                     uploadAreaMain.innerHTML = UPLOAD_PROMPT;
                 }
@@ -2924,20 +2945,24 @@
     function applyDesignPosition() {
         const designLayer = document.getElementById('designLayer');
         if (!designLayer || !designLayer.classList.contains('visible')) return;
-        
+
         const placement = state.selectedPlacement;
         const offset = state.designDragOffset[placement] || { x: 0, y: 0 };
         designLayer.style.transform = `translate(-50%, -50%) translate(${offset.x}px, ${offset.y}px)`;
-        
+
+        const frontControls = document.getElementById('frontPositionControls');
         const resetBtn = document.getElementById('resetPositionBtn');
         const dragHint = document.getElementById('dragHint');
-        if (state.currentView === 'front' && resetBtn && dragHint) {
-            const hasOffset = offset.y !== 0;
-            resetBtn.style.display = hasOffset ? 'inline-block' : 'none';
-            dragHint.style.display = 'block';
-            dragHint.textContent = 'Drag up or down to reposition';
-        } else if (state.currentView === 'back' && resetBtn) {
-            resetBtn.style.display = 'none';
+
+        if (state.currentView === 'front') {
+            if (frontControls) frontControls.style.display = 'block';
+            if (resetBtn) resetBtn.style.display = (offset.y !== 0 || offset.x !== 0) ? 'inline-block' : 'none';
+            if (dragHint) {
+                dragHint.style.display = 'block';
+                dragHint.textContent = 'Drag or use ▲▼ to reposition';
+            }
+        } else {
+            if (frontControls) frontControls.style.display = 'none';
         }
     }
     
@@ -2964,21 +2989,36 @@
             state.designDragOffset[placement] = { x: 0, y: 0 };
             applyDesignPosition();
         });
+
+        // Front design up/down nudge buttons (10 px per click, same as back)
+        document.getElementById('moveFrontUpBtn')?.addEventListener('click', function() {
+            const placement = state.selectedPlacement;
+            const offset = state.designDragOffset[placement] || { x: 0, y: 0 };
+            state.designDragOffset[placement] = { x: offset.x, y: offset.y - 10 };
+            applyDesignPosition();
+        });
+        document.getElementById('moveFrontDownBtn')?.addEventListener('click', function() {
+            const placement = state.selectedPlacement;
+            const offset = state.designDragOffset[placement] || { x: 0, y: 0 };
+            state.designDragOffset[placement] = { x: offset.x, y: offset.y + 10 };
+            applyDesignPosition();
+        });
+
         document.getElementById('resetBackPositionBtn')?.addEventListener('click', function() {
             const defaultUp = state.backDesignDefaultUpOffset ?? 60;
             state.backDesignDragOffset = { y: -defaultUp };
             applyBackDesignPosition();
         });
-        
+
         // Back design up/down buttons
         document.getElementById('moveBackUpBtn')?.addEventListener('click', function() {
             const currentY = state.backDesignDragOffset.y || 0;
-            state.backDesignDragOffset.y = currentY - 10; // Move up 10px
+            state.backDesignDragOffset.y = currentY - 10;
             applyBackDesignPosition();
         });
         document.getElementById('moveBackDownBtn')?.addEventListener('click', function() {
             const currentY = state.backDesignDragOffset.y || 0;
-            state.backDesignDragOffset.y = currentY + 10; // Move down 10px
+            state.backDesignDragOffset.y = currentY + 10;
             applyBackDesignPosition();
         });
     }
@@ -3115,10 +3155,16 @@
             }
         }
         
+        function backHasContent() {
+            return state.backDesignEnabled && (
+                (state.backDesignMode === 'name_number' && (state.backDesignName || state.backDesignNumber)) ||
+                (state.backDesignMode === 'upload' && state.backDesignUrl)
+            );
+        }
+
         backDesignLayer.addEventListener('mousedown', function(e) {
             if (state.currentView !== 'back') return;
-            if (!state.backDesignEnabled || !(state.backDesignName || state.backDesignNumber)) return;
-            if (state.backDesignMode !== 'name_number') return;
+            if (!backHasContent()) return;
             e.preventDefault();
             isDragging = true;
             backDesignLayer.classList.add('dragging');
@@ -3128,11 +3174,10 @@
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', onMouseUp);
         });
-        
+
         backDesignLayer.addEventListener('touchstart', function(e) {
             if (state.currentView !== 'back') return;
-            if (!state.backDesignEnabled || !(state.backDesignName || state.backDesignNumber)) return;
-            if (state.backDesignMode !== 'name_number') return;
+            if (!backHasContent()) return;
             e.preventDefault();
             isDragging = true;
             backDesignLayer.classList.add('dragging');
