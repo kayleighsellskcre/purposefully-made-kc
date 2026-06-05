@@ -263,7 +263,19 @@
                             <td><span class="od-size-pill">{{ item.size }}</span></td>
                             <td>{{ item.print_type or 'DTF' }}</td>
                             <td class="od-file-name">{{ item.design_file_name or (item.design.filename if item.design else '—') }}</td>
-                            <td class="od-file-name">{{ item.back_design_file_name or '—' }}</td>
+                            <td class="od-file-name">
+                                {{ item.back_design_file_name or '—' }}
+                                {% set bd = item.back_design_details %}
+                                {% if bd %}
+                                <div class="od-back-meta">
+                                    {% if bd.name %}<span><strong>Name:</strong> {{ bd.name }}</span>{% endif %}
+                                    {% if bd.number %}<span><strong>Number:</strong> {{ bd.number }}</span>{% endif %}
+                                    {% if bd.font %}<span><strong>Font:</strong> {{ bd.font }}</span>{% endif %}
+                                    {% if bd.text_color %}<span><strong>Text:</strong> <span class="od-swatch" style="background: {{ bd.text_color }};"></span>{{ bd.text_color }}</span>{% endif %}
+                                    {% if bd.outline %}<span><strong>Outline:</strong> <span class="od-swatch" style="background: {{ bd.outline_color or '#000' }};"></span>{{ bd.outline_color or 'yes' }}</span>{% else %}<span><strong>Outline:</strong> none</span>{% endif %}
+                                </div>
+                                {% endif %}
+                            </td>
                             <td>
                                 {% set pw = get_display_print_width(item) if get_display_print_width else (item.print_width or (get_print_width(item.size, item.product) if get_print_width else none)) %}
                                 {% if pw %}{{ "%.2f"|format(pw) }}"{% else %}N/A{% endif %}
@@ -702,7 +714,10 @@
 .od-table tbody tr:hover { background: rgba(245,240,225,0.5); }
 
 .od-product-name { font-weight: 600; min-width: 140px; }
-.od-file-name    { font-size: 0.76rem; color: var(--text-secondary); max-width: 110px; word-break: break-all; }
+.od-file-name    { font-size: 0.76rem; color: var(--text-secondary); max-width: 140px; word-break: break-all; }
+.od-back-meta    { display: flex; flex-direction: column; gap: 0.15rem; margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px dashed var(--border-color, #e8d0b1); color: var(--text-primary); }
+.od-back-meta span { display: flex; align-items: center; gap: 0.3rem; }
+.od-swatch       { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.2); vertical-align: middle; }
 .od-center       { text-align: center; }
 .od-qty          { font-weight: 700; }
 .od-subtotal     { font-weight: 700; white-space: nowrap; }

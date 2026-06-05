@@ -51,6 +51,9 @@ def run_migrations():
         # Add design_fee column to Design table (use DOUBLE PRECISION for PostgreSQL)
         add_column_if_not_exists('design', 'design_fee', 'DOUBLE PRECISION DEFAULT 0')
 
+        # Back design name/number color + outline metadata on order items
+        add_column_if_not_exists('order_item', 'back_design_meta', 'TEXT')
+
         # Public-gallery moderation workflow columns on Design
         add_column_if_not_exists('design', 'gallery_submitted', 'BOOLEAN DEFAULT FALSE')
         add_column_if_not_exists('design', 'gallery_status', 'VARCHAR(20)')
@@ -78,6 +81,12 @@ def run_migrations():
         add_column_if_not_exists('collection', 'back_design_font', 'VARCHAR(50)')
         add_column_if_not_exists('collection', 'share_token', 'VARCHAR(64)')
         add_column_if_not_exists('collection', 'updated_at', 'TIMESTAMP')
+
+        # Uniform / back-design style controls
+        add_column_if_not_exists('collection', 'back_design_text_color', 'VARCHAR(20)')
+        add_column_if_not_exists('collection', 'back_design_outline', 'BOOLEAN DEFAULT TRUE')
+        add_column_if_not_exists('collection', 'back_design_outline_color', 'VARCHAR(20)')
+        add_column_if_not_exists('collection', 'lock_back_design_style', 'BOOLEAN DEFAULT FALSE')
 
         # Backfill: existing published gallery designs are already approved.
         try:

@@ -237,6 +237,8 @@ def complete():
         design = Design.query.get(cart_item['design_id']) if cart_item.get('design_id') else None
         back_url = cart_item.get('back_design_url')
         back_filename = back_url.split('/')[-1] if back_url else None
+        back_meta = cart_item.get('back_design_meta')
+        back_meta_json = json.dumps(back_meta) if back_meta else None
         order_item = OrderItem(
             order_id=order.id,
             product_id=product.id,
@@ -252,6 +254,7 @@ def complete():
             print_type=cart_item.get('print_type') or 'DTF',
             design_file_name=design.filename if design else None,
             back_design_file_name=back_filename,
+            back_design_meta=back_meta_json,
             print_width=cart_item.get('print_width'),
             print_height=cart_item.get('print_height'),
             position_x=cart_item.get('position_x'),

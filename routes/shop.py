@@ -239,6 +239,11 @@ def create_group_order():
             if allowed_design_ids:
                 collection.allowed_design_ids = json.dumps(allowed_design_ids)
             collection.back_design_font = request.form.get('back_design_font') or None
+            # Uniform back-design style controls
+            collection.back_design_text_color = request.form.get('back_design_text_color') or None
+            collection.back_design_outline = request.form.get('back_design_outline') != 'off'
+            collection.back_design_outline_color = request.form.get('back_design_outline_color') or None
+            collection.lock_back_design_style = request.form.get('lock_back_design_style') == 'on'
 
             password = request.form.get('password')
             if password:
@@ -360,7 +365,11 @@ def customize(product_id):
     collection_restricted = False
     allow_custom_upload = True  # default: show upload area
     allowed_placements = None  # None = all allowed
-    back_design_font = None  # When set, team must use this font for name/number on back
+    back_design_font = None
+    back_design_text_color = None
+    back_design_outline = None   # None = use customer's choice
+    back_design_outline_color = None
+    lock_back_design_style = False
     collection_id = session.get('collection_id')
     allowed_design_ids = None
     if collection_id:
@@ -369,6 +378,11 @@ def customize(product_id):
             collection_restricted = True
             allow_custom_upload = getattr(coll, 'allow_custom_upload', True)
             back_design_font = getattr(coll, 'back_design_font', None)
+            back_design_text_color = getattr(coll, 'back_design_text_color', None)
+            _outline = getattr(coll, 'back_design_outline', None)
+            back_design_outline = _outline if _outline is not None else True
+            back_design_outline_color = getattr(coll, 'back_design_outline_color', None)
+            lock_back_design_style = bool(getattr(coll, 'lock_back_design_style', False))
             if coll.allowed_colors:
                 allowed = json.loads(coll.allowed_colors)
                 if allowed:
@@ -436,4 +450,8 @@ def customize(product_id):
                          allow_custom_upload=allow_custom_upload,
                          allowed_placements=allowed_placements,
                          back_design_font=back_design_font,
+                         back_design_text_color=back_design_text_color,
+                         back_design_outline=back_design_outline,
+                         back_design_outline_color=back_design_outline_color,
+                         lock_back_design_style=lock_back_design_style,
                          is_adult=is_adult)

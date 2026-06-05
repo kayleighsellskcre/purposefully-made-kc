@@ -117,8 +117,15 @@ class Collection(db.Model):
     allowed_design_ids = db.Column(db.Text)  # JSON: [1, 2, ...]
     allowed_placements = db.Column(db.Text)  # JSON: ["center_chest", "left_chest", "right_chest", "center_back"]
     allow_custom_upload = db.Column(db.Boolean, default=True)  # When restricted, team can still upload their own design
-    back_design_font = db.Column(db.String(50))  # Organizer's chosen font for name/number on back (Bebas Neue, Oswald, Anton, Teko)
-    
+    back_design_font = db.Column(db.String(50))  # Organizer's chosen font for name/number on back
+
+    # Organizer-set name/number styling — applied when lock_back_design_style is True
+    back_design_text_color = db.Column(db.String(20))    # e.g. '#ffffff'
+    back_design_outline = db.Column(db.Boolean, default=True)  # whether outline is shown
+    back_design_outline_color = db.Column(db.String(20))  # e.g. '#000000'
+    # When True + restrict_options, participants cannot change font/color/outline
+    lock_back_design_style = db.Column(db.Boolean, default=False)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -438,6 +445,7 @@ class OrderItem(db.Model):
     print_type = db.Column(db.String(50))  # DTF, screen_print, vinyl, sublimation, etc.
     design_file_name = db.Column(db.String(500))  # Design file name for production
     back_design_file_name = db.Column(db.String(500))  # Back design (name/number or image) for production
+    back_design_meta = db.Column(db.Text)  # JSON: name/number/font/text_color/outline/outline_color for back name & number
     print_width = db.Column(db.Float)  # inches
     print_height = db.Column(db.Float)  # inches
     position_x = db.Column(db.Float)  # relative position
@@ -451,6 +459,17 @@ class OrderItem(db.Model):
     notes = db.Column(db.Text)
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    @property
+    def back_design_details(self):
+        """Parsed back-design name/number/color metadata, or None."""
+        if not self.back_design_meta:
+            return None
+        try:
+            import json as _json
+            return _json.loads(self.back_design_meta)
+        except Exception:
+            return None
     
     def __repr__(self):
         return f'<OrderItem {self.product_name} - {self.color} {self.size}>'

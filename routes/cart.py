@@ -184,6 +184,21 @@ def add():
             back_design_url = f"/static/uploads/designs/{unique_filename}"
     elif data.get('back_design_url'):
         back_design_url = data.get('back_design_url')
+
+    # Capture readable back-design details (name/number/colors) so they appear
+    # in the order record and production sheet, not just baked into the image.
+    back_design_meta = None
+    _bd_name = (data.get('back_design_name') or '').strip()
+    _bd_number = (data.get('back_design_number') or '').strip()
+    if _bd_name or _bd_number:
+        back_design_meta = {
+            'name': _bd_name,
+            'number': _bd_number,
+            'font': (data.get('back_design_font') or '').strip(),
+            'text_color': (data.get('back_design_text_color') or '').strip(),
+            'outline': (data.get('back_design_outline') or '').strip().lower() == 'true',
+            'outline_color': (data.get('back_design_outline_color') or '').strip(),
+        }
     
     # Save proof images (design composited on shirt) for cart display
     proof_front_url = None
@@ -268,6 +283,7 @@ def add():
         'design_url': design_url,
         'placement': placement,
         'back_design_url': back_design_url,
+        'back_design_meta': back_design_meta,
         'proof_front_url': proof_front_url,
         'proof_back_url': proof_back_url,
         'print_width': print_width,

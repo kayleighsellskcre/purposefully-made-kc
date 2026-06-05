@@ -970,80 +970,121 @@ def add_collection():
     """Add new collection"""
     if request.method == 'POST':
         from slugify import slugify
-        from sqlalchemy.exc import IntegrityError
-        
-        name = request.form.get('name')
-        slug = (request.form.get('slug') or slugify(name)).strip() or slugify(name)
-        # Ensure slug is unique - append number if taken
-        base_slug = slug
-        n = 1
-        while Collection.query.filter_by(slug=slug).first():
-            slug = f"{base_slug}-{n}"
-            n += 1
-        if slug != base_slug:
-            flash(f'URL slug adjusted to "{slug}" (original was already in use).', 'info')
-        
-        collection = Collection(
-            name=name,
-            slug=slug,
-            description=request.form.get('description'),
-            is_active=request.form.get('is_active') == 'on',
-            pickup_address=request.form.get('pickup_address'),
-            pickup_instructions=request.form.get('pickup_instructions'),
-            shipping_enabled=request.form.get('shipping_enabled') == 'on',
-            tax_rate=float(request.form.get('tax_rate') or 0)
-        )
-        
-        # Organizer's choices
-        collection.restrict_options = request.form.get('restrict_options') == 'on'
-        collection.allow_custom_upload = True  # Team can always upload their own designs
-        allowed_colors = request.form.getlist('allowed_colors')
-        collection.allowed_colors = json.dumps(allowed_colors) if allowed_colors else None
-        allowed_placements = request.form.getlist('allowed_placements')
-        collection.allowed_placements = json.dumps(allowed_placements) if allowed_placements else None
-        allowed_design_ids = list(request.form.getlist('allowed_designs'))
-        upload_count = 0
-        # Process uploaded design files
-        for f in request.files.getlist('design_uploads'):
-            if f and f.filename:
-                design = _save_uploaded_design(f, current_user.id)
-                if design:
-                    allowed_design_ids.append(str(design.id))
-                    upload_count += 1
-        if allowed_design_ids:
-            collection.allowed_design_ids = json.dumps([int(x) for x in allowed_design_ids])
-        collection.back_design_font = request.form.get('back_design_font') or None
-        
-        # Set password if provided
-        password = request.form.get('password')
-        if password:
-            collection.set_password(password)
-        
-        # Set deadline if provided
-        deadline_str = request.form.get('order_deadline')
-        if deadline_str:
-            collection.order_deadline = datetime.fromisoformat(deadline_str)
-        
-        db.session.add(collection)
-        db.session.flush()
-        
-        # Add products to collection
-        product_ids = request.form.getlist('products')
-        for product_id in product_ids:
-            product = Product.query.get(int(product_id))
-            if product:
-                collection.products.append(product)
-        
+        from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+
+        name = (request.form.get('name') or '').strip()
+        if not name:
+            flash('Please enter a name for the group order.', 'error')
+            return redirect(url_for('admin.add_collection'))
+
         try:
+            slug = (request.form.get('slug') or slugify(name)).strip() or slugify(name)
+            base_slug = slug
+            n = 1
+            while Collection.query.filter_by(slug=slug).first():
+                slug = f"{base_slug}-{n}"
+                n += 1
+            if slug != base_slug:
+                flash(f'URL slug adjusted to "{slug}" (original was already in use).', 'info')
+
+            try:
+                tax_rate = float(request.form.get('tax_rate') or 0)
+            except (TypeError, ValueError):
+                tax_rate = 0.0
+
+            order_deadline = None
+            deadline_str = (request.form.get('order_deadline') or '').strip()
+            if deadline_str:
+                try:
+                    order_deadline = datetime.fromisoformat(deadline_str)
+                except ValueError:
+                    flash('The order deadline date is invalid. Please pick a valid date.', 'error')
+                    return redirect(url_for('admin.add_collection'))
+
+            collection = Collection(
+                name=name,
+                slug=slug,
+                description=request.form.get('description'),
+                is_active=request.form.get('is_active') == 'on',
+                pickup_address=request.form.get('pickup_address'),
+                pickup_instructions=request.form.get('pickup_instructions'),
+                shipping_enabled=request.form.get('shipping_enabled') == 'on',
+                tax_rate=tax_rate,
+            )
+
+            collection.restrict_options = request.form.get('restrict_options') == 'on'
+            collection.allow_custom_upload = True
+            allowed_colors = request.form.getlist('allowed_colors')
+            collection.allowed_colors = json.dumps(allowed_colors) if allowed_colors else None
+            allowed_placements = request.form.getlist('allowed_placements')
+            collection.allowed_placements = json.dumps(allowed_placements) if allowed_placements else None
+
+            allowed_design_ids = []
+            for raw in request.form.getlist('allowed_designs'):
+                try:
+                    allowed_design_ids.append(int(raw))
+                except (TypeError, ValueError):
+                    continue
+            upload_count = 0
+            for f in request.files.getlist('design_uploads'):
+                if f and f.filename:
+                    try:
+                        design = _save_uploaded_design(f, current_user.id)
+                    except Exception as e:
+                        current_app.logger.exception('Collection design upload failed: %s', e)
+                        design = None
+                    if design:
+                        allowed_design_ids.append(design.id)
+                        upload_count += 1
+            if allowed_design_ids:
+                collection.allowed_design_ids = json.dumps(allowed_design_ids)
+
+            collection.back_design_font = request.form.get('back_design_font') or None
+            # Uniform back-design style controls
+            collection.back_design_text_color = request.form.get('back_design_text_color') or None
+            collection.back_design_outline = request.form.get('back_design_outline') != 'off'
+            collection.back_design_outline_color = request.form.get('back_design_outline_color') or None
+            collection.lock_back_design_style = request.form.get('lock_back_design_style') == 'on'
+
+            password = request.form.get('password')
+            if password:
+                collection.set_password(password)
+            if order_deadline:
+                collection.order_deadline = order_deadline
+
+            db.session.add(collection)
+            db.session.flush()
+
+            for product_id in request.form.getlist('products'):
+                try:
+                    pid = int(product_id)
+                except (TypeError, ValueError):
+                    continue
+                product = Product.query.get(pid)
+                if product:
+                    collection.products.append(product)
+
             db.session.commit()
             msg = 'Group order created successfully'
             if upload_count:
                 msg += f' with {upload_count} design(s) uploaded'
             flash(msg + '.', 'success')
             return redirect(url_for('admin.collections'))
-        except IntegrityError:
+
+        except IntegrityError as e:
             db.session.rollback()
+            current_app.logger.warning('Admin add_collection IntegrityError: %s', e)
             flash('A group order with that name or URL already exists. Try a different name.', 'error')
+            return redirect(url_for('admin.add_collection'))
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            current_app.logger.exception('Admin add_collection database error: %s', e)
+            flash('Could not save the group order due to a server issue. Please try again.', 'error')
+            return redirect(url_for('admin.add_collection'))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.exception('Admin add_collection unexpected error: %s', e)
+            flash('Something went wrong while creating the group order. Please try again.', 'error')
             return redirect(url_for('admin.add_collection'))
     
     products = Product.query.filter_by(is_active=True).order_by(Product.style_number).all()
@@ -1078,75 +1119,114 @@ def edit_collection(collection_id):
     collection = Collection.query.get_or_404(collection_id)
     
     if request.method == 'POST':
-        from sqlalchemy.exc import IntegrityError
-        
-        collection.name = request.form.get('name')
-        new_slug = (request.form.get('slug') or '').strip()
-        if new_slug:
-            existing = Collection.query.filter_by(slug=new_slug).first()
-            if existing and existing.id != collection.id:
-                flash(f'URL slug "{new_slug}" is already used by another group order. Choose a different slug.', 'error')
-                return redirect(url_for('admin.edit_collection', collection_id=collection.id))
-            collection.slug = new_slug
-        collection.description = request.form.get('description')
-        collection.is_active = request.form.get('is_active') == 'on'
-        collection.pickup_address = request.form.get('pickup_address')
-        collection.pickup_instructions = request.form.get('pickup_instructions')
-        collection.shipping_enabled = request.form.get('shipping_enabled') == 'on'
-        collection.tax_rate = float(request.form.get('tax_rate') or 0)
-        
-        # Organizer's choices - restrict what team can order
-        collection.restrict_options = request.form.get('restrict_options') == 'on'
-        collection.allow_custom_upload = True  # Team can always upload their own designs
-        allowed_colors = request.form.getlist('allowed_colors')
-        collection.allowed_colors = json.dumps(allowed_colors) if allowed_colors else None
-        allowed_placements = request.form.getlist('allowed_placements')
-        collection.allowed_placements = json.dumps(allowed_placements) if allowed_placements else None
-        allowed_design_ids = list(request.form.getlist('allowed_designs'))
-        upload_count = 0
-        # Process uploaded design files
-        for f in request.files.getlist('design_uploads'):
-            if f and f.filename:
-                design = _save_uploaded_design(f, current_user.id)
-                if design:
-                    allowed_design_ids.append(str(design.id))
-                    upload_count += 1
-        collection.allowed_design_ids = json.dumps([int(x) for x in allowed_design_ids]) if allowed_design_ids else None
-        collection.back_design_font = request.form.get('back_design_font') or None
-        
-        # Update password if provided
-        password = request.form.get('password')
-        if password:
-            collection.set_password(password)
-        elif request.form.get('remove_password') == 'on':
-            collection.is_password_protected = False
-            collection.password_hash = None
-        
-        # Update deadline
-        deadline_str = request.form.get('order_deadline')
-        if deadline_str:
-            collection.order_deadline = datetime.fromisoformat(deadline_str)
-        else:
-            collection.order_deadline = None
-        
-        # Update products
-        collection.products = []
-        product_ids = request.form.getlist('products')
-        for product_id in product_ids:
-            product = Product.query.get(int(product_id))
-            if product:
-                collection.products.append(product)
-        
+        from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+
         try:
+            name = (request.form.get('name') or '').strip()
+            if not name:
+                flash('Please enter a name for the group order.', 'error')
+                return redirect(url_for('admin.edit_collection', collection_id=collection.id))
+            collection.name = name
+
+            new_slug = (request.form.get('slug') or '').strip()
+            if new_slug:
+                existing = Collection.query.filter_by(slug=new_slug).first()
+                if existing and existing.id != collection.id:
+                    flash(f'URL slug "{new_slug}" is already used by another group order.', 'error')
+                    return redirect(url_for('admin.edit_collection', collection_id=collection.id))
+                collection.slug = new_slug
+
+            collection.description = request.form.get('description')
+            collection.is_active = request.form.get('is_active') == 'on'
+            collection.pickup_address = request.form.get('pickup_address')
+            collection.pickup_instructions = request.form.get('pickup_instructions')
+            collection.shipping_enabled = request.form.get('shipping_enabled') == 'on'
+            try:
+                collection.tax_rate = float(request.form.get('tax_rate') or 0)
+            except (TypeError, ValueError):
+                collection.tax_rate = 0.0
+
+            collection.restrict_options = request.form.get('restrict_options') == 'on'
+            collection.allow_custom_upload = True
+            allowed_colors = request.form.getlist('allowed_colors')
+            collection.allowed_colors = json.dumps(allowed_colors) if allowed_colors else None
+            allowed_placements = request.form.getlist('allowed_placements')
+            collection.allowed_placements = json.dumps(allowed_placements) if allowed_placements else None
+
+            allowed_design_ids = []
+            for raw in request.form.getlist('allowed_designs'):
+                try:
+                    allowed_design_ids.append(int(raw))
+                except (TypeError, ValueError):
+                    continue
+            upload_count = 0
+            for f in request.files.getlist('design_uploads'):
+                if f and f.filename:
+                    try:
+                        design = _save_uploaded_design(f, current_user.id)
+                    except Exception as e:
+                        current_app.logger.exception('Collection design upload failed: %s', e)
+                        design = None
+                    if design:
+                        allowed_design_ids.append(design.id)
+                        upload_count += 1
+            collection.allowed_design_ids = json.dumps(allowed_design_ids) if allowed_design_ids else None
+            collection.back_design_font = request.form.get('back_design_font') or None
+
+            # Uniform back-design style controls
+            collection.back_design_text_color = request.form.get('back_design_text_color') or None
+            collection.back_design_outline = request.form.get('back_design_outline') != 'off'
+            collection.back_design_outline_color = request.form.get('back_design_outline_color') or None
+            collection.lock_back_design_style = request.form.get('lock_back_design_style') == 'on'
+
+            password = request.form.get('password')
+            if password:
+                collection.set_password(password)
+            elif request.form.get('remove_password') == 'on':
+                collection.is_password_protected = False
+                collection.password_hash = None
+
+            deadline_str = (request.form.get('order_deadline') or '').strip()
+            if deadline_str:
+                try:
+                    collection.order_deadline = datetime.fromisoformat(deadline_str)
+                except ValueError:
+                    flash('The order deadline date is invalid. Please pick a valid date.', 'error')
+                    return redirect(url_for('admin.edit_collection', collection_id=collection.id))
+            else:
+                collection.order_deadline = None
+
+            collection.products = []
+            for product_id in request.form.getlist('products'):
+                try:
+                    pid = int(product_id)
+                except (TypeError, ValueError):
+                    continue
+                product = Product.query.get(pid)
+                if product:
+                    collection.products.append(product)
+
             db.session.commit()
             msg = 'Group order updated successfully'
             if upload_count:
                 msg += f' with {upload_count} new design(s) uploaded'
             flash(msg + '.', 'success')
             return redirect(url_for('admin.collections'))
-        except IntegrityError:
+
+        except IntegrityError as e:
             db.session.rollback()
+            current_app.logger.warning('Admin edit_collection IntegrityError: %s', e)
             flash('A group order with that URL slug already exists. Choose a different slug.', 'error')
+            return redirect(url_for('admin.edit_collection', collection_id=collection.id))
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            current_app.logger.exception('Admin edit_collection database error: %s', e)
+            flash('Could not save the group order due to a server issue. Please try again.', 'error')
+            return redirect(url_for('admin.edit_collection', collection_id=collection.id))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.exception('Admin edit_collection unexpected error: %s', e)
+            flash('Something went wrong while saving the group order. Please try again.', 'error')
             return redirect(url_for('admin.edit_collection', collection_id=collection.id))
     
     products = Product.query.filter_by(is_active=True).order_by(Product.style_number).all()
