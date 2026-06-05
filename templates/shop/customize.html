@@ -223,8 +223,11 @@
     left: 50%;
     transform: translate(-50%, -50%);
     cursor: grab;
+    pointer-events: auto;  /* override base .design-layer pointer-events:none */
+    user-select: none;
+    -webkit-user-select: none;
 }
-.design-layer-back.dragging { cursor: grabbing; }
+.design-layer-back.dragging { cursor: grabbing; transition: none !important; }
 .preview-canvas.showing-back #designLayer { display: none !important; visibility: hidden !important; }
 .back-design-text-container {
     display: flex;
