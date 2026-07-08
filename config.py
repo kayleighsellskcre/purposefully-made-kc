@@ -42,7 +42,16 @@ class Config:
         'pool_size': 2,
         'max_overflow': 2,
         'pool_timeout': 10,
-        'connect_args': {'connect_timeout': 5},  # TCP connect timeout in seconds
+        'connect_args': {
+            'connect_timeout': 5,        # TCP handshake timeout (seconds)
+            # TCP keepalives: detect dead connections ~11s after they go silent
+            'keepalives': 1,
+            'keepalives_idle': 5,
+            'keepalives_interval': 2,
+            'keepalives_count': 3,
+            # Kill any query that runs longer than 8 seconds at the PostgreSQL level
+            'options': '-c statement_timeout=8000',
+        },
     }
     # Flask-Limiter: force in-memory storage so it never tries to connect to Redis.
     RATELIMIT_STORAGE_URI = "memory://"
