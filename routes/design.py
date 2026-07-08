@@ -124,7 +124,17 @@ def upload():
             try:
                 from models import Design, db
                 from datetime import datetime
-                title = (file.filename or 'Design').rsplit('.', 1)[0].replace('_', ' ').title()[:50]
+                import re as _re
+                raw_stem = (file.filename or '').rsplit('.', 1)[0]
+                # If the filename looks like a UUID or is just numbers/hex, use a friendly default
+                _uuid_like = _re.fullmatch(r'[0-9a-fA-F\-]{20,}', raw_stem)
+                _generic = _re.fullmatch(r'[Ii][Mm][Gg][\s_\-]?\d+', raw_stem)
+                if _uuid_like or _generic or not raw_stem:
+                    from models import Design as _D
+                    count = _D.query.filter_by(uploaded_by_user_id=current_user.id).count()
+                    title = f'My Design {count + 1}'
+                else:
+                    title = raw_stem.replace('_', ' ').replace('-', ' ').title()[:50]
                 design = Design(
                     filename=unique_name,
                     original_filename=file.filename,

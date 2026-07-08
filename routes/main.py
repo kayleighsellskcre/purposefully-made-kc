@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, session, current_app, send_file, send_from_directory, request, flash, redirect, url_for
 from models import Product, Collection
+from datetime import datetime, timezone
 import os
 
 main_bp = Blueprint('main', __name__)
@@ -34,7 +35,11 @@ def index():
     try:
         session.pop('collection_id', None)
         featured_products = Product.query.filter_by(is_active=True).order_by(Product.style_number).limit(8).all()
-        active_collections = Collection.query.filter_by(is_active=True).order_by(Collection.created_at.desc()).limit(6).all()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        active_collections = Collection.query.filter(
+            Collection.is_active == True,
+            (Collection.order_deadline == None) | (Collection.order_deadline >= now)
+        ).order_by(Collection.created_at.desc()).limit(6).all()
         return render_template('index.html', 
                              featured_products=featured_products,
                              active_collections=active_collections)
@@ -60,8 +65,33 @@ def contact():
         email = request.form.get('email', '').strip()
         subject = request.form.get('subject', '').strip()
         message = request.form.get('message', '').strip()
-        import sys
-        print(f"Contact form submission — Name: {name}, Email: {email}, Subject: {subject}", file=sys.stderr)
+
+        # Send email to admin if mail is configured
+        try:
+            from flask_mail import Message as MailMessage
+            mail = current_app.extensions.get('mail')
+            admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').strip()
+            if mail and current_app.config.get('MAIL_SERVER') and current_app.config.get('MAIL_USERNAME'):
+                subject_line = f"[PMKC Contact] {subject or 'New message'} — from {name}"
+                body = (
+                    f"New contact form submission from purposefullymadekc.com\n\n"
+                    f"Name:    {name}\n"
+                    f"Email:   {email}\n"
+                    f"Subject: {subject}\n\n"
+                    f"Message:\n{message}\n\n"
+                    f"---\nReply directly to this email to respond to {name}."
+                )
+                msg = MailMessage(
+                    subject=subject_line,
+                    recipients=[admin_email],
+                    reply_to=email or admin_email,
+                    body=body,
+                )
+                mail.send(msg)
+        except Exception as e:
+            import sys
+            print(f"Contact email error: {e}", file=sys.stderr)
+
         flash('Thank you for reaching out! We will get back to you within 1 to 2 business days.', 'success')
         return redirect(url_for('main.contact'))
     return render_template('contact.html')

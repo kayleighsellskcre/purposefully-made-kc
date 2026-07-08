@@ -594,7 +594,7 @@ a.btn-customize:hover {
 
 .features-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 3rem;
 }
 
@@ -868,6 +868,33 @@ a.btn-customize:hover {
     letter-spacing: 0.02em;
 }
 
+/* Social icons */
+.footer-social {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.footer-social-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid rgba(127,108,80,0.3);
+    color: rgba(44, 32, 22, 0.6);
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+    text-decoration: none;
+}
+
+.footer-social-link:hover {
+    color: var(--accent-color, #7f6c50);
+    border-color: var(--accent-color, #7f6c50);
+    background: rgba(127,108,80,0.08);
+}
+
 /* Thin divider */
 .footer-rule {
     height: 1px;
@@ -1024,9 +1051,10 @@ textarea.form-control {
     }
     
     .features-grid {
+        grid-template-columns: repeat(2, 1fr);
         gap: 2rem;
     }
-    
+
     h1 { font-size: 2.5rem; }
     h2 { font-size: 2rem; }
     h3 { font-size: 1.5rem; }
