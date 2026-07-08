@@ -37,11 +37,7 @@ def index():
             query = query.filter(Product.sleeve_length == sleeve_length)
         
         products = query.order_by(Product.style_number).all()
-        
-        # Log for debugging
-        import sys
-        print(f"Shop query returned {len(products)} products", file=sys.stderr)
-        
+
         if color:
             from models import ProductColorVariant
             product_ids = db.session.query(ProductColorVariant.product_id).filter(
@@ -77,6 +73,9 @@ def index():
         from models import ProductColorVariant
         colors = db.session.query(ProductColorVariant.color_name).distinct().order_by(ProductColorVariant.color_name).all()
         colors = [c[0] for c in colors if c[0]]
+        # Deduplicate case-insensitively (e.g. "DTG Black" and "Dtg Black" → one entry)
+        _seen = set()
+        colors = [c for c in colors if not (c.lower() in _seen or _seen.add(c.lower()))]
         
         design_id = request.args.get('design_id', type=int)
 
