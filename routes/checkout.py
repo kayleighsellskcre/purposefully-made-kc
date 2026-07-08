@@ -200,6 +200,10 @@ def complete():
     try:
         from sqlalchemy import text as _text
         db.session.execute(_text('SELECT 1'))
+        # Set lock_timeout for this transaction — if any INSERT waits on a lock
+        # for more than 5s, Postgres itself raises an error (not a hang).
+        db.session.execute(_text('SET LOCAL lock_timeout = 5000'))
+        db.session.execute(_text('SET LOCAL statement_timeout = 8000'))
         _t['db_ping'] = _time.time()
     except _DbTimeout as _te:
         _signal.alarm(0)

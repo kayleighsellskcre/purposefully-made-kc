@@ -50,7 +50,7 @@ class Config:
             'keepalives_interval': 2,
             'keepalives_count': 3,
             # Kill any query that runs longer than 8 seconds at the PostgreSQL level
-            'options': '-c statement_timeout=8000',
+            'options': '-c statement_timeout=8000 -c lock_timeout=5000',
         },
     }
     # Flask-Limiter: force in-memory storage so it never tries to connect to Redis.
