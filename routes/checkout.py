@@ -171,23 +171,35 @@ def create_payment_intent():
         return jsonify({'error': str(e)}), 400
 
 
+@checkout_bp.route('/ping', methods=['POST'])
+def ping():
+    """Diagnostic endpoint — returns immediately with no DB access"""
+    import time
+    return jsonify({'ok': True, 'ts': time.time()})
+
+
 @checkout_bp.route('/complete', methods=['POST'])
 def complete():
     """Complete order after payment"""
     from sqlalchemy.exc import SQLAlchemyError
+    import time as _time
+    _t = {'start': _time.time()}
 
     try:
         data = request.get_json(silent=True) or {}
+        _t['json'] = _time.time()
 
         cart = get_cart()
+        _t['cart'] = _time.time()
         if not cart:
-            return jsonify({'error': 'Cart is empty'}), 400
+            return jsonify({'error': 'Cart is empty', 'timing': _t}), 400
 
         payment_method = data.get('payment_method')
         payment_id = data.get('payment_id')
         shipping_method = data.get('shipping_method', 'pickup')
 
         email = data.get('email') or (current_user.email if current_user.is_authenticated else None)
+        _t['user'] = _time.time()
         first_name = data.get('first_name')
         last_name = data.get('last_name')
         phone = data.get('phone')
@@ -196,7 +208,7 @@ def complete():
         totals = calculate_totals(cart, shipping_method)
     except Exception as pre_err:
         current_app.logger.exception('checkout.complete pre-processing error: %s', pre_err)
-        return jsonify({'error': 'Pre-processing error: ' + str(pre_err)}), 500
+        return jsonify({'error': 'Pre-processing error: ' + str(pre_err), 'timing': _t}), 500
 
     try:
         # Cash orders are not yet paid — mark pending until collected
