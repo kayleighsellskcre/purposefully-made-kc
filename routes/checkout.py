@@ -176,25 +176,31 @@ def complete():
     """Complete order after payment"""
     from sqlalchemy.exc import SQLAlchemyError
 
-    data = request.get_json(silent=True) or {}
+    try:
+        data = request.get_json(silent=True) or {}
 
-    cart = get_cart()
-    if not cart:
-        return jsonify({'error': 'Cart is empty'}), 400
+        cart = get_cart()
+        if not cart:
+            return jsonify({'error': 'Cart is empty'}), 400
 
-    payment_method = data.get('payment_method')
-    payment_id = data.get('payment_id')
-    shipping_method = data.get('shipping_method', 'pickup')
+        payment_method = data.get('payment_method')
+        payment_id = data.get('payment_id')
+        shipping_method = data.get('shipping_method', 'pickup')
 
-    email = data.get('email') or (current_user.email if current_user.is_authenticated else None)
-    first_name = data.get('first_name')
-    last_name = data.get('last_name')
-    phone = data.get('phone')
-    shipping_info = data.get('shipping_info') or {}
+        email = data.get('email') or (current_user.email if current_user.is_authenticated else None)
+        first_name = data.get('first_name')
+        last_name = data.get('last_name')
+        phone = data.get('phone')
+        shipping_info = data.get('shipping_info') or {}
 
-    totals = calculate_totals(cart, shipping_method)
+        totals = calculate_totals(cart, shipping_method)
+    except Exception as pre_err:
+        current_app.logger.exception('checkout.complete pre-processing error: %s', pre_err)
+        return jsonify({'error': 'Pre-processing error: ' + str(pre_err)}), 500
 
     try:
+        # Cash orders are not yet paid — mark pending until collected
+        is_cash = (payment_method == 'cash')
         order = Order(
             user_id=current_user.id if current_user.is_authenticated else None,
             email=email,
@@ -207,11 +213,11 @@ def complete():
             tax=totals['tax'],
             total=totals['total'],
             payment_method=payment_method,
-            payment_status='paid',
+            payment_status='pending' if is_cash else 'paid',
             payment_intent_id=payment_id if payment_method == 'stripe' and payment_id else None,
             paypal_order_id=payment_id if payment_method == 'paypal' and payment_id else None,
-            paid_at=datetime.utcnow(),
-            status='paid',
+            paid_at=None if is_cash else datetime.utcnow(),
+            status='new' if is_cash else 'paid',
         )
 
         # collection_id is optional — skip if the column isn't in the DB yet
