@@ -18,6 +18,12 @@ def send_order_confirmation_email(order):
     if not mail or not current_app.config.get('MAIL_SERVER') or not current_app.config.get('MAIL_USERNAME'):
         return False
 
+    # Set a global socket timeout so SMTP never hangs the request indefinitely.
+    # We reset it after sending.
+    import socket as _socket
+    _prev_timeout = _socket.getdefaulttimeout()
+    _socket.setdefaulttimeout(10)  # 10s max for any SMTP connection/send
+
     try:
         # ── Build plain-text fallback ──────────────────────────────────────
         items_text = '\n'.join(
@@ -92,6 +98,8 @@ def send_order_confirmation_email(order):
         import sys
         print(f"Order confirmation email error: {e}", file=sys.stderr)
         return False
+    finally:
+        _socket.setdefaulttimeout(_prev_timeout)
 
 def get_cart():
     """Get cart from session"""
@@ -371,8 +379,7 @@ def complete():
         current_app.logger.exception('checkout.complete unexpected error: %s', e)
         return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
 
-    email_sent = False  # TEMP: skip email to isolate hang
-    # email_sent = send_order_confirmation_email(order)
+    email_sent = send_order_confirmation_email(order)
     session['confirmation_email_sent'] = email_sent
     session['confirmation_email_sent_for'] = order.order_number
     session['cart'] = []
