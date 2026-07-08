@@ -371,7 +371,8 @@ def complete():
         current_app.logger.exception('checkout.complete unexpected error: %s', e)
         return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
 
-    email_sent = send_order_confirmation_email(order)
+    email_sent = False  # TEMP: skip email to isolate hang
+    # email_sent = send_order_confirmation_email(order)
     session['confirmation_email_sent'] = email_sent
     session['confirmation_email_sent_for'] = order.order_number
     session['cart'] = []
