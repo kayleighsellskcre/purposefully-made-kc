@@ -402,8 +402,15 @@ def create_app(config_class=Config):
     
     @app.errorhandler(500)
     def internal_error(error):
-        db.session.rollback()
-        return render_template('errors/500.html'), 500
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        try:
+            return render_template('errors/500.html'), 500
+        except Exception as tmpl_err:
+            from flask import jsonify as _jsonify
+            return _jsonify({'error': 'Internal server error', 'detail': str(error), 'template_error': str(tmpl_err)}), 500
     
     # CLI commands
     @app.cli.command()
