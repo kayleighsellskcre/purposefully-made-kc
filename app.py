@@ -285,6 +285,12 @@ def create_app(config_class=Config):
         csrf.exempt(_fav_bp)
     except Exception:
         pass
+    # Cart routes are JSON API calls from the browser — CSRF token not available.
+    from routes.cart import cart_bp as _cart_bp
+    try:
+        csrf.exempt(_cart_bp)
+    except Exception:
+        pass
 
     # ── Security headers (added to every response) ───────────────────────────
     @app.after_request
