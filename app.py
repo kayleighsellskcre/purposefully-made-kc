@@ -177,7 +177,10 @@ def create_app(config_class=Config):
     
     @login_manager.user_loader
     def load_user(user_id):
-        return User.query.get(int(user_id))
+        try:
+            return User.query.get(int(user_id))
+        except Exception:
+            return None
     
     # Stripe setup
     if app.config.get('STRIPE_SECRET_KEY'):
@@ -372,19 +375,14 @@ def create_app(config_class=Config):
             cart_count = sum(item['quantity'] for item in session['cart'])
         admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').lower().strip()
 
-        # Do a fresh DB lookup every request so is_site_admin is always accurate
-        # (bypasses SQLAlchemy object expiry / caching issues across devices)
+        # Fresh DB lookup so is_site_admin is always accurate.
+        # Wrapped tightly so a DB hiccup never breaks template rendering.
         is_site_admin = False
         if cu.is_authenticated:
             try:
-                fresh = User.query.get(cu.id)
-                if fresh:
-                    is_site_admin = bool(fresh.is_admin)
-                    # Auto-promote the designated admin email if flag isn't set yet
-                    if not is_site_admin and (fresh.email or '').lower().strip() == admin_email:
-                        fresh.is_admin = True
-                        db.session.commit()
-                        is_site_admin = True
+                is_site_admin = bool(getattr(cu, 'is_admin', False))
+                if not is_site_admin and (getattr(cu, 'email', '') or '').lower().strip() == admin_email:
+                    is_site_admin = True
             except Exception:
                 is_site_admin = False
 

@@ -32,6 +32,19 @@ class Config:
         _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
     SQLALCHEMY_DATABASE_URI = _db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    # Connection pool tuning — Railway PostgreSQL has limited connections.
+    # 4 Gunicorn workers × pool_size=2 = 8 connections max (well under Railway's limit).
+    # pool_pre_ping validates the connection before use (fixes stale connection 500s).
+    # pool_recycle prevents connections from going stale after Railway's idle timeout.
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,
+        'pool_recycle': 280,
+        'pool_size': 2,
+        'max_overflow': 2,
+        'pool_timeout': 10,
+    }
+    # Flask-Limiter: force in-memory storage so it never tries to connect to Redis.
+    RATELIMIT_STORAGE_URI = "memory://"
     
     # Upload settings
     UPLOAD_FOLDER = os.path.join(basedir, 'static', 'uploads')

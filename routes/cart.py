@@ -109,7 +109,8 @@ def add():
     quantity = int(data.get('quantity', 1))
     design_id = data.get('design_id')
     placement = data.get('placement')
-    unit_price_override = data.get('unit_price', type=float)
+    _up = data.get('unit_price')
+    unit_price_override = float(_up) if _up is not None else None
     print_specs = json.loads(data.get('print_specs', '{}')) if isinstance(data.get('print_specs'), str) else data.get('print_specs', {})
     
     # Validate
