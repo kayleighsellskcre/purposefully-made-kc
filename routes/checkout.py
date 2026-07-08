@@ -185,6 +185,14 @@ def complete():
     import time as _time
     _t = {'start': _time.time()}
 
+    # Quick DB connectivity check — fail fast with a readable error instead of a 30s hang
+    try:
+        from sqlalchemy import text as _text
+        db.session.execute(_text('SELECT 1'))
+        _t['db_ping'] = _time.time()
+    except Exception as db_err:
+        return jsonify({'error': 'DB unavailable', 'detail': str(db_err), 'timing': _t}), 503
+
     try:
         data = request.get_json(silent=True) or {}
         _t['json'] = _time.time()

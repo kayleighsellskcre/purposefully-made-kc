@@ -42,6 +42,7 @@ class Config:
         'pool_size': 2,
         'max_overflow': 2,
         'pool_timeout': 10,
+        'connect_args': {'connect_timeout': 5},  # TCP connect timeout in seconds
     }
     # Flask-Limiter: force in-memory storage so it never tries to connect to Redis.
     RATELIMIT_STORAGE_URI = "memory://"
