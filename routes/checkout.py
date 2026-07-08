@@ -282,15 +282,19 @@ def complete():
         db.session.commit()
 
     except SQLAlchemyError as e:
-        db.session.rollback()
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
         current_app.logger.exception('checkout.complete DB error: %s', e)
-        return jsonify({'error': 'Your order could not be saved due to a server issue. '
-                                 'Please try again or contact us at purposefullymadekc@gmail.com.'}), 500
+        return jsonify({'error': 'DB error: ' + str(e)}), 500
     except Exception as e:
-        db.session.rollback()
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
         current_app.logger.exception('checkout.complete unexpected error: %s', e)
-        return jsonify({'error': 'Something went wrong while placing your order. '
-                                 'Please try again or contact us.'}), 500
+        return jsonify({'error': 'Unexpected error: ' + str(e)}), 500
 
     email_sent = send_order_confirmation_email(order)
     session['confirmation_email_sent'] = email_sent
