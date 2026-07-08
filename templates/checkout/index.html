@@ -327,14 +327,14 @@ async function handleStripePayment() {
 async function handleCashPayment() {
     const button = document.getElementById('submit-payment');
     button.disabled = true;
-    button.textContent = 'Creating order...';
-    
+    button.textContent = 'CREATING ORDER...';
+
     try {
         await completeOrder(null, 'cash');
     } catch (error) {
-        alert('Order failed: ' + error.message);
         button.disabled = false;
         button.innerHTML = 'Complete Order - $<span id="total-amount">{{ "%.2f"|format(totals.total) }}</span>';
+        alert('Order failed: ' + error.message);
     }
 }
 
@@ -364,12 +364,24 @@ async function completeOrder(paymentId, paymentMethodOverride) {
         })
     });
     
-    const data = await response.json();
-    
+    let data;
+    try {
+        data = await response.json();
+    } catch (_) {
+        throw new Error('Server error — please try again or contact us.');
+    }
+
     if (data.success) {
+        // Clear the cart badge immediately so it doesn't linger while redirecting
+        const cartBadge = document.querySelector('.cart-count, .cart-badge, [data-cart-count]');
+        if (cartBadge) cartBadge.textContent = '0';
+
+        const button = document.getElementById('submit-payment');
+        if (button) button.textContent = 'Order placed! Redirecting…';
+
         window.location.href = data.redirect_url;
     } else {
-        alert('Order failed: ' + data.error);
+        throw new Error(data.error || 'Something went wrong.');
     }
 }
 </script>
