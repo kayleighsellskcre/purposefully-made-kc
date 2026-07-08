@@ -279,10 +279,28 @@ def complete():
             order.shipping_zip = shipping_info.get('zip')
             order.shipping_country = shipping_info.get('country', 'USA')
 
-        db.session.add(order)
-        db.session.flush()
+        # Wrap the INSERT + product lookups in a hard 20s alarm
+        import signal as _sig2
+        _sig2.signal(_sig2.SIGALRM, _alarm_handler)
+        _sig2.alarm(20)
+        try:
+            db.session.add(order)
+            _t['add'] = _time.time()
+            db.session.flush()
+            _t['flush'] = _time.time()
+        except _DbTimeout as _te2:
+            _sig2.alarm(0)
+            return jsonify({'error': 'DB flush timed out (20s)', 'detail': str(_te2), 'timing': _t}), 503
+        except Exception as _fe:
+            _sig2.alarm(0)
+            raise  # let the outer SQLAlchemyError handler catch it
+        finally:
+            _sig2.alarm(0)
 
-        for cart_item in cart:
+        _sig2.signal(_sig2.SIGALRM, _alarm_handler)
+        _sig2.alarm(20)
+        try:
+          for cart_item in cart:
             try:
                 product = Product.query.get(cart_item['product_id'])
                 if not product:
@@ -323,7 +341,16 @@ def complete():
             except Exception as item_err:
                 current_app.logger.exception('Error building order item: %s', item_err)
 
-        db.session.commit()
+          _t['items_built'] = _time.time()
+          db.session.commit()
+          _t['commit'] = _time.time()
+        except _DbTimeout as _te3:
+            _sig2.alarm(0)
+            try: db.session.rollback()
+            except Exception: pass
+            return jsonify({'error': 'DB items/commit timed out (20s)', 'detail': str(_te3), 'timing': _t}), 503
+        finally:
+            _sig2.alarm(0)
 
     except SQLAlchemyError as e:
         try:
