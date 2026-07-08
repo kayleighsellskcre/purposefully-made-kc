@@ -303,8 +303,27 @@ def create_app(config_class=Config):
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
         # Don't leak the full URL in the Referer header when leaving the site
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-        # Restrict resource loading to same origin (images/fonts from known CDNs allowed)
+        # Disable browser features that this site doesn't need
         response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+        # Content-Security-Policy: restrict what scripts/styles/frames can load.
+        # Protects clients from XSS and data-injection attacks.
+        # 'unsafe-inline' is required for our inline <script> and <style> tags;
+        # remove it in the future by migrating to nonces.
+        csp = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
+                "js.stripe.com www.paypal.com www.paypalobjects.com "
+                "cdnjs.cloudflare.com cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' "
+                "fonts.googleapis.com cdnjs.cloudflare.com cdn.jsdelivr.net; "
+            "font-src 'self' fonts.gstatic.com data:; "
+            "img-src 'self' data: blob: https:; "
+            "connect-src 'self' api.stripe.com api.ssactivewear.com; "
+            "frame-src js.stripe.com www.paypal.com; "
+            "object-src 'none'; "
+            "base-uri 'self';"
+        )
+        response.headers['Content-Security-Policy'] = csp
         return response
     
     # Initialize background scheduler and run startup seed (optional - won't crash app if fails)
@@ -392,9 +411,10 @@ def create_app(config_class=Config):
             except Exception:
                 is_site_admin = False
 
+        from datetime import datetime as _dt
         return {
             'cart_count': cart_count,
-            'current_year': 2026,
+            'current_year': _dt.now().year,
             'admin_email': admin_email,
             'is_site_admin': is_site_admin,
         }

@@ -179,82 +179,41 @@ def create_payment_intent():
         return jsonify({'error': str(e)}), 400
 
 
-@checkout_bp.route('/ping', methods=['POST'])
-def ping():
-    """Diagnostic endpoint — returns immediately with no DB access"""
-    import time
-    return jsonify({'ok': True, 'ts': time.time()})
-
-
 @checkout_bp.route('/complete', methods=['POST'])
 def complete():
     """Complete order after payment"""
     from sqlalchemy.exc import SQLAlchemyError
-    import time as _time
-    _t = {'start': _time.time()}
-
-    # DB preflight with SIGALRM-based timeout (Linux/Gunicorn workers = actual OS processes).
-    # This ALWAYS fires within 8s regardless of DB driver or network behavior.
-    import signal as _signal
-
-    class _DbTimeout(Exception):
-        pass
-
-    def _alarm_handler(signum, frame):
-        raise _DbTimeout("DB query timed out after 8s")
-
-    _old_handler = _signal.signal(_signal.SIGALRM, _alarm_handler)
-    _signal.alarm(8)
-    try:
-        from sqlalchemy import text as _text
-        db.session.execute(_text('SELECT 1'))
-        # Set lock_timeout for this transaction — if any INSERT waits on a lock
-        # for more than 5s, Postgres itself raises an error (not a hang).
-        db.session.execute(_text('SET LOCAL lock_timeout = 5000'))
-        db.session.execute(_text('SET LOCAL statement_timeout = 8000'))
-        _t['db_ping'] = _time.time()
-    except _DbTimeout as _te:
-        _signal.alarm(0)
-        _signal.signal(_signal.SIGALRM, _old_handler)
-        try:
-            db.session.rollback()
-        except Exception:
-            pass
-        return jsonify({'error': 'DB timeout (8s alarm)', 'detail': str(_te), 'timing': _t}), 503
-    except Exception as db_err:
-        _signal.alarm(0)
-        _signal.signal(_signal.SIGALRM, _old_handler)
-        return jsonify({'error': 'DB unavailable', 'detail': str(db_err), 'timing': _t}), 503
-    finally:
-        _signal.alarm(0)
-        _signal.signal(_signal.SIGALRM, _old_handler)
+    from sqlalchemy import text as _text
 
     try:
         data = request.get_json(silent=True) or {}
-        _t['json'] = _time.time()
-
         cart = get_cart()
-        _t['cart'] = _time.time()
         if not cart:
-            return jsonify({'error': 'Cart is empty', 'timing': _t}), 400
+            return jsonify({'error': 'Cart is empty'}), 400
 
         payment_method = data.get('payment_method')
         payment_id = data.get('payment_id')
         shipping_method = data.get('shipping_method', 'pickup')
-
         email = data.get('email') or (current_user.email if current_user.is_authenticated else None)
-        _t['user'] = _time.time()
         first_name = data.get('first_name')
         last_name = data.get('last_name')
         phone = data.get('phone')
         shipping_info = data.get('shipping_info') or {}
-
         totals = calculate_totals(cart, shipping_method)
     except Exception as pre_err:
         current_app.logger.exception('checkout.complete pre-processing error: %s', pre_err)
-        return jsonify({'error': 'Pre-processing error: ' + str(pre_err), 'timing': _t}), 500
+        return jsonify({'error': 'Pre-processing error: ' + str(pre_err)}), 500
 
     try:
+        # Apply per-transaction DB timeouts so a lock wait never hangs the request.
+        # lock_timeout: fail fast if waiting on a table/row lock (not a slow query).
+        # statement_timeout: fail fast if any single SQL statement runs too long.
+        try:
+            db.session.execute(_text('SET LOCAL lock_timeout = 5000'))
+            db.session.execute(_text('SET LOCAL statement_timeout = 8000'))
+        except Exception:
+            pass  # Non-critical; continue even if SET LOCAL isn't supported
+
         # Cash orders are not yet paid — mark pending until collected
         is_cash = (payment_method == 'cash')
         order = Order(
@@ -291,28 +250,10 @@ def complete():
             order.shipping_zip = shipping_info.get('zip')
             order.shipping_country = shipping_info.get('country', 'USA')
 
-        # Wrap the INSERT + product lookups in a hard 20s alarm
-        import signal as _sig2
-        _sig2.signal(_sig2.SIGALRM, _alarm_handler)
-        _sig2.alarm(20)
-        try:
-            db.session.add(order)
-            _t['add'] = _time.time()
-            db.session.flush()
-            _t['flush'] = _time.time()
-        except _DbTimeout as _te2:
-            _sig2.alarm(0)
-            return jsonify({'error': 'DB flush timed out (20s)', 'detail': str(_te2), 'timing': _t}), 503
-        except Exception as _fe:
-            _sig2.alarm(0)
-            raise  # let the outer SQLAlchemyError handler catch it
-        finally:
-            _sig2.alarm(0)
+        db.session.add(order)
+        db.session.flush()  # Assigns order.id without committing
 
-        _sig2.signal(_sig2.SIGALRM, _alarm_handler)
-        _sig2.alarm(20)
-        try:
-          for cart_item in cart:
+        for cart_item in cart:
             try:
                 product = Product.query.get(cart_item['product_id'])
                 if not product:
@@ -344,7 +285,6 @@ def complete():
                     rotation=cart_item.get('rotation', 0),
                     proof_image=cart_item.get('proof_image'),
                 )
-                # back_design_meta optional — may not exist in older DB schemas
                 try:
                     order_item.back_design_meta = back_meta_json
                 except Exception:
@@ -353,16 +293,7 @@ def complete():
             except Exception as item_err:
                 current_app.logger.exception('Error building order item: %s', item_err)
 
-          _t['items_built'] = _time.time()
-          db.session.commit()
-          _t['commit'] = _time.time()
-        except _DbTimeout as _te3:
-            _sig2.alarm(0)
-            try: db.session.rollback()
-            except Exception: pass
-            return jsonify({'error': 'DB items/commit timed out (20s)', 'detail': str(_te3), 'timing': _t}), 503
-        finally:
-            _sig2.alarm(0)
+        db.session.commit()
 
     except SQLAlchemyError as e:
         try:
