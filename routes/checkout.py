@@ -185,13 +185,37 @@ def complete():
     import time as _time
     _t = {'start': _time.time()}
 
-    # Quick DB connectivity check — fail fast with a readable error instead of a 30s hang
+    # DB preflight with SIGALRM-based timeout (Linux/Gunicorn workers = actual OS processes).
+    # This ALWAYS fires within 8s regardless of DB driver or network behavior.
+    import signal as _signal
+
+    class _DbTimeout(Exception):
+        pass
+
+    def _alarm_handler(signum, frame):
+        raise _DbTimeout("DB query timed out after 8s")
+
+    _old_handler = _signal.signal(_signal.SIGALRM, _alarm_handler)
+    _signal.alarm(8)
     try:
         from sqlalchemy import text as _text
         db.session.execute(_text('SELECT 1'))
         _t['db_ping'] = _time.time()
+    except _DbTimeout as _te:
+        _signal.alarm(0)
+        _signal.signal(_signal.SIGALRM, _old_handler)
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return jsonify({'error': 'DB timeout (8s alarm)', 'detail': str(_te), 'timing': _t}), 503
     except Exception as db_err:
+        _signal.alarm(0)
+        _signal.signal(_signal.SIGALRM, _old_handler)
         return jsonify({'error': 'DB unavailable', 'detail': str(db_err), 'timing': _t}), 503
+    finally:
+        _signal.alarm(0)
+        _signal.signal(_signal.SIGALRM, _old_handler)
 
     try:
         data = request.get_json(silent=True) or {}
