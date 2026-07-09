@@ -195,7 +195,7 @@
             <p><strong id="libDesignName"></strong> will be permanently deleted and cannot be recovered.</p>
             <div class="lib-actions">
                 <button type="button" class="btn btn-outline btn-sm" onclick="closeLibModal()">Cancel</button>
-                <button type="button" id="libConfirmBtn" class="btn btn-sm" style="background:#dc3545;color:#fff;border-color:#dc3545;">
+                <button type="button" id="libConfirmBtn" class="btn btn-sm" style="background:var(--terra-cotta);color:#fff;border-color:var(--terra-cotta);">
                     Yes, Delete
                 </button>
             </div>
@@ -258,5 +258,4 @@
             }
             showLibToast(data.message || 'Design deleted');
         })
-        .catch(function() { showLibToast('Something went wrong. Please try again.'); })
-     
+        .catch(function() { showLibToast('Something went wrong. Please 

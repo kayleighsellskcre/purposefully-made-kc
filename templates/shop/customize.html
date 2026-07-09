@@ -271,7 +271,7 @@
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .bd-swatch:hover { transform: scale(1.12); }
-.bd-swatch.active { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--terra-cotta, #b87c6f); }
+.bd-swatch.active { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--terra-cotta); }
 .bd-check { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 500; }
 .bd-check input { width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; }
 .coll-style-locked-notice {
@@ -294,9 +294,9 @@
 }
 
 .preview-controls button.active {
-    background: #B87C6F;
+    background: var(--terra-cotta);
     color: #fff;
-    border-color: #B87C6F;
+    border-color: var(--terra-cotta);
 }
 
 .customizer-panel {
@@ -364,7 +364,7 @@
     display: block;
     width: 40px;
     height: 3px;
-    background: linear-gradient(90deg, #B87C6F, transparent);
+    background: linear-gradient(90deg, var(--terra-cotta), transparent);
     margin-top: 0.5rem;
 }
 
@@ -391,12 +391,12 @@
 }
 
 .color-grid-professional::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, #B87C6F 0%, #7F6C50 100%);
+    background: linear-gradient(135deg, var(--terra-cotta) 0%, var(--aged-bronze) 100%);
     border-radius: 4px;
 }
 
 .color-grid-professional::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, #7F6C50 0%, #B87C6F 100%);
+    background: linear-gradient(135deg, var(--aged-bronze) 0%, var(--terra-cotta) 100%);
 }
 
 @media (max-width: 768px) {
@@ -438,21 +438,21 @@
 }
 
 .filter-tab:hover {
-    border-color: #B87C6F;
+    border-color: var(--terra-cotta);
     background: rgba(184, 124, 111, 0.05);
     transform: translateY(-2px);
 }
 
 .filter-tab.active {
-    background: linear-gradient(135deg, #B87C6F 0%, #7F6C50 100%);
-    border-color: #B87C6F;
+    background: linear-gradient(135deg, var(--terra-cotta) 0%, var(--aged-bronze) 100%);
+    border-color: var(--terra-cotta);
     color: #fff;
     box-shadow: 0 4px 12px rgba(184, 124, 111, 0.3);
 }
 .back-design-tab.active {
-    background: linear-gradient(135deg, #B87C6F 0%, #7F6C50 100%);
+    background: linear-gradient(135deg, var(--terra-cotta) 0%, var(--aged-bronze) 100%);
     color: #fff;
-    border-color: #B87C6F;
+    border-color: var(--terra-cotta);
 }
 
 @media (max-width: 768px) {
@@ -609,7 +609,7 @@
 
 .color-search-input:focus {
     outline: none;
-    border-color: #B87C6F;
+    border-color: var(--terra-cotta);
     box-shadow: 0 0 0 3px rgba(184, 124, 111, 0.15);
     background: #F5F0E1;
 }
@@ -636,7 +636,7 @@
 .color-card:hover {
     transform: translateY(-4px) scale(1.02);
     box-shadow: 0 8px 24px rgba(184, 124, 111, 0.25);
-    border-color: #B87C6F;
+    border-color: var(--terra-cotta);
 }
 
 @media (max-width: 480px) {
@@ -650,7 +650,7 @@
 }
 
 .color-card.selected {
-    border-color: #B87C6F;
+    border-color: var(--terra-cotta);
     box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.25), 0 8px 24px rgba(0, 0, 0, 0.15);
     transform: scale(1.05);
 }
@@ -699,7 +699,7 @@
     right: 8px;
     width: 28px;
     height: 28px;
-    background: #B87C6F;
+    background: var(--terra-cotta);
     color: white;
     border-radius: 50%;
     display: none;
@@ -769,16 +769,16 @@
 }
 
 .size-card:hover {
-    border-color: #B87C6F;
+    border-color: var(--terra-cotta);
     background: rgba(212, 175, 55, 0.05);
     transform: translateY(-3px);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
 }
 
 .size-card.selected {
-    background: linear-gradient(135deg, #B87C6F, #7F6C50);
+    background: linear-gradient(135deg, var(--terra-cotta), var(--aged-bronze));
     color: #fff;
-    border-color: #B87C6F;
+    border-color: var(--terra-cotta);
     transform: scale(1.05);
     box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
 }
@@ -802,7 +802,7 @@
     gap: 0.25rem;
     margin-left: 1rem;
     padding: 0.25rem 0.75rem;
-    background: #B87C6F;
+    background: var(--terra-cotta);
     color: #fff;
     text-decoration: none;
     border-radius: 4px;
@@ -813,7 +813,7 @@
 }
 
 .spec-sheet-link:hover {
-    background: #9a6a5e;
+    filter: brightness(0.88);
     transform: translateY(-1px);
     box-shadow: 0 2px 8px rgba(184, 124, 111, 0.3);
 }
@@ -888,21 +888,21 @@
 }
 
 .placement-option:hover {
-    border-color: #B87C6F;
+    border-color: var(--terra-cotta);
     background: rgba(212, 175, 55, 0.05);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .placement-option.selected {
-    border-color: #B87C6F;
+    border-color: var(--terra-cotta);
     background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.05));
     box-shadow: 0 4px 16px rgba(212, 175, 55, 0.3);
     transform: scale(1.03);
 }
 
 .placement-option.selected strong {
-    color: #B87C6F;
+    color: var(--terra-cotta);
 }
 
 .placement-option.selected::after {
@@ -912,7 +912,7 @@
     right: 0.5rem;
     width: 24px;
     height: 24px;
-    background: #B87C6F;
+    background: var(--terra-cotta);
     color: white;
     border-radius: 50%;
     display: flex;
@@ -1173,8 +1173,8 @@
     min-height: 44px;
     min-width: 44px;
     background: #fff;
-    border: 1px solid #B87C6F;
-    color: #B87C6F;
+    border: 1px solid var(--terra-cotta);
+    color: var(--terra-cotta);
     border-radius: 4px;
     cursor: pointer;
     touch-action: manipulation;
@@ -1186,7 +1186,7 @@
 }
 
 .position-btn:hover, .position-btn-reset:hover {
-    background: #B87C6F;
+    background: var(--terra-cotta);
     color: #fff;
 }
 
@@ -1319,7 +1319,7 @@
                 
                 <div class="preview-info" style="margin-top: 1rem; padding: 1rem; background: rgba(212, 175, 55, 0.1); border-radius: 8px; text-align: center;">
                     <p style="margin: 0; font-size: 0.9rem; color: #666;">
-                        <strong>Selected:</strong> <span id="selectedColorName" style="color: #B87C6F; font-weight: 700;">Loading...</span>
+                        <strong>Selected:</strong> <span id="selectedColorName" style="color: var(--terra-cotta); font-weight: 700;">Loading...</span>
                     </p>
                     <p id="dragHint" style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: #999; display: none;">Drag up or down to reposition</p>
                     
@@ -1606,7 +1606,7 @@
                                 <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #666;">Front + Back printing</p>
                             </div>
                             <div style="text-align: right;">
-                                <strong style="font-size: 1.25rem; color: #B87C6F;">+$6.00</strong>
+                                <strong style="font-size: 1.25rem; color: var(--terra-cotta);">+$6.00</strong>
                             </div>
                         </div>
                         <button class="btn btn-outline btn-block" id="addBackDesignBtn" onclick="toggleBackDesign()" style="margin-top: 0.75rem;">
@@ -1739,11 +1739,11 @@
                     </div>
                     <div class="price-row" id="sizeUpchargeRow" style="display: none;">
                         <span>Size upcharge (<span id="sizeUpchargeLabel"></span>):</span>
-                        <span style="color: #B87C6F; font-weight: 600;" id="sizeUpchargeAmount"></span>
+                        <span style="color: var(--terra-cotta); font-weight: 600;" id="sizeUpchargeAmount"></span>
                     </div>
                     <div class="price-row" id="backDesignFeeRow" style="display: none;">
                         <span>Back Design Fee:</span>
-                        <span style="color: #B87C6F; font-weight: 600;">+$6.00</span>
+                        <span style="color: var(--terra-cotta); font-weight: 600;">+$6.00</span>
                     </div>
                     <div class="price-row">
                         <span>Quantity:</span>
@@ -1991,7 +1991,7 @@
         // Update selected color display
         const colorNameEl = document.getElementById('selectedColorName');
         colorNameEl.textContent = colorName;
-        colorNameEl.style.color = '#B87C6F';
+        colorNameEl.style.color = 'var(--terra-cotta)';
         colorNameEl.style.fontWeight = '700';
         
         // Update size inventory
@@ -2445,9 +2445,9 @@
             if (numIn) state.backDesignNumber = (numIn.value || '').trim();
             if (fontIn) state.backDesignFont = fontIn.value || 'Bebas Neue';
             updateDesignLayerVisibility();
-            btn.style.background = 'linear-gradient(135deg, #B87C6F, #7F6C50)';
+            btn.style.background = 'linear-gradient(135deg, var(--terra-cotta), var(--aged-bronze))';
             btn.style.color = '#fff';
-            btn.style.borderColor = '#B87C6F';
+            btn.style.borderColor = 'var(--terra-cotta)';
             btnText.textContent = 'Remove Back Design (-$6.00)';
         } else {
             if (backDesignUploadArea) backDesignUploadArea.style.display = 'none';

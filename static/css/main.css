@@ -449,7 +449,7 @@ a.btn-customize {
 
 .btn-customize:hover,
 a.btn-customize:hover {
-    background: linear-gradient(135deg, #a06d60 0%, #6d5d45 100%);
+    filter: brightness(0.88);
     box-shadow: 0 6px 20px rgba(184, 124, 111, 0.5);
     transform: translateY(-2px);
     color: #fff !important;
@@ -2103,4 +2103,6 @@ textarea:focus-visible,
 @media (max-width: 480px) {
     body { font-size: 1rem; line-height: 1.65; }
     .text-muted, small, .text-small { font-size: 0.875rem; }
-    .btn, button.btn { font-size:
+    .btn, button.btn { font-size: 0.9rem; }
+}
+                        
