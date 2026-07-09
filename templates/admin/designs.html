@@ -229,6 +229,14 @@
         if (e.key === 'Escape') window.closeLibModal();
     });
 
+    function showLibToast(msg) {
+        const t = document.getElementById('libToast');
+        t.textContent = msg;
+        t.style.opacity = '1';
+        clearTimeout(t._h);
+        t._h = setTimeout(function() { t.style.opacity = '0'; }, 3200);
+    }
+
     document.getElementById('libConfirmBtn').addEventListener('click', function() {
         const btn = this;
         btn.disabled = true;
@@ -240,7 +248,7 @@
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (data.error) { alert(data.error); return; }
+            if (data.error) { window.closeLibModal(); showLibToast('Error: ' + data.error); return; }
             window.closeLibModal();
             const card = document.querySelector('.design-card[data-design-id="' + _id + '"]');
             if (card) {
@@ -248,15 +256,7 @@
                 card.style.opacity = '0';
                 setTimeout(function() { card.remove(); }, 300);
             }
-            const t = document.getElementById('libToast');
-            t.textContent = data.message || 'Design deleted';
-            t.style.opacity = '1';
-            clearTimeout(t._h);
-            t._h = setTimeout(function() { t.style.opacity = '0'; }, 3000);
+            showLibToast(data.message || 'Design deleted');
         })
-        .catch(function() { alert('Something went wrong. Please try again.'); })
-        .finally(function() { btn.disabled = false; btn.textContent = 'Yes, Delete'; });
-    });
-})();
-</script>
-{% endblock %}
+        .catch(function() { showLibToast('Something went wrong. Please try again.'); })
+        .finally(function()

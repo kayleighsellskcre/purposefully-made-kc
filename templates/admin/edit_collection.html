@@ -187,7 +187,7 @@
             
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary btn-lg">Save Changes</button>
-                <button type="button" class="btn btn-outline btn-danger" onclick="confirmDelete()">Delete</button>
+                <button type="button" class="btn btn-outline btn-danger" onclick="confirmDelete(this)">Delete</button>
             </div>
         </form>
         <form id="delete-form" action="{{ url_for('admin.delete_collection', collection_id=collection.id) }}" method="POST" style="display: none;">
@@ -230,10 +230,27 @@ document.getElementById('design_uploads').addEventListener('change', function() 
         preview.style.display = 'none';
     }
 });
-// Delete collection (form was nested - browsers submit outer form instead)
-function confirmDelete() {
-    if (confirm('Delete this group order? This cannot be undone.')) {
+// Delete collection — inline double-tap, no browser confirm()
+function confirmDelete(btn) {
+    if (!btn) btn = document.querySelector('[onclick*="confirmDelete"]');
+    if (btn && btn.dataset.confirming === 'true') {
         document.getElementById('delete-form').submit();
+        return;
+    }
+    if (btn) {
+        btn.dataset.confirming = 'true';
+        var orig = btn.textContent;
+        btn.textContent = 'Tap again to delete';
+        btn.style.color = 'var(--terra-cotta, #b87c6f)';
+        btn.style.borderColor = 'var(--terra-cotta, #b87c6f)';
+        setTimeout(function() {
+            if (btn.dataset.confirming === 'true') {
+                delete btn.dataset.confirming;
+                btn.textContent = orig;
+                btn.style.color = '';
+                btn.style.borderColor = '';
+            }
+        }, 3000);
     }
 }
 </script>
@@ -353,34 +370,4 @@ function confirmDelete() {
     border-color: var(--accent-color);
     background: rgba(184, 124, 111, 0.05);
 }
-.upload-preview-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-top: 1rem;
-}
-.upload-preview-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 0.5rem;
-    background: #fff;
-}
-.upload-preview-item img {
-    width: 60px;
-    height: 60px;
-    object-fit: contain;
-    margin-bottom: 0.25rem;
-}
-.upload-preview-item span {
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-    max-width: 80px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-</style>
-{% endblock %}
+.upload-preview-

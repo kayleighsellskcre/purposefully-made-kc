@@ -236,8 +236,8 @@ a:hover {
 }
 
 .favorites-link:hover {
-    color: #e74c3c;
-    background: rgba(231, 76, 60, 0.06);
+    color: var(--terra-cotta);
+    background: rgba(184, 124, 111, 0.06);
     transform: scale(1.05);
 }
 
@@ -2103,5 +2103,4 @@ textarea:focus-visible,
 @media (max-width: 480px) {
     body { font-size: 1rem; line-height: 1.65; }
     .text-muted, small, .text-small { font-size: 0.875rem; }
-    .btn, button.btn { font-size: 0.9rem; }
-}
+    .btn, button.btn { font-size:

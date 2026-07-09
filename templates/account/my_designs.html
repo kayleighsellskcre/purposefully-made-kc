@@ -7,14 +7,10 @@
 <div class="page-header">
     <div class="container">
         <span class="eyebrow">My Account</span>
-        <h1>Account Dashboard</h1>
-        <p class="lead">Manage your orders, designs, and profile all in one place.</p>
+        <h1>My Designs</h1>
+        <p class="lead">Designs we've created for you — order them on any style or color.</p>
     </div>
 </div>
-<style>
-.page-header, .page-header .container { text-align: center; }
-.page-header h1, .page-header p, .page-header span { text-align: center; display: block; }
-</style>
 
 <div class="account-page">
     <div class="container">
@@ -353,4 +349,9 @@
         t.textContent = msg;
         t.style.opacity = '1';
         clearTimeout(t._t);
-        t._t = setTimeout(function() { t.style.opacity = '0'
+        t._t = setTimeout(function() { t.style.opacity = '0'; }, 3000);
+    }
+})();
+</script>
+{% endblock %}
+                                                                                                                       

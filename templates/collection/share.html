@@ -10,7 +10,7 @@
             <div class="share-url-box">
                 <input type="text" id="share-url" readonly 
                        value="{{ request.url_root.rstrip('/') }}{{ url_for('collection.view', slug=collection.slug) }}">
-                <button type="button" class="btn btn-primary" onclick="copyLink()">Copy Link</button>
+                <button type="button" class="btn btn-primary" onclick="copyLink(this)">Copy Link</button>
             </div>
             
             <p class="share-hint">Anyone with this link can view and order from this group order.</p>
@@ -29,13 +29,10 @@
 .share-hint { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.5rem; }
 </style>
 <script>
-function copyLink() {
-    const input = document.getElementById('share-url');
-    input.select();
-    document.execCommand('copy');
-    const btn = event.target;
-    btn.textContent = 'Copied!';
-    setTimeout(() => btn.textContent = 'Copy Link', 2000);
-}
-</script>
-{% endblock %}
+function copyLink(btn) {
+    const url = document.getElementById('share-url').value;
+    navigator.clipboard.writeText(url).then(function() {
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.disabled = true;
+        setTimeout(function() { btn

@@ -3,10 +3,16 @@
 {% block title %}My Favorites - Purposefully Made KC{% endblock %}
 
 {% block content %}
+<div class="page-header">
+    <div class="container">
+        <span class="eyebrow">My Account</span>
+        <h1>My Favorites</h1>
+        <p class="lead">Your saved styles, ready to customize.</p>
+    </div>
+</div>
+
 <div class="favorites-page">
     <div class="container">
-        <h1>My Favorites</h1>
-        <p class="page-subtitle">Your saved products and colors</p>
         
         {% if favorites %}
         <div class="products-grid">
@@ -197,7 +203,7 @@ async function removeFavorite(productId, colorName) {
 }
 
 .btn-icon-favorite.active {
-    color: #e74c3c;
+    color: var(--terra-cotta);
 }
 
 .btn-icon-favorite:hover {
@@ -220,9 +226,4 @@ async function removeFavorite(productId, colorName) {
 }
 
 .empty-favorites p {
-    margin-bottom: 2rem;
-}
-
-@media (max-width: 768px) {
-    .products-grid {
-        grid-template-columns: repeat(auto-fill, minmax(20
+   

@@ -193,8 +193,8 @@
         <!-- Actions -->
         <div class="ep-actions">
             <button type="submit" class="btn btn-primary">Save Changes</button>
-            <form action="{{ url_for('admin.delete_product', product_id=product.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Delete this product permanently?');">
-                <button type="submit" class="btn btn-outline ep-btn-delete">Delete Product</button>
+            <form id="deleteProductForm" action="{{ url_for('admin.delete_product', product_id=product.id) }}" method="POST" style="display:inline;">
+                <button type="button" class="btn btn-outline ep-btn-delete" id="deleteProductBtn">Delete Product</button>
             </form>
         </div>
     </form>
@@ -269,4 +269,7 @@
     .ep-field-row { grid-template-columns:1fr; }
 }
 </style>
-{% endblock %}
+
+<script>
+(function() {
+    var b

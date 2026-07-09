@@ -60,7 +60,7 @@
                         <label>Decline reason (optional)</label>
                         <input type="text" name="decline_reason" class="form-control" placeholder="e.g. Cannot recreate">
                     </div>
-                    <button type="submit" class="btn btn-outline" onclick="return confirm('Decline this request?');">Decline Request</button>
+                    <button type="button" class="btn btn-outline decline-req-btn">Decline Request</button>
                 </form>
                 {% elif req.created_design %}
                 <div class="completed-info">
@@ -103,4 +103,7 @@
 .admin-notes-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); }
 .badge-pending, .badge-completed, .badge-declined { padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.85rem; }
 </style>
-{% endblock %}
+
+<script>
+(function() {
+    var btn = document.que

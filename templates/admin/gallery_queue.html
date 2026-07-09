@@ -215,12 +215,12 @@ function gqSubmit(action, id, reason){
     })
     .then(function(r){ return r.json(); })
     .then(function(data){
-        if (data && data.error) { alert(data.error); return; }
+        if (data && data.error) { gqToast('Error: ' + data.error); return; }
         const card = document.querySelector('.gq-card[data-design-id="' + id + '"]');
         if (card){ card.style.transition='opacity .3s'; card.style.opacity='0'; setTimeout(function(){ card.remove(); }, 300); }
         gqToast((data && data.message) || 'Done');
     })
-    .catch(function(){ alert('Something went wrong. Please try again.'); });
+    .catch(function(){ gqToast('Something went wrong. Please try again.'); });
 }
 
 function gqAction(action, id){
@@ -257,4 +257,3 @@ document.getElementById('gqReasonConfirm').addEventListener('click', function(){
 document.getElementById('gqReasonModal').addEventListener('click', function(e){ if (e.target === this) gqCloseReason(); });
 document.addEventListener('keydown', function(e){ if (e.key === 'Escape') gqCloseReason(); });
 </script>
-{% endblock %}

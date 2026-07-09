@@ -39,7 +39,7 @@
                 
                 <div class="collection-link">
                     <input type="text" readonly value="{{ request.url_root.rstrip('/') }}{{ url_for('collection.view', slug=collection.slug) }}" class="link-input">
-                    <button onclick="copyLink('{{ request.url_root.rstrip('/') }}{{ url_for('collection.view', slug=collection.slug) }}')" class="btn btn-sm btn-outline">Copy</button>
+                    <button onclick="copyLink('{{ request.url_root.rstrip('/') }}{{ url_for('collection.view', slug=collection.slug) }}', this)" class="btn btn-sm btn-outline">Copy</button>
                 </div>
                 
                 <div class="collection-actions">
@@ -63,9 +63,11 @@
 </div>
 
 <script>
-function copyLink(url) {
-    navigator.clipboard.writeText(url).then(() => {
-        alert('Link copied!');
+function copyLink(url, btn) {
+    navigator.clipboard.writeText(url).then(function() {
+        var orig = btn ? btn.textContent : '';
+        if (btn) { btn.textContent = 'Copied!'; btn.disabled = true; }
+        setTimeout(function() { if (btn) { btn.textContent = orig; btn.disabled = false; } }, 2000);
     });
 }
 </script>
@@ -158,17 +160,4 @@ function copyLink(url) {
 }
 
 .empty-state svg {
-    color: var(--text-light);
-    margin-bottom: 2rem;
-}
-
-.empty-state h2 {
-    margin-bottom: 1rem;
-}
-
-.empty-state p {
-    color: var(--text-secondary);
-    margin-bottom: 2rem;
-}
-</style>
-{% endblock %}
+  
