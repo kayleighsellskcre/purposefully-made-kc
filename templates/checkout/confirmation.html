@@ -7,12 +7,15 @@
     <div class="container">
         <div class="confirmation-card">
             <div class="confirmation-header">
-                <svg class="success-icon" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <path d="M8 12l2 2 4-4"></path>
-                </svg>
-                <h1>Order Confirmed!</h1>
-                <p>Thank you for your order</p>
+                <div class="success-icon-wrap" aria-hidden="true">
+                    <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M8 12l2.5 2.5 5-5"></path>
+                    </svg>
+                </div>
+                <span class="confirmation-eyebrow">Order Received</span>
+                <h1>Thank You!</h1>
+                <p>Your order has been confirmed and is being prepared with care.</p>
             </div>
             
             <div class="order-info">
@@ -37,9 +40,9 @@
             <div class="confirmation-message">
                 <h2>What's Next?</h2>
                 {% if email_sent %}
-                <p>We've sent a confirmation email to <strong>{{ order.email }}</strong></p>
+                <p>A confirmation email has been sent to <strong>{{ order.email }}</strong>.</p>
                 {% else %}
-                <p><strong>Save this page for your records.</strong> To receive confirmation emails, add your SMTP settings (MAIL_SERVER, MAIL_USERNAME, MAIL_PASSWORD) to the <code>.env</code> file.</p>
+                <p>Please save or screenshot this page for your records. We'll be in touch soon!</p>
                 {% endif %}
                 
                 {% if order.fulfillment_method == 'shipping' %}
@@ -98,15 +101,33 @@
 
 .confirmation-header {
     text-align: center;
-    padding: 3rem 2rem;
-    background: linear-gradient(135deg, var(--accent-color), #2d3748);
+    padding: 3.5rem 2rem 3rem;
+    background: linear-gradient(135deg, var(--terra-cotta) 0%, var(--midnight-charcoal) 100%);
     color: #fff;
 }
 
-.success-icon {
+.success-icon-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.4);
+    background: rgba(255,255,255,0.12);
     color: #fff;
-    margin-bottom: 1rem;
+    margin-bottom: 1.25rem;
     animation: scaleIn 0.5s ease-out;
+}
+
+.confirmation-eyebrow {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.75);
+    margin-bottom: 0.5rem;
 }
 
 @keyframes scaleIn {
@@ -204,40 +225,3 @@
 .order-items h3 {
     margin-bottom: 1.5rem;
 }
-
-.confirmation-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 1rem 0;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.confirmation-item:last-child {
-    border-bottom: none;
-}
-
-.confirmation-item p {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    margin: 0.25rem 0 0;
-}
-
-.item-total {
-    font-weight: 600;
-    color: var(--accent-color);
-}
-
-.confirmation-actions {
-    padding: 2rem;
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-}
-
-@media (max-width: 768px) {
-    .confirmation-actions {
-        flex-direction: column;
-    }
-}
-</style>
-{% endblock %}
