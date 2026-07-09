@@ -106,4 +106,27 @@
 
 <script>
 (function() {
-    var btn = document.que
+    var btn = document.querySelector('.decline-req-btn');
+    if (!btn) return;
+    var form = btn.closest('form');
+    btn.addEventListener('click', function() {
+        if (this.dataset.confirming === 'true') { form.submit(); return; }
+        this.dataset.confirming = 'true';
+        var orig = this.textContent;
+        this.textContent = 'Tap again to decline';
+        this.style.color = 'var(--terra-cotta, #b87c6f)';
+        this.style.borderColor = 'var(--terra-cotta, #b87c6f)';
+        var self = this;
+        setTimeout(function() {
+            if (self.dataset.confirming === 'true') {
+                delete self.dataset.confirming;
+                self.textContent = orig;
+                self.style.color = '';
+                self.style.borderColor = '';
+            }
+        }, 3000);
+    });
+})();
+</script>
+
+{% endblock %}

@@ -53,7 +53,7 @@
                         </div>
                         <div class="gallery-file-selected" id="fileSelected" style="display: none;">
                             <span class="gallery-file-name" id="fileName"></span>
-                            <button type="button" class="gallery-file-clear" id="fileClear" aria-label="Clear file">×</button>
+                            <button type="button" class="gallery-file-clear" id="fileClear" aria-label="Clear file">&times;</button>
                         </div>
                     </div>
                 </div>
@@ -74,14 +74,14 @@
                 </div>
                 <div class="design-card-body">
                     <strong class="design-card-name">{{ design.title or design.original_filename }}</strong>
-                    <p class="design-card-meta">{{ design.folder or 'No folder' }} · {{ design.sku or 'No SKU' }}</p>
+                    <p class="design-card-meta">{{ design.folder or 'No folder' }} &middot; {{ design.sku or 'No SKU' }}</p>
                     <div class="design-card-actions">
                         <button type="button" class="btn btn-outline btn-sm"
-                                onclick="galleryConfirm('remove', {{ design.id }}, '{{ (design.title or design.original_filename or 'Design')|replace("'", "\\'") }}', '{{ url_for('admin.design_gallery_remove', design_id=design.id) }}')">
+                                onclick="galleryConfirm('remove', {{ design.id }}, '{{ (design.title or design.original_filename or 'Design')|replace("'", "\'") }}', '{{ url_for('admin.design_gallery_remove', design_id=design.id) }}')">
                             Remove from Gallery
                         </button>
                         <button type="button" class="btn btn-outline btn-sm btn-danger"
-                                onclick="galleryConfirm('delete', {{ design.id }}, '{{ (design.title or design.original_filename or 'Design')|replace("'", "\\'") }}', '{{ url_for('admin.design_gallery_delete', design_id=design.id) }}')">
+                                onclick="galleryConfirm('delete', {{ design.id }}, '{{ (design.title or design.original_filename or 'Design')|replace("'", "\'") }}', '{{ url_for('admin.design_gallery_delete', design_id=design.id) }}')">
                             Delete
                         </button>
                     </div>
@@ -91,20 +91,19 @@
         </div>
         {% else %}
         <div class="gallery-empty-state">
-            <div class="gallery-empty-icon">✦</div>
+            <div class="gallery-empty-icon">&#10022;</div>
             <p class="gallery-empty-title">No designs in gallery yet</p>
             <p class="gallery-empty-text">Upload your first design above. Customers can browse and use these designs when customizing products.</p>
         </div>
         {% endif %}
         
         <p class="gallery-back-link">
-            <a href="{{ url_for('admin.index') }}" class="btn btn-outline">← Back to Admin</a>
+            <a href="{{ url_for('admin.index') }}" class="btn btn-outline">&larr; Back to Admin</a>
         </p>
     </div>
 </div>
 
 <style>
-/* Modal overlay — shared prod-modal system */
 .prod-modal { display: none; position: fixed; inset: 0; background: rgba(30,25,20,0.55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); z-index: 9999; align-items: center; justify-content: center; padding: 1rem; overflow-y: auto; }
 .prod-modal.is-open { display: flex; }
 .prod-modal-card { background: #fff; border-radius: 18px; box-shadow: 0 20px 60px rgba(30,25,20,0.25); width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
@@ -130,7 +129,6 @@
     font-size: 1rem;
 }
 
-/* Upload Card - Luxury */
 .gallery-upload-card {
     background: linear-gradient(180deg, #fff 0%, var(--ivory-silk) 100%);
     border-radius: var(--border-radius);
@@ -171,7 +169,6 @@
     .gallery-form-grid { grid-template-columns: 1fr; }
 }
 
-/* File Upload Zone - Luxury */
 .gallery-file-group { margin-bottom: 2rem; }
 .gallery-file-zone {
     position: relative;
@@ -240,7 +237,6 @@
 .gallery-file-clear:hover { color: var(--terra-cotta); }
 .gallery-upload-btn { margin-top: 0.5rem; }
 
-/* Gallery List */
 .gallery-list-title {
     font-family: var(--font-heading);
     font-size: 1.5rem;
@@ -297,7 +293,6 @@
     color: var(--terra-cotta) !important;
 }
 
-/* Empty State */
 .gallery-empty-state {
     text-align: center;
     padding: 4rem 2rem;
@@ -345,7 +340,6 @@
 <div id="galleryToast" style="position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1e1914;color:#fff;padding:0.7rem 1.4rem;border-radius:10px;font-size:0.88rem;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,0.25);z-index:99999;opacity:0;transition:opacity 0.25s;pointer-events:none;white-space:nowrap;"></div>
 
 <script>
-// ── Gallery toast helper ──────────────────────────────────────────────────────
 function showGalleryToast(msg) {
     const t = document.getElementById('galleryToast');
     t.textContent = msg;
@@ -354,7 +348,6 @@ function showGalleryToast(msg) {
     t._h = setTimeout(function() { t.style.opacity = '0'; }, 3200);
 }
 
-// ── Gallery confirmation modal ────────────────────────────────────────────────
 let _gUrl = '', _gId = 0, _gAction = '';
 
 function galleryConfirm(action, id, name, url) {
@@ -401,21 +394,11 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
     .then(function(data) {
         if (data.error) { closeGalleryModal(); showGalleryToast('Error: ' + data.error); return; }
         closeGalleryModal();
-        if (_gAction === 'delete') {
-            const card = document.querySelector('.design-card[data-design-id="' + _gId + '"]');
-            if (card) {
-                card.style.transition = 'opacity 0.3s';
-                card.style.opacity = '0';
-                setTimeout(function() { card.remove(); }, 300);
-            }
-        } else {
-            // Just visually mark it removed — badge or fade
-            const card = document.querySelector('.design-card[data-design-id="' + _gId + '"]');
-            if (card) {
-                card.style.transition = 'opacity 0.3s';
-                card.style.opacity = '0';
-                setTimeout(function() { card.remove(); }, 300);
-            }
+        const card = document.querySelector('.design-card[data-design-id="' + _gId + '"]');
+        if (card) {
+            card.style.transition = 'opacity 0.3s';
+            card.style.opacity = '0';
+            setTimeout(function() { card.remove(); }, 300);
         }
         showGalleryToast(data.message || 'Done');
     })
@@ -423,7 +406,6 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
     .finally(function() { btn.disabled = false; btn.textContent = origText; });
 });
 
-// ── File zone (existing) ──────────────────────────────────────────────────────
 (function() {
     const zone = document.getElementById('fileZone');
     const input = document.getElementById('designFile');
@@ -458,4 +440,15 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
     });
     zone.addEventListener('dragleave', function() {
         zone.classList.remove('drag-over');
-    }
+    });
+    zone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        if (e.dataTransfer.files.length) {
+            input.files = e.dataTransfer.files;
+            updateFileDisplay();
+        }
+    });
+})();
+</script>
+{% endblock %}

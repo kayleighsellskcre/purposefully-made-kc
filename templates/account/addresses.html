@@ -28,7 +28,7 @@
                     <a href="{{ url_for('auth.logout') }}" class="account-nav-link logout">Log Out</a>
                 </nav>
             </aside>
-            
+
             <!-- Main Content -->
             <div class="account-content">
                 <div class="account-content-header">
@@ -38,7 +38,7 @@
                     </div>
                     <a href="{{ url_for('account.add_address') }}" class="btn btn-primary btn-sm">Add Address</a>
                 </div>
-                
+
                 {% if addresses %}
                 <div class="addresses-grid">
                     {% for address in addresses %}
@@ -89,4 +89,29 @@
 </style>
 
 <script>
-// Inline
+// Inline double-tap to delete — no browser confirm() dialog
+document.querySelectorAll('.delete-address-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var form = this.closest('.delete-address-form');
+        if (this.dataset.confirming === 'true') {
+            form.submit();
+            return;
+        }
+        this.dataset.confirming = 'true';
+        var orig = this.textContent;
+        this.textContent = 'Tap again to delete';
+        this.style.color = 'var(--terra-cotta)';
+        this.style.borderColor = 'var(--terra-cotta)';
+        var self = this;
+        setTimeout(function() {
+            if (self.dataset.confirming === 'true') {
+                delete self.dataset.confirming;
+                self.textContent = orig;
+                self.style.color = '';
+                self.style.borderColor = '';
+            }
+        }, 3000);
+    });
+});
+</script>
+{% endblock %}

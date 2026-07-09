@@ -4,7 +4,7 @@
 {% block admin_content %}
 <div class="od-page">
 
-    <!-- ── Page Header ── -->
+    <!-- Page Header -->
     <div class="od-header">
         <div class="od-header-left">
             <a href="{{ url_for('admin.orders') }}" class="od-back">
@@ -29,7 +29,7 @@
         </div>
     </div>
 
-    <!-- ── 4-card Info Grid ── -->
+    <!-- 4-card Info Grid -->
     <div class="od-grid">
 
         <!-- Status -->
@@ -135,7 +135,7 @@
                 {% if order.payment_intent_id %}
                 <div class="od-info-row">
                     <span class="od-info-label">Stripe ID</span>
-                    <span class="od-info-val od-mono">{{ order.payment_intent_id[:20] }}…</span>
+                    <span class="od-info-val od-mono">{{ order.payment_intent_id[:20] }}&hellip;</span>
                 </div>
                 {% endif %}
             </div>
@@ -143,7 +143,7 @@
 
     </div><!-- /od-grid -->
 
-    <!-- ── Order Details & Profit ── -->
+    <!-- Order Details & Profit -->
     <div class="od-card od-wide">
         <div class="od-profit-layout">
             <div class="od-profit-left">
@@ -195,7 +195,7 @@
                     </div>
                     <div class="od-field">
                         <label>Refund Notes</label>
-                        <textarea name="refund_notes" class="od-textarea" rows="2" placeholder="Optional notes about this refund…">{{ order.refund_notes or '' }}</textarea>
+                        <textarea name="refund_notes" class="od-textarea" rows="2" placeholder="Optional notes about this refund&hellip;">{{ order.refund_notes or '' }}</textarea>
                     </div>
                     <div class="od-profit-actions">
                         <button type="submit" class="od-btn">Save Changes</button>
@@ -211,7 +211,7 @@
         </div>
     </div>
 
-    <!-- ── Order Items ── -->
+    <!-- Order Items -->
     <div class="od-card od-wide od-items-card">
         <span class="od-card-eyebrow">Line Items</span>
         <h2 class="od-card-title">Order Items</h2>
@@ -253,7 +253,7 @@
                                     <img src="{{ url_for('static', filename=item.proof_image) }}" alt="Proof" class="od-thumb">
                                 </a>
                                 {% else %}
-                                <span class="od-none">—</span>
+                                <span class="od-none">&mdash;</span>
                                 {% endif %}
                             </td>
                             <td class="od-product-name">{{ item.product_name }}</td>
@@ -261,9 +261,9 @@
                             <td>{{ item.color }}</td>
                             <td><span class="od-size-pill">{{ item.size }}</span></td>
                             <td>{{ item.print_type or 'DTF' }}</td>
-                            <td class="od-file-name">{{ item.design_file_name or (item.design.filename if item.design else '—') }}</td>
+                            <td class="od-file-name">{{ item.design_file_name or (item.design.filename if item.design else '&mdash;') }}</td>
                             <td class="od-file-name">
-                                {{ item.back_design_file_name or '—' }}
+                                {{ item.back_design_file_name or '&mdash;' }}
                                 {% set bd = item.back_design_details %}
                                 {% if bd %}
                                 <div class="od-back-meta">
@@ -317,12 +317,8 @@
 
 
 <style>
-/* ═══════════════════════
-   Order Detail Page
-═══════════════════════ */
 .od-page { padding: 2rem 0 5rem; }
 
-/* ── Header ── */
 .od-header {
     display: flex;
     align-items: flex-start;
@@ -373,7 +369,6 @@
     flex-shrink: 0;
 }
 
-/* ── Status Badges ── */
 .od-status-badge {
     display: inline-flex;
     align-items: center;
@@ -393,7 +388,6 @@
 .od-payment-pending, .od-payment-unpaid { background: rgba(245,158,11,0.1); color: #d97706; }
 .od-payment-refunded, .od-payment-failed { background: rgba(184,124,111,0.12); color: var(--terra-cotta); }
 
-/* ── Delete btn ── */
 .od-delete-btn {
     display: inline-flex;
     align-items: center;
@@ -415,7 +409,6 @@
 }
 .od-delete-btn:hover { background: rgba(180,60,60,0.07); border-color: #b43c3c; }
 
-/* ── 4-card Grid ── */
 .od-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -423,7 +416,6 @@
     margin-bottom: 1.25rem;
 }
 
-/* ── Cards ── */
 .od-card {
     background: #fff;
     border: 1px solid rgba(232, 208, 177, 0.6);
@@ -459,7 +451,6 @@
     margin: 0.2rem 0 0;
 }
 
-/* ── Info rows ── */
 .od-info-rows { display: flex; flex-direction: column; gap: 0.85rem; }
 .od-info-row  { display: flex; flex-direction: column; gap: 0.1rem; }
 
@@ -476,7 +467,6 @@
 .od-link:hover { text-decoration: underline; }
 .od-mono      { font-family: 'Courier New', monospace; font-size: 0.82rem; }
 
-/* ── Fields ── */
 .od-field {
     display: flex;
     flex-direction: column;
@@ -546,7 +536,6 @@
 .od-prefix { position: absolute; left: 0.9rem; color: var(--text-secondary); font-size: 0.9rem; pointer-events: none; z-index: 1; }
 .od-input-prefixed { padding-left: 1.75rem; }
 
-/* ── Checkbox ── */
 .od-refund-row { margin-bottom: 1rem; }
 .od-checkbox-label {
     display: inline-flex;
@@ -587,7 +576,6 @@
     transform: rotate(45deg);
 }
 
-/* ── Profit layout ── */
 .od-profit-layout {
     display: grid;
     grid-template-columns: 1fr 2fr;
@@ -634,7 +622,6 @@
 .od-profit-pos { color: #059669; }
 .od-profit-neg { color: var(--terra-cotta); }
 
-/* ── Primary button ── */
 .od-btn {
     display: inline-flex;
     align-items: center;
@@ -656,7 +643,6 @@
 }
 .od-btn:hover { box-shadow: 0 4px 16px rgba(184,124,111,0.35); transform: translateY(-1px); }
 
-/* ── Items Table ── */
 .od-items-card .od-card-title { margin-bottom: 1.25rem; }
 
 .od-table-scroll-wrap { position: relative; }
@@ -744,7 +730,6 @@
 }
 .od-thumb-link:hover .od-thumb { transform: scale(1.1); border-color: var(--terra-cotta); }
 
-/* ── Totals ── */
 .od-totals {
     margin-top: 1.5rem;
     padding-top: 1.5rem;
@@ -774,9 +759,6 @@
     padding-top: 0.75rem;
 }
 
-/* ═══════════════════════
-   Responsive
-═══════════════════════ */
 @media (max-width: 900px) {
     .od-profit-layout { grid-template-columns: 1fr; gap: 1.5rem; }
     .od-scroll-hint { display: flex; }
@@ -803,4 +785,26 @@
 <script>
 (function() {
     var btn = document.getElementById('deleteOrderBtn');
-    if (!btn) ret
+    if (!btn) return;
+    btn.addEventListener('click', function() {
+        if (this.dataset.confirming === 'true') {
+            document.getElementById('deleteOrderForm').submit();
+            return;
+        }
+        this.dataset.confirming = 'true';
+        var orig = this.textContent;
+        this.textContent = 'Tap again to delete';
+        this.style.color = 'var(--terra-cotta, #b87c6f)';
+        var self = this;
+        setTimeout(function() {
+            if (self.dataset.confirming === 'true') {
+                delete self.dataset.confirming;
+                self.textContent = orig;
+                self.style.color = '';
+            }
+        }, 3000);
+    });
+})();
+</script>
+
+{% endblock %}

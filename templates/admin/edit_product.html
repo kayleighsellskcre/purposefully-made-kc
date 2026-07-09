@@ -272,4 +272,28 @@
 
 <script>
 (function() {
-    var b
+    var btn = document.getElementById('deleteProductBtn');
+    if (!btn) return;
+    btn.addEventListener('click', function() {
+        if (this.dataset.confirming === 'true') {
+            document.getElementById('deleteProductForm').submit();
+            return;
+        }
+        this.dataset.confirming = 'true';
+        var orig = this.textContent;
+        this.textContent = 'Tap again to delete';
+        this.style.color = 'var(--terra-cotta, #b87c6f)';
+        this.style.borderColor = 'var(--terra-cotta, #b87c6f)';
+        var self = this;
+        setTimeout(function() {
+            if (self.dataset.confirming === 'true') {
+                delete self.dataset.confirming;
+                self.textContent = orig;
+                self.style.color = '';
+                self.style.borderColor = '';
+            }
+        }, 3000);
+    });
+})();
+</script>
+{% endblock %}

@@ -221,14 +221,14 @@
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: #fff;
-    background: linear-gradient(135deg, #B87C6F 0%, #7F6C50 100%);
+    background: linear-gradient(135deg, var(--terra-cotta) 0%, var(--aged-bronze) 100%);
     border-radius: 6px;
     box-shadow: 0 2px 8px rgba(184, 124, 111, 0.35);
     transition: all 0.3s ease;
 }
 
 .design-card:hover .design-card-content .cta {
-    background: linear-gradient(135deg, #a06d60 0%, #6d5d45 100%);
+    filter: brightness(0.9);
     box-shadow: 0 4px 16px rgba(184, 124, 111, 0.45);
     transform: translateY(-1px);
 }
@@ -390,4 +390,4 @@ document.querySelectorAll('.color-carousel').forEach(carousel => {
 });
 </script>
 {% endblock %}
-                                                                                                                                                                                                                                                          
+                                                                                                                                                                                                                                                                          

@@ -26,7 +26,7 @@
                     <strong class="gq-name">{{ design.title or design.original_filename or 'Untitled design' }}</strong>
                     <p class="gq-meta">
                         {% if design.user %}{{ design.user.email }}{% else %}Unknown user{% endif %}
-                        {% if design.width and design.height %} · {{ design.width }}×{{ design.height }}px{% endif %}
+                        {% if design.width and design.height %} &middot; {{ design.width }}&times;{{ design.height }}px{% endif %}
                     </p>
                     {% set submitted = design.gallery_submitted_at or design.uploaded_at %}
                     {% if submitted %}
@@ -34,24 +34,24 @@
                     {% endif %}
 
                     {% if design.gallery_status == 'changes_requested' %}
-                    <span class="gq-flag gq-flag-warn">Changes requested — resubmitted</span>
+                    <span class="gq-flag gq-flag-warn">Changes requested &mdash; resubmitted</span>
                     {% endif %}
 
                     <div class="gq-checks">
                         {% if meta.has_transparency %}
-                        <span class="gq-flag gq-flag-ok">✓ Transparent PNG</span>
+                        <span class="gq-flag gq-flag-ok">&#10003; Transparent PNG</span>
                         {% else %}
-                        <span class="gq-flag gq-flag-bad">⚠ No transparency detected</span>
+                        <span class="gq-flag gq-flag-bad">&#9888; No transparency detected</span>
                         {% endif %}
                         {% if meta.validation and meta.validation.issues %}
                             {% if 'background_artifacts' in meta.validation.issues or 'background_may_remain' in meta.validation.issues %}
-                            <span class="gq-flag gq-flag-bad">⚠ Possible leftover background</span>
+                            <span class="gq-flag gq-flag-bad">&#9888; Possible leftover background</span>
                             {% endif %}
                             {% if 'low_resolution' in meta.validation.issues %}
                             <span class="gq-flag gq-flag-warn">Low resolution</span>
                             {% endif %}
                         {% else %}
-                        <span class="gq-flag gq-flag-ok">✓ Background looks clean</span>
+                        <span class="gq-flag gq-flag-ok">&#10003; Background looks clean</span>
                         {% endif %}
                     </div>
                     {% if meta.validation and meta.validation.messages %}
@@ -74,7 +74,7 @@
         </div>
         {% else %}
         <div class="gallery-empty-state">
-            <div class="gallery-empty-icon">✓</div>
+            <div class="gallery-empty-icon">&#10003;</div>
             <p class="gallery-empty-title">Nothing waiting for review</p>
             <p class="gallery-empty-text">When a customer shares a design to the public gallery, it will appear here for your approval before going live.</p>
         </div>
@@ -103,7 +103,7 @@
         {% endif %}
 
         <p class="gallery-back-link">
-            <a href="{{ url_for('admin.design_gallery') }}" class="btn btn-outline">← Manage Gallery</a>
+            <a href="{{ url_for('admin.design_gallery') }}" class="btn btn-outline">&larr; Manage Gallery</a>
         </p>
     </div>
 </div>
@@ -117,7 +117,7 @@
         </div>
         <div class="prod-modal-body">
             <p id="gqReasonHelp" style="margin-bottom:0.5rem;color:var(--text-secondary);font-size:0.9rem;"></p>
-            <textarea id="gqReasonText" rows="3" class="form-control" placeholder="Internal note (the customer's design stays hidden)…"></textarea>
+            <textarea id="gqReasonText" rows="3" class="form-control" placeholder="Internal note (the customer's design stays hidden)&hellip;"></textarea>
             <div class="prod-modal-actions">
                 <button type="button" class="btn btn-outline" onclick="gqCloseReason()">Cancel</button>
                 <button type="button" id="gqReasonConfirm" class="btn">Confirm</button>
@@ -129,7 +129,6 @@
 <div id="gqToast" style="position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1e1914;color:#fff;padding:0.7rem 1.4rem;border-radius:10px;font-size:0.88rem;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,0.25);z-index:99999;opacity:0;transition:opacity 0.25s;pointer-events:none;"></div>
 
 <style>
-/* Modal overlay — shared prod-modal system */
 .prod-modal { display: none; position: fixed; inset: 0; background: rgba(30,25,20,0.55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); z-index: 9999; align-items: center; justify-content: center; padding: 1rem; overflow-y: auto; }
 .prod-modal.is-open { display: flex; }
 .prod-modal-card { background: #fff; border-radius: 18px; box-shadow: 0 20px 60px rgba(30,25,20,0.25); width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
@@ -197,7 +196,7 @@ const GQ_URLS = {
     'request-changes': function(id){ return '{{ url_for("admin.gallery_request_changes", design_id=0) }}'.replace('/0/', '/'+id+'/'); }
 };
 
-let _gqPending = null; // {action, id}
+let _gqPending = null;
 
 function gqToast(msg){
     const t = document.getElementById('gqToast');
@@ -225,7 +224,6 @@ function gqSubmit(action, id, reason){
 
 function gqAction(action, id){
     if (action === 'approve'){ gqSubmit('approve', id, ''); return; }
-    // reject / request-changes need a reason
     _gqPending = { action: action, id: id };
     document.getElementById('gqReasonTitle').textContent = action === 'reject' ? 'Reject design' : 'Request changes';
     document.getElementById('gqReasonHelp').textContent = action === 'reject'
@@ -257,3 +255,4 @@ document.getElementById('gqReasonConfirm').addEventListener('click', function(){
 document.getElementById('gqReasonModal').addEventListener('click', function(e){ if (e.target === this) gqCloseReason(); });
 document.addEventListener('keydown', function(e){ if (e.key === 'Escape') gqCloseReason(); });
 </script>
+{% endblock %}

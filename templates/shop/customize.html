@@ -3399,4 +3399,11 @@
                 }
             } catch (error) {
                 PMKC.showFlash('Something went wrong adding to cart — please try again', 'error');
-                this.textContent = 'Ad
+                this.textContent = 'Add Design & Continue';
+                this.disabled = false;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

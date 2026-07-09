@@ -8,7 +8,7 @@
         <span class="adm-eyebrow">Admin / Catalog</span>
         <h1>Designs Library</h1>
         <p class="page-subtitle">All uploaded customer designs and artwork</p>
-        
+
         {% if designs %}
         <div class="designs-grid">
             {% for design in designs %}
@@ -26,7 +26,7 @@
                     </div>
                     {% endif %}
                 </div>
-                
+
                 <div class="design-info">
                     <h3>{{ design.original_filename or 'Untitled Design' }}</h3>
                     <p><strong>Uploaded:</strong> {{ design.uploaded_at.strftime('%b %d, %Y') }}</p>
@@ -35,7 +35,7 @@
                     {% endif %}
                     <p><strong>Used in:</strong> {{ design.order_items.count() }} orders</p>
                 </div>
-                
+
                 <div class="design-actions">
                     {% if design.file_path %}
                     <a href="{{ design.file_path | image_url }}" download class="btn btn-outline btn-sm">Download</a>
@@ -43,7 +43,8 @@
                     <button type="button"
                             class="btn btn-outline btn-sm"
                             style="color:var(--terra-cotta);border-color:var(--terra-cotta);margin-left:0.5rem;"
-                            onclick="libConfirmDelete({{ design.id }}, '{{ (design.original_filename or 'Design')|replace("'", "\\'") }}', '{{ url_for('admin.design_delete', design_id=design.id) }}')">
+                            onclick="libConfirmDelete({{ design.id }}, '{{ (design.original_filename or 'Design')|replace("'", "\'") }}', '{{ url_for('admin.design_delete', design_id=design.id) }}')"
+>
                         Delete
                     </button>
                 </div>
@@ -258,4 +259,9 @@
             }
             showLibToast(data.message || 'Design deleted');
         })
-        .catch(function() { showLibToast('Something went wrong. Please 
+        .catch(function() { showLibToast('Something went wrong. Please try again.'); })
+        .finally(function() { btn.disabled = false; btn.textContent = 'Yes, Delete'; });
+    });
+})();
+</script>
+{% endblock %}

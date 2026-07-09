@@ -23,4 +23,71 @@
                 <a href="javascript:history.back()" class="btn btn-outline">Go Back</a>
             </div>
 
-   
+            <p class="err-hint">If the problem continues, please <a href="{{ url_for('main.contact') }}">reach out to us</a> and we'll get it sorted out.</p>
+
+        </div>
+    </div>
+</div>
+
+<style>
+.err-page {
+    min-height: calc(100vh - 300px);
+    display: flex;
+    align-items: center;
+    padding: 5rem 1.5rem;
+    background: linear-gradient(160deg, var(--ivory-silk) 0%, var(--cashmere-sand) 60%, var(--ivory-silk) 100%);
+}
+.err-wrap {
+    text-align: center;
+    max-width: 520px;
+    margin: 0 auto;
+}
+.err-ornament {
+    display: block;
+    margin: 0 auto 1.5rem;
+}
+.err-eyebrow {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--terra-cotta);
+    margin-bottom: 1rem;
+}
+.err-heading {
+    font-family: var(--font-heading);
+    font-size: clamp(2rem, 5vw, 3.25rem);
+    color: var(--text-primary);
+    line-height: 1.2;
+    margin-bottom: 1.25rem;
+}
+.err-text {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    line-height: 1.75;
+    margin-bottom: 2.25rem;
+    max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
+}
+.err-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+}
+.err-hint {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+.err-hint a {
+    color: var(--accent-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+.err-hint a:hover { text-decoration: underline; }
+</style>
+{% endblock %}
