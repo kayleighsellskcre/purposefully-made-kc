@@ -3,55 +3,22 @@
 {% block title %}Page Not Found - Purposefully Made KC{% endblock %}
 
 {% block content %}
-<div class="error-page">
+<div class="err-page">
     <div class="container">
-        <div class="error-content">
-            <h1 class="error-code">404</h1>
-            <h2>Page Not Found</h2>
-            <p>The page you're looking for doesn't exist or has been moved.</p>
-            <div class="error-actions">
-                <a href="{{ url_for('main.index') }}" class="btn btn-primary">Go Home</a>
-                <a href="{{ url_for('shop.index') }}" class="btn btn-outline">Browse Shop</a>
-            </div>
-        </div>
-    </div>
-</div>
+        <div class="err-wrap">
 
-<style>
-.error-page {
-    min-height: calc(100vh - 500px);
-    display: flex;
-    align-items: center;
-    padding: 4rem 0;
-}
+            <!-- Ornament -->
+            <svg class="err-ornament" width="52" height="10" viewBox="0 0 52 10" fill="none" aria-hidden="true">
+                <line x1="0" y1="5" x2="18" y2="5" stroke="var(--terra-cotta)" stroke-width="1" stroke-opacity="0.4"/>
+                <circle cx="26" cy="5" r="4" stroke="var(--terra-cotta)" stroke-width="1" stroke-opacity="0.6"/>
+                <line x1="34" y1="5" x2="52" y2="5" stroke="var(--terra-cotta)" stroke-width="1" stroke-opacity="0.4"/>
+            </svg>
 
-.error-content {
-    text-align: center;
-    max-width: 600px;
-    margin: 0 auto;
-}
+            <span class="err-eyebrow">404 — Not Found</span>
+            <h1 class="err-heading">This Page Has<br>Wandered Off</h1>
+            <p class="err-text">The page you were looking for doesn't exist or may have moved. Let's get you back somewhere beautiful.</p>
 
-.error-code {
-    font-size: 8rem;
-    color: var(--accent-color);
-    margin-bottom: 1rem;
-    line-height: 1;
-}
-
-.error-content h2 {
-    margin-bottom: 1rem;
-}
-
-.error-content p {
-    color: var(--text-secondary);
-    font-size: 1.125rem;
-    margin-bottom: 2rem;
-}
-
-.error-actions {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-}
-</style>
-{% endblock %}
+            <div class="err-actions">
+                <a href="{{ url_for('main.index') }}" class="btn btn-primary">Back to Home</a>
+                <a href="{{ url_for('shop.index') }}" class="btn btn-outline">Browse the Shop</a>
+           
