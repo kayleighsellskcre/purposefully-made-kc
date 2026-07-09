@@ -11,44 +11,46 @@ checkout_bp = Blueprint('checkout', __name__, url_prefix='/checkout')
 
 
 def send_order_confirmation_email(order):
-    """Send a branded HTML receipt to the customer and a copy to the admin."""
-    if not order.email:
-        return False
-    mail = current_app.extensions.get('mail')
-    if not mail or not current_app.config.get('MAIL_SERVER') or not current_app.config.get('MAIL_USERNAME'):
-        return False
-
-    # Set a global socket timeout so SMTP never hangs the request indefinitely.
-    # We reset it after sending.
+    """Send a branded HTML receipt to the customer + a dedicated alert to admin."""
     import socket as _socket
-    _prev_timeout = _socket.getdefaulttimeout()
-    _socket.setdefaulttimeout(10)  # 10s max for any SMTP connection/send
+    import sys
 
-    try:
-        # ── Build plain-text fallback ──────────────────────────────────────
-        items_text = '\n'.join(
-            f"  • {item.product_name} – {item.color}, Size {item.size}"
-            f" × {item.quantity}  =  ${item.subtotal:.2f}"
-            for item in order.items
-        )
-        if order.fulfillment_method == 'shipping':
-            addr_parts = filter(None, [
-                order.shipping_recipient or order.full_name,
-                order.shipping_street,
-                order.shipping_street_2,
-                f"{order.shipping_city}, {order.shipping_state} {order.shipping_zip}",
-                order.shipping_country if order.shipping_country and order.shipping_country != 'USA' else None,
-            ])
-            delivery_text = '\n'.join(addr_parts)
-        else:
-            delivery_text = "Local Pickup — we'll reach out when your order is ready!"
+    mail = current_app.extensions.get('mail')
+    mail_ready = (
+        mail and
+        current_app.config.get('MAIL_SERVER') and
+        current_app.config.get('MAIL_USERNAME')
+    )
 
+    # ── Build shared text pieces ───────────────────────────────────────────
+    items_text = '\n'.join(
+        f"  • {item.product_name} – {item.color}, Size {item.size}"
+        f" × {item.quantity}  =  ${item.subtotal:.2f}"
+        for item in order.items
+    )
+    if order.fulfillment_method == 'shipping':
+        addr_parts = list(filter(None, [
+            order.shipping_recipient or order.full_name,
+            order.shipping_street,
+            order.shipping_street_2,
+            f"{order.shipping_city}, {order.shipping_state} {order.shipping_zip}",
+            order.shipping_country if order.shipping_country and order.shipping_country != 'USA' else None,
+        ]))
+        delivery_text = '\n'.join(addr_parts)
+    else:
+        delivery_text = "Local Pickup — we'll reach out when ready!"
+
+    email_sent = False
+
+    # ── 1. Customer receipt ────────────────────────────────────────────────
+    if mail_ready and order.email:
         plain_body = (
             f"Hi {order.first_name or 'there'},\n\n"
             f"Your order is confirmed! Here's your receipt.\n\n"
             f"Order Number : {order.order_number}\n"
             f"Date         : {order.created_at.strftime('%B %d, %Y at %I:%M %p')} UTC\n"
-            f"Payment      : {(order.payment_method or 'Card').title()} — PAID\n\n"
+            f"Payment      : {(order.payment_method or 'Card').title()} — "
+            f"{'PAID' if order.payment_status == 'paid' else 'PENDING (Cash — pay on pickup)'}\n\n"
             f"Items:\n{items_text}\n\n"
             f"Subtotal : ${order.subtotal:.2f}\n"
             f"Shipping : {'$' + f'{order.shipping_cost:.2f}' if order.shipping_cost else 'Free (Pickup)'}\n"
@@ -58,48 +60,65 @@ def send_order_confirmation_email(order):
             f"Made with purpose, for you.\n"
             f"— Purposefully Made KC"
         )
-
-        # ── HTML body from template ────────────────────────────────────────
         html_body = render_template('email/order_confirmation.html', order=order)
 
-        # ── Customer receipt ───────────────────────────────────────────────
-        msg = Message(
-            subject=f"Your Order is Confirmed ✓ — {order.order_number}",
-            recipients=[order.email],
-            body=plain_body,
-            html=html_body,
-        )
-        mail.send(msg)
-
-        # ── Admin copy (new order alert) ───────────────────────────────────
-        admin_email = current_app.config.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com'
-        if admin_email and admin_email != order.email:
-            admin_msg = Message(
-                subject=f"New Order — {order.order_number} · ${order.total:.2f}",
-                recipients=[admin_email],
-                body=(
-                    f"New order received!\n\n"
-                    f"Order : {order.order_number}\n"
-                    f"From  : {order.full_name} <{order.email}>\n"
-                    f"Total : ${order.total:.2f}\n\n"
-                    f"Items:\n{items_text}\n\n"
-                    f"Delivery: {delivery_text}"
-                ),
+        _prev = _socket.getdefaulttimeout()
+        _socket.setdefaulttimeout(10)
+        try:
+            msg = Message(
+                subject=f"Your Order is Confirmed ✓ — {order.order_number}",
+                recipients=[order.email],
+                body=plain_body,
                 html=html_body,
             )
-            try:
-                mail.send(admin_msg)
-            except Exception:
-                pass  # Don't fail the customer email if admin copy fails
+            mail.send(msg)
+            email_sent = True
+        except Exception as e:
+            print(f"Customer confirmation email error: {e}", file=sys.stderr)
+        finally:
+            _socket.setdefaulttimeout(_prev)
 
-        return True
+    # ── 2. Admin order alert (always send, separate template) ─────────────
+    admin_email = current_app.config.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com'
+    if mail_ready and admin_email:
+        admin_base_url = current_app.config.get('ADMIN_BASE_URL', 'https://purposefullymadekc.com')
+        admin_html = render_template(
+            'email/admin_order_alert.html',
+            order=order,
+            admin_base_url=admin_base_url,
+        )
+        payment_note = 'PAID' if order.payment_status == 'paid' else 'CASH — collect on pickup'
+        admin_plain = (
+            f"NEW ORDER — {order.order_number} · ${order.total:.2f} · {payment_note}\n\n"
+            f"Customer : {order.full_name} <{order.email}>"
+            f"{' · ' + order.phone if order.phone else ''}\n\n"
+            f"Items:\n{items_text}\n\n"
+            f"Delivery: {delivery_text}\n\n"
+            f"View order: {admin_base_url}/admin/orders/{order.id}"
+        )
+        _prev = _socket.getdefaulttimeout()
+        _socket.setdefaulttimeout(10)
+        try:
+            admin_msg = Message(
+                subject=f"🛍 New Order — {order.order_number} · ${order.total:.2f}",
+                recipients=[admin_email],
+                body=admin_plain,
+                html=admin_html,
+            )
+            mail.send(admin_msg)
+        except Exception as e:
+            print(f"Admin order alert email error: {e}", file=sys.stderr)
+        finally:
+            _socket.setdefaulttimeout(_prev)
 
-    except Exception as e:
-        import sys
-        print(f"Order confirmation email error: {e}", file=sys.stderr)
-        return False
-    finally:
-        _socket.setdefaulttimeout(_prev_timeout)
+    # ── 3. Admin SMS alert (non-critical) ─────────────────────────────────
+    try:
+        from utils.sms import send_new_order_alert
+        send_new_order_alert(current_app._get_current_object(), order)
+    except Exception:
+        pass  # SMS is best-effort — never block the order
+
+    return email_sent
 
 def get_cart():
     """Get cart from session"""
@@ -328,17 +347,4 @@ def confirmation(order_number):
     """Order confirmation page"""
     order = Order.query.filter_by(order_number=order_number).first_or_404()
     
-    # If user is logged in, verify it's their order
-    if current_user.is_authenticated and order.user_id != current_user.id:
-        if not current_user.is_admin:
-            flash('Order not found', 'error')
-            return redirect(url_for('main.index'))
-    
-    # Check if confirmation email was sent (from session, for this order)
-    email_sent = False
-    if session.get('confirmation_email_sent_for') == order_number:
-        email_sent = session.get('confirmation_email_sent', False)
-        session.pop('confirmation_email_sent', None)
-        session.pop('confirmation_email_sent_for', None)
-    
-    return render_template('checkout/confirmation.html', order=order, email_sent=email_sent)
+    # If user is logged in, verify it
