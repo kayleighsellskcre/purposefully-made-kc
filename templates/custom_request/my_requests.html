@@ -354,7 +354,7 @@
         })
         .then(r => r.json())
         .then(data => {
-            if (data.error) { alert(data.error); return; }
+            if (data.error) { window.closeRqModal(); showRqToast('Error: ' + data.error); return; }
             window.closeRqModal();
             const card = document.getElementById('rq-card-' + _rqId);
             if (card) {
@@ -365,7 +365,7 @@
             }
             showRqToast(data.message || 'Request removed');
         })
-        .catch(() => alert('Something went wrong. Please try again.'))
+        .catch(() => showRqToast('Something went wrong — please try again'))
         .finally(() => { btn.disabled = false; btn.textContent = 'Yes, Remove'; });
     });
 
@@ -374,8 +374,4 @@
         t.textContent = msg;
         t.style.opacity = '1';
         clearTimeout(t._t);
-        t._t = setTimeout(() => { t.style.opacity = '0'; }, 3200);
-    }
-})();
-</script>
-{% endblock %}
+        t._t = setTimeout(() => { t.style.opacity = '0'

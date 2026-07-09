@@ -87,10 +87,10 @@ async function removeFavorite(productId, colorName) {
         if (data.success) {
             window.location.reload();
         } else {
-            alert('Error: ' + data.error);
+            PMKC.showFlash(data.error || 'Could not remove favorite', 'error');
         }
     } catch (error) {
-        alert('Failed to remove favorite');
+        PMKC.showFlash('Something went wrong — please try again', 'error');
     }
 }
 </script>
@@ -225,9 +225,4 @@ async function removeFavorite(productId, colorName) {
 
 @media (max-width: 768px) {
     .products-grid {
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 1.5rem;
-    }
-}
-</style>
-{% endblock %}
+        grid-template-columns: repeat(auto-fill, minmax(20

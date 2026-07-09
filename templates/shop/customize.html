@@ -3275,27 +3275,33 @@
     
     function setupAddToCart() {
         document.getElementById('addToCart').addEventListener('click', async function() {
-            // Validation
+            // Validation — toast + scroll-to missing section
             if (!state.selectedColor) {
-                alert('Please select a color');
+                PMKC.showFlash('Please select a color to continue', 'error');
+                document.querySelector('.color-section, [data-section="color"], .color-grid, .color-cards')
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
             if (!state.selectedSize) {
-                alert('Please select a size');
+                PMKC.showFlash('Please select a size to continue', 'error');
+                document.querySelector('.size-grid, .size-grid-professional, [data-section="size"]')
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
             if (!state.designUrl && !state.designFile) {
-                alert('Please upload a design or choose one from the gallery');
+                PMKC.showFlash('Please upload a design or choose one from the gallery', 'error');
+                document.querySelector('.design-upload-section, [data-section="design"], .upload-area')
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
             if (state.backDesignEnabled) {
                 if (state.backDesignMode === 'name_number') {
                     if (!state.backDesignName && !state.backDesignNumber) {
-                        alert('Please enter a name and/or number for the back design');
+                        PMKC.showFlash('Please enter a name and/or number for the back design', 'error');
                         return;
                     }
                 } else if (state.backDesignMode === 'upload' && !state.backDesignFile && !state.backDesignUrl) {
-                    alert('Please upload a back design image');
+                    PMKC.showFlash('Please upload a back design image', 'error');
                     return;
                 }
             }
@@ -3383,7 +3389,7 @@
                 if (response.ok) {
                     // Success animation
                     this.textContent = '✓ Added to Cart!';
-                    this.style.background = '#22c55e';
+                    this.style.background = 'var(--olive-stone)';
                     
                     setTimeout(() => {
                         window.location.href = '/cart';
@@ -3392,28 +3398,5 @@
                     throw new Error('Failed to add to cart');
                 }
             } catch (error) {
-                alert('Error adding to cart. Please try again.');
-                this.textContent = 'Add to Cart';
-                this.disabled = false;
-                this.style.background = '';
-            }
-        });
-    }
-})();
-
-// Size chart modal toggle
-function toggleSizeChart() {
-    const modal = document.getElementById('sizeChartModal');
-    if (modal) {
-        if (modal.style.display === 'none' || !modal.style.display) {
-            modal.style.display = 'flex';
-        } else {
-            modal.style.display = 'none';
-        }
-    }
-}
-</script>
-{% endblock %}
-{% block extra_js %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGbGmf9ot8AxyG5nqCTX7oG/s8E8Vg8A==" crossorigin="anonymous"></script>
-{% endblock %}
+                PMKC.showFlash('Something went wrong adding to cart — please try again', 'error');
+                this.textContent = 'Ad

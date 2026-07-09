@@ -55,8 +55,8 @@
                         </address>
                         <div class="address-actions">
                             <a href="{{ url_for('account.edit_address', address_id=address.id) }}" class="btn btn-outline btn-sm">Edit</a>
-                            <form action="{{ url_for('account.delete_address', address_id=address.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Delete this address?');">
-                                <button type="submit" class="btn btn-outline btn-sm">Delete</button>
+                            <form action="{{ url_for('account.delete_address', address_id=address.id) }}" method="POST" style="display: inline;" class="delete-address-form">
+                                <button type="button" class="btn btn-outline btn-sm delete-address-btn">Delete</button>
                             </form>
                         </div>
                     </div>
@@ -87,4 +87,6 @@
 .address-card address { font-style: normal; line-height: 1.7; color: var(--text-secondary); font-size: 0.88rem; margin-bottom: 1.25rem; }
 .address-actions { display: flex; gap: 0.65rem; }
 </style>
-{% endblock %}
+
+<script>
+// Inline
