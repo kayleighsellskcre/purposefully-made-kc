@@ -104,6 +104,18 @@
 </div>
 
 <style>
+/* Modal overlay — shared prod-modal system */
+.prod-modal { display: none; position: fixed; inset: 0; background: rgba(30,25,20,0.55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); z-index: 9999; align-items: center; justify-content: center; padding: 1rem; overflow-y: auto; }
+.prod-modal.is-open { display: flex; }
+.prod-modal-card { background: #fff; border-radius: 18px; box-shadow: 0 20px 60px rgba(30,25,20,0.25); width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
+.prod-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1.5rem 1.75rem 1rem; border-bottom: 1px solid var(--border-light, #eee); }
+.prod-modal-header h2 { font-family: var(--font-heading); font-size: 1.25rem; color: var(--primary-color); margin: 0; }
+.prod-modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-secondary); padding: 0.25rem 0.5rem; border-radius: 6px; line-height: 1; }
+.prod-modal-close:hover { background: var(--secondary-color, #f5f0eb); }
+.prod-modal-body { padding: 1.25rem 1.75rem 1.75rem; }
+.prod-modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; flex-wrap: wrap; }
+@media (max-width: 480px) { .prod-modal-actions { flex-direction: column-reverse; } .prod-modal-actions .btn { width: 100%; } }
+
 .design-gallery-admin { padding: 2rem 0 4rem; }
 
 .gallery-page-title {
