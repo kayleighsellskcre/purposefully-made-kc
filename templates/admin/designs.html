@@ -42,7 +42,7 @@
                     {% endif %}
                     <button type="button"
                             class="btn btn-outline btn-sm"
-                            style="color:#dc3545;border-color:#dc3545;margin-left:0.5rem;"
+                            style="color:var(--terra-cotta);border-color:var(--terra-cotta);margin-left:0.5rem;"
                             onclick="libConfirmDelete({{ design.id }}, '{{ (design.original_filename or 'Design')|replace("'", "\\'") }}', '{{ url_for('admin.design_delete', design_id=design.id) }}')">
                         Delete
                     </button>
@@ -259,4 +259,4 @@
             showLibToast(data.message || 'Design deleted');
         })
         .catch(function() { showLibToast('Something went wrong. Please try again.'); })
-        .finally(function()
+     
