@@ -4,7 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Purposefully Made KC - Custom Apparel{% endblock %}</title>
-    
+    <meta name="description" content="{% block meta_description %}Purposefully Made KC — premium Bella+Canvas custom apparel with DTF printing. Design your own t-shirts, hoodies, onesies, and group orders online.{% endblock %}">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="{% block og_title %}Purposefully Made KC - Custom Apparel{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Premium Bella+Canvas custom apparel with DTF printing. Design your own shirts, hoodies, onesies and team orders.{% endblock %}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://purposefullymadekc.com">
+    <meta property="og:image" content="{{ url_for('static', filename='img/logo.png', _external=True) }}">
+    <meta name="twitter:card" content="summary_large_image">
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

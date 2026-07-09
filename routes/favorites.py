@@ -131,6 +131,37 @@ def remove_favorite():
     return jsonify({'success': True, 'message': 'Removed from favorites'})
 
 
+@favorites_bp.route('/favorites/check-batch', methods=['POST'])
+def check_favorites_batch():
+    """Check which of a list of products are favorited.
+    Body: {"items": [{"product_id": 1, "color_name": "White"}, ...]}
+    Returns: {"favorites": {"1:White": true, ...}}
+    """
+    data = request.get_json() or {}
+    items = data.get('items', [])
+    result = {}
+
+    if current_user.is_authenticated:
+        if items:
+            product_ids = list({item.get('product_id') for item in items})
+            user_favs = Favorite.query.filter_by(user_id=current_user.id)\
+                .filter(Favorite.product_id.in_(product_ids)).all()
+            fav_set = {(f.product_id, f.color_name or '') for f in user_favs}
+            for item in items:
+                pid = item.get('product_id')
+                color = item.get('color_name') or ''
+                result[f"{pid}:{color}"] = (pid, color) in fav_set
+    else:
+        session_favorites = session.get('favorites', [])
+        session_set = {(f.get('product_id'), f.get('color_name') or '') for f in session_favorites}
+        for item in items:
+            pid = item.get('product_id')
+            color = item.get('color_name') or ''
+            result[f"{pid}:{color}"] = (pid, color) in session_set
+
+    return jsonify({'favorites': result})
+
+
 @favorites_bp.route('/favorites/check', methods=['POST'])
 def check_favorite():
     """Check if product is in favorites"""

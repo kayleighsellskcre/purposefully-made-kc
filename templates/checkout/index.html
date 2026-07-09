@@ -3,10 +3,21 @@
 {% block title %}Checkout - Purposefully Made KC{% endblock %}
 
 {% block content %}
+<div class="page-header">
+    <div class="container">
+        <span class="eyebrow">Almost There</span>
+        <h1>Checkout</h1>
+        <p class="lead">Secure checkout — your order is just a moment away.</p>
+    </div>
+</div>
+
+<style>
+.page-header, .page-header .container { text-align: center; }
+.page-header h1, .page-header p, .page-header span { text-align: center; display: block; }
+</style>
+
 <div class="checkout-page">
     <div class="container">
-        <h1>Checkout</h1>
-        
         <div class="checkout-grid">
             <!-- Left Column: Forms -->
             <div class="checkout-forms">
@@ -277,7 +288,7 @@ document.getElementById('submit-payment').addEventListener('click', async () => 
     } else if (currentMethod === 'cash') {
         await handleCashPayment();
     } else {
-        alert('PayPal integration coming soon!');
+        PMKC.showFlash('PayPal & Venmo payments are coming soon — for now please use card or cash.', 'info');
     }
 });
 
@@ -318,7 +329,7 @@ async function handleStripePayment() {
             await completeOrder(paymentIntent.id);
         }
     } catch (error) {
-        alert('Payment failed: ' + error.message);
+        PMKC.showFlash('Payment failed: ' + error.message, 'error');
         button.disabled = false;
         button.innerHTML = 'Complete Order - $<span id="total-amount">{{ "%.2f"|format(totals.total) }}</span>';
     }
@@ -334,7 +345,7 @@ async function handleCashPayment() {
     } catch (error) {
         button.disabled = false;
         button.innerHTML = 'Complete Order - $<span id="total-amount">{{ "%.2f"|format(totals.total) }}</span>';
-        alert('Order failed: ' + error.message);
+        PMKC.showFlash('Order failed: ' + error.message, 'error');
     }
 }
 

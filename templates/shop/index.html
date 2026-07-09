@@ -942,38 +942,42 @@ async function toggleFavorite(event, productId, colorName) {
             btn.classList.toggle('active');
             btn.querySelector('path').setAttribute('fill', isActive ? 'none' : 'currentColor');
         } else {
-            alert('Error: ' + data.error);
+            PMKC.showFlash(data.error || 'Could not update favorites', 'error');
         }
     } catch (error) {
         console.error('Favorite error:', error);
     }
 }
 
-// Load favorite states on page load
+// Load favorite states on page load — single batch request
 document.addEventListener('DOMContentLoaded', async () => {
     const favBtns = document.querySelectorAll('.btn-favorite');
-    for (const btn of favBtns) {
-        const productId = parseInt(btn.dataset.productId);
-        const colorName = btn.dataset.colorName || '';
-        
-        try {
-            const response = await fetch('/favorites/check', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    product_id: productId,
-                    color_name: colorName
-                })
-            });
-            
-            const data = await response.json();
-            if (data.is_favorite) {
+    if (!favBtns.length) return;
+
+    const items = Array.from(favBtns).map(btn => ({
+        product_id: parseInt(btn.dataset.productId),
+        color_name: btn.dataset.colorName || ''
+    }));
+
+    try {
+        const response = await fetch('/favorites/check-batch', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ items })
+        });
+        const data = await response.json();
+        const favMap = data.favorites || {};
+
+        favBtns.forEach(btn => {
+            const key = `${btn.dataset.productId}:${btn.dataset.colorName || ''}`;
+            if (favMap[key]) {
                 btn.classList.add('active');
-                btn.querySelector('path').setAttribute('fill', 'currentColor');
+                const path = btn.querySelector('path');
+                if (path) path.setAttribute('fill', 'currentColor');
             }
-        } catch (error) {
-            console.error('Check favorite error:', error);
-        }
+        });
+    } catch (error) {
+        console.error('Batch favorite check error:', error);
     }
 });
 

@@ -413,24 +413,43 @@ document.querySelectorAll('.quantity-input').forEach(input => {
     });
 });
 
-// Remove item
+// Remove item — inline confirm (no browser dialog)
 document.querySelectorAll('.btn-remove').forEach(button => {
     button.addEventListener('click', async function() {
         const index = this.dataset.index;
-        
-        if (confirm('Remove this item from cart?')) {
+        const originalText = this.textContent;
+
+        // If already in confirm state, execute removal
+        if (this.dataset.confirming === 'true') {
+            this.textContent = 'Removing…';
+            this.disabled = true;
             try {
-                const response = await fetch(`/cart/remove/${index}`, {
-                    method: 'POST'
-                });
-                
-                if (response.ok) {
-                    window.location.reload();
-                }
+                const response = await fetch(`/cart/remove/${index}`, { method: 'POST' });
+                if (response.ok) { window.location.reload(); }
             } catch (error) {
                 PMKC.showFlash('Failed to remove item', 'error');
+                this.textContent = originalText;
+                this.disabled = false;
+                delete this.dataset.confirming;
             }
+            return;
         }
+
+        // First click — ask for confirmation inline
+        this.dataset.confirming = 'true';
+        this.textContent = 'Tap again to remove';
+        this.style.color = 'var(--terra-cotta)';
+        this.style.fontWeight = '600';
+
+        // Auto-reset after 3 seconds if no second click
+        setTimeout(() => {
+            if (this.dataset.confirming === 'true') {
+                delete this.dataset.confirming;
+                this.textContent = originalText;
+                this.style.color = '';
+                this.style.fontWeight = '';
+            }
+        }, 3000);
     });
 });
 </script>
