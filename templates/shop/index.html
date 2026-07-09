@@ -299,15 +299,6 @@
     .daily-affirmation-text { max-width: 100%; }
 }
 
-/* ── Shop Page Header ── */
-.shop-page-header,
-.shop-page-header .container,
-.shop-page-header h1,
-.shop-page-header p,
-.shop-page-header span {
-    text-align: center !important;
-}
-
 .shop-header-actions {
     display: flex;
     justify-content: center;
@@ -527,11 +518,6 @@
     position: relative;
 }
 
-.product-card:hover {
-    box-shadow: var(--box-shadow-hover);
-    transform: translateY(-4px);
-}
-
 /* Favorite Button */
 .btn-favorite {
     position: absolute;
@@ -559,11 +545,11 @@
 }
 
 .btn-favorite.active {
-    color: #e74c3c;
+    color: var(--terra-cotta);
 }
 
 .btn-favorite.active:hover {
-    color: #c0392b;
+    color: var(--aged-bronze);
 }
 
 .btn-favorite svg {
@@ -1022,3 +1008,4 @@ function clearFilters() {
 </script>
 {% endblock %}
 
+                                                                                                                                                                                                                                                                             
