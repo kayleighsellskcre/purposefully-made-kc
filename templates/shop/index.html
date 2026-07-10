@@ -31,7 +31,6 @@
 {% if daily_affirmation %}
 <div class="daily-affirmation-wrap">
     <div class="daily-affirmation-card">
-        <span class="daily-affirmation-eyebrow">Daily Inspiration</span>
         <span class="daily-affirmation-mark" aria-hidden="true">&ldquo;</span>
         <p class="daily-affirmation-text">{{ daily_affirmation }}</p>
         <span class="daily-affirmation-rule"></span>
@@ -230,7 +229,7 @@
 /* ── Daily Affirmation ── */
 .daily-affirmation-wrap {
     background: linear-gradient(180deg, var(--ivory-silk, #faf7f2) 0%, #fff 100%);
-    padding: clamp(2.5rem, 6vw, 4.5rem) 1.25rem;
+    padding: clamp(1rem, 3vw, 1.75rem) 1.25rem;
     text-align: center;
 }
 .daily-affirmation-card {
@@ -238,10 +237,10 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: clamp(1rem, 2.5vw, 1.5rem);
+    gap: clamp(0.5rem, 1.5vw, 0.85rem);
     max-width: 880px;
     margin: 0 auto;
-    padding: clamp(2.25rem, 5vw, 3.5rem) clamp(1.5rem, 5vw, 3.5rem);
+    padding: clamp(1.25rem, 3vw, 1.75rem) clamp(1.5rem, 5vw, 3.5rem);
     background: #fff;
     border: 1px solid rgba(184, 124, 111, 0.18);
     border-radius: 20px;
@@ -257,14 +256,6 @@
     height: 4px;
     border-radius: 0 0 4px 4px;
     background: linear-gradient(90deg, transparent, var(--terra-cotta, #b87c6f), transparent);
-}
-.daily-affirmation-eyebrow {
-    font-family: var(--font-primary, inherit);
-    text-transform: uppercase;
-    letter-spacing: 0.22em;
-    font-size: clamp(0.7rem, 1.6vw, 0.8rem);
-    font-weight: 700;
-    color: var(--terra-cotta, #b87c6f);
 }
 .daily-affirmation-mark {
     font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
