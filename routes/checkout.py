@@ -347,4 +347,17 @@ def confirmation(order_number):
     """Order confirmation page"""
     order = Order.query.filter_by(order_number=order_number).first_or_404()
     
-    # If user is logged in, verify it
+    # If user is logged in, verify it's their order
+    if current_user.is_authenticated and order.user_id != current_user.id:
+        if not current_user.is_admin:
+            flash('Order not found', 'error')
+            return redirect(url_for('main.index'))
+    
+    # Check if confirmation email was sent (from session, for this order)
+    email_sent = False
+    if session.get('confirmation_email_sent_for') == order_number:
+        email_sent = session.get('confirmation_email_sent', False)
+        session.pop('confirmation_email_sent', None)
+        session.pop('confirmation_email_sent_for', None)
+    
+    return render_template('checkout/confirmation.html', order=order, email_sent=email_sent)

@@ -51,3 +51,56 @@ def send_design_request_alert(app, customer_name, request_id):
         except Exception:
             pass
     return False
+
+
+def send_new_order_alert(app, order):
+    """Send text to admin when a new order is placed.
+    Uses email-to-SMS (no platform) if carrier is set, otherwise Twilio if configured."""
+    phone = ''.join(c for c in str(app.config.get('ADMIN_PHONE', '')) if c.isdigit())
+    if len(phone) != 10:
+        return False
+
+    base_url = app.config.get('ADMIN_BASE_URL', 'https://purposefullymadekc.com')
+    payment_note = 'PAID' if getattr(order, 'payment_status', '') == 'paid' else 'CASH'
+    fulfillment = 'Pickup' if getattr(order, 'fulfillment_method', '') != 'shipping' else 'Ship'
+    total = getattr(order, 'total', 0)
+    order_number = getattr(order, 'order_number', '???')
+    order_id = getattr(order, 'id', '')
+    full_name = getattr(order, 'full_name', '') or getattr(order, 'email', '')
+
+    msg = (
+        f"PMKC New Order! {order_number} · ${total:.2f} · {payment_note} · {fulfillment}"
+        f" · {full_name}"
+        f" · {base_url}/admin/orders/{order_id}"
+    )
+
+    # Option 1: Email-to-SMS gateway (no extra platform)
+    carrier = app.config.get('ADMIN_PHONE_CARRIER', '').lower()
+    if carrier and carrier in CARRIER_GATEWAYS and app.config.get('MAIL_SERVER'):
+        try:
+            from flask_mail import Message
+            mail = app.extensions.get('mail')
+            if mail:
+                gateway = CARRIER_GATEWAYS[carrier]
+                to_email = f"{phone}@{gateway}"
+                email_msg = Message(
+                    subject='New Order',
+                    body=msg,
+                    recipients=[to_email]
+                )
+                mail.send(email_msg)
+                return True
+        except Exception:
+            pass
+
+    # Option 2: Twilio
+    if app.config.get('TWILIO_ACCOUNT_SID') and app.config.get('TWILIO_AUTH_TOKEN') and app.config.get('TWILIO_PHONE_NUMBER'):
+        try:
+            from twilio.rest import Client
+            client = Client(app.config['TWILIO_ACCOUNT_SID'], app.config['TWILIO_AUTH_TOKEN'])
+            client.messages.create(to='+1' + phone, from_=app.config['TWILIO_PHONE_NUMBER'], body=msg)
+            return True
+        except Exception:
+            pass
+
+    return False
