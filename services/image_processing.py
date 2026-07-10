@@ -137,6 +137,12 @@ def process_artwork_bytes(data, mode='auto', engine=None):
                 result_engine = 'algorithmic'
                 changed = True
 
+    # Autocrop: trim the transparent canvas to the artwork bounding box so the
+    # PNG contains only the design itself (no wasted transparent space). This
+    # ensures the design displays at full visual size on the shirt mockup.
+    if changed:
+        out = _autocrop(out, padding=8)
+
     white_artwork = _detect_white_artwork(out)
     validation = _validate(out, original_size, changed)
     has_transparency = _has_transparency(out)
@@ -480,6 +486,39 @@ def _defringe(img_rgba):
 # White-artwork detection
 # ---------------------------------------------------------------------------
 
+def _autocrop(img_rgba, padding=8):
+    """Crop the image to the bounding box of opaque artwork pixels.
+
+    After background removal the canvas is the same size as the original upload
+    (e.g. 3000×3000 px with a small logo in the centre). Without cropping, the
+    design would appear tiny on the shirt mockup because CSS scales the whole
+    canvas. Autocropping makes the PNG exactly as large as the artwork so it
+    renders at proper shirt-print-area size.
+
+    ``padding`` adds a small transparent border so the edges aren't clipped.
+    """
+    try:
+        alpha = img_rgba.getchannel('A')
+        bbox = alpha.getbbox()
+        if bbox is None:
+            return img_rgba
+        w, h = img_rgba.size
+        l, t, r, b = bbox
+        # Guard: if the artwork already fills most of the canvas, skip (the
+        # image was probably already sized correctly — e.g. a white-bg PNG the
+        # flood-fill didn't crop automatically).
+        fill_ratio = ((r - l) * (b - t)) / max(1, w * h)
+        if fill_ratio > 0.92:
+            return img_rgba
+        l = max(0, l - padding)
+        t = max(0, t - padding)
+        r = min(w, r + padding)
+        b = min(h, b + padding)
+        return img_rgba.crop((l, t, r, b))
+    except Exception:
+        return img_rgba
+
+
 def _detect_white_artwork(img_rgba):
     """True when the visible artwork is predominantly white/very light."""
     try:
@@ -592,35 +631,4 @@ def _validate(img_rgba, original_size, changed):
         # corners after a cut that *did* remove something.
         if (changed and 'background_may_remain' not in issues
                 and (corner_opaque_frac > 0.18 or border_opaque_frac > 0.28)):
-            issues.append('background_artifacts')
-        if soft_frac > 0.22:
-            issues.append('soft_or_blurry_edges')
-
-        w0, h0 = original_size or (0, 0)
-        if w0 and h0 and min(w0, h0) < 300:
-            issues.append('low_resolution')
-    except Exception:
-        pass
-
-    # Only the genuinely broken outcomes flip ok=False (drives the auto prompt).
-    blocking = {'no_background_removed', 'artwork_mostly_removed',
-                'background_may_remain'}
-    ok = not any(i in blocking for i in issues)
-    return {'ok': ok, 'issues': issues, 'metrics': metrics}
-
-
-# Human-readable messages the frontend can show.
-ISSUE_MESSAGES = {
-    'no_background_removed': "We couldn't detect a background to remove. Try the 'Reprocess (stronger)' option.",
-    'artwork_mostly_removed': 'Most of the artwork was removed — the background may be too similar to the design. Try reprocessing.',
-    'background_may_remain': 'Some background pixels may remain around the edges. You can reprocess for a stronger cut.',
-    'background_artifacts': 'A few background artefacts may remain near the edges or corners. Reprocess for a cleaner cut if needed.',
-    'soft_or_blurry_edges': 'Edges look a little soft. A higher-resolution file will give sharper print edges.',
-    'low_resolution': 'This image is low resolution and may look blurry when printed. 300 DPI / 1500px+ is recommended.',
-}
-
-
-def issue_messages(validation):
-    """Map a validation dict to a list of human-readable strings."""
-    return [ISSUE_MESSAGES[i] for i in validation.get('issues', [])
-            if i in ISSUE_MESSAGES]
+            issues.append('background

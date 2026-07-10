@@ -199,10 +199,13 @@
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 
-/* Placement-specific sizing - Slightly smaller for a cleaner look */
+/* Placement-specific sizing — sized to match real shirt print areas.
+   The shirt mockup is ~457px wide inside the 571px square canvas.
+   A standard full-chest print is ~12" on an 18" shirt = ~66% of shirt width
+   = ~48% of canvas. Small chest logos are ~3.5" = ~15% of canvas. */
 .design-layer[data-placement="center_chest"] {
-    width: 28%;
-    max-width: 220px;
+    width: 46%;
+    max-width: 340px;
     min-height: 60px;
     top: 32%;
     left: 50%;
@@ -211,8 +214,8 @@
 
 /* Left chest = appears on RIGHT side of mockup (wearer's left when wearing) */
 .design-layer[data-placement="left_chest"] {
-    width: 10%;
-    max-width: 85px;
+    width: 15%;
+    max-width: 112px;
     top: 30%;
     left: 62%;
     transform: translate(-50%, -50%);
@@ -220,16 +223,16 @@
 
 /* Right chest = appears on LEFT side of mockup (wearer's right when wearing) */
 .design-layer[data-placement="right_chest"] {
-    width: 10%;
-    max-width: 85px;
+    width: 15%;
+    max-width: 112px;
     top: 30%;
     left: 38%;
     transform: translate(-50%, -50%);
 }
 
 .design-layer[data-placement="center_back"] {
-    width: 28%;
-    max-width: 220px;
+    width: 46%;
+    max-width: 340px;
     top: 32%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -237,8 +240,8 @@
 /* Back design name/number: higher default position, larger text */
 .design-layer-back {
     flex-direction: column;
-    width: 38%;
-    max-width: 300px;
+    width: 46%;
+    max-width: 340px;
     top: 25%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -3440,5 +3443,4 @@ function toggleSizeChart() {
 </script>
 {% endblock %}
 {% block extra_js %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHVLRZA3MzSME5bIZU5JNFtmH4sJTqpXGQBSfP/aB+bDQE7BF+HUvp2a3kZe0VqJmYRlkTFA==" crossorigin="anonymous"></script>
-{% endblock %}
+<script src="https://cdnjs.
