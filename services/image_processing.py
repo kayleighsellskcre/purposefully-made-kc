@@ -94,6 +94,13 @@ def process_artwork_bytes(data, mode='auto', engine=None):
     try:
         src = Image.open(io.BytesIO(data))
         src.load()
+        # Auto-rotate based on EXIF orientation (mobile camera photos store
+        # rotation in EXIF; PIL ignores it without this, causing portrait
+        # images to be opened sideways — which breaks border-based bg removal).
+        try:
+            src = ImageOps.exif_transpose(src)
+        except Exception:
+            pass
     except Exception:
         # Not a decodable image — hand bytes back untouched.
         return {
@@ -126,6 +133,12 @@ def process_artwork_bytes(data, mode='auto', engine=None):
         else:
             out = None
             want = engine or ('ai' if ai_enabled() else 'algorithmic')
+            # Opportunistic AI: try rembg even if AI_BG_REMOVAL is not set,
+            # because rembg handles real-world photographic backgrounds (e.g.
+            # mobile camera photos) far better than the algorithmic engine.
+            # Falls back to algorithmic automatically if rembg is unavailable.
+            if want != 'ai' and _get_rembg_session() is not None:
+                want = 'ai'
             if want == 'ai':
                 out = _remove_bg_ai(img)
                 if out is not None:
