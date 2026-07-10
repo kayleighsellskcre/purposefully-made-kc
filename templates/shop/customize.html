@@ -142,7 +142,27 @@
 }
 
 #mockupImage {
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: opacity 0.3s ease;
+}
+
+/* Spinner shown while the mockup image is fetching */
+.preview-canvas.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    margin: -20px 0 0 -20px;
+    border: 3px solid rgba(0,0,0,0.1);
+    border-top-color: var(--terra-cotta, #c0634b);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    z-index: 10;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
 .design-layer {
@@ -1421,7 +1441,7 @@
                                  onclick="selectColor(this)">
                                 <div class="color-image-wrapper">
                                     {% if variant.front_image %}
-                                    <img src="{{ variant.front_image }}" alt="{{ variant.color_name }}" class="color-preview-img" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <img src="{{ variant.front_image }}" alt="{{ variant.color_name }}" class="color-preview-img" loading="lazy" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='block';">
                                     <div class="color-placeholder color-fallback" style="display: none; {% if variant.color_hex %}background-color: {{ variant.color_hex }};{% elif variant.color_name|color_hex_fallback %}background-color: {{ variant.color_name|color_hex_fallback }};{% else %}background: linear-gradient(135deg, #ddd, #bbb);{% endif %}"></div>
                                     {% else %}
                                     <div class="color-placeholder" style="{% if variant.color_hex %}background-color: {{ variant.color_hex }};{% elif variant.color_name|color_hex_fallback %}background-color: {{ variant.color_name|color_hex_fallback }};{% else %}background: linear-gradient(135deg, #ddd, #bbb);{% endif %}"></div>
@@ -2167,8 +2187,8 @@
     
     function updateMockupImage() {
         const mockupImg = document.getElementById('mockupImage');
+        const previewCanvas = document.getElementById('previewCanvas');
         if (!state.selectedColor) {
-            console.log('No color selected');
             return;
         }
         
@@ -2176,21 +2196,21 @@
             ? state.selectedColor.frontImage 
             : state.selectedColor.backImage;
         
-        console.log('Updating mockup:', {
-            color: state.selectedColor.name,
-            view: state.currentView,
-            imageUrl: imageUrl
-        });
-        
         if (imageUrl && imageUrl !== '') {
-            mockupImg.src = imageUrl;
-            mockupImg.style.opacity = '1';
+            // Show spinner while image fetches
+            mockupImg.style.opacity = '0';
+            if (previewCanvas) previewCanvas.classList.add('loading');
+            mockupImg.onload = function() {
+                if (previewCanvas) previewCanvas.classList.remove('loading');
+                this.style.opacity = '1';
+            };
             mockupImg.onerror = function() {
-                console.error('Failed to load image:', imageUrl);
+                if (previewCanvas) previewCanvas.classList.remove('loading');
                 this.style.opacity = '0.3';
             };
+            mockupImg.src = imageUrl;
         } else {
-            console.warn('No image URL for', state.currentView);
+            if (previewCanvas) previewCanvas.classList.remove('loading');
             mockupImg.style.opacity = '0.3';
         }
         
