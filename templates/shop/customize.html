@@ -3408,22 +3408,4 @@
                 
                 if (response.ok) {
                     // Success animation
-                    this.textContent = '✓ Added to Cart!';
-                    this.style.background = 'var(--olive-stone)';
-                    
-                    setTimeout(() => {
-                        window.location.href = '/cart';
-                    }, 800);
-                } else {
-                    throw new Error('Failed to add to cart');
-                }
-            } catch (error) {
-                PMKC.showFlash('Something went wrong adding to cart — please try again', 'error');
-                this.textContent = 'Add Design & Continue';
-                this.disabled = false;
-            }
-        });
-    }
-});
-</script>
-{% endblock %}
+                    this.textContent = '✓ Ad
