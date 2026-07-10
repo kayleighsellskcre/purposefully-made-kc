@@ -454,4 +454,7 @@ def customize(product_id):
                          back_design_font=back_design_font,
                          back_design_text_color=back_design_text_color,
                          back_design_outline=back_design_outline,
-                         back_design_outline_color=back_desi
+                         back_design_outline_color=back_design_outline_color,
+                         lock_back_design_style=lock_back_design_style,
+                         allowed_design_ids=allowed_design_ids,
+                         is_adult=is_adult)

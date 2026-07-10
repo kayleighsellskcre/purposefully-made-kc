@@ -516,4 +516,12 @@ def create_app(config_class=Config):
             for m, action in results:
                 print(f"  {m.week_start.strftime('%Y-%m-%d')}: {action} — {m.units_sold} units, ${m.revenue:.2f}")
             print('Growth metrics synced successfully.')
-        except Exception a
+        except Exception as e:
+            print(f'Error syncing growth metrics: {e}')
+
+    return app
+
+
+app = create_app()
+if __name__ == '__main__':
+    app.run(debug=False)
