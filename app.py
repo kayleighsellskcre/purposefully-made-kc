@@ -156,18 +156,26 @@ def create_app(config_class=Config):
             # Migration errors shouldn't crash the app
             pass
         
-        # Ensure all admin accounts have is_admin=True on every app start
-        _admin_emails = [
-            (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').strip().lower(),
-            'kayleighsellskcre@gmail.com',
-        ]
-        for _ae in _admin_emails:
-            if not _ae:
-                continue
-            _au = User.query.filter(db.func.lower(User.email) == _ae).first()
+        # Ensure the one admin account has is_admin=True; revoke from all others
+        _admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').strip().lower()
+        if _admin_email:
+            # Grant to approved admin
+            _au = User.query.filter(db.func.lower(User.email) == _admin_email).first()
             if _au and not getattr(_au, 'is_admin', False):
                 _au.is_admin = True
                 db.session.commit()
+            # Revoke from anyone else who has is_admin=True
+            try:
+                _non_admins = User.query.filter(
+                    User.is_admin == True,
+                    db.func.lower(User.email) != _admin_email
+                ).all()
+                for _u in _non_admins:
+                    _u.is_admin = False
+                if _non_admins:
+                    db.session.commit()
+            except Exception:
+                pass
 
         # Seed daily affirmations if the table is empty
         try:
@@ -376,7 +384,6 @@ def create_app(config_class=Config):
             return
         _known_admins = {
             (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').lower().strip(),
-            'kayleighsellskcre@gmail.com',
         }
         user_email = (current_user.email or '').lower().strip()
         if user_email and user_email in _known_admins:
