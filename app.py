@@ -156,12 +156,17 @@ def create_app(config_class=Config):
             # Migration errors shouldn't crash the app
             pass
         
-        # Ensure purposefullymadekc@gmail.com has admin on every app start (fixes fresh deploy)
-        admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').strip()
-        if admin_email:
-            admin_user = User.query.filter(db.func.lower(User.email) == admin_email.lower()).first()
-            if admin_user and not getattr(admin_user, 'is_admin', False):
-                admin_user.is_admin = True
+        # Ensure all admin accounts have is_admin=True on every app start
+        _admin_emails = [
+            (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').strip().lower(),
+            'kayleighsellskcre@gmail.com',
+        ]
+        for _ae in _admin_emails:
+            if not _ae:
+                continue
+            _au = User.query.filter(db.func.lower(User.email) == _ae).first()
+            if _au and not getattr(_au, 'is_admin', False):
+                _au.is_admin = True
                 db.session.commit()
 
         # Seed daily affirmations if the table is empty
@@ -364,14 +369,17 @@ def create_app(config_class=Config):
 
     @app.before_request
     def ensure_admin_email_has_admin():
-        """On every request: if logged-in user is purposefullymadekc@gmail.com, force is_admin=True.
+        """On every request: if logged-in user is a known admin email, force is_admin=True.
         Ensures admin access even if DB was reset or grant was missed on login."""
         from flask_login import current_user
         if not current_user.is_authenticated:
             return
-        admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').lower().strip()
+        _known_admins = {
+            (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').lower().strip(),
+            'kayleighsellskcre@gmail.com',
+        }
         user_email = (current_user.email or '').lower().strip()
-        if user_email and user_email == admin_email:
+        if user_email and user_email in _known_admins:
             if not getattr(current_user, 'is_admin', False):
                 current_user.is_admin = True
                 db.session.commit()
@@ -408,8 +416,6 @@ def create_app(config_class=Config):
         if cu.is_authenticated:
             try:
                 is_site_admin = bool(getattr(cu, 'is_admin', False))
-                if not is_site_admin and (getattr(cu, 'email', '') or '').lower().strip() == admin_email:
-                    is_site_admin = True
             except Exception:
                 is_site_admin = False
 
