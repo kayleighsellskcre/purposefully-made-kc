@@ -63,7 +63,7 @@ def _get_rembg_session():
         return _REMBG_SESSION
     try:
         from rembg import new_session
-        model = os.environ.get('REMBG_MODEL', 'isnet-general-use')
+        model = os.environ.get('REMBG_MODEL', 'u2netp')
         _REMBG_SESSION = new_session(model)
         return _REMBG_SESSION
     except Exception:
