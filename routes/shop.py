@@ -250,6 +250,9 @@ def create_group_order():
             if order_deadline:
                 collection.order_deadline = order_deadline
 
+            # Track who created this group order (for permission checks)
+            collection.created_by_user_id = current_user.id
+
             db.session.add(collection)
             db.session.flush()
 
@@ -451,6 +454,4 @@ def customize(product_id):
                          back_design_font=back_design_font,
                          back_design_text_color=back_design_text_color,
                          back_design_outline=back_design_outline,
-                         back_design_outline_color=back_design_outline_color,
-                         lock_back_design_style=lock_back_design_style,
-                         is_adult=is_adult)
+                         back_design_outline_color=back_desi

@@ -126,12 +126,16 @@ class Collection(db.Model):
     # When True + restrict_options, participants cannot change font/color/outline
     lock_back_design_style = db.Column(db.Boolean, default=False)
 
+    # Creator tracking — set when a logged-in user creates via /shop/group-orders/create
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # Relationships
     products = db.relationship('Product', secondary='collection_products', backref='collections')
     orders = db.relationship('Order', backref='collection', lazy='dynamic')
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id], backref='created_collections')
     
     def __init__(self, **kwargs):
         super(Collection, self).__init__(**kwargs)
@@ -620,9 +624,4 @@ class Affirmation(db.Model):
 
     id         = db.Column(db.Integer, primary_key=True)
     text       = db.Column(db.Text, nullable=False)
-    is_active  = db.Column(db.Boolean, default=True, nullable=False)
-    sort_order = db.Column(db.Integer, default=0, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    def __repr__(self):
-        return f'<Affirmation {self.id}: {self.text[:40]}>'
+  

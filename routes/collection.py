@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
-from models import db, Collection, Product, ProductColorVariant
+from flask_login import current_user, login_required
+from models import db, Collection, Product, ProductColorVariant, Design
 from utils.mockups import get_carousel_colors_for_product
 from sqlalchemy.orm import joinedload
 import json
@@ -73,10 +74,10 @@ def password(slug):
 def share(slug):
     """Collection share page (shows share link and QR code)"""
     collection = Collection.query.filter_by(slug=slug, is_active=True).first_or_404()
-    
+
     # Check password if protected
     if collection.is_password_protected:
         if not session.get(f'collection_{collection.id}_access'):
             return redirect(url_for('collection.password', slug=slug))
-    
-    return render_template('collection/share.html', collection=collection)
+
+    # Resolve designs 

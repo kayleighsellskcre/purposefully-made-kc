@@ -136,6 +136,8 @@ def create_app(config_class=Config):
                     # user.failed_logins / locked_until — brute-force lockout tracking
                     "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS failed_logins INTEGER DEFAULT 0",
                     "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP",
+                    # collection.created_by_user_id — tracks who created a group order (for delete-design permission)
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER REFERENCES \"user\"(id)",
                 ]
                 for migration in all_migrations:
                     try:
@@ -514,16 +516,4 @@ def create_app(config_class=Config):
             for m, action in results:
                 print(f"  {m.week_start.strftime('%Y-%m-%d')}: {action} — {m.units_sold} units, ${m.revenue:.2f}")
             print('Growth metrics synced successfully.')
-        except Exception as e:
-            print(f'Error: {e}')
-            raise
-    
-    return app
-
-# Module-level app for gunicorn (app:app)
-app = create_app()
-
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-    app.run(debug=True)
+        except Exception a
