@@ -3408,4 +3408,37 @@
                 
                 if (response.ok) {
                     // Success animation
-                    this.textContent = '✓ Ad
+                    this.textContent = '✓ Added to Cart!';
+                    this.style.background = 'var(--olive-stone)';
+                    
+                    setTimeout(() => {
+                        window.location.href = '/cart';
+                    }, 800);
+                } else {
+                    throw new Error('Failed to add to cart');
+                }
+            } catch (error) {
+                PMKC.showFlash('Something went wrong adding to cart — please try again', 'error');
+                this.textContent = 'Add Design & Continue';
+                this.disabled = false;
+            }
+        });
+    }
+})();
+
+// Size chart modal toggle
+function toggleSizeChart() {
+    const modal = document.getElementById('sizeChartModal');
+    if (modal) {
+        if (modal.style.display === 'none' || !modal.style.display) {
+            modal.style.display = 'flex';
+        } else {
+            modal.style.display = 'none';
+        }
+    }
+}
+</script>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHVLRZA3MzSME5bIZU5JNFtmH4sJTqpXGQBSfP/aB+bDQE7BF+HUvp2a3kZe0VqJmYRlkTFA==" crossorigin="anonymous"></script>
+{% endblock %}
