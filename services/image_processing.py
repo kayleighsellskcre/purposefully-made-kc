@@ -399,10 +399,11 @@ def _remove_bg_algorithmic(img_rgba, mode='auto'):
 
         if _HAS_NUMPY:
             flood_bg = np.asarray(bg_mask) > 127
-            # Global colour key: anything close to the background colour ANYWHERE
-            # in the image (incl. enclosed letter holes / negative spaces). The
-            # tolerance also catches the bg-side of anti-aliased edges so no
-            # white/grey halo or remnant is left behind.
+            # Global colour key: anything close to the background colour
+            # anywhere in the image. But only remove those colour-like pixels
+            # if they are connected to the border/background region. This
+            # preserves enclosed white artwork while still clearing white or
+            # near-white backgrounds.
             ck_tol = int(min(95, max(36, 30 + mad * 1.7)))
             if mode == 'aggressive':
                 ck_tol = min(180, ck_tol + 90)
@@ -411,7 +412,28 @@ def _remove_bg_algorithmic(img_rgba, mode='auto'):
                     + np.abs(rgb_i[..., 1] - bg_color[1])
                     + np.abs(rgb_i[..., 2] - bg_color[2]))
             color_bg = dist <= ck_tol
-            bg_bool = flood_bg | color_bg
+            bg_bool = flood_bg.copy()
+
+            # Grow the flood fill into adjacent colour-keyed pixels only.
+            # This keeps enclosed white artwork from being erased just because
+            # it matches the background colour.
+            for _ in range(10):
+                expanded = bg_bool.copy()
+                for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1),
+                               (1, 1), (1, -1), (-1, 1), (-1, -1)):
+                    neighbor = np.roll(np.roll(bg_bool, dy, axis=0), dx, axis=1)
+                    if dy == 1:
+                        neighbor[0, :] = False
+                    elif dy == -1:
+                        neighbor[-1, :] = False
+                    if dx == 1:
+                        neighbor[:, 0] = False
+                    elif dx == -1:
+                        neighbor[:, -1] = False
+                    expanded |= neighbor & color_bg
+                if expanded.sum() == bg_bool.sum():
+                    break
+                bg_bool = expanded
             return _compose_from_bool(rgb, bg_bool, mode)
         return _compose_with_pil(img_rgba, bg_mask, mode)
     except Exception:
