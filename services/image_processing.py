@@ -158,24 +158,34 @@ def process_artwork_bytes(data, mode='auto', engine=None):
     # Autocrop: trim the transparent canvas to the artwork bounding box so the
     # PNG contains only the design itself (no wasted transparent space). This
     # ensures the design displays at full visual size on the shirt mockup.
-    if changed:
-        if result_engine in ('ai', 'algorithmic') and _HAS_NUMPY:
-            _bg_color_est, _bg_mad_est = _border_profile(src.convert('RGB'))
-            # Validate BEFORE autocrop — corner/border checks only work on the
-            # full canvas; after crop, the border IS the artwork.
-            pre_crop_val = _validate(out, original_size, True)
-            bg_remains = 'background_may_remain' in pre_crop_val['issues']
+        if changed:
+            if result_engine in ('ai', 'algorithmic') and _HAS_NUMPY:
+                _bg_color_est, _bg_mad_est = _border_profile(src.convert('RGB'))
+                # Validate BEFORE autocrop — corner/border checks only work on the
+                # full canvas; after crop, the border IS the artwork.
+                pre_crop_val = _validate(out, original_size, True)
+                bg_remains = 'background_may_remain' in pre_crop_val['issues']
 
-            # Always: very light halo cleanup
-            out = _expand_transparency(out, _bg_color_est, passes=1)
-            out = _final_cleanup(out, _bg_color_est)
-
-            # Only when background genuinely remains in the full image:
-            # extra expansion + global interior colour-key for enclosed regions
-            if bg_remains:
-                out = _expand_transparency(out, _bg_color_est, passes=4)
-                out = _interior_bg_cleanup(out, _bg_color_est)
+                # Always: very light halo cleanup
+                out = _expand_transparency(out, _bg_color_est, passes=1)
                 out = _final_cleanup(out, _bg_color_est)
+
+                # Always: remove background trapped inside letter holes and enclosed
+                # shapes (A, B, D, O, 2, 3, 4, 6, 8, 9 …).  Uses BFS connectivity
+                # so it is safe for ALL background colours including white/near-white.
+                out = _remove_enclosed_bg(out, _bg_color_est)
+                out = _final_cleanup(out, _bg_color_est)
+
+                # Only when background genuinely remains in the full image:
+                # extra expansion + colour-key for non-white backgrounds + second
+                # enclosed-region pass to catch any stragglers.
+                if bg_remains:
+                    out = _expand_transparency(out, _bg_color_est, passes=4)
+                    out = _interior_bg_cleanup(out, _bg_color_est)
+                    out = _final_cleanup(out, _bg_color_est)
+                    # Second enclosed-bg pass after the extra expansion
+                    out = _remove_enclosed_bg(out, _bg_color_est)
+                    out = _final_cleanup(out, _bg_color_est)
 
         out = _autocrop(out, padding=8)
 
@@ -754,10 +764,10 @@ def _final_cleanup(rgba_out, bg_color):
 def _interior_bg_cleanup(rgba_out, bg_color, threshold=38):
     """Kill enclosed background-colored pixels that expansion can't reach.
 
-    After AI removal, letter interiors (e.g. inside curves of '2', 'e', 'O')
-    may stay opaque because they're enclosed by artwork — flood-fill expansion
-    can't cross through the logo strokes to reach them.  A targeted global
-    colour-key removes them without touching the logo.
+    Legacy helper kept for non-white backgrounds. For all backgrounds
+    (including white) prefer _remove_enclosed_bg() which uses connectivity
+    analysis instead of a global colour-key, making it safe for logos with
+    intentional white elements.
 
     Skipped for near-white backgrounds (max channel > 228) because a global
     white-kill would erase white logo elements (QR codes, white text, etc.).
@@ -777,6 +787,93 @@ def _interior_bg_cleanup(rgba_out, bg_color, threshold=38):
         # Kill any opaque pixel whose colour closely matches the background,
         # regardless of location (catches enclosed interior regions).
         alpha[(dist_bg <= threshold) & (alpha > 0)] = 0
+        arr[..., 3] = alpha.clip(0, 255).astype(np.uint8)
+        return Image.fromarray(arr, 'RGBA')
+    except Exception:
+        return rgba_out
+
+
+def _remove_enclosed_bg(rgba_out, bg_color, threshold=60):
+    """Remove background-coloured pixels enclosed inside artwork (letter holes).
+
+    Uses BFS connectivity from the outer transparent region inward:
+    any background-coloured opaque pixel that CANNOT be reached from the
+    existing transparent area is "enclosed" — a letter interior, number hole,
+    or other cutout — and is made transparent.
+
+    WHY THIS IS BETTER THAN _interior_bg_cleanup:
+      - Works for ALL background colours including white / near-white.
+      - Safe for logos with intentional white elements: a white star inside a
+        pink circle is only enclosed if it's completely surrounded on every
+        side with NO path back to the outer transparent border. In practice,
+        most intentional logo elements are either at the edge or have at least
+        one pixel gap that connects to the outside, so they are NOT removed.
+      - Removes the white/bg interior of letters like A, B, D, O, P, Q, R,
+        and numbers 0, 2, 3, 4, 5, 6, 8, 9 — areas the outer flood-fill
+        cannot reach because the artwork strokes surround them completely.
+
+    threshold: L1 distance from bg_color (or from pure white when bg is light).
+    """
+    if not _HAS_NUMPY:
+        return rgba_out
+    try:
+        arr = np.asarray(rgba_out).astype(np.uint8).copy()
+        alpha = arr[..., 3].astype(np.int32)
+        rgb   = arr[..., :3].astype(np.int32)
+
+        bg_r = int(bg_color[0])
+        bg_g = int(bg_color[1])
+        bg_b = int(bg_color[2])
+
+        dist_bg = (np.abs(rgb[..., 0] - bg_r)
+                 + np.abs(rgb[..., 1] - bg_g)
+                 + np.abs(rgb[..., 2] - bg_b))
+
+        # For light / white backgrounds also catch near-white pixels that JPEG
+        # compression may have shifted slightly from pure white.
+        bg_is_light = max(bg_r, bg_g, bg_b) > 180
+        if bg_is_light:
+            brightness  = rgb.min(axis=2)       # 255 = pure white
+            dist_white  = (255 - brightness).astype(np.int32)
+            is_bg_colored = ((dist_bg <= threshold) | (dist_white <= 40)) & (alpha > 30)
+        else:
+            is_bg_colored = (dist_bg <= threshold) & (alpha > 30)
+
+        if not is_bg_colored.any():
+            return rgba_out
+
+        # ── BFS from already-transparent pixels into adjacent bg-coloured ones ──
+        # "reachable" = accessible from the outer transparent border.
+        # Anything NOT reachable after BFS convergence is an enclosed interior.
+        transparent = alpha < 30
+        reachable   = transparent.copy()
+
+        # Four-directional expansion (fast; diagonal is rarely needed for letter
+        # holes because the strokes provide a full 4-connected barrier).
+        for _ in range(400):   # cap; letter holes converge in < 100 iters
+            dilated = (
+                np.roll(reachable,  1, axis=0)
+                | np.roll(reachable, -1, axis=0)
+                | np.roll(reachable,  1, axis=1)
+                | np.roll(reachable, -1, axis=1)
+            )
+            newly_reached = dilated & is_bg_colored & ~reachable
+            if not newly_reached.any():
+                break
+            reachable |= newly_reached
+
+        # Enclosed = bg-coloured + opaque + NOT reachable from outer border.
+        interior = is_bg_colored & ~reachable
+
+        # Safety guard: if the "interior" mask is huge (> 40 % of all opaque
+        # pixels) something went wrong — skip rather than destroy the artwork.
+        opaque_count = int((alpha > 30).sum())
+        if opaque_count > 0 and int(interior.sum()) > 0.40 * opaque_count:
+            return rgba_out
+
+        if interior.any():
+            alpha[interior] = 0
+
         arr[..., 3] = alpha.clip(0, 255).astype(np.uint8)
         return Image.fromarray(arr, 'RGBA')
     except Exception:
