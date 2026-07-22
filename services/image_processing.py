@@ -164,7 +164,7 @@ def process_artwork_bytes(data, mode='auto', engine=None):
         if result_engine in ('ai', 'algorithmic') and _HAS_NUMPY:
             _bg_color_est, _bg_mad_est = _border_profile(src.convert('RGB'))
             # Pass 1: iteratively expand transparency into adjacent bg-colored pixels
-            out = _expand_transparency(out, _bg_color_est, passes=6)
+            out = _expand_transparency(out, _bg_color_est, passes=2)
             # Pass 2: kill remaining semi-transparent halo pixels
             out = _final_cleanup(out, _bg_color_est)
             out = _autocrop(out, padding=8)  # re-crop after cleanup
@@ -173,23 +173,22 @@ def process_artwork_bytes(data, mode='auto', engine=None):
     validation = _validate(out, original_size, changed)
     has_transparency = _has_transparency(out)
 
-    # If the first pass didn't clear the background or left visible artifacts,
-    # retry with a stronger algorithmic aggressive cut. Preserve white artwork
-    # by only accepting the fallback when it improves the validation results.
-    if mode != 'none' and any(issue in validation['issues'] for issue in (
+    # Algorithmic fallback: only retry if AI engine was NOT used.
+    # (When AI/rembg is used, the fallback to aggressive algorithmic often
+    #  over-processes and destroys logo details — trust rembg's output.)
+    if result_engine == 'algorithmic' and mode != 'none' and any(
+            issue in validation['issues'] for issue in (
             'no_background_removed', 'background_may_remain')):
         fallback = _remove_bg_algorithmic(img, mode='aggressive')
         if fallback is not None:
             fallback = _autocrop(fallback, padding=8)
-            if result_engine in ('ai', 'algorithmic') and _HAS_NUMPY:
+            if _HAS_NUMPY:
                 bg_color_est, _ = _border_profile(src.convert('RGB'))
-                fallback = _expand_transparency(fallback, bg_color_est, passes=6)
+                fallback = _expand_transparency(fallback, bg_color_est, passes=2)
                 fallback = _final_cleanup(fallback, bg_color_est)
                 fallback = _autocrop(fallback, padding=8)
 
             fallback_validation = _validate(fallback, original_size, True)
-            # Accept the fallback only if it removes the background more cleanly
-            # without destroying the artwork.
             if ('artwork_mostly_removed' not in fallback_validation['issues'] and
                     len(fallback_validation['issues']) < len(validation['issues'])):
                 out = fallback
@@ -640,8 +639,9 @@ def _expand_transparency(rgba_out, bg_color, passes=6):
         brightness = rgb.min(axis=2)  # 255 = white, 0 = black
         dist_white = 255 - brightness   # small = near-white
 
-        # Candidate background pixels: close to detected bg OR near-white
-        is_bg_candidate = (dist_bg <= 130) | (dist_white <= 55)
+        # Candidate background pixels: only pixels very close to detected bg colour
+        # (reduced from 130 to avoid eating light-colored logo elements)
+        is_bg_candidate = (dist_bg <= 50)
 
         transparent = alpha < 30
 
@@ -691,7 +691,7 @@ def _final_cleanup(rgba_out, bg_color):
 
         # --- halo pass: semi-transparent pixels close to bg colour → kill ---
         semi = (alpha > 0) & (alpha < 240)
-        kill = semi & (dist <= 110)
+        kill = semi & (dist <= 45)
 
         # --- edge pass: fully-opaque bg pixels adjacent to transparency → kill ---
         transparent = alpha < 30
@@ -701,7 +701,7 @@ def _final_cleanup(rgba_out, bg_color):
                 if dx == 0 and dy == 0:
                     continue
                 has_transparent_nb |= np.roll(np.roll(transparent, dy, 0), dx, 1)
-        kill |= (alpha >= 240) & (dist <= 55) & has_transparent_nb
+        kill |= (alpha >= 240) & (dist <= 25) & has_transparent_nb
 
         new_alpha = alpha.copy()
         new_alpha[kill] = 0
