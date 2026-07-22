@@ -158,6 +158,9 @@ def process_artwork_bytes(data, mode='auto', engine=None):
         # Final cleanup: kill residual halos and background edge pixels
         if result_engine in ('ai', 'algorithmic') and _HAS_NUMPY:
             _bg_color_est, _bg_mad_est = _border_profile(src.convert('RGB'))
+            # Pass 1: iteratively expand transparency into adjacent bg-colored pixels
+            out = _expand_transparency(out, _bg_color_est, passes=6)
+            # Pass 2: kill remaining semi-transparent halo pixels
             out = _final_cleanup(out, _bg_color_est)
             out = _autocrop(out, padding=8)  # re-crop after cleanup
 
@@ -484,6 +487,60 @@ def _compose_with_pil(img_rgba, bg_mask, mode):
     alpha = alpha.filter(ImageFilter.GaussianBlur(0.6))
     r, g, b = img_rgba.convert('RGB').split()
     return Image.merge('RGBA', (r, g, b, alpha))
+
+
+def _expand_transparency(rgba_out, bg_color, passes=6):
+    """Iteratively flood transparency outward into adjacent background-colored pixels.
+
+    Seeds from already-transparent pixels and expands each pass to any opaque
+    neighbour whose colour is close to the detected background or near-white.
+    This reliably kills 1–N pixel halos left by any removal engine without
+    touching enclosed white areas inside the artwork.
+    """
+    if not _HAS_NUMPY:
+        return rgba_out
+    try:
+        arr = np.asarray(rgba_out).astype(np.uint8).copy()
+        alpha = arr[..., 3].copy().astype(np.int32)
+        rgb = arr[..., :3].astype(np.int32)
+
+        bg_r, bg_g, bg_b = int(bg_color[0]), int(bg_color[1]), int(bg_color[2])
+
+        # Distance from detected background colour
+        dist_bg = (np.abs(rgb[..., 0] - bg_r)
+                 + np.abs(rgb[..., 1] - bg_g)
+                 + np.abs(rgb[..., 2] - bg_b))
+
+        # Near-white: another common background shade regardless of bg_color
+        brightness = rgb.min(axis=2)  # 255 = white, 0 = black
+        dist_white = 255 - brightness   # small = near-white
+
+        # Candidate background pixels: close to detected bg OR near-white
+        is_bg_candidate = (dist_bg <= 130) | (dist_white <= 55)
+
+        transparent = alpha < 30
+
+        for _ in range(passes):
+            # Dilate the current transparent mask by 1 pixel
+            dilated = np.zeros(transparent.shape, bool)
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    if dx == 0 and dy == 0:
+                        continue
+                    dilated |= np.roll(np.roll(transparent, dy, axis=0), dx, axis=1)
+
+            # Convert bg-candidate pixels that touch transparency → transparent
+            new_t = (alpha > 0) & is_bg_candidate & dilated
+            if not new_t.any():
+                break
+            alpha[new_t] = 0
+            transparent = alpha < 30
+
+        arr[..., 3] = alpha.clip(0, 255).astype(np.uint8)
+        return Image.fromarray(arr, 'RGBA')
+    except Exception:
+        return rgba_out
+
 
 
 def _final_cleanup(rgba_out, bg_color):
