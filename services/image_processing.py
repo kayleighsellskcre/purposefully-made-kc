@@ -187,29 +187,6 @@ def process_artwork_bytes(data, mode='auto', engine=None):
                     out = _remove_enclosed_bg(out, _bg_color_est)
                     out = _final_cleanup(out, _bg_color_est)
 
-                # Dark-background safety net: if the detected background is
-                # near-black (common for designs with black backgrounds) and
-                # dark opaque pixels still remain after the standard passes,
-                # run a forced enclosed-bg removal pass with a relaxed guard.
-                # This catches cases where JPEG compression or a white/colored
-                # outer border caused the flood-fill to under-remove.
-                _bg_is_dark = max(int(_bg_color_est[0]),
-                                  int(_bg_color_est[1]),
-                                  int(_bg_color_est[2])) < 60
-                if _bg_is_dark and _HAS_NUMPY:
-                    import numpy as _np
-                    _arr = _np.asarray(out).astype(_np.uint8)
-                    _alpha = _arr[..., 3]
-                    _rgb = _arr[..., :3].astype(_np.int16)
-                    # Count opaque pixels that are dark-colored (near bg_color)
-                    _dist_dark = (_np.abs(_rgb[..., 0] - int(_bg_color_est[0]))
-                                + _np.abs(_rgb[..., 1] - int(_bg_color_est[1]))
-                                + _np.abs(_rgb[..., 2] - int(_bg_color_est[2])))
-                    _dark_opaque = ((_alpha > 30) & (_dist_dark <= 80)).sum()
-                    if _dark_opaque > 50:   # more than 50 dark remnant pixels
-                        out = _remove_enclosed_bg(out, _bg_color_est,
-                                                  threshold=80, _force=True)
-                        out = _final_cleanup(out, _bg_color_est)
 
         out = _autocrop(out, padding=8)
 
@@ -507,14 +484,7 @@ def _remove_bg_algorithmic(img_rgba, mode='auto'):
         if mode == 'aggressive':
             tol = min(200, tol + 100)
 
-        # Dark backgrounds (near-black) get a free tolerance boost even in
-        # auto mode. JPEG compression smears black into very-dark-gray
-        # (values 5–30) which can fall just outside the default tol=32.
-        # Boosting to ~60 for dark backgrounds catches these edge artifacts
-        # without risking over-cutting bright artwork colors.
         bg_is_dark = max(int(bg_color[0]), int(bg_color[1]), int(bg_color[2])) < 60
-        if bg_is_dark and mode != 'aggressive':
-            tol = min(200, tol + 40)
 
         work = rgb.copy()
         px = rgb.load()
@@ -560,10 +530,6 @@ def _remove_bg_algorithmic(img_rgba, mode='auto'):
             ck_tol = int(min(95, max(36, 30 + mad * 1.7)))
             if mode == 'aggressive':
                 ck_tol = min(180, ck_tol + 90)
-            # Dark backgrounds get a larger color-key tolerance even in auto
-            # mode — near-black JPEG remnants up to ~25 per channel are caught.
-            if bg_is_dark and mode != 'aggressive':
-                ck_tol = min(180, ck_tol + 45)
             rgb_i = np.asarray(rgb).astype(np.int16)
             dist = (np.abs(rgb_i[..., 0] - bg_color[0])
                     + np.abs(rgb_i[..., 1] - bg_color[1])
@@ -830,7 +796,7 @@ def _interior_bg_cleanup(rgba_out, bg_color, threshold=38):
         return rgba_out
 
 
-def _remove_enclosed_bg(rgba_out, bg_color, threshold=60, _force=False):
+def _remove_enclosed_bg(rgba_out, bg_color, threshold=60):
     """Remove background-coloured pixels enclosed inside artwork (letter holes).
 
     Uses BFS connectivity from the outer transparent region inward:
@@ -909,8 +875,7 @@ def _remove_enclosed_bg(rgba_out, bg_color, threshold=60, _force=False):
         # background intact, and refusing to clean it would leave an ugly black
         # box on the shirt mockup.
         opaque_count = int((alpha > 30).sum())
-        guard_limit = 0.85 if _force else 0.40
-        if opaque_count > 0 and int(interior.sum()) > guard_limit * opaque_count:
+        if opaque_count > 0 and int(interior.sum()) > 0.40 * opaque_count:
             return rgba_out
 
         if interior.any():
