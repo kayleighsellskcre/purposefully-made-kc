@@ -66,7 +66,8 @@ def _get_rembg_session():
         model = os.environ.get('REMBG_MODEL', 'u2netp')
         _REMBG_SESSION = new_session(model)
         return _REMBG_SESSION
-    except Exception:
+    except BaseException:
+        # Catch SystemExit too — rembg calls sys.exit(1) if onnxruntime is missing
         _REMBG_FAILED = True
         return None
 

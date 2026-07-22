@@ -2326,7 +2326,7 @@ def reprocess_design_backgrounds():
             'skipped': skipped,
             'message': f'Done — {ok} reprocessed, {failed} failed, {skipped} skipped.',
         })
-    except Exception:
+    except BaseException:
         db.session.rollback()
         err = _tb.format_exc()
         current_app.logger.error('reprocess_design_backgrounds fatal: %s', err)
