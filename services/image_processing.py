@@ -146,9 +146,7 @@ def process_artwork_bytes(data, mode='auto', engine=None):
             if want == 'ai':
                 out = _remove_bg_ai(img)
                 if out is not None:
-                    # Step 1: smooth the AI mask to remove JPEG-artifact jags
-                    out = _smooth_ai_alpha(out)
-                    # Step 2: color-bleed defringe (kills halo at edges)
+                    # Light defringe: kill colour halo at edges
                     out = _defringe(out)
                     result_engine = 'ai'
                     changed = True
@@ -161,17 +159,25 @@ def process_artwork_bytes(data, mode='auto', engine=None):
     # PNG contains only the design itself (no wasted transparent space). This
     # ensures the design displays at full visual size on the shirt mockup.
     if changed:
-        out = _autocrop(out, padding=8)
-        # Final cleanup: kill residual halos and background edge pixels
         if result_engine in ('ai', 'algorithmic') and _HAS_NUMPY:
             _bg_color_est, _bg_mad_est = _border_profile(src.convert('RGB'))
-            # Pass 1: iteratively expand transparency into adjacent bg-colored pixels
-            out = _expand_transparency(out, _bg_color_est, passes=2)
-            # Pass 1b: global colour-key for enclosed interior bg areas
-            out = _interior_bg_cleanup(out, _bg_color_est)
-            # Pass 2: kill remaining semi-transparent halo pixels
+            # Validate BEFORE autocrop — corner/border checks only work on the
+            # full canvas; after crop, the border IS the artwork.
+            pre_crop_val = _validate(out, original_size, True)
+            bg_remains = 'background_may_remain' in pre_crop_val['issues']
+
+            # Always: very light halo cleanup
+            out = _expand_transparency(out, _bg_color_est, passes=1)
             out = _final_cleanup(out, _bg_color_est)
-            out = _autocrop(out, padding=8)  # re-crop after cleanup
+
+            # Only when background genuinely remains in the full image:
+            # extra expansion + global interior colour-key for enclosed regions
+            if bg_remains:
+                out = _expand_transparency(out, _bg_color_est, passes=4)
+                out = _interior_bg_cleanup(out, _bg_color_est)
+                out = _final_cleanup(out, _bg_color_est)
+
+        out = _autocrop(out, padding=8)
 
     white_artwork = _detect_white_artwork(out)
     validation = _validate(out, original_size, changed)
@@ -669,7 +675,7 @@ def _expand_transparency(rgba_out, bg_color, passes=6):
 
         # Candidate background pixels: only pixels very close to detected bg colour
         # (reduced from 130 to avoid eating light-colored logo elements)
-        is_bg_candidate = (dist_bg <= 50)
+        is_bg_candidate = (dist_bg <= 35)
 
         transparent = alpha < 30
 
@@ -719,7 +725,7 @@ def _final_cleanup(rgba_out, bg_color):
 
         # --- halo pass: semi-transparent pixels close to bg colour → kill ---
         semi = (alpha > 0) & (alpha < 240)
-        kill = semi & (dist <= 45)
+        kill = semi & (dist <= 35)
 
         # --- edge pass: fully-opaque bg pixels adjacent to transparency → kill ---
         transparent = alpha < 30
@@ -729,7 +735,7 @@ def _final_cleanup(rgba_out, bg_color):
                 if dx == 0 and dy == 0:
                     continue
                 has_transparent_nb |= np.roll(np.roll(transparent, dy, 0), dx, 1)
-        kill |= (alpha >= 240) & (dist <= 25) & has_transparent_nb
+        kill |= (alpha >= 240) & (dist <= 15) & has_transparent_nb
 
         new_alpha = alpha.copy()
         new_alpha[kill] = 0
