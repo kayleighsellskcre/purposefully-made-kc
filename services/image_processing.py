@@ -146,7 +146,9 @@ def process_artwork_bytes(data, mode='auto', engine=None):
             if want == 'ai':
                 out = _remove_bg_ai(img)
                 if out is not None:
-                    # Step 1: color-bleed defringe (kills halo at edges)
+                    # Step 1: smooth the AI mask to remove JPEG-artifact jags
+                    out = _smooth_ai_alpha(out)
+                    # Step 2: color-bleed defringe (kills halo at edges)
                     out = _defringe(out)
                     result_engine = 'ai'
                     changed = True
@@ -165,6 +167,8 @@ def process_artwork_bytes(data, mode='auto', engine=None):
             _bg_color_est, _bg_mad_est = _border_profile(src.convert('RGB'))
             # Pass 1: iteratively expand transparency into adjacent bg-colored pixels
             out = _expand_transparency(out, _bg_color_est, passes=2)
+            # Pass 1b: global colour-key for enclosed interior bg areas
+            out = _interior_bg_cleanup(out, _bg_color_est)
             # Pass 2: kill remaining semi-transparent halo pixels
             out = _final_cleanup(out, _bg_color_est)
             out = _autocrop(out, padding=8)  # re-crop after cleanup
@@ -185,6 +189,7 @@ def process_artwork_bytes(data, mode='auto', engine=None):
             if _HAS_NUMPY:
                 bg_color_est, _ = _border_profile(src.convert('RGB'))
                 fallback = _expand_transparency(fallback, bg_color_est, passes=2)
+                fallback = _interior_bg_cleanup(fallback, bg_color_est)
                 fallback = _final_cleanup(fallback, bg_color_est)
                 fallback = _autocrop(fallback, padding=8)
 
@@ -278,6 +283,29 @@ def _remove_bg_ai(img_rgba):
 # ---------------------------------------------------------------------------
 # Post-AI matting cleanup
 # ---------------------------------------------------------------------------
+
+def _smooth_ai_alpha(img_rgba):
+    """Smooth rembg's alpha mask to remove jagged edges from JPEG artifacts.
+
+    rembg produces a pixel-level mask that can be rough on compressed images.
+    A light Gaussian blur followed by sharpening gives clean logo edges without
+    losing fine details — similar to a professional clean-cut.
+    """
+    try:
+        r, g, b, a = img_rgba.split()
+        a_blur = a.filter(ImageFilter.GaussianBlur(0.8))
+        if _HAS_NUMPY:
+            av = np.asarray(a_blur).astype(np.float32)
+            # S-curve: hard threshold with a narrow anti-alias zone
+            av = np.clip((av - 90.0) * (255.0 / (180.0 - 90.0)), 0, 255)
+            a = Image.fromarray(av.astype(np.uint8), 'L')
+        else:
+            a = a_blur
+        return Image.merge('RGBA', (r, g, b, a))
+    except Exception:
+        return img_rgba
+
+
 
 def _matting_cleanup_ai(rgba_out, bg_color):
     """
@@ -715,6 +743,39 @@ def _final_cleanup(rgba_out, bg_color):
         return Image.fromarray(arr, 'RGBA')
     except Exception:
         return rgba_out
+
+
+def _interior_bg_cleanup(rgba_out, bg_color, threshold=38):
+    """Kill enclosed background-colored pixels that expansion can't reach.
+
+    After AI removal, letter interiors (e.g. inside curves of '2', 'e', 'O')
+    may stay opaque because they're enclosed by artwork — flood-fill expansion
+    can't cross through the logo strokes to reach them.  A targeted global
+    colour-key removes them without touching the logo.
+
+    Skipped for near-white backgrounds (max channel > 228) because a global
+    white-kill would erase white logo elements (QR codes, white text, etc.).
+    """
+    if not _HAS_NUMPY:
+        return rgba_out
+    if max(int(bg_color[0]), int(bg_color[1]), int(bg_color[2])) > 228:
+        return rgba_out   # white/near-white bg: skip to protect white logos
+    try:
+        arr = np.asarray(rgba_out).astype(np.uint8).copy()
+        rgb  = arr[..., :3].astype(np.int32)
+        alpha = arr[..., 3].astype(np.int32)
+        bg_r, bg_g, bg_b = int(bg_color[0]), int(bg_color[1]), int(bg_color[2])
+        dist_bg = (np.abs(rgb[..., 0] - bg_r)
+                 + np.abs(rgb[..., 1] - bg_g)
+                 + np.abs(rgb[..., 2] - bg_b))
+        # Kill any opaque pixel whose colour closely matches the background,
+        # regardless of location (catches enclosed interior regions).
+        alpha[(dist_bg <= threshold) & (alpha > 0)] = 0
+        arr[..., 3] = alpha.clip(0, 255).astype(np.uint8)
+        return Image.fromarray(arr, 'RGBA')
+    except Exception:
+        return rgba_out
+
 
 
 def _defringe(img_rgba):
