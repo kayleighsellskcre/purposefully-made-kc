@@ -21,6 +21,23 @@ def _rate_limit(limit_string):
     return decorator
 
 
+@auth_bp.route('/emergency-unlock')
+def emergency_unlock():
+    """Emergency: unlock the admin account lockout. Protected by ADMIN_PROMOTE_TOKEN."""
+    token = request.args.get('token')
+    expected = os.environ.get('ADMIN_PROMOTE_TOKEN')
+    if not expected or token != expected:
+        return 'Unauthorized', 403
+    admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').strip().lower()
+    user = User.query.filter(db.func.lower(User.email) == admin_email).first()
+    if not user:
+        return f'No user found with email {admin_email}', 404
+    user.failed_logins = 0
+    user.locked_until = None
+    db.session.commit()
+    return f'Account {admin_email} unlocked successfully. You can now log in.', 200
+
+
 @auth_bp.route('/promote-admin')
 def promote_admin():
     """One-time: promote purposefullymadekc@gmail.com to admin. Requires ADMIN_PROMOTE_TOKEN in env. No other account can be promoted."""
@@ -36,8 +53,11 @@ def promote_admin():
         flash(f'No user found with email {admin_email}. Create an account with that email first, then use this link.', 'error')
         return redirect(url_for('main.index'))
     user.is_admin = True
+    # Also clear any login lockout so the admin can sign in immediately
+    user.failed_logins = 0
+    user.locked_until = None
     db.session.commit()
-    flash(f'{admin_email} is now an admin. Log in with that account to access Admin.', 'success')
+    flash(f'{admin_email} is now an admin and any lockout has been cleared. Log in now.', 'success')
     return redirect(url_for('auth.login'))
 
 
@@ -70,11 +90,17 @@ def login():
         if user is None:
             return _bad()
 
-        # Account lockout check
-        if user.is_locked:
+        # Account lockout check — admin email is never permanently locked out
+        admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').strip().lower()
+        if user.is_locked and email != admin_email:
             flash('Your account is temporarily locked due to too many failed attempts. '
                   'Please wait 15 minutes and try again.', 'error')
             return redirect(url_for('auth.login'))
+        # Auto-clear any stale lockout on the admin account so it never gets
+        # permanently blocked by automated attempts or AI-assistant retries.
+        if email == admin_email and user.is_locked:
+            user.failed_logins = 0
+            user.locked_until = None
 
         if not user.check_password(password):
             user.record_failed_login()
