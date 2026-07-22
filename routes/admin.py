@@ -2315,7 +2315,7 @@ def reprocess_design_backgrounds():
                     ok += 1
                 else:
                     failed += 1
-            except Exception as e:
+            except BaseException as e:
                 current_app.logger.exception('Reprocess failed for design %s: %s', d.id, e)
                 failed += 1
 

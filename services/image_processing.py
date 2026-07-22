@@ -264,10 +264,7 @@ def _remove_bg_ai(img_rgba):
         out = remove(
             img_rgba,
             session=session,
-            alpha_matting=True,
-            alpha_matting_foreground_threshold=245,
-            alpha_matting_background_threshold=10,
-            alpha_matting_erode_size=5,
+            alpha_matting=False,
             post_process_mask=True,
         )
         return out.convert('RGBA')
