@@ -8,8 +8,8 @@ Engines (hybrid):
   * Algorithmic (default, no extra services): edge-seeded flood fill so the
     background is removed while interior detail (including white areas of the
     art itself) is preserved, plus colour-bleed defringe and anti-aliased edges.
-  * AI (rembg / U2Net-isnet), enabled with env AI_BG_REMOVAL=1. Best for busy
-    or photographic backgrounds and fine detail (hair). Falls back to the
+  * AI (rembg / isnet-general-use), enabled with env AI_BG_REMOVAL=1. Best for
+    busy or photographic backgrounds and fine detail (hair). Falls back to the
     algorithmic engine automatically if rembg is unavailable or errors.
 
 Also detects predominantly-white artwork (so the UI can preview it on a
@@ -63,7 +63,10 @@ def _get_rembg_session():
         return _REMBG_SESSION
     try:
         from rembg import new_session
-        model = os.environ.get('REMBG_MODEL', 'u2netp')
+        # isnet-general-use is the highest quality model in rembg —
+        # cleaner cuts, better edge detail, especially for logos / graphics.
+        # Falls back through progressively lighter models if unavailable.
+        model = os.environ.get('REMBG_MODEL', 'isnet-general-use')
         _REMBG_SESSION = new_session(model)
         return _REMBG_SESSION
     except BaseException:
@@ -143,7 +146,12 @@ def process_artwork_bytes(data, mode='auto', engine=None):
             if want == 'ai':
                 out = _remove_bg_ai(img)
                 if out is not None:
+                    # Step 1: color-bleed defringe (kills halo at edges)
                     out = _defringe(out)
+                    # Step 2: matting cleanup — kill semi-transparent bg halos
+                    # that rembg leaves behind, harden real foreground pixels
+                    bg_color_est, _ = _border_profile(src.convert('RGB'))
+                    out = _matting_cleanup_ai(out, bg_color_est)
                     result_engine = 'ai'
                     changed = True
             if out is None:
@@ -160,9 +168,11 @@ def process_artwork_bytes(data, mode='auto', engine=None):
         if result_engine in ('ai', 'algorithmic') and _HAS_NUMPY:
             _bg_color_est, _bg_mad_est = _border_profile(src.convert('RGB'))
             # Pass 1: iteratively expand transparency into adjacent bg-colored pixels
-            out = _expand_transparency(out, _bg_color_est, passes=6)
+            out = _expand_transparency(out, _bg_color_est, passes=12)
             # Pass 2: kill remaining semi-transparent halo pixels
             out = _final_cleanup(out, _bg_color_est)
+            # Pass 3: one more expand pass to catch anything final_cleanup loosened
+            out = _expand_transparency(out, _bg_color_est, passes=4)
             out = _autocrop(out, padding=8)  # re-crop after cleanup
 
     white_artwork = _detect_white_artwork(out)
@@ -179,8 +189,9 @@ def process_artwork_bytes(data, mode='auto', engine=None):
             fallback = _autocrop(fallback, padding=8)
             if result_engine in ('ai', 'algorithmic') and _HAS_NUMPY:
                 bg_color_est, _ = _border_profile(src.convert('RGB'))
-                fallback = _expand_transparency(fallback, bg_color_est, passes=6)
+                fallback = _expand_transparency(fallback, bg_color_est, passes=12)
                 fallback = _final_cleanup(fallback, bg_color_est)
+                fallback = _expand_transparency(fallback, bg_color_est, passes=4)
                 fallback = _autocrop(fallback, padding=8)
 
             fallback_validation = _validate(fallback, original_size, True)
@@ -264,12 +275,87 @@ def _remove_bg_ai(img_rgba):
         out = remove(
             img_rgba,
             session=session,
-            alpha_matting=False,
-            post_process_mask=True,
+            alpha_matting=False,    # scipy not available on Railway
+            post_process_mask=True, # extra mask refinement built into rembg
         )
         return out.convert('RGBA')
     except Exception:
         return None
+
+
+# ---------------------------------------------------------------------------
+# Post-AI matting cleanup
+# ---------------------------------------------------------------------------
+
+def _matting_cleanup_ai(rgba_out, bg_color):
+    """
+    Aggressively clean the semi-transparent halo rembg leaves behind.
+
+    After AI removal edges often have a 1-3 px fringe of semi-transparent
+    pixels that are actually background (white/light gray/bg-color). This
+    function classifies every pixel and:
+      - Kills semi-transparent pixels that look like background
+      - Hardens almost-opaque pixels that are clearly foreground
+      - Kills fully-opaque bg pixels sitting right at the edge of transparency
+      - Runs multiple contraction passes to peel off any remaining bg shell
+    """
+    if not _HAS_NUMPY:
+        return rgba_out
+    try:
+        arr = np.asarray(rgba_out).astype(np.uint8).copy()
+        rgb = arr[..., :3].astype(np.int16)
+        alpha = arr[..., 3].astype(np.int16)
+
+        bg_r, bg_g, bg_b = int(bg_color[0]), int(bg_color[1]), int(bg_color[2])
+
+        # Distance from estimated background colour
+        dist_bg = (np.abs(rgb[..., 0] - bg_r)
+                 + np.abs(rgb[..., 1] - bg_g)
+                 + np.abs(rgb[..., 2] - bg_b))
+
+        # Near-white / near-light-gray halo detection
+        # min(R,G,B) close to 255 = near-white regardless of bg_color
+        brightness = rgb.min(axis=2).astype(np.int16)
+        dist_white = 255 - brightness   # 0 = pure white, 255 = black
+
+        # "Looks like background" — close to detected bg OR near-white/light-gray
+        is_bg_like = (dist_bg <= 180) | (dist_white <= 100)
+
+        # ── PASS 1: Kill semi-transparent background halos ──────────────────
+        # Semi-transparent range 1..210. If it looks like bg → fully transparent.
+        semi = (alpha > 0) & (alpha < 210)
+        alpha[semi & is_bg_like] = 0
+
+        # ── PASS 2: Harden near-opaque foreground pixels ────────────────────
+        # alpha 210..254 that are NOT background-like → snap to 255
+        near_opaque = (alpha >= 210) & (alpha < 255)
+        alpha[near_opaque & ~is_bg_like] = 255
+
+        # ── PASS 3: Kill opaque bg pixels touching transparency ──────────────
+        # Run 3 rounds so thin bg shells peel off layer by layer
+        for _ in range(3):
+            transparent = alpha < 30
+            has_transp_nb = np.zeros(transparent.shape, bool)
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    if dx == 0 and dy == 0:
+                        continue
+                    has_transp_nb |= np.roll(
+                        np.roll(transparent, dy, axis=0), dx, axis=1)
+            kill_edge = (alpha >= 128) & is_bg_like & has_transp_nb
+            if not kill_edge.any():
+                break
+            alpha[kill_edge] = 0
+
+        # ── PASS 4: Despeckle — remove isolated opaque specks ───────────────
+        opaque = alpha > 128
+        nc = _neighbor_count(opaque)
+        alpha[opaque & (nc < 2)] = 0
+
+        arr[..., 3] = alpha.clip(0, 255).astype(np.uint8)
+        return Image.fromarray(arr, 'RGBA')
+    except Exception:
+        return rgba_out
 
 
 # ---------------------------------------------------------------------------
@@ -535,7 +621,7 @@ def _compose_with_pil(img_rgba, bg_mask, mode):
     return Image.merge('RGBA', (r, g, b, alpha))
 
 
-def _expand_transparency(rgba_out, bg_color, passes=6):
+def _expand_transparency(rgba_out, bg_color, passes=12):
     """Iteratively flood transparency outward into adjacent background-colored pixels.
 
     Seeds from already-transparent pixels and expands each pass to any opaque
@@ -562,7 +648,8 @@ def _expand_transparency(rgba_out, bg_color, passes=6):
         dist_white = 255 - brightness   # small = near-white
 
         # Candidate background pixels: close to detected bg OR near-white
-        is_bg_candidate = (dist_bg <= 130) | (dist_white <= 55)
+        # Widened thresholds vs. original for more thorough halo removal
+        is_bg_candidate = (dist_bg <= 160) | (dist_white <= 80)
 
         transparent = alpha < 30
 
@@ -588,7 +675,6 @@ def _expand_transparency(rgba_out, bg_color, passes=6):
         return rgba_out
 
 
-
 def _final_cleanup(rgba_out, bg_color):
     """Kill residual background halos and edge artifacts after main removal.
 
@@ -611,9 +697,17 @@ def _final_cleanup(rgba_out, bg_color):
               + np.abs(rgb[..., 1] - bg_color[1])
               + np.abs(rgb[..., 2] - bg_color[2]))
 
+        # Near-white check (catches white halos even when bg_color isn't white)
+        brightness = rgb.min(axis=2).astype(np.int16)
+        dist_white = 255 - brightness
+
+        # Extended halo distance: was 110, now 150 — catches more fringe pixels
+        # Also kill near-white semi-transparent pixels regardless of bg_color
+        is_halo = (dist <= 150) | (dist_white <= 90)
+
         # --- halo pass: semi-transparent pixels close to bg colour → kill ---
         semi = (alpha > 0) & (alpha < 240)
-        kill = semi & (dist <= 110)
+        kill = semi & is_halo
 
         # --- edge pass: fully-opaque bg pixels adjacent to transparency → kill ---
         transparent = alpha < 30
@@ -623,7 +717,8 @@ def _final_cleanup(rgba_out, bg_color):
                 if dx == 0 and dy == 0:
                     continue
                 has_transparent_nb |= np.roll(np.roll(transparent, dy, 0), dx, 1)
-        kill |= (alpha >= 240) & (dist <= 55) & has_transparent_nb
+        # Wider threshold vs original (80 instead of 55) + near-white check
+        kill |= (alpha >= 240) & ((dist <= 80) | (dist_white <= 60)) & has_transparent_nb
 
         new_alpha = alpha.copy()
         new_alpha[kill] = 0
@@ -639,15 +734,15 @@ def _final_cleanup(rgba_out, bg_color):
         return rgba_out
 
 
-
 def _defringe(img_rgba):
-    """Light edge cleanup applied after AI removal (kill thin halo ring)."""
+    """Color-bleed defringe applied after AI removal (kills thin halo ring)."""
     try:
         if not _HAS_NUMPY:
             return img_rgba
         arr = np.asarray(img_rgba.convert('RGBA'))
         opaque = arr[..., 3] > 160
-        bled = _bleed_colors(arr[..., :3], opaque, iters=2)
+        # Increased from 2 to 4 iterations for cleaner edges
+        bled = _bleed_colors(arr[..., :3], opaque, iters=4)
         out = np.dstack([bled, arr[..., 3]])
         return Image.fromarray(out.astype(np.uint8), 'RGBA')
     except Exception:
