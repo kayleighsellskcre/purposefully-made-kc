@@ -65,7 +65,12 @@
         </div>
         
         {% if designs %}
-        <h2 class="gallery-list-title">Gallery Designs <span class="gallery-count">({{ designs|length }})</span></h2>
+        <div class="gallery-tools-bar" style="display:flex;align-items:center;gap:1rem;margin-bottom:0.5rem;">
+            <h2 class="gallery-list-title" style="margin:0;">Gallery Designs <span class="gallery-count">({{ designs|length }})</span></h2>
+            <button id="reprocessBtn" class="btn btn-secondary" onclick="reprocessBackgrounds()" style="margin-left:auto;">
+                ✨ Fix Backgrounds on All Designs
+            </button>
+        </div>
         <div class="designs-grid">
             {% for design in designs %}
             <div class="design-card" data-design-id="{{ design.id }}">
@@ -450,5 +455,30 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
         }
     });
 })();
+
+    // ── Reprocess backgrounds ──
+    function reprocessBackgrounds() {
+        var btn = document.getElementById('reprocessBtn');
+        if (!confirm('This will re-download every design and strip the background. It may take a minute. Continue?')) return;
+        btn.disabled = true;
+        btn.textContent = '⏳ Processing…';
+        fetch('{{ url_for("admin.reprocess_design_backgrounds") }}', {
+            method: 'POST',
+            headers: {'X-CSRFToken': '{{ csrf_token() if csrf_token is defined else "" }}'},
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+            btn.disabled = false;
+            btn.textContent = '✨ Fix Backgrounds on All Designs';
+            alert(d.message || JSON.stringify(d));
+            location.reload();
+        })
+        .catch(function(e){
+            btn.disabled = false;
+            btn.textContent = '✨ Fix Backgrounds on All Designs';
+            alert('Error: ' + e);
+        });
+    }
+
 </script>
 {% endblock %}
