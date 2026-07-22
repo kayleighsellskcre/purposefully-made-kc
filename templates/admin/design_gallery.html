@@ -64,13 +64,15 @@
             </form>
         </div>
         
-        {% if designs %}
-        <div class="gallery-tools-bar" style="display:flex;align-items:center;gap:1rem;margin-bottom:0.5rem;">
-            <h2 class="gallery-list-title" style="margin:0;">Gallery Designs <span class="gallery-count">({{ designs|length }})</span></h2>
-            <button id="reprocessBtn" class="btn btn-secondary" onclick="reprocessBackgrounds()" style="margin-left:auto;">
+        <!-- Reprocess button always visible -->
+        <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:1.2rem;">
+            <button id="reprocessBtn" onclick="reprocessBackgrounds()" style="background:#2d2d2d;color:#fff;border:none;padding:0.6rem 1.3rem;border-radius:6px;font-size:0.95rem;cursor:pointer;font-weight:600;">
                 ✨ Fix Backgrounds on All Designs
             </button>
         </div>
+
+        {% if designs %}
+        <h2 class="gallery-list-title">Gallery Designs <span class="gallery-count">({{ designs|length }})</span></h2>
         <div class="designs-grid">
             {% for design in designs %}
             <div class="design-card" data-design-id="{{ design.id }}">
