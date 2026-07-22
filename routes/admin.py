@@ -38,6 +38,19 @@ class DesignUploadError(Exception):
     """Raised when an artwork upload genuinely fails to store."""
 
 
+def _save_collection_design(file, user_id):
+    """Save a design uploaded for a specific group order / collection.
+
+    Unlike _save_uploaded_design, designs saved here are is_gallery=False —
+    they are private to the collection and never appear on the public gallery
+    unless an admin explicitly publishes them later.
+    """
+    design = _save_uploaded_design(file, user_id)
+    if design is not None:
+        design.is_gallery = False   # keep private to this group order
+    return design
+
+
 def _save_uploaded_design(file, user_id):
     """Save an uploaded file to the Design gallery. Returns Design or None."""
     if not file or not file.filename:
@@ -1027,7 +1040,7 @@ def add_collection():
             for f in request.files.getlist('design_uploads'):
                 if f and f.filename:
                     try:
-                        design = _save_uploaded_design(f, current_user.id)
+                        design = _save_collection_design(f, current_user.id)
                     except Exception as e:
                         current_app.logger.exception('Collection design upload failed: %s', e)
                         design = None
@@ -1161,7 +1174,7 @@ def edit_collection(collection_id):
             for f in request.files.getlist('design_uploads'):
                 if f and f.filename:
                     try:
-                        design = _save_uploaded_design(f, current_user.id)
+                        design = _save_collection_design(f, current_user.id)
                     except Exception as e:
                         current_app.logger.exception('Collection design upload failed: %s', e)
                         design = None

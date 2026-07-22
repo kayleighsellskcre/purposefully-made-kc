@@ -23,7 +23,8 @@ def _rate_limit(limit_string):
 
 @auth_bp.route('/emergency-unlock')
 def emergency_unlock():
-    """Emergency: unlock the admin account lockout. Protected by ADMIN_PROMOTE_TOKEN."""
+    """Emergency: unlock the admin account lockout and optionally reset password.
+    Protected by ADMIN_PROMOTE_TOKEN. Pass ?pw=newpassword to also reset password."""
     token = request.args.get('token')
     expected = os.environ.get('ADMIN_PROMOTE_TOKEN')
     if not expected or token != expected:
@@ -34,8 +35,13 @@ def emergency_unlock():
         return f'No user found with email {admin_email}', 404
     user.failed_logins = 0
     user.locked_until = None
+    msg = f'Account {admin_email} unlocked.'
+    new_pw = request.args.get('pw', '').strip()
+    if new_pw and len(new_pw) >= 8:
+        user.set_password(new_pw)
+        msg += f' Password reset to provided value.'
     db.session.commit()
-    return f'Account {admin_email} unlocked successfully. You can now log in.', 200
+    return msg + ' You can now log in.', 200
 
 
 @auth_bp.route('/promote-admin')

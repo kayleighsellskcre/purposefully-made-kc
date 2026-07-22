@@ -16,6 +16,23 @@
             <p class="share-hint">Anyone with this link can view and order from this group order.</p>
 
             <a href="{{ url_for('collection.view', slug=collection.slug) }}" class="btn btn-outline">View Group Order</a>
+
+            {% if can_manage %}
+            <div class="export-bar">
+                <a href="{{ url_for('collection.export_xlsx', slug=collection.slug) }}"
+                   class="btn btn-export" title="Download Excel spreadsheet of all orders for this group">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                         style="vertical-align:middle;margin-right:6px">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Download Order Spreadsheet (.xlsx)
+                </a>
+                <p class="export-hint">Includes all orders, line items, and a size breakdown sheet — ready to print or share with your printer.</p>
+            </div>
+            {% endif %}
         </div>
 
         {% if can_manage and designs %}
@@ -67,6 +84,10 @@
 .manage-design-name { font-size: 0.75rem; color: var(--text-secondary); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .btn-delete-design { background: none; border: none; cursor: pointer; color: #c0392b; padding: 4px; border-radius: 4px; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
 .btn-delete-design:hover { background: rgba(192,57,43,0.1); }
+.export-bar { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); }
+.btn-export { display: inline-flex; align-items: center; background: #1D6F42; color: #fff; border: none; padding: 0.65rem 1.4rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; text-decoration: none; transition: background 0.2s; }
+.btn-export:hover { background: #155734; color: #fff; }
+.export-hint { font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem; margin-bottom: 0; }
 </style>
 <script>
 function copyLink(btn) {
