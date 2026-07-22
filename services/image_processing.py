@@ -155,6 +155,11 @@ def process_artwork_bytes(data, mode='auto', engine=None):
     # ensures the design displays at full visual size on the shirt mockup.
     if changed:
         out = _autocrop(out, padding=8)
+        # Final cleanup: kill residual halos and background edge pixels
+        if result_engine in ('ai', 'algorithmic') and _HAS_NUMPY:
+            _bg_color_est, _bg_mad_est = _border_profile(src.convert('RGB'))
+            out = _final_cleanup(out, _bg_color_est)
+            out = _autocrop(out, padding=8)  # re-crop after cleanup
 
     white_artwork = _detect_white_artwork(out)
     validation = _validate(out, original_size, changed)
@@ -230,9 +235,9 @@ def _remove_bg_ai(img_rgba):
             img_rgba,
             session=session,
             alpha_matting=True,
-            alpha_matting_foreground_threshold=240,
-            alpha_matting_background_threshold=15,
-            alpha_matting_erode_size=3,
+            alpha_matting_foreground_threshold=245,
+            alpha_matting_background_threshold=10,
+            alpha_matting_erode_size=5,
             post_process_mask=True,
         )
         return out.convert('RGBA')
@@ -327,7 +332,7 @@ def _remove_bg_algorithmic(img_rgba, mode='auto'):
         # (textured / gradient bg) needs a wider tolerance to fully clear.
         tol = int(min(100, max(24, 32 + mad * 1.6)))
         if mode == 'aggressive':
-            tol = min(150, tol + 50)
+            tol = min(200, tol + 100)
 
         work = rgb.copy()
         px = rgb.load()
@@ -371,7 +376,7 @@ def _remove_bg_algorithmic(img_rgba, mode='auto'):
             # white/grey halo or remnant is left behind.
             ck_tol = int(min(95, max(36, 30 + mad * 1.7)))
             if mode == 'aggressive':
-                ck_tol = min(135, ck_tol + 45)
+                ck_tol = min(180, ck_tol + 90)
             rgb_i = np.asarray(rgb).astype(np.int16)
             dist = (np.abs(rgb_i[..., 0] - bg_color[0])
                     + np.abs(rgb_i[..., 1] - bg_color[1])
@@ -479,6 +484,57 @@ def _compose_with_pil(img_rgba, bg_mask, mode):
     alpha = alpha.filter(ImageFilter.GaussianBlur(0.6))
     r, g, b = img_rgba.convert('RGB').split()
     return Image.merge('RGBA', (r, g, b, alpha))
+
+
+def _final_cleanup(rgba_out, bg_color):
+    """Kill residual background halos and edge artifacts after main removal.
+
+    Targets two categories:
+    - Semi-transparent pixels (0 < alpha < 240) that match the background colour
+      (these are halo / feathering remnants from JPEG compression or blur).
+    - Fully-opaque pixels that match the background colour AND sit directly
+      adjacent to already-transparent pixels (stray corner / edge remnants).
+    Genuine artwork pixels are left untouched.
+    """
+    if not _HAS_NUMPY:
+        return rgba_out
+    try:
+        arr = np.asarray(rgba_out).astype(np.uint8).copy()
+        rgb = arr[..., :3].astype(np.int16)
+        alpha = arr[..., 3].astype(np.int16)
+
+        # Per-pixel distance from estimated background colour
+        dist = (np.abs(rgb[..., 0] - bg_color[0])
+              + np.abs(rgb[..., 1] - bg_color[1])
+              + np.abs(rgb[..., 2] - bg_color[2]))
+
+        # --- halo pass: semi-transparent pixels close to bg colour → kill ---
+        semi = (alpha > 0) & (alpha < 240)
+        kill = semi & (dist <= 110)
+
+        # --- edge pass: fully-opaque bg pixels adjacent to transparency → kill ---
+        transparent = alpha < 30
+        has_transparent_nb = np.zeros(transparent.shape, bool)
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                if dx == 0 and dy == 0:
+                    continue
+                has_transparent_nb |= np.roll(np.roll(transparent, dy, 0), dx, 1)
+        kill |= (alpha >= 240) & (dist <= 55) & has_transparent_nb
+
+        new_alpha = alpha.copy()
+        new_alpha[kill] = 0
+
+        # Final despeckle: drop isolated opaque specks
+        opaque2 = new_alpha > 128
+        nc = _neighbor_count(opaque2)
+        new_alpha[opaque2 & (nc < 2)] = 0
+
+        arr[..., 3] = new_alpha.clip(0, 255).astype(np.uint8)
+        return Image.fromarray(arr, 'RGBA')
+    except Exception:
+        return rgba_out
+
 
 
 def _defringe(img_rgba):
@@ -644,4 +700,7 @@ def _validate(img_rgba, original_size, changed):
         # corners after a cut that *did* remove something.
         if (changed and 'background_may_remain' not in issues
                 and (corner_opaque_frac > 0.18 or border_opaque_frac > 0.28)):
-            issues.append('background
+            issues.append('background_may_remain')
+    except Exception:
+        pass
+    return {'ok': not issues, 'issues': issues, 'metrics': metrics}
