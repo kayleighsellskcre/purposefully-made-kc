@@ -2261,82 +2261,76 @@ def edit_growth_metric(id):
 @admin_required
 def reprocess_design_backgrounds():
     """Re-download every design, strip the background, and re-upload the clean PNG."""
-    import io, urllib.request, traceback
-    from werkzeug.datastructures import FileStorage
-    from utils.cloud_storage import upload_image
-    from services.image_processing import process_artwork_bytes
-
+    import io, urllib.request, traceback as _tb
     try:
+        from werkzeug.datastructures import FileStorage
+        from utils.cloud_storage import upload_image
+        from services.image_processing import process_artwork_bytes
+
         designs = Design.query.all()
-    except Exception:
-        return jsonify({'error': traceback.format_exc()}), 500
-    ok, failed, skipped = 0, 0, 0
+        ok, failed, skipped = 0, 0, 0
 
-    for d in designs:
-        if not d.file_path:
-            skipped += 1
-            continue
-        try:
-            fp = d.file_path.strip()
-            # Download image bytes
-            if fp.startswith('http'):
-                req = urllib.request.Request(fp, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req, timeout=15) as resp:
-                    raw = resp.read()
-            else:
-                from pathlib import Path
-                local = Path(current_app.root_path) / 'static' / fp
-                if not local.exists():
-                    skipped += 1
-                    continue
-                raw = local.read_bytes()
-
-            # Run aggressive background removal
-            result = process_artwork_bytes(raw, mode='aggressive')
-            png_bytes = result.get('data')
-            if not png_bytes:
-                failed += 1
+        for d in designs:
+            if not d.file_path:
+                skipped += 1
                 continue
+            try:
+                fp = d.file_path.strip()
+                if fp.startswith('http'):
+                    req = urllib.request.Request(fp, headers={'User-Agent': 'Mozilla/5.0'})
+                    with urllib.request.urlopen(req, timeout=15) as resp:
+                        raw = resp.read()
+                else:
+                    from pathlib import Path
+                    local = Path(current_app.root_path) / 'static' / fp
+                    if not local.exists():
+                        skipped += 1
+                        continue
+                    raw = local.read_bytes()
 
-            # Build filename
-            orig = (d.original_filename or d.filename or 'design.png')
-            base = orig.rsplit('.', 1)[0] if '.' in orig else orig
-            new_name = f"{base}_clean.png"
+                result = process_artwork_bytes(raw, mode='aggressive')
+                png_bytes = result.get('data')
+                if not png_bytes:
+                    failed += 1
+                    continue
 
-            # Upload processed PNG
-            fs = FileStorage(
-                stream=io.BytesIO(png_bytes),
-                filename=new_name,
-                content_type='image/png',
-            )
-            new_path = upload_image(
-                fs,
-                current_app._get_current_object(),
-                subfolder='designs',
-                public_id_prefix='gallery',
-                process_artwork=False,   # already processed
-            )
-            if new_path:
-                d.file_path = new_path
-                ok += 1
-            else:
+                orig = (d.original_filename or d.filename or 'design.png')
+                base = orig.rsplit('.', 1)[0] if '.' in orig else orig
+                new_name = f"{base}_clean.png"
+
+                fs = FileStorage(
+                    stream=io.BytesIO(png_bytes),
+                    filename=new_name,
+                    content_type='image/png',
+                )
+                new_path = upload_image(
+                    fs,
+                    current_app._get_current_object(),
+                    subfolder='designs',
+                    public_id_prefix='gallery',
+                    process_artwork=False,
+                )
+                if new_path:
+                    d.file_path = new_path
+                    ok += 1
+                else:
+                    failed += 1
+            except Exception as e:
+                current_app.logger.exception('Reprocess failed for design %s: %s', d.id, e)
                 failed += 1
-        except Exception as e:
-            current_app.logger.exception('Reprocess failed for design %s: %s', d.id, e)
-            failed += 1
 
-    try:
         db.session.commit()
+        return jsonify({
+            'ok': ok,
+            'failed': failed,
+            'skipped': skipped,
+            'message': f'Done — {ok} reprocessed, {failed} failed, {skipped} skipped.',
+        })
     except Exception:
         db.session.rollback()
-        return jsonify({'error': 'DB commit failed', 'trace': traceback.format_exc()}), 500
-
-    return jsonify({
-        'ok': ok,
-        'failed': failed,
-        'skipped': skipped,
-        'message': f'Done — {ok} reprocessed, {failed} failed, {skipped} skipped.',
-    })
+        err = _tb.format_exc()
+        current_app.logger.error('reprocess_design_backgrounds fatal: %s', err)
+        return jsonify({'error': err}), 500
 
 
 # ===== OPERATIONS: PACKAGING SOP =====
