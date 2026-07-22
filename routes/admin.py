@@ -2261,12 +2261,15 @@ def edit_growth_metric(id):
 @admin_required
 def reprocess_design_backgrounds():
     """Re-download every design, strip the background, and re-upload the clean PNG."""
-    import io, urllib.request
+    import io, urllib.request, traceback
     from werkzeug.datastructures import FileStorage
     from utils.cloud_storage import upload_image
     from services.image_processing import process_artwork_bytes
 
-    designs = Design.query.all()
+    try:
+        designs = Design.query.all()
+    except Exception:
+        return jsonify({'error': traceback.format_exc()}), 500
     ok, failed, skipped = 0, 0, 0
 
     for d in designs:
@@ -2326,7 +2329,7 @@ def reprocess_design_backgrounds():
         db.session.commit()
     except Exception:
         db.session.rollback()
-        return jsonify({'error': 'DB commit failed'}), 500
+        return jsonify({'error': 'DB commit failed', 'trace': traceback.format_exc()}), 500
 
     return jsonify({
         'ok': ok,
