@@ -80,4 +80,54 @@ def share(slug):
         if not session.get(f'collection_{collection.id}_access'):
             return redirect(url_for('collection.password', slug=slug))
 
-    # Resolve designs 
+    # Resolve designs for this collection so the share page can show them
+    designs = []
+    if collection.allowed_design_ids:
+        try:
+            ids = json.loads(collection.allowed_design_ids)
+            if ids:
+                designs = Design.query.filter(Design.id.in_(ids)).all()
+        except Exception:
+            designs = []
+
+    # Determine if the current user can manage (delete) designs
+    can_manage = (
+        current_user.is_authenticated and (
+            getattr(current_user, 'is_admin', False) or
+            current_user.id == collection.created_by_user_id
+        )
+    )
+
+    return render_template('collection/share.html', collection=collection,
+                           designs=designs, can_manage=can_manage)
+
+
+@collection_bp.route('/<slug>/design/<int:design_id>/delete', methods=['POST'])
+@login_required
+def delete_design(slug, design_id):
+    """Remove a design from a group order's allowed list.
+
+    Only the collection creator or an admin may do this.
+    """
+    collection = Collection.query.filter_by(slug=slug).first_or_404()
+
+    # Permission check
+    is_admin = getattr(current_user, 'is_admin', False)
+    is_creator = current_user.id == collection.created_by_user_id
+    if not (is_admin or is_creator):
+        flash('You do not have permission to delete designs from this group order.', 'error')
+        return redirect(url_for('collection.share', slug=slug))
+
+    # Remove the design from allowed_design_ids
+    try:
+        ids = json.loads(collection.allowed_design_ids) if collection.allowed_design_ids else []
+        ids = [i for i in ids if i != design_id]
+        collection.allowed_design_ids = json.dumps(ids) if ids else None
+        db.session.commit()
+        flash('Design removed from this group order.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Error removing design %s from collection %s: %s', design_id, slug, e)
+        flash('Could not remove the design. Please try again.', 'error')
+
+    return redirect(url_for('collection.share', slug=slug))

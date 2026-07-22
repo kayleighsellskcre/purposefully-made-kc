@@ -168,6 +168,32 @@ def process_artwork_bytes(data, mode='auto', engine=None):
     validation = _validate(out, original_size, changed)
     has_transparency = _has_transparency(out)
 
+    # If the first pass didn't clear the background or left visible artifacts,
+    # retry with a stronger algorithmic aggressive cut. Preserve white artwork
+    # by only accepting the fallback when it improves the validation results.
+    if mode != 'none' and any(issue in validation['issues'] for issue in (
+            'no_background_removed', 'background_may_remain')):
+        fallback = _remove_bg_algorithmic(img, mode='aggressive')
+        if fallback is not None:
+            fallback = _autocrop(fallback, padding=8)
+            if result_engine in ('ai', 'algorithmic') and _HAS_NUMPY:
+                bg_color_est, _ = _border_profile(src.convert('RGB'))
+                fallback = _expand_transparency(fallback, bg_color_est, passes=6)
+                fallback = _final_cleanup(fallback, bg_color_est)
+                fallback = _autocrop(fallback, padding=8)
+
+            fallback_validation = _validate(fallback, original_size, True)
+            # Accept the fallback only if it removes the background more cleanly
+            # without destroying the artwork.
+            if ('artwork_mostly_removed' not in fallback_validation['issues'] and
+                    len(fallback_validation['issues']) < len(validation['issues'])):
+                out = fallback
+                validation = fallback_validation
+                has_transparency = _has_transparency(out)
+                result_engine = 'algorithmic'
+                changed = True
+                white_artwork = _detect_white_artwork(out)
+
     buf = io.BytesIO()
     out.save(buf, 'PNG', optimize=True)
     return {
