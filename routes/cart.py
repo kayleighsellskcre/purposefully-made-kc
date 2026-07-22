@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, session, redirec
 from flask_login import current_user
 from models import Product, ProductColorVariant, Design
 from werkzeug.utils import secure_filename
+from utils.cloud_storage import image_url as _resolve_image_url
 import json
 import os
 from pathlib import Path
@@ -159,7 +160,7 @@ def add():
             is_gallery = getattr(design, 'is_gallery', False)
             is_own = current_user.is_authenticated and design.uploaded_by_user_id == current_user.id
             if is_gallery or is_own:
-                design_url = f"/static/{design.file_path}"
+                design_url = _resolve_image_url(design.file_path)
     
     # Handle back design: uploaded file or URL (from prior upload)
     import time as _t
