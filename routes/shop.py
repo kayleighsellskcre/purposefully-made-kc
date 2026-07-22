@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, url_for, session
 from models import db, Product, Design, Collection
 from flask_login import login_required, current_user
 from utils.mockups import get_carousel_colors_for_product, get_color_variants_data_for_product, get_first_shop_image_url
+from utils.cloud_storage import image_url as _resolve_image_url
 import json
 
 shop_bp = Blueprint('shop', __name__, url_prefix='/shop')
@@ -409,7 +410,7 @@ def customize(product_id):
         if d and getattr(d, 'is_gallery', False):
             preset_design = {
                 'id': d.id,
-                'url': url_for('static', filename=d.file_path),
+                'url': _resolve_image_url(d.file_path),
                 'title': (d.title or d.original_filename or 'Design')
             }
     
@@ -417,7 +418,7 @@ def customize(product_id):
     gallery_designs = []
     try:
         designs = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).limit(24).all()
-        gallery_designs = [{'id': d.id, 'url': url_for('static', filename=d.file_path), 'title': (d.title or d.original_filename or 'Design')} for d in designs]
+        gallery_designs = [{'id': d.id, 'url': _resolve_image_url(d.file_path), 'title': (d.title or d.original_filename or 'Design')} for d in designs]
         if collection_restricted and allowed_design_ids:
             gallery_designs = [g for g in gallery_designs if g['id'] in allowed_design_ids]
     except Exception:
@@ -431,7 +432,7 @@ def customize(product_id):
                 Design.uploaded_by_user_id == current_user.id,
                 Design.is_gallery == False
             ).order_by(Design.uploaded_at.desc()).limit(24).all()
-            my_designs = [{'id': d.id, 'url': url_for('static', filename=d.file_path), 'title': (d.title or d.original_filename or 'Design')} for d in my_designs]
+            my_designs = [{'id': d.id, 'url': _resolve_image_url(d.file_path), 'title': (d.title or d.original_filename or 'Design')} for d in my_designs]
         except Exception:
             pass
     
