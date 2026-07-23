@@ -44,12 +44,30 @@
         <div class="filter-bar">
             <div class="filter-bar-header">
                 <span class="filter-bar-title">Refine Your Selection</span>
-                {% if selected_category or selected_age_group or selected_color or selected_fit_type or selected_neck_style or selected_sleeve_length %}
+                {% if selected_category or selected_age_group or selected_color or selected_fit_type or selected_neck_style or selected_sleeve_length or request.args.get('q') %}
                 <button class="clear-filters-btn" onclick="clearFilters()">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     Clear Filters
                 </button>
                 {% endif %}
+            </div>
+            <!-- Keyword search -->
+            <div class="shop-search-wrap">
+                <form method="GET" action="{{ url_for('shop.index') }}" class="shop-search-form" id="shopSearchForm">
+                    <input type="hidden" name="category" id="searchCategory" value="{{ request.args.get('category', '') }}">
+                    <input type="hidden" name="age_group" id="searchAgeGroup" value="{{ request.args.get('age_group', '') }}">
+                    <input type="hidden" name="fit_type" id="searchFitType" value="{{ request.args.get('fit_type', '') }}">
+                    <input type="hidden" name="neck_style" id="searchNeckStyle" value="{{ request.args.get('neck_style', '') }}">
+                    <input type="hidden" name="sleeve_length" id="searchSleeveLength" value="{{ request.args.get('sleeve_length', '') }}">
+                    <input type="hidden" name="color" id="searchColor" value="{{ request.args.get('color', '') }}">
+                    <div class="shop-search-field">
+                        <svg class="shop-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                        <input type="text" name="q" id="shopSearchInput" class="shop-search-input" placeholder="Search by name, style, or keyword…" value="{{ request.args.get('q', '') }}" autocomplete="off">
+                        {% if request.args.get('q') %}
+                        <button type="button" class="shop-search-clear" onclick="document.getElementById('shopSearchInput').value=''; document.getElementById('shopSearchForm').submit();" title="Clear search">×</button>
+                        {% endif %}
+                    </div>
+                </form>
             </div>
             <div class="filter-controls">
                 <div class="filter-group">
@@ -212,8 +230,12 @@
                         <path d="m21 21-4.35-4.35"></path>
                     </svg>
                     <h2>No products found</h2>
-                    {% if selected_category or selected_age_group or selected_color or selected_fit_type or selected_neck_style or selected_sleeve_length %}
+                    {% if selected_category or selected_age_group or selected_color or selected_fit_type or selected_neck_style or selected_sleeve_length or request.args.get('q') %}
+                    {% if request.args.get('q') %}
+                    <p>No results for "<strong>{{ request.args.get('q') }}</strong>". Try a different keyword or clear your search.</p>
+                    {% else %}
                     <p>Try adjusting your filters or check back later.</p>
+                    {% endif %}
                     <a href="{{ url_for('shop.index') }}" class="btn btn-primary">View All Products</a>
                     {% else %}
                     <p>Products are being added to the catalog. Check back soon!</p>
@@ -352,6 +374,25 @@
     padding: 1rem 1.75rem 0.75rem;
     border-bottom: 1px solid rgba(232, 208, 177, 0.5);
 }
+
+/* Shop search bar */
+.shop-search-wrap { padding: 0.85rem 1.75rem; border-bottom: 1px solid rgba(232, 208, 177, 0.4); background: rgba(248, 245, 240, 0.5); }
+.shop-search-form { margin: 0; }
+.shop-search-field { position: relative; display: flex; align-items: center; }
+.shop-search-icon { position: absolute; left: 0.9rem; color: var(--text-secondary); pointer-events: none; flex-shrink: 0; }
+.shop-search-input {
+    width: 100%;
+    padding: 0.6rem 2.5rem 0.6rem 2.4rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-family: var(--font-primary);
+    background: #fff;
+    color: var(--text-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.shop-search-input:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(184,124,111,0.12); }
+.shop-search-clear { position: absolute; right: 0.75rem; background: none; border: none; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; line-height: 1; padding: 0.25rem; }
 
 .filter-bar-title {
     font-family: var(--font-heading);
@@ -980,6 +1021,7 @@ function applyFilters() {
     const fitType = document.getElementById('fitTypeFilter').value;
     const color = document.getElementById('colorFilter').value;
     const designId = new URLSearchParams(window.location.search).get('design_id');
+    const searchQ = (document.getElementById('shopSearchInput') || {}).value || '';
 
     const params = new URLSearchParams();
     if (ageGroup) params.append('age_group', ageGroup);
@@ -987,6 +1029,7 @@ function applyFilters() {
     if (fitType) params.append('fit_type', fitType);
     if (color) params.append('color', color);
     if (designId) params.append('design_id', designId);
+    if (searchQ.trim()) params.append('q', searchQ.trim());
 
     window.location.href = '/shop' + (params.toString() ? '?' + params.toString() : '');
 }
@@ -995,6 +1038,22 @@ function clearFilters() {
     const designId = new URLSearchParams(window.location.search).get('design_id');
     window.location.href = '/shop' + (designId ? '?design_id=' + designId : '');
 }
+
+// Keep search form hidden inputs in sync with dropdowns before form submit
+document.addEventListener('DOMContentLoaded', () => {
+    const syncHidden = () => {
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+        set('searchCategory', (document.getElementById('categoryFilter') || {}).value || '');
+        set('searchAgeGroup', (document.getElementById('ageGroupFilter') || {}).value || '');
+        set('searchFitType', (document.getElementById('fitTypeFilter') || {}).value || '');
+        set('searchColor', (document.getElementById('colorFilter') || {}).value || '');
+    };
+    ['categoryFilter','ageGroupFilter','fitTypeFilter','colorFilter'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', syncHidden);
+    });
+    syncHidden();
+});
 
 </script>
 {% endblock %}

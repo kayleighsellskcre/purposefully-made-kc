@@ -1620,7 +1620,7 @@ def affirmation_delete(aff_id):
 
 # ===== DESIGN GALLERY (for customers to use) =====
 
-@admin_bp.route('/design-gallery')
+@admin_bp.route('/design-gallery', strict_slashes=False)
 @admin_required
 def design_gallery():
     """Upload and manage designs for customer gallery"""

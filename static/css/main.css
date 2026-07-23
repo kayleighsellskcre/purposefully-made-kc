@@ -152,6 +152,7 @@ a:hover {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    overflow: hidden;
 }
 
 .logo {
@@ -181,6 +182,9 @@ a:hover {
     display: flex;
     align-items: center;
     gap: 0.25rem;
+    overflow-x: hidden;
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 .nav-link {
@@ -1775,6 +1779,7 @@ textarea.form-control {
     cursor: pointer;
     font-family: var(--font-primary);
     padding: 0.25rem 0.5rem;
+    white-space: nowrap;
 }
 .adm-view-link:hover { border-bottom-color: var(--terra-cotta); }
 

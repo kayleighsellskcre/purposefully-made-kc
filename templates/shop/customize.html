@@ -1522,9 +1522,9 @@
                     <div class="logo-gallery-inline" id="myDesignsInline">
                         <div class="logo-gallery-grid" id="myDesignsGrid">
                             {% for d in my_designs %}
-                            <div class="logo-gallery-item" data-design-id="{{ d.id }}" data-design-url="{{ d.url }}" data-design-title="{{ d.title }}" role="button" tabindex="0">
+                            <div class="logo-gallery-item" data-design-id="{{ d.id }}" data-design-url="{{ d.url }}" data-design-title="{{ d.title }}" role="button" tabindex="0" title="{{ d.title }}">
                                 <img src="{{ d.url }}" alt="{{ d.title }}" draggable="false">
-                                <span>{{ d.title[:20] }}{% if d.title|length > 20 %}…{% endif %}</span>
+                                <span class="logo-gallery-item-label">{{ d.title }}</span>
                             </div>
                             {% endfor %}
                         </div>
@@ -1540,9 +1540,9 @@
                         <p class="logo-gallery-label">Gallery designs. Click to use.</p>
                         <div class="logo-gallery-grid" id="logoGalleryGrid">
                             {% for d in gallery_designs %}
-                            <div class="logo-gallery-item{% if preset_design and preset_design.id == d.id %} selected{% endif %}" data-design-id="{{ d.id }}" data-design-url="{{ d.url }}" data-design-title="{{ d.title }}" role="button" tabindex="0">
+                            <div class="logo-gallery-item{% if preset_design and preset_design.id == d.id %} selected{% endif %}" data-design-id="{{ d.id }}" data-design-url="{{ d.url }}" data-design-title="{{ d.title }}" role="button" tabindex="0" title="{{ d.title }}">
                                 <img src="{{ d.url }}" alt="{{ d.title }}" draggable="false">
-                                <span>{{ d.title[:20] }}{% if d.title|length > 20 %}…{% endif %}</span>
+                                <span class="logo-gallery-item-label">{{ d.title }}</span>
                             </div>
                             {% endfor %}
                         </div>

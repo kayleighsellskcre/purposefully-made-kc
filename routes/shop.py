@@ -19,6 +19,7 @@ def index():
         neck_style = request.args.get('neck_style')
         sleeve_length = request.args.get('sleeve_length')
         color = request.args.get('color')
+        search_q = (request.args.get('q') or '').strip()
 
         query = Product.query.filter_by(is_active=True)
         
@@ -36,6 +37,17 @@ def index():
         
         if sleeve_length:
             query = query.filter(Product.sleeve_length == sleeve_length)
+
+        if search_q:
+            _kw = f'%{search_q}%'
+            query = query.filter(
+                db.or_(
+                    Product.name.ilike(_kw),
+                    Product.style_number.ilike(_kw),
+                    Product.description.ilike(_kw),
+                    Product.category.ilike(_kw),
+                )
+            )
         
         products = query.order_by(Product.style_number).all()
 

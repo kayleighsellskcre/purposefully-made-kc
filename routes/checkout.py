@@ -158,13 +158,44 @@ def index():
     # Calculate totals
     totals = calculate_totals(cart)
     
+    # Enrich cart items with product name + design title/thumbnail for the summary panel
+    enriched_cart = []
+    for item in cart:
+        enriched = dict(item)
+        try:
+            prod = Product.query.get(item.get('product_id'))
+            enriched['product_name'] = prod.name if prod else 'Item'
+            d_id = item.get('design_id')
+            if d_id:
+                d = Design.query.get(int(d_id))
+                if d:
+                    enriched['design_title'] = d.title or d.original_filename or 'Custom Design'
+                    enriched['design_thumb'] = (
+                        d.file_path if (d.file_path or '').startswith('http')
+                        else f"/static/{d.file_path}" if d.file_path else None
+                    )
+                else:
+                    enriched['design_title'] = 'Custom Design'
+                    enriched['design_thumb'] = item.get('design_url')
+            elif item.get('design_url'):
+                enriched['design_title'] = 'Uploaded Design'
+                enriched['design_thumb'] = item.get('design_url')
+            else:
+                enriched['design_title'] = None
+                enriched['design_thumb'] = None
+        except Exception:
+            enriched['product_name'] = 'Item'
+            enriched['design_title'] = None
+            enriched['design_thumb'] = None
+        enriched_cart.append(enriched)
+    
     # Get user addresses if logged in
     addresses = []
     if current_user.is_authenticated:
         addresses = current_user.addresses.all()
     
     return render_template('checkout/index.html',
-                         cart=cart,
+                         cart=enriched_cart,
                          totals=totals,
                          addresses=addresses,
                          stripe_public_key=current_app.config.get('STRIPE_PUBLIC_KEY'))

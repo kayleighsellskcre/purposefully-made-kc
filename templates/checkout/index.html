@@ -129,7 +129,7 @@
                     <div class="payment-tabs">
                         <button class="payment-tab active" data-method="card">Card / Apple Pay</button>
                         <button class="payment-tab" data-method="paypal">PayPal / Venmo</button>
-                        <button class="payment-tab" data-method="cash">Cash</button>
+                        <button class="payment-tab" data-method="cash">Cash / Pay at Pickup</button>
                     </div>
                     
                     <div class="payment-content">
@@ -166,9 +166,17 @@
                 <div class="summary-items">
                     {% for item in cart %}
                     <div class="summary-item">
-                        <div>
-                            <strong>{{ item.quantity }}x Item</strong>
-                            <p>Size: {{ item.size }} | Color: {{ item.color }}</p>
+                        {% if item.design_thumb %}
+                        <div class="summary-item-thumb">
+                            <img src="{{ item.design_thumb }}" alt="{{ item.design_title or 'Design' }}">
+                        </div>
+                        {% endif %}
+                        <div class="summary-item-info">
+                            <strong>{{ item.quantity }}× {{ item.product_name or 'Item' }}</strong>
+                            {% if item.design_title %}
+                            <p class="summary-design-name">{{ item.design_title }}</p>
+                            {% endif %}
+                            <p>{{ item.color }} · {{ item.size }}</p>
                         </div>
                         <div class="item-price">${{ "%.2f"|format(item.quantity * item.unit_price) }}</div>
                     </div>
@@ -534,15 +542,39 @@ async function completeOrder(paymentId, paymentMethodOverride) {
 
 .summary-item {
     display: flex;
-    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
     padding: 1rem 0;
     border-bottom: 1px solid var(--border-color);
+}
+
+.summary-item-thumb {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    overflow: hidden;
+    background: rgba(232,208,177,0.2);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.summary-item-thumb img { width: 100%; height: 100%; object-fit: contain; }
+
+.summary-item-info { flex: 1; min-width: 0; }
+
+.summary-design-name {
+    color: var(--accent-color);
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin: 0.1rem 0 0;
 }
 
 .summary-item p {
     color: var(--text-secondary);
     font-size: 0.875rem;
-    margin: 0.25rem 0 0;
+    margin: 0.2rem 0 0;
 }
 
 .summary-totals {
