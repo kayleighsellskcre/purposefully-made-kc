@@ -109,3 +109,7 @@ class Config:
     # Application settings
     ITEMS_PER_PAGE = 20
     ADMIN_BASE_URL = os.environ.get('ADMIN_BASE_URL', 'http://localhost:5000')
+
+    # Force https:// on all url_for() calls with _external=True in production.
+    # This fixes OG image tags, share links, and email links that were using http://.
+    PREFERRED_URL_SCHEME = os.environ.get('PREFERRED_URL_SCHEME', 'https')

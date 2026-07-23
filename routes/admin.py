@@ -181,6 +181,12 @@ def _save_design_for_user(file, user_id, title=None, design_fee=0):
 def index():
     """Admin dashboard"""
     from datetime import datetime
+    try:
+        from zoneinfo import ZoneInfo
+        _cst = ZoneInfo("America/Chicago")
+        _now = datetime.now(_cst)
+    except Exception:
+        _now = datetime.now()
     # Statistics
     total_orders    = Order.query.count()
     pending_orders  = Order.query.filter(Order.status.in_(['new', 'paid'])).count()
@@ -194,8 +200,8 @@ def index():
     # Recent orders
     recent_orders = Order.query.order_by(Order.created_at.desc()).limit(8).all()
 
-    # Greeting
-    hour = datetime.now().hour
+    # Greeting based on local business time (CST/CDT)
+    hour = _now.hour
     if hour < 12:
         greeting = 'Good morning'
     elif hour < 17:
@@ -215,7 +221,7 @@ def index():
                          pending_design_requests=pending_design_requests,
                          greeting=greeting,
                          admin_name=admin_name,
-                         now=datetime.now())
+                         now=_now)
 
 
 # ===== ORDERS =====
@@ -1632,7 +1638,30 @@ def design_gallery():
         flash('We could not load the design gallery (a database issue). '
               'If this persists, a database migration may be pending.', 'error')
         gallery_designs = []
-    return render_template('admin/design_gallery.html', designs=gallery_designs)
+    # Also load non-gallery user uploads so admin can promote them
+    try:
+        pending_designs = Design.query.filter_by(is_gallery=False).order_by(Design.uploaded_at.desc()).limit(50).all()
+    except Exception:
+        pending_designs = []
+    return render_template('admin/design_gallery.html', designs=gallery_designs, pending_designs=pending_designs)
+
+
+@admin_bp.route('/design-gallery/<int:design_id>/promote', methods=['POST'])
+@admin_required
+def promote_design_to_gallery(design_id):
+    """Promote an existing user design to the public gallery"""
+    design = Design.query.get_or_404(design_id)
+    try:
+        design.is_gallery = True
+        if not design.title:
+            design.title = (design.original_filename or 'Design').rsplit('.', 1)[0].replace('_', ' ').replace('-', ' ').title()[:100]
+        db.session.commit()
+        flash(f'"{design.title}" added to the gallery.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Failed to promote design %s: %s', design_id, e)
+        flash('Could not promote design. Please try again.', 'error')
+    return redirect(url_for('admin.design_gallery'))
 
 
 @admin_bp.route('/design-gallery/upload', methods=['POST'])

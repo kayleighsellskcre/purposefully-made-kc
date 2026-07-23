@@ -115,9 +115,6 @@
                     </svg>
                     Create Group Order
                 </a>
-                {% if is_admin %}
-                <a href="{{ url_for('admin.collections') }}" class="btn btn-secondary">Manage all collections</a>
-                {% endif %}
                 {% else %}
                 <a href="{{ url_for('auth.login') }}?next={{ url_for('shop.group_orders') }}" class="btn btn-primary btn-lg">
                     Log in to create a group order

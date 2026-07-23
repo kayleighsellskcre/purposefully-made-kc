@@ -71,6 +71,33 @@
             </button>
         </div>
 
+        <!-- Promote existing user designs to gallery -->
+        {% if pending_designs %}
+        <div class="pending-designs-section">
+            <h2 class="gallery-list-title">Pending User Designs <span class="gallery-count">({{ pending_designs|length }})</span></h2>
+            <p style="color:var(--text-secondary);margin-bottom:1.5rem;font-size:0.9rem;">These designs were uploaded by customers but are not yet in the public gallery. Click <strong>Add to Gallery</strong> to publish them.</p>
+            <div class="designs-grid">
+                {% for d in pending_designs %}
+                <div class="design-card">
+                    <div class="design-card-image">
+                        <img src="{{ d.file_path | image_url }}" alt="{{ d.title or d.original_filename }}">
+                    </div>
+                    <div class="design-card-body">
+                        <strong class="design-card-name">{{ d.title or d.original_filename or 'Untitled' }}</strong>
+                        <p class="design-card-meta" style="font-size:0.75rem;">Uploaded by user {{ d.uploaded_by_user_id }} &middot; {{ d.uploaded_at.strftime('%b %d') if d.uploaded_at else '' }}</p>
+                        <div class="design-card-actions">
+                            <form method="POST" action="{{ url_for('admin.promote_design_to_gallery', design_id=d.id) }}" style="display:inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-primary btn-sm">Add to Gallery</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
         {% if designs %}
         <h2 class="gallery-list-title">Gallery Designs <span class="gallery-count">({{ designs|length }})</span></h2>
         <div class="designs-grid">
@@ -100,7 +127,7 @@
         <div class="gallery-empty-state">
             <div class="gallery-empty-icon">&#10022;</div>
             <p class="gallery-empty-title">No designs in gallery yet</p>
-            <p class="gallery-empty-text">Upload your first design above. Customers can browse and use these designs when customizing products.</p>
+            <p class="gallery-empty-text">Upload your first design above, or promote a customer design using the section above. Customers can browse and use gallery designs when customizing products.</p>
         </div>
         {% endif %}
         
@@ -122,6 +149,7 @@
 .prod-modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; flex-wrap: wrap; }
 @media (max-width: 480px) { .prod-modal-actions { flex-direction: column-reverse; } .prod-modal-actions .btn { width: 100%; } }
 
+.pending-designs-section { margin-bottom: 3rem; padding: 1.5rem; background: rgba(212,175,55,0.07); border: 1px dashed var(--aged-bronze, #b8956f); border-radius: 12px; }
 .design-gallery-admin { padding: 2rem 0 4rem; }
 
 .gallery-page-title {

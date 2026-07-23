@@ -6,13 +6,17 @@
     <title>{% block title %}Purposefully Made KC - Custom Apparel{% endblock %}</title>
     <meta name="description" content="{% block meta_description %}Purposefully Made KC — premium Bella+Canvas custom apparel with DTF printing. Design your own t-shirts, hoodies, onesies, and group orders online.{% endblock %}">
 
+    <!-- Canonical URL -->
+    <link rel="canonical" href="{{ request.base_url }}">
+
     <!-- Open Graph -->
     <meta property="og:title" content="{% block og_title %}Purposefully Made KC - Custom Apparel{% endblock %}">
     <meta property="og:description" content="{% block og_description %}Premium Bella+Canvas custom apparel with DTF printing. Design your own shirts, hoodies, onesies and team orders.{% endblock %}">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://purposefullymadekc.com">
-    <meta property="og:image" content="{{ url_for('static', filename='img/logo.png', _external=True) }}">
+    <meta property="og:url" content="{{ request.base_url }}">
+    <meta property="og:image" content="https://purposefullymadekc.com/static/img/logo.png">
     <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://purposefullymadekc.com/static/img/logo.png">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

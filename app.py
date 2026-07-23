@@ -42,7 +42,13 @@ def _sync_mockups_to_static(app):
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
-    
+
+    # Ensure all externally generated URLs use https in production.
+    # This fixes OG tags, share links, and email links that were http://.
+    if os.environ.get('PREFERRED_URL_SCHEME', 'https') == 'https':
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
     # Initialize extensions
     db.init_app(app)
     mail.init_app(app)
@@ -152,6 +158,23 @@ def create_app(config_class=Config):
             # Create favorites table if it doesn't exist
             from models import Favorite
             db.create_all()
+
+            # ── One-time product category fixes ──────────────────────────────
+            # Onesies: 100B and 134B were mis-labelled as "Tee"
+            # Shorts:  0814, 3787, 3797, 6824GD were mis-labelled as "Tee"
+            # Bodysuit: 0990 was mis-labelled as "Tee"
+            _cat_fixes = [
+                ("UPDATE product SET category = 'Onesie' WHERE style_number IN ('100B','134B') AND category = 'Tee'",),
+                ("UPDATE product SET category = 'Shorts' WHERE style_number IN ('0814','3787','3797','6824GD') AND category = 'Tee'",),
+                ("UPDATE product SET category = 'Bodysuit' WHERE style_number = '0990' AND category = 'Tee'",),
+            ]
+            for (fix_sql,) in _cat_fixes:
+                try:
+                    with db.engine.connect() as _conn:
+                        _conn.execute(text(fix_sql))
+                        _conn.commit()
+                except Exception:
+                    pass
         except Exception:
             # Migration errors shouldn't crash the app
             pass
