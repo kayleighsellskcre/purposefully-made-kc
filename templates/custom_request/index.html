@@ -13,6 +13,17 @@
 
 <section class="content-section recreate-section">
     <div class="container">
+
+        <!-- Primary CTA — visible immediately, before any scrolling -->
+        <div class="recreate-cta recreate-cta--top">
+            {% if current_user.is_authenticated %}
+            <a href="{{ url_for('custom_request.submit') }}" class="btn btn-primary btn-lg">Start My Request →</a>
+            {% else %}
+            <a href="{{ url_for('auth.login', next=url_for('custom_request.submit')) }}" class="btn btn-primary btn-lg">Log In to Submit →</a>
+            <a href="{{ url_for('auth.register', next=url_for('custom_request.submit')) }}" class="btn btn-outline btn-lg">Create Account</a>
+            {% endif %}
+        </div>
+
         <div class="recreate-flow">
             <div class="recreate-step">
                 <span class="step-num">1</span>
@@ -53,6 +64,7 @@
 .recreate-step h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
 .recreate-step p { color: var(--text-secondary); font-size: 0.95rem; }
 .recreate-cta { text-align: center; }
+.recreate-cta--top { margin-bottom: 2.5rem; padding-bottom: 2.5rem; border-bottom: 1px solid var(--border-color); }
 .recreate-cta .btn { margin: 0 0.5rem 0.5rem 0; }
 .cta-hint { margin-top: 1rem; font-size: 0.95rem; color: var(--text-secondary); }
 .login-prompt { margin-bottom: 1rem; }

@@ -152,8 +152,8 @@ def index():
     cart = get_cart()
     
     if not cart:
-        flash('Your cart is empty', 'warning')
-        return redirect(url_for('shop.index'))
+        flash('Your cart is empty. Add some items to get started!', 'info')
+        return redirect(url_for('cart.index'))
     
     # Calculate totals
     totals = calculate_totals(cart)

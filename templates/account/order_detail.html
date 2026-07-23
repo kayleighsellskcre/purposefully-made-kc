@@ -36,6 +36,21 @@
                     <div class="od-items-list">
                         {% for item in order.items %}
                         <div class="od-item-row">
+                            {% if item.design and item.design.file_path %}
+                            {% set _fp = item.design.file_path %}
+                            {% set design_url = _fp if _fp.startswith('http') else '/static/' + _fp %}
+                            <div class="od-item-thumb">
+                                <img src="{{ design_url }}" alt="Design" loading="lazy">
+                            </div>
+                            {% elif item.proof_image %}
+                            <div class="od-item-thumb">
+                                <img src="{{ item.proof_image if item.proof_image.startswith('http') else '/static/' + item.proof_image }}" alt="Design proof" loading="lazy">
+                            </div>
+                            {% else %}
+                            <div class="od-item-thumb od-item-thumb--empty">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            </div>
+                            {% endif %}
                             <div class="od-item-info">
                                 <p class="od-item-name">{{ item.product_name }}</p>
                                 <p class="od-item-specs">
@@ -127,7 +142,10 @@
 .od-badges { display:flex; flex-wrap:wrap; gap:0.5rem; align-items:flex-start; padding-top:0.4rem; }
 .od-grid { display:grid; grid-template-columns:1fr 340px; gap:1.75rem; align-items:start; }
 .od-items-list { display:flex; flex-direction:column; }
-.od-item-row { display:flex; justify-content:space-between; align-items:flex-start; padding:0.9rem 0; border-bottom:1px solid rgba(232,208,177,0.4); gap:1rem; }
+.od-item-row { display:flex; justify-content:space-between; align-items:center; padding:0.9rem 0; border-bottom:1px solid rgba(232,208,177,0.4); gap:1rem; }
+.od-item-thumb { width:56px; height:56px; flex-shrink:0; border-radius:8px; overflow:hidden; background:rgba(232,208,177,0.15); border:1px solid rgba(232,208,177,0.4); display:flex; align-items:center; justify-content:center; }
+.od-item-thumb img { width:100%; height:100%; object-fit:contain; }
+.od-item-thumb--empty { color:var(--text-secondary); }
 .od-item-row:last-child { border-bottom:none; }
 .od-item-name { font-size:0.9rem; font-weight:600; color:var(--text-primary); margin:0 0 0.2rem; }
 .od-item-specs { font-size:0.78rem; color:var(--text-secondary); margin:0; }

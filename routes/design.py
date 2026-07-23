@@ -73,6 +73,18 @@ def upload():
         if not _allowed_file(file.filename):
             return jsonify({'error': 'Invalid file type. Use PNG, JPG, WEBP, or GIF'}), 400
 
+        # Hard size limit before touching disk — prevents OOM kills on Railway.
+        # Read just enough bytes to check; seek back so file.save() still works.
+        file.stream.seek(0, 2)   # seek to end
+        file_bytes = file.stream.tell()
+        file.stream.seek(0)      # rewind
+        MAX_UPLOAD_BYTES = 10 * 1024 * 1024   # 10 MB
+        if file_bytes > MAX_UPLOAD_BYTES:
+            return jsonify({
+                'error': f'File is too large ({file_bytes // (1024*1024)} MB). '
+                         'Please resize to under 10 MB before uploading.'
+            }), 413
+
         upload_folder = current_app.config.get('UPLOAD_FOLDER')
         if not upload_folder:
             upload_folder = os.path.join(current_app.root_path, 'static', 'uploads')
@@ -135,6 +147,33 @@ def upload():
                     title = f'My Design {count + 1}'
                 else:
                     title = raw_stem.replace('_', ' ').replace('-', ' ').title()[:50]
+
+                # Duplicate guard: if this user already has a design with the same
+                # original filename uploaded in the last 30 seconds, return that one
+                # instead of creating a second record (catches double-tap / form re-submit).
+                from datetime import timedelta
+                _cutoff = datetime.utcnow() - timedelta(seconds=30)
+                _existing = Design.query.filter_by(
+                    uploaded_by_user_id=current_user.id,
+                    original_filename=file.filename,
+                ).filter(Design.uploaded_at >= _cutoff).first()
+                if _existing:
+                    _ex_url = _existing.file_path if _existing.file_path.startswith('http') else f"/static/{_existing.file_path}"
+                    return jsonify({
+                        'success': True,
+                        'url': _ex_url,
+                        'width': _existing.width,
+                        'height': _existing.height,
+                        'design_id': _existing.id,
+                        'engine': 'cached',
+                        'white_artwork': False,
+                        'background_removed': True,
+                        'validation': {'ok': True, 'issues': [], 'metrics': {}},
+                        'messages': [],
+                        'submitted_to_gallery': False,
+                        'gallery_status': None,
+                    })
+
                 design = Design(
                     filename=unique_name,
                     original_filename=file.filename,

@@ -7,10 +7,12 @@
 {% endblock %}
 
 {% block content %}
-<div class="admin-page">
+<div class="{{ 'account-page' if is_user_create else 'admin-page' }}">
     <div class="container">
         <div class="admin-header">
+            {% if not is_user_create %}
             <span class="adm-eyebrow">Admin / Group Orders</span>
+            {% endif %}
             <h1>Create Group Order</h1>
             {% if is_user_create %}
             <a href="{{ url_for('shop.group_orders') }}" class="btn btn-outline">Back to Group Orders</a>
@@ -28,11 +30,13 @@
                     <input type="text" id="name" name="name" class="form-control" required placeholder="e.g., Silver Lake Spirit Wear 2026">
                 </div>
                 
+                {% if not is_user_create %}
                 <div class="form-group">
                     <label for="slug">URL Slug</label>
                     <input type="text" id="slug" name="slug" class="form-control" placeholder="auto-generated">
                     <small>Leave blank to auto-generate from name</small>
                 </div>
+                {% endif %}
                 
                 <div class="form-group">
                     <label for="description">Description</label>

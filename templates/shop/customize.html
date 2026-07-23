@@ -825,8 +825,9 @@
     gap: 0.25rem;
     margin-left: 1rem;
     padding: 0.25rem 0.75rem;
-    background: var(--terra-cotta);
-    color: #fff;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
     text-decoration: none;
     border-radius: 4px;
     font-size: 0.75rem;
@@ -836,9 +837,9 @@
 }
 
 .spec-sheet-link:hover {
-    filter: brightness(0.88);
+    color: var(--accent-color);
+    border-color: var(--accent-color);
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(184, 124, 111, 0.3);
 }
 
 .spec-sheet-link:active {
@@ -1965,8 +1966,6 @@
     
     // Global function for color selection
     window.selectColor = function(element) {
-        console.log('Color clicked:', element.dataset.color);
-        
         // Remove selected from all
         document.querySelectorAll('.color-card').forEach(card => {
             card.classList.remove('selected');
@@ -1980,13 +1979,6 @@
         const frontImage = element.dataset.frontImage || '';
         const backImage = element.dataset.backImage || '';
         const inventoryStr = element.dataset.inventory || '{}';
-        
-        console.log('Color data:', {
-            colorName,
-            frontImage: frontImage.substring(0, 50),
-            backImage: backImage.substring(0, 50),
-            inventoryStr: inventoryStr.substring(0, 100)
-        });
         
         let inventory = {};
         try {
@@ -2376,7 +2368,7 @@
                 card.classList.remove('out-of-stock');
                 
                 if (qty > 0) {
-                    stockBadge.textContent = `${qty} in stock`;
+                    stockBadge.textContent = 'Available';
                     stockBadge.style.color = '#22c55e';
                     card.style.opacity = '1';
                     card.style.cursor = 'pointer';
@@ -2677,8 +2669,9 @@
 
         async function frontUpload(file, mode) {
             if (!file || !uploadAreaMain) return;
-            if (file.size > 15 * 1024 * 1024) {
-                uploadAreaMain.innerHTML = '<p style="margin: 1rem 0; color: #dc3545;"><strong>File too large</strong></p><p class="text-muted" style="font-size: 0.85rem;">Maximum size is 16MB. Please choose a smaller image.</p><p class="text-muted" style="font-size: 0.8rem;">Click to try again</p>';
+            if (file.size > 10 * 1024 * 1024) {
+                uploadAreaMain.innerHTML = '<p style="margin: 1rem 0; color: #dc3545;"><strong>File too large</strong></p><p class="text-muted" style="font-size: 0.85rem;">Maximum size is 10 MB. Please resize the image and try again.</p><p class="text-muted" style="font-size: 0.8rem;">Click to try again</p>';
+                uploadAreaMain.style.pointerEvents = '';
                 return;
             }
             uploadAreaMain.innerHTML = '<p style="margin: 2rem 0;">' + (mode === 'aggressive' ? 'Reprocessing &amp; removing background…' : 'Uploading &amp; removing background…') + '</p>';
