@@ -75,11 +75,12 @@ def upload():
         file.stream.seek(0, 2)   # seek to end
         file_bytes = file.stream.tell()
         file.stream.seek(0)      # rewind
-        MAX_UPLOAD_BYTES = 10 * 1024 * 1024   # 10 MB
+        MAX_UPLOAD_BYTES = 15 * 1024 * 1024   # 15 MB — covers full-res phone photos
         if file_bytes > MAX_UPLOAD_BYTES:
             return jsonify({
                 'error': f'File is too large ({file_bytes // (1024*1024)} MB). '
-                         'Please resize to under 10 MB before uploading.'
+                         'Maximum is 15 MB. On iPhone: share the photo and choose "Medium" size. '
+                         'On Android: use a photo editor to reduce size before uploading.'
             }), 413
 
         upload_folder = current_app.config.get('UPLOAD_FOLDER')
