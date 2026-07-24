@@ -411,8 +411,14 @@ def create_app(config_class=Config):
         user_email = (current_user.email or '').lower().strip()
         if user_email and user_email in _known_admins:
             if not getattr(current_user, 'is_admin', False):
-                current_user.is_admin = True
-                db.session.commit()
+                try:
+                    current_user.is_admin = True
+                    db.session.commit()
+                except Exception:
+                    try:
+                        db.session.rollback()
+                    except Exception:
+                        pass
 
     # Template filter: color name to hex (fallback when color_hex not in DB)
     COMMON_COLOR_HEX = {
@@ -461,7 +467,26 @@ def create_app(config_class=Config):
     @app.errorhandler(404)
     def not_found_error(error):
         return render_template('errors/404.html'), 404
-    
+
+    @app.errorhandler(413)
+    def request_too_large(error):
+        """Return JSON when a file upload exceeds MAX_CONTENT_LENGTH.
+
+        Without this, Flask returns an HTML error page which the fetch()
+        in customize.html can't parse as JSON → shows generic "Upload failed".
+        """
+        from flask import request as _req, jsonify as _json
+        if _req.path.startswith('/design/') or _req.headers.get('Accept', '').find('json') != -1 or _req.is_json or _req.files:
+            limit_mb = int(app.config.get('MAX_CONTENT_LENGTH', 20 * 1024 * 1024)) // (1024 * 1024)
+            return _json({
+                'error': (
+                    f'File is too large (over {limit_mb} MB). '
+                    'On iPhone: share the photo and choose "Medium" size. '
+                    'On Android: use a photo editor to reduce size before uploading.'
+                )
+            }), 413
+        return render_template('errors/404.html'), 413
+
     @app.errorhandler(500)
     def internal_error(error):
         try:
