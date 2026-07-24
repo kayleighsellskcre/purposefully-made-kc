@@ -42,10 +42,13 @@ except Exception:
 _SESSION_CACHE: dict = {}
 _REMBG_FAILED = False
 
+# Try small/fast models first so Railway's first-upload latency is low.
+# u2netp is only 4 MB — downloads in seconds, works great for logos/graphics.
+# u2net (180 MB) is the quality fallback when u2netp isn't available.
 _MODEL_PRIORITY = [
-    'u2net',             # 180 MB — most reliable, always available
-    'u2netp',            # 4 MB   — tiny/fast, good for logos
-    'u2net_human_seg',   # 180 MB — fallback
+    'u2netp',            # 4 MB   — fast download, excellent for logos
+    'u2net',             # 180 MB — best quality, larger memory footprint
+    'isnet-general-use', # 170 MB — alternative high-quality model
 ]
 
 
@@ -224,7 +227,7 @@ def _remove_ai(img_rgba: Image.Image):
                 alpha_matting=True,
                 alpha_matting_foreground_threshold=240,
                 alpha_matting_background_threshold=10,
-                alpha_matting_erode_size=10,
+                alpha_matting_erode_size=4,  # smaller = keeps more logo edge detail
                 post_process_mask=True,
             )
         except Exception:
@@ -386,13 +389,14 @@ def _post_process(out: Image.Image, src_rgb: Image.Image,
 
 
 def _harden_alpha(img: Image.Image, engine: str) -> Image.Image:
-    """Convert semi-transparent fringe pixels to fully transparent/opaque.
+    """Sharpen the alpha channel so logo edges are crisp without destroying detail.
 
-    After AI removal there's always a halo of semi-transparent pixels (alpha
-    40-200) that are actually background. This pass:
-      - Kills semi-transparent pixels that are clearly near-transparent (< 80)
-      - Hardens near-opaque pixels (> 200) to fully opaque
-      - Applies a sharpening S-curve to the remaining alpha channel
+    rembg produces smooth alpha values (0-255). We apply a gentle S-curve that:
+      - Kills only near-fully-transparent pixels (< 15) → helps remove faint halos
+      - Keeps all mid-range alpha (15-200) mostly intact → preserves logo anti-aliasing
+      - Snaps near-opaque pixels (> 220) to fully opaque → hardens interior fills
+
+    This is intentionally conservative so we don't destroy soft logo edges.
     """
     if not _HAS_NUMPY:
         return img
@@ -400,12 +404,10 @@ def _harden_alpha(img: Image.Image, engine: str) -> Image.Image:
         arr = np.asarray(img).astype(np.uint8).copy()
         a = arr[..., 3].astype(np.float32)
 
-        # S-curve: stretches the mid-range so edges become sharper
-        # Values < 60  → 0 (transparent)
-        # Values > 200 → 255 (opaque)
-        # Values in between → smooth ramp
-        lo, hi = 60.0, 200.0
-        a = np.clip((a - lo) * (255.0 / (hi - lo)), 0.0, 255.0)
+        # Only snap the extremes; leave the mid-range alone
+        # alpha < 15  → 0   (eliminates near-invisible halo pixels)
+        # alpha > 220 → 255 (hardens solid fill without affecting edges)
+        a = np.where(a < 15, 0.0, np.where(a > 220, 255.0, a))
 
         arr[..., 3] = a.astype(np.uint8)
         return Image.fromarray(arr, 'RGBA')
@@ -520,15 +522,17 @@ def _edge_contract(img: Image.Image, bg_color=(255,255,255)) -> Image.Image:
               + np.abs(rgb[..., 1] - bg_g)
               + np.abs(rgb[..., 2] - bg_b))
 
-        is_near_bg = dist < 60
+        # Very tight threshold: only kill pixels very close to detected bg color.
+        # A loose threshold eats logo pixels that share a hue with the background.
+        is_near_bg = dist < 30
 
-        transparent = alpha < 30
+        transparent = alpha < 20
         has_transp_nb = np.zeros(transparent.shape, bool)
-        for dy, dx in [(-1,0),(1,0),(0,-1),(0,1),(-1,-1),(-1,1),(1,-1),(1,1)]:
+        for dy, dx in [(-1,0),(1,0),(0,-1),(0,1)]:   # 4-connected only, not diagonal
             has_transp_nb |= np.roll(np.roll(transparent, dy, axis=0), dx, axis=1)
 
         # Kill opaque bg-colored pixels that sit right next to transparency
-        kill = (alpha >= 128) & is_near_bg & has_transp_nb
+        kill = (alpha >= 200) & is_near_bg & has_transp_nb
         alpha[kill] = 0
 
         arr[..., 3] = alpha.clip(0, 255).astype(np.uint8)
