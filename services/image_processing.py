@@ -213,31 +213,24 @@ def issue_messages(validation: dict) -> list:
 # ---------------------------------------------------------------------------
 
 def _remove_ai(img_rgba: Image.Image):
-    """Run rembg on the image. Returns RGBA Image or None."""
+    """Run rembg on the image. Returns RGBA Image or None.
+
+    alpha_matting is intentionally disabled. It is designed for hair and fur
+    and introduces a multi-pixel erosion that eats logo outlines. For clean
+    graphic logos (the main use-case here), the raw u2netp mask with
+    post_process_mask=True produces sharper, more accurate edges.
+    """
     sess, model = _best_session()
     if sess is None:
         return None
     try:
         from rembg import remove
-        # Try with alpha matting first (best edge quality)
-        try:
-            out = remove(
-                img_rgba,
-                session=sess,
-                alpha_matting=True,
-                alpha_matting_foreground_threshold=240,
-                alpha_matting_background_threshold=10,
-                alpha_matting_erode_size=4,  # smaller = keeps more logo edge detail
-                post_process_mask=True,
-            )
-        except Exception:
-            # scipy not available — fall back without matting
-            out = remove(
-                img_rgba,
-                session=sess,
-                alpha_matting=False,
-                post_process_mask=True,
-            )
+        out = remove(
+            img_rgba,
+            session=sess,
+            alpha_matting=False,
+            post_process_mask=True,
+        )
         if out is None:
             return None
         return out.convert('RGBA')
@@ -358,7 +351,17 @@ def _remove_algorithmic_pil(img_rgba: Image.Image, mode: str = 'auto'):
 
 def _post_process(out: Image.Image, src_rgb: Image.Image,
                   engine: str, mode: str) -> Image.Image:
-    """Apply all post-processing steps to a freshly cut image."""
+    """Minimal, logo-safe post-processing pipeline.
+
+    Removed _defringe and _edge_contract — those functions use the detected
+    background color to kill edge pixels, but when the design shares the same
+    color as the background (e.g. black outline on a black background) they
+    destroy real logo pixels. rembg's AI output is trusted as-is; we only
+    apply:
+      1. Color-aware alpha hardening — kills semi-transparent background halos
+      2. Enclosed-region removal    — clears background inside letter holes
+      3. Autocrop
+    """
     if not _HAS_NUMPY:
         return _autocrop(out)
 
@@ -368,19 +371,8 @@ def _post_process(out: Image.Image, src_rgb: Image.Image,
         bg_color = (255, 255, 255)
 
     try:
-        # 1. Harden semi-transparent edges into crisp opaque/transparent
-        out = _harden_alpha(out, engine)
-
-        # 2. Remove color halos at edges (defringe)
-        out = _defringe(out, bg_color)
-
-        # 3. Remove background trapped inside letter holes (A B D O P Q …)
+        out = _harden_alpha(out, engine, bg_color)
         out = _enclosed_bg_removal(out)
-
-        # 4. One more edge cleanup pass
-        out = _edge_contract(out, bg_color)
-
-        # 5. Autocrop to tight bounding box
         out = _autocrop(out)
     except Exception:
         pass
@@ -388,26 +380,55 @@ def _post_process(out: Image.Image, src_rgb: Image.Image,
     return out
 
 
-def _harden_alpha(img: Image.Image, engine: str) -> Image.Image:
-    """Sharpen the alpha channel so logo edges are crisp without destroying detail.
+def _harden_alpha(img: Image.Image, engine: str,
+                  bg_color=(255, 255, 255)) -> Image.Image:
+    """Color-aware alpha hardening — removes background halos without hurting logos.
 
-    rembg produces smooth alpha values (0-255). We apply a gentle S-curve that:
-      - Kills only near-fully-transparent pixels (< 15) → helps remove faint halos
-      - Keeps all mid-range alpha (15-200) mostly intact → preserves logo anti-aliasing
-      - Snaps near-opaque pixels (> 220) to fully opaque → hardens interior fills
+    rembg outputs a smooth alpha mask: background edges are semi-transparent
+    (alpha 5-150) while the logo interior is near-opaque (alpha 200-255).
 
-    This is intentionally conservative so we don't destroy soft logo edges.
+    We exploit two facts:
+      1. Semi-transparent pixels that share the BACKGROUND COLOR are halo
+         remnants → set alpha to 0.
+      2. Semi-transparent pixels with a DIFFERENT color from the background are
+         anti-aliased logo edges → leave them alone so the cutout looks clean.
+      3. Snap extremes: alpha < 10 → 0, alpha > 230 → 255.
+
+    This correctly handles the hard case of a black-outlined logo on a black
+    background: the black outline has alpha ≈ 255 from rembg (solid foreground),
+    while the halo around it has alpha 20-100 AND color ≈ black → zeroed out.
     """
     if not _HAS_NUMPY:
         return img
     try:
         arr = np.asarray(img).astype(np.uint8).copy()
+        if arr.shape[2] < 4:
+            return img
         a = arr[..., 3].astype(np.float32)
+        rgb = arr[..., :3].astype(np.int16)
 
-        # Only snap the extremes; leave the mid-range alone
-        # alpha < 15  → 0   (eliminates near-invisible halo pixels)
-        # alpha > 220 → 255 (hardens solid fill without affecting edges)
-        a = np.where(a < 15, 0.0, np.where(a > 220, 255.0, a))
+        bg_r = int(bg_color[0])
+        bg_g = int(bg_color[1])
+        bg_b = int(bg_color[2])
+
+        # Manhattan distance from each pixel to the background color
+        dist_from_bg = (np.abs(rgb[..., 0] - bg_r)
+                       + np.abs(rgb[..., 1] - bg_g)
+                       + np.abs(rgb[..., 2] - bg_b))
+
+        # Step 1: absolute snaps at the extremes
+        a = np.where(a < 10, 0.0, a)
+        a = np.where(a > 230, 255.0, a)
+
+        # Step 2: mid-range pixels (10 ≤ alpha ≤ 230)
+        #   → if color is close to background AND alpha is low → background halo
+        is_mid = (a >= 10) & (a <= 230)
+        # "Close to background" threshold: 50 on a 0-765 scale.
+        # Tight enough to spare near-bg logo elements that rembg kept opaque.
+        is_bg_colored = dist_from_bg < 50
+        # Only kill LOW-alpha background-colored pixels (alpha < 128 = less than
+        # 50% opaque). Solid logo pixels sharing the bg color have alpha ≥ 200.
+        a = np.where(is_mid & is_bg_colored & (a < 128), 0.0, a)
 
         arr[..., 3] = a.astype(np.uint8)
         return Image.fromarray(arr, 'RGBA')

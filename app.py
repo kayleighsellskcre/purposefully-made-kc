@@ -364,6 +364,23 @@ def create_app(config_class=Config):
         response.headers['Content-Security-Policy'] = csp
         return response
     
+    # Preload the rembg AI model in a background thread so the very first upload
+    # is fast instead of making the user wait for a 4 MB model download.
+    try:
+        import threading as _t
+        import sys as _sys
+        def _warm_rembg():
+            try:
+                from services.image_processing import _best_session
+                sess, model = _best_session()
+                if sess:
+                    print(f"rembg model '{model}' preloaded and ready.", file=_sys.stderr)
+            except Exception as _e:
+                print(f"rembg warm-up skipped: {_e}", file=_sys.stderr)
+        _t.Thread(target=_warm_rembg, daemon=True).start()
+    except Exception:
+        pass
+
     # Initialize background scheduler and run startup seed (optional - won't crash app if fails)
     try:
         import sys as sys_module
