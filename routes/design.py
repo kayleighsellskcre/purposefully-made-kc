@@ -31,15 +31,12 @@ def _safe_ext(filename):
 def _remove_background(filepath, mode='auto'):
     """
     Produce a clean, true-transparent PNG cutout of the uploaded artwork.
-
-    Uses the shared image-processing pipeline (algorithmic by default, optional
-    rembg AI engine, defringe + anti-aliased edges, white-artwork detection and
-    validation). Returns (new_filepath, new_filename, meta_dict). On any failure
-    it falls back to leaving the original file in place.
+    Always uses AI (rembg) as primary engine; falls back to algorithmic only
+    if rembg is completely unavailable.
     """
     try:
         from services.image_processing import process_artwork_file, issue_messages
-        result = process_artwork_file(filepath, mode=mode)
+        result = process_artwork_file(filepath, mode=mode, engine='ai')
         new_path = result.get('path') or filepath
         meta = {
             'engine': result.get('engine'),

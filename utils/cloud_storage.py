@@ -78,7 +78,7 @@ def _maybe_process_artwork(file_storage):
             return file_storage
 
         from services.image_processing import process_artwork_bytes
-        result = process_artwork_bytes(data, mode='aggressive')
+        result = process_artwork_bytes(data, mode='auto', engine='ai')
         png_bytes = result.get('data')
         if not png_bytes:
             return file_storage
