@@ -183,8 +183,10 @@ def _do_soap_request(body_bytes: bytes, timeout: int = 30) -> ET.Element:
             error_message = (elem.text or '').strip()
 
     if error_occured == 'true':
-        auth_kw = ('invalid', 'authentication', 'unauthorized', 'credentials',
-                   'password', 'username', 'login', 'access denied', 'not authorized')
+        # Only treat as auth failure if it's clearly about credentials, not just "invalid" anything
+        auth_kw = ('authentication failed', 'unauthorized', 'invalid credentials',
+                   'invalid password', 'invalid username', 'invalid user',
+                   'access denied', 'not authorized', 'login failed')
         if any(k in error_message.lower() for k in auth_kw):
             raise SanMarAuthError(error_message or 'Authentication failed')
         raise SanMarSOAPError(error_message or 'SanMar returned an error (errorOccured=true)')
@@ -291,15 +293,47 @@ def test_connection() -> dict:
                 'details': 'Check Railway logs for the traceback.',
             }
 
-    # None of the brand names worked
+    # None of the Bella+Canvas brand name variants worked.
+    # Try a known SanMar brand to check if the API account itself is provisioned.
+    try:
+        customer_number, username, password = get_credentials()
+        body = _SOAP_BRAND_TEMPLATE.format(
+            brand='Port Authority',
+            customer_number=customer_number,
+            username=username,
+            password=password,
+        ).encode('utf-8')
+        root = _do_soap_request(body, timeout=20)
+        pa_rows = sum(
+            1 for e in root.iter()
+            if (e.tag.split('}')[-1] if '}' in e.tag else e.tag) == 'listResponse'
+        )
+        if pa_rows > 0:
+            return {
+                'ok': False,
+                'message': (
+                    f'API account works (Port Authority returned {pa_rows} rows) '
+                    'but BELLA+CANVAS is not available under any brand name tried.'
+                ),
+                'details': (
+                    'SanMar acquired BELLA+CANVAS in June 2026. '
+                    'The brand may not yet be in the Web Services API, '
+                    'or may require a separate enablement. '
+                    'Call SanMar at 800-426-6399 and ask how to query BELLA+CANVAS '
+                    'via the Product Info Web Services API (getProductInfoByBrand).'
+                ),
+            }
+    except Exception:
+        pass  # Port Authority check failed too — account not provisioned
+
     return {
         'ok': False,
-        'message': f'Could not find valid brand name. Last error: {last_error}',
+        'message': f'API not accessible. Last BELLA+CANVAS error: {last_error}',
         'details': (
-            'Tried: BELLA+CANVAS, Bella+Canvas, Bella + Canvas. '
-            'Your SanMar account may need to be provisioned for Web Services API access — '
-            'call SanMar support at 800-426-6399 and ask to enable '
-            '"Product Info Web Services" on your account.'
+            'None of the brand name variants worked, and the API may not be enabled '
+            'on your account. Call SanMar support at 800-426-6399 and ask to enable '
+            '"Product Info Web Services" on your SanMar account '
+            f'(customer number: {get_credentials()[0] or "check SANMAR_CUSTOMER_NUMBER"}).'
         ),
     }
 
