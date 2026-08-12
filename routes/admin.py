@@ -900,13 +900,19 @@ def link_local_images():
             if changed:
                 updated += 1
 
-        # Also update Product.image_url if it's blank (use first front image found)
-        if not product.image_url and file_map:
+        # Also update Product.front_mockup_template if it's blank (use first front image found)
+        if not product.front_mockup_template and file_map:
             first_front = next(
                 (v['front'] for v in file_map.values() if 'front' in v), None
             )
             if first_front:
-                product.image_url = first_front
+                product.front_mockup_template = first_front
+        if not product.back_mockup_template and file_map:
+            first_back = next(
+                (v['back'] for v in file_map.values() if 'back' in v), None
+            )
+            if first_back:
+                product.back_mockup_template = first_back
 
     try:
         db.session.commit()
