@@ -1112,6 +1112,45 @@ def sync_sanmar_inventory():
     return redirect(url_for('admin.products'))
 
 
+@admin_bp.route('/products/test-sanmar', methods=['GET'])
+@admin_required
+def test_sanmar_api():
+    """Quick diagnostic: test SanMar credentials and BC API access."""
+    import os
+    from services.sanmar_api import SanMarAPI, check_credentials, SanMarAuthError
+
+    result = {'credentials': {}, 'bc_access': None, 'error': None}
+
+    cred = check_credentials()
+    result['credentials'] = cred
+
+    if not cred['ok']:
+        return jsonify(result)
+
+    try:
+        api = SanMarAPI()
+        # Try fetching one BC style — if BC access is approved we get data; otherwise auth error
+        data = api.get_product_info('BC3001')
+        if data:
+            result['bc_access'] = True
+            result['sample'] = {
+                'name': data.get('name'),
+                'colors': len(data.get('color_variants', [])),
+                'front_image': (data.get('color_variants') or [{}])[0].get('front_image'),
+            }
+        else:
+            result['bc_access'] = False
+            result['error'] = 'API returned no data for BC3001'
+    except SanMarAuthError as e:
+        result['bc_access'] = False
+        result['error'] = f'Auth failed: {e}'
+    except Exception as e:
+        result['bc_access'] = False
+        result['error'] = str(e)
+
+    return jsonify(result)
+
+
 @admin_bp.route('/products/fix-categories', methods=['POST'])
 @admin_required
 def fix_product_categories():
