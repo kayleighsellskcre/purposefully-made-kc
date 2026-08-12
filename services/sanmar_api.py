@@ -10,9 +10,10 @@ SOAP endpoint: https://ws.sanmar.com:8080/SanMarWebService/SanMarServicePort
 """
 
 import os
+import json
 import xml.etree.ElementTree as ET
 from urllib.request import urlopen, Request
-from urllib.error import URLError
+from urllib.error import URLError, HTTPError
 
 # ---------------------------------------------------------------------------
 # Bella+Canvas style numbers to sync
@@ -56,6 +57,40 @@ BELLA_CANVAS_STYLES = [s for s in BELLA_CANVAS_STYLES if not (_seen.add(s) or s 
 
 
 # ---------------------------------------------------------------------------
+# Credential helpers
+# ---------------------------------------------------------------------------
+
+def get_credentials() -> tuple[str, str, str]:
+    """Return (customer_number, username, password) from environment."""
+    return (
+        os.getenv('SANMAR_CUSTOMER_NUMBER', '').strip(),
+        os.getenv('SANMAR_USERNAME', '').strip(),
+        os.getenv('SANMAR_PASSWORD', '').strip(),
+    )
+
+
+def check_credentials() -> dict:
+    """
+    Validate that all three SanMar credentials are set.
+
+    Returns:
+        {'ok': True} if all credentials present, or
+        {'ok': False, 'missing': ['SANMAR_CUSTOMER_NUMBER', ...]}
+    """
+    customer_number, username, password = get_credentials()
+    missing = []
+    if not customer_number:
+        missing.append('SANMAR_CUSTOMER_NUMBER')
+    if not username:
+        missing.append('SANMAR_USERNAME')
+    if not password:
+        missing.append('SANMAR_PASSWORD')
+    if missing:
+        return {'ok': False, 'missing': missing}
+    return {'ok': True, 'missing': []}
+
+
+# ---------------------------------------------------------------------------
 # SOAP helper
 # ---------------------------------------------------------------------------
 
@@ -81,11 +116,26 @@ _SOAP_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
 </soapenv:Envelope>"""
 
 
-def _soap_request(style: str, color: str = '') -> ET.Element | None:
-    """Send a SOAP request for a style+color and return the root XML element, or None on error."""
-    customer_number = os.getenv('SANMAR_CUSTOMER_NUMBER', '')
-    username = os.getenv('SANMAR_USERNAME', '')
-    password = os.getenv('SANMAR_PASSWORD', '')
+class SanMarSOAPError(Exception):
+    """Raised when SanMar returns a SOAP Fault."""
+    pass
+
+
+class SanMarAuthError(SanMarSOAPError):
+    """Raised specifically for authentication failures."""
+    pass
+
+
+def _soap_request(style: str, color: str = '') -> ET.Element:
+    """
+    Send a SOAP request for a style+color.
+
+    Returns the root XML element on success.
+    Raises SanMarAuthError for credential failures,
+           SanMarSOAPError for other SOAP faults,
+           URLError / HTTPError for network problems.
+    """
+    customer_number, username, password = get_credentials()
 
     body = _SOAP_TEMPLATE.format(
         style=style,
@@ -107,10 +157,107 @@ def _soap_request(style: str, color: str = '') -> ET.Element | None:
     try:
         with urlopen(req, timeout=30) as resp:
             raw = resp.read()
-        return ET.fromstring(raw)
-    except (URLError, ET.ParseError) as exc:
-        print(f'[SanMarAPI] SOAP error for style={style}: {exc}')
-        return None
+    except HTTPError as exc:
+        raw = exc.read()  # SOAP faults often come back as HTTP 500 with a body
+
+    root = ET.fromstring(raw)
+
+    # Check for SOAP Fault
+    fault = None
+    for elem in root.iter():
+        local = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
+        if local == 'Fault':
+            fault = elem
+            break
+
+    if fault is not None:
+        faultstring = ''
+        for elem in fault.iter():
+            local = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
+            if local in ('faultstring', 'message', 'text'):
+                faultstring = (elem.text or '').strip()
+                break
+
+        auth_keywords = ('invalid', 'authentication', 'unauthorized', 'credentials',
+                         'password', 'username', 'login', 'access denied', 'not authorized')
+        if any(kw in faultstring.lower() for kw in auth_keywords):
+            raise SanMarAuthError(faultstring or 'Authentication failed')
+        raise SanMarSOAPError(faultstring or 'SOAP Fault returned')
+
+    return root
+
+
+def test_connection() -> dict:
+    """
+    Test the SanMar connection with a single style (3001C).
+
+    Returns a dict with keys:
+      ok (bool), message (str), details (str | None)
+    """
+    cred_check = check_credentials()
+    if not cred_check['ok']:
+        missing = ', '.join(cred_check['missing'])
+        return {
+            'ok': False,
+            'message': f'Missing credentials: {missing}',
+            'details': (
+                f'Add {missing} to your Railway environment variables. '
+                'Go to Railway → your project → Variables.'
+            ),
+        }
+
+    try:
+        root = _soap_request('3001C', color='')
+        # Count product entries found
+        entries = 0
+        for elem in root.iter():
+            local = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
+            if local in ('listResponse', 'productInfo', 'return', 'item'):
+                entries += 1
+        if entries > 0:
+            return {
+                'ok': True,
+                'message': f'Connected! SanMar returned {entries} entries for style 3001C.',
+                'details': None,
+            }
+        else:
+            # Connected but empty — possibly wrong customer number or style not available
+            return {
+                'ok': False,
+                'message': 'Connected to SanMar but received no product data for style 3001C.',
+                'details': (
+                    'Your credentials were accepted but the response was empty. '
+                    'Check that your SANMAR_CUSTOMER_NUMBER is correct and that '
+                    'your account has access to Bella+Canvas products.'
+                ),
+            }
+    except SanMarAuthError as exc:
+        return {
+            'ok': False,
+            'message': f'Authentication failed: {exc}',
+            'details': (
+                'SanMar rejected your credentials. Double-check SANMAR_USERNAME '
+                'and SANMAR_PASSWORD in Railway.'
+            ),
+        }
+    except SanMarSOAPError as exc:
+        return {
+            'ok': False,
+            'message': f'SanMar SOAP error: {exc}',
+            'details': 'Contact SanMar support if this persists.',
+        }
+    except (URLError, OSError) as exc:
+        return {
+            'ok': False,
+            'message': f'Network error: {exc}',
+            'details': 'Could not reach ws.sanmar.com. Check that outbound HTTPS is allowed on port 8080.',
+        }
+    except Exception as exc:
+        return {
+            'ok': False,
+            'message': f'Unexpected error: {exc}',
+            'details': None,
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -170,10 +317,11 @@ class SanMarAPI:
                   ...
               }
             }
+
+        Raises SanMarAuthError / SanMarSOAPError on API-level failures.
+        Returns {} on empty/unparseable responses.
         """
         root = _soap_request(style_number, color='')
-        if root is None:
-            return {}
 
         result: dict = {
             'style': style_number,
@@ -243,6 +391,9 @@ class SanMarAPI:
         style = style_data['style']
         color_variants = style_data.get('color_variants', {})
 
+        if not color_variants:
+            return None
+
         # Collect sizes and colors
         all_sizes: list[str] = []
         all_colors: list[str] = list(color_variants.keys())
@@ -294,17 +445,36 @@ class SanMarAPI:
         }
 
     def sync_bella_canvas_catalog(self) -> list[dict]:
-        """Sync all BELLA_CANVAS_STYLES from SanMar. Returns list of product dicts."""
+        """
+        Sync all BELLA_CANVAS_STYLES from SanMar.
+
+        Raises SanMarAuthError immediately if the first style fails authentication
+        so the caller can surface a clear error rather than silently returning [].
+        """
+        import sys
         products = []
+        auth_checked = False
+
         for style in BELLA_CANVAS_STYLES:
-            print(f'[SanMarAPI] Fetching style {style}…')
+            print(f'[SanMarAPI] Fetching style {style}…', file=sys.stderr, flush=True)
             try:
                 style_data = self.fetch_style_data(style)
+                auth_checked = True
                 product = self.parse_style_to_product(style_data)
                 if product:
                     products.append(product)
-            except Exception as exc:
-                print(f'[SanMarAPI] Skipping {style}: {exc}')
+                else:
+                    print(f'[SanMarAPI] No data for {style} (style not available or empty response)',
+                          file=sys.stderr, flush=True)
+            except SanMarAuthError:
+                # Re-raise immediately — no point continuing with bad credentials
+                raise
+            except (SanMarSOAPError, URLError, OSError) as exc:
+                print(f'[SanMarAPI] Skipping {style}: {exc}', file=sys.stderr, flush=True)
                 continue
-        print(f'[SanMarAPI] Sync complete — {len(products)} products fetched.')
+            except Exception as exc:
+                print(f'[SanMarAPI] Unexpected error for {style}: {exc}', file=sys.stderr, flush=True)
+                continue
+
+        print(f'[SanMarAPI] Sync complete — {len(products)} products fetched.', file=sys.stderr, flush=True)
         return products

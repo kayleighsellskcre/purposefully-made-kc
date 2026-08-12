@@ -697,7 +697,7 @@ def unlink_ss_bella_canvas():
 def sync_sanmar():
     """Sync Bella+Canvas catalog from SanMar API"""
     import sys
-    from services.sanmar_api import SanMarAPI
+    from services.sanmar_api import SanMarAPI, check_credentials, SanMarAuthError
     from models import ProductColorVariant
     from datetime import datetime
 
@@ -705,12 +705,28 @@ def sync_sanmar():
     print("ADMIN: SYNCING BELLA+CANVAS FROM SANMAR", file=sys.stderr, flush=True)
     print("=" * 80, file=sys.stderr, flush=True)
 
+    # Check credentials before attempting sync
+    cred_check = check_credentials()
+    if not cred_check['ok']:
+        missing = ', '.join(cred_check['missing'])
+        flash(
+            f'SanMar sync failed — missing credentials: {missing}. '
+            f'Add these to your Railway environment variables.',
+            'error'
+        )
+        return redirect(url_for('admin.products'))
+
     try:
         api = SanMarAPI()
         products_data = api.sync_bella_canvas_catalog()
 
         if not products_data:
-            flash('No products returned from SanMar. Check your SanMar credentials in Railway environment variables.', 'error')
+            flash(
+                'SanMar sync returned 0 products. Your credentials were accepted '
+                'but no Bella+Canvas data came back — confirm your SanMar account '
+                'has access to Bella+Canvas and your SANMAR_CUSTOMER_NUMBER is correct.',
+                'warning'
+            )
             return redirect(url_for('admin.products'))
 
         added = updated = variants_added = variants_updated = 0
@@ -779,6 +795,13 @@ def sync_sanmar():
             'success'
         )
 
+    except SanMarAuthError as e:
+        db.session.rollback()
+        flash(
+            f'SanMar authentication failed: {e}. '
+            f'Double-check SANMAR_USERNAME and SANMAR_PASSWORD in Railway.',
+            'error'
+        )
     except Exception as e:
         db.session.rollback()
         import traceback
@@ -786,6 +809,15 @@ def sync_sanmar():
         flash(f'Error during SanMar sync: {str(e)}', 'error')
 
     return redirect(url_for('admin.products'))
+
+
+@admin_bp.route('/products/test-sanmar', methods=['POST'])
+@admin_required
+def test_sanmar_connection():
+    """Quick connectivity test — returns JSON so the modal can show results inline."""
+    from services.sanmar_api import test_connection
+    result = test_connection()
+    return __import__('flask').jsonify(result)
 
 
 @admin_bp.route('/products/sync-all-bella-canvas', methods=['POST'])

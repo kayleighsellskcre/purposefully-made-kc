@@ -74,6 +74,10 @@
         <div class="prod-tool-group">
             <span class="prod-tool-group-label">SanMar</span>
             <div class="prod-tool-buttons">
+                <button type="button" class="prod-tool-btn" onclick="openModal('sanmarTestModal')">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.95 1.18 2 2 0 012.92 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+                    Test Connection
+                </button>
                 <button type="button" class="prod-tool-btn prod-tool-btn--primary" onclick="openModal('sanmarSyncModal')">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                     Sync Bella+Canvas from SanMar
@@ -615,6 +619,38 @@ details[open] .prod-tools-chevron { transform: rotate(180deg); }
 .btn-danger:hover {
     background: #b91c1c;
     box-shadow: 0 4px 14px rgba(220,38,38,0.3);
+}
+
+/* SanMar test result box */
+.sanmar-test-result {
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+    font-size: 0.875rem;
+    line-height: 1.55;
+    margin-bottom: 1rem;
+}
+
+.sanmar-test-result p {
+    margin: 0.4rem 0 0 !important;
+    color: inherit !important;
+    font-size: 0.82rem !important;
+}
+
+.sanmar-test-ok {
+    background: rgba(16, 185, 129, 0.1);
+    color: #065f46;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.sanmar-test-fail {
+    background: rgba(220, 38, 38, 0.07);
+    color: #991b1b;
+    border: 1px solid rgba(220, 38, 38, 0.25);
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
 }
 
 /* ── Search + Filter Row ─────────────────────────────────────── */
@@ -1311,6 +1347,42 @@ document.addEventListener('click', function(e) {
     });
 });
 
+// ── SanMar connection test ────────────────────────────────────────────────────
+function runSanmarTest() {
+    var btn = document.getElementById('sanmarTestBtn');
+    var result = document.getElementById('sanmarTestResult');
+    var csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+
+    btn.disabled = true;
+    btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Testing…';
+    result.hidden = true;
+
+    fetch('{{ url_for("admin.test_sanmar_connection") }}', {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrfToken,
+        }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        result.hidden = false;
+        result.className = 'sanmar-test-result ' + (data.ok ? 'sanmar-test-ok' : 'sanmar-test-fail');
+        var html = '<strong>' + (data.ok ? '✓ ' : '✗ ') + data.message + '</strong>';
+        if (data.details) html += '<p>' + data.details + '</p>';
+        result.innerHTML = html;
+    })
+    .catch(function(err) {
+        result.hidden = false;
+        result.className = 'sanmar-test-result sanmar-test-fail';
+        result.innerHTML = '<strong>✗ Request failed</strong><p>' + err + '</p>';
+    })
+    .finally(function() {
+        btn.disabled = false;
+        btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.95 1.18 2 2 0 012.92 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg> Test Connection';
+    });
+}
+
 function showToast(msg) {
     let t = document.getElementById('prodToast');
     if (!t) {
@@ -1332,7 +1404,34 @@ function showToast(msg) {
 }
 </script>
 
-<!-- Unlink S&S from Bella+Canvas Modal -->
+<!-- SanMar Test Connection Modal -->
+<div id="sanmarTestModal" class="prod-modal" role="dialog" aria-modal="true" aria-labelledby="sanmarTestTitle">
+    <div class="prod-modal-card">
+        <div class="prod-modal-header">
+            <h2 id="sanmarTestTitle">Test SanMar Connection</h2>
+            <button class="prod-modal-close" onclick="closeModal('sanmarTestModal')" aria-label="Close">&times;</button>
+        </div>
+        <div class="prod-modal-body">
+            <p>Sends a single test request to SanMar (style 3001C) to verify your credentials before running a full sync.</p>
+            <div id="sanmarTestResult" class="sanmar-test-result" hidden></div>
+            <p class="prod-modal-note">
+                Credentials needed in Railway → Variables:<br>
+                <code>SANMAR_CUSTOMER_NUMBER</code> &nbsp;·&nbsp;
+                <code>SANMAR_USERNAME</code> &nbsp;·&nbsp;
+                <code>SANMAR_PASSWORD</code>
+            </p>
+            <div class="prod-modal-actions">
+                <button type="button" class="btn btn-outline" onclick="closeModal('sanmarTestModal')">Close</button>
+                <button type="button" class="btn btn-primary" id="sanmarTestBtn" onclick="runSanmarTest()">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.95 1.18 2 2 0 012.92 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+                    Test Connection
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <div id="unlinkSSModal" class="prod-modal" role="dialog" aria-modal="true" aria-labelledby="unlinkSSTitle">
     <div class="prod-modal-card">
         <div class="prod-modal-header">
