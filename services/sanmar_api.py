@@ -154,6 +154,7 @@ def _do_soap_request(body_bytes: bytes, timeout: int = 30) -> ET.Element:
             f'XML parse error ({exc}): {repr(raw[:300].decode("utf-8", errors="replace"))}'
         )
 
+    # Check for SOAP Fault
     for elem in root.iter():
         local = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
         if local == 'Fault':
@@ -168,6 +169,23 @@ def _do_soap_request(body_bytes: bytes, timeout: int = 30) -> ET.Element:
             if any(k in faultstring.lower() for k in auth_kw):
                 raise SanMarAuthError(faultstring or 'Authentication failed')
             raise SanMarSOAPError(faultstring or 'SOAP Fault')
+
+    # Check for SanMar application-level error (errorOccured/message pattern)
+    error_occured = ''
+    error_message = ''
+    for elem in root.iter():
+        local = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
+        if local == 'errorOccured':
+            error_occured = (elem.text or '').strip().lower()
+        elif local == 'message' and not error_message:
+            error_message = (elem.text or '').strip()
+
+    if error_occured == 'true':
+        auth_kw = ('invalid', 'authentication', 'unauthorized', 'credentials',
+                   'password', 'username', 'login', 'access denied', 'not authorized')
+        if any(k in error_message.lower() for k in auth_kw):
+            raise SanMarAuthError(error_message or 'Authentication failed')
+        raise SanMarSOAPError(error_message or 'SanMar returned an error (errorOccured=true)')
 
     return root
 
@@ -248,8 +266,16 @@ def test_connection() -> dict:
         return {'ok': False, 'message': f'Authentication failed: {exc}',
                 'details': 'Double-check SANMAR_USERNAME and SANMAR_PASSWORD in Railway.'}
     except SanMarSOAPError as exc:
-        return {'ok': False, 'message': f'SanMar error: {exc}',
-                'details': 'Check Railway logs for the raw response.'}
+        return {
+            'ok': False,
+            'message': f'SanMar error: {exc}',
+            'details': (
+                'This is a message from SanMar\'s API. Common causes: '
+                '(1) Wrong SANMAR_CUSTOMER_NUMBER, '
+                '(2) Account not provisioned for Web Services — contact SanMar support at 800-426-6399 '
+                'and ask to enable "Product Info Web Services" on your account.'
+            ),
+        }
     except (URLError, OSError) as exc:
         return {'ok': False, 'message': f'Network error: {exc}',
                 'details': 'Could not reach ws.sanmar.com:8080.'}
