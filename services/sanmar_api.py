@@ -102,18 +102,16 @@ _SOAP_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
     xmlns:ns2="http://impl.webservice.integration.sanmar.com/">
   <soapenv:Header/>
   <soapenv:Body>
-    <ns2:getProductInfoByStyleColorAndSize>
+    <ns2:getProductInfoByStyle>
       <arg0>
         <style>{style}</style>
-        <color>{color}</color>
-        <size></size>
       </arg0>
       <arg1>
         <sanMarCustomerNumber>{customer_number}</sanMarCustomerNumber>
         <sanMarUserName>{username}</sanMarUserName>
         <sanMarUserPassword>{password}</sanMarUserPassword>
       </arg1>
-    </ns2:getProductInfoByStyleColorAndSize>
+    </ns2:getProductInfoByStyle>
   </soapenv:Body>
 </soapenv:Envelope>"""
 
@@ -128,9 +126,9 @@ class SanMarAuthError(SanMarSOAPError):
     pass
 
 
-def _soap_request(style: str, color: str = '') -> ET.Element:
+def _soap_request(style: str) -> ET.Element:
     """
-    Send a SOAP request for a style+color.
+    Send a SOAP request for a style number.
 
     Returns the root XML element on success.
     Raises SanMarAuthError for credential failures,
@@ -142,7 +140,6 @@ def _soap_request(style: str, color: str = '') -> ET.Element:
 
     body = _SOAP_TEMPLATE.format(
         style=style,
-        color=color,
         customer_number=customer_number,
         username=username,
         password=password,
@@ -236,7 +233,7 @@ def test_connection() -> dict:
         }
 
     try:
-        root = _soap_request('3001C', color='')
+        root = _soap_request('3001C')
         # Count product entries found
         entries = 0
         for elem in root.iter():
@@ -350,7 +347,7 @@ class SanMarAPI:
         Raises SanMarAuthError / SanMarSOAPError on API-level failures.
         Returns {} on empty/unparseable responses.
         """
-        root = _soap_request(style_number, color='')
+        root = _soap_request(style_number)
 
         result: dict = {
             'style': style_number,
