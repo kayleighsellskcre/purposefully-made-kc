@@ -70,6 +70,18 @@ def _front_image_url(row: dict) -> str:
     return ''
 
 
+def _back_image_url(row: dict) -> str:
+    """
+    Derive the back image URL from the front image filename.
+    SanMar CDN naming: BC3483_black_model_front.jpg → BC3483_black_model_back.jpg
+    """
+    color_img = row.get('COLOR_PRODUCT_IMAGE', '').strip()
+    if color_img and '_front' in color_img.lower():
+        back_img = color_img.lower().replace('_front', '_back')
+        return f'{_CDN_BASE}/{back_img}'
+    return ''
+
+
 def parse_csv(source) -> list[dict]:
     """
     Parse a BellaCanvas SDL CSV.
@@ -152,12 +164,13 @@ def parse_csv(source) -> list[dict]:
                 continue
             first = color_rows[0]
             front_url = _front_image_url(first)
+            back_url = _back_image_url(first)
 
             all_color_names.append(color_name)
             color_variant_list.append({
                 'color_name':     color_name,
                 'front_image_url': front_url,
-                'back_image_url':  '',
+                'back_image_url':  back_url,
                 'side_image_url':  '',
                 'color_hex':       '',
                 'size_inventory':  {},   # SDL has no live inventory
