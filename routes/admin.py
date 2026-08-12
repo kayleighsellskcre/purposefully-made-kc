@@ -638,6 +638,60 @@ def sync_api():
     return redirect(url_for('admin.products'))
 
 
+@admin_bp.route('/products/unlink-ss-bella-canvas', methods=['POST'])
+@admin_required
+def unlink_ss_bella_canvas():
+    """
+    Remove all S&S Activewear linkage from Bella+Canvas products.
+
+    Clears:
+      - ProductColorVariant.ss_color_id  (S&S internal SKU reference)
+      - Product.api_data                  (the S&S JSON blob)
+
+    Does NOT touch base_price, descriptions, images, sizes, colors,
+    or any other product data — only the S&S API binding.
+    """
+    import sys
+    try:
+        bella_products = Product.query.filter(
+            db.or_(
+                Product.brand == 'Bella+Canvas',
+                Product.name.ilike('%bella%canvas%'),
+            )
+        ).all()
+
+        products_cleared = 0
+        variants_cleared = 0
+
+        for product in bella_products:
+            if product.api_data:
+                product.api_data = None
+                products_cleared += 1
+
+            for variant in product.color_variants:
+                if variant.ss_color_id:
+                    variant.ss_color_id = None
+                    variants_cleared += 1
+
+        db.session.commit()
+        print(
+            f'ADMIN: Unlinked S&S from {products_cleared} products, '
+            f'{variants_cleared} variants',
+            file=sys.stderr, flush=True
+        )
+        flash(
+            f'S&S unlink complete — {products_cleared} products and '
+            f'{variants_cleared} color variants cleared. '
+            f'All prices preserved.',
+            'success'
+        )
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error unlinking S&S data: {str(e)}', 'error')
+
+    return redirect(url_for('admin.products'))
+
+
 @admin_bp.route('/products/sync-sanmar', methods=['POST'])
 @admin_required
 def sync_sanmar():
@@ -671,6 +725,10 @@ def sync_sanmar():
                 existing = Product.query.filter_by(style_number=style_num).first()
                 if existing:
                     for key, value in product_data.items():
+                        # Preserve existing retail price — never let SanMar's
+                        # wholesale-derived price overwrite what admin has set.
+                        if key == 'base_price':
+                            continue
                         if hasattr(existing, key) and value is not None:
                             setattr(existing, key, value)
                     existing.is_active = True

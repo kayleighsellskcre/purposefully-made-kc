@@ -78,6 +78,10 @@
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                     Sync Bella+Canvas from SanMar
                 </button>
+                <button type="button" class="prod-tool-btn prod-tool-btn--danger" onclick="openModal('unlinkSSModal')">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+                    Unlink S&amp;S from Bella+Canvas
+                </button>
             </div>
         </div>
 
@@ -573,6 +577,44 @@ details[open] .prod-tools-chevron { transform: rotate(180deg); }
     transform: translateY(-1px);
     color: #fff;
     border-color: transparent;
+}
+
+.prod-tool-btn--danger {
+    background: #fff;
+    color: #dc2626;
+    border-color: rgba(220,38,38,0.3);
+}
+
+.prod-tool-btn--danger:hover {
+    background: #fef2f2;
+    border-color: #dc2626;
+    color: #dc2626;
+    box-shadow: 0 3px 10px rgba(220,38,38,0.15);
+}
+
+/* btn-danger for modal actions */
+.btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-family: var(--font-primary);
+    border-radius: var(--border-radius);
+    border: 1.5px solid transparent;
+    background: #dc2626;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.btn-danger:hover {
+    background: #b91c1c;
+    box-shadow: 0 4px 14px rgba(220,38,38,0.3);
 }
 
 /* ── Search + Filter Row ─────────────────────────────────────── */
@@ -1289,5 +1331,39 @@ function showToast(msg) {
     t._hide = setTimeout(function() { t.style.opacity = '0'; }, 3000);
 }
 </script>
+
+<!-- Unlink S&S from Bella+Canvas Modal -->
+<div id="unlinkSSModal" class="prod-modal" role="dialog" aria-modal="true" aria-labelledby="unlinkSSTitle">
+    <div class="prod-modal-card">
+        <div class="prod-modal-header">
+            <h2 id="unlinkSSTitle">Unlink S&amp;S from Bella+Canvas</h2>
+            <button class="prod-modal-close" onclick="closeModal('unlinkSSModal')" aria-label="Close">&times;</button>
+        </div>
+        <div class="prod-modal-body">
+            <p>Removes the S&amp;S Activewear API binding from all Bella+Canvas products so they can be managed by SanMar going forward.</p>
+            <div class="prod-modal-list">
+                <div class="prod-modal-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Clears the S&amp;S SKU reference from every color variant
+                </div>
+                <div class="prod-modal-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Removes the S&amp;S API data blob from each product
+                </div>
+                <div class="prod-modal-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    <strong>Prices, images, sizes, and colors are untouched</strong>
+                </div>
+            </div>
+            <p class="prod-modal-note">After this, use <strong>Sync Bella+Canvas from SanMar</strong> — your current prices will be preserved automatically on every future sync.</p>
+            <form action="{{ url_for('admin.unlink_ss_bella_canvas') }}" method="POST">
+                <div class="prod-modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('unlinkSSModal')">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Unlink S&amp;S Data</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 {% endblock %}
