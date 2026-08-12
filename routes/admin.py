@@ -824,6 +824,99 @@ def sync_sanmar():
     return redirect(url_for('admin.products'))
 
 
+@admin_bp.route('/products/import-bella-canvas-csv', methods=['POST'])
+@admin_required
+def import_bella_canvas_csv():
+    """Import products from a BellaCanvas SDL CSV file upload."""
+    import sys
+    from services.bella_canvas_csv import parse_csv
+    from models import ProductColorVariant
+    from datetime import datetime
+
+    uploaded = request.files.get('csv_file')
+    if not uploaded or not uploaded.filename:
+        flash('No file selected. Please choose a CSV file to upload.', 'error')
+        return redirect(url_for('admin.products'))
+
+    if not uploaded.filename.lower().endswith('.csv'):
+        flash('Please upload a .csv file (the BellaCanvasData file from SanMar).', 'error')
+        return redirect(url_for('admin.products'))
+
+    try:
+        products_data = parse_csv(uploaded)
+    except Exception as exc:
+        flash(f'Could not parse CSV: {exc}', 'error')
+        return redirect(url_for('admin.products'))
+
+    if not products_data:
+        flash('No products found in the CSV file.', 'warning')
+        return redirect(url_for('admin.products'))
+
+    from models import Product, db
+    added = updated = variants_added = variants_updated = 0
+
+    for product_data in products_data:
+        color_variants_data = product_data.pop('color_variants', [])
+        style_num = product_data.get('style_number', '')
+        if not style_num:
+            continue
+
+        existing = Product.query.filter_by(style_number=style_num).first()
+
+        if existing:
+            for key, value in product_data.items():
+                # Never overwrite admin-set price
+                if key == 'base_price':
+                    continue
+                if hasattr(existing, key) and value is not None:
+                    setattr(existing, key, value)
+            existing.is_active = product_data.get('is_active', True)
+            product = existing
+            updated += 1
+        else:
+            product = Product(**product_data)
+            db.session.add(product)
+            db.session.flush()
+            added += 1
+
+        for cv_data in color_variants_data:
+            color_name = cv_data.get('color_name', '')
+            if not color_name:
+                continue
+            existing_cv = ProductColorVariant.query.filter_by(
+                product_id=product.id, color_name=color_name
+            ).first()
+            if existing_cv:
+                if cv_data.get('front_image_url') and not existing_cv.front_image_url:
+                    existing_cv.front_image_url = cv_data['front_image_url']
+                existing_cv.last_synced = datetime.utcnow()
+                variants_updated += 1
+            else:
+                new_cv = ProductColorVariant(
+                    product_id=product.id,
+                    color_name=color_name,
+                    front_image_url=cv_data.get('front_image_url', ''),
+                    back_image_url=cv_data.get('back_image_url', ''),
+                    size_inventory=json.dumps({}),
+                )
+                db.session.add(new_cv)
+                variants_added += 1
+
+    db.session.commit()
+
+    flash(
+        f'CSV import complete: {added} new products, {updated} updated, '
+        f'{variants_added} new color variants, {variants_updated} updated.',
+        'success'
+    )
+    print(
+        f'[CSV Import] {added} added, {updated} updated, '
+        f'{variants_added} variants added, {variants_updated} variants updated.',
+        file=sys.stderr, flush=True,
+    )
+    return redirect(url_for('admin.products'))
+
+
 @admin_bp.route('/products/test-sanmar', methods=['POST'])
 @admin_required
 def test_sanmar_connection():

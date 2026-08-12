@@ -87,7 +87,7 @@
 
         <!-- SanMar tools -->
         <div class="prod-tool-group">
-            <span class="prod-tool-group-label">SanMar</span>
+            <span class="prod-tool-group-label">SanMar / Bella+Canvas</span>
             <div class="prod-tool-buttons">
                 <button type="button" class="prod-tool-btn" onclick="openModal('sanmarTestModal')">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.95 1.18 2 2 0 012.92 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
@@ -95,8 +95,18 @@
                 </button>
                 <button type="button" class="prod-tool-btn prod-tool-btn--primary" onclick="openModal('sanmarSyncModal')">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                    Sync Bella+Canvas from SanMar
+                    Sync via API
                 </button>
+                <!-- CSV import — works even when API access isn't provisioned yet -->
+                <label class="prod-tool-btn prod-tool-btn--primary" style="cursor:pointer;" title="Upload the BellaCanvasData CSV from SanMar to import all products">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Import CSV
+                    <form id="csvImportForm" method="POST" enctype="multipart/form-data"
+                          action="{{ url_for('admin.import_bella_canvas_csv') }}" style="display:none;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="file" name="csv_file" accept=".csv" onchange="this.form.submit()">
+                    </form>
+                </label>
             </div>
         </div>
 
