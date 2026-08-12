@@ -2700,7 +2700,7 @@
 
                 // 90-second timeout — AI background removal takes up to ~30s on cold start
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 90000);
+                const timeoutId = setTimeout(() => controller.abort(), 180000);
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
                 const response = await fetch('/design/upload', {
                     method: 'POST',
@@ -2944,7 +2944,7 @@
                 const formData = new FormData();
                 formData.append('file', file);
                 const bkCtrl = new AbortController();
-                const bkTimeout = setTimeout(() => bkCtrl.abort(), 90000);
+                const bkTimeout = setTimeout(() => bkCtrl.abort(), 180000);
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
                 const response = await fetch('/design/upload', {
                     method: 'POST',

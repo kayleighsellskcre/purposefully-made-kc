@@ -90,23 +90,28 @@ def process_artwork_bytes(data: bytes, mode: str = 'auto', engine=None) -> dict:
     if mode == 'none':
         return _encode(img, 'none', original_size, changed=False)
 
-    orig_rgb = src.convert('RGB')
-    bg_color, mad = _border_profile(orig_rgb)
+    # Phone photos can be 4000px+; rembg on those OOMs Railway and the
+    # upload looks like it "failed". Cap the working size.
+    try:
+        img, orig_rgb = _fit_working_size(img)
+        bg_color, mad = _border_profile(orig_rgb)
 
-    out = None
-    used = 'none'
-    if engine != 'algorithmic':
-        ai = _rembg(img)
-        if ai is not None:
-            out = _use_original_colors(img, ai)
-            used = 'ai'
-    if out is None:
-        out = _flood_cut(img, bg_color, mad, mode)
-        used = 'algorithmic'
+        out = None
+        used = 'none'
+        if engine != 'algorithmic':
+            ai = _rembg(img)
+            if ai is not None:
+                out = _use_original_colors(img, ai)
+                used = 'ai'
+        if out is None:
+            out = _flood_cut(img, bg_color, mad, mode)
+            used = 'algorithmic'
 
-    out = _strip_background_color(out, orig_rgb, bg_color, mad, mode)
-    out = _autocrop(out)
-    return _encode(out, used, original_size, changed=True)
+        out = _strip_background_color(out, orig_rgb, bg_color, mad, mode)
+        out = _autocrop(out)
+        return _encode(out, used, original_size, changed=True)
+    except (MemoryError, Exception):
+        return _encode(img, 'none', original_size, changed=False)
 
 
 def process_artwork_file(path, mode: str = 'auto', engine=None) -> dict:
@@ -156,6 +161,17 @@ def issue_messages(validation: dict) -> list:
 # rembg
 # ---------------------------------------------------------------------------
 
+def _fit_working_size(img: Image.Image, max_side: int = 1600):
+    """Downscale huge uploads so rembg fits in Railway RAM and finishes in time."""
+    w, h = img.size
+    if max(w, h) <= max_side:
+        return img, img.convert('RGB')
+    scale = max_side / max(w, h)
+    new_size = (max(1, int(w * scale)), max(1, int(h * scale)))
+    img = img.resize(new_size, Image.LANCZOS)
+    return img, img.convert('RGB')
+
+
 def _rembg(img_rgba: Image.Image):
     sess, _model = _best_session()
     if sess is None:
@@ -164,17 +180,20 @@ def _rembg(img_rgba: Image.Image):
         from rembg import remove
         work = img_rgba
         orig = img_rgba.size
-        if max(orig) > 1280:
-            s = 1280 / max(orig)
-            work = img_rgba.resize((max(1, int(orig[0] * s)), max(1, int(orig[1] * s))), Image.LANCZOS)
-        out = remove(work, session=sess, alpha_matting=False, post_process_mask=True)
+        if max(orig) > 1024:
+            s = 1024 / max(orig)
+            work = img_rgba.resize(
+                (max(1, int(orig[0] * s)), max(1, int(orig[1] * s))),
+                Image.LANCZOS,
+            )
+        out = remove(work, session=sess, alpha_matting=False, post_process_mask=False)
         if out is None:
             return None
         out = out.convert('RGBA')
         if out.size != orig:
             out = out.resize(orig, Image.LANCZOS)
         return out
-    except Exception:
+    except (MemoryError, Exception):
         return None
 
 
@@ -192,12 +211,27 @@ def _use_original_colors(orig_rgba: Image.Image, ai_rgba: Image.Image) -> Image.
 # The actual cut: delete the background color
 # ---------------------------------------------------------------------------
 
+def _dilate_bool(mask, px: int):
+    out = mask.copy()
+    for _ in range(max(0, int(px))):
+        d = out.copy()
+        for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            d |= np.roll(np.roll(out, dy, axis=0), dx, axis=1)
+        out = d
+    return out
+
+
+def _erode_bool(mask, px: int):
+    return ~_dilate_bool(~mask, px)
+
+
 def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
                             bg_color, mad, mode: str) -> Image.Image:
-    """Make every background-colored pixel transparent.
+    """Keep every logo-colored pixel. Delete the backdrop color.
 
-    Cream boxes, white paper, black photo backdrop — if it matches the
-    border color, it goes. Design pixels that are a different color stay.
+    Distressed cracks that match the paper can go. Solid letter strokes
+    (navy, brown, black fill that is NOT the paper color) are restored
+    even if rembg punched holes in them.
     """
     if not _HAS_NUMPY:
         return img
@@ -210,30 +244,25 @@ def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
               + np.abs(rgb[..., 1] - int(bg_color[1]))
               + np.abs(rgb[..., 2] - int(bg_color[2])))
 
-        tol = int(min(140, max(55, 60 + mad * 3.0)))
+        # Tight split so lighter brown in a grunge font is still "logo",
+        # not "paper". Old tol of 140 ate those strokes.
+        tol = int(min(58, max(28, 32 + mad * 1.4)))
         if mode == 'aggressive':
-            tol = min(180, tol + 40)
+            tol = min(80, tol + 18)
 
         is_bg = dist <= tol
+        is_logo = dist > tol
 
-        # Background color is gone, period. rembg's leftover cream/white/black
-        # boxes around letters are this color, so they disappear here.
+        # Logo color always stays — this puts back chunks rembg removed
+        # from PRAY / STILL / etc.
+        alpha[is_logo] = 255
+        # Paper / backdrop color always goes, including distress holes.
         alpha[is_bg] = 0
-        alpha[alpha < 48] = 0
 
-        # Peel blended fringe (anti-aliased mix of backdrop + letter) sitting
-        # on the new transparent edge. Two passes, numpy only — no pixel loops.
-        blend = dist <= (tol + 55)
-        for _ in range(2):
-            trans = alpha < 20
-            has_t = np.zeros_like(trans)
-            for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-                has_t |= np.roll(np.roll(trans, dy, axis=0), dx, axis=1)
-            peel = has_t & blend & (alpha > 0)
-            alpha[peel] = 0
-
-        alpha = np.where(alpha >= 150, 255, alpha)
-        alpha = np.where(alpha < 40, 0, alpha)
+        # Close 2px gaps in letter strokes without growing the silhouette.
+        fg = alpha >= 128
+        fg = _erode_bool(_dilate_bool(fg, 2), 2)
+        alpha = np.where(fg, 255, 0).astype(np.int32)
 
         arr[..., 3] = alpha.clip(0, 255).astype(np.uint8)
         return Image.fromarray(arr, 'RGBA')
@@ -390,7 +419,7 @@ def _passthrough(data: bytes) -> dict:
 
 def _encode(img: Image.Image, engine: str, original_size, changed: bool) -> dict:
     buf = io.BytesIO()
-    img.save(buf, 'PNG', optimize=True)
+    img.save(buf, 'PNG', optimize=False)
     return {
         'data': buf.getvalue(),
         'engine': engine,
