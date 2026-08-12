@@ -132,9 +132,10 @@ def _soap_request(style: str, color: str = '') -> ET.Element:
 
     Returns the root XML element on success.
     Raises SanMarAuthError for credential failures,
-           SanMarSOAPError for other SOAP faults,
+           SanMarSOAPError for other SOAP faults or non-XML responses,
            URLError / HTTPError for network problems.
     """
+    import sys
     customer_number, username, password = get_credentials()
 
     body = _SOAP_TEMPLATE.format(
@@ -154,13 +155,37 @@ def _soap_request(style: str, color: str = '') -> ET.Element:
         },
         method='POST',
     )
+
+    raw = b''
     try:
         with urlopen(req, timeout=30) as resp:
             raw = resp.read()
     except HTTPError as exc:
-        raw = exc.read()  # SOAP faults often come back as HTTP 500 with a body
+        raw = exc.read() or b''
+    # URLError / OSError propagate to caller
 
-    root = ET.fromstring(raw)
+    if not raw:
+        raise SanMarSOAPError('SanMar returned an empty response — check the endpoint URL and credentials.')
+
+    # Log first 500 chars for Railway debugging
+    preview = raw[:500].decode('utf-8', errors='replace')
+    print(f'[SanMarAPI] Raw response preview: {preview}', file=sys.stderr, flush=True)
+
+    # Detect non-XML (HTML error page, plain text, etc.)
+    stripped = raw.lstrip()
+    if stripped and stripped[0:1] != b'<':
+        raise SanMarSOAPError(
+            f'SanMar returned a non-XML response (first 200 chars): '
+            f'{raw[:200].decode("utf-8", errors="replace")}'
+        )
+
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError as exc:
+        raise SanMarSOAPError(
+            f'Could not parse SanMar response as XML ({exc}). '
+            f'First 200 chars: {raw[:200].decode("utf-8", errors="replace")}'
+        )
 
     # Check for SOAP Fault
     fault = None
@@ -243,20 +268,20 @@ def test_connection() -> dict:
     except SanMarSOAPError as exc:
         return {
             'ok': False,
-            'message': f'SanMar SOAP error: {exc}',
-            'details': 'Contact SanMar support if this persists.',
+            'message': f'SanMar error: {exc}',
+            'details': 'Check Railway logs for the full response. The endpoint URL or SOAP namespace may need updating.',
         }
     except (URLError, OSError) as exc:
         return {
             'ok': False,
             'message': f'Network error: {exc}',
-            'details': 'Could not reach ws.sanmar.com. Check that outbound HTTPS is allowed on port 8080.',
+            'details': 'Could not reach ws.sanmar.com. Check that outbound HTTPS is allowed on port 8080 from Railway.',
         }
     except Exception as exc:
         return {
             'ok': False,
             'message': f'Unexpected error: {exc}',
-            'details': None,
+            'details': 'Check Railway logs for more detail.',
         }
 
 
