@@ -102,22 +102,86 @@ _SOAP_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
     xmlns:ns2="http://impl.webservice.integration.sanmar.com/">
   <soapenv:Header/>
   <soapenv:Body>
-    <ns2:getProductInfoByStyleColor>
+    <ns2:getProductInfoByBrand>
       <arg0>
-        <style>{style}</style>
-        <color></color>
+        <brandName>{brand}</brandName>
       </arg0>
       <arg1>
         <sanMarCustomerNumber>{customer_number}</sanMarCustomerNumber>
         <sanMarUserName>{username}</sanMarUserName>
         <sanMarUserPassword>{password}</sanMarUserPassword>
       </arg1>
-    </ns2:getProductInfoByStyleColor>
+    </ns2:getProductInfoByBrand>
   </soapenv:Body>
 </soapenv:Envelope>"""
 
 
-class SanMarSOAPError(Exception):
+_SOAP_TEMPLATE_BY_STYLE = """<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope
+    xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+    xmlns:ns2="http://impl.webservice.integration.sanmar.com/">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <ns2:getProductInfoByBrand>
+      <arg0>
+        <brandName>Bella+Canvas</brandName>
+        <style>{style}</style>
+      </arg0>
+      <arg1>
+        <sanMarCustomerNumber>{customer_number}</sanMarCustomerNumber>
+        <sanMarUserName>{username}</sanMarUserName>
+        <sanMarUserPassword>{password}</sanMarUserPassword>
+      </arg1>
+    </ns2:getProductInfoByBrand>
+  </soapenv:Body>
+</soapenv:Envelope>"""
+
+
+def _soap_test_request() -> ET.Element:
+    """Send a minimal getProductInfoByBrand request (brand only) to test credentials."""
+    import sys
+    customer_number, username, password = get_credentials()
+    body = _SOAP_TEMPLATE.format(
+        brand='Bella+Canvas',
+        customer_number=customer_number,
+        username=username,
+        password=password,
+    ).encode('utf-8')
+    req = Request(
+        _SOAP_ENDPOINT,
+        data=body,
+        headers={'Content-Type': 'text/xml; charset=utf-8', 'SOAPAction': ''},
+        method='POST',
+    )
+    raw = b''
+    try:
+        with urlopen(req, timeout=15) as resp:
+            raw = resp.read()
+    except HTTPError as exc:
+        raw = exc.read() or b''
+    if not raw:
+        raise SanMarSOAPError('SanMar returned an empty response.')
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError as exc:
+        preview = raw[:300].decode('utf-8', errors='replace').strip()
+        raise SanMarSOAPError(f'Non-XML response: {repr(preview)}')
+    # Check for SOAP Fault
+    for elem in root.iter():
+        local = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
+        if local == 'Fault':
+            faultstring = ''
+            for child in elem.iter():
+                cl = child.tag.split('}')[-1] if '}' in child.tag else child.tag
+                if cl in ('faultstring', 'message', 'text'):
+                    faultstring = (child.text or '').strip()
+                    break
+            auth_kw = ('invalid', 'authentication', 'unauthorized', 'credentials',
+                       'password', 'username', 'login', 'access denied', 'not authorized')
+            if any(k in faultstring.lower() for k in auth_kw):
+                raise SanMarAuthError(faultstring or 'Authentication failed')
+            raise SanMarSOAPError(faultstring or 'SOAP Fault')
+    return root
     """Raised when SanMar returns a SOAP Fault."""
     pass
 
@@ -129,7 +193,7 @@ class SanMarAuthError(SanMarSOAPError):
 
 def _soap_request(style: str) -> ET.Element:
     """
-    Send a SOAP request for a style number.
+    Send a SOAP getProductInfoByBrand request filtered to a single style.
 
     Returns the root XML element on success.
     Raises SanMarAuthError for credential failures,
@@ -139,7 +203,7 @@ def _soap_request(style: str) -> ET.Element:
     import sys
     customer_number, username, password = get_credentials()
 
-    body = _SOAP_TEMPLATE.format(
+    body = _SOAP_TEMPLATE_BY_STYLE.format(
         style=style,
         customer_number=customer_number,
         username=username,
@@ -234,7 +298,7 @@ def test_connection() -> dict:
         }
 
     try:
-        root = _soap_request('3001C')
+        root = _soap_test_request()
         # Count product entries found
         entries = 0
         for elem in root.iter():
