@@ -824,6 +824,139 @@ def sync_sanmar():
     return redirect(url_for('admin.products'))
 
 
+@admin_bp.route('/products/fetch-ss-images', methods=['POST'])
+@admin_required
+def fetch_ss_images():
+    """
+    For every BC product that has color variants with no front image,
+    call the S&S Activewear API and store the ghost-image CDN URLs directly
+    in the DB.  No downloading — the browser fetches from S&S CDN.
+
+    Requires SSACTIVEWEAR_API_KEY + SSACTIVEWEAR_ACCOUNT_NUMBER in Railway env.
+    """
+    import os, sys
+    from models import db, Product, ProductColorVariant
+
+    api_key = os.getenv('SSACTIVEWEAR_API_KEY', '').strip()
+    account_number = os.getenv('SSACTIVEWEAR_ACCOUNT_NUMBER', '').strip()
+    if not api_key or not account_number:
+        flash(
+            'S&S Activewear API credentials not set. '
+            'Add SSACTIVEWEAR_API_KEY and SSACTIVEWEAR_ACCOUNT_NUMBER in Railway → Variables.',
+            'danger'
+        )
+        return redirect(url_for('admin.products'))
+
+    try:
+        from services.ssactivewear_api import SSActivewearAPI
+        api = SSActivewearAPI(api_key=api_key, account_number=account_number)
+        cdn = 'https://cdn.ssactivewear.com/'
+
+        def _img(url):
+            if not url:
+                return None
+            return url if url.startswith('http') else cdn + url.lstrip('/')
+
+        # Only process BC products with at least one variant missing images
+        products_needing_images = (
+            Product.query
+            .filter(Product.style_number.ilike('BC%'))
+            .all()
+        )
+
+        updated_variants = 0
+        updated_products = 0
+        skipped = 0
+        errors = []
+
+        for product in products_needing_images:
+            # Check if this product has any variants missing front images
+            variants_missing = [
+                v for v in product.color_variants
+                if not v.front_image_url
+            ]
+            if not variants_missing:
+                continue  # All variants already have images
+
+            # Strip "BC" prefix for S&S lookup (S&S uses "3001" not "BC3001")
+            ss_style = product.style_number[2:] if product.style_number.upper().startswith('BC') else product.style_number
+
+            try:
+                ss_products = api.get_products_by_style_number(ss_style)
+                if not ss_products:
+                    # Also try with BC prefix
+                    ss_products = api.get_products_by_style_number(product.style_number)
+                if not ss_products:
+                    skipped += 1
+                    continue
+
+                # Build color → image URLs map from S&S response
+                color_image_map: dict[str, dict] = {}
+                for p in ss_products:
+                    color_name = (p.get('colorName') or '').strip()
+                    if not color_name or color_name in color_image_map:
+                        continue
+                    front = _img(
+                        p.get('ghostFrontImage') or p.get('colorFrontImage') or
+                        p.get('frontImage') or p.get('frontmodel')
+                    )
+                    back = _img(
+                        p.get('ghostBackImage') or p.get('colorBackImage') or
+                        p.get('backImage') or p.get('backmodel')
+                    )
+                    if front or back:
+                        color_image_map[color_name.lower()] = {'front': front, 'back': back}
+
+                if not color_image_map:
+                    skipped += 1
+                    continue
+
+                # Update matching variants
+                product_updated = False
+                for variant in variants_missing:
+                    key = (variant.color_name or '').lower()
+                    if key not in color_image_map:
+                        continue
+                    imgs = color_image_map[key]
+                    if imgs.get('front') and not variant.front_image_url:
+                        variant.front_image_url = imgs['front']
+                        updated_variants += 1
+                        product_updated = True
+                    if imgs.get('back') and not variant.back_image_url:
+                        variant.back_image_url = imgs['back']
+
+                if product_updated:
+                    # Set front_mockup_template from the first variant with a front image
+                    if not product.front_mockup_template:
+                        first = next(
+                            (v for v in product.color_variants if v.front_image_url), None
+                        )
+                        if first:
+                            product.front_mockup_template = first.front_image_url
+                    updated_products += 1
+
+                db.session.commit()
+
+            except Exception as e:
+                db.session.rollback()
+                errors.append(f'{product.style_number}: {e}')
+                print(f'fetch_ss_images error for {product.style_number}: {e}', file=sys.stderr)
+
+        msg = f'Done! Updated images for {updated_products} products / {updated_variants} color variants.'
+        if skipped:
+            msg += f' {skipped} styles had no matching S&S data.'
+        if errors:
+            msg += f' Errors: {"; ".join(errors[:3])}'
+        flash(msg, 'success' if not errors else 'warning')
+
+    except ValueError as e:
+        flash(str(e), 'danger')
+    except Exception as e:
+        flash(f'Unexpected error: {e}', 'danger')
+
+    return redirect(url_for('admin.products'))
+
+
 @admin_bp.route('/products/link-local-images', methods=['POST'])
 @admin_required
 def link_local_images():
