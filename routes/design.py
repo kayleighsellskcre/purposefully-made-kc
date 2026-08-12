@@ -36,6 +36,8 @@ def _remove_background(filepath, mode='auto'):
     """
     try:
         from services.image_processing import process_artwork_file, issue_messages
+        if mode == 'auto':
+            mode = 'aggressive'
         result = process_artwork_file(filepath, mode=mode, engine='ai')
         new_path = result.get('path') or filepath
         meta = {
