@@ -653,8 +653,12 @@ def unlink_ss_bella_canvas():
     """
     import sys
     try:
+        # Cast a wide net — any product that has S&S api_data OR whose brand/name
+        # suggests Bella+Canvas. We do NOT restrict to brand=='Bella+Canvas' alone
+        # because many products were added before that field was consistently set.
         bella_products = Product.query.filter(
             db.or_(
+                Product.api_data.isnot(None),
                 Product.brand == 'Bella+Canvas',
                 Product.name.ilike('%bella%canvas%'),
             )
@@ -664,12 +668,15 @@ def unlink_ss_bella_canvas():
         variants_cleared = 0
 
         for product in bella_products:
-            if product.api_data:
+            changed = False
+            if product.api_data is not None:
                 product.api_data = None
+                changed = True
+            if changed:
                 products_cleared += 1
 
             for variant in product.color_variants:
-                if variant.ss_color_id:
+                if variant.ss_color_id is not None:
                     variant.ss_color_id = None
                     variants_cleared += 1
 
@@ -679,12 +686,18 @@ def unlink_ss_bella_canvas():
             f'{variants_cleared} variants',
             file=sys.stderr, flush=True
         )
-        flash(
-            f'S&S unlink complete — {products_cleared} products and '
-            f'{variants_cleared} color variants cleared. '
-            f'All prices preserved.',
-            'success'
-        )
+        if products_cleared == 0 and variants_cleared == 0:
+            flash(
+                'Nothing to unlink — these products have no S&S API data attached. '
+                'You\'re already ready to sync from SanMar.',
+                'info'
+            )
+        else:
+            flash(
+                f'S&S unlink complete — cleared {products_cleared} product(s) and '
+                f'{variants_cleared} color variant(s). All prices preserved.',
+                'success'
+            )
     except Exception as e:
         db.session.rollback()
         flash(f'Error unlinking S&S data: {str(e)}', 'error')
