@@ -82,6 +82,22 @@ def _back_image_url(row: dict) -> str:
     return ''
 
 
+def _swatch_url(row: dict) -> str:
+    """Return the color swatch image URL."""
+    swatch = row.get('COLOR_SQUARE_IMAGE', '').strip()
+    if swatch:
+        return f'{_CDN_BASE}/{swatch}'
+    return ''
+
+
+def _spec_sheet_url(row: dict) -> str:
+    """Return the spec sheet PDF URL from SanMar's CDN."""
+    spec = row.get('PRODUCT_MEASUREMENTS', '').strip()
+    if spec and spec.lower().endswith('.pdf'):
+        return f'https://cdnm.sanmar.com/imglib/mresjpg/specsheet/pdf/specsheet/{spec}'
+    return ''
+
+
 def parse_csv(source) -> list[dict]:
     """
     Parse a BellaCanvas SDL CSV.
@@ -165,15 +181,16 @@ def parse_csv(source) -> list[dict]:
             first = color_rows[0]
             front_url = _front_image_url(first)
             back_url = _back_image_url(first)
+            swatch_url = _swatch_url(first)
 
             all_color_names.append(color_name)
             color_variant_list.append({
-                'color_name':     color_name,
+                'color_name':      color_name,
                 'front_image_url': front_url,
                 'back_image_url':  back_url,
                 'side_image_url':  '',
-                'color_hex':       '',
-                'size_inventory':  {},   # SDL has no live inventory
+                'color_hex':       swatch_url,   # stored in color_hex field as swatch URL
+                'size_inventory':  {},
             })
 
         if not color_variant_list:
@@ -192,7 +209,8 @@ def parse_csv(source) -> list[dict]:
             'category':              category,
             'is_active':             status not in ('discontinued', 'closeout'),
             'front_mockup_template': color_variant_list[0]['front_image_url'],
-            'back_mockup_template':  '',
+            'back_mockup_template':  color_variant_list[0]['back_image_url'],
+            'spec_sheet_url':        _spec_sheet_url(meta),
             'color_variants':        color_variant_list,
         })
 

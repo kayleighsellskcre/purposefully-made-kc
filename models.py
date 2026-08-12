@@ -208,6 +208,7 @@ class Product(db.Model):
     size_chart = db.Column(db.Text)  # JSON: Size chart data from S&S
     fit_guide = db.Column(db.Text)  # Fit description (e.g., "Unisex sizing", "Runs small")
     fabric_details = db.Column(db.Text)  # Fabric composition and care
+    spec_sheet_url = db.Column(db.String(500))  # PDF spec sheet from SanMar CDN
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -54,7 +54,7 @@
                 
                 <p class="product-style">
                     Style #{{ product.style_number }}
-                    <a href="https://www.bellacanvas.com/spec/{{ product.style_number | urlencode }}%20specs.pdf"
+                    <a href="{{ product.spec_sheet_url or 'https://www.bellacanvas.com/spec/' ~ (product.style_number | urlencode) ~ '%20specs.pdf' }}"
                        target="_blank"
                        rel="noopener"
                        class="spec-sheet-link"
@@ -130,11 +130,15 @@
                 <div class="product-option">
                     <label>Color</label>
                     <div class="color-selector">
-                        {% for color in available_colors %}
-                        <button class="color-option" 
-                                data-color="{{ color }}" 
-                                title="{{ color }}">
-                            <span>{{ color }}</span>
+                        {% for variant in color_variants %}
+                        <button class="color-option"
+                                data-color="{{ variant.color_name }}"
+                                title="{{ variant.color_name }}">
+                            {% if variant.color_hex and (variant.color_hex.startswith('http') or variant.color_hex.startswith('/')) %}
+                            <img src="{{ variant.color_hex }}" alt="{{ variant.color_name }}" style="width:100%;height:100%;object-fit:cover;border-radius:3px;">
+                            {% else %}
+                            <span style="{% if variant.color_hex %}background:{{ variant.color_hex }};{% endif %}">{{ variant.color_name }}</span>
+                            {% endif %}
                         </button>
                         {% endfor %}
                     </div>
