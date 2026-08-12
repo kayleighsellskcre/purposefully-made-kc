@@ -189,7 +189,8 @@ def parse_csv(source) -> list[dict]:
                 'front_image_url': front_url,
                 'back_image_url':  back_url,
                 'side_image_url':  '',
-                'color_hex':       swatch_url,   # stored in color_hex field as swatch URL
+                'color_swatch_url': swatch_url,
+                'color_hex':       '',
                 'size_inventory':  {},
             })
 

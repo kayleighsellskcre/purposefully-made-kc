@@ -146,6 +146,8 @@ def create_app(config_class=Config):
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER REFERENCES \"user\"(id)",
                     # product.spec_sheet_url — SanMar CDN PDF link added during Bella+Canvas CSV import
                     "ALTER TABLE product ADD COLUMN IF NOT EXISTS spec_sheet_url VARCHAR(500)",
+                    # product_color_variant.color_swatch_url — SanMar CDN swatch image (color_hex is only 7 chars)
+                    "ALTER TABLE product_color_variant ADD COLUMN IF NOT EXISTS color_swatch_url VARCHAR(500)",
                 ]
                 for migration in all_migrations:
                     try:

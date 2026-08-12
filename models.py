@@ -230,7 +230,8 @@ class ProductColorVariant(db.Model):
     
     # Color info
     color_name = db.Column(db.String(100), nullable=False)
-    color_hex = db.Column(db.String(7))  # Optional hex code for display
+    color_hex = db.Column(db.String(7))       # Optional hex code for display e.g. #FFFFFF
+    color_swatch_url = db.Column(db.String(500))  # SanMar CDN swatch image URL
     
     # Mockup images for this specific color
     front_image_url = db.Column(db.String(500))  # Front mockup of this color

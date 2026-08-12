@@ -927,13 +927,12 @@ def import_bella_canvas_csv():
                 product_id=product.id, color_name=color_name
             ).first()
             if existing_cv:
-                # Always update image URLs from CSV — CDN URLs are better than S&S images
                 if cv_data.get('front_image_url'):
                     existing_cv.front_image_url = cv_data['front_image_url']
                 if cv_data.get('back_image_url'):
                     existing_cv.back_image_url = cv_data['back_image_url']
-                if cv_data.get('color_hex'):
-                    existing_cv.color_hex = cv_data['color_hex']
+                if cv_data.get('color_swatch_url'):
+                    existing_cv.color_swatch_url = cv_data['color_swatch_url']
                 existing_cv.last_synced = datetime.utcnow()
                 variants_updated += 1
             else:
@@ -942,7 +941,7 @@ def import_bella_canvas_csv():
                     color_name=color_name,
                     front_image_url=cv_data.get('front_image_url', ''),
                     back_image_url=cv_data.get('back_image_url', ''),
-                    color_hex=cv_data.get('color_hex', ''),
+                    color_swatch_url=cv_data.get('color_swatch_url', ''),
                     size_inventory=json.dumps({}),
                 )                db.session.add(new_cv)
                 variants_added += 1
