@@ -824,6 +824,209 @@ def sync_sanmar():
     return redirect(url_for('admin.products'))
 
 
+@admin_bp.route('/products/link-local-images', methods=['POST'])
+@admin_required
+def link_local_images():
+    """
+    Scan static/sanmar/{style}/ folders and wire up front/back image URLs
+    on ProductColorVariant rows that currently have no image.
+
+    Filename convention: {style}_{Color_with_underscores}_front.jpg
+    DB style numbers: BC3001 → folder: 3001
+    """
+    import os, re
+    from pathlib import Path
+    from models import db, Product, ProductColorVariant
+
+    sanmar_dir = Path(current_app.root_path) / 'static' / 'sanmar'
+    if not sanmar_dir.is_dir():
+        flash('static/sanmar/ directory not found.', 'danger')
+        return redirect(url_for('admin.products'))
+
+    updated = 0
+    skipped = 0
+
+    for style_folder in sanmar_dir.iterdir():
+        if not style_folder.is_dir():
+            continue
+
+        folder_name = style_folder.name          # e.g. "3001"
+        bc_style = 'BC' + folder_name            # e.g. "BC3001"
+
+        product = Product.query.filter(
+            db.or_(
+                Product.style_number == bc_style,
+                Product.style_number == folder_name,
+            )
+        ).first()
+        if not product:
+            continue
+
+        # Build a map: normalised_color → {front, back} paths
+        file_map: dict[str, dict] = {}
+        for f in style_folder.iterdir():
+            if not f.is_file():
+                continue
+            m = re.match(
+                rf'^{re.escape(folder_name)}_(.+?)_(front|back)\.jpe?g$',
+                f.name, re.IGNORECASE
+            )
+            if not m:
+                continue
+            raw_color = m.group(1).replace('_', ' ')   # "Baby_Blue" → "Baby Blue"
+            side      = m.group(2).lower()               # "front" / "back"
+            key       = raw_color.lower()
+            if key not in file_map:
+                file_map[key] = {}
+            file_map[key][side] = f'sanmar/{folder_name}/{f.name}'
+
+        # Match against ProductColorVariant rows for this product
+        variants = ProductColorVariant.query.filter_by(product_id=product.id).all()
+        for variant in variants:
+            color_key = (variant.color_name or '').lower()
+            if color_key not in file_map:
+                skipped += 1
+                continue
+
+            paths = file_map[color_key]
+            changed = False
+            if not variant.front_image_url and paths.get('front'):
+                variant.front_image_url = paths['front']
+                changed = True
+            if not variant.back_image_url and paths.get('back'):
+                variant.back_image_url = paths['back']
+                changed = True
+
+            if changed:
+                updated += 1
+
+        # Also update Product.image_url if it's blank (use first front image found)
+        if not product.image_url and file_map:
+            first_front = next(
+                (v['front'] for v in file_map.values() if 'front' in v), None
+            )
+            if first_front:
+                product.image_url = first_front
+
+    try:
+        db.session.commit()
+        flash(f'Done! Linked images on {updated} color variants ({skipped} color names had no matching file).', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error saving image links: {e}', 'danger')
+
+    return redirect(url_for('admin.products'))
+
+
+@admin_bp.route('/products/sync-sanmar-inventory', methods=['POST'])
+@admin_required
+def sync_sanmar_inventory():
+    """Sync live inventory quantities from SanMar API into ProductColorVariant records."""
+    import sys
+    from services.sanmar_api import SanMarAPI, check_credentials, SanMarSOAPError
+    from models import Product, ProductColorVariant
+    from datetime import datetime
+
+    cred_check = check_credentials()
+    if not cred_check['ok']:
+        flash('SanMar inventory sync failed — missing credentials. Check Railway variables.', 'error')
+        return redirect(url_for('admin.products'))
+
+    try:
+        # Get all BC style numbers from the DB
+        styles = [p.style_number for p in Product.query.filter(
+            Product.style_number.ilike('BC%'), Product.is_active == True
+        ).all()]
+
+        if not styles:
+            flash('No active Bella+Canvas products found to sync inventory for.', 'warning')
+            return redirect(url_for('admin.products'))
+
+        api = SanMarAPI()
+        all_inventory = api.sync_inventory_for_all_styles(styles)
+
+        updated = 0
+        for style, color_inv in all_inventory.items():
+            product = Product.query.filter_by(style_number=style).first()
+            if not product:
+                continue
+            for color_name, size_qty in color_inv.items():
+                variant = ProductColorVariant.query.filter_by(
+                    product_id=product.id, color_name=color_name
+                ).first()
+                if variant:
+                    import json as _json
+                    variant.size_inventory = _json.dumps(size_qty)
+                    variant.last_synced = datetime.utcnow()
+                    updated += 1
+
+        db.session.commit()
+        flash(f'Inventory sync complete! Updated {updated} color variants across {len(styles)} styles.', 'success')
+
+    except SanMarSOAPError as exc:
+        db.session.rollback()
+        flash(f'SanMar inventory sync error: {exc}', 'error')
+    except Exception as exc:
+        db.session.rollback()
+        flash(f'Unexpected error during inventory sync: {exc}', 'error')
+
+    return redirect(url_for('admin.products'))
+
+
+@admin_bp.route('/products/fix-categories', methods=['POST'])
+@admin_required
+def fix_product_categories():
+    """
+    Fix category strings that have a stray semicolon from old S&S Activewear sync.
+    e.g. 'T-SHIRTS ;WOMEN\'S' → 'T-Shirts'
+         'HOODIES ;MEN\'S'    → 'Hoodies'
+    """
+    from models import Product
+
+    # Map raw S&S category prefixes to clean names
+    _cat_map = {
+        'T-SHIRT': 'T-Shirts',
+        'HOODIE': 'Hoodies',
+        'SWEATSHIRT': 'Sweatshirts',
+        'TANK': 'Tank Tops',
+        'POLO': 'Polos',
+        'JACKET': 'Jackets',
+        'CREW': 'Crewnecks',
+        'PULLOVER': 'Pullovers',
+        'ZIP': 'Zip-Ups',
+        'PANT': 'Pants',
+        'SHORT': 'Shorts',
+        'DRESS': 'Dresses',
+        'SKIRT': 'Skirts',
+        'ONESIE': 'Infant/Toddler',
+        'INFANT': 'Infant/Toddler',
+        'TODDLER': 'Infant/Toddler',
+        'YOUTH': 'Youth',
+    }
+
+    fixed = 0
+    for product in Product.query.all():
+        raw = (product.category or '').strip()
+        if not raw:
+            continue
+        # Split on semicolon and take the first part
+        clean = raw.split(';')[0].strip().title()
+        # Map to a canonical name if we can
+        upper = clean.upper()
+        for prefix, canonical in _cat_map.items():
+            if upper.startswith(prefix):
+                clean = canonical
+                break
+        if clean != raw:
+            product.category = clean
+            fixed += 1
+
+    db.session.commit()
+    flash(f'Category cleanup complete! Fixed {fixed} product categories.', 'success')
+    return redirect(url_for('admin.products'))
+
+
+
 @admin_bp.route('/products/cleanup-old-ss', methods=['POST'])
 @admin_required
 def cleanup_old_ss_products():

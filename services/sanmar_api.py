@@ -1,6 +1,10 @@
 """
 SanMar SOAP Web Service integration for Bella+Canvas products.
 
+Size code → human-readable label mapping (infant/toddler codes from SanMar):
+  0003 → NB, 0306 → 0-3M, 0612 → 6-12M, 1218 → 12-18M, 1824 → 18-24M
+  Adult and youth sizes pass through unchanged.
+
 Credentials from environment variables:
   SANMAR_CUSTOMER_NUMBER
   SANMAR_USERNAME
@@ -45,6 +49,30 @@ BELLA_CANVAS_STYLES = [
 ]
 _seen: set = set()
 BELLA_CANVAS_STYLES = [s for s in BELLA_CANVAS_STYLES if not (_seen.add(s) or s in _seen)]
+
+
+# ---------------------------------------------------------------------------
+# Size code normalisation
+# ---------------------------------------------------------------------------
+
+_SIZE_LABEL_MAP: dict[str, str] = {
+    # Infant / toddler numeric codes from SanMar
+    '0003': 'NB',
+    '0306': '0-3M',
+    '0612': '6-12M',
+    '1218': '12-18M',
+    '1824': '18-24M',
+    # Youth codes (rarely numeric, but just in case)
+    '0002': '2T',
+    '0004': '4T',
+    '0006': '6T',
+}
+
+
+def normalize_size(raw: str) -> str:
+    """Convert a raw SanMar size code to a human-readable label."""
+    cleaned = (raw or '').strip()
+    return _SIZE_LABEL_MAP.get(cleaned, cleaned)
 
 
 # ---------------------------------------------------------------------------
@@ -498,8 +526,9 @@ class SanMarAPI:
 
         for cv_data in color_variants.values():
             for sz in cv_data.get('sizes', []):
-                if sz not in all_sizes:
-                    all_sizes.append(sz)
+                label = normalize_size(sz)
+                if label not in all_sizes:
+                    all_sizes.append(label)
             if not base_price and cv_data.get('price'):
                 base_price = cv_data['price']
 
@@ -516,9 +545,14 @@ class SanMarAPI:
             for color, cv in color_variants.items()
         ]
 
+        # Strip trailing style number from name if SanMar appended it
+        raw_name = (style_data.get('title') or f'Bella+Canvas {style}').strip()
+        if style and raw_name.upper().endswith(style.upper()):
+            raw_name = raw_name[:-len(style)].strip()
+
         return {
             'style_number':          style,
-            'name':                  style_data.get('title') or f'Bella+Canvas {style}',
+            'name':                  raw_name,
             'brand':                 'Bella+Canvas',
             'description':           style_data.get('description', ''),
             'fabric_details':        style_data.get('material', ''),
@@ -550,3 +584,99 @@ class SanMarAPI:
             raise SanMarSOAPError(f'Missing credentials: {missing}')
 
         return self.fetch_full_catalog()
+
+    # ------------------------------------------------------------------
+    # Inventory sync
+    # ------------------------------------------------------------------
+
+    _INVENTORY_ENDPOINT = (
+        'https://ws.sanmar.com:8080/SanMarWebService/SanMarInventoryServicePort'
+    )
+
+    _INV_SOAP_TEMPLATE = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope
+    xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+    xmlns:ns2="http://impl.webservice.integration.sanmar.com/">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <ns2:getInventoryQty>
+      <arg0>
+        <style>{style}</style>
+      </arg0>
+      <arg1>
+        <sanMarCustomerNumber>{customer_number}</sanMarCustomerNumber>
+        <sanMarUserName>{username}</sanMarUserName>
+        <sanMarUserPassword>{password}</sanMarUserPassword>
+      </arg1>
+    </ns2:getInventoryQty>
+  </soapenv:Body>
+</soapenv:Envelope>"""
+
+    def fetch_inventory_for_style(self, style: str) -> dict:
+        """
+        Returns {color: {size: qty}} for a single style.
+        qty is an integer (0 if out of stock).
+        """
+        customer_number, username, password = get_credentials()
+        body = self._INV_SOAP_TEMPLATE.format(
+            style=style,
+            customer_number=customer_number,
+            username=username,
+            password=password,
+        ).encode('utf-8')
+
+        req = Request(
+            self._INVENTORY_ENDPOINT,
+            data=body,
+            headers={'Content-Type': 'text/xml; charset=utf-8', 'SOAPAction': ''},
+            method='POST',
+        )
+        try:
+            with urlopen(req, timeout=30) as resp:
+                raw = resp.read()
+        except Exception as exc:
+            print(f'[SanMarAPI] Inventory fetch failed for {style}: {exc}', file=sys.stderr)
+            return {}
+
+        try:
+            root = ET.fromstring(raw)
+        except ET.ParseError:
+            return {}
+
+        inventory: dict[str, dict[str, int]] = {}
+        for elem in root.iter():
+            local = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
+            if local != 'listResponse':
+                continue
+            color = _ns_find(elem, 'catalogColor') or _ns_find(elem, 'color') or ''
+            size  = normalize_size(_ns_find(elem, 'size') or '')
+            qty_s = _ns_find(elem, 'qty') or _ns_find(elem, 'quantity') or '0'
+            try:
+                qty = int(float(qty_s))
+            except (ValueError, TypeError):
+                qty = 0
+            if color:
+                inventory.setdefault(color, {})[size] = qty
+
+        return inventory
+
+    def sync_inventory_for_all_styles(self, style_list: list[str]) -> dict:
+        """
+        Fetches live inventory for every style in style_list.
+        Returns {style: {color: {size: qty}}}.
+        Skips styles that error — logs and continues.
+        """
+        results: dict[str, dict] = {}
+        for style in style_list:
+            try:
+                inv = self.fetch_inventory_for_style(style)
+                results[style] = inv
+                print(
+                    f'[SanMarAPI] Inventory for {style}: '
+                    f'{sum(len(v) for v in inv.values())} size/color combos',
+                    file=sys.stderr, flush=True,
+                )
+            except Exception as exc:
+                print(f'[SanMarAPI] Skipping inventory for {style}: {exc}', file=sys.stderr)
+        return results

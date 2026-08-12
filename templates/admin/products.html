@@ -107,6 +107,33 @@
                         <input type="file" name="csv_file" accept=".csv" onchange="this.form.submit()">
                     </form>
                 </label>
+                <!-- Link existing local sanmar images to DB records -->
+                <form method="POST" action="{{ url_for('admin.link_local_images') }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="prod-tool-btn"
+                            onclick="return confirm('Scan static/sanmar/ folders and wire up front/back images on all matching color variants?')">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        Link Local Images
+                    </button>
+                </form>
+                <!-- Sync live inventory quantities -->
+                <form method="POST" action="{{ url_for('admin.sync_sanmar_inventory') }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="prod-tool-btn"
+                            onclick="return confirm('Sync live inventory quantities from SanMar for all BC products?')">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                        Sync Inventory
+                    </button>
+                </form>
+                <!-- Fix category formatting -->
+                <form method="POST" action="{{ url_for('admin.fix_product_categories') }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="prod-tool-btn"
+                            onclick="return confirm('Clean up messy category names (fix semicolons from old S&S data)?')">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Fix Categories
+                    </button>
+                </form>
                 <!-- Clean up leftover old S&S products -->
                 <form method="POST" action="{{ url_for('admin.cleanup_old_ss_products') }}" style="display:inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

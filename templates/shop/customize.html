@@ -2358,24 +2358,30 @@
     }
     
     function updateSizeInventory(inventory) {
+        // If inventory has no keys, SanMar data hasn't been synced yet —
+        // treat all sizes as available so customers aren't falsely blocked.
+        const hasInventoryData = inventory && Object.keys(inventory).length > 0;
+
         const sizeCards = document.querySelectorAll('.size-card');
         sizeCards.forEach(card => {
             const size = card.dataset.size;
-            const qty = inventory[size] || 0;
             const stockBadge = card.querySelector('.stock-badge');
-            
+
             if (stockBadge) {
                 card.classList.remove('out-of-stock');
-                
-                if (qty > 0) {
+
+                const qty = hasInventoryData ? (inventory[size] ?? 0) : null;
+                const isOutOfStock = hasInventoryData && qty === 0;
+
+                if (isOutOfStock) {
+                    stockBadge.textContent = 'Out of Stock';
+                    stockBadge.style.color = '#ef4444';
+                    card.classList.add('out-of-stock');
+                } else {
                     stockBadge.textContent = 'Available';
                     stockBadge.style.color = '#22c55e';
                     card.style.opacity = '1';
                     card.style.cursor = 'pointer';
-                } else {
-                    stockBadge.textContent = 'Out of Stock';
-                    stockBadge.style.color = '#ef4444';
-                    card.classList.add('out-of-stock');
                 }
             }
         });
