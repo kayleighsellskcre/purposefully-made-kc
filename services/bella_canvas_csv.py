@@ -71,10 +71,13 @@ def _existing_image_url(row: dict, side: str) -> str:
 
 def _front_image_url(row: dict) -> str:
     """
+    Return a flat shirt image URL. Never returns a CDN model photo.
+    Returns '' if no local flat image exists.
     Priority:
-    1. Original flat shirt image from static/images/products/ (user's preferred look)
-    2. Color-specific flat front image from SDL (no model, color-accurate)
-    3. Style-level SDL flat image
+    1. static/sanmar/{style}/{style}_{Color}_front.jpg
+    2. static/images/products/{style}/{style}_{Color}_front.jpg
+    3. SDL COLOR_PRODUCT_IMAGE flat (only if file exists on disk)
+    4. SDL PRODUCT_IMAGE flat (only if file exists on disk)
     """
     existing = _existing_image_url(row, 'front')
     if existing:
@@ -82,21 +85,23 @@ def _front_image_url(row: dict) -> str:
 
     color_img = row.get('COLOR_PRODUCT_IMAGE', '').strip()
     if color_img and '_flat_front' in color_img.lower():
-        return f'{_SDL_BASE}/COLOR_PRODUCT_IMAGE/{color_img}'
+        path = os.path.join(_STATIC_ROOT, 'sanmar', 'front', 'SDL', 'COLOR_PRODUCT_IMAGE', color_img)
+        if os.path.exists(path):
+            return f'{_SDL_BASE}/COLOR_PRODUCT_IMAGE/{color_img}'
 
     product_img = row.get('PRODUCT_IMAGE', '').strip()
     if product_img:
-        return f'{_SDL_BASE}/PRODUCT_IMAGE/{product_img}'
+        path = os.path.join(_STATIC_ROOT, 'sanmar', 'front', 'SDL', 'PRODUCT_IMAGE', product_img)
+        if os.path.exists(path):
+            return f'{_SDL_BASE}/PRODUCT_IMAGE/{product_img}'
 
     return ''
 
 
 def _back_image_url(row: dict) -> str:
     """
-    Priority:
-    1. Original flat back image from static/images/products/
-    2. Color-specific flat back image from SDL
-    3. Style-level SDL back image
+    Return a flat back image URL. Never returns a CDN model photo.
+    Returns '' if no local flat image exists.
     """
     existing = _existing_image_url(row, 'back')
     if existing:
@@ -105,29 +110,38 @@ def _back_image_url(row: dict) -> str:
     color_img = row.get('COLOR_PRODUCT_IMAGE', '').strip()
     if color_img and '_flat_front' in color_img.lower():
         back_img = color_img.lower().replace('_flat_front', '_flat_back')
-        return f'{_SDL_BASE}/COLOR_PRODUCT_IMAGE/{back_img}'
+        path = os.path.join(_STATIC_ROOT, 'sanmar', 'front', 'SDL', 'COLOR_PRODUCT_IMAGE', back_img)
+        if os.path.exists(path):
+            return f'{_SDL_BASE}/COLOR_PRODUCT_IMAGE/{back_img}'
 
     product_img = row.get('PRODUCT_IMAGE', '').strip()
     if product_img:
         name_no_ext = product_img.rsplit('.', 1)[0]
-        return f'{_SDL_BASE}/PRODUCT_IMAGE/{name_no_ext}B.jpg'
+        back_file = f'{name_no_ext}B.jpg'
+        path = os.path.join(_STATIC_ROOT, 'sanmar', 'front', 'SDL', 'PRODUCT_IMAGE', back_file)
+        if os.path.exists(path):
+            return f'{_SDL_BASE}/PRODUCT_IMAGE/{back_file}'
 
     return ''
 
 
 def _swatch_url(row: dict) -> str:
-    """Color square swatch from local SDL COLOR_SQUARE_IMAGE folder."""
+    """Color square swatch — only if the file exists locally."""
     swatch = row.get('COLOR_SQUARE_IMAGE', '').strip()
     if swatch:
-        return f'{_SDL_BASE}/COLOR_SQUARE_IMAGE/{swatch}'
+        path = os.path.join(_STATIC_ROOT, 'sanmar', 'front', 'SDL', 'COLOR_SQUARE_IMAGE', swatch)
+        if os.path.exists(path):
+            return f'{_SDL_BASE}/COLOR_SQUARE_IMAGE/{swatch}'
     return ''
 
 
 def _spec_sheet_url(row: dict) -> str:
-    """Spec sheet PDF from local SDL SpecSheetMeasurements folder."""
+    """Spec sheet PDF — only if the file exists locally."""
     spec = (row.get('SPEC_SHEET', '') or row.get('PRODUCT_MEASUREMENTS', '')).strip()
     if spec and spec.lower().endswith('.pdf'):
-        return f'{_SDL_BASE}/SpecSheetMeasurements/{spec}'
+        path = os.path.join(_STATIC_ROOT, 'sanmar', 'front', 'SDL', 'SpecSheetMeasurements', spec)
+        if os.path.exists(path):
+            return f'{_SDL_BASE}/SpecSheetMeasurements/{spec}'
     return ''
 
 
