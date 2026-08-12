@@ -247,7 +247,14 @@ def get_carousel_colors_for_product(product, app, allowed_colors=None):
         seen.add(v.color_name)
         # Try mockup folder FIRST
         rel = _find_mockup_file(app, product.style_number, v.color_name, 'front')
-        url = _mockup_url(app, rel) if rel else v.front_image_url
+        if rel:
+            url = _mockup_url(app, rel)
+        else:
+            raw = v.front_image_url or ''
+            # Fix bare relative paths stored without /static/ prefix
+            if raw and not raw.startswith('http') and not raw.startswith('/'):
+                raw = '/static/' + raw
+            url = raw or None
         if url:
             result.append({'color_name': v.color_name, 'front_image_url': url})
 

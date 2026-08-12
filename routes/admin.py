@@ -876,7 +876,7 @@ def fetch_ss_images():
                     side = m.group(2).lower()
                     if key not in file_map:
                         file_map[key] = {}
-                    file_map[key][side] = f'sanmar/{folder_name}/{f.name}'
+                    file_map[key][side] = f'/static/sanmar/{folder_name}/{f.name}'
 
                 existing = {
                     (v.color_name or '').lower(): v
@@ -1056,7 +1056,7 @@ def link_local_images():
             key       = raw_color.lower()
             if key not in file_map:
                 file_map[key] = {}
-            file_map[key][side] = f'sanmar/{folder_name}/{f.name}'
+            file_map[key][side] = f'/static/sanmar/{folder_name}/{f.name}'
 
         # Match against ProductColorVariant rows for this product
         variants = ProductColorVariant.query.filter_by(product_id=product.id).all()
