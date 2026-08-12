@@ -94,24 +94,26 @@ def check_credentials() -> dict:
 # SOAP helper
 # ---------------------------------------------------------------------------
 
-_SOAP_ENDPOINT = 'https://ws.sanmar.com:8080/SanMarWebService/SanMarServicePort'
+_SOAP_ENDPOINT = 'https://ws.sanmar.com:8080/SanMarWebService/SanMarProductInfoServicePort'
 
 _SOAP_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope
     xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-    xmlns:ws="http://www.sanmar.com/webservice">
+    xmlns:ns2="http://impl.webservice.integration.sanmar.com/">
   <soapenv:Header/>
   <soapenv:Body>
-    <ws:getProductInfoAndInventoryByStyleColorAndSize>
-      <ws:arg0>
-        <ws:style>{style}</ws:style>
-        <ws:color>{color}</ws:color>
-        <ws:size></ws:size>
-        <ws:sanMarCustomerNumber>{customer_number}</ws:sanMarCustomerNumber>
-        <ws:sanMarUserName>{username}</ws:sanMarUserName>
-        <ws:sanMarUserPassword>{password}</ws:sanMarUserPassword>
-      </ws:arg0>
-    </ws:getProductInfoAndInventoryByStyleColorAndSize>
+    <ns2:getProductInfoByStyleColorAndSize>
+      <arg0>
+        <style>{style}</style>
+        <color>{color}</color>
+        <size></size>
+      </arg0>
+      <arg1>
+        <sanMarCustomerNumber>{customer_number}</sanMarCustomerNumber>
+        <sanMarUserName>{username}</sanMarUserName>
+        <sanMarUserPassword>{password}</sanMarUserPassword>
+      </arg1>
+    </ns2:getProductInfoByStyleColorAndSize>
   </soapenv:Body>
 </soapenv:Envelope>"""
 
