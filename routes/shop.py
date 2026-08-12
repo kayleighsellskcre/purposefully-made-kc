@@ -322,7 +322,11 @@ def create_group_order():
         gallery_designs = []
         all_colors = []
     back_design_fonts = [
-        ('Bebas Neue', 'Bebas Neue — Classic jersey'),
+        ('Freshman', 'Freshman — Classic college jersey'),
+        ('Black Ops One', 'Black Ops One — Bold varsity block'),
+        ('Graduate', 'Graduate — Collegiate style'),
+        ('Squada One', 'Squada One — Modern athletic numbers'),
+        ('Bebas Neue', 'Bebas Neue — Clean jersey'),
         ('Oswald', 'Oswald — Bold athletic'),
         ('Anton', 'Anton — Strong block'),
         ('Teko', 'Teko — College jersey'),

@@ -76,6 +76,12 @@
                     <p>{{ product.description }}</p>
                 </div>
                 {% endif %}
+
+                {% if product.fabric_details %}
+                <div class="product-material" style="margin-top:1rem;">
+                    <strong>Material:</strong> {{ product.fabric_details }}
+                </div>
+                {% endif %}
                 
                 {% if product.size_chart %}
                 <div class="size-chart-link">

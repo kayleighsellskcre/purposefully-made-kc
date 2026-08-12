@@ -46,9 +46,9 @@ _REMBG_FAILED = False
 # u2netp is only 4 MB — downloads in seconds, works great for logos/graphics.
 # u2net (180 MB) is the quality fallback when u2netp isn't available.
 _MODEL_PRIORITY = [
-    'u2netp',            # 4 MB   — fast download, excellent for logos
-    'u2net',             # 180 MB — best quality, larger memory footprint
-    'isnet-general-use', # 170 MB — alternative high-quality model
+    'isnet-general-use', # 170 MB — best for crevices/fine details
+    'u2net',             # 180 MB — high quality fallback
+    'u2netp',            # 4 MB   — fast download, good for simple logos
 ]
 
 
@@ -136,10 +136,29 @@ def process_artwork_bytes(data: bytes, mode: str = 'auto', engine=None) -> dict:
     used_engine = 'none'
 
     # ── AI removal (rembg) ────────────────────────────────────────────────────
+    # We track the source used for AI so _post_process can detect the correct
+    # background color.  After preswap, the "background" is gray (not the
+    # original black), so harden_alpha must match gray halos, not black ones.
+    src_for_post = src.convert('RGB')   # default: use original for bg detection
+
     if want in ('ai', None):
-        out = _remove_ai(img)
+        # Pre-swap: replace the uniform background with a neutral gray BEFORE
+        # sending to rembg. This solves "black outline on black background" where
+        # the design's dark border is indistinguishable from the background.
+        #
+        # Strategy:
+        #   1. Flood-fill from image borders to find all background pixels.
+        #   2. Replace with 180,180,180 (light gray) if bg is dark, 80,80,80 if light.
+        #   3. rembg now sees pink text with black outline on GRAY — the black
+        #      outline is visually surrounded by pink, not by gray, so rembg
+        #      keeps it as foreground.
+        #   4. Pass the preswapped RGB to _post_process so harden_alpha knows the
+        #      bg is now GRAY, not black, and kills gray halos correctly.
+        img_for_ai = _preswap_background(src.convert('RGB'))
+        out = _remove_ai(img_for_ai.convert('RGBA'))
         if out is not None:
             used_engine = 'ai'
+            src_for_post = img_for_ai   # harden_alpha targets gray, not original black
 
     # ── Algorithmic fallback ──────────────────────────────────────────────────
     if out is None:
@@ -150,7 +169,7 @@ def process_artwork_bytes(data: bytes, mode: str = 'auto', engine=None) -> dict:
         out = img  # absolute last resort
 
     # ── Post-processing ───────────────────────────────────────────────────────
-    out = _post_process(out, src.convert('RGB'), used_engine, mode)
+    out = _post_process(out, src_for_post, used_engine, mode)
 
     return _encode(out, used_engine, original_size, changed=True)
 
@@ -211,6 +230,78 @@ def issue_messages(validation: dict) -> list:
 # ---------------------------------------------------------------------------
 # AI engine
 # ---------------------------------------------------------------------------
+
+def _preswap_background(img_rgb: Image.Image) -> Image.Image:
+    """Replace the flood-filled background with a neutral gray before rembg.
+
+    Solves the "black outline on black background" problem: the design's dark
+    border and the background share the same color, so rembg can't distinguish
+    them by hue alone.  By swapping the background to a contrasting gray we
+    give rembg a clear signal:
+      - background = gray
+      - foreground = pink text + black outline (the outline is enclosed WITHIN
+        the design structure so flood-fill from the border won't reach it)
+
+    Only activates when the background is reasonably uniform (MAD < 25) and
+    not already a mid-gray (which needs no swapping).
+    """
+    try:
+        bg_color, mad = _border_profile(img_rgb)
+        if mad > 25:          # Complex/gradient background — let rembg handle it
+            return img_rgb
+        br, bg, bb = int(bg_color[0]), int(bg_color[1]), int(bg_color[2])
+        bg_mean = (br + bg + bb) / 3
+        # Skip if bg is already a neutral mid-gray (80–180) — no ambiguity
+        if 80 <= bg_mean <= 180 and max(abs(br-bg), abs(bg-bb), abs(br-bb)) < 20:
+            return img_rgb
+
+        # Flood-fill background from the image border using a loose tolerance
+        w, h = img_rgb.size
+        work = img_rgb.copy()
+        tol = int(min(55, max(22, 28 + mad * 1.2)))
+        SENTINEL = (0, 254, 1)        # Distinctive color that won't appear in logos
+        step = max(1, min(w, h) // 60)
+        for x in range(0, w, step):
+            for y in [0, h - 1]:
+                try:
+                    ImageDraw.floodfill(work, (x, y), SENTINEL, thresh=tol)
+                except Exception:
+                    pass
+        for y in range(0, h, step):
+            for x in [0, w - 1]:
+                try:
+                    ImageDraw.floodfill(work, (x, y), SENTINEL, thresh=tol)
+                except Exception:
+                    pass
+        for corner in [(0, 0), (w-1, 0), (0, h-1), (w-1, h-1)]:
+            try:
+                ImageDraw.floodfill(work, corner, SENTINEL, thresh=tol)
+            except Exception:
+                pass
+
+        if not _HAS_NUMPY:
+            # PIL-only path: scan and replace sentinel pixels
+            px = work.load()
+            neutral = (180, 180, 180) if bg_mean < 128 else (80, 80, 80)
+            for yy in range(h):
+                for xx in range(w):
+                    if px[xx, yy] == SENTINEL:
+                        px[xx, yy] = neutral
+            return work
+
+        work_arr = np.asarray(work).astype(np.uint8).copy()
+        mask = ((work_arr[..., 0] == 0) &
+                (work_arr[..., 1] == 254) &
+                (work_arr[..., 2] == 1))
+        if mask.sum() < 100:     # Flood fill barely touched anything — skip
+            return img_rgb
+        # Choose replacement: light gray for dark backgrounds, dark gray for light
+        neutral = (180, 180, 180) if bg_mean < 128 else (80, 80, 80)
+        work_arr[mask] = neutral
+        return Image.fromarray(work_arr, 'RGB')
+    except Exception:
+        return img_rgb
+
 
 def _remove_ai(img_rgba: Image.Image):
     """Run rembg on the image. Returns RGBA Image or None.
@@ -421,14 +512,18 @@ def _harden_alpha(img: Image.Image, engine: str,
         a = np.where(a > 230, 255.0, a)
 
         # Step 2: mid-range pixels (10 ≤ alpha ≤ 230)
-        #   → if color is close to background AND alpha is low → background halo
+        #   → if color is close to background AND alpha is not fully opaque → halo
         is_mid = (a >= 10) & (a <= 230)
-        # "Close to background" threshold: 50 on a 0-765 scale.
-        # Tight enough to spare near-bg logo elements that rembg kept opaque.
-        is_bg_colored = dist_from_bg < 50
-        # Only kill LOW-alpha background-colored pixels (alpha < 128 = less than
-        # 50% opaque). Solid logo pixels sharing the bg color have alpha ≥ 200.
-        a = np.where(is_mid & is_bg_colored & (a < 128), 0.0, a)
+        # "Close to background" threshold: 80 on a 0-765 Manhattan distance scale.
+        # Wide enough to catch dark-gray halos (not just pure black), narrow enough
+        # to preserve logo colors that only partially resemble the background.
+        is_bg_colored = dist_from_bg < 80
+        # Kill background-colored pixels that are less than 200/255 (≈78%) opaque.
+        # rembg gives the design's actual black outline pixels alpha ≥ 200 because
+        # they are structurally part of the foreground. Halo/fringe pixels at the
+        # background edge only reach alpha 20-180, so raising the cutoff to 200
+        # eliminates virtually all halo while keeping real logo outlines intact.
+        a = np.where(is_mid & is_bg_colored & (a < 200), 0.0, a)
 
         arr[..., 3] = a.astype(np.uint8)
         return Image.fromarray(arr, 'RGBA')
@@ -480,7 +575,7 @@ def _enclosed_bg_removal(img: Image.Image) -> Image.Image:
         alpha = arr[..., 3]
         h, w = alpha.shape
 
-        transparent = alpha < 30    # current transparent pixels
+        transparent = alpha < 40    # current transparent pixels (raised for better crevice removal)
         opaque = alpha >= 128       # definite foreground
 
         # BFS: find all transparent pixels reachable from the image border
@@ -514,7 +609,7 @@ def _enclosed_bg_removal(img: Image.Image) -> Image.Image:
         enclosed = transparent & ~visited
 
         # Expand enclosed region slightly to catch semi-transparent fringe
-        for _ in range(2):
+        for _ in range(5):
             dilated = np.zeros_like(enclosed)
             for dy, dx in [(-1,0),(1,0),(0,-1),(0,1),(-1,-1),(-1,1),(1,-1),(1,1)]:
                 dilated |= np.roll(np.roll(enclosed, dy, axis=0), dx, axis=1)

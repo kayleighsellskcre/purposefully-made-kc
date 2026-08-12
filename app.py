@@ -393,6 +393,24 @@ def create_app(config_class=Config):
     except Exception as e:
         print(f"Scheduler init skipped: {e}", file=sys_module.stderr)
     
+    # Diagnostic endpoint — tells us which git commit Railway is running.
+    # Check at /version to verify deployments landed.
+    @app.route('/version')
+    def _version():
+        import subprocess, datetime
+        try:
+            commit = subprocess.check_output(
+                ['git', 'rev-parse', '--short', 'HEAD'],
+                stderr=subprocess.DEVNULL
+            ).decode().strip()
+        except Exception:
+            commit = 'unknown'
+        return jsonify({
+            'commit': commit,
+            'time': datetime.datetime.utcnow().isoformat(),
+            'rembg_model_loaded': bool(getattr(__import__('services.image_processing', fromlist=['_SESSION_CACHE']), '_SESSION_CACHE', {})),
+        })
+
     # Add custom template filters
     @app.template_filter('image_url')
     def image_url_filter(path_or_url):

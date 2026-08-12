@@ -638,10 +638,104 @@ def sync_api():
     return redirect(url_for('admin.products'))
 
 
+@admin_bp.route('/products/sync-sanmar', methods=['POST'])
+@admin_required
+def sync_sanmar():
+    """Sync Bella+Canvas catalog from SanMar API"""
+    import sys
+    from services.sanmar_api import SanMarAPI
+    from models import ProductColorVariant
+    from datetime import datetime
+
+    print("=" * 80, file=sys.stderr, flush=True)
+    print("ADMIN: SYNCING BELLA+CANVAS FROM SANMAR", file=sys.stderr, flush=True)
+    print("=" * 80, file=sys.stderr, flush=True)
+
+    try:
+        api = SanMarAPI()
+        products_data = api.sync_bella_canvas_catalog()
+
+        if not products_data:
+            flash('No products returned from SanMar. Check your SanMar credentials in Railway environment variables.', 'error')
+            return redirect(url_for('admin.products'))
+
+        added = updated = variants_added = variants_updated = 0
+
+        for product_data in products_data:
+            color_variants_data = product_data.pop('color_variants', [])
+            style_num = product_data.get('style_number', '')
+            if not style_num:
+                continue
+
+            try:
+                existing = Product.query.filter_by(style_number=style_num).first()
+                if existing:
+                    for key, value in product_data.items():
+                        if hasattr(existing, key) and value is not None:
+                            setattr(existing, key, value)
+                    existing.is_active = True
+                    product = existing
+                    updated += 1
+                else:
+                    product_data['is_active'] = True
+                    product = Product(**product_data)
+                    db.session.add(product)
+                    added += 1
+
+                db.session.flush()
+
+                for variant_data in color_variants_data:
+                    color_name = variant_data.get('color_name', '')
+                    if not color_name:
+                        continue
+                    existing_variant = ProductColorVariant.query.filter_by(
+                        product_id=product.id, color_name=color_name
+                    ).first()
+                    if existing_variant:
+                        existing_variant.front_image_url = variant_data.get('front_image') or existing_variant.front_image_url
+                        existing_variant.back_image_url  = variant_data.get('back_image')  or existing_variant.back_image_url
+                        existing_variant.size_inventory  = variant_data.get('size_inventory')
+                        existing_variant.last_synced     = datetime.utcnow()
+                        variants_updated += 1
+                    else:
+                        db.session.add(ProductColorVariant(
+                            product_id=product.id,
+                            color_name=color_name,
+                            front_image_url=variant_data.get('front_image'),
+                            back_image_url=variant_data.get('back_image'),
+                            size_inventory=variant_data.get('size_inventory'),
+                            last_synced=datetime.utcnow()
+                        ))
+                        variants_added += 1
+
+                db.session.commit()
+
+            except Exception as e:
+                db.session.rollback()
+                print(f'  Error on {style_num}: {e}', file=sys.stderr, flush=True)
+                continue
+
+        flash(
+            f'SanMar sync complete! {added} products added, {updated} updated, '
+            f'{variants_added} color variants added, {variants_updated} updated.',
+            'success'
+        )
+
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        flash(f'Error during SanMar sync: {str(e)}', 'error')
+
+    return redirect(url_for('admin.products'))
+
+
 @admin_bp.route('/products/sync-all-bella-canvas', methods=['POST'])
 @admin_required
 def sync_all_bella_canvas():
-    """Sync the FULL Bella+Canvas catalog from S&S Activewear (all styles, not just mockup folders)"""
+    """Sync the FULL Bella+Canvas catalog from S&S Activewear (all styles, not just mockup folders)
+    NOTE: S&S Activewear no longer carries Bella+Canvas. Use SanMar sync instead."""
+    flash('Note: S&S Activewear no longer carries Bella+Canvas. Use the SanMar sync button for Bella+Canvas products.', 'warning')
     import sys
     from services.ssactivewear_api import SSActivewearAPI
     from models import ProductColorVariant

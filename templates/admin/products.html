@@ -250,6 +250,51 @@
     </div>
 </div>
 
+<!-- SanMar Tools -->
+<div class="prod-toolbar" style="margin-top:0.75rem;">
+    <span class="adm-eyebrow" style="margin-bottom:0; align-self:center;">SanMar Tools</span>
+    <div class="prod-tool-buttons">
+        <button type="button" class="prod-tool-btn prod-tool-btn--primary" onclick="openModal('sanmarSyncModal')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Sync Bella+Canvas from SanMar
+        </button>
+    </div>
+</div>
+
+<!-- SanMar Sync Modal -->
+<div id="sanmarSyncModal" class="prod-modal" role="dialog" aria-modal="true" aria-labelledby="sanmarSyncTitle">
+    <div class="prod-modal-card">
+        <div class="prod-modal-header">
+            <h2 id="sanmarSyncTitle">Sync Bella+Canvas from SanMar</h2>
+            <button class="prod-modal-close" onclick="closeModal('sanmarSyncModal')" aria-label="Close">&times;</button>
+        </div>
+        <div class="prod-modal-body">
+            <p>Syncs the <strong>Bella+Canvas catalog</strong> directly from SanMar — includes pricing, material info, and color variants.</p>
+            <div class="prod-modal-list">
+                <div class="prod-modal-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Adds new styles and updates existing ones
+                </div>
+                <div class="prod-modal-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Pulls real pricing and fabric/material details
+                </div>
+                <div class="prod-modal-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Syncs color variants with front/back images
+                </div>
+            </div>
+            <p class="prod-modal-note">Requires <code>SANMAR_CUSTOMER_NUMBER</code>, <code>SANMAR_USERNAME</code>, and <code>SANMAR_PASSWORD</code> to be set in Railway.</p>
+            <form action="{{ url_for('admin.sync_sanmar') }}" method="POST">
+                <div class="prod-modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('sanmarSyncModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Start SanMar Sync</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Full Bella+Canvas Sync Modal -->
 <div id="fullSyncModal" class="prod-modal" role="dialog" aria-modal="true" aria-labelledby="fullSyncTitle">
     <div class="prod-modal-card">
