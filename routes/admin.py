@@ -861,7 +861,13 @@ def import_bella_canvas_csv():
         if not style_num:
             continue
 
-        existing = Product.query.filter_by(style_number=style_num).first()
+        # Match existing products whether they were stored with or without the BC prefix.
+        # e.g. CSV style "BC3001C" should update the old S&S product stored as "3001C".
+        style_no_prefix = style_num.lstrip('BC').lstrip('bc') if style_num.upper().startswith('BC') else style_num
+        existing = (
+            Product.query.filter_by(style_number=style_num).first()
+            or Product.query.filter_by(style_number=style_no_prefix).first()
+        )
 
         if existing:
             for key, value in product_data.items():
@@ -887,7 +893,8 @@ def import_bella_canvas_csv():
                 product_id=product.id, color_name=color_name
             ).first()
             if existing_cv:
-                if cv_data.get('front_image_url') and not existing_cv.front_image_url:
+                # Always update image URL from CSV — CDN URLs are better than S&S images
+                if cv_data.get('front_image_url'):
                     existing_cv.front_image_url = cv_data['front_image_url']
                 existing_cv.last_synced = datetime.utcnow()
                 variants_updated += 1
