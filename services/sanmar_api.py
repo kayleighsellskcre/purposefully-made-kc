@@ -174,17 +174,19 @@ def _soap_request(style: str, color: str = '') -> ET.Element:
     # Detect non-XML (HTML error page, plain text, etc.)
     stripped = raw.lstrip()
     if stripped and stripped[0:1] != b'<':
+        preview = raw[:300].decode('utf-8', errors='replace').strip()
         raise SanMarSOAPError(
-            f'SanMar returned a non-XML response (first 200 chars): '
-            f'{raw[:200].decode("utf-8", errors="replace")}'
+            f'SanMar returned a non-XML response. '
+            f'Raw start: {repr(preview)}'
         )
 
     try:
         root = ET.fromstring(raw)
     except ET.ParseError as exc:
+        preview = raw[:300].decode('utf-8', errors='replace').strip()
         raise SanMarSOAPError(
             f'Could not parse SanMar response as XML ({exc}). '
-            f'First 200 chars: {raw[:200].decode("utf-8", errors="replace")}'
+            f'Raw response start: {repr(preview)}'
         )
 
     # Check for SOAP Fault

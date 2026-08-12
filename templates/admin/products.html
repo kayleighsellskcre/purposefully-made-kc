@@ -1359,6 +1359,14 @@ document.addEventListener('click', function(e) {
 });
 
 // ── SanMar connection test ────────────────────────────────────────────────────
+function escHtml(s) {
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
 function runSanmarTest() {
     var btn = document.getElementById('sanmarTestBtn');
     var result = document.getElementById('sanmarTestResult');
@@ -1379,14 +1387,15 @@ function runSanmarTest() {
     .then(function(data) {
         result.hidden = false;
         result.className = 'sanmar-test-result ' + (data.ok ? 'sanmar-test-ok' : 'sanmar-test-fail');
-        var html = '<strong>' + (data.ok ? '✓ ' : '✗ ') + data.message + '</strong>';
-        if (data.details) html += '<p>' + data.details + '</p>';
+        var msg = escHtml(data.ok ? '✓ ' : '✗ ') + escHtml(data.message);
+        var html = '<strong>' + msg + '</strong>';
+        if (data.details) html += '<p>' + escHtml(data.details) + '</p>';
         result.innerHTML = html;
     })
     .catch(function(err) {
         result.hidden = false;
         result.className = 'sanmar-test-result sanmar-test-fail';
-        result.innerHTML = '<strong>✗ Request failed</strong><p>' + err + '</p>';
+        result.innerHTML = '<strong>✗ Request failed</strong><p>' + escHtml(String(err)) + '</p>';
     })
     .finally(function() {
         btn.disabled = false;
