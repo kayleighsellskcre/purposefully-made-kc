@@ -943,7 +943,8 @@ def import_bella_canvas_csv():
                     back_image_url=cv_data.get('back_image_url', ''),
                     color_swatch_url=cv_data.get('color_swatch_url', ''),
                     size_inventory=json.dumps({}),
-                )                db.session.add(new_cv)
+                )
+                db.session.add(new_cv)
                 variants_added += 1
 
     db.session.commit()
