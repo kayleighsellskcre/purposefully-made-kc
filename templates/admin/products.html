@@ -66,6 +66,21 @@
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                     Fill Missing Images
                 </button>
+                <button type="button" class="prod-tool-btn prod-tool-btn--danger" onclick="openModal('unlinkSSModal')">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+                    Unlink S&amp;S Data
+                </button>
+            </div>
+        </div>
+        {% else %}
+        <!-- S&S not configured — still show the unlink button -->
+        <div class="prod-tool-group">
+            <span class="prod-tool-group-label">S&amp;S Activewear</span>
+            <div class="prod-tool-buttons">
+                <button type="button" class="prod-tool-btn prod-tool-btn--danger" onclick="openModal('unlinkSSModal')">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+                    Unlink S&amp;S Data
+                </button>
             </div>
         </div>
         {% endif %}
@@ -81,10 +96,6 @@
                 <button type="button" class="prod-tool-btn prod-tool-btn--primary" onclick="openModal('sanmarSyncModal')">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                     Sync Bella+Canvas from SanMar
-                </button>
-                <button type="button" class="prod-tool-btn prod-tool-btn--danger" onclick="openModal('unlinkSSModal')">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
-                    Unlink S&amp;S Data
                 </button>
             </div>
         </div>
