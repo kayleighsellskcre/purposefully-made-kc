@@ -49,20 +49,23 @@ _STATIC_ROOT = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static'
 
 def _existing_image_url(row: dict, side: str) -> str:
     """
-    Look up the original flat shirt image from static/images/products/.
-    Format: /static/images/products/{style}/{style}_{Color_Name}_front.jpg
-    e.g.  /static/images/products/3001/3001_Aqua_front.jpg
+    Look up a flat shirt image from local static folders.
+    Checks in order:
+      1. static/sanmar/{style}/{style}_{Color}_front.jpg  (user-uploaded SanMar match folder)
+      2. static/images/products/{style}/{style}_{Color}_front.jpg  (original S&S images)
 
     Returns the URL if the file exists on disk, otherwise empty string.
     """
     style = row.get('STYLE#', '').strip()
-    # Strip BC/bc prefix to match the folder names from the original S&S import
-    style_key = style.lstrip('BCbc') if style.upper().startswith('BC') else style
+    style_key = style[2:] if style.upper().startswith('BC') else style
     color = row.get('COLOR_NAME', '').strip().replace(' ', '_')
     filename = f'{style_key}_{color}_{side}.jpg'
-    rel_path = os.path.join('images', 'products', style_key, filename)
-    if os.path.exists(os.path.join(_STATIC_ROOT, rel_path)):
-        return f'/static/images/products/{style_key}/{filename}'
+
+    for base_dir in ('sanmar', 'images/products'):
+        rel_path = os.path.join(base_dir, style_key, filename)
+        if os.path.exists(os.path.join(_STATIC_ROOT, rel_path)):
+            return f'/static/{base_dir}/{style_key}/{filename}'
+
     return ''
 
 
