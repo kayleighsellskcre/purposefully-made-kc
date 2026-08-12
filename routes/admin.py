@@ -830,7 +830,7 @@ def test_sanmar_connection():
     """Quick connectivity test — returns JSON so the modal can show results inline."""
     from services.sanmar_api import test_connection
     result = test_connection()
-    return __import__('flask').jsonify(result)
+    return jsonify(result)
 
 
 @admin_bp.route('/products/sync-all-bella-canvas', methods=['POST'])
