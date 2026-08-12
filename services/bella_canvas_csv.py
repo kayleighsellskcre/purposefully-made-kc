@@ -47,21 +47,22 @@ def _front_image_url(row: dict) -> str:
     """
     Return a flat/ghost product image URL — no model photos.
     Priority:
-      1. PRODUCT_IMAGE filename  → cdnm.sanmar.com/catalog/images/{file}  (flat/ghost)
-      2. COLOR_PRODUCT_IMAGE filename → same base (may still be flat for some styles)
-    Falls back to FRONT_MODEL_IMAGE_URL only if nothing else available.
+      1. COLOR_PRODUCT_IMAGE filename → cdnm.sanmar.com/catalog/images/{file}
+         (color-specific flat shirt image from the SDL ZIP)
+      2. PRODUCT_IMAGE filename → same base (generic flat, not color-specific)
+    Falls back to FRONT_MODEL_IMAGE_URL only if nothing else is available.
     """
-    # Prefer the flat product image
-    product_img = row.get('PRODUCT_IMAGE', '').strip()
-    if product_img:
-        return f'{_CDN_BASE}/{product_img}'
-
-    # Color-specific product image (may be flat depending on the style)
+    # Color-specific flat image (best option)
     color_img = row.get('COLOR_PRODUCT_IMAGE', '').strip()
     if color_img:
         return f'{_CDN_BASE}/{color_img}'
 
-    # Last resort: model image from the full URL column
+    # Generic flat product image (same for all colors of a style)
+    product_img = row.get('PRODUCT_IMAGE', '').strip()
+    if product_img:
+        return f'{_CDN_BASE}/{product_img}'
+
+    # Last resort: model image
     url = row.get('FRONT_MODEL_IMAGE_URL', '').strip()
     if url and url.startswith('http'):
         return url
