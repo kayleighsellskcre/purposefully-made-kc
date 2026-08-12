@@ -827,20 +827,34 @@ def sync_sanmar():
 @admin_bp.route('/products/cleanup-old-ss', methods=['POST'])
 @admin_required
 def cleanup_old_ss_products():
-    """Delete Bella+Canvas products still using old S&S style numbers (no BC prefix)."""
+    """Delete old non-BC-prefixed Bella+Canvas products left over from S&S sync."""
     from models import Product, db
+    # Target products without a BC prefix where we can identify them as Bella+Canvas
     old_products = Product.query.filter(
-        Product.brand == 'Bella+Canvas',
-        ~Product.style_number.ilike('BC%')
+        ~Product.style_number.ilike('BC%'),
+        db.or_(
+            Product.brand.ilike('%bella%'),
+            Product.brand.ilike('%canvas%'),
+            Product.name.ilike('%bella%canvas%'),
+            Product.name.ilike('%BELLA+CANVAS%'),
+        )
     ).all()
-    count = len(old_products)
-    for p in old_products:
+
+    # Also catch any non-BC product whose name starts with BELLA+CANVAS® (the CSV title format)
+    bella_title = Product.query.filter(
+        ~Product.style_number.ilike('BC%'),
+        Product.name.ilike('BELLA+CANVAS%')
+    ).all()
+    all_old = {p.id: p for p in old_products + bella_title}
+
+    count = len(all_old)
+    for p in all_old.values():
         db.session.delete(p)
     db.session.commit()
     if count:
-        flash(f'Cleaned up {count} old S&S Bella+Canvas products (replaced by BC-prefixed CSV imports).', 'success')
+        flash(f'Cleaned up {count} old S&S Bella+Canvas products (no BC prefix).', 'success')
     else:
-        flash('Nothing to clean up — no old S&S products found.', 'info')
+        flash('Nothing found. Old S&S products may have already been updated, or use the admin list to delete manually.', 'info')
     return redirect(url_for('admin.products'))
 
 
