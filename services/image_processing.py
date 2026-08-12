@@ -34,9 +34,9 @@ except Exception:
 _SESSION_CACHE = {}
 _REMBG_FAILED = False
 _MODEL_PRIORITY = [
-    'isnet-general-use',
-    'u2net',
-    'u2netp',
+    'u2netp',            # 4 MB — boots on Railway without OOM
+    'u2net',             # 180 MB — only if u2netp is missing
+    'isnet-general-use', # 170 MB — too heavy to preload on small containers
 ]
 
 
