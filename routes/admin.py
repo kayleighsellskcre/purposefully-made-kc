@@ -828,13 +828,14 @@ def sync_sanmar():
 @admin_required
 def fetch_ss_images():
     """
-    For every BC product that has color variants with no front image,
-    call the S&S Activewear API and store the ghost-image CDN URLs directly
-    in the DB.  No downloading — the browser fetches from S&S CDN.
-
+    For every BC product, call S&S Activewear API and:
+    - CREATE ProductColorVariant records if they don't exist yet
+    - UPDATE front/back image URLs from S&S ghost images on existing ones
+    Stores S&S CDN URLs directly — no local download needed.
     Requires SSACTIVEWEAR_API_KEY + SSACTIVEWEAR_ACCOUNT_NUMBER in Railway env.
     """
     import os, sys
+    from datetime import datetime
     from models import db, Product, ProductColorVariant
 
     api_key = os.getenv('SSACTIVEWEAR_API_KEY', '').strip()
@@ -857,82 +858,99 @@ def fetch_ss_images():
                 return None
             return url if url.startswith('http') else cdn + url.lstrip('/')
 
-        # Only process BC products with at least one variant missing images
-        products_needing_images = (
-            Product.query
-            .filter(Product.style_number.ilike('BC%'))
-            .all()
-        )
+        bc_products = Product.query.filter(Product.style_number.ilike('BC%')).all()
 
+        created_variants = 0
         updated_variants = 0
         updated_products = 0
         skipped = 0
         errors = []
 
-        for product in products_needing_images:
-            # Check if this product has any variants missing front images
-            variants_missing = [
-                v for v in product.color_variants
-                if not v.front_image_url
-            ]
-            if not variants_missing:
-                continue  # All variants already have images
-
-            # Strip "BC" prefix for S&S lookup (S&S uses "3001" not "BC3001")
+        for product in bc_products:
+            # Strip "BC" prefix — S&S uses "3001" not "BC3001"
             ss_style = product.style_number[2:] if product.style_number.upper().startswith('BC') else product.style_number
 
             try:
-                ss_products = api.get_products_by_style_number(ss_style)
-                if not ss_products:
-                    # Also try with BC prefix
-                    ss_products = api.get_products_by_style_number(product.style_number)
-                if not ss_products:
+                ss_rows = api.get_products_by_style_number(ss_style)
+                if not ss_rows:
+                    ss_rows = api.get_products_by_style_number(product.style_number)
+                if not ss_rows:
                     skipped += 1
                     continue
 
-                # Build color → image URLs map from S&S response
-                color_image_map: dict[str, dict] = {}
-                for p in ss_products:
-                    color_name = (p.get('colorName') or '').strip()
-                    if not color_name or color_name in color_image_map:
+                # Build color → {front, back, hex} map from S&S rows
+                color_map: dict[str, dict] = {}
+                for row in ss_rows:
+                    color_name = (row.get('colorName') or '').strip()
+                    if not color_name:
+                        continue
+                    key = color_name.lower()
+                    if key in color_map:
                         continue
                     front = _img(
-                        p.get('ghostFrontImage') or p.get('colorFrontImage') or
-                        p.get('frontImage') or p.get('frontmodel')
+                        row.get('ghostFrontImage') or row.get('colorFrontImage') or
+                        row.get('frontImage') or row.get('frontmodel')
                     )
                     back = _img(
-                        p.get('ghostBackImage') or p.get('colorBackImage') or
-                        p.get('backImage') or p.get('backmodel')
+                        row.get('ghostBackImage') or row.get('colorBackImage') or
+                        row.get('backImage') or row.get('backmodel')
                     )
+                    color_hex = row.get('colorHex') or row.get('hex') or None
                     if front or back:
-                        color_image_map[color_name.lower()] = {'front': front, 'back': back}
+                        color_map[key] = {
+                            'name': color_name,
+                            'front': front,
+                            'back': back,
+                            'hex': color_hex,
+                        }
 
-                if not color_image_map:
+                if not color_map:
                     skipped += 1
                     continue
 
-                # Update matching variants
-                product_updated = False
-                for variant in variants_missing:
-                    key = (variant.color_name or '').lower()
-                    if key not in color_image_map:
-                        continue
-                    imgs = color_image_map[key]
-                    if imgs.get('front') and not variant.front_image_url:
-                        variant.front_image_url = imgs['front']
-                        updated_variants += 1
-                        product_updated = True
-                    if imgs.get('back') and not variant.back_image_url:
-                        variant.back_image_url = imgs['back']
+                # Index existing variants by normalised color name
+                existing: dict[str, ProductColorVariant] = {
+                    (v.color_name or '').lower(): v
+                    for v in product.color_variants.all()
+                }
 
-                if product_updated:
-                    # Set front_mockup_template from the first variant with a front image
-                    if not product.front_mockup_template:
-                        first = next(
-                            (v for v in product.color_variants if v.front_image_url), None
+                product_changed = False
+                for key, imgs in color_map.items():
+                    if key in existing:
+                        # Update images on existing variant if missing
+                        variant = existing[key]
+                        changed = False
+                        if imgs['front'] and not variant.front_image_url:
+                            variant.front_image_url = imgs['front']
+                            changed = True
+                        if imgs['back'] and not variant.back_image_url:
+                            variant.back_image_url = imgs['back']
+                            changed = True
+                        if changed:
+                            updated_variants += 1
+                            product_changed = True
+                    else:
+                        # Create a brand-new color variant with image URLs
+                        new_v = ProductColorVariant(
+                            product_id=product.id,
+                            color_name=imgs['name'],
+                            color_hex=imgs['hex'],
+                            front_image_url=imgs['front'],
+                            back_image_url=imgs['back'],
+                            last_synced=datetime.utcnow(),
                         )
-                        if first:
-                            product.front_mockup_template = first.front_image_url
+                        db.session.add(new_v)
+                        created_variants += 1
+                        product_changed = True
+
+                if product_changed:
+                    # Populate product-level mockup template if missing
+                    if not product.front_mockup_template:
+                        first_front = next(
+                            (v['front'] for v in color_map.values() if v.get('front')), None
+                        )
+                        if first_front:
+                            product.front_mockup_template = first_front
                     updated_products += 1
 
                 db.session.commit()
@@ -942,11 +960,15 @@ def fetch_ss_images():
                 errors.append(f'{product.style_number}: {e}')
                 print(f'fetch_ss_images error for {product.style_number}: {e}', file=sys.stderr)
 
-        msg = f'Done! Updated images for {updated_products} products / {updated_variants} color variants.'
+        msg = (
+            f'Done! Processed {updated_products} products — '
+            f'created {created_variants} new color variants, '
+            f'updated {updated_variants} existing ones.'
+        )
         if skipped:
-            msg += f' {skipped} styles had no matching S&S data.'
+            msg += f' {skipped} styles not found in S&S.'
         if errors:
-            msg += f' Errors: {"; ".join(errors[:3])}'
+            msg += f' Errors on: {", ".join(errors[:3])}'
         flash(msg, 'success' if not errors else 'warning')
 
     except ValueError as e:
@@ -1129,18 +1151,21 @@ def test_sanmar_api():
 
     try:
         api = SanMarAPI()
-        # Try fetching one BC style — if BC access is approved we get data; otherwise auth error
-        data = api.get_product_info('BC3001')
-        if data:
+        # Try fetching one page of catalog — if BC access approved we get product data
+        products = api.fetch_full_catalog()
+        if products:
+            sample = products[0]
             result['bc_access'] = True
             result['sample'] = {
-                'name': data.get('name'),
-                'colors': len(data.get('color_variants', [])),
-                'front_image': (data.get('color_variants') or [{}])[0].get('front_image'),
+                'name': sample.get('name'),
+                'style': sample.get('style_number'),
+                'colors': len(sample.get('color_variants', [])),
+                'front_image': (sample.get('color_variants') or [{}])[0].get('front_image'),
             }
+            result['total_products'] = len(products)
         else:
             result['bc_access'] = False
-            result['error'] = 'API returned no data for BC3001'
+            result['error'] = 'API returned no products — BC access not yet approved by SanMar'
     except SanMarAuthError as e:
         result['bc_access'] = False
         result['error'] = f'Auth failed: {e}'
