@@ -230,7 +230,7 @@ class SSActivewearAPI:
             ]
             for params in attempts:
                 try:
-                    response = requests.get(endpoint, auth=(self.account_number, self.api_key), params=params, timeout=60)
+                    response = requests.get(endpoint, auth=(self.account_number, self.api_key), params=params, timeout=8)
                     if response.status_code == 401:
                         raise ValueError("Invalid S&S API credentials (401).")
                     if response.status_code == 403:

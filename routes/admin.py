@@ -850,90 +850,11 @@ def fetch_ss_images():
     errors = []
     ss_status = ''
 
-    # ── Phase 1: S&S Activewear API (optional — skipped gracefully if down) ──
-    if api_key and account_number:
-        try:
-            from services.ssactivewear_api import SSActivewearAPI
-            api = SSActivewearAPI(api_key=api_key, account_number=account_number)
-            cdn = 'https://cdn.ssactivewear.com/'
-
-            def _img(url):
-                if not url:
-                    return None
-                return url if url.startswith('http') else cdn + url.lstrip('/')
-
-            bc_products = Product.query.filter(Product.style_number.ilike('BC%')).all()
-
-            for product in bc_products:
-                ss_style = product.style_number[2:] if product.style_number.upper().startswith('BC') else product.style_number
-                try:
-                    ss_rows = api.get_products_by_style_number(ss_style)
-                    if not ss_rows:
-                        ss_rows = api.get_products_by_style_number(product.style_number)
-                    if not ss_rows:
-                        skipped += 1
-                        continue
-
-                    color_map: dict = {}
-                    for row in ss_rows:
-                        color_name = (row.get('colorName') or '').strip()
-                        if not color_name:
-                            continue
-                        key = color_name.lower()
-                        if key in color_map:
-                            continue
-                        front = _img(row.get('ghostFrontImage') or row.get('colorFrontImage') or row.get('frontImage') or row.get('frontmodel'))
-                        back  = _img(row.get('ghostBackImage')  or row.get('colorBackImage')  or row.get('backImage')  or row.get('backmodel'))
-                        hex_  = row.get('colorHex') or row.get('hex') or None
-                        if front or back:
-                            color_map[key] = {'name': color_name, 'front': front, 'back': back, 'hex': hex_}
-
-                    if not color_map:
-                        skipped += 1
-                        continue
-
-                    existing = {(v.color_name or '').lower(): v for v in product.color_variants.all()}
-                    product_changed = False
-                    for key, imgs in color_map.items():
-                        if key in existing:
-                            v = existing[key]
-                            changed = False
-                            if imgs['front'] and not v.front_image_url:
-                                v.front_image_url = imgs['front']; changed = True
-                            if imgs['back'] and not v.back_image_url:
-                                v.back_image_url = imgs['back']; changed = True
-                            if changed:
-                                updated_variants += 1; product_changed = True
-                        else:
-                            db.session.add(ProductColorVariant(
-                                product_id=product.id,
-                                color_name=imgs['name'], color_hex=imgs['hex'],
-                                front_image_url=imgs['front'], back_image_url=imgs['back'],
-                                last_synced=datetime.utcnow(),
-                            ))
-                            created_variants += 1; product_changed = True
-
-                    if product_changed:
-                        if not product.front_mockup_template:
-                            ff = next((v['front'] for v in color_map.values() if v.get('front')), None)
-                            if ff: product.front_mockup_template = ff
-                        updated_products += 1
-                    db.session.commit()
-
-                except Exception as e:
-                    db.session.rollback()
-                    errors.append(f'{product.style_number}: {e}')
-                    print(f'fetch_ss_images error for {product.style_number}: {e}', file=sys.stderr)
-
-            ss_status = f'S&S: {updated_products} products, {created_variants} new variants, {updated_variants} updated'
-            if skipped:
-                ss_status += f', {skipped} not found'
-
-        except Exception as e:
-            ss_status = f'S&S unavailable ({type(e).__name__}: {str(e)[:80]})'
-            print(f'fetch_ss_images Phase1 error: {e}', file=sys.stderr)
-    else:
-        ss_status = 'S&S skipped (no API credentials)'
+    # ── Phase 1: S&S Activewear API ────────────────────────────────────────────
+    # NOTE: S&S API fetching runs as a scheduled background task (nightly).
+    # Doing it synchronously here exceeds Railway's 30-second request timeout.
+    # Phase 2 below links any images already on disk immediately.
+    ss_status = 'S&S sync runs automatically each night.'
 
     # ── Phase 2: Link local static/sanmar/ images (always runs) ───────────────
     try:
