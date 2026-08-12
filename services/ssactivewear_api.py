@@ -222,15 +222,14 @@ class SSActivewearAPI:
         """
         try:
             endpoint = f"{self.api_url}/v2/products"
-            # Try multiple identifiers - S&S uses different formats per brand
+            # S&S API v2 correct parameter names (camelCase)
             attempts = [
-                ('partnumber', style_number),
-                ('style', style_number),
-                ('style', f'bella + canvas {style_number}'),  # Full style name for Bella+Canvas
+                {'styleNumber': style_number},
+                {'styleNumber': style_number, 'brandName': 'Bella+Canvas'},
+                {'partNumber': style_number},
             ]
-            for param_name, param_value in attempts:
+            for params in attempts:
                 try:
-                    params = {param_name: param_value}
                     response = requests.get(endpoint, auth=(self.account_number, self.api_key), params=params, timeout=60)
                     if response.status_code == 401:
                         raise ValueError("Invalid S&S API credentials (401).")
@@ -239,7 +238,7 @@ class SSActivewearAPI:
                     response.raise_for_status()
                     data = response.json()
                     products = data if isinstance(data, list) else data.get('products', data.get('data', []))
-                    if products and isinstance(products, list):
+                    if products and isinstance(products, list) and len(products) > 0:
                         return products
                 except requests.exceptions.HTTPError:
                     continue  # 404 or similar - try next identifier

@@ -866,6 +866,21 @@ def fetch_ss_images():
         skipped = 0
         errors = []
 
+        # Debug: test one style first to confirm S&S API response format
+        first_product = bc_products[0] if bc_products else None
+        debug_info = None
+        if first_product:
+            test_style = first_product.style_number[2:] if first_product.style_number.upper().startswith('BC') else first_product.style_number
+            import requests as _req
+            _test = _req.get(
+                f'{api.api_url}/v2/products',
+                auth=(api.account_number, api.api_key),
+                params={'styleNumber': test_style},
+                timeout=30
+            )
+            debug_info = f'S&S test [{test_style}]: HTTP {_test.status_code}, body[:300]={_test.text[:300]}'
+            print(debug_info, file=sys.stderr)
+
         for product in bc_products:
             # Strip "BC" prefix — S&S uses "3001" not "BC3001"
             ss_style = product.style_number[2:] if product.style_number.upper().startswith('BC') else product.style_number
@@ -1039,6 +1054,8 @@ def fetch_ss_images():
             msg += f' {skipped} styles not found in S&S.'
         if errors:
             msg += f' Errors: {", ".join(errors[:3])}'
+        if debug_info:
+            msg += f' | DEBUG: {debug_info}'
         flash(msg, 'success' if not errors else 'warning')
 
     except ValueError as e:
