@@ -203,27 +203,45 @@ def test_connection() -> dict:
         }
 
     try:
-        root = _brand_request(timeout=15)
-        count = sum(
-            1 for e in root.iter()
+        root = _brand_request(timeout=30)
+
+        # Collect all unique tag names in the response for diagnostics
+        all_tags = sorted({
+            (e.tag.split('}')[-1] if '}' in e.tag else e.tag)
+            for e in root.iter()
+        })
+
+        # Count listResponse rows and sample the first one for a style/color
+        list_rows = [
+            e for e in root.iter()
             if (e.tag.split('}')[-1] if '}' in e.tag else e.tag) == 'listResponse'
-        )
-        if count > 0:
+        ]
+        count = len(list_rows)
+
+        sample_style = ''
+        sample_color = ''
+        if list_rows:
+            sample_style = _ns_find(list_rows[0], 'style')
+            sample_color = _ns_find(list_rows[0], 'catalogColor') or _ns_find(list_rows[0], 'color')
+
+        if count > 0 and sample_style:
             return {
                 'ok': True,
                 'message': (
-                    f'Connected! SanMar returned {count} product rows for Bella+Canvas. '
-                    'Run "Sync SanMar" to import them.'
+                    f'Connected! {count} product rows received. '
+                    f'First row: style={sample_style}, color={sample_color}. '
+                    'Click "Sync SanMar" to import.'
                 ),
-                'details': None,
+                'details': f'Tags in response: {", ".join(all_tags)}',
             }
+        # Connected but empty or no style data
         return {
             'ok': False,
-            'message': 'Connected but received no product rows.',
+            'message': f'Connected but got {count} listResponse rows with no style data.',
             'details': (
-                'Credentials accepted but the response was empty. '
-                'Confirm SANMAR_CUSTOMER_NUMBER and that your account '
-                'has access to Bella+Canvas products.'
+                f'Tags found in response: {", ".join(all_tags)}. '
+                'Your SanMar account may not have access to the Product Info API for Bella+Canvas. '
+                'Contact SanMar support to confirm your account is provisioned for Web Services.'
             ),
         }
     except SanMarAuthError as exc:
