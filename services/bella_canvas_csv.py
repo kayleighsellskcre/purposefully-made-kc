@@ -19,6 +19,7 @@ We group by STYLE# → colors → sizes.
 import csv
 import json
 import io
+import os
 from collections import defaultdict
 
 
@@ -42,13 +43,40 @@ def _extract_fabric(description: str) -> str:
 # Base URL path for locally hosted SDL images (uploaded to static/sanmar/front/SDL/)
 _SDL_BASE = '/static/sanmar/front/SDL'
 
+# Absolute path to static/ folder — used to check file existence before building URL
+_STATIC_ROOT = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static')
+
+
+def _existing_image_url(row: dict, side: str) -> str:
+    """
+    Look up the original flat shirt image from static/images/products/.
+    Format: /static/images/products/{style}/{style}_{Color_Name}_front.jpg
+    e.g.  /static/images/products/3001/3001_Aqua_front.jpg
+
+    Returns the URL if the file exists on disk, otherwise empty string.
+    """
+    style = row.get('STYLE#', '').strip()
+    # Strip BC/bc prefix to match the folder names from the original S&S import
+    style_key = style.lstrip('BCbc') if style.upper().startswith('BC') else style
+    color = row.get('COLOR_NAME', '').strip().replace(' ', '_')
+    filename = f'{style_key}_{color}_{side}.jpg'
+    rel_path = os.path.join('images', 'products', style_key, filename)
+    if os.path.exists(os.path.join(_STATIC_ROOT, rel_path)):
+        return f'/static/images/products/{style_key}/{filename}'
+    return ''
+
 
 def _front_image_url(row: dict) -> str:
     """
     Priority:
-    1. Color-specific flat front image from SDL (no model, color-accurate)
-    2. Style-level flat image from SDL PRODUCT_IMAGE folder
+    1. Original flat shirt image from static/images/products/ (user's preferred look)
+    2. Color-specific flat front image from SDL (no model, color-accurate)
+    3. Style-level SDL flat image
     """
+    existing = _existing_image_url(row, 'front')
+    if existing:
+        return existing
+
     color_img = row.get('COLOR_PRODUCT_IMAGE', '').strip()
     if color_img and '_flat_front' in color_img.lower():
         return f'{_SDL_BASE}/COLOR_PRODUCT_IMAGE/{color_img}'
@@ -63,9 +91,14 @@ def _front_image_url(row: dict) -> str:
 def _back_image_url(row: dict) -> str:
     """
     Priority:
-    1. Color-specific flat back image (replace _flat_front with _flat_back)
-    2. Style-level back image from PRODUCT_IMAGE folder (BC3001B.jpg pattern)
+    1. Original flat back image from static/images/products/
+    2. Color-specific flat back image from SDL
+    3. Style-level SDL back image
     """
+    existing = _existing_image_url(row, 'back')
+    if existing:
+        return existing
+
     color_img = row.get('COLOR_PRODUCT_IMAGE', '').strip()
     if color_img and '_flat_front' in color_img.lower():
         back_img = color_img.lower().replace('_flat_front', '_flat_back')
