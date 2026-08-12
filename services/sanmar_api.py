@@ -25,21 +25,23 @@ from urllib.error import URLError, HTTPError
 # ---------------------------------------------------------------------------
 
 BELLA_CANVAS_STYLES = [
-    '3001C', '3001CVC', '3001U', '3005', '3010',
-    '3015', '3021', '3024', '3025', '3051CVC',
-    '3055C', '3100', '3413', '3413CVC', '3413S',
-    '3415', '3415C', '3480', '3480C', '3485',
-    '6004', '6004CVC', '6035', '6400', '6400CVC',
-    '6405', '6413', '6413S', '6415', '6435',
-    '3001Y', '3001YCVC', '3413Y', '3413YCVC', '3001B',
-    '3739', '3901', '3719', '3729', '3945',
-    '7719', '7720', '7729', '7739', '3501CVC',
-    '7519', '7520', '7529', '7539',
-    '3719Y', '3729Y', '3739Y',
-    '8803', '3501', '3501T',
-    '6682', '6013',
-    '3727', '3728', '8822',
-    '100B', '100CVC',
+    'BC3001C', 'BC3001CVC', 'BC3001U', 'BC3005', 'BC3010',
+    'BC3015', 'BC3021', 'BC3024', 'BC3025', 'BC3051CVC',
+    'BC3055C', 'BC3100', 'BC3413', 'BC3413CVC', 'BC3413S',
+    'BC3415', 'BC3415C', 'BC3480', 'BC3480C', 'BC3485',
+    'BC6004', 'BC6004CVC', 'BC6035', 'BC6400', 'BC6400CVC',
+    'BC6405', 'BC6413', 'BC6413S', 'BC6415', 'BC6435',
+    'BC3001Y', 'BC3001YCVC', 'BC3413Y', 'BC3413YCVC', 'BC3001B',
+    'BC3739', 'BC3901', 'BC3719', 'BC3729', 'BC3945',
+    'BC7719', 'BC7720', 'BC7729', 'BC7739', 'BC3501CVC',
+    'BC7519', 'BC7520', 'BC7529', 'BC7539',
+    'BC3719Y', 'BC3729Y', 'BC3739Y',
+    'BC8803', 'BC3501', 'BC3501T',
+    'BC6682', 'BC6013',
+    'BC3727', 'BC3728', 'BC8822',
+    'BC100B', 'BC100CVC',
+    # Without BC prefix as fallback (pre-acquisition style numbers)
+    '3001C', '3001CVC', '3413', '3413CVC', '3001Y', '3719', '3739',
 ]
 _seen: set = set()
 BELLA_CANVAS_STYLES = [s for s in BELLA_CANVAS_STYLES if not (_seen.add(s) or s in _seen)]
@@ -190,11 +192,14 @@ def _do_soap_request(body_bytes: bytes, timeout: int = 30) -> ET.Element:
     return root
 
 
+_WORKING_BRAND_NAME: str = 'BELLA+CANVAS'  # updated by test_connection on success
+
+
 def _brand_request(timeout: int = 120) -> ET.Element:
     """Fetch the full Bella+Canvas catalog from SanMar in one call."""
     customer_number, username, password = get_credentials()
     body = _SOAP_BRAND_TEMPLATE.format(
-        brand='Bella+Canvas',
+        brand='BELLA+CANVAS',
         customer_number=customer_number,
         username=username,
         password=password,
@@ -220,68 +225,83 @@ def test_connection() -> dict:
             ),
         }
 
-    try:
-        root = _brand_request(timeout=30)
+    # Try multiple brand name spellings — SanMar's API is case-sensitive
+    brand_candidates = ['BELLA+CANVAS', 'Bella+Canvas', 'Bella + Canvas', 'BELLA + CANVAS']
 
-        # Collect all unique tag names in the response for diagnostics
-        all_tags = sorted({
-            (e.tag.split('}')[-1] if '}' in e.tag else e.tag)
-            for e in root.iter()
-        })
+    last_error = ''
+    for brand in brand_candidates:
+        try:
+            customer_number, username, password = get_credentials()
+            body = _SOAP_BRAND_TEMPLATE.format(
+                brand=brand,
+                customer_number=customer_number,
+                username=username,
+                password=password,
+            ).encode('utf-8')
+            root = _do_soap_request(body, timeout=30)
 
-        # Count listResponse rows and sample the first one for a style/color
-        list_rows = [
-            e for e in root.iter()
-            if (e.tag.split('}')[-1] if '}' in e.tag else e.tag) == 'listResponse'
-        ]
-        count = len(list_rows)
+            all_tags = sorted({
+                (e.tag.split('}')[-1] if '}' in e.tag else e.tag)
+                for e in root.iter()
+            })
+            list_rows = [
+                e for e in root.iter()
+                if (e.tag.split('}')[-1] if '}' in e.tag else e.tag) == 'listResponse'
+            ]
+            count = len(list_rows)
+            sample_style = _ns_find(list_rows[0], 'style') if list_rows else ''
+            sample_color = (
+                _ns_find(list_rows[0], 'catalogColor') or _ns_find(list_rows[0], 'color')
+            ) if list_rows else ''
 
-        sample_style = ''
-        sample_color = ''
-        if list_rows:
-            sample_style = _ns_find(list_rows[0], 'style')
-            sample_color = _ns_find(list_rows[0], 'catalogColor') or _ns_find(list_rows[0], 'color')
-
-        if count > 0 and sample_style:
+            if count > 0 and sample_style:
+                return {
+                    'ok': True,
+                    'message': (
+                        f'Connected! Brand name "{brand}" works. '
+                        f'{count} rows received. '
+                        f'First row: style={sample_style}, color={sample_color}.'
+                    ),
+                    'details': f'Tags in response: {", ".join(all_tags)}',
+                }
+            # Connected but no product rows — note the brand that worked (no error) but empty
+            last_error = (
+                f'Brand "{brand}" accepted but returned 0 product rows. '
+                f'Tags: {", ".join(all_tags)}'
+            )
+        except SanMarAuthError as exc:
             return {
-                'ok': True,
-                'message': (
-                    f'Connected! {count} product rows received. '
-                    f'First row: style={sample_style}, color={sample_color}. '
-                    'Click "Sync SanMar" to import.'
-                ),
-                'details': f'Tags in response: {", ".join(all_tags)}',
+                'ok': False,
+                'message': f'Authentication failed: {exc}',
+                'details': 'Double-check SANMAR_USERNAME and SANMAR_PASSWORD in Railway.',
             }
-        # Connected but empty or no style data
-        return {
-            'ok': False,
-            'message': f'Connected but got {count} listResponse rows with no style data.',
-            'details': (
-                f'Tags found in response: {", ".join(all_tags)}. '
-                'Your SanMar account may not have access to the Product Info API for Bella+Canvas. '
-                'Contact SanMar support to confirm your account is provisioned for Web Services.'
-            ),
-        }
-    except SanMarAuthError as exc:
-        return {'ok': False, 'message': f'Authentication failed: {exc}',
-                'details': 'Double-check SANMAR_USERNAME and SANMAR_PASSWORD in Railway.'}
-    except SanMarSOAPError as exc:
-        return {
-            'ok': False,
-            'message': f'SanMar error: {exc}',
-            'details': (
-                'This is a message from SanMar\'s API. Common causes: '
-                '(1) Wrong SANMAR_CUSTOMER_NUMBER, '
-                '(2) Account not provisioned for Web Services — contact SanMar support at 800-426-6399 '
-                'and ask to enable "Product Info Web Services" on your account.'
-            ),
-        }
-    except (URLError, OSError) as exc:
-        return {'ok': False, 'message': f'Network error: {exc}',
-                'details': 'Could not reach ws.sanmar.com:8080.'}
-    except Exception as exc:
-        return {'ok': False, 'message': f'Unexpected error: {exc}',
-                'details': 'Check Railway logs for the traceback.'}
+        except SanMarSOAPError as exc:
+            last_error = f'Brand "{brand}": {exc}'
+            continue  # try next brand name
+        except (URLError, OSError) as exc:
+            return {
+                'ok': False,
+                'message': f'Network error: {exc}',
+                'details': 'Could not reach ws.sanmar.com:8080.',
+            }
+        except Exception as exc:
+            return {
+                'ok': False,
+                'message': f'Unexpected error: {exc}',
+                'details': 'Check Railway logs for the traceback.',
+            }
+
+    # None of the brand names worked
+    return {
+        'ok': False,
+        'message': f'Could not find valid brand name. Last error: {last_error}',
+        'details': (
+            'Tried: BELLA+CANVAS, Bella+Canvas, Bella + Canvas. '
+            'Your SanMar account may need to be provisioned for Web Services API access — '
+            'call SanMar support at 800-426-6399 and ask to enable '
+            '"Product Info Web Services" on your account.'
+        ),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -333,10 +353,33 @@ class SanMarAPI:
     def fetch_full_catalog(self) -> list[dict]:
         """
         Fetch the entire Bella+Canvas catalog in one SOAP call.
-        Returns a list of parsed product dicts (one per style).
-        Raises SanMarAuthError on auth failure, SanMarSOAPError on other SOAP issues.
+        Tries multiple brand name spellings until one succeeds.
         """
-        root = _brand_request(timeout=120)
+        brand_candidates = ['BELLA+CANVAS', 'Bella+Canvas', 'Bella + Canvas', 'BELLA + CANVAS']
+        customer_number, username, password = get_credentials()
+        root = None
+        last_error = ''
+
+        for brand in brand_candidates:
+            try:
+                body = _SOAP_BRAND_TEMPLATE.format(
+                    brand=brand,
+                    customer_number=customer_number,
+                    username=username,
+                    password=password,
+                ).encode('utf-8')
+                root = _do_soap_request(body, timeout=120)
+                print(f'[SanMarAPI] Brand name "{brand}" accepted.', file=sys.stderr, flush=True)
+                break
+            except SanMarAuthError:
+                raise
+            except SanMarSOAPError as exc:
+                last_error = str(exc)
+                print(f'[SanMarAPI] Brand "{brand}" failed: {exc}', file=sys.stderr, flush=True)
+                continue
+
+        if root is None:
+            raise SanMarSOAPError(f'No valid brand name found. Last error: {last_error}')
 
         # Group rows by style
         styles: dict[str, dict] = {}
