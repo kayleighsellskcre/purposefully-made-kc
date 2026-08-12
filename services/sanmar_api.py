@@ -102,16 +102,17 @@ _SOAP_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
     xmlns:ns2="http://impl.webservice.integration.sanmar.com/">
   <soapenv:Header/>
   <soapenv:Body>
-    <ns2:getProductInfoByStyle>
+    <ns2:getProductInfoByStyleColor>
       <arg0>
         <style>{style}</style>
+        <color></color>
       </arg0>
       <arg1>
         <sanMarCustomerNumber>{customer_number}</sanMarCustomerNumber>
         <sanMarUserName>{username}</sanMarUserName>
         <sanMarUserPassword>{password}</sanMarUserPassword>
       </arg1>
-    </ns2:getProductInfoByStyle>
+    </ns2:getProductInfoByStyleColor>
   </soapenv:Body>
 </soapenv:Envelope>"""
 
