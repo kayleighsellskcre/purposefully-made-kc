@@ -46,39 +46,31 @@ def _extract_fabric(description: str) -> str:
 def _front_image_url(row: dict) -> str:
     """
     Return a flat/ghost product image URL — no model photos.
-    Priority:
-      1. COLOR_PRODUCT_IMAGE filename → cdnm.sanmar.com/catalog/images/{file}
-         (color-specific flat shirt image from the SDL ZIP)
-      2. PRODUCT_IMAGE filename → same base (generic flat, not color-specific)
-    Falls back to FRONT_MODEL_IMAGE_URL only if nothing else is available.
+    Uses PRODUCT_IMAGE (the plain flat shirt, no people).
+    Falls back to COLOR_PRODUCT_IMAGE only if needed.
     """
-    # Color-specific flat image (best option)
-    color_img = row.get('COLOR_PRODUCT_IMAGE', '').strip()
-    if color_img:
-        return f'{_CDN_BASE}/{color_img}'
-
-    # Generic flat product image (same for all colors of a style)
+    # Flat product image — no people, style-level
     product_img = row.get('PRODUCT_IMAGE', '').strip()
     if product_img:
         return f'{_CDN_BASE}/{product_img}'
 
-    # Last resort: model image
-    url = row.get('FRONT_MODEL_IMAGE_URL', '').strip()
-    if url and url.startswith('http'):
-        return url
+    # Fallback: color-specific image (may have model on CDN even if local SDL is flat)
+    color_img = row.get('COLOR_PRODUCT_IMAGE', '').strip()
+    if color_img:
+        return f'{_CDN_BASE}/{color_img}'
 
     return ''
 
 
 def _back_image_url(row: dict) -> str:
     """
-    Derive the back image URL from the front image filename.
-    SanMar CDN naming: BC3483_black_model_front.jpg → BC3483_black_model_back.jpg
+    Derive the back image URL from PRODUCT_IMAGE base name.
+    SanMar pattern: BC3483.jpg → BC3483B.jpg  (or _back.jpg if available)
     """
-    color_img = row.get('COLOR_PRODUCT_IMAGE', '').strip()
-    if color_img and '_front' in color_img.lower():
-        back_img = color_img.lower().replace('_front', '_back')
-        return f'{_CDN_BASE}/{back_img}'
+    product_img = row.get('PRODUCT_IMAGE', '').strip()
+    if product_img and product_img.lower().endswith('.jpg'):
+        base = product_img[:-4]            # strip .jpg
+        return f'{_CDN_BASE}/{base}B.jpg'  # e.g. BC3483B.jpg
     return ''
 
 
