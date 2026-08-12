@@ -266,9 +266,11 @@ def test_connection() -> dict:
                     ),
                     'details': f'Tags in response: {", ".join(all_tags)}',
                 }
-            # Connected but no product rows — note the brand that worked (no error) but empty
+            # Connected but no product rows — surface the message field value
+            sanmar_msg = _ns_find(root, 'message')
             last_error = (
-                f'Brand "{brand}" accepted but returned 0 product rows. '
+                f'Brand "{brand}" accepted, 0 rows. '
+                f'SanMar message: "{sanmar_msg}". '
                 f'Tags: {", ".join(all_tags)}'
             )
         except SanMarAuthError as exc:
@@ -328,12 +330,13 @@ def test_connection() -> dict:
 
     return {
         'ok': False,
-        'message': f'API not accessible. Last BELLA+CANVAS error: {last_error}',
+        'message': f'SanMar API returned no product data. Details: {last_error}',
         'details': (
-            'None of the brand name variants worked, and the API may not be enabled '
-            'on your account. Call SanMar support at 800-426-6399 and ask to enable '
-            '"Product Info Web Services" on your SanMar account '
-            f'(customer number: {get_credentials()[0] or "check SANMAR_CUSTOMER_NUMBER"}).'
+            'Your credentials connect but SanMar is not returning Bella+Canvas products. '
+            'This usually means your SanMar account (#306292) needs Web Services API access enabled. '
+            'Call SanMar at 800-426-6399, give them customer # 306292, and ask them to: '
+            '(1) Enable "Product Info Web Services" on your account, and '
+            '(2) Confirm the exact brandName string to use for BELLA+CANVAS in getProductInfoByBrand.'
         ),
     }
 
