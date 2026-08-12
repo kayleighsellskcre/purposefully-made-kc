@@ -44,13 +44,28 @@ def _extract_fabric(description: str) -> str:
 
 
 def _front_image_url(row: dict) -> str:
-    """Return the best available front-facing image URL for a row."""
+    """
+    Return a flat/ghost product image URL — no model photos.
+    Priority:
+      1. PRODUCT_IMAGE filename  → cdnm.sanmar.com/catalog/images/{file}  (flat/ghost)
+      2. COLOR_PRODUCT_IMAGE filename → same base (may still be flat for some styles)
+    Falls back to FRONT_MODEL_IMAGE_URL only if nothing else available.
+    """
+    # Prefer the flat product image
+    product_img = row.get('PRODUCT_IMAGE', '').strip()
+    if product_img:
+        return f'{_CDN_BASE}/{product_img}'
+
+    # Color-specific product image (may be flat depending on the style)
+    color_img = row.get('COLOR_PRODUCT_IMAGE', '').strip()
+    if color_img:
+        return f'{_CDN_BASE}/{color_img}'
+
+    # Last resort: model image from the full URL column
     url = row.get('FRONT_MODEL_IMAGE_URL', '').strip()
     if url and url.startswith('http'):
         return url
-    img = row.get('COLOR_PRODUCT_IMAGE', '').strip()
-    if img:
-        return f'{_CDN_BASE}/{img}'
+
     return ''
 
 
