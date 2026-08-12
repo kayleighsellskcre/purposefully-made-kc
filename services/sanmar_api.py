@@ -1,62 +1,47 @@
 """
-SanMar SOAP Web Service API integration for Bella+Canvas products.
+SanMar SOAP Web Service integration for Bella+Canvas products.
 
-Credentials are read from environment variables:
+Credentials from environment variables:
   SANMAR_CUSTOMER_NUMBER
   SANMAR_USERNAME
   SANMAR_PASSWORD
 
-Endpoint: https://ws.sanmar.com:8080/SanMarWebService/SanMarProductInfoServicePort
-Namespace: http://impl.webservice.integration.sanmar.com/
-Confirmed method: getProductInfoByBrand
+Confirmed working method: getProductInfoByBrand
+Response structure per row:
+  listResponse/productBasicInfo  — style, productTitle, catalogColor, size, …
+  listResponse/productImageInfo  — frontModel, backModel, colorProductImage, …
+  listResponse/productPriceInfo  — piecePrice, casePrice, …
 """
 
 import os
 import sys
-import json
 import xml.etree.ElementTree as ET
 from urllib.request import urlopen, Request
 from urllib.error import URLError, HTTPError
 
 
 # ---------------------------------------------------------------------------
-# Bella+Canvas style numbers to sync
+# Style list (used for reference / future filtering)
 # ---------------------------------------------------------------------------
 
 BELLA_CANVAS_STYLES = [
-    # Unisex Tees
     '3001C', '3001CVC', '3001U', '3005', '3010',
     '3015', '3021', '3024', '3025', '3051CVC',
     '3055C', '3100', '3413', '3413CVC', '3413S',
     '3415', '3415C', '3480', '3480C', '3485',
-    # Women's Tees
     '6004', '6004CVC', '6035', '6400', '6400CVC',
     '6405', '6413', '6413S', '6415', '6435',
-    # Youth Tees
     '3001Y', '3001YCVC', '3413Y', '3413YCVC', '3001B',
-    # Hoodies & Sweatshirts
     '3739', '3901', '3719', '3729', '3945',
     '7719', '7720', '7729', '7739', '3501CVC',
-    # Women's Hoodies
     '7519', '7520', '7529', '7539',
-    # Youth Hoodies
     '3719Y', '3729Y', '3739Y',
-    # Tank Tops
-    '3480', '8803',
-    # Long Sleeve
-    '3501', '3501CVC', '3501T',
-    # Crop Tops
+    '8803', '3501', '3501T',
     '6682', '6013',
-    # Joggers / Pants
     '3727', '3728', '8822',
-    # V-Necks
-    '3005', '3415', '6405',
-    # Onesies / Baby
     '100B', '100CVC',
 ]
-
-# De-duplicate while preserving order
-_seen = set()
+_seen: set = set()
 BELLA_CANVAS_STYLES = [s for s in BELLA_CANVAS_STYLES if not (_seen.add(s) or s in _seen)]
 
 
@@ -65,7 +50,6 @@ BELLA_CANVAS_STYLES = [s for s in BELLA_CANVAS_STYLES if not (_seen.add(s) or s 
 # ---------------------------------------------------------------------------
 
 def get_credentials() -> tuple[str, str, str]:
-    """Return (customer_number, username, password) from environment."""
     return (
         os.getenv('SANMAR_CUSTOMER_NUMBER', '').strip(),
         os.getenv('SANMAR_USERNAME', '').strip(),
@@ -74,10 +58,6 @@ def get_credentials() -> tuple[str, str, str]:
 
 
 def check_credentials() -> dict:
-    """
-    Validate that all three SanMar credentials are set.
-    Returns {'ok': True} or {'ok': False, 'missing': [...]}
-    """
     customer_number, username, password = get_credentials()
     missing = []
     if not customer_number:
@@ -90,27 +70,30 @@ def check_credentials() -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Custom exceptions — defined before any functions that use them
+# Exceptions
 # ---------------------------------------------------------------------------
 
 class SanMarSOAPError(Exception):
-    """Raised when SanMar returns a SOAP Fault or unreadable response."""
+    """SOAP Fault or unreadable response from SanMar."""
     pass
 
 
 class SanMarAuthError(SanMarSOAPError):
-    """Raised specifically for authentication failures."""
+    """Authentication failure."""
     pass
 
 
 # ---------------------------------------------------------------------------
-# SOAP endpoint and templates
+# SOAP constants
 # ---------------------------------------------------------------------------
 
-_SOAP_ENDPOINT = 'https://ws.sanmar.com:8080/SanMarWebService/SanMarProductInfoServicePort'
+_SOAP_ENDPOINT = (
+    'https://ws.sanmar.com:8080/SanMarWebService/SanMarProductInfoServicePort'
+)
 
-# For the test connection — just passes brand name, quick auth check
-_SOAP_BRAND_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
+# Single template — brand-level query (the only confirmed working call)
+_SOAP_BRAND_TEMPLATE = """\
+<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope
     xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
     xmlns:ns2="http://impl.webservice.integration.sanmar.com/">
@@ -129,36 +112,14 @@ _SOAP_BRAND_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
   </soapenv:Body>
 </soapenv:Envelope>"""
 
-# For per-style syncing — passes brand + style to narrow the response
-_SOAP_STYLE_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
-<soapenv:Envelope
-    xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-    xmlns:ns2="http://impl.webservice.integration.sanmar.com/">
-  <soapenv:Header/>
-  <soapenv:Body>
-    <ns2:getProductInfoByBrand>
-      <arg0>
-        <brandName>Bella+Canvas</brandName>
-        <style>{style}</style>
-      </arg0>
-      <arg1>
-        <sanMarCustomerNumber>{customer_number}</sanMarCustomerNumber>
-        <sanMarUserName>{username}</sanMarUserName>
-        <sanMarUserPassword>{password}</sanMarUserPassword>
-      </arg1>
-    </ns2:getProductInfoByBrand>
-  </soapenv:Body>
-</soapenv:Envelope>"""
-
 
 # ---------------------------------------------------------------------------
-# Low-level SOAP helpers
+# Low-level request
 # ---------------------------------------------------------------------------
 
 def _do_soap_request(body_bytes: bytes, timeout: int = 30) -> ET.Element:
     """
-    POST a SOAP body, parse the XML response, check for faults.
-    Returns root ET.Element on success.
+    POST SOAP body, parse XML, check for faults.
     Raises SanMarAuthError, SanMarSOAPError, URLError, or OSError.
     """
     req = Request(
@@ -175,7 +136,7 @@ def _do_soap_request(body_bytes: bytes, timeout: int = 30) -> ET.Element:
         raw = exc.read() or b''
 
     if not raw:
-        raise SanMarSOAPError('SanMar returned an empty response — check endpoint and credentials.')
+        raise SanMarSOAPError('SanMar returned an empty response.')
 
     preview = raw[:500].decode('utf-8', errors='replace')
     print(f'[SanMarAPI] Raw response preview: {preview}', file=sys.stderr, flush=True)
@@ -183,7 +144,7 @@ def _do_soap_request(body_bytes: bytes, timeout: int = 30) -> ET.Element:
     stripped = raw.lstrip()
     if stripped and stripped[0:1] != b'<':
         raise SanMarSOAPError(
-            f'Non-XML response from SanMar: {repr(raw[:300].decode("utf-8", errors="replace"))}'
+            f'Non-XML response: {repr(raw[:300].decode("utf-8", errors="replace"))}'
         )
 
     try:
@@ -193,7 +154,6 @@ def _do_soap_request(body_bytes: bytes, timeout: int = 30) -> ET.Element:
             f'XML parse error ({exc}): {repr(raw[:300].decode("utf-8", errors="replace"))}'
         )
 
-    # Detect SOAP Fault
     for elem in root.iter():
         local = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
         if local == 'Fault':
@@ -212,20 +172,8 @@ def _do_soap_request(body_bytes: bytes, timeout: int = 30) -> ET.Element:
     return root
 
 
-def _soap_request(style: str) -> ET.Element:
-    """Fetch product info for a single Bella+Canvas style from SanMar."""
-    customer_number, username, password = get_credentials()
-    body = _SOAP_STYLE_TEMPLATE.format(
-        style=style,
-        customer_number=customer_number,
-        username=username,
-        password=password,
-    ).encode('utf-8')
-    return _do_soap_request(body, timeout=30)
-
-
-def _soap_test_request() -> ET.Element:
-    """Minimal auth test — send brand request with short timeout."""
+def _brand_request(timeout: int = 120) -> ET.Element:
+    """Fetch the full Bella+Canvas catalog from SanMar in one call."""
     customer_number, username, password = get_credentials()
     body = _SOAP_BRAND_TEMPLATE.format(
         brand='Bella+Canvas',
@@ -233,7 +181,7 @@ def _soap_test_request() -> ET.Element:
         username=username,
         password=password,
     ).encode('utf-8')
-    return _do_soap_request(body, timeout=15)
+    return _do_soap_request(body, timeout=timeout)
 
 
 # ---------------------------------------------------------------------------
@@ -241,10 +189,7 @@ def _soap_test_request() -> ET.Element:
 # ---------------------------------------------------------------------------
 
 def test_connection() -> dict:
-    """
-    Test the SanMar connection.
-    Returns a dict with keys: ok (bool), message (str), details (str | None)
-    """
+    """Quick credential test. Returns {ok, message, details}."""
     cred_check = check_credentials()
     if not cred_check['ok']:
         missing = ', '.join(cred_check['missing'])
@@ -258,51 +203,41 @@ def test_connection() -> dict:
         }
 
     try:
-        root = _soap_test_request()
-        entries = sum(
-            1 for elem in root.iter()
-            if (elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag)
-            in ('listResponse', 'productInfo', 'return', 'item', 'productBasicInfo')
+        root = _brand_request(timeout=15)
+        count = sum(
+            1 for e in root.iter()
+            if (e.tag.split('}')[-1] if '}' in e.tag else e.tag) == 'listResponse'
         )
-        if entries > 0:
+        if count > 0:
             return {
                 'ok': True,
-                'message': f'Connected! SanMar returned {entries} product entries for Bella+Canvas.',
+                'message': (
+                    f'Connected! SanMar returned {count} product rows for Bella+Canvas. '
+                    'Run "Sync SanMar" to import them.'
+                ),
                 'details': None,
             }
         return {
             'ok': False,
-            'message': 'Connected but received no product data.',
+            'message': 'Connected but received no product rows.',
             'details': (
-                'Credentials accepted but response was empty. '
-                'Confirm your SANMAR_CUSTOMER_NUMBER and that your account '
+                'Credentials accepted but the response was empty. '
+                'Confirm SANMAR_CUSTOMER_NUMBER and that your account '
                 'has access to Bella+Canvas products.'
             ),
         }
     except SanMarAuthError as exc:
-        return {
-            'ok': False,
-            'message': f'Authentication failed: {exc}',
-            'details': 'Double-check SANMAR_USERNAME and SANMAR_PASSWORD in Railway.',
-        }
+        return {'ok': False, 'message': f'Authentication failed: {exc}',
+                'details': 'Double-check SANMAR_USERNAME and SANMAR_PASSWORD in Railway.'}
     except SanMarSOAPError as exc:
-        return {
-            'ok': False,
-            'message': f'SanMar error: {exc}',
-            'details': 'Check Railway logs for the raw response.',
-        }
+        return {'ok': False, 'message': f'SanMar error: {exc}',
+                'details': 'Check Railway logs for the raw response.'}
     except (URLError, OSError) as exc:
-        return {
-            'ok': False,
-            'message': f'Network error: {exc}',
-            'details': 'Could not reach ws.sanmar.com:8080. Check Railway outbound firewall.',
-        }
+        return {'ok': False, 'message': f'Network error: {exc}',
+                'details': 'Could not reach ws.sanmar.com:8080.'}
     except Exception as exc:
-        return {
-            'ok': False,
-            'message': f'Unexpected error: {exc}',
-            'details': 'Check Railway logs for the traceback.',
-        }
+        return {'ok': False, 'message': f'Unexpected error: {exc}',
+                'details': 'Check Railway logs for the traceback.'}
 
 
 # ---------------------------------------------------------------------------
@@ -310,7 +245,7 @@ def test_connection() -> dict:
 # ---------------------------------------------------------------------------
 
 def _ns_find(element: ET.Element, tag: str) -> str:
-    """Find a tag anywhere in the subtree, ignoring namespaces. Returns text or ''."""
+    """Return text of first descendant matching tag (namespace-agnostic)."""
     for child in element.iter():
         local = child.tag.split('}')[-1] if '}' in child.tag else child.tag
         if local == tag:
@@ -318,20 +253,29 @@ def _ns_find(element: ET.Element, tag: str) -> str:
     return ''
 
 
-def _parse_product_entry(entry: ET.Element) -> dict:
-    """Parse a single productInfo/listResponse element into a flat dict."""
+def _parse_list_response(row: ET.Element) -> dict:
+    """
+    Parse one <listResponse> element.
+
+    Real structure (confirmed from SanMar docs):
+      listResponse/productBasicInfo  → style, productTitle, catalogColor, color, size, …
+      listResponse/productImageInfo  → frontModel, backModel, colorProductImage, colorSquareImage
+      listResponse/productPriceInfo  → piecePrice, casePrice
+    """
     return {
-        'style':       _ns_find(entry, 'style'),
-        'color_name':  _ns_find(entry, 'colorName') or _ns_find(entry, 'color') or _ns_find(entry, 'catalogColor'),
-        'size':        _ns_find(entry, 'size'),
-        'price':       _ns_find(entry, 'piecePrice') or _ns_find(entry, 'price'),
-        'title':       _ns_find(entry, 'productTitle') or _ns_find(entry, 'title'),
-        'description': _ns_find(entry, 'productDescription') or _ns_find(entry, 'description'),
-        'material':    _ns_find(entry, 'material') or _ns_find(entry, 'fabric'),
-        'inventory':   _ns_find(entry, 'qty') or _ns_find(entry, 'inventory'),
-        'front_image': _ns_find(entry, 'frontModel') or _ns_find(entry, 'frontImage'),
-        'back_image':  _ns_find(entry, 'backModel')  or _ns_find(entry, 'backImage'),
-        'color_hex':   _ns_find(entry, 'colorHex')  or '',
+        'style':       _ns_find(row, 'style'),
+        'color_name':  (_ns_find(row, 'catalogColor')
+                        or _ns_find(row, 'color')
+                        or _ns_find(row, 'colorName')),
+        'size':        _ns_find(row, 'size'),
+        'price':       _ns_find(row, 'piecePrice') or _ns_find(row, 'casePrice'),
+        'title':       _ns_find(row, 'productTitle') or _ns_find(row, 'title'),
+        'description': _ns_find(row, 'productDescription') or _ns_find(row, 'description'),
+        'material':    _ns_find(row, 'material') or _ns_find(row, 'fabric'),
+        'front_image': _ns_find(row, 'frontModel') or _ns_find(row, 'colorProductImage'),
+        'back_image':  _ns_find(row, 'backModel'),
+        'color_swatch':_ns_find(row, 'colorSquareImage') or _ns_find(row, 'colorSwatchImage'),
+        'color_hex':   _ns_find(row, 'colorHex') or '',
     }
 
 
@@ -342,76 +286,86 @@ def _parse_product_entry(entry: ET.Element) -> dict:
 class SanMarAPI:
     """SanMar SOAP client for Bella+Canvas catalog sync."""
 
-    def fetch_style_data(self, style_number: str) -> dict:
-        """Fetch all color/size variants for a style."""
-        root = _soap_request(style_number)
+    def fetch_full_catalog(self) -> list[dict]:
+        """
+        Fetch the entire Bella+Canvas catalog in one SOAP call.
+        Returns a list of parsed product dicts (one per style).
+        Raises SanMarAuthError on auth failure, SanMarSOAPError on other SOAP issues.
+        """
+        root = _brand_request(timeout=120)
 
-        result: dict = {
-            'style': style_number,
-            'title': '',
-            'description': '',
-            'material': '',
-            'color_variants': {},
-        }
-
-        entries = []
+        # Group rows by style
+        styles: dict[str, dict] = {}
         for elem in root.iter():
             local = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
-            if local in ('listResponse', 'productInfo', 'return', 'item', 'productBasicInfo'):
-                parsed = _parse_product_entry(elem)
-                if parsed['style'] or parsed['color_name']:
-                    entries.append(parsed)
+            if local != 'listResponse':
+                continue
 
-        for entry in entries:
-            if not result['title'] and entry['title']:
-                result['title'] = entry['title']
-            if not result['description'] and entry['description']:
-                result['description'] = entry['description']
-            if not result['material'] and entry['material']:
-                result['material'] = entry['material']
+            row = _parse_list_response(elem)
+            style = row['style'].strip()
+            if not style:
+                continue
 
-            color = entry['color_name']
+            if style not in styles:
+                styles[style] = {
+                    'style': style,
+                    'title': '',
+                    'description': '',
+                    'material': '',
+                    'color_variants': {},
+                }
+
+            sd = styles[style]
+            if not sd['title'] and row['title']:
+                sd['title'] = row['title']
+            if not sd['description'] and row['description']:
+                sd['description'] = row['description']
+            if not sd['material'] and row['material']:
+                sd['material'] = row['material']
+
+            color = row['color_name']
             if not color:
                 continue
 
-            if color not in result['color_variants']:
-                result['color_variants'][color] = {
+            if color not in sd['color_variants']:
+                sd['color_variants'][color] = {
                     'sizes': [],
                     'price': 0.0,
-                    'front_image': entry['front_image'],
-                    'back_image':  entry['back_image'],
-                    'color_hex':   entry['color_hex'],
-                    'inventory':   {},
+                    'front_image': row['front_image'],
+                    'back_image': row['back_image'],
+                    'color_swatch': row['color_swatch'],
+                    'color_hex': row['color_hex'],
+                    'inventory': {},
                 }
 
-            cv = result['color_variants'][color]
-            size = entry['size']
+            cv = sd['color_variants'][color]
+            size = row['size']
             if size and size not in cv['sizes']:
                 cv['sizes'].append(size)
-
             try:
-                price = float(entry['price'])
-                if price > 0 and cv['price'] == 0.0:
-                    cv['price'] = price
+                p = float(row['price'])
+                if p > 0 and cv['price'] == 0.0:
+                    cv['price'] = p
             except (ValueError, TypeError):
                 pass
 
-            if size and entry['inventory']:
-                try:
-                    cv['inventory'][size] = int(entry['inventory'])
-                except (ValueError, TypeError):
-                    pass
+        products = []
+        for style_data in styles.values():
+            product = self._to_product(style_data)
+            if product:
+                products.append(product)
 
-        return result
+        print(
+            f'[SanMarAPI] Parsed {len(styles)} styles → {len(products)} products.',
+            file=sys.stderr, flush=True,
+        )
+        return products
 
-    def parse_style_to_product(self, style_data: dict) -> dict | None:
-        """Convert raw style_data into the Product model format."""
-        if not style_data or not style_data.get('style'):
-            return None
-
-        style = style_data['style']
+    def _to_product(self, style_data: dict) -> dict | None:
+        """Convert grouped style data into the Product model format."""
+        style = style_data.get('style', '')
         color_variants = style_data.get('color_variants', {})
-        if not color_variants:
+        if not style or not color_variants:
             return None
 
         all_sizes: list[str] = []
@@ -425,17 +379,18 @@ class SanMarAPI:
             if not base_price and cv_data.get('price'):
                 base_price = cv_data['price']
 
-        color_variants_list = []
-        for color_name, cv_data in color_variants.items():
-            color_variants_list.append({
-                'color_name':     color_name,
-                'front_image':    cv_data.get('front_image', ''),
-                'back_image':     cv_data.get('back_image', ''),
+        color_variants_list = [
+            {
+                'color_name':     color,
+                'front_image':    cv.get('front_image', ''),
+                'back_image':     cv.get('back_image', ''),
                 'side_image':     '',
-                'color_hex':      cv_data.get('color_hex', ''),
-                'size_inventory': cv_data.get('inventory', {}),
+                'color_hex':      cv.get('color_hex', '') or cv.get('color_swatch', ''),
+                'size_inventory': cv.get('inventory', {}),
                 'color_id':       None,
-            })
+            }
+            for color, cv in color_variants.items()
+        ]
 
         return {
             'style_number':          style,
@@ -461,25 +416,13 @@ class SanMarAPI:
 
     def sync_bella_canvas_catalog(self) -> list[dict]:
         """
-        Sync all BELLA_CANVAS_STYLES from SanMar.
-        Raises SanMarAuthError immediately on credential failure.
+        Public entry point called by admin route and scheduler.
+        Fetches the full catalog and returns product dicts.
+        Raises SanMarAuthError on auth failure.
         """
-        products = []
-        for style in BELLA_CANVAS_STYLES:
-            print(f'[SanMarAPI] Fetching style {style}…', file=sys.stderr, flush=True)
-            try:
-                style_data = self.fetch_style_data(style)
-                product = self.parse_style_to_product(style_data)
-                if product:
-                    products.append(product)
-                else:
-                    print(f'[SanMarAPI] No data for {style}', file=sys.stderr, flush=True)
-            except SanMarAuthError:
-                raise  # abort immediately on auth failure
-            except (SanMarSOAPError, URLError, OSError) as exc:
-                print(f'[SanMarAPI] Skipping {style}: {exc}', file=sys.stderr, flush=True)
-            except Exception as exc:
-                print(f'[SanMarAPI] Unexpected error for {style}: {exc}', file=sys.stderr, flush=True)
+        cred_check = check_credentials()
+        if not cred_check['ok']:
+            missing = ', '.join(cred_check['missing'])
+            raise SanMarSOAPError(f'Missing credentials: {missing}')
 
-        print(f'[SanMarAPI] Sync complete — {len(products)} products.', file=sys.stderr, flush=True)
-        return products
+        return self.fetch_full_catalog()
