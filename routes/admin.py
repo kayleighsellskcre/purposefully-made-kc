@@ -828,169 +828,124 @@ def sync_sanmar():
 @admin_required
 def fetch_ss_images():
     """
-    For every BC product, call S&S Activewear API and:
-    - CREATE ProductColorVariant records if they don't exist yet
-    - UPDATE front/back image URLs from S&S ghost images on existing ones
-    Stores S&S CDN URLs directly — no local download needed.
-    Requires SSACTIVEWEAR_API_KEY + SSACTIVEWEAR_ACCOUNT_NUMBER in Railway env.
+    Get Product Images — two-phase:
+      Phase 1: S&S Activewear API — create/update color variants with ghost images
+      Phase 2: Local static/sanmar/ files — link any already-on-disk images
+    Phase 2 always runs, even if Phase 1 fails or S&S is unavailable.
     """
-    import os, sys
+    import os, sys, re
     from datetime import datetime
+    from pathlib import Path
     from models import db, Product, ProductColorVariant
 
     api_key = os.getenv('SSACTIVEWEAR_API_KEY', '').strip()
     account_number = os.getenv('SSACTIVEWEAR_ACCOUNT_NUMBER', '').strip()
-    if not api_key or not account_number:
-        flash(
-            'S&S Activewear API credentials not set. '
-            'Add SSACTIVEWEAR_API_KEY and SSACTIVEWEAR_ACCOUNT_NUMBER in Railway → Variables.',
-            'danger'
-        )
-        return redirect(url_for('admin.products'))
 
+    # ── Shared state ───────────────────────────────────────────────────────────
+    created_variants = 0
+    updated_variants = 0
+    updated_products = 0
+    skipped = 0
+    local_linked = 0
+    errors = []
+    ss_status = ''
+
+    # ── Phase 1: S&S Activewear API (optional — skipped gracefully if down) ──
+    if api_key and account_number:
+        try:
+            from services.ssactivewear_api import SSActivewearAPI
+            api = SSActivewearAPI(api_key=api_key, account_number=account_number)
+            cdn = 'https://cdn.ssactivewear.com/'
+
+            def _img(url):
+                if not url:
+                    return None
+                return url if url.startswith('http') else cdn + url.lstrip('/')
+
+            bc_products = Product.query.filter(Product.style_number.ilike('BC%')).all()
+
+            for product in bc_products:
+                ss_style = product.style_number[2:] if product.style_number.upper().startswith('BC') else product.style_number
+                try:
+                    ss_rows = api.get_products_by_style_number(ss_style)
+                    if not ss_rows:
+                        ss_rows = api.get_products_by_style_number(product.style_number)
+                    if not ss_rows:
+                        skipped += 1
+                        continue
+
+                    color_map: dict = {}
+                    for row in ss_rows:
+                        color_name = (row.get('colorName') or '').strip()
+                        if not color_name:
+                            continue
+                        key = color_name.lower()
+                        if key in color_map:
+                            continue
+                        front = _img(row.get('ghostFrontImage') or row.get('colorFrontImage') or row.get('frontImage') or row.get('frontmodel'))
+                        back  = _img(row.get('ghostBackImage')  or row.get('colorBackImage')  or row.get('backImage')  or row.get('backmodel'))
+                        hex_  = row.get('colorHex') or row.get('hex') or None
+                        if front or back:
+                            color_map[key] = {'name': color_name, 'front': front, 'back': back, 'hex': hex_}
+
+                    if not color_map:
+                        skipped += 1
+                        continue
+
+                    existing = {(v.color_name or '').lower(): v for v in product.color_variants.all()}
+                    product_changed = False
+                    for key, imgs in color_map.items():
+                        if key in existing:
+                            v = existing[key]
+                            changed = False
+                            if imgs['front'] and not v.front_image_url:
+                                v.front_image_url = imgs['front']; changed = True
+                            if imgs['back'] and not v.back_image_url:
+                                v.back_image_url = imgs['back']; changed = True
+                            if changed:
+                                updated_variants += 1; product_changed = True
+                        else:
+                            db.session.add(ProductColorVariant(
+                                product_id=product.id,
+                                color_name=imgs['name'], color_hex=imgs['hex'],
+                                front_image_url=imgs['front'], back_image_url=imgs['back'],
+                                last_synced=datetime.utcnow(),
+                            ))
+                            created_variants += 1; product_changed = True
+
+                    if product_changed:
+                        if not product.front_mockup_template:
+                            ff = next((v['front'] for v in color_map.values() if v.get('front')), None)
+                            if ff: product.front_mockup_template = ff
+                        updated_products += 1
+                    db.session.commit()
+
+                except Exception as e:
+                    db.session.rollback()
+                    errors.append(f'{product.style_number}: {e}')
+                    print(f'fetch_ss_images error for {product.style_number}: {e}', file=sys.stderr)
+
+            ss_status = f'S&S: {updated_products} products, {created_variants} new variants, {updated_variants} updated'
+            if skipped:
+                ss_status += f', {skipped} not found'
+
+        except Exception as e:
+            ss_status = f'S&S unavailable ({type(e).__name__}: {str(e)[:80]})'
+            print(f'fetch_ss_images Phase1 error: {e}', file=sys.stderr)
+    else:
+        ss_status = 'S&S skipped (no API credentials)'
+
+    # ── Phase 2: Link local static/sanmar/ images (always runs) ───────────────
     try:
-        from services.ssactivewear_api import SSActivewearAPI
-        api = SSActivewearAPI(api_key=api_key, account_number=account_number)
-        cdn = 'https://cdn.ssactivewear.com/'
-
-        def _img(url):
-            if not url:
-                return None
-            return url if url.startswith('http') else cdn + url.lstrip('/')
-
-        bc_products = Product.query.filter(Product.style_number.ilike('BC%')).all()
-
-        created_variants = 0
-        updated_variants = 0
-        updated_products = 0
-        skipped = 0
-        errors = []
-
-        # Debug: test one style first to confirm S&S API response format
-        first_product = bc_products[0] if bc_products else None
-        debug_info = None
-        if first_product:
-            test_style = first_product.style_number[2:] if first_product.style_number.upper().startswith('BC') else first_product.style_number
-            import requests as _req
-            _test = _req.get(
-                f'{api.api_url}/v2/products',
-                auth=(api.account_number, api.api_key),
-                params={'styleNumber': test_style},
-                timeout=30
-            )
-            debug_info = f'S&S test [{test_style}]: HTTP {_test.status_code}, body[:300]={_test.text[:300]}'
-            print(debug_info, file=sys.stderr)
-
-        for product in bc_products:
-            # Strip "BC" prefix — S&S uses "3001" not "BC3001"
-            ss_style = product.style_number[2:] if product.style_number.upper().startswith('BC') else product.style_number
-
-            try:
-                ss_rows = api.get_products_by_style_number(ss_style)
-                if not ss_rows:
-                    ss_rows = api.get_products_by_style_number(product.style_number)
-                if not ss_rows:
-                    skipped += 1
-                    continue
-
-                # Build color → {front, back, hex} map from S&S rows
-                color_map: dict[str, dict] = {}
-                for row in ss_rows:
-                    color_name = (row.get('colorName') or '').strip()
-                    if not color_name:
-                        continue
-                    key = color_name.lower()
-                    if key in color_map:
-                        continue
-                    front = _img(
-                        row.get('ghostFrontImage') or row.get('colorFrontImage') or
-                        row.get('frontImage') or row.get('frontmodel')
-                    )
-                    back = _img(
-                        row.get('ghostBackImage') or row.get('colorBackImage') or
-                        row.get('backImage') or row.get('backmodel')
-                    )
-                    color_hex = row.get('colorHex') or row.get('hex') or None
-                    if front or back:
-                        color_map[key] = {
-                            'name': color_name,
-                            'front': front,
-                            'back': back,
-                            'hex': color_hex,
-                        }
-
-                if not color_map:
-                    skipped += 1
-                    continue
-
-                # Index existing variants by normalised color name
-                existing: dict[str, ProductColorVariant] = {
-                    (v.color_name or '').lower(): v
-                    for v in product.color_variants.all()
-                }
-
-                product_changed = False
-                for key, imgs in color_map.items():
-                    if key in existing:
-                        # Update images on existing variant if missing
-                        variant = existing[key]
-                        changed = False
-                        if imgs['front'] and not variant.front_image_url:
-                            variant.front_image_url = imgs['front']
-                            changed = True
-                        if imgs['back'] and not variant.back_image_url:
-                            variant.back_image_url = imgs['back']
-                            changed = True
-                        if changed:
-                            updated_variants += 1
-                            product_changed = True
-                    else:
-                        # Create a brand-new color variant with image URLs
-                        new_v = ProductColorVariant(
-                            product_id=product.id,
-                            color_name=imgs['name'],
-                            color_hex=imgs['hex'],
-                            front_image_url=imgs['front'],
-                            back_image_url=imgs['back'],
-                            last_synced=datetime.utcnow(),
-                        )
-                        db.session.add(new_v)
-                        created_variants += 1
-                        product_changed = True
-
-                if product_changed:
-                    # Populate product-level mockup template if missing
-                    if not product.front_mockup_template:
-                        first_front = next(
-                            (v['front'] for v in color_map.values() if v.get('front')), None
-                        )
-                        if first_front:
-                            product.front_mockup_template = first_front
-                    updated_products += 1
-
-                db.session.commit()
-
-            except Exception as e:
-                db.session.rollback()
-                errors.append(f'{product.style_number}: {e}')
-                print(f'fetch_ss_images error for {product.style_number}: {e}', file=sys.stderr)
-
-        # ── Phase 2: link local static/sanmar/ images ──────────────────────────
-        import re
-        from pathlib import Path
         sanmar_dir = Path(current_app.root_path) / 'static' / 'sanmar'
-        local_linked = 0
         if sanmar_dir.is_dir():
             for style_folder in sanmar_dir.iterdir():
                 if not style_folder.is_dir():
                     continue
-                folder_name = style_folder.name          # e.g. "3001"
-                bc_style    = 'BC' + folder_name         # e.g. "BC3001"
+                folder_name = style_folder.name
+                bc_style    = 'BC' + folder_name
                 product = Product.query.filter(
-                    db.or_(
-                        Product.style_number == bc_style,
-                        Product.style_number == folder_name,
-                    )
+                    db.or_(Product.style_number == bc_style, Product.style_number == folder_name)
                 ).first()
                 if not product:
                     continue
@@ -999,69 +954,47 @@ def fetch_ss_images():
                 for f in style_folder.iterdir():
                     if not f.is_file():
                         continue
-                    m = re.match(
-                        rf'^{re.escape(folder_name)}_(.+?)_(front|back)\.jpe?g$',
-                        f.name, re.IGNORECASE
-                    )
+                    m = re.match(rf'^{re.escape(folder_name)}_(.+?)_(front|back)\.jpe?g$', f.name, re.IGNORECASE)
                     if not m:
                         continue
-                    raw_color = m.group(1).replace('_', ' ')
-                    side      = m.group(2).lower()
-                    key       = raw_color.lower()
+                    key = m.group(1).replace('_', ' ').lower()
+                    side = m.group(2).lower()
                     if key not in file_map:
                         file_map[key] = {}
                     file_map[key][side] = f'sanmar/{folder_name}/{f.name}'
 
-                variants = ProductColorVariant.query.filter_by(product_id=product.id).all()
-                for variant in variants:
-                    color_key = (variant.color_name or '').lower()
-                    if color_key not in file_map:
+                for variant in ProductColorVariant.query.filter_by(product_id=product.id).all():
+                    ck = (variant.color_name or '').lower()
+                    if ck not in file_map:
                         continue
-                    paths   = file_map[color_key]
+                    paths = file_map[ck]
                     changed = False
                     if not variant.front_image_url and paths.get('front'):
-                        variant.front_image_url = paths['front']
-                        changed = True
+                        variant.front_image_url = paths['front']; changed = True
                     if not variant.back_image_url and paths.get('back'):
-                        variant.back_image_url = paths['back']
-                        changed = True
+                        variant.back_image_url = paths['back']; changed = True
                     if changed:
                         local_linked += 1
 
                 if not product.front_mockup_template and file_map:
-                    first_front = next((v['front'] for v in file_map.values() if 'front' in v), None)
-                    if first_front:
-                        product.front_mockup_template = first_front
+                    ff = next((v['front'] for v in file_map.values() if 'front' in v), None)
+                    if ff: product.front_mockup_template = ff
                 if not product.back_mockup_template and file_map:
-                    first_back = next((v['back'] for v in file_map.values() if 'back' in v), None)
-                    if first_back:
-                        product.back_mockup_template = first_back
+                    fb = next((v['back'] for v in file_map.values() if 'back' in v), None)
+                    if fb: product.back_mockup_template = fb
 
-            try:
-                db.session.commit()
-            except Exception as e:
-                db.session.rollback()
-                errors.append(f'Local link error: {e}')
-
-        msg = (
-            f'Done! Processed {updated_products} products — '
-            f'created {created_variants} new color variants, '
-            f'updated {updated_variants} from S&S'
-            + (f', linked {local_linked} from local files' if local_linked else '')
-            + '.'
-        )
-        if skipped:
-            msg += f' {skipped} styles not found in S&S.'
-        if errors:
-            msg += f' Errors: {", ".join(errors[:3])}'
-        if debug_info:
-            msg += f' | DEBUG: {debug_info}'
-        flash(msg, 'success' if not errors else 'warning')
-
-    except ValueError as e:
-        flash(str(e), 'danger')
+            db.session.commit()
     except Exception as e:
-        flash(f'Unexpected error: {e}', 'danger')
+        db.session.rollback()
+        errors.append(f'Local link error: {e}')
+
+    # ── Result flash ───────────────────────────────────────────────────────────
+    msg = ss_status
+    if local_linked:
+        msg += f' | Local: {local_linked} variants linked from static/sanmar/'
+    if errors:
+        msg += f' | Errors: {", ".join(errors[:3])}'
+    flash(msg, 'success' if not errors else 'warning')
 
     return redirect(url_for('admin.products'))
 
