@@ -120,15 +120,13 @@
                 {% if available_sizes %}
                 <div class="product-option">
                     <label>Size</label>
-                    <div class="size-selector">
+                    <div class="size-selector" id="sizeSelector">
                         {% for size in available_sizes %}
                         <button class="size-option" data-size="{{ size }}">{{ size }}</button>
                         {% endfor %}
                     </div>
                 </div>
                 {% endif %}
-                
-                {% if available_colors %}
                 <div class="product-option">
                     <label>Color</label>
                     <div class="color-selector">
@@ -179,8 +177,34 @@
 let selectedSize = null;
 let selectedColor = null;
 
+// Inventory map: { "White": {"S": 120, "M": 85, ...}, "Black": {...}, ... }
+const colorInventory = {};
+{% for variant in color_variants %}
+{% if variant.inventory %}
+colorInventory[{{ variant.color_name | tojson }}] = {{ variant.inventory | tojson }};
+{% endif %}
+{% endfor %}
+
+function updateSizeAvailability(colorName) {
+    const inv = colorInventory[colorName];
+    document.querySelectorAll('.size-option').forEach(btn => {
+        const size = btn.dataset.size;
+        const qty = inv ? (inv[size] ?? inv[size.replace(' ', '')] ?? -1) : -1;
+        const soldOut = inv && qty === 0;
+        btn.classList.toggle('sold-out', soldOut);
+        btn.disabled = soldOut;
+        btn.title = soldOut ? 'Sold out in this color' : '';
+        // If the currently selected size just became sold out, deselect it
+        if (soldOut && selectedSize === size) {
+            btn.classList.remove('active');
+            selectedSize = null;
+        }
+    });
+}
+
 document.querySelectorAll('.size-option').forEach(btn => {
     btn.addEventListener('click', () => {
+        if (btn.disabled) return;
         document.querySelectorAll('.size-option').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         selectedSize = btn.dataset.size;
@@ -192,6 +216,7 @@ document.querySelectorAll('.color-option').forEach(btn => {
         document.querySelectorAll('.color-option').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         selectedColor = btn.dataset.color;
+        updateSizeAvailability(selectedColor);
     });
 });
 
@@ -498,6 +523,15 @@ function toggleSizeChart() {
     border-color: var(--accent-color);
     background: var(--accent-color);
     color: #fff;
+}
+
+.size-option.sold-out {
+    opacity: 0.38;
+    cursor: not-allowed;
+    text-decoration: line-through;
+    border-color: var(--border-color);
+    background: #f5f5f5;
+    color: var(--text-secondary);
 }
 
 .color-option {

@@ -1,8 +1,9 @@
 """
 Background scheduler for automated tasks.
-Runs a full Bella+Canvas catalog sync every night at 1 AM:
-  - Adds any new Bella+Canvas styles from S&S Activewear
+Runs a full Bella+Canvas catalog sync every night at 1 AM via SanMar:
+  - Adds any new Bella+Canvas styles
   - Updates inventory quantities on all existing products/variants
+  - Preserves admin-set prices and active/inactive state
 """
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -12,7 +13,7 @@ import sys
 
 def sync_full_catalog_job(app):
     """
-    Nightly job: sync the complete Bella+Canvas catalog from S&S Activewear.
+    Nightly job: sync the complete Bella+Canvas catalog from SanMar.
     Adds new styles and refreshes inventory on all existing ones.
     Runs at 1:00 AM daily.
     """
@@ -22,14 +23,24 @@ def sync_full_catalog_job(app):
             print(f"NIGHTLY CATALOG SYNC STARTED - {datetime.now()}", file=sys.stderr, flush=True)
             print("=" * 80, file=sys.stderr, flush=True)
 
-            from services.ssactivewear_api import SSActivewearAPI
+            from services.sanmar_api import SanMarAPI, check_credentials, SanMarAuthError
             from models import db, Product, ProductColorVariant
 
-            api = SSActivewearAPI()
+            # Skip gracefully if SanMar credentials aren't configured
+            cred_check = check_credentials()
+            if not cred_check['ok']:
+                missing = ', '.join(cred_check['missing'])
+                print(
+                    f"NIGHTLY SYNC SKIPPED — missing SanMar credentials: {missing}",
+                    file=sys.stderr, flush=True
+                )
+                return
+
+            api = SanMarAPI()
             products_data = api.sync_bella_canvas_catalog()
 
             if not products_data:
-                print("WARNING: No products returned from S&S API.", file=sys.stderr, flush=True)
+                print("WARNING: No products returned from SanMar API.", file=sys.stderr, flush=True)
                 return
 
             added = updated = variants_added = variants_updated = 0
@@ -43,8 +54,7 @@ def sync_full_catalog_job(app):
                 try:
                     existing = Product.query.filter_by(style_number=style_num).first()
                     if existing:
-                        # Sync only non-pricing, non-status fields — preserve admin-set
-                        # prices and the active/inactive state set in the dashboard.
+                        # Preserve admin-set prices and active/inactive state
                         protected = {'base_price', 'wholesale_cost', 'is_active'}
                         for key, value in product_data.items():
                             if hasattr(existing, key) and value is not None and key not in protected:
@@ -72,9 +82,7 @@ def sync_full_catalog_job(app):
                         if existing_variant:
                             existing_variant.front_image_url = variant_data.get('front_image') or existing_variant.front_image_url
                             existing_variant.back_image_url  = variant_data.get('back_image')  or existing_variant.back_image_url
-                            existing_variant.side_image_url  = variant_data.get('side_image')  or existing_variant.side_image_url
                             existing_variant.size_inventory  = variant_data.get('size_inventory')
-                            existing_variant.ss_color_id     = variant_data.get('color_id')
                             existing_variant.last_synced     = datetime.utcnow()
                             variants_updated += 1
                         else:
@@ -83,15 +91,17 @@ def sync_full_catalog_job(app):
                                 color_name=color_name,
                                 front_image_url=variant_data.get('front_image'),
                                 back_image_url=variant_data.get('back_image'),
-                                side_image_url=variant_data.get('side_image'),
                                 size_inventory=variant_data.get('size_inventory'),
-                                ss_color_id=variant_data.get('color_id'),
                                 last_synced=datetime.utcnow()
                             ))
                             variants_added += 1
 
                     db.session.commit()
 
+                except SanMarAuthError:
+                    print("NIGHTLY SYNC ABORTED — SanMar auth failed mid-sync.", file=sys.stderr, flush=True)
+                    db.session.rollback()
+                    return
                 except Exception as e:
                     print(f"  Error on {style_num}: {e}", file=sys.stderr, flush=True)
                     db.session.rollback()
@@ -116,16 +126,22 @@ def seed_catalog_if_empty(app):
     """
     Called once on startup: if the products table is empty (fresh PostgreSQL DB),
     run a full catalog sync immediately so the store is ready straight away.
+    Only runs if SanMar credentials are configured.
     """
     with app.app_context():
         try:
             from models import Product
+            from services.sanmar_api import check_credentials
             count = Product.query.count()
             if count == 0:
-                print("Products table is empty - running initial catalog seed...", file=sys.stderr, flush=True)
-                sync_full_catalog_job(app)
+                cred_check = check_credentials()
+                if cred_check['ok']:
+                    print("Products table is empty — running initial SanMar catalog seed...", file=sys.stderr, flush=True)
+                    sync_full_catalog_job(app)
+                else:
+                    print("Products table is empty but SanMar credentials not set — skipping auto-seed.", file=sys.stderr, flush=True)
             else:
-                print(f"Products table has {count} rows - skipping initial seed.", file=sys.stderr, flush=True)
+                print(f"Products table has {count} rows — skipping initial seed.", file=sys.stderr, flush=True)
         except Exception as e:
             print(f"Initial seed check failed: {e}", file=sys.stderr, flush=True)
 
@@ -133,7 +149,7 @@ def seed_catalog_if_empty(app):
 def init_scheduler(app):
     """
     Initialize the background scheduler.
-    Only starts in Railway production (RAILWAY_ENVIRONMENT is set).
+    Only starts in production (not debug mode).
     """
     enabled = app.config.get('SCHEDULER_ENABLED', True)
     if not enabled:
@@ -150,12 +166,12 @@ def init_scheduler(app):
 
         scheduler = BackgroundScheduler(daemon=True)
 
-        # Full Bella+Canvas catalog sync every night at 1:00 AM
+        # Full Bella+Canvas catalog sync every night at 1:00 AM via SanMar
         scheduler.add_job(
             func=lambda: sync_full_catalog_job(app),
             trigger=CronTrigger(hour=1, minute=0),
             id='nightly_catalog_sync',
-            name='Nightly Bella+Canvas Catalog Sync',
+            name='Nightly Bella+Canvas Catalog Sync (SanMar)',
             replace_existing=True
         )
 
@@ -163,7 +179,7 @@ def init_scheduler(app):
 
         print("=" * 80, file=sys.stderr, flush=True)
         print("SCHEDULER STARTED", file=sys.stderr, flush=True)
-        print("  - Nightly Bella+Canvas catalog sync: 1:00 AM daily", file=sys.stderr, flush=True)
+        print("  - Nightly Bella+Canvas catalog sync (SanMar): 1:00 AM daily", file=sys.stderr, flush=True)
         print("=" * 80, file=sys.stderr, flush=True)
 
         import atexit
