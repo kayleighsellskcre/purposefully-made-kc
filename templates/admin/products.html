@@ -25,52 +25,84 @@
 </div>
 {% endif %}
 
-{% if api_configured %}
-<!-- Tool Bar -->
-<div class="prod-toolbar">
-    <span class="adm-eyebrow" style="margin-bottom:0; align-self:center;">S&amp;S Activewear Tools</span>
-    <div class="prod-tool-buttons">
-        <form action="{{ url_for('admin.link_mockup_images') }}" method="POST" style="display:contents;">
-            <button type="submit" class="prod-tool-btn">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-                Link Mockup Images
-            </button>
-        </form>
-        <button type="button" class="prod-tool-btn" onclick="openModal('syncModal')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            Sync Mockup Styles
-        </button>
-        <button type="button" class="prod-tool-btn prod-tool-btn--primary" onclick="openModal('fullSyncModal')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            Sync ALL Bella+Canvas
-        </button>
-        <button type="button" class="prod-tool-btn" onclick="openModal('backfillModal')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            Fill Missing Images
+<!-- Unified Tools Section -->
+<details class="prod-tools-panel" id="toolsPanel">
+    <summary class="prod-tools-summary">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+        <span>Sync &amp; Tools</span>
+        <span class="prod-tools-chevron">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </span>
+    </summary>
+    <div class="prod-tools-body">
+
+        <!-- Link Mockup Images (always available) -->
+        <div class="prod-tool-group">
+            <span class="prod-tool-group-label">General</span>
+            <div class="prod-tool-buttons">
+                <form action="{{ url_for('admin.link_mockup_images') }}" method="POST" style="display:contents;">
+                    <button type="submit" class="prod-tool-btn">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                        Link Mockup Images
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {% if api_configured %}
+        <!-- S&S Activewear tools -->
+        <div class="prod-tool-group">
+            <span class="prod-tool-group-label">S&amp;S Activewear</span>
+            <div class="prod-tool-buttons">
+                <button type="button" class="prod-tool-btn" onclick="openModal('syncModal')">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    Sync Mockup Styles
+                </button>
+                <button type="button" class="prod-tool-btn prod-tool-btn--primary" onclick="openModal('fullSyncModal')">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    Sync ALL Bella+Canvas
+                </button>
+                <button type="button" class="prod-tool-btn" onclick="openModal('backfillModal')">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    Fill Missing Images
+                </button>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- SanMar tools -->
+        <div class="prod-tool-group">
+            <span class="prod-tool-group-label">SanMar</span>
+            <div class="prod-tool-buttons">
+                <button type="button" class="prod-tool-btn prod-tool-btn--primary" onclick="openModal('sanmarSyncModal')">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    Sync Bella+Canvas from SanMar
+                </button>
+            </div>
+        </div>
+
+    </div>
+</details>
+
+<!-- Search + Filter Bar -->
+<div class="prod-search-filter-row">
+    <div class="prod-search-wrap">
+        <svg class="prod-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="prodSearch" class="prod-search-input" placeholder="Search by name or style #…" autocomplete="off">
+        <button type="button" class="prod-search-clear" id="prodSearchClear" aria-label="Clear search" hidden>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
     </div>
-</div>
-{% else %}
-<div class="prod-toolbar">
-    <form action="{{ url_for('admin.link_mockup_images') }}" method="POST" style="display:contents;">
-        <button type="submit" class="prod-tool-btn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-            Link Mockup Images
-        </button>
-    </form>
-</div>
-{% endif %}
-
-<!-- Filter: All / Customer Favorites -->
-<div class="prod-filter-bar">
-    <a href="{{ url_for('admin.products') }}" class="prod-filter-chip {% if not fav_filter %}is-active{% endif %}">
-        All Products
-    </a>
-    <a href="{{ url_for('admin.products', favorites=1) }}" class="prod-filter-chip {% if fav_filter %}is-active{% endif %}">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 7.1-1.01L12 2z"/></svg>
-        Customer Favorites
-        <span class="prod-filter-count">{{ favorite_count }}</span>
-    </a>
+    <div class="prod-filter-bar">
+        <a href="{{ url_for('admin.products') }}" class="prod-filter-chip {% if not fav_filter %}is-active{% endif %}">
+            All Products
+        </a>
+        <a href="{{ url_for('admin.products', favorites=1) }}" class="prod-filter-chip {% if fav_filter %}is-active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 7.1-1.01L12 2z"/></svg>
+            Favorites
+            <span class="prod-filter-count">{{ favorite_count }}</span>
+        </a>
+    </div>
 </div>
 
 <!-- Products Table -->
@@ -79,8 +111,13 @@
 
         {% if products %}
 
+        <!-- Result count (updated by JS search) -->
+        <div class="prod-result-count" id="prodResultCount">
+            <span id="prodResultNum">{{ products|length }}</span> product{{ 's' if products|length != 1 else '' }}
+        </div>
+
         <!-- Desktop table (hidden on mobile) -->
-        <table class="adm-table prod-table">
+        <table class="adm-table prod-table" id="prodTable">
             <thead>
                 <tr>
                     <th>Style #</th>
@@ -90,15 +127,20 @@
                     <th>Sizes</th>
                     <th>Colors</th>
                     <th>Status</th>
-                    <th>Favorite</th>
+                    <th>Fav</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for product in products %}
-                <tr data-product-id="{{ product.id }}">
+                <tr data-product-id="{{ product.id }}"
+                    data-name="{{ product.name|lower }}"
+                    data-style="{{ product.style_number|lower }}">
                     <td><strong class="prod-style">{{ product.style_number }}</strong></td>
-                    <td class="prod-name-cell">{{ product.name }} <span class="prod-fav-flag" data-fav-flag {% if not product.is_customer_favorite %}hidden{% endif %}>Customer Favorite</span></td>
+                    <td class="prod-name-cell">
+                        {{ product.name }}
+                        <span class="prod-fav-flag" data-fav-flag {% if not product.is_customer_favorite %}hidden{% endif %}>Favorite</span>
+                    </td>
                     <td>{{ product.category or '—' }}</td>
                     <td>${{ "%.2f"|format(product.base_price) }}</td>
                     <td>{{ product.size_count }}</td>
@@ -124,7 +166,7 @@
                                 class="prod-fav-btn {% if product.is_customer_favorite %}is-fav{% endif %}"
                                 data-product-id="{{ product.id }}"
                                 data-toggle-url="{{ url_for('admin.toggle_product_favorite', product_id=product.id) }}"
-                                title="{% if product.is_customer_favorite %}Remove from Customer Favorites{% else %}Mark as Customer Favorite{% endif %}"
+                                title="{% if product.is_customer_favorite %}Remove from Favorites{% else %}Mark as Favorite{% endif %}"
                                 aria-label="Toggle Customer Favorite">
                             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 7.1-1.01L12 2z"/></svg>
                         </button>
@@ -137,15 +179,28 @@
             </tbody>
         </table>
 
+        <!-- No-results state (shown by JS when search matches nothing) -->
+        <div class="prod-no-results" id="prodNoResults" hidden>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <p>No products match "<strong id="prodNoResultsTerm"></strong>"</p>
+            <button type="button" class="btn btn-outline btn-sm" onclick="clearSearch()">Clear search</button>
+        </div>
+
         <!-- Mobile card list (hidden on desktop) -->
-        <div class="prod-card-list">
+        <div class="prod-card-list" id="prodCardList">
             {% for product in products %}
-            <div class="prod-card" data-product-id="{{ product.id }}">
+            <div class="prod-card"
+                 data-product-id="{{ product.id }}"
+                 data-name="{{ product.name|lower }}"
+                 data-style="{{ product.style_number|lower }}">
                 <div class="prod-card-top">
                     <div class="prod-card-meta">
                         <span class="prod-card-style">{{ product.style_number }}</span>
                     </div>
-                    <h4 class="prod-card-name">{{ product.name }} <span class="prod-fav-flag" data-fav-flag {% if not product.is_customer_favorite %}hidden{% endif %}>Customer Favorite</span></h4>
+                    <h4 class="prod-card-name">
+                        {{ product.name }}
+                        <span class="prod-fav-flag" data-fav-flag {% if not product.is_customer_favorite %}hidden{% endif %}>Favorite</span>
+                    </h4>
                 </div>
                 <div class="prod-card-details">
                     <div class="prod-card-detail">
@@ -170,7 +225,7 @@
                             class="prod-fav-btn {% if product.is_customer_favorite %}is-fav{% endif %}"
                             data-product-id="{{ product.id }}"
                             data-toggle-url="{{ url_for('admin.toggle_product_favorite', product_id=product.id) }}"
-                            title="{% if product.is_customer_favorite %}Remove from Customer Favorites{% else %}Mark as Customer Favorite{% endif %}"
+                            title="Toggle Favorite"
                             aria-label="Toggle Customer Favorite">
                         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 7.1-1.01L12 2z"/></svg>
                     </button>
@@ -224,7 +279,7 @@
             <button class="prod-modal-close" onclick="closeModal('backfillModal')" aria-label="Close">&times;</button>
         </div>
         <div class="prod-modal-body">
-            <p>This will find every color variant that is <strong>missing a front or back image</strong> and fetch the correct flat/ghost product image from S&amp;S Activewear.</p>
+            <p>Finds every color variant missing a front or back image and fetches the correct flat/ghost product image from S&amp;S Activewear.</p>
             <div class="prod-modal-list">
                 <div class="prod-modal-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -247,17 +302,6 @@
                 </div>
             </form>
         </div>
-    </div>
-</div>
-
-<!-- SanMar Tools -->
-<div class="prod-toolbar" style="margin-top:0.75rem;">
-    <span class="adm-eyebrow" style="margin-bottom:0; align-self:center;">SanMar Tools</span>
-    <div class="prod-tool-buttons">
-        <button type="button" class="prod-tool-btn prod-tool-btn--primary" onclick="openModal('sanmarSyncModal')">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            Sync Bella+Canvas from SanMar
-        </button>
     </div>
 </div>
 
@@ -352,7 +396,7 @@
                     Links your mockup images to each color variant
                 </div>
             </div>
-            <p class="prod-modal-note"><strong>Tip:</strong> Use <em>Link Mockup Images</em> to add styles and link images without needing S&amp;S API.</p>
+            <p class="prod-modal-note"><strong>Tip:</strong> Use <em>Link Mockup Images</em> to add styles and link images without needing the S&amp;S API.</p>
             <form action="{{ url_for('admin.sync_api') }}" method="POST">
                 <div class="prod-modal-actions">
                     <button type="button" class="btn btn-outline" onclick="closeModal('syncModal')">Cancel</button>
@@ -405,7 +449,7 @@
 
 /* Sync status banner */
 .prod-sync-info {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.25rem;
     flex-wrap: wrap;
     gap: 0.5rem;
 }
@@ -417,23 +461,77 @@
     white-space: nowrap;
 }
 
-/* Toolbar */
-.prod-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
+/* ── Tools Panel (collapsible) ───────────────────────────────── */
+.prod-tools-panel {
     background: #fff;
     border: 1px solid rgba(232, 208, 177, 0.55);
     border-radius: 14px;
-    padding: 1rem 1.25rem;
-    margin-bottom: 1.75rem;
+    margin-bottom: 1.25rem;
     box-shadow: 0 2px 10px rgba(58,61,72,0.04);
+    overflow: hidden;
+}
+
+.prod-tools-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.85rem 1.25rem;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    transition: color 0.15s;
+}
+
+.prod-tools-summary::-webkit-details-marker { display: none; }
+.prod-tools-summary::marker { display: none; }
+
+.prod-tools-summary:hover { color: var(--terra-cotta); }
+
+.prod-tools-chevron {
+    margin-left: auto;
+    transition: transform 0.2s ease;
+    display: flex;
+    align-items: center;
+    color: var(--text-secondary);
+}
+
+details[open] .prod-tools-chevron { transform: rotate(180deg); }
+
+.prod-tools-body {
+    padding: 0 1.25rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    border-top: 1px solid rgba(232, 208, 177, 0.45);
+}
+
+/* Tool groups within the panel */
+.prod-tool-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.prod-tool-group-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    min-width: 90px;
+    padding-top: 0.1rem;
 }
 
 .prod-tool-buttons {
     display: flex;
-    gap: 0.65rem;
+    gap: 0.55rem;
     flex-wrap: wrap;
 }
 
@@ -441,17 +539,16 @@
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    padding: 0.6rem 1rem;
-    min-height: 40px;
-    font-size: 0.82rem;
+    padding: 0.55rem 0.95rem;
+    min-height: 38px;
+    font-size: 0.8rem;
     font-weight: 600;
     font-family: var(--font-primary);
-    letter-spacing: 0.03em;
-    text-transform: none;
+    letter-spacing: 0.02em;
     background: var(--secondary-color);
     color: var(--text-primary);
     border: 1.5px solid rgba(232,208,177,0.8);
-    border-radius: 10px;
+    border-radius: 9px;
     cursor: pointer;
     transition: all 0.18s ease;
     touch-action: manipulation;
@@ -478,27 +575,91 @@
     border-color: transparent;
 }
 
-/* Filter chips (All / Customer Favorites) */
+/* ── Search + Filter Row ─────────────────────────────────────── */
+.prod-search-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.prod-search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 200px;
+    max-width: 340px;
+}
+
+.prod-search-icon {
+    position: absolute;
+    left: 0.75rem;
+    color: var(--text-secondary);
+    pointer-events: none;
+    flex-shrink: 0;
+}
+
+.prod-search-input {
+    width: 100%;
+    padding: 0.55rem 2.4rem 0.55rem 2.25rem;
+    font-size: 0.85rem;
+    font-family: var(--font-primary);
+    color: var(--text-primary);
+    background: #fff;
+    border: 1.5px solid rgba(232, 208, 177, 0.8);
+    border-radius: 999px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.prod-search-input::placeholder { color: var(--text-secondary); }
+
+.prod-search-input:focus {
+    border-color: var(--terra-cotta);
+    box-shadow: 0 0 0 3px rgba(184,124,111,0.12);
+}
+
+.prod-search-clear {
+    position: absolute;
+    right: 0.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0,0,0,0.08);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.prod-search-clear:hover { background: rgba(0,0,0,0.14); }
+
+/* Filter chips */
 .prod-filter-bar {
     display: flex;
-    gap: 0.6rem;
+    gap: 0.5rem;
     flex-wrap: wrap;
-    margin-bottom: 1.25rem;
 }
 
 .prod-filter-chip {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
-    padding: 0.5rem 0.95rem;
+    gap: 0.4rem;
+    padding: 0.45rem 0.9rem;
     border-radius: 999px;
-    font-size: 0.82rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--text-secondary);
     background: #fff;
     border: 1.5px solid rgba(232, 208, 177, 0.8);
     text-decoration: none;
     transition: all 0.15s ease;
+    white-space: nowrap;
 }
 
 .prod-filter-chip:hover {
@@ -512,26 +673,35 @@
     border-color: transparent;
 }
 
-.prod-filter-chip svg { width: 14px; height: 14px; }
+.prod-filter-chip svg { width: 13px; height: 13px; }
 
 .prod-filter-count {
     background: rgba(0, 0, 0, 0.12);
-    padding: 0.05rem 0.5rem;
+    padding: 0.05rem 0.45rem;
     border-radius: 999px;
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     font-weight: 700;
 }
 
 .prod-filter-chip.is-active .prod-filter-count { background: rgba(255, 255, 255, 0.25); }
 
-/* Inline "Customer Favorite" flag next to product names */
+/* Result count */
+.prod-result-count {
+    padding: 0.6rem 1rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Inline "Favorite" flag next to product names */
 .prod-fav-flag {
     display: inline-flex;
     align-items: center;
     margin-left: 0.4rem;
-    padding: 0.12rem 0.5rem;
+    padding: 0.1rem 0.45rem;
     border-radius: 999px;
-    font-size: 0.62rem;
+    font-size: 0.6rem;
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -546,9 +716,9 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 38px;
-    height: 38px;
-    border-radius: 9px;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
     border: 1.5px solid rgba(232, 208, 177, 0.8);
     background: #fff;
     color: #c9c2b6;
@@ -558,7 +728,7 @@
     flex-shrink: 0;
 }
 
-.prod-fav-btn svg { width: 18px; height: 18px; }
+.prod-fav-btn svg { width: 16px; height: 16px; }
 
 .prod-fav-btn:hover {
     border-color: var(--terra-cotta);
@@ -574,20 +744,18 @@
 /* Table */
 .prod-table th,
 .prod-table td {
-    padding: 0.9rem 1rem;
-    font-size: 0.88rem;
+    padding: 0.8rem 0.9rem;
+    font-size: 0.875rem;
 }
 
 .prod-style {
     font-family: 'Courier New', monospace;
     font-weight: 700;
     color: var(--aged-bronze);
-    font-size: 0.85rem;
+    font-size: 0.83rem;
 }
 
-.prod-name-cell {
-    max-width: 240px;
-}
+.prod-name-cell { max-width: 220px; }
 
 .prod-actions-cell {
     display: flex;
@@ -596,7 +764,7 @@
     white-space: nowrap;
 }
 
-/* ── Active / Inactive toggle switch ─────────────────────────────────── */
+/* ── Active / Inactive toggle switch ─────────────────────────── */
 .prod-toggle {
     display: inline-flex;
     align-items: center;
@@ -614,33 +782,29 @@
 
 .prod-toggle-track {
     position: relative;
-    width: 36px;
-    height: 20px;
+    width: 34px;
+    height: 19px;
     background: #d1d5db;
     border-radius: 20px;
     transition: background 0.2s;
     flex-shrink: 0;
 }
 
-.prod-toggle-input:checked + .prod-toggle-track {
-    background: #10b981;
-}
+.prod-toggle-input:checked + .prod-toggle-track { background: #10b981; }
 
 .prod-toggle-thumb {
     position: absolute;
     top: 2px;
     left: 2px;
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
     background: #fff;
     border-radius: 50%;
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     transition: left 0.2s;
 }
 
-.prod-toggle-input:checked + .prod-toggle-track .prod-toggle-thumb {
-    left: 18px;
-}
+.prod-toggle-input:checked + .prod-toggle-track .prod-toggle-thumb { left: 17px; }
 
 .prod-toggle-label { transition: background 0.2s, color 0.2s; }
 
@@ -648,9 +812,9 @@
 .prod-badge {
     display: inline-flex;
     align-items: center;
-    padding: 0.2rem 0.65rem;
+    padding: 0.2rem 0.6rem;
     border-radius: 20px;
-    font-size: 0.75rem;
+    font-size: 0.73rem;
     font-weight: 600;
     letter-spacing: 0.04em;
     white-space: nowrap;
@@ -666,38 +830,48 @@
     color: var(--text-secondary);
 }
 
+/* No-results state */
+.prod-no-results {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: var(--text-secondary);
+}
+
+.prod-no-results svg { margin-bottom: 1rem; color: var(--text-light); }
+.prod-no-results p { font-size: 0.92rem; margin-bottom: 1rem; }
+
 /* Mobile card list — hidden on desktop */
 .prod-card-list { display: none; }
 
 /* Mobile cards */
 .prod-card {
-    padding: 1.1rem 1.25rem;
+    padding: 1rem 1.25rem;
     border-bottom: 1px solid var(--border-color);
 }
 
 .prod-card:last-child { border-bottom: none; }
 
-.prod-card-top { margin-bottom: 0.75rem; }
+.prod-card-top { margin-bottom: 0.65rem; }
 
 .prod-card-meta {
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    margin-bottom: 0.3rem;
+    margin-bottom: 0.25rem;
 }
 
 .prod-card-style {
     font-family: 'Courier New', monospace;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     font-weight: 700;
     color: var(--aged-bronze);
     background: rgba(127,108,80,0.08);
-    padding: 0.15rem 0.5rem;
+    padding: 0.12rem 0.45rem;
     border-radius: 5px;
 }
 
 .prod-card-name {
-    font-size: 0.97rem;
+    font-size: 0.95rem;
     font-weight: 600;
     color: var(--text-primary);
     margin: 0;
@@ -707,8 +881,8 @@
 .prod-card-details {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.4rem 1rem;
-    margin-bottom: 1rem;
+    gap: 0.35rem 1rem;
+    margin-bottom: 0.9rem;
 }
 
 .prod-card-detail {
@@ -718,7 +892,7 @@
 }
 
 .prod-card-detail-label {
-    font-size: 0.68rem;
+    font-size: 0.67rem;
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -728,7 +902,7 @@
 
 .prod-card-actions {
     display: flex;
-    gap: 0.6rem;
+    gap: 0.55rem;
     flex-wrap: wrap;
     align-items: center;
 }
@@ -762,15 +936,8 @@
     margin-bottom: 1.5rem;
 }
 
-.prod-empty h3 {
-    font-size: 1.3rem;
-    margin-bottom: 0.75rem;
-}
-
-.prod-empty p {
-    color: var(--text-secondary);
-    margin-bottom: 2rem;
-}
+.prod-empty h3 { font-size: 1.3rem; margin-bottom: 0.75rem; }
+.prod-empty p { color: var(--text-secondary); margin-bottom: 2rem; }
 
 .prod-empty-actions {
     display: flex;
@@ -851,9 +1018,7 @@
 
 .prod-modal-close:hover { background: var(--secondary-color); }
 
-.prod-modal-body {
-    padding: 1.5rem;
-}
+.prod-modal-body { padding: 1.5rem; }
 
 .prod-modal-body p {
     color: var(--text-secondary);
@@ -920,14 +1085,18 @@
     .prod-page-header { flex-direction: column; align-items: flex-start; }
     .prod-add-btn { width: 100%; justify-content: center; }
 
-    .prod-toolbar { flex-direction: column; align-items: flex-start; }
-    .prod-tool-buttons { width: 100%; }
+    .prod-tools-body { gap: 0.85rem; }
+    .prod-tool-group { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+    .prod-tool-group-label { min-width: unset; }
     .prod-tool-btn {
-        flex: 1 1 calc(50% - 0.3rem);
+        flex: 1 1 calc(50% - 0.28rem);
         justify-content: center;
-        min-height: 48px;
-        font-size: 0.8rem;
+        min-height: 46px;
+        font-size: 0.79rem;
     }
+
+    .prod-search-filter-row { flex-direction: column; align-items: stretch; }
+    .prod-search-wrap { max-width: none; }
 
     /* Hide desktop table, show card list */
     .prod-table { display: none; }
@@ -980,6 +1149,49 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
+// ── Live product search ───────────────────────────────────────────────────────
+var searchInput  = document.getElementById('prodSearch');
+var searchClear  = document.getElementById('prodSearchClear');
+var resultNum    = document.getElementById('prodResultNum');
+var noResults    = document.getElementById('prodNoResults');
+var noResultsTerm = document.getElementById('prodNoResultsTerm');
+
+function clearSearch() {
+    if (searchInput) { searchInput.value = ''; filterProducts(''); searchInput.focus(); }
+}
+
+function filterProducts(term) {
+    term = term.trim().toLowerCase();
+    var tableRows = document.querySelectorAll('#prodTable tbody tr');
+    var cards     = document.querySelectorAll('#prodCardList .prod-card');
+    var visible   = 0;
+
+    tableRows.forEach(function(row) {
+        var match = !term || row.dataset.name.includes(term) || row.dataset.style.includes(term);
+        row.style.display = match ? '' : 'none';
+        if (match) visible++;
+    });
+
+    cards.forEach(function(card) {
+        var match = !term || card.dataset.name.includes(term) || card.dataset.style.includes(term);
+        card.style.display = match ? '' : 'none';
+    });
+
+    if (resultNum) resultNum.textContent = visible;
+    if (searchClear) searchClear.hidden = !term;
+    if (noResults) {
+        noResults.hidden = visible > 0 || !term;
+        if (noResultsTerm) noResultsTerm.textContent = term;
+    }
+}
+
+if (searchInput) {
+    searchInput.addEventListener('input', function() { filterProducts(this.value); });
+}
+if (searchClear) {
+    searchClear.addEventListener('click', clearSearch);
+}
+
 // ── Active / Inactive toggle ──────────────────────────────────────────────────
 document.addEventListener('change', function(e) {
     var input = e.target;
@@ -987,10 +1199,8 @@ document.addEventListener('change', function(e) {
 
     var productId   = input.dataset.productId;
     var toggleUrl   = input.dataset.toggleUrl;
-    var productName = input.dataset.productName;
     var csrfToken   = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
 
-    // Optimistically update all toggles for this product (desktop + mobile)
     var allInputs = document.querySelectorAll('.prod-toggle-input[data-product-id="' + productId + '"]');
 
     fetch(toggleUrl, {
@@ -1006,7 +1216,6 @@ document.addEventListener('change', function(e) {
         return res.json();
     })
     .then(function(data) {
-        // Sync all badge labels + checked state for this product
         allInputs.forEach(function(inp) {
             inp.checked = data.is_active;
             var label = inp.closest('.prod-toggle').querySelector('.prod-toggle-label');
@@ -1018,7 +1227,6 @@ document.addEventListener('change', function(e) {
         showToast(data.message);
     })
     .catch(function() {
-        // Revert the toggle on failure
         allInputs.forEach(function(inp) { inp.checked = !inp.checked; });
         showToast('Something went wrong — please try again.');
     });
@@ -1046,12 +1254,10 @@ document.addEventListener('click', function(e) {
         return res.json();
     })
     .then(function(data) {
-        // Sync every favorite button for this product (desktop + mobile)
         document.querySelectorAll('.prod-fav-btn[data-product-id="' + productId + '"]').forEach(function(b) {
             b.classList.toggle('is-fav', data.is_favorite);
-            b.title = data.is_favorite ? 'Remove from Customer Favorites' : 'Mark as Customer Favorite';
+            b.title = data.is_favorite ? 'Remove from Favorites' : 'Mark as Favorite';
         });
-        // Show/hide the inline "Customer Favorite" flags for this product
         document.querySelectorAll(
             'tr[data-product-id="' + productId + '"] [data-fav-flag], ' +
             '.prod-card[data-product-id="' + productId + '"] [data-fav-flag]'
@@ -1064,10 +1270,10 @@ document.addEventListener('click', function(e) {
 });
 
 function showToast(msg) {
-    let t = document.getElementById('prodDeleteToast');
+    let t = document.getElementById('prodToast');
     if (!t) {
         t = document.createElement('div');
-        t.id = 'prodDeleteToast';
+        t.id = 'prodToast';
         t.style.cssText = [
             'position:fixed','bottom:1.5rem','left:50%','transform:translateX(-50%)',
             'background:#1e1914','color:#fff','padding:0.7rem 1.4rem',
@@ -1083,6 +1289,5 @@ function showToast(msg) {
     t._hide = setTimeout(function() { t.style.opacity = '0'; }, 3000);
 }
 </script>
-
 
 {% endblock %}
