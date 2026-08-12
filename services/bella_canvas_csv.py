@@ -39,76 +39,59 @@ def _extract_fabric(description: str) -> str:
     return ''
 
 
-def _cdn_img_base(row: dict) -> str:
-    """
-    Extract the correct CDN base path from FRONT_MODEL_IMAGE_URL.
-    e.g. https://cdnm.sanmar.com/imglib/mresjpg/2026/f2/BC3483_black_model_front.jpg
-      → https://cdnm.sanmar.com/imglib/mresjpg/2026/f2/
-    The year/folder changes annually, so we always derive it from the CSV.
-    """
-    url = row.get('FRONT_MODEL_IMAGE_URL', '').strip()
-    if url and '/' in url:
-        return url[:url.rfind('/') + 1]
-    return 'https://cdnm.sanmar.com/imglib/mresjpg/2026/f2/'
+# Base URL path for locally hosted SDL images (uploaded to static/sanmar/front/SDL/)
+_SDL_BASE = '/static/sanmar/front/SDL'
 
 
 def _front_image_url(row: dict) -> str:
     """
-    Return the best available flat/no-model front image URL.
-
     Priority:
-    1. COLOR_PRODUCT_IMAGE with '_flat_front' in name → real CDN flat image (no person)
-    2. Local static file uploaded by user: /static/sanmar/front/{PRODUCT_IMAGE}
-       (user copies images from the SanMar SDL ZIP into static/sanmar/front/)
-    3. Empty string — admin must set manually
+    1. Color-specific flat front image from SDL (no model, color-accurate)
+    2. Style-level flat image from SDL PRODUCT_IMAGE folder
     """
     color_img = row.get('COLOR_PRODUCT_IMAGE', '').strip()
     if color_img and '_flat_front' in color_img.lower():
-        return _cdn_img_base(row) + color_img
+        return f'{_SDL_BASE}/COLOR_PRODUCT_IMAGE/{color_img}'
 
-    # Fallback to locally hosted image from SDL ZIP
     product_img = row.get('PRODUCT_IMAGE', '').strip()
     if product_img:
-        return '/static/sanmar/front/' + product_img
+        return f'{_SDL_BASE}/PRODUCT_IMAGE/{product_img}'
 
     return ''
 
 
 def _back_image_url(row: dict) -> str:
     """
-    Return the best available flat/no-model back image URL.
-
     Priority:
-    1. Replace '_flat_front' with '_flat_back' in COLOR_PRODUCT_IMAGE → CDN back flat image
-    2. Local static file: /static/sanmar/back/{PRODUCT_IMAGE}
+    1. Color-specific flat back image (replace _flat_front with _flat_back)
+    2. Style-level back image from PRODUCT_IMAGE folder (BC3001B.jpg pattern)
     """
     color_img = row.get('COLOR_PRODUCT_IMAGE', '').strip()
     if color_img and '_flat_front' in color_img.lower():
         back_img = color_img.lower().replace('_flat_front', '_flat_back')
-        return _cdn_img_base(row) + back_img
+        return f'{_SDL_BASE}/COLOR_PRODUCT_IMAGE/{back_img}'
 
-    # Fallback to locally hosted back image from SDL ZIP
     product_img = row.get('PRODUCT_IMAGE', '').strip()
     if product_img:
         name_no_ext = product_img.rsplit('.', 1)[0]
-        return '/static/sanmar/back/' + name_no_ext + 'B.jpg'
+        return f'{_SDL_BASE}/PRODUCT_IMAGE/{name_no_ext}B.jpg'
 
     return ''
 
 
 def _swatch_url(row: dict) -> str:
-    """Return the color square swatch URL — derived from the same CDN base as product images."""
+    """Color square swatch from local SDL COLOR_SQUARE_IMAGE folder."""
     swatch = row.get('COLOR_SQUARE_IMAGE', '').strip()
     if swatch:
-        return _cdn_img_base(row) + swatch
+        return f'{_SDL_BASE}/COLOR_SQUARE_IMAGE/{swatch}'
     return ''
 
 
 def _spec_sheet_url(row: dict) -> str:
-    """Return the spec sheet PDF URL. Uses the SPEC_SHEET column from the SDL CSV."""
+    """Spec sheet PDF from local SDL SpecSheetMeasurements folder."""
     spec = (row.get('SPEC_SHEET', '') or row.get('PRODUCT_MEASUREMENTS', '')).strip()
     if spec and spec.lower().endswith('.pdf'):
-        return 'https://cdnm.sanmar.com/imglib/mresjpg/specsheet/pdf/specsheet/' + spec
+        return f'{_SDL_BASE}/SpecSheetMeasurements/{spec}'
     return ''
 
 
