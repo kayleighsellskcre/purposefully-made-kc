@@ -22,10 +22,6 @@ import io
 from collections import defaultdict
 
 
-# SanMar CDN base URL for images not already full URLs
-_CDN_BASE = 'https://cdnm.sanmar.com/catalog/images'
-
-
 def _safe_float(value, default=0.0) -> float:
     try:
         return float(str(value).strip()) if value else default
@@ -43,50 +39,76 @@ def _extract_fabric(description: str) -> str:
     return ''
 
 
+def _cdn_img_base(row: dict) -> str:
+    """
+    Extract the correct CDN base path from FRONT_MODEL_IMAGE_URL.
+    e.g. https://cdnm.sanmar.com/imglib/mresjpg/2026/f2/BC3483_black_model_front.jpg
+      → https://cdnm.sanmar.com/imglib/mresjpg/2026/f2/
+    The year/folder changes annually, so we always derive it from the CSV.
+    """
+    url = row.get('FRONT_MODEL_IMAGE_URL', '').strip()
+    if url and '/' in url:
+        return url[:url.rfind('/') + 1]
+    return 'https://cdnm.sanmar.com/imglib/mresjpg/2026/f2/'
+
+
 def _front_image_url(row: dict) -> str:
     """
-    Return a flat/ghost product image URL — no model photos.
-    Uses PRODUCT_IMAGE (the plain flat shirt, no people).
-    Falls back to COLOR_PRODUCT_IMAGE only if needed.
+    Return the best available flat/no-model front image URL.
+
+    Priority:
+    1. COLOR_PRODUCT_IMAGE with '_flat_front' in name → real CDN flat image (no person)
+    2. Local static file uploaded by user: /static/sanmar/front/{PRODUCT_IMAGE}
+       (user copies images from the SanMar SDL ZIP into static/sanmar/front/)
+    3. Empty string — admin must set manually
     """
-    # Flat product image — no people, style-level
+    color_img = row.get('COLOR_PRODUCT_IMAGE', '').strip()
+    if color_img and '_flat_front' in color_img.lower():
+        return _cdn_img_base(row) + color_img
+
+    # Fallback to locally hosted image from SDL ZIP
     product_img = row.get('PRODUCT_IMAGE', '').strip()
     if product_img:
-        return f'{_CDN_BASE}/{product_img}'
-
-    # Fallback: color-specific image (may have model on CDN even if local SDL is flat)
-    color_img = row.get('COLOR_PRODUCT_IMAGE', '').strip()
-    if color_img:
-        return f'{_CDN_BASE}/{color_img}'
+        return '/static/sanmar/front/' + product_img
 
     return ''
 
 
 def _back_image_url(row: dict) -> str:
     """
-    Derive the back image URL from PRODUCT_IMAGE base name.
-    SanMar pattern: BC3483.jpg → BC3483B.jpg  (or _back.jpg if available)
+    Return the best available flat/no-model back image URL.
+
+    Priority:
+    1. Replace '_flat_front' with '_flat_back' in COLOR_PRODUCT_IMAGE → CDN back flat image
+    2. Local static file: /static/sanmar/back/{PRODUCT_IMAGE}
     """
+    color_img = row.get('COLOR_PRODUCT_IMAGE', '').strip()
+    if color_img and '_flat_front' in color_img.lower():
+        back_img = color_img.lower().replace('_flat_front', '_flat_back')
+        return _cdn_img_base(row) + back_img
+
+    # Fallback to locally hosted back image from SDL ZIP
     product_img = row.get('PRODUCT_IMAGE', '').strip()
-    if product_img and product_img.lower().endswith('.jpg'):
-        base = product_img[:-4]            # strip .jpg
-        return f'{_CDN_BASE}/{base}B.jpg'  # e.g. BC3483B.jpg
+    if product_img:
+        name_no_ext = product_img.rsplit('.', 1)[0]
+        return '/static/sanmar/back/' + name_no_ext + 'B.jpg'
+
     return ''
 
 
 def _swatch_url(row: dict) -> str:
-    """Return the color swatch image URL."""
+    """Return the color square swatch URL — derived from the same CDN base as product images."""
     swatch = row.get('COLOR_SQUARE_IMAGE', '').strip()
     if swatch:
-        return f'{_CDN_BASE}/{swatch}'
+        return _cdn_img_base(row) + swatch
     return ''
 
 
 def _spec_sheet_url(row: dict) -> str:
-    """Return the spec sheet PDF URL from SanMar's CDN."""
-    spec = row.get('PRODUCT_MEASUREMENTS', '').strip()
+    """Return the spec sheet PDF URL. Uses the SPEC_SHEET column from the SDL CSV."""
+    spec = (row.get('SPEC_SHEET', '') or row.get('PRODUCT_MEASUREMENTS', '')).strip()
     if spec and spec.lower().endswith('.pdf'):
-        return f'https://cdnm.sanmar.com/imglib/mresjpg/specsheet/pdf/specsheet/{spec}'
+        return 'https://cdnm.sanmar.com/imglib/mresjpg/specsheet/pdf/specsheet/' + spec
     return ''
 
 
