@@ -960,15 +960,85 @@ def fetch_ss_images():
                 errors.append(f'{product.style_number}: {e}')
                 print(f'fetch_ss_images error for {product.style_number}: {e}', file=sys.stderr)
 
+        # ── Phase 2: link local static/sanmar/ images ──────────────────────────
+        import re
+        from pathlib import Path
+        sanmar_dir = Path(current_app.root_path) / 'static' / 'sanmar'
+        local_linked = 0
+        if sanmar_dir.is_dir():
+            for style_folder in sanmar_dir.iterdir():
+                if not style_folder.is_dir():
+                    continue
+                folder_name = style_folder.name          # e.g. "3001"
+                bc_style    = 'BC' + folder_name         # e.g. "BC3001"
+                product = Product.query.filter(
+                    db.or_(
+                        Product.style_number == bc_style,
+                        Product.style_number == folder_name,
+                    )
+                ).first()
+                if not product:
+                    continue
+
+                file_map: dict = {}
+                for f in style_folder.iterdir():
+                    if not f.is_file():
+                        continue
+                    m = re.match(
+                        rf'^{re.escape(folder_name)}_(.+?)_(front|back)\.jpe?g$',
+                        f.name, re.IGNORECASE
+                    )
+                    if not m:
+                        continue
+                    raw_color = m.group(1).replace('_', ' ')
+                    side      = m.group(2).lower()
+                    key       = raw_color.lower()
+                    if key not in file_map:
+                        file_map[key] = {}
+                    file_map[key][side] = f'sanmar/{folder_name}/{f.name}'
+
+                variants = ProductColorVariant.query.filter_by(product_id=product.id).all()
+                for variant in variants:
+                    color_key = (variant.color_name or '').lower()
+                    if color_key not in file_map:
+                        continue
+                    paths   = file_map[color_key]
+                    changed = False
+                    if not variant.front_image_url and paths.get('front'):
+                        variant.front_image_url = paths['front']
+                        changed = True
+                    if not variant.back_image_url and paths.get('back'):
+                        variant.back_image_url = paths['back']
+                        changed = True
+                    if changed:
+                        local_linked += 1
+
+                if not product.front_mockup_template and file_map:
+                    first_front = next((v['front'] for v in file_map.values() if 'front' in v), None)
+                    if first_front:
+                        product.front_mockup_template = first_front
+                if not product.back_mockup_template and file_map:
+                    first_back = next((v['back'] for v in file_map.values() if 'back' in v), None)
+                    if first_back:
+                        product.back_mockup_template = first_back
+
+            try:
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                errors.append(f'Local link error: {e}')
+
         msg = (
             f'Done! Processed {updated_products} products — '
             f'created {created_variants} new color variants, '
-            f'updated {updated_variants} existing ones.'
+            f'updated {updated_variants} from S&S'
+            + (f', linked {local_linked} from local files' if local_linked else '')
+            + '.'
         )
         if skipped:
             msg += f' {skipped} styles not found in S&S.'
         if errors:
-            msg += f' Errors on: {", ".join(errors[:3])}'
+            msg += f' Errors: {", ".join(errors[:3])}'
         flash(msg, 'success' if not errors else 'warning')
 
     except ValueError as e:
