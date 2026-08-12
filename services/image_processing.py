@@ -264,6 +264,31 @@ def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
         fg = _erode_bool(_dilate_bool(fg, 2), 2)
         alpha = np.where(fg, 255, 0).astype(np.int32)
 
+        # Precision pass: cream mixed into anti-aliased edges (the faint
+        # halo on the shirt). Only pixels that already touch transparency
+        # are peeled — letter interiors are never touched.
+        halo_tol = tol + 34
+        is_halo = dist <= halo_tol
+        for _ in range(2):
+            trans = alpha < 20
+            has_t = _dilate_bool(trans, 1)
+            peel = has_t & is_halo & (alpha > 0)
+            alpha[peel] = 0
+
+        # Push real logo color into the 1px rim so any leftover cream tint
+        # doesn't print as a light outline.
+        opaque = alpha >= 128
+        rgb_out = arr[..., :3].copy()
+        filled = opaque.copy()
+        for _ in range(4):
+            for shift, axis in ((1, 0), (-1, 0), (1, 1), (-1, 1)):
+                nb_f = np.roll(filled, shift, axis=axis)
+                nb_c = np.roll(rgb_out, shift, axis=axis)
+                take = (~filled) & nb_f
+                if take.any():
+                    rgb_out[take] = nb_c[take]
+                    filled |= take
+        arr[..., :3] = rgb_out
         arr[..., 3] = alpha.clip(0, 255).astype(np.uint8)
         return Image.fromarray(arr, 'RGBA')
     except Exception:
