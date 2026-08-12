@@ -107,6 +107,15 @@
                         <input type="file" name="csv_file" accept=".csv" onchange="this.form.submit()">
                     </form>
                 </label>
+                <!-- Clean up leftover old S&S products -->
+                <form method="POST" action="{{ url_for('admin.cleanup_old_ss_products') }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="prod-tool-btn prod-tool-btn--danger"
+                            onclick="return confirm('Delete all Bella+Canvas products with old S&S style numbers (no BC prefix)? This cannot be undone.')">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                        Clean Up Old S&S
+                    </button>
+                </form>
             </div>
         </div>
 

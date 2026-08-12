@@ -824,6 +824,26 @@ def sync_sanmar():
     return redirect(url_for('admin.products'))
 
 
+@admin_bp.route('/products/cleanup-old-ss', methods=['POST'])
+@admin_required
+def cleanup_old_ss_products():
+    """Delete Bella+Canvas products still using old S&S style numbers (no BC prefix)."""
+    from models import Product, db
+    old_products = Product.query.filter(
+        Product.brand == 'Bella+Canvas',
+        ~Product.style_number.ilike('BC%')
+    ).all()
+    count = len(old_products)
+    for p in old_products:
+        db.session.delete(p)
+    db.session.commit()
+    if count:
+        flash(f'Cleaned up {count} old S&S Bella+Canvas products (replaced by BC-prefixed CSV imports).', 'success')
+    else:
+        flash('Nothing to clean up — no old S&S products found.', 'info')
+    return redirect(url_for('admin.products'))
+
+
 @admin_bp.route('/products/import-bella-canvas-csv', methods=['POST'])
 @admin_required
 def import_bella_canvas_csv():
