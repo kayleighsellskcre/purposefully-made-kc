@@ -110,12 +110,14 @@ def process_artwork_bytes(data: bytes, mode: str = 'auto', engine=None) -> dict:
             out = _flood_cut(img, bg_color, mad, mode)
             used = 'algorithmic'
 
+        interior_bg = _HAS_NUMPY and _looks_like_interior_bg_art(orig_rgb, bg_color, mad)
         out = _strip_background_color(out, orig_rgb, bg_color, mad, mode,
-                                      rembg_alpha=rembg_alpha)
-        # Targeted fallback: solid backdrop color is also used inside the
-        # art (white outlines, field lines). Default path stays unchanged
-        # unless this image matches and the default erased interior detail.
-        if _HAS_NUMPY and _looks_like_interior_bg_art(orig_rgb, bg_color, mad):
+                                      rembg_alpha=rembg_alpha,
+                                      preserve_interior=interior_bg)
+        # GAME DAY only: if the default still ate interior outlines/field
+        # lines, swap in the border-flood preserve. Simple logos never
+        # enter this branch.
+        if interior_bg:
             fallback = _border_connected_preserve(img, orig_rgb, bg_color, mad)
             if _fallback_keeps_more_interior(out, fallback):
                 out = fallback
@@ -244,18 +246,102 @@ def _close_bool(mask, px: int, diagonal: bool = False):
     return _erode_bool(_dilate_bool(mask, px, diagonal=diagonal), px, diagonal=diagonal)
 
 
+def _flood_from_border(seedable):
+    """True on pixels reachable from the image border through seedable."""
+    from collections import deque
+    h, w = seedable.shape
+    exterior = np.zeros((h, w), dtype=bool)
+    q = deque()
+
+    def seed(y, x):
+        if not exterior[y, x] and seedable[y, x]:
+            exterior[y, x] = True
+            q.append((y, x))
+
+    for x in range(w):
+        seed(0, x)
+        seed(h - 1, x)
+    for y in range(h):
+        seed(y, 0)
+        seed(y, w - 1)
+    while q:
+        y, x = q.popleft()
+        for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            ny, nx = y + dy, x + dx
+            if 0 <= ny < h and 0 <= nx < w and not exterior[ny, nx] and seedable[ny, nx]:
+                exterior[ny, nx] = True
+                q.append((ny, nx))
+    return exterior
+
+
+def _iter_bool_components(mask):
+    h, w = mask.shape
+    visited = np.zeros((h, w), dtype=bool)
+    ys, xs = np.where(mask)
+    for y0, x0 in zip(ys, xs):
+        if visited[y0, x0]:
+            continue
+        comp = [(y0, x0)]
+        visited[y0, x0] = True
+        qi = 0
+        while qi < len(comp):
+            y, x = comp[qi]
+            qi += 1
+            for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                ny, nx = y + dy, x + dx
+                if 0 <= ny < h and 0 <= nx < w and not visited[ny, nx] and mask[ny, nx]:
+                    visited[ny, nx] = True
+                    comp.append((ny, nx))
+        yield comp
+
+
+def _comp_is_thin_or_ring(comp):
+    """Field lines, white outlines, and stroke rings — keep these."""
+    n = len(comp)
+    if n < 12:
+        return False
+    ys = [p[0] for p in comp]
+    xs = [p[1] for p in comp]
+    bh = max(ys) - min(ys) + 1
+    bw = max(xs) - min(xs) + 1
+    aspect = max(bh, bw) / max(1.0, min(bh, bw))
+    if aspect >= 5:
+        return True
+    fill = n / max(1.0, bh * bw)
+    return fill < 0.32 and max(bh, bw) >= 10
+
+
+def _comp_ring_mostly_logo(comp, is_logo):
+    """True when this blob sits in a letter counter (surrounded by ink)."""
+    n = len(comp)
+    if n > 8000:
+        return False
+    h, w = is_logo.shape
+    cset = set(comp)
+    logo_n = other = 0
+    for y, x in comp:
+        for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            ny, nx = y + dy, x + dx
+            if not (0 <= ny < h and 0 <= nx < w) or (ny, nx) in cset:
+                continue
+            if is_logo[ny, nx]:
+                logo_n += 1
+            else:
+                other += 1
+    return logo_n > 8 and logo_n >= 2.5 * max(1, other)
+
+
 def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
-                            bg_color, mad, mode: str, rembg_alpha=None) -> Image.Image:
+                            bg_color, mad, mode: str, rembg_alpha=None,
+                            preserve_interior: bool = False) -> Image.Image:
     """Keep every logo-colored pixel. Delete the backdrop color.
 
-    Solid letter strokes (navy, brown, black, green fill that is NOT the
-    paper color) are restored even if rembg punched holes in them.
-    rembg-strong-foreground pixels (white outlines, field lines) are
-    protected even when they match the paper color.
+    Default (preserve_interior=False): punch letter counters, kill ghost
+    rectangles, keep large enclosed art (cream shapes, parchment) and
+    thin structures rembg marked as foreground (small white text).
 
-    Distressed interiors (cream specks inside a football field) are
-    sealed and healed so the shirt does not show through as swiss cheese.
-    True letter counters (the hole in A/O/D) stay transparent.
+    GAME DAY path (preserve_interior=True): also seal distressed interiors
+    so cream specks inside a painted field are not swiss-cheesed.
     """
     if not _HAS_NUMPY:
         return img
@@ -268,8 +354,6 @@ def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
               + np.abs(rgb[..., 1] - int(bg_color[1]))
               + np.abs(rgb[..., 2] - int(bg_color[2])))
 
-        # Tight split so lighter brown in a grunge font is still "logo",
-        # not "paper". Old tol of 140 ate those strokes.
         tol = int(min(58, max(28, 32 + mad * 1.4)))
         if mode == 'aggressive':
             tol = min(80, tol + 18)
@@ -277,8 +361,6 @@ def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
         is_bg = dist <= tol
         is_logo = dist > tol
 
-        # Logo color always stays — this puts back chunks rembg removed
-        # from PRAY / STILL / etc.
         alpha[is_logo] = 255
 
         rembg_a = None
@@ -289,129 +371,111 @@ def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
                 rembg_a = rembg_a[..., 3] if rembg_a.shape[-1] >= 4 else rembg_a[..., 0]
             if rembg_a.shape[:2] == alpha.shape:
                 rembg_fg = rembg_a >= 140
-                alpha[rembg_fg] = 255
+                # Protect colored art and thin white text/outlines. Do NOT
+                # protect fat paper-colored blobs — those are letter holes
+                # rembg failed to punch, or a ghost rectangle.
+                thin_bg_fg = rembg_fg & is_bg & ~_erode_bool(rembg_fg & is_bg, 2)
+                protect_fg = (rembg_fg & ~is_bg) | thin_bg_fg
+                alpha[protect_fg] = 255
             else:
                 rembg_a = None
                 rembg_fg = None
+                protect_fg = None
+        else:
+            protect_fg = None
 
-        if rembg_fg is not None:
-            protected = is_logo | rembg_fg
+        if protect_fg is not None:
+            protected = is_logo | protect_fg
         else:
             protected = is_logo
-        # Seal 1–2px distress cracks so flood cannot leak through holes
-        # in white outlines. Do not dilate 6–14px (that left cream halos).
         protected = _erode_bool(_dilate_bool(protected, 2), 1)
 
-        # Close cracks *inside* painted regions (green field, letter fills)
-        # so flood cannot swiss-cheese them. Close, not dilate: the outer
-        # silhouette does not grow, so the gap between GAME and DAY stays
-        # open and the real paper backdrop still floods away.
-        logo_solid = _close_bool(is_logo, 3, diagonal=True)
+        logo_solid = None
+        heal = np.zeros(alpha.shape, dtype=bool)
+        if preserve_interior:
+            logo_solid = _close_bool(is_logo, 3, diagonal=True)
 
-        # Only delete backdrop that is connected to the image border,
-        # and never through protected white-outline / logo / field pixels.
-        # Cream clouds, roads, bible pages, highlights stay because they
-        # are enclosed inside the artwork.
-        from collections import deque
         h, w = alpha.shape
-        exterior = np.zeros((h, w), dtype=bool)
-        q = deque()
-        floodable = is_bg & ~protected & ~logo_solid
+        floodable = is_bg & ~protected
+        if logo_solid is not None:
+            floodable = floodable & ~logo_solid
+        if rembg_a is not None:
+            # Ghost rectangles rembg leaves at alpha ~20–90
+            floodable = floodable | ((rembg_a < 96) & ~protected)
 
-        def seed(y, x):
-            if exterior[y, x]:
-                return
-            if floodable[y, x]:
-                exterior[y, x] = True
-                q.append((y, x))
-
-        for x in range(w):
-            seed(0, x)
-            seed(h - 1, x)
-        for y in range(h):
-            seed(y, 0)
-            seed(y, w - 1)
-
-        while q:
-            y, x = q.popleft()
-            for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-                ny, nx = y + dy, x + dx
-                if 0 <= ny < h and 0 <= nx < w and not exterior[ny, nx] and floodable[ny, nx]:
-                    exterior[ny, nx] = True
-                    q.append((ny, nx))
+        exterior = _flood_from_border(floodable)
+        # Grow from already-transparent pixels into leftover canvas
+        trans = alpha < 20
+        if trans.any():
+            extra = _dilate_bool(trans, 1) & floodable & ~exterior
+            if extra.any():
+                from collections import deque
+                q = deque()
+                ys, xs = np.where(extra)
+                for y, x in zip(ys, xs):
+                    exterior[y, x] = True
+                    q.append((y, x))
+                while q:
+                    y, x = q.popleft()
+                    for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                        ny, nx = y + dy, x + dx
+                        if 0 <= ny < h and 0 <= nx < w and not exterior[ny, nx] and floodable[ny, nx]:
+                            exterior[ny, nx] = True
+                            q.append((ny, nx))
 
         alpha[exterior] = 0
 
-        # Restore enclosed cream/white that is part of the art (clouds, road,
-        # pages, white stars). Heal paper specks trapped inside a painted
-        # region so they take the surrounding logo color instead of becoming
-        # holes. Punch only letter-counter-sized holes that rembg did not
-        # mark as foreground.
         enclosed = is_bg & ~exterior
         alpha[enclosed] = 255
-        heal = logo_solid & enclosed
-        if rembg_fg is not None:
-            heal = heal & ~rembg_fg
-        alpha[heal] = 255
+        if logo_solid is not None:
+            heal = logo_solid & enclosed
+            if protect_fg is not None:
+                heal = heal & ~protect_fg
+            alpha[heal] = 255
 
-        min_letter_hole = max(120, (h * w) // 12000)
-        max_letter_hole = max(500, (h * w) // 90)  # ~1.1% of the image
-        visited = np.zeros((h, w), dtype=bool)
+        max_letter_hole = max(500, (h * w) // 90)
         punchable = enclosed & ~heal
-        ys, xs = np.where(punchable)
-        for y0, x0 in zip(ys, xs):
-            if visited[y0, x0]:
+        for comp in _iter_bool_components(punchable):
+            n = len(comp)
+            if n > max_letter_hole:
                 continue
-            comp = [(y0, x0)]
-            visited[y0, x0] = True
-            qi = 0
-            while qi < len(comp):
-                y, x = comp[qi]
-                qi += 1
-                for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-                    ny, nx = y + dy, x + dx
-                    if 0 <= ny < h and 0 <= nx < w and not visited[ny, nx] and punchable[ny, nx]:
-                        visited[ny, nx] = True
-                        comp.append((ny, nx))
-            # Tiny specks = distress, keep opaque. Medium = letter counters.
-            if min_letter_hole < len(comp) <= max_letter_hole:
+            if _comp_is_thin_or_ring(comp):
+                continue
+            # Letter counters: compact blobs wrapped in ink. Pattern fills
+            # (checkered heart) have mixed neighbors and stay.
+            if _comp_ring_mostly_logo(comp, is_logo):
                 for y, x in comp:
-                    if rembg_a is None or rembg_a[y, x] < 140:
-                        alpha[y, x] = 0
+                    alpha[y, x] = 0
 
-        # Close 1px nicks in letter strokes (not 2px — that filled counters).
         fg = alpha >= 128
         fg = _erode_bool(_dilate_bool(fg, 1), 1)
         alpha = np.where(fg, 255, 0).astype(np.int32)
 
-        # Precision pass: cream mixed into anti-aliased edges (the faint
-        # halo on the shirt). Only pixels that already touch transparency
-        # are peeled — letter interiors and protected white outlines
-        # are never touched.
         halo_tol = tol + 34
         is_halo = dist <= halo_tol
         for _ in range(2):
             trans = alpha < 20
             has_t = _dilate_bool(trans, 1)
             peel = has_t & is_halo & (alpha > 0) & ~protected
+            if rembg_a is not None:
+                peel = peel & (rembg_a < 80)
             alpha[peel] = 0
 
-        # Paint healed field specks with neighboring logo color (green field
-        # instead of leftover cream dots). Do not recolor white outlines,
-        # yard lines, or parchment — only the heal mask.
+        # Kill rembg ghost boxes (semi-transparent gray rectangles)
+        alpha[alpha < 40] = 0
+
         opaque = alpha >= 128
         rgb_out = arr[..., :3].copy()
-        filled = is_logo.copy()
-        for _ in range(8):
-            for shift, axis in ((1, 0), (-1, 0), (1, 1), (-1, 1)):
-                nb_f = np.roll(filled, shift, axis=axis)
-                nb_c = np.roll(rgb_out, shift, axis=axis)
-                take = heal & opaque & (~filled) & nb_f
-                if take.any():
-                    rgb_out[take] = nb_c[take]
-                    filled |= take
-        # Push logo color into the 1px transparent rim so anti-aliased
-        # edges don't print a light outline.
+        if heal.any():
+            filled = is_logo.copy()
+            for _ in range(8):
+                for shift, axis in ((1, 0), (-1, 0), (1, 1), (-1, 1)):
+                    nb_f = np.roll(filled, shift, axis=axis)
+                    nb_c = np.roll(rgb_out, shift, axis=axis)
+                    take = heal & opaque & (~filled) & nb_f
+                    if take.any():
+                        rgb_out[take] = nb_c[take]
+                        filled |= take
         filled = opaque.copy()
         for _ in range(4):
             for shift, axis in ((1, 0), (-1, 0), (1, 1), (-1, 1)):
@@ -436,7 +500,11 @@ def _bg_tol(mad, mode: str) -> int:
 
 
 def _looks_like_interior_bg_art(orig_rgb: Image.Image, bg_color, mad) -> bool:
-    """True when a mostly-solid border color also shows up a lot inside."""
+    """GAME DAY-style: paper color used as thin interior art (outlines, field lines).
+
+    Simple logos on a white canvas do NOT match — their enclosed paper
+    pixels are compact letter counters, not thin strokes.
+    """
     if not _HAS_NUMPY or mad > 22:
         return False
     try:
@@ -447,18 +515,23 @@ def _looks_like_interior_bg_art(orig_rgb: Image.Image, bg_color, mad) -> bool:
               + np.abs(rgb[..., 2] - int(bg_color[2])))
         tol = _bg_tol(mad, 'auto')
         is_bg = dist <= tol
-        margin = max(10, min(h, w) // 18)
-        interior = np.ones((h, w), dtype=bool)
-        interior[:margin, :] = False
-        interior[-margin:, :] = False
-        interior[:, :margin] = False
-        interior[:, -margin:] = False
-        border = ~interior
-        if border.any() and float(is_bg[border].mean()) < 0.72:
+        margin = max(8, min(h, w) // 20)
+        border = np.zeros((h, w), dtype=bool)
+        border[:margin, :] = True
+        border[-margin:, :] = True
+        border[:, :margin] = True
+        border[:, -margin:] = True
+        if float(is_bg[border].mean()) < 0.72:
             return False
-        if not interior.any():
+        exterior = _flood_from_border(is_bg)
+        enclosed = is_bg & ~exterior
+        if not enclosed.any():
             return False
-        return float(is_bg[interior].mean()) >= 0.07
+        thin = 0
+        for comp in _iter_bool_components(enclosed):
+            if _comp_is_thin_or_ring(comp):
+                thin += len(comp)
+        return thin >= max(500, int(h * w * 0.004))
     except Exception:
         return False
 
@@ -518,26 +591,15 @@ def _border_connected_preserve(orig_rgba: Image.Image, orig_rgb: Image.Image,
         heal = logo_solid & enclosed
         alpha[heal] = 255
 
-        min_letter_hole = max(120, (h * w) // 12000)
         max_letter_hole = max(500, (h * w) // 90)
-        visited = np.zeros((h, w), dtype=bool)
         punchable = enclosed & ~heal
-        ys, xs = np.where(punchable)
-        for y0, x0 in zip(ys, xs):
-            if visited[y0, x0]:
+        for comp in _iter_bool_components(punchable):
+            n = len(comp)
+            if n > max_letter_hole:
                 continue
-            comp = [(y0, x0)]
-            visited[y0, x0] = True
-            qi = 0
-            while qi < len(comp):
-                y, x = comp[qi]
-                qi += 1
-                for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-                    ny, nx = y + dy, x + dx
-                    if 0 <= ny < h and 0 <= nx < w and not visited[ny, nx] and punchable[ny, nx]:
-                        visited[ny, nx] = True
-                        comp.append((ny, nx))
-            if min_letter_hole < len(comp) <= max_letter_hole:
+            if _comp_is_thin_or_ring(comp):
+                continue
+            if _comp_ring_mostly_logo(comp, is_logo):
                 for y, x in comp:
                     alpha[y, x] = 0
 
@@ -545,13 +607,13 @@ def _border_connected_preserve(orig_rgba: Image.Image, orig_rgb: Image.Image,
         fg = _erode_bool(_dilate_bool(fg, 1), 1)
         alpha = np.where(fg, 255, 0).astype(np.int32)
 
-        # 1–2px edge peel only — never interiors
         is_halo = dist <= (tol + 34)
         for _ in range(2):
             trans = alpha < 20
             has_t = _dilate_bool(trans, 1)
             peel = has_t & is_halo & (alpha > 0) & ~logo_solid
             alpha[peel] = 0
+        alpha[alpha < 40] = 0
 
         opaque = alpha >= 128
         rgb_out = arr[..., :3].copy()
