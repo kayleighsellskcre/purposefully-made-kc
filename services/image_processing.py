@@ -1,4 +1,7 @@
 """
+LOCKED — Kayleigh signed off on this cut. Do not change the algorithm
+unless she explicitly asks. See .cursor/rules/background-removal.mdc.
+
 Background removal — same-color key, nothing else.
 
 Sample the backdrop from the border. Delete every pixel that is that

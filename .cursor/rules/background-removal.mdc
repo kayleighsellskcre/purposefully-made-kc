@@ -1,0 +1,30 @@
+---
+description: Locked artwork background cut — do not change without an explicit request
+globs: services/image_processing.py
+alwaysApply: true
+---
+
+# Background removal is locked (commit `9059edd`)
+
+Kayleigh confirmed this cut is perfect. Do not "improve" it, add GAME DAY special cases, or bring rembg back unless she explicitly asks to change the algorithm.
+
+## What it does
+
+In `services/image_processing.py`:
+
+1. Sample the paper color from the image border
+2. Delete **only that color**, everywhere it appears (letter holes included)
+3. Keep every pixel that is a **different** color (lavender, parchment, gold, navy)
+4. Peel 1–2px of blended fringe on the new edge
+5. Crop
+
+Tight tolerance (`~16–36`). No rembg. No border-only flood. No "preserve enclosed cream."
+
+## Do not
+
+- Raise the color tolerance (that ate parchment and gold text)
+- Run rembg on uploads (OOM / timeouts)
+- Restore enclosed background-colored regions
+- Add GAME DAY / distressed-field exception paths
+
+Uploads stay fast because this is numpy-only. Client timeout is 45s.
