@@ -1,10 +1,14 @@
 ---
 description: Locked artwork background cut — do not change without an explicit request
 globs: services/image_processing.py
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Background removal is locked (commit `9059edd`)
+
+This lock applies **only** to the artwork background-cut algorithm in `services/image_processing.py`.
+
+It does **not** lock logo sizing, overlay fit, name/number placement, transfer widths, cart, checkout, or admin production measurements. Those may be changed freely.
 
 Kayleigh confirmed this cut is perfect. Do not "improve" it, add GAME DAY special cases, or bring rembg back unless she explicitly asks to change the algorithm.
 

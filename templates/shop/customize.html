@@ -240,12 +240,12 @@
     left: 50%;
     transform: translate(-50%, -50%);
 }
-/* Back design name/number: height is fixed; width grows on one line. */
+/* Back name/number: same visual size on every shirt. Width grows on one line. */
 .design-layer-back {
     flex-direction: column;
     width: auto;
-    max-width: 92%;
-    top: 25%;
+    max-width: 78%;
+    top: 36%;
     left: 50%;
     transform: translate(-50%, -50%);
     cursor: grab;
@@ -1363,7 +1363,6 @@
                     <p style="margin: 0; font-size: 0.9rem; color: #666;">
                         <strong>Selected:</strong> <span id="selectedColorName" style="color: var(--terra-cotta); font-weight: 700;">Loading...</span>
                     </p>
-                    <p id="transferSizeReadout" style="margin: 0.45rem 0 0; font-size: 0.8rem; color: #666; display: none;"></p>
                     <p id="dragHint" style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: #999; display: none;">Drag up or down to reposition</p>
                     
                     <!-- Front Design Position Controls -->
@@ -1863,8 +1862,8 @@
         backDesignUrl: null,
         backDesignPlacement: 'center_back',
         backDesignFee: 6.00,
-        backDesignDefaultUpOffset: 60,
-        backDesignDragOffset: { y: -60 },
+        backDesignDefaultUpOffset: 0,
+        backDesignDragOffset: { y: 0 },
         colorVariants: {{ color_variants | tojson }} || [],
         basePrice: {{ product.base_price }},
         isAdult: {{ 'true' if is_adult else 'false' }},
@@ -2356,83 +2355,37 @@
         }
         return (ctx.measureText(text).width / px) * heightIn;
     }
-    function fmtIn(value) {
-        if (value == null || isNaN(value)) return 'N/A';
-        return Number(value).toFixed(2);
-    }
-    function updateTransferReadout() {
-        const el = document.getElementById('transferSizeReadout');
-        if (!el) return;
-        const parts = [];
-        if (state.designUrl || state.designFile || state.presetDesignId) {
-            const placement = state.selectedPlacement || 'center_chest';
-            const factor = (TRANSFER_SIZING.placement_factors || {})[placement] || 1;
-            const width = chartWidthForSize(state.selectedSize || (sizingAge() === 'youth' ? 'M' : 'M')) * factor;
-            const w = state.designWidth || 1;
-            const h = state.designHeight || 1;
-            const height = width * (h / w);
-            parts.push(`Front: ${fmtIn(width)}″ W × ${fmtIn(height)}″ H (order by width)`);
-        }
-        if (state.backDesignEnabled && (state.backDesignName || state.backDesignNumber)) {
-            const nH = nameHeightIn();
-            const numH = numberHeightIn();
-            const nW = state.measuredNameWidthIn || 0;
-            const numW = state.measuredNumberWidthIn || 0;
-            const condense = state.nameCondense || 1;
-            const nameW = nW * Math.min(condense, 1);
-            if (state.backDesignName) parts.push(`Name: ${fmtIn(nameW)}″ W × ${fmtIn(nH)}″ H`);
-            if (state.backDesignNumber) parts.push(`Number: ${fmtIn(numW)}″ W × ${fmtIn(numH)}″ H`);
-        }
-        if (!parts.length) {
-            el.style.display = 'none';
-            el.textContent = '';
-            return;
-        }
-        el.style.display = 'block';
-        el.textContent = parts.join('  ·  ');
-    }
-
     function applyDesignFit() {
         const designLayer = document.getElementById('designLayer');
         const designImage = document.getElementById('designImage');
         if (!designLayer || !designImage) return;
         const placement = state.selectedPlacement || 'center_chest';
-        const scale = sizeScaleFactor();
         designLayer.style.width = '';
         designLayer.style.maxWidth = '';
         designLayer.style.maxHeight = '';
-        if (placement === 'left_chest' || placement === 'right_chest') {
-            designLayer.style.width = (12 * scale) + '%';
-            designLayer.style.maxWidth = Math.round(90 * scale) + 'px';
-            updateTransferReadout();
-            return;
-        }
+        if (placement === 'left_chest' || placement === 'right_chest') return;
         const w = designImage.naturalWidth || state.designWidth || 1;
         const h = designImage.naturalHeight || state.designHeight || 1;
         const tall = h / w;
         if (tall > 1.28) {
-            designLayer.style.width = (22 * scale) + '%';
-            designLayer.style.maxWidth = Math.round(165 * scale) + 'px';
+            designLayer.style.width = '22%';
+            designLayer.style.maxWidth = '165px';
             designLayer.style.maxHeight = '40%';
         } else if (tall > 1.18) {
-            designLayer.style.width = (25 * scale) + '%';
-            designLayer.style.maxWidth = Math.round(185 * scale) + 'px';
+            designLayer.style.width = '25%';
+            designLayer.style.maxWidth = '185px';
             designLayer.style.maxHeight = '40%';
         } else if (tall >= 0.90) {
-            designLayer.style.width = (33 * scale) + '%';
-            designLayer.style.maxWidth = Math.round(246 * scale) + 'px';
+            designLayer.style.width = '33%';
+            designLayer.style.maxWidth = '246px';
             designLayer.style.maxHeight = '42%';
-        } else {
-            designLayer.style.width = (30 * scale) + '%';
-            designLayer.style.maxWidth = Math.round(225 * scale) + 'px';
         }
-        updateTransferReadout();
     }
     
     function applyBackDesignPosition() {
         const backDesignLayer = document.getElementById('backDesignLayer');
         if (!backDesignLayer) return;
-        const defaultUp = state.backDesignDefaultUpOffset ?? 60;
+        const defaultUp = state.backDesignDefaultUpOffset ?? 0;
         const offset = state.backDesignDragOffset || { y: -defaultUp };
         backDesignLayer.style.transform = `translate(-50%, -50%) translate(0, ${offset.y}px)`;
         const dragHint = document.getElementById('dragHint');
@@ -2495,19 +2448,22 @@
             textContainer.style.fontFamily = `"${font}", sans-serif`;
             textContainer.style.color = textColor;
             textContainer.style.textShadow = outlineOn ? buildBackOutlineShadow(outlineColor) : 'none';
-            const nameH = nameHeightIn();
-            const numH = numberHeightIn();
-            const gapH = gapHeightIn();
-            nameEl.style.fontSize = inchesToPreviewPx(nameH) + 'px';
-            numberEl.style.fontSize = inchesToPreviewPx(numH) + 'px';
+            const mockup = document.getElementById('previewCanvas');
+            const mockupW = mockup ? mockup.clientWidth : 400;
+            nameEl.style.fontSize = (mockupW * 0.11) + 'px';
             nameEl.style.letterSpacing = cfg.nameSpacing;
-            nameEl.style.marginBottom = inchesToPreviewPx(gapH) + 'px';
+            nameEl.style.marginBottom = (mockupW * 0.02) + 'px';
             nameEl.style.whiteSpace = 'nowrap';
             nameEl.style.width = 'auto';
+            numberEl.style.fontSize = (mockupW * 0.22) + 'px';
             numberEl.style.letterSpacing = cfg.numberSpacing;
             numberEl.style.marginTop = '0';
             numberEl.style.whiteSpace = 'nowrap';
+            backDesignLayer.style.width = 'auto';
+            backDesignLayer.style.maxWidth = '78%';
             const metrics = (TRANSFER_SIZING.fonts || {})[font] || {};
+            const nameH = nameHeightIn();
+            const numH = numberHeightIn();
             const naturalNameW = measureTextWidthInches(name, font, nameH, metrics.letter_spacing);
             const naturalNumberW = measureTextWidthInches(number, font, numH, metrics.number_spacing);
             const safeW = safeWidthIn();
@@ -2517,17 +2473,12 @@
             state.measuredNameWidthIn = naturalNameW;
             state.measuredNumberWidthIn = naturalNumberW;
             state.nameCondense = condense;
-            const layoutW = Math.max(Math.min(naturalNameW, safeW), naturalNumberW, 0.5);
-            backDesignLayer.style.width = inchesToPreviewPx(layoutW) + 'px';
-            backDesignLayer.style.maxWidth = '92%';
-            // Keep state in sync for add-to-cart
             state.backDesignName = name;
             state.backDesignNumber = number;
             state.backDesignFont = font;
             state.backDesignTextColor = textColor;
             state.backDesignOutline = outlineOn;
             state.backDesignOutlineColor = outlineColor;
-            updateTransferReadout();
         } else if (state.backDesignUrl) {
             textContainer.style.display = 'none';
             backDesignImage.style.display = 'block';
@@ -3252,7 +3203,7 @@
         });
 
         document.getElementById('resetBackPositionBtn')?.addEventListener('click', function() {
-            const defaultUp = state.backDesignDefaultUpOffset ?? 60;
+            const defaultUp = state.backDesignDefaultUpOffset ?? 0;
             state.backDesignDragOffset = { y: -defaultUp };
             applyBackDesignPosition();
         });
@@ -3416,7 +3367,7 @@
             isDragging = true;
             backDesignLayer.classList.add('dragging');
             startY = e.clientY;
-            const defaultUp = state.backDesignDefaultUpOffset ?? 60;
+            const defaultUp = state.backDesignDefaultUpOffset ?? 0;
             startOffsetY = (state.backDesignDragOffset || { y: -defaultUp }).y;
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', onMouseUp);
@@ -3429,7 +3380,7 @@
             isDragging = true;
             backDesignLayer.classList.add('dragging');
             startY = e.touches[0].clientY;
-            const defaultUp = state.backDesignDefaultUpOffset ?? 60;
+            const defaultUp = state.backDesignDefaultUpOffset ?? 0;
             startOffsetY = (state.backDesignDragOffset || { y: -defaultUp }).y;
             document.addEventListener('touchmove', onTouchMove, { passive: false });
             document.addEventListener('touchend', onTouchEnd);

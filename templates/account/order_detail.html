@@ -59,11 +59,8 @@
                                     {% if item.placement %} &middot; {{ item.placement.replace('_', ' ').title() }}{% endif %}
                                 </p>
                                 {% set tp = item.transfer_production_details %}
-                                {% if tp and tp.front %}
-                                <p class="od-item-specs">Front transfer {{ tp.front.width_display }}″ W × {{ tp.front.height_display }}″ H</p>
-                                {% endif %}
-                                {% if tp and tp.back %}
-                                <p class="od-item-specs">Back {{ tp.back.name }} {% if tp.back.number %}#{{ tp.back.number }}{% endif %} · name {{ tp.back.name_width_display }}″ × {{ tp.back.name_height_display }}″ · number {{ tp.back.number_width_display }}″ × {{ tp.back.number_height_display }}″</p>
+                                {% if tp and tp.back and (tp.back.name or tp.back.number) %}
+                                <p class="od-item-specs">Back {% if tp.back.name %}{{ tp.back.name }}{% endif %}{% if tp.back.number %} #{{ tp.back.number }}{% endif %}</p>
                                 {% endif %}
                             </div>
                             <div class="od-item-pricing">

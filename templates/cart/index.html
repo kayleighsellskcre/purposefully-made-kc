@@ -46,18 +46,11 @@
                             {% endif %}
                         </p>
                         {% set tp = item.get('transfer_production') %}
-                        {% if tp and (tp.front or tp.back) %}
+                        {% if tp and tp.back and (tp.back.name or tp.back.number) %}
                         <p class="item-transfer">
-                            {% if tp.front %}
-                            Front: {{ tp.front.width_display }}″ W × {{ tp.front.height_display }}″ H
-                            (order by width)
-                            {% endif %}
-                            {% if tp.front and tp.back %} · {% endif %}
-                            {% if tp.back %}
-                            Name {{ tp.back.name_width_display }}″ × {{ tp.back.name_height_display }}″
-                            {% if tp.back.number %} · #{{ tp.back.number }} {{ tp.back.number_width_display }}″ × {{ tp.back.number_height_display }}″{% endif %}
-                            (order by height)
-                            {% endif %}
+                            Back:
+                            {% if tp.back.name %}{{ tp.back.name }}{% endif %}
+                            {% if tp.back.number %} #{{ tp.back.number }}{% endif %}
                         </p>
                         {% endif %}
                         {% if item.get('is_blank') %}
