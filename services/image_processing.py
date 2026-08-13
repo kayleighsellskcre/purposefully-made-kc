@@ -256,12 +256,67 @@ def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
         # Logo color always stays — this puts back chunks rembg removed
         # from PRAY / STILL / etc.
         alpha[is_logo] = 255
-        # Paper / backdrop color always goes, including distress holes.
-        alpha[is_bg] = 0
 
-        # Close 2px gaps in letter strokes without growing the silhouette.
+        # Only delete backdrop that is connected to the image border.
+        # Cream clouds, roads, bible pages, highlights stay because they
+        # are enclosed inside the artwork.
+        from collections import deque
+        h, w = alpha.shape
+        exterior = np.zeros((h, w), dtype=bool)
+        q = deque()
+
+        def seed(y, x):
+            if exterior[y, x]:
+                return
+            if is_bg[y, x]:
+                exterior[y, x] = True
+                q.append((y, x))
+
+        for x in range(w):
+            seed(0, x)
+            seed(h - 1, x)
+        for y in range(h):
+            seed(y, 0)
+            seed(y, w - 1)
+
+        while q:
+            y, x = q.popleft()
+            for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                ny, nx = y + dy, x + dx
+                if 0 <= ny < h and 0 <= nx < w and not exterior[ny, nx] and is_bg[ny, nx]:
+                    exterior[ny, nx] = True
+                    q.append((ny, nx))
+
+        alpha[exterior] = 0
+
+        # Restore enclosed cream/white that is part of the art (clouds, road,
+        # pages). Then punch only small letter-counter holes.
+        enclosed = is_bg & ~exterior
+        alpha[enclosed] = 255
+        max_letter_hole = max(500, (h * w) // 90)  # ~1.1% of the image
+        visited = np.zeros((h, w), dtype=bool)
+        ys, xs = np.where(enclosed)
+        for y0, x0 in zip(ys, xs):
+            if visited[y0, x0]:
+                continue
+            comp = [(y0, x0)]
+            visited[y0, x0] = True
+            qi = 0
+            while qi < len(comp):
+                y, x = comp[qi]
+                qi += 1
+                for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    ny, nx = y + dy, x + dx
+                    if 0 <= ny < h and 0 <= nx < w and not visited[ny, nx] and enclosed[ny, nx]:
+                        visited[ny, nx] = True
+                        comp.append((ny, nx))
+            if len(comp) <= max_letter_hole:
+                for y, x in comp:
+                    alpha[y, x] = 0
+
+        # Close 1px nicks in letter strokes (not 2px — that filled counters).
         fg = alpha >= 128
-        fg = _erode_bool(_dilate_bool(fg, 2), 2)
+        fg = _erode_bool(_dilate_bool(fg, 1), 1)
         alpha = np.where(fg, 255, 0).astype(np.int32)
 
         # Precision pass: cream mixed into anti-aliased edges (the faint

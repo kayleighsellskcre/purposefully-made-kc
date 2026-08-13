@@ -179,10 +179,9 @@
 }
 
 .design-layer.visible {
-    display: flex !important;
+    /* visibility is controlled in JS so Center Back can hide the front overlay */
 }
 
-/* Draggable - user can reposition design on any style */
 .design-layer.visible.draggable {
     cursor: move;
     pointer-events: auto;
@@ -199,41 +198,44 @@
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 
-/* Placement-specific sizing — sized to match real shirt print areas.
-   The shirt mockup is ~457px wide inside the 571px square canvas.
-   A standard full-chest print is ~12" on an 18" shirt = ~66% of shirt width
-   = ~48% of canvas. Small chest logos are ~3.5" = ~15% of canvas. */
+/* Placement-specific sizing — slightly smaller than a full-chest takeover.
+   Center of the overlay sits mid-chest (~38% down the mockup), not at the collar.
+   Tall designs get a narrower width via JS (applyDesignFit). */
 .design-layer[data-placement="center_chest"] {
-    width: 32%;
-    max-width: 240px;
-    min-height: 60px;
-    top: 32%;
+    width: 28%;
+    max-width: 210px;
+    max-height: 40%;
+    min-height: 50px;
+    top: 38%;
     left: 50%;
     transform: translate(-50%, -50%);
 }
 
 /* Left chest = appears on RIGHT side of mockup (wearer's left when wearing) */
 .design-layer[data-placement="left_chest"] {
-    width: 13%;
-    max-width: 97px;
-    top: 30%;
+    width: 12%;
+    max-width: 90px;
+    max-height: 18%;
+    top: 32%;
     left: 62%;
     transform: translate(-50%, -50%);
 }
 
 /* Right chest = appears on LEFT side of mockup (wearer's right when wearing) */
 .design-layer[data-placement="right_chest"] {
-    width: 13%;
-    max-width: 97px;
-    top: 30%;
+    width: 12%;
+    max-width: 90px;
+    max-height: 18%;
+    top: 32%;
     left: 38%;
     transform: translate(-50%, -50%);
 }
 
 .design-layer[data-placement="center_back"] {
-    width: 32%;
-    max-width: 240px;
-    top: 32%;
+    width: 28%;
+    max-width: 210px;
+    max-height: 40%;
+    top: 38%;
     left: 50%;
     transform: translate(-50%, -50%);
 }
@@ -251,7 +253,6 @@
     -webkit-user-select: none;
 }
 .design-layer-back.dragging { cursor: grabbing; transition: none !important; }
-.preview-canvas.showing-back #designLayer { display: none !important; visibility: hidden !important; }
 .back-design-text-container {
     display: flex;
     flex-direction: column;
@@ -2216,59 +2217,82 @@
         const designLayer = document.getElementById('designLayer');
         const backDesignLayer = document.getElementById('backDesignLayer');
         if (!designLayer || !backDesignLayer) return;
-        
+
         const isFrontView = state.currentView === 'front';
         const frontHasDesign = designLayer.classList.contains('visible');
         const placement = state.selectedPlacement || 'center_chest';
         const isCenterBack = placement === 'center_back';
-        // Show preview only when Add Back Design is confirmed AND user has name/number or uploaded image
-        const backHasDesign = state.backDesignEnabled && (
+        const extraBackDesign = state.backDesignEnabled && (
             (state.backDesignMode === 'name_number' && (state.backDesignName || state.backDesignNumber)) ||
             (state.backDesignMode === 'upload' && state.backDesignUrl)
         );
-        
+
+        // Placement is the source of truth for the uploaded design.
+        // Extra back design (paid +$6) is independent and only shows on Back View.
+        const showUploadedOnFront = frontHasDesign && !isCenterBack;
+        const showUploadedOnBack = frontHasDesign && isCenterBack;
+
         const previewCanvas = document.getElementById('previewCanvas');
+        const resetBackBtn = document.getElementById('resetBackPositionBtn');
+        const backPositionControls = document.getElementById('backPositionControls');
+        const frontPositionControls = document.getElementById('frontPositionControls');
+        const dragHint = document.getElementById('dragHint');
+
         if (isFrontView) {
-            designLayer.style.visibility = '';
-            designLayer.style.pointerEvents = '';
             if (previewCanvas) previewCanvas.classList.remove('showing-back');
-            const resetBackBtn = document.getElementById('resetBackPositionBtn');
-            const backPositionControls = document.getElementById('backPositionControls');
-            const frontPositionControls = document.getElementById('frontPositionControls');
+            designLayer.style.display = showUploadedOnFront ? 'flex' : 'none';
+            designLayer.style.visibility = showUploadedOnFront ? 'visible' : 'hidden';
+            designLayer.style.pointerEvents = showUploadedOnFront ? '' : 'none';
+            backDesignLayer.style.display = 'none';
             if (resetBackBtn) resetBackBtn.style.display = 'none';
             if (backPositionControls) backPositionControls.style.display = 'none';
-            if (frontPositionControls) frontPositionControls.style.display = frontHasDesign ? 'block' : 'none';
-            const dragHint = document.getElementById('dragHint');
-            if (dragHint && !frontHasDesign) dragHint.style.display = 'none';
-            if (dragHint && frontHasDesign) dragHint.textContent = 'Drag or use ▲▼ to reposition';
-            if (isCenterBack) {
-                designLayer.style.display = 'none';
-                backDesignLayer.style.display = 'none';
-            } else {
-                designLayer.style.display = frontHasDesign ? 'flex' : 'none';
-                backDesignLayer.style.display = 'none';
+            if (frontPositionControls) frontPositionControls.style.display = showUploadedOnFront ? 'block' : 'none';
+            if (dragHint) {
+                dragHint.style.display = showUploadedOnFront ? 'block' : 'none';
+                if (showUploadedOnFront) dragHint.textContent = 'Drag or use ▲▼ to reposition';
             }
         } else {
-            designLayer.style.visibility = 'hidden';
-            designLayer.style.pointerEvents = 'none';
             if (previewCanvas) previewCanvas.classList.add('showing-back');
-            const frontPositionControls2 = document.getElementById('frontPositionControls');
-            if (frontPositionControls2) frontPositionControls2.style.display = 'none';
-            if (isCenterBack) {
-                designLayer.style.display = frontHasDesign ? 'flex' : 'none';
-                backDesignLayer.style.display = backHasDesign ? 'flex' : 'none';
-                if (backHasDesign) {
-                    updateBackDesignPreview();
-                    applyBackDesignPosition();
-                }
-            } else {
-                designLayer.style.display = 'none';
-                backDesignLayer.style.display = backHasDesign ? 'flex' : 'none';
-                if (backHasDesign) {
-                    updateBackDesignPreview();
-                    applyBackDesignPosition();
-                }
+            designLayer.style.display = showUploadedOnBack ? 'flex' : 'none';
+            designLayer.style.visibility = showUploadedOnBack ? 'visible' : 'hidden';
+            designLayer.style.pointerEvents = showUploadedOnBack ? '' : 'none';
+            backDesignLayer.style.display = extraBackDesign ? 'flex' : 'none';
+            if (frontPositionControls) frontPositionControls.style.display = showUploadedOnBack ? 'block' : 'none';
+            if (extraBackDesign) {
+                updateBackDesignPreview();
+                applyBackDesignPosition();
             }
+            if (dragHint) {
+                const showHint = showUploadedOnBack || extraBackDesign;
+                dragHint.style.display = showHint ? 'block' : 'none';
+                if (showHint) dragHint.textContent = 'Drag or use ▲▼ to reposition';
+            }
+        }
+    }
+
+    function applyDesignFit() {
+        const designLayer = document.getElementById('designLayer');
+        const designImage = document.getElementById('designImage');
+        if (!designLayer || !designImage) return;
+        const placement = state.selectedPlacement || 'center_chest';
+        // Clear JS overrides so CSS defaults apply for small chest logos.
+        designLayer.style.width = '';
+        designLayer.style.maxWidth = '';
+        designLayer.style.maxHeight = '';
+        if (placement === 'left_chest' || placement === 'right_chest') return;
+        const w = designImage.naturalWidth || state.designWidth || 1;
+        const h = designImage.naturalHeight || state.designHeight || 1;
+        const tall = h / w;
+        if (tall > 1.25) {
+            designLayer.style.width = '22%';
+            designLayer.style.maxWidth = '165px';
+            designLayer.style.maxHeight = '40%';
+        } else if (tall > 1.05) {
+            designLayer.style.width = '25%';
+            designLayer.style.maxWidth = '185px';
+            designLayer.style.maxHeight = '40%';
+        } else {
+            designLayer.style.maxHeight = '38%';
         }
     }
     
@@ -2503,6 +2527,12 @@
         const allowed = state.allowedPlacements;
         state.selectedPlacement = (allowed && allowed.length) ? allowed[0] : 'center_chest';
         
+        designImage.onload = function() {
+            state.designWidth = this.naturalWidth;
+            state.designHeight = this.naturalHeight;
+            applyDesignFit();
+            applyDesignPosition();
+        };
         designImage.src = preset.url;
         designPreviewImage.src = preset.url;
         if (typeof resetArtworkInspector === 'function') resetArtworkInspector();
@@ -2521,6 +2551,8 @@
         if (selectedOpt) selectedOpt.classList.add('selected');
         
         applyDesignPosition();
+        applyDesignFit();
+        updateDesignLayerVisibility();
         if (typeof updateTotalPrice === 'function') updateTotalPrice();
         
         const dragHint = document.getElementById('dragHint');
@@ -2720,6 +2752,12 @@
                 const designPreviewImage = document.getElementById('designPreviewImage');
                 if (designImage && designLayer) {
                     designImage.onerror = function() { console.error('Design image failed to load:', data.url); };
+                    designImage.onload = function() {
+                        state.designWidth = this.naturalWidth;
+                        state.designHeight = this.naturalHeight;
+                        applyDesignFit();
+                        applyDesignPosition();
+                    };
                     designImage.src = data.url;
                     if (designPreviewImage) {
                         designPreviewImage.onerror = function() { console.error('Design preview failed to load:', data.url); };
@@ -2738,6 +2776,8 @@
                     const selectedOpt = document.querySelector(`[data-placement="${state.selectedPlacement}"]`);
                     if (selectedOpt) selectedOpt.classList.add('selected');
                     applyDesignPosition();
+                    applyDesignFit();
+                    updateDesignLayerVisibility();
                     updateTotalPrice();
                     const dragHint = document.getElementById('dragHint');
                     if (dragHint) dragHint.style.display = 'block';
@@ -3031,7 +3071,9 @@
                 state.selectedPlacement = placement;
                 
                 designLayer.setAttribute('data-placement', placement);
+                applyDesignFit();
                 applyDesignPosition();
+                updateDesignLayerVisibility();
                 updateTotalPrice();
             });
         });
