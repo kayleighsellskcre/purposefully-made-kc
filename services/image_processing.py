@@ -112,6 +112,13 @@ def process_artwork_bytes(data: bytes, mode: str = 'auto', engine=None) -> dict:
 
         out = _strip_background_color(out, orig_rgb, bg_color, mad, mode,
                                       rembg_alpha=rembg_alpha)
+        # Targeted fallback: solid backdrop color is also used inside the
+        # art (white outlines, field lines). Default path stays unchanged
+        # unless this image matches and the default erased interior detail.
+        if _HAS_NUMPY and _looks_like_interior_bg_art(orig_rgb, bg_color, mad):
+            fallback = _border_connected_preserve(img, orig_rgb, bg_color, mad)
+            if _fallback_keeps_more_interior(out, fallback):
+                out = fallback
         out = _autocrop(out)
         return _encode(out, used, original_size, changed=True)
     except (MemoryError, Exception):
@@ -419,6 +426,167 @@ def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
         return Image.fromarray(arr, 'RGBA')
     except Exception:
         return img
+
+
+def _bg_tol(mad, mode: str) -> int:
+    tol = int(min(58, max(28, 32 + mad * 1.4)))
+    if mode == 'aggressive':
+        tol = min(80, tol + 18)
+    return tol
+
+
+def _looks_like_interior_bg_art(orig_rgb: Image.Image, bg_color, mad) -> bool:
+    """True when a mostly-solid border color also shows up a lot inside."""
+    if not _HAS_NUMPY or mad > 22:
+        return False
+    try:
+        rgb = np.asarray(orig_rgb.convert('RGB')).astype(np.int16)
+        h, w = rgb.shape[:2]
+        dist = (np.abs(rgb[..., 0] - int(bg_color[0]))
+              + np.abs(rgb[..., 1] - int(bg_color[1]))
+              + np.abs(rgb[..., 2] - int(bg_color[2])))
+        tol = _bg_tol(mad, 'auto')
+        is_bg = dist <= tol
+        margin = max(10, min(h, w) // 18)
+        interior = np.ones((h, w), dtype=bool)
+        interior[:margin, :] = False
+        interior[-margin:, :] = False
+        interior[:, :margin] = False
+        interior[:, -margin:] = False
+        border = ~interior
+        if border.any() and float(is_bg[border].mean()) < 0.72:
+            return False
+        if not interior.any():
+            return False
+        return float(is_bg[interior].mean()) >= 0.07
+    except Exception:
+        return False
+
+
+def _border_connected_preserve(orig_rgba: Image.Image, orig_rgb: Image.Image,
+                               bg_color, mad) -> Image.Image:
+    """Remove only backdrop that touches the image border.
+
+    Enclosed paper-colored art (outlines, field lines, falcon white, cream
+    highlights) stays. Tiny distress specks inside painted regions are
+    healed. True letter counters still punch through to the shirt.
+    """
+    if not _HAS_NUMPY:
+        return orig_rgba
+    try:
+        from collections import deque
+        arr = np.asarray(orig_rgba.convert('RGBA')).copy()
+        rgb = np.asarray(orig_rgb.convert('RGB')).astype(np.int16)
+        h, w = rgb.shape[:2]
+        dist = (np.abs(rgb[..., 0] - int(bg_color[0]))
+              + np.abs(rgb[..., 1] - int(bg_color[1]))
+              + np.abs(rgb[..., 2] - int(bg_color[2])))
+        tol = _bg_tol(mad, 'auto')
+        is_bg = dist <= tol
+        is_logo = dist > tol
+        alpha = np.full((h, w), 255, dtype=np.int32)
+        alpha[is_logo] = 255
+
+        logo_solid = _close_bool(is_logo, 3, diagonal=True)
+        floodable = is_bg & ~logo_solid
+        exterior = np.zeros((h, w), dtype=bool)
+        q = deque()
+
+        def seed(y, x):
+            if not exterior[y, x] and floodable[y, x]:
+                exterior[y, x] = True
+                q.append((y, x))
+
+        for x in range(w):
+            seed(0, x)
+            seed(h - 1, x)
+        for y in range(h):
+            seed(y, 0)
+            seed(y, w - 1)
+
+        while q:
+            y, x = q.popleft()
+            for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                ny, nx = y + dy, x + dx
+                if 0 <= ny < h and 0 <= nx < w and not exterior[ny, nx] and floodable[ny, nx]:
+                    exterior[ny, nx] = True
+                    q.append((ny, nx))
+
+        alpha[exterior] = 0
+        enclosed = is_bg & ~exterior
+        alpha[enclosed] = 255
+        heal = logo_solid & enclosed
+        alpha[heal] = 255
+
+        min_letter_hole = max(120, (h * w) // 12000)
+        max_letter_hole = max(500, (h * w) // 90)
+        visited = np.zeros((h, w), dtype=bool)
+        punchable = enclosed & ~heal
+        ys, xs = np.where(punchable)
+        for y0, x0 in zip(ys, xs):
+            if visited[y0, x0]:
+                continue
+            comp = [(y0, x0)]
+            visited[y0, x0] = True
+            qi = 0
+            while qi < len(comp):
+                y, x = comp[qi]
+                qi += 1
+                for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    ny, nx = y + dy, x + dx
+                    if 0 <= ny < h and 0 <= nx < w and not visited[ny, nx] and punchable[ny, nx]:
+                        visited[ny, nx] = True
+                        comp.append((ny, nx))
+            if min_letter_hole < len(comp) <= max_letter_hole:
+                for y, x in comp:
+                    alpha[y, x] = 0
+
+        fg = alpha >= 128
+        fg = _erode_bool(_dilate_bool(fg, 1), 1)
+        alpha = np.where(fg, 255, 0).astype(np.int32)
+
+        # 1–2px edge peel only — never interiors
+        is_halo = dist <= (tol + 34)
+        for _ in range(2):
+            trans = alpha < 20
+            has_t = _dilate_bool(trans, 1)
+            peel = has_t & is_halo & (alpha > 0) & ~logo_solid
+            alpha[peel] = 0
+
+        opaque = alpha >= 128
+        rgb_out = arr[..., :3].copy()
+        filled = is_logo.copy()
+        for _ in range(8):
+            for shift, axis in ((1, 0), (-1, 0), (1, 1), (-1, 1)):
+                nb_f = np.roll(filled, shift, axis=axis)
+                nb_c = np.roll(rgb_out, shift, axis=axis)
+                take = heal & opaque & (~filled) & nb_f
+                if take.any():
+                    rgb_out[take] = nb_c[take]
+                    filled |= take
+        arr[..., :3] = rgb_out
+        arr[..., 3] = alpha.clip(0, 255).astype(np.uint8)
+        return Image.fromarray(arr, 'RGBA')
+    except Exception:
+        return orig_rgba
+
+
+def _fallback_keeps_more_interior(default_img: Image.Image,
+                                  fallback_img: Image.Image) -> bool:
+    """Accept fallback only if it restored a meaningful chunk of interior art."""
+    if not _HAS_NUMPY:
+        return False
+    try:
+        d = np.asarray(default_img.convert('RGBA'))[..., 3]
+        f = np.asarray(fallback_img.convert('RGBA'))[..., 3]
+        if d.shape != f.shape:
+            return False
+        restored = (d < 128) & (f >= 128)
+        n = restored.sum()
+        area = d.size
+        return int(n) >= max(800, int(area * 0.008))
+    except Exception:
+        return False
 
 
 def _flood_cut(img_rgba: Image.Image, bg_color, mad, mode: str) -> Image.Image:

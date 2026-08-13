@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import current_user, login_required
 from models import db, Collection, Product, ProductColorVariant, Design
 from utils.mockups import get_carousel_colors_for_product
+from utils.sizes import sort_sizes
 from sqlalchemy.orm import joinedload
 import json
 import io
@@ -35,7 +36,7 @@ def view(slug):
     for product in all_products:
         variants = get_carousel_colors_for_product(product, current_app, allowed_colors=allowed_colors)
         product.carousel_colors = variants
-        product.available_sizes_list = json.loads(product.available_sizes) if product.available_sizes else []
+        product.available_sizes_list = sort_sizes(json.loads(product.available_sizes) if product.available_sizes else [])
         # When colors are restricted: only show products that have at least one matching color
         if allowed_colors:
             if variants:

@@ -18,6 +18,7 @@ We group by STYLE# → colors → sizes.
 
 import csv
 import json
+from utils.sizes import sort_sizes
 import io
 import os
 from collections import defaultdict
@@ -200,7 +201,7 @@ def parse_csv(source) -> list[dict]:
         colors  = sd['colors']
 
         # Sizes sorted by SIZE_INDEX
-        all_sizes = sorted(sd['sizes'].keys(), key=lambda s: sd['sizes'][s])
+        all_sizes = sort_sizes(sd['sizes'].keys())
 
         piece_price     = _safe_float(meta.get('PIECE_PRICE'))
         suggested_price = _safe_float(meta.get('SUGGESTED_PRICE') or meta.get('MSRP'))

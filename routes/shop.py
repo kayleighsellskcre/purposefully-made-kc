@@ -3,6 +3,7 @@ from models import db, Product, Design, Collection
 from flask_login import login_required, current_user
 from utils.mockups import get_carousel_colors_for_product, get_color_variants_data_for_product, get_first_shop_image_url
 from utils.cloud_storage import image_url as _resolve_image_url
+from utils.sizes import sort_sizes
 import json
 
 shop_bp = Blueprint('shop', __name__, url_prefix='/shop')
@@ -357,7 +358,7 @@ def product_detail(product_id):
     """Product detail page with customizer"""
     session.pop('collection_id', None)
     product = Product.query.get_or_404(product_id)
-    available_sizes = json.loads(product.available_sizes) if product.available_sizes else []
+    available_sizes = sort_sizes(json.loads(product.available_sizes) if product.available_sizes else [])
     available_colors = json.loads(product.available_colors) if product.available_colors else []
     print_area_config = json.loads(product.print_area_config) if product.print_area_config else {}
     color_variants_data = get_color_variants_data_for_product(product, current_app)
@@ -376,7 +377,7 @@ def customize(product_id):
     from flask_login import current_user
 
     product = Product.query.get_or_404(product_id)
-    available_sizes = json.loads(product.available_sizes) if product.available_sizes else []
+    available_sizes = sort_sizes(json.loads(product.available_sizes) if product.available_sizes else [])
     available_colors = json.loads(product.available_colors) if product.available_colors else []
     print_area_config = json.loads(product.print_area_config) if product.print_area_config else {}
     color_variants_data = get_color_variants_data_for_product(product, current_app)

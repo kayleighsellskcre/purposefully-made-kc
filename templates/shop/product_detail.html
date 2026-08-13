@@ -121,7 +121,7 @@
                 <div class="product-option">
                     <label>Size</label>
                     <div class="size-selector" id="sizeSelector">
-                        {% for size in available_sizes %}
+                        {% for size in available_sizes|sort_sizes %}
                         <button class="size-option" data-size="{{ size }}">{{ size }}</button>
                         {% endfor %}
                     </div>

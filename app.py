@@ -413,6 +413,12 @@ def create_app(config_class=Config):
         from flask import url_for
         return url_for('static', filename=path_or_url)
 
+    @app.template_filter('sort_sizes')
+    def sort_sizes_filter(sizes):
+        """Order apparel sizes XS → 6XL (and baby/youth equivalents)."""
+        from utils.sizes import sort_sizes
+        return sort_sizes(sizes or [])
+
     @app.template_filter('from_json')
     def from_json_filter(value):
         """Convert JSON string to Python object"""

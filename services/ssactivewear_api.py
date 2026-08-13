@@ -8,6 +8,7 @@ from datetime import datetime
 import os
 from urllib.parse import urlparse
 from pathlib import Path
+from utils.sizes import sort_sizes
 
 
 class SSActivewearAPI:
@@ -200,7 +201,7 @@ class SSActivewearAPI:
             
             # Add organized data to style_data
             style_data['colors'] = sorted(list(all_colors))
-            style_data['sizes'] = sorted(list(all_sizes), key=lambda x: ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'].index(x) if x in ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'] else 999)
+            style_data['sizes'] = sort_sizes(all_sizes)
             style_data['color_variants'] = list(color_variants.values())
             
             return style_data
@@ -399,7 +400,6 @@ class SSActivewearAPI:
         color_variants = {}
         all_colors = set()
         all_sizes = set()
-        size_order = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL']
 
         for p in products:
             color_name = p.get('colorName')
@@ -432,7 +432,6 @@ class SSActivewearAPI:
                 all_sizes.add(size_name)
                 color_variants[color_name]['sizes'][size_name] = int(qty)
 
-        sizes = sorted(all_sizes, key=lambda x: size_order.index(x) if x in size_order else 999)
         style_data = {
             'styleID': style_id,
             'styleName': style_name,
@@ -442,7 +441,7 @@ class SSActivewearAPI:
             'description': description,
             'baseCategory': meta.get('baseCategory', 'T-Shirts'),
             'colors': sorted(list(all_colors)),
-            'sizes': sizes,
+            'sizes': sort_sizes(all_sizes),
             'color_variants': list(color_variants.values()),
             'spec_sheet': spec_sheet,  # NEW: spec sheet with sizing
             'fit_guide': meta.get('fitType', ''),
@@ -485,10 +484,8 @@ class SSActivewearAPI:
         elif 'Sizes' in style_data:
             sizes = list(set([size.get('sizeName', '') for size in style_data['Sizes']]))
         
-        # Sort sizes in logical order
         if sizes:
-            size_order = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL']
-            sizes = sorted(sizes, key=lambda x: size_order.index(x) if x in size_order else 999)
+            sizes = sort_sizes(sizes)
         
         # Determine category from baseCategory and title
         base_category = style_data.get('baseCategory', '')

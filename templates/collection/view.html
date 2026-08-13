@@ -340,7 +340,7 @@
                         <h3>{{ product.name }}</h3>
                         <p class="style-label">Style {{ product.style_number }}{% if product.category %} · {{ product.category }}{% endif %}</p>
                         {% if product.available_sizes_list %}
-                        <p class="sizes-label">Sizes: {{ product.available_sizes_list | join(', ') }}</p>
+                        <p class="sizes-label">Sizes: {{ product.available_sizes_list | sort_sizes | join(', ') }}</p>
                         {% endif %}
                         {% if product.carousel_colors %}
                         <div class="color-swatches">

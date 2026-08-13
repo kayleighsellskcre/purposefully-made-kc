@@ -1481,7 +1481,7 @@
                     <h3>Choose Size</h3>
                     <p class="step-hint">Select your size. Pick a color first to see availability.</p>
                     <div class="size-grid-professional" id="sizeGrid">
-                        {% for size in available_sizes %}
+                        {% for size in available_sizes|sort_sizes %}
                         <div class="size-card" data-size="{{ size }}" onclick="selectSize(this)">
                             <div class="size-label">{{ size }}</div>
                             <div class="stock-badge"></div>
@@ -2285,17 +2285,22 @@
         const w = designImage.naturalWidth || state.designWidth || 1;
         const h = designImage.naturalHeight || state.designHeight || 1;
         const tall = h / w;
-        if (tall > 1.25) {
+        if (tall > 1.28) {
+            // Tall stacked designs (FREE INDEED) — keep the current smaller fit
             designLayer.style.width = '22%';
             designLayer.style.maxWidth = '165px';
             designLayer.style.maxHeight = '40%';
-        } else if (tall > 1.05) {
+        } else if (tall > 1.18) {
             designLayer.style.width = '25%';
             designLayer.style.maxWidth = '185px';
             designLayer.style.maxHeight = '40%';
-        } else {
-            designLayer.style.maxHeight = '38%';
+        } else if (tall >= 0.90) {
+            // Square / slightly-tall (leopard, similar). ~9% above the 30%/225 default.
+            designLayer.style.width = '33%';
+            designLayer.style.maxWidth = '246px';
+            designLayer.style.maxHeight = '42%';
         }
+        // Wide designs (h/w < 0.90) keep the CSS default 30%/225.
     }
     
     function applyBackDesignPosition() {
