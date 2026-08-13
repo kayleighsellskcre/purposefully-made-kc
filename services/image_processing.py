@@ -215,29 +215,40 @@ def _use_original_colors(orig_rgba: Image.Image, ai_rgba: Image.Image) -> Image.
 # The actual cut: delete the background color
 # ---------------------------------------------------------------------------
 
-def _dilate_bool(mask, px: int):
+def _dilate_bool(mask, px: int, diagonal: bool = False):
     out = mask.copy()
+    offsets = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+    if diagonal:
+        offsets += [(-1, -1), (-1, 1), (1, -1), (1, 1)]
     for _ in range(max(0, int(px))):
         d = out.copy()
-        for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+        for dy, dx in offsets:
             d |= np.roll(np.roll(out, dy, axis=0), dx, axis=1)
         out = d
     return out
 
 
-def _erode_bool(mask, px: int):
-    return ~_dilate_bool(~mask, px)
+def _erode_bool(mask, px: int, diagonal: bool = False):
+    return ~_dilate_bool(~mask, px, diagonal=diagonal)
+
+
+def _close_bool(mask, px: int, diagonal: bool = False):
+    """Fill gaps up to ~2*px without growing the silhouette."""
+    return _erode_bool(_dilate_bool(mask, px, diagonal=diagonal), px, diagonal=diagonal)
 
 
 def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
                             bg_color, mad, mode: str, rembg_alpha=None) -> Image.Image:
     """Keep every logo-colored pixel. Delete the backdrop color.
 
-    Distressed cracks that match the paper can go. Solid letter strokes
-    (navy, brown, black fill that is NOT the paper color) are restored
-    even if rembg punched holes in them. rembg-strong-foreground pixels
-    (white outlines, field lines) are protected even when they match
-    the paper color, so flood/halo cannot eat them from the border.
+    Solid letter strokes (navy, brown, black, green fill that is NOT the
+    paper color) are restored even if rembg punched holes in them.
+    rembg-strong-foreground pixels (white outlines, field lines) are
+    protected even when they match the paper color.
+
+    Distressed interiors (cream specks inside a football field) are
+    sealed and healed so the shirt does not show through as swiss cheese.
+    True letter counters (the hole in A/O/D) stay transparent.
     """
     if not _HAS_NUMPY:
         return img
@@ -284,15 +295,21 @@ def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
         # in white outlines. Do not dilate 6–14px (that left cream halos).
         protected = _erode_bool(_dilate_bool(protected, 2), 1)
 
+        # Close cracks *inside* painted regions (green field, letter fills)
+        # so flood cannot swiss-cheese them. Close, not dilate: the outer
+        # silhouette does not grow, so the gap between GAME and DAY stays
+        # open and the real paper backdrop still floods away.
+        logo_solid = _close_bool(is_logo, 3, diagonal=True)
+
         # Only delete backdrop that is connected to the image border,
-        # and never through protected white-outline / logo pixels.
+        # and never through protected white-outline / logo / field pixels.
         # Cream clouds, roads, bible pages, highlights stay because they
         # are enclosed inside the artwork.
         from collections import deque
         h, w = alpha.shape
         exterior = np.zeros((h, w), dtype=bool)
         q = deque()
-        floodable = is_bg & ~protected
+        floodable = is_bg & ~protected & ~logo_solid
 
         def seed(y, x):
             if exterior[y, x]:
@@ -319,13 +336,22 @@ def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
         alpha[exterior] = 0
 
         # Restore enclosed cream/white that is part of the art (clouds, road,
-        # pages). Then punch only small letter-counter holes that rembg
-        # did not mark as foreground (so white outlines stay).
+        # pages, white stars). Heal paper specks trapped inside a painted
+        # region so they take the surrounding logo color instead of becoming
+        # holes. Punch only letter-counter-sized holes that rembg did not
+        # mark as foreground.
         enclosed = is_bg & ~exterior
         alpha[enclosed] = 255
+        heal = logo_solid & enclosed
+        if rembg_fg is not None:
+            heal = heal & ~rembg_fg
+        alpha[heal] = 255
+
+        min_letter_hole = max(120, (h * w) // 12000)
         max_letter_hole = max(500, (h * w) // 90)  # ~1.1% of the image
         visited = np.zeros((h, w), dtype=bool)
-        ys, xs = np.where(enclosed)
+        punchable = enclosed & ~heal
+        ys, xs = np.where(punchable)
         for y0, x0 in zip(ys, xs):
             if visited[y0, x0]:
                 continue
@@ -337,10 +363,11 @@ def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
                 qi += 1
                 for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
                     ny, nx = y + dy, x + dx
-                    if 0 <= ny < h and 0 <= nx < w and not visited[ny, nx] and enclosed[ny, nx]:
+                    if 0 <= ny < h and 0 <= nx < w and not visited[ny, nx] and punchable[ny, nx]:
                         visited[ny, nx] = True
                         comp.append((ny, nx))
-            if len(comp) <= max_letter_hole:
+            # Tiny specks = distress, keep opaque. Medium = letter counters.
+            if min_letter_hole < len(comp) <= max_letter_hole:
                 for y, x in comp:
                     if rembg_a is None or rembg_a[y, x] < 140:
                         alpha[y, x] = 0
@@ -362,10 +389,22 @@ def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
             peel = has_t & is_halo & (alpha > 0) & ~protected
             alpha[peel] = 0
 
-        # Push real logo color into the 1px rim so any leftover cream tint
-        # doesn't print as a light outline.
+        # Paint healed field specks with neighboring logo color (green field
+        # instead of leftover cream dots). Do not recolor white outlines,
+        # yard lines, or parchment — only the heal mask.
         opaque = alpha >= 128
         rgb_out = arr[..., :3].copy()
+        filled = is_logo.copy()
+        for _ in range(8):
+            for shift, axis in ((1, 0), (-1, 0), (1, 1), (-1, 1)):
+                nb_f = np.roll(filled, shift, axis=axis)
+                nb_c = np.roll(rgb_out, shift, axis=axis)
+                take = heal & opaque & (~filled) & nb_f
+                if take.any():
+                    rgb_out[take] = nb_c[take]
+                    filled |= take
+        # Push logo color into the 1px transparent rim so anti-aliased
+        # edges don't print a light outline.
         filled = opaque.copy()
         for _ in range(4):
             for shift, axis in ((1, 0), (-1, 0), (1, 1), (-1, 1)):
