@@ -233,7 +233,7 @@
                             <th>Print</th>
                             <th>Design File</th>
                             <th>Back File</th>
-                            <th>Width</th>
+                            <th>Transfer</th>
                             <th>Placement</th>
                             <th class="od-center">Qty</th>
                             <th>Price</th>
@@ -276,8 +276,14 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% set pw = get_display_print_width(item) if get_display_print_width else (item.print_width or (get_print_width(item.size, item.product) if get_print_width else none)) %}
-                                {% if pw %}{{ "%.2f"|format(pw) }}"{% else %}N/A{% endif %}
+                                {% if item.print_width and item.print_height %}
+                                {{ item.print_width|inches }}″ × {{ item.print_height|inches }}″
+                                {% elif item.print_width %}
+                                {{ item.print_width|inches }}″
+                                {% else %}
+                                {% set pw = get_display_print_width(item) if get_display_print_width else none %}
+                                {% if pw %}{{ pw|inches }}″{% else %}N/A{% endif %}
+                                {% endif %}
                             </td>
                             <td>{{ item.placement or 'N/A' }}</td>
                             <td class="od-center od-qty">{{ item.quantity }}</td>
@@ -289,6 +295,82 @@
                 </table>
             </div>
         </div>
+
+        {% if item_productions is not defined %}{% set item_productions = [] %}{% endif %}
+        <div class="od-prod-head">
+            <div>
+                <span class="od-card-eyebrow">Production</span>
+                <h2 class="od-card-title">Transfer Production Details</h2>
+                <p class="od-card-hint">Exact sizes to order. Inches, two decimals. Front transfers are ordered by width; names and numbers by height.</p>
+            </div>
+            <div class="od-prod-actions">
+                <a href="{{ url_for('admin.order_transfer_summary', order_id=order.id) }}" class="od-btn od-btn-outline" target="_blank">Printable summary</a>
+                <a href="{{ url_for('admin.order_transfer_csv', order_id=order.id) }}" class="od-btn od-btn-outline">Download CSV</a>
+            </div>
+        </div>
+
+        {% for item, prod in item_productions %}
+        {% if prod and (prod.front or prod.back) %}
+        <div class="od-xfer{% if (prod.front and prod.front.exceeds_safe_area) or (prod.back and prod.back.exceeds_safe_area) %} od-xfer-flag{% endif %}">
+            <div class="od-xfer-itemhead">
+                <strong>{{ item.product_name }}</strong>
+                <span>{{ item.color }} · {{ (prod.front.age_group if prod.front else (prod.back.age_group if prod.back else ''))|title }} {{ item.size }} · Qty {{ item.quantity }}</span>
+            </div>
+            <div class="od-xfer-grid">
+                {% if prod.front %}
+                <section class="od-xfer-card">
+                    <h3>FRONT TRANSFER</h3>
+                    <dl>
+                        <div><dt>Design</dt><dd>{{ prod.front.design_name or item.design_file_name or '—' }}</dd></div>
+                        <div><dt>Garment</dt><dd>{{ prod.front.garment_style or item.product_name }}</dd></div>
+                        <div><dt>Size</dt><dd>{{ prod.front.age_group|title }} {{ prod.front.size }}</dd></div>
+                        <div><dt>Color</dt><dd>{{ prod.front.color }}</dd></div>
+                        <div><dt>Placement</dt><dd>{{ prod.front.placement_label }}</dd></div>
+                        <div><dt>Order transfer by</dt><dd>WIDTH</dd></div>
+                        <div><dt>Transfer size</dt><dd>{{ prod.front.width_display }}″ W × {{ prod.front.height_display }}″ H</dd></div>
+                        <div><dt>Quantity</dt><dd>{{ prod.front.quantity }}</dd></div>
+                    </dl>
+                    {% if prod.front.exceeds_safe_area %}<p class="od-xfer-warn">Exceeds safe printable area for this size.</p>{% endif %}
+                </section>
+                {% endif %}
+                {% if prod.back %}
+                <section class="od-xfer-card">
+                    <h3>BACK NAME</h3>
+                    <dl>
+                        <div><dt>Name</dt><dd>{{ prod.back.name or '—' }}</dd></div>
+                        <div><dt>Font</dt><dd>{{ prod.back.font }}</dd></div>
+                        <div><dt>Text color</dt><dd>{{ prod.back.text_color or '—' }}</dd></div>
+                        <div><dt>Name transfer</dt><dd>{{ prod.back.name_width_display }}″ W × {{ prod.back.name_height_display }}″ H</dd></div>
+                        <div><dt>Order by</dt><dd>HEIGHT</dd></div>
+                        <div><dt>Horizontal adjustment</dt><dd>{% if prod.back.condense_percent %}{{ prod.back.condense_percent }}% condensed{% else %}none{% endif %}</dd></div>
+                    </dl>
+                </section>
+                <section class="od-xfer-card">
+                    <h3>BACK NUMBER</h3>
+                    <dl>
+                        <div><dt>Number</dt><dd>{{ prod.back.number or '—' }}</dd></div>
+                        <div><dt>Number transfer</dt><dd>{{ prod.back.number_width_display }}″ W × {{ prod.back.number_height_display }}″ H</dd></div>
+                        <div><dt>Order by</dt><dd>HEIGHT</dd></div>
+                    </dl>
+                </section>
+                <section class="od-xfer-card">
+                    <h3>COMBINED BACK LAYOUT</h3>
+                    <dl>
+                        <div><dt>Garment</dt><dd>{{ prod.back.garment_style or item.product_name }}</dd></div>
+                        <div><dt>Size</dt><dd>{{ prod.back.age_group|title }} {{ prod.back.size }}</dd></div>
+                        <div><dt>Color</dt><dd>{{ prod.back.color }}</dd></div>
+                        <div><dt>Placement</dt><dd>Center Back</dd></div>
+                        <div><dt>Combined layout</dt><dd>{{ prod.back.combined_width_display }}″ W × {{ prod.back.combined_height_display }}″ H</dd></div>
+                        <div><dt>Spacing</dt><dd>{{ prod.back.gap_display }}″</dd></div>
+                        <div><dt>Quantity</dt><dd>{{ prod.back.quantity }}</dd></div>
+                    </dl>
+                    {% if prod.back.exceeds_safe_area %}<p class="od-xfer-warn">Exceeds safe printable area for this size.</p>{% endif %}
+                </section>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
 
         <!-- Totals -->
         <div class="od-totals">
@@ -729,6 +811,65 @@
     display: block;
 }
 .od-thumb-link:hover .od-thumb { transform: scale(1.1); border-color: var(--terra-cotta); }
+
+.od-prod-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin: 2.25rem 0 1rem;
+}
+.od-prod-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.od-btn-outline {
+    background: #fff;
+    color: var(--text-primary);
+    border: 1px solid rgba(232,208,177,0.8);
+}
+.od-xfer {
+    border: 1px solid rgba(232,208,177,0.7);
+    border-radius: 12px;
+    padding: 1rem 1.15rem 1.15rem;
+    margin-bottom: 1rem;
+    background: #fff;
+}
+.od-xfer-flag { border-color: #c45c26; box-shadow: 0 0 0 2px rgba(196,92,38,0.12); }
+.od-xfer-itemhead {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.85rem;
+    font-size: 0.92rem;
+}
+.od-xfer-itemhead span { color: var(--text-secondary); }
+.od-xfer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+}
+.od-xfer-card {
+    background: var(--ivory-silk, #f7f1e6);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+}
+.od-xfer-card h3 {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 0 0 0.65rem;
+    color: var(--terra-cotta, #c45c26);
+}
+.od-xfer-card dl { margin: 0; display: grid; gap: 0.28rem; }
+.od-xfer-card dl > div { display: grid; grid-template-columns: 42% 1fr; gap: 0.4rem; font-size: 0.82rem; }
+.od-xfer-card dt { color: var(--text-secondary); font-weight: 500; }
+.od-xfer-card dd { margin: 0; font-weight: 600; }
+.od-xfer-warn {
+    margin: 0.7rem 0 0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #9a3412;
+}
 
 .od-totals {
     margin-top: 1.5rem;

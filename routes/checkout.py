@@ -313,6 +313,18 @@ def complete():
                 back_filename = back_url.split('/')[-1] if back_url else None
                 back_meta = cart_item.get('back_design_meta')
                 back_meta_json = json.dumps(back_meta) if back_meta else None
+                transfer_prod = cart_item.get('transfer_production')
+                if isinstance(transfer_prod, dict) and transfer_prod.get('back'):
+                    transfer_prod = dict(transfer_prod)
+                    transfer_prod['back'] = dict(transfer_prod['back'])
+                    transfer_prod['back']['customer_name'] = (
+                        transfer_prod['back'].get('customer_name') or order.full_name
+                    )
+                transfer_prod_json = json.dumps(transfer_prod) if transfer_prod else None
+                design_filename = design.filename if design else None
+                if not design_filename:
+                    design_url = cart_item.get('design_url') or ''
+                    design_filename = design_url.split('/')[-1] if design_url else None
                 order_item = OrderItem(
                     order_id=order.id,
                     product_id=product.id,
@@ -326,7 +338,7 @@ def complete():
                     subtotal=cart_item['quantity'] * cart_item['unit_price'],
                     placement=cart_item.get('placement'),
                     print_type=cart_item.get('print_type') or 'DTF',
-                    design_file_name=design.filename if design else None,
+                    design_file_name=design_filename,
                     back_design_file_name=back_filename,
                     print_width=cart_item.get('print_width'),
                     print_height=cart_item.get('print_height'),
@@ -337,6 +349,10 @@ def complete():
                 )
                 try:
                     order_item.back_design_meta = back_meta_json
+                except Exception:
+                    pass
+                try:
+                    order_item.transfer_production = transfer_prod_json
                 except Exception:
                     pass
                 db.session.add(order_item)

@@ -97,6 +97,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS back_design_file_name VARCHAR(500)",
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS print_width DOUBLE PRECISION",
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS print_height DOUBLE PRECISION",
+                    "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS transfer_production TEXT",
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS position_x DOUBLE PRECISION",
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS position_y DOUBLE PRECISION",
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS rotation DOUBLE PRECISION DEFAULT 0",
@@ -418,6 +419,22 @@ def create_app(config_class=Config):
         """Order apparel sizes XS → 6XL (and baby/youth equivalents)."""
         from utils.sizes import sort_sizes
         return sort_sizes(sizes or [])
+
+    @app.template_filter('inches')
+    def inches_filter(value):
+        """Format a measurement in inches to two decimal places."""
+        from utils.print_sizes import format_inches
+        return format_inches(value)
+
+    @app.template_filter('inch_wh')
+    def inch_wh_filter(pair):
+        """Format (width, height) as 10.00″ W × 8.50″ H."""
+        from utils.print_sizes import format_wh
+        if not pair:
+            return 'N/A'
+        if isinstance(pair, (list, tuple)) and len(pair) >= 2:
+            return format_wh(pair[0], pair[1])
+        return 'N/A'
 
     @app.template_filter('from_json')
     def from_json_filter(value):

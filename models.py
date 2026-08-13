@@ -454,6 +454,7 @@ class OrderItem(db.Model):
     back_design_meta = db.Column(db.Text)  # JSON: name/number/font/text_color/outline/outline_color for back name & number
     print_width = db.Column(db.Float)  # inches
     print_height = db.Column(db.Float)  # inches
+    transfer_production = db.Column(db.Text)  # JSON snapshot from utils.print_sizes
     position_x = db.Column(db.Float)  # relative position
     position_y = db.Column(db.Float)  # relative position
     rotation = db.Column(db.Float, default=0.0)
@@ -474,6 +475,17 @@ class OrderItem(db.Model):
         try:
             import json as _json
             return _json.loads(self.back_design_meta)
+        except Exception:
+            return None
+
+    @property
+    def transfer_production_details(self):
+        """Parsed transfer production snapshot, or None."""
+        if not self.transfer_production:
+            return None
+        try:
+            import json as _json
+            return _json.loads(self.transfer_production)
         except Exception:
             return None
     

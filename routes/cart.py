@@ -257,21 +257,100 @@ def add():
         if design and getattr(design, 'design_fee', 0):
             unit_price += float(design.design_fee)
     
-    # Calculate correct print dimensions for size (youth vs adult)
-    from utils.print_sizes import get_print_width_for_size
-    print_width = print_specs.get('width')
-    print_height = print_specs.get('height')
-    is_youth_product = product and (
-        'youth' in (product.name or '').lower() or
-        (getattr(product, 'category', '') or '').lower() == 'youth'
+    # Transfer production — one source of truth (utils.print_sizes)
+    from utils.print_sizes import build_item_production
+    from PIL import Image as _PILImage
+
+    aspect_w = None
+    aspect_h = None
+    try:
+        aw = data.get('design_width')
+        ah = data.get('design_height')
+        if aw and ah:
+            aspect_w, aspect_h = float(aw), float(ah)
+    except (TypeError, ValueError):
+        pass
+    if (not aspect_w or not aspect_h) and design_id:
+        _d = Design.query.get(int(design_id)) if str(design_id).isdigit() else None
+        if _d and _d.width and _d.height:
+            aspect_w, aspect_h = float(_d.width), float(_d.height)
+    if (not aspect_w or not aspect_h) and design_url and design_url.startswith('/static/'):
+        try:
+            _p = Path(design_url[len('/static/'):])
+            if not _p.is_absolute():
+                _p = Path('static') / _p
+            with _PILImage.open(_p) as _im:
+                aspect_w, aspect_h = float(_im.size[0]), float(_im.size[1])
+        except Exception:
+            pass
+
+    design_name = None
+    if design_id:
+        _d = Design.query.get(int(design_id)) if str(design_id).isdigit() else None
+        if _d:
+            design_name = _d.title or _d.original_filename or _d.filename
+    if not design_name and design_url:
+        design_name = design_url.split('/')[-1]
+
+    measured_name_w = data.get('name_width_in') or (back_design_meta or {}).get('name_width')
+    measured_number_w = data.get('number_width_in') or (back_design_meta or {}).get('number_width')
+    try:
+        measured_name_w = float(measured_name_w) if measured_name_w not in (None, '') else None
+    except (TypeError, ValueError):
+        measured_name_w = None
+    try:
+        measured_number_w = float(measured_number_w) if measured_number_w not in (None, '') else None
+    except (TypeError, ValueError):
+        measured_number_w = None
+
+    customer_name = None
+    if current_user.is_authenticated:
+        customer_name = (getattr(current_user, 'name', None) or getattr(current_user, 'full_name', None)
+                         or getattr(current_user, 'email', None))
+
+    has_front = bool(design_url or design_id)
+    transfer_production = build_item_production(
+        product=product,
+        size=size,
+        color=color,
+        placement=placement,
+        quantity=quantity,
+        design_name=design_name,
+        design_id=int(design_id) if design_id and str(design_id).isdigit() else None,
+        aspect_w=aspect_w,
+        aspect_h=aspect_h,
+        has_front=has_front,
+        back_name=(back_design_meta or {}).get('name'),
+        back_number=(back_design_meta or {}).get('number'),
+        back_font=(back_design_meta or {}).get('font'),
+        back_text_color=(back_design_meta or {}).get('text_color'),
+        back_outline=(back_design_meta or {}).get('outline'),
+        back_outline_color=(back_design_meta or {}).get('outline_color'),
+        customer_name=customer_name,
+        measured_name_width=measured_name_w,
+        measured_number_width=measured_number_w,
     )
-    if print_width is None or is_youth_product:
-        pw = get_print_width_for_size(size, product)
-        if pw is not None:
-            print_width = pw
-            print_height = print_height or pw  # Square logo when calculated from size
-    elif print_height is None and print_width:
-        print_height = print_width
+
+    if back_design_meta and transfer_production.get('back'):
+        back_design_meta.update({
+            'name_width': transfer_production['back']['name_width'],
+            'name_height': transfer_production['back']['name_height'],
+            'number_width': transfer_production['back']['number_width'],
+            'number_height': transfer_production['back']['number_height'],
+            'gap': transfer_production['back']['gap'],
+            'combined_width': transfer_production['back']['combined_width'],
+            'combined_height': transfer_production['back']['combined_height'],
+            'condense': transfer_production['back']['condense'],
+            'condense_percent': transfer_production['back']['condense_percent'],
+            'age_group': transfer_production['back']['age_group'],
+        })
+
+    front = (transfer_production or {}).get('front') or {}
+    print_width = front.get('width')
+    print_height = front.get('height')
+    if print_width is None and transfer_production.get('back'):
+        print_width = transfer_production['back'].get('combined_width')
+        print_height = transfer_production['back'].get('combined_height')
     
     # Create cart item
     cart_item = {
@@ -290,6 +369,7 @@ def add():
         'proof_back_url': proof_back_url,
         'print_width': print_width,
         'print_height': print_height,
+        'transfer_production': transfer_production,
         'position_x': print_specs.get('x'),
         'position_y': print_specs.get('y'),
         'rotation': print_specs.get('rotation', 0),
@@ -304,7 +384,8 @@ def add():
             item['color'] == color and
             item.get('design_id') == design_id and
             item.get('placement') == placement and
-            item.get('back_design_url') == back_design_url):
+            item.get('back_design_url') == back_design_url and
+            item.get('back_design_meta') == back_design_meta):
             item['quantity'] += quantity
             found = True
             break

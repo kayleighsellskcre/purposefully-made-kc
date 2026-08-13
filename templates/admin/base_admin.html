@@ -15,7 +15,7 @@
             <div class="ops-nav-divider"></div>
 
             {# ── Daily Operations ─────────────────────────────────────────── #}
-            {% set daily_eps = ['admin.orders','admin.completed_orders','admin.order_detail','admin.production_workflow','admin.production_master','admin.print_labels','admin.dtf_batch_sheets','admin.production_bulk_sheet','admin.blank_apparel_list','admin.custom_design_requests','admin.custom_design_request_detail'] %}
+            {% set daily_eps = ['admin.orders','admin.completed_orders','admin.order_detail','admin.production_workflow','admin.production_master','admin.transfer_production','admin.order_transfer_summary','admin.print_labels','admin.dtf_batch_sheets','admin.production_bulk_sheet','admin.blank_apparel_list','admin.custom_design_requests','admin.custom_design_request_detail'] %}
             <div class="ops-dropdown {% if request.endpoint in daily_eps %}ops-dropdown-active{% endif %}">
                 <button class="ops-dropdown-btn" aria-haspopup="true">
                     Daily Operations
@@ -33,6 +33,10 @@
                     <a href="{{ url_for('admin.production_master') }}" class="ops-drop-item {% if request.endpoint == 'admin.production_master' %}ops-drop-active{% endif %}" role="menuitem">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
                         Production Master
+                    </a>
+                    <a href="{{ url_for('admin.transfer_production') }}" class="ops-drop-item {% if request.endpoint in ['admin.transfer_production','admin.order_transfer_summary'] %}ops-drop-active{% endif %}" role="menuitem">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
+                        Transfer Sizes
                     </a>
                     <a href="{{ url_for('admin.print_labels') }}" class="ops-drop-item {% if request.endpoint == 'admin.print_labels' %}ops-drop-active{% endif %}" role="menuitem">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>

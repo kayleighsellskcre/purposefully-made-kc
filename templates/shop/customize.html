@@ -240,11 +240,11 @@
     left: 50%;
     transform: translate(-50%, -50%);
 }
-/* Back design name/number: higher default position, larger text */
+/* Back design name/number: height is fixed; width grows on one line. */
 .design-layer-back {
     flex-direction: column;
-    width: 32%;
-    max-width: 240px;
+    width: auto;
+    max-width: 92%;
     top: 25%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -261,17 +261,33 @@
     justify-content: center;
     text-align: center;
     color: #fff;
-    width: 100%;
-    max-width: 100%;
+    width: auto;
+    max-width: none;
     /* Strong outline so name/number visible on both light and dark shirts */
     text-shadow: 
         -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000,
         -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000,
         0 0 8px rgba(0,0,0,0.9);
 }
-/* Name and number centered horizontally with each other and the item */
-.back-design-name { line-height: 1.1; text-align: center; display: block; width: 100%; }
-.back-design-number { font-weight: 700; line-height: 1; text-align: center; display: block; width: 100%; }
+/* Name stays on one horizontal line. Width grows; height never shrinks. */
+.back-design-name {
+    line-height: 1;
+    text-align: center;
+    display: block;
+    width: auto;
+    max-width: none;
+    white-space: nowrap;
+    overflow: visible;
+    transform-origin: center center;
+}
+.back-design-number {
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    display: block;
+    width: auto;
+    white-space: nowrap;
+}
 
 /* Back design colour & outline controls */
 .bd-color-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
@@ -1347,6 +1363,7 @@
                     <p style="margin: 0; font-size: 0.9rem; color: #666;">
                         <strong>Selected:</strong> <span id="selectedColorName" style="color: var(--terra-cotta); font-weight: 700;">Loading...</span>
                     </p>
+                    <p id="transferSizeReadout" style="margin: 0.45rem 0 0; font-size: 0.8rem; color: #666; display: none;"></p>
                     <p id="dragHint" style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: #999; display: none;">Drag up or down to reposition</p>
                     
                     <!-- Front Design Position Controls -->
@@ -1855,6 +1872,7 @@
         presetDesignId: {{ preset_design.id if preset_design else 'null' }},
         allowedPlacements: {{ (allowed_placements | tojson) if allowed_placements else 'null' }}
     };
+    const TRANSFER_SIZING = {{ transfer_sizing | default({}) | tojson }};
     
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
@@ -1871,6 +1889,10 @@
         setupAddToCart();
         setupLogoGalleryClicks();
         setupMyDesignsClicks();
+        window.addEventListener('resize', function() {
+            applyDesignFit();
+            updateBackDesignPreview();
+        });
         
         // Apply preset design from gallery if present
         const presetDesign = {{ preset_design | tojson if preset_design else 'null' }};
@@ -2148,6 +2170,8 @@
         element.classList.add('selected');
         state.selectedSize = element.dataset.size;
         updateTotalPrice();
+        applyDesignFit();
+        updateBackDesignPreview();
     };
     
     function setupSizeSelection() {
@@ -2272,35 +2296,137 @@
         }
     }
 
+    function sizingAge() {
+        if (TRANSFER_SIZING && TRANSFER_SIZING.age_group) return TRANSFER_SIZING.age_group;
+        return state.isAdult ? 'adult' : 'youth';
+    }
+    function chartWidthForSize(size) {
+        const age = sizingAge();
+        const key = String(size || '').toUpperCase();
+        const map = age === 'youth'
+            ? (TRANSFER_SIZING.widths_youth || {})
+            : (TRANSFER_SIZING.widths_adult || {});
+        if (map[key] != null) return map[key];
+        return age === 'youth' ? 7.5 : 10;
+    }
+    function sizeScaleFactor() {
+        if (!state.selectedSize) return 1;
+        const w = chartWidthForSize(state.selectedSize);
+        const refW = sizingAge() === 'youth' ? 8.0 : ((TRANSFER_SIZING && TRANSFER_SIZING.preview_ref_width) || 10);
+        return w / refW;
+    }
+    function nameHeightIn() {
+        return sizingAge() === 'youth'
+            ? ((TRANSFER_SIZING && TRANSFER_SIZING.name_height_youth) || 1.5)
+            : ((TRANSFER_SIZING && TRANSFER_SIZING.name_height_adult) || 2);
+    }
+    function numberHeightIn() {
+        return sizingAge() === 'youth'
+            ? ((TRANSFER_SIZING && TRANSFER_SIZING.number_height_youth) || 3)
+            : ((TRANSFER_SIZING && TRANSFER_SIZING.number_height_adult) || 4);
+    }
+    function gapHeightIn() {
+        return sizingAge() === 'youth'
+            ? ((TRANSFER_SIZING && TRANSFER_SIZING.gap_youth) || 0.2)
+            : ((TRANSFER_SIZING && TRANSFER_SIZING.gap_adult) || 0.25);
+    }
+    function safeWidthIn() {
+        return chartWidthForSize(state.selectedSize || (sizingAge() === 'youth' ? 'M' : 'M'));
+    }
+    function inchesToPreviewPx(value) {
+        const canvas = document.getElementById('previewCanvas');
+        const mockupW = canvas ? canvas.clientWidth : 400;
+        const refPct = (TRANSFER_SIZING && TRANSFER_SIZING.preview_ref_pct) || 30;
+        const refIn = (TRANSFER_SIZING && TRANSFER_SIZING.preview_ref_width) || 10;
+        return value * (mockupW * (refPct / 100) / refIn);
+    }
+    function measureTextWidthInches(text, font, heightIn, spacingEm) {
+        if (!text || !heightIn) return 0;
+        const ctx = document.createElement('canvas').getContext('2d');
+        const px = 200;
+        ctx.font = `bold ${px}px "${font}", sans-serif`;
+        const spacing = (spacingEm || 0) * px;
+        if (spacing > 0 && text.length > 1) {
+            let total = 0;
+            for (let i = 0; i < text.length; i++) {
+                total += ctx.measureText(text[i]).width;
+                if (i < text.length - 1) total += spacing;
+            }
+            return (total / px) * heightIn;
+        }
+        return (ctx.measureText(text).width / px) * heightIn;
+    }
+    function fmtIn(value) {
+        if (value == null || isNaN(value)) return 'N/A';
+        return Number(value).toFixed(2);
+    }
+    function updateTransferReadout() {
+        const el = document.getElementById('transferSizeReadout');
+        if (!el) return;
+        const parts = [];
+        if (state.designUrl || state.designFile || state.presetDesignId) {
+            const placement = state.selectedPlacement || 'center_chest';
+            const factor = (TRANSFER_SIZING.placement_factors || {})[placement] || 1;
+            const width = chartWidthForSize(state.selectedSize || (sizingAge() === 'youth' ? 'M' : 'M')) * factor;
+            const w = state.designWidth || 1;
+            const h = state.designHeight || 1;
+            const height = width * (h / w);
+            parts.push(`Front: ${fmtIn(width)}″ W × ${fmtIn(height)}″ H (order by width)`);
+        }
+        if (state.backDesignEnabled && (state.backDesignName || state.backDesignNumber)) {
+            const nH = nameHeightIn();
+            const numH = numberHeightIn();
+            const nW = state.measuredNameWidthIn || 0;
+            const numW = state.measuredNumberWidthIn || 0;
+            const condense = state.nameCondense || 1;
+            const nameW = nW * Math.min(condense, 1);
+            if (state.backDesignName) parts.push(`Name: ${fmtIn(nameW)}″ W × ${fmtIn(nH)}″ H`);
+            if (state.backDesignNumber) parts.push(`Number: ${fmtIn(numW)}″ W × ${fmtIn(numH)}″ H`);
+        }
+        if (!parts.length) {
+            el.style.display = 'none';
+            el.textContent = '';
+            return;
+        }
+        el.style.display = 'block';
+        el.textContent = parts.join('  ·  ');
+    }
+
     function applyDesignFit() {
         const designLayer = document.getElementById('designLayer');
         const designImage = document.getElementById('designImage');
         if (!designLayer || !designImage) return;
         const placement = state.selectedPlacement || 'center_chest';
-        // Clear JS overrides so CSS defaults apply for small chest logos.
+        const scale = sizeScaleFactor();
         designLayer.style.width = '';
         designLayer.style.maxWidth = '';
         designLayer.style.maxHeight = '';
-        if (placement === 'left_chest' || placement === 'right_chest') return;
+        if (placement === 'left_chest' || placement === 'right_chest') {
+            designLayer.style.width = (12 * scale) + '%';
+            designLayer.style.maxWidth = Math.round(90 * scale) + 'px';
+            updateTransferReadout();
+            return;
+        }
         const w = designImage.naturalWidth || state.designWidth || 1;
         const h = designImage.naturalHeight || state.designHeight || 1;
         const tall = h / w;
         if (tall > 1.28) {
-            // Tall stacked designs (FREE INDEED) — keep the current smaller fit
-            designLayer.style.width = '22%';
-            designLayer.style.maxWidth = '165px';
+            designLayer.style.width = (22 * scale) + '%';
+            designLayer.style.maxWidth = Math.round(165 * scale) + 'px';
             designLayer.style.maxHeight = '40%';
         } else if (tall > 1.18) {
-            designLayer.style.width = '25%';
-            designLayer.style.maxWidth = '185px';
+            designLayer.style.width = (25 * scale) + '%';
+            designLayer.style.maxWidth = Math.round(185 * scale) + 'px';
             designLayer.style.maxHeight = '40%';
         } else if (tall >= 0.90) {
-            // Square / slightly-tall (leopard, similar). ~9% above the 30%/225 default.
-            designLayer.style.width = '33%';
-            designLayer.style.maxWidth = '246px';
+            designLayer.style.width = (33 * scale) + '%';
+            designLayer.style.maxWidth = Math.round(246 * scale) + 'px';
             designLayer.style.maxHeight = '42%';
+        } else {
+            designLayer.style.width = (30 * scale) + '%';
+            designLayer.style.maxWidth = Math.round(225 * scale) + 'px';
         }
-        // Wide designs (h/w < 0.90) keep the CSS default 30%/225.
+        updateTransferReadout();
     }
     
     function applyBackDesignPosition() {
@@ -2369,12 +2495,31 @@
             textContainer.style.fontFamily = `"${font}", sans-serif`;
             textContainer.style.color = textColor;
             textContainer.style.textShadow = outlineOn ? buildBackOutlineShadow(outlineColor) : 'none';
-            nameEl.style.fontSize = cfg.nameSize;
+            const nameH = nameHeightIn();
+            const numH = numberHeightIn();
+            const gapH = gapHeightIn();
+            nameEl.style.fontSize = inchesToPreviewPx(nameH) + 'px';
+            numberEl.style.fontSize = inchesToPreviewPx(numH) + 'px';
             nameEl.style.letterSpacing = cfg.nameSpacing;
-            nameEl.style.marginBottom = cfg.nameNumberGap;
-            numberEl.style.fontSize = cfg.numberSize;
+            nameEl.style.marginBottom = inchesToPreviewPx(gapH) + 'px';
+            nameEl.style.whiteSpace = 'nowrap';
+            nameEl.style.width = 'auto';
             numberEl.style.letterSpacing = cfg.numberSpacing;
             numberEl.style.marginTop = '0';
+            numberEl.style.whiteSpace = 'nowrap';
+            const metrics = (TRANSFER_SIZING.fonts || {})[font] || {};
+            const naturalNameW = measureTextWidthInches(name, font, nameH, metrics.letter_spacing);
+            const naturalNumberW = measureTextWidthInches(number, font, numH, metrics.number_spacing);
+            const safeW = safeWidthIn();
+            let condense = 1;
+            if (name && naturalNameW > safeW) condense = safeW / naturalNameW;
+            nameEl.style.transform = condense < 0.999 ? `scaleX(${condense})` : '';
+            state.measuredNameWidthIn = naturalNameW;
+            state.measuredNumberWidthIn = naturalNumberW;
+            state.nameCondense = condense;
+            const layoutW = Math.max(Math.min(naturalNameW, safeW), naturalNumberW, 0.5);
+            backDesignLayer.style.width = inchesToPreviewPx(layoutW) + 'px';
+            backDesignLayer.style.maxWidth = '92%';
             // Keep state in sync for add-to-cart
             state.backDesignName = name;
             state.backDesignNumber = number;
@@ -2382,6 +2527,7 @@
             state.backDesignTextColor = textColor;
             state.backDesignOutline = outlineOn;
             state.backDesignOutlineColor = outlineColor;
+            updateTransferReadout();
         } else if (state.backDesignUrl) {
             textContainer.style.display = 'none';
             backDesignImage.style.display = 'block';
@@ -3306,32 +3452,61 @@
             const number = (state.backDesignNumber || '').trim();
             const font = state.backDesignFont || 'Bebas Neue';
             if (!name && !number) return resolve(null);
-            
+
+            const dpi = 150;
+            const nameH = nameHeightIn();
+            const numH = numberHeightIn();
+            const gapH = gapHeightIn();
+            const namePx = Math.round(nameH * dpi);
+            const numPx = Math.round(numH * dpi);
+            const gapPx = Math.round(gapH * dpi);
             const cfg = CANVAS_FONT_CONFIG[font] || CANVAS_FONT_CONFIG['Bebas Neue'];
+            const nameSpacing = namePx * ((cfg.nameSpacing || 4) / Math.max(cfg.nameSize, 1));
+            const numberSpacing = numPx * ((cfg.numberSpacing || 4) / Math.max(cfg.numberSize, 1));
 
             try {
                 if (document.fonts) {
                     const loads = [];
                     if (document.fonts.load) {
-                        loads.push(document.fonts.load(`bold ${cfg.numberSize}px "${font}"`));
-                        loads.push(document.fonts.load(`bold ${cfg.nameSize}px "${font}"`));
+                        loads.push(document.fonts.load(`bold ${numPx}px "${font}"`));
+                        loads.push(document.fonts.load(`bold ${namePx}px "${font}"`));
                     }
-                    if (document.fonts.ready) {
-                        loads.push(document.fonts.ready);
-                    }
+                    if (document.fonts.ready) loads.push(document.fonts.ready);
                     await Promise.all(loads);
                 }
             } catch (e) {}
 
-            // Colors/outline chosen by the customer — baked into the production file
             const textColor = state.backDesignTextColor
                 || (document.getElementById('backDesignTextColor') || {}).value || '#ffffff';
             const outlineOn = (state.backDesignOutline !== false);
             const outlineColor = state.backDesignOutlineColor
                 || (document.getElementById('backDesignOutlineColor') || {}).value || '#000000';
-            
-            canvas.width = 800;
-            canvas.height = 600;
+
+            function measureSpaced(text, fontSize, charSpacing) {
+                if (!text) return 0;
+                ctx.font = `bold ${fontSize}px "${font}", sans-serif`;
+                if (charSpacing > 0 && text.length > 1) {
+                    let total = 0;
+                    for (let i = 0; i < text.length; i++) {
+                        total += ctx.measureText(text[i]).width;
+                        if (i < text.length - 1) total += charSpacing;
+                    }
+                    return total;
+                }
+                return ctx.measureText(text).width;
+            }
+
+            const naturalNamePx = measureSpaced(name, namePx, nameSpacing);
+            const numberWpx = measureSpaced(number, numPx, numberSpacing);
+            const safePx = safeWidthIn() * dpi;
+            const condense = (name && naturalNamePx > safePx) ? (safePx / naturalNamePx) : 1;
+            const nameWpx = naturalNamePx * condense;
+            const contentW = Math.max(nameWpx, numberWpx, 1);
+            const contentH = (name ? namePx : 0) + (name && number ? gapPx : 0) + (number ? numPx : 0);
+            const pad = Math.round(dpi * 0.15);
+
+            canvas.width = Math.ceil(contentW + pad * 2);
+            canvas.height = Math.ceil(contentH + pad * 2);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -3339,15 +3514,13 @@
             ctx.strokeStyle = outlineColor;
             ctx.lineJoin = 'round';
             ctx.miterLimit = 2;
-            
-            const centerX = canvas.width / 2;
-            const upOffset = 60;
-            let y = canvas.height / 2 - upOffset;
-            
-            function drawTextWithSpacing(text, yPos, fontSize, charSpacing) {
+
+            function drawTextWithSpacing(text, yPos, fontSize, charSpacing, scaleX) {
                 if (!text) return;
+                ctx.save();
+                ctx.translate(canvas.width / 2, yPos);
+                if (scaleX && scaleX < 0.999) ctx.scale(scaleX, 1);
                 ctx.font = `bold ${fontSize}px "${font}", sans-serif`;
-                // Outline thickness scales with the glyph size for a clean, even edge
                 ctx.lineWidth = Math.max(4, Math.round(fontSize * 0.08));
                 if (charSpacing > 0 && text.length > 1) {
                     let totalWidth = 0;
@@ -3357,26 +3530,31 @@
                         widths.push(w);
                         totalWidth += w + (i < text.length - 1 ? charSpacing : 0);
                     }
-                    let x = centerX - totalWidth / 2 + widths[0] / 2;
+                    let x = -totalWidth / 2 + widths[0] / 2;
                     for (let i = 0; i < text.length; i++) {
-                        if (outlineOn) ctx.strokeText(text[i], x, yPos);
-                        ctx.fillText(text[i], x, yPos);
+                        if (outlineOn) ctx.strokeText(text[i], x, 0);
+                        ctx.fillText(text[i], x, 0);
                         x += widths[i] + charSpacing;
                     }
                 } else {
-                    if (outlineOn) ctx.strokeText(text, centerX, yPos);
-                    ctx.fillText(text, centerX, yPos);
+                    if (outlineOn) ctx.strokeText(text, 0, 0);
+                    ctx.fillText(text, 0, 0);
                 }
+                ctx.restore();
             }
-            
-            if (number) {
-                drawTextWithSpacing(number, y, cfg.numberSize, cfg.numberSpacing);
-                y -= cfg.gap;
-            }
+
+            let y = pad;
             if (name) {
-                drawTextWithSpacing(name, y, cfg.nameSize, cfg.nameSpacing);
+                y += namePx / 2;
+                drawTextWithSpacing(name, y, namePx, nameSpacing, condense);
+                y += namePx / 2;
+                if (number) y += gapPx;
             }
-            
+            if (number) {
+                y += numPx / 2;
+                drawTextWithSpacing(number, y, numPx, numberSpacing, 1);
+            }
+
             canvas.toBlob(function(blob) {
                 if (blob) {
                     const f = new File([blob], 'back_name_number.png', { type: 'image/png' });
@@ -3434,6 +3612,10 @@
                 formData.append('quantity', state.quantity);
                 formData.append('placement', state.selectedPlacement);
                 formData.append('unit_price', unitPrice);
+                if (state.designWidth) formData.append('design_width', state.designWidth);
+                if (state.designHeight) formData.append('design_height', state.designHeight);
+                if (state.measuredNameWidthIn) formData.append('name_width_in', state.measuredNameWidthIn);
+                if (state.measuredNumberWidthIn) formData.append('number_width_in', state.measuredNumberWidthIn);
                 
                 if (state.designFile) {
                     formData.append('design', state.designFile);

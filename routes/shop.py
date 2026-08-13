@@ -455,7 +455,9 @@ def customize(product_id):
             pass
     
     # Adult items get size upcharge for 2XL+ (youth items do not)
-    is_adult = 'youth' not in (product.name or '').lower()
+    from utils.print_sizes import classify_age, client_config
+    is_adult = classify_age(product) == 'adult'
+    transfer_sizing = client_config(product)
     
     return render_template('shop/customize.html',
                          product=product,
@@ -476,4 +478,5 @@ def customize(product_id):
                          back_design_outline_color=back_design_outline_color,
                          lock_back_design_style=lock_back_design_style,
                          allowed_design_ids=allowed_design_ids,
-                         is_adult=is_adult)
+                         is_adult=is_adult,
+                         transfer_sizing=transfer_sizing)

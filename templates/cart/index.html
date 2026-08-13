@@ -45,6 +45,21 @@
                             | Back design
                             {% endif %}
                         </p>
+                        {% set tp = item.get('transfer_production') %}
+                        {% if tp and (tp.front or tp.back) %}
+                        <p class="item-transfer">
+                            {% if tp.front %}
+                            Front: {{ tp.front.width_display }}″ W × {{ tp.front.height_display }}″ H
+                            (order by width)
+                            {% endif %}
+                            {% if tp.front and tp.back %} · {% endif %}
+                            {% if tp.back %}
+                            Name {{ tp.back.name_width_display }}″ × {{ tp.back.name_height_display }}″
+                            {% if tp.back.number %} · #{{ tp.back.number }} {{ tp.back.number_width_display }}″ × {{ tp.back.number_height_display }}″{% endif %}
+                            (order by height)
+                            {% endif %}
+                        </p>
+                        {% endif %}
                         {% if item.get('is_blank') %}
                         <p class="item-blank-badge">Blank (no transfer) &mdash; $12 discount applied</p>
                         {% endif %}
@@ -110,6 +125,11 @@
 </section>
 
 <style>
+.item-transfer {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin: 0.25rem 0 0;
+}
 .item-blank-badge {
     display: inline-block;
     margin-top: 0.35rem;

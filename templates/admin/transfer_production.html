@@ -1,0 +1,136 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ title }} - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<div class="xfer-page">
+    <div class="xfer-header no-print">
+        <div>
+            <span class="adm-eyebrow">Admin / Production</span>
+            <h1>{{ title }}</h1>
+            <p class="xfer-sub">Group identical front transfers. Personalized names and numbers stay on their own lines because widths differ. All sizes in inches, two decimals.</p>
+        </div>
+        <div class="xfer-actions">
+            {% if order %}
+            <a class="btn btn-outline" href="{{ url_for('admin.order_detail', order_id=order.id) }}">Back to order</a>
+            <a class="btn btn-outline" href="{{ url_for('admin.order_transfer_csv', order_id=order.id) }}">Download CSV</a>
+            {% else %}
+            <a class="btn btn-outline" href="{{ url_for('admin.transfer_production', status=selected_status, collection=selected_collection, group=group_by, format='csv') }}">Download CSV</a>
+            {% endif %}
+            <button type="button" class="btn btn-primary" onclick="window.print()">Print</button>
+        </div>
+    </div>
+
+    {% if not order %}
+    <form method="get" class="xfer-filters no-print">
+        <label>Group / sort
+            <select name="group" onchange="this.form.submit()">
+                <option value="design" {% if group_by == 'design' %}selected{% endif %}>Design</option>
+                <option value="garment" {% if group_by == 'garment' %}selected{% endif %}>Garment style</option>
+                <option value="age" {% if group_by == 'age' %}selected{% endif %}>Youth / adult</option>
+                <option value="size" {% if group_by == 'size' %}selected{% endif %}>Shirt size</option>
+                <option value="placement" {% if group_by == 'placement' %}selected{% endif %}>Placement</option>
+                <option value="dimensions" {% if group_by == 'dimensions' %}selected{% endif %}>Transfer dimensions</option>
+            </select>
+        </label>
+        {% if collections %}
+        <label>Collection
+            <select name="collection" onchange="this.form.submit()">
+                <option value="">All</option>
+                {% for c in collections %}
+                <option value="{{ c.id }}" {% if selected_collection and selected_collection|string == c.id|string %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        {% endif %}
+        {% for st in selected_status %}
+        <input type="hidden" name="status" value="{{ st }}">
+        {% endfor %}
+    </form>
+    {% endif %}
+
+    {% if rows %}
+    <table class="xfer-table">
+        <thead>
+            <tr>
+                <th>Section</th>
+                <th>Design / Name</th>
+                <th>Garment</th>
+                <th>Age + Size</th>
+                <th>Color</th>
+                <th>Placement</th>
+                <th>Order by</th>
+                <th>Transfer size</th>
+                <th>Adjustment</th>
+                <th>Qty</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr class="{% if row.exceeds_safe_area %}xfer-flag{% endif %} {% if row.kind == 'personalized' %}xfer-personal{% endif %}">
+                <td>{{ row.section }}</td>
+                <td>
+                    {% if row.kind == 'personalized' %}
+                    <strong>{{ row.name or '—' }}</strong>
+                    {% if row.number %}<span class="xfer-num">#{{ row.number }}</span>{% endif %}
+                    <div class="xfer-meta">{{ row.font }}{% if row.text_color %} · {{ row.text_color }}{% endif %}</div>
+                    {% else %}
+                    <strong>{{ row.design_name or '—' }}</strong>
+                    {% endif %}
+                </td>
+                <td>{{ row.garment_style }}</td>
+                <td>{{ (row.age_group or '')|title }} {{ row.size }}</td>
+                <td>{{ row.color }}</td>
+                <td>{{ row.placement_label }}</td>
+                <td>{{ row.order_by }}</td>
+                <td>
+                    {% if row.kind == 'personalized' %}
+                    Name {{ row.name_width_display }}″ W × {{ row.name_height_display }}″ H<br>
+                    Number {{ row.number_width_display }}″ W × {{ row.number_height_display }}″ H<br>
+                    Combined {{ row.combined_width_display }}″ W × {{ row.combined_height_display }}″ H
+                    {% else %}
+                    {{ row.width_display }}″ W × {{ row.height_display }}″ H
+                    {% endif %}
+                </td>
+                <td>
+                    {% if row.kind == 'personalized' %}
+                    {% if row.condense_percent %}{{ row.condense_percent }}% condensed{% else %}none{% endif %}
+                    {% else %}
+                    —
+                    {% endif %}
+                    {% if row.exceeds_safe_area %}<div class="xfer-warn">OVERSIZE</div>{% endif %}
+                </td>
+                <td class="xfer-qty">{{ row.quantity }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="xfer-empty">No transfers in this selection.</p>
+    {% endif %}
+</div>
+
+<style>
+.xfer-page { padding: 2rem 0 4rem; }
+.xfer-header { display: flex; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.xfer-sub { color: var(--text-secondary); max-width: 40rem; margin-top: 0.4rem; }
+.xfer-actions { display: flex; gap: 0.6rem; align-items: flex-start; flex-wrap: wrap; }
+.xfer-filters { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.xfer-filters label { font-size: 0.82rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.3rem; }
+.xfer-filters select { min-height: 40px; padding: 0.35rem 0.6rem; }
+.xfer-table { width: 100%; border-collapse: collapse; background: #fff; }
+.xfer-table th, .xfer-table td { border-bottom: 1px solid rgba(232,208,177,0.7); padding: 0.65rem 0.55rem; text-align: left; vertical-align: top; font-size: 0.84rem; }
+.xfer-table thead { background: var(--ivory-silk, #f7f1e6); }
+.xfer-qty { font-weight: 700; }
+.xfer-num { margin-left: 0.35rem; font-weight: 700; }
+.xfer-meta { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.15rem; }
+.xfer-personal { background: #fffdf8; }
+.xfer-flag { outline: 2px solid #c45c26; }
+.xfer-warn { color: #9a3412; font-weight: 700; font-size: 0.75rem; margin-top: 0.25rem; }
+.xfer-empty { padding: 2rem; background: #fff; border-radius: 10px; }
+@media print {
+    .no-print, .ops-nav, .ops-page > .container > nav, header, footer { display: none !important; }
+    .xfer-page { padding: 0; }
+    .xfer-table { font-size: 11px; }
+}
+</style>
+{% endblock %}

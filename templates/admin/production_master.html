@@ -12,6 +12,7 @@
                 <p class="page-subtitle">Master copy of all blanks + designs from New/Paid orders. Order everything at once, then move to production.</p>
             </div>
             <div class="master-actions">
+                <a href="{{ url_for('admin.transfer_production') }}" class="btn btn-outline">Transfer sizes</a>
                 <a href="{{ url_for('admin.orders', status='new') }}" class="btn btn-outline">View Orders</a>
                 <form method="post" action="{{ url_for('admin.production_master_move') }}" style="display: inline;">
                     <input type="hidden" name="status" value="new">
@@ -80,12 +81,42 @@
                         <div class="design-master-info">
                             <p><strong>{{ group.design.filename if group.design else 'No file' }}</strong></p>
                             <p>Placement: {{ group.placement.replace('_', ' ')|title }}</p>
-                            <p>Print size: {% if group.print_width %}{{ "%.1f"|format(group.print_width) }}" x {{ "%.1f"|format(group.print_height or group.print_width) }}"{% else %}N/A{% endif %}</p>
+                            <p>Print size: {% if group.print_width %}{{ group.print_width|inches }}″ W × {{ (group.print_height or group.print_width)|inches }}″ H{% else %}N/A{% endif %}</p>
                             <p class="qty-badge">Qty: {{ group.quantity }}</p>
                         </div>
                     </div>
                     {% endfor %}
                 </div>
+                {% if personal_list is defined and personal_list %}
+                <h2 style="margin-top:2rem;">Personalized backs (listed separately)</h2>
+                <p class="section-hint">Names and numbers are ordered by height. Widths are calculated per name.</p>
+                <div class="table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Number</th>
+                                <th>Size</th>
+                                <th>Name transfer</th>
+                                <th>Number transfer</th>
+                                <th>Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in personal_list %}
+                            <tr>
+                                <td><strong>{{ row.name }}</strong></td>
+                                <td>{{ row.number }}</td>
+                                <td>{{ row.age_group|title }} {{ row.size }}</td>
+                                <td>{{ row.name_width_display }}″ × {{ row.name_height_display }}″</td>
+                                <td>{{ row.number_width_display }}″ × {{ row.number_height_display }}″</td>
+                                <td class="qty">{{ row.quantity }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
             </div>
         </div>
         

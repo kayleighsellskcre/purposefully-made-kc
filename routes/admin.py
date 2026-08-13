@@ -298,14 +298,105 @@ def orders_completed():
 @admin_required
 def order_detail(order_id):
     """View order details"""
-    from utils.print_sizes import get_print_width_for_size
+    from utils.print_sizes import get_print_width_for_size, production_from_order_item
     order = Order.query.get_or_404(order_id)
     def get_print_width(size, product=None):
         return get_print_width_for_size(size, product)
     def get_display_print_width(item):
         """Always use correct youth dimensions for display (fixes stored wrong values)."""
         return get_print_width_for_size(item.size, item.product) or item.print_width
-    return render_template('admin/order_detail.html', order=order, get_print_width=get_print_width, get_display_print_width=get_display_print_width)
+    item_productions = []
+    for item in order.items:
+        item_productions.append((item, production_from_order_item(item, customer_name=order.full_name)))
+    return render_template(
+        'admin/order_detail.html',
+        order=order,
+        get_print_width=get_print_width,
+        get_display_print_width=get_display_print_width,
+        item_productions=item_productions,
+    )
+
+
+def _collect_order_productions(orders):
+    from utils.print_sizes import production_from_order_item, flatten_production_rows
+    productions = []
+    for order in orders:
+        for item in order.items:
+            productions.append(production_from_order_item(item, customer_name=order.full_name))
+    return flatten_production_rows(productions)
+
+
+def _transfer_csv_response(rows, filename):
+    output = StringIO()
+    fieldnames = [
+        'section', 'kind', 'order_by', 'design_name', 'name', 'number', 'font', 'text_color',
+        'garment_style', 'style_number', 'age_group', 'size', 'color', 'placement_label',
+        'width', 'height', 'name_width', 'name_height', 'number_width', 'number_height',
+        'combined_width', 'combined_height', 'gap', 'condense_percent', 'exceeds_safe_area',
+        'quantity',
+    ]
+    writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction='ignore')
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({
+            'section': row.get('section'),
+            'kind': row.get('kind'),
+            'order_by': row.get('order_by'),
+            'design_name': row.get('design_name'),
+            'name': row.get('name'),
+            'number': row.get('number'),
+            'font': row.get('font'),
+            'text_color': row.get('text_color'),
+            'garment_style': row.get('garment_style'),
+            'style_number': row.get('style_number'),
+            'age_group': row.get('age_group'),
+            'size': row.get('size'),
+            'color': row.get('color'),
+            'placement_label': row.get('placement_label'),
+            'width': row.get('width_display') if row.get('width_display') is not None else row.get('width'),
+            'height': row.get('height_display') if row.get('height_display') is not None else row.get('height'),
+            'name_width': row.get('name_width_display', row.get('name_width')),
+            'name_height': row.get('name_height_display', row.get('name_height')),
+            'number_width': row.get('number_width_display', row.get('number_width')),
+            'number_height': row.get('number_height_display', row.get('number_height')),
+            'combined_width': row.get('combined_width_display', row.get('combined_width')),
+            'combined_height': row.get('combined_height_display', row.get('combined_height')),
+            'gap': row.get('gap_display', row.get('gap')),
+            'condense_percent': row.get('condense_percent') if row.get('condense_percent') is not None else 'none',
+            'exceeds_safe_area': 'YES' if row.get('exceeds_safe_area') else '',
+            'quantity': row.get('quantity'),
+        })
+    return send_file(
+        BytesIO(output.getvalue().encode('utf-8')),
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name=filename,
+    )
+
+
+@admin_bp.route('/orders/<int:order_id>/transfers')
+@admin_required
+def order_transfer_summary(order_id):
+    from utils.print_sizes import group_production_rows
+    order = Order.query.get_or_404(order_id)
+    rows = _collect_order_productions([order])
+    grouped = group_production_rows(rows, group_by=request.args.get('group', 'design'))
+    return render_template(
+        'admin/transfer_production.html',
+        title=f'Order #{order.order_number} transfers',
+        order=order,
+        rows=grouped,
+        group_by=request.args.get('group', 'design'),
+        printable=True,
+    )
+
+
+@admin_bp.route('/orders/<int:order_id>/transfers.csv')
+@admin_required
+def order_transfer_csv(order_id):
+    order = Order.query.get_or_404(order_id)
+    rows = _collect_order_productions([order])
+    return _transfer_csv_response(rows, f'transfers_{order.order_number}.csv')
 
 
 @admin_bp.route('/orders/<int:order_id>/update-status', methods=['POST'])
@@ -2058,8 +2149,6 @@ def delete_collection(collection_id):
 @admin_required
 def production_master():
     """Master copy: all blanks + designs from new/paid orders. Order everything at once, then move to production."""
-    from utils.print_sizes import get_print_width_for_size
-    
     status_filter = request.args.getlist('status') or ['new', 'paid']
     collection_id = request.args.get('collection')
     
@@ -2087,26 +2176,32 @@ def production_master():
     apparel_list = sorted(apparel_totals.values(), key=lambda x: (x['style_number'], x['color'], x['size']))
     
     # Design/logo totals (grouped by design, placement, print size)
-    # Always use get_print_width_for_size so youth gets correct 7.5" etc.
+    from utils.print_sizes import production_from_order_item, inches
     design_groups = {}
+    personal_list = []
     for order in orders:
         for item in order.items:
-            if not item.design_id:
-                continue
-            pw = get_print_width_for_size(item.size, item.product) or item.print_width
-            ph = item.print_height or pw
-            key = (item.design_id, item.placement or '', pw, ph)
-            if key not in design_groups:
-                design_groups[key] = {
-                    'design': item.design,
-                    'placement': item.placement or '-',
-                    'print_width': pw,
-                    'print_height': ph,
-                    'quantity': 0
-                }
-            design_groups[key]['quantity'] += item.quantity
+            prod = production_from_order_item(item, customer_name=order.full_name)
+            front = (prod or {}).get('front')
+            if front:
+                pw = front.get('width')
+                ph = front.get('height')
+                key = (item.design_id, item.placement or '', inches(pw), inches(ph))
+                if key not in design_groups:
+                    design_groups[key] = {
+                        'design': item.design,
+                        'design_name': front.get('design_name'),
+                        'placement': item.placement or '-',
+                        'print_width': pw,
+                        'print_height': ph,
+                        'quantity': 0
+                    }
+                design_groups[key]['quantity'] += item.quantity
+            back = (prod or {}).get('back')
+            if back:
+                personal_list.append(back)
     
-    design_list = sorted(design_groups.values(), key=lambda x: (getattr(x['design'], 'filename', '') or '', x['placement']))
+    design_list = sorted(design_groups.values(), key=lambda x: (getattr(x['design'], 'filename', '') or x.get('design_name') or '', x['placement']))
     
     collections = Collection.query.all()
     
@@ -2114,9 +2209,40 @@ def production_master():
                          orders=orders,
                          apparel_list=apparel_list,
                          design_list=design_list,
+                         personal_list=personal_list,
                          collections=collections,
                          selected_status=status_filter,
                          selected_collection=collection_id)
+
+
+@admin_bp.route('/production/transfers')
+@admin_required
+def transfer_production():
+    """Printable / filterable transfer order sheet across selected orders."""
+    from utils.print_sizes import group_production_rows
+    status_filter = request.args.getlist('status') or ['new', 'paid', 'in_production']
+    collection_id = request.args.get('collection')
+    group_by = request.args.get('group', 'design')
+    query = Order.query.filter(Order.status.in_(status_filter))
+    if collection_id:
+        query = query.filter_by(collection_id=collection_id)
+    orders = query.order_by(Order.created_at).all()
+    rows = group_production_rows(_collect_order_productions(orders), group_by=group_by)
+    if request.args.get('format') == 'csv':
+        return _transfer_csv_response(rows, f'transfers_{datetime.now().strftime("%Y%m%d")}.csv')
+    collections = Collection.query.all()
+    return render_template(
+        'admin/transfer_production.html',
+        title='Transfer Production Summary',
+        order=None,
+        rows=rows,
+        group_by=group_by,
+        orders=orders,
+        collections=collections,
+        selected_status=status_filter,
+        selected_collection=collection_id,
+        printable=True,
+    )
 
 
 @admin_bp.route('/production/master/move-to-production', methods=['POST'])
