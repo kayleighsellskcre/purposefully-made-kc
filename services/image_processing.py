@@ -1,12 +1,12 @@
 """
 Background removal.
 
-  1. Sample the paper color from the image border
-  2. Flood-fill only paper that touches that border
-  3. Keep enclosed cream/paint (clouds, brush strokes, parchment)
-  4. Punch true letter counters (the hole in R, A, O)
-  5. rembg is a hint only: restore large interior shapes the flood
-     ate because they happened to touch the paper color
+  1. rembg first-pass cutout
+  2. Sample the backdrop color from the image border
+  3. Every pixel that matches that color becomes transparent —
+     inside letters, inside the design, everywhere
+  4. Peel a 1–2px blended fringe on the new edge
+  5. Crop
 
 Public API is unchanged so the rest of the app does not care.
 """
@@ -92,16 +92,17 @@ def process_artwork_bytes(data: bytes, mode: str = 'auto', engine=None) -> dict:
         img, orig_rgb = _fit_working_size(img)
         bg_color, mad = _border_profile(orig_rgb)
 
-        rembg_alpha = None
-        used = 'algorithmic'
+        out = None
+        used = 'none'
         if engine != 'algorithmic':
             ai = _rembg(img)
             if ai is not None:
+                out = _use_original_colors(img, ai)
                 used = 'ai'
-                if _HAS_NUMPY:
-                    rembg_alpha = np.asarray(ai.convert('RGBA'))[..., 3]
-        out = _strip_background_color(img, orig_rgb, bg_color, mad, mode,
-                                      rembg_alpha=rembg_alpha)
+        if out is None:
+            out = img
+            used = 'algorithmic'
+        out = _strip_background_color(out, orig_rgb, bg_color, mad, mode)
         out = _autocrop(out)
         return _encode(out, used, original_size, changed=True)
     except (MemoryError, Exception):
@@ -191,174 +192,58 @@ def _rembg(img_rgba: Image.Image):
 
 
 # ---------------------------------------------------------------------------
-# The cut
+# The cut: delete every pixel that matches the backdrop color
 # ---------------------------------------------------------------------------
 
-def _dilate_bool(mask, px: int):
-    out = mask.copy()
-    for _ in range(max(0, int(px))):
-        d = out.copy()
-        for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-            d |= np.roll(np.roll(out, dy, axis=0), dx, axis=1)
-        out = d
-    return out
-
-
-def _erode_bool(mask, px: int):
-    return ~_dilate_bool(~mask, px)
-
-
-def _flood_from_border(seedable):
-    from collections import deque
-    h, w = seedable.shape
-    exterior = np.zeros((h, w), dtype=bool)
-    q = deque()
-
-    def seed(y, x):
-        if not exterior[y, x] and seedable[y, x]:
-            exterior[y, x] = True
-            q.append((y, x))
-
-    for x in range(w):
-        seed(0, x)
-        seed(h - 1, x)
-    for y in range(h):
-        seed(y, 0)
-        seed(y, w - 1)
-    while q:
-        y, x = q.popleft()
-        for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-            ny, nx = y + dy, x + dx
-            if 0 <= ny < h and 0 <= nx < w and not exterior[ny, nx] and seedable[ny, nx]:
-                exterior[ny, nx] = True
-                q.append((ny, nx))
-    return exterior
-
-
-def _iter_bool_components(mask):
-    h, w = mask.shape
-    visited = np.zeros((h, w), dtype=bool)
-    ys, xs = np.where(mask)
-    for y0, x0 in zip(ys, xs):
-        if visited[y0, x0]:
-            continue
-        comp = [(y0, x0)]
-        visited[y0, x0] = True
-        qi = 0
-        while qi < len(comp):
-            y, x = comp[qi]
-            qi += 1
-            for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-                ny, nx = y + dy, x + dx
-                if 0 <= ny < h and 0 <= nx < w and not visited[ny, nx] and mask[ny, nx]:
-                    visited[ny, nx] = True
-                    comp.append((ny, nx))
-        yield comp
-
-
-def _comp_ring_mostly_logo(comp, is_logo):
-    """True when this blob is a letter counter wrapped in ink."""
-    n = len(comp)
-    if n > 8000:
-        return False
-    h, w = is_logo.shape
-    cset = set(comp)
-    logo_n = other = 0
-    for y, x in comp:
-        for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-            ny, nx = y + dy, x + dx
-            if not (0 <= ny < h and 0 <= nx < w) or (ny, nx) in cset:
-                continue
-            if is_logo[ny, nx]:
-                logo_n += 1
-            else:
-                other += 1
-    return logo_n > 8 and logo_n >= 2.5 * max(1, other)
+def _use_original_colors(orig_rgba: Image.Image, ai_rgba: Image.Image) -> Image.Image:
+    """Keep the uploaded pixels; only take rembg's transparency mask."""
+    if not _HAS_NUMPY:
+        return ai_rgba
+    o = np.asarray(orig_rgba.convert('RGBA')).copy()
+    a = np.asarray(ai_rgba.convert('RGBA'))
+    o[..., 3] = a[..., 3]
+    return Image.fromarray(o, 'RGBA')
 
 
 def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
-                            bg_color, mad, mode: str, rembg_alpha=None) -> Image.Image:
-    """Border-connected paper goes. Enclosed art stays. Letter holes punch."""
+                            bg_color, mad, mode: str) -> Image.Image:
+    """Make every background-colored pixel transparent.
+
+    Cream boxes, white paper, leftover patches inside letters — if it
+    matches the border color, it goes, wherever it sits. Design pixels
+    that are a different color stay.
+    """
     if not _HAS_NUMPY:
         return img
     try:
         arr = np.asarray(img.convert('RGBA')).copy()
         rgb = np.asarray(orig_rgb.convert('RGB')).astype(np.int16)
-        h, w = rgb.shape[:2]
-        # Start fully opaque so rembg cannot pre-punch cream paint.
-        alpha = np.full((h, w), 255, dtype=np.int32)
+        alpha = arr[..., 3].astype(np.int32)
 
         dist = (np.abs(rgb[..., 0] - int(bg_color[0]))
               + np.abs(rgb[..., 1] - int(bg_color[1]))
               + np.abs(rgb[..., 2] - int(bg_color[2])))
 
-        tol = int(min(58, max(28, 32 + mad * 1.4)))
+        tol = int(min(140, max(55, 60 + mad * 3.0)))
         if mode == 'aggressive':
-            tol = min(80, tol + 18)
+            tol = min(180, tol + 40)
 
         is_bg = dist <= tol
-        is_logo = dist > tol
-        alpha[is_logo] = 255
+        alpha[is_bg] = 0
+        alpha[alpha < 48] = 0
 
-        rembg_fg = None
-        if rembg_alpha is not None:
-            rembg_a = np.asarray(rembg_alpha)
-            if rembg_a.ndim == 3:
-                rembg_a = rembg_a[..., 3] if rembg_a.shape[-1] >= 4 else rembg_a[..., 0]
-            if rembg_a.shape[:2] == alpha.shape:
-                rembg_fg = rembg_a >= 140
-
-        exterior = _flood_from_border(is_bg)
-        alpha[exterior] = 0
-
-        # Cream brush strokes / clouds that touch the paper get flooded.
-        # If rembg is confident they are the subject (and they are large,
-        # not a letter hole), put that interior back.
-        if rembg_fg is not None:
-            core = _erode_bool(rembg_fg, 6)
-            restore = exterior & core
-            # Skip tiny cores — those are leftover paper rembg clung to.
-            for comp in _iter_bool_components(restore):
-                if len(comp) >= max(400, (h * w) // 200):
-                    for y, x in comp:
-                        alpha[y, x] = 255
-
-        enclosed = is_bg & (alpha >= 128)
-        max_letter_hole = max(500, (h * w) // 90)
-        for comp in _iter_bool_components(enclosed):
-            if len(comp) > max_letter_hole:
-                continue
-            if _comp_ring_mostly_logo(comp, is_logo):
-                for y, x in comp:
-                    alpha[y, x] = 0
-
-        fg = alpha >= 128
-        fg = _erode_bool(_dilate_bool(fg, 1), 1)
-        alpha = np.where(fg, 255, 0).astype(np.int32)
-
-        # 1–2px halo peel on the outer edge only
-        is_halo = dist <= (tol + 34)
+        blend = dist <= (tol + 55)
         for _ in range(2):
             trans = alpha < 20
-            has_t = _dilate_bool(trans, 1)
-            peel = has_t & is_halo & (alpha > 0)
-            if rembg_fg is not None:
-                # Don't nibble thin white verse rembg kept
-                peel = peel & ~(_erode_bool(rembg_fg, 1))
+            has_t = np.zeros_like(trans)
+            for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                has_t |= np.roll(np.roll(trans, dy, axis=0), dx, axis=1)
+            peel = has_t & blend & (alpha > 0)
             alpha[peel] = 0
 
-        opaque = alpha >= 128
-        rgb_out = arr[..., :3].copy()
-        filled = opaque.copy()
-        for _ in range(4):
-            for shift, axis in ((1, 0), (-1, 0), (1, 1), (-1, 1)):
-                nb_f = np.roll(filled, shift, axis=axis)
-                nb_c = np.roll(rgb_out, shift, axis=axis)
-                take = (~filled) & nb_f
-                if take.any():
-                    rgb_out[take] = nb_c[take]
-                    filled |= take
-        arr[..., :3] = rgb_out
+        alpha = np.where(alpha >= 150, 255, alpha)
+        alpha = np.where(alpha < 40, 0, alpha)
+
         arr[..., 3] = alpha.clip(0, 255).astype(np.uint8)
         return Image.fromarray(arr, 'RGBA')
     except Exception:
