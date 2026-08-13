@@ -330,6 +330,7 @@ def create_group_order():
         ('Oswald', 'Oswald — Bold athletic'),
         ('Anton', 'Anton — Strong block'),
         ('Teko', 'Teko — College jersey'),
+        ('Jersey M54', 'Jersey M54 — Classic sports jersey'),
     ]
     return render_template('admin/add_collection.html',
                          products=products,

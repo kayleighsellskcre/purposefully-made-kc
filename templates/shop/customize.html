@@ -4,6 +4,7 @@
 
 {% block extra_css %}
 <link href="https://fonts.googleapis.com/css2?family=Freshman&family=Black+Ops+One&family=Graduate&family=Squada+One&family=Bebas+Neue:wght@400&family=Oswald:wght@400;700&family=Anton&family=Teko:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.cdnfonts.com/css/jersey-m54" rel="stylesheet">
 <style>
 .customizer-page {
     padding: 2rem 0;
@@ -202,8 +203,8 @@
    Center of the overlay sits mid-chest (~38% down the mockup), not at the collar.
    Tall designs get a narrower width via JS (applyDesignFit). */
 .design-layer[data-placement="center_chest"] {
-    width: 28%;
-    max-width: 210px;
+    width: 30%;
+    max-width: 225px;
     max-height: 40%;
     min-height: 50px;
     top: 38%;
@@ -232,8 +233,8 @@
 }
 
 .design-layer[data-placement="center_back"] {
-    width: 28%;
-    max-width: 210px;
+    width: 30%;
+    max-width: 225px;
     max-height: 40%;
     top: 38%;
     left: 50%;
@@ -1674,6 +1675,7 @@
                                     <option value="Oswald">Oswald (Bold athletic)</option>
                                     <option value="Anton">Anton (Strong block)</option>
                                     <option value="Teko">Teko (College jersey)</option>
+                                    <option value="Jersey M54">Jersey M54 (Classic sports jersey)</option>
                                 </select>
                                 {% endif %}
                             </div>
@@ -2321,8 +2323,9 @@
     const BACK_FONT_CONFIG = {
         'Bebas Neue': { nameSize: '2.5em', numberSize: '5.1em', nameSpacing: '0.06em', numberSpacing: '0.02em', nameNumberGap: '0.35em' },
         'Oswald': { nameSize: '2.45em', numberSize: '5em', nameSpacing: '0.07em', numberSpacing: '0.04em', nameNumberGap: '0.32em' },
-        'Anton': { nameSize: '2.6em', numberSize: '5.2em', nameSpacing: '0.05em', numberSpacing: '0.18em', nameNumberGap: '0.3em' },
-        'Teko': { nameSize: '2.55em', numberSize: '5em', nameSpacing: '0.06em', numberSpacing: '0.12em', nameNumberGap: '0.32em' }
+        'Anton': { nameSize: '2.6em', numberSize: '5.2em', nameSpacing: '0.05em', numberSpacing: '0.02em', nameNumberGap: '0.3em' },
+        'Teko': { nameSize: '2.55em', numberSize: '5em', nameSpacing: '0.06em', numberSpacing: '0.03em', nameNumberGap: '0.32em' },
+        'Jersey M54': { nameSize: '2.6em', numberSize: '5.2em', nameSpacing: '0.05em', numberSpacing: '0.02em', nameNumberGap: '0.3em' }
     };
     
     function buildBackOutlineShadow(color) {
@@ -3286,12 +3289,13 @@
     const CANVAS_FONT_CONFIG = {
         'Bebas Neue': { nameSize: 84, numberSize: 202, numberSpacing: 4, nameSpacing: 3, gap: 120 },
         'Oswald': { nameSize: 80, numberSize: 198, numberSpacing: 8, nameSpacing: 4, gap: 118 },
-        'Anton': { nameSize: 86, numberSize: 206, numberSpacing: 26, nameSpacing: 4, gap: 122 },
-        'Teko': { nameSize: 84, numberSize: 202, numberSpacing: 18, nameSpacing: 4, gap: 120 }
+        'Anton': { nameSize: 86, numberSize: 206, numberSpacing: 4, nameSpacing: 4, gap: 122 },
+        'Teko': { nameSize: 84, numberSize: 202, numberSpacing: 6, nameSpacing: 4, gap: 120 },
+        'Jersey M54': { nameSize: 86, numberSize: 206, numberSpacing: 4, nameSpacing: 4, gap: 122 }
     };
     
     function generateBackDesignNameNumberImage() {
-        return new Promise((resolve) => {
+        return new Promise(async (resolve) => {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             const name = (state.backDesignName || '').toUpperCase().trim();
@@ -3300,6 +3304,20 @@
             if (!name && !number) return resolve(null);
             
             const cfg = CANVAS_FONT_CONFIG[font] || CANVAS_FONT_CONFIG['Bebas Neue'];
+
+            try {
+                if (document.fonts) {
+                    const loads = [];
+                    if (document.fonts.load) {
+                        loads.push(document.fonts.load(`bold ${cfg.numberSize}px "${font}"`));
+                        loads.push(document.fonts.load(`bold ${cfg.nameSize}px "${font}"`));
+                    }
+                    if (document.fonts.ready) {
+                        loads.push(document.fonts.ready);
+                    }
+                    await Promise.all(loads);
+                }
+            } catch (e) {}
 
             // Colors/outline chosen by the customer — baked into the production file
             const textColor = state.backDesignTextColor

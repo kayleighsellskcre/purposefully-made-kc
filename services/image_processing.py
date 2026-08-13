@@ -98,16 +98,20 @@ def process_artwork_bytes(data: bytes, mode: str = 'auto', engine=None) -> dict:
 
         out = None
         used = 'none'
+        rembg_alpha = None
         if engine != 'algorithmic':
             ai = _rembg(img)
             if ai is not None:
                 out = _use_original_colors(img, ai)
                 used = 'ai'
+                if _HAS_NUMPY:
+                    rembg_alpha = np.asarray(ai.convert('RGBA'))[..., 3]
         if out is None:
             out = _flood_cut(img, bg_color, mad, mode)
             used = 'algorithmic'
 
-        out = _strip_background_color(out, orig_rgb, bg_color, mad, mode)
+        out = _strip_background_color(out, orig_rgb, bg_color, mad, mode,
+                                      rembg_alpha=rembg_alpha)
         out = _autocrop(out)
         return _encode(out, used, original_size, changed=True)
     except (MemoryError, Exception):
@@ -226,12 +230,14 @@ def _erode_bool(mask, px: int):
 
 
 def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
-                            bg_color, mad, mode: str) -> Image.Image:
+                            bg_color, mad, mode: str, rembg_alpha=None) -> Image.Image:
     """Keep every logo-colored pixel. Delete the backdrop color.
 
     Distressed cracks that match the paper can go. Solid letter strokes
     (navy, brown, black fill that is NOT the paper color) are restored
-    even if rembg punched holes in them.
+    even if rembg punched holes in them. rembg-strong-foreground pixels
+    (white outlines, field lines) are protected even when they match
+    the paper color, so flood/halo cannot eat them from the border.
     """
     if not _HAS_NUMPY:
         return img
@@ -257,18 +263,41 @@ def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
         # from PRAY / STILL / etc.
         alpha[is_logo] = 255
 
-        # Only delete backdrop that is connected to the image border.
+        rembg_a = None
+        rembg_fg = None
+        if rembg_alpha is not None:
+            rembg_a = np.asarray(rembg_alpha)
+            if rembg_a.ndim == 3:
+                rembg_a = rembg_a[..., 3] if rembg_a.shape[-1] >= 4 else rembg_a[..., 0]
+            if rembg_a.shape[:2] == alpha.shape:
+                rembg_fg = rembg_a >= 140
+                alpha[rembg_fg] = 255
+            else:
+                rembg_a = None
+                rembg_fg = None
+
+        if rembg_fg is not None:
+            protected = is_logo | rembg_fg
+        else:
+            protected = is_logo
+        # Seal 1–2px distress cracks so flood cannot leak through holes
+        # in white outlines. Do not dilate 6–14px (that left cream halos).
+        protected = _erode_bool(_dilate_bool(protected, 2), 1)
+
+        # Only delete backdrop that is connected to the image border,
+        # and never through protected white-outline / logo pixels.
         # Cream clouds, roads, bible pages, highlights stay because they
         # are enclosed inside the artwork.
         from collections import deque
         h, w = alpha.shape
         exterior = np.zeros((h, w), dtype=bool)
         q = deque()
+        floodable = is_bg & ~protected
 
         def seed(y, x):
             if exterior[y, x]:
                 return
-            if is_bg[y, x]:
+            if floodable[y, x]:
                 exterior[y, x] = True
                 q.append((y, x))
 
@@ -283,14 +312,15 @@ def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
             y, x = q.popleft()
             for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
                 ny, nx = y + dy, x + dx
-                if 0 <= ny < h and 0 <= nx < w and not exterior[ny, nx] and is_bg[ny, nx]:
+                if 0 <= ny < h and 0 <= nx < w and not exterior[ny, nx] and floodable[ny, nx]:
                     exterior[ny, nx] = True
                     q.append((ny, nx))
 
         alpha[exterior] = 0
 
         # Restore enclosed cream/white that is part of the art (clouds, road,
-        # pages). Then punch only small letter-counter holes.
+        # pages). Then punch only small letter-counter holes that rembg
+        # did not mark as foreground (so white outlines stay).
         enclosed = is_bg & ~exterior
         alpha[enclosed] = 255
         max_letter_hole = max(500, (h * w) // 90)  # ~1.1% of the image
@@ -312,7 +342,8 @@ def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
                         comp.append((ny, nx))
             if len(comp) <= max_letter_hole:
                 for y, x in comp:
-                    alpha[y, x] = 0
+                    if rembg_a is None or rembg_a[y, x] < 140:
+                        alpha[y, x] = 0
 
         # Close 1px nicks in letter strokes (not 2px — that filled counters).
         fg = alpha >= 128
@@ -321,13 +352,14 @@ def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
 
         # Precision pass: cream mixed into anti-aliased edges (the faint
         # halo on the shirt). Only pixels that already touch transparency
-        # are peeled — letter interiors are never touched.
+        # are peeled — letter interiors and protected white outlines
+        # are never touched.
         halo_tol = tol + 34
         is_halo = dist <= halo_tol
         for _ in range(2):
             trans = alpha < 20
             has_t = _dilate_bool(trans, 1)
-            peel = has_t & is_halo & (alpha > 0)
+            peel = has_t & is_halo & (alpha > 0) & ~protected
             alpha[peel] = 0
 
         # Push real logo color into the 1px rim so any leftover cream tint

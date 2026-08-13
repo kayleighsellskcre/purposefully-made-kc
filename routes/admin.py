@@ -1886,6 +1886,7 @@ def add_collection():
         ('Oswald', 'Oswald — Bold athletic'),
         ('Anton', 'Anton — Strong block'),
         ('Teko', 'Teko — College jersey'),
+        ('Jersey M54', 'Jersey M54 — Classic sports jersey'),
     ]
     return render_template('admin/add_collection.html', products=products, gallery_designs=gallery_designs or [], all_colors=all_colors, back_design_fonts=back_design_fonts)
 
@@ -2026,6 +2027,7 @@ def edit_collection(collection_id):
         ('Oswald', 'Oswald — Bold athletic'),
         ('Anton', 'Anton — Strong block'),
         ('Teko', 'Teko — College jersey'),
+        ('Jersey M54', 'Jersey M54 — Classic sports jersey'),
     ]
     
     return render_template('admin/edit_collection.html', 
