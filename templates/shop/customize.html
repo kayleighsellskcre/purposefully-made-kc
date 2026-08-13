@@ -2314,20 +2314,56 @@
         const refW = sizingAge() === 'youth' ? 8.0 : ((TRANSFER_SIZING && TRANSFER_SIZING.preview_ref_width) || 10);
         return w / refW;
     }
+    function productCategory() {
+        return (TRANSFER_SIZING && TRANSFER_SIZING.category) || sizingAge();
+    }
+    function normBackSize(size) {
+        let s = String(size || '').trim().toUpperCase();
+        s = s.replace(/X-LARGE/g, 'XL').replace(/XX-LARGE/g, 'XXL');
+        s = s.replace(/(\d+)\s*[-/]\s*(\d+)\s*M/g, '$1TO$2M');
+        s = s.replace(/[\s_\-]+/g, '');
+        s = s.replace('YOUTH', 'Y').replace('ADULT', '').replace('TODDLER', '');
+        const aliases = { NEWBORN: 'NB', XXL: '2XL', XXXL: '3XL', '2X': '2XL', '3X': '3XL', '4X': '4XL' };
+        return aliases[s] || s;
+    }
+    function backLayout() {
+        const category = productCategory();
+        const key = normBackSize(state.selectedSize);
+        const chart = (TRANSFER_SIZING && TRANSFER_SIZING.back_chart) || [];
+        const pick = (label) => chart.find(b => b.label === label) || null;
+        const month = (() => {
+            if (['NB', 'N', 'PREMIE', '0M'].includes(key)) return 0;
+            const m = key.match(/^(\d+)(?:TO\d+)?M$/);
+            return m ? parseInt(m[1], 10) : null;
+        })();
+        if (category === 'baby' || month !== null) {
+            if (month === null || month <= 3) return pick('Newborn–3M');
+            if (month <= 12) return pick('6M–12M');
+            return pick('18M–24M');
+        }
+        if (category === 'toddler' || /^\d+T$/.test(key)) {
+            if (key === '2T') return pick('2T');
+            if (key === '3T') return pick('3T');
+            return pick('4T–5T');
+        }
+        if (category === 'youth' || key.startsWith('Y')) {
+            const letter = key.startsWith('Y') ? key.slice(1) : key;
+            if (['XS', 'XXS'].includes(letter) || ['2', '4'].includes(key)) return pick('Youth XS');
+            if (['S', 'M'].includes(letter) || ['6', '8', '10'].includes(key)) return pick('Youth S–M');
+            if (['L', 'XL', '2XL', 'XXL'].includes(letter) || ['12', '14', '16'].includes(key)) return pick('Youth L–XL');
+            return pick('Youth S–M');
+        }
+        if (['3XL', '4XL', '5XL', '6XL', 'XXXL'].includes(key)) return pick('Adult 3XL–4XL');
+        return pick('Adult S–2XL') || { name: 2, gap: 3, number: 8, total: 13 };
+    }
     function nameHeightIn() {
-        return sizingAge() === 'youth'
-            ? ((TRANSFER_SIZING && TRANSFER_SIZING.name_height_youth) || 1.5)
-            : ((TRANSFER_SIZING && TRANSFER_SIZING.name_height_adult) || 2);
+        return (backLayout() || {}).name || 2;
     }
     function numberHeightIn() {
-        return sizingAge() === 'youth'
-            ? ((TRANSFER_SIZING && TRANSFER_SIZING.number_height_youth) || 3)
-            : ((TRANSFER_SIZING && TRANSFER_SIZING.number_height_adult) || 4);
+        return (backLayout() || {}).number || 8;
     }
     function gapHeightIn() {
-        return sizingAge() === 'youth'
-            ? ((TRANSFER_SIZING && TRANSFER_SIZING.gap_youth) || 0.2)
-            : ((TRANSFER_SIZING && TRANSFER_SIZING.gap_adult) || 0.25);
+        return (backLayout() || {}).gap || 3;
     }
     function safeWidthIn() {
         return chartWidthForSize(state.selectedSize || (sizingAge() === 'youth' ? 'M' : 'M'));
@@ -2450,29 +2486,44 @@
             textContainer.style.textShadow = outlineOn ? buildBackOutlineShadow(outlineColor) : 'none';
             const mockup = document.getElementById('previewCanvas');
             const mockupW = mockup ? mockup.clientWidth : 400;
-            nameEl.style.fontSize = (mockupW * 0.11) + 'px';
-            nameEl.style.letterSpacing = cfg.nameSpacing;
-            nameEl.style.marginBottom = (mockupW * 0.02) + 'px';
+            const mockupH = mockup ? mockup.clientHeight : 400;
+            const pxPerInch = (mockupH * 0.52) / 13.0;
+            nameEl.style.fontSize = (nameHeightIn() * pxPerInch) + 'px';
+            nameEl.style.marginBottom = (gapHeightIn() * pxPerInch) + 'px';
             nameEl.style.whiteSpace = 'nowrap';
             nameEl.style.width = 'auto';
-            numberEl.style.fontSize = (mockupW * 0.22) + 'px';
+            nameEl.style.transform = 'none';
+            numberEl.style.fontSize = (numberHeightIn() * pxPerInch) + 'px';
             numberEl.style.letterSpacing = cfg.numberSpacing;
             numberEl.style.marginTop = '0';
             numberEl.style.whiteSpace = 'nowrap';
             backDesignLayer.style.width = 'auto';
-            backDesignLayer.style.maxWidth = '78%';
+            backDesignLayer.style.maxWidth = '72%';
+            const maxNamePx = mockupW * 0.70;
+            const baseSpacing = parseFloat(cfg.nameSpacing) || 0.05;
+            let spacingEm = baseSpacing;
+            const minSpacing = -0.06;
+            nameEl.style.letterSpacing = spacingEm + 'em';
+            let namePx = nameEl.getBoundingClientRect().width;
+            while (name && namePx > maxNamePx && spacingEm > minSpacing + 0.001) {
+                spacingEm = Math.max(minSpacing, spacingEm - 0.02);
+                nameEl.style.letterSpacing = spacingEm + 'em';
+                namePx = nameEl.getBoundingClientRect().width;
+            }
+            let condense = 1;
+            if (name && namePx > maxNamePx) {
+                condense = maxNamePx / namePx;
+                nameEl.style.transform = `scaleX(${condense})`;
+            }
             const metrics = (TRANSFER_SIZING.fonts || {})[font] || {};
             const nameH = nameHeightIn();
             const numH = numberHeightIn();
-            const naturalNameW = measureTextWidthInches(name, font, nameH, metrics.letter_spacing);
+            const fittedNameW = measureTextWidthInches(name, font, nameH, spacingEm);
             const naturalNumberW = measureTextWidthInches(number, font, numH, metrics.number_spacing);
-            const safeW = safeWidthIn();
-            let condense = 1;
-            if (name && naturalNameW > safeW) condense = safeW / naturalNameW;
-            nameEl.style.transform = condense < 0.999 ? `scaleX(${condense})` : '';
-            state.measuredNameWidthIn = naturalNameW;
+            state.measuredNameWidthIn = fittedNameW * condense;
             state.measuredNumberWidthIn = naturalNumberW;
             state.nameCondense = condense;
+            state.nameLetterSpacingEm = spacingEm;
             state.backDesignName = name;
             state.backDesignNumber = number;
             state.backDesignFont = font;
@@ -3412,7 +3463,10 @@
             const numPx = Math.round(numH * dpi);
             const gapPx = Math.round(gapH * dpi);
             const cfg = CANVAS_FONT_CONFIG[font] || CANVAS_FONT_CONFIG['Bebas Neue'];
-            const nameSpacing = namePx * ((cfg.nameSpacing || 4) / Math.max(cfg.nameSize, 1));
+            const spacingEm = (state.nameLetterSpacingEm != null)
+                ? state.nameLetterSpacingEm
+                : ((TRANSFER_SIZING.fonts || {})[font] || {}).letter_spacing || 0.05;
+            const nameSpacing = namePx * spacingEm;
             const numberSpacing = numPx * ((cfg.numberSpacing || 4) / Math.max(cfg.numberSize, 1));
 
             try {
@@ -3436,7 +3490,7 @@
             function measureSpaced(text, fontSize, charSpacing) {
                 if (!text) return 0;
                 ctx.font = `bold ${fontSize}px "${font}", sans-serif`;
-                if (charSpacing > 0 && text.length > 1) {
+                if (text.length > 1) {
                     let total = 0;
                     for (let i = 0; i < text.length; i++) {
                         total += ctx.measureText(text[i]).width;
@@ -3473,7 +3527,7 @@
                 if (scaleX && scaleX < 0.999) ctx.scale(scaleX, 1);
                 ctx.font = `bold ${fontSize}px "${font}", sans-serif`;
                 ctx.lineWidth = Math.max(4, Math.round(fontSize * 0.08));
-                if (charSpacing > 0 && text.length > 1) {
+                if (text.length > 1) {
                     let totalWidth = 0;
                     const widths = [];
                     for (let i = 0; i < text.length; i++) {

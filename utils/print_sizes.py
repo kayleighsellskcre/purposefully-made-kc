@@ -8,6 +8,8 @@ order records, production summaries, and admin displays all call these
 functions.
 """
 
+import re
+
 # ---------------------------------------------------------------------------
 # Approved front-design width chart (inches). Do not replace or invent new
 # center-chest/center-back widths. Kayleigh signed this chart off.
@@ -44,17 +46,36 @@ PLACEMENT_WIDTH_FACTOR = {
     'sleeve': 0.3,
 }
 
-# Personalized back — ordered by HEIGHT, not width.
+# Personalized back — ordered by HEIGHT. Kayleigh's size-band chart.
+# name + gap + number = total. Do not invent other heights.
+# Fallback aliases for older callers (adult S–2XL band).
 NAME_HEIGHT_ADULT = 2.0
 NAME_HEIGHT_YOUTH = 1.5
-NUMBER_HEIGHT_ADULT = 4.0
-NUMBER_HEIGHT_YOUTH = 3.0
-NAME_NUMBER_GAP_ADULT = 0.25
-NAME_NUMBER_GAP_YOUTH = 0.20
+NUMBER_HEIGHT_ADULT = 8.0
+NUMBER_HEIGHT_YOUTH = 6.0
+NAME_NUMBER_GAP_ADULT = 3.0
+NAME_NUMBER_GAP_YOUTH = 2.5
 
-# Safe printable area (inches). Width matches the approved chart for that size.
-SAFE_PRINT_HEIGHT_ADULT = 14.0
-SAFE_PRINT_HEIGHT_YOUTH = 11.0
+# Safe printable area must clear the largest layout in each category.
+SAFE_PRINT_HEIGHT_ADULT = 15.5
+SAFE_PRINT_HEIGHT_YOUTH = 12.5
+SAFE_PRINT_HEIGHT_TODDLER = 9.0
+SAFE_PRINT_HEIGHT_BABY = 7.0
+
+# (name_height, gap, number_height) — inches
+BACK_LAYOUT_BANDS = (
+    {'category': 'baby', 'label': 'Newborn–3M', 'name': 0.75, 'gap': 1.00, 'number': 3.00},
+    {'category': 'baby', 'label': '6M–12M', 'name': 1.00, 'gap': 1.25, 'number': 3.50},
+    {'category': 'baby', 'label': '18M–24M', 'name': 1.00, 'gap': 1.50, 'number': 4.00},
+    {'category': 'toddler', 'label': '2T', 'name': 1.25, 'gap': 1.50, 'number': 4.50},
+    {'category': 'toddler', 'label': '3T', 'name': 1.25, 'gap': 1.75, 'number': 5.00},
+    {'category': 'toddler', 'label': '4T–5T', 'name': 1.25, 'gap': 2.00, 'number': 5.00},
+    {'category': 'youth', 'label': 'Youth XS', 'name': 1.25, 'gap': 2.00, 'number': 5.00},
+    {'category': 'youth', 'label': 'Youth S–M', 'name': 1.50, 'gap': 2.50, 'number': 6.00},
+    {'category': 'youth', 'label': 'Youth L–XL', 'name': 1.75, 'gap': 3.00, 'number': 7.00},
+    {'category': 'adult', 'label': 'Adult S–2XL', 'name': 2.00, 'gap': 3.00, 'number': 8.00},
+    {'category': 'adult', 'label': 'Adult 3XL–4XL', 'name': 2.00, 'gap': 3.50, 'number': 9.00},
+)
 
 # Preview: adult M 10" center print is the 30% mockup overlay.
 PREVIEW_REF_WIDTH_IN = 10.0
@@ -116,6 +137,115 @@ def classify_age(product=None, size=None):
     if _is_youth_size(size):
         return 'youth'
     return 'adult'
+
+
+def classify_category(product=None, size=None):
+    """Return baby, toddler, youth, or adult."""
+    if product is not None:
+        age = (getattr(product, 'age_group', None) or '').strip().lower()
+        if age in ('baby', 'infant'):
+            return 'baby'
+        if age == 'toddler':
+            return 'toddler'
+        if age in ('youth', 'kids', 'kid'):
+            return 'youth'
+        if age == 'adult':
+            return 'adult'
+        category = (getattr(product, 'category', None) or '').strip().lower()
+        if category in ('baby', 'infant'):
+            return 'baby'
+        if category in ('toddler', 'youth', 'adult'):
+            return category
+        name = (getattr(product, 'name', None) or '').lower()
+        if any(token in name for token in ('infant', 'baby', 'onesie', 'newborn')):
+            return 'baby'
+        if 'toddler' in name:
+            return 'toddler'
+        if any(token in name for token in _YOUTH_NAME_TOKENS):
+            return 'youth'
+    key = _norm_back_size(size)
+    if key in ('NB', 'NEWBORN', 'N', 'PREMIE', 'PREEMIE') or _month_start(key) is not None:
+        return 'baby'
+    if re.match(r'^\d+T$', key or ''):
+        return 'toddler'
+    if _is_youth_size(size) or (key or '').startswith('Y'):
+        return 'youth'
+    return classify_age(product, size)
+
+
+def _norm_back_size(size):
+    s = str(size or '').strip().upper()
+    s = s.replace('X-LARGE', 'XL').replace('X LARGE', 'XL')
+    s = s.replace('XX-LARGE', 'XXL').replace('XX LARGE', 'XXL')
+    s = re.sub(r'(\d+)\s*[-/]\s*(\d+)\s*M', r'\1TO\2M', s)
+    s = re.sub(r'[\s_\-]+', '', s)
+    s = s.replace('YOUTH', 'Y').replace('TODDLER', '').replace('ADULT', '')
+    s = s.replace('BABY', '').replace('INFANT', '').replace('MONTHS', 'M').replace('MONTH', 'M')
+    aliases = {
+        'NEWBORN': 'NB', 'PREEMIE': 'PREMIE',
+        'XXL': '2XL', 'XXXL': '3XL', '2X': '2XL', '3X': '3XL', '4X': '4XL', '5X': '5XL',
+        'YXXL': 'Y2XL', 'XSM': 'XS', 'XSMALL': 'XS', 'SM': 'S', 'SMALL': 'S',
+        'MD': 'M', 'MED': 'M', 'MEDIUM': 'M', 'LG': 'L', 'LARGE': 'L',
+        'XLG': 'XL', 'XLARGE': 'XL',
+    }
+    return aliases.get(s, s)
+
+
+def _month_start(key):
+    if key in ('NB', 'NEWBORN', 'N', 'PREMIE', 'PREEMIE', '0M'):
+        return 0
+    m = re.match(r'^(\d+)(?:TO(\d+))?M$', key or '')
+    if m:
+        return int(m.group(1))
+    return None
+
+
+def _layout_tuple(band):
+    name, gap, number = band['name'], band['gap'], band['number']
+    return {
+        'category': band['category'],
+        'label': band['label'],
+        'name_height': name,
+        'gap': gap,
+        'number_height': number,
+        'total_height': round(name + gap + number, 2),
+    }
+
+
+def back_layout(size=None, product=None):
+    """Name / gap / number heights for this garment size. Source of truth."""
+    category = classify_category(product, size)
+    key = _norm_back_size(size)
+    month = _month_start(key)
+
+    if category == 'baby' or month is not None:
+        if month is None or month <= 3:
+            return _layout_tuple(BACK_LAYOUT_BANDS[0])
+        if month <= 12:
+            return _layout_tuple(BACK_LAYOUT_BANDS[1])
+        return _layout_tuple(BACK_LAYOUT_BANDS[2])
+
+    if category == 'toddler' or re.match(r'^\d+T$', key or ''):
+        if key == '2T':
+            return _layout_tuple(BACK_LAYOUT_BANDS[3])
+        if key == '3T':
+            return _layout_tuple(BACK_LAYOUT_BANDS[4])
+        return _layout_tuple(BACK_LAYOUT_BANDS[5])  # 4T–5T
+
+    if category == 'youth' or (key or '').startswith('Y') or _is_youth_size(size):
+        letter = key[1:] if (key or '').startswith('Y') and len(key) > 1 else key
+        if letter in ('XS', 'XXS', '2XS') or key in ('2', '4'):
+            return _layout_tuple(BACK_LAYOUT_BANDS[6])
+        if letter in ('S', 'M') or key in ('6', '8', '10'):
+            return _layout_tuple(BACK_LAYOUT_BANDS[7])
+        if letter in ('L', 'XL', '2XL', 'XXL') or key in ('12', '14', '16'):
+            return _layout_tuple(BACK_LAYOUT_BANDS[8])
+        return _layout_tuple(BACK_LAYOUT_BANDS[7])
+
+    # Adult — XS rides with S–2XL; 3XL+ uses the larger number/gap
+    if key in ('3XL', '4XL', '5XL', '6XL', '7XL', 'XXXL'):
+        return _layout_tuple(BACK_LAYOUT_BANDS[10])
+    return _layout_tuple(BACK_LAYOUT_BANDS[9])
 
 
 def get_print_width_for_size(size, product=None):
@@ -180,19 +310,26 @@ def safe_print_width(size, product=None, placement=None):
 
 
 def safe_print_height(product=None, size=None):
-    return SAFE_PRINT_HEIGHT_YOUTH if classify_age(product, size) == 'youth' else SAFE_PRINT_HEIGHT_ADULT
+    category = classify_category(product, size)
+    if category == 'baby':
+        return SAFE_PRINT_HEIGHT_BABY
+    if category == 'toddler':
+        return SAFE_PRINT_HEIGHT_TODDLER
+    if category == 'youth':
+        return SAFE_PRINT_HEIGHT_YOUTH
+    return SAFE_PRINT_HEIGHT_ADULT
 
 
 def name_height_in(product=None, size=None):
-    return NAME_HEIGHT_YOUTH if classify_age(product, size) == 'youth' else NAME_HEIGHT_ADULT
+    return back_layout(size, product)['name_height']
 
 
 def number_height_in(product=None, size=None):
-    return NUMBER_HEIGHT_YOUTH if classify_age(product, size) == 'youth' else NUMBER_HEIGHT_ADULT
+    return back_layout(size, product)['number_height']
 
 
 def name_number_gap_in(product=None, size=None):
-    return NAME_NUMBER_GAP_YOUTH if classify_age(product, size) == 'youth' else NAME_NUMBER_GAP_ADULT
+    return back_layout(size, product)['gap']
 
 
 def inches(value, digits=2):
@@ -259,9 +396,10 @@ def estimate_text_width(text, height, font='Bebas Neue', kind='name'):
 def back_name_number_size(size, product=None, name='', number='', font='Bebas Neue',
                           measured_name_width=None, measured_number_width=None):
     """Personalized back transfers. Ordered by HEIGHT. Width grows with the text."""
-    n_h = name_height_in(product, size)
-    num_h = number_height_in(product, size)
-    gap = name_number_gap_in(product, size)
+    layout = back_layout(size, product)
+    n_h = layout['name_height']
+    num_h = layout['number_height']
+    gap = layout['gap']
     max_w = safe_print_width(size, product, 'center_back')
 
     name_text = (name or '').strip()
@@ -297,6 +435,7 @@ def back_name_number_size(size, product=None, name='', number='', font='Bebas Ne
 
     return {
         'order_by': 'HEIGHT',
+        'layout_label': layout['label'],
         'name_height': n_h,
         'name_width': name_w,
         'name_width_natural': natural_name_w,
@@ -322,11 +461,24 @@ def back_name_number_size(size, product=None, name='', number='', font='Bebas Ne
 def client_config(product=None):
     """JSON-safe config for the customizer. Same numbers the server uses."""
     age = classify_age(product)
+    category = classify_category(product)
     return {
         'age_group': age,
+        'category': category,
         'widths_adult': SIZE_PRINT_WIDTH_ADULT,
         'widths_youth': SIZE_PRINT_WIDTH_YOUTH,
         'placement_factors': PLACEMENT_WIDTH_FACTOR,
+        'back_chart': [
+            {
+                'category': b['category'],
+                'label': b['label'],
+                'name': b['name'],
+                'gap': b['gap'],
+                'number': b['number'],
+                'total': round(b['name'] + b['gap'] + b['number'], 2),
+            }
+            for b in BACK_LAYOUT_BANDS
+        ],
         'name_height_adult': NAME_HEIGHT_ADULT,
         'name_height_youth': NAME_HEIGHT_YOUTH,
         'number_height_adult': NUMBER_HEIGHT_ADULT,
@@ -443,6 +595,7 @@ def build_item_production(
             'placement': 'center_back',
             'placement_label': 'Center Back',
             'order_by': 'HEIGHT',
+            'layout_label': back.get('layout_label'),
             'name_height': back['name_height'],
             'name_width': back['name_width'],
             'name_width_natural': back['name_width_natural'],
