@@ -1,14 +1,12 @@
 """
-Background removal.
+Background removal — same-color key, nothing else.
 
-  1. rembg first-pass cutout
-  2. Sample the backdrop color from the image border
-  3. Every pixel that matches that color becomes transparent —
-     inside letters, inside the design, everywhere
-  4. Peel a 1–2px blended fringe on the new edge
-  5. Crop
+Sample the backdrop from the border. Delete every pixel that is that
+color (letter holes included). Keep every pixel that is a different
+color (lavender, parchment, gold text, navy ink). Peel 1–2px of
+blended fringe. Crop.
 
-Public API is unchanged so the rest of the app does not care.
+No rembg — that ate similar colors and made uploads time out.
 """
 
 import io
@@ -92,19 +90,9 @@ def process_artwork_bytes(data: bytes, mode: str = 'auto', engine=None) -> dict:
         img, orig_rgb = _fit_working_size(img)
         bg_color, mad = _border_profile(orig_rgb)
 
-        out = None
-        used = 'none'
-        if engine != 'algorithmic':
-            ai = _rembg(img)
-            if ai is not None:
-                out = _use_original_colors(img, ai)
-                used = 'ai'
-        if out is None:
-            out = img
-            used = 'algorithmic'
-        out = _strip_background_color(out, orig_rgb, bg_color, mad, mode)
+        out = _strip_background_color(img, orig_rgb, bg_color, mad, mode)
         out = _autocrop(out)
-        return _encode(out, used, original_size, changed=True)
+        return _encode(out, 'algorithmic', original_size, changed=True)
     except (MemoryError, Exception):
         return _encode(img, 'none', original_size, changed=False)
 
@@ -207,32 +195,28 @@ def _use_original_colors(orig_rgba: Image.Image, ai_rgba: Image.Image) -> Image.
 
 def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
                             bg_color, mad, mode: str) -> Image.Image:
-    """Make every background-colored pixel transparent.
-
-    Cream boxes, white paper, leftover patches inside letters — if it
-    matches the border color, it goes, wherever it sits. Design pixels
-    that are a different color stay.
-    """
+    """Same-color key: backdrop pixels go, every other color stays."""
     if not _HAS_NUMPY:
         return img
     try:
         arr = np.asarray(img.convert('RGBA')).copy()
         rgb = np.asarray(orig_rgb.convert('RGB')).astype(np.int16)
-        alpha = arr[..., 3].astype(np.int32)
+        # Always start from the real pixels — never a rembg hole-punch.
+        alpha = np.full(rgb.shape[:2], 255, dtype=np.int32)
 
         dist = (np.abs(rgb[..., 0] - int(bg_color[0]))
               + np.abs(rgb[..., 1] - int(bg_color[1]))
               + np.abs(rgb[..., 2] - int(bg_color[2])))
 
-        tol = int(min(140, max(55, 60 + mad * 3.0)))
+        # Tight: only the actual paper color, not nearby lavender/beige/gold.
+        tol = int(min(36, max(16, 18 + mad * 1.2)))
         if mode == 'aggressive':
-            tol = min(180, tol + 40)
+            tol = min(48, tol + 10)
 
-        is_bg = dist <= tol
-        alpha[is_bg] = 0
-        alpha[alpha < 48] = 0
+        alpha[dist <= tol] = 0
 
-        blend = dist <= (tol + 55)
+        # 1–2px of anti-aliased cream mixed into the edge — not interiors.
+        blend = dist <= (tol + 22)
         for _ in range(2):
             trans = alpha < 20
             has_t = np.zeros_like(trans)
@@ -241,10 +225,8 @@ def _strip_background_color(img: Image.Image, orig_rgb: Image.Image,
             peel = has_t & blend & (alpha > 0)
             alpha[peel] = 0
 
-        alpha = np.where(alpha >= 150, 255, alpha)
-        alpha = np.where(alpha < 40, 0, alpha)
-
-        arr[..., 3] = alpha.clip(0, 255).astype(np.uint8)
+        alpha = np.where(alpha >= 128, 255, 0).astype(np.int32)
+        arr[..., 3] = alpha.astype(np.uint8)
         return Image.fromarray(arr, 'RGBA')
     except Exception:
         return img

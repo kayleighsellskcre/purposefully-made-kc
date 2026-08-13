@@ -31,12 +31,10 @@ def _safe_ext(filename):
 def _remove_background(filepath, mode='auto'):
     """
     Produce a clean, true-transparent PNG cutout of the uploaded artwork.
-    Always uses AI (rembg) as primary engine; falls back to algorithmic only
-    if rembg is completely unavailable.
     """
     try:
         from services.image_processing import process_artwork_file, issue_messages
-        result = process_artwork_file(filepath, mode=mode, engine='ai')
+        result = process_artwork_file(filepath, mode=mode)
         new_path = result.get('path') or filepath
         meta = {
             'engine': result.get('engine'),

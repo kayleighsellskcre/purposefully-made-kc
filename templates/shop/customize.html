@@ -2720,7 +2720,7 @@
                 uploadAreaMain.style.pointerEvents = '';
                 return;
             }
-            uploadAreaMain.innerHTML = '<p style="margin: 2rem 0;">' + (mode === 'aggressive' ? 'Reprocessing &amp; removing background…' : 'Uploading &amp; removing background…') + '</p>';
+            uploadAreaMain.innerHTML = '<p style="margin: 2rem 0;">' + (mode === 'aggressive' ? 'Reprocessing…' : 'Uploading…') + '</p>';
             uploadAreaMain.style.pointerEvents = 'none';
 
             // Animated dots so user knows it's still working (AI removal can take 10-30s)
@@ -2738,9 +2738,8 @@
                 const shareCheckbox = document.getElementById('shareInGalleryCheckbox');
                 if (shareCheckbox) formData.append('share_in_gallery', shareCheckbox.checked ? 'true' : 'false');
 
-                // 90-second timeout — AI background removal takes up to ~30s on cold start
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 180000);
+                const timeoutId = setTimeout(() => controller.abort(), 45000);
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
                 const response = await fetch('/design/upload', {
                     method: 'POST',
@@ -2992,7 +2991,7 @@
                 const formData = new FormData();
                 formData.append('file', file);
                 const bkCtrl = new AbortController();
-                const bkTimeout = setTimeout(() => bkCtrl.abort(), 180000);
+                const bkTimeout = setTimeout(() => bkCtrl.abort(), 45000);
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
                 const response = await fetch('/design/upload', {
                     method: 'POST',
