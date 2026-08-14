@@ -308,6 +308,29 @@ def get_product_mockup(product_id):
     })
 
 
+@api_bp.route('/garment-metrics')
+def garment_metrics():
+    """Where the shirt sits inside a mockup photo, as fractions of the image.
+
+    The customizer turns this into pixels per inch using the body length for
+    the selected size, so name/number heights are drawn against the garment
+    instead of against the preview card.
+    """
+    from services.garment_metrics import measure
+
+    src = (request.args.get('src') or '').strip()
+    if not src:
+        return jsonify({'ok': False, 'reason': 'no_src'}), 400
+
+    data = measure(src, current_app)
+    response = jsonify(data)
+    if data.get('ok'):
+        response.headers['Cache-Control'] = 'public, max-age=86400'
+    else:
+        response.headers['Cache-Control'] = 'public, max-age=300'
+    return response
+
+
 @api_bp.route('/validate-design', methods=['POST'])
 def validate_design():
     """Validate design specifications"""

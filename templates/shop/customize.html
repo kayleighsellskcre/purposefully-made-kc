@@ -261,6 +261,8 @@
     justify-content: center;
     text-align: center;
     color: #fff;
+    /* Bold to match the printed transfer, which is drawn bold. */
+    font-weight: 700;
     width: auto;
     max-width: none;
     /* Strong outline so name/number visible on both light and dark shirts */
@@ -1891,6 +1893,7 @@
         window.addEventListener('resize', function() {
             applyDesignFit();
             updateBackDesignPreview();
+            applyBackDesignPosition();
         });
         
         // Apply preset design from gallery if present
@@ -2224,6 +2227,9 @@
             mockupImg.onload = function() {
                 if (previewCanvas) previewCanvas.classList.remove('loading');
                 this.style.opacity = '1';
+                // Preview scale depends on this photo's size and silhouette.
+                updateBackDesignPreview();
+                applyBackDesignPosition();
             };
             mockupImg.onerror = function() {
                 if (previewCanvas) previewCanvas.classList.remove('loading');
@@ -2368,28 +2374,177 @@
     function safeWidthIn() {
         return chartWidthForSize(state.selectedSize || (sizingAge() === 'youth' ? 'M' : 'M'));
     }
-    function inchesToPreviewPx(value) {
-        const canvas = document.getElementById('previewCanvas');
-        const mockupW = canvas ? canvas.clientWidth : 400;
-        const refPct = (TRANSFER_SIZING && TRANSFER_SIZING.preview_ref_pct) || 30;
-        const refIn = (TRANSFER_SIZING && TRANSFER_SIZING.preview_ref_width) || 10;
-        return value * (mockupW * (refPct / 100) / refIn);
-    }
-    function measureTextWidthInches(text, font, heightIn, spacingEm) {
-        if (!text || !heightIn) return 0;
-        const ctx = document.createElement('canvas').getContext('2d');
-        const px = 200;
-        ctx.font = `bold ${px}px "${font}", sans-serif`;
-        const spacing = (spacingEm || 0) * px;
-        if (spacing > 0 && text.length > 1) {
-            let total = 0;
-            for (let i = 0; i < text.length; i++) {
-                total += ctx.measureText(text[i]).width;
-                if (i < text.length - 1) total += spacing;
+
+    /* ── Preview scale: measured off the garment, never the preview card ────
+       The server finds the shirt inside the mockup photo. Dividing the
+       shirt's height by the body length of the selected size gives pixels
+       per inch, so a 2" name is drawn 2" tall against that shirt. */
+    const GARMENT_SILHOUETTES = {};
+    // Stand-in until the real silhouette arrives: a ghost mockup fills about
+    // this much of the frame. Same inch math, coarser garment box.
+    const GARMENT_FALLBACK = { top: 0.12, height: 0.70, center: 0.5 };
+
+    function bodyLengthIn() {
+        const table = (TRANSFER_SIZING && TRANSFER_SIZING.body_lengths) || {};
+        const defaults = (TRANSFER_SIZING && TRANSFER_SIZING.body_length_defaults) || {};
+        const category = productCategory();
+        const sizes = table[category] || {};
+        const fallback = defaults[category] || 29;
+        const key = normBackSize(state.selectedSize);
+        if (sizes[key] != null) return sizes[key];
+        const month = key.match(/^(\d+)(?:TO\d+)?M$/);
+        if (month || ['NB', 'N', 'PREMIE'].includes(key)) {
+            const baby = table.baby || {};
+            const months = month ? parseInt(month[1], 10) : 0;
+            const bands = Object.keys(baby)
+                .filter(k => /^\d+M$/.test(k))
+                .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+            for (let i = 0; i < bands.length; i++) {
+                if (months <= parseInt(bands[i], 10)) return baby[bands[i]];
             }
-            return (total / px) * heightIn;
+            return baby['24M'] || fallback;
         }
-        return (ctx.measureText(text).width / px) * heightIn;
+        if (key.charAt(0) === 'Y' && sizes[key.slice(1)] != null) return sizes[key.slice(1)];
+        return fallback;
+    }
+
+    function backCollarDropIn() {
+        const ratio = (TRANSFER_SIZING && TRANSFER_SIZING.collar_drop_ratio) || 0.12;
+        return bodyLengthIn() * ratio;
+    }
+
+    // Where the mockup photo actually lands inside the square canvas
+    // (object-fit: contain letterboxes it).
+    function mockupDisplayRect() {
+        const canvas = document.getElementById('previewCanvas');
+        const img = document.getElementById('mockupImage');
+        if (!canvas) return null;
+        const cw = canvas.clientWidth || 400;
+        const ch = canvas.clientHeight || cw;
+        const nw = img ? img.naturalWidth : 0;
+        const nh = img ? img.naturalHeight : 0;
+        if (!nw || !nh) return { left: 0, top: 0, width: cw, height: ch };
+        const scale = Math.min(cw / nw, ch / nh);
+        const w = nw * scale;
+        const h = nh * scale;
+        return { left: (cw - w) / 2, top: (ch - h) / 2, width: w, height: h };
+    }
+
+    function garmentSilhouette() {
+        const img = document.getElementById('mockupImage');
+        const src = img ? (img.getAttribute('src') || '') : '';
+        if (!src) return null;
+        const cached = GARMENT_SILHOUETTES[src];
+        if (cached === undefined) {
+            GARMENT_SILHOUETTES[src] = 'pending';
+            fetch('/api/garment-metrics?src=' + encodeURIComponent(src))
+                .then(r => r.json())
+                .then(function (data) {
+                    GARMENT_SILHOUETTES[src] = (data && data.ok) ? data : 'failed';
+                    updateBackDesignPreview();
+                    applyBackDesignPosition();
+                })
+                .catch(function () { GARMENT_SILHOUETTES[src] = 'failed'; });
+            return null;
+        }
+        if (cached === 'pending' || cached === 'failed') return null;
+        return cached;
+    }
+
+    function garmentBox() {
+        const rect = mockupDisplayRect();
+        if (!rect) return null;
+        const s = garmentSilhouette() || GARMENT_FALLBACK;
+        const heightPx = rect.height * s.height;
+        const bodyIn = bodyLengthIn();
+        if (!heightPx || !bodyIn) return null;
+        return {
+            topPx: rect.top + rect.height * s.top,
+            heightPx: heightPx,
+            centerPx: rect.left + rect.width * (s.center != null ? s.center : 0.5),
+            pxPerInch: heightPx / bodyIn,
+            measured: s.source === 'measured',
+        };
+    }
+
+    /* ── Ink metrics: the chart is visible letter height, not font size ─────
+       Every font leaves room above the capitals and below the baseline, so
+       font-size 2" would draw a name well under 2" tall. Measure the real
+       ink box of a reference glyph and scale from that, which also keeps
+       COLE and SMITHVILLE — and 8 and 23 — the same height. */
+    const INK_PROBE = 200;
+    const INK_REF_NAME = 'H';
+    const INK_REF_NUMBER = '8';
+    const _inkCache = {};
+    const _fontReady = {};
+    let _measureCtx = null;
+
+    function measureCtx() {
+        if (!_measureCtx) _measureCtx = document.createElement('canvas').getContext('2d');
+        return _measureCtx;
+    }
+
+    function fontIsLoaded(font) {
+        if (_fontReady[font]) return true;
+        if (!document.fonts || !document.fonts.check) return true;
+        try { return document.fonts.check(`bold ${INK_PROBE}px "${font}"`); } catch (e) { return true; }
+    }
+
+    // Webfonts land after first paint; re-measure and redraw once they do.
+    function requestBackFont(font) {
+        if (!font || _fontReady[font] || !document.fonts || !document.fonts.load) return;
+        try {
+            document.fonts.load(`bold ${INK_PROBE}px "${font}"`).then(function () {
+                _fontReady[font] = true;
+                delete _inkCache[font + '|' + INK_REF_NAME];
+                delete _inkCache[font + '|' + INK_REF_NUMBER];
+                updateBackDesignPreview();
+                applyBackDesignPosition();
+            }).catch(function () {});
+        } catch (e) {}
+    }
+
+    function inkMetrics(font, ref) {
+        const key = font + '|' + ref;
+        if (_inkCache[key]) return _inkCache[key];
+        const cap = ((TRANSFER_SIZING.fonts || {})[font] || {}).cap_ratio
+            || TRANSFER_SIZING.default_cap_ratio || 0.72;
+        // ink: visible height per em. ascent: ink top above the baseline.
+        // boxTop: gap from the top of a line-height:1 span to the ink.
+        let metrics = { ink: cap, ascent: cap, boxTop: (1 - cap) / 2, measured: false };
+        try {
+            const ctx = measureCtx();
+            ctx.font = `bold ${INK_PROBE}px "${font}", sans-serif`;
+            const m = ctx.measureText(ref);
+            const ascent = m.actualBoundingBoxAscent;
+            const descent = m.actualBoundingBoxDescent || 0;
+            if (ascent > 0 && fontIsLoaded(font)) {
+                const fontAscent = m.fontBoundingBoxAscent > 0 ? m.fontBoundingBoxAscent : INK_PROBE * 0.8;
+                const fontDescent = m.fontBoundingBoxDescent > 0 ? m.fontBoundingBoxDescent : INK_PROBE * 0.2;
+                const halfLeading = (INK_PROBE - (fontAscent + fontDescent)) / 2;
+                metrics = {
+                    ink: (ascent + descent) / INK_PROBE,
+                    ascent: ascent / INK_PROBE,
+                    boxTop: (halfLeading + fontAscent - ascent) / INK_PROBE,
+                    measured: true,
+                };
+                _inkCache[key] = metrics;
+            }
+        } catch (e) {}
+        return metrics;
+    }
+
+    function measureTextWidthPx(text, font, fontPx, spacingEm) {
+        if (!text || !fontPx) return 0;
+        const ctx = measureCtx();
+        ctx.font = `bold ${fontPx}px "${font}", sans-serif`;
+        const spacing = (spacingEm || 0) * fontPx;
+        let total = 0;
+        for (let i = 0; i < text.length; i++) {
+            total += ctx.measureText(text[i]).width;
+            if (i < text.length - 1) total += spacing;
+        }
+        return total;
     }
     function applyDesignFit() {
         const designLayer = document.getElementById('designLayer');
@@ -2423,7 +2578,18 @@
         if (!backDesignLayer) return;
         const defaultUp = state.backDesignDefaultUpOffset ?? 0;
         const offset = state.backDesignDragOffset || { y: -defaultUp };
-        backDesignLayer.style.transform = `translate(-50%, -50%) translate(0, ${offset.y}px)`;
+        const box = state.backDesignMode === 'name_number' ? garmentBox() : null;
+        if (box && box.pxPerInch) {
+            // Hang the layout from a natural drop below the shoulder seam of
+            // the shirt in the photo, centered on the garment body.
+            backDesignLayer.style.top = (box.topPx + backCollarDropIn() * box.pxPerInch) + 'px';
+            backDesignLayer.style.left = box.centerPx + 'px';
+            backDesignLayer.style.transform = `translate(-50%, 0) translate(0, ${offset.y}px)`;
+        } else {
+            backDesignLayer.style.top = '';
+            backDesignLayer.style.left = '';
+            backDesignLayer.style.transform = `translate(-50%, -50%) translate(0, ${offset.y}px)`;
+        }
         const dragHint = document.getElementById('dragHint');
         const resetBackBtn = document.getElementById('resetBackPositionBtn');
         const backPositionControls = document.getElementById('backPositionControls');
@@ -2440,12 +2606,13 @@
         }
     }
     
+    // Letter spacing per font. Heights come from the size chart, not from here.
     const BACK_FONT_CONFIG = {
-        'Bebas Neue': { nameSize: '2.5em', numberSize: '5.1em', nameSpacing: '0.06em', numberSpacing: '0.02em', nameNumberGap: '0.35em' },
-        'Oswald': { nameSize: '2.45em', numberSize: '5em', nameSpacing: '0.07em', numberSpacing: '0.04em', nameNumberGap: '0.32em' },
-        'Anton': { nameSize: '2.6em', numberSize: '5.2em', nameSpacing: '0.05em', numberSpacing: '0.02em', nameNumberGap: '0.3em' },
-        'Teko': { nameSize: '2.55em', numberSize: '5em', nameSpacing: '0.06em', numberSpacing: '0.03em', nameNumberGap: '0.32em' },
-        'Jersey M54': { nameSize: '2.6em', numberSize: '5.2em', nameSpacing: '0.05em', numberSpacing: '0.02em', nameNumberGap: '0.3em' }
+        'Bebas Neue': { nameSpacing: '0.06em', numberSpacing: '0.02em' },
+        'Oswald': { nameSpacing: '0.07em', numberSpacing: '0.04em' },
+        'Anton': { nameSpacing: '0.05em', numberSpacing: '0.02em' },
+        'Teko': { nameSpacing: '0.06em', numberSpacing: '0.03em' },
+        'Jersey M54': { nameSpacing: '0.05em', numberSpacing: '0.02em' }
     };
     
     function buildBackOutlineShadow(color) {
@@ -2469,7 +2636,7 @@
         if (!backDesignLayer || !textContainer || !backDesignImage) return;
         
         if (state.backDesignMode === 'name_number') {
-            textContainer.style.display = 'flex';
+            textContainer.style.display = 'block';
             backDesignImage.style.display = 'none';
             // Read directly from inputs for instant updates (no state sync delay)
             const name = (nameInput && nameInput.value) ? nameInput.value.trim().toUpperCase() : '';
@@ -2484,48 +2651,77 @@
             textContainer.style.fontFamily = `"${font}", sans-serif`;
             textContainer.style.color = textColor;
             textContainer.style.textShadow = outlineOn ? buildBackOutlineShadow(outlineColor) : 'none';
-            const mockup = document.getElementById('previewCanvas');
-            const mockupW = mockup ? mockup.clientWidth : 400;
-            const mockupH = mockup ? mockup.clientHeight : 400;
-            // 13" adult layout fills ~30% of the mockup (normal tee, not a jersey).
-            // Production inches on the transfer chart are unchanged.
-            const pxPerInch = (mockupH * 0.30) / 13.0;
-            nameEl.style.fontSize = (nameHeightIn() * pxPerInch) + 'px';
-            nameEl.style.marginBottom = (gapHeightIn() * pxPerInch) + 'px';
-            nameEl.style.whiteSpace = 'nowrap';
-            nameEl.style.width = 'auto';
-            nameEl.style.transform = 'none';
-            numberEl.style.fontSize = (numberHeightIn() * pxPerInch) + 'px';
-            numberEl.style.letterSpacing = cfg.numberSpacing;
-            numberEl.style.marginTop = '0';
-            numberEl.style.whiteSpace = 'nowrap';
-            backDesignLayer.style.width = 'auto';
-            backDesignLayer.style.maxWidth = '58%';
-            const maxNamePx = mockupW * 0.56;
-            const baseSpacing = parseFloat(cfg.nameSpacing) || 0.05;
-            let spacingEm = baseSpacing;
-            const minSpacing = -0.06;
-            nameEl.style.letterSpacing = spacingEm + 'em';
-            let namePx = nameEl.getBoundingClientRect().width;
-            while (name && namePx > maxNamePx && spacingEm > minSpacing + 0.001) {
-                spacingEm = Math.max(minSpacing, spacingEm - 0.02);
-                nameEl.style.letterSpacing = spacingEm + 'em';
-                namePx = nameEl.getBoundingClientRect().width;
-            }
-            let condense = 1;
-            if (name && namePx > maxNamePx) {
-                condense = maxNamePx / namePx;
-                nameEl.style.transform = `scaleX(${condense})`;
-            }
-            const metrics = (TRANSFER_SIZING.fonts || {})[font] || {};
+            requestBackFont(font);
+            const box = garmentBox();
+            const pxPerInch = box ? box.pxPerInch : 0;
             const nameH = nameHeightIn();
+            const gapH = gapHeightIn();
             const numH = numberHeightIn();
-            const fittedNameW = measureTextWidthInches(name, font, nameH, spacingEm);
-            const naturalNumberW = measureTextWidthInches(number, font, numH, metrics.number_spacing);
-            state.measuredNameWidthIn = fittedNameW * condense;
-            state.measuredNumberWidthIn = naturalNumberW;
+            const safeIn = safeWidthIn();
+            const nameInk = inkMetrics(font, INK_REF_NAME);
+            const numberInk = inkMetrics(font, INK_REF_NUMBER);
+            // Reference-glyph scaling: every name gets the same letter height,
+            // and one digit is the same height as two.
+            const nameFontPx = pxPerInch ? (nameH * pxPerInch) / nameInk.ink : 0;
+            const numberFontPx = pxPerInch ? (numH * pxPerInch) / numberInk.ink : 0;
+
+            // One line only: tighten the spacing first, condense the glyphs
+            // only if the name still runs past the safe print width.
+            const baseSpacing = parseFloat(cfg.nameSpacing) || 0.05;
+            const minSpacing = -0.06;
+            const numberSpacingEm = parseFloat(cfg.numberSpacing) || 0.02;
+            let spacingEm = baseSpacing;
+            let naturalNameIn = pxPerInch ? measureTextWidthPx(name, font, nameFontPx, spacingEm) / pxPerInch : 0;
+            while (name && naturalNameIn > safeIn && spacingEm > minSpacing + 0.001) {
+                spacingEm = Math.max(minSpacing, spacingEm - 0.01);
+                naturalNameIn = measureTextWidthPx(name, font, nameFontPx, spacingEm) / pxPerInch;
+            }
+            const condense = (name && naturalNameIn > safeIn) ? (safeIn / naturalNameIn) : 1;
+            const naturalNumberIn = pxPerInch ? measureTextWidthPx(number, font, numberFontPx, numberSpacingEm) / pxPerInch : 0;
+            // A three-digit number at full height can outgrow the print width.
+            const numberCondense = (number && naturalNumberIn > safeIn) ? (safeIn / naturalNumberIn) : 1;
+
+            // Stack by inches, measured ink to ink: name, gap, number.
+            const numberTopIn = (name && number) ? (nameH + gapH) : 0;
+            const totalIn = (name && number) ? (nameH + gapH + numH) : (name ? nameH : (number ? numH : 0));
+            const nameShift = (spacingEm * nameFontPx * condense) / 2;
+            const numberShift = (numberSpacingEm * numberFontPx * numberCondense) / 2;
+
+            textContainer.style.position = 'relative';
+            textContainer.style.width = (safeIn * pxPerInch) + 'px';
+            textContainer.style.height = (totalIn * pxPerInch) + 'px';
+
+            nameEl.style.position = 'absolute';
+            nameEl.style.left = '50%';
+            nameEl.style.top = (-nameInk.boxTop * nameFontPx) + 'px';
+            nameEl.style.fontSize = nameFontPx + 'px';
+            nameEl.style.lineHeight = '1';
+            nameEl.style.letterSpacing = spacingEm + 'em';
+            nameEl.style.margin = '0';
+            nameEl.style.whiteSpace = 'nowrap';
+            nameEl.style.transform = `translateX(calc(-50% + ${nameShift}px))`
+                + (condense < 0.999 ? ` scaleX(${condense})` : '');
+
+            numberEl.style.position = 'absolute';
+            numberEl.style.left = '50%';
+            numberEl.style.top = (numberTopIn * pxPerInch - numberInk.boxTop * numberFontPx) + 'px';
+            numberEl.style.fontSize = numberFontPx + 'px';
+            numberEl.style.lineHeight = '1';
+            numberEl.style.letterSpacing = numberSpacingEm + 'em';
+            numberEl.style.margin = '0';
+            numberEl.style.whiteSpace = 'nowrap';
+            numberEl.style.transform = `translateX(calc(-50% + ${numberShift}px))`
+                + (numberCondense < 0.999 ? ` scaleX(${numberCondense})` : '');
+
+            backDesignLayer.style.width = (safeIn * pxPerInch) + 'px';
+            backDesignLayer.style.maxWidth = 'none';
+
+            state.measuredNameWidthIn = naturalNameIn * condense;
+            state.measuredNumberWidthIn = naturalNumberIn * numberCondense;
             state.nameCondense = condense;
+            state.numberCondense = numberCondense;
             state.nameLetterSpacingEm = spacingEm;
+            state.numberLetterSpacingEm = numberSpacingEm;
             state.backDesignName = name;
             state.backDesignNumber = number;
             state.backDesignFont = font;
@@ -2536,6 +2732,8 @@
             textContainer.style.display = 'none';
             backDesignImage.style.display = 'block';
             backDesignImage.src = state.backDesignUrl;
+            backDesignLayer.style.width = '';
+            backDesignLayer.style.maxWidth = '';
         }
     }
     
@@ -3440,14 +3638,6 @@
         }, { passive: false });
     }
     
-    const CANVAS_FONT_CONFIG = {
-        'Bebas Neue': { nameSize: 84, numberSize: 202, numberSpacing: 4, nameSpacing: 3, gap: 120 },
-        'Oswald': { nameSize: 80, numberSize: 198, numberSpacing: 8, nameSpacing: 4, gap: 118 },
-        'Anton': { nameSize: 86, numberSize: 206, numberSpacing: 4, nameSpacing: 4, gap: 122 },
-        'Teko': { nameSize: 84, numberSize: 202, numberSpacing: 6, nameSpacing: 4, gap: 120 },
-        'Jersey M54': { nameSize: 86, numberSize: 206, numberSpacing: 4, nameSpacing: 4, gap: 122 }
-    };
-    
     function generateBackDesignNameNumberImage() {
         return new Promise(async (resolve) => {
             const canvas = document.createElement('canvas');
@@ -3461,27 +3651,37 @@
             const nameH = nameHeightIn();
             const numH = numberHeightIn();
             const gapH = gapHeightIn();
-            const namePx = Math.round(nameH * dpi);
-            const numPx = Math.round(numH * dpi);
-            const gapPx = Math.round(gapH * dpi);
-            const cfg = CANVAS_FONT_CONFIG[font] || CANVAS_FONT_CONFIG['Bebas Neue'];
+            // Ink heights: what the transfer sheet says the letters measure.
+            const nameInkPx = nameH * dpi;
+            const numInkPx = numH * dpi;
+            const gapPx = gapH * dpi;
+            const cfg = BACK_FONT_CONFIG[font] || BACK_FONT_CONFIG['Bebas Neue'];
             const spacingEm = (state.nameLetterSpacingEm != null)
                 ? state.nameLetterSpacingEm
-                : ((TRANSFER_SIZING.fonts || {})[font] || {}).letter_spacing || 0.05;
-            const nameSpacing = namePx * spacingEm;
-            const numberSpacing = numPx * ((cfg.numberSpacing || 4) / Math.max(cfg.numberSize, 1));
+                : parseFloat(cfg.nameSpacing) || 0.05;
+            const numberSpacingEm = (state.numberLetterSpacingEm != null)
+                ? state.numberLetterSpacingEm
+                : parseFloat(cfg.numberSpacing) || 0.02;
 
             try {
                 if (document.fonts) {
                     const loads = [];
                     if (document.fonts.load) {
-                        loads.push(document.fonts.load(`bold ${numPx}px "${font}"`));
-                        loads.push(document.fonts.load(`bold ${namePx}px "${font}"`));
+                        loads.push(document.fonts.load(`bold ${Math.round(numInkPx)}px "${font}"`));
+                        loads.push(document.fonts.load(`bold ${Math.round(nameInkPx)}px "${font}"`));
                     }
                     if (document.fonts.ready) loads.push(document.fonts.ready);
                     await Promise.all(loads);
                 }
             } catch (e) {}
+
+            // Font size that makes the visible letters exactly the chart height.
+            const nameInk = inkMetrics(font, INK_REF_NAME);
+            const numberInk = inkMetrics(font, INK_REF_NUMBER);
+            const namePx = nameInkPx / nameInk.ink;
+            const numPx = numInkPx / numberInk.ink;
+            const nameSpacing = namePx * spacingEm;
+            const numberSpacing = numPx * numberSpacingEm;
 
             const textColor = state.backDesignTextColor
                 || (document.getElementById('backDesignTextColor') || {}).value || '#ffffff';
@@ -3507,21 +3707,25 @@
             const numberWpx = measureSpaced(number, numPx, numberSpacing);
             const safePx = safeWidthIn() * dpi;
             const condense = (name && naturalNamePx > safePx) ? (safePx / naturalNamePx) : 1;
+            const numberCondense = (number && numberWpx > safePx) ? (safePx / numberWpx) : 1;
             const nameWpx = naturalNamePx * condense;
-            const contentW = Math.max(nameWpx, numberWpx, 1);
-            const contentH = (name ? namePx : 0) + (name && number ? gapPx : 0) + (number ? numPx : 0);
-            const pad = Math.round(dpi * 0.15);
+            const contentW = Math.max(nameWpx, numberWpx * numberCondense, 1);
+            // Ink to ink, so the PNG measures what the transfer sheet says.
+            const contentH = (name ? nameInkPx : 0) + (name && number ? gapPx : 0) + (number ? numInkPx : 0);
+            // Only enough margin for the outline stroke to land inside the file.
+            const pad = Math.ceil(Math.max(namePx, numPx) * 0.05);
 
             canvas.width = Math.ceil(contentW + pad * 2);
             canvas.height = Math.ceil(contentH + pad * 2);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
+            ctx.textBaseline = 'alphabetic';
             ctx.fillStyle = textColor;
             ctx.strokeStyle = outlineColor;
             ctx.lineJoin = 'round';
             ctx.miterLimit = 2;
 
+            // yPos is the baseline, so ink lands exactly where it is placed.
             function drawTextWithSpacing(text, yPos, fontSize, charSpacing, scaleX) {
                 if (!text) return;
                 ctx.save();
@@ -3552,14 +3756,12 @@
 
             let y = pad;
             if (name) {
-                y += namePx / 2;
-                drawTextWithSpacing(name, y, namePx, nameSpacing, condense);
-                y += namePx / 2;
+                drawTextWithSpacing(name, y + nameInk.ascent * namePx, namePx, nameSpacing, condense);
+                y += nameInkPx;
                 if (number) y += gapPx;
             }
             if (number) {
-                y += numPx / 2;
-                drawTextWithSpacing(number, y, numPx, numberSpacing, 1);
+                drawTextWithSpacing(number, y + numberInk.ascent * numPx, numPx, numberSpacing, numberCondense);
             }
 
             canvas.toBlob(function(blob) {

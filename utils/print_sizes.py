@@ -81,15 +81,53 @@ BACK_LAYOUT_BANDS = (
 PREVIEW_REF_WIDTH_IN = 10.0
 PREVIEW_REF_PCT = 30.0
 
-# Average uppercase width as a fraction of font height (athletic block fonts).
+# ---------------------------------------------------------------------------
+# Preview calibration only — never a production measurement.
+#
+# Nominal garment body length (high point shoulder to hem, inches). The
+# customizer measures the shirt in the mockup photo, divides its height by the
+# body length for the selected size, and gets pixels per inch. That is how a
+# 2" name is drawn 2" tall against the garment instead of a percentage of the
+# white product card behind it.
+# ---------------------------------------------------------------------------
+GARMENT_BODY_LENGTH_IN = {
+    'adult': {
+        'XS': 27.0, 'S': 28.0, 'M': 29.0, 'L': 30.0, 'XL': 31.0,
+        '2XL': 32.0, '3XL': 33.0, '4XL': 34.0, '5XL': 34.5, '6XL': 35.0,
+    },
+    'youth': {
+        'YXS': 19.0, 'YS': 20.5, 'YM': 22.0, 'YL': 23.5, 'YXL': 25.0,
+        # Youth garments often carry plain S/M/L/XL labels.
+        'XS': 19.0, 'S': 20.5, 'M': 22.0, 'L': 23.5, 'XL': 25.0,
+        '2': 19.0, '4': 19.0, '6': 20.5, '8': 22.0, '10': 22.0,
+        '12': 23.5, '14': 23.5, '16': 25.0,
+    },
+    'toddler': {'2T': 15.5, '3T': 16.5, '4T': 17.5, '5T': 18.5},
+    'baby': {
+        'NB': 12.5, 'PREMIE': 11.5, '0M': 12.5, '3M': 13.0, '6M': 13.5,
+        '9M': 14.0, '12M': 14.5, '18M': 15.5, '24M': 16.5,
+    },
+}
+GARMENT_BODY_LENGTH_DEFAULT = {
+    'adult': 29.0, 'youth': 22.0, 'toddler': 16.5, 'baby': 14.0,
+}
+
+# Top of a back name sits this far below the shoulder seam, as a share of body
+# length (adult M: 29" x 0.12 = 3.5"). Keeps the layout on the upper back.
+BACK_COLLAR_DROP_RATIO = 0.12
+
+# Athletic block fonts. char_width and the spacings are fractions of the font's
+# em size; cap_ratio is how much of that em the visible capital letters fill.
+# Chart heights are visible letter heights, so an em is height / cap_ratio.
 # Used only when the customizer did not send a canvas-measured width.
 FONT_METRICS = {
-    'Bebas Neue': {'char_width': 0.48, 'letter_spacing': 0.06, 'number_spacing': 0.02},
-    'Oswald': {'char_width': 0.55, 'letter_spacing': 0.07, 'number_spacing': 0.04},
-    'Anton': {'char_width': 0.52, 'letter_spacing': 0.05, 'number_spacing': 0.02},
-    'Teko': {'char_width': 0.50, 'letter_spacing': 0.06, 'number_spacing': 0.03},
-    'Jersey M54': {'char_width': 0.58, 'letter_spacing': 0.05, 'number_spacing': 0.02},
+    'Bebas Neue': {'char_width': 0.48, 'letter_spacing': 0.06, 'number_spacing': 0.02, 'cap_ratio': 0.73},
+    'Oswald': {'char_width': 0.55, 'letter_spacing': 0.07, 'number_spacing': 0.04, 'cap_ratio': 0.72},
+    'Anton': {'char_width': 0.52, 'letter_spacing': 0.05, 'number_spacing': 0.02, 'cap_ratio': 0.73},
+    'Teko': {'char_width': 0.50, 'letter_spacing': 0.06, 'number_spacing': 0.03, 'cap_ratio': 0.66},
+    'Jersey M54': {'char_width': 0.58, 'letter_spacing': 0.05, 'number_spacing': 0.02, 'cap_ratio': 0.72},
 }
+DEFAULT_CAP_RATIO = 0.72
 
 PLACEMENT_LABELS = {
     'center_chest': 'Center Chest',
@@ -248,6 +286,33 @@ def back_layout(size=None, product=None):
     return _layout_tuple(BACK_LAYOUT_BANDS[9])
 
 
+def garment_body_length_in(size=None, product=None):
+    """Nominal shoulder-to-hem length for preview scaling. Not for production."""
+    category = classify_category(product, size)
+    table = GARMENT_BODY_LENGTH_IN.get(category, {})
+    default = GARMENT_BODY_LENGTH_DEFAULT.get(category, 29.0)
+    key = _norm_back_size(size)
+    if key in table:
+        return table[key]
+
+    month = _month_start(key)
+    if month is not None:
+        baby = GARMENT_BODY_LENGTH_IN['baby']
+        for months in sorted(int(k[:-1]) for k in baby if k.endswith('M') and k[:-1].isdigit()):
+            if month <= months:
+                return baby[f'{months}M']
+        return baby['24M']
+
+    if category == 'youth' and key.startswith('Y') and len(key) > 1:
+        return table.get(key[1:], default)
+    return default
+
+
+def back_collar_drop_in(size=None, product=None):
+    """How far below the shoulder seam the top of the name starts."""
+    return garment_body_length_in(size, product) * BACK_COLLAR_DROP_RATIO
+
+
 def get_print_width_for_size(size, product=None):
     """Return print width in inches for a given size.
 
@@ -382,14 +447,19 @@ def front_transfer_size(size, product=None, placement='center_chest', aspect_w=N
 
 
 def estimate_text_width(text, height, font='Bebas Neue', kind='name'):
-    """Fallback width when the customizer did not measure the rendered glyphs."""
+    """Fallback width when the customizer did not measure the rendered glyphs.
+
+    `height` is the visible capital-letter height from the chart, so scale it
+    back up to the font's em size before applying the per-character widths.
+    """
     if not text or not height:
         return 0.0
     metrics = FONT_METRICS.get(font) or FONT_METRICS['Bebas Neue']
     chars = list(str(text))
     spacing_em = metrics['letter_spacing'] if kind == 'name' else metrics['number_spacing']
-    char_w = float(height) * metrics['char_width']
-    gap = float(height) * spacing_em
+    em = float(height) / (metrics.get('cap_ratio') or DEFAULT_CAP_RATIO)
+    char_w = em * metrics['char_width']
+    gap = em * spacing_em
     return len(chars) * char_w + max(0, len(chars) - 1) * gap
 
 
@@ -490,6 +560,11 @@ def client_config(product=None):
         'preview_ref_width': PREVIEW_REF_WIDTH_IN,
         'preview_ref_pct': PREVIEW_REF_PCT,
         'fonts': FONT_METRICS,
+        'default_cap_ratio': DEFAULT_CAP_RATIO,
+        # Preview scale: measured garment height / body length = pixels per inch.
+        'body_lengths': GARMENT_BODY_LENGTH_IN,
+        'body_length_defaults': GARMENT_BODY_LENGTH_DEFAULT,
+        'collar_drop_ratio': BACK_COLLAR_DROP_RATIO,
     }
 
 
