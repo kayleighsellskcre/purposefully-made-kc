@@ -244,8 +244,8 @@
 .design-layer-back {
     flex-direction: column;
     width: auto;
-    max-width: 78%;
-    top: 36%;
+    max-width: 58%;
+    top: 34%;
     left: 50%;
     transform: translate(-50%, -50%);
     cursor: grab;
@@ -2487,7 +2487,9 @@
             const mockup = document.getElementById('previewCanvas');
             const mockupW = mockup ? mockup.clientWidth : 400;
             const mockupH = mockup ? mockup.clientHeight : 400;
-            const pxPerInch = (mockupH * 0.52) / 13.0;
+            // 13" adult layout fills ~30% of the mockup (normal tee, not a jersey).
+            // Production inches on the transfer chart are unchanged.
+            const pxPerInch = (mockupH * 0.30) / 13.0;
             nameEl.style.fontSize = (nameHeightIn() * pxPerInch) + 'px';
             nameEl.style.marginBottom = (gapHeightIn() * pxPerInch) + 'px';
             nameEl.style.whiteSpace = 'nowrap';
@@ -2498,8 +2500,8 @@
             numberEl.style.marginTop = '0';
             numberEl.style.whiteSpace = 'nowrap';
             backDesignLayer.style.width = 'auto';
-            backDesignLayer.style.maxWidth = '72%';
-            const maxNamePx = mockupW * 0.70;
+            backDesignLayer.style.maxWidth = '58%';
+            const maxNamePx = mockupW * 0.56;
             const baseSpacing = parseFloat(cfg.nameSpacing) || 0.05;
             let spacingEm = baseSpacing;
             const minSpacing = -0.06;

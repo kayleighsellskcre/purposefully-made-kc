@@ -89,6 +89,13 @@ def process_artwork_bytes(data: bytes, mode: str = 'auto', engine=None) -> dict:
     if mode == 'none':
         return _encode(img, 'none', original_size, changed=False)
 
+    # Already-cut PNGs: do not run the chroma-key. Converting RGBA→RGB fills
+    # transparent pixels with black, and the key then keeps that fill as a
+    # goofy block behind the artwork. The cut itself is unchanged.
+    if _already_cutout(img):
+        out = _autocrop(img)
+        return _encode(out, 'preserved', original_size, changed=True)
+
     try:
         img, orig_rgb = _fit_working_size(img)
         bg_color, mad = _border_profile(orig_rgb)
@@ -328,6 +335,25 @@ def _has_transparency(img: Image.Image) -> bool:
             return bool((np.asarray(alpha) < 250).mean() > 0.003)
         lo, _ = alpha.getextrema()
         return lo < 250
+    except Exception:
+        return False
+
+
+def _already_cutout(img: Image.Image) -> bool:
+    """True when the file already has a real knockout, not just edge AA.
+
+    Paper photos stay on the chroma-key path. A few anti-aliased edge
+    pixels are not enough — we need a meaningful transparent area.
+    """
+    try:
+        if img.mode != 'RGBA':
+            return False
+        alpha = img.getchannel('A')
+        if _HAS_NUMPY:
+            return float((np.asarray(alpha) < 32).mean()) >= 0.05
+        hist = alpha.histogram()
+        total = sum(hist) or 1
+        return (sum(hist[:32]) / total) >= 0.05
     except Exception:
         return False
 
