@@ -153,7 +153,6 @@ def add():
     elif design_id:
         # Gallery design or user's own design - get URL from Design model
         from models import Design
-        from flask_login import current_user
         design = Design.query.get(int(design_id))
         if design:
             # Allow: gallery design, or user's own design (profile-only)

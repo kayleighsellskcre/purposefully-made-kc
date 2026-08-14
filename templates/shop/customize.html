@@ -2472,7 +2472,9 @@
        font-size 2" would draw a name well under 2" tall. Measure the real
        ink box of a reference glyph and scale from that, which also keeps
        COLE and SMITHVILLE — and 8 and 23 — the same height. */
-    const INK_PROBE = 200;
+    // Browsers report ink bounds in whole pixels, so probe large: at 200px a
+    // one-pixel rounding is half a percent of the letter height.
+    const INK_PROBE = 1000;
     const INK_REF_NAME = 'H';
     const INK_REF_NUMBER = '8';
     const _inkCache = {};
@@ -2504,6 +2506,39 @@
         } catch (e) {}
     }
 
+    // The ink box a font reports runs a little larger than the glyph actually
+    // rasterizes, which printed the number ~2% short. Draw the reference glyph
+    // and read its real pixel bounds instead.
+    function rasterInk(font, ref) {
+        try {
+            const size = INK_PROBE;
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.ceil(size * 1.5);
+            canvas.height = Math.ceil(size * 2);
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            const baseline = Math.round(size * 1.4);
+            ctx.font = `bold ${size}px "${font}", sans-serif`;
+            ctx.textBaseline = 'alphabetic';
+            ctx.fillStyle = '#000';
+            ctx.fillText(ref, Math.round(size * 0.25), baseline);
+            const w = canvas.width, h = canvas.height;
+            const data = ctx.getImageData(0, 0, w, h).data;
+            let top = -1, bottom = -1;
+            for (let y = 0; y < h; y++) {
+                const row = y * w * 4;
+                for (let x = 0; x < w; x++) {
+                    if (data[row + x * 4 + 3] > 8) {
+                        if (top < 0) top = y;
+                        bottom = y;
+                        break;
+                    }
+                }
+            }
+            if (top < 0 || bottom <= top) return null;
+            return { ascent: (baseline - top) / size, descent: (bottom + 1 - baseline) / size };
+        } catch (e) { return null; }
+    }
+
     function inkMetrics(font, ref) {
         const key = font + '|' + ref;
         if (_inkCache[key]) return _inkCache[key];
@@ -2516,8 +2551,9 @@
             const ctx = measureCtx();
             ctx.font = `bold ${INK_PROBE}px "${font}", sans-serif`;
             const m = ctx.measureText(ref);
-            const ascent = m.actualBoundingBoxAscent;
-            const descent = m.actualBoundingBoxDescent || 0;
+            const raster = fontIsLoaded(font) ? rasterInk(font, ref) : null;
+            const ascent = raster ? raster.ascent * INK_PROBE : m.actualBoundingBoxAscent;
+            const descent = raster ? raster.descent * INK_PROBE : (m.actualBoundingBoxDescent || 0);
             if (ascent > 0 && fontIsLoaded(font)) {
                 const fontAscent = m.fontBoundingBoxAscent > 0 ? m.fontBoundingBoxAscent : INK_PROBE * 0.8;
                 const fontDescent = m.fontBoundingBoxDescent > 0 ? m.fontBoundingBoxDescent : INK_PROBE * 0.2;
@@ -2569,12 +2605,12 @@
     // differ per face, so this is measured rather than assumed.
     function inkGapEm(a, b, font, spacingEm) {
         const ctx = measureCtx();
-        ctx.font = `bold 200px "${font}", sans-serif`;
+        ctx.font = `bold ${INK_PROBE}px "${font}", sans-serif`;
         const left = ctx.measureText(a);
         const right = ctx.measureText(b);
         const rightBearing = left.width - left.actualBoundingBoxRight;
         const leftBearing = -right.actualBoundingBoxLeft;
-        return (rightBearing + leftBearing) / 200 + spacingEm;
+        return (rightBearing + leftBearing) / INK_PROBE + spacingEm;
     }
 
     function numberGroupFit(number, font, fontPx, baseSpacingEm, safePx) {
@@ -2783,6 +2819,7 @@
             state.numberDigits = numberFit.digits;
             state.nameLetterSpacingEm = spacingEm;
             state.numberLetterSpacingEm = numberSpacingEm;
+            state.numberTrackingEm = numberTrackEm;
             state.backDesignName = name;
             state.backDesignNumber = number;
             state.backDesignFont = font;
@@ -3744,7 +3781,12 @@
             const nameSpacing = namePx * spacingEm;
             const safePx = safeWidthIn() * dpi;
             const numberFit = numberGroupFit(number, font, numPx, numberSpacingEm, safePx);
-            const numberSpacing = numPx * numberFit.spacingEm;
+            // Print what the customer approved: reuse the tracking and squeeze
+            // the preview resolved, and only fall back if it never ran.
+            const numberTrackEm = (state.numberTrackingEm != null)
+                ? state.numberTrackingEm
+                : numberFit.spacingEm;
+            const numberSpacing = numPx * numberTrackEm;
 
             const textColor = state.backDesignTextColor
                 || (document.getElementById('backDesignTextColor') || {}).value || '#ffffff';
@@ -3768,9 +3810,10 @@
 
             const naturalNamePx = measureSpaced(name, namePx, nameSpacing);
             const condense = (name && naturalNamePx > safePx) ? (safePx / naturalNamePx) : 1;
-            const numberCondense = numberFit.scale;
+            const numberCondense = (state.numberCondense != null) ? state.numberCondense : numberFit.scale;
             const nameWpx = naturalNamePx * condense;
-            const contentW = Math.max(nameWpx, numberFit.widthPx, 1);
+            const numberWpx = measureSpaced(number, numPx, numberSpacing) * numberCondense;
+            const contentW = Math.max(nameWpx, numberWpx, 1);
             // Ink to ink, so the PNG measures what the transfer sheet says.
             const contentH = (name ? nameInkPx : 0) + (name && number ? gapPx : 0) + (number ? numInkPx : 0);
             // Only enough margin for the outline stroke to land inside the file.
