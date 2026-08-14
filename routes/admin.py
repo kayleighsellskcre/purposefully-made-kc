@@ -330,8 +330,9 @@ def _transfer_csv_response(rows, filename):
     output = StringIO()
     fieldnames = [
         'section', 'kind', 'order_by', 'design_name', 'name', 'number', 'font', 'text_color',
-        'garment_style', 'style_number', 'age_group', 'size', 'color', 'placement_label',
+        'garment_style', 'style_number', 'category', 'age_group', 'size', 'color', 'placement_label',
         'width', 'height', 'name_width', 'name_height', 'number_width', 'number_height',
+        'number_digits', 'number_scale', 'number_scale_percent',
         'combined_width', 'combined_height', 'gap', 'condense_percent', 'exceeds_safe_area',
         'quantity',
     ]
@@ -349,6 +350,7 @@ def _transfer_csv_response(rows, filename):
             'text_color': row.get('text_color'),
             'garment_style': row.get('garment_style'),
             'style_number': row.get('style_number'),
+            'category': row.get('category') or row.get('age_group'),
             'age_group': row.get('age_group'),
             'size': row.get('size'),
             'color': row.get('color'),
@@ -359,6 +361,9 @@ def _transfer_csv_response(rows, filename):
             'name_height': row.get('name_height_display', row.get('name_height')),
             'number_width': row.get('number_width_display', row.get('number_width')),
             'number_height': row.get('number_height_display', row.get('number_height')),
+            'number_digits': row.get('number_digits'),
+            'number_scale': round(row['number_scale'], 3) if row.get('number_scale') is not None else '',
+            'number_scale_percent': row.get('number_scale_percent') if row.get('number_scale_percent') is not None else 'none',
             'combined_width': row.get('combined_width_display', row.get('combined_width')),
             'combined_height': row.get('combined_height_display', row.get('combined_height')),
             'gap': row.get('gap_display', row.get('gap')),

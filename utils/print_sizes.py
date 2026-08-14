@@ -51,8 +51,8 @@ PLACEMENT_WIDTH_FACTOR = {
 # Fallback aliases for older callers (adult S–2XL band).
 NAME_HEIGHT_ADULT = 2.0
 NAME_HEIGHT_YOUTH = 1.5
-NUMBER_HEIGHT_ADULT = 8.0
-NUMBER_HEIGHT_YOUTH = 6.0
+NUMBER_HEIGHT_ADULT = 7.0
+NUMBER_HEIGHT_YOUTH = 5.5
 NAME_NUMBER_GAP_ADULT = 3.0
 NAME_NUMBER_GAP_YOUTH = 2.5
 
@@ -64,18 +64,28 @@ SAFE_PRINT_HEIGHT_BABY = 7.0
 
 # (name_height, gap, number_height) — inches
 BACK_LAYOUT_BANDS = (
-    {'category': 'baby', 'label': 'Newborn–3M', 'name': 0.75, 'gap': 1.00, 'number': 3.00},
-    {'category': 'baby', 'label': '6M–12M', 'name': 1.00, 'gap': 1.25, 'number': 3.50},
-    {'category': 'baby', 'label': '18M–24M', 'name': 1.00, 'gap': 1.50, 'number': 4.00},
-    {'category': 'toddler', 'label': '2T', 'name': 1.25, 'gap': 1.50, 'number': 4.50},
-    {'category': 'toddler', 'label': '3T', 'name': 1.25, 'gap': 1.75, 'number': 5.00},
-    {'category': 'toddler', 'label': '4T–5T', 'name': 1.25, 'gap': 2.00, 'number': 5.00},
-    {'category': 'youth', 'label': 'Youth XS', 'name': 1.25, 'gap': 2.00, 'number': 5.00},
-    {'category': 'youth', 'label': 'Youth S–M', 'name': 1.50, 'gap': 2.50, 'number': 6.00},
-    {'category': 'youth', 'label': 'Youth L–XL', 'name': 1.75, 'gap': 3.00, 'number': 7.00},
-    {'category': 'adult', 'label': 'Adult S–2XL', 'name': 2.00, 'gap': 3.00, 'number': 8.00},
-    {'category': 'adult', 'label': 'Adult 3XL–4XL', 'name': 2.00, 'gap': 3.50, 'number': 9.00},
+    {'category': 'baby', 'label': 'Newborn–3M', 'name': 0.75, 'gap': 1.00, 'number': 2.50},
+    {'category': 'baby', 'label': '6M–12M', 'name': 1.00, 'gap': 1.25, 'number': 3.00},
+    {'category': 'baby', 'label': '18M–24M', 'name': 1.00, 'gap': 1.50, 'number': 3.50},
+    {'category': 'toddler', 'label': '2T', 'name': 1.25, 'gap': 1.50, 'number': 4.00},
+    {'category': 'toddler', 'label': '3T', 'name': 1.25, 'gap': 1.75, 'number': 4.50},
+    {'category': 'toddler', 'label': '4T–5T', 'name': 1.25, 'gap': 2.00, 'number': 4.50},
+    {'category': 'youth', 'label': 'Youth XS', 'name': 1.25, 'gap': 2.00, 'number': 4.50},
+    {'category': 'youth', 'label': 'Youth S–M', 'name': 1.50, 'gap': 2.50, 'number': 5.50},
+    {'category': 'youth', 'label': 'Youth L–XL', 'name': 1.75, 'gap': 3.00, 'number': 6.00},
+    {'category': 'adult', 'label': 'Adult S–2XL', 'name': 2.00, 'gap': 3.00, 'number': 7.00},
+    {'category': 'adult', 'label': 'Adult 3XL–4XL', 'name': 2.00, 'gap': 3.50, 'number': 7.50},
 )
+
+# A two-digit number reads far wider than a one-digit number at the same
+# height. Keep the height, pull the digits closer, and squeeze the pair as one
+# centered group until the visible number is this share of its natural width.
+TWO_DIGIT_WIDTH_SCALE = 0.875
+# Extra tracking between the two digits, as a fraction of the em, and the ink
+# gap that must survive it. Athletic faces are drawn with almost no side
+# bearing, so the customizer backs the tracking off before the digits touch.
+TWO_DIGIT_TRACKING_EM = -0.02
+MIN_DIGIT_GAP_EM = 0.012
 
 # Preview: adult M 10" center print is the 30% mockup overlay.
 PREVIEW_REF_WIDTH_IN = 10.0
@@ -463,9 +473,23 @@ def estimate_text_width(text, height, font='Bebas Neue', kind='name'):
     return len(chars) * char_w + max(0, len(chars) - 1) * gap
 
 
+def number_group_scale(number):
+    """Horizontal scale applied to the number, treated as one centered group.
+
+    Two digits get squeezed; one digit is left alone. Height never changes.
+    """
+    digits = len(str(number or '').strip())
+    return TWO_DIGIT_WIDTH_SCALE if digits == 2 else 1.0
+
+
 def back_name_number_size(size, product=None, name='', number='', font='Bebas Neue',
                           measured_name_width=None, measured_number_width=None):
-    """Personalized back transfers. Ordered by HEIGHT. Width grows with the text."""
+    """Personalized back transfers. Ordered by HEIGHT. Width grows with the text.
+
+    Measured widths are the natural rendered widths — the visible glyph bounds
+    at the chart height before any squeeze — so the squeeze rules below stay
+    the single source of truth for the final printed width.
+    """
     layout = back_layout(size, product)
     n_h = layout['name_height']
     num_h = layout['number_height']
@@ -491,7 +515,13 @@ def back_name_number_size(size, product=None, name='', number='', font='Bebas Ne
         condense = max_w / natural_name_w
         name_w = max_w
 
-    number_w = natural_number_w
+    number_digits = len(number_text)
+    number_scale = number_group_scale(number_text) if number_text else 1.0
+    number_w = natural_number_w * number_scale
+    if number_text and number_w > max_w + 0.001:
+        number_scale *= max_w / number_w
+        number_w = max_w
+
     combined_w = max(name_w, number_w) if (name_text or number_text) else 0.0
     combined_h = 0.0
     if name_text and number_text:
@@ -506,11 +536,16 @@ def back_name_number_size(size, product=None, name='', number='', font='Bebas Ne
     return {
         'order_by': 'HEIGHT',
         'layout_label': layout['label'],
+        'category': layout['category'],
         'name_height': n_h,
         'name_width': name_w,
         'name_width_natural': natural_name_w,
         'number_height': num_h,
         'number_width': number_w,
+        'number_width_natural': natural_number_w,
+        'number_digits': number_digits,
+        'number_scale': number_scale,
+        'number_scale_percent': None if number_scale >= 0.999 else round((1.0 - number_scale) * 100, 1),
         'gap': gap,
         'combined_width': combined_w,
         'combined_height': combined_h,
@@ -522,6 +557,7 @@ def back_name_number_size(size, product=None, name='', number='', font='Bebas Ne
         'name_width_display': inches(name_w),
         'number_height_display': inches(num_h),
         'number_width_display': inches(number_w),
+        'number_width_natural_display': inches(natural_number_w),
         'gap_display': inches(gap),
         'combined_width_display': inches(combined_w),
         'combined_height_display': inches(combined_h),
@@ -561,6 +597,10 @@ def client_config(product=None):
         'preview_ref_pct': PREVIEW_REF_PCT,
         'fonts': FONT_METRICS,
         'default_cap_ratio': DEFAULT_CAP_RATIO,
+        # Two-digit numbers: same height, tighter pair, narrower group.
+        'two_digit_scale': TWO_DIGIT_WIDTH_SCALE,
+        'two_digit_tracking_em': TWO_DIGIT_TRACKING_EM,
+        'min_digit_gap_em': MIN_DIGIT_GAP_EM,
         # Preview scale: measured garment height / body length = pixels per inch.
         'body_lengths': GARMENT_BODY_LENGTH_IN,
         'body_length_defaults': GARMENT_BODY_LENGTH_DEFAULT,
@@ -671,11 +711,16 @@ def build_item_production(
             'placement_label': 'Center Back',
             'order_by': 'HEIGHT',
             'layout_label': back.get('layout_label'),
+            'category': back.get('category'),
             'name_height': back['name_height'],
             'name_width': back['name_width'],
             'name_width_natural': back['name_width_natural'],
             'number_height': back['number_height'],
             'number_width': back['number_width'],
+            'number_width_natural': back['number_width_natural'],
+            'number_digits': back['number_digits'],
+            'number_scale': back['number_scale'],
+            'number_scale_percent': back['number_scale_percent'],
             'gap': back['gap'],
             'combined_width': back['combined_width'],
             'combined_height': back['combined_height'],
@@ -686,6 +731,7 @@ def build_item_production(
             'name_width_display': back['name_width_display'],
             'number_height_display': back['number_height_display'],
             'number_width_display': back['number_width_display'],
+            'number_width_natural_display': back['number_width_natural_display'],
             'gap_display': back['gap_display'],
             'combined_width_display': back['combined_width_display'],
             'combined_height_display': back['combined_height_display'],
@@ -761,8 +807,9 @@ def production_from_order_item(item, customer_name=None):
         back_outline=back.get('outline'),
         back_outline_color=back.get('outline_color'),
         customer_name=customer_name or back.get('customer_name'),
-        measured_name_width=back.get('name_width'),
-        measured_number_width=back.get('number_width'),
+        # Natural widths, so the squeeze is applied once and not compounded.
+        measured_name_width=back.get('name_width_natural') or back.get('name_width'),
+        measured_number_width=back.get('number_width_natural') or back.get('number_width'),
         garment_style=getattr(item, 'product_name', None),
     )
 

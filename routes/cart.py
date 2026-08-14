@@ -292,8 +292,14 @@ def add():
     if not design_name and design_url:
         design_name = design_url.split('/')[-1]
 
-    measured_name_w = data.get('name_width_in') or (back_design_meta or {}).get('name_width')
-    measured_number_w = data.get('number_width_in') or (back_design_meta or {}).get('number_width')
+    # Natural (pre-squeeze) widths. Falling back to a stored final width keeps
+    # older carts working; the squeeze rules live in print_sizes.
+    measured_name_w = (data.get('name_width_in')
+                       or (back_design_meta or {}).get('name_width_natural')
+                       or (back_design_meta or {}).get('name_width'))
+    measured_number_w = (data.get('number_width_in')
+                         or (back_design_meta or {}).get('number_width_natural')
+                         or (back_design_meta or {}).get('number_width'))
     try:
         measured_name_w = float(measured_name_w) if measured_name_w not in (None, '') else None
     except (TypeError, ValueError):
@@ -334,15 +340,21 @@ def add():
     if back_design_meta and transfer_production.get('back'):
         back_design_meta.update({
             'name_width': transfer_production['back']['name_width'],
+            'name_width_natural': transfer_production['back']['name_width_natural'],
             'name_height': transfer_production['back']['name_height'],
             'number_width': transfer_production['back']['number_width'],
+            'number_width_natural': transfer_production['back']['number_width_natural'],
             'number_height': transfer_production['back']['number_height'],
+            'number_digits': transfer_production['back']['number_digits'],
+            'number_scale': transfer_production['back']['number_scale'],
+            'number_scale_percent': transfer_production['back']['number_scale_percent'],
             'gap': transfer_production['back']['gap'],
             'combined_width': transfer_production['back']['combined_width'],
             'combined_height': transfer_production['back']['combined_height'],
             'condense': transfer_production['back']['condense'],
             'condense_percent': transfer_production['back']['condense_percent'],
             'age_group': transfer_production['back']['age_group'],
+            'category': transfer_production['back']['category'],
         })
 
     front = (transfer_production or {}).get('front') or {}

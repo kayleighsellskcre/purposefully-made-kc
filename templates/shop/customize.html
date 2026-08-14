@@ -2360,13 +2360,13 @@
             return pick('Youth S–M');
         }
         if (['3XL', '4XL', '5XL', '6XL', 'XXXL'].includes(key)) return pick('Adult 3XL–4XL');
-        return pick('Adult S–2XL') || { name: 2, gap: 3, number: 8, total: 13 };
+        return pick('Adult S–2XL') || { name: 2, gap: 3, number: 7, total: 12 };
     }
     function nameHeightIn() {
         return (backLayout() || {}).name || 2;
     }
     function numberHeightIn() {
-        return (backLayout() || {}).number || 8;
+        return (backLayout() || {}).number || 7;
     }
     function gapHeightIn() {
         return (backLayout() || {}).gap || 3;
@@ -2546,6 +2546,60 @@
         }
         return total;
     }
+
+    /* ── Two-digit numbers ──────────────────────────────────────────────────
+       A pair of digits reads much wider than a single digit at the same
+       height. Pull the two closer, then squeeze the pair as one group down to
+       the chart's share of its natural width. The height never changes, and
+       the group stays centered as a unit. */
+    function twoDigitScale() {
+        const v = TRANSFER_SIZING && TRANSFER_SIZING.two_digit_scale;
+        return (v == null) ? 0.875 : v;
+    }
+    function twoDigitTrackingEm() {
+        const v = TRANSFER_SIZING && TRANSFER_SIZING.two_digit_tracking_em;
+        return (v == null) ? -0.02 : v;
+    }
+    function minDigitGapEm() {
+        const v = TRANSFER_SIZING && TRANSFER_SIZING.min_digit_gap_em;
+        return (v == null) ? 0.012 : v;
+    }
+
+    // Ink gap between two glyphs at a given tracking, in ems. Side bearings
+    // differ per face, so this is measured rather than assumed.
+    function inkGapEm(a, b, font, spacingEm) {
+        const ctx = measureCtx();
+        ctx.font = `bold 200px "${font}", sans-serif`;
+        const left = ctx.measureText(a);
+        const right = ctx.measureText(b);
+        const rightBearing = left.width - left.actualBoundingBoxRight;
+        const leftBearing = -right.actualBoundingBoxLeft;
+        return (rightBearing + leftBearing) / 200 + spacingEm;
+    }
+
+    function numberGroupFit(number, font, fontPx, baseSpacingEm, safePx) {
+        const naturalPx = measureTextWidthPx(number, font, fontPx, baseSpacingEm);
+        let spacingEm = baseSpacingEm;
+        if (number.length === 2) {
+            spacingEm += twoDigitTrackingEm();
+            // Back off until the digits are clear of each other again.
+            const floorEm = minDigitGapEm();
+            let guard = 0;
+            while (inkGapEm(number[0], number[1], font, spacingEm) < floorEm && guard++ < 10) {
+                spacingEm += 0.005;
+                if (spacingEm >= baseSpacingEm) { spacingEm = baseSpacingEm; break; }
+            }
+        }
+        const trackedPx = measureTextWidthPx(number, font, fontPx, spacingEm);
+        let scale = (number.length === 2 && trackedPx) ? (naturalPx * twoDigitScale()) / trackedPx : 1;
+        let widthPx = trackedPx * scale;
+        // A three-digit number at full height can still outgrow the print width.
+        if (safePx && widthPx > safePx) {
+            scale *= safePx / widthPx;
+            widthPx = safePx;
+        }
+        return { naturalPx, widthPx, spacingEm, scale, digits: number.length };
+    }
     function applyDesignFit() {
         const designLayer = document.getElementById('designLayer');
         const designImage = document.getElementById('designImage');
@@ -2677,15 +2731,17 @@
                 naturalNameIn = measureTextWidthPx(name, font, nameFontPx, spacingEm) / pxPerInch;
             }
             const condense = (name && naturalNameIn > safeIn) ? (safeIn / naturalNameIn) : 1;
-            const naturalNumberIn = pxPerInch ? measureTextWidthPx(number, font, numberFontPx, numberSpacingEm) / pxPerInch : 0;
-            // A three-digit number at full height can outgrow the print width.
-            const numberCondense = (number && naturalNumberIn > safeIn) ? (safeIn / naturalNumberIn) : 1;
+            const numberFit = numberGroupFit(number, font, numberFontPx, numberSpacingEm, safeIn * pxPerInch);
+            const numberTrackEm = numberFit.spacingEm;
+            const numberCondense = numberFit.scale;
+            const naturalNumberIn = pxPerInch ? numberFit.naturalPx / pxPerInch : 0;
+            const numberWidthIn = pxPerInch ? numberFit.widthPx / pxPerInch : 0;
 
             // Stack by inches, measured ink to ink: name, gap, number.
             const numberTopIn = (name && number) ? (nameH + gapH) : 0;
             const totalIn = (name && number) ? (nameH + gapH + numH) : (name ? nameH : (number ? numH : 0));
             const nameShift = (spacingEm * nameFontPx * condense) / 2;
-            const numberShift = (numberSpacingEm * numberFontPx * numberCondense) / 2;
+            const numberShift = (numberTrackEm * numberFontPx * numberCondense) / 2;
 
             textContainer.style.position = 'relative';
             textContainer.style.width = (safeIn * pxPerInch) + 'px';
@@ -2707,7 +2763,7 @@
             numberEl.style.top = (numberTopIn * pxPerInch - numberInk.boxTop * numberFontPx) + 'px';
             numberEl.style.fontSize = numberFontPx + 'px';
             numberEl.style.lineHeight = '1';
-            numberEl.style.letterSpacing = numberSpacingEm + 'em';
+            numberEl.style.letterSpacing = numberTrackEm + 'em';
             numberEl.style.margin = '0';
             numberEl.style.whiteSpace = 'nowrap';
             numberEl.style.transform = `translateX(calc(-50% + ${numberShift}px))`
@@ -2716,10 +2772,15 @@
             backDesignLayer.style.width = (safeIn * pxPerInch) + 'px';
             backDesignLayer.style.maxWidth = 'none';
 
+            // Natural widths go to the server, which applies the squeeze rules
+            // once; the finals here are what the customer is looking at.
+            state.naturalNameWidthIn = naturalNameIn;
+            state.naturalNumberWidthIn = naturalNumberIn;
             state.measuredNameWidthIn = naturalNameIn * condense;
-            state.measuredNumberWidthIn = naturalNumberIn * numberCondense;
+            state.measuredNumberWidthIn = numberWidthIn;
             state.nameCondense = condense;
             state.numberCondense = numberCondense;
+            state.numberDigits = numberFit.digits;
             state.nameLetterSpacingEm = spacingEm;
             state.numberLetterSpacingEm = numberSpacingEm;
             state.backDesignName = name;
@@ -3681,7 +3742,9 @@
             const namePx = nameInkPx / nameInk.ink;
             const numPx = numInkPx / numberInk.ink;
             const nameSpacing = namePx * spacingEm;
-            const numberSpacing = numPx * numberSpacingEm;
+            const safePx = safeWidthIn() * dpi;
+            const numberFit = numberGroupFit(number, font, numPx, numberSpacingEm, safePx);
+            const numberSpacing = numPx * numberFit.spacingEm;
 
             const textColor = state.backDesignTextColor
                 || (document.getElementById('backDesignTextColor') || {}).value || '#ffffff';
@@ -3704,12 +3767,10 @@
             }
 
             const naturalNamePx = measureSpaced(name, namePx, nameSpacing);
-            const numberWpx = measureSpaced(number, numPx, numberSpacing);
-            const safePx = safeWidthIn() * dpi;
             const condense = (name && naturalNamePx > safePx) ? (safePx / naturalNamePx) : 1;
-            const numberCondense = (number && numberWpx > safePx) ? (safePx / numberWpx) : 1;
+            const numberCondense = numberFit.scale;
             const nameWpx = naturalNamePx * condense;
-            const contentW = Math.max(nameWpx, numberWpx * numberCondense, 1);
+            const contentW = Math.max(nameWpx, numberFit.widthPx, 1);
             // Ink to ink, so the PNG measures what the transfer sheet says.
             const contentH = (name ? nameInkPx : 0) + (name && number ? gapPx : 0) + (number ? numInkPx : 0);
             // Only enough margin for the outline stroke to land inside the file.
@@ -3823,8 +3884,11 @@
                 formData.append('unit_price', unitPrice);
                 if (state.designWidth) formData.append('design_width', state.designWidth);
                 if (state.designHeight) formData.append('design_height', state.designHeight);
-                if (state.measuredNameWidthIn) formData.append('name_width_in', state.measuredNameWidthIn);
-                if (state.measuredNumberWidthIn) formData.append('number_width_in', state.measuredNumberWidthIn);
+                // Natural glyph widths — the server applies the squeeze rules.
+                const naturalNameW = state.naturalNameWidthIn || state.measuredNameWidthIn;
+                const naturalNumberW = state.naturalNumberWidthIn || state.measuredNumberWidthIn;
+                if (naturalNameW) formData.append('name_width_in', naturalNameW);
+                if (naturalNumberW) formData.append('number_width_in', naturalNumberW);
                 
                 if (state.designFile) {
                     formData.append('design', state.designFile);

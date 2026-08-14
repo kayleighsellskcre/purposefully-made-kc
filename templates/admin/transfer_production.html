@@ -85,7 +85,8 @@
                 <td>
                     {% if row.kind == 'personalized' %}
                     Name {{ row.name_width_display }}″ W × {{ row.name_height_display }}″ H<br>
-                    Number {{ row.number_width_display }}″ W × {{ row.number_height_display }}″ H<br>
+                    Number {{ row.number_width_display }}″ W × {{ row.number_height_display }}″ H{% if row.number_digits %} ({{ row.number_digits }}-digit){% endif %}<br>
+                    Gap {{ row.gap_display }}″<br>
                     Combined {{ row.combined_width_display }}″ W × {{ row.combined_height_display }}″ H
                     {% else %}
                     {{ row.width_display }}″ W × {{ row.height_display }}″ H
@@ -93,7 +94,9 @@
                 </td>
                 <td>
                     {% if row.kind == 'personalized' %}
-                    {% if row.condense_percent %}{{ row.condense_percent }}% condensed{% else %}none{% endif %}
+                    {% if row.condense_percent %}Name {{ row.condense_percent }}% condensed{% endif %}
+                    {% if row.number_scale_percent %}{% if row.condense_percent %}<br>{% endif %}Number {{ row.number_scale_percent }}% narrower{% endif %}
+                    {% if not row.condense_percent and not row.number_scale_percent %}none{% endif %}
                     {% else %}
                     —
                     {% endif %}

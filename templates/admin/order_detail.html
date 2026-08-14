@@ -350,6 +350,8 @@
                     <dl>
                         <div><dt>Number</dt><dd>{{ prod.back.number or '—' }}</dd></div>
                         <div><dt>Number transfer</dt><dd>{{ prod.back.number_width_display }}″ W × {{ prod.back.number_height_display }}″ H</dd></div>
+                        <div><dt>Digits</dt><dd>{{ prod.back.number_digits or '—' }}</dd></div>
+                        <div><dt>Horizontal scale</dt><dd>{% if prod.back.number_scale_percent %}{{ prod.back.number_scale_percent }}% narrower ({{ '%.3f'|format(prod.back.number_scale) }}× of {{ prod.back.number_width_natural_display }}″){% else %}none{% endif %}</dd></div>
                         <div><dt>Order by</dt><dd>HEIGHT</dd></div>
                     </dl>
                 </section>
@@ -357,11 +359,11 @@
                     <h3>COMBINED BACK LAYOUT</h3>
                     <dl>
                         <div><dt>Garment</dt><dd>{{ prod.back.garment_style or item.product_name }}</dd></div>
-                        <div><dt>Size</dt><dd>{{ prod.back.age_group|title }} {{ prod.back.size }}</dd></div>
+                        <div><dt>Category / size</dt><dd>{{ (prod.back.category or prod.back.age_group)|title }} {{ prod.back.size }}{% if prod.back.layout_label %} ({{ prod.back.layout_label }}){% endif %}</dd></div>
                         <div><dt>Color</dt><dd>{{ prod.back.color }}</dd></div>
                         <div><dt>Placement</dt><dd>Center Back</dd></div>
                         <div><dt>Combined layout</dt><dd>{{ prod.back.combined_width_display }}″ W × {{ prod.back.combined_height_display }}″ H</dd></div>
-                        <div><dt>Spacing</dt><dd>{{ prod.back.gap_display }}″</dd></div>
+                        <div><dt>Spacing</dt><dd>{{ prod.back.gap_display }}″ (visible name bottom to number top)</dd></div>
                         <div><dt>Quantity</dt><dd>{{ prod.back.quantity }}</dd></div>
                     </dl>
                     {% if prod.back.exceeds_safe_area %}<p class="od-xfer-warn">Exceeds safe printable area for this size.</p>{% endif %}
