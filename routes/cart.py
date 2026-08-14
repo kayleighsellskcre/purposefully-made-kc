@@ -337,23 +337,24 @@ def add():
     )
 
     if back_design_meta and transfer_production.get('back'):
+        back = transfer_production.get('back') or {}
         back_design_meta.update({
-            'name_width': transfer_production['back']['name_width'],
-            'name_width_natural': transfer_production['back']['name_width_natural'],
-            'name_height': transfer_production['back']['name_height'],
-            'number_width': transfer_production['back']['number_width'],
-            'number_width_natural': transfer_production['back']['number_width_natural'],
-            'number_height': transfer_production['back']['number_height'],
-            'number_digits': transfer_production['back']['number_digits'],
-            'number_scale': transfer_production['back']['number_scale'],
-            'number_scale_percent': transfer_production['back']['number_scale_percent'],
-            'gap': transfer_production['back']['gap'],
-            'combined_width': transfer_production['back']['combined_width'],
-            'combined_height': transfer_production['back']['combined_height'],
-            'condense': transfer_production['back']['condense'],
-            'condense_percent': transfer_production['back']['condense_percent'],
-            'age_group': transfer_production['back']['age_group'],
-            'category': transfer_production['back']['category'],
+            'name_width': back.get('name_width'),
+            'name_width_natural': back.get('name_width_natural'),
+            'name_height': back.get('name_height'),
+            'number_width': back.get('number_width'),
+            'number_width_natural': back.get('number_width_natural'),
+            'number_height': back.get('number_height'),
+            'number_digits': back.get('number_digits'),
+            'number_scale': back.get('number_scale'),
+            'number_scale_percent': back.get('number_scale_percent'),
+            'gap': back.get('gap'),
+            'combined_width': back.get('combined_width'),
+            'combined_height': back.get('combined_height'),
+            'condense': back.get('condense'),
+            'condense_percent': back.get('condense_percent'),
+            'age_group': back.get('age_group'),
+            'category': back.get('category'),
         })
 
     front = (transfer_production or {}).get('front') or {}

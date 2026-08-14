@@ -29,7 +29,7 @@
                 <td align="center" style="padding:28px 24px;">
                   <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.75);font-family:Arial,sans-serif;">Order Number</p>
                   <p style="margin:0;font-family:'Georgia',serif;font-size:30px;font-weight:700;color:#fff;letter-spacing:0.06em;">{{ order.order_number }}</p>
-                  <p style="margin:10px 0 0;font-size:13px;color:rgba(255,255,255,0.8);font-family:Arial,sans-serif;">Placed on {{ order.created_at.strftime('%B %d, %Y') }} at {{ order.created_at.strftime('%I:%M %p') }} UTC</p>
+                  <p style="margin:10px 0 0;font-size:13px;color:rgba(255,255,255,0.8);font-family:Arial,sans-serif;">Placed on {% if order.created_at %}{{ order.created_at.strftime('%B %d, %Y') }} at {{ order.created_at.strftime('%I:%M %p') }} UTC{% else %}just now{% endif %}</p>
                 </td>
               </tr>
             </table>

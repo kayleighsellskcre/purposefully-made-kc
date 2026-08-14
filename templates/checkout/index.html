@@ -285,7 +285,9 @@ function updateTotals(shippingCost) {
 }
 
 // Submit payment
+let placingOrder = false;
 document.getElementById('submit-payment').addEventListener('click', async () => {
+    if (placingOrder) return;
     if (currentMethod === 'card') {
         await handleStripePayment();
     } else if (currentMethod === 'cash') {
@@ -295,8 +297,49 @@ document.getElementById('submit-payment').addEventListener('click', async () => 
     }
 });
 
-async function handleStripePayment() {
+function restorePayButton() {
+    placingOrder = false;
     const button = document.getElementById('submit-payment');
+    if (!button) return;
+    button.disabled = false;
+    button.innerHTML = 'Complete Order - $<span id="total-amount">{{ "%.2f"|format(totals.total) }}</span>';
+}
+
+function checkoutToken() {
+    try {
+        let token = sessionStorage.getItem('pmkc_checkout_token');
+        if (!token) {
+            token = (crypto.randomUUID && crypto.randomUUID()) || (Date.now() + '-' + Math.random());
+            sessionStorage.setItem('pmkc_checkout_token', token);
+        }
+        return token;
+    } catch (e) {
+        return Date.now() + '-' + Math.random();
+    }
+}
+
+function validateCheckoutFields() {
+    const email = (document.getElementById('email') || {}).value || '';
+    const first = (document.getElementById('first_name') || {}).value || '';
+    const last = (document.getElementById('last_name') || {}).value || '';
+    if (!email.trim()) return 'Please enter your email.';
+    if (!first.trim() || !last.trim()) return 'Please enter your first and last name.';
+    if (currentFulfillment === 'shipping') {
+        const needed = ['ship_street', 'ship_city', 'ship_state', 'ship_zip'];
+        for (const id of needed) {
+            if (!((document.getElementById(id) || {}).value || '').trim()) {
+                return 'Please complete the shipping address.';
+            }
+        }
+    }
+    return null;
+}
+
+async function handleStripePayment() {
+    const fieldError = validateCheckoutFields();
+    if (fieldError) { PMKC.showFlash(fieldError, 'error'); return; }
+    const button = document.getElementById('submit-payment');
+    placingOrder = true;
     button.disabled = true;
     button.textContent = 'Processing...';
     
@@ -325,30 +368,29 @@ async function handleStripePayment() {
         
         if (error) {
             document.getElementById('card-errors').textContent = error.message;
-            button.disabled = false;
-            button.innerHTML = 'Complete Order - $<span id="total-amount">{{ "%.2f"|format(totals.total) }}</span>';
+            restorePayButton();
         } else {
-            // Complete order
             await completeOrder(paymentIntent.id);
         }
     } catch (error) {
         PMKC.showFlash('Payment failed: ' + error.message, 'error');
-        button.disabled = false;
-        button.innerHTML = 'Complete Order - $<span id="total-amount">{{ "%.2f"|format(totals.total) }}</span>';
+        restorePayButton();
     }
 }
 
 async function handleCashPayment() {
+    const fieldError = validateCheckoutFields();
+    if (fieldError) { PMKC.showFlash(fieldError, 'error'); return; }
     const button = document.getElementById('submit-payment');
+    placingOrder = true;
     button.disabled = true;
     button.textContent = 'CREATING ORDER...';
 
     try {
         await completeOrder(null, 'cash');
     } catch (error) {
-        button.disabled = false;
-        button.innerHTML = 'Complete Order - $<span id="total-amount">{{ "%.2f"|format(totals.total) }}</span>';
-        PMKC.showFlash('Order failed: ' + error.message, 'error');
+        restorePayButton();
+        PMKC.showFlash(error.message, 'error');
     }
 }
 
@@ -365,7 +407,7 @@ async function completeOrder(paymentId, paymentMethodOverride) {
     
     const response = await fetch('/checkout/complete', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
         body: JSON.stringify({
             payment_method: paymentMethod,
             payment_id: paymentId,
@@ -374,18 +416,24 @@ async function completeOrder(paymentId, paymentMethodOverride) {
             first_name: document.getElementById('first_name').value,
             last_name: document.getElementById('last_name').value,
             phone: document.getElementById('phone').value,
-            shipping_info: shippingInfo
+            shipping_info: shippingInfo,
+            checkout_token: checkoutToken()
         })
     });
     
     let data;
+    const contentType = response.headers.get('content-type') || '';
     try {
+        if (!contentType.includes('application/json')) {
+            throw new Error('not-json');
+        }
         data = await response.json();
     } catch (_) {
-        throw new Error('Server error — please try again or contact us.');
+        throw new Error('The server had trouble saving this order (SERVER_ERROR). Your cart is still here — please try again.');
     }
 
     if (data.success) {
+        try { sessionStorage.removeItem('pmkc_checkout_token'); } catch (e) {}
         // Clear the cart badge immediately so it doesn't linger while redirecting
         const cartBadge = document.querySelector('.cart-count, .cart-badge, [data-cart-count]');
         if (cartBadge) cartBadge.textContent = '0';
@@ -395,7 +443,8 @@ async function completeOrder(paymentId, paymentMethodOverride) {
 
         window.location.href = data.redirect_url;
     } else {
-        throw new Error(data.error || 'Something went wrong.');
+        const code = data.error_code ? ' (' + data.error_code + ')' : '';
+        throw new Error((data.error || 'Something went wrong.') + code);
     }
 }
 </script>

@@ -542,6 +542,27 @@ def create_app(config_class=Config):
             db.session.rollback()
         except Exception:
             pass
+        wants_json = False
+        try:
+            accept = request.headers.get('Accept') or ''
+            wants_json = (
+                request.path.startswith('/checkout/')
+                or request.path.startswith('/cart/')
+                or request.path.startswith('/api/')
+                or request.is_json
+                or 'application/json' in accept
+                or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            )
+        except Exception:
+            pass
+        if wants_json:
+            from flask import jsonify as _jsonify
+            app.logger.exception('internal_error json path=%s: %s', getattr(request, 'path', '?'), error)
+            return _jsonify({
+                'success': False,
+                'error': 'Something went wrong. Your cart is still saved — please try again.',
+                'error_code': 'SERVER_ERROR',
+            }), 500
         try:
             return render_template('errors/500.html'), 500
         except Exception as tmpl_err:
