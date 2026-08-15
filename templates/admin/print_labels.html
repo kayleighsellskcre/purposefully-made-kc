@@ -279,22 +279,12 @@
                     <div class="pl-filter-group">
                         <span class="pl-filter-label">Status</span>
                         <div class="pl-status-pills">
-                            <label class="pl-pill {% if 'new' in selected_status %}pl-pill-on{% endif %}">
-                                <input type="checkbox" name="status" value="new" {% if 'new' in selected_status %}checked{% endif %} hidden>
-                                Order Received
+                            {% for sid, sname, _desc in stages %}
+                            <label class="pl-pill {% if sid in selected_status %}pl-pill-on{% endif %}">
+                                <input type="checkbox" name="stage" value="{{ sid }}" {% if sid in selected_status %}checked{% endif %} hidden>
+                                {{ sname }}
                             </label>
-                            <label class="pl-pill {% if 'paid' in selected_status %}pl-pill-on{% endif %}">
-                                <input type="checkbox" name="status" value="paid" {% if 'paid' in selected_status %}checked{% endif %} hidden>
-                                Paid
-                            </label>
-                            <label class="pl-pill {% if 'in_production' in selected_status %}pl-pill-on{% endif %}">
-                                <input type="checkbox" name="status" value="in_production" {% if 'in_production' in selected_status %}checked{% endif %} hidden>
-                                In Production
-                            </label>
-                            <label class="pl-pill {% if 'ready' in selected_status %}pl-pill-on{% endif %}">
-                                <input type="checkbox" name="status" value="ready" {% if 'ready' in selected_status %}checked{% endif %} hidden>
-                                Packaged &amp; Ready
-                            </label>
+                            {% endfor %}
                         </div>
                     </div>
 

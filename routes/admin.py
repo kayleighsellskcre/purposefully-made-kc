@@ -2402,15 +2402,15 @@ def blank_apparel_list():
 @admin_required
 def print_labels():
     """Generate printable order labels for sticker paper (3 columns × 10 rows = 30 per sheet)"""
-    from utils.production_stages import OPEN_STATUSES
+    from utils.production_stages import STAGES, orders_for_stages
     collection_id = request.args.get('collection')
     order_id = request.args.get('order_id', type=int)
-    status_filter = request.args.getlist('status') or list(OPEN_STATUSES)
+    stage_filter = request.args.getlist('stage') or [sid for sid, _name, _desc in STAGES]
 
     if order_id:
         query = Order.query.filter_by(id=order_id)
     else:
-        query = Order.query.filter(Order.status.in_(status_filter))
+        query = orders_for_stages(stage_filter)
         if collection_id:
             query = query.filter_by(collection_id=collection_id)
 
@@ -2420,8 +2420,9 @@ def print_labels():
     return render_template('admin/print_labels.html',
                          orders=orders,
                          collections=collections,
-                         selected_status=status_filter,
-                         selected_collection=collection_id)
+                         selected_status=stage_filter,
+                         selected_collection=collection_id,
+                         stages=STAGES)
 
 
 @admin_bp.route('/production/bulk-sheet')

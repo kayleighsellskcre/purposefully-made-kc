@@ -56,6 +56,23 @@ def orders_for_stage(stage_id):
     return query.filter(Order.status.in_(OPEN_STATUSES))
 
 
+def orders_for_stages(stage_ids):
+    """Orders in any of the given production stages, newest last."""
+    ids = []
+    seen = set()
+    for raw in stage_ids or []:
+        stage = normalize_stage_arg(raw)
+        if stage == 'all':
+            return Order.query.filter(Order.status.in_(OPEN_STATUSES))
+        for order in orders_for_stage(stage).all():
+            if order.id not in seen:
+                seen.add(order.id)
+                ids.append(order.id)
+    if not ids:
+        return Order.query.filter(Order.id == -1)
+    return Order.query.filter(Order.id.in_(ids))
+
+
 def normalize_stage_arg(value):
     """Map old status filters onto production stages."""
     if not value:
