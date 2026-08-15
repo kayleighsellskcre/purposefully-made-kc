@@ -299,7 +299,13 @@ def orders_completed():
 def order_detail(order_id):
     """View order details"""
     from utils.print_sizes import get_print_width_for_size, production_from_order_item
+    from utils.order_costs import apply_order_defaults
     order = Order.query.get_or_404(order_id)
+    try:
+        if apply_order_defaults(order):
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
     def get_print_width(size, product=None):
         return get_print_width_for_size(size, product)
     def get_display_print_width(item):

@@ -86,6 +86,7 @@ class Config:
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or os.environ.get('MAIL_USERNAME') or 'noreply@purposefullymadekc.com'
+    MAIL_TIMEOUT = int(os.environ.get('MAIL_TIMEOUT', 8))
     ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL')
     
     # Shipping

@@ -413,31 +413,35 @@ async function completeOrder(paymentId, paymentMethodOverride) {
         zip: document.getElementById('ship_zip').value
     } : null;
     
-    const response = await fetch('/checkout/complete', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-        body: JSON.stringify({
-            payment_method: paymentMethod,
-            payment_id: paymentId,
-            shipping_method: currentFulfillment,
-            email: document.getElementById('email').value,
-            first_name: document.getElementById('first_name').value,
-            last_name: document.getElementById('last_name').value,
-            phone: document.getElementById('phone').value,
-            shipping_info: shippingInfo,
-            checkout_token: checkoutToken()
-        })
-    });
-    
-    let data;
-    const contentType = response.headers.get('content-type') || '';
-    try {
-        if (!contentType.includes('application/json')) {
-            throw new Error('not-json');
-        }
-        data = await response.json();
-    } catch (_) {
-        throw new Error('The server had trouble saving this order (SERVER_ERROR). Your cart is still here — please try again.');
+    const payload = {
+        payment_method: paymentMethod,
+        payment_id: paymentId,
+        shipping_method: currentFulfillment,
+        email: document.getElementById('email').value,
+        first_name: document.getElementById('first_name').value,
+        last_name: document.getElementById('last_name').value,
+        phone: document.getElementById('phone').value,
+        shipping_info: shippingInfo,
+        checkout_token: checkoutToken()
+    };
+
+    async function readOrderResponse(response) {
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) return null;
+        try { return await response.json(); } catch (_) { return null; }
+    }
+
+    let data = null;
+    for (let attempt = 0; attempt < 2 && !data; attempt++) {
+        const response = await fetch('/checkout/complete', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        data = await readOrderResponse(response);
+    }
+    if (!data) {
+        throw new Error('The order may already be saved. Check your email or tap Complete Order once more (ORDER_RETRY).');
     }
 
     if (data.success) {

@@ -108,6 +108,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS order_type VARCHAR(20) DEFAULT 'retail'",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS due_date TIMESTAMP",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS cost_of_goods DOUBLE PRECISION",
+                    "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS checkout_token VARCHAR(64)",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS profit DOUBLE PRECISION",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS is_refunded BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS refund_notes TEXT",

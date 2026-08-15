@@ -150,7 +150,7 @@
             <div class="od-profit-left">
                 <span class="od-card-eyebrow">Management</span>
                 <h2 class="od-card-title">Details &amp; Profit</h2>
-                <p class="od-card-hint">Track cost of goods, profit margin, due date, and refund status.</p>
+                <p class="od-card-hint">Due date starts two weeks out. Cost of goods starts as the blank shirt from the distributor — add transfer cost after you order it.</p>
             </div>
             <div class="od-profit-right">
                 <form method="POST" action="{{ url_for('admin.update_order_details', order_id=order.id) }}" class="od-profit-form">
@@ -169,6 +169,7 @@
                         <div class="od-field">
                             <label>Due Date</label>
                             <input type="date" name="due_date" class="od-input" value="{{ order.due_date.strftime('%Y-%m-%d') if order.due_date else '' }}">
+                            <p class="od-field-hint">Defaults to 14 days after the order date.</p>
                         </div>
                     </div>
                     <div class="od-form-row">
@@ -176,8 +177,9 @@
                             <label>Cost of Goods (COGS)</label>
                             <div class="od-prefix-wrap">
                                 <span class="od-prefix">$</span>
-                                <input type="number" name="cost_of_goods" class="od-input od-input-prefixed" step="0.01" min="0" value="{{ order.cost_of_goods or '' }}" placeholder="0.00">
+                                <input type="number" name="cost_of_goods" class="od-input od-input-prefixed" step="0.01" min="0" value="{{ '%.2f'|format(order.cost_of_goods) if order.cost_of_goods is not none else '' }}" placeholder="0.00">
                             </div>
+                            <p class="od-field-hint">Blank shirt cost from the distributor. Update this after you add the transfer.</p>
                         </div>
                         <div class="od-field">
                             <label>Profit Override</label>
@@ -558,6 +560,12 @@
     margin-bottom: 1rem;
 }
 
+.od-field-hint {
+    margin: 0.25rem 0 0;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
 .od-field label {
     font-size: 0.65rem;
     font-weight: 700;

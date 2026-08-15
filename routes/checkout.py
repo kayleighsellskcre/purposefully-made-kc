@@ -3,11 +3,13 @@ from flask_login import current_user, login_required
 from flask_mail import Message
 from models import db, Product, Order, OrderItem, Design, Address
 from datetime import datetime
+from threading import Thread
 import math
 import secrets
 import stripe
 import paypalrestsdk
 import json
+from utils.order_costs import default_due_date, shirt_unit_cost
 
 
 def _new_request_id():
@@ -143,7 +145,7 @@ def _send_order_confirmation_email(order):
         html_body = render_template('email/order_confirmation.html', order=order)
 
         _prev = _socket.getdefaulttimeout()
-        _socket.setdefaulttimeout(10)
+        _socket.setdefaulttimeout(8)
         try:
             msg = Message(
                 subject=f"Your Order is Confirmed ✓ — {order.order_number}",
@@ -177,7 +179,7 @@ def _send_order_confirmation_email(order):
             f"View order: {admin_base_url}/admin/orders/{order.id}"
         )
         _prev = _socket.getdefaulttimeout()
-        _socket.setdefaulttimeout(10)
+        _socket.setdefaulttimeout(8)
         try:
             admin_msg = Message(
                 subject=f"🛍 New Order — {order.order_number} · ${order.total:.2f}",
@@ -199,6 +201,23 @@ def _send_order_confirmation_email(order):
         pass  # SMS is best-effort — never block the order
 
     return email_sent
+
+
+def queue_order_confirmation_email(order_id):
+    """Send receipt and alerts after the customer already got a success response."""
+    app = current_app._get_current_object()
+
+    def _run():
+        try:
+            with app.app_context():
+                order = Order.query.get(order_id)
+                if order:
+                    send_order_confirmation_email(order)
+        except Exception:
+            app.logger.exception('background confirmation email failed for order_id=%s', order_id)
+
+    Thread(target=_run, daemon=True).start()
+
 
 def get_cart():
     """Get cart from session"""
@@ -341,6 +360,20 @@ def complete():
                     'replayed': True,
                     'request_id': rid,
                 })
+        if checkout_token:
+            existing = Order.query.filter_by(checkout_token=checkout_token).first()
+            if existing:
+                session['checkout_success_token'] = checkout_token
+                session['checkout_success_order'] = existing.order_number
+                session['cart'] = []
+                session.modified = True
+                return jsonify({
+                    'success': True,
+                    'order_number': existing.order_number,
+                    'redirect_url': url_for('checkout.confirmation', order_number=existing.order_number),
+                    'replayed': True,
+                    'request_id': rid,
+                })
 
         payment_method = (data.get('payment_method') or '').strip() or 'cash'
         payment_id = data.get('payment_id')
@@ -398,6 +431,8 @@ def complete():
             paypal_order_id=payment_id if payment_method == 'paypal' and payment_id else None,
             paid_at=None if is_cash else datetime.utcnow(),
             status='new' if is_cash else 'paid',
+            due_date=default_due_date(),
+            checkout_token=checkout_token,
         )
 
         try:
@@ -420,6 +455,8 @@ def complete():
         db.session.flush()
 
         saved_items = 0
+        blank_cogs = 0.0
+        cogs_found = False
         for cart_item in cart:
             try:
                 product = Product.query.get(_int_or_none(cart_item.get('product_id')))
@@ -510,6 +547,10 @@ def complete():
                     pass
                 db.session.add(order_item)
                 saved_items += 1
+                shirt_cost = shirt_unit_cost(product)
+                if shirt_cost is not None:
+                    blank_cogs += shirt_cost * qty
+                    cogs_found = True
             except Exception as item_err:
                 current_app.logger.exception('checkout rid=%s item failed: %s', rid, item_err)
                 db.session.rollback()
@@ -529,6 +570,10 @@ def complete():
                 400,
                 request_id=rid,
             )
+
+        if cogs_found:
+            order.cost_of_goods = round(blank_cogs, 2)
+            order.profit = round(float(order.total or 0) - order.cost_of_goods, 2)
 
         db.session.commit()
 
@@ -569,15 +614,16 @@ def complete():
             request_id=rid,
         )
 
-    # Cart clears only after the order row exists. Email is best-effort.
+    # Cart clears only after the order row exists. Email goes out after we
+    # answer the browser so SMTP cannot turn a saved order into a timeout.
     session['checkout_success_token'] = checkout_token
     session['checkout_success_order'] = order.order_number
     session['confirmation_email_sent_for'] = order.order_number
+    session['confirmation_email_sent'] = True
     session['cart'] = []
     session.modified = True
 
-    email_sent = send_order_confirmation_email(order)
-    session['confirmation_email_sent'] = email_sent
+    queue_order_confirmation_email(order.id)
 
     return jsonify({
         'success': True,
