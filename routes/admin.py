@@ -507,6 +507,22 @@ def delete_order(order_id):
     return redirect(url_for('admin.orders'))
 
 
+@admin_bp.route('/orders/<int:order_id>/resend-email', methods=['POST'])
+@admin_required
+def resend_order_email(order_id):
+    """Resend the customer confirmation email for an existing order."""
+    from routes.checkout import send_order_confirmation_email
+    order = Order.query.get_or_404(order_id)
+    if not order.email:
+        flash('This order has no customer email on file.', 'error')
+        return redirect(url_for('admin.order_detail', order_id=order.id))
+    if send_order_confirmation_email(order, force=True):
+        flash(f'Confirmation email sent to {order.email}.', 'success')
+    else:
+        flash('Could not send the confirmation email. Check MAIL_SERVER, MAIL_USERNAME, and MAIL_PASSWORD on Railway.', 'error')
+    return redirect(url_for('admin.order_detail', order_id=order.id))
+
+
 @admin_bp.route('/orders/<int:order_id>/update-details', methods=['POST'])
 @admin_required
 def update_order_details(order_id):

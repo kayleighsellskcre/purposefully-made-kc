@@ -39,7 +39,7 @@
 
             <div class="confirmation-message">
                 <h2>What's Next?</h2>
-                <p>A confirmation email is on its way to <strong>{{ order.email }}</strong>. Please save this page too, just in case.</p>
+                <p id="email-status">{% if email_sent %}A confirmation email was sent to <strong>{{ order.email }}</strong>. Please save this page too, just in case.{% else %}We're sending a confirmation email to <strong>{{ order.email }}</strong> now. Please save this page too, just in case.{% endif %}</p>
 
                 {% if order.fulfillment_method == 'shipping' %}
                 <p>Your order will be shipped to:</p>
@@ -108,4 +108,27 @@
 .confirmation-actions { padding: 2rem; display: flex; gap: 1rem; justify-content: center; }
 @media (max-width: 768px) { .confirmation-actions { flex-direction: column; } }
 </style>
+{% if not email_sent %}
+<script>
+(function () {
+    var statusEl = document.getElementById('email-status');
+    var email = {{ order.email|tojson }};
+    fetch({{ url_for('checkout.send_confirmation_email_now', order_number=order.order_number)|tojson }}, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    }).then(function (res) { return res.json(); }).then(function (data) {
+        if (!statusEl) return;
+        if (data && data.success) {
+            statusEl.innerHTML = 'A confirmation email is on its way to <strong>' + email + '</strong>. Please save this page too, just in case.';
+        } else {
+            statusEl.innerHTML = 'We could not send the confirmation email just now. Please save this page — we still have your order and will email you when it is ready.';
+        }
+    }).catch(function () {
+        if (statusEl) {
+            statusEl.innerHTML = 'We could not send the confirmation email just now. Please save this page — we still have your order and will email you when it is ready.';
+        }
+    });
+})();
+</script>
+{% endif %}
 {% endblock %}

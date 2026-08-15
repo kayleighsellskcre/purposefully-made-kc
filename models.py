@@ -389,6 +389,7 @@ class Order(db.Model):
     cost_of_goods = db.Column(db.Float)  # Total COGS for this order
     profit = db.Column(db.Float)  # total - cost_of_goods
     checkout_token = db.Column(db.String(64), index=True)
+    confirmation_email_sent_at = db.Column(db.DateTime)
     is_refunded = db.Column(db.Boolean, default=False)
     refund_notes = db.Column(db.Text)
     

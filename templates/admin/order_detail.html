@@ -70,6 +70,19 @@
                     <span class="od-info-label">Email</span>
                     <a href="mailto:{{ order.email }}" class="od-info-val od-link">{{ order.email }}</a>
                 </div>
+                <div class="od-info-row">
+                    <span class="od-info-label">Receipt</span>
+                    <span class="od-info-val">
+                        {% if order.confirmation_email_sent_at %}
+                        Sent {{ order.confirmation_email_sent_at.strftime('%b %d at %I:%M %p') }}
+                        {% else %}
+                        Not sent yet
+                        {% endif %}
+                    </span>
+                </div>
+                <form method="POST" action="{{ url_for('admin.resend_order_email', order_id=order.id) }}" style="margin-top: 0.85rem;">
+                    <button type="submit" class="od-btn od-btn-outline">Resend confirmation</button>
+                </form>
                 {% if order.phone %}
                 <div class="od-info-row">
                     <span class="od-info-label">Phone</span>

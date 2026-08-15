@@ -75,7 +75,31 @@ def _dumps(value):
 checkout_bp = Blueprint('checkout', __name__, url_prefix='/checkout')
 
 
-def send_order_confirmation_email(order):
+def _mail_ready():
+    return bool(
+        current_app.extensions.get('mail')
+        and current_app.config.get('MAIL_SERVER')
+        and current_app.config.get('MAIL_USERNAME')
+        and current_app.config.get('MAIL_PASSWORD')
+    )
+
+
+def _mail_sender():
+    return (
+        current_app.config.get('MAIL_DEFAULT_SENDER')
+        or current_app.config.get('MAIL_USERNAME')
+    )
+
+
+def _render_email(template, **context):
+    try:
+        return render_template(template, **context)
+    except RuntimeError:
+        with current_app.test_request_context():
+            return render_template(template, **context)
+
+
+def send_order_confirmation_email(order, force=False):
     """Send a branded HTML receipt to the customer + a dedicated alert to admin.
 
     Never raises — a mail failure must not turn a saved order into a checkout 500.
@@ -84,7 +108,16 @@ def send_order_confirmation_email(order):
     import sys
 
     try:
-        return _send_order_confirmation_email(order)
+        if getattr(order, 'confirmation_email_sent_at', None) and not force:
+            return True
+        sent = _send_order_confirmation_email(order)
+        if sent:
+            try:
+                order.confirmation_email_sent_at = datetime.utcnow()
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+        return sent
     except Exception as e:
         print(f"Order confirmation email failed: {e}", file=sys.stderr)
         current_app.logger.exception('order confirmation email failed for %s', getattr(order, 'order_number', '?'))
@@ -97,11 +130,12 @@ def _send_order_confirmation_email(order):
     import sys
 
     mail = current_app.extensions.get('mail')
-    mail_ready = (
-        mail and
-        current_app.config.get('MAIL_SERVER') and
-        current_app.config.get('MAIL_USERNAME')
-    )
+    mail_ready = _mail_ready()
+    if not mail_ready:
+        current_app.logger.error(
+            'order email skipped for %s — MAIL_SERVER/USERNAME/PASSWORD not set',
+            getattr(order, 'order_number', '?'),
+        )
 
     # ── Build shared text pieces ───────────────────────────────────────────
     placed_at = order.created_at or datetime.utcnow()
@@ -142,21 +176,27 @@ def _send_order_confirmation_email(order):
             f"Made with purpose, for you.\n"
             f"— Purposefully Made KC"
         )
-        html_body = render_template('email/order_confirmation.html', order=order)
+        html_body = _render_email('email/order_confirmation.html', order=order)
 
+        timeout = int(current_app.config.get('MAIL_TIMEOUT') or 20)
         _prev = _socket.getdefaulttimeout()
-        _socket.setdefaulttimeout(8)
+        _socket.setdefaulttimeout(timeout)
         try:
             msg = Message(
                 subject=f"Your Order is Confirmed ✓ — {order.order_number}",
                 recipients=[order.email],
                 body=plain_body,
                 html=html_body,
+                sender=_mail_sender(),
             )
             mail.send(msg)
             email_sent = True
         except Exception as e:
             print(f"Customer confirmation email error: {e}", file=sys.stderr)
+            current_app.logger.exception(
+                'customer confirmation email error for %s',
+                getattr(order, 'order_number', '?'),
+            )
         finally:
             _socket.setdefaulttimeout(_prev)
 
@@ -164,7 +204,7 @@ def _send_order_confirmation_email(order):
     admin_email = current_app.config.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com'
     if mail_ready and admin_email:
         admin_base_url = current_app.config.get('ADMIN_BASE_URL', 'https://purposefullymadekc.com')
-        admin_html = render_template(
+        admin_html = _render_email(
             'email/admin_order_alert.html',
             order=order,
             admin_base_url=admin_base_url,
@@ -178,14 +218,16 @@ def _send_order_confirmation_email(order):
             f"Delivery: {delivery_text}\n\n"
             f"View order: {admin_base_url}/admin/orders/{order.id}"
         )
+        timeout = int(current_app.config.get('MAIL_TIMEOUT') or 20)
         _prev = _socket.getdefaulttimeout()
-        _socket.setdefaulttimeout(8)
+        _socket.setdefaulttimeout(timeout)
         try:
             admin_msg = Message(
                 subject=f"🛍 New Order — {order.order_number} · ${order.total:.2f}",
                 recipients=[admin_email],
                 body=admin_plain,
                 html=admin_html,
+                sender=_mail_sender(),
             )
             mail.send(admin_msg)
         except Exception as e:
@@ -630,8 +672,6 @@ def complete():
     # answer the browser so SMTP cannot turn a saved order into a timeout.
     session['checkout_success_token'] = checkout_token
     session['checkout_success_order'] = order.order_number
-    session['confirmation_email_sent_for'] = order.order_number
-    session['confirmation_email_sent'] = True
     session['cart'] = []
     session.modified = True
 
@@ -655,12 +695,24 @@ def confirmation(order_number):
         if not current_user.is_admin:
             flash('Order not found', 'error')
             return redirect(url_for('main.index'))
-    
-    # Check if confirmation email was sent (from session, for this order)
-    email_sent = False
-    if session.get('confirmation_email_sent_for') == order_number:
-        email_sent = session.get('confirmation_email_sent', False)
-        session.pop('confirmation_email_sent', None)
-        session.pop('confirmation_email_sent_for', None)
-    
+
+    email_sent = bool(getattr(order, 'confirmation_email_sent_at', None))
     return render_template('checkout/confirmation.html', order=order, email_sent=email_sent)
+
+
+@checkout_bp.route('/confirmation/<order_number>/send-email', methods=['POST'])
+def send_confirmation_email_now(order_number):
+    """Send the receipt while the thank-you page is still open.
+
+    Checkout returns immediately so SMTP cannot time out the order. This
+    follow-up request stays alive long enough for Gmail to accept the mail.
+    """
+    order = Order.query.filter_by(order_number=order_number).first_or_404()
+    if current_user.is_authenticated and order.user_id != current_user.id and not current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Order not found'}), 404
+    sent = send_order_confirmation_email(order)
+    return jsonify({
+        'success': bool(sent),
+        'already_sent': bool(getattr(order, 'confirmation_email_sent_at', None)),
+        'mail_ready': _mail_ready(),
+    })
