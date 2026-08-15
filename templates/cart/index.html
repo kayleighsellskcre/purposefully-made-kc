@@ -23,7 +23,7 @@
                         {% if item.display_image %}
                         {{ garment_proof(item.display_image, item.design_overlay, item.placement or 'center_chest', 'Front' if item.back_overlay else none) }}
                         {% if item.back_overlay %}
-                        {{ garment_proof(item.back_image, item.back_overlay, 'back_name_number', 'Back') }}
+                        {{ garment_proof(item.back_image, item.back_overlay, item.back_overlay_class or 'center_back', 'Back') }}
                         {% endif %}
                         {% else %}
                         <img src="{{ url_for('static', filename='img/placeholder-product.svg') }}"

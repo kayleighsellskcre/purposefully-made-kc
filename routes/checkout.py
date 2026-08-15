@@ -271,6 +271,17 @@ def index():
             enriched['placement'] = placement
             enriched['design_overlay'] = item.get('design_url') if placement in FRONT_PLACEMENTS else None
             enriched['back_overlay'] = item.get('back_design_url')
+            _back_meta = item.get('back_design_meta') or {}
+            if isinstance(_back_meta, str):
+                try:
+                    _back_meta = json.loads(_back_meta)
+                except Exception:
+                    _back_meta = {}
+            enriched['back_overlay_class'] = (
+                'back_name_number'
+                if (_back_meta.get('name') or _back_meta.get('number'))
+                else 'center_back'
+            )
             d_id = item.get('design_id')
             if d_id:
                 d = Design.query.get(int(d_id))
@@ -431,6 +442,7 @@ def complete():
             paypal_order_id=payment_id if payment_method == 'paypal' and payment_id else None,
             paid_at=None if is_cash else datetime.utcnow(),
             status='new' if is_cash else 'paid',
+            production_stage='order_received',
             due_date=default_due_date(),
             checkout_token=checkout_token,
         )

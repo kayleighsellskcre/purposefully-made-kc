@@ -10,6 +10,19 @@ from pathlib import Path
 
 cart_bp = Blueprint('cart', __name__, url_prefix='/cart')
 
+
+def _back_overlay_class(meta):
+    if isinstance(meta, str):
+        try:
+            meta = json.loads(meta)
+        except Exception:
+            meta = {}
+    if not isinstance(meta, dict):
+        meta = {}
+    if meta.get('name') or meta.get('number'):
+        return 'back_name_number'
+    return 'center_back'
+
 def get_cart():
     """Get cart from session. Isolate per user - clear if cart belongs to different user."""
     owner = session.get('cart_owner_id')
@@ -62,6 +75,7 @@ def index():
                 'display_image': front_image,
                 'design_overlay': front_design,
                 'back_overlay': item.get('back_design_url'),
+                'back_overlay_class': _back_overlay_class(item.get('back_design_meta')),
                 'placement': placement
             })
             subtotal += item_total

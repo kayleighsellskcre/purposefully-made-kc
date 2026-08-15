@@ -19,8 +19,10 @@
             </div>
         </div>
         <div class="od-header-right">
-            <span class="od-status-badge od-status-{{ order.status }}">{{ order.status.replace('_',' ').title() }}</span>
+            {% set stage_labels = {'order_received':'Order Received','waiting_supplies':'Waiting on Supplies','ready_to_press':'Ready to Press','pressed':'Pressed','packaged_ready':'Packaged & Ready'} %}
+            <span class="od-status-badge od-status-{{ order.production_stage or order.status }}">{{ stage_labels.get(order.production_stage, order.status.replace('_',' ').title()) }}</span>
             <span class="od-status-badge od-payment-{{ order.payment_status }}">{{ order.payment_status.title() }}</span>
+            <a href="{{ url_for('admin.print_labels', order_id=order.id) }}" class="od-btn od-btn-outline">Print label</a>
             <form id="deleteOrderForm" method="POST" action="{{ url_for('admin.delete_order', order_id=order.id) }}">
                 <button type="button" class="od-delete-btn" id="deleteOrderBtn">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
@@ -238,7 +240,7 @@
                     <div class="pm-proofs od-kit-proofs">
                         {{ garment_proof(kit.front_mockup_url, kit.front_overlay_url, kit.placement, 'Front') }}
                         {% if kit.has_back_print %}
-                        {{ garment_proof(kit.back_mockup_url, kit.back_overlay_url, 'back_name_number', 'Back') }}
+                        {{ garment_proof(kit.back_mockup_url, kit.back_overlay_url, kit.back_overlay_class or 'center_back', 'Back') }}
                         {% endif %}
                     </div>
                 </section>
@@ -338,6 +340,9 @@
                 {% if prod.back %}
                 <section class="od-xfer-card">
                     <h3>BACK NAME</h3>
+                    <a class="pm-print-preview od-piece-preview" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back-name') }}" title="Save name transfer">
+                        <img src="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back-name', inline=1) }}" alt="{{ prod.back.name or 'Name' }}">
+                    </a>
                     <dl>
                         <div><dt>Name</dt><dd>{{ prod.back.name or '—' }}</dd></div>
                         <div><dt>Font</dt><dd>{{ prod.back.font }}</dd></div>
@@ -346,9 +351,13 @@
                         <div><dt>Order by</dt><dd>HEIGHT</dd></div>
                         <div><dt>Horizontal adjustment</dt><dd>{% if prod.back.condense_percent %}{{ prod.back.condense_percent }}% condensed{% else %}none{% endif %}</dd></div>
                     </dl>
+                    <a class="od-btn od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back-name') }}">Save name PNG</a>
                 </section>
                 <section class="od-xfer-card">
                     <h3>BACK NUMBER</h3>
+                    <a class="pm-print-preview od-piece-preview" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back-number') }}" title="Save number transfer">
+                        <img src="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back-number', inline=1) }}" alt="{{ prod.back.number or 'Number' }}">
+                    </a>
                     <dl>
                         <div><dt>Number</dt><dd>{{ prod.back.number or '—' }}</dd></div>
                         <div><dt>Number transfer</dt><dd>{{ prod.back.number_width_display }}″ W × {{ prod.back.number_height_display }}″ H</dd></div>
@@ -356,6 +365,7 @@
                         <div><dt>Horizontal scale</dt><dd>{% if prod.back.number_scale_percent %}{{ prod.back.number_scale_percent }}% narrower ({{ '%.3f'|format(prod.back.number_scale or 0) }}× of {{ prod.back.number_width_natural_display or '—' }}″){% else %}none{% endif %}</dd></div>
                         <div><dt>Order by</dt><dd>HEIGHT</dd></div>
                     </dl>
+                    <a class="od-btn od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back-number') }}">Save number PNG</a>
                 </section>
                 <section class="od-xfer-card">
                     <h3>COMBINED BACK LAYOUT</h3>
@@ -466,9 +476,10 @@
     text-transform: uppercase;
     white-space: nowrap;
 }
-.od-status-new, .od-status-paid       { background: rgba(59,130,246,0.1);  color: #2563eb; }
-.od-status-in_production              { background: rgba(245,158,11,0.1);  color: #d97706; }
-.od-status-ready, .od-status-completed,
+.od-status-new, .od-status-paid, .od-status-order_received { background: rgba(59,130,246,0.1);  color: #2563eb; }
+.od-status-in_production, .od-status-waiting_supplies,
+.od-status-ready_to_press, .od-status-pressed { background: rgba(245,158,11,0.1);  color: #d97706; }
+.od-status-ready, .od-status-packaged_ready, .od-status-completed,
 .od-status-picked_up, .od-status-shipped { background: rgba(16,185,129,0.1); color: #059669; }
 .od-payment-paid                      { background: rgba(16,185,129,0.1);  color: #059669; }
 .od-payment-pending, .od-payment-unpaid { background: rgba(245,158,11,0.1); color: #d97706; }
@@ -943,6 +954,39 @@ a.od-btn-outline { color: var(--text-primary); }
 .od-xfer-card dl > div { display: grid; grid-template-columns: 42% 1fr; gap: 0.4rem; font-size: 0.82rem; }
 .od-xfer-card dt { color: var(--text-secondary); font-weight: 500; }
 .od-xfer-card dd { margin: 0; font-weight: 600; }
+.od-piece-preview {
+    display: flex;
+    min-height: 110px;
+    max-height: 160px;
+    margin: 0 0 0.75rem;
+    border-radius: 8px;
+}
+.od-piece-preview img {
+    max-height: 140px;
+    background: transparent;
+}
+.od-piece-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 110px;
+    max-height: 160px;
+    margin: 0 0 0.75rem;
+    border-radius: 8px;
+    background-color: #3a3d48;
+    background-image:
+        linear-gradient(45deg, #2f323c 25%, transparent 25%),
+        linear-gradient(-45deg, #2f323c 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #2f323c 75%),
+        linear-gradient(-45deg, transparent 75%, #2f323c 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+.od-piece-preview img {
+    max-height: 140px;
+    max-width: 100%;
+    object-fit: contain;
+}
 .od-xfer-warn {
     margin: 0.7rem 0 0;
     font-size: 0.78rem;

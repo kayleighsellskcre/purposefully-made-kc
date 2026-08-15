@@ -4,7 +4,7 @@
 
 {% block admin_content %}
 
-{% set _status = request.args.get('status') %}
+{% set _status = request.args.get('stage') or request.args.get('status') %}
 {% set _order_type = request.args.get('order_type') %}
 {% set _collection = request.args.get('collection') %}
 
@@ -15,11 +15,15 @@
         <h1 class="ord-title">Orders</h1>
         <p class="ord-lead">
             {% if orders.total == 1 %}1 order{% else %}{{ orders.total }} orders{% endif %}
-            {% if _status and _status != 'all' %}&nbsp;&mdash; filtered by <strong>{{ _status.replace('_',' ').title() }}</strong>{% endif %}
+            {% if _status and _status != 'all' %}&nbsp;&mdash; {{ {'order_received':'Order Received','waiting_supplies':'Waiting on Supplies','ready_to_press':'Ready to Press','pressed':'Pressed','packaged_ready':'Packaged & Ready'}.get(_status, _status.replace('_',' ').title()) }}{% endif %}
         </p>
     </div>
     <div class="ord-header-actions">
-        <a href="{{ url_for('admin.production_master', collection=request.args.get('collection')) }}" class="btn btn-primary ord-action-btn">
+        <a href="{{ url_for('admin.production_workflow') }}" class="btn btn-primary ord-action-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Production Workflow
+        </a>
+        <a href="{{ url_for('admin.production_master', collection=request.args.get('collection')) }}" class="btn btn-outline ord-action-btn">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             Production Master
         </a>
@@ -35,29 +39,29 @@
     <div class="ord-filter-row">
         <span class="ord-filter-label">Status</span>
         <div class="ord-chips">
-            <a href="{{ url_for('admin.orders', status='all', order_type=_order_type, collection=_collection) }}"
-               class="ord-chip {% if _status == 'all' or not _status %}ord-chip--active{% endif %}">All</a>
-            <a href="{{ url_for('admin.orders', status='new', order_type=_order_type, collection=_collection) }}"
-               class="ord-chip {% if _status == 'new' %}ord-chip--active{% endif %}">New</a>
-            <a href="{{ url_for('admin.orders', status='paid', order_type=_order_type, collection=_collection) }}"
-               class="ord-chip {% if _status == 'paid' %}ord-chip--active{% endif %}">Paid</a>
-            <a href="{{ url_for('admin.orders', status='in_production', order_type=_order_type, collection=_collection) }}"
-               class="ord-chip {% if _status == 'in_production' %}ord-chip--active{% endif %}">In Production</a>
-            <a href="{{ url_for('admin.orders', status='ready', order_type=_order_type, collection=_collection) }}"
-               class="ord-chip {% if _status == 'ready' %}ord-chip--active{% endif %}">Ready</a>
-            <a href="{{ url_for('admin.orders', status='completed', order_type=_order_type, collection=_collection) }}"
-               class="ord-chip {% if _status == 'completed' %}ord-chip--active{% endif %}">Completed</a>
+            <a href="{{ url_for('admin.orders', stage='all', order_type=_order_type, collection=_collection) }}"
+               class="ord-chip {% if _status == 'all' %}ord-chip--active{% endif %}">All Open</a>
+            <a href="{{ url_for('admin.orders', stage='order_received', order_type=_order_type, collection=_collection) }}"
+               class="ord-chip {% if _status == 'order_received' or _status == 'new' %}ord-chip--active{% endif %}">Order Received</a>
+            <a href="{{ url_for('admin.orders', stage='waiting_supplies', order_type=_order_type, collection=_collection) }}"
+               class="ord-chip {% if _status == 'waiting_supplies' %}ord-chip--active{% endif %}">Waiting on Supplies</a>
+            <a href="{{ url_for('admin.orders', stage='ready_to_press', order_type=_order_type, collection=_collection) }}"
+               class="ord-chip {% if _status == 'ready_to_press' %}ord-chip--active{% endif %}">Ready to Press</a>
+            <a href="{{ url_for('admin.orders', stage='pressed', order_type=_order_type, collection=_collection) }}"
+               class="ord-chip {% if _status == 'pressed' %}ord-chip--active{% endif %}">Pressed</a>
+            <a href="{{ url_for('admin.orders', stage='packaged_ready', order_type=_order_type, collection=_collection) }}"
+               class="ord-chip {% if _status == 'packaged_ready' or _status == 'ready' %}ord-chip--active{% endif %}">Packaged &amp; Ready</a>
             <a href="{{ url_for('admin.orders_completed') }}" class="ord-chip ord-chip--muted">All Completed</a>
         </div>
     </div>
     <div class="ord-filter-row">
         <span class="ord-filter-label">Type</span>
         <div class="ord-chips">
-            <a href="{{ url_for('admin.orders', status=_status, order_type='retail', collection=_collection) }}"
+            <a href="{{ url_for('admin.orders', stage=_status, order_type='retail', collection=_collection) }}"
                class="ord-chip {% if _order_type == 'retail' or not _order_type %}ord-chip--active{% endif %}">Retail</a>
-            <a href="{{ url_for('admin.orders', status=_status, order_type='wholesale', collection=_collection) }}"
+            <a href="{{ url_for('admin.orders', stage=_status, order_type='wholesale', collection=_collection) }}"
                class="ord-chip {% if _order_type == 'wholesale' %}ord-chip--active{% endif %}">Wholesale</a>
-            <a href="{{ url_for('admin.orders', status=_status, order_type='event', collection=_collection) }}"
+            <a href="{{ url_for('admin.orders', stage=_status, order_type='event', collection=_collection) }}"
                class="ord-chip {% if _order_type == 'event' %}ord-chip--active{% endif %}">Event</a>
         </div>
     </div>

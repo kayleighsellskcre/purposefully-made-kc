@@ -230,28 +230,25 @@ def index():
 @admin_required
 def orders():
     """Manage orders - Master Order Log"""
-    status = request.args.get('status')
+    from utils.production_stages import DONE_STATUSES, normalize_stage_arg, orders_for_stage
+    status = request.args.get('stage') or request.args.get('status')
     collection_id = request.args.get('collection')
     order_type = request.args.get('order_type')
     page = request.args.get('page', 1, type=int)
-    
-    # Default to 'new' tab when no status filter (shows new + paid orders - most relevant)
+
     if status is None or status == '':
-        redirect_args = {'status': 'new'}
+        redirect_args = {'stage': 'order_received'}
         if collection_id:
             redirect_args['collection'] = collection_id
         if order_type:
             redirect_args['order_type'] = order_type
         return redirect(url_for('admin.orders', **redirect_args))
-    
-    query = Order.query
-    
-    if status and status != 'all':
-        # "New" tab shows both new and paid (orders not yet in production)
-        if status == 'new':
-            query = query.filter(Order.status.in_(['new', 'paid']))
-        else:
-            query = query.filter_by(status=status)
+
+    stage = normalize_stage_arg(status)
+    if stage == 'all':
+        query = Order.query.filter(~Order.status.in_(DONE_STATUSES))
+    else:
+        query = orders_for_stage(stage)
     if collection_id:
         query = query.filter_by(collection_id=collection_id)
     if order_type:
@@ -269,7 +266,7 @@ def orders():
     return render_template('admin/orders.html', 
                          orders=orders,
                          collections=collections,
-                         selected_status=status,
+                         selected_status=stage,
                          selected_collection=collection_id,
                          selected_order_type=order_type)
 
@@ -337,11 +334,26 @@ def save_item_artwork(order_id, item_id, side):
         local_file_for_url,
         remote_url_allowed,
     )
-    if side not in ('front', 'back'):
+    if side not in ('front', 'back', 'back-name', 'back-number'):
         flash('Unknown artwork side.', 'error')
         return redirect(url_for('admin.order_detail', order_id=order_id))
     order = Order.query.get_or_404(order_id)
     item = OrderItem.query.filter_by(id=item_id, order_id=order.id).first_or_404()
+    if side in ('back-name', 'back-number'):
+        from utils.name_number_art import personalized_png
+        piece = 'name' if side == 'back-name' else 'number'
+        data = personalized_png(current_app, item, piece, customer_name=order.full_name)
+        if not data:
+            flash(f'Could not build a separate {piece} file for this order.', 'error')
+            return redirect(url_for('admin.order_detail', order_id=order.id))
+        filename = download_filename(order, item, side)
+        inline = request.args.get('inline')
+        return send_file(
+            BytesIO(data),
+            as_attachment=not inline,
+            download_name=filename,
+            mimetype='image/png',
+        )
     url = front_print_url(item) if side == 'front' else back_print_url(item)
     if not url:
         flash('No print file is saved for that side.', 'error')
@@ -463,17 +475,8 @@ def update_order_status(order_id):
     stage = request.form.get('status')  # form field named 'status' but now holds stage value
     admin_notes = request.form.get('admin_notes')
 
-    # Map production stage → order status + production_stage
-    stage_map = {
-        'order_received':   ('new',           'order_received'),
-        'waiting_supplies': ('new',            'waiting_supplies'),
-        'ready_to_press':   ('in_production',  'ready_to_press'),
-        'pressed':          ('in_production',  'pressed'),
-        'packaged_ready':   ('ready',          'packaged_ready'),
-    }
-
-    if stage in stage_map:
-        order.status, order.production_stage = stage_map[stage]
+    from utils.production_stages import apply_stage
+    apply_stage(order, stage)
 
     if admin_notes:
         order.admin_notes = admin_notes
@@ -2399,13 +2402,18 @@ def blank_apparel_list():
 @admin_required
 def print_labels():
     """Generate printable order labels for sticker paper (3 columns × 10 rows = 30 per sheet)"""
+    from utils.production_stages import OPEN_STATUSES
     collection_id = request.args.get('collection')
-    status_filter = request.args.getlist('status') or ['paid', 'in_production']
-    
-    query = Order.query.filter(Order.status.in_(status_filter))
-    if collection_id:
-        query = query.filter_by(collection_id=collection_id)
-    
+    order_id = request.args.get('order_id', type=int)
+    status_filter = request.args.getlist('status') or list(OPEN_STATUSES)
+
+    if order_id:
+        query = Order.query.filter_by(id=order_id)
+    else:
+        query = Order.query.filter(Order.status.in_(status_filter))
+        if collection_id:
+            query = query.filter_by(collection_id=collection_id)
+
     orders = query.order_by(Order.created_at).all()
     collections = Collection.query.all()
     
@@ -3120,29 +3128,11 @@ def edit_vendor(id):
 @admin_required
 def production_workflow():
     """5-stage Kanban: Order Received → Waiting Supplies → Ready to Press → Pressed → Packaged Ready"""
-    stages = [
-        ('order_received', 'Order Received', 'All new/paid orders'),
-        ('waiting_supplies', 'Waiting on Supplies', 'Awaiting blanks or transfers'),
-        ('ready_to_press', 'Ready to Press', 'Supplies in, ready to heat'),
-        ('pressed', 'Pressed', 'Print applied'),
-        ('packaged_ready', 'Packaged & Ready', 'Ready for pickup/ship')
-    ]
+    from utils.production_stages import STAGES, orders_for_stage
+    stages = STAGES
     orders_by_stage = {}
-    # order_received: new/paid with no stage or order_received
-    orders_by_stage['order_received'] = Order.query.filter(
-        Order.status.in_(['new', 'paid']),
-        or_(Order.production_stage == None, Order.production_stage == '', Order.production_stage == 'order_received')
-    ).order_by(Order.created_at).all()
-    # waiting_supplies, ready_to_press, pressed
-    for sid in ['waiting_supplies', 'ready_to_press', 'pressed']:
-        orders_by_stage[sid] = Order.query.filter(
-            Order.status.in_(['new', 'paid', 'in_production']),
-            Order.production_stage == sid
-        ).order_by(Order.created_at).all()
-    # packaged_ready: only "ready" (awaiting pickup) — shipped/completed are in All Completed
-    orders_by_stage['packaged_ready'] = Order.query.filter(
-        Order.status == 'ready'
-    ).order_by(Order.created_at).all()
+    for sid, _name, _desc in stages:
+        orders_by_stage[sid] = orders_for_stage(sid).order_by(Order.created_at).all()
     from datetime import datetime
     return render_template('admin/operations/workflow.html', stages=stages, orders_by_stage=orders_by_stage, now=datetime.utcnow())
 
@@ -3150,13 +3140,10 @@ def production_workflow():
 @admin_bp.route('/orders/<int:order_id>/update-stage', methods=['POST'])
 @admin_required
 def update_order_stage(order_id):
+    from utils.production_stages import apply_stage
     order = Order.query.get_or_404(order_id)
     stage = request.form.get('stage')
-    order.production_stage = stage
-    if stage == 'packaged_ready':
-        order.status = 'ready'
-    elif stage == 'ready_to_press':
-        order.status = 'in_production'
+    apply_stage(order, stage)
     db.session.commit()
     flash('Stage updated', 'success')
     return redirect(request.referrer or url_for('admin.production_workflow'))

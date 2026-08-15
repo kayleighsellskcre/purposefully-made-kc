@@ -96,14 +96,18 @@ def _safe_name(value, fallback='file'):
 
 def download_filename(order, item, side):
     order_no = _safe_name(getattr(order, 'order_number', None) or order.id, 'order')
+    meta = getattr(item, 'back_design_details', None) or {}
+    if not isinstance(meta, dict):
+        meta = {}
     if side == 'back':
-        meta = getattr(item, 'back_design_details', None) or {}
-        if not isinstance(meta, dict):
-            meta = {}
         name = _safe_name(meta.get('name'), '')
         number = _safe_name(meta.get('number'), '')
         label = '-'.join(part for part in (name, number) if part) or 'back'
         return f'PMKC-{order_no}-back-{label}.png'
+    if side == 'back-name':
+        return f'PMKC-{order_no}-name-{_safe_name(meta.get("name"), "name")}.png'
+    if side == 'back-number':
+        return f'PMKC-{order_no}-number-{_safe_name(meta.get("number"), "number")}.png'
     return f'PMKC-{order_no}-front.png'
 
 
@@ -116,6 +120,15 @@ def artwork_kit(item, order=None):
     front_print = front_print_url(item)
     back_print = back_print_url(item)
     front_on_shirt = placement in FRONT_PLACEMENTS
+    meta = getattr(item, 'back_design_details', None)
+    if callable(meta):
+        try:
+            meta = meta()
+        except Exception:
+            meta = None
+    if not isinstance(meta, dict):
+        meta = {}
+    personalized = bool(meta.get('name') or meta.get('number'))
     return {
         'front_mockup_url': front_mockup,
         'back_mockup_url': back_mockup,
@@ -124,6 +137,8 @@ def artwork_kit(item, order=None):
         'front_overlay_url': front_print if front_on_shirt else None,
         'back_overlay_url': back_print,
         'placement': placement,
+        'back_overlay_class': 'back_name_number' if personalized else 'center_back',
+        'is_personalized_back': personalized,
         'has_front_print': bool(front_print),
         'has_back_print': bool(back_print),
         'has_back_proof': bool(back_print and back_mockup),

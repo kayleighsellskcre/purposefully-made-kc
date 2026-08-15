@@ -171,7 +171,7 @@
                         <div class="summary-item-proofs{% if item.back_overlay %} summary-item-proofs-pair{% endif %}">
                             {{ garment_proof(item.front_image, item.design_overlay, item.placement or 'center_chest', none) }}
                             {% if item.back_overlay %}
-                            {{ garment_proof(item.back_image, item.back_overlay, 'back_name_number', none) }}
+                            {{ garment_proof(item.back_image, item.back_overlay, item.back_overlay_class or 'center_back', none) }}
                             {% endif %}
                         </div>
                         {% elif item.design_thumb %}

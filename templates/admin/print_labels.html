@@ -268,7 +268,7 @@
             <div>
                 <span class="adm-eyebrow">Admin / Daily Operations</span>
                 <h1>Print Order Labels</h1>
-                <p class="page-subtitle">Print customer info labels for 3×10 sticker paper (Avery 5160)</p>
+                <p class="page-subtitle">Print a label for any order — retail, cash pickup, or group. Avery 5160, 3×10 per sheet.</p>
             </div>
         </div>
 
@@ -279,6 +279,10 @@
                     <div class="pl-filter-group">
                         <span class="pl-filter-label">Status</span>
                         <div class="pl-status-pills">
+                            <label class="pl-pill {% if 'new' in selected_status %}pl-pill-on{% endif %}">
+                                <input type="checkbox" name="status" value="new" {% if 'new' in selected_status %}checked{% endif %} hidden>
+                                Order Received
+                            </label>
                             <label class="pl-pill {% if 'paid' in selected_status %}pl-pill-on{% endif %}">
                                 <input type="checkbox" name="status" value="paid" {% if 'paid' in selected_status %}checked{% endif %} hidden>
                                 Paid
@@ -287,21 +291,17 @@
                                 <input type="checkbox" name="status" value="in_production" {% if 'in_production' in selected_status %}checked{% endif %} hidden>
                                 In Production
                             </label>
-                            <label class="pl-pill {% if 'new' in selected_status %}pl-pill-on{% endif %}">
-                                <input type="checkbox" name="status" value="new" {% if 'new' in selected_status %}checked{% endif %} hidden>
-                                New
-                            </label>
                             <label class="pl-pill {% if 'ready' in selected_status %}pl-pill-on{% endif %}">
                                 <input type="checkbox" name="status" value="ready" {% if 'ready' in selected_status %}checked{% endif %} hidden>
-                                Ready
+                                Packaged &amp; Ready
                             </label>
                         </div>
                     </div>
 
                     <div class="pl-filter-group">
-                        <span class="pl-filter-label">Group Order</span>
+                        <span class="pl-filter-label">Group (optional)</span>
                         <select name="collection" id="collection" class="pl-select">
-                            <option value="">All Group Orders</option>
+                            <option value="">All orders</option>
                             {% for c in collections %}
                             <option value="{{ c.id }}" {% if selected_collection == (c.id|string) %}selected{% endif %}>{{ c.name }}</option>
                             {% endfor %}
@@ -334,7 +334,7 @@
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" style="color:var(--terra-cotta,#b87c6f);margin-bottom:0.75rem;">
                 <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
             </svg>
-            <p>No orders match your filters. Try adjusting the status or group order above.</p>
+            <p>No orders match your filters. Cash / pay-at-pickup orders are included when Order Received is selected.</p>
         </div>
         {% else %}
         <!-- Label Sheets -->
