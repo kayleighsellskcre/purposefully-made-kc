@@ -1,9 +1,5 @@
 """
-SanMar SOAP Web Service integration for Bella+Canvas products.
-
-Size code → human-readable label mapping (infant/toddler codes from SanMar):
-  0003 → NB, 0306 → 0-3M, 0612 → 6-12M, 1218 → 12-18M, 1824 → 18-24M
-  Adult and youth sizes pass through unchanged.
+SanMar SOAP Web Service integration.
 
 Credentials from environment variables:
   SANMAR_CUSTOMER_NUMBER
@@ -11,13 +7,12 @@ Credentials from environment variables:
   SANMAR_PASSWORD
 
 Confirmed working method: getProductInfoByBrand
-Response structure per row:
-  listResponse/productBasicInfo  — style, productTitle, catalogColor, size, …
-  listResponse/productImageInfo  — frontModel, backModel, colorProductImage, …
-  listResponse/productPriceInfo  — piecePrice, casePrice, …
+Also tries getProductInfoByStyle for curated bestsellers.
 """
 
+import json
 import os
+import re
 import sys
 import xml.etree.ElementTree as ET
 from urllib.request import urlopen, Request
@@ -139,6 +134,26 @@ _SOAP_BRAND_TEMPLATE = """\
         <sanMarUserPassword>{password}</sanMarUserPassword>
       </arg1>
     </ns2:getProductInfoByBrand>
+  </soapenv:Body>
+</soapenv:Envelope>"""
+
+_SOAP_STYLE_TEMPLATE = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope
+    xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+    xmlns:ns2="http://impl.webservice.integration.sanmar.com/">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <ns2:getProductInfoByStyle>
+      <arg0>
+        <style>{style}</style>
+      </arg0>
+      <arg1>
+        <sanMarCustomerNumber>{customer_number}</sanMarCustomerNumber>
+        <sanMarUserName>{username}</sanMarUserName>
+        <sanMarUserPassword>{password}</sanMarUserPassword>
+      </arg1>
+    </ns2:getProductInfoByStyle>
   </soapenv:Body>
 </soapenv:Envelope>"""
 
@@ -401,11 +416,99 @@ def _parse_list_response(row: ET.Element) -> dict:
         'title':       _ns_find(row, 'productTitle') or _ns_find(row, 'title'),
         'description': _ns_find(row, 'productDescription') or _ns_find(row, 'description'),
         'material':    _ns_find(row, 'material') or _ns_find(row, 'fabric'),
-        'front_image': _ns_find(row, 'frontModel') or _ns_find(row, 'colorProductImage'),
-        'back_image':  _ns_find(row, 'backModel'),
+        'front_image': (_ns_find(row, 'colorProductImage')
+                        or _ns_find(row, 'frontModel')),
+        'back_image':  (_ns_find(row, 'colorProductImageBack')
+                        or _ns_find(row, 'backModel')),
         'color_swatch':_ns_find(row, 'colorSquareImage') or _ns_find(row, 'colorSwatchImage'),
         'color_hex':   _ns_find(row, 'colorHex') or '',
     }
+
+
+def normalize_style_key(style: str) -> str:
+    return re.sub(r'[^A-Z0-9]', '', (style or '').upper())
+
+
+def style_is_allowed(style: str, allowed: list[str]) -> bool:
+    key = normalize_style_key(style)
+    if not key:
+        return False
+    allowed_keys = {normalize_style_key(item) for item in allowed}
+    if key in allowed_keys:
+        return True
+    if key.startswith('BC') and key[2:] in allowed_keys:
+        return True
+    if f'BC{key}' in allowed_keys:
+        return True
+    if key.startswith('RS') and key[2:] in allowed_keys:
+        return True
+    if f'RS{key}' in allowed_keys:
+        return True
+    if key.startswith('C') and key[1:] in allowed_keys:
+        return True
+    return False
+
+
+def _group_list_responses(root: ET.Element) -> dict:
+    styles: dict[str, dict] = {}
+    for elem in root.iter():
+        local = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
+        if local != 'listResponse':
+            continue
+        row = _parse_list_response(elem)
+        style = row['style'].strip()
+        if not style:
+            continue
+        if style not in styles:
+            styles[style] = {
+                'style': style,
+                'title': '',
+                'description': '',
+                'material': '',
+                'color_variants': {},
+            }
+        sd = styles[style]
+        if not sd['title'] and row['title']:
+            sd['title'] = row['title']
+        if not sd['description'] and row['description']:
+            sd['description'] = row['description']
+        if not sd['material'] and row['material']:
+            sd['material'] = row['material']
+        color = row['color_name']
+        if not color:
+            continue
+        if color not in sd['color_variants']:
+            sd['color_variants'][color] = {
+                'sizes': [],
+                'price': 0.0,
+                'front_image': row['front_image'],
+                'back_image': row['back_image'],
+                'color_swatch': row['color_swatch'],
+                'color_hex': row['color_hex'],
+                'inventory': {},
+            }
+        cv = sd['color_variants'][color]
+        size = row['size']
+        if size and size not in cv['sizes']:
+            cv['sizes'].append(size)
+        try:
+            price = float(row['price'])
+            if price > 0 and cv['price'] == 0.0:
+                cv['price'] = price
+        except (ValueError, TypeError):
+            pass
+    return styles
+
+
+def _soap_call(template: str, timeout: int, **fields) -> ET.Element:
+    customer_number, username, password = get_credentials()
+    body = template.format(
+        customer_number=customer_number,
+        username=username,
+        password=password,
+        **fields,
+    ).encode('utf-8')
+    return _do_soap_request(body, timeout=timeout)
 
 
 # ---------------------------------------------------------------------------
@@ -413,108 +516,116 @@ def _parse_list_response(row: ET.Element) -> dict:
 # ---------------------------------------------------------------------------
 
 class SanMarAPI:
-    """SanMar SOAP client for Bella+Canvas catalog sync."""
+    """SanMar SOAP client for curated brand catalog sync."""
 
-    def fetch_full_catalog(self) -> list[dict]:
-        """
-        Fetch the entire Bella+Canvas catalog in one SOAP call.
-        Tries multiple brand name spellings until one succeeds.
-        """
-        brand_candidates = ['BELLA+CANVAS', 'Bella+Canvas', 'Bella + Canvas', 'BELLA + CANVAS']
-        customer_number, username, password = get_credentials()
-        root = None
+    def fetch_brand_catalog(self, api_names: list[str], timeout: int = 120) -> dict:
+        """Return grouped styles for the first brand name SanMar accepts."""
         last_error = ''
-
-        for brand in brand_candidates:
+        for brand in api_names:
             try:
-                body = _SOAP_BRAND_TEMPLATE.format(
-                    brand=brand,
-                    customer_number=customer_number,
-                    username=username,
-                    password=password,
-                ).encode('utf-8')
-                root = _do_soap_request(body, timeout=120)
-                print(f'[SanMarAPI] Brand name "{brand}" accepted.', file=sys.stderr, flush=True)
-                break
+                root = _soap_call(_SOAP_BRAND_TEMPLATE, timeout, brand=brand)
+                grouped = _group_list_responses(root)
+                print(
+                    f'[SanMarAPI] Brand "{brand}" returned {len(grouped)} styles.',
+                    file=sys.stderr, flush=True,
+                )
+                return grouped
             except SanMarAuthError:
                 raise
             except SanMarSOAPError as exc:
                 last_error = str(exc)
                 print(f'[SanMarAPI] Brand "{brand}" failed: {exc}', file=sys.stderr, flush=True)
-                continue
+        raise SanMarSOAPError(f'No valid brand name found. Last error: {last_error}')
 
-        if root is None:
-            raise SanMarSOAPError(f'No valid brand name found. Last error: {last_error}')
+    def fetch_style(self, style: str, timeout: int = 45) -> dict:
+        root = _soap_call(_SOAP_STYLE_TEMPLATE, timeout, style=style)
+        return _group_list_responses(root)
 
-        # Group rows by style
-        styles: dict[str, dict] = {}
-        for elem in root.iter():
-            local = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
-            if local != 'listResponse':
-                continue
-
-            row = _parse_list_response(elem)
-            style = row['style'].strip()
-            if not style:
-                continue
-
-            if style not in styles:
-                styles[style] = {
-                    'style': style,
-                    'title': '',
-                    'description': '',
-                    'material': '',
-                    'color_variants': {},
-                }
-
-            sd = styles[style]
-            if not sd['title'] and row['title']:
-                sd['title'] = row['title']
-            if not sd['description'] and row['description']:
-                sd['description'] = row['description']
-            if not sd['material'] and row['material']:
-                sd['material'] = row['material']
-
-            color = row['color_name']
-            if not color:
-                continue
-
-            if color not in sd['color_variants']:
-                sd['color_variants'][color] = {
-                    'sizes': [],
-                    'price': 0.0,
-                    'front_image': row['front_image'],
-                    'back_image': row['back_image'],
-                    'color_swatch': row['color_swatch'],
-                    'color_hex': row['color_hex'],
-                    'inventory': {},
-                }
-
-            cv = sd['color_variants'][color]
-            size = row['size']
-            if size and size not in cv['sizes']:
-                cv['sizes'].append(size)
-            try:
-                p = float(row['price'])
-                if p > 0 and cv['price'] == 0.0:
-                    cv['price'] = p
-            except (ValueError, TypeError):
-                pass
-
+    def fetch_full_catalog(self) -> list[dict]:
+        """Legacy Bella-only fetch. Prefer sync_curated_catalog()."""
+        grouped = self.fetch_brand_catalog(['BELLA+CANVAS', 'Bella+Canvas', 'Bella + Canvas'])
         products = []
-        for style_data in styles.values():
-            product = self._to_product(style_data)
+        for style_data in grouped.values():
+            product = self._to_product(style_data, brand_name='Bella+Canvas')
             if product:
                 products.append(product)
-
-        print(
-            f'[SanMarAPI] Parsed {len(styles)} styles → {len(products)} products.',
-            file=sys.stderr, flush=True,
-        )
         return products
 
-    def _to_product(self, style_data: dict) -> dict | None:
+    def bestsellers_for_brand(self, brand: dict) -> list[dict]:
+        """Return curated products for one brand, or [] if SanMar has no access."""
+        display = brand['name']
+        allowed = brand['styles']
+        grouped: dict = {}
+        try:
+            grouped = self.fetch_brand_catalog(brand['api_names'], timeout=40)
+        except SanMarSOAPError as exc:
+            print(f'[SanMarAPI] {display} brand fetch failed: {exc}', file=sys.stderr, flush=True)
+
+        matched = {
+            style: data for style, data in grouped.items()
+            if style_is_allowed(style, allowed)
+        }
+
+        if not matched:
+            tried = set()
+            for style in allowed:
+                key = normalize_style_key(style)
+                if key in tried:
+                    continue
+                tried.add(key)
+                try:
+                    extra = self.fetch_style(style, timeout=20)
+                    for extra_style, data in extra.items():
+                        if style_is_allowed(extra_style, allowed):
+                            matched[extra_style] = data
+                except Exception as exc:
+                    print(
+                        f'[SanMarAPI] Style {style} ({display}) skipped: {exc}',
+                        file=sys.stderr, flush=True,
+                    )
+
+        products = []
+        for style_data in matched.values():
+            product = self._to_product(style_data, brand_name=display)
+            if product:
+                products.append(product)
+        return products
+
+    def sync_curated_catalog(self) -> tuple[list[dict], list[str]]:
+        """Pull only the bestseller styles for each shop brand.
+
+        Returns (products, notes) so admin can see brands that SanMar skipped.
+        """
+        from services.sanmar_catalog import CURATED_BRANDS
+
+        cred_check = check_credentials()
+        if not cred_check['ok']:
+            missing = ', '.join(cred_check['missing'])
+            raise SanMarSOAPError(f'Missing credentials: {missing}')
+
+        products: list[dict] = []
+        notes: list[str] = []
+
+        for brand in CURATED_BRANDS:
+            display = brand['name']
+            brand_products = self.bestsellers_for_brand(brand)
+            products.extend(brand_products)
+            if brand_products:
+                notes.append(f'{display}: {len(brand_products)} styles')
+            else:
+                notes.append(f'{display}: none returned (account may not include this line)')
+
+        print(
+            f'[SanMarAPI] Curated sync parsed {len(products)} products.',
+            file=sys.stderr, flush=True,
+        )
+        return products, notes
+
+    def _to_product(self, style_data: dict, brand_name: str = 'Bella+Canvas') -> dict | None:
         """Convert grouped style data into the Product model format."""
+        from utils.product_filters import infer_age, infer_category, infer_fit
+        from utils.sizes import sort_sizes
+
         style = style_data.get('style', '')
         color_variants = style_data.get('color_variants', {})
         if not style or not color_variants:
@@ -522,46 +633,62 @@ class SanMarAPI:
 
         all_sizes: list[str] = []
         all_colors: list[str] = list(color_variants.keys())
-        base_price = 0.0
+        wholesale = 0.0
 
         for cv_data in color_variants.values():
             for sz in cv_data.get('sizes', []):
                 label = normalize_size(sz)
-                if label not in all_sizes:
+                if label and label not in all_sizes:
                     all_sizes.append(label)
-            if not base_price and cv_data.get('price'):
-                base_price = cv_data['price']
+            if not wholesale and cv_data.get('price'):
+                wholesale = float(cv_data['price'])
 
         color_variants_list = [
             {
-                'color_name':     color,
-                'front_image':    cv.get('front_image', ''),
-                'back_image':     cv.get('back_image', ''),
-                'side_image':     '',
-                'color_hex':      cv.get('color_hex', '') or cv.get('color_swatch', ''),
-                'size_inventory': cv.get('inventory', {}),
-                'color_id':       None,
+                'color_name':      color,
+                'front_image':     cv.get('front_image', ''),
+                'back_image':      cv.get('back_image', ''),
+                'side_image':      '',
+                'color_hex':       cv.get('color_hex', ''),
+                'color_swatch':    cv.get('color_swatch', ''),
+                'size_inventory':  json.dumps(cv.get('inventory') or {}),
+                'color_id':        None,
             }
             for color, cv in color_variants.items()
         ]
 
-        # Strip trailing style number from name if SanMar appended it
-        raw_name = (style_data.get('title') or f'Bella+Canvas {style}').strip()
+        raw_name = (style_data.get('title') or f'{brand_name} {style}').strip()
         if style and raw_name.upper().endswith(style.upper()):
             raw_name = raw_name[:-len(style)].strip()
+        if brand_name.lower() not in raw_name.lower():
+            raw_name = f'{brand_name} {raw_name}'.strip()
+
+        attrs = {
+            'name': raw_name,
+            'category': style_data.get('title') or '',
+            'style_number': style,
+        }
+        category = infer_category(attrs)
+        age_group = infer_age(attrs)
+        fit_type = infer_fit(attrs)
+
+        retail = round(wholesale * 3.2, 2) if wholesale else 0.0
 
         return {
             'style_number':          style,
             'name':                  raw_name,
-            'brand':                 'Bella+Canvas',
+            'brand':                 brand_name,
             'description':           style_data.get('description', ''),
             'fabric_details':        style_data.get('material', ''),
-            'base_price':            base_price,
-            'wholesale_cost':        round(base_price * 0.6, 2) if base_price else 0.0,
-            'available_sizes':       ', '.join(all_sizes),
-            'available_colors':      ', '.join(all_colors),
-            'category':              'T-Shirts',
+            'base_price':            retail,
+            'wholesale_cost':        round(wholesale, 2) if wholesale else 0.0,
+            'available_sizes':       json.dumps(sort_sizes(all_sizes)),
+            'available_colors':      json.dumps(all_colors),
+            'category':              category,
+            'age_group':             age_group,
+            'fit_type':              fit_type,
             'is_active':             True,
+            'is_customer_favorite':  True,
             'front_mockup_template': next(
                 (cv['front_image'] for cv in color_variants.values() if cv.get('front_image')), ''
             ),
@@ -569,21 +696,12 @@ class SanMarAPI:
                 (cv['back_image'] for cv in color_variants.values() if cv.get('back_image')), ''
             ),
             'color_variants':        color_variants_list,
-            'api_data':              None,
         }
 
     def sync_bella_canvas_catalog(self) -> list[dict]:
-        """
-        Public entry point called by admin route and scheduler.
-        Fetches the full catalog and returns product dicts.
-        Raises SanMarAuthError on auth failure.
-        """
-        cred_check = check_credentials()
-        if not cred_check['ok']:
-            missing = ', '.join(cred_check['missing'])
-            raise SanMarSOAPError(f'Missing credentials: {missing}')
-
-        return self.fetch_full_catalog()
+        """Public entry used by admin and scheduler. Syncs all curated brands."""
+        products, _notes = self.sync_curated_catalog()
+        return products
 
     # ------------------------------------------------------------------
     # Inventory sync

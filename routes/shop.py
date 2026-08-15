@@ -26,6 +26,7 @@ def index():
         neck_style = request.args.get('neck_style')
         sleeve_length = request.args.get('sleeve_length')
         color = request.args.get('color')
+        brand = (request.args.get('brand') or '').strip() or None
         search_q = (request.args.get('q') or '').strip()
 
         query = Product.query.filter_by(is_active=True)
@@ -38,6 +39,7 @@ def index():
                     Product.style_number.ilike(_kw),
                     Product.description.ilike(_kw),
                     Product.category.ilike(_kw),
+                    Product.brand.ilike(_kw),
                 )
             )
         
@@ -46,6 +48,12 @@ def index():
             p for p in products
             if matches_filters(p, age_group=age_group, category=category, fit_type=fit_type)
         ]
+        if brand:
+            wanted = ''.join(ch for ch in brand.lower() if ch.isalnum())
+            products = [
+                p for p in products
+                if wanted and wanted in ''.join(ch for ch in (p.brand or '').lower() if ch.isalnum())
+            ]
 
         if color:
             from models import ProductColorVariant
@@ -121,6 +129,18 @@ def index():
         except Exception:
             pass
 
+        from services.sanmar_catalog import shop_brand_names
+        shop_brands = shop_brand_names()
+        db_brands = [
+            row[0] for row in db.session.query(Product.brand)
+            .filter(Product.is_active == True, Product.brand.isnot(None))
+            .distinct().all()
+            if row[0]
+        ]
+        for extra in db_brands:
+            if extra not in shop_brands:
+                shop_brands.append(extra)
+
         return render_template('shop/index.html', 
                              products=products,
                              categories=categories,
@@ -128,6 +148,8 @@ def index():
                              neck_styles=neck_styles,
                              sleeve_lengths=sleeve_lengths,
                              colors=colors,
+                             shop_brands=shop_brands,
+                             selected_brand=brand,
                              selected_category=category,
                              selected_age_group=age_group,
                              selected_fit_type=fit_type,
@@ -149,6 +171,8 @@ def index():
                              neck_styles=[],
                              sleeve_lengths=[],
                              colors=[],
+                             shop_brands=[],
+                             selected_brand=None,
                              selected_category=None,
                              selected_age_group=None,
                              selected_fit_type=None,

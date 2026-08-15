@@ -874,14 +874,14 @@ def unlink_ss_bella_canvas():
 @admin_bp.route('/products/sync-sanmar', methods=['POST'])
 @admin_required
 def sync_sanmar():
-    """Sync Bella+Canvas catalog from SanMar API"""
+    """Sync curated bestsellers from SanMar (Bella+Canvas plus other shop brands)."""
     import sys
     from services.sanmar_api import SanMarAPI, check_credentials, SanMarAuthError
     from models import ProductColorVariant
     from datetime import datetime
 
     print("=" * 80, file=sys.stderr, flush=True)
-    print("ADMIN: SYNCING BELLA+CANVAS FROM SANMAR", file=sys.stderr, flush=True)
+    print("ADMIN: SYNCING CURATED SANMAR BRANDS", file=sys.stderr, flush=True)
     print("=" * 80, file=sys.stderr, flush=True)
 
     # Check credentials before attempting sync
@@ -896,81 +896,111 @@ def sync_sanmar():
         return redirect(url_for('admin.products'))
 
     try:
+        from services.sanmar_catalog import CURATED_BRANDS
         api = SanMarAPI()
-        products_data = api.sync_bella_canvas_catalog()
+        notes = []
+        added = updated = variants_added = variants_updated = 0
 
-        if not products_data:
+        for brand in CURATED_BRANDS:
+            try:
+                products_data = api.bestsellers_for_brand(brand)
+            except Exception as brand_err:
+                notes.append(f'{brand["name"]}: {brand_err}')
+                print(f'[SanMar] {brand["name"]} failed: {brand_err}', file=sys.stderr, flush=True)
+                continue
+
+            if not products_data:
+                notes.append(f'{brand["name"]}: none returned')
+                continue
+
+            notes.append(f'{brand["name"]}: {len(products_data)} styles')
+
+            for product_data in products_data:
+                color_variants_data = product_data.pop('color_variants', [])
+                style_num = product_data.get('style_number', '')
+                if not style_num:
+                    continue
+
+                try:
+                    upper = style_num.upper()
+                    existing = Product.query.filter_by(style_number=style_num).first()
+                    if not existing and upper.startswith('BC'):
+                        existing = Product.query.filter_by(style_number=style_num[2:]).first()
+                    if not existing and not upper.startswith('BC'):
+                        existing = Product.query.filter_by(style_number=f'BC{style_num}').first()
+                    if existing:
+                        for key, value in product_data.items():
+                            # Preserve existing retail price — never let SanMar's
+                            # wholesale-derived price overwrite what admin has set.
+                            if key == 'base_price':
+                                continue
+                            if key == 'is_customer_favorite':
+                                continue
+                            if hasattr(existing, key) and value is not None:
+                                setattr(existing, key, value)
+                        existing.is_active = True
+                        product = existing
+                        updated += 1
+                    else:
+                        product_data['is_active'] = True
+                        product = Product(**product_data)
+                        db.session.add(product)
+                        added += 1
+
+                    db.session.flush()
+
+                    for variant_data in color_variants_data:
+                        color_name = variant_data.get('color_name', '')
+                        if not color_name:
+                            continue
+                        existing_variant = ProductColorVariant.query.filter_by(
+                            product_id=product.id, color_name=color_name
+                        ).first()
+                        inv = variant_data.get('size_inventory')
+                        if isinstance(inv, dict):
+                            inv = json.dumps(inv)
+                        if existing_variant:
+                            existing_variant.front_image_url = variant_data.get('front_image') or existing_variant.front_image_url
+                            existing_variant.back_image_url  = variant_data.get('back_image')  or existing_variant.back_image_url
+                            if variant_data.get('color_hex'):
+                                existing_variant.color_hex = variant_data.get('color_hex')
+                            if variant_data.get('color_swatch'):
+                                existing_variant.color_swatch_url = variant_data.get('color_swatch')
+                            existing_variant.size_inventory  = inv or existing_variant.size_inventory
+                            existing_variant.last_synced     = datetime.utcnow()
+                            variants_updated += 1
+                        else:
+                            db.session.add(ProductColorVariant(
+                                product_id=product.id,
+                                color_name=color_name,
+                                front_image_url=variant_data.get('front_image'),
+                                back_image_url=variant_data.get('back_image'),
+                                color_hex=variant_data.get('color_hex') or None,
+                                color_swatch_url=variant_data.get('color_swatch') or None,
+                                size_inventory=inv,
+                                last_synced=datetime.utcnow()
+                            ))
+                            variants_added += 1
+
+                    db.session.commit()
+
+                except Exception as e:
+                    db.session.rollback()
+                    print(f'  Error on {style_num}: {e}', file=sys.stderr, flush=True)
+                    continue
+
+        if added == 0 and updated == 0:
             flash(
-                'SanMar sync returned 0 products. Your credentials were accepted '
-                'but no Bella+Canvas data came back — confirm your SanMar account '
-                'has access to Bella+Canvas and your SANMAR_CUSTOMER_NUMBER is correct.',
+                'SanMar sync finished but no bestsellers were saved. '
+                + (' '.join(notes) if notes else 'Check that Web Services is enabled for these brands.'),
                 'warning'
             )
             return redirect(url_for('admin.products'))
 
-        added = updated = variants_added = variants_updated = 0
-
-        for product_data in products_data:
-            color_variants_data = product_data.pop('color_variants', [])
-            style_num = product_data.get('style_number', '')
-            if not style_num:
-                continue
-
-            try:
-                existing = Product.query.filter_by(style_number=style_num).first()
-                if existing:
-                    for key, value in product_data.items():
-                        # Preserve existing retail price — never let SanMar's
-                        # wholesale-derived price overwrite what admin has set.
-                        if key == 'base_price':
-                            continue
-                        if hasattr(existing, key) and value is not None:
-                            setattr(existing, key, value)
-                    existing.is_active = True
-                    product = existing
-                    updated += 1
-                else:
-                    product_data['is_active'] = True
-                    product = Product(**product_data)
-                    db.session.add(product)
-                    added += 1
-
-                db.session.flush()
-
-                for variant_data in color_variants_data:
-                    color_name = variant_data.get('color_name', '')
-                    if not color_name:
-                        continue
-                    existing_variant = ProductColorVariant.query.filter_by(
-                        product_id=product.id, color_name=color_name
-                    ).first()
-                    if existing_variant:
-                        existing_variant.front_image_url = variant_data.get('front_image') or existing_variant.front_image_url
-                        existing_variant.back_image_url  = variant_data.get('back_image')  or existing_variant.back_image_url
-                        existing_variant.size_inventory  = variant_data.get('size_inventory')
-                        existing_variant.last_synced     = datetime.utcnow()
-                        variants_updated += 1
-                    else:
-                        db.session.add(ProductColorVariant(
-                            product_id=product.id,
-                            color_name=color_name,
-                            front_image_url=variant_data.get('front_image'),
-                            back_image_url=variant_data.get('back_image'),
-                            size_inventory=variant_data.get('size_inventory'),
-                            last_synced=datetime.utcnow()
-                        ))
-                        variants_added += 1
-
-                db.session.commit()
-
-            except Exception as e:
-                db.session.rollback()
-                print(f'  Error on {style_num}: {e}', file=sys.stderr, flush=True)
-                continue
-
+        summary = '; '.join(notes) if notes else ''
         flash(
-            f'SanMar sync complete! {added} products added, {updated} updated, '
-            f'{variants_added} color variants added, {variants_updated} updated.',
+            f'SanMar bestseller sync complete! {added} products added, {updated} updated, '
+            f'{variants_added} color variants added, {variants_updated} updated. {summary}',
             'success'
         )
 

@@ -44,7 +44,7 @@
         <div class="filter-bar">
             <div class="filter-bar-header">
                 <span class="filter-bar-title">Refine Your Selection</span>
-                {% if selected_category or selected_age_group or selected_color or selected_fit_type or selected_neck_style or selected_sleeve_length or request.args.get('q') %}
+                {% if selected_brand or selected_category or selected_age_group or selected_color or selected_fit_type or selected_neck_style or selected_sleeve_length or request.args.get('q') %}
                 <button class="clear-filters-btn" onclick="clearFilters()">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     Clear Filters
@@ -60,6 +60,7 @@
                     <input type="hidden" name="neck_style" id="searchNeckStyle" value="{{ request.args.get('neck_style', '') }}">
                     <input type="hidden" name="sleeve_length" id="searchSleeveLength" value="{{ request.args.get('sleeve_length', '') }}">
                     <input type="hidden" name="color" id="searchColor" value="{{ request.args.get('color', '') }}">
+                    <input type="hidden" name="brand" id="searchBrand" value="{{ request.args.get('brand', '') }}">
                     <div class="shop-search-field">
                         <svg class="shop-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                         <input type="text" name="q" id="shopSearchInput" class="shop-search-input" placeholder="Search by name, style, or keyword…" value="{{ request.args.get('q', '') }}" autocomplete="off">
@@ -70,6 +71,21 @@
                 </form>
             </div>
             <div class="filter-controls">
+                <div class="filter-group">
+                    <label for="brandFilter">Brand</label>
+                    <div class="select-wrap">
+                        <select id="brandFilter" class="filter-dropdown" onchange="applyFilters()">
+                            <option value="">All Brands</option>
+                            {% for brand_name in shop_brands or [] %}
+                            <option value="{{ brand_name }}" {% if selected_brand == brand_name %}selected{% endif %}>{{ brand_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <svg class="select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                    </div>
+                </div>
+
+                <div class="filter-divider"></div>
+
                 <div class="filter-group">
                     <label for="ageGroupFilter">Age Group</label>
                     <div class="select-wrap">
@@ -212,7 +228,7 @@
                             
                             <div class="product-info">
                                 <h3 class="product-name">{{ product.name }}</h3>
-                                <p class="product-style">Style {{ product.style_number }}</p>
+                                <p class="product-style">{% if product.brand %}{{ product.brand }} · {% endif %}Style {{ product.style_number }}</p>
                                 {% if product.display_category or product.category %}
                                 <p class="product-category">{{ product.display_category or product.category }}</p>
                                 {% endif %}
@@ -230,7 +246,7 @@
                         <path d="m21 21-4.35-4.35"></path>
                     </svg>
                     <h2>No products found</h2>
-                    {% if selected_category or selected_age_group or selected_color or selected_fit_type or selected_neck_style or selected_sleeve_length or request.args.get('q') %}
+                    {% if selected_brand or selected_category or selected_age_group or selected_color or selected_fit_type or selected_neck_style or selected_sleeve_length or request.args.get('q') %}
                     {% if request.args.get('q') %}
                     <p>No results for "<strong>{{ request.args.get('q') }}</strong>". Try a different keyword or clear your search.</p>
                     {% else %}
@@ -1016,6 +1032,7 @@ document.addEventListener('DOMContentLoaded', updateFitLabels);
 
 // Filter functions
 function applyFilters() {
+    const brand = (document.getElementById('brandFilter') || {}).value || '';
     const ageGroup = document.getElementById('ageGroupFilter').value;
     const category = document.getElementById('categoryFilter').value;
     const fitType = document.getElementById('fitTypeFilter').value;
@@ -1024,6 +1041,7 @@ function applyFilters() {
     const searchQ = (document.getElementById('shopSearchInput') || {}).value || '';
 
     const params = new URLSearchParams();
+    if (brand) params.append('brand', brand);
     if (ageGroup) params.append('age_group', ageGroup);
     if (category) params.append('category', category);
     if (fitType) params.append('fit_type', fitType);
@@ -1047,8 +1065,9 @@ document.addEventListener('DOMContentLoaded', () => {
         set('searchAgeGroup', (document.getElementById('ageGroupFilter') || {}).value || '');
         set('searchFitType', (document.getElementById('fitTypeFilter') || {}).value || '');
         set('searchColor', (document.getElementById('colorFilter') || {}).value || '');
+        set('searchBrand', (document.getElementById('brandFilter') || {}).value || '');
     };
-    ['categoryFilter','ageGroupFilter','fitTypeFilter','colorFilter'].forEach(id => {
+    ['categoryFilter','ageGroupFilter','fitTypeFilter','colorFilter','brandFilter'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', syncHidden);
     });

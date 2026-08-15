@@ -307,11 +307,11 @@
 <div id="sanmarSyncModal" class="prod-modal" role="dialog" aria-modal="true" aria-labelledby="sanmarSyncTitle">
     <div class="prod-modal-card">
         <div class="prod-modal-header">
-            <h2 id="sanmarSyncTitle">Sync Bella+Canvas from SanMar</h2>
+            <h2 id="sanmarSyncTitle">Sync bestsellers from SanMar</h2>
             <button class="prod-modal-close" onclick="closeModal('sanmarSyncModal')" aria-label="Close">&times;</button>
         </div>
         <div class="prod-modal-body">
-            <p>Syncs the <strong>Bella+Canvas catalog</strong> directly from SanMar — includes pricing, material info, and color variants.</p>
+            <p>Pulls the <strong>most popular styles</strong> from Bella+Canvas, Comfort Colors, Stanley/Stella, Port &amp; Company, Sport-Tek, District, Rabbit Skins, and Gildan. Hats are skipped for now.</p>
             <div class="prod-modal-list">
                 <div class="prod-modal-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -326,7 +326,7 @@
                     Syncs color variants with front/back images
                 </div>
             </div>
-            <p class="prod-modal-note">Requires <code>SANMAR_CUSTOMER_NUMBER</code>, <code>SANMAR_USERNAME</code>, and <code>SANMAR_PASSWORD</code> to be set in Railway.</p>
+            <p class="prod-modal-note">This can take a few minutes. Stay on the page until it finishes. Existing Bella prices are kept. Requires SanMar credentials in Railway.</p>
             <form action="{{ url_for('admin.sync_sanmar') }}" method="POST">
                 <div class="prod-modal-actions">
                     <button type="button" class="btn btn-outline" onclick="closeModal('sanmarSyncModal')">Cancel</button>
