@@ -88,33 +88,33 @@
                     {% endfor %}
                 </div>
                 {% if personal_list is defined and personal_list %}
-                <h2 style="margin-top:2rem;">Personalized backs (listed separately)</h2>
-                <p class="section-hint">Names and numbers are ordered by height. Widths are calculated per name.</p>
-                <div class="table-container">
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Number</th>
-                                <th>Size</th>
-                                <th>Name transfer</th>
-                                <th>Number transfer</th>
-                                <th>Qty</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for row in personal_list %}
-                            <tr>
-                                <td><strong>{{ row.name }}</strong></td>
-                                <td>{{ row.number }}</td>
-                                <td>{{ row.age_group|title }} {{ row.size }}</td>
-                                <td>{{ row.name_width_display }}″ × {{ row.name_height_display }}″</td>
-                                <td>{{ row.number_width_display }}″ × {{ row.number_height_display }}″</td>
-                                <td class="qty">{{ row.quantity }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <h2 style="margin-top:2rem;">Personalized backs</h2>
+                <p class="section-hint">Each name and number has its own print file. Save the PNG, then upload it to your DTF site at the size shown.</p>
+                <div class="design-cards">
+                    {% for row in personal_list %}
+                    <div class="design-master-card">
+                        {% if row.print_url %}
+                        <a href="{{ row.print_url }}" target="_blank" rel="noopener" class="design-master-preview design-master-preview-link" title="Open full size">
+                            <img src="{{ row.print_url }}" alt="{{ row.name or 'Back' }} {{ row.number or '' }}">
+                            <span class="design-click-hint">Click to open</span>
+                        </a>
+                        {% else %}
+                        <div class="design-master-preview">
+                            <div class="no-design">No image</div>
+                        </div>
+                        {% endif %}
+                        <div class="design-master-info">
+                            <p><strong>{{ row.name or '—' }}{% if row.number %} #{{ row.number }}{% endif %}</strong></p>
+                            <p>{{ (row.age_group or '')|title }} {{ row.size }}</p>
+                            <p>Name {{ row.name_width_display }}″ × {{ row.name_height_display }}″</p>
+                            <p>Number {{ row.number_width_display }}″ × {{ row.number_height_display }}″</p>
+                            <p class="qty-badge">Qty: {{ row.quantity }}</p>
+                            {% if row.order_id and row.item_id %}
+                            <a class="btn btn-primary btn-sm" href="{{ url_for('admin.save_item_artwork', order_id=row.order_id, item_id=row.item_id, side='back') }}" style="margin-top:0.65rem;">Save back PNG</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
                 {% endif %}
             </div>

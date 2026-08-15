@@ -238,13 +238,20 @@ def index():
     # Calculate totals
     totals = calculate_totals(cart)
     
-    # Enrich cart items with product name + design title/thumbnail for the summary panel
+    from utils.order_artwork import FRONT_PLACEMENTS, mockup_urls
     enriched_cart = []
     for item in cart:
         enriched = dict(item)
         try:
             prod = Product.query.get(item.get('product_id'))
             enriched['product_name'] = prod.name if prod else 'Item'
+            front_image, back_image = mockup_urls(prod, item.get('color'))
+            placement = item.get('placement') or 'center_chest'
+            enriched['front_image'] = front_image
+            enriched['back_image'] = back_image
+            enriched['placement'] = placement
+            enriched['design_overlay'] = item.get('design_url') if placement in FRONT_PLACEMENTS else None
+            enriched['back_overlay'] = item.get('back_design_url')
             d_id = item.get('design_id')
             if d_id:
                 d = Design.query.get(int(d_id))
@@ -429,9 +436,19 @@ def complete():
                         back_meta = json.loads(back_meta)
                     except Exception:
                         back_meta = None
-                # Personalized-back fields are optional. A front-only order must
-                # save even when name/number/meta are missing.
-                if isinstance(back_meta, dict) and not (back_meta.get('name') or back_meta.get('number')):
+                if isinstance(back_meta, dict):
+                    back_meta = dict(back_meta)
+                elif back_url:
+                    back_meta = {}
+                else:
+                    back_meta = None
+                if isinstance(back_meta, dict) and back_url:
+                    back_meta['file_url'] = back_url
+                # Personalized-back fields are optional. Keep the file URL so
+                # production can still show and save a back image with no name/number.
+                if isinstance(back_meta, dict) and not (
+                    back_meta.get('name') or back_meta.get('number') or back_meta.get('file_url')
+                ):
                     back_meta = None
                 transfer_prod = cart_item.get('transfer_production')
                 if isinstance(transfer_prod, str):

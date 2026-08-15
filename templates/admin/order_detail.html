@@ -2,6 +2,7 @@
 {% block title %}Order #{{ order.order_number }} - Admin - Purposefully Made KC{% endblock %}
 
 {% block admin_content %}
+{% from "macros/garment_proof.html" import garment_proof %}
 <div class="od-page">
 
     <!-- Page Header -->
@@ -215,88 +216,87 @@
     <div class="od-card od-wide od-items-card">
         <span class="od-card-eyebrow">Line Items</span>
         <h2 class="od-card-title">Order Items</h2>
-
-        <div class="od-table-scroll-wrap">
-            <div class="od-scroll-hint">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><polyline points="12 5 19 12 12 19"/></svg>
-                Scroll to see all columns
-            </div>
-            <div class="od-table-wrap">
-                <table class="od-table">
-                    <thead>
-                        <tr>
-                            <th>Design</th>
-                            <th>Product</th>
-                            <th>Style</th>
-                            <th>Color</th>
-                            <th>Size</th>
-                            <th>Print</th>
-                            <th>Design File</th>
-                            <th>Back File</th>
-                            <th>Transfer</th>
-                            <th>Placement</th>
-                            <th class="od-center">Qty</th>
-                            <th>Price</th>
-                            <th>Subtotal</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in order.items %}
-                        <tr>
-                            <td>
-                                {% if item.design %}
-                                <a href="{{ item.design.file_path | image_url }}" target="_blank" class="od-thumb-link">
-                                    <img src="{{ item.design.file_path | image_url }}" alt="Design" class="od-thumb">
-                                </a>
-                                {% elif item.proof_image %}
-                                <a href="{{ url_for('static', filename=item.proof_image) }}" target="_blank" class="od-thumb-link">
-                                    <img src="{{ url_for('static', filename=item.proof_image) }}" alt="Proof" class="od-thumb">
-                                </a>
-                                {% else %}
-                                <span class="od-none">&mdash;</span>
-                                {% endif %}
-                            </td>
-                            <td class="od-product-name">{{ item.product_name }}</td>
-                            <td class="od-mono">{{ item.style_number }}</td>
-                            <td>{{ item.color }}</td>
-                            <td><span class="od-size-pill">{{ item.size }}</span></td>
-                            <td>{{ item.print_type or 'DTF' }}</td>
-                            <td class="od-file-name">{{ item.design_file_name or (item.design.filename if item.design else '&mdash;') }}</td>
-                            <td class="od-file-name">
-                                {{ item.back_design_file_name or '&mdash;' }}
-                                {% set bd = item.back_design_details %}
-                                {% if bd %}
-                                <div class="od-back-meta">
-                                    {% if bd.name %}<span><strong>Name:</strong> {{ bd.name }}</span>{% endif %}
-                                    {% if bd.number %}<span><strong>Number:</strong> {{ bd.number }}</span>{% endif %}
-                                    {% if bd.font %}<span><strong>Font:</strong> {{ bd.font }}</span>{% endif %}
-                                    {% if bd.text_color %}<span><strong>Text:</strong> <span class="od-swatch" style="background: {{ bd.text_color }};"></span>{{ bd.text_color }}</span>{% endif %}
-                                    {% if bd.outline %}<span><strong>Outline:</strong> <span class="od-swatch" style="background: {{ bd.outline_color or '#000' }};"></span>{{ bd.outline_color or 'yes' }}</span>{% else %}<span><strong>Outline:</strong> none</span>{% endif %}
-                                </div>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if item.print_width and item.print_height %}
-                                {{ item.print_width|inches }}″ × {{ item.print_height|inches }}″
-                                {% elif item.print_width %}
-                                {{ item.print_width|inches }}″
-                                {% else %}
-                                {% set pw = get_display_print_width(item) if get_display_print_width else none %}
-                                {% if pw %}{{ pw|inches }}″{% else %}N/A{% endif %}
-                                {% endif %}
-                            </td>
-                            <td>{{ item.placement or 'N/A' }}</td>
-                            <td class="od-center od-qty">{{ item.quantity }}</td>
-                            <td>${{ "%.2f"|format(item.unit_price) }}</td>
-                            <td class="od-subtotal">${{ "%.2f"|format(item.subtotal) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        <p class="od-card-hint">Left: how the customer ordered it. Right: the transparent print files to save and upload for DTF.</p>
 
         {% if item_productions is not defined %}{% set item_productions = [] %}{% endif %}
+        {% for item, prod, kit in item_productions %}
+        {% set bd = item.back_design_details %}
+        <article class="od-kit">
+            <header class="od-kit-head">
+                <div>
+                    <h3>{{ item.product_name }}</h3>
+                    <p>{{ item.style_number }} · {{ item.color }} · {{ item.size }} · {{ item.print_type or 'DTF' }} · Qty {{ item.quantity }}</p>
+                </div>
+                <div class="od-kit-price">${{ "%.2f"|format(item.subtotal) }}</div>
+            </header>
+
+            <div class="od-kit-grid">
+                <section>
+                    <h4 class="od-kit-label">How they ordered it</h4>
+                    <div class="pm-proofs od-kit-proofs">
+                        {{ garment_proof(kit.front_mockup_url, kit.front_overlay_url, kit.placement, 'Front') }}
+                        {% if kit.has_back_print %}
+                        {{ garment_proof(kit.back_mockup_url, kit.back_overlay_url, 'back_name_number', 'Back') }}
+                        {% endif %}
+                    </div>
+                </section>
+
+                <section>
+                    <h4 class="od-kit-label">Save for DTF</h4>
+                    <div class="od-print-grid">
+                        {% if kit.has_front_print %}
+                        <div class="pm-print-file">
+                            <a class="pm-print-preview" href="{{ kit.front_print_url }}" target="_blank" rel="noopener" title="Open full size">
+                                <img src="{{ kit.front_print_url }}" alt="Front print file">
+                            </a>
+                            <div class="pm-print-meta">
+                                <h3>Front transfer</h3>
+                                <p>
+                                    {% if prod and prod.front %}
+                                    {{ prod.front.width_display }}″ W × {{ prod.front.height_display }}″ H
+                                    · {{ prod.front.placement_label }}
+                                    {% elif item.print_width %}
+                                    {{ item.print_width|inches }}″{% if item.print_height %} × {{ item.print_height|inches }}″{% endif %}
+                                    {% else %}
+                                    Size in transfer details below
+                                    {% endif %}
+                                </p>
+                                <a class="od-btn od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='front') }}">Save front PNG</a>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if kit.has_back_print %}
+                        <div class="pm-print-file">
+                            <a class="pm-print-preview" href="{{ kit.back_print_url }}" target="_blank" rel="noopener" title="Open full size">
+                                <img src="{{ kit.back_print_url }}" alt="Back print file">
+                            </a>
+                            <div class="pm-print-meta">
+                                <h3>Back transfer</h3>
+                                {% if bd and (bd.name or bd.number) %}
+                                <p>
+                                    {% if bd.name %}<strong>{{ bd.name }}</strong>{% endif %}
+                                    {% if bd.number %} #{{ bd.number }}{% endif %}
+                                    {% if bd.font %} · {{ bd.font }}{% endif %}
+                                </p>
+                                {% endif %}
+                                <p>
+                                    {% if prod and prod.back %}
+                                    Combined {{ prod.back.combined_width_display }}″ W × {{ prod.back.combined_height_display }}″ H
+                                    {% else %}
+                                    Name and number artwork
+                                    {% endif %}
+                                </p>
+                                <a class="od-btn od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back') }}">Save back PNG</a>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </section>
+            </div>
+        </article>
+        {% endfor %}
+
         <div class="od-prod-head">
             <div>
                 <span class="od-card-eyebrow">Production</span>
@@ -309,7 +309,7 @@
             </div>
         </div>
 
-        {% for item, prod in item_productions %}
+        {% for item, prod, kit in item_productions %}
         {% if prod and (prod.front or prod.back) %}
         <div class="od-xfer{% if (prod.front and prod.front.exceeds_safe_area) or (prod.back and prod.back.exceeds_safe_area) %} od-xfer-flag{% endif %}">
             <div class="od-xfer-itemhead">
@@ -727,7 +727,76 @@
 }
 .od-btn:hover { box-shadow: 0 4px 16px rgba(184,124,111,0.35); transform: translateY(-1px); }
 
-.od-items-card .od-card-title { margin-bottom: 1.25rem; }
+.od-items-card .od-card-title { margin-bottom: 0.35rem; }
+
+.od-kit {
+    border: 1px solid rgba(232,208,177,0.7);
+    border-radius: 14px;
+    padding: 1.15rem 1.2rem 1.3rem;
+    margin: 1.25rem 0;
+    background: #fff;
+}
+.od-kit-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+.od-kit-head h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-family: var(--font-heading);
+}
+.od-kit-head p {
+    margin: 0.25rem 0 0;
+    font-size: 0.84rem;
+    color: var(--text-secondary);
+}
+.od-kit-price {
+    font-weight: 700;
+    font-size: 1.05rem;
+    white-space: nowrap;
+}
+.od-kit-label {
+    margin: 0 0 0.65rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+.od-kit-grid {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.9fr) minmax(260px, 1.2fr);
+    gap: 1.25rem;
+    align-items: start;
+}
+.od-kit-proofs {
+    min-height: 220px;
+    height: 240px;
+}
+.od-kit-proofs .pm-proof { height: 240px; }
+.od-print-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+}
+.od-btn-save {
+    margin-top: 0.45rem;
+    text-decoration: none;
+    font-size: 0.82rem;
+    min-height: 42px;
+    padding: 0.55rem 0.9rem;
+    color: #fff;
+}
+a.od-btn { color: #fff; text-decoration: none; }
+a.od-btn-outline { color: var(--text-primary); }
+
+@media (max-width: 900px) {
+    .od-kit-grid { grid-template-columns: 1fr; }
+    .od-kit-proofs, .od-kit-proofs .pm-proof { height: 200px; }
+}
 
 .od-table-scroll-wrap { position: relative; }
 

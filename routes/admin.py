@@ -305,9 +305,11 @@ def order_detail(order_id):
     def get_display_print_width(item):
         """Always use correct youth dimensions for display (fixes stored wrong values)."""
         return get_print_width_for_size(item.size, item.product) or item.print_width
+    from utils.order_artwork import artwork_kit
     item_productions = []
     for item in order.items:
-        item_productions.append((item, production_from_order_item(item, customer_name=order.full_name)))
+        prod = production_from_order_item(item, customer_name=order.full_name)
+        item_productions.append((item, prod, artwork_kit(item, order=order)))
     return render_template(
         'admin/order_detail.html',
         order=order,
@@ -315,6 +317,49 @@ def order_detail(order_id):
         get_display_print_width=get_display_print_width,
         item_productions=item_productions,
     )
+
+
+@admin_bp.route('/orders/<int:order_id>/items/<int:item_id>/save/<side>')
+@admin_required
+def save_item_artwork(order_id, item_id, side):
+    """Download the transparent print file for a DTF upload."""
+    from urllib.request import Request, urlopen
+    from utils.order_artwork import (
+        back_print_url,
+        download_filename,
+        front_print_url,
+        local_file_for_url,
+        remote_url_allowed,
+    )
+    if side not in ('front', 'back'):
+        flash('Unknown artwork side.', 'error')
+        return redirect(url_for('admin.order_detail', order_id=order_id))
+    order = Order.query.get_or_404(order_id)
+    item = OrderItem.query.filter_by(id=item_id, order_id=order.id).first_or_404()
+    url = front_print_url(item) if side == 'front' else back_print_url(item)
+    if not url:
+        flash('No print file is saved for that side.', 'error')
+        return redirect(url_for('admin.order_detail', order_id=order.id))
+    filename = download_filename(order, item, side)
+    local = local_file_for_url(current_app, url)
+    if local:
+        return send_file(local, as_attachment=True, download_name=filename)
+    fetch_url = url
+    if url.startswith('/'):
+        fetch_url = request.host_url.rstrip('/') + url
+    if fetch_url.startswith(('http://', 'https://')) and (
+        remote_url_allowed(current_app, fetch_url, request.host_url) or url.startswith('/')
+    ):
+        try:
+            req = Request(fetch_url, headers={'User-Agent': 'PMKC-Admin/1.0'})
+            with urlopen(req, timeout=20) as resp:
+                data = resp.read()
+                mime = resp.headers.get('Content-Type') or 'image/png'
+            return send_file(BytesIO(data), as_attachment=True, download_name=filename, mimetype=mime)
+        except Exception:
+            current_app.logger.exception('artwork download failed for order %s item %s %s', order_id, item_id, side)
+    flash('Could not download that print file. Open the image and save it from the browser.', 'error')
+    return redirect(url_for('admin.order_detail', order_id=order.id))
 
 
 def _collect_order_productions(orders):
@@ -2182,6 +2227,7 @@ def production_master():
     
     # Design/logo totals (grouped by design, placement, print size)
     from utils.print_sizes import production_from_order_item, inches
+    from utils.order_artwork import back_print_url
     design_groups = {}
     personal_list = []
     for order in orders:
@@ -2204,6 +2250,10 @@ def production_master():
                 design_groups[key]['quantity'] += item.quantity
             back = (prod or {}).get('back')
             if back:
+                back = dict(back)
+                back['print_url'] = back_print_url(item)
+                back['order_id'] = order.id
+                back['item_id'] = item.id
                 personal_list.append(back)
     
     design_list = sorted(design_groups.values(), key=lambda x: (getattr(x['design'], 'filename', '') or x.get('design_name') or '', x['placement']))

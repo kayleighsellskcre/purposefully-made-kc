@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash
 from flask_login import current_user
-from models import Product, ProductColorVariant, Design
+from models import Product, Design
+from utils.order_artwork import FRONT_PLACEMENTS, mockup_urls
 from werkzeug.utils import secure_filename
 from utils.cloud_storage import image_url as _resolve_image_url
 import json
@@ -47,35 +48,9 @@ def index():
         product = Product.query.get(item['product_id'])
         if product:
             item_total = item['quantity'] * item['unit_price']
-            # Get color-specific front and back images for cart display
-            front_image = None
-            back_image = None
-            variant = ProductColorVariant.query.filter_by(
-                product_id=product.id,
-                color_name=item['color']
-            ).first()
-            if variant:
-                if variant.front_image_url:
-                    front_image = variant.front_image_url if variant.front_image_url.startswith(('/', 'http')) else f"/static/{variant.front_image_url}"
-                if variant.back_image_url:
-                    back_image = variant.back_image_url if variant.back_image_url.startswith(('/', 'http')) else f"/static/{variant.back_image_url}"
-
-            # Fallback: construct mockup URL from style number + color name
-            # Files live at /uploads/mockups/{style}/{style}_{Color_Name}_front.jpg
-            if not front_image and product.style_number:
-                color_slug = (item.get('color') or '').replace(' ', '_')
-                style = product.style_number
-                front_image = f"/uploads/mockups/{style}/{style}_{color_slug}_front.jpg"
-                back_image = back_image or f"/uploads/mockups/{style}/{style}_{color_slug}_back.jpg"
-
-            # Final fallback: product-level mockup template
-            if not front_image and product.front_mockup_template:
-                front_image = product.front_mockup_template if product.front_mockup_template.startswith(('/', 'http')) else f"/static/{product.front_mockup_template}"
-
-            # Front of shirt only, with design overlay when placement is front
+            front_image, back_image = mockup_urls(product, item.get('color'))
             placement = item.get('placement') or 'center_chest'
-            front_placements = ('center_chest', 'left_chest', 'right_chest')
-            front_design = item.get('design_url') if (item.get('design_url') and placement in front_placements) else None
+            front_design = item.get('design_url') if (item.get('design_url') and placement in FRONT_PLACEMENTS) else None
 
             cart_items.append({
                 **item,
@@ -86,6 +61,7 @@ def index():
                 'back_image': back_image,
                 'display_image': front_image,
                 'design_overlay': front_design,
+                'back_overlay': item.get('back_design_url'),
                 'placement': placement
             })
             subtotal += item_total

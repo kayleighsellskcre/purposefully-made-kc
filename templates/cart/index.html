@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros/garment_proof.html" import garment_proof %}
 
 {% block title %}Shopping Cart - Purposefully Made KC{% endblock %}
 
@@ -18,18 +19,14 @@
             <div class="cart-items">
                 {% for item in cart_items %}
                 <div class="cart-item">
-                    <div class="item-image">
+                    <div class="item-image{% if item.back_overlay %} item-image-pair{% endif %}">
                         {% if item.display_image %}
-                        <div class="shirt-composite">
-                            <img src="{{ item.display_image }}" alt="{{ item.product.name }}" class="shirt-base"
-                                 onerror="this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'">
-                            {% if item.design_overlay %}
-                            <img src="{{ item.design_overlay }}" alt="Design" class="design-overlay design-overlay-{{ item.placement }}"
-                                 onerror="this.style.display='none'">
-                            {% endif %}
-                        </div>
+                        {{ garment_proof(item.display_image, item.design_overlay, item.placement or 'center_chest', 'Front' if item.back_overlay else none) }}
+                        {% if item.back_overlay %}
+                        {{ garment_proof(item.back_image, item.back_overlay, 'back_name_number', 'Back') }}
+                        {% endif %}
                         {% else %}
-                        <img src="{{ url_for('static', filename='img/placeholder-product.svg') }}" 
+                        <img src="{{ url_for('static', filename='img/placeholder-product.svg') }}"
                              alt="{{ item.product.name }}">
                         {% endif %}
                     </div>
@@ -159,7 +156,7 @@
     border-radius: 14px;
     padding: 1.25rem 1.5rem;
     display: grid;
-    grid-template-columns: 120px 1fr auto;
+    grid-template-columns: auto 1fr auto;
     gap: 1.5rem;
     align-items: center;
     box-shadow: 0 2px 10px rgba(58,61,72,0.04);
@@ -174,13 +171,24 @@
     position: relative;
     width: 120px;
     min-width: 120px;
-    height: 140px;
+    height: 150px;
     overflow: hidden;
     border-radius: 10px;
     background: var(--ivory-silk);
     border: 1px solid rgba(232,208,177,0.5);
 }
-
+.item-image-pair {
+    width: 220px;
+    min-width: 220px;
+    display: flex;
+    gap: 0.4rem;
+    background: transparent;
+    border: none;
+    overflow: visible;
+}
+.item-image-pair .pm-proof {
+    height: 150px;
+}
 .item-image > img {
     width: 100%;
     height: 100%;
@@ -189,57 +197,9 @@
     padding: 4px;
 }
 
-/* Shirt + design composite */
-.item-image .shirt-composite {
-    position: relative;
+.item-image .pm-proof {
     width: 100%;
     height: 100%;
-}
-
-.shirt-composite .shirt-base {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    display: block;
-    padding: 4px;
-}
-
-.shirt-composite .design-overlay {
-    position: absolute;
-    object-fit: contain;
-    object-position: center;
-}
-
-/* Front logos: soft shadow */
-.shirt-composite .design-overlay-center_chest,
-.shirt-composite .design-overlay-left_chest,
-.shirt-composite .design-overlay-right_chest {
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));
-}
-
-/* Placement positioning - scaled for cart thumbnail ~100x120, design moved up a touch */
-.design-overlay-center_chest {
-    width: 36%;
-    max-width: 42px;
-    top: 36%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-}
-
-.design-overlay-left_chest {
-    width: 14%;
-    max-width: 18px;
-    top: 30%;
-    left: 62%;
-    transform: translate(-50%, -50%);
-}
-
-.design-overlay-right_chest {
-    width: 14%;
-    max-width: 18px;
-    top: 30%;
-    left: 38%;
-    transform: translate(-50%, -50%);
 }
 
 
@@ -370,7 +330,14 @@
     }
     .item-image {
         width: 80px;
-        height: 80px;
+        height: 100px;
+    }
+    .item-image-pair {
+        width: 168px;
+        min-width: 168px;
+    }
+    .item-image-pair .pm-proof {
+        height: 100px;
     }
     .item-details {
         text-align: left;
@@ -391,8 +358,14 @@
     }
     .item-image {
         margin: 0 auto;
-        width: 100px;
-        height: 100px;
+        width: 120px;
+        height: 140px;
+    }
+    .item-image-pair {
+        width: 220px;
+    }
+    .item-image-pair .pm-proof {
+        height: 140px;
     }
 }
 </style>
