@@ -42,16 +42,9 @@
             </div>
         </div>
         
-        <div class="recreate-cta">
-            {% if current_user.is_authenticated %}
-            <a href="{{ url_for('custom_request.submit') }}" class="btn btn-primary btn-lg">Submit Your Request</a>
-            <p class="cta-hint"><a href="{{ url_for('account.my_designs') }}">View My Designs</a> to see designs we've created for you.</p>
-            {% else %}
-            <p class="login-prompt">Please log in to submit a design request.</p>
-            <a href="{{ url_for('auth.login', next=url_for('custom_request.submit')) }}" class="btn btn-primary btn-lg">Log In</a>
-            <a href="{{ url_for('auth.register', next=url_for('custom_request.submit')) }}" class="btn btn-outline btn-lg">Create Account</a>
-            {% endif %}
-        </div>
+        {% if current_user.is_authenticated %}
+        <p class="cta-hint">View <a href="{{ url_for('account.my_designs') }}">My Designs</a> to see designs we've created for you, or <a href="{{ url_for('custom_request.my_requests') }}">My Requests</a> for ones still in progress.</p>
+        {% endif %}
     </div>
 </section>
 
@@ -66,7 +59,6 @@
 .recreate-cta { text-align: center; }
 .recreate-cta--top { margin-bottom: 2.5rem; padding-bottom: 2.5rem; border-bottom: 1px solid var(--border-color); }
 .recreate-cta .btn { margin: 0 0.5rem 0.5rem 0; }
-.cta-hint { margin-top: 1rem; font-size: 0.95rem; color: var(--text-secondary); }
-.login-prompt { margin-bottom: 1rem; }
+.cta-hint { margin-top: 1rem; text-align: center; font-size: 0.95rem; color: var(--text-secondary); }
 </style>
 {% endblock %}

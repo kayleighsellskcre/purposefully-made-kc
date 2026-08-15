@@ -86,12 +86,20 @@ def submit():
         except Exception:
             pass
 
-        # Redirect to the requests list (not My Designs) — the design doesn't
-        # exist yet, and this avoids any unrelated page error masking success.
-        flash('Request submitted successfully! We\'ll recreate your design and add it to your profile so you can order any style, color, or shirt.', 'success')
-        return redirect(url_for('custom_request.my_requests'))
+        return redirect(url_for('custom_request.confirmation', req_id=req.id))
     
     return render_template('custom_request/submit.html')
+
+
+@custom_request_bp.route('/confirmation/<int:req_id>')
+@login_required
+def confirmation(req_id):
+    """Thank-you page so the customer can see their request went through."""
+    req = CustomDesignRequest.query.get_or_404(req_id)
+    if req.user_id != current_user.id and not getattr(current_user, 'is_admin', False):
+        flash('Request not found', 'error')
+        return redirect(url_for('custom_request.my_requests'))
+    return render_template('custom_request/confirmation.html', req=req)
 
 
 @custom_request_bp.route('/my-requests')

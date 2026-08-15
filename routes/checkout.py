@@ -10,6 +10,7 @@ import stripe
 import paypalrestsdk
 import json
 from utils.order_costs import default_due_date, shirt_unit_cost
+from utils.local_time import format_central
 
 
 def _new_request_id():
@@ -164,7 +165,7 @@ def _send_order_confirmation_email(order):
             f"Hi {order.first_name or 'there'},\n\n"
             f"Your order is confirmed! Here's your receipt.\n\n"
             f"Order Number : {order.order_number}\n"
-            f"Date         : {placed_at.strftime('%B %d, %Y at %I:%M %p')} UTC\n"
+            f"Date         : {format_central(placed_at)}\n"
             f"Payment      : {(order.payment_method or 'Card').title()} — "
             f"{'PAID' if order.payment_status == 'paid' else 'PENDING (Cash — pay on pickup)'}\n\n"
             f"Items:\n{items_text}\n\n"

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Request Received - Purposefully Made KC{% endblock %}
+
+{% block content %}
+<div class="confirmation-page">
+    <div class="container">
+        <div class="confirmation-card">
+            <div class="confirmation-header">
+                <div class="success-icon-wrap" aria-hidden="true">
+                    <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M8 12l2.5 2.5 5-5"></path>
+                    </svg>
+                </div>
+                <span class="confirmation-eyebrow">Request Received</span>
+                <h1>You're All Set!</h1>
+                <p>We got your recreate request and will add the design to your profile when it's ready.</p>
+            </div>
+
+            <div class="order-info">
+                <div class="info-row">
+                    <strong>Submitted:</strong>
+                    <span>{{ req.created_at|central }}</span>
+                </div>
+                <div class="info-row">
+                    <strong>Status:</strong>
+                    <span>In progress</span>
+                </div>
+            </div>
+
+            <div class="confirmation-message">
+                <h2>What you sent</h2>
+                {% if req.reference_file_path %}
+                <img class="request-preview" src="{{ req.reference_file_path | image_url }}" alt="Your reference image">
+                {% endif %}
+                <p>{{ req.description }}</p>
+            </div>
+
+            <div class="confirmation-message">
+                <h2>What's Next?</h2>
+                <p>We'll recreate this design and add it to <strong>My Designs</strong>. You'll be able to order it on any style, color, or shirt from there.</p>
+            </div>
+
+            <div class="confirmation-actions">
+                <a href="{{ url_for('custom_request.my_requests') }}" class="btn btn-primary">View My Requests</a>
+                <a href="{{ url_for('shop.index') }}" class="btn btn-outline">Continue Shopping</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.confirmation-page { padding: 4rem 0; min-height: calc(100vh - 300px); }
+.confirmation-card { max-width: 700px; margin: 0 auto; background: #fff; border-radius: var(--border-radius); box-shadow: var(--box-shadow); overflow: hidden; }
+.confirmation-header { text-align: center; padding: 3.5rem 2rem 3rem; background: linear-gradient(135deg, var(--terra-cotta) 0%, var(--midnight-charcoal) 100%); color: #fff; }
+.success-icon-wrap { display: inline-flex; align-items: center; justify-content: center; width: 84px; height: 84px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.4); background: rgba(255,255,255,0.12); color: #fff; margin-bottom: 1.25rem; }
+.confirmation-eyebrow { display: block; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.75); margin-bottom: 0.5rem; }
+.confirmation-header h1 { margin-bottom: 0.5rem; color: #fff; }
+.confirmation-header p { color: rgba(255,255,255,0.9); }
+.order-info { padding: 2rem; background: var(--secondary-color); }
+.info-row { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid var(--border-color); }
+.info-row:last-child { border-bottom: none; padding-bottom: 0; }
+.confirmation-message { padding: 2rem; border-bottom: 1px solid var(--border-color); }
+.confirmation-message h2 { margin-bottom: 1rem; }
+.confirmation-message p { color: var(--text-secondary); line-height: 1.6; }
+.request-preview { display: block; width: 100%; max-height: 280px; object-fit: contain; background: var(--secondary-color); border-radius: var(--border-radius); margin-bottom: 1rem; }
+.confirmation-actions { padding: 2rem; display: flex; gap: 1rem; justify-content: center; }
+@media (max-width: 768px) { .confirmation-actions { flex-direction: column; } }
+</style>
+{% endblock %}

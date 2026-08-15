@@ -14,7 +14,7 @@
 <section class="submit-section">
     <div class="container">
         <div class="submit-form-card">
-            <form method="post" action="{{ url_for('custom_request.submit') }}" enctype="multipart/form-data">
+            <form id="recreate-form" method="post" action="{{ url_for('custom_request.submit') }}" enctype="multipart/form-data">
                 <div class="form-group">
                     <label for="reference_image" class="form-label">Reference Image</label>
                     <p class="form-hint">Screenshot or save the image you want recreated (PNG, JPG, WEBP, HEIC)</p>
@@ -39,7 +39,7 @@
                 </div>
                 
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary btn-lg">Submit Request</button>
+                    <button type="submit" id="recreate-submit" class="btn btn-primary btn-lg">Submit Request</button>
                     <a href="{{ url_for('custom_request.index') }}" class="btn btn-outline btn-lg">Cancel</a>
                 </div>
             </form>
@@ -226,6 +226,15 @@ document.addEventListener('DOMContentLoaded', function() {
             label.classList.remove('has-file');
         }
     });
+
+    var form = document.getElementById('recreate-form');
+    var submitBtn = document.getElementById('recreate-submit');
+    if (form && submitBtn) {
+        form.addEventListener('submit', function () {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Sending your request…';
+        });
+    }
 });
 </script>
 {% endblock %}

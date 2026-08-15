@@ -25,7 +25,7 @@
                 </div>
                 <div class="info-row">
                     <strong>Order Date:</strong>
-                    <span>{{ order.created_at.strftime('%B %d, %Y at %I:%M %p') }}</span>
+                    <span>{{ order.created_at|central }}</span>
                 </div>
                 <div class="info-row">
                     <strong>Email:</strong>

@@ -17,7 +17,7 @@
             <div>
                 <span class="account-content-eyebrow">Order Details</span>
                 <h1 class="od-order-number">Order #{{ order.order_number }}</h1>
-                <p class="od-date">Placed {{ order.created_at.strftime('%B %d, %Y') }}</p>
+                <p class="od-date">Placed {{ order.created_at|central('%B %d, %Y') }}</p>
             </div>
             <div class="od-badges">
                 <span class="status-pill status-{{ order.status }}">{{ order.status.replace('_', ' ').title() }}</span>

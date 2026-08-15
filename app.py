@@ -438,6 +438,12 @@ def create_app(config_class=Config):
             return format_wh(pair[0], pair[1])
         return 'N/A'
 
+    @app.template_filter('central')
+    def central_filter(dt, fmt='%B %d, %Y at %I:%M %p'):
+        """Show a stored UTC datetime in Kansas City time."""
+        from utils.local_time import format_central
+        return format_central(dt, fmt)
+
     @app.template_filter('from_json')
     def from_json_filter(value):
         """Convert JSON string to Python object"""

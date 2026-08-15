@@ -15,7 +15,7 @@
             <div>
                 <span class="adm-eyebrow">Admin / Orders</span>
                 <h1 class="od-title">Order <span class="od-number">#{{ order.order_number }}</span></h1>
-                <p class="od-date">Placed {{ order.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+                <p class="od-date">Placed {{ order.created_at|central }}</p>
             </div>
         </div>
         <div class="od-header-right">
