@@ -63,6 +63,12 @@ CURATED_BRANDS = [
             'YPC54',                    # Youth Core Cotton
             'PC78H',                    # Core Fleece hoodie
             'PC90H',                    # Essential Fleece hoodie
+            'PC147',                    # Tie-Dye tee
+            'PC147Y', 'YPC147',         # Youth Tie-Dye tee
+            'LPC147V',                  # Ladies Tie-Dye v-neck
+            'PC147LS',                  # Tie-Dye long sleeve
+            'PC144',                    # Crystal Tie-Dye hoodie
+            'PC145',                    # Crystal Tie-Dye tee
         ],
     },
     {
