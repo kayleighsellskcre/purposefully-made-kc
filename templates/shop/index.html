@@ -213,8 +213,8 @@
                             <div class="product-info">
                                 <h3 class="product-name">{{ product.name }}</h3>
                                 <p class="product-style">Style {{ product.style_number }}</p>
-                                {% if product.category %}
-                                <p class="product-category">{{ product.category }}</p>
+                                {% if product.display_category or product.category %}
+                                <p class="product-category">{{ product.display_category or product.category }}</p>
                                 {% endif %}
                                 <p class="product-price">${{ "%.2f"|format(product.base_price) }}</p>
                                 <span class="btn btn-customize btn-sm">Customize</span>

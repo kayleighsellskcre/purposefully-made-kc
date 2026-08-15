@@ -19,6 +19,7 @@ We group by STYLE# → colors → sizes.
 import csv
 import json
 from utils.sizes import sort_sizes
+from utils.product_filters import infer_age, infer_category, infer_fit
 import io
 import os
 from collections import defaultdict
@@ -255,7 +256,21 @@ def parse_csv(source) -> list[dict]:
             'wholesale_cost':        piece_price,
             'available_sizes':       json.dumps(all_sizes),
             'available_colors':      json.dumps(all_color_names),
-            'category':              category,
+            'category':              infer_category({
+                'name': meta.get('PRODUCT_TITLE', '').strip(),
+                'category': category,
+                'style_number': style,
+            }),
+            'age_group':             infer_age({
+                'name': meta.get('PRODUCT_TITLE', '').strip(),
+                'category': category,
+                'style_number': style,
+            }),
+            'fit_type':              infer_fit({
+                'name': meta.get('PRODUCT_TITLE', '').strip(),
+                'category': category,
+                'style_number': style,
+            }),
             'is_active':             status not in ('discontinued', 'closeout'),
             'front_mockup_template': color_variant_list[0]['front_image_url'],
             'back_mockup_template':  color_variant_list[0]['back_image_url'],

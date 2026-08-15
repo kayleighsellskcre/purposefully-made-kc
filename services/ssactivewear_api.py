@@ -550,10 +550,10 @@ class SSActivewearAPI:
         else:
             age_group = 'adult'
         
-        # 4. Fit Type
-        if 'women' in title or 'ladies' in title or 'bella' in title.lower():
+        # 4. Fit Type — do not treat "Bella" in the brand name as Women's
+        if 'women' in title or 'ladies' in title:
             fit_type = "Women's"
-        elif 'men' in title:
+        elif 'men' in title and 'women' not in title:
             fit_type = "Men's"
         elif 'fitted' in title or 'slim' in title:
             fit_type = 'Fitted'

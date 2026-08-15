@@ -3,7 +3,13 @@ from models import db, Product, Design, Collection
 from flask_login import login_required, current_user
 from utils.mockups import get_carousel_colors_for_product, get_color_variants_data_for_product, get_first_shop_image_url
 from utils.cloud_storage import image_url as _resolve_image_url
-from utils.sizes import sort_sizes
+from utils.product_filters import (
+    canonical_category_param,
+    infer_age,
+    infer_category,
+    infer_fit,
+    matches_filters,
+)
 import json
 
 shop_bp = Blueprint('shop', __name__, url_prefix='/shop')
@@ -14,8 +20,8 @@ def index():
     try:
         session.pop('collection_id', None)
 
-        category = request.args.get('category')
-        age_group = request.args.get('age_group')
+        category = canonical_category_param(request.args.get('category'))
+        age_group = (request.args.get('age_group') or '').strip().lower() or None
         fit_type = request.args.get('fit_type')
         neck_style = request.args.get('neck_style')
         sleeve_length = request.args.get('sleeve_length')
@@ -23,21 +29,6 @@ def index():
         search_q = (request.args.get('q') or '').strip()
 
         query = Product.query.filter_by(is_active=True)
-        
-        if age_group:
-            query = query.filter(Product.age_group == age_group)
-        
-        if category:
-            query = query.filter_by(category=category)
-        
-        if fit_type:
-            query = query.filter(Product.fit_type == fit_type)
-        
-        if neck_style:
-            query = query.filter(Product.neck_style == neck_style)
-        
-        if sleeve_length:
-            query = query.filter(Product.sleeve_length == sleeve_length)
 
         if search_q:
             _kw = f'%{search_q}%'
@@ -51,18 +42,27 @@ def index():
             )
         
         products = query.order_by(Product.style_number).all()
+        products = [
+            p for p in products
+            if matches_filters(p, age_group=age_group, category=category, fit_type=fit_type)
+        ]
 
         if color:
             from models import ProductColorVariant
-            product_ids = db.session.query(ProductColorVariant.product_id).filter(
-                ProductColorVariant.color_name.ilike(f'%{color}%')
-            ).distinct().all()
-            product_ids = [pid[0] for pid in product_ids]
+            wanted = color.strip().lower()
+            product_ids = [
+                pid for (pid,) in db.session.query(ProductColorVariant.product_id).filter(
+                    db.func.lower(ProductColorVariant.color_name) == wanted
+                ).distinct().all()
+            ]
             products = [p for p in products if p.id in product_ids]
 
         for product in products:
             product.carousel_colors = get_carousel_colors_for_product(product, current_app)
             product.fallback_image_url = get_first_shop_image_url(product, current_app)
+            product.display_category = infer_category(product)
+            product.display_age = infer_age(product)
+            product.display_fit = infer_fit(product)
         
         categories = db.session.query(Product.category).filter(
             Product.is_active == True
