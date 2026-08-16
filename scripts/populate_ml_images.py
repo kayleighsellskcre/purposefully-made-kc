@@ -198,9 +198,11 @@ def update_database(all_images: dict) -> dict:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--cookie', help='Manual JSESSIONID cookie value (skip browser_cookie3)')
-    parser.add_argument('--dry-run', action='store_true', help='Scrape but do not write to DB')
+    parser.add_argument('--cookie', help='medialibrary1.com JSESSIONID cookie (skips browser_cookie3)')
+    parser.add_argument('--dry-run', action='store_true', help='Scrape only — do not write to DB or POST')
     parser.add_argument('--styles', help='Comma-separated subset of styles to process')
+    parser.add_argument('--post-live', action='store_true', help='POST scraped images directly to live Railway site')
+    parser.add_argument('--admin-cookie', help='purposefullymadekc.com Flask session cookie for --post-live')
     args = parser.parse_args()
 
     sess = get_session(args.cookie)
@@ -235,6 +237,37 @@ def main():
         print("Dry run — skipping database update.")
         return
 
+    # ── Option A: POST directly to the live Railway endpoint ─────────────────
+    live_url = 'https://purposefullymadekc.com/admin/products/import-media-library-images'
+    if args.post_live:
+        print(f"\nPOSTing to {live_url}...")
+        if not args.admin_cookie:
+            print("ERROR: --post-live requires --admin-cookie with your purposefullymadekc.com session cookie.")
+            print("  In Chrome: DevTools → Application → Cookies → purposefullymadekc.com → copy 'session' value")
+            sys.exit(1)
+
+        # Build flat images list from all_images
+        flat = []
+        for style, colors in all_images.items():
+            for color, sides in colors.items():
+                flat.append({
+                    'style':     style,
+                    'color':     color,
+                    'front_url': sides.get('front', ''),
+                    'back_url':  sides.get('back',  ''),
+                })
+
+        post_sess = requests.Session()
+        post_sess.cookies.set('session', args.admin_cookie, domain='purposefullymadekc.com')
+        try:
+            r = post_sess.post(live_url, json={'images': flat}, timeout=60)
+            print(f"Status: {r.status_code}")
+            print(r.text[:500])
+        except Exception as e:
+            print(f"POST failed: {e}")
+        return
+
+    # ── Option B: update local database ─────────────────────────────────────
     print("\nUpdating database...")
     result = update_database(all_images)
     if 'error' in result:
