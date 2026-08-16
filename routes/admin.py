@@ -3627,3 +3627,182 @@ def customers():
     return render_template('admin/operations/customers.html',
                          repeat_customers=repeat_customers,
                          collections=collections)
+
+
+# ===== MEDIA LIBRARY IMAGE IMPORT =====
+
+@admin_bp.route('/products/import-media-library-images', methods=['POST'])
+@admin_required
+def import_media_library_images():
+    """
+    Receive flat image URLs extracted from the SanMar Media Library (Widen).
+    Expects JSON body:
+      { "images": [{"style": "BC3001", "color": "Black", "front_url": "...", "back_url": "..."}, ...] }
+    Updates ProductColorVariant.front_image_url / back_image_url for matching records.
+    Creates new variants if none exist for that style+color.
+    """
+    data = request.get_json(force=True, silent=True)
+    if not data or 'images' not in data:
+        return jsonify({'error': 'No images payload'}), 400
+
+    images = data['images']  # list of {style, color, front_url, back_url}
+    updated = created = skipped = 0
+
+    for item in images:
+        style = (item.get('style') or '').strip()
+        color = (item.get('color') or '').strip()
+        front_url = (item.get('front_url') or '').strip()
+        back_url  = (item.get('back_url') or '').strip()
+
+        if not style or not color or not (front_url or back_url):
+            skipped += 1
+            continue
+
+        # Find product — try exact style_number, then with BC prefix
+        product = Product.query.filter_by(style_number=style).first()
+        if not product:
+            alt = 'BC' + style if not style.upper().startswith('BC') else style[2:]
+            product = Product.query.filter_by(style_number=alt).first()
+        if not product:
+            skipped += 1
+            continue
+
+        # Find variant by color name (case-insensitive)
+        variant = ProductColorVariant.query.filter(
+            ProductColorVariant.product_id == product.id,
+            db.func.lower(ProductColorVariant.color_name) == color.lower()
+        ).first()
+
+        if variant:
+            if front_url:
+                variant.front_image_url = front_url
+            if back_url:
+                variant.back_image_url = back_url
+            variant.last_synced = datetime.utcnow()
+            updated += 1
+        else:
+            db.session.add(ProductColorVariant(
+                product_id=product.id,
+                color_name=color,
+                front_image_url=front_url,
+                back_image_url=back_url,
+                last_synced=datetime.utcnow(),
+            ))
+            created += 1
+
+        # Set front_mockup_template on product if blank
+        if front_url and not product.front_mockup_template:
+            product.front_mockup_template = front_url
+        if back_url and not product.back_mockup_template:
+            product.back_mockup_template = back_url
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+    return jsonify({
+        'ok': True,
+        'updated': updated,
+        'created': created,
+        'skipped': skipped,
+        'total': len(images)
+    })
+
+
+@admin_bp.route('/products/apply-ml-cache', methods=['GET', 'POST'])
+@admin_required
+def apply_ml_cache():
+    """
+    Read services/ml_images_cache.json (populated by scripts/populate_ml_images.py)
+    and apply all image URLs to the database.
+    GET  → show status / trigger button
+    POST → run the import
+    """
+    import re as _re
+    cache_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        'services', 'ml_images_cache.json'
+    )
+
+    if request.method == 'GET':
+        exists = os.path.isfile(cache_path)
+        size   = os.path.getsize(cache_path) if exists else 0
+        return jsonify({
+            'cache_exists': exists,
+            'cache_size_kb': round(size / 1024, 1),
+            'instruction': 'POST to this URL to apply the cache to the database.'
+        })
+
+    # POST — run the import
+    if not os.path.isfile(cache_path):
+        return jsonify({'error': 'Cache file not found. Run scripts/populate_ml_images.py first.'}), 404
+
+    with open(cache_path) as f:
+        all_images = json.load(f)
+
+    ACCOUNT_ID = '47526418'
+    EMBED_BASE = f'https://embed.widencdn.net/img/{ACCOUNT_ID}'
+
+    updated = created = skipped = 0
+
+    for style, colors in all_images.items():
+        product = Product.query.filter_by(style_number=style).first()
+        if not product:
+            skipped += len(colors)
+            continue
+
+        first_front = first_back = None
+
+        for color, sides in colors.items():
+            # sides may be {"front": url, "back": url}  (from script)
+            # or compact {"fu": uuid, "bu": uuid}        (legacy)
+            front_url = sides.get('front', '')
+            back_url  = sides.get('back', '')
+
+            if not front_url and not back_url:
+                skipped += 1
+                continue
+
+            variant = ProductColorVariant.query.filter(
+                ProductColorVariant.product_id == product.id,
+                db.func.lower(ProductColorVariant.color_name) == color.lower()
+            ).first()
+
+            if variant:
+                if front_url: variant.front_image_url = front_url
+                if back_url:  variant.back_image_url  = back_url
+                variant.last_synced = datetime.utcnow()
+                updated += 1
+            else:
+                db.session.add(ProductColorVariant(
+                    product_id=product.id,
+                    color_name=color,
+                    front_image_url=front_url,
+                    back_image_url=back_url,
+                    last_synced=datetime.utcnow(),
+                ))
+                created += 1
+
+            if not first_front and front_url: first_front = front_url
+            if not first_back  and back_url:  first_back  = back_url
+
+        if first_front and not product.front_mockup_template:
+            product.front_mockup_template = first_front
+        if first_back and not product.back_mockup_template:
+            product.back_mockup_template = first_back
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+    return jsonify({
+        'ok': True,
+        'updated': updated,
+        'created': created,
+        'skipped': skipped,
+        'styles_processed': len(all_images)
+    })

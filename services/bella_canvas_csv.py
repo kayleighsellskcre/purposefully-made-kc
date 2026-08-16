@@ -74,28 +74,20 @@ def _existing_image_url(row: dict, side: str) -> str:
 def _front_image_url(row: dict) -> str:
     """
     Return a flat shirt image URL. Never returns a CDN model photo.
-    Returns '' if no local flat image exists.
     Priority:
-    1. static/sanmar/{style}/{style}_{Color}_front.jpg
-    2. static/images/products/{style}/{style}_{Color}_front.jpg
-    3. SDL COLOR_PRODUCT_IMAGE flat (only if file exists on disk)
-    4. SDL PRODUCT_IMAGE flat (only if file exists on disk)
+    1. SDL FRONT_FLAT_IMAGE_URL (direct CDN link, no model, always preferred)
+    2. Local static/sanmar/{style}/{style}_{Color}_front.jpg
+    3. Local static/images/products/{style}/{style}_{Color}_front.jpg
     """
+    # Priority 1: SDL flat image CDN URL (available in SanMar Data Library CSV)
+    flat_url = row.get('FRONT_FLAT_IMAGE_URL', '').strip()
+    if flat_url and flat_url.startswith('http'):
+        return flat_url
+
+    # Priority 2: local file on disk
     existing = _existing_image_url(row, 'front')
     if existing:
         return existing
-
-    color_img = row.get('COLOR_PRODUCT_IMAGE', '').strip()
-    if color_img and '_flat_front' in color_img.lower():
-        path = os.path.join(_STATIC_ROOT, 'sanmar', 'front', 'SDL', 'COLOR_PRODUCT_IMAGE', color_img)
-        if os.path.exists(path):
-            return f'{_SDL_BASE}/COLOR_PRODUCT_IMAGE/{color_img}'
-
-    product_img = row.get('PRODUCT_IMAGE', '').strip()
-    if product_img:
-        path = os.path.join(_STATIC_ROOT, 'sanmar', 'front', 'SDL', 'PRODUCT_IMAGE', product_img)
-        if os.path.exists(path):
-            return f'{_SDL_BASE}/PRODUCT_IMAGE/{product_img}'
 
     return ''
 
@@ -103,8 +95,15 @@ def _front_image_url(row: dict) -> str:
 def _back_image_url(row: dict) -> str:
     """
     Return a flat back image URL. Never returns a CDN model photo.
-    Returns '' if no local flat image exists.
+    Priority:
+    1. SDL BACK_FLAT_IMAGE_URL (direct CDN link, no model, always preferred)
+    2. Local static/sanmar/{style}/{style}_{Color}_back.jpg
     """
+    # Priority 1: SDL flat back image CDN URL
+    flat_url = row.get('BACK_FLAT_IMAGE_URL', '').strip()
+    if flat_url and flat_url.startswith('http'):
+        return flat_url
+
     existing = _existing_image_url(row, 'back')
     if existing:
         return existing
