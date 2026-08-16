@@ -462,7 +462,8 @@ class OrderItem(db.Model):
     rotation = db.Column(db.Float, default=0.0)
     
     # Preview image
-    proof_image = db.Column(db.String(500))  # Path to rendered proof
+    proof_image = db.Column(db.String(500))  # Path to rendered front proof
+    proof_back_image = db.Column(db.String(500))  # Path to rendered back mockup (customer-approved)
     
     # Notes
     notes = db.Column(db.Text)

@@ -172,13 +172,20 @@ def add():
             unique_filename = f"back_{name}_{timestamp}{ext}"
             filepath = upload_dir / unique_filename
             back_file.save(str(filepath))
-            try:
-                from services.image_processing import process_artwork_file
-                _res = process_artwork_file(filepath, mode='auto')
-                if _res.get('path') is not None:
-                    unique_filename = _res['path'].name
-            except Exception:
-                pass
+            # Generated name/number transfers are already transparent production
+            # art. Background-cut would eat white letters and collapse spacing.
+            is_name_number = bool(
+                (data.get('back_design_name') or '').strip()
+                or (data.get('back_design_number') or '').strip()
+            )
+            if not is_name_number:
+                try:
+                    from services.image_processing import process_artwork_file
+                    _res = process_artwork_file(filepath, mode='auto')
+                    if _res.get('path') is not None:
+                        unique_filename = _res['path'].name
+                except Exception:
+                    pass
             back_design_url = f"/static/uploads/designs/{unique_filename}"
     elif data.get('back_design_url'):
         back_design_url = data.get('back_design_url')
@@ -189,13 +196,28 @@ def add():
     _bd_name = (data.get('back_design_name') or '').strip()
     _bd_number = (data.get('back_design_number') or '').strip()
     if _bd_name or _bd_number:
+        def _meta_float(key):
+            raw = data.get(key)
+            if raw in (None, ''):
+                return None
+            try:
+                return float(raw)
+            except (TypeError, ValueError):
+                return None
         back_design_meta = {
             'name': _bd_name,
             'number': _bd_number,
             'font': (data.get('back_design_font') or '').strip(),
+            'font_weight': 'bold',
+            'font_style': 'normal',
             'text_color': (data.get('back_design_text_color') or '').strip(),
             'outline': (data.get('back_design_outline') or '').strip().lower() == 'true',
             'outline_color': (data.get('back_design_outline_color') or '').strip(),
+            'name_letter_spacing_em': _meta_float('name_letter_spacing_em'),
+            'number_tracking_em': _meta_float('number_tracking_em'),
+            'condense': _meta_float('name_condense'),
+            'number_scale': _meta_float('number_condense'),
+            'layout_version': 2,
         }
     
     # Save proof images (design composited on shirt) for cart display
@@ -334,7 +356,10 @@ def add():
     )
 
     if back_design_meta and transfer_production.get('back'):
+        from utils.personalization_layout import enrich_back_snapshot
         back = transfer_production.get('back') or {}
+        transfer_production['back'] = enrich_back_snapshot(back, extra=back_design_meta)
+        back = transfer_production['back']
         back_design_meta.update({
             'name_width': back.get('name_width'),
             'name_width_natural': back.get('name_width_natural'),
@@ -352,6 +377,10 @@ def add():
             'condense_percent': back.get('condense_percent'),
             'age_group': back.get('age_group'),
             'category': back.get('category'),
+            'layout_version': back.get('layout_version'),
+            'font_file': back.get('font_file'),
+            'name_letter_spacing_em': back.get('name_letter_spacing_em'),
+            'number_tracking_em': back.get('number_tracking_em'),
         })
 
     front = (transfer_production or {}).get('front') or {}

@@ -737,6 +737,8 @@ def build_item_production(
             'combined_height_display': back['combined_height_display'],
             'quantity': qty,
         }
+        from utils.personalization_layout import enrich_back_snapshot
+        payload['back'] = enrich_back_snapshot(payload['back'])
     return payload
 
 

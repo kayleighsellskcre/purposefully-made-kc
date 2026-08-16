@@ -129,19 +129,21 @@ def artwork_kit(item, order=None):
     if not isinstance(meta, dict):
         meta = {}
     personalized = bool(meta.get('name') or meta.get('number'))
+    proof_back = _as_url(getattr(item, 'proof_back_image', None)) if not isinstance(item, dict) else _as_url(item.get('proof_back_url'))
     return {
         'front_mockup_url': front_mockup,
         'back_mockup_url': back_mockup,
         'front_print_url': front_print,
         'back_print_url': back_print,
+        'proof_back_url': proof_back,
         'front_overlay_url': front_print if front_on_shirt else None,
         'back_overlay_url': back_print,
         'placement': placement,
         'back_overlay_class': 'back_name_number' if personalized else 'center_back',
         'is_personalized_back': personalized,
         'has_front_print': bool(front_print),
-        'has_back_print': bool(back_print),
-        'has_back_proof': bool(back_print and back_mockup),
+        'has_back_print': bool(back_print) or personalized,
+        'has_back_proof': bool((back_print or personalized) and back_mockup),
     }
 
 

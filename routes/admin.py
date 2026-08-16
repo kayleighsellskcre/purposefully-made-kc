@@ -329,10 +329,33 @@ def order_detail(order_id):
         """Always use correct youth dimensions for display (fixes stored wrong values)."""
         return get_print_width_for_size(item.size, item.product) or item.print_width
     from utils.order_artwork import artwork_kit
+    from utils.personalization_layout import snapshot_from_item, validate_snapshot_png
+    from utils.name_number_art import personalized_png
     item_productions = []
     for item in order.items:
         prod = production_from_order_item(item, customer_name=order.full_name)
-        item_productions.append((item, prod, artwork_kit(item, order=order)))
+        kit = artwork_kit(item, order=order)
+        layout = None
+        if kit.get('is_personalized_back'):
+            snap = snapshot_from_item(item, customer_name=order.full_name)
+            try:
+                png = personalized_png(current_app, item, 'back', customer_name=order.full_name)
+                ok, failures = validate_snapshot_png(snap, png)
+            except Exception as exc:
+                png = None
+                ok, failures = False, [{
+                    'code': 'render',
+                    'label': 'Renderer',
+                    'expected': 'valid production PNG',
+                    'actual': str(exc),
+                }]
+            layout = {
+                'snapshot': snap,
+                'ok': ok,
+                'failures': failures,
+                'needs_review': (not snap.get('complete')) or (not ok),
+            }
+        item_productions.append((item, prod, kit, layout))
     return render_template(
         'admin/order_detail.html',
         order=order,
@@ -359,21 +382,43 @@ def save_item_artwork(order_id, item_id, side):
         return redirect(url_for('admin.order_detail', order_id=order_id))
     order = Order.query.get_or_404(order_id)
     item = OrderItem.query.filter_by(id=item_id, order_id=order.id).first_or_404()
-    if side in ('back-name', 'back-number'):
+    if side in ('back', 'back-name', 'back-number') and (
+        side != 'back' or (getattr(item, 'back_design_details', None) or {}).get('name')
+        or (getattr(item, 'back_design_details', None) or {}).get('number')
+    ):
+        from utils.personalization_layout import snapshot_from_item, validate_snapshot_png
         from utils.name_number_art import personalized_png
-        piece = 'name' if side == 'back-name' else 'number'
-        data = personalized_png(current_app, item, piece, customer_name=order.full_name)
-        if not data:
-            flash(f'Could not build a separate {piece} file for this order.', 'error')
-            return redirect(url_for('admin.order_detail', order_id=order.id))
-        filename = download_filename(order, item, side)
-        inline = request.args.get('inline')
-        return send_file(
-            BytesIO(data),
-            as_attachment=not inline,
-            download_name=filename,
-            mimetype='image/png',
-        )
+        meta = item.back_design_details or {}
+        personalized = bool(meta.get('name') or meta.get('number'))
+        if personalized or side in ('back-name', 'back-number'):
+            piece = 'back' if side == 'back' else ('name' if side == 'back-name' else 'number')
+            try:
+                data = personalized_png(current_app, item, piece, customer_name=order.full_name)
+            except Exception as exc:
+                current_app.logger.exception('personalized png failed: %s', exc)
+                flash(f'Could not build the {piece} transfer: {exc}', 'error')
+                return redirect(url_for('admin.order_detail', order_id=order.id))
+            if not data:
+                flash(f'Could not build a {piece} file for this order.', 'error')
+                return redirect(url_for('admin.order_detail', order_id=order.id))
+            snapshot = snapshot_from_item(item, customer_name=order.full_name)
+            ok, failures = validate_snapshot_png(snapshot, data)
+            approved = request.args.get('approved') == '1' or bool(meta.get('production_approved'))
+            inline = request.args.get('inline')
+            if not ok and not inline and not approved:
+                flash(
+                    'This transfer failed production checks: '
+                    + '; '.join(f"{f['label']} (expected {f['expected']}, got {f['actual']})" for f in failures),
+                    'error',
+                )
+                return redirect(url_for('admin.order_detail', order_id=order.id))
+            filename = download_filename(order, item, side)
+            return send_file(
+                BytesIO(data),
+                as_attachment=not inline,
+                download_name=filename,
+                mimetype='image/png',
+            )
     url = front_print_url(item) if side == 'front' else back_print_url(item)
     if not url:
         flash('No print file is saved for that side.', 'error')
@@ -398,6 +443,75 @@ def save_item_artwork(order_id, item_id, side):
             current_app.logger.exception('artwork download failed for order %s item %s %s', order_id, item_id, side)
     flash('Could not download that print file. Open the image and save it from the browser.', 'error')
     return redirect(url_for('admin.order_detail', order_id=order.id))
+
+
+@admin_bp.route('/orders/<int:order_id>/items/<int:item_id>/approve-layout', methods=['POST'])
+@admin_required
+def approve_item_layout(order_id, item_id):
+    """Admin reviewed the reconstructed DTF against the customer mockup."""
+    order = Order.query.get_or_404(order_id)
+    item = OrderItem.query.filter_by(id=item_id, order_id=order.id).first_or_404()
+    meta = dict(item.back_design_details or {})
+    meta['production_approved'] = True
+    meta['needs_review'] = False
+    item.back_design_meta = json.dumps(meta)
+    stored = item.transfer_production_details or {}
+    if stored.get('back'):
+        stored = dict(stored)
+        stored['back'] = dict(stored['back'])
+        stored['back']['needs_review'] = False
+        stored['back']['production_approved'] = True
+        item.transfer_production = json.dumps(stored)
+    db.session.commit()
+    flash('Layout approved. You can now save the production PNG.', 'success')
+    return redirect(url_for('admin.order_detail', order_id=order.id))
+
+
+@admin_bp.route('/orders/repair-personalization', methods=['POST'])
+@admin_required
+def repair_personalization():
+    """Idempotent backfill: flag incomplete snapshots, never change prices or mockups."""
+    from utils.personalization_layout import snapshot_from_item, enrich_back_snapshot
+    scanned = repaired = flagged = 0
+    for item in OrderItem.query.all():
+        meta = item.back_design_details or {}
+        if not (meta.get('name') or meta.get('number')):
+            continue
+        scanned += 1
+        if meta.get('layout_repaired'):
+            continue
+        snap = snapshot_from_item(item)
+        stored = item.transfer_production_details or {}
+        back = dict((stored or {}).get('back') or {})
+        if snap.get('complete'):
+            back = enrich_back_snapshot(back or {
+                'name': snap['name'],
+                'number': snap['number'],
+                'font': snap['font'],
+                'name_height': snap['name_height'],
+                'number_height': snap['number_height'],
+                'gap': snap['gap'],
+            }, extra=meta)
+            stored = dict(stored or {})
+            stored['back'] = back
+            item.transfer_production = json.dumps(stored)
+            meta = dict(meta)
+            meta['layout_repaired'] = True
+            meta['layout_version'] = back.get('layout_version')
+            item.back_design_meta = json.dumps(meta)
+            repaired += 1
+        else:
+            meta = dict(meta)
+            meta['needs_review'] = True
+            meta['layout_repaired'] = True
+            item.back_design_meta = json.dumps(meta)
+            flagged += 1
+    db.session.commit()
+    flash(
+        f'Personalization repair finished. Scanned {scanned}, stamped {repaired}, flagged {flagged} for review. Prices and customer mockups were not changed.',
+        'success',
+    )
+    return redirect(url_for('admin.orders'))
 
 
 def _collect_order_productions(orders):

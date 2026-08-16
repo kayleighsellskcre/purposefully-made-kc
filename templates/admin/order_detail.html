@@ -236,7 +236,7 @@
         <p class="od-card-hint">Left: how the customer ordered it. Right: the transparent print files to save and upload for DTF.</p>
 
         {% if item_productions is not defined %}{% set item_productions = [] %}{% endif %}
-        {% for item, prod, kit in item_productions %}
+        {% for item, prod, kit, layout in item_productions %}
         {% set bd = item.back_design_details %}
         <article class="od-kit">
             <header class="od-kit-head">
@@ -253,7 +253,7 @@
                     <div class="pm-proofs od-kit-proofs">
                         {{ garment_proof(kit.front_mockup_url, kit.front_overlay_url, kit.placement, 'Front') }}
                         {% if kit.has_back_print %}
-                        {{ garment_proof(kit.back_mockup_url, kit.back_overlay_url, kit.back_overlay_class or 'center_back', 'Back') }}
+                        {{ garment_proof(kit.back_mockup_url, kit.proof_back_url or kit.back_overlay_url, kit.back_overlay_class or 'center_back', 'Back') }}
                         {% endif %}
                     </div>
                 </section>
@@ -284,10 +284,16 @@
                         {% endif %}
 
                         {% if kit.has_back_print %}
-                        <div class="pm-print-file">
+                        <div class="pm-print-file{% if layout and layout.needs_review %} od-print-review{% endif %}">
+                            {% if kit.is_personalized_back %}
+                            <a class="pm-print-preview" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back', inline=1) }}" target="_blank" rel="noopener" title="Open full size">
+                                <img src="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back', inline=1) }}" alt="Back print file">
+                            </a>
+                            {% elif kit.back_print_url %}
                             <a class="pm-print-preview" href="{{ kit.back_print_url }}" target="_blank" rel="noopener" title="Open full size">
                                 <img src="{{ kit.back_print_url }}" alt="Back print file">
                             </a>
+                            {% endif %}
                             <div class="pm-print-meta">
                                 <h3>Back transfer</h3>
                                 {% if bd and (bd.name or bd.number) %}
@@ -300,11 +306,34 @@
                                 <p>
                                     {% if prod and prod.back %}
                                     Combined {{ prod.back.combined_width_display }}″ W × {{ prod.back.combined_height_display }}″ H
+                                    {% if prod.back.combined_width and prod.back.combined_height %}
+                                    · {{ (prod.back.combined_width * 300)|int }}×{{ (prod.back.combined_height * 300)|int }} px at 300 DPI
+                                    {% endif %}
                                     {% else %}
                                     Name and number artwork
                                     {% endif %}
                                 </p>
+                                {% if layout and layout.needs_review %}
+                                <p class="od-xfer-warn">Needs Production Review</p>
+                                {% if layout.failures %}
+                                <ul class="od-layout-fail">
+                                    {% for fail in layout.failures %}
+                                    <li>{{ fail.label }}: expected {{ fail.expected }}, got {{ fail.actual }}</li>
+                                    {% endfor %}
+                                </ul>
+                                {% endif %}
+                                {% if not layout.snapshot.complete %}
+                                <p class="od-field-hint">This older order is missing some saved geometry. Compare the customer mockup on the left before approving a download.</p>
+                                {% endif %}
+                                <form method="post" action="{{ url_for('admin.approve_item_layout', order_id=order.id, item_id=item.id) }}" style="margin-top:0.5rem;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="od-btn od-btn-outline">Approve reconstructed layout</button>
+                                </form>
+                                {% elif kit.is_personalized_back %}
                                 <a class="od-btn od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back') }}">Save back PNG</a>
+                                {% elif kit.back_print_url %}
+                                <a class="od-btn od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back') }}">Save back PNG</a>
+                                {% endif %}
                             </div>
                         </div>
                         {% endif %}
@@ -326,7 +355,7 @@
             </div>
         </div>
 
-        {% for item, prod, kit in item_productions %}
+        {% for item, prod, kit, layout in item_productions %}
         {% if prod and (prod.front or prod.back) %}
         <div class="od-xfer{% if (prod.front and prod.front.exceeds_safe_area) or (prod.back and prod.back.exceeds_safe_area) %} od-xfer-flag{% endif %}">
             <div class="od-xfer-itemhead">
@@ -426,6 +455,8 @@
 
 
 <style>
+.od-layout-fail { margin: 0.4rem 0 0; padding-left: 1.1rem; color: #9a3412; font-size: 0.8rem; }
+.od-print-review { outline: 2px solid #d97706; }
 .od-page { padding: 2rem 0 5rem; }
 
 .od-header {

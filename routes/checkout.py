@@ -570,6 +570,7 @@ def complete():
                     cart_item.get('proof_image') or cart_item.get('proof_front_url'),
                     500,
                 )
+                proof_back_image = _clip(cart_item.get('proof_back_url'), 500)
                 order_item = OrderItem(
                     order_id=order.id,
                     product_id=product.id,
@@ -591,6 +592,7 @@ def complete():
                     position_y=_float_or_none(cart_item.get('position_y')),
                     rotation=_float_or_none(cart_item.get('rotation')) or 0,
                     proof_image=proof_image,
+                    proof_back_image=proof_back_image,
                 )
                 try:
                     order_item.back_design_meta = _dumps(back_meta)

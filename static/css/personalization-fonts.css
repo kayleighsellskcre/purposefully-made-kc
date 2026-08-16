@@ -1,0 +1,52 @@
+/* Exact files used by the customer preview AND the admin DTF renderer. */
+@font-face {
+    font-family: 'Jersey M54';
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url('/static/fonts/JerseyM54.woff') format('woff'),
+         url('/static/fonts/JerseyM54.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Jersey M54';
+    font-style: normal;
+    font-weight: 700;
+    font-display: block;
+    src: url('/static/fonts/JerseyM54.woff') format('woff'),
+         url('/static/fonts/JerseyM54.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Bebas Neue';
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url('/static/fonts/BebasNeue-Regular.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Bebas Neue';
+    font-style: normal;
+    font-weight: 700;
+    font-display: block;
+    src: url('/static/fonts/BebasNeue-Regular.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Oswald';
+    font-style: normal;
+    font-weight: 700;
+    font-display: block;
+    src: url('/static/fonts/Oswald-Bold.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Anton';
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url('/static/fonts/Anton-Regular.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Teko';
+    font-style: normal;
+    font-weight: 700;
+    font-display: block;
+    src: url('/static/fonts/Teko-Bold.ttf') format('truetype');
+}

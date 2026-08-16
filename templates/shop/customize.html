@@ -4,7 +4,7 @@
 
 {% block extra_css %}
 <link href="https://fonts.googleapis.com/css2?family=Freshman&family=Black+Ops+One&family=Graduate&family=Squada+One&family=Bebas+Neue:wght@400&family=Oswald:wght@400;700&family=Anton&family=Teko:wght@400;700&display=swap" rel="stylesheet">
-<link href="https://fonts.cdnfonts.com/css/jersey-m54" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/personalization-fonts.css') }}">
 <style>
 .customizer-page {
     padding: 2rem 0;
@@ -3745,7 +3745,7 @@
             const font = state.backDesignFont || 'Bebas Neue';
             if (!name && !number) return resolve(null);
 
-            const dpi = 150;
+            const dpi = 300;
             const nameH = nameHeightIn();
             const numH = numberHeightIn();
             const gapH = gapHeightIn();
@@ -3765,13 +3765,20 @@
                 if (document.fonts) {
                     const loads = [];
                     if (document.fonts.load) {
-                        loads.push(document.fonts.load(`bold ${Math.round(numInkPx)}px "${font}"`));
-                        loads.push(document.fonts.load(`bold ${Math.round(nameInkPx)}px "${font}"`));
+                        loads.push(document.fonts.load(`bold ${Math.round(numInkPx || 200)}px "${font}"`));
+                        loads.push(document.fonts.load(`bold ${Math.round(nameInkPx || 200)}px "${font}"`));
                     }
                     if (document.fonts.ready) loads.push(document.fonts.ready);
                     await Promise.all(loads);
                 }
             } catch (e) {}
+            const fontReady = document.fonts && document.fonts.check
+                ? document.fonts.check(`bold 80px "${font}"`)
+                : false;
+            if (!fontReady) {
+                PMKC.showFlash('The jersey font is still loading. Please wait a moment and add to cart again.', 'error');
+                return resolve(null);
+            }
 
             // Font size that makes the visible letters exactly the chart height.
             const nameInk = inkMetrics(font, INK_REF_NAME);
@@ -3943,7 +3950,12 @@
                 if (state.backDesignEnabled) {
                     if (state.backDesignMode === 'name_number') {
                         const backFile = await generateBackDesignNameNumberImage();
-                        if (backFile) formData.append('back_design', backFile);
+                        if (!backFile) {
+                            this.textContent = 'Add to Cart';
+                            this.disabled = false;
+                            return;
+                        }
+                        formData.append('back_design', backFile);
                         // Carry the readable details through to the order record
                         formData.append('back_design_name', state.backDesignName || '');
                         formData.append('back_design_number', state.backDesignNumber || '');
@@ -3951,6 +3963,10 @@
                         formData.append('back_design_text_color', state.backDesignTextColor || '');
                         formData.append('back_design_outline', state.backDesignOutline ? 'true' : 'false');
                         formData.append('back_design_outline_color', state.backDesignOutline ? (state.backDesignOutlineColor || '') : '');
+                        if (state.nameLetterSpacingEm != null) formData.append('name_letter_spacing_em', state.nameLetterSpacingEm);
+                        if (state.numberTrackingEm != null) formData.append('number_tracking_em', state.numberTrackingEm);
+                        if (state.nameCondense != null) formData.append('name_condense', state.nameCondense);
+                        if (state.numberCondense != null) formData.append('number_condense', state.numberCondense);
                     } else if (state.backDesignFile) {
                         formData.append('back_design', state.backDesignFile);
                     } else if (state.backDesignUrl) {

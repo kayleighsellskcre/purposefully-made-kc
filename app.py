@@ -102,6 +102,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS position_y DOUBLE PRECISION",
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS rotation DOUBLE PRECISION DEFAULT 0",
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS proof_image VARCHAR(500)",
+                    "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS proof_back_image VARCHAR(500)",
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS notes TEXT",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS collection_id INTEGER REFERENCES collection(id)",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS production_stage VARCHAR(50)",
