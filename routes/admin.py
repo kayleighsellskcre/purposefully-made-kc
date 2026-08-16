@@ -354,6 +354,48 @@ def order_detail(order_id):
     )
 
 
+def _artwork_piece(side):
+    if side == 'back-name':
+        return 'name'
+    if side == 'back-number':
+        return 'number'
+    return 'back'
+
+
+@admin_bp.route('/orders/<int:order_id>/items/<int:item_id>/preview/<side>')
+@admin_required
+def preview_item_artwork(order_id, item_id, side):
+    """Low-DPI preview for one render mode. Never builds a 300 DPI file."""
+    from utils.name_number_art import generate_personalized_png
+    from utils.order_artwork import piece_print_url
+    from utils.personalization_layout import PREVIEW_DPI
+    if side not in ('back', 'back-name', 'back-number'):
+        return ('', 404)
+    order = Order.query.get_or_404(order_id)
+    item = OrderItem.query.filter_by(id=item_id, order_id=order.id).first_or_404()
+    piece = _artwork_piece(side)
+    stored = piece_print_url(item, piece)
+    if stored:
+        return redirect(stored)
+    try:
+        data, _snapshot = generate_personalized_png(
+            current_app, item, piece, customer_name=order.full_name, dpi=PREVIEW_DPI,
+        )
+    except Exception as exc:
+        current_app.logger.exception(
+            'dtf preview-failed order=%s item=%s piece=%s: %s',
+            order.id, item.id, piece, exc,
+        )
+        data = None
+    if not data:
+        data = (
+            b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01'
+            b'\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01'
+            b'\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82'
+        )
+    return send_file(BytesIO(data), mimetype='image/png', max_age=60)
+
+
 @admin_bp.route('/orders/<int:order_id>/items/<int:item_id>/save/<side>')
 @admin_required
 def save_item_artwork(order_id, item_id, side):
@@ -375,20 +417,17 @@ def save_item_artwork(order_id, item_id, side):
         side != 'back' or (getattr(item, 'back_design_details', None) or {}).get('name')
         or (getattr(item, 'back_design_details', None) or {}).get('number')
     ):
-        from utils.personalization_layout import validate_snapshot_png
-        from utils.name_number_art import generate_personalized_png
+        from utils.personalization_layout import snapshot_for_piece, validate_snapshot_png
+        from utils.name_number_art import generate_personalized_png, persist_piece_file
         meta = item.back_design_details or {}
         personalized = bool(meta.get('name') or meta.get('number'))
-        inline = request.args.get('inline')
-        if inline:
-            # Previews must use the stored file. Never generate 300 DPI for an <img>.
-            stored = back_print_url(item)
-            if stored:
-                return redirect(stored)
-            flash('No stored preview is available yet. Use Save PNG to generate this transfer.', 'error')
-            return redirect(url_for('admin.order_detail', order_id=order.id))
+        if request.args.get('inline'):
+            return redirect(url_for(
+                'admin.preview_item_artwork',
+                order_id=order.id, item_id=item.id, side=side,
+            ))
         if personalized or side in ('back-name', 'back-number'):
-            piece = 'back' if side == 'back' else ('name' if side == 'back-name' else 'number')
+            piece = _artwork_piece(side)
             try:
                 data, snapshot = generate_personalized_png(
                     current_app, item, piece, customer_name=order.full_name,
@@ -403,7 +442,7 @@ def save_item_artwork(order_id, item_id, side):
             if not data:
                 flash(f'Could not build a {piece} file for this order.', 'error')
                 return redirect(url_for('admin.order_detail', order_id=order.id))
-            ok, failures = validate_snapshot_png(snapshot, data)
+            ok, failures = validate_snapshot_png(snapshot_for_piece(snapshot, piece), data)
             approved = request.args.get('approved') == '1' or bool(meta.get('production_approved'))
             if not ok and not approved:
                 flash(
@@ -412,6 +451,13 @@ def save_item_artwork(order_id, item_id, side):
                     'error',
                 )
                 return redirect(url_for('admin.order_detail', order_id=order.id))
+            try:
+                persist_piece_file(current_app, item, piece, data)
+            except Exception:
+                current_app.logger.exception(
+                    'dtf persist-failed order=%s item=%s piece=%s',
+                    order.id, item.id, piece,
+                )
             filename = download_filename(order, item, side)
             return send_file(
                 BytesIO(data),

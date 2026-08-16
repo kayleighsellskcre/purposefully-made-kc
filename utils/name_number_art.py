@@ -9,6 +9,8 @@ import time
 from collections import OrderedDict
 
 from utils.personalization_layout import (
+    PRODUCTION_DPI,
+    render_piece_png,
     render_snapshot_png,
     snapshot_from_item,
     validate_snapshot_png,
@@ -39,10 +41,11 @@ def _mem_kb():
         return None
 
 
-def _cache_key(item_id, piece, snapshot):
+def _cache_key(item_id, piece, snapshot, dpi):
     return (
         item_id,
         piece,
+        int(dpi or PRODUCTION_DPI),
         snapshot.get('layout_version'),
         snapshot.get('name'),
         snapshot.get('number'),
@@ -71,44 +74,26 @@ def _cache_put(key, data):
             _CACHE.popitem(last=False)
 
 
-def _piece_snapshot(snapshot, piece):
-    if piece == 'name':
-        one = dict(snapshot)
-        one['number'] = ''
-        one['gap'] = 0
-        one['combined_width'] = snapshot.get('name_width')
-        one['combined_height'] = snapshot.get('name_height')
-        return one
-    if piece == 'number':
-        one = dict(snapshot)
-        one['name'] = ''
-        one['gap'] = 0
-        one['combined_width'] = snapshot.get('number_width')
-        one['combined_height'] = snapshot.get('number_height')
-        return one
-    return snapshot
-
-
 def personalized_png(app, item, piece, customer_name=None):
     """Return PNG bytes for the combined back, or a name/number crop."""
     data, _snapshot = generate_personalized_png(app, item, piece, customer_name=customer_name)
     return data
 
 
-def generate_personalized_png(app, item, piece, customer_name=None):
-    """Render one transfer. Safe to call from the Save endpoint only."""
+def generate_personalized_png(app, item, piece, customer_name=None, dpi=PRODUCTION_DPI):
+    """Render one transfer: name, number, or combined back."""
     snapshot = snapshot_from_item(item, customer_name=customer_name)
     if piece == 'name' and not snapshot.get('name'):
         return None, snapshot
     if piece == 'number' and not snapshot.get('number'):
         return None, snapshot
 
-    key = _cache_key(item.id, piece, snapshot)
+    key = _cache_key(item.id, piece, snapshot, dpi)
     cached = _cache_get(key)
     if cached is not None:
         _log.info(
-            'dtf cache-hit item=%s piece=%s order_item=%s bytes=%s',
-            getattr(item, 'id', None), piece, getattr(item, 'id', None), len(cached),
+            'dtf cache-hit item=%s piece=%s dpi=%s bytes=%s',
+            getattr(item, 'id', None), piece, dpi, len(cached),
         )
         return cached, snapshot
 
@@ -120,13 +105,14 @@ def generate_personalized_png(app, item, piece, customer_name=None):
         started = time.monotonic()
         mem_before = _mem_kb()
         try:
-            data = render_snapshot_png(_piece_snapshot(snapshot, piece))
+            data = render_piece_png(snapshot, piece=piece, dpi=dpi)
         except Exception as exc:
             _log.exception(
-                'dtf generate-failed item=%s piece=%s name=%s number=%s '
+                'dtf generate-failed item=%s piece=%s dpi=%s name=%s number=%s '
                 'name_h=%s number_h=%s gap=%s mem_kb=%s duration_ms=%s error=%s',
                 getattr(item, 'id', None),
                 piece,
+                dpi,
                 snapshot.get('name'),
                 snapshot.get('number'),
                 snapshot.get('name_height'),
@@ -139,11 +125,12 @@ def generate_personalized_png(app, item, piece, customer_name=None):
             raise
         duration_ms = int((time.monotonic() - started) * 1000)
         _log.info(
-            'dtf generate-ok item=%s piece=%s name=%s number=%s '
+            'dtf generate-ok item=%s piece=%s dpi=%s name=%s number=%s '
             'name_h=%s number_h=%s gap=%s bytes=%s duration_ms=%s '
             'mem_kb_before=%s mem_kb_after=%s',
             getattr(item, 'id', None),
             piece,
+            dpi,
             snapshot.get('name'),
             snapshot.get('number'),
             snapshot.get('name_height'),
@@ -159,8 +146,32 @@ def generate_personalized_png(app, item, piece, customer_name=None):
         return data, snapshot
 
 
+def persist_piece_file(app, item, piece, data):
+    """Store one generated transfer. Does not change customer mockup fields."""
+    import json
+    from models import db
+    from utils.cloud_storage import upload_bytes
+
+    meta = dict(item.back_design_details or {})
+    name = (meta.get('name') or 'name').replace(' ', '')[:20]
+    number = str(meta.get('number') or 'num')[:6]
+    filename = f'{piece}_{name}_{number}.png'
+    url = upload_bytes(
+        data, app, filename,
+        subfolder='designs',
+        public_id_prefix=f'{piece}_{item.id}',
+    )
+    if url and not str(url).startswith(('http://', 'https://', '/')):
+        url = f'/static/{url.lstrip("/")}'
+    key = {'name': 'name_png_url', 'number': 'number_png_url', 'back': 'production_png_url'}[piece]
+    meta[key] = url
+    item.back_design_meta = json.dumps(meta)
+    db.session.commit()
+    return url
+
+
 def combined_png_and_report(item, customer_name=None):
     snapshot = snapshot_from_item(item, customer_name=customer_name)
-    data = render_snapshot_png(snapshot)
+    data = render_piece_png(snapshot, piece='back')
     ok, failures = validate_snapshot_png(snapshot, data)
     return data, snapshot, ok, failures

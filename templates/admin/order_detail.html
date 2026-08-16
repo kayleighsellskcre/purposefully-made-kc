@@ -285,14 +285,14 @@
 
                         {% if kit.has_back_print %}
                         <div class="pm-print-file{% if layout and layout.needs_review %} od-print-review{% endif %}">
-                            {% if kit.back_print_url %}
+                            {% if kit.is_personalized_back %}
+                            <a class="pm-print-preview" href="{{ url_for('admin.preview_item_artwork', order_id=order.id, item_id=item.id, side='back') }}" target="_blank" rel="noopener" title="Combined back layout">
+                                <img src="{{ url_for('admin.preview_item_artwork', order_id=order.id, item_id=item.id, side='back') }}" alt="Combined back layout">
+                            </a>
+                            {% elif kit.back_print_url %}
                             <a class="pm-print-preview" href="{{ kit.back_print_url }}" target="_blank" rel="noopener" title="Open stored preview">
                                 <img src="{{ kit.back_print_url }}" alt="Back print file">
                             </a>
-                            {% elif kit.is_personalized_back %}
-                            <div class="pm-print-preview" aria-label="Back print file">
-                                <p class="od-field-hint">Preview uses the stored file. Click Save back PNG to build a 300 DPI transfer.</p>
-                            </div>
                             {% endif %}
                             <div class="pm-print-meta">
                                 <h3>Back transfer</h3>
@@ -382,9 +382,9 @@
                 {% if prod.back %}
                 <section class="od-xfer-card">
                     <h3>BACK NAME</h3>
-                    {% if kit.back_print_url %}
-                    <a class="pm-print-preview od-piece-preview" href="{{ kit.back_print_url }}" title="Stored back artwork">
-                        <img src="{{ kit.back_print_url }}" alt="{{ prod.back.name or 'Name' }}">
+                    {% if prod.back.name %}
+                    <a class="pm-print-preview od-piece-preview" href="{{ url_for('admin.preview_item_artwork', order_id=order.id, item_id=item.id, side='back-name') }}" title="Name only">
+                        <img src="{{ url_for('admin.preview_item_artwork', order_id=order.id, item_id=item.id, side='back-name') }}" alt="{{ prod.back.name }}">
                     </a>
                     {% endif %}
                     <dl>
@@ -399,9 +399,9 @@
                 </section>
                 <section class="od-xfer-card">
                     <h3>BACK NUMBER</h3>
-                    {% if kit.back_print_url %}
-                    <a class="pm-print-preview od-piece-preview" href="{{ kit.back_print_url }}" title="Stored back artwork">
-                        <img src="{{ kit.back_print_url }}" alt="{{ prod.back.number or 'Number' }}">
+                    {% if prod.back.number %}
+                    <a class="pm-print-preview od-piece-preview" href="{{ url_for('admin.preview_item_artwork', order_id=order.id, item_id=item.id, side='back-number') }}" title="Number only">
+                        <img src="{{ url_for('admin.preview_item_artwork', order_id=order.id, item_id=item.id, side='back-number') }}" alt="{{ prod.back.number }}">
                     </a>
                     {% endif %}
                     <dl>
@@ -415,6 +415,9 @@
                 </section>
                 <section class="od-xfer-card">
                     <h3>COMBINED BACK LAYOUT</h3>
+                    <a class="pm-print-preview od-piece-preview" href="{{ url_for('admin.preview_item_artwork', order_id=order.id, item_id=item.id, side='back') }}" title="Combined name and number">
+                        <img src="{{ url_for('admin.preview_item_artwork', order_id=order.id, item_id=item.id, side='back') }}" alt="{{ prod.back.name }} {{ prod.back.number }}">
+                    </a>
                     <dl>
                         <div><dt>Garment</dt><dd>{{ prod.back.garment_style or item.product_name }}</dd></div>
                         <div><dt>Category / size</dt><dd>{{ (prod.back.category or prod.back.age_group)|title }} {{ prod.back.size }}{% if prod.back.layout_label %} ({{ prod.back.layout_label }}){% endif %}</dd></div>

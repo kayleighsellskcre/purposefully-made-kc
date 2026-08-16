@@ -14,6 +14,7 @@ from PIL import Image, ImageDraw, ImageFont, PngImagePlugin
 
 LAYOUT_VERSION = 2
 PRODUCTION_DPI = 300
+PREVIEW_DPI = 72
 # Visible-gap match tolerance in inches when validating a reconstructed PNG.
 VALIDATE_TOLERANCE_IN = 0.08
 # Hard cap so a bad snapshot cannot allocate a Railway-killing canvas.
@@ -275,6 +276,35 @@ def _draw_line_layer(text, font, fill, stroke_fill, stroke_width, spacing_em, fo
     return layer
 
 
+def snapshot_for_piece(snapshot, piece='back'):
+    """Return a snapshot for one render mode. Never reuses the combined canvas."""
+    snap = dict(snapshot or {})
+    if piece == 'name':
+        if not (snap.get('name') or '').strip():
+            raise ValueError('Snapshot has no name')
+        snap['number'] = ''
+        snap['gap'] = 0
+        snap['combined_width'] = snap.get('name_width')
+        snap['combined_height'] = snap.get('name_height')
+        return snap
+    if piece == 'number':
+        if not str(snap.get('number') or '').strip():
+            raise ValueError('Snapshot has no number')
+        snap['name'] = ''
+        snap['gap'] = 0
+        snap['combined_width'] = snap.get('number_width')
+        snap['combined_height'] = snap.get('number_height')
+        return snap
+    if piece in ('back', 'combined', None):
+        return snap
+    raise ValueError(f'Unknown render piece: {piece}')
+
+
+def render_piece_png(snapshot, piece='back', dpi=PRODUCTION_DPI):
+    """Render one of: name-only, number-only, or combined-back-layout."""
+    return render_snapshot_png(snapshot_for_piece(snapshot, piece), dpi=dpi)
+
+
 def render_snapshot_png(snapshot, dpi=PRODUCTION_DPI):
     """Render a transparent production PNG from a saved snapshot. Never uses new chart defaults."""
     name = (snapshot.get('name') or '').strip().upper()
@@ -340,8 +370,15 @@ def render_snapshot_png(snapshot, dpi=PRODUCTION_DPI):
     number_box = _ink_bounds(number_layer) if number_layer else None
     name_w = (name_box[2] - name_box[0]) if name_box else 0
     number_w = (number_box[2] - number_box[0]) if number_box else 0
-    content_w = max(name_w, number_w, 1)
-    content_h = 0
+    ink_w = max(name_w, number_w, 1)
+    if name and not number:
+        target_w = _num(snapshot.get('name_width') or snapshot.get('combined_width'))
+    elif number and not name:
+        target_w = _num(snapshot.get('number_width') or snapshot.get('combined_width'))
+    else:
+        target_w = _num(snapshot.get('combined_width'))
+    target_w_px = int(round(target_w * dpi)) if target_w else 0
+    content_w = max(ink_w, target_w_px, 1)
     if name and number:
         content_h = int(round(name_px + gap_px + number_px))
     elif name:
@@ -349,18 +386,18 @@ def render_snapshot_png(snapshot, dpi=PRODUCTION_DPI):
     else:
         content_h = int(round(number_px))
 
-    canvas_w = content_w + pad_px * 2
-    canvas_h = content_h + pad_px * 2
+    canvas_w = content_w
+    canvas_h = content_h
     if canvas_w > MAX_EDGE_PX or canvas_h > MAX_EDGE_PX or (canvas_w * canvas_h) > MAX_PIXELS:
         raise ValueError(
             f'Production image too large to render safely ({canvas_w}×{canvas_h}px).'
         )
 
-    canvas = trimmed = None
+    canvas = None
     try:
         canvas = Image.new('RGBA', (canvas_w, canvas_h), (0, 0, 0, 0))
         center_x = canvas_w / 2
-        y = pad_px
+        y = 0
         if name_layer and name_box:
             x = int(round(center_x - name_w / 2 - name_box[0]))
             canvas.paste(name_layer, (x, y - name_box[1]), name_layer)
@@ -370,12 +407,9 @@ def render_snapshot_png(snapshot, dpi=PRODUCTION_DPI):
         if number_layer and number_box:
             x = int(round(center_x - number_w / 2 - number_box[0]))
             canvas.paste(number_layer, (x, y - number_box[1]), number_layer)
-
-        # Trim only exterior transparent padding. Do not touch the name/number gap.
-        trimmed = _trim_exterior(canvas)
-        return _png_bytes(trimmed, dpi)
+        return _png_bytes(canvas, dpi)
     finally:
-        for image in (name_layer, number_layer, canvas, trimmed):
+        for image in (name_layer, number_layer, canvas):
             try:
                 if image is not None:
                     image.close()

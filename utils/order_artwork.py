@@ -69,6 +69,23 @@ def front_print_url(item):
     return resolve_print_url(getattr(item, 'design_file_name', None))
 
 
+def piece_print_url(item, piece):
+    """Stored URL for one render mode. Name/number never fall back to the combined file."""
+    meta = None
+    details = getattr(item, 'back_design_details', None) if not isinstance(item, dict) else item
+    if callable(details):
+        try:
+            details = details()
+        except Exception:
+            details = None
+    meta = details if isinstance(details, dict) else {}
+    if piece == 'name':
+        return resolve_print_url(meta.get('name_png_url'))
+    if piece == 'number':
+        return resolve_print_url(meta.get('number_png_url'))
+    return back_print_url(item)
+
+
 def back_print_url(item):
     if isinstance(item, dict):
         return resolve_print_url(item.get('back_design_url') or item.get('back_design_file_name'))
@@ -137,6 +154,8 @@ def artwork_kit(item, order=None):
         'back_mockup_url': back_mockup,
         'front_print_url': front_print,
         'back_print_url': back_print,
+        'name_print_url': resolve_print_url(meta.get('name_png_url')),
+        'number_print_url': resolve_print_url(meta.get('number_png_url')),
         'proof_back_url': proof_back,
         'front_overlay_url': front_print if front_on_shirt else None,
         'back_overlay_url': back_print,
