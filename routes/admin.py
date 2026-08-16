@@ -559,7 +559,7 @@ def repair_personalization():
 
 def _collect_order_productions(orders):
     from utils.print_sizes import production_from_order_item, flatten_production_rows
-    from utils.order_artwork import mockup_urls
+    from utils.order_artwork import front_print_url, mockup_urls, resolve_print_url
     productions = []
     for order in orders:
         for item in order.items:
@@ -569,6 +569,9 @@ def _collect_order_productions(orders):
             front_m, back_m = mockup_urls(getattr(item, 'product', None), getattr(item, 'color', None))
             prod['mockup_front_url'] = front_m
             prod['mockup_back_url'] = back_m
+            prod['front_overlay_url'] = front_print_url(item)
+            prod['front_proof_url'] = resolve_print_url(getattr(item, 'proof_image', None))
+            prod['front_placement'] = getattr(item, 'placement', None)
             prod['order_number'] = getattr(order, 'order_number', None)
             productions.append(prod)
     return flatten_production_rows(productions)

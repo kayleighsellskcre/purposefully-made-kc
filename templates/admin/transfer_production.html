@@ -62,14 +62,18 @@
         <article class="xfer-card{% if row.exceeds_safe_area %} xfer-flag{% endif %}">
             <div class="xfer-visual">
                 <div class="xfer-mock">
-                    {% if row.mockup_url %}
+                    {% if row.kind != 'personalized' and row.proof_url and not row.overlay_url %}
+                    <img src="{{ row.proof_url }}" alt="{{ row.design_name or 'Front design' }}" class="xfer-mock-img">
+                    {% elif row.mockup_url %}
                     <img src="{{ row.mockup_url }}" alt="{{ row.color or 'Shirt' }} {{ row.placement_label or '' }}" class="xfer-mock-img">
                     {% else %}
                     <svg class="xfer-shirt" viewBox="0 0 64 72" aria-hidden="true">
                         <path d="M16 14 L4 22 L10 30 L16 26 V64 H48 V26 L54 30 L60 22 L48 14 L40 18 H24 Z" fill="none" stroke="#222" stroke-width="1.6"/>
                     </svg>
                     {% endif %}
-                    {% if row.kind == 'personalized' %}
+                    {% if row.kind != 'personalized' and row.overlay_url %}
+                    <img class="xfer-logo {{ row.placement or 'center_chest' }}" src="{{ row.overlay_url }}" alt="" onerror="this.style.display='none'">
+                    {% elif row.kind == 'personalized' %}
                     <div class="xfer-onshirt">
                         {% if row.name %}<span class="xfer-onshirt-name">{{ row.name }}</span>{% endif %}
                         {% if row.number %}<span class="xfer-onshirt-num">{{ row.number }}</span>{% endif %}
@@ -164,6 +168,33 @@
     height: 96px;
     object-fit: contain;
     filter: grayscale(1) brightness(1.35) contrast(0.72);
+}
+.xfer-logo {
+    position: absolute;
+    object-fit: contain;
+    pointer-events: none;
+}
+.xfer-logo.center_chest,
+.xfer-logo.center_back {
+    width: 32%;
+    max-height: 36%;
+    top: 38%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+.xfer-logo.left_chest {
+    width: 14%;
+    max-height: 18%;
+    top: 32%;
+    left: 62%;
+    transform: translate(-50%, -50%);
+}
+.xfer-logo.right_chest {
+    width: 14%;
+    max-height: 18%;
+    top: 32%;
+    left: 38%;
+    transform: translate(-50%, -50%);
 }
 .xfer-shirt { width: 64px; height: 72px; margin-top: 8px; }
 .xfer-onshirt {

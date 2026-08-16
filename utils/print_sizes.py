@@ -878,6 +878,9 @@ def flatten_production_rows(item_productions):
                 'garment_style': prod.get('garment_style') or front.get('garment_style'),
                 'style_number': prod.get('style_number'),
                 'mockup_url': prod.get('mockup_front_url'),
+                'overlay_url': prod.get('front_overlay_url'),
+                'proof_url': prod.get('front_proof_url'),
+                'placement': front.get('placement') or prod.get('front_placement') or 'center_chest',
                 'order_number': prod.get('order_number'),
             })
         back = prod.get('back')
