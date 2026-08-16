@@ -82,7 +82,9 @@ def back_print_url(item):
     else:
         meta = details
     if isinstance(meta, dict):
-        url = resolve_print_url(meta.get('file_url') or meta.get('url'))
+        url = resolve_print_url(
+            meta.get('production_png_url') or meta.get('file_url') or meta.get('url')
+        )
         if url:
             return url
     return resolve_print_url(getattr(item, 'back_design_file_name', None))

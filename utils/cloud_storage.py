@@ -55,6 +55,14 @@ def upload_image(file_storage, app, subfolder='uploads', public_id_prefix='img',
     return _save_locally(file_storage, app, subfolder, public_id_prefix)
 
 
+def upload_bytes(data, app, filename, subfolder='designs', public_id_prefix='layout'):
+    """Store raw bytes (used to repair production PNGs). Never runs background-cut."""
+    from io import BytesIO
+    from werkzeug.datastructures import FileStorage
+    storage = FileStorage(stream=BytesIO(data), filename=filename, content_type='image/png')
+    return upload_image(storage, app, subfolder=subfolder, public_id_prefix=public_id_prefix, process_artwork=False)
+
+
 def _maybe_process_artwork(file_storage):
     """Return a FileStorage holding a clean transparent PNG, or the original.
 

@@ -470,45 +470,16 @@ def approve_item_layout(order_id, item_id):
 @admin_bp.route('/orders/repair-personalization', methods=['POST'])
 @admin_required
 def repair_personalization():
-    """Idempotent backfill: flag incomplete snapshots, never change prices or mockups."""
-    from utils.personalization_layout import snapshot_from_item, enrich_back_snapshot
-    scanned = repaired = flagged = 0
-    for item in OrderItem.query.all():
-        meta = item.back_design_details or {}
-        if not (meta.get('name') or meta.get('number')):
-            continue
-        scanned += 1
-        if meta.get('layout_repaired'):
-            continue
-        snap = snapshot_from_item(item)
-        stored = item.transfer_production_details or {}
-        back = dict((stored or {}).get('back') or {})
-        if snap.get('complete'):
-            back = enrich_back_snapshot(back or {
-                'name': snap['name'],
-                'number': snap['number'],
-                'font': snap['font'],
-                'name_height': snap['name_height'],
-                'number_height': snap['number_height'],
-                'gap': snap['gap'],
-            }, extra=meta)
-            stored = dict(stored or {})
-            stored['back'] = back
-            item.transfer_production = json.dumps(stored)
-            meta = dict(meta)
-            meta['layout_repaired'] = True
-            meta['layout_version'] = back.get('layout_version')
-            item.back_design_meta = json.dumps(meta)
-            repaired += 1
-        else:
-            meta = dict(meta)
-            meta['needs_review'] = True
-            meta['layout_repaired'] = True
-            item.back_design_meta = json.dumps(meta)
-            flagged += 1
-    db.session.commit()
+    """Rewrite stored name/number PNGs from each order's saved snapshot."""
+    from flask import current_app
+    from utils.personalization_layout import repair_existing_personalized_items
+    result = repair_existing_personalized_items(current_app)
     flash(
-        f'Personalization repair finished. Scanned {scanned}, stamped {repaired}, flagged {flagged} for review. Prices and customer mockups were not changed.',
+        f'Personalization repair finished. Scanned {result["scanned"]}, '
+        f'rewrote {result["repaired"]} production PNGs, '
+        f'skipped {result["skipped"]} already fixed, '
+        f'flagged {result["flagged"]} for review. '
+        'Prices and customer mockups were not changed.',
         'success',
     )
     return redirect(url_for('admin.orders'))

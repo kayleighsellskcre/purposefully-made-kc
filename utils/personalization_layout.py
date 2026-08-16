@@ -68,11 +68,19 @@ def _as_dict(value):
 
 
 def snapshot_from_item(item, customer_name=None):
-    """Return the saved production snapshot, or a flagged reconstruction."""
-    from utils.print_sizes import production_from_order_item
+    """Return the saved production snapshot, or a flagged reconstruction.
 
-    prod = production_from_order_item(item, customer_name=customer_name) or {}
-    back = dict(prod.get('back') or {})
+    Saved transfer_production.back and back_design_meta win. Live chart
+    defaults are only used when an old order has no stored heights.
+    """
+    stored = getattr(item, 'transfer_production_details', None)
+    if callable(stored):
+        try:
+            stored = stored()
+        except Exception:
+            stored = None
+    stored = stored if isinstance(stored, dict) else {}
+    back = dict(stored.get('back') or {})
     meta = getattr(item, 'back_design_details', None)
     if callable(meta):
         try:
@@ -81,20 +89,32 @@ def snapshot_from_item(item, customer_name=None):
             meta = None
     meta = meta if isinstance(meta, dict) else {}
 
+    reconstructed = False
+    if not (back.get('name_height') or meta.get('name_height')):
+        from utils.print_sizes import production_from_order_item
+        prod = production_from_order_item(item, customer_name=customer_name) or {}
+        back = dict(prod.get('back') or {})
+        reconstructed = True
+
     name = (back.get('name') or meta.get('name') or '').strip()
     number = str(back.get('number') or meta.get('number') or '').strip()
     font = (back.get('font') or meta.get('font') or 'Jersey M54').strip() or 'Jersey M54'
     complete = bool(
         (name or number)
-        and back.get('name_height')
-        and (not number or back.get('number_height'))
-        and (not (name and number) or back.get('gap') is not None)
+        and (back.get('name_height') or meta.get('name_height'))
+        and (not number or back.get('number_height') or meta.get('number_height'))
+        and (not (name and number) or back.get('gap') is not None or meta.get('gap') is not None)
+        and not reconstructed
     )
     version = int(back.get('layout_version') or meta.get('layout_version') or 0)
     return {
         'layout_version': version or (LAYOUT_VERSION if complete else 0),
         'complete': complete,
-        'needs_review': (not complete) or bool(back.get('needs_review') or meta.get('needs_review')),
+        'needs_review': (
+            (not complete)
+            or reconstructed
+            or bool(back.get('needs_review') or meta.get('needs_review'))
+        ),
         'name': name,
         'number': number,
         'font': font,
@@ -204,7 +224,9 @@ def _draw_line_layer(text, font, fill, stroke_fill, stroke_width, spacing_em, fo
     dummy = Image.new('RGBA', (8, 8), (0, 0, 0, 0))
     draw = ImageDraw.Draw(dummy)
     spacing_px = (spacing_em or 0) * font_px
-    if len(text) <= 1 or abs(spacing_px) < 0.01:
+    # Draw the whole word whenever tracking is not tightened. Splitting
+    # characters drops Jersey kerning and turns SPRINGER into SPR NGER.
+    if len(text) <= 1 or (spacing_em or 0) >= -0.001:
         bbox = draw.textbbox((0, 0), text, font=font)
         pad = max(int(stroke_width) * 2, 8)
         w = max(1, bbox[2] - bbox[0] + pad * 2)
@@ -483,3 +505,104 @@ def validate_snapshot_png(snapshot, image_bytes, dpi=PRODUCTION_DPI):
 
 def inches_from_px(px, dpi=PRODUCTION_DPI):
     return round(px / dpi, 2)
+
+
+def repair_existing_personalized_items(app=None):
+    """Rewrite stored back PNGs from each order's saved snapshot.
+
+    Idempotent. Does not change prices, quantities, or the original file URL
+    (kept as original_file_url). Returns counts.
+    """
+    from flask import current_app
+    from models import OrderItem, db
+    from utils.cloud_storage import upload_bytes
+
+    app = app or current_app._get_current_object()
+    scanned = repaired = flagged = skipped = 0
+    stamp = f'v{LAYOUT_VERSION}'
+
+    items = OrderItem.query.all()
+    for item in items:
+        meta = item.back_design_details or {}
+        if not (meta.get('name') or meta.get('number')):
+            continue
+        scanned += 1
+        if meta.get('production_png_repaired') == stamp and meta.get('file_url'):
+            skipped += 1
+            continue
+
+        snap = snapshot_from_item(item)
+        original_url = (
+            meta.get('original_file_url')
+            or meta.get('file_url')
+            or meta.get('url')
+            or getattr(item, 'back_design_file_name', None)
+        )
+        try:
+            png = render_snapshot_png(snap)
+        except Exception as exc:
+            app.logger.exception('personalization repair failed for item %s: %s', item.id, exc)
+            meta = dict(meta)
+            meta['needs_review'] = True
+            meta['layout_repaired'] = True
+            meta['repair_error'] = str(exc)[:300]
+            if original_url:
+                meta['original_file_url'] = original_url
+            item.back_design_meta = json.dumps(meta)
+            flagged += 1
+            continue
+
+        name = (snap.get('name') or 'name').replace(' ', '')[:20]
+        number = (snap.get('number') or 'num')[:6]
+        filename = f'back_{name}_{number}.png'
+        try:
+            stored_url = upload_bytes(
+                png, app, filename,
+                subfolder='designs',
+                public_id_prefix=f'layout_{item.id}',
+            )
+        except Exception as exc:
+            app.logger.exception('personalization upload failed for item %s: %s', item.id, exc)
+            meta = dict(meta)
+            meta['needs_review'] = True
+            meta['repair_error'] = f'upload: {exc}'[:300]
+            item.back_design_meta = json.dumps(meta)
+            flagged += 1
+            continue
+
+        if stored_url and not str(stored_url).startswith(('http://', 'https://', '/')):
+            stored_url = f'/static/{stored_url.lstrip("/")}'
+
+        meta = dict(meta)
+        if original_url:
+            meta['original_file_url'] = original_url
+        meta['file_url'] = stored_url
+        meta['production_png_url'] = stored_url
+        meta['layout_repaired'] = True
+        meta['production_png_repaired'] = stamp
+        meta['layout_version'] = LAYOUT_VERSION
+        meta['needs_review'] = not snap.get('complete')
+        meta.pop('repair_error', None)
+        item.back_design_meta = json.dumps(meta)
+        if stored_url:
+            item.back_design_file_name = stored_url[:500]
+
+        stored = item.transfer_production_details or {}
+        back = dict((stored or {}).get('back') or {})
+        back = enrich_back_snapshot(back or {
+            'name': snap.get('name'),
+            'number': snap.get('number'),
+            'font': snap.get('font'),
+            'name_height': snap.get('name_height'),
+            'number_height': snap.get('number_height'),
+            'gap': snap.get('gap'),
+        }, extra=meta)
+        back['production_png_url'] = stored_url
+        stored = dict(stored or {})
+        stored['back'] = back
+        item.transfer_production = json.dumps(stored)
+        repaired += 1
+
+    if scanned:
+        db.session.commit()
+    return {'scanned': scanned, 'repaired': repaired, 'flagged': flagged, 'skipped': skipped}
