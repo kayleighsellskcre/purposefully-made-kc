@@ -499,8 +499,17 @@ def create_app(config_class=Config):
     def inject_globals():
         from flask_login import current_user as cu
         cart_count = 0
-        if 'cart' in session:
-            cart_count = sum(item['quantity'] for item in session['cart'])
+        try:
+            cart = session.get('cart')
+            if isinstance(cart, list):
+                for item in cart:
+                    if isinstance(item, dict):
+                        try:
+                            cart_count += int(item.get('quantity') or 0)
+                        except (TypeError, ValueError):
+                            pass
+        except Exception:
+            cart_count = 0
         admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').lower().strip()
 
         # Fresh DB lookup so is_site_admin is always accurate.
@@ -550,6 +559,14 @@ def create_app(config_class=Config):
             db.session.rollback()
         except Exception:
             pass
+        error_id = None
+        notified = False
+        try:
+            from utils.error_notify import new_error_id, record_and_notify
+            error_id = new_error_id()
+            error_id, notified = record_and_notify(app, error, error_id=error_id)
+        except Exception:
+            app.logger.exception('internal_error notify failed: %s', error)
         wants_json = False
         try:
             accept = request.headers.get('Accept') or ''
@@ -565,17 +582,27 @@ def create_app(config_class=Config):
             pass
         if wants_json:
             from flask import jsonify as _jsonify
-            app.logger.exception('internal_error json path=%s: %s', getattr(request, 'path', '?'), error)
             return _jsonify({
                 'success': False,
                 'error': 'Something went wrong. Your cart is still saved — please try again.',
                 'error_code': 'SERVER_ERROR',
+                'error_id': error_id,
             }), 500
         try:
-            return render_template('errors/500.html'), 500
+            return render_template(
+                'errors/500.html',
+                error_id=error_id,
+                notified=notified,
+                safe_back_url=request.referrer if request.referrer else None,
+            ), 500
         except Exception as tmpl_err:
             from flask import jsonify as _jsonify
-            return _jsonify({'error': 'Internal server error', 'detail': str(error), 'template_error': str(tmpl_err)}), 500
+            return _jsonify({
+                'error': 'Internal server error',
+                'error_id': error_id,
+                'detail': str(error),
+                'template_error': str(tmpl_err),
+            }), 500
     
     # CLI commands
     @app.cli.command()

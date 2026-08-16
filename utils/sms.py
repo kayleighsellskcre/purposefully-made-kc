@@ -104,3 +104,37 @@ def send_new_order_alert(app, order):
             pass
 
     return False
+
+
+def send_server_error_alert(app, error_id, path, message):
+    """Text admin when a customer hits a 500. Never raises."""
+    phone = ''.join(c for c in str(app.config.get('ADMIN_PHONE', '7852491464')) if c.isdigit())
+    if len(phone) != 10:
+        return False
+    short_msg = (message or 'Server error')[:80]
+    body = f"PMKC 500 {error_id} {path} — {short_msg}"
+
+    carrier = app.config.get('ADMIN_PHONE_CARRIER', '').lower()
+    if carrier and carrier in CARRIER_GATEWAYS and app.config.get('MAIL_SERVER'):
+        try:
+            from flask_mail import Message
+            mail = app.extensions.get('mail')
+            if mail:
+                mail.send(Message(
+                    subject='PMKC 500',
+                    body=body,
+                    recipients=[f"{phone}@{CARRIER_GATEWAYS[carrier]}"],
+                ))
+                return True
+        except Exception:
+            pass
+
+    if app.config.get('TWILIO_ACCOUNT_SID') and app.config.get('TWILIO_AUTH_TOKEN') and app.config.get('TWILIO_PHONE_NUMBER'):
+        try:
+            from twilio.rest import Client
+            client = Client(app.config['TWILIO_ACCOUNT_SID'], app.config['TWILIO_AUTH_TOKEN'])
+            client.messages.create(to='+1' + phone, from_=app.config['TWILIO_PHONE_NUMBER'], body=body)
+            return True
+        except Exception:
+            pass
+    return False

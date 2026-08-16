@@ -16,14 +16,26 @@
 
             <span class="err-eyebrow">500 — Server Error</span>
             <h1 class="err-heading">Something Went<br>Wrong on Our End</h1>
-            <p class="err-text">We're sorry — something unexpected happened. Our team has been notified. Please try again in a moment.</p>
+            <p class="err-text">
+                We're sorry — something unexpected happened.
+                {% if notified %}
+                Our team has been notified.
+                {% endif %}
+                Please try again in a moment. Your cart and any work on this page are still saved.
+            </p>
 
             <div class="err-actions">
                 <a href="{{ url_for('main.index') }}" class="btn btn-primary">Back to Home</a>
-                <a href="javascript:history.back()" class="btn btn-outline">Go Back</a>
+                <a href="{{ safe_back_url or url_for('shop.index') }}"
+                   class="btn btn-outline"
+                   onclick="if (history.length > 1) { history.back(); return false; }">Go Back</a>
             </div>
 
-            <p class="err-hint">If the problem continues, please <a href="{{ url_for('main.contact') }}">reach out to us</a> and we'll get it sorted out.</p>
+            {% if error_id %}
+            <p class="err-ref">Reference ID: <code>{{ error_id }}</code></p>
+            {% endif %}
+
+            <p class="err-hint">If the problem continues, please <a href="{{ url_for('main.contact') }}">reach out to us</a>{% if error_id %} and include this reference ID{% endif %} and we'll get it sorted out.</p>
 
         </div>
     </div>
@@ -77,6 +89,17 @@
     justify-content: center;
     flex-wrap: wrap;
     margin-bottom: 2rem;
+}
+.err-ref {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin: 0 0 1rem;
+    letter-spacing: 0.02em;
+}
+.err-ref code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.85em;
+    color: var(--text-primary);
 }
 .err-hint {
     font-size: 0.85rem;

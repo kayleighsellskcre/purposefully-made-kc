@@ -646,3 +646,24 @@ class Affirmation(db.Model):
 
     def __repr__(self):
         return f'<Affirmation {self.id}: {self.text[:40]}>'
+
+
+class SiteError(db.Model):
+    """Customer-facing 500s, keyed by the reference ID shown on the error page."""
+    __tablename__ = 'site_error'
+
+    id = db.Column(db.Integer, primary_key=True)
+    error_id = db.Column(db.String(16), unique=True, nullable=False, index=True)
+    path = db.Column(db.String(500))
+    method = db.Column(db.String(10))
+    query_string = db.Column(db.String(500))
+    referrer = db.Column(db.String(500))
+    user_agent = db.Column(db.String(500))
+    user_id = db.Column(db.Integer)
+    message = db.Column(db.Text)
+    traceback = db.Column(db.Text)
+    notified = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def __repr__(self):
+        return f'<SiteError {self.error_id} {self.path}>'

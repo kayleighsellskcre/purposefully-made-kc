@@ -4,7 +4,7 @@ from flask_login import login_required, current_user
 from functools import wraps
 from models import (db, Product, Collection, Order, OrderItem, Design, User, ProductColorVariant,
                     Vendor, ApparelInventory, TransferInventory, Supply, GrowthMetric, FinancialEntry,
-                    CustomDesignRequest)
+                    CustomDesignRequest, SiteError)
 from werkzeug.utils import secure_filename
 from datetime import datetime
 import json
@@ -196,6 +196,13 @@ def index():
         Order.payment_status == 'paid'
     ).scalar() or 0
     pending_design_requests = CustomDesignRequest.query.filter_by(status='pending').count()
+    recent_site_errors = 0
+    try:
+        from datetime import timedelta
+        cutoff = datetime.utcnow() - timedelta(hours=24)
+        recent_site_errors = SiteError.query.filter(SiteError.created_at >= cutoff).count()
+    except Exception:
+        recent_site_errors = 0
 
     # Recent orders
     recent_orders = Order.query.order_by(Order.created_at.desc()).limit(8).all()
@@ -219,9 +226,22 @@ def index():
                          total_revenue=total_revenue,
                          recent_orders=recent_orders,
                          pending_design_requests=pending_design_requests,
+                         recent_site_errors=recent_site_errors,
                          greeting=greeting,
                          admin_name=admin_name,
                          now=_now)
+
+
+@admin_bp.route('/site-errors')
+@admin_required
+def site_errors():
+    """Recent customer-facing 500s, matched by the reference ID on the error page."""
+    try:
+        errors = SiteError.query.order_by(SiteError.created_at.desc()).limit(50).all()
+    except Exception:
+        db.session.rollback()
+        errors = []
+    return render_template('admin/site_errors.html', errors=errors)
 
 
 # ===== ORDERS =====
@@ -1802,6 +1822,7 @@ def backfill_images():
 def add_product():
     """Add new product"""
     if request.method == 'POST':
+        from utils.json_fields import store_json_list
         product = Product(
             style_number=request.form.get('style_number'),
             name=request.form.get('name'),
@@ -1811,9 +1832,9 @@ def add_product():
             wholesale_cost=float(request.form.get('wholesale_cost') or 0),
             is_active=request.form.get('is_active') == 'on',
             is_customer_favorite=request.form.get('is_customer_favorite') == 'on',
-            available_sizes=request.form.get('available_sizes'),  # JSON string
-            available_colors=request.form.get('available_colors'),  # JSON string
-            print_area_config=request.form.get('print_area_config')  # JSON string
+            available_sizes=store_json_list(request.form.get('available_sizes')),
+            available_colors=store_json_list(request.form.get('available_colors')),
+            print_area_config=request.form.get('print_area_config')
         )
         
         db.session.add(product)
@@ -1848,8 +1869,9 @@ def edit_product(product_id):
         product.wholesale_cost = float(request.form.get('wholesale_cost') or 0)
         product.is_active = request.form.get('is_active') == 'on'
         product.is_customer_favorite = request.form.get('is_customer_favorite') == 'on'
-        product.available_sizes = request.form.get('available_sizes')
-        product.available_colors = request.form.get('available_colors')
+        from utils.json_fields import store_json_list
+        product.available_sizes = store_json_list(request.form.get('available_sizes'))
+        product.available_colors = store_json_list(request.form.get('available_colors'))
         product.print_area_config = request.form.get('print_area_config')
         
         # Sizing and fabric details

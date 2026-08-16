@@ -21,9 +21,21 @@
     </div>
 
     <!-- ── Needs Attention Alerts ── -->
-    {% set needs_attention = (pending_orders > 0) or (ready_for_pickup > 0) or (pending_design_requests > 0) %}
+    {% set needs_attention = (pending_orders > 0) or (ready_for_pickup > 0) or (pending_design_requests > 0) or ((recent_site_errors or 0) > 0) %}
     {% if needs_attention %}
     <div class="dash-alerts">
+        {% if (recent_site_errors or 0) > 0 %}
+        <a href="{{ url_for('admin.site_errors') }}" class="dash-alert dash-alert--orders">
+            <div class="dash-alert-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div class="dash-alert-body">
+                <strong>{{ recent_site_errors }} site error{% if recent_site_errors != 1 %}s{% endif %} in the last 24 hours</strong>
+                <span>Match the customer’s reference ID here</span>
+            </div>
+            <svg class="dash-alert-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+        {% endif %}
         {% if pending_orders > 0 %}
         <a href="{{ url_for('admin.orders', status='new') }}" class="dash-alert dash-alert--orders">
             <div class="dash-alert-icon">

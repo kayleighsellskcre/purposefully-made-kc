@@ -58,9 +58,16 @@ def index():
     subtotal = 0
     
     for item in cart:
-        product = Product.query.get(item['product_id'])
+        if not isinstance(item, dict) or not item.get('product_id'):
+            continue
+        product = Product.query.get(item.get('product_id'))
         if product:
-            item_total = item['quantity'] * item['unit_price']
+            try:
+                qty = int(item.get('quantity') or 0)
+                unit_price = float(item.get('unit_price') or 0)
+            except (TypeError, ValueError):
+                continue
+            item_total = qty * unit_price
             front_image, back_image = mockup_urls(product, item.get('color'))
             placement = item.get('placement') or 'center_chest'
             front_design = item.get('design_url') if (item.get('design_url') and placement in FRONT_PLACEMENTS) else None

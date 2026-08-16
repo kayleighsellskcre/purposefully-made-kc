@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Site Errors - Admin{% endblock %}
+
+{% block content %}
+<div class="container" style="padding: 2rem 1.25rem 4rem; max-width: 1100px;">
+    <p class="adm-eyebrow">Admin</p>
+    <h1 style="font-family: var(--font-heading); margin: 0 0 0.5rem;">Site Errors</h1>
+    <p style="color: var(--text-secondary); margin: 0 0 1.75rem;">
+        Each customer-facing 500 shows a reference ID. Match that ID to the row below.
+    </p>
+
+    {% if errors %}
+    <div style="overflow-x: auto;">
+        <table class="admin-table" style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+            <thead>
+                <tr style="text-align: left; border-bottom: 1px solid rgba(0,0,0,0.12);">
+                    <th style="padding: 0.6rem 0.5rem;">When (Central)</th>
+                    <th style="padding: 0.6rem 0.5rem;">Reference ID</th>
+                    <th style="padding: 0.6rem 0.5rem;">Request</th>
+                    <th style="padding: 0.6rem 0.5rem;">Error</th>
+                    <th style="padding: 0.6rem 0.5rem;">Notified</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for err in errors %}
+                <tr style="border-bottom: 1px solid rgba(0,0,0,0.06); vertical-align: top;">
+                    <td style="padding: 0.7rem 0.5rem; white-space: nowrap;">{{ err.created_at|central }}</td>
+                    <td style="padding: 0.7rem 0.5rem;"><code>{{ err.error_id }}</code></td>
+                    <td style="padding: 0.7rem 0.5rem;">
+                        <strong>{{ err.method }}</strong> {{ err.path }}{% if err.query_string %}?{{ err.query_string }}{% endif %}
+                        {% if err.referrer %}<div style="color: var(--text-secondary); font-size: 0.8rem;">from {{ err.referrer }}</div>{% endif %}
+                    </td>
+                    <td style="padding: 0.7rem 0.5rem; max-width: 360px;">{{ err.message }}</td>
+                    <td style="padding: 0.7rem 0.5rem;">{{ 'Yes' if err.notified else 'No' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p>No recorded 500s yet.</p>
+    {% endif %}
+</div>
+{% endblock %}
