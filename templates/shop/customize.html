@@ -2648,18 +2648,26 @@
         const w = designImage.naturalWidth || state.designWidth || 1;
         const h = designImage.naturalHeight || state.designHeight || 1;
         const tall = h / w;
+
+        // Scale down overlay for smaller garments so design looks proportional
+        const cat = (typeof productCategory === 'function') ? productCategory() : 'adult';
+        const scale = cat === 'baby' ? 0.55
+                    : cat === 'toddler' ? 0.68
+                    : cat === 'youth'   ? 0.82
+                    : 1.0;
+
         if (tall > 1.28) {
-            designLayer.style.width = '22%';
-            designLayer.style.maxWidth = '165px';
-            designLayer.style.maxHeight = '40%';
+            designLayer.style.width = (22 * scale).toFixed(1) + '%';
+            designLayer.style.maxWidth = Math.round(165 * scale) + 'px';
+            designLayer.style.maxHeight = (40 * scale).toFixed(1) + '%';
         } else if (tall > 1.18) {
-            designLayer.style.width = '25%';
-            designLayer.style.maxWidth = '185px';
-            designLayer.style.maxHeight = '40%';
+            designLayer.style.width = (25 * scale).toFixed(1) + '%';
+            designLayer.style.maxWidth = Math.round(185 * scale) + 'px';
+            designLayer.style.maxHeight = (40 * scale).toFixed(1) + '%';
         } else if (tall >= 0.90) {
-            designLayer.style.width = '33%';
-            designLayer.style.maxWidth = '246px';
-            designLayer.style.maxHeight = '42%';
+            designLayer.style.width = (33 * scale).toFixed(1) + '%';
+            designLayer.style.maxWidth = Math.round(246 * scale) + 'px';
+            designLayer.style.maxHeight = (42 * scale).toFixed(1) + '%';
         }
     }
     
