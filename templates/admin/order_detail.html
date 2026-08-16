@@ -278,7 +278,7 @@
                                     Size in transfer details below
                                     {% endif %}
                                 </p>
-                                <a class="od-btn od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='front') }}">Save front PNG</a>
+                                <a class="od-btn od-btn-save" href="{{ url_for('admin.photos_item_artwork', order_id=order.id, item_id=item.id, side='front') }}">Save front PNG</a>
                             </div>
                         </div>
                         {% endif %}
@@ -330,9 +330,9 @@
                                     <button type="submit" class="od-btn od-btn-outline">Approve reconstructed layout</button>
                                 </form>
                                 {% elif kit.is_personalized_back %}
-                                <a class="od-btn od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back') }}">Save back PNG</a>
+                                <a class="od-btn od-btn-save" href="{{ url_for('admin.photos_item_artwork', order_id=order.id, item_id=item.id, side='back') }}">Save back PNG</a>
                                 {% elif kit.back_print_url %}
-                                <a class="od-btn od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back') }}">Save back PNG</a>
+                                <a class="od-btn od-btn-save" href="{{ url_for('admin.photos_item_artwork', order_id=order.id, item_id=item.id, side='back') }}">Save back PNG</a>
                                 {% endif %}
                             </div>
                         </div>
@@ -395,7 +395,8 @@
                         <div><dt>Order by</dt><dd>HEIGHT</dd></div>
                         <div><dt>Horizontal adjustment</dt><dd>{% if prod.back.condense_percent %}{{ prod.back.condense_percent }}% condensed{% else %}none{% endif %}</dd></div>
                     </dl>
-                    <a class="od-btn od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back-name') }}">Save name PNG</a>
+                    <a class="od-btn od-btn-save" href="{{ url_for('admin.photos_item_artwork', order_id=order.id, item_id=item.id, side='back-name') }}">Save name PNG</a>
+                    <p class="od-field-hint od-save-hint">On your phone: tap Save, then tap and hold the picture → Add to Photos.</p>
                 </section>
                 <section class="od-xfer-card">
                     <h3>BACK NUMBER</h3>
@@ -411,7 +412,8 @@
                         <div><dt>Horizontal scale</dt><dd>{% if prod.back.number_scale_percent %}{{ prod.back.number_scale_percent }}% narrower ({{ '%.3f'|format(prod.back.number_scale or 0) }}× of {{ prod.back.number_width_natural_display or '—' }}″){% else %}none{% endif %}</dd></div>
                         <div><dt>Order by</dt><dd>HEIGHT</dd></div>
                     </dl>
-                    <a class="od-btn od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back-number') }}">Save number PNG</a>
+                    <a class="od-btn od-btn-save" href="{{ url_for('admin.photos_item_artwork', order_id=order.id, item_id=item.id, side='back-number') }}">Save number PNG</a>
+                    <p class="od-field-hint od-save-hint">On your phone: tap Save, then tap and hold the picture → Add to Photos.</p>
                 </section>
                 <section class="od-xfer-card">
                     <h3>COMBINED BACK LAYOUT</h3>
@@ -428,6 +430,8 @@
                         <div><dt>Quantity</dt><dd>{{ prod.back.quantity }}</dd></div>
                     </dl>
                     {% if prod.back.exceeds_safe_area %}<p class="od-xfer-warn">Exceeds safe printable area for this size.</p>{% endif %}
+                    <a class="od-btn od-btn-save" href="{{ url_for('admin.photos_item_artwork', order_id=order.id, item_id=item.id, side='back') }}">Save combined PNG</a>
+                    <p class="od-field-hint od-save-hint">On your phone: tap Save, then tap and hold the picture → Add to Photos.</p>
                 </section>
                 {% endif %}
             </div>
@@ -860,6 +864,7 @@
     padding: 0.55rem 0.9rem;
     color: #fff;
 }
+.od-save-hint { display: none; }
 a.od-btn { color: #fff; text-decoration: none; }
 a.od-btn-outline { color: var(--text-primary); }
 
@@ -1080,6 +1085,7 @@ a.od-btn-outline { color: var(--text-primary); }
 }
 
 @media (max-width: 768px) {
+    .od-save-hint { display: block; margin-top: 0.4rem; }
     .od-title { font-size: 1.5rem; }
     .od-header { flex-direction: column; }
     .od-header-right { width: 100%; justify-content: flex-start; }

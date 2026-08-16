@@ -110,7 +110,7 @@
                             <p>Number {{ row.number_width_display }}″ × {{ row.number_height_display }}″</p>
                             <p class="qty-badge">Qty: {{ row.quantity }}</p>
                             {% if row.order_id and row.item_id %}
-                            <a class="btn btn-primary btn-sm" href="{{ url_for('admin.save_item_artwork', order_id=row.order_id, item_id=row.item_id, side='back') }}" style="margin-top:0.65rem;">Save back PNG</a>
+                            <a class="btn btn-primary btn-sm" href="{{ url_for('admin.photos_item_artwork', order_id=row.order_id, item_id=row.item_id, side='back') }}" style="margin-top:0.65rem;">Save back PNG</a>
                             {% endif %}
                         </div>
                     </div>

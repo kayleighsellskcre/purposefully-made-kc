@@ -421,11 +421,7 @@ def save_item_artwork(order_id, item_id, side):
         from utils.name_number_art import generate_personalized_png, persist_piece_file
         meta = item.back_design_details or {}
         personalized = bool(meta.get('name') or meta.get('number'))
-        if request.args.get('inline'):
-            return redirect(url_for(
-                'admin.preview_item_artwork',
-                order_id=order.id, item_id=item.id, side=side,
-            ))
+        inline = request.args.get('inline')
         if personalized or side in ('back-name', 'back-number'):
             piece = _artwork_piece(side)
             try:
@@ -461,7 +457,7 @@ def save_item_artwork(order_id, item_id, side):
             filename = download_filename(order, item, side)
             return send_file(
                 BytesIO(data),
-                as_attachment=True,
+                as_attachment=not inline,
                 download_name=filename,
                 mimetype='image/png',
             )
@@ -471,8 +467,9 @@ def save_item_artwork(order_id, item_id, side):
         return redirect(url_for('admin.order_detail', order_id=order.id))
     filename = download_filename(order, item, side)
     local = local_file_for_url(current_app, url)
+    inline = request.args.get('inline')
     if local:
-        return send_file(local, as_attachment=True, download_name=filename)
+        return send_file(local, as_attachment=not inline, download_name=filename)
     fetch_url = url
     if url.startswith('/'):
         fetch_url = request.host_url.rstrip('/') + url
@@ -484,11 +481,39 @@ def save_item_artwork(order_id, item_id, side):
             with urlopen(req, timeout=20) as resp:
                 data = resp.read()
                 mime = resp.headers.get('Content-Type') or 'image/png'
-            return send_file(BytesIO(data), as_attachment=True, download_name=filename, mimetype=mime)
+            return send_file(BytesIO(data), as_attachment=not inline, download_name=filename, mimetype=mime)
         except Exception:
             current_app.logger.exception('artwork download failed for order %s item %s %s', order_id, item_id, side)
     flash('Could not download that print file. Open the image and save it from the browser.', 'error')
     return redirect(url_for('admin.order_detail', order_id=order.id))
+
+
+@admin_bp.route('/orders/<int:order_id>/items/<int:item_id>/photos/<side>')
+@admin_required
+def photos_item_artwork(order_id, item_id, side):
+    """Mobile page: show the 300 DPI PNG so it can be saved to Photos."""
+    from utils.order_artwork import download_filename
+    if side not in ('front', 'back', 'back-name', 'back-number'):
+        flash('Unknown artwork side.', 'error')
+        return redirect(url_for('admin.order_detail', order_id=order_id))
+    order = Order.query.get_or_404(order_id)
+    item = OrderItem.query.filter_by(id=item_id, order_id=order.id).first_or_404()
+    labels = {
+        'front': 'Front transfer',
+        'back': 'Combined back layout',
+        'back-name': 'Back name',
+        'back-number': 'Back number',
+    }
+    return render_template(
+        'admin/save_to_photos.html',
+        order=order,
+        item=item,
+        side=side,
+        label=labels[side],
+        filename=download_filename(order, item, side),
+        image_url=url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side=side, inline=1),
+        download_url=url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side=side),
+    )
 
 
 @admin_bp.route('/orders/<int:order_id>/items/<int:item_id>/approve-layout', methods=['POST'])

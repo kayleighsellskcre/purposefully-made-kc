@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Save {{ label }} · {{ order.order_number }}</title>
+    <style>
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #1c1c1e;
+            color: #f5f0e1;
+            padding: 1rem 1rem 2rem;
+        }
+        a { color: #e8d0b1; }
+        .wrap { max-width: 520px; margin: 0 auto; }
+        .back { display: inline-block; margin-bottom: 1rem; font-size: 0.9rem; }
+        h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 0.35rem; }
+        .hint {
+            font-size: 1rem;
+            line-height: 1.45;
+            margin: 0 0 1rem;
+            color: #f5f0e1;
+        }
+        .frame {
+            background-image:
+                linear-gradient(45deg, #3a3a3c 25%, transparent 25%),
+                linear-gradient(-45deg, #3a3a3c 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #3a3a3c 75%),
+                linear-gradient(-45deg, transparent 75%, #3a3a3c 75%);
+            background-size: 24px 24px;
+            background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+            background-color: #2c2c2e;
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+        }
+        .frame img {
+            max-width: 100%;
+            height: auto;
+            -webkit-touch-callout: default;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .actions { display: flex; flex-direction: column; gap: 0.65rem; margin-top: 1rem; }
+        button, .btn {
+            display: block;
+            width: 100%;
+            text-align: center;
+            text-decoration: none;
+            border: 0;
+            border-radius: 10px;
+            min-height: 48px;
+            padding: 0.85rem 1rem;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        #shareBtn { background: #b87c6f; color: #fff; }
+        .btn-download { background: #3a3d48; color: #fff; }
+        .status { min-height: 1.4em; font-size: 0.9rem; color: #e8d0b1; margin-top: 0.5rem; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <a class="back" href="{{ url_for('admin.order_detail', order_id=order.id) }}">← Back to order {{ order.order_number }}</a>
+        <h1>{{ label }}</h1>
+        <p class="hint">On your phone: tap and hold the picture, then tap <strong>Add to Photos</strong> or <strong>Save Image</strong>.</p>
+        <div class="frame">
+            <img id="pngImage" src="{{ image_url }}" alt="{{ label }}">
+        </div>
+        <div class="actions">
+            <button type="button" id="shareBtn">Save to Photos</button>
+            <a class="btn btn-download" href="{{ download_url }}">Download file</a>
+        </div>
+        <p class="status" id="status"></p>
+    </div>
+    <script>
+    (function() {
+        var btn = document.getElementById('shareBtn');
+        var status = document.getElementById('status');
+        var url = {{ image_url|tojson }};
+        var filename = {{ filename|tojson }};
+        btn.addEventListener('click', async function() {
+            status.textContent = 'Preparing image…';
+            try {
+                var res = await fetch(url, { credentials: 'same-origin' });
+                if (!res.ok) throw new Error('Could not load the PNG');
+                var blob = await res.blob();
+                var file = new File([blob], filename, { type: 'image/png' });
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({ files: [file], title: filename });
+                    status.textContent = 'Choose Save Image / Add to Photos in the share sheet.';
+                    return;
+                }
+                status.textContent = 'Tap and hold the picture above, then tap Add to Photos.';
+            } catch (err) {
+                if (err && err.name === 'AbortError') {
+                    status.textContent = '';
+                    return;
+                }
+                status.textContent = 'Tap and hold the picture above, then tap Add to Photos.';
+            }
+        });
+    })();
+    </script>
+</body>
+</html>
