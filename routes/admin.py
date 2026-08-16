@@ -557,6 +557,55 @@ def repair_personalization():
     return redirect(url_for('admin.orders'))
 
 
+def _collect_press_shirts(orders):
+    """One card per physical shirt: front and back stay together."""
+    from utils.print_sizes import production_from_order_item
+    from utils.order_artwork import front_print_url, mockup_urls
+    shirts = []
+    for order in orders:
+        for item in order.items:
+            prod = production_from_order_item(item, customer_name=order.full_name)
+            if not prod or (not prod.get('front') and not prod.get('back')):
+                continue
+            front_m, back_m = mockup_urls(getattr(item, 'product', None), getattr(item, 'color', None))
+            front = prod.get('front') or None
+            back = prod.get('back') or None
+            shirts.append({
+                'order_number': getattr(order, 'order_number', None),
+                'quantity': getattr(item, 'quantity', 1) or 1,
+                'size': getattr(item, 'size', None),
+                'color': getattr(item, 'color', None),
+                'age_group': (front or back or {}).get('age_group'),
+                'garment_style': getattr(item, 'product_name', None),
+                'style_number': getattr(item, 'style_number', None),
+                'front': front,
+                'back': back,
+                'front_mockup_url': front_m,
+                'back_mockup_url': back_m or front_m,
+                'front_overlay_url': front_print_url(item) if front else None,
+                'front_placement': getattr(item, 'placement', None) or (front or {}).get('placement') or 'center_chest',
+                'exceeds_safe_area': bool(
+                    (front or {}).get('exceeds_safe_area') or (back or {}).get('exceeds_safe_area')
+                ),
+            })
+    return shirts
+
+
+def _sort_press_shirts(shirts, group_by='size'):
+    def key(shirt):
+        back = shirt.get('back') or {}
+        front = shirt.get('front') or {}
+        name = back.get('name') or front.get('design_name') or ''
+        if group_by == 'garment':
+            return (shirt.get('garment_style') or '', shirt.get('size') or '', name)
+        if group_by == 'name':
+            return (name, shirt.get('size') or '')
+        if group_by == 'order':
+            return (shirt.get('order_number') or '', name)
+        return (shirt.get('age_group') or '', shirt.get('size') or '', name)
+    return sorted(shirts, key=key)
+
+
 def _collect_order_productions(orders):
     from utils.print_sizes import production_from_order_item, flatten_production_rows
     from utils.order_artwork import front_print_url, mockup_urls, resolve_print_url
@@ -633,16 +682,15 @@ def _transfer_csv_response(rows, filename):
 @admin_bp.route('/orders/<int:order_id>/transfers')
 @admin_required
 def order_transfer_summary(order_id):
-    from utils.print_sizes import group_production_rows
     order = Order.query.get_or_404(order_id)
-    rows = _collect_order_productions([order])
-    grouped = group_production_rows(rows, group_by=request.args.get('group', 'design'))
+    group_by = request.args.get('group', 'size')
+    shirts = _sort_press_shirts(_collect_press_shirts([order]), group_by=group_by)
     return render_template(
         'admin/transfer_production.html',
         title=f'Order #{order.order_number} transfers',
         order=order,
-        rows=grouped,
-        group_by=request.args.get('group', 'design'),
+        shirts=shirts,
+        group_by=group_by,
         printable=True,
     )
 
@@ -2519,23 +2567,24 @@ def production_master():
 @admin_required
 def transfer_production():
     """Printable / filterable transfer order sheet across selected orders."""
-    from utils.print_sizes import group_production_rows
     status_filter = request.args.getlist('status') or ['new', 'paid', 'in_production']
     collection_id = request.args.get('collection')
-    group_by = request.args.get('group', 'design')
+    group_by = request.args.get('group', 'size')
     query = Order.query.filter(Order.status.in_(status_filter))
     if collection_id:
         query = query.filter_by(collection_id=collection_id)
     orders = query.order_by(Order.created_at).all()
-    rows = group_production_rows(_collect_order_productions(orders), group_by=group_by)
     if request.args.get('format') == 'csv':
+        from utils.print_sizes import group_production_rows
+        rows = group_production_rows(_collect_order_productions(orders), group_by=group_by)
         return _transfer_csv_response(rows, f'transfers_{datetime.now().strftime("%Y%m%d")}.csv')
+    shirts = _sort_press_shirts(_collect_press_shirts(orders), group_by=group_by)
     collections = Collection.query.all()
     return render_template(
         'admin/transfer_production.html',
         title='Transfer Production Summary',
         order=None,
-        rows=rows,
+        shirts=shirts,
         group_by=group_by,
         orders=orders,
         collections=collections,
