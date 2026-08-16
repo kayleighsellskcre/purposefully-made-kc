@@ -690,5 +690,73 @@ def create_app(config_class=Config):
 
 
 app = create_app()
+
+# ── Widen image import — standalone route, no blueprint, CORS-open ─────────────
+@app.route('/widen-import', methods=['POST', 'OPTIONS'])
+def widen_import():
+    from flask import request as rq, jsonify, make_response
+    from models import db, Product, ProductColorVariant
+    from datetime import datetime
+
+    def cors(resp):
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        return resp
+
+    if rq.method == 'OPTIONS':
+        return cors(make_response('', 204))
+
+    body = rq.get_json(silent=True) or {}
+    if body.get('secret') != 'widen-import-2024':
+        return cors(make_response(jsonify({'error': 'unauthorized'}), 403))
+
+    images = body.get('images', {})
+    updated = created = skipped = 0
+
+    with app.app_context():
+        for style_number, color_map in images.items():
+            product = Product.query.filter_by(style_number=style_number).first()
+            if not product:
+                skipped += len(color_map)
+                continue
+            first_front = first_back = None
+            for color_name, sides in color_map.items():
+                front_url = sides.get('front', '')
+                back_url  = sides.get('back', '')
+                if not front_url and not back_url:
+                    skipped += 1
+                    continue
+                variant = ProductColorVariant.query.filter(
+                    ProductColorVariant.product_id == product.id,
+                    db.func.lower(ProductColorVariant.color_name) == color_name.lower()
+                ).first()
+                if variant:
+                    if front_url: variant.front_image_url = front_url
+                    if back_url:  variant.back_image_url  = back_url
+                    variant.last_synced = datetime.utcnow()
+                    updated += 1
+                else:
+                    db.session.add(ProductColorVariant(
+                        product_id=product.id, color_name=color_name,
+                        front_image_url=front_url, back_image_url=back_url,
+                        last_synced=datetime.utcnow(),
+                    ))
+                    created += 1
+                if not first_front and front_url: first_front = front_url
+                if not first_back  and back_url:  first_back  = back_url
+            if first_front and not product.front_mockup_template:
+                product.front_mockup_template = first_front
+            if first_back and not product.back_mockup_template:
+                product.back_mockup_template = first_back
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            return cors(make_response(jsonify({'error': str(e)}), 500))
+
+    return cors(make_response(jsonify({'ok': True, 'updated': updated, 'created': created, 'skipped': skipped}), 200))
+
+
 if __name__ == '__main__':
     app.run(debug=False)
