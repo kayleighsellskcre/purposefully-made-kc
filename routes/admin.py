@@ -2169,6 +2169,107 @@ def toggle_product_favorite(product_id):
     return redirect(request.referrer or url_for('admin.products'))
 
 
+# ===== WIDEN IMAGE IMPORT =====
+
+@admin_bp.route('/import-widen', methods=['POST', 'OPTIONS'])
+def import_widen_images():
+    """
+    One-shot endpoint: accepts scraped Widen flat-image data from the browser
+    and bulk-upserts ProductColorVariant records.
+
+    Auth: simple shared secret in JSON body (no session needed so we can POST
+    from medialibrary1.com). CORS headers allow any origin.
+
+    Expected body:
+      {
+        "secret": "widen-import-2024",
+        "images": {
+          "CC1717": {
+            "Dusk": {"front": "<url>", "back": "<url>"},
+            ...
+          },
+          ...
+        }
+      }
+    """
+    from flask import request as rq, jsonify
+    from models import ProductColorVariant
+    from datetime import datetime
+
+    # CORS headers on every response (preflight + actual)
+    cors_headers = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+    }
+
+    if rq.method == 'OPTIONS':
+        return ('', 204, cors_headers)
+
+    body = rq.get_json(silent=True) or {}
+    if body.get('secret') != 'widen-import-2024':
+        return (jsonify({'error': 'unauthorized'}), 403, cors_headers)
+
+    images = body.get('images', {})
+    if not images:
+        return (jsonify({'error': 'no images data'}), 400, cors_headers)
+
+    updated = created = skipped = 0
+
+    for style_number, color_map in images.items():
+        product = Product.query.filter_by(style_number=style_number).first()
+        if not product:
+            skipped += len(color_map)
+            continue
+
+        first_front = first_back = None
+
+        for color_name, sides in color_map.items():
+            front_url = sides.get('front', '')
+            back_url  = sides.get('back', '')
+            if not front_url and not back_url:
+                skipped += 1
+                continue
+
+            variant = ProductColorVariant.query.filter(
+                ProductColorVariant.product_id == product.id,
+                db.func.lower(ProductColorVariant.color_name) == color_name.lower()
+            ).first()
+
+            if variant:
+                if front_url: variant.front_image_url = front_url
+                if back_url:  variant.back_image_url  = back_url
+                variant.last_synced = datetime.utcnow()
+                updated += 1
+            else:
+                db.session.add(ProductColorVariant(
+                    product_id=product.id,
+                    color_name=color_name,
+                    front_image_url=front_url,
+                    back_image_url=back_url,
+                    last_synced=datetime.utcnow(),
+                ))
+                created += 1
+
+            if not first_front and front_url: first_front = front_url
+            if not first_back  and back_url:  first_back  = back_url
+
+        # Set product-level mockup template if not already set
+        if first_front and not product.front_mockup_template:
+            product.front_mockup_template = first_front
+        if first_back  and not product.back_mockup_template:
+            product.back_mockup_template = first_back
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return (jsonify({'error': str(e)}), 500, cors_headers)
+
+    result = {'ok': True, 'updated': updated, 'created': created, 'skipped': skipped}
+    return (jsonify(result), 200, cors_headers)
+
+
 # ===== COLLECTIONS =====
 
 @admin_bp.route('/collections')
