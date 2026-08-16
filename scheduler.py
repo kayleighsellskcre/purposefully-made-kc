@@ -146,6 +146,169 @@ def seed_catalog_if_empty(app):
             print(f"Initial seed check failed: {e}", file=sys.stderr, flush=True)
 
 
+def sync_ss_images_job(app):
+    """
+    Nightly job: fetch front/back ghost images for every BC product from S&S Activewear.
+    Creates or updates ProductColorVariant records with S&S CDN image URLs.
+    Runs at 2:00 AM daily (after SanMar sync).
+    No web-request timeout — runs until complete.
+    """
+    with app.app_context():
+        try:
+            import os, re
+            from pathlib import Path
+            from datetime import datetime
+            from models import db, Product, ProductColorVariant
+
+            print("=" * 80, file=sys.stderr, flush=True)
+            print(f"S&S IMAGE SYNC STARTED - {datetime.now()}", file=sys.stderr, flush=True)
+
+            api_key = os.getenv('SSACTIVEWEAR_API_KEY', '').strip()
+            account_number = os.getenv('SSACTIVEWEAR_ACCOUNT_NUMBER', '').strip()
+
+            created = updated = skipped = 0
+
+            # ── Phase 1: S&S Activewear API ────────────────────────────────────
+            if api_key and account_number:
+                try:
+                    from services.ssactivewear_api import SSActivewearAPI
+                    api = SSActivewearAPI(api_key=api_key, account_number=account_number)
+                    cdn = 'https://cdn.ssactivewear.com/'
+
+                    def _img(url):
+                        if not url: return None
+                        return url if url.startswith('http') else cdn + url.lstrip('/')
+
+                    for product in Product.query.filter(Product.style_number.ilike('BC%')).all():
+                        ss_style = product.style_number[2:] if product.style_number.upper().startswith('BC') else product.style_number
+                        try:
+                            ss_rows = api.get_products_by_style_number(ss_style) or api.get_products_by_style_number(product.style_number)
+                            if not ss_rows:
+                                skipped += 1
+                                continue
+
+                            color_map = {}
+                            for row in ss_rows:
+                                cname = (row.get('colorName') or '').strip()
+                                if not cname: continue
+                                k = cname.lower()
+                                if k in color_map: continue
+                                front = _img(row.get('ghostFrontImage') or row.get('colorFrontImage') or row.get('frontImage'))
+                                back  = _img(row.get('ghostBackImage')  or row.get('colorBackImage')  or row.get('backImage'))
+                                if front or back:
+                                    color_map[k] = {'name': cname, 'front': front, 'back': back,
+                                                    'hex': row.get('colorHex') or row.get('hex')}
+                            if not color_map:
+                                skipped += 1
+                                continue
+
+                            existing = {(v.color_name or '').lower(): v for v in ProductColorVariant.query.filter_by(product_id=product.id).all()}
+                            changed = False
+                            for k, imgs in color_map.items():
+                                if k in existing:
+                                    v = existing[k]
+                                    if imgs['front'] and not v.front_image_url:
+                                        v.front_image_url = imgs['front']; changed = True
+                                    if imgs['back'] and not v.back_image_url:
+                                        v.back_image_url = imgs['back']; changed = True
+                                    if changed: updated += 1
+                                else:
+                                    db.session.add(ProductColorVariant(
+                                        product_id=product.id,
+                                        color_name=imgs['name'], color_hex=imgs.get('hex'),
+                                        front_image_url=imgs['front'], back_image_url=imgs['back'],
+                                        last_synced=datetime.utcnow(),
+                                    ))
+                                    created += 1
+                                    changed = True
+
+                            if changed:
+                                if not product.front_mockup_template:
+                                    ff = next((v['front'] for v in color_map.values() if v.get('front')), None)
+                                    if ff: product.front_mockup_template = ff
+                                db.session.commit()
+
+                        except Exception as e:
+                            db.session.rollback()
+                            print(f"  S&S image error [{product.style_number}]: {e}", file=sys.stderr, flush=True)
+
+                except Exception as e:
+                    print(f"  S&S API init failed: {e}", file=sys.stderr, flush=True)
+            else:
+                print("  S&S skipped — no API credentials", file=sys.stderr, flush=True)
+
+            # ── Phase 2: Fix local sanmar/ paths and link local images ─────────
+            try:
+                # Fix any variants with bare 'sanmar/...' path (missing /static/ prefix)
+                bad_variants = ProductColorVariant.query.filter(
+                    ProductColorVariant.front_image_url.like('sanmar/%')
+                ).all()
+                for v in bad_variants:
+                    if v.front_image_url and not v.front_image_url.startswith('/'):
+                        v.front_image_url = '/static/' + v.front_image_url
+                    if v.back_image_url and not v.back_image_url.startswith('/') and v.back_image_url.startswith('sanmar/'):
+                        v.back_image_url = '/static/' + v.back_image_url
+                if bad_variants:
+                    db.session.commit()
+                    print(f"  Fixed {len(bad_variants)} bare sanmar/ paths", file=sys.stderr, flush=True)
+
+                # Link any local static/sanmar/ images not yet in DB
+                sanmar_dir = Path(app.root_path) / 'static' / 'sanmar'
+                local_linked = 0
+                if sanmar_dir.is_dir():
+                    for style_folder in sanmar_dir.iterdir():
+                        if not style_folder.is_dir(): continue
+                        folder_name = style_folder.name
+                        product = Product.query.filter(
+                            db.or_(Product.style_number == 'BC' + folder_name, Product.style_number == folder_name)
+                        ).first()
+                        if not product: continue
+
+                        file_map = {}
+                        for f in style_folder.iterdir():
+                            if not f.is_file(): continue
+                            m = re.match(rf'^{re.escape(folder_name)}_(.+?)_(front|back)\.jpe?g$', f.name, re.IGNORECASE)
+                            if not m: continue
+                            key = m.group(1).replace('_', ' ').lower()
+                            side = m.group(2).lower()
+                            if key not in file_map: file_map[key] = {}
+                            file_map[key][side] = f'/static/sanmar/{folder_name}/{f.name}'
+
+                        existing = {(v.color_name or '').lower(): v for v in ProductColorVariant.query.filter_by(product_id=product.id).all()}
+                        for color_key, paths in file_map.items():
+                            if color_key in existing:
+                                v = existing[color_key]
+                                if paths.get('front'): v.front_image_url = paths['front']
+                                if paths.get('back'):  v.back_image_url  = paths['back']
+                            else:
+                                db.session.add(ProductColorVariant(
+                                    product_id=product.id,
+                                    color_name=color_key.title(),
+                                    front_image_url=paths.get('front'),
+                                    back_image_url=paths.get('back'),
+                                ))
+                            local_linked += 1
+
+                        if not product.front_mockup_template and file_map:
+                            ff = next((v['front'] for v in file_map.values() if 'front' in v), None)
+                            if ff: product.front_mockup_template = ff
+
+                    db.session.commit()
+                    print(f"  Local sanmar images linked: {local_linked}", file=sys.stderr, flush=True)
+
+            except Exception as e:
+                db.session.rollback()
+                print(f"  Local image link error: {e}", file=sys.stderr, flush=True)
+
+            print(f"S&S IMAGE SYNC COMPLETE — created {created}, updated {updated}, skipped {skipped}", file=sys.stderr, flush=True)
+            print("=" * 80, file=sys.stderr, flush=True)
+
+        except Exception as e:
+            print(f"S&S IMAGE SYNC FAILED: {e}", file=sys.stderr, flush=True)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+
+
 def init_scheduler(app):
     """
     Initialize the background scheduler.
@@ -175,11 +338,33 @@ def init_scheduler(app):
             replace_existing=True
         )
 
+        # S&S image fetch every night at 2:00 AM (after SanMar sync)
+        scheduler.add_job(
+            func=lambda: sync_ss_images_job(app),
+            trigger=CronTrigger(hour=2, minute=0),
+            id='nightly_ss_images',
+            name='Nightly S&S Image Sync',
+            replace_existing=True
+        )
+
+        # Also run S&S image sync once on startup (after a short delay)
+        from apscheduler.triggers.date import DateTrigger
+        from datetime import datetime, timedelta
+        scheduler.add_job(
+            func=lambda: sync_ss_images_job(app),
+            trigger=DateTrigger(run_date=datetime.now() + timedelta(seconds=30)),
+            id='startup_ss_images',
+            name='Startup S&S Image Sync (one-time)',
+            replace_existing=True
+        )
+
         scheduler.start()
 
         print("=" * 80, file=sys.stderr, flush=True)
         print("SCHEDULER STARTED", file=sys.stderr, flush=True)
         print("  - Nightly Bella+Canvas catalog sync (SanMar): 1:00 AM daily", file=sys.stderr, flush=True)
+        print("  - Nightly S&S image sync: 2:00 AM daily", file=sys.stderr, flush=True)
+        print("  - S&S image sync running in 30 seconds (startup)", file=sys.stderr, flush=True)
         print("=" * 80, file=sys.stderr, flush=True)
 
         import atexit
