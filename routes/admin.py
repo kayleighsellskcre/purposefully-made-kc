@@ -329,8 +329,7 @@ def order_detail(order_id):
         """Always use correct youth dimensions for display (fixes stored wrong values)."""
         return get_print_width_for_size(item.size, item.product) or item.print_width
     from utils.order_artwork import artwork_kit
-    from utils.personalization_layout import snapshot_from_item, validate_snapshot_png
-    from utils.name_number_art import personalized_png
+    from utils.personalization_layout import snapshot_from_item, validate_snapshot_geometry
     item_productions = []
     for item in order.items:
         prod = production_from_order_item(item, customer_name=order.full_name)
@@ -338,17 +337,7 @@ def order_detail(order_id):
         layout = None
         if kit.get('is_personalized_back'):
             snap = snapshot_from_item(item, customer_name=order.full_name)
-            try:
-                png = personalized_png(current_app, item, 'back', customer_name=order.full_name)
-                ok, failures = validate_snapshot_png(snap, png)
-            except Exception as exc:
-                png = None
-                ok, failures = False, [{
-                    'code': 'render',
-                    'label': 'Renderer',
-                    'expected': 'valid production PNG',
-                    'actual': str(exc),
-                }]
+            ok, failures = validate_snapshot_geometry(snap)
             layout = {
                 'snapshot': snap,
                 'ok': ok,
@@ -386,26 +375,37 @@ def save_item_artwork(order_id, item_id, side):
         side != 'back' or (getattr(item, 'back_design_details', None) or {}).get('name')
         or (getattr(item, 'back_design_details', None) or {}).get('number')
     ):
-        from utils.personalization_layout import snapshot_from_item, validate_snapshot_png
-        from utils.name_number_art import personalized_png
+        from utils.personalization_layout import validate_snapshot_png
+        from utils.name_number_art import generate_personalized_png
         meta = item.back_design_details or {}
         personalized = bool(meta.get('name') or meta.get('number'))
+        inline = request.args.get('inline')
+        if inline:
+            # Previews must use the stored file. Never generate 300 DPI for an <img>.
+            stored = back_print_url(item)
+            if stored:
+                return redirect(stored)
+            flash('No stored preview is available yet. Use Save PNG to generate this transfer.', 'error')
+            return redirect(url_for('admin.order_detail', order_id=order.id))
         if personalized or side in ('back-name', 'back-number'):
             piece = 'back' if side == 'back' else ('name' if side == 'back-name' else 'number')
             try:
-                data = personalized_png(current_app, item, piece, customer_name=order.full_name)
+                data, snapshot = generate_personalized_png(
+                    current_app, item, piece, customer_name=order.full_name,
+                )
             except Exception as exc:
-                current_app.logger.exception('personalized png failed: %s', exc)
+                current_app.logger.exception(
+                    'personalized png failed order=%s item=%s piece=%s: %s',
+                    order.id, item.id, piece, exc,
+                )
                 flash(f'Could not build the {piece} transfer: {exc}', 'error')
                 return redirect(url_for('admin.order_detail', order_id=order.id))
             if not data:
                 flash(f'Could not build a {piece} file for this order.', 'error')
                 return redirect(url_for('admin.order_detail', order_id=order.id))
-            snapshot = snapshot_from_item(item, customer_name=order.full_name)
             ok, failures = validate_snapshot_png(snapshot, data)
             approved = request.args.get('approved') == '1' or bool(meta.get('production_approved'))
-            inline = request.args.get('inline')
-            if not ok and not inline and not approved:
+            if not ok and not approved:
                 flash(
                     'This transfer failed production checks: '
                     + '; '.join(f"{f['label']} (expected {f['expected']}, got {f['actual']})" for f in failures),
@@ -415,7 +415,7 @@ def save_item_artwork(order_id, item_id, side):
             filename = download_filename(order, item, side)
             return send_file(
                 BytesIO(data),
-                as_attachment=not inline,
+                as_attachment=True,
                 download_name=filename,
                 mimetype='image/png',
             )
@@ -476,9 +476,10 @@ def repair_personalization():
     result = repair_existing_personalized_items(current_app)
     flash(
         f'Personalization repair finished. Scanned {result["scanned"]}, '
-        f'rewrote {result["repaired"]} production PNGs, '
-        f'skipped {result["skipped"]} already fixed, '
+        f'stamped {result["repaired"]} saved layouts, '
+        f'skipped {result["skipped"]} already stamped, '
         f'flagged {result["flagged"]} for review. '
+        'No production PNGs were generated. Use Save PNG on each item for a 300 DPI file. '
         'Prices and customer mockups were not changed.',
         'success',
     )

@@ -285,14 +285,14 @@
 
                         {% if kit.has_back_print %}
                         <div class="pm-print-file{% if layout and layout.needs_review %} od-print-review{% endif %}">
-                            {% if kit.is_personalized_back %}
-                            <a class="pm-print-preview" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back', inline=1) }}" target="_blank" rel="noopener" title="Open full size">
-                                <img src="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back', inline=1) }}" alt="Back print file">
-                            </a>
-                            {% elif kit.back_print_url %}
-                            <a class="pm-print-preview" href="{{ kit.back_print_url }}" target="_blank" rel="noopener" title="Open full size">
+                            {% if kit.back_print_url %}
+                            <a class="pm-print-preview" href="{{ kit.back_print_url }}" target="_blank" rel="noopener" title="Open stored preview">
                                 <img src="{{ kit.back_print_url }}" alt="Back print file">
                             </a>
+                            {% elif kit.is_personalized_back %}
+                            <div class="pm-print-preview" aria-label="Back print file">
+                                <p class="od-field-hint">Preview uses the stored file. Click Save back PNG to build a 300 DPI transfer.</p>
+                            </div>
                             {% endif %}
                             <div class="pm-print-meta">
                                 <h3>Back transfer</h3>
@@ -382,9 +382,11 @@
                 {% if prod.back %}
                 <section class="od-xfer-card">
                     <h3>BACK NAME</h3>
-                    <a class="pm-print-preview od-piece-preview" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back-name') }}" title="Save name transfer">
-                        <img src="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back-name', inline=1) }}" alt="{{ prod.back.name or 'Name' }}">
+                    {% if kit.back_print_url %}
+                    <a class="pm-print-preview od-piece-preview" href="{{ kit.back_print_url }}" title="Stored back artwork">
+                        <img src="{{ kit.back_print_url }}" alt="{{ prod.back.name or 'Name' }}">
                     </a>
+                    {% endif %}
                     <dl>
                         <div><dt>Name</dt><dd>{{ prod.back.name or '—' }}</dd></div>
                         <div><dt>Font</dt><dd>{{ prod.back.font }}</dd></div>
@@ -397,9 +399,11 @@
                 </section>
                 <section class="od-xfer-card">
                     <h3>BACK NUMBER</h3>
-                    <a class="pm-print-preview od-piece-preview" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back-number') }}" title="Save number transfer">
-                        <img src="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back-number', inline=1) }}" alt="{{ prod.back.number or 'Number' }}">
+                    {% if kit.back_print_url %}
+                    <a class="pm-print-preview od-piece-preview" href="{{ kit.back_print_url }}" title="Stored back artwork">
+                        <img src="{{ kit.back_print_url }}" alt="{{ prod.back.number or 'Number' }}">
                     </a>
+                    {% endif %}
                     <dl>
                         <div><dt>Number</dt><dd>{{ prod.back.number or '—' }}</dd></div>
                         <div><dt>Number transfer</dt><dd>{{ prod.back.number_width_display }}″ W × {{ prod.back.number_height_display }}″ H</dd></div>

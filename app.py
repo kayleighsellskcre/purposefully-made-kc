@@ -215,16 +215,6 @@ def create_app(config_class=Config):
         except Exception:
             pass
 
-        # Rewrite old name/number production PNGs from each order's saved snapshot.
-        # Idempotent; skips items already repaired at the current layout version.
-        try:
-            from utils.personalization_layout import repair_existing_personalized_items
-            result = repair_existing_personalized_items(app)
-            if result.get('scanned'):
-                print(f"Personalization PNG repair: {result}", file=sys.stderr)
-        except Exception as e:
-            print(f"Personalization PNG repair skipped: {e}", file=sys.stderr)
-
     # Flask-Login setup
     login_manager = LoginManager()
     login_manager.init_app(app)

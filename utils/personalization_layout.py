@@ -16,6 +16,9 @@ LAYOUT_VERSION = 2
 PRODUCTION_DPI = 300
 # Visible-gap match tolerance in inches when validating a reconstructed PNG.
 VALIDATE_TOLERANCE_IN = 0.08
+# Hard cap so a bad snapshot cannot allocate a Railway-killing canvas.
+MAX_EDGE_PX = 4500
+MAX_PIXELS = 8_000_000
 
 FONT_FILES = {
     'Jersey M54': 'JerseyM54.ttf',
@@ -348,22 +351,36 @@ def render_snapshot_png(snapshot, dpi=PRODUCTION_DPI):
 
     canvas_w = content_w + pad_px * 2
     canvas_h = content_h + pad_px * 2
-    canvas = Image.new('RGBA', (canvas_w, canvas_h), (0, 0, 0, 0))
-    center_x = canvas_w / 2
-    y = pad_px
-    if name_layer and name_box:
-        x = int(round(center_x - name_w / 2 - name_box[0]))
-        canvas.paste(name_layer, (x, y - name_box[1]), name_layer)
-        y += int(round(name_px))
-        if number:
-            y += int(round(gap_px))
-    if number_layer and number_box:
-        x = int(round(center_x - number_w / 2 - number_box[0]))
-        canvas.paste(number_layer, (x, y - number_box[1]), number_layer)
+    if canvas_w > MAX_EDGE_PX or canvas_h > MAX_EDGE_PX or (canvas_w * canvas_h) > MAX_PIXELS:
+        raise ValueError(
+            f'Production image too large to render safely ({canvas_w}×{canvas_h}px).'
+        )
 
-    # Trim only exterior transparent padding. Do not touch the name/number gap.
-    trimmed = _trim_exterior(canvas)
-    return _png_bytes(trimmed, dpi)
+    canvas = trimmed = None
+    try:
+        canvas = Image.new('RGBA', (canvas_w, canvas_h), (0, 0, 0, 0))
+        center_x = canvas_w / 2
+        y = pad_px
+        if name_layer and name_box:
+            x = int(round(center_x - name_w / 2 - name_box[0]))
+            canvas.paste(name_layer, (x, y - name_box[1]), name_layer)
+            y += int(round(name_px))
+            if number:
+                y += int(round(gap_px))
+        if number_layer and number_box:
+            x = int(round(center_x - number_w / 2 - number_box[0]))
+            canvas.paste(number_layer, (x, y - number_box[1]), number_layer)
+
+        # Trim only exterior transparent padding. Do not touch the name/number gap.
+        trimmed = _trim_exterior(canvas)
+        return _png_bytes(trimmed, dpi)
+    finally:
+        for image in (name_layer, number_layer, canvas, trimmed):
+            try:
+                if image is not None:
+                    image.close()
+            except Exception:
+                pass
 
 
 def _font_px_for_ink(font_name, target_ink_px, probe):
@@ -425,6 +442,39 @@ def measure_rendered(image_bytes):
             'has_transparency': any(px[3] < 255 for px in img.getdata()),
             'empty': False,
         }
+
+
+def validate_snapshot_geometry(snapshot):
+    """Check saved heights/gap without rendering a PNG."""
+    failures = []
+    font_name = snapshot.get('font') or 'Jersey M54'
+    if not font_available(font_name):
+        failures.append({
+            'code': 'font_missing',
+            'label': 'Font file',
+            'expected': font_name,
+            'actual': 'not installed',
+        })
+    if not snapshot.get('complete'):
+        failures.append({
+            'code': 'incomplete',
+            'label': 'Saved layout',
+            'expected': 'name/number heights and gap',
+            'actual': 'missing geometry',
+        })
+    name_h = _num(snapshot.get('name_height')) or 0
+    number_h = _num(snapshot.get('number_height')) or 0
+    gap = _num(snapshot.get('gap')) or 0
+    expected_h = _num(snapshot.get('combined_height'))
+    if snapshot.get('name') and snapshot.get('number') and expected_h:
+        if expected_h + 0.01 < (name_h + number_h):
+            failures.append({
+                'code': 'overlap',
+                'label': 'Name/number overlap',
+                'expected': f'gap {gap:.2f}" (name+number+gap)',
+                'actual': f'saved combined height {expected_h:.2f}" is smaller than name+number',
+            })
+    return (not failures), failures
 
 
 def validate_snapshot_png(snapshot, image_bytes, dpi=PRODUCTION_DPI):
@@ -508,101 +558,50 @@ def inches_from_px(px, dpi=PRODUCTION_DPI):
 
 
 def repair_existing_personalized_items(app=None):
-    """Rewrite stored back PNGs from each order's saved snapshot.
+    """Stamp saved layout metadata only. Never renders or uploads PNGs.
 
-    Idempotent. Does not change prices, quantities, or the original file URL
-    (kept as original_file_url). Returns counts.
+    Full-resolution transfers are built when an admin clicks Save on one item.
     """
     from flask import current_app
     from models import OrderItem, db
-    from utils.cloud_storage import upload_bytes
 
     app = app or current_app._get_current_object()
     scanned = repaired = flagged = skipped = 0
-    stamp = f'v{LAYOUT_VERSION}'
-
     items = OrderItem.query.all()
     for item in items:
         meta = item.back_design_details or {}
         if not (meta.get('name') or meta.get('number')):
             continue
         scanned += 1
-        if meta.get('production_png_repaired') == stamp and meta.get('file_url'):
+        if meta.get('layout_repaired') and meta.get('layout_version'):
             skipped += 1
             continue
-
         snap = snapshot_from_item(item)
-        original_url = (
-            meta.get('original_file_url')
-            or meta.get('file_url')
-            or meta.get('url')
-            or getattr(item, 'back_design_file_name', None)
-        )
-        try:
-            png = render_snapshot_png(snap)
-        except Exception as exc:
-            app.logger.exception('personalization repair failed for item %s: %s', item.id, exc)
-            meta = dict(meta)
-            meta['needs_review'] = True
-            meta['layout_repaired'] = True
-            meta['repair_error'] = str(exc)[:300]
-            if original_url:
-                meta['original_file_url'] = original_url
-            item.back_design_meta = json.dumps(meta)
-            flagged += 1
-            continue
-
-        name = (snap.get('name') or 'name').replace(' ', '')[:20]
-        number = (snap.get('number') or 'num')[:6]
-        filename = f'back_{name}_{number}.png'
-        try:
-            stored_url = upload_bytes(
-                png, app, filename,
-                subfolder='designs',
-                public_id_prefix=f'layout_{item.id}',
-            )
-        except Exception as exc:
-            app.logger.exception('personalization upload failed for item %s: %s', item.id, exc)
-            meta = dict(meta)
-            meta['needs_review'] = True
-            meta['repair_error'] = f'upload: {exc}'[:300]
-            item.back_design_meta = json.dumps(meta)
-            flagged += 1
-            continue
-
-        if stored_url and not str(stored_url).startswith(('http://', 'https://', '/')):
-            stored_url = f'/static/{stored_url.lstrip("/")}'
-
         meta = dict(meta)
-        if original_url:
-            meta['original_file_url'] = original_url
-        meta['file_url'] = stored_url
-        meta['production_png_url'] = stored_url
         meta['layout_repaired'] = True
-        meta['production_png_repaired'] = stamp
-        meta['layout_version'] = LAYOUT_VERSION
+        meta['layout_version'] = snap.get('layout_version') or LAYOUT_VERSION
         meta['needs_review'] = not snap.get('complete')
-        meta.pop('repair_error', None)
         item.back_design_meta = json.dumps(meta)
-        if stored_url:
-            item.back_design_file_name = stored_url[:500]
-
-        stored = item.transfer_production_details or {}
-        back = dict((stored or {}).get('back') or {})
-        back = enrich_back_snapshot(back or {
-            'name': snap.get('name'),
-            'number': snap.get('number'),
-            'font': snap.get('font'),
-            'name_height': snap.get('name_height'),
-            'number_height': snap.get('number_height'),
-            'gap': snap.get('gap'),
-        }, extra=meta)
-        back['production_png_url'] = stored_url
-        stored = dict(stored or {})
-        stored['back'] = back
-        item.transfer_production = json.dumps(stored)
-        repaired += 1
-
+        if snap.get('complete'):
+            stored = dict(item.transfer_production_details or {})
+            back = dict(stored.get('back') or {})
+            back = enrich_back_snapshot(back or {
+                'name': snap.get('name'),
+                'number': snap.get('number'),
+                'font': snap.get('font'),
+                'name_height': snap.get('name_height'),
+                'number_height': snap.get('number_height'),
+                'gap': snap.get('gap'),
+            }, extra=meta)
+            stored['back'] = back
+            item.transfer_production = json.dumps(stored)
+            repaired += 1
+        else:
+            flagged += 1
     if scanned:
         db.session.commit()
+    app.logger.info(
+        'personalization metadata stamp scanned=%s stamped=%s flagged=%s skipped=%s',
+        scanned, repaired, flagged, skipped,
+    )
     return {'scanned': scanned, 'repaired': repaired, 'flagged': flagged, 'skipped': skipped}
