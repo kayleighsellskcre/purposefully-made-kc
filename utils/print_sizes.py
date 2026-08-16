@@ -877,6 +877,8 @@ def flatten_production_rows(item_productions):
                 'section': 'FRONT TRANSFER',
                 'garment_style': prod.get('garment_style') or front.get('garment_style'),
                 'style_number': prod.get('style_number'),
+                'mockup_url': prod.get('mockup_front_url'),
+                'order_number': prod.get('order_number'),
             })
         back = prod.get('back')
         if back:
@@ -888,5 +890,7 @@ def flatten_production_rows(item_productions):
                 'style_number': prod.get('style_number'),
                 'width': back.get('combined_width'),
                 'height': back.get('combined_height'),
+                'mockup_url': prod.get('mockup_back_url') or prod.get('mockup_front_url'),
+                'order_number': prod.get('order_number'),
             })
     return rows

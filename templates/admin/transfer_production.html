@@ -7,7 +7,7 @@
         <div>
             <span class="adm-eyebrow">Admin / Production</span>
             <h1>{{ title }}</h1>
-            <p class="xfer-sub">Group identical front transfers. Personalized names and numbers stay on their own lines because widths differ. All sizes in inches, two decimals.</p>
+            <p class="xfer-sub">Hand this sheet to the presser. Each card has a light shirt picture, where it goes, and the exact transfer size. Photos print gray and faded on purpose to save ink.</p>
         </div>
         <div class="xfer-actions">
             {% if order %}
@@ -48,65 +48,72 @@
     </form>
     {% endif %}
 
+    <header class="xfer-print-banner">
+        <div>
+            <strong>Transfer press sheet</strong>
+            {% if order %} · Order {{ order.order_number }}{% endif %}
+        </div>
+        <div>{{ rows|length }} transfer{{ 's' if rows|length != 1 else '' }} · sizes in inches</div>
+    </header>
+
     {% if rows %}
-    <table class="xfer-table">
-        <thead>
-            <tr>
-                <th>Section</th>
-                <th>Design / Name</th>
-                <th>Garment</th>
-                <th>Age + Size</th>
-                <th>Color</th>
-                <th>Placement</th>
-                <th>Order by</th>
-                <th>Transfer size</th>
-                <th>Adjustment</th>
-                <th>Qty</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in rows %}
-            <tr class="{% if row.exceeds_safe_area %}xfer-flag{% endif %} {% if row.kind == 'personalized' %}xfer-personal{% endif %}">
-                <td>{{ row.section }}</td>
-                <td>
-                    {% if row.kind == 'personalized' %}
-                    <strong>{{ row.name or '—' }}</strong>
-                    {% if row.number %}<span class="xfer-num">#{{ row.number }}</span>{% endif %}
-                    <div class="xfer-meta">{{ row.font }}{% if row.text_color %} · {{ row.text_color }}{% endif %}</div>
+    <div class="xfer-cards">
+        {% for row in rows %}
+        <article class="xfer-card{% if row.exceeds_safe_area %} xfer-flag{% endif %}">
+            <div class="xfer-visual">
+                <div class="xfer-mock">
+                    {% if row.mockup_url %}
+                    <img src="{{ row.mockup_url }}" alt="{{ row.color or 'Shirt' }} {{ row.placement_label or '' }}" class="xfer-mock-img">
                     {% else %}
-                    <strong>{{ row.design_name or '—' }}</strong>
+                    <svg class="xfer-shirt" viewBox="0 0 64 72" aria-hidden="true">
+                        <path d="M16 14 L4 22 L10 30 L16 26 V64 H48 V26 L54 30 L60 22 L48 14 L40 18 H24 Z" fill="none" stroke="#222" stroke-width="1.6"/>
+                    </svg>
                     {% endif %}
-                </td>
-                <td>{{ row.garment_style }}</td>
-                <td>{{ (row.age_group or '')|title }} {{ row.size }}</td>
-                <td>{{ row.color }}</td>
-                <td>{{ row.placement_label }}</td>
-                <td>{{ row.order_by }}</td>
-                <td>
                     {% if row.kind == 'personalized' %}
-                    Name {{ row.name_width_display }}″ W × {{ row.name_height_display }}″ H<br>
-                    Number {{ row.number_width_display }}″ W × {{ row.number_height_display }}″ H{% if row.number_digits %} ({{ row.number_digits }}-digit){% endif %}<br>
-                    Gap {{ row.gap_display }}″<br>
-                    Combined {{ row.combined_width_display }}″ W × {{ row.combined_height_display }}″ H
-                    {% else %}
-                    {{ row.width_display }}″ W × {{ row.height_display }}″ H
+                    <div class="xfer-onshirt">
+                        {% if row.name %}<span class="xfer-onshirt-name">{{ row.name }}</span>{% endif %}
+                        {% if row.number %}<span class="xfer-onshirt-num">{{ row.number }}</span>{% endif %}
+                    </div>
                     {% endif %}
-                </td>
-                <td>
+                </div>
+                <span class="xfer-side">{% if row.kind == 'personalized' %}BACK{% else %}FRONT{% endif %}</span>
+            </div>
+            <div class="xfer-facts">
+                <h2>
                     {% if row.kind == 'personalized' %}
-                    {% if row.condense_percent %}Name {{ row.condense_percent }}% condensed{% endif %}
-                    {% if row.number_scale_percent %}{% if row.condense_percent %}<br>{% endif %}Number {{ row.number_scale_percent }}% narrower{% endif %}
-                    {% if not row.condense_percent and not row.number_scale_percent %}none{% endif %}
+                    {{ row.name or '—' }}{% if row.number %} #{{ row.number }}{% endif %}
                     {% else %}
-                    —
+                    {{ row.design_name or 'Front design' }}
                     {% endif %}
-                    {% if row.exceeds_safe_area %}<div class="xfer-warn">OVERSIZE</div>{% endif %}
-                </td>
-                <td class="xfer-qty">{{ row.quantity }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                </h2>
+                <p class="xfer-who">
+                    {% if row.order_number %}{{ row.order_number }} · {% endif %}
+                    {{ (row.age_group or '')|title }} {{ row.size }}
+                    · {{ row.color or '—' }}
+                    · Qty <strong>{{ row.quantity }}</strong>
+                </p>
+                <p class="xfer-garment">{{ row.garment_style }}{% if row.style_number %} · {{ row.style_number }}{% endif %}</p>
+                <p class="xfer-place">{{ row.placement_label or row.section }} · order by {{ row.order_by }}</p>
+                {% if row.kind == 'personalized' %}
+                <ul class="xfer-sizes">
+                    <li>Name <strong>{{ row.name_width_display }}″ × {{ row.name_height_display }}″</strong></li>
+                    <li>Number <strong>{{ row.number_width_display }}″ × {{ row.number_height_display }}″</strong>{% if row.number_digits %} · {{ row.number_digits }}-digit{% endif %}</li>
+                    <li>Gap <strong>{{ row.gap_display }}″</strong> · Combined <strong>{{ row.combined_width_display }}″ × {{ row.combined_height_display }}″</strong></li>
+                </ul>
+                <p class="xfer-adj">
+                    {% if row.font %}{{ row.font }}{% endif %}
+                    {% if row.condense_percent %} · name {{ row.condense_percent }}% condensed{% endif %}
+                    {% if row.number_scale_percent %} · number {{ row.number_scale_percent }}% narrower{% endif %}
+                    {% if not row.condense_percent and not row.number_scale_percent %} · no squeeze{% endif %}
+                </p>
+                {% else %}
+                <p class="xfer-front-size">Transfer <strong>{{ row.width_display }}″ W × {{ row.height_display }}″ H</strong></p>
+                {% endif %}
+                {% if row.exceeds_safe_area %}<p class="xfer-warn">OVERSIZE — check before pressing</p>{% endif %}
+            </div>
+        </article>
+        {% endfor %}
+    </div>
     {% else %}
     <p class="xfer-empty">No transfers in this selection.</p>
     {% endif %}
@@ -115,21 +122,99 @@
 <style>
 .xfer-page { padding: 2rem 0 4rem; }
 .xfer-header { display: flex; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
-.xfer-sub { color: var(--text-secondary); max-width: 40rem; margin-top: 0.4rem; }
+.xfer-sub { color: var(--text-secondary); max-width: 42rem; margin-top: 0.4rem; }
 .xfer-actions { display: flex; gap: 0.6rem; align-items: flex-start; flex-wrap: wrap; }
 .xfer-filters { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
 .xfer-filters label { font-size: 0.82rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.3rem; }
 .xfer-filters select { min-height: 40px; padding: 0.35rem 0.6rem; }
-.xfer-table { width: 100%; border-collapse: collapse; background: #fff; }
-.xfer-table th, .xfer-table td { border-bottom: 1px solid rgba(232,208,177,0.7); padding: 0.65rem 0.55rem; text-align: left; vertical-align: top; font-size: 0.84rem; }
-.xfer-table thead { background: var(--ivory-silk, #f7f1e6); }
-.xfer-qty { font-weight: 700; }
-.xfer-num { margin-left: 0.35rem; font-weight: 700; }
-.xfer-meta { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.15rem; }
-.xfer-personal { background: #fffdf8; }
-.xfer-flag { outline: 2px solid #c45c26; }
-.xfer-warn { color: #9a3412; font-weight: 700; font-size: 0.75rem; margin-top: 0.25rem; }
+.xfer-print-banner {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 0.82rem;
+    padding: 0.35rem 0 0.75rem;
+    border-bottom: 1px solid #222;
+    margin-bottom: 0.85rem;
+}
+.xfer-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 0.7rem;
+}
+.xfer-card {
+    display: grid;
+    grid-template-columns: 88px 1fr;
+    gap: 0.7rem;
+    padding: 0.65rem 0.7rem;
+    border: 1px solid #bbb;
+    background: #fff;
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+.xfer-visual { text-align: center; }
+.xfer-mock {
+    position: relative;
+    width: 84px;
+    height: 96px;
+    margin: 0 auto;
+    overflow: hidden;
+}
+.xfer-mock-img {
+    width: 84px;
+    height: 96px;
+    object-fit: contain;
+    filter: grayscale(1) brightness(1.35) contrast(0.72);
+}
+.xfer-shirt { width: 64px; height: 72px; margin-top: 8px; }
+.xfer-onshirt {
+    position: absolute;
+    left: 50%;
+    top: 38%;
+    transform: translate(-50%, 0);
+    width: 70%;
+    text-align: center;
+    line-height: 1.05;
+    pointer-events: none;
+}
+.xfer-onshirt-name,
+.xfer-onshirt-num {
+    display: block;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: #111;
+    text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+}
+.xfer-onshirt-name { font-size: 0.55rem; }
+.xfer-onshirt-num { font-size: 0.85rem; }
+.xfer-side {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+}
+.xfer-facts h2 {
+    font-size: 1rem;
+    margin: 0 0 0.2rem;
+    line-height: 1.2;
+}
+.xfer-who, .xfer-garment, .xfer-place, .xfer-adj, .xfer-front-size {
+    margin: 0 0 0.15rem;
+    font-size: 0.78rem;
+    line-height: 1.3;
+}
+.xfer-garment { color: #444; }
+.xfer-sizes {
+    margin: 0.3rem 0 0.15rem;
+    padding: 0;
+    list-style: none;
+    font-size: 0.8rem;
+    line-height: 1.35;
+}
+.xfer-flag { outline: 2px solid #222; }
+.xfer-warn { color: #111; font-weight: 800; font-size: 0.75rem; margin: 0.25rem 0 0; }
 .xfer-empty { padding: 2rem; background: #fff; border-radius: 10px; }
+
 @media print {
     .no-print,
     .ops-nav,
@@ -137,14 +222,28 @@
     .navbar,
     .logo,
     .logo-image,
-    header,
+    header.navbar,
     footer,
     .flash-messages {
         display: none !important;
         visibility: hidden !important;
     }
     .xfer-page { padding: 0; }
-    .xfer-table { font-size: 11px; }
+    .xfer-print-banner { border-bottom-color: #000; }
+    .xfer-cards { grid-template-columns: 1fr 1fr; gap: 0.45rem; }
+    .xfer-card {
+        border-color: #000;
+        padding: 0.4rem 0.45rem;
+        box-shadow: none;
+        background: #fff;
+    }
+    .xfer-mock-img {
+        filter: grayscale(1) brightness(1.55) contrast(0.6);
+    }
+    .xfer-onshirt-name,
+    .xfer-onshirt-num { text-shadow: none; }
+    body { background: #fff; }
+    * { print-color-adjust: economy; -webkit-print-color-adjust: economy; }
 }
 </style>
 {% endblock %}
