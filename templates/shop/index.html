@@ -190,8 +190,9 @@
                                         {% for variant in product.carousel_colors %}
                                         <div class="carousel-slide {% if loop.first %}active{% endif %}" 
                                              data-color="{{ variant.color_name }}">
-                                            <img src="{{ variant.front_image_url }}" 
+                                            <img src="{{ variant.front_image_url }}"
                                                  alt="{{ product.name }} - {{ variant.color_name }}"
+                                                 referrerpolicy="no-referrer"
                                                  onerror="this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'">
                                         </div>
                                         {% endfor %}

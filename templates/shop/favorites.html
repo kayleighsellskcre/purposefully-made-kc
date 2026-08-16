@@ -23,6 +23,7 @@
                     <img src="{{ fav.product.carousel_colors[0].front_image_url }}"
                          alt="{{ fav.product.name }}"
                          class="carousel-image"
+                         referrerpolicy="no-referrer"
                          onerror="this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'">
                 </div>
                 {% elif fav.product.fallback_image_url %}
