@@ -131,7 +131,18 @@
 .xfer-warn { color: #9a3412; font-weight: 700; font-size: 0.75rem; margin-top: 0.25rem; }
 .xfer-empty { padding: 2rem; background: #fff; border-radius: 10px; }
 @media print {
-    .no-print, .ops-nav, .ops-page > .container > nav, header, footer { display: none !important; }
+    .no-print,
+    .ops-nav,
+    .ops-page > .container > nav,
+    .navbar,
+    .logo,
+    .logo-image,
+    header,
+    footer,
+    .flash-messages {
+        display: none !important;
+        visibility: hidden !important;
+    }
     .xfer-page { padding: 0; }
     .xfer-table { font-size: 11px; }
 }

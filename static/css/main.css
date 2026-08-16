@@ -2237,3 +2237,17 @@ textarea:focus-visible,
     font-size: 0.82rem;
     color: var(--text-secondary);
 }
+
+@media print {
+    .navbar,
+    .logo,
+    .logo-image,
+    .nav-links,
+    .mobile-menu-toggle,
+    .flash-messages,
+    .footer,
+    .ops-nav {
+        display: none !important;
+        visibility: hidden !important;
+    }
+}
