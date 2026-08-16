@@ -80,7 +80,7 @@
                         <svg class="xfer-shirt" viewBox="0 0 64 72" aria-hidden="true"><path d="M16 14 L4 22 L10 30 L16 26 V64 H48 V26 L54 30 L60 22 L48 14 L40 18 H24 Z" fill="none" stroke="#222" stroke-width="1.6"/></svg>
                         {% endif %}
                         {% if back %}
-                        <div class="xfer-onshirt">
+                        <div class="xfer-onshirt" style="color: {{ back.text_color or '#ffffff' }}">
                             {% if back.name %}<span class="xfer-onshirt-name">{{ back.name }}</span>{% endif %}
                             {% if back.number %}<span class="xfer-onshirt-num">{{ back.number }}</span>{% endif %}
                         </div>
@@ -183,7 +183,8 @@
     width: 72%; text-align: center; line-height: 1.05; pointer-events: none;
 }
 .xfer-onshirt-name, .xfer-onshirt-num {
-    display: block; font-weight: 800; letter-spacing: 0.03em; color: #111;
+    display: block; font-weight: 800; letter-spacing: 0.03em; color: inherit;
+    print-color-adjust: exact; -webkit-print-color-adjust: exact;
 }
 .xfer-onshirt-name { font-size: 0.5rem; }
 .xfer-onshirt-num { font-size: 0.78rem; }
@@ -204,6 +205,9 @@
     .xfer-card { border-color: #000; padding: 0.35rem 0.45rem; }
     .xfer-mock-img { filter: grayscale(1) brightness(2.1) contrast(0.8); opacity: 0.85; }
     * { print-color-adjust: economy; -webkit-print-color-adjust: economy; }
+    .xfer-onshirt, .xfer-onshirt-name, .xfer-onshirt-num {
+        print-color-adjust: exact; -webkit-print-color-adjust: exact;
+    }
 }
 </style>
 {% endblock %}
