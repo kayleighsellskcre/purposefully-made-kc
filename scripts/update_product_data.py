@@ -268,6 +268,48 @@ PRODUCTS = {
         "Unisex classic fit; true to size.",
         'https://www.sanmar.com/p/PC78H',
     ),
+    'PC147': (
+        12.40, 28.00,
+        '100% cotton; 5.4 oz; prepared-for-dye tie-dye',
+        "Port & Company Tie-Dye Tee — a prepared-for-dye cotton blank with vibrant, one-of-a-kind color. Each shirt is unique, so group orders look coordinated without being identical.",
+        "Unisex classic fit; true to size. Slight color variation is part of the tie-dye process.",
+        'https://www.sanmar.com/p/PC147',
+    ),
+    'PC147Y': (
+        11.36, 24.00,
+        '100% cotton; 5.4 oz; prepared-for-dye tie-dye',
+        "Youth Tie-Dye Tee — the same groovy PC147 in kids' sizes. Perfect for camps, youth sports, and family matching sets.",
+        "Youth classic fit; sizes XS–XL. Slight color variation is part of the tie-dye process.",
+        'https://www.sanmar.com/p/PC147Y',
+    ),
+    'LPC147V': (
+        12.40, 28.00,
+        '100% cotton; 5.4 oz; prepared-for-dye tie-dye',
+        "Women's Tie-Dye V-Neck — side-seamed and contoured, with the same vibrant prepared-for-dye color as the unisex PC147.",
+        "Women's contoured fit; true to size. Slight color variation is part of the tie-dye process.",
+        'https://www.sanmar.com/p/LPC147V',
+    ),
+    'PC147LS': (
+        14.46, 32.00,
+        '100% cotton; 5.4 oz; prepared-for-dye tie-dye',
+        "Tie-Dye Long Sleeve Tee — the PC147 look with rib-knit cuffs for cooler weather, camps, and fall events.",
+        "Unisex classic fit; true to size. Slight color variation is part of the tie-dye process.",
+        'https://www.sanmar.com/p/PC147LS',
+    ),
+    'PC145': (
+        11.60, 28.00,
+        '100% cotton; 5.4 oz; crystal tie-dye',
+        "Crystal Tie-Dye Tee — individually hand-dyed so the pattern is a little different on every shirt. A softer crystal wash than the classic PC147 spiral.",
+        "Unisex classic fit; true to size. Slight color variation is part of the tie-dye process.",
+        'https://www.sanmar.com/p/PC145',
+    ),
+    'PC144': (
+        31.02, 56.00,
+        '80% cotton, 20% polyester; 7.8 oz fleece; crystal tie-dye',
+        "Crystal Tie-Dye Pullover Hoodie — hand-dyed 80/20 fleece with a lined hood and pouch pocket. The matching hoodie for crystal tie-dye group orders.",
+        "Unisex classic fit; true to size. Slight color variation is part of the tie-dye process.",
+        'https://www.sanmar.com/p/PC144',
+    ),
 
     # ── SPORT-TEK ─────────────────────────────────────────────────────────────
     'ST350': (
