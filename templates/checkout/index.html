@@ -25,6 +25,7 @@
                         <input type="email" id="email" class="form-control" 
                                value="{{ current_user.email if current_user.is_authenticated else '' }}" 
                                {% if current_user.is_authenticated %}readonly{% endif %}>
+                        <p class="checkout-email-note">{% if current_user.is_authenticated %}Your receipt will be emailed to your account address so you can save it for your records.{% else %}We'll email your receipt here so you can save it for your records.{% endif %}</p>
                     </div>
                     
                     <div class="form-row">
@@ -155,23 +156,17 @@
                 <div class="checkout-section">
                     <h2>Payment Method</h2>
                     <div class="payment-tabs">
-                        <button class="payment-tab active" data-method="card">Card / Apple Pay</button>
-                        <button class="payment-tab" data-method="paypal">PayPal / Venmo</button>
+                        <button class="payment-tab active" data-method="card">Card / Apple Pay / Venmo</button>
                         <button class="payment-tab" data-method="cash">Cash / Pay at Pickup</button>
                     </div>
-                    
+
                     <div class="payment-content">
-                        <!-- Stripe Card Payment -->
+                        <!-- Stripe Payment Element (card, Apple Pay, Google Pay, Venmo) -->
                         <div class="payment-panel" id="card-panel">
-                            <div id="card-element"></div>
-                            <div id="card-errors" class="error-message"></div>
+                            <div id="payment-element"></div>
+                            <div id="card-errors" class="error-message" style="margin-top:0.75rem;"></div>
                         </div>
-                        
-                        <!-- PayPal Payment -->
-                        <div class="payment-panel" id="paypal-panel" style="display: none;">
-                            <div id="paypal-button-container"></div>
-                        </div>
-                        
+
                         <!-- Cash Payment -->
                         <div class="payment-panel" id="cash-panel" style="display: none;">
                             <div class="cash-payment-info">
@@ -243,11 +238,52 @@
 
 <script src="https://js.stripe.com/v3/"></script>
 <script>
-// Stripe setup
+// ── Stripe Payment Element setup ─────────────────────────────────────────────
+// Supports: credit/debit card, Apple Pay, Google Pay, Venmo — automatically
+// shown based on customer's device/browser and what's enabled in Stripe dashboard.
 const stripe = Stripe('{{ stripe_public_key }}');
-const elements = stripe.elements();
-const cardElement = elements.create('card');
-cardElement.mount('#card-element');
+
+let stripeElements = null;   // initialized lazily on first card-tab focus
+let paymentElement = null;
+let clientSecretCache = null;
+
+async function initPaymentElement() {
+    if (paymentElement) return;  // already mounted
+
+    try {
+        // Fetch a PaymentIntent so the Payment Element knows the amount
+        const resp = await fetch('/checkout/create-payment-intent', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({shipping_method: currentFulfillment})
+        });
+        const data = await resp.json();
+        if (data.error) throw new Error(data.error);
+        clientSecretCache = data.clientSecret;
+
+        stripeElements = stripe.elements({
+            clientSecret: clientSecretCache,
+            appearance: {
+                theme: 'stripe',
+                variables: {
+                    colorPrimary: '#b87c6f',
+                    colorBackground: '#ffffff',
+                    colorText: '#3a3d48',
+                    borderRadius: '8px',
+                    fontFamily: '"Nunito", system-ui, sans-serif',
+                }
+            }
+        });
+
+        paymentElement = stripeElements.create('payment', {
+            layout: 'tabs',   // shows card / Apple Pay / Venmo as tabs
+        });
+        paymentElement.mount('#payment-element');
+    } catch (err) {
+        document.getElementById('card-errors').textContent =
+            'Could not load payment form: ' + err.message;
+    }
+}
 
 let currentMethod = 'card';
 let currentFulfillment = 'pickup';
@@ -280,17 +316,24 @@ document.querySelectorAll('.payment-tab').forEach(tab => {
     tab.addEventListener('click', () => {
         const method = tab.dataset.method;
         currentMethod = method;
-        
+
         // Update tabs
         document.querySelectorAll('.payment-tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
-        
+
         // Update panels
         document.getElementById('card-panel').style.display = method === 'card' ? 'block' : 'none';
-        document.getElementById('paypal-panel').style.display = method === 'paypal' ? 'block' : 'none';
+        const paypalPanel = document.getElementById('paypal-panel');
+        if (paypalPanel) paypalPanel.style.display = method === 'paypal' ? 'block' : 'none';
         document.getElementById('cash-panel').style.display = method === 'cash' ? 'block' : 'none';
+
+        // Lazily mount the Payment Element when card tab is selected
+        if (method === 'card') initPaymentElement();
     });
 });
+
+// Mount Payment Element on page load (card is default)
+initPaymentElement();
 
 const sendHomeCheckbox = document.getElementById('send_home_with_child');
 const sendHomeFields = document.getElementById('send-home-fields');
@@ -391,42 +434,60 @@ function validateCheckoutFields() {
 async function handleStripePayment() {
     const fieldError = validateCheckoutFields();
     if (fieldError) { PMKC.showFlash(fieldError, 'error'); return; }
+
+    // Make sure the Payment Element is mounted (lazy init)
+    await initPaymentElement();
+    if (!stripeElements || !clientSecretCache) {
+        PMKC.showFlash('Payment form not ready — please wait a moment and try again.', 'error');
+        return;
+    }
+
     const button = document.getElementById('submit-payment');
     placingOrder = true;
     button.disabled = true;
     button.textContent = 'Processing...';
-    
+
     try {
-        // Create payment intent
-        const response = await fetch('/checkout/create-payment-intent', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                shipping_method: currentFulfillment
-            })
-        });
-        
-        const {clientSecret} = await response.json();
-        
-        // Confirm payment
-        const {error, paymentIntent} = await stripe.confirmCardPayment(clientSecret, {
-            payment_method: {
-                card: cardElement,
-                billing_details: {
-                    email: document.getElementById('email').value,
-                    name: document.getElementById('first_name').value + ' ' + document.getElementById('last_name').value
+        // confirmPayment handles card, Apple Pay, Venmo, Google Pay — all in one call.
+        // On success the customer is redirected to /checkout/payment-return?...
+        // which reads the PaymentIntent result and calls completeOrder.
+        const firstName = (document.getElementById('first_name') || {}).value || '';
+        const lastName  = (document.getElementById('last_name')  || {}).value || '';
+        const email     = (document.getElementById('email')       || {}).value || '';
+
+        const {error} = await stripe.confirmPayment({
+            elements: stripeElements,
+            confirmParams: {
+                return_url: window.location.origin + '/checkout/payment-return',
+                payment_method_data: {
+                    billing_details: {
+                        name: (firstName + ' ' + lastName).trim(),
+                        email: email,
+                    }
                 }
-            }
+            },
+            // redirect: 'if_required' — stays on page for card payments (no redirect),
+            // redirects only for wallet payments (Apple Pay, Venmo) that need it.
+            redirect: 'if_required',
         });
-        
+
         if (error) {
-            document.getElementById('card-errors').textContent = error.message;
+            // Shown inline in the Payment Element for card errors,
+            // or in the error div for unexpected errors.
+            if (error.type === 'card_error' || error.type === 'validation_error') {
+                document.getElementById('card-errors').textContent = error.message;
+            } else {
+                PMKC.showFlash(error.message || 'Payment failed. Please try again.', 'error');
+            }
             restorePayButton();
         } else {
+            // Payment succeeded without redirect (card payment)
+            // Retrieve the PaymentIntent to get its ID
+            const {paymentIntent} = await stripe.retrievePaymentIntent(clientSecretCache);
             await completeOrder(paymentIntent.id);
         }
-    } catch (error) {
-        PMKC.showFlash('Payment failed: ' + error.message, 'error');
+    } catch (err) {
+        PMKC.showFlash('Payment failed: ' + err.message, 'error');
         restorePayButton();
     }
 }
@@ -533,6 +594,13 @@ async function completeOrder(paymentId, paymentMethodOverride) {
 .checkout-section h2 {
     font-size: 1.25rem;
     margin-bottom: 1.5rem;
+}
+
+.checkout-email-note {
+    margin: 0.5rem 0 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
 }
 
 .form-row {

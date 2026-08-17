@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash, current_app
 from flask_login import current_user, login_required
 from flask_mail import Message
-from models import db, Product, Order, OrderItem, Design, Address
+from models import db, Product, Order, OrderItem, Design, Address, User
 from datetime import datetime
 from threading import Thread
 import math
@@ -92,6 +92,30 @@ def _mail_sender():
     )
 
 
+def _receipt_recipients(order):
+    """Email the receipt to the checkout address and the account email on file."""
+    recipients = []
+    seen = set()
+
+    def add(addr):
+        addr = (addr or '').strip()
+        key = addr.lower()
+        if addr and '@' in addr and key not in seen:
+            seen.add(key)
+            recipients.append(addr)
+
+    add(getattr(order, 'email', None))
+    user = getattr(order, 'user', None)
+    if user is None and getattr(order, 'user_id', None):
+        try:
+            user = User.query.get(order.user_id)
+        except Exception:
+            user = None
+    if user is not None:
+        add(getattr(user, 'email', None))
+    return recipients
+
+
 def _render_email(template, **context):
     try:
         return render_template(template, **context)
@@ -158,16 +182,18 @@ def _send_order_confirmation_email(order):
         delivery_text = "Local Pickup — we'll reach out when ready!"
 
     email_sent = False
+    recipients = _receipt_recipients(order)
 
-    # ── 1. Customer receipt ────────────────────────────────────────────────
-    if mail_ready and order.email:
+    # ── 1. Customer receipt (account email + checkout email) ───────────────
+    if mail_ready and recipients:
+        paid = (order.payment_status == 'paid')
         plain_body = (
             f"Hi {order.first_name or 'there'},\n\n"
-            f"Your order is confirmed! Here's your receipt.\n\n"
+            f"Your order is confirmed. Save this email as your receipt.\n\n"
             f"Order Number : {order.order_number}\n"
             f"Date         : {format_central(placed_at)}\n"
             f"Payment      : {(order.payment_method or 'Card').title()} — "
-            f"{'PAID' if order.payment_status == 'paid' else 'PENDING (Cash — pay on pickup)'}\n\n"
+            f"{'PAID' if paid else 'PENDING (pay on pickup)'}\n\n"
             f"Items:\n{items_text}\n\n"
             f"Subtotal : ${float(order.subtotal or 0):.2f}\n"
             f"Shipping : {'$' + f'{float(order.shipping_cost):.2f}' if order.shipping_cost else 'Free (Pickup)'}\n"
@@ -177,29 +203,55 @@ def _send_order_confirmation_email(order):
             f"Made with purpose, for you.\n"
             f"— Purposefully Made KC"
         )
-        html_body = _render_email('email/order_confirmation.html', order=order)
+        account_order_url = None
+        if getattr(order, 'user_id', None) and order.order_number:
+            try:
+                account_order_url = url_for(
+                    'account.order_detail',
+                    order_number=order.order_number,
+                    _external=True,
+                )
+            except Exception:
+                account_order_url = None
+        html_body = _render_email(
+            'email/order_confirmation.html',
+            order=order,
+            account_order_url=account_order_url,
+        )
 
         timeout = int(current_app.config.get('MAIL_TIMEOUT') or 20)
         _prev = _socket.getdefaulttimeout()
         _socket.setdefaulttimeout(timeout)
         try:
             msg = Message(
-                subject=f"Your Order is Confirmed ✓ — {order.order_number}",
-                recipients=[order.email],
+                subject=f"Your receipt — {order.order_number} | Purposefully Made KC",
+                recipients=recipients,
                 body=plain_body,
                 html=html_body,
                 sender=_mail_sender(),
+                reply_to=current_app.config.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com',
             )
             mail.send(msg)
             email_sent = True
+            current_app.logger.info(
+                'customer confirmation email sent for %s to %s',
+                getattr(order, 'order_number', '?'),
+                ', '.join(recipients),
+            )
         except Exception as e:
             print(f"Customer confirmation email error: {e}", file=sys.stderr)
             current_app.logger.exception(
-                'customer confirmation email error for %s',
+                'customer confirmation email error for %s to %s',
                 getattr(order, 'order_number', '?'),
+                ', '.join(recipients),
             )
         finally:
             _socket.setdefaulttimeout(_prev)
+    elif not recipients:
+        current_app.logger.error(
+            'order email skipped for %s — no customer email on the order or account',
+            getattr(order, 'order_number', '?'),
+        )
 
     # ── 2. Admin order alert (always send, separate template) ─────────────
     admin_email = current_app.config.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com'
@@ -255,6 +307,9 @@ def queue_order_confirmation_email(order_id):
             with app.app_context():
                 order = Order.query.get(order_id)
                 if order:
+                    # Touch related rows in this thread so the receipt has items + account email.
+                    _ = list(order.items.all()) if hasattr(order.items, 'all') else list(order.items or [])
+                    _ = order.user
                     send_order_confirmation_email(order)
         except Exception:
             app.logger.exception('background confirmation email failed for order_id=%s', order_id)
@@ -379,16 +434,74 @@ def create_payment_intent():
         intent = stripe.PaymentIntent.create(
             amount=int(totals['total'] * 100),  # Convert to cents
             currency='usd',
+            # automatic_payment_methods enables card, Apple Pay, Google Pay,
+            # Venmo, and any other methods enabled in the Stripe dashboard.
+            automatic_payment_methods={'enabled': True},
             metadata={
                 'shipping_method': shipping_method
             }
         )
-        
+
         return jsonify({
             'clientSecret': intent.client_secret
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
+
+@checkout_bp.route('/payment-return')
+def payment_return():
+    """
+    Return URL for wallet-based payments (Apple Pay, Google Pay, Venmo) that
+    redirect the user away from the page to authorize. Stripe sends them back
+    here with ?payment_intent=... and ?payment_intent_client_secret=...
+    """
+    payment_intent_id = request.args.get('payment_intent')
+    client_secret = request.args.get('payment_intent_client_secret')
+
+    if not payment_intent_id:
+        flash('Payment could not be verified. Please try again.', 'error')
+        return redirect(url_for('checkout.index'))
+
+    try:
+        intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+        status = intent.get('status')
+
+        if status == 'succeeded':
+            # Delegate to /checkout/complete so all order-creation logic is reused
+            # We POST the payment_intent_id so complete() can validate it
+            from flask import make_response
+            import json as _json
+            # Build an internal call via the same app context
+            with current_app.test_client() as c:
+                # Preserve session
+                with c.session_transaction() as sess:
+                    sess.update(session)
+                resp = c.post(
+                    url_for('checkout.complete'),
+                    data=_json.dumps({'payment_intent_id': payment_intent_id}),
+                    content_type='application/json',
+                )
+                result = resp.get_json() or {}
+
+            if result.get('success'):
+                return redirect(url_for('checkout.confirmation',
+                                        order_number=result.get('order_number', '')))
+            else:
+                flash(result.get('error', 'Order could not be placed. Please contact us.'), 'error')
+                return redirect(url_for('checkout.index'))
+
+        elif status in ('requires_payment_method', 'requires_action'):
+            flash('Payment was not completed. Please try again.', 'error')
+            return redirect(url_for('checkout.index'))
+
+        else:
+            flash(f'Payment status: {status}. Please contact us if you were charged.', 'warning')
+            return redirect(url_for('checkout.index'))
+
+    except stripe.error.StripeError as e:
+        flash(f'Payment error: {e.user_message}', 'error')
+        return redirect(url_for('checkout.index'))
 
 
 @checkout_bp.route('/complete', methods=['POST'])
@@ -435,6 +548,9 @@ def complete():
         payment_id = data.get('payment_id')
         shipping_method = data.get('shipping_method') or 'pickup'
         email = _clip(data.get('email') or (current_user.email if current_user.is_authenticated else None), 120)
+        # Logged-in customers always get the receipt at the account email on file.
+        if current_user.is_authenticated and getattr(current_user, 'email', None):
+            email = _clip(current_user.email, 120) or email
         first_name = _clip(data.get('first_name'), 100)
         last_name = _clip(data.get('last_name'), 100)
         phone = _clip(data.get('phone'), 20)
@@ -736,4 +852,5 @@ def send_confirmation_email_now(order_number):
         'success': bool(sent),
         'already_sent': bool(getattr(order, 'confirmation_email_sent_at', None)),
         'mail_ready': _mail_ready(),
+        'recipients': _receipt_recipients(order),
     })

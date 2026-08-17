@@ -6,9 +6,12 @@
 <div class="admin-page">
     <div class="container">
         <div class="admin-header">
-            <span class="adm-eyebrow">Admin / Operations</span>
+            <span class="adm-eyebrow">Admin / Daily Operations · Step 3</span>
             <h1>Blank Apparel Purchase List</h1>
-            <button onclick="window.print()" class="btn btn-primary">Print List</button>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                <a href="{{ ops_url('admin.production_master') }}" class="btn btn-outline">Back to blanks + designs</a>
+                <button onclick="window.print()" class="btn btn-primary">Print List</button>
+            </div>
         </div>
         
         <p class="page-subtitle">Total quantities needed by style, color, and size</p>

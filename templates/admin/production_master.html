@@ -7,19 +7,18 @@
     <div class="container">
         <div class="admin-header">
             <div>
-                <span class="adm-eyebrow">Admin / Operations</span>
-                <h1>Production Master</h1>
-                <p class="page-subtitle">Master copy of all blanks + designs from New/Paid orders. Order everything at once, then move to production.</p>
+                <span class="adm-eyebrow">Admin / Daily Operations · Step 3</span>
+                <h1>Order blanks</h1>
+                <p class="page-subtitle">Everything to buy before you press. When the shirts are in, move these orders to Ready to Press.</p>
             </div>
             <div class="master-actions">
-                <a href="{{ url_for('admin.transfer_production') }}" class="btn btn-outline">Transfer sizes</a>
-                <a href="{{ url_for('admin.orders', status='new') }}" class="btn btn-outline">View Orders</a>
+                <a href="{{ ops_url('admin.blank_apparel_list') }}" class="btn btn-outline">Purchase list</a>
+                <a href="{{ ops_url('admin.transfer_production', stage=['ready_to_press']) }}" class="btn btn-outline">Press sheets</a>
+                <a href="{{ ops_url('admin.orders', stage='order_received') }}" class="btn btn-outline">View Orders</a>
                 <form method="post" action="{{ url_for('admin.production_master_move') }}" style="display: inline;">
-                    <input type="hidden" name="status" value="new">
-                    <input type="hidden" name="status" value="paid">
                     {% if selected_collection %}<input type="hidden" name="collection" value="{{ selected_collection }}">{% endif %}
                     <button type="submit" class="btn btn-primary" {% if not orders %}disabled{% endif %}>
-                        Move All to Production
+                        Blanks are in — Ready to Press
                     </button>
                 </form>
             </div>

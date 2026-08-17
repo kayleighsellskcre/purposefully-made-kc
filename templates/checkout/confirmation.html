@@ -39,7 +39,7 @@
 
             <div class="confirmation-message">
                 <h2>What's Next?</h2>
-                <p id="email-status">{% if email_sent %}A confirmation email was sent to <strong>{{ order.email }}</strong>. Please save this page too, just in case.{% else %}We're sending a confirmation email to <strong>{{ order.email }}</strong> now. Please save this page too, just in case.{% endif %}</p>
+                <p id="email-status">{% if email_sent %}A confirmation receipt was emailed to <strong>{{ order.email }}</strong>. Please save this page too, just in case.{% else %}We're sending a confirmation receipt to <strong>{{ order.email }}</strong> now so you can save it for your records. Please save this page too, just in case.{% endif %}</p>
 
                 {% if order.fulfillment_method == 'shipping' %}
                 <p>Your order will be shipped to:</p>
@@ -127,7 +127,8 @@
     }).then(function (res) { return res.json(); }).then(function (data) {
         if (!statusEl) return;
         if (data && data.success) {
-            statusEl.innerHTML = 'A confirmation email is on its way to <strong>' + email + '</strong>. Please save this page too, just in case.';
+            var sentTo = (data.recipients && data.recipients.length) ? data.recipients.join(', ') : email;
+            statusEl.innerHTML = 'A confirmation receipt is on its way to <strong>' + sentTo + '</strong>. Please save this page too, just in case.';
         } else {
             statusEl.innerHTML = 'We could not send the confirmation email just now. Please save this page — we still have your order and will email you when it is ready.';
         }

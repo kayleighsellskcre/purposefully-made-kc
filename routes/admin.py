@@ -15,6 +15,22 @@ from pathlib import Path
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
+
+@admin_bp.context_processor
+def _inject_ops_flow():
+    try:
+        from utils.ops_flow import template_context
+        return template_context()
+    except Exception:
+        return {
+            'ops_show_flow': False,
+            'ops_flow_steps': [],
+            'ops_collection': '',
+            'ops_collections': [],
+            'ops_url': lambda endpoint, **kwargs: url_for(endpoint),
+            'ops_stage_tools': {},
+        }
+
 # Only this email is allowed to access admin. All other users get customer portals only.
 def admin_required(f):
     @wraps(f)
@@ -2592,14 +2608,9 @@ def delete_collection(collection_id):
 @admin_bp.route('/production/master')
 @admin_required
 def production_master():
-    """Master copy: all blanks + designs from new/paid orders. Order everything at once, then move to production."""
-    status_filter = request.args.getlist('status') or ['new', 'paid']
-    collection_id = request.args.get('collection')
-    
-    query = Order.query.filter(Order.status.in_(status_filter))
-    if collection_id:
-        query = query.filter_by(collection_id=collection_id)
-    
+    """Master copy: blanks + designs for orders just received or waiting on supplies."""
+    from utils.ops_flow import ops_order_query
+    query, stages, collection_id = ops_order_query(['order_received', 'waiting_supplies'])
     orders = query.order_by(Order.created_at).all()
     
     # Blank apparel totals
@@ -2660,20 +2671,25 @@ def production_master():
                          design_list=design_list,
                          personal_list=personal_list,
                          collections=collections,
-                         selected_status=status_filter,
+                         selected_status=stages,
                          selected_collection=collection_id)
 
 
 @admin_bp.route('/production/transfers')
 @admin_required
 def transfer_production():
-    """Printable / filterable transfer order sheet across selected orders."""
-    status_filter = request.args.getlist('status') or ['new', 'paid', 'in_production']
-    collection_id = request.args.get('collection')
+    """Printable / filterable press sheet across selected orders."""
+    from utils.ops_flow import ops_order_query
+    status_filter = request.args.getlist('status')
+    if status_filter and not request.args.getlist('stage'):
+        query = Order.query.filter(Order.status.in_(status_filter))
+        collection_id = request.args.get('collection')
+        if collection_id:
+            query = query.filter_by(collection_id=collection_id)
+        stages = status_filter
+    else:
+        query, stages, collection_id = ops_order_query(['ready_to_press', 'pressed'])
     group_by = request.args.get('group', 'size')
-    query = Order.query.filter(Order.status.in_(status_filter))
-    if collection_id:
-        query = query.filter_by(collection_id=collection_id)
     orders = query.order_by(Order.created_at).all()
     if request.args.get('format') == 'csv':
         from utils.print_sizes import group_production_rows
@@ -2689,7 +2705,7 @@ def transfer_production():
         group_by=group_by,
         orders=orders,
         collections=collections,
-        selected_status=status_filter,
+        selected_status=stages,
         selected_collection=collection_id,
         printable=True,
     )
@@ -2698,24 +2714,24 @@ def transfer_production():
 @admin_bp.route('/production/master/move-to-production', methods=['POST'])
 @admin_required
 def production_master_move():
-    """Bulk move all new/paid orders to in_production"""
-    status_filter = request.form.getlist('status') or ['new', 'paid']
-    collection_id = request.form.get('collection')
-    
-    query = Order.query.filter(Order.status.in_(status_filter))
-    if collection_id:
-        query = query.filter_by(collection_id=collection_id)
-    
+    """After blanks are ordered, move these orders to Ready to Press."""
+    from utils.ops_flow import ops_order_query
+    from utils.production_stages import apply_stage
+    query, _stages, collection_id = ops_order_query(['order_received', 'waiting_supplies'])
+    if request.form.get('collection') or collection_id:
+        cid = request.form.get('collection') or collection_id
+        query = query.filter_by(collection_id=cid)
+
     orders = query.all()
     count = 0
     for order in orders:
-        order.status = 'in_production'
-        order.production_stage = 'ready_to_press'
+        apply_stage(order, 'ready_to_press')
         count += 1
-    
+
     db.session.commit()
-    flash(f'Moved {count} order(s) to In Production', 'success')
-    return redirect(url_for('admin.production_master'))
+    flash(f'Moved {count} order(s) to Ready to Press — next up: press sheets.', 'success')
+    from utils.ops_flow import ops_url
+    return redirect(ops_url('admin.transfer_production', stage=['ready_to_press'], collection=collection_id))
 
 
 @admin_bp.route('/production')
@@ -2734,13 +2750,8 @@ def production():
 @admin_required
 def blank_apparel_list():
     """Generate blank apparel purchase order list"""
-    collection_id = request.args.get('collection')
-    status_filter = request.args.getlist('status') or ['paid', 'in_production']
-    
-    query = Order.query.filter(Order.status.in_(status_filter))
-    if collection_id:
-        query = query.filter_by(collection_id=collection_id)
-    
+    from utils.ops_flow import ops_order_query
+    query, _stages, collection_id = ops_order_query(['order_received', 'waiting_supplies'])
     orders = query.all()
     
     # Aggregate by style/color/size
@@ -2779,8 +2790,12 @@ def blank_apparel_list():
         )
     
     collections = Collection.query.all()
+    total_quantity = sum(item['quantity'] for item in apparel_list)
     return render_template('admin/blank_apparel_list.html',
                          apparel_list=apparel_list,
+                         apparel_totals=apparel_list,
+                         total_quantity=total_quantity,
+                         total_cost=0,
                          collections=collections)
 
 
@@ -2821,10 +2836,12 @@ def print_labels():
 @admin_bp.route('/production/bulk-sheet')
 @admin_required
 def production_bulk_sheet():
-    """Bulk production sheet - ONLY orders marked 'in_production'. Drops off when marked ready/shipped/completed."""
+    """Bulk production sheet for orders ready to press or already pressed."""
     from utils.print_sizes import get_print_width_for_size
-    
-    orders = Order.query.filter_by(status='in_production').order_by(Order.created_at).all()
+    from utils.ops_flow import ops_order_query
+
+    query, _stages, _collection_id = ops_order_query(['ready_to_press', 'pressed'])
+    orders = query.order_by(Order.created_at).all()
     
     # Group by design + placement, aggregate by (size, print_width) so youth vs adult are separate
     groups = {}
@@ -2860,13 +2877,8 @@ def production_bulk_sheet():
 def dtf_batch_sheets():
     """Generate DTF transfer batch sheets"""
     from utils.print_sizes import get_print_width_for_size
-    collection_id = request.args.get('collection')
-    status_filter = request.args.getlist('status') or ['paid', 'in_production']
-    
-    query = Order.query.filter(Order.status.in_(status_filter))
-    if collection_id:
-        query = query.filter_by(collection_id=collection_id)
-    
+    from utils.ops_flow import ops_order_query
+    query, _stages, collection_id = ops_order_query(['ready_to_press', 'pressed'])
     orders = query.all()
     
     # Group by design + placement + size
@@ -2895,7 +2907,7 @@ def dtf_batch_sheets():
     
     collections = Collection.query.all()
     return render_template('admin/dtf_batch_sheets.html',
-                         batch_list=batch_list,
+                         batch_groups=batch_list,
                          collections=collections)
 
 
@@ -3523,10 +3535,16 @@ def edit_vendor(id):
 def production_workflow():
     """5-stage Kanban: Order Received → Waiting Supplies → Ready to Press → Pressed → Packaged Ready"""
     from utils.production_stages import STAGES, orders_for_stage
+    from utils.ops_flow import current_collection
+    from sqlalchemy.orm import joinedload
     stages = STAGES
+    collection_id = current_collection() or None
     orders_by_stage = {}
     for sid, _name, _desc in stages:
-        orders_by_stage[sid] = orders_for_stage(sid).order_by(Order.created_at).all()
+        query = orders_for_stage(sid).options(joinedload(Order.collection))
+        if collection_id:
+            query = query.filter_by(collection_id=collection_id)
+        orders_by_stage[sid] = query.order_by(Order.created_at).all()
     from datetime import datetime
     return render_template('admin/operations/workflow.html', stages=stages, orders_by_stage=orders_by_stage, now=datetime.utcnow())
 

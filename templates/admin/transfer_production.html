@@ -7,14 +7,16 @@
         <div>
             <span class="adm-eyebrow">Admin / Production</span>
             <h1>{{ title }}</h1>
-            <p class="xfer-sub">One card per shirt. Front and back stay together. Hand this to the presser.</p>
+            <p class="xfer-sub">One card per shirt. Front and back stay together. Hand this to the presser. When a shirt is done, move it to Pressed in Workflow, then print labels.</p>
         </div>
         <div class="xfer-actions">
             {% if order %}
             <a class="btn btn-outline" href="{{ url_for('admin.order_detail', order_id=order.id) }}">Back to order</a>
             <a class="btn btn-outline" href="{{ url_for('admin.order_transfer_csv', order_id=order.id) }}">Download CSV</a>
             {% else %}
-            <a class="btn btn-outline" href="{{ url_for('admin.transfer_production', status=selected_status, collection=selected_collection, group=group_by, format='csv') }}">Download CSV</a>
+            <a class="btn btn-outline" href="{{ ops_url('admin.dtf_batch_sheets', stage=['ready_to_press', 'pressed']) }}">DTF batches</a>
+            <a class="btn btn-outline" href="{{ ops_url('admin.print_labels', stage=['pressed', 'packaged_ready']) }}">Print labels</a>
+            <a class="btn btn-outline" href="{{ ops_url('admin.transfer_production', stage=selected_status, group=group_by, format='csv') }}">Download CSV</a>
             {% endif %}
             <button type="button" class="btn btn-primary" onclick="window.print()">Print</button>
         </div>

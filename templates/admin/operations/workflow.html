@@ -11,14 +11,10 @@
         <p class="wf-lead">5-stage Kanban board — move orders through production from received to packaged.</p>
     </div>
     <div class="wf-header-actions">
-        <a href="{{ url_for('admin.orders_completed') }}" class="btn btn-outline wf-header-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            All Completed
-        </a>
-        <a href="{{ url_for('admin.orders') }}" class="btn btn-outline wf-header-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
-            All Orders
-        </a>
+        <a href="{{ ops_url('admin.production_master', stage=['order_received', 'waiting_supplies']) }}" class="btn btn-outline wf-header-btn">Order blanks</a>
+        <a href="{{ ops_url('admin.transfer_production', stage=['ready_to_press']) }}" class="btn btn-outline wf-header-btn">Press sheets</a>
+        <a href="{{ ops_url('admin.print_labels', stage=['pressed', 'packaged_ready']) }}" class="btn btn-outline wf-header-btn">Print labels</a>
+        <a href="{{ url_for('admin.orders_completed') }}" class="btn btn-outline wf-header-btn">All Completed</a>
     </div>
 </div>
 
@@ -51,6 +47,14 @@
                     <span class="wf-col-count">{{ stage_orders|length }}</span>
                 </div>
                 <p class="wf-col-desc">{{ stage_desc }}</p>
+                {% set tools = ops_stage_tools.get(stage_id, []) %}
+                {% if tools %}
+                <div class="wf-col-tools">
+                    {% for endpoint, label, params in tools %}
+                    <a href="{{ ops_url(endpoint, **params) }}">{{ label }} →</a>
+                    {% endfor %}
+                </div>
+                {% endif %}
             </div>
 
             <!-- Cards -->
@@ -66,6 +70,12 @@
                         {% endif %}
                     </div>
                     <p class="wf-card-name">{{ order.full_name }}</p>
+                    {% if order.send_home_with_child %}
+                    <p class="wf-card-send-home">Send home: {{ order.child_name or 'child' }}{% if order.teacher_name %} · {{ order.teacher_name }}{% endif %}</p>
+                    {% endif %}
+                    {% if order.collection %}
+                    <p class="wf-card-group">{{ order.collection.name }}</p>
+                    {% endif %}
                     <div class="wf-card-meta">
                         <span>${{ "%.2f"|format(order.total) }}</span>
                         <span class="wf-meta-sep">&bull;</span>
@@ -347,6 +357,29 @@
     margin: 0;
     line-height: 1.4;
 }
+
+.wf-col-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.65rem;
+    margin-top: 0.55rem;
+}
+.wf-col-tools a {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--terra-cotta, #b87c6f);
+    text-decoration: none;
+}
+.wf-col-tools a:hover { text-decoration: underline; }
+
+.wf-card-send-home,
+.wf-card-group {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin: 0.15rem 0 0;
+    line-height: 1.35;
+}
+.wf-card-send-home { color: var(--terra-cotta, #b87c6f); font-weight: 600; }
 
 /* ── Cards ── */
 .wf-cards {

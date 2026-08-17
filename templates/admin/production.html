@@ -5,9 +5,9 @@
 {% block admin_content %}
 <div class="admin-page">
     <div class="container">
-        <span class="adm-eyebrow">Admin / Operations</span>
+        <span class="adm-eyebrow">Admin / Daily Operations</span>
         <h1>Production Center</h1>
-        <p class="page-subtitle">Export production-ready lists and batch sheets</p>
+        <p class="page-subtitle">Use the numbered floor above to move through the day: orders → workflow → blanks → press → labels. The group-order picker stays with you from page to page.</p>
         
         <div class="production-grid">
             <!-- Production Master -->
@@ -21,7 +21,7 @@
                 </svg>
                 <h2>Production Master</h2>
                 <p>Master copy of all blanks + designs. Order everything at once, then move to production.</p>
-                <a href="{{ url_for('admin.production_master') }}" class="btn btn-primary">View Master</a>
+                <a href="{{ ops_url('admin.production_master') }}" class="btn btn-primary">View Master</a>
             </div>
             
             <!-- Blank Apparel List -->
@@ -32,7 +32,7 @@
                 </svg>
                 <h2>Blank Apparel Purchase List</h2>
                 <p>See exactly what blanks to order, organized by style, color, and size</p>
-                <a href="{{ url_for('admin.blank_apparel_list') }}" class="btn btn-primary">View List</a>
+                <a href="{{ ops_url('admin.blank_apparel_list') }}" class="btn btn-primary">View List</a>
             </div>
             
             <!-- Print Order Labels -->
@@ -45,7 +45,7 @@
                 </svg>
                 <h2>Print Order Labels</h2>
                 <p>Print customer labels for 3x10 sticker paper. Shipping addresses or pickup contact info.</p>
-                <a href="{{ url_for('admin.print_labels') }}" class="btn btn-primary">Print Labels</a>
+                <a href="{{ ops_url('admin.print_labels', stage=['pressed', 'packaged_ready']) }}" class="btn btn-primary">Print Labels</a>
             </div>
             
             <!-- Production Bulk Sheet -->
@@ -57,7 +57,7 @@
                 </svg>
                 <h2>Production Bulk Sheet</h2>
                 <p>Design images and quantities by size. Only shows orders marked In Production. Drops off when marked Ready or Shipped.</p>
-                <a href="{{ url_for('admin.production_bulk_sheet') }}" class="btn btn-primary">View Bulk Sheet</a>
+                <a href="{{ ops_url('admin.production_bulk_sheet') }}" class="btn btn-primary">View Bulk Sheet</a>
             </div>
             
             <!-- DTF Batch Sheets -->
@@ -69,7 +69,7 @@
                 </svg>
                 <h2>DTF Transfer Batch Sheets</h2>
                 <p>Gang sheet instructions grouped by design, placement, and size</p>
-                <a href="{{ url_for('admin.dtf_batch_sheets') }}" class="btn btn-primary">View Sheets</a>
+                <a href="{{ ops_url('admin.dtf_batch_sheets') }}" class="btn btn-primary">View Sheets</a>
             </div>
             
             <!-- Designs Library -->

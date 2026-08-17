@@ -23,6 +23,13 @@
             <span class="od-status-badge od-status-{{ order.production_stage or order.status }}">{{ stage_labels.get(order.production_stage, order.status.replace('_',' ').title()) }}</span>
             <span class="od-status-badge od-payment-{{ order.payment_status }}">{{ order.payment_status.title() }}</span>
             <a href="{{ url_for('admin.print_labels', order_id=order.id) }}" class="od-btn od-btn-outline">Print label</a>
+            {% set _stage = order.production_stage or 'order_received' %}
+            {% if _stage in ['order_received', 'waiting_supplies'] %}
+            <a href="{{ ops_url('admin.production_master', stage=['order_received', 'waiting_supplies'], collection=order.collection_id) }}" class="od-btn od-btn-outline">Order blanks</a>
+            {% elif _stage in ['ready_to_press', 'pressed'] %}
+            <a href="{{ url_for('admin.order_transfer_summary', order_id=order.id) }}" class="od-btn od-btn-outline">Press sheet</a>
+            {% endif %}
+            <a href="{{ ops_url('admin.production_workflow') }}" class="od-btn od-btn-outline">Workflow</a>
             <form id="deleteOrderForm" method="POST" action="{{ url_for('admin.delete_order', order_id=order.id) }}">
                 <button type="button" class="od-delete-btn" id="deleteOrderBtn">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
