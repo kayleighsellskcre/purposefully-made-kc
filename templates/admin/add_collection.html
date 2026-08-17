@@ -64,7 +64,7 @@
                     {% else %}
                         {% set mockup_url = None %}
                     {% endif %}
-                    <label class="product-checkbox" data-catalog-item data-age="{{ product.display_age }}" data-category="{{ product.display_category }}" data-brand="{{ product.display_brand }}">
+                    <label class="product-checkbox" data-catalog-item data-age="{{ product.display_age }}" data-age-raw="{{ product.age_group or '' }}" data-category="{{ product.display_category }}" data-category-raw="{{ product.category or '' }}" data-brand="{{ product.display_brand }}" data-brand-raw="{{ product.brand or '' }}" data-style="{{ product.style_number or '' }}">
                         <input type="checkbox" name="products" value="{{ product.id }}">
                         <div class="product-checkbox-mockup">
                             {% if mockup_url %}

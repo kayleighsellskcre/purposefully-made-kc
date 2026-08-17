@@ -355,12 +355,12 @@ PRODUCTS = {
     ),
 
     # ── GILDAN ────────────────────────────────────────────────────────────────
-    'G500': (
-        4.98, 20.00,
-        '100% preshrunk cotton; 5.3 oz',
-        "Gildan Heavy Cotton — the world's best-selling t-shirt for a reason. Reliable, affordable, and holds up wash after wash. Great for high-quantity orders and events.",
-        "Unisex classic fit; runs slightly large. Size down for a fitted look.",
-        'https://www.sanmar.com/p/G500',
+    'G64000': (
+        5.78, 21.00,
+        '100% ring-spun cotton; 4.5 oz Softstyle jersey',
+        "Gildan Softstyle is a step above the standard Gildan — ring-spun cotton gives it a noticeably softer, smoother hand feel. Great for budget-friendly group orders where comfort still matters.",
+        "Unisex classic fit; runs true to size.",
+        'https://www.sanmar.com/p/G64000',
     ),
     'G18500': (
         15.98, 36.00,
@@ -389,6 +389,16 @@ def main():
 
     conn = psycopg2.connect(db_url)
     cur  = conn.cursor()
+
+    # ── Rename G500 → G64000 (Softstyle swap) ────────────────────────────────
+    cur.execute("""
+        UPDATE product SET style_number = 'G64000',
+                           name = REPLACE(name, 'Heavy Cotton', 'Softstyle')
+        WHERE style_number = 'G500'
+    """)
+    if cur.rowcount:
+        print(f"  [RENAME] G500 → G64000 ({cur.rowcount} row(s))")
+    # ─────────────────────────────────────────────────────────────────────────
 
     updated = skipped = 0
 

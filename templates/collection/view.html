@@ -302,7 +302,7 @@
         {% if products %}
         <div class="design-board-grid">
             {% for product in products %}
-            <article class="design-card" data-catalog-item data-age="{{ product.display_age }}" data-category="{{ product.display_category }}" data-brand="{{ product.display_brand }}">
+            <article class="design-card" data-catalog-item data-age="{{ product.display_age }}" data-age-raw="{{ product.age_group or '' }}" data-category="{{ product.display_category }}" data-category-raw="{{ product.category or '' }}" data-brand="{{ product.display_brand }}" data-brand-raw="{{ product.brand or '' }}" data-style="{{ product.style_number or '' }}">
                 <a href="{{ url_for('shop.customize', product_id=product.id) }}">
                     <div class="design-card-image">
                         {% if product.carousel_colors and product.carousel_colors|length > 0 %}

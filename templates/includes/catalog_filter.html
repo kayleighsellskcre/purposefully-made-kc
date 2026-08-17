@@ -12,7 +12,7 @@
         {% if catalog_filter_picker %}
         <button type="button" class="catf-text" id="catalogSelectVisible">Select these</button>
         {% endif %}
-        <button type="button" class="catf-text" id="catalogClearFilters" hidden>Clear</button>
+        <button type="button" class="catf-text" id="catalogClearFilters">Clear</button>
     </div>
     <div class="catf-panel" id="catalogFilterPanel" hidden>
         {% if catalog_filter_opts.ages %}
@@ -49,13 +49,14 @@
         </div>
         {% endif %}
     </div>
+    <p class="catf-empty" id="catalogFilterEmpty" hidden>No products match these filters</p>
 </div>
 <style>
 .catf { margin: 0 0 1.25rem; }
 .catf-bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
 .catf-toggle {
     display: inline-flex; align-items: center; gap: 0.4rem;
-    min-height: 40px; padding: 0.45rem 0.95rem;
+    min-height: 44px; padding: 0.45rem 0.95rem;
     border: 1px solid #222; background: #fff; color: #222;
     font-size: 0.82rem; font-weight: 700; letter-spacing: 0.06em;
     text-transform: uppercase; border-radius: 8px; cursor: pointer;
@@ -65,7 +66,8 @@
 }
 .catf-count { margin: 0; font-size: 0.85rem; color: var(--text-secondary); }
 .catf-text {
-    border: 0; background: none; padding: 0;
+    border: 0; background: none; padding: 0.35rem 0;
+    min-height: 44px;
     color: var(--terra-cotta, #b87c6f); font-size: 0.82rem; font-weight: 600;
     cursor: pointer;
 }
@@ -82,80 +84,183 @@
 }
 .catf-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .catf-chip {
-    min-height: 34px; padding: 0.3rem 0.7rem;
+    min-height: 44px; padding: 0.3rem 0.85rem;
     border: 1px solid #ccc; background: #fff; border-radius: 999px;
     font-size: 0.8rem; cursor: pointer;
 }
 .catf-chip.is-on { border-color: #222; background: #222; color: #fff; }
+.catf-empty {
+    margin: 0.75rem 0 0;
+    padding: 0.85rem 1rem;
+    background: #fff;
+    border: 1px dashed var(--border-color, #e6ddd0);
+    border-radius: 8px;
+    color: var(--text-secondary);
+}
 [data-catalog-item][hidden] { display: none !important; }
+@media (max-width: 640px) {
+    .catf-chip { font-size: 0.78rem; }
+}
 </style>
 <script>
 (function () {
-    const root = document.getElementById('catalogFilter');
-    if (!root) return;
-    const btn = document.getElementById('catalogFilterBtn');
-    const panel = document.getElementById('catalogFilterPanel');
-    const countEl = document.getElementById('catalogFilterCount');
-    const clearBtn = document.getElementById('catalogClearFilters');
-    const selectBtn = document.getElementById('catalogSelectVisible');
-    const items = Array.from(document.querySelectorAll('[data-catalog-item]'));
-    const state = { age: '', category: '', brand: '' };
-
-    function visibleItems() {
-        return items.filter((el) => !el.hidden);
+    function normalize(value) {
+        return String(value || '')
+            .replace(/&amp;/gi, '&')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '');
     }
 
-    function apply() {
-        const active = Boolean(state.age || state.category || state.brand);
-        items.forEach((el) => {
-            const okAge = !state.age || el.dataset.age === state.age;
-            const okCat = !state.category || el.dataset.category === state.category;
-            const okBrand = !state.brand || el.dataset.brand === state.brand;
-            el.hidden = !(okAge && okCat && okBrand);
-        });
-        const shown = visibleItems().length;
-        countEl.textContent = shown === items.length
-            ? shown + ' items'
-            : shown + ' of ' + items.length;
-        btn.classList.toggle('has-filters', active);
-        clearBtn.hidden = !active;
+    function itemTokens(el, key) {
+        const rawKey = key + 'Raw';
+        const parts = [
+            el.getAttribute('data-' + key),
+            el.dataset[key],
+            el.getAttribute('data-' + key + '-raw'),
+            el.dataset[rawKey],
+        ];
+        if (key === 'brand') {
+            const style = normalize(el.getAttribute('data-style') || el.dataset.style);
+            parts.push(style);
+            if (style.indexOf('sttu') === 0 || style.indexOf('sttw') === 0 || style.indexOf('sttk') === 0) parts.push('stanleystella');
+            else if (style.indexOf('lst') === 0 || (style.indexOf('st') === 0 && style.indexOf('sttu') !== 0)) parts.push('sporttek');
+            else if (style.indexOf('g185') === 0 || style.indexOf('g180') === 0 || style.indexOf('g5') === 0) parts.push('gildan');
+            else if (style.indexOf('lpc') === 0 || style.indexOf('pc') === 0) parts.push('portcompany');
+            else if (style.indexOf('rs') === 0) parts.push('rabbitskins');
+            else if (style.indexOf('cc') === 0) parts.push('comfortcolors');
+            else if (style.indexOf('dt') === 0 || style.indexOf('dm') === 0) parts.push('district');
+            else if (style.indexOf('bc') === 0) parts.push('bellacanvas');
+        }
+        return parts.map(normalize).filter(Boolean);
     }
 
-    btn.addEventListener('click', () => {
-        const open = panel.hidden;
-        panel.hidden = !open;
-        btn.classList.toggle('is-open', open);
-        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-    });
-
-    root.querySelectorAll('.catf-chips').forEach((group) => {
-        group.addEventListener('click', (event) => {
-            const chip = event.target.closest('.catf-chip');
-            if (!chip) return;
-            group.querySelectorAll('.catf-chip').forEach((c) => c.classList.remove('is-on'));
-            chip.classList.add('is-on');
-            state[group.dataset.filter] = chip.dataset.value || '';
-            apply();
-        });
-    });
-
-    clearBtn.addEventListener('click', () => {
-        state.age = state.category = state.brand = '';
-        root.querySelectorAll('.catf-chips').forEach((group) => {
-            group.querySelectorAll('.catf-chip').forEach((c) => c.classList.toggle('is-on', c.dataset.value === ''));
-        });
-        apply();
-    });
-
-    if (selectBtn) {
-        selectBtn.addEventListener('click', () => {
-            visibleItems().forEach((el) => {
-                const box = el.querySelector('input[name="products"]');
-                if (box) box.checked = true;
+    function matchesCategory(el, key, selected) {
+        if (!selected.length) return true;
+        const tokens = itemTokens(el, key);
+        return selected.some(function (choice) {
+            const want = normalize(choice);
+            return tokens.some(function (token) {
+                return token === want || token.indexOf(want) !== -1 || want.indexOf(token) !== -1;
             });
         });
     }
 
-    apply();
+    function catalogItems() {
+        return Array.from(document.querySelectorAll('[data-catalog-item]'));
+    }
+
+    function init() {
+        const root = document.getElementById('catalogFilter');
+        if (!root || root.dataset.ready === '1') return;
+        root.dataset.ready = '1';
+
+        const btn = document.getElementById('catalogFilterBtn');
+        const panel = document.getElementById('catalogFilterPanel');
+        const countEl = document.getElementById('catalogFilterCount');
+        const clearBtn = document.getElementById('catalogClearFilters');
+        const selectBtn = document.getElementById('catalogSelectVisible');
+        const emptyEl = document.getElementById('catalogFilterEmpty');
+        const state = { age: [], category: [], brand: [] };
+
+        function selectedCount() {
+            return state.age.length + state.category.length + state.brand.length;
+        }
+
+        function visibleItems() {
+            return catalogItems().filter(function (el) { return !el.hidden; });
+        }
+
+        function syncChips() {
+            root.querySelectorAll('.catf-chips').forEach(function (group) {
+                const key = group.dataset.filter;
+                const selected = state[key] || [];
+                group.querySelectorAll('.catf-chip').forEach(function (chip) {
+                    const value = chip.getAttribute('data-value') || '';
+                    const on = value === '' ? selected.length === 0 : selected.some(function (s) {
+                        return normalize(s) === normalize(value);
+                    });
+                    chip.classList.toggle('is-on', on);
+                    chip.setAttribute('aria-pressed', on ? 'true' : 'false');
+                });
+            });
+        }
+
+        function apply() {
+            const items = catalogItems();
+            items.forEach(function (el) {
+                const show = matchesCategory(el, 'age', state.age)
+                    && matchesCategory(el, 'category', state.category)
+                    && matchesCategory(el, 'brand', state.brand);
+                el.hidden = !show;
+            });
+            const shown = visibleItems().length;
+            const total = items.length;
+            if (countEl) {
+                countEl.textContent = shown === total
+                    ? total + ' item' + (total === 1 ? '' : 's')
+                    : shown + ' of ' + total;
+            }
+            if (emptyEl) emptyEl.hidden = shown !== 0 || total === 0;
+            if (btn) btn.classList.toggle('has-filters', selectedCount() > 0);
+            syncChips();
+        }
+
+        if (btn && panel) {
+            btn.addEventListener('click', function () {
+                const open = panel.hidden;
+                panel.hidden = !open;
+                btn.classList.toggle('is-open', open);
+                btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+        }
+
+        root.querySelectorAll('.catf-chips').forEach(function (group) {
+            group.addEventListener('click', function (event) {
+                const chip = event.target.closest('.catf-chip');
+                if (!chip || !group.contains(chip)) return;
+                event.preventDefault();
+                const key = group.dataset.filter;
+                const value = chip.getAttribute('data-value') || '';
+                if (!value) {
+                    state[key] = [];
+                } else {
+                    const want = normalize(value);
+                    const exists = state[key].some(function (s) { return normalize(s) === want; });
+                    if (exists) {
+                        state[key] = state[key].filter(function (s) { return normalize(s) !== want; });
+                    } else {
+                        state[key] = state[key].concat([value]);
+                    }
+                }
+                apply();
+            });
+        });
+
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function () {
+                state.age = [];
+                state.category = [];
+                state.brand = [];
+                apply();
+            });
+        }
+
+        if (selectBtn) {
+            selectBtn.addEventListener('click', function () {
+                visibleItems().forEach(function (el) {
+                    const box = el.querySelector('input[name="products"]');
+                    if (box) box.checked = true;
+                });
+            });
+        }
+
+        apply();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();
 </script>
