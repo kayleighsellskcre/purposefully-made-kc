@@ -21,6 +21,11 @@ import argparse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
 from dotenv import load_dotenv
 load_dotenv(os.path.join(ROOT, '.env'))
 
@@ -35,6 +40,7 @@ PRODUCTS_TO_ADD = [
     # ── MV Sport ─────────────────────────────────────────────────────────────
     {
         'style_number': '17116',
+        'style_id': 7466,
         'brand': 'MV Sport',
         'wholesale_cost': 22.50,
         'base_price': 52.00,
@@ -48,6 +54,7 @@ PRODUCTS_TO_ADD = [
     },
     {
         'style_number': 'W23716',
+        'style_id': 11175,
         'brand': 'MV Sport',
         'wholesale_cost': 20.00,
         'base_price': 46.00,
@@ -60,6 +67,7 @@ PRODUCTS_TO_ADD = [
     },
     {
         'style_number': 'W25167',
+        'style_id': 16260,
         'brand': 'MV Sport',
         'wholesale_cost': 18.50,
         'base_price': 42.00,
@@ -72,6 +80,7 @@ PRODUCTS_TO_ADD = [
     },
     {
         'style_number': '496',
+        'style_id': 12262,
         'brand': 'MV Sport',
         'wholesale_cost': 18.00,
         'base_price': 42.00,
@@ -86,6 +95,7 @@ PRODUCTS_TO_ADD = [
     # ── C2 Sport ─────────────────────────────────────────────────────────────
     {
         'style_number': '5100',
+        'style_id': 2281,
         'brand': 'C2 Sport',
         'wholesale_cost': 4.25,
         'base_price': 18.00,
@@ -99,6 +109,7 @@ PRODUCTS_TO_ADD = [
     },
     {
         'style_number': '5600',
+        'style_id': 2731,
         'brand': 'C2 Sport',
         'wholesale_cost': 4.25,
         'base_price': 18.00,
@@ -111,6 +122,7 @@ PRODUCTS_TO_ADD = [
     },
     {
         'style_number': '5200',
+        'style_id': 2485,
         'brand': 'C2 Sport',
         'wholesale_cost': 4.00,
         'base_price': 16.00,
@@ -123,6 +135,7 @@ PRODUCTS_TO_ADD = [
     },
     {
         'style_number': '5104',
+        'style_id': 2484,
         'brand': 'C2 Sport',
         'wholesale_cost': 6.50,
         'base_price': 24.00,
@@ -257,7 +270,11 @@ def main():
 
             try:
                 # Fetch full style data from S&S API
-                style_data = api.fetch_style_data_by_style_number(style_number)
+                style_data = api.fetch_style_data_by_style_number(
+                    style_number,
+                    brand_name=item['brand'],
+                    style_id=item.get('style_id'),
+                )
 
                 if not style_data:
                     print(f"  [ERROR] Style {style_number} not found in S&S API — skipping")

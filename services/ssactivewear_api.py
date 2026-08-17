@@ -34,6 +34,7 @@ class SSActivewearAPI:
             'Authorization': f'Basic {encoded_credentials}',
             'Content-Type': 'application/json'
         }
+        self._styles_catalog = None
     
     def _api_get(self, endpoint, params=None, timeout=60, retries=4):
         """
@@ -210,25 +211,65 @@ class SSActivewearAPI:
             print(f"Error fetching style {style_id} from S&S API: {e}", file=sys.stderr, flush=True)
             return None
     
-    def get_products_by_style_number(self, style_number):
+    def _load_styles_catalog(self):
+        """Full /v2/styles list, cached on this client. Brand filters are not honored server-side."""
+        if self._styles_catalog is None:
+            response = self._api_get(f"{self.api_url}/v2/styles", timeout=120)
+            data = response.json()
+            self._styles_catalog = data if isinstance(data, list) else []
+        return self._styles_catalog
+
+    def _resolve_style_id(self, style_number, brand_name=None):
         """
-        Fetch all products (SKUs) for a specific style by style number.
-        Uses /v2/products/?style= or ?partnumber= - works even when full catalog fails.
-        
-        Args:
-            style_number: Style number e.g. "3001", "3001CVC"
-        
-        Returns:
-            List of product SKU dicts, or empty list if not found
+        Map catalog style name (e.g. '5100', 'W23716') to S&S styleID.
+        /v2/products?style= treats the value as styleID, not the printed style number.
+        """
+        needle = str(style_number or '').strip().upper()
+        if not needle:
+            return None
+        brand = (brand_name or '').strip().lower()
+        matches = []
+        for style in self._load_styles_catalog():
+            name = str(style.get('styleName') or style.get('partNumber') or '').strip().upper()
+            if name != needle:
+                continue
+            if brand and brand not in (style.get('brandName') or '').lower():
+                continue
+            matches.append(style)
+        if not matches:
+            return None
+        if len(matches) > 1 and not brand:
+            return None
+        return matches[0].get('styleID')
+
+    def get_products_by_style_number(self, style_number, brand_name=None, style_id=None):
+        """
+        Fetch all products (SKUs) for a specific style by catalog style number.
+
+        S&S /v2/products?style= is styleID, not the printed number. Resolve styleID
+        from the styles catalog (optionally scoped by brand), then fetch SKUs.
         """
         try:
+            if not style_id:
+                style_id = self._resolve_style_id(style_number, brand_name=brand_name)
+            if style_id:
+                response = self._api_get(
+                    f"{self.api_url}/v2/products",
+                    params={'styleID': style_id},
+                    timeout=30,
+                )
+                data = response.json()
+                products = data if isinstance(data, list) else data.get('products', data.get('data', []))
+                if products and isinstance(products, list):
+                    return products
+
             endpoint = f"{self.api_url}/v2/products"
-            # S&S API v2 correct parameter names (camelCase)
             attempts = [
                 {'styleNumber': style_number},
-                {'styleNumber': style_number, 'brandName': 'Bella+Canvas'},
                 {'partNumber': style_number},
             ]
+            if brand_name:
+                attempts.insert(0, {'styleNumber': style_number, 'brandName': brand_name})
             for params in attempts:
                 try:
                     response = requests.get(endpoint, auth=(self.account_number, self.api_key), params=params, timeout=8)
@@ -369,7 +410,7 @@ class SSActivewearAPI:
             print(f"Error downloading image from {image_url}: {e}")
             return None
     
-    def fetch_style_data_by_style_number(self, style_number):
+    def fetch_style_data_by_style_number(self, style_number, brand_name=None, style_id=None):
         """
         Fetch full style data (colors, sizes, inventory, descriptions, sizing) for a style by its number.
         Uses Products API directly - works when full catalog sync fails.
@@ -377,7 +418,9 @@ class SSActivewearAPI:
         Returns:
             Style dict in same format as get_style_details, or None
         """
-        products = self.get_products_by_style_number(style_number)
+        products = self.get_products_by_style_number(
+            style_number, brand_name=brand_name, style_id=style_id
+        )
         if not products:
             return None
 
@@ -388,7 +431,19 @@ class SSActivewearAPI:
         brand_name = first.get('brandName', 'Bella+Canvas')
 
         # Get style metadata (title, description, sizing) if available
-        meta = self.get_style_by_part_number(style_number) or {}
+        meta = {}
+        if style_id:
+            try:
+                meta_resp = self._api_get(f"{self.api_url}/v2/styles/{style_id}", timeout=30)
+                meta_data = meta_resp.json()
+                if isinstance(meta_data, list) and meta_data:
+                    meta = meta_data[0]
+                elif isinstance(meta_data, dict):
+                    meta = meta_data
+            except Exception:
+                meta = {}
+        if not meta:
+            meta = self.get_style_by_part_number(style_number) or {}
         title = meta.get('title', first.get('styleName', style_number))
         description = meta.get('description', first.get('description', ''))
         

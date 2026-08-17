@@ -112,11 +112,34 @@ CURATED_BRANDS = [
         'group': 'Sweatshirt Basics',
         'api_names': ['Gildan', 'GILDAN'],
         'styles': [
-            'G180', 'G18000',           # Heavy Blend hoodie
-            'G185', 'G18000C',          # Heavy Blend crew
-            'G186',                     # Heavy Blend full-zip
-            'G180B', 'G18500B',         # Youth hoodie
-            'G185B',                    # Youth crew
+            'G64000', 'G64500', 'G64400',   # Softstyle tee, v-neck, long sleeve
+            'G180', 'G18000',               # Heavy Blend hoodie
+            'G185', 'G18000C',              # Heavy Blend crew
+            'G186',                         # Heavy Blend full-zip
+            'G180B', 'G18500B',             # Youth hoodie
+            'G185B',                        # Youth crew
+        ],
+    },
+    {
+        'name': 'MV Sport',
+        'group': 'Athletic / Lifestyle',
+        'api_names': ['MV Sport', 'MV SPORT'],
+        'styles': [
+            '17116',    # Vintage Fleece Raglan Crewneck
+            'W23716',   # Women's Colorblocked Crop Hoodie
+            'W25167',   # Women's Coastal Color Crewneck
+            '496',      # Pro-Weave Crewneck
+        ],
+    },
+    {
+        'name': 'C2 Sport',
+        'group': 'Athletic / Performance',
+        'api_names': ['C2 Sport', 'C2 SPORT'],
+        'styles': [
+            '5100',     # Unisex Performance Tee
+            '5600',     # Women's Performance Tee
+            '5200',     # Youth Performance Tee
+            '5104',     # Unisex Performance Long Sleeve
         ],
     },
 ]
