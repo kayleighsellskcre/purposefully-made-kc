@@ -72,6 +72,25 @@
     background: var(--accent-color);
     color: #fff;
 }
+.faq-item {
+    background: #fff;
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 0.75rem;
+}
+.faq-item strong {
+    display: block;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    margin-bottom: 0.35rem;
+}
+.faq-item p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.65;
+    margin: 0;
+}
 </style>
 {% endblock %}
 {% block content %}
@@ -88,24 +107,48 @@
         <div class="steps-grid">
             <div class="step-card">
                 <div class="step-num">1</div>
-                <h3>Choose your options</h3>
-                <p>Select the styles, colors, and logos your group can order from.</p>
+                <h3>Build your store</h3>
+                <p>Pick the styles, colors, and logo options your team can order from. Set a deadline and pickup location.</p>
             </div>
             <div class="step-card">
                 <div class="step-num">2</div>
-                <h3>Get your share link</h3>
-                <p>We create a custom link for your group order.</p>
+                <h3>Get your instant link</h3>
+                <p>You get a shareable link right away — no waiting. Password-protect it if you want to keep it private.</p>
             </div>
             <div class="step-card">
                 <div class="step-num">3</div>
-                <h3>Share with your group</h3>
-                <p>Team members pick their size and order. No confusion.</p>
+                <h3>Everyone orders their own</h3>
+                <p>Team members choose their size and pay individually. You get an order summary spreadsheet when it closes.</p>
+            </div>
+        </div>
+
+        <div class="faq-section" style="max-width:680px;margin:0 auto 3.5rem;">
+            <h2 style="text-align:center;font-family:var(--font-heading);font-size:1.5rem;margin-bottom:1.75rem;">Common Questions</h2>
+            <div class="faq-item">
+                <strong>Is there a minimum order?</strong>
+                <p>No minimum. One shirt or one hundred — we print what gets ordered.</p>
+            </div>
+            <div class="faq-item">
+                <strong>How does payment work?</strong>
+                <p>Each person pays individually at checkout (card, Apple Pay, PayPal, Venmo). You don't collect money or deal with Venmo requests.</p>
+            </div>
+            <div class="faq-item">
+                <strong>How long does it take?</strong>
+                <p>Typically 5–10 business days from when the order closes. We'll confirm your timeline when you set up the order.</p>
+            </div>
+            <div class="faq-item">
+                <strong>Can I restrict what people can order?</strong>
+                <p>Yes — you choose which styles, colors, and designs the team can pick from. Great for keeping everyone matching.</p>
+            </div>
+            <div class="faq-item">
+                <strong>Can I do pickup instead of shipping?</strong>
+                <p>Yes. Set a pickup address and instructions when you create your group order. Shipping is also available (+$11).</p>
             </div>
         </div>
 
         <div class="cta-section">
-            <h2>Get started</h2>
-            <p>Ready to set up a group order for your team, school, or organization?</p>
+            <h2>Ready to get started?</h2>
+            <p>Set up your group order in minutes. You'll have a share link before you leave this page.</p>
             <div class="cta-buttons">
                 {% if current_user.is_authenticated %}
                 <a href="{{ url_for('shop.create_group_order') }}" class="btn btn-primary btn-lg">

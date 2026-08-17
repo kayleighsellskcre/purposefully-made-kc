@@ -262,6 +262,17 @@
     .design-board { padding: 2rem 0 4rem; }
     .design-board-grid { gap: 1.5rem; }
 }
+
+.design-card.deadline-passed {
+    opacity: 0.65;
+    filter: grayscale(30%);
+    cursor: default;
+}
+.design-card.deadline-passed:hover {
+    transform: none;
+    box-shadow: var(--box-shadow);
+    border-color: var(--border-light);
+}
 </style>
 {% endblock %}
 {% block content %}
@@ -272,8 +283,12 @@
         {% if collection.description %}
         <p class="collection-header-subtitle">{{ collection.description }}</p>
         {% endif %}
-        {% if collection.order_deadline %}
-        <p class="collection-header-subtitle" style="margin-top:0.5rem;">Order deadline: {{ collection.order_deadline.strftime('%B %d, %Y') }}</p>
+        {% if collection.deadline_passed %}
+        <p class="collection-header-subtitle" style="margin-top:0.5rem; color:#c0392b; font-weight:600;">
+            ⚠ This group order closed on {{ collection.order_deadline.strftime('%B %d, %Y') }}. Ordering is no longer available.
+        </p>
+        {% elif collection.order_deadline %}
+        <p class="collection-header-subtitle" style="margin-top:0.5rem;">Order deadline: <strong>{{ collection.order_deadline.strftime('%B %d, %Y') }}</strong></p>
         {% endif %}
     </div>
 </div>
@@ -299,10 +314,19 @@
         </div>
         {% endif %}
 
+        {% if collection.deadline_passed %}
+        <div class="alert alert-warning" style="max-width:700px;margin:0 auto 2rem;padding:1rem 1.25rem;background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.3);border-radius:8px;color:var(--text-primary);text-align:center;">
+            <strong>Ordering is closed.</strong> The deadline for this group order has passed. Contact the organizer if you have questions.
+        </div>
+        {% endif %}
+
         {% if products %}
         <div class="design-board-grid">
             {% for product in products %}
-            <article class="design-card" data-catalog-item data-age="{{ product.display_age or '' }}" data-age-raw="{{ product.age_group or '' }}" data-category="{{ product.display_category or '' }}" data-category-raw="{{ product.category or '' }}" data-brand="{{ product.display_brand or '' }}" data-brand-raw="{{ product.brand or '' }}" data-style="{{ product.style_number or '' }}">
+            <article class="design-card {% if collection.deadline_passed %}deadline-passed{% endif %}" data-catalog-item data-age="{{ product.display_age or '' }}" data-age-raw="{{ product.age_group or '' }}" data-category="{{ product.display_category or '' }}" data-category-raw="{{ product.category or '' }}" data-brand="{{ product.display_brand or '' }}" data-brand-raw="{{ product.brand or '' }}" data-style="{{ product.style_number or '' }}">
+                {% if collection.deadline_passed %}
+                <div>
+                {% else %}
                 <a href="{{ url_for('shop.customize', product_id=product.id) }}">
                     <div class="design-card-image">
                         {% if product.carousel_colors and product.carousel_colors|length > 0 %}
@@ -358,10 +382,18 @@
                         {% endif %}
                         <div class="price-row">
                             <span class="price">${{ "%.2f"|format(product.base_price) }}</span>
+                            {% if not collection.deadline_passed %}
                             <span class="cta">Customize</span>
+                            {% else %}
+                            <span class="cta" style="background:var(--text-secondary);box-shadow:none;cursor:not-allowed;opacity:0.6;">Closed</span>
+                            {% endif %}
                         </div>
                     </div>
+                {% if collection.deadline_passed %}
+                </div>
+                {% else %}
                 </a>
+                {% endif %}
             </article>
             {% endfor %}
         </div>

@@ -23,8 +23,17 @@ def view(slug):
         if not session.get(f'collection_{collection.id}_access'):
             return redirect(url_for('collection.password', slug=slug))
     
-    # Set collection in session for checkout
-    session['collection_id'] = collection.id
+    # Check if deadline has passed — show warning but still allow viewing
+    from datetime import datetime as _dt
+    collection.deadline_passed = (
+        collection.order_deadline and collection.order_deadline < _dt.utcnow()
+    )
+
+    # Set collection in session for checkout only if deadline hasn't passed
+    if not collection.deadline_passed:
+        session['collection_id'] = collection.id
+    else:
+        session.pop('collection_id', None)
     
     # Get allowed colors when organizer restricted options
     allowed_colors = None
