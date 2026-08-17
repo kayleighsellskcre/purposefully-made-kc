@@ -21,6 +21,10 @@ class User(UserMixin, db.Model):
     failed_logins = db.Column(db.Integer, default=0, nullable=True)
     locked_until  = db.Column(db.DateTime, nullable=True)
 
+    # Self-serve password reset
+    reset_token         = db.Column(db.String(128), nullable=True, index=True)
+    reset_token_expires = db.Column(db.DateTime, nullable=True)
+
     # Relationships
     addresses = db.relationship('Address', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     orders = db.relationship('Order', backref='user', lazy='dynamic')
@@ -48,6 +52,29 @@ class User(UserMixin, db.Model):
     def reset_login_attempts(self):
         self.failed_logins = 0
         self.locked_until = None
+
+    def generate_reset_token(self):
+        """Create a secure 1-hour reset token and persist it. Returns the raw token."""
+        from datetime import timedelta
+        self.reset_token = secrets.token_urlsafe(48)
+        self.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
+        return self.reset_token
+
+    @staticmethod
+    def verify_reset_token(token):
+        """Return the User if the token is valid and unexpired, else None."""
+        if not token:
+            return None
+        user = User.query.filter_by(reset_token=token).first()
+        if user is None:
+            return None
+        if user.reset_token_expires is None or user.reset_token_expires < datetime.utcnow():
+            return None
+        return user
+
+    def clear_reset_token(self):
+        self.reset_token = None
+        self.reset_token_expires = None
     
     @property
     def full_name(self):

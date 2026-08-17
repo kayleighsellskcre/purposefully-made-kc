@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
-from models import db, Order, Address, Design
+from models import db, Order, Address, Design, Collection
 from datetime import datetime
 
 account_bp = Blueprint('account', __name__, url_prefix='/account')
@@ -214,3 +214,16 @@ def profile():
         return redirect(url_for('account.profile'))
     
     return render_template('account/profile.html')
+
+
+@account_bp.route('/group-orders')
+@login_required
+def my_group_orders():
+    """View group orders created by this user"""
+    collections = (
+        Collection.query
+        .filter_by(created_by_user_id=current_user.id)
+        .order_by(Collection.created_at.desc())
+        .all()
+    )
+    return render_template('account/my_group_orders.html', collections=collections, now=datetime.utcnow())

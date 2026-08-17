@@ -150,6 +150,8 @@ def create_app(config_class=Config):
                     # user.failed_logins / locked_until — brute-force lockout tracking
                     "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS failed_logins INTEGER DEFAULT 0",
                     "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP",
+                    "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS reset_token VARCHAR(128)",
+                    "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP",
                     # collection.created_by_user_id — tracks who created a group order (for delete-design permission)
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER REFERENCES \"user\"(id)",
                     # product.spec_sheet_url — SanMar CDN PDF link added during Bella+Canvas CSV import

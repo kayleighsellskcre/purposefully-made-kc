@@ -194,6 +194,83 @@ def register():
     return render_template('auth/register.html')
 
 
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+@_rate_limit("5 per hour")
+def forgot_password():
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+
+    if request.method == 'POST':
+        email = (request.form.get('email') or '').strip().lower()
+        user = User.query.filter(db.func.lower(User.email) == email).first()
+
+        # Always show the same success message regardless — prevents user enumeration
+        if user:
+            token = user.generate_reset_token()
+            db.session.commit()
+            _send_reset_email(user, token)
+
+        flash(
+            "If that email is in our system, you'll receive a reset link shortly. "
+            "Check your spam folder if it doesn't arrive within a few minutes.",
+            'success'
+        )
+        return redirect(url_for('auth.forgot_password'))
+
+    return render_template('auth/forgot_password.html')
+
+
+def _send_reset_email(user, token):
+    """Send the password reset email via Flask-Mail."""
+    try:
+        from app import mail
+        from flask_mail import Message
+        reset_url = url_for('auth.reset_password', token=token, _external=True)
+        name = user.first_name or 'there'
+        msg = Message(
+            subject='Reset your Purposefully Made KC password',
+            sender=current_app.config.get('MAIL_USERNAME', 'noreply@purposefullymadekc.com'),
+            recipients=[user.email],
+            html=render_template('email/password_reset.html', name=name, reset_url=reset_url),
+        )
+        mail.send(msg)
+    except Exception as e:
+        current_app.logger.error(f'Password reset email failed for {user.email}: {e}')
+
+
+@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+
+    user = User.verify_reset_token(token)
+    if user is None:
+        flash('This reset link is invalid or has expired. Please request a new one.', 'error')
+        return redirect(url_for('auth.forgot_password'))
+
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        confirm = request.form.get('confirm_password', '')
+
+        if len(password) < 8:
+            flash('Password must be at least 8 characters.', 'error')
+            return redirect(url_for('auth.reset_password', token=token))
+
+        if password != confirm:
+            flash('Passwords do not match.', 'error')
+            return redirect(url_for('auth.reset_password', token=token))
+
+        user.set_password(password)
+        user.clear_reset_token()
+        user.reset_login_attempts()   # clear any lockout too
+        db.session.commit()
+
+        flash('Your password has been updated. You can now log in.', 'success')
+        return redirect(url_for('auth.login'))
+
+    return render_template('auth/reset_password.html', token=token)
+
+
 @auth_bp.route('/logout')
 @login_required
 def logout():

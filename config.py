@@ -58,11 +58,10 @@ class Config:
     
     # Upload settings
     UPLOAD_FOLDER = os.path.join(basedir, 'static', 'uploads')
-    # Allow up to 20 MB uploads. The upload route enforces its own 15 MB
-    # guard before touching disk, so this is just Flask's outer safety net.
-    # Env var override is intentionally ignored here so Railway can't
-    # accidentally restrict uploads with a stale env var.
-    MAX_CONTENT_LENGTH = 20 * 1024 * 1024  # 20 MB
+    # Allow up to 50 MB uploads. Design files (hi-res logos, PNGs) can be
+    # large; the upload route enforces its own per-file guard before
+    # touching disk. Env var override is intentionally ignored here.
+    MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50 MB
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'pdf', 'heic', 'heif'}
     
     # Scheduler settings
