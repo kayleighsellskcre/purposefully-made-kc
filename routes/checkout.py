@@ -354,10 +354,12 @@ def index():
     if current_user.is_authenticated:
         addresses = current_user.addresses.all()
     
+    is_group_order = bool(_int_or_none(session.get('collection_id')))
     return render_template('checkout/index.html',
                          cart=enriched_cart,
                          totals=totals,
                          addresses=addresses,
+                         is_group_order=is_group_order,
                          stripe_public_key=current_app.config.get('STRIPE_PUBLIC_KEY'))
 
 
@@ -451,6 +453,18 @@ def complete():
             missing = [k for k in ('street', 'city', 'state', 'zip') if not (shipping_info.get(k) or '').strip()]
             if missing:
                 return _json_error('Please complete the shipping address.', 'SHIPPING_ADDRESS_REQUIRED', 400, request_id=rid, fields=missing)
+
+        send_home = bool(data.get('send_home_with_child')) and bool(_int_or_none(session.get('collection_id')))
+        teacher_name = _clip(data.get('teacher_name'), 120) if send_home else None
+        child_grade = _clip(data.get('child_grade'), 40) if send_home else None
+        child_name = _clip(data.get('child_name'), 120) if send_home else None
+        if send_home and (not teacher_name or not child_grade or not child_name):
+            return _json_error(
+                'Please enter the coach/teacher name, grade, and child\'s name so we can send this home with them.',
+                'SEND_HOME_DETAILS_REQUIRED',
+                400,
+                request_id=rid,
+            )
     except Exception as pre_err:
         current_app.logger.exception('checkout.complete pre-processing error rid=%s: %s', rid, pre_err)
         return _json_error(
@@ -488,6 +502,10 @@ def complete():
             production_stage='order_received',
             due_date=default_due_date(),
             checkout_token=checkout_token,
+            send_home_with_child=send_home,
+            teacher_name=teacher_name,
+            child_grade=child_grade,
+            child_name=child_name,
         )
 
         try:

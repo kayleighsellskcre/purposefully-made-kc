@@ -354,6 +354,12 @@ class Order(db.Model):
     
     # Fulfillment
     fulfillment_method = db.Column(db.String(20), default='pickup')  # pickup or shipping
+
+    # Group-order send-home (printed on packing labels)
+    send_home_with_child = db.Column(db.Boolean, default=False)
+    teacher_name = db.Column(db.String(120))
+    child_grade = db.Column(db.String(40))
+    child_name = db.Column(db.String(120))
     
     # Shipping address (if applicable)
     shipping_recipient = db.Column(db.String(200))

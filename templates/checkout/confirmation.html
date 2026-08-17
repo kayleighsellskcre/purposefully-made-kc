@@ -54,6 +54,14 @@
                 <p><strong>Pickup Instructions:</strong></p>
                 <p>Your order will be ready for pickup soon. We'll email you when it's ready!</p>
                 {% endif %}
+                {% if order.send_home_with_child %}
+                <p><strong>Send home with child:</strong></p>
+                <address>
+                    Child: {{ order.child_name }}<br>
+                    Coach / teacher: {{ order.teacher_name }}<br>
+                    Grade: {{ order.child_grade }}
+                </address>
+                {% endif %}
             </div>
 
             <div class="order-items">

@@ -126,6 +126,30 @@
                 </div>
                 {% endif %}
                 {% endif %}
+                {% if order.send_home_with_child %}
+                <div class="od-info-row">
+                    <span class="od-info-label">Send home</span>
+                    <span class="od-info-val">Yes — with child</span>
+                </div>
+                {% if order.child_name %}
+                <div class="od-info-row">
+                    <span class="od-info-label">Child</span>
+                    <span class="od-info-val">{{ order.child_name }}</span>
+                </div>
+                {% endif %}
+                {% if order.teacher_name %}
+                <div class="od-info-row">
+                    <span class="od-info-label">Coach / teacher</span>
+                    <span class="od-info-val">{{ order.teacher_name }}</span>
+                </div>
+                {% endif %}
+                {% if order.child_grade %}
+                <div class="od-info-row">
+                    <span class="od-info-label">Grade</span>
+                    <span class="od-info-val">{{ order.child_grade }}</span>
+                </div>
+                {% endif %}
+                {% endif %}
             </div>
         </div>
 

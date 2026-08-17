@@ -145,6 +145,14 @@
                           <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#3a3d48;font-family:'Georgia',serif;">Local Pickup</p>
                           <p style="margin:0;font-size:12px;color:#888;font-family:Arial,sans-serif;">We'll reach out when your order is ready!</p>
                         {% endif %}
+                        {% if order.send_home_with_child %}
+                          <p style="margin:10px 0 4px;font-size:14px;font-weight:700;color:#3a3d48;font-family:'Georgia',serif;">Send home with child</p>
+                          <p style="margin:0;font-size:12px;color:#888;font-family:Arial,sans-serif;line-height:1.5;">
+                            Child: {{ order.child_name }}<br>
+                            Coach / teacher: {{ order.teacher_name }}<br>
+                            Grade: {{ order.child_grade }}
+                          </p>
+                        {% endif %}
                       </td>
                     </tr>
                   </table>

@@ -68,6 +68,33 @@
                         </label>
                     </div>
                 </div>
+
+                {% if is_group_order %}
+                <div class="checkout-section">
+                    <h2>Send Home With Child</h2>
+                    <p class="send-home-intro">Optional — if you would like this order sent home from school with your child, check the box so we can print it on the packing label.</p>
+                    <label class="send-home-check" for="send_home_with_child">
+                        <input type="checkbox" id="send_home_with_child">
+                        <span>Yes, send this item home with my child</span>
+                    </label>
+                    <div id="send-home-fields" class="send-home-fields" hidden>
+                        <div class="form-group">
+                            <label for="child_name">Child's name</label>
+                            <input type="text" id="child_name" class="form-control" autocomplete="off">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="teacher_name">Coach / teacher name</label>
+                                <input type="text" id="teacher_name" class="form-control" autocomplete="off">
+                            </div>
+                            <div class="form-group">
+                                <label for="child_grade">Grade</label>
+                                <input type="text" id="child_grade" class="form-control" autocomplete="off" placeholder="e.g. 3rd or Kindergarten">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
                 
                 <!-- Shipping Address (hidden by default) -->
                 <div class="checkout-section shipping-section" style="display: none;">
@@ -265,6 +292,15 @@ document.querySelectorAll('.payment-tab').forEach(tab => {
     });
 });
 
+const sendHomeCheckbox = document.getElementById('send_home_with_child');
+const sendHomeFields = document.getElementById('send-home-fields');
+if (sendHomeCheckbox && sendHomeFields) {
+    sendHomeCheckbox.addEventListener('change', () => {
+        sendHomeFields.hidden = !sendHomeCheckbox.checked;
+        sendHomeCheckbox.closest('.send-home-check').classList.toggle('active', sendHomeCheckbox.checked);
+    });
+}
+
 // Saved address selection
 const savedAddressSelect = document.getElementById('saved_address');
 if (savedAddressSelect) {
@@ -338,6 +374,15 @@ function validateCheckoutFields() {
             if (!((document.getElementById(id) || {}).value || '').trim()) {
                 return 'Please complete the shipping address.';
             }
+        }
+    }
+    const sendHome = document.getElementById('send_home_with_child');
+    if (sendHome && sendHome.checked) {
+        const child = ((document.getElementById('child_name') || {}).value || '').trim();
+        const teacher = ((document.getElementById('teacher_name') || {}).value || '').trim();
+        const grade = ((document.getElementById('child_grade') || {}).value || '').trim();
+        if (!child || !teacher || !grade) {
+            return 'Please enter the coach/teacher name, grade, and child\'s name so we can send this home with them.';
         }
     }
     return null;
@@ -422,7 +467,11 @@ async function completeOrder(paymentId, paymentMethodOverride) {
         last_name: document.getElementById('last_name').value,
         phone: document.getElementById('phone').value,
         shipping_info: shippingInfo,
-        checkout_token: checkoutToken()
+        checkout_token: checkoutToken(),
+        send_home_with_child: !!(document.getElementById('send_home_with_child') && document.getElementById('send_home_with_child').checked),
+        teacher_name: ((document.getElementById('teacher_name') || {}).value || '').trim(),
+        child_grade: ((document.getElementById('child_grade') || {}).value || '').trim(),
+        child_name: ((document.getElementById('child_name') || {}).value || '').trim()
     };
 
     async function readOrderResponse(response) {
@@ -531,6 +580,41 @@ async function completeOrder(paymentId, paymentMethodOverride) {
 .fulfillment-option p {
     color: var(--text-secondary);
     margin: 0;
+}
+
+.send-home-intro {
+    color: var(--text-secondary);
+    margin: 0 0 1rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.send-home-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    padding: 1.25rem 1.5rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+    font-weight: 600;
+}
+
+.send-home-check.active {
+    border-color: var(--accent-color);
+    background: rgba(0,0,0,0.02);
+}
+
+.send-home-check input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.send-home-fields {
+    margin-top: 1.25rem;
 }
 
 .payment-tabs {

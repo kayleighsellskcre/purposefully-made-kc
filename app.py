@@ -117,6 +117,10 @@ def create_app(config_class=Config):
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS tracking_number VARCHAR(200)",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS carrier VARCHAR(100)",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP",
+                    "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS send_home_with_child BOOLEAN DEFAULT FALSE",
+                    "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS teacher_name VARCHAR(120)",
+                    "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS child_grade VARCHAR(40)",
+                    "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS child_name VARCHAR(120)",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS description TEXT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS is_password_protected BOOLEAN DEFAULT FALSE",
@@ -537,22 +541,35 @@ def create_app(config_class=Config):
 
     @app.errorhandler(413)
     def request_too_large(error):
-        """Return JSON when a file upload exceeds MAX_CONTENT_LENGTH.
+        """Handle uploads that exceed MAX_CONTENT_LENGTH.
 
-        Without this, Flask returns an HTML error page which the fetch()
-        in customize.html can't parse as JSON → shows generic "Upload failed".
+        - AJAX/JSON requests → JSON error (fetch() in customize.html can parse it)
+        - Regular form POSTs → flash + redirect back so the user sees a clear message
         """
-        from flask import request as _req, jsonify as _json
-        if _req.path.startswith('/design/') or _req.headers.get('Accept', '').find('json') != -1 or _req.is_json or _req.files:
-            limit_mb = int(app.config.get('MAX_CONTENT_LENGTH', 20 * 1024 * 1024)) // (1024 * 1024)
+        from flask import request as _req, jsonify as _json, redirect, flash as _flash
+        limit_mb = int(app.config.get('MAX_CONTENT_LENGTH', 50 * 1024 * 1024)) // (1024 * 1024)
+        is_ajax = (
+            _req.path.startswith('/design/')
+            or 'json' in _req.headers.get('Accept', '')
+            or _req.is_json
+            or _req.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        )
+        if is_ajax:
             return _json({
                 'error': (
-                    f'File is too large (over {limit_mb} MB). '
+                    f'File is too large (limit: {limit_mb} MB). '
                     'On iPhone: share the photo and choose "Medium" size. '
                     'On Android: use a photo editor to reduce size before uploading.'
                 )
             }), 413
-        return render_template('errors/404.html'), 413
+        # Regular form POST — redirect back with a helpful flash message
+        _flash(
+            f'Your file upload was too large (limit: {limit_mb} MB). '
+            'Please compress or resize your image and try again.',
+            'error'
+        )
+        referrer = _req.referrer or '/'
+        return redirect(referrer)
 
     @app.errorhandler(500)
     def internal_error(error):

@@ -2800,7 +2800,14 @@ def print_labels():
         if collection_id:
             query = query.filter_by(collection_id=collection_id)
 
-    orders = query.order_by(Order.created_at).all()
+    def _label_sort_key(order):
+        send_home = 0 if getattr(order, 'send_home_with_child', False) else 1
+        teacher = (getattr(order, 'teacher_name', None) or '').strip().lower()
+        grade = (getattr(order, 'child_grade', None) or '').strip().lower()
+        child = (getattr(order, 'child_name', None) or '').strip().lower()
+        return (send_home, teacher, grade, child, order.created_at or datetime.min)
+
+    orders = sorted(query.all(), key=_label_sort_key)
     collections = Collection.query.all()
     
     return render_template('admin/print_labels.html',

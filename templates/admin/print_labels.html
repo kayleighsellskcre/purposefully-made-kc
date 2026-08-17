@@ -190,6 +190,31 @@
     font-family: inherit;
 }
 
+.label-cell.send-home {
+    justify-content: flex-start;
+}
+
+.label-cell .label-send-home-tag {
+    font-weight: 700;
+    font-size: 7.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #111;
+    margin-bottom: 0.04in;
+}
+
+.label-cell .label-child {
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 0.04in;
+}
+
+.label-cell.send-home .label-content {
+    font-size: 8px;
+    line-height: 1.25;
+}
+
 /* Empty label cells */
 .label-cell.empty {
     border-color: #ccc;
@@ -268,7 +293,7 @@
             <div>
                 <span class="adm-eyebrow">Admin / Daily Operations</span>
                 <h1>Print Order Labels</h1>
-                <p class="page-subtitle">Print a label for any order — retail, cash pickup, or group. Avery 5160, 3×10 per sheet.</p>
+                <p class="page-subtitle">Print a label for any order — retail, cash pickup, or group. Avery 5160, 3×10 per sheet. Group orders marked send-home are sorted by coach/teacher, then grade, then child.</p>
             </div>
         </div>
 
@@ -339,10 +364,16 @@
                         {% set order_index = sheet_num * labels_per_sheet + slot %}
                         {% if order_index < orders|length %}
                             {% set order = orders[order_index] %}
-                            <div class="label-cell {% if order.fulfillment_method == 'shipping' %}shipping{% else %}pickup{% endif %}">
+                            <div class="label-cell {% if order.send_home_with_child %}send-home{% elif order.fulfillment_method == 'shipping' %}shipping{% else %}pickup{% endif %}">
                                 <span class="label-order-num">{{ order.order_number }}</span>
                                 <div class="label-content">
-                                    {% if order.fulfillment_method == 'shipping' %}
+                                    {% if order.send_home_with_child %}
+                                        <div class="label-send-home-tag">Send home with child</div>
+                                        <div class="label-child">{{ order.child_name or 'Child' }}</div>
+                                        {% if order.teacher_name %}{{ order.teacher_name }}{% endif %}{% if order.teacher_name and order.child_grade %} · {% endif %}{% if order.child_grade %}Grade {{ order.child_grade }}{% endif %}
+                                        {% set parent_name = ((order.first_name or '') ~ ' ' ~ (order.last_name or ''))|trim %}
+                                        {% if parent_name %}<br>Parent: {{ parent_name }}{% endif %}
+                                    {% elif order.fulfillment_method == 'shipping' %}
                                         {# Shipping format: Name + Address #}
                                         {% set name_part = (order.first_name or '') ~ ' ' ~ (order.last_name or '') %}
                                         {% set recipient = order.shipping_recipient or name_part|trim or order.email or 'Customer' %}

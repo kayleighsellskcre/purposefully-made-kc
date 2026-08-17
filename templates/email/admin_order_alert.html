@@ -107,6 +107,14 @@
                   <p style="margin:0;font-size:14px;font-weight:700;color:#3a3d48;font-family:'Georgia',serif;">🏠 Local Pickup</p>
                   <p style="margin:4px 0 0;font-size:13px;color:#5a5d68;font-family:Arial,sans-serif;">Reach out to {{ order.email }}{% if order.phone %} / {{ order.phone }}{% endif %} when ready.</p>
                   {% endif %}
+                  {% if order.send_home_with_child %}
+                  <p style="margin:10px 0 0;font-size:14px;font-weight:700;color:#3a3d48;font-family:'Georgia',serif;">🎒 Send home with child</p>
+                  <p style="margin:4px 0 0;font-size:13px;color:#5a5d68;font-family:Arial,sans-serif;line-height:1.6;">
+                    Child: {{ order.child_name }}<br>
+                    Coach / teacher: {{ order.teacher_name }}<br>
+                    Grade: {{ order.child_grade }}
+                  </p>
+                  {% endif %}
                 </td>
               </tr>
             </table>

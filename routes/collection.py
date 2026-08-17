@@ -228,9 +228,17 @@ def _build_group_order_xlsx(collection):
     ws_sum = wb.active
     ws_sum.title = 'Summary'
 
-    orders = collection.orders.order_by(Order.created_at.asc()).all()
-
     from datetime import datetime
+
+    orders = collection.orders.all()
+    orders.sort(key=lambda o: (
+        0 if o.send_home_with_child else 1,
+        (o.teacher_name or '').strip().lower(),
+        (o.child_grade or '').strip().lower(),
+        (o.child_name or '').strip().lower(),
+        o.created_at or datetime.min,
+    ))
+
     ws_sum['A1'] = f'Group Order: {collection.name}'
     ws_sum['A1'].font = TITLE_FONT
     ws_sum.merge_cells('A1:F1')
@@ -265,7 +273,8 @@ def _build_group_order_xlsx(collection):
     ws_ord = wb.create_sheet('Orders')
     ord_headers = [
         'Order #', 'Date', 'Name', 'Email', 'Phone',
-        'Fulfillment', 'Payment', 'Status',
+        'Fulfillment', 'Send Home', 'Child', 'Coach/Teacher', 'Grade',
+        'Payment', 'Status',
         'Items', 'Subtotal', 'Shipping', 'Tax', 'Total', 'Notes',
     ]
     ws_ord.append(ord_headers)
@@ -281,6 +290,10 @@ def _build_group_order_xlsx(collection):
             order.email or '',
             order.phone or '',
             order.fulfillment_method or '',
+            'Yes' if order.send_home_with_child else '',
+            order.child_name or '',
+            order.teacher_name or '',
+            order.child_grade or '',
             order.payment_status or '',
             order.status or '',
             items_count,
@@ -291,17 +304,18 @@ def _build_group_order_xlsx(collection):
             order.customer_notes or '',
         ])
         style_data_row(ws_ord, idx, len(ord_headers), alt=(idx % 2 == 0))
-        for col in (10, 11, 12, 13):
+        for col in (14, 15, 16, 17):
             ws_ord.cell(row=idx, column=col).number_format = MONEY_FMT
 
-    set_col_widths(ws_ord, [18, 16, 22, 28, 14, 12, 10, 14, 7, 10, 10, 8, 10, 30])
+    set_col_widths(ws_ord, [18, 16, 22, 28, 14, 12, 12, 18, 18, 10, 10, 14, 7, 10, 10, 8, 10, 30])
 
     # ════════════════════════════════════════════════════════════════════════
     # Sheet 3 — Line Items
     # ════════════════════════════════════════════════════════════════════════
     ws_items = wb.create_sheet('Line Items')
     item_headers = [
-        'Order #', 'Customer', 'Product', 'Style #',
+        'Order #', 'Customer', 'Child', 'Coach/Teacher', 'Grade',
+        'Product', 'Style #',
         'Color', 'Size', 'Qty', 'Placement',
         'Design', 'Back (Name/Number)', 'Unit Price', 'Line Total',
     ]
@@ -330,6 +344,9 @@ def _build_group_order_xlsx(collection):
             ws_items.append([
                 order.order_number,
                 order.full_name,
+                order.child_name or '',
+                order.teacher_name or '',
+                order.child_grade or '',
                 item.product_name or '',
                 item.style_number or '',
                 item.color or '',
@@ -342,11 +359,11 @@ def _build_group_order_xlsx(collection):
                 item.subtotal,
             ])
             style_data_row(ws_items, row_idx, len(item_headers), alt=(row_idx % 2 == 0))
-            ws_items.cell(row=row_idx, column=11).number_format = MONEY_FMT
-            ws_items.cell(row=row_idx, column=12).number_format = MONEY_FMT
+            ws_items.cell(row=row_idx, column=14).number_format = MONEY_FMT
+            ws_items.cell(row=row_idx, column=15).number_format = MONEY_FMT
             row_idx += 1
 
-    set_col_widths(ws_items, [18, 22, 28, 10, 18, 7, 5, 14, 26, 22, 10, 10])
+    set_col_widths(ws_items, [18, 22, 18, 18, 10, 28, 10, 18, 7, 5, 14, 26, 22, 10, 10])
 
     # ════════════════════════════════════════════════════════════════════════
     # Sheet 4 — Size Breakdown (production tally)
