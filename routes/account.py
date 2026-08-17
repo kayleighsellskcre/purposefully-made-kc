@@ -220,10 +220,13 @@ def profile():
 @login_required
 def my_group_orders():
     """View group orders created by this user"""
+    from utils.group_orders import is_deadline_passed
     collections = (
         Collection.query
         .filter_by(created_by_user_id=current_user.id)
         .order_by(Collection.created_at.desc())
         .all()
     )
-    return render_template('account/my_group_orders.html', collections=collections, now=datetime.utcnow())
+    for c in collections:
+        c.deadline_passed = is_deadline_passed(c)
+    return render_template('account/my_group_orders.html', collections=collections)

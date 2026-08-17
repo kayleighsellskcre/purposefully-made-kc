@@ -33,7 +33,6 @@ def serve_mockup(path):
 def index():
     """Homepage"""
     try:
-        session.pop('collection_id', None)
         featured_products = Product.query.filter_by(is_active=True).order_by(Product.style_number).limit(8).all()
         now = datetime.now(timezone.utc).replace(tzinfo=None)
         active_collections = Collection.query.filter(

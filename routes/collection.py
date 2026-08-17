@@ -11,6 +11,16 @@ import io
 
 collection_bp = Blueprint('collection', __name__, url_prefix='/c')
 
+
+@collection_bp.route('/leave')
+def leave():
+    """Drop group-order session and return to the regular shop."""
+    from utils.group_orders import leave_group_order
+    leave_group_order()
+    flash('You left the group order. You can still shop the regular store.', 'info')
+    return redirect(url_for('shop.index'))
+
+
 @collection_bp.route('/<slug>')
 def view(slug):
     """View collection landing page - design board of available items"""
@@ -24,21 +34,16 @@ def view(slug):
             return redirect(url_for('collection.password', slug=slug))
     
     # Check if deadline has passed — show warning but still allow viewing
-    from datetime import datetime as _dt
-    collection.deadline_passed = (
-        collection.order_deadline and collection.order_deadline < _dt.utcnow()
-    )
+    from utils.group_orders import attach_collection, is_deadline_passed
+    collection.deadline_passed = is_deadline_passed(collection)
 
-    # Set collection in session for checkout only if deadline hasn't passed
-    if not collection.deadline_passed:
-        session['collection_id'] = collection.id
-    else:
-        session.pop('collection_id', None)
+    # Keep this group order in session so customize/cart/checkout stay attached
+    attach_collection(collection)
     
     # Get allowed colors when organizer restricted options
     allowed_colors = None
-    if collection.restrict_options and collection.allowed_colors:
-        allowed_colors = set(parse_json_list(collection.allowed_colors))
+    if collection.allowed_colors:
+        allowed_colors = set(parse_json_list(collection.allowed_colors)) or None
     
     # Get products in this collection with carousel colors (DB + mockup folder)
     all_products = collection.products

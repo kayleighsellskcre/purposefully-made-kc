@@ -118,6 +118,17 @@ def add():
     
     if not size or not color:
         return jsonify({'error': 'Size and color are required'}), 400
+
+    from utils.group_orders import (
+        design_allowed_for_collection,
+        get_active_collection,
+        ordering_blocked,
+    )
+    collection = get_active_collection()
+    if collection:
+        blocked = ordering_blocked(collection, product_id)
+        if blocked:
+            return jsonify({'error': blocked}), 400
     
     cart = get_cart()
     
@@ -148,14 +159,14 @@ def add():
                 pass
             design_url = f"/static/uploads/designs/{unique_filename}"
     elif design_id:
-        # Gallery design or user's own design - get URL from Design model
+        # Gallery design, collection design, or user's own design
         from models import Design
         design = Design.query.get(int(design_id))
         if design:
-            # Allow: gallery design, or user's own design (profile-only)
             is_gallery = getattr(design, 'is_gallery', False)
             is_own = current_user.is_authenticated and design.uploaded_by_user_id == current_user.id
-            if is_gallery or is_own:
+            is_collection_design = collection and design_allowed_for_collection(design, collection)
+            if is_gallery or is_own or is_collection_design:
                 design_url = _resolve_image_url(design.file_path)
     
     # Handle back design: uploaded file or URL (from prior upload)
@@ -411,8 +422,18 @@ def add():
         'position_x': print_specs.get('x'),
         'position_y': print_specs.get('y'),
         'rotation': print_specs.get('rotation', 0),
-        'proof_image': print_specs.get('proof_image')
+        'proof_image': print_specs.get('proof_image'),
+        'collection_id': collection.id if collection else None,
     }
+
+    # Don't mix a group order with regular shop items (or another group)
+    new_cid = cart_item['collection_id']
+    mixed = [
+        item for item in cart
+        if isinstance(item, dict) and (item.get('collection_id') or None) != new_cid
+    ]
+    if mixed:
+        cart[:] = [item for item in cart if isinstance(item, dict) and (item.get('collection_id') or None) == new_cid]
     
     # Check if identical item exists
     found = False

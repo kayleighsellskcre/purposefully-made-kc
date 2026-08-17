@@ -353,6 +353,13 @@ def index():
         return redirect(url_for('cart.index'))
     
     # Calculate totals
+    from utils.group_orders import get_active_collection, ordering_blocked
+    collection = get_active_collection(cart)
+    if collection:
+        blocked = ordering_blocked(collection)
+        if blocked:
+            flash(blocked, 'error')
+            return redirect(url_for('collection.view', slug=collection.slug))
     totals = calculate_totals(cart)
     
     from utils.order_artwork import FRONT_PLACEMENTS, mockup_urls
@@ -409,12 +416,13 @@ def index():
     if current_user.is_authenticated:
         addresses = current_user.addresses.all()
     
-    is_group_order = bool(_int_or_none(session.get('collection_id')))
+    is_group_order = bool(collection)
     return render_template('checkout/index.html',
                          cart=enriched_cart,
                          totals=totals,
                          addresses=addresses,
                          is_group_order=is_group_order,
+                         group_collection=collection,
                          stripe_public_key=current_app.config.get('STRIPE_PUBLIC_KEY'))
 
 
@@ -426,7 +434,14 @@ def create_payment_intent():
     cart = get_cart()
     if not cart:
         return jsonify({'error': 'Cart is empty'}), 400
-    
+
+    from utils.group_orders import get_active_collection, ordering_blocked
+    collection = get_active_collection(cart)
+    if collection:
+        blocked = ordering_blocked(collection)
+        if blocked:
+            return jsonify({'error': blocked}), 400
+
     shipping_method = data.get('shipping_method', 'pickup')
     totals = calculate_totals(cart, shipping_method)
     
@@ -518,6 +533,13 @@ def complete():
         if not cart:
             return _json_error('Your cart is empty.', 'CART_EMPTY', 400, request_id=rid)
 
+        from utils.group_orders import get_active_collection, ordering_blocked
+        collection = get_active_collection(cart)
+        if collection:
+            blocked = ordering_blocked(collection)
+            if blocked:
+                return _json_error(blocked, 'GROUP_ORDER_CLOSED', 400, request_id=rid)
+
         checkout_token = _clip(data.get('checkout_token'), 64)
         if checkout_token and session.get('checkout_success_token') == checkout_token:
             order_number = session.get('checkout_success_order')
@@ -569,8 +591,10 @@ def complete():
             missing = [k for k in ('street', 'city', 'state', 'zip') if not (shipping_info.get(k) or '').strip()]
             if missing:
                 return _json_error('Please complete the shipping address.', 'SHIPPING_ADDRESS_REQUIRED', 400, request_id=rid, fields=missing)
+            if collection and not collection.shipping_enabled:
+                return _json_error('This group order is pickup only.', 'SHIPPING_NOT_ALLOWED', 400, request_id=rid)
 
-        send_home = bool(data.get('send_home_with_child')) and bool(_int_or_none(session.get('collection_id')))
+        send_home = bool(data.get('send_home_with_child')) and bool(collection)
         teacher_name = _clip(data.get('teacher_name'), 120) if send_home else None
         child_grade = _clip(data.get('child_grade'), 40) if send_home else None
         child_name = _clip(data.get('child_name'), 120) if send_home else None
@@ -625,9 +649,8 @@ def complete():
         )
 
         try:
-            collection_id = _int_or_none(session.get('collection_id'))
-            if collection_id:
-                order.collection_id = collection_id
+            if collection:
+                order.collection_id = collection.id
         except Exception:
             pass
 
@@ -810,6 +833,7 @@ def complete():
     session['checkout_success_token'] = checkout_token
     session['checkout_success_order'] = order.order_number
     session['cart'] = []
+    session.pop('collection_id', None)
     session.modified = True
 
     queue_order_confirmation_email(order.id)

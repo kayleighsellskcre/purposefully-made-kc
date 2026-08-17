@@ -84,6 +84,26 @@
             </div>
         </div>
     </nav>
+
+    {% if active_group_order %}
+    <div class="group-order-banner">
+        <div class="container group-order-banner-inner">
+            <p>You're ordering for <strong>{{ active_group_order.name }}</strong>.</p>
+            <div class="group-order-banner-actions">
+                <a href="{{ url_for('collection.view', slug=active_group_order.slug) }}">Group store</a>
+                <a href="{{ url_for('collection.leave') }}">Leave group order</a>
+            </div>
+        </div>
+    </div>
+    <style>
+    .group-order-banner { background: #3a3d48; color: #fff; padding: 0.65rem 0; }
+    .group-order-banner-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+    .group-order-banner p { margin: 0; font-size: 0.9rem; }
+    .group-order-banner-actions { display: flex; gap: 1rem; }
+    .group-order-banner-actions a { color: #f3d9c8; font-size: 0.85rem; font-weight: 600; text-decoration: none; }
+    .group-order-banner-actions a:hover { text-decoration: underline; }
+    </style>
+    {% endif %}
     
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}

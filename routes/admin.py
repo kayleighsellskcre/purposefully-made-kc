@@ -2328,7 +2328,8 @@ def add_collection():
             deadline_str = (request.form.get('order_deadline') or '').strip()
             if deadline_str:
                 try:
-                    order_deadline = datetime.fromisoformat(deadline_str)
+                    from utils.group_orders import parse_order_deadline
+                    order_deadline = parse_order_deadline(deadline_str)
                 except ValueError:
                     flash('The order deadline date is invalid. Please pick a valid date.', 'error')
                     return redirect(url_for('admin.add_collection'))
@@ -2370,6 +2371,8 @@ def add_collection():
                         upload_count += 1
             if allowed_design_ids:
                 collection.allowed_design_ids = json.dumps(allowed_design_ids)
+            if allowed_design_ids or allowed_colors:
+                collection.restrict_options = True
 
             collection.back_design_font = request.form.get('back_design_font') or None
             # Uniform back-design style controls
@@ -2387,6 +2390,7 @@ def add_collection():
             db.session.add(collection)
             db.session.flush()
 
+            selected_products = []
             for product_id in request.form.getlist('products'):
                 try:
                     pid = int(product_id)
@@ -2394,7 +2398,12 @@ def add_collection():
                     continue
                 product = Product.query.get(pid)
                 if product:
+                    selected_products.append(product)
                     collection.products.append(product)
+            if not selected_products:
+                db.session.rollback()
+                flash('Please pick at least one shirt style so your team has something to order.', 'error')
+                return redirect(url_for('admin.add_collection'))
 
             db.session.commit()
             msg = 'Group order created successfully'
@@ -2519,7 +2528,8 @@ def edit_collection(collection_id):
             deadline_str = (request.form.get('order_deadline') or '').strip()
             if deadline_str:
                 try:
-                    collection.order_deadline = datetime.fromisoformat(deadline_str)
+                    from utils.group_orders import parse_order_deadline
+                    collection.order_deadline = parse_order_deadline(deadline_str)
                 except ValueError:
                     flash('The order deadline date is invalid. Please pick a valid date.', 'error')
                     return redirect(url_for('admin.edit_collection', collection_id=collection.id))

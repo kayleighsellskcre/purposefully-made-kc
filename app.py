@@ -529,11 +529,18 @@ def create_app(config_class=Config):
                 is_site_admin = False
 
         from datetime import datetime as _dt
+        from utils.group_orders import get_active_collection
+        active_group_order = None
+        try:
+            active_group_order = get_active_collection(session.get('cart'))
+        except Exception:
+            active_group_order = None
         return {
             'cart_count': cart_count,
             'current_year': _dt.now().year,
             'admin_email': admin_email,
             'is_site_admin': is_site_admin,
+            'active_group_order': active_group_order,
         }
     
     # Error handlers

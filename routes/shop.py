@@ -22,8 +22,6 @@ shop_bp = Blueprint('shop', __name__, url_prefix='/shop')
 def index():
     """Shop page - browse all products. Products come from S&S Activewear sync (Admin → Products)."""
     try:
-        session.pop('collection_id', None)
-
         category = canonical_category_param(request.args.get('category'))
         age_group = (request.args.get('age_group') or '').strip().lower() or None
         fit_type = request.args.get('fit_type')
@@ -200,7 +198,7 @@ def create_group_order():
     from datetime import datetime
     
     if request.method == 'POST':
-        from routes.admin import _save_uploaded_design
+        from routes.admin import _save_collection_design
         from slugify import slugify
         from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
@@ -233,7 +231,8 @@ def create_group_order():
             deadline_str = (request.form.get('order_deadline') or '').strip()
             if deadline_str:
                 try:
-                    order_deadline = datetime.fromisoformat(deadline_str)
+                    from utils.group_orders import parse_order_deadline
+                    order_deadline = parse_order_deadline(deadline_str)
                 except ValueError:
                     flash('The order deadline date is invalid. Please pick a valid date.', 'error')
                     return redirect(url_for('shop.create_group_order'))
@@ -269,7 +268,7 @@ def create_group_order():
             for f in request.files.getlist('design_uploads'):
                 if f and f.filename:
                     try:
-                        design = _save_uploaded_design(f, current_user.id)
+                        design = _save_collection_design(f, current_user.id)
                     except Exception as e:
                         current_app.logger.exception('Group order artwork upload failed: %s', e)
                         design = None
@@ -278,6 +277,8 @@ def create_group_order():
                         upload_count += 1
             if allowed_design_ids:
                 collection.allowed_design_ids = json.dumps(allowed_design_ids)
+            if allowed_design_ids or allowed_colors:
+                collection.restrict_options = True
             collection.back_design_font = request.form.get('back_design_font') or None
             # Uniform back-design style controls
             collection.back_design_text_color = request.form.get('back_design_text_color') or None
@@ -298,6 +299,7 @@ def create_group_order():
             db.session.flush()
 
             # ── 5. Link selected products ───────────────────────────────────
+            selected_products = []
             for product_id in request.form.getlist('products'):
                 try:
                     pid = int(product_id)
@@ -305,7 +307,12 @@ def create_group_order():
                     continue
                 product = Product.query.get(pid)
                 if product:
+                    selected_products.append(product)
                     collection.products.append(product)
+            if not selected_products:
+                db.session.rollback()
+                flash('Please pick at least one shirt style so your team has something to order.', 'error')
+                return redirect(url_for('shop.create_group_order'))
 
             # ── 6. Commit ───────────────────────────────────────────────────
             db.session.commit()
@@ -364,7 +371,6 @@ def create_group_order():
 @shop_bp.route('/designs')
 def design_gallery():
     """Browse designs available for custom apparel"""
-    session.pop('collection_id', None)
     try:
         designs = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).all()
     except Exception:
@@ -376,7 +382,6 @@ def design_gallery():
 @shop_bp.route('/product/<int:product_id>')
 def product_detail(product_id):
     """Product detail page with customizer"""
-    session.pop('collection_id', None)
     product = Product.query.get_or_404(product_id)
     available_sizes = sort_sizes(parse_json_list(product.available_sizes))
     available_colors = parse_json_list(product.available_colors)
@@ -393,8 +398,13 @@ def product_detail(product_id):
 @shop_bp.route('/customize/<int:product_id>')
 def customize(product_id):
     """Product customizer interface"""
-    from models import Collection
     from flask_login import current_user
+    from utils.group_orders import (
+        allowed_design_ids as collection_design_id_list,
+        get_active_collection,
+        load_collection_designs,
+        ordering_blocked,
+    )
 
     product = Product.query.get_or_404(product_id)
     available_sizes = sort_sizes(parse_json_list(product.available_sizes))
@@ -411,46 +421,44 @@ def customize(product_id):
     back_design_outline = None   # None = use customer's choice
     back_design_outline_color = None
     lock_back_design_style = False
-    collection_id = session.get('collection_id')
     allowed_design_ids = None
-    if collection_id:
-        coll = Collection.query.get(collection_id)
-        if coll and coll.restrict_options and product in coll.products:
-            collection_restricted = True
-            allow_custom_upload = getattr(coll, 'allow_custom_upload', True)
-            back_design_font = getattr(coll, 'back_design_font', None)
-            back_design_text_color = getattr(coll, 'back_design_text_color', None)
-            _outline = getattr(coll, 'back_design_outline', None)
-            back_design_outline = _outline if _outline is not None else True
-            back_design_outline_color = getattr(coll, 'back_design_outline_color', None)
-            lock_back_design_style = bool(getattr(coll, 'lock_back_design_style', False))
-            if coll.allowed_colors:
-                allowed = parse_json_list(coll.allowed_colors)
-                if allowed:
-                    color_variants_data = [v for v in color_variants_data if v['color_name'] in allowed]
-                    # Product has no colors matching the collection's chosen colors — redirect with warning
-                    if not color_variants_data:
-                        flash(
-                            f'"{product.name}" is not available in the colors chosen for this order. Please select a different style.',
-                            'warning'
-                        )
-                        return redirect(url_for('collection.view', slug=coll.slug))
-            if coll.allowed_design_ids:
-                allowed_design_ids = set()
-                for raw_id in parse_json_list(coll.allowed_design_ids):
-                    try:
-                        allowed_design_ids.add(int(raw_id))
-                    except (TypeError, ValueError):
-                        continue
-            if coll.allowed_placements:
-                allowed_placements = parse_json_list(coll.allowed_placements)
+    coll = get_active_collection()
+    if coll:
+        blocked = ordering_blocked(coll, product.id)
+        if blocked:
+            flash(blocked, 'error')
+            return redirect(url_for('collection.view', slug=coll.slug))
+        has_colors = bool(parse_json_list(coll.allowed_colors or ''))
+        has_designs = bool(collection_design_id_list(coll))
+        has_placements = bool(parse_json_list(coll.allowed_placements or ''))
+        collection_restricted = bool(coll.restrict_options or has_colors or has_designs)
+        allow_custom_upload = getattr(coll, 'allow_custom_upload', True)
+        back_design_font = getattr(coll, 'back_design_font', None)
+        back_design_text_color = getattr(coll, 'back_design_text_color', None)
+        _outline = getattr(coll, 'back_design_outline', None)
+        back_design_outline = _outline if _outline is not None else True
+        back_design_outline_color = getattr(coll, 'back_design_outline_color', None)
+        lock_back_design_style = bool(getattr(coll, 'lock_back_design_style', False))
+        if has_colors:
+            allowed = parse_json_list(coll.allowed_colors)
+            color_variants_data = [v for v in color_variants_data if v['color_name'] in allowed]
+            if not color_variants_data:
+                flash(
+                    f'"{product.name}" is not available in the colors chosen for this order. Please select a different style.',
+                    'warning'
+                )
+                return redirect(url_for('collection.view', slug=coll.slug))
+        if has_designs:
+            allowed_design_ids = set(collection_design_id_list(coll))
+        if has_placements:
+            allowed_placements = parse_json_list(coll.allowed_placements)
     
     # Check for pre-selected design from gallery
     design_id = request.args.get('design_id', type=int)
     preset_design = None
     if design_id:
         d = Design.query.get(design_id)
-        if d and getattr(d, 'is_gallery', False):
+        if d and (getattr(d, 'is_gallery', False) or (allowed_design_ids and d.id in allowed_design_ids)):
             preset_design = {
                 'id': d.id,
                 'url': _resolve_image_url(d.file_path),
@@ -460,16 +468,19 @@ def customize(product_id):
     # Gallery designs for inline "choose logo" section
     gallery_designs = []
     try:
-        designs = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).limit(24).all()
-        gallery_designs = [{'id': d.id, 'url': _resolve_image_url(d.file_path), 'title': (d.title or d.original_filename or 'Design')} for d in designs]
-        if collection_restricted and allowed_design_ids:
-            gallery_designs = [g for g in gallery_designs if g['id'] in allowed_design_ids]
+        if coll and allowed_design_ids:
+            gallery_designs = load_collection_designs(coll)
+        else:
+            designs = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).limit(24).all()
+            gallery_designs = [{'id': d.id, 'url': _resolve_image_url(d.file_path), 'title': (d.title or d.original_filename or 'Design')} for d in designs]
     except Exception:
         pass
+    if not preset_design and gallery_designs and len(gallery_designs) == 1:
+        preset_design = gallery_designs[0]
     
-    # User's own designs (profile-only, for logged-in users)
+    # User's own designs (profile-only, for logged-in users) — skip when the organizer locked logos
     my_designs = []
-    if current_user.is_authenticated:
+    if current_user.is_authenticated and not (collection_restricted and allowed_design_ids and not allow_custom_upload):
         try:
             my_designs = Design.query.filter(
                 Design.uploaded_by_user_id == current_user.id,

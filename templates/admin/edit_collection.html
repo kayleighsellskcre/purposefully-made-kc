@@ -64,7 +64,7 @@
                     <label for="restrict_options">Restrict options: team can only order what you choose below</label>
                 </div>
 
-                <div id="organizer-choices" class="organizer-choices" style="{% if not collection.restrict_options %}display: none;{% endif %}">
+                <div id="organizer-choices" class="organizer-choices">
                     <div class="form-group">
                         <label>Allowed colors (team picks from these)</label>
                         {% if collection_colors %}
@@ -200,9 +200,6 @@
 <script>
 document.getElementById('password_protected').addEventListener('change', (e) => {
     document.getElementById('password-field').style.display = e.target.checked ? 'block' : 'none';
-});
-document.getElementById('restrict_options').addEventListener('change', (e) => {
-    document.getElementById('organizer-choices').style.display = e.target.checked ? 'block' : 'none';
 });
 document.getElementById('design_uploads').addEventListener('change', function() {
     const preview = document.getElementById('uploadPreview');

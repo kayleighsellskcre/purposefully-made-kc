@@ -328,6 +328,7 @@
                 <div>
                 {% else %}
                 <a href="{{ url_for('shop.customize', product_id=product.id) }}">
+                {% endif %}
                     <div class="design-card-image">
                         {% if product.carousel_colors and product.carousel_colors|length > 0 %}
                         <div class="color-carousel" data-product-id="{{ product.id }}">

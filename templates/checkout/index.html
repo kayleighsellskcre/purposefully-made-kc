@@ -56,10 +56,18 @@
                             <input type="radio" name="fulfillment" value="pickup" checked>
                             <div>
                                 <strong>Local Pickup</strong>
+                                {% if is_group_order and group_collection and group_collection.pickup_address %}
+                                <p>{{ group_collection.pickup_address }}</p>
+                                {% if group_collection.pickup_instructions %}
+                                <p>{{ group_collection.pickup_instructions }}</p>
+                                {% endif %}
+                                {% else %}
                                 <p>Free - Pick up at our location</p>
+                                {% endif %}
                             </div>
                         </label>
                         
+                        {% if not is_group_order or not group_collection or group_collection.shipping_enabled %}
                         <label class="fulfillment-option">
                             <input type="radio" name="fulfillment" value="shipping">
                             <div>
@@ -67,6 +75,7 @@
                                 <p>+$11.00 flat rate</p>
                             </div>
                         </label>
+                        {% endif %}
                     </div>
                 </div>
 

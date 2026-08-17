@@ -158,8 +158,9 @@
                     </svg>
                     Create Group Order
                 </a>
+                <a href="{{ url_for('account.my_group_orders') }}" class="btn btn-secondary btn-lg">My Group Orders</a>
                 {% else %}
-                <a href="{{ url_for('auth.login') }}?next={{ url_for('shop.group_orders') }}" class="btn btn-primary btn-lg">
+                <a href="{{ url_for('auth.login') }}?next={{ url_for('shop.create_group_order') }}" class="btn btn-primary btn-lg">
                     Log in to create a group order
                 </a>
                 <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 1rem;">Create an account or log in to set up your group order and get a shareable link.</p>
