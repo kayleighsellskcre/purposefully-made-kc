@@ -1,0 +1,161 @@
+{# Compact Who / Type / Brand filter. Expects catalog_filter_opts and optional catalog_filter_picker. #}
+{% set catalog_filter_opts = catalog_filter_opts or {'ages': [], 'categories': [], 'brands': []} %}
+<div class="catf" id="catalogFilter">
+    <div class="catf-bar">
+        <button type="button" class="catf-toggle" id="catalogFilterBtn" aria-expanded="false" aria-controls="catalogFilterPanel">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+            </svg>
+            Filter
+        </button>
+        <p class="catf-count" id="catalogFilterCount"></p>
+        {% if catalog_filter_picker %}
+        <button type="button" class="catf-text" id="catalogSelectVisible">Select these</button>
+        {% endif %}
+        <button type="button" class="catf-text" id="catalogClearFilters" hidden>Clear</button>
+    </div>
+    <div class="catf-panel" id="catalogFilterPanel" hidden>
+        {% if catalog_filter_opts.ages %}
+        <div class="catf-row">
+            <span class="catf-label">Who</span>
+            <div class="catf-chips" data-filter="age">
+                <button type="button" class="catf-chip is-on" data-value="">All</button>
+                {% for age in catalog_filter_opts.ages %}
+                <button type="button" class="catf-chip" data-value="{{ age.key }}">{{ age.label }}</button>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% if catalog_filter_opts.categories %}
+        <div class="catf-row">
+            <span class="catf-label">Type</span>
+            <div class="catf-chips" data-filter="category">
+                <button type="button" class="catf-chip is-on" data-value="">All</button>
+                {% for cat in catalog_filter_opts.categories %}
+                <button type="button" class="catf-chip" data-value="{{ cat }}">{{ cat }}</button>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% if catalog_filter_opts.brands %}
+        <div class="catf-row">
+            <span class="catf-label">Brand</span>
+            <div class="catf-chips" data-filter="brand">
+                <button type="button" class="catf-chip is-on" data-value="">All</button>
+                {% for brand in catalog_filter_opts.brands %}
+                <button type="button" class="catf-chip" data-value="{{ brand }}">{{ brand }}</button>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+<style>
+.catf { margin: 0 0 1.25rem; }
+.catf-bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.catf-toggle {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    min-height: 40px; padding: 0.45rem 0.95rem;
+    border: 1px solid #222; background: #fff; color: #222;
+    font-size: 0.82rem; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; border-radius: 8px; cursor: pointer;
+}
+.catf-toggle.is-open, .catf-toggle.has-filters {
+    background: #222; color: #fff;
+}
+.catf-count { margin: 0; font-size: 0.85rem; color: var(--text-secondary); }
+.catf-text {
+    border: 0; background: none; padding: 0;
+    color: var(--terra-cotta, #b87c6f); font-size: 0.82rem; font-weight: 600;
+    cursor: pointer;
+}
+.catf-panel {
+    margin-top: 0.85rem; padding: 0.9rem 1rem;
+    background: #fff; border: 1px solid var(--border-color, #e6ddd0);
+    border-radius: 10px;
+}
+.catf-row + .catf-row { margin-top: 0.75rem; }
+.catf-label {
+    display: block; margin-bottom: 0.35rem;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-secondary);
+}
+.catf-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.catf-chip {
+    min-height: 34px; padding: 0.3rem 0.7rem;
+    border: 1px solid #ccc; background: #fff; border-radius: 999px;
+    font-size: 0.8rem; cursor: pointer;
+}
+.catf-chip.is-on { border-color: #222; background: #222; color: #fff; }
+[data-catalog-item][hidden] { display: none !important; }
+</style>
+<script>
+(function () {
+    const root = document.getElementById('catalogFilter');
+    if (!root) return;
+    const btn = document.getElementById('catalogFilterBtn');
+    const panel = document.getElementById('catalogFilterPanel');
+    const countEl = document.getElementById('catalogFilterCount');
+    const clearBtn = document.getElementById('catalogClearFilters');
+    const selectBtn = document.getElementById('catalogSelectVisible');
+    const items = Array.from(document.querySelectorAll('[data-catalog-item]'));
+    const state = { age: '', category: '', brand: '' };
+
+    function visibleItems() {
+        return items.filter((el) => !el.hidden);
+    }
+
+    function apply() {
+        const active = Boolean(state.age || state.category || state.brand);
+        items.forEach((el) => {
+            const okAge = !state.age || el.dataset.age === state.age;
+            const okCat = !state.category || el.dataset.category === state.category;
+            const okBrand = !state.brand || el.dataset.brand === state.brand;
+            el.hidden = !(okAge && okCat && okBrand);
+        });
+        const shown = visibleItems().length;
+        countEl.textContent = shown === items.length
+            ? shown + ' items'
+            : shown + ' of ' + items.length;
+        btn.classList.toggle('has-filters', active);
+        clearBtn.hidden = !active;
+    }
+
+    btn.addEventListener('click', () => {
+        const open = panel.hidden;
+        panel.hidden = !open;
+        btn.classList.toggle('is-open', open);
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+
+    root.querySelectorAll('.catf-chips').forEach((group) => {
+        group.addEventListener('click', (event) => {
+            const chip = event.target.closest('.catf-chip');
+            if (!chip) return;
+            group.querySelectorAll('.catf-chip').forEach((c) => c.classList.remove('is-on'));
+            chip.classList.add('is-on');
+            state[group.dataset.filter] = chip.dataset.value || '';
+            apply();
+        });
+    });
+
+    clearBtn.addEventListener('click', () => {
+        state.age = state.category = state.brand = '';
+        root.querySelectorAll('.catf-chips').forEach((group) => {
+            group.querySelectorAll('.catf-chip').forEach((c) => c.classList.toggle('is-on', c.dataset.value === ''));
+        });
+        apply();
+    });
+
+    if (selectBtn) {
+        selectBtn.addEventListener('click', () => {
+            visibleItems().forEach((el) => {
+                const box = el.querySelector('input[name="products"]');
+                if (box) box.checked = true;
+            });
+        });
+    }
+
+    apply();
+})();
+</script>

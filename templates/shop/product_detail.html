@@ -10,20 +10,22 @@
             <div class="product-gallery">
                 {% if product.front_mockup_template %}
                 <div class="product-image">
-                    <img src="{{ url_for('static', filename=product.front_mockup_template) }}" 
-                         alt="{{ product.name }}" 
+                    <img src="{{ product.front_mockup_template if product.front_mockup_template.startswith('http') else url_for('static', filename=product.front_mockup_template) }}"
+                         alt="{{ product.name }}"
                          id="main-image">
                 </div>
                 {% if product.back_mockup_template %}
                 <div class="image-thumbnails">
-                    <img src="{{ url_for('static', filename=product.front_mockup_template) }}" 
-                         alt="Front" 
+                    {% set front_url = product.front_mockup_template if product.front_mockup_template.startswith('http') else url_for('static', filename=product.front_mockup_template) %}
+                    {% set back_url  = product.back_mockup_template  if product.back_mockup_template.startswith('http')  else url_for('static', filename=product.back_mockup_template) %}
+                    <img src="{{ front_url }}"
+                         alt="Front"
                          class="thumbnail active"
-                         onclick="changeImage('{{ url_for('static', filename=product.front_mockup_template) }}', this)">
-                    <img src="{{ url_for('static', filename=product.back_mockup_template) }}" 
-                         alt="Back" 
+                         onclick="changeImage('{{ front_url }}', this)">
+                    <img src="{{ back_url }}"
+                         alt="Back"
                          class="thumbnail"
-                         onclick="changeImage('{{ url_for('static', filename=product.back_mockup_template) }}', this)">
+                         onclick="changeImage('{{ back_url }}', this)">
                 </div>
                 {% endif %}
                 {% else %}

@@ -38,14 +38,15 @@
 
             <div class="form-section">
                 <h2>Items Available to Order</h2>
-                <p class="form-hint">Select which products the team or organizer can choose from. These appear on the design board.</p>
+                <p class="form-hint">Pick the shirts this group can order. Filter first, then tap Select these.</p>
                 {% if products %}
+                {% include 'includes/catalog_filter.html' %}
                 <div class="product-checkboxes">
                     {% for product in products %}
-                    <label class="product-checkbox">
+                    <label class="product-checkbox" data-catalog-item data-age="{{ product.display_age }}" data-category="{{ product.display_category }}" data-brand="{{ product.display_brand }}">
                         <input type="checkbox" name="products" value="{{ product.id }}" {% if product in collection.products %}checked{% endif %}>
                         <span>{{ product.name }}</span>
-                        <small>Style {{ product.style_number }} &middot; ${{ "%.2f"|format(product.base_price) }}</small>
+                        <small>{{ product.display_brand }} · {{ product.display_category }} · {{ product.style_number }} · ${{ "%.2f"|format(product.base_price) }}</small>
                     </label>
                     {% endfor %}
                 </div>

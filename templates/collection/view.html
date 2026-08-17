@@ -285,9 +285,12 @@
             {% if collection.restrict_options %}
             <p>Your organizer has chosen the options for this order. Pick your size and add to cart. Everyone stays matching!</p>
             {% else %}
-            <p>Choose your style, color, size, and logo. Click any item to customize and pick your options to add to your order.</p>
+            <p>Choose your shirt. Filter by who it’s for, type, or brand — then tap to customize.</p>
             {% endif %}
         </div>
+        {% if products %}
+        {% include 'includes/catalog_filter.html' %}
+        {% endif %}
 
         {% if unavailable_products %}
         <div class="alert alert-warning" style="max-width: 700px; margin: 0 auto 2rem; padding: 1rem 1.25rem; background: rgba(184, 124, 111, 0.12); border: 1px solid rgba(184, 124, 111, 0.4); border-radius: 8px; color: var(--text-primary);">
@@ -299,7 +302,7 @@
         {% if products %}
         <div class="design-board-grid">
             {% for product in products %}
-            <article class="design-card">
+            <article class="design-card" data-catalog-item data-age="{{ product.display_age }}" data-category="{{ product.display_category }}" data-brand="{{ product.display_brand }}">
                 <a href="{{ url_for('shop.customize', product_id=product.id) }}">
                     <div class="design-card-image">
                         {% if product.carousel_colors and product.carousel_colors|length > 0 %}
@@ -339,7 +342,7 @@
                     </div>
                     <div class="design-card-content">
                         <h3>{{ product.name }}</h3>
-                        <p class="style-label">Style {{ product.style_number }}{% if product.category %} · {{ product.category }}{% endif %}</p>
+                        <p class="style-label">{{ product.display_brand }}{% if product.display_category %} · {{ product.display_category }}{% endif %} · {{ product.style_number }}</p>
                         {% if product.available_sizes_list %}
                         <p class="sizes-label">Sizes: {{ product.available_sizes_list | sort_sizes | join(', ') }}</p>
                         {% endif %}

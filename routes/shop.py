@@ -6,10 +6,12 @@ from utils.cloud_storage import image_url as _resolve_image_url
 from utils.json_fields import parse_json_list, parse_json_object
 from utils.product_filters import (
     canonical_category_param,
+    catalog_filter_options,
     infer_age,
     infer_category,
     infer_fit,
     matches_filters,
+    prepare_catalog,
 )
 from utils.sizes import sort_sizes
 import json
@@ -337,7 +339,7 @@ def create_group_order():
                   'details and try again.', 'error')
             return redirect(url_for('shop.create_group_order'))
     
-    products = Product.query.filter_by(is_active=True).order_by(Product.style_number).all()
+    products = prepare_catalog(Product.query.filter_by(is_active=True).all())
     try:
         gallery_designs = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).all()
         all_colors = set()
@@ -364,6 +366,8 @@ def create_group_order():
                          gallery_designs=gallery_designs or [],
                          all_colors=all_colors,
                          back_design_fonts=back_design_fonts,
+                         catalog_filter_opts=catalog_filter_options(products),
+                         catalog_filter_picker=True,
                          is_user_create=True)
 
 

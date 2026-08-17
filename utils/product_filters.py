@@ -37,6 +37,8 @@ _CATEGORY_ALIASES = {
     'long sleeve': 'Long Sleeve',
     'onesies': 'Onesie',
     'onesie': 'Onesie',
+    'bodysuit': 'Onesie',
+    'bodysuits': 'Onesie',
     'baseball tee': 'Baseball Tee',
     'pants': 'Pants',
     'shorts': 'Shorts',
@@ -144,6 +146,77 @@ def infer_category(item):
     if 'raglan' in blob and 'tee' in blob:
         return 'Tee'
     return 'Tee'
+
+
+_BRAND_PREFIXES = (
+    ('STTU', 'Stanley/Stella'),
+    ('STTW', 'Stanley/Stella'),
+    ('STTK', 'Stanley/Stella'),
+    ('LST', 'Sport-Tek'),
+    ('G185', 'Gildan'),
+    ('G180', 'Gildan'),
+    ('G5', 'Gildan'),
+    ('LPC', 'Port & Company'),
+    ('RS', 'Rabbit Skins'),
+    ('CC', 'Comfort Colors'),
+    ('DT', 'District'),
+    ('DM', 'District'),
+    ('PC', 'Port & Company'),
+    ('ST', 'Sport-Tek'),
+    ('BC', 'Bella+Canvas'),
+)
+
+_AGE_ORDER = {'adult': 0, 'youth': 1, 'toddler': 2, 'baby': 3}
+
+
+def infer_brand(item):
+    stored = str(_val(item, 'brand')).strip()
+    if stored:
+        return stored
+    style = re.sub(r'[^A-Z0-9]', '', str(_val(item, 'style_number')).upper())
+    for prefix, brand in _BRAND_PREFIXES:
+        if style.startswith(prefix):
+            return brand
+    return 'Bella+Canvas' if style else ''
+
+
+def prepare_catalog(products):
+    """Attach display labels and sort so similar items sit together."""
+    items = list(products or [])
+    for product in items:
+        product.display_brand = infer_brand(product)
+        product.display_age = infer_age(product)
+        product.display_category = infer_category(product)
+        product.display_fit = infer_fit(product)
+    items.sort(key=lambda p: (
+        _AGE_ORDER.get(getattr(p, 'display_age', None), 9),
+        getattr(p, 'display_category', None) or '',
+        (getattr(p, 'display_brand', None) or '').lower(),
+        p.name or '',
+    ))
+    return items
+
+
+def catalog_filter_options(products):
+    """Unique Who / Type / Brand values present in this list."""
+    present_ages = {infer_age(p) for p in products}
+    ages = [
+        {'key': key, 'label': label}
+        for key, label in (('adult', 'Adult'), ('youth', 'Youth'), ('toddler', 'Toddler'), ('baby', 'Baby'))
+        if key in present_ages
+    ]
+    categories, brands = [], []
+    seen_cat, seen_brand = set(), set()
+    for product in products:
+        cat = infer_category(product)
+        if cat and cat not in seen_cat:
+            seen_cat.add(cat)
+            categories.append(cat)
+        brand = infer_brand(product)
+        if brand and brand not in seen_brand:
+            seen_brand.add(brand)
+            brands.append(brand)
+    return {'ages': ages, 'categories': sorted(categories), 'brands': sorted(brands)}
 
 
 def matches_filters(item, *, age_group=None, category=None, fit_type=None):

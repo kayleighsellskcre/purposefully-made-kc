@@ -2403,7 +2403,8 @@ def add_collection():
             flash('Something went wrong while creating the group order. Please try again.', 'error')
             return redirect(url_for('admin.add_collection'))
     
-    products = Product.query.filter_by(is_active=True).order_by(Product.style_number).all()
+    from utils.product_filters import catalog_filter_options, prepare_catalog
+    products = prepare_catalog(Product.query.filter_by(is_active=True).all())
     try:
         from models import Design, ProductColorVariant
         gallery_designs = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).all()
@@ -2423,7 +2424,15 @@ def add_collection():
         ('Teko', 'Teko — College jersey'),
         ('Jersey M54', 'Jersey M54 — Classic sports jersey'),
     ]
-    return render_template('admin/add_collection.html', products=products, gallery_designs=gallery_designs or [], all_colors=all_colors, back_design_fonts=back_design_fonts)
+    return render_template(
+        'admin/add_collection.html',
+        products=products,
+        gallery_designs=gallery_designs or [],
+        all_colors=all_colors,
+        back_design_fonts=back_design_fonts,
+        catalog_filter_opts=catalog_filter_options(products),
+        catalog_filter_picker=True,
+    )
 
 
 @admin_bp.route('/collections/<int:collection_id>/edit', methods=['GET', 'POST'])
@@ -2546,7 +2555,8 @@ def edit_collection(collection_id):
             flash('Something went wrong while saving the group order. Please try again.', 'error')
             return redirect(url_for('admin.edit_collection', collection_id=collection.id))
     
-    products = Product.query.filter_by(is_active=True).order_by(Product.style_number).all()
+    from utils.product_filters import catalog_filter_options, prepare_catalog
+    products = prepare_catalog(Product.query.filter_by(is_active=True).all())
     gallery_designs = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).all()
     # All unique colors from products in this collection
     collection_color_names = set()
@@ -2565,7 +2575,7 @@ def edit_collection(collection_id):
         ('Jersey M54', 'Jersey M54 — Classic sports jersey'),
     ]
     
-    return render_template('admin/edit_collection.html', 
+    return render_template('admin/edit_collection.html',
                          collection=collection,
                          products=products,
                          gallery_designs=gallery_designs,
@@ -2573,7 +2583,9 @@ def edit_collection(collection_id):
                          allowed_colors_list=allowed_colors_list,
                          allowed_design_ids_list=allowed_design_ids_list,
                          allowed_placements_list=allowed_placements_list,
-                         back_design_fonts=back_design_fonts)
+                         back_design_fonts=back_design_fonts,
+                         catalog_filter_opts=catalog_filter_options(products),
+                         catalog_filter_picker=True)
 
 
 @admin_bp.route('/collections/<int:collection_id>/delete', methods=['POST'])

@@ -40,6 +40,9 @@ PAGE_SIZE    = 50
 BRAND_STYLES = {
     # Bella+Canvas (core keeps only — trimmed by trim_bc_styles.py)
     'BC': [
+        # Women's Micro Rib series (added to catalog Aug 2026)
+        'BC1010', 'BC1012', 'BC1019', 'BC1080', 'BC1200', 'BC1201', 'BC1501',
+        # Core unisex tees
         'BC3001', 'BC3001CVC', 'BC3001Y', 'BC3001YCVC',
         'BC3005', 'BC3005CVC',
         'BC3413', 'BC3413Y',

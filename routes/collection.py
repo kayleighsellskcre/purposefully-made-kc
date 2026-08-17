@@ -3,6 +3,7 @@ from flask_login import current_user, login_required
 from models import db, Collection, Product, ProductColorVariant, Design
 from utils.mockups import get_carousel_colors_for_product
 from utils.json_fields import parse_json_list
+from utils.product_filters import catalog_filter_options, prepare_catalog
 from utils.sizes import sort_sizes
 from sqlalchemy.orm import joinedload
 import json
@@ -46,11 +47,13 @@ def view(slug):
                 unavailable_products.append(product.name)
         else:
             products.append(product)
-    
-    return render_template('collection/view.html', 
+
+    products = prepare_catalog(products)
+    return render_template('collection/view.html',
                          collection=collection,
                          products=products,
-                         unavailable_products=unavailable_products)
+                         unavailable_products=unavailable_products,
+                         catalog_filter_opts=catalog_filter_options(products))
 
 
 @collection_bp.route('/<slug>/password', methods=['GET', 'POST'])
