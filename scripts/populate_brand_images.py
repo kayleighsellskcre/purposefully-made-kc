@@ -28,6 +28,11 @@ import requests
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
 from dotenv import load_dotenv
 load_dotenv(os.path.join(ROOT, '.env'))
 
@@ -65,8 +70,8 @@ BRAND_STYLES = {
     'RS': ['RS3321', 'RS4400'],
     # Stanley/Stella (SanMar uses their own style numbers but media library may use brand codes)
     'STTU': ['STTU755', 'STTU169', 'STSW013'],
-    # Gildan
-    'G': ['G500', 'G18500', 'G18000'],
+    # Gildan (G500 renamed to G64000 in DB — keep G64000 here)
+    'G': ['G64000', 'G64500', 'G64400', 'G18500', 'G18000'],
 }
 
 # Maps style_number → (search_query_prefix, filename_prefix_in_Widen)
@@ -80,8 +85,10 @@ STYLE_SEARCH_MAP = {
     'CC1717': ('1717', '1717'),
     'CC1566': ('1566', '1566'),
     'CC1466': ('1466', '1466'),
-    # Gildan
-    'G500':   ('5000', '5000'),
+    # Gildan (strip "G" prefix for Widen search — G64000 → "64000", etc.)
+    'G64000': ('64000', '64000'),
+    'G64500': ('64500', '64500'),
+    'G64400': ('64400', '64400'),
     'G18500': ('18500', '18500'),
     'G18000': ('18000', '18000'),
     # Stanley/Stella (SanMar media library codes)
@@ -263,11 +270,31 @@ def main():
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
 
+    # Full brand name → key aliases (case-insensitive)
+    BRAND_ALIASES = {
+        'GILDAN': 'G',
+        'BELLA+CANVAS': 'BC',
+        'BELLA': 'BC',
+        'BELLACANVAS': 'BC',
+        'COMFORT COLORS': 'CC',
+        'COMFORTCOLORS': 'CC',
+        'PORT & COMPANY': 'PC',
+        'PORT AND COMPANY': 'PC',
+        'SPORT-TEK': 'ST',
+        'SPORTTEK': 'ST',
+        'DISTRICT': 'DT',
+        'RABBIT SKINS': 'RS',
+        'RABBITSKINS': 'RS',
+        'STANLEY/STELLA': 'STTU',
+        'STANLEY STELLA': 'STTU',
+    }
+
     # Resolve which brands to process
     if args.brands.lower() == 'all':
         selected_brands = list(BRAND_STYLES.keys())
     else:
-        selected_brands = [b.strip().upper() for b in args.brands.split(',')]
+        raw = [b.strip().upper() for b in args.brands.split(',')]
+        selected_brands = [BRAND_ALIASES.get(b, b) for b in raw]
 
     styles_to_process = []
     for brand in selected_brands:
@@ -309,7 +336,7 @@ def main():
     os.makedirs(os.path.dirname(cache_path), exist_ok=True)
     with open(cache_path, 'w') as f:
         json.dump(all_images, f, indent=2)
-    print(f"Cache saved → {cache_path}")
+    print(f"Cache saved to {cache_path}")
 
     if args.dry_run:
         print("\n[DRY RUN] Skipping database update.")
