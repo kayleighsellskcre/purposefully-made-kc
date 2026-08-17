@@ -52,24 +52,15 @@
                 {% include 'includes/catalog_filter.html' %}
                 <div class="product-checkboxes">
                     {% for product in products %}
-                    {% set first_variant = product.color_variants.first() %}
-                    {% if first_variant and first_variant.front_image_url %}
-                        {% set mockup_url = first_variant.front_image_url %}
-                    {% elif product.front_mockup_template %}
-                        {% set mockup_url = ('/static/' + product.front_mockup_template) if not product.front_mockup_template.startswith(('/', 'http')) else product.front_mockup_template %}
-                    {% elif product.style_number and first_variant %}
-                        {% set mockup_url = '/uploads/mockups/' + product.style_number + '/' + product.style_number + '_' + first_variant.color_name.replace(' ', '_') + '_front.jpg' %}
-                    {% elif product.style_number %}
-                        {% set mockup_url = '/uploads/mockups/' + product.style_number + '/' + product.style_number + '_White_front.jpg' %}
-                    {% else %}
-                        {% set mockup_url = None %}
-                    {% endif %}
-                    <label class="product-checkbox" data-catalog-item data-age="{{ product.display_age }}" data-age-raw="{{ product.age_group or '' }}" data-category="{{ product.display_category }}" data-category-raw="{{ product.category or '' }}" data-brand="{{ product.display_brand }}" data-brand-raw="{{ product.brand or '' }}" data-style="{{ product.style_number or '' }}">
+                    {% set mockup_url = product.preview_image_url or none %}
+                    <label class="product-checkbox" data-catalog-item data-age="{{ product.display_age or '' }}" data-age-raw="{{ product.age_group or '' }}" data-category="{{ product.display_category or '' }}" data-category-raw="{{ product.category or '' }}" data-brand="{{ product.display_brand or '' }}" data-brand-raw="{{ product.brand or '' }}" data-style="{{ product.style_number or '' }}">
                         <input type="checkbox" name="products" value="{{ product.id }}">
                         <div class="product-checkbox-mockup">
                             {% if mockup_url %}
                             <img src="{{ mockup_url }}"
                                  alt="{{ product.name }}"
+                                 loading="lazy"
+                                 referrerpolicy="no-referrer"
                                  onerror="this.closest('.product-checkbox-mockup').innerHTML='<div class=\'product-checkbox-mockup-placeholder\'><svg width=\'32\' height=\'32\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'1.5\'><path d=\'M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z\'></path></svg></div>'">
                             {% else %}
                             <div class="product-checkbox-mockup-placeholder">
@@ -79,7 +70,7 @@
                         </div>
                         <div class="product-checkbox-info">
                             <span class="product-checkbox-name">{{ product.name }}</span>
-                            <small>{{ product.display_brand }} · {{ product.display_category }} · {{ product.style_number }} · ${{ "%.2f"|format(product.base_price) }}</small>
+                            <small>{{ product.display_brand or '' }} · {{ product.display_category or '' }} · {{ product.style_number }} · ${{ "%.2f"|format(product.base_price or 0) }}</small>
                         </div>
                     </label>
                     {% endfor %}

@@ -2403,20 +2403,8 @@ def add_collection():
             flash('Something went wrong while creating the group order. Please try again.', 'error')
             return redirect(url_for('admin.add_collection'))
     
-    from utils.product_filters import catalog_filter_options, prepare_catalog
-    products = prepare_catalog(Product.query.filter_by(is_active=True).all())
-    try:
-        from models import Design, ProductColorVariant
-        gallery_designs = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).all()
-        # All unique colors from active products (for color selection on create)
-        all_colors = set()
-        for p in products:
-            for v in ProductColorVariant.query.filter_by(product_id=p.id).all():
-                all_colors.add(v.color_name)
-        all_colors = sorted(all_colors)
-    except Exception:
-        gallery_designs = []
-        all_colors = []
+    from utils.product_filters import load_group_order_form_catalog
+    catalog = load_group_order_form_catalog()
     back_design_fonts = [
         ('Bebas Neue', 'Bebas Neue — Classic jersey'),
         ('Oswald', 'Oswald — Bold athletic'),
@@ -2426,11 +2414,11 @@ def add_collection():
     ]
     return render_template(
         'admin/add_collection.html',
-        products=products,
-        gallery_designs=gallery_designs or [],
-        all_colors=all_colors,
+        products=catalog['products'],
+        gallery_designs=catalog['gallery_designs'],
+        all_colors=catalog['all_colors'],
         back_design_fonts=back_design_fonts,
-        catalog_filter_opts=catalog_filter_options(products),
+        catalog_filter_opts=catalog['catalog_filter_opts'],
         catalog_filter_picker=True,
     )
 

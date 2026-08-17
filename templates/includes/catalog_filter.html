@@ -1,5 +1,5 @@
 {# Compact Who / Type / Brand filter. Expects catalog_filter_opts and optional catalog_filter_picker. #}
-{% set catalog_filter_opts = catalog_filter_opts or {'ages': [], 'categories': [], 'brands': []} %}
+{% set _filter_opts = catalog_filter_opts if catalog_filter_opts is defined and catalog_filter_opts else {'ages': [], 'categories': [], 'brands': []} %}
 <div class="catf" id="catalogFilter">
     <div class="catf-bar">
         <button type="button" class="catf-toggle" id="catalogFilterBtn" aria-expanded="false" aria-controls="catalogFilterPanel">
@@ -15,34 +15,34 @@
         <button type="button" class="catf-text" id="catalogClearFilters">Clear</button>
     </div>
     <div class="catf-panel" id="catalogFilterPanel" hidden>
-        {% if catalog_filter_opts.ages %}
+        {% if _filter_opts.ages %}
         <div class="catf-row">
             <span class="catf-label">Who</span>
             <div class="catf-chips" data-filter="age">
                 <button type="button" class="catf-chip is-on" data-value="">All</button>
-                {% for age in catalog_filter_opts.ages %}
+                {% for age in _filter_opts.ages %}
                 <button type="button" class="catf-chip" data-value="{{ age.key }}">{{ age.label }}</button>
                 {% endfor %}
             </div>
         </div>
         {% endif %}
-        {% if catalog_filter_opts.categories %}
+        {% if _filter_opts.categories %}
         <div class="catf-row">
             <span class="catf-label">Type</span>
             <div class="catf-chips" data-filter="category">
                 <button type="button" class="catf-chip is-on" data-value="">All</button>
-                {% for cat in catalog_filter_opts.categories %}
+                {% for cat in _filter_opts.categories %}
                 <button type="button" class="catf-chip" data-value="{{ cat }}">{{ cat }}</button>
                 {% endfor %}
             </div>
         </div>
         {% endif %}
-        {% if catalog_filter_opts.brands %}
+        {% if _filter_opts.brands %}
         <div class="catf-row">
             <span class="catf-label">Brand</span>
             <div class="catf-chips" data-filter="brand">
                 <button type="button" class="catf-chip is-on" data-value="">All</button>
-                {% for brand in catalog_filter_opts.brands %}
+                {% for brand in _filter_opts.brands %}
                 <button type="button" class="catf-chip" data-value="{{ brand }}">{{ brand }}</button>
                 {% endfor %}
             </div>

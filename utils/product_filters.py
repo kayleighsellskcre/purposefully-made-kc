@@ -184,10 +184,16 @@ def prepare_catalog(products):
     """Attach display labels and sort so similar items sit together."""
     items = list(products or [])
     for product in items:
-        product.display_brand = infer_brand(product)
-        product.display_age = infer_age(product)
-        product.display_category = infer_category(product)
-        product.display_fit = infer_fit(product)
+        product.display_brand = infer_brand(product) or ''
+        product.display_age = infer_age(product) or ''
+        product.display_category = infer_category(product) or ''
+        product.display_fit = infer_fit(product) or ''
+        if getattr(product, 'base_price', None) is None:
+            product.base_price = 0
+        preview = (getattr(product, 'front_mockup_template', None) or '').strip()
+        if preview and not preview.startswith(('http://', 'https://', '/', 'data:')):
+            preview = '/static/' + preview
+        product.preview_image_url = preview
     items.sort(key=lambda p: (
         _AGE_ORDER.get(getattr(p, 'display_age', None), 9),
         getattr(p, 'display_category', None) or '',
@@ -199,7 +205,11 @@ def prepare_catalog(products):
 
 def catalog_filter_options(products):
     """Unique Who / Type / Brand values present in this list."""
-    present_ages = {infer_age(p) for p in products}
+    try:
+        items = list(products or [])
+    except Exception:
+        return {'ages': [], 'categories': [], 'brands': []}
+    present_ages = {infer_age(p) for p in items}
     ages = [
         {'key': key, 'label': label}
         for key, label in (('adult', 'Adult'), ('youth', 'Youth'), ('toddler', 'Toddler'), ('baby', 'Baby'))
@@ -207,7 +217,7 @@ def catalog_filter_options(products):
     ]
     categories, brands = [], []
     seen_cat, seen_brand = set(), set()
-    for product in products:
+    for product in items:
         cat = infer_category(product)
         if cat and cat not in seen_cat:
             seen_cat.add(cat)
@@ -217,6 +227,53 @@ def catalog_filter_options(products):
             seen_brand.add(brand)
             brands.append(brand)
     return {'ages': ages, 'categories': sorted(categories), 'brands': sorted(brands)}
+
+
+def load_group_order_form_catalog():
+    """Products, colors, and designs for create/edit group-order forms.
+
+    Uses one distinct color query instead of loading every variant per product.
+    That N+1 pattern was crashing the logged-in Create Group Order page
+    (Cloudflare ERR_HTTP2_PROTOCOL_ERROR / origin reset).
+    """
+    from models import Design, Product, ProductColorVariant, db
+
+    products = prepare_catalog(Product.query.filter_by(is_active=True).all())
+    ids = [p.id for p in products]
+    all_colors = []
+    gallery_designs = []
+    try:
+        if ids:
+            rows = (
+                db.session.query(ProductColorVariant.color_name)
+                .filter(
+                    ProductColorVariant.product_id.in_(ids),
+                    ProductColorVariant.color_name.isnot(None),
+                    ProductColorVariant.color_name != '',
+                )
+                .distinct()
+                .order_by(ProductColorVariant.color_name)
+                .all()
+            )
+            all_colors = [name for (name,) in rows if name]
+    except Exception:
+        all_colors = []
+    try:
+        gallery_designs = (
+            Design.query.filter_by(is_gallery=True)
+            .order_by(Design.uploaded_at.desc())
+            .limit(80)
+            .all()
+        )
+    except Exception:
+        gallery_designs = []
+    return {
+        'products': products,
+        'all_colors': all_colors,
+        'gallery_designs': gallery_designs,
+        'catalog_filter_opts': catalog_filter_options(products),
+        'catalog_filter_picker': True,
+    }
 
 
 def matches_filters(item, *, age_group=None, category=None, fit_type=None):

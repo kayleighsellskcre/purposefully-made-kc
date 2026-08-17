@@ -43,10 +43,10 @@
                 {% include 'includes/catalog_filter.html' %}
                 <div class="product-checkboxes">
                     {% for product in products %}
-                    <label class="product-checkbox" data-catalog-item data-age="{{ product.display_age }}" data-age-raw="{{ product.age_group or '' }}" data-category="{{ product.display_category }}" data-category-raw="{{ product.category or '' }}" data-brand="{{ product.display_brand }}" data-brand-raw="{{ product.brand or '' }}" data-style="{{ product.style_number or '' }}">
+                    <label class="product-checkbox" data-catalog-item data-age="{{ product.display_age or '' }}" data-age-raw="{{ product.age_group or '' }}" data-category="{{ product.display_category or '' }}" data-category-raw="{{ product.category or '' }}" data-brand="{{ product.display_brand or '' }}" data-brand-raw="{{ product.brand or '' }}" data-style="{{ product.style_number or '' }}">
                         <input type="checkbox" name="products" value="{{ product.id }}" {% if product in collection.products %}checked{% endif %}>
                         <span>{{ product.name }}</span>
-                        <small>{{ product.display_brand }} · {{ product.display_category }} · {{ product.style_number }} · ${{ "%.2f"|format(product.base_price) }}</small>
+                        <small>{{ product.display_brand or '' }} · {{ product.display_category or '' }} · {{ product.style_number }} · ${{ "%.2f"|format(product.base_price or 0) }}</small>
                     </label>
                     {% endfor %}
                 </div>

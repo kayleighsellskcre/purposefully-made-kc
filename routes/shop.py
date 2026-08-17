@@ -197,11 +197,10 @@ def group_orders():
 @login_required
 def create_group_order():
     """Create a group order - any logged-in user with a profile"""
-    from routes.admin import _save_uploaded_design
-    from models import ProductColorVariant
     from datetime import datetime
     
     if request.method == 'POST':
+        from routes.admin import _save_uploaded_design
         from slugify import slugify
         from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
@@ -339,17 +338,8 @@ def create_group_order():
                   'details and try again.', 'error')
             return redirect(url_for('shop.create_group_order'))
     
-    products = prepare_catalog(Product.query.filter_by(is_active=True).all())
-    try:
-        gallery_designs = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).all()
-        all_colors = set()
-        for p in products:
-            for v in ProductColorVariant.query.filter_by(product_id=p.id).all():
-                all_colors.add(v.color_name)
-        all_colors = sorted(all_colors)
-    except Exception:
-        gallery_designs = []
-        all_colors = []
+    from utils.product_filters import load_group_order_form_catalog
+    catalog = load_group_order_form_catalog()
     back_design_fonts = [
         ('Freshman', 'Freshman — Classic college jersey'),
         ('Black Ops One', 'Black Ops One — Bold varsity block'),
@@ -362,11 +352,11 @@ def create_group_order():
         ('Jersey M54', 'Jersey M54 — Classic sports jersey'),
     ]
     return render_template('admin/add_collection.html',
-                         products=products,
-                         gallery_designs=gallery_designs or [],
-                         all_colors=all_colors,
+                         products=catalog['products'],
+                         gallery_designs=catalog['gallery_designs'],
+                         all_colors=catalog['all_colors'],
                          back_design_fonts=back_design_fonts,
-                         catalog_filter_opts=catalog_filter_options(products),
+                         catalog_filter_opts=catalog['catalog_filter_opts'],
                          catalog_filter_picker=True,
                          is_user_create=True)
 
