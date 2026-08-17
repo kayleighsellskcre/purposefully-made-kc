@@ -257,13 +257,11 @@ def create_group_order():
             allowed_placements = request.form.getlist('allowed_placements')
             collection.allowed_placements = json.dumps(allowed_placements) if allowed_placements else None
 
-            # Collect chosen gallery designs + any newly uploaded artwork
-            allowed_design_ids = []
-            for raw in request.form.getlist('allowed_designs'):
-                try:
-                    allowed_design_ids.append(int(raw))
-                except (TypeError, ValueError):
-                    continue
+            # Collect chosen gallery / own designs + any newly uploaded artwork
+            from utils.privacy import selectable_group_order_design_ids
+            allowed_design_ids = selectable_group_order_design_ids(
+                request.form.getlist('allowed_designs'), current_user
+            )
             upload_count = 0
             for f in request.files.getlist('design_uploads'):
                 if f and f.filename:
@@ -368,6 +366,90 @@ def create_group_order():
                          is_user_create=True)
 
 
+_GROUP_ORDER_FONTS = [
+    ('Freshman', 'Freshman — Classic college jersey'),
+    ('Black Ops One', 'Black Ops One — Bold varsity block'),
+    ('Graduate', 'Graduate — Collegiate style'),
+    ('Squada One', 'Squada One — Modern athletic numbers'),
+    ('Bebas Neue', 'Bebas Neue — Clean jersey'),
+    ('Oswald', 'Oswald — Bold athletic'),
+    ('Anton', 'Anton — Strong block'),
+    ('Teko', 'Teko — College jersey'),
+    ('Jersey M54', 'Jersey M54 — Classic sports jersey'),
+]
+
+
+@shop_bp.route('/group-orders/<slug>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_group_order(slug):
+    """Let the organizer (or admin) change an existing group order."""
+    import json
+    from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+    from utils.group_orders import (
+        apply_collection_form,
+        designs_for_group_order_form,
+        user_can_manage_collection,
+    )
+    from utils.product_filters import load_group_order_form_catalog
+
+    collection = Collection.query.filter_by(slug=slug).first_or_404()
+    if not user_can_manage_collection(collection):
+        flash('You can only edit group orders you created.', 'error')
+        return redirect(url_for('account.my_group_orders'))
+
+    if request.method == 'POST':
+        try:
+            ok, error, upload_count = apply_collection_form(
+                collection, current_user, allow_slug=False, require_products=True
+            )
+            if not ok:
+                db.session.rollback()
+                flash(error, 'error')
+                return redirect(url_for('shop.edit_group_order', slug=collection.slug))
+            db.session.commit()
+            msg = 'Group order updated'
+            if upload_count:
+                msg += f' with {upload_count} new design(s) uploaded'
+            flash(msg + '.', 'success')
+            if collection.is_active:
+                return redirect(url_for('collection.share', slug=collection.slug))
+            return redirect(url_for('account.my_group_orders'))
+        except IntegrityError:
+            db.session.rollback()
+            flash('Could not save those changes. Please try again.', 'error')
+            return redirect(url_for('shop.edit_group_order', slug=slug))
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            current_app.logger.exception('Organizer edit_group_order database error: %s', e)
+            flash('Could not save the group order due to a server issue. Please try again.', 'error')
+            return redirect(url_for('shop.edit_group_order', slug=slug))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.exception('Organizer edit_group_order unexpected error: %s', e)
+            flash('Something went wrong while saving. Please try again.', 'error')
+            return redirect(url_for('shop.edit_group_order', slug=slug))
+
+    catalog = load_group_order_form_catalog()
+    allowed_colors_list = json.loads(collection.allowed_colors) if collection.allowed_colors else []
+    allowed_design_ids_list = json.loads(collection.allowed_design_ids) if collection.allowed_design_ids else []
+    allowed_placements_list = json.loads(collection.allowed_placements) if collection.allowed_placements else ['center_chest', 'left_chest', 'right_chest', 'center_back']
+    return render_template(
+        'shop/edit_group_order.html',
+        collection=collection,
+        products=catalog['products'],
+        gallery_designs=designs_for_group_order_form(collection),
+        collection_colors=catalog['all_colors'],
+        allowed_colors_list=allowed_colors_list,
+        allowed_design_ids_list=allowed_design_ids_list,
+        allowed_placements_list=allowed_placements_list,
+        back_design_fonts=_GROUP_ORDER_FONTS,
+        collection_product_ids=[p.id for p in collection.products],
+        catalog_filter_opts=catalog['catalog_filter_opts'],
+        catalog_filter_picker=True,
+        is_user_edit=True,
+    )
+
+
 @shop_bp.route('/designs')
 def design_gallery():
     """Browse designs available for custom apparel"""
@@ -457,8 +539,9 @@ def customize(product_id):
     design_id = request.args.get('design_id', type=int)
     preset_design = None
     if design_id:
+        from utils.privacy import user_can_use_design
         d = Design.query.get(design_id)
-        if d and (getattr(d, 'is_gallery', False) or (allowed_design_ids and d.id in allowed_design_ids)):
+        if d and user_can_use_design(d, collection=coll):
             preset_design = {
                 'id': d.id,
                 'url': _resolve_image_url(d.file_path),

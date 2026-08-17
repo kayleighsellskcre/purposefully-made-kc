@@ -120,7 +120,6 @@ def add():
         return jsonify({'error': 'Size and color are required'}), 400
 
     from utils.group_orders import (
-        design_allowed_for_collection,
         get_active_collection,
         ordering_blocked,
     )
@@ -159,15 +158,14 @@ def add():
                 pass
             design_url = f"/static/uploads/designs/{unique_filename}"
     elif design_id:
-        # Gallery design, collection design, or user's own design
+        # Gallery, this group order's logos, or the shopper's own uploads only
         from models import Design
-        design = Design.query.get(int(design_id))
-        if design:
-            is_gallery = getattr(design, 'is_gallery', False)
-            is_own = current_user.is_authenticated and design.uploaded_by_user_id == current_user.id
-            is_collection_design = collection and design_allowed_for_collection(design, collection)
-            if is_gallery or is_own or is_collection_design:
-                design_url = _resolve_image_url(design.file_path)
+        from utils.privacy import user_can_use_design
+        design = Design.query.get(int(design_id)) if str(design_id).isdigit() else None
+        if design and user_can_use_design(design, collection=collection):
+            design_url = _resolve_image_url(design.file_path)
+        else:
+            design_id = None
     
     # Handle back design: uploaded file or URL (from prior upload)
     import time as _t

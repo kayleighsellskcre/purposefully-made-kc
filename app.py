@@ -394,6 +394,20 @@ def create_app(config_class=Config):
     except Exception as e:
         print(f"Scheduler init skipped: {e}", file=sys_module.stderr)
     
+    # Apple Pay domain verification — required for Apple Pay to work on Safari/iOS.
+    # Apple fetches this URL to confirm the domain is authorized to use Apple Pay via Stripe.
+    @app.route('/.well-known/apple-developer-merchantid-domain-association')
+    def apple_pay_domain_association():
+        import requests as _req
+        try:
+            r = _req.get(
+                'https://stripe.com/files/apple-pay/apple-developer-merchantid-domain-association',
+                timeout=10
+            )
+            return r.content, 200, {'Content-Type': 'application/octet-stream'}
+        except Exception:
+            return '', 404
+
     # Diagnostic endpoint — tells us which git commit Railway is running.
     # Check at /version to verify deployments landed.
     @app.route('/version')

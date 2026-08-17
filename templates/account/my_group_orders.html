@@ -63,7 +63,8 @@
                         </div>
                         <div style="display:flex;gap:0.6rem;flex-shrink:0;">
                             <a href="{{ url_for('collection.view', slug=c.slug) }}" class="btn btn-outline btn-sm" target="_blank">View Store</a>
-                            <a href="{{ url_for('collection.share', slug=c.slug) }}" class="btn btn-primary btn-sm">Manage</a>
+                            <a href="{{ url_for('shop.edit_group_order', slug=c.slug) }}" class="btn btn-outline btn-sm">Edit</a>
+                            <a href="{{ url_for('collection.share', slug=c.slug) }}" class="btn btn-primary btn-sm">Share</a>
                         </div>
                     </div>
                     {% endfor %}

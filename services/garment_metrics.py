@@ -34,6 +34,9 @@ _ALLOWED_HOSTS = frozenset((
     'cdnm.sanmar.com',
     'www.sanmar.com',
     'sanmar.com',
+    'www.apparel4print.com',
+    'apparel4print.com',
+    'cdn.shopify.com',
 ))
 
 _WORK_SIZE = 320          # silhouette detection resolution

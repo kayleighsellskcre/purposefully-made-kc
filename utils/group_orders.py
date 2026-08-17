@@ -143,6 +143,143 @@ def leave_group_order():
     session.modified = True
 
 
+def user_can_manage_collection(collection, user=None):
+    """True if this user created the group order or is a site admin."""
+    from flask_login import current_user
+    user = current_user if user is None else user
+    if not collection or not getattr(user, 'is_authenticated', False):
+        return False
+    if getattr(user, 'is_admin', False):
+        return True
+    return collection.created_by_user_id == user.id
+
+
+def apply_collection_form(collection, user, *, allow_slug=False, require_products=True):
+    """Save create/edit group-order fields from the current request.
+
+    Returns (ok, error_message, upload_count). On failure the caller should
+    rollback; this function does not commit.
+    """
+    from flask import request
+    from models import Product
+    from utils.privacy import selectable_group_order_design_ids
+    import json
+
+    name = (request.form.get('name') or '').strip()
+    if not name:
+        return False, 'Please enter a name for your group order.', 0
+    collection.name = name
+
+    if allow_slug:
+        new_slug = (request.form.get('slug') or '').strip()
+        if new_slug:
+            existing = Collection.query.filter_by(slug=new_slug).first()
+            if existing and existing.id != collection.id:
+                return False, f'URL slug "{new_slug}" is already used by another group order.', 0
+            collection.slug = new_slug
+
+    collection.description = request.form.get('description')
+    collection.pickup_address = request.form.get('pickup_address')
+    collection.pickup_instructions = request.form.get('pickup_instructions')
+    collection.shipping_enabled = request.form.get('shipping_enabled') == 'on'
+    try:
+        collection.tax_rate = float(request.form.get('tax_rate') or 0)
+    except (TypeError, ValueError):
+        collection.tax_rate = 0.0
+
+    collection.is_active = request.form.get('is_active') == 'on'
+
+    collection.restrict_options = request.form.get('restrict_options') == 'on'
+    collection.allow_custom_upload = True
+    allowed_colors = request.form.getlist('allowed_colors')
+    collection.allowed_colors = json.dumps(allowed_colors) if allowed_colors else None
+    allowed_placements = request.form.getlist('allowed_placements')
+    collection.allowed_placements = json.dumps(allowed_placements) if allowed_placements else None
+
+    keep_design_ids = allowed_design_ids(collection)
+    design_ids = selectable_group_order_design_ids(
+        request.form.getlist('allowed_designs'),
+        user,
+        keep_ids=keep_design_ids,
+    )
+    upload_count = 0
+    from routes.admin import _save_collection_design
+    for f in request.files.getlist('design_uploads'):
+        if f and f.filename:
+            try:
+                design = _save_collection_design(f, user.id)
+            except Exception:
+                design = None
+            if design:
+                design_ids.append(design.id)
+                upload_count += 1
+    collection.allowed_design_ids = json.dumps(design_ids) if design_ids else None
+    if design_ids or allowed_colors:
+        collection.restrict_options = True
+
+    collection.back_design_font = request.form.get('back_design_font') or None
+    collection.back_design_text_color = request.form.get('back_design_text_color') or None
+    collection.back_design_outline = request.form.get('back_design_outline') != 'off'
+    collection.back_design_outline_color = request.form.get('back_design_outline_color') or None
+    collection.lock_back_design_style = request.form.get('lock_back_design_style') == 'on'
+
+    password = (request.form.get('password') or '').strip()
+    if request.form.get('password_protected') == 'on':
+        if password:
+            collection.set_password(password)
+    else:
+        collection.is_password_protected = False
+        collection.password_hash = None
+
+    deadline_str = (request.form.get('order_deadline') or '').strip()
+    if deadline_str:
+        try:
+            collection.order_deadline = parse_order_deadline(deadline_str)
+        except ValueError:
+            return False, 'The order deadline date is invalid. Please pick a valid date.', 0
+    else:
+        collection.order_deadline = None
+
+    selected_products = []
+    collection.products = []
+    for product_id in request.form.getlist('products'):
+        try:
+            pid = int(product_id)
+        except (TypeError, ValueError):
+            continue
+        product = Product.query.get(pid)
+        if product:
+            selected_products.append(product)
+            collection.products.append(product)
+    if require_products and not selected_products:
+        return False, 'Please pick at least one shirt style so your team has something to order.', 0
+
+    return True, None, upload_count
+
+
+def designs_for_group_order_form(collection, user=None):
+    """Gallery designs plus logos already on this store (and the organizer's uploads)."""
+    from flask_login import current_user
+    from models import Design
+
+    user = current_user if user is None else user
+    gallery = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).all()
+    by_id = {d.id: d for d in gallery}
+    for did in allowed_design_ids(collection):
+        if did not in by_id:
+            d = Design.query.get(did)
+            if d:
+                by_id[d.id] = d
+    if user is not None and getattr(user, 'is_authenticated', False):
+        own = Design.query.filter(
+            Design.uploaded_by_user_id == user.id,
+            Design.is_gallery == False,
+        ).order_by(Design.uploaded_at.desc()).limit(40).all()
+        for d in own:
+            by_id.setdefault(d.id, d)
+    return list(by_id.values())
+
+
 def ordering_blocked(collection, product_id=None):
     """Human-readable reason this group order cannot accept this item, or None."""
     if not collection:

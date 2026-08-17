@@ -35,8 +35,12 @@ def index():
     try:
         featured_products = Product.query.filter_by(is_active=True).order_by(Product.style_number).limit(8).all()
         now = datetime.now(timezone.utc).replace(tzinfo=None)
+        # Only admin-created, non-password stores. Customer group orders stay
+        # off the homepage and are reached only via the organizer's share link.
         active_collections = Collection.query.filter(
             Collection.is_active == True,
+            Collection.is_password_protected == False,
+            Collection.created_by_user_id.is_(None),
             (Collection.order_deadline == None) | (Collection.order_deadline >= now)
         ).order_by(Collection.created_at.desc()).limit(6).all()
         return render_template('index.html', 

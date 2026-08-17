@@ -340,8 +340,10 @@ def validate_design():
     print_width = data.get('print_width')  # inches
     print_height = data.get('print_height')  # inches
     
+    from utils.privacy import user_can_use_design
+    from utils.group_orders import get_active_collection
     design = Design.query.get(design_id)
-    if not design:
+    if not design or not user_can_use_design(design, collection=get_active_collection()):
         return jsonify({'error': 'Design not found'}), 404
     
     warnings = []

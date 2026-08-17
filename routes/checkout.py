@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash, current_app
+from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash, current_app, abort
 from flask_login import current_user, login_required
 from flask_mail import Message
 from models import db, Product, Order, OrderItem, Design, Address, User
@@ -848,14 +848,11 @@ def complete():
 
 @checkout_bp.route('/confirmation/<order_number>')
 def confirmation(order_number):
-    """Order confirmation page"""
+    """Order confirmation page — only the buyer (or admin) can open it."""
+    from utils.privacy import user_can_view_order
     order = Order.query.filter_by(order_number=order_number).first_or_404()
-    
-    # If user is logged in, verify it's their order
-    if current_user.is_authenticated and order.user_id != current_user.id:
-        if not current_user.is_admin:
-            flash('Order not found', 'error')
-            return redirect(url_for('main.index'))
+    if not user_can_view_order(order):
+        abort(404)
 
     email_sent = bool(getattr(order, 'confirmation_email_sent_at', None))
     return render_template('checkout/confirmation.html', order=order, email_sent=email_sent)
@@ -868,8 +865,9 @@ def send_confirmation_email_now(order_number):
     Checkout returns immediately so SMTP cannot time out the order. This
     follow-up request stays alive long enough for Gmail to accept the mail.
     """
+    from utils.privacy import user_can_view_order
     order = Order.query.filter_by(order_number=order_number).first_or_404()
-    if current_user.is_authenticated and order.user_id != current_user.id and not current_user.is_admin:
+    if not user_can_view_order(order):
         return jsonify({'success': False, 'error': 'Order not found'}), 404
     sent = send_order_confirmation_email(order)
     return jsonify({

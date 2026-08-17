@@ -47,6 +47,17 @@ def admin_required(f):
     return decorated_function
 
 
+@admin_bp.before_request
+def _admin_account_firewall():
+    """Second lock on every /admin URL so a missed decorator cannot leak shop data."""
+    if not current_user.is_authenticated:
+        flash('Please log in to continue.', 'error')
+        return redirect(url_for('auth.login', next=request.path))
+    if not getattr(current_user, 'is_admin', False):
+        flash('Access denied. Admin access is restricted.', 'error')
+        return redirect(url_for('main.index'))
+
+
 _ALLOWED_DESIGN_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.heic', '.heif']
 
 
@@ -2352,12 +2363,10 @@ def add_collection():
             allowed_placements = request.form.getlist('allowed_placements')
             collection.allowed_placements = json.dumps(allowed_placements) if allowed_placements else None
 
-            allowed_design_ids = []
-            for raw in request.form.getlist('allowed_designs'):
-                try:
-                    allowed_design_ids.append(int(raw))
-                except (TypeError, ValueError):
-                    continue
+            from utils.privacy import selectable_group_order_design_ids
+            allowed_design_ids = selectable_group_order_design_ids(
+                request.form.getlist('allowed_designs'), current_user
+            )
             upload_count = 0
             for f in request.files.getlist('design_uploads'):
                 if f and f.filename:
@@ -2452,7 +2461,8 @@ def add_collection():
 @admin_required
 def edit_collection(collection_id):
     """Edit collection"""
-    from models import ProductColorVariant, Design
+    from utils.product_filters import catalog_filter_options, prepare_catalog
+    from utils.group_orders import apply_collection_form, designs_for_group_order_form
     import json
 
     collection = Collection.query.get_or_404(collection_id)
@@ -2461,90 +2471,13 @@ def edit_collection(collection_id):
         from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
         try:
-            name = (request.form.get('name') or '').strip()
-            if not name:
-                flash('Please enter a name for the group order.', 'error')
+            ok, error, upload_count = apply_collection_form(
+                collection, current_user, allow_slug=True, require_products=True
+            )
+            if not ok:
+                db.session.rollback()
+                flash(error, 'error')
                 return redirect(url_for('admin.edit_collection', collection_id=collection.id))
-            collection.name = name
-
-            new_slug = (request.form.get('slug') or '').strip()
-            if new_slug:
-                existing = Collection.query.filter_by(slug=new_slug).first()
-                if existing and existing.id != collection.id:
-                    flash(f'URL slug "{new_slug}" is already used by another group order.', 'error')
-                    return redirect(url_for('admin.edit_collection', collection_id=collection.id))
-                collection.slug = new_slug
-
-            collection.description = request.form.get('description')
-            collection.is_active = request.form.get('is_active') == 'on'
-            collection.pickup_address = request.form.get('pickup_address')
-            collection.pickup_instructions = request.form.get('pickup_instructions')
-            collection.shipping_enabled = request.form.get('shipping_enabled') == 'on'
-            try:
-                collection.tax_rate = float(request.form.get('tax_rate') or 0)
-            except (TypeError, ValueError):
-                collection.tax_rate = 0.0
-
-            collection.restrict_options = request.form.get('restrict_options') == 'on'
-            collection.allow_custom_upload = True
-            allowed_colors = request.form.getlist('allowed_colors')
-            collection.allowed_colors = json.dumps(allowed_colors) if allowed_colors else None
-            allowed_placements = request.form.getlist('allowed_placements')
-            collection.allowed_placements = json.dumps(allowed_placements) if allowed_placements else None
-
-            allowed_design_ids = []
-            for raw in request.form.getlist('allowed_designs'):
-                try:
-                    allowed_design_ids.append(int(raw))
-                except (TypeError, ValueError):
-                    continue
-            upload_count = 0
-            for f in request.files.getlist('design_uploads'):
-                if f and f.filename:
-                    try:
-                        design = _save_collection_design(f, current_user.id)
-                    except Exception as e:
-                        current_app.logger.exception('Collection design upload failed: %s', e)
-                        design = None
-                    if design:
-                        allowed_design_ids.append(design.id)
-                        upload_count += 1
-            collection.allowed_design_ids = json.dumps(allowed_design_ids) if allowed_design_ids else None
-            collection.back_design_font = request.form.get('back_design_font') or None
-
-            # Uniform back-design style controls
-            collection.back_design_text_color = request.form.get('back_design_text_color') or None
-            collection.back_design_outline = request.form.get('back_design_outline') != 'off'
-            collection.back_design_outline_color = request.form.get('back_design_outline_color') or None
-            collection.lock_back_design_style = request.form.get('lock_back_design_style') == 'on'
-
-            password = request.form.get('password')
-            if password:
-                collection.set_password(password)
-            elif request.form.get('remove_password') == 'on':
-                collection.is_password_protected = False
-                collection.password_hash = None
-
-            deadline_str = (request.form.get('order_deadline') or '').strip()
-            if deadline_str:
-                try:
-                    from utils.group_orders import parse_order_deadline
-                    collection.order_deadline = parse_order_deadline(deadline_str)
-                except ValueError:
-                    flash('The order deadline date is invalid. Please pick a valid date.', 'error')
-                    return redirect(url_for('admin.edit_collection', collection_id=collection.id))
-            else:
-                collection.order_deadline = None
-
-            collection.products = []
-            for product_id in request.form.getlist('products'):
-                try:
-                    pid = int(product_id)
-                except (TypeError, ValueError):
-                    continue
-                product = Product.query.get(pid)
-                if product:
-                    collection.products.append(product)
 
             db.session.commit()
             msg = 'Group order updated successfully'
@@ -2569,10 +2502,8 @@ def edit_collection(collection_id):
             flash('Something went wrong while saving the group order. Please try again.', 'error')
             return redirect(url_for('admin.edit_collection', collection_id=collection.id))
     
-    from utils.product_filters import catalog_filter_options, prepare_catalog
     products = prepare_catalog(Product.query.filter_by(is_active=True).all())
-    gallery_designs = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).all()
-    # All unique colors from products in this collection
+    gallery_designs = designs_for_group_order_form(collection)
     collection_color_names = set()
     for p in collection.products:
         for v in ProductColorVariant.query.filter_by(product_id=p.id).all():
@@ -2582,7 +2513,11 @@ def edit_collection(collection_id):
     allowed_design_ids_list = json.loads(collection.allowed_design_ids) if collection.allowed_design_ids else []
     allowed_placements_list = json.loads(collection.allowed_placements) if collection.allowed_placements else ['center_chest', 'left_chest', 'right_chest', 'center_back']
     back_design_fonts = [
-        ('Bebas Neue', 'Bebas Neue — Classic jersey'),
+        ('Freshman', 'Freshman — Classic college jersey'),
+        ('Black Ops One', 'Black Ops One — Bold varsity block'),
+        ('Graduate', 'Graduate — Collegiate style'),
+        ('Squada One', 'Squada One — Modern athletic numbers'),
+        ('Bebas Neue', 'Bebas Neue — Clean jersey'),
         ('Oswald', 'Oswald — Bold athletic'),
         ('Anton', 'Anton — Strong block'),
         ('Teko', 'Teko — College jersey'),
@@ -2598,6 +2533,7 @@ def edit_collection(collection_id):
                          allowed_design_ids_list=allowed_design_ids_list,
                          allowed_placements_list=allowed_placements_list,
                          back_design_fonts=back_design_fonts,
+                         collection_product_ids=[p.id for p in collection.products],
                          catalog_filter_opts=catalog_filter_options(products),
                          catalog_filter_picker=True)
 

@@ -1,12 +1,12 @@
-{% extends "admin/base_admin.html" %}
+{% extends "base.html" %}
 
-{% block title %}Edit {{ collection.name }} - Admin - Purposefully Made KC{% endblock %}
+{% block title %}Edit {{ collection.name }} - Purposefully Made KC{% endblock %}
 
 {% block extra_css %}
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@500;600;700&family=Anton&family=Teko:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.cdnfonts.com/css/jersey-m54" rel="stylesheet">
 {% endblock %}
 
-{% block admin_content %}
+{% block content %}
 {% include 'includes/group_order_edit_form.html' %}
 {% endblock %}

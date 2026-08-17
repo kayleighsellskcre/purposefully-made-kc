@@ -16,6 +16,9 @@
             <p class="share-hint">Anyone with this link can view and order from this group order.</p>
 
             <a href="{{ url_for('collection.view', slug=collection.slug) }}" class="btn btn-outline">View Group Order</a>
+            {% if can_manage %}
+            <a href="{{ url_for('shop.edit_group_order', slug=collection.slug) }}" class="btn btn-outline" style="margin-left:0.5rem;">Edit store</a>
+            {% endif %}
 
             {% if can_manage %}
             <div class="export-bar">
@@ -62,7 +65,7 @@
         {% elif can_manage %}
         <div class="manage-designs-card">
             <h2>Designs</h2>
-            <p class="share-hint">No designs have been added to this group order yet. You can add designs by editing the group order.</p>
+            <p class="share-hint">No designs have been added to this group order yet. <a href="{{ url_for('shop.edit_group_order', slug=collection.slug) }}">Edit the group order</a> to add designs.</p>
         </div>
         {% endif %}
     </div>

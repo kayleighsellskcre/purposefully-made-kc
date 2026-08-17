@@ -67,13 +67,10 @@ def promote_admin():
     return redirect(url_for('auth.login'))
 
 
-def _clear_cart_for_new_user():
-    """Clear cart when user logs in/registers so each account has its own cart."""
-    if 'cart' in session:
-        session.pop('cart', None)
-    if 'cart_owner_id' in session:
-        session.pop('cart_owner_id', None)
-    session.modified = True
+def _start_fresh_login_session():
+    """New session on login/register so carts and cookies cannot leak across accounts."""
+    session.clear()
+    session.permanent = True
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -127,8 +124,8 @@ def login():
             user.is_admin = True
 
         db.session.commit()
+        _start_fresh_login_session()
         login_user(user, remember=remember)
-        _clear_cart_for_new_user()
 
         next_page = request.args.get('next')
         if not next_page or urlparse(next_page).netloc != '':
@@ -186,8 +183,8 @@ def register():
         db.session.add(user)
         db.session.commit()
 
+        _start_fresh_login_session()
         login_user(user)
-        _clear_cart_for_new_user()
         flash('Account created successfully!', 'success')
         return redirect(url_for('main.index'))
     
@@ -275,5 +272,6 @@ def reset_password(token):
 @login_required
 def logout():
     logout_user()
+    session.clear()
     flash('You have been logged out', 'info')
     return redirect(url_for('main.index'))

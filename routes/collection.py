@@ -93,7 +93,12 @@ def password(slug):
 @collection_bp.route('/<slug>/share')
 def share(slug):
     """Collection share page (shows share link and QR code)"""
-    collection = Collection.query.filter_by(slug=slug, is_active=True).first_or_404()
+    from utils.group_orders import user_can_manage_collection
+
+    collection = Collection.query.filter_by(slug=slug).first_or_404()
+    if not collection.is_active and not user_can_manage_collection(collection):
+        from flask import abort
+        abort(404)
 
     # Check password if protected
     if collection.is_password_protected:

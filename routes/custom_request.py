@@ -2,6 +2,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
 from flask_login import login_required, current_user
 from models import db, CustomDesignRequest, Design
+import secrets
 
 custom_request_bp = Blueprint('custom_request', __name__, url_prefix='/custom-design')
 
@@ -47,7 +48,7 @@ def submit():
                 file,
                 current_app._get_current_object(),
                 subfolder='custom_requests',
-                public_id_prefix=f'request_{current_user.id}',
+                public_id_prefix=f'request_{secrets.token_hex(8)}',
             )
         except Exception as e:
             current_app.logger.exception(
