@@ -186,9 +186,37 @@ def index():
 
 @shop_bp.route('/group-orders')
 def group_orders():
-    """Group order landing page - teams, schools, organizations"""
+    """Group order landing page + public directory of open collections"""
     from flask_login import current_user
-    return render_template('shop/group_orders.html', is_admin=current_user.is_authenticated and getattr(current_user, 'is_admin', False))
+    from models import Collection
+    from utils.group_orders import is_deadline_passed
+    from datetime import datetime
+
+    # Fetch all active collections marked for the public directory
+    directory = Collection.query.filter_by(is_active=True, show_in_directory=True).order_by(Collection.created_at.desc()).all()
+    # Annotate each with deadline status and a preview image
+    open_collections = []
+    for c in directory:
+        if is_deadline_passed(c):
+            continue
+        # Grab first product image for the card thumbnail
+        preview_img = None
+        for prod in (c.products or []):
+            imgs = [v.front_image_url for v in (prod.color_variants or []) if v.front_image_url]
+            if imgs:
+                preview_img = imgs[0]
+                break
+        open_collections.append({
+            'collection': c,
+            'preview_img': preview_img,
+            'product_count': len(c.products or []),
+        })
+
+    return render_template(
+        'shop/group_orders.html',
+        is_admin=current_user.is_authenticated and getattr(current_user, 'is_admin', False),
+        open_collections=open_collections,
+    )
 
 
 @shop_bp.route('/group-orders/create', methods=['GET', 'POST'])

@@ -178,7 +178,12 @@
 
                 <div class="form-check">
                     <input type="checkbox" id="password_protected" name="password_protected" {% if collection.is_password_protected %}checked{% endif %}>
-                    <label for="password_protected">Password protected</label>
+                    <label for="password_protected">Password protected (requires code to enter)</label>
+                </div>
+
+                <div class="form-check">
+                    <input type="checkbox" id="show_in_directory" name="show_in_directory" {% if collection.show_in_directory %}checked{% endif %}>
+                    <label for="show_in_directory">Show in public Group Orders directory</label>
                 </div>
 
                 <div class="form-group" id="password-field" style="{% if not collection.is_password_protected %}display: none;{% endif %}">

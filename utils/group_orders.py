@@ -182,6 +182,7 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
     collection.pickup_address = request.form.get('pickup_address')
     collection.pickup_instructions = request.form.get('pickup_instructions')
     collection.shipping_enabled = request.form.get('shipping_enabled') == 'on'
+    collection.show_in_directory = request.form.get('show_in_directory') == 'on'
     try:
         collection.tax_rate = float(request.form.get('tax_rate') or 0)
     except (TypeError, ValueError):

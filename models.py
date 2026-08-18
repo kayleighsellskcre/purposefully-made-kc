@@ -153,6 +153,9 @@ class Collection(db.Model):
     # When True + restrict_options, participants cannot change font/color/outline
     lock_back_design_style = db.Column(db.Boolean, default=False)
 
+    # Public directory — admin toggles this to list the collection on /group-orders
+    show_in_directory = db.Column(db.Boolean, default=False)
+
     # Creator tracking — set when a logged-in user creates via /shop/group-orders/create
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
 

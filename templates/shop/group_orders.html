@@ -91,6 +91,111 @@
     line-height: 1.65;
     margin: 0;
 }
+/* ── Directory ── */
+.directory-section {
+    margin-top: 5rem;
+    padding-top: 3.5rem;
+    border-top: 2px solid var(--border-light);
+}
+.directory-section h2 {
+    font-family: var(--font-heading);
+    font-size: 1.75rem;
+    text-align: center;
+    margin-bottom: 0.5rem;
+}
+.directory-section .section-sub {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-bottom: 2.5rem;
+}
+.directory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+.dir-card {
+    background: #fff;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-light);
+    box-shadow: var(--box-shadow);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.dir-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 28px rgba(0,0,0,0.1);
+}
+.dir-card-img {
+    height: 160px;
+    background: linear-gradient(135deg, #fdf8f4 0%, #f5ede4 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.dir-card-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.dir-card-img .dir-no-img {
+    font-size: 2.5rem;
+    opacity: 0.4;
+}
+.dir-card-body {
+    padding: 1.25rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.dir-card-name {
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    margin: 0;
+}
+.dir-card-desc {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.5;
+    flex: 1;
+}
+.dir-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+}
+.dir-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: var(--soft-bg, #fdf8f4);
+    border-radius: 20px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--terra-cotta);
+}
+.dir-badge.locked {
+    color: var(--text-secondary);
+    background: #f0f0f0;
+}
+.dir-card-footer {
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--border-light);
+}
+.dir-card-footer .btn {
+    width: 100%;
+    text-align: center;
+}
 </style>
 {% endblock %}
 {% block content %}
@@ -167,6 +272,51 @@
                 {% endif %}
             </div>
         </div>
+        {% if open_collections %}
+        <div class="directory-section">
+            <h2>Open Group Orders</h2>
+            <p class="section-sub">Join an existing order — pick your size, pay your own way, and you're done.</p>
+            <div class="directory-grid">
+                {% for item in open_collections %}
+                {% set c = item.collection %}
+                <div class="dir-card">
+                    <div class="dir-card-img">
+                        {% if item.preview_img %}
+                        <img src="{{ item.preview_img }}" alt="{{ c.name }}">
+                        {% else %}
+                        <span class="dir-no-img">👕</span>
+                        {% endif %}
+                    </div>
+                    <div class="dir-card-body">
+                        <p class="dir-card-name">{{ c.name }}</p>
+                        {% if c.description %}
+                        <p class="dir-card-desc">{{ c.description[:120] }}{% if c.description|length > 120 %}…{% endif %}</p>
+                        {% endif %}
+                        <div class="dir-card-meta">
+                            {% if item.product_count %}
+                            <span>{{ item.product_count }} style{{ 's' if item.product_count != 1 }}</span>
+                            {% endif %}
+                            {% if c.order_deadline %}
+                            <span>Closes {{ c.order_deadline.strftime('%b %-d') }}</span>
+                            {% endif %}
+                            {% if c.is_password_protected %}
+                            <span class="dir-badge locked">🔒 Code required</span>
+                            {% else %}
+                            <span class="dir-badge">✓ Open</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="dir-card-footer">
+                        <a href="{{ url_for('collection.view', slug=c.slug) }}" class="btn btn-primary">
+                            {% if c.is_password_protected %}Enter Code & Join{% else %}Join This Order{% endif %}
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
     </div>
 </section>
 {% endblock %}
