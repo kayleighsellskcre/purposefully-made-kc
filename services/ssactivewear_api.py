@@ -2,6 +2,7 @@
 S&S Activewear API Integration
 Syncs product catalog, colors, sizes, and inventory from S&S Activewear
 """
+import math
 import requests
 import json
 import sys
@@ -481,16 +482,23 @@ class SSActivewearAPI:
             parsed = urlparse(image_url)
             ext = Path(parsed.path).suffix or '.jpg'
             
-            # Save with style number and view
+            # Save with style number and view (normalize to standard canvas)
             filename = f"{style_number}_{view}{ext}"
             filepath = upload_dir / filename
-            
-            with open(filepath, 'wb') as f:
-                f.write(response.content)
-            
+
+            try:
+                from services.image_normalize import normalize_bytes
+                normalized = normalize_bytes(response.content, fmt='JPEG')
+                with open(filepath, 'wb') as f:
+                    f.write(normalized)
+            except Exception as norm_err:
+                print(f"  Warning: image normalize failed ({norm_err}), saving original", file=sys.stderr)
+                with open(filepath, 'wb') as f:
+                    f.write(response.content)
+
             # Return path relative to static folder
             return f"uploads/products/{filename}"
-            
+
         except Exception as e:
             print(f"Error downloading image from {image_url}: {e}")
             return None
@@ -702,9 +710,9 @@ class SSActivewearAPI:
         else:
             fit_type = 'Unisex'
         
-        # Get pricing - default markup of 2.5x if no price
+        # Get pricing: ceil(wholesale) + $7 margin + $12 transfer = ceil + $19
         wholesale_price = style_data.get('wholesalePrice', 10)
-        retail_price = wholesale_price * 2.5
+        retail_price = math.ceil(wholesale_price) + 19
         
         # Get style image from S&S
         front_image = None

@@ -11,6 +11,7 @@ Also tries getProductInfoByStyle for curated bestsellers.
 """
 
 import json
+import math
 import os
 import re
 import sys
@@ -672,7 +673,7 @@ class SanMarAPI:
         age_group = infer_age(attrs)
         fit_type = infer_fit(attrs)
 
-        retail = round(wholesale * 3.2, 2) if wholesale else 0.0
+        retail = (math.ceil(wholesale) + 19) if wholesale else 0.0
 
         return {
             'style_number':          style,
