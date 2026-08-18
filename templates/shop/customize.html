@@ -2244,7 +2244,9 @@
             };
             mockupImg.onerror = function() {
                 if (previewCanvas) previewCanvas.classList.remove('loading');
-                this.style.opacity = '0.3';
+                this.style.opacity = '0';
+                const ph = document.getElementById('noMockupPlaceholder');
+                if (ph) ph.style.display = 'flex';
             };
             mockupImg.src = imageUrl;
         } else {
