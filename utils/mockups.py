@@ -157,11 +157,13 @@ def get_color_variants_data_for_product(product, app):
     Merges DB variants with mockup folder, no duplicates.
     Returns list of dicts: color_name, color_hex, front_image, back_image, inventory.
     """
-    from utils.json_fields import parse_json_object
+    from utils.json_fields import parse_json_list
+    from utils.stock import inventory_for_display
+    shop_sizes = parse_json_list(getattr(product, 'available_sizes', None))
     color_variants_data = []
     seen_colors = set()
     for variant in getattr(product, 'color_variants', []) or []:
-        inventory = parse_json_object(variant.size_inventory)
+        inventory = inventory_for_display(variant.size_inventory, shop_sizes)
         front_image = get_mockup_url_for_variant(product, variant, 'front', app) or variant.front_image_url
         back_image = get_mockup_url_for_variant(product, variant, 'back', app) or variant.back_image_url
         color_variants_data.append({
@@ -181,7 +183,7 @@ def get_color_variants_data_for_product(product, app):
             'color_hex': extra.get('color_hex'),
             'front_image': extra.get('front_image_url') or extra.get('front_image'),
             'back_image': extra.get('back_image_url') or extra.get('back_image'),
-            'inventory': extra.get('inventory', {})
+            'inventory': inventory_for_display(extra.get('inventory', {}), shop_sizes)
         })
     return color_variants_data
 

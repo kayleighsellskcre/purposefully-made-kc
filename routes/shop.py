@@ -469,7 +469,6 @@ def product_detail(product_id):
     available_colors = parse_json_list(product.available_colors)
     print_area_config = parse_json_object(product.print_area_config)
     color_variants_data = get_color_variants_data_for_product(product, current_app)
-    color_variants_data = [v for v in color_variants_data if v.get('front_image') or v.get('back_image')]
     return render_template('shop/product_detail.html',
                          product=product,
                          available_sizes=available_sizes,
@@ -494,8 +493,6 @@ def customize(product_id):
     available_colors = parse_json_list(product.available_colors)
     print_area_config = parse_json_object(product.print_area_config)
     color_variants_data = get_color_variants_data_for_product(product, current_app)
-    # Hide colors with no image — prevents empty grey swatches showing in the customizer
-    color_variants_data = [v for v in color_variants_data if v.get('front_image') or v.get('back_image')]
 
     # Collection restrictions: organizer chose specific colors/designs/placements - filter options
     collection_restricted = False

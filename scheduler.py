@@ -1,14 +1,17 @@
 """
 Background scheduler for automated tasks.
-Runs a full Bella+Canvas catalog sync every night at 1 AM via SanMar:
-  - Adds any new Bella+Canvas styles
-  - Updates inventory quantities on all existing products/variants
-  - Preserves admin-set prices and active/inactive state
+Nightly (America/Chicago):
+  1:00 AM — SanMar curated catalog (does not overwrite live warehouse qty)
+  2:00 AM — S&S ghost/front images for Bella+Canvas
+  3:00 AM — live in-stock quantities from SanMar and S&S
 """
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import sys
+
+CHICAGO = ZoneInfo('America/Chicago')
 
 
 def sync_full_catalog_job(app):
@@ -82,7 +85,11 @@ def sync_full_catalog_job(app):
                         if existing_variant:
                             existing_variant.front_image_url = variant_data.get('front_image') or existing_variant.front_image_url
                             existing_variant.back_image_url  = variant_data.get('back_image')  or existing_variant.back_image_url
-                            existing_variant.size_inventory  = variant_data.get('size_inventory')
+                            # Catalog SOAP does not include warehouse qty — never wipe live stock.
+                            from utils.stock import is_usable_inventory_payload
+                            incoming_inv = variant_data.get('size_inventory')
+                            if is_usable_inventory_payload(incoming_inv):
+                                existing_variant.size_inventory = incoming_inv
                             existing_variant.last_synced     = datetime.utcnow()
                             variants_updated += 1
                         else:
@@ -309,6 +316,20 @@ def sync_ss_images_job(app):
             traceback.print_exc(file=sys.stderr)
 
 
+def sync_live_inventory_job(app):
+    """Nightly warehouse qty refresh from SanMar and S&S for every active style."""
+    with app.app_context():
+        try:
+            from services.inventory_sync import sync_all_inventory
+            print("=" * 80, file=sys.stderr, flush=True)
+            print(f"LIVE INVENTORY JOB STARTED - {datetime.now()}", file=sys.stderr, flush=True)
+            sync_all_inventory()
+        except Exception as e:
+            print(f"LIVE INVENTORY JOB FAILED: {e}", file=sys.stderr, flush=True)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+
+
 def init_scheduler(app):
     """
     Initialize the background scheduler.
@@ -329,21 +350,30 @@ def init_scheduler(app):
 
         scheduler = BackgroundScheduler(daemon=True)
 
-        # Full Bella+Canvas catalog sync every night at 1:00 AM via SanMar
+        # Full catalog sync every night at 1:00 AM America/Chicago via SanMar
         scheduler.add_job(
             func=lambda: sync_full_catalog_job(app),
-            trigger=CronTrigger(hour=1, minute=0),
+            trigger=CronTrigger(hour=1, minute=0, timezone=CHICAGO),
             id='nightly_catalog_sync',
             name='Nightly Bella+Canvas Catalog Sync (SanMar)',
             replace_existing=True
         )
 
-        # S&S image fetch every night at 2:00 AM (after SanMar sync)
+        # S&S image fetch every night at 2:00 AM Chicago (after SanMar catalog)
         scheduler.add_job(
             func=lambda: sync_ss_images_job(app),
-            trigger=CronTrigger(hour=2, minute=0),
+            trigger=CronTrigger(hour=2, minute=0, timezone=CHICAGO),
             id='nightly_ss_images',
             name='Nightly S&S Image Sync',
+            replace_existing=True
+        )
+
+        # Live warehouse qty from SanMar + S&S at 3:00 AM Chicago
+        scheduler.add_job(
+            func=lambda: sync_live_inventory_job(app),
+            trigger=CronTrigger(hour=3, minute=0, timezone=CHICAGO),
+            id='nightly_live_inventory',
+            name='Nightly Live Inventory Sync (SanMar + S&S)',
             replace_existing=True
         )
 
@@ -357,14 +387,23 @@ def init_scheduler(app):
             name='Startup S&S Image Sync (one-time)',
             replace_existing=True
         )
+        scheduler.add_job(
+            func=lambda: sync_live_inventory_job(app),
+            trigger=DateTrigger(run_date=datetime.now() + timedelta(seconds=20)),
+            id='startup_live_inventory',
+            name='Startup Live Inventory Sync (one-time)',
+            replace_existing=True
+        )
 
         scheduler.start()
 
         print("=" * 80, file=sys.stderr, flush=True)
         print("SCHEDULER STARTED", file=sys.stderr, flush=True)
-        print("  - Nightly Bella+Canvas catalog sync (SanMar): 1:00 AM daily", file=sys.stderr, flush=True)
-        print("  - Nightly S&S image sync: 2:00 AM daily", file=sys.stderr, flush=True)
+        print("  - Nightly catalog sync (SanMar): 1:00 AM America/Chicago", file=sys.stderr, flush=True)
+        print("  - Nightly S&S image sync: 2:00 AM America/Chicago", file=sys.stderr, flush=True)
+        print("  - Nightly live inventory (SanMar + S&S): 3:00 AM America/Chicago", file=sys.stderr, flush=True)
         print("  - S&S image sync running in 30 seconds (startup)", file=sys.stderr, flush=True)
+        print("  - Live inventory sync running in 20 seconds (startup)", file=sys.stderr, flush=True)
         print("=" * 80, file=sys.stderr, flush=True)
 
         import atexit

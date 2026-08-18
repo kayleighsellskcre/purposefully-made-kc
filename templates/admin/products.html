@@ -53,7 +53,7 @@
 
         <!-- SanMar / Bella+Canvas catalog sync -->
         <div class="prod-tool-group">
-            <span class="prod-tool-group-label">SanMar / Bella+Canvas</span>
+            <span class="prod-tool-group-label">SanMar / S&amp;S stock</span>
             <div class="prod-tool-buttons">
                 <button type="button" class="prod-tool-btn prod-tool-btn--primary" onclick="openModal('sanmarSyncModal')">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
@@ -62,9 +62,9 @@
                 <form method="POST" action="{{ url_for('admin.sync_sanmar_inventory') }}" style="display:inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="prod-tool-btn"
-                            onclick="return confirm('Update inventory quantities from SanMar for all BC products?')">
+                            onclick="return confirm('Refresh live in-stock quantities from SanMar and S&S for every active style?')">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                        Sync Inventory
+                        Sync Live Inventory
                     </button>
                 </form>
                 <label class="prod-tool-btn" style="cursor:pointer;" title="Upload the BellaCanvasData CSV downloaded from SanMar Data Library">

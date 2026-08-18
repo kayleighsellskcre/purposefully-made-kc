@@ -11,6 +11,25 @@ import json
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
 
+def _cron_authorized():
+    token = request.args.get('token') or (request.get_json(silent=True) or {}).get('token')
+    expected = os.environ.get('SYNC_CRON_TOKEN')
+    return bool(expected) and token == expected
+
+
+@api_bp.route('/cron/sync-inventory', methods=['GET', 'POST'])
+def cron_sync_inventory():
+    """
+    Daily SanMar + S&S warehouse qty sync. Call from cron-job.org if the
+    in-process scheduler is not running. Requires SYNC_CRON_TOKEN.
+    """
+    if not _cron_authorized():
+        return jsonify({'error': 'Unauthorized'}), 401
+    from services.inventory_sync import start_inventory_sync_thread
+    start_inventory_sync_thread(current_app._get_current_object())
+    return jsonify({'ok': True, 'started': True})
+
+
 @api_bp.route('/cron/sync-ss', methods=['GET', 'POST'])
 def cron_sync_ss():
     """
@@ -66,7 +85,10 @@ def cron_sync_ss():
                 if cv:
                     cv.front_image_url = variant_data.get('front_image') or cv.front_image_url
                     cv.back_image_url = variant_data.get('back_image') or cv.back_image_url
-                    cv.size_inventory = variant_data.get('size_inventory')
+                    incoming_inv = variant_data.get('size_inventory')
+                    from utils.stock import is_usable_inventory_payload
+                    if is_usable_inventory_payload(incoming_inv):
+                        cv.size_inventory = incoming_inv
                 else:
                     db.session.add(ProductColorVariant(
                         product_id=existing.id,

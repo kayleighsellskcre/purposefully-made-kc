@@ -119,6 +119,11 @@ def add():
     if not size or not color:
         return jsonify({'error': 'Size and color are required'}), 400
 
+    from utils.stock import check_stock
+    ok, stock_err, _remaining = check_stock(product, color, size, quantity, cart=get_cart())
+    if not ok:
+        return jsonify({'error': stock_err}), 400
+
     from utils.group_orders import (
         get_active_collection,
         ordering_blocked,
@@ -474,7 +479,19 @@ def update(index):
     
     if index < 0 or index >= len(cart):
         return jsonify({'error': 'Item not found'}), 404
-    
+
+    item = cart[index]
+    product = Product.query.get(item.get('product_id'))
+    if not product:
+        return jsonify({'error': 'Product not found'}), 404
+    from utils.stock import check_stock
+    ok, stock_err, _remaining = check_stock(
+        product, item.get('color'), item.get('size'), quantity,
+        cart=cart, skip_index=index,
+    )
+    if not ok:
+        return jsonify({'error': stock_err}), 400
+
     cart[index]['quantity'] = quantity
     save_cart(cart)
     

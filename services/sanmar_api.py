@@ -731,10 +731,10 @@ class SanMarAPI:
   </soapenv:Body>
 </soapenv:Envelope>"""
 
-    def fetch_inventory_for_style(self, style: str) -> dict:
+    def fetch_inventory_for_style(self, style: str, timeout: int = 30) -> dict:
         """
         Returns {color: {size: qty}} for a single style.
-        qty is an integer (0 if out of stock).
+        qty is an integer (0 if out of stock). Multiple warehouse rows are summed.
         """
         customer_number, username, password = get_credentials()
         body = self._INV_SOAP_TEMPLATE.format(
@@ -751,7 +751,7 @@ class SanMarAPI:
             method='POST',
         )
         try:
-            with urlopen(req, timeout=30) as resp:
+            with urlopen(req, timeout=timeout) as resp:
                 raw = resp.read()
         except Exception as exc:
             print(f'[SanMarAPI] Inventory fetch failed for {style}: {exc}', file=sys.stderr)
@@ -774,8 +774,9 @@ class SanMarAPI:
                 qty = int(float(qty_s))
             except (ValueError, TypeError):
                 qty = 0
-            if color:
-                inventory.setdefault(color, {})[size] = qty
+            if color and size:
+                inventory.setdefault(color, {})
+                inventory[color][size] = inventory[color].get(size, 0) + max(0, qty)
 
         return inventory
 

@@ -4,6 +4,7 @@ Syncs product catalog, colors, sizes, and inventory from S&S Activewear
 """
 import requests
 import json
+import sys
 from datetime import datetime
 import os
 from urllib.parse import urlparse
@@ -214,33 +215,50 @@ class SSActivewearAPI:
     def _load_styles_catalog(self):
         """Full /v2/styles list, cached on this client. Brand filters are not honored server-side."""
         if self._styles_catalog is None:
-            response = self._api_get(f"{self.api_url}/v2/styles", timeout=120)
-            data = response.json()
-            self._styles_catalog = data if isinstance(data, list) else []
+            try:
+                response = requests.get(
+                    f"{self.api_url}/v2/styles",
+                    auth=(self.account_number, self.api_key),
+                    timeout=90,
+                )
+                response.raise_for_status()
+                data = response.json()
+                self._styles_catalog = data if isinstance(data, list) else []
+            except Exception as exc:
+                print(f"S&S styles catalog failed: {exc}", file=sys.stderr)
+                self._styles_catalog = []
         return self._styles_catalog
+
+    def _brand_key(self, name) -> str:
+        import re
+        return re.sub(r'[^a-z0-9]+', '', str(name or '').lower())
 
     def _resolve_style_id(self, style_number, brand_name=None):
         """
         Map catalog style name (e.g. '5100', 'W23716') to S&S styleID.
-        /v2/products?style= treats the value as styleID, not the printed style number.
+        /v2/products?style= is styleID, not the printed number.
         """
         needle = str(style_number or '').strip().upper()
         if not needle:
             return None
-        brand = (brand_name or '').strip().lower()
+        want_brand = self._brand_key(brand_name)
         matches = []
+        branded = []
         for style in self._load_styles_catalog():
             name = str(style.get('styleName') or style.get('partNumber') or '').strip().upper()
             if name != needle:
                 continue
-            if brand and brand not in (style.get('brandName') or '').lower():
-                continue
             matches.append(style)
-        if not matches:
+            if want_brand:
+                have = self._brand_key(style.get('brandName'))
+                if want_brand == have or want_brand in have or have in want_brand:
+                    branded.append(style)
+        pool = branded or matches
+        if not pool:
             return None
-        if len(matches) > 1 and not brand:
+        if len(pool) > 1 and not branded:
             return None
-        return matches[0].get('styleID')
+        return pool[0].get('styleID')
 
     def get_products_by_style_number(self, style_number, brand_name=None, style_id=None):
         """
@@ -321,6 +339,73 @@ class SSActivewearAPI:
             return response.json()
         except Exception:
             return None
+
+    def fetch_inventory_map(self, style_number, brand_name=None, timeout=30, candidates=None):
+        """
+        Return {color_name: {size_name: qty}} for a style, summing warehouse rows.
+        Uses a single GET per candidate — does not retry 404s for a minute each.
+        """
+        inventory = {}
+        tried = [c for c in (candidates or [style_number]) if c]
+        endpoint = f"{self.api_url}/v2/products"
+        for candidate in tried:
+            style_id = None
+            try:
+                style_id = self._resolve_style_id(candidate, brand_name=brand_name)
+            except Exception:
+                style_id = None
+            param_attempts = []
+            if style_id:
+                param_attempts.append({'styleID': style_id})
+            param_attempts.append({'styleNumber': candidate})
+            rows = []
+            for params in param_attempts:
+                try:
+                    response = requests.get(
+                        endpoint,
+                        auth=(self.account_number, self.api_key),
+                        params=params,
+                        timeout=timeout,
+                    )
+                except requests.exceptions.RequestException as exc:
+                    print(f"Error fetching S&S inventory for {candidate}: {exc}", file=sys.stderr)
+                    continue
+                if response.status_code != 200:
+                    continue
+                try:
+                    data = response.json()
+                except ValueError:
+                    continue
+                products = data if isinstance(data, list) else data.get('products', data.get('data', []))
+                if products and isinstance(products, list):
+                    rows = products
+                    break
+            if not rows:
+                continue
+            for row in rows:
+                color = (row.get('colorName') or '').strip()
+                size = (row.get('sizeName') or '').strip()
+                if not color or not size:
+                    continue
+                qty = 0
+                warehouses = row.get('warehouses')
+                if isinstance(warehouses, list):
+                    for warehouse in warehouses:
+                        if isinstance(warehouse, dict):
+                            try:
+                                qty += int(float(warehouse.get('qty') or warehouse.get('quantity') or 0))
+                            except (TypeError, ValueError):
+                                pass
+                if not qty:
+                    try:
+                        qty = int(float(row.get('qty') or row.get('inventory') or row.get('availableQty') or 0))
+                    except (TypeError, ValueError):
+                        qty = 0
+                inventory.setdefault(color, {})
+                inventory[color][size] = inventory[color].get(size, 0) + max(0, qty)
+            if inventory:
+                return inventory
+        return inventory
 
     def get_inventory(self, style_id=None, style_number=None, warehouse=None):
         """

@@ -1338,11 +1338,16 @@
             <!-- Preview Section -->
             <div class="preview-section" data-product-style="{{ product.style_number }}">
                 <div class="preview-canvas" id="previewCanvas">
-                    <img src="" 
-                         alt="Product Mockup" 
-                         class="mockup-image" 
+                    <img src=""
+                         alt="Product Mockup"
+                         class="mockup-image"
                          id="mockupImage"
                          style="opacity: 0;">
+                    <div id="noMockupPlaceholder" style="display:none; position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:2rem; background: linear-gradient(135deg, #fdf8f4 0%, #f5ede4 100%); border-radius: 12px;">
+                        <div style="font-size:3rem; margin-bottom:0.75rem;">📸</div>
+                        <p style="font-family:'Playfair Display', serif; font-size:1.1rem; color:#8b6f5e; font-weight:600; margin:0 0 0.5rem;">This mockup skipped picture day!</p>
+                        <p style="font-size:0.85rem; color:#b09080; margin:0; line-height:1.6;">No worries, you can still order.<br>Just choose your favorite design! ♡</p>
+                    </div>
                     
                     <div class="design-layer" id="designLayer" style="display: none;">
                         <img src="" alt="Design" class="design-image" id="designImage">
@@ -2173,6 +2178,7 @@
         
         element.classList.add('selected');
         state.selectedSize = element.dataset.size;
+        capQuantityToStock();
         updateTotalPrice();
         applyDesignFit();
         updateBackDesignPreview();
@@ -2223,6 +2229,9 @@
             : state.selectedColor.backImage;
         
         if (imageUrl && imageUrl !== '') {
+            // Hide the no-preview placeholder
+            const ph = document.getElementById('noMockupPlaceholder');
+            if (ph) ph.style.display = 'none';
             // Show spinner while image fetches
             mockupImg.style.opacity = '0';
             if (previewCanvas) previewCanvas.classList.add('loading');
@@ -2240,9 +2249,11 @@
             mockupImg.src = imageUrl;
         } else {
             if (previewCanvas) previewCanvas.classList.remove('loading');
-            mockupImg.style.opacity = '0.3';
+            mockupImg.style.opacity = '0';
+            const ph = document.getElementById('noMockupPlaceholder');
+            if (ph) ph.style.display = 'flex';
         }
-        
+
         updateDesignLayerVisibility();
     }
     
@@ -2845,34 +2856,73 @@
         }
     }
     
-    function updateSizeInventory(inventory) {
-        // If inventory has no keys, SanMar data hasn't been synced yet —
-        // treat all sizes as available so customers aren't falsely blocked.
-        const hasInventoryData = inventory && Object.keys(inventory).length > 0;
+    function stockQty(inventory, size) {
+        if (!inventory || typeof inventory !== 'object' || !size) return 0;
+        if (Object.prototype.hasOwnProperty.call(inventory, size)) {
+            const n = parseInt(inventory[size], 10);
+            return Number.isFinite(n) ? Math.max(0, n) : 0;
+        }
+        const compact = String(size).replace(/\s+/g, '');
+        if (Object.prototype.hasOwnProperty.call(inventory, compact)) {
+            const n = parseInt(inventory[compact], 10);
+            return Number.isFinite(n) ? Math.max(0, n) : 0;
+        }
+        return 0;
+    }
 
+    function capQuantityToStock() {
+        const quantityInput = document.getElementById('quantity');
+        if (!quantityInput) return;
+        const inv = (state.selectedColor && state.selectedColor.inventory) || {};
+        const hasInventoryData = Object.keys(inv).length > 0;
+        const available = hasInventoryData && state.selectedSize ? stockQty(inv, state.selectedSize) : 100;
+        const max = Math.max(0, available);
+        quantityInput.max = String(Math.min(100, max || 0));
+        let qty = parseInt(quantityInput.value, 10) || 1;
+        if (max <= 0) {
+            qty = 1;
+        } else if (qty > max) {
+            qty = max;
+        } else if (qty < 1) {
+            qty = 1;
+        }
+        quantityInput.value = qty;
+        state.quantity = qty;
+        const quantityDisplay = document.getElementById('quantityDisplay');
+        if (quantityDisplay) quantityDisplay.textContent = qty;
+        const addBtn = document.getElementById('addToCart');
+        if (addBtn && addBtn.dataset.busy !== '1') {
+            addBtn.disabled = !state.selectedSize || max <= 0;
+        }
+    }
+
+    function updateSizeInventory(inventory) {
         const sizeCards = document.querySelectorAll('.size-card');
+        const hasInventoryData = inventory && Object.keys(inventory).length > 0;
         sizeCards.forEach(card => {
             const size = card.dataset.size;
             const stockBadge = card.querySelector('.stock-badge');
-
+            const qty = hasInventoryData ? stockQty(inventory, size) : null;
+            const isOutOfStock = hasInventoryData && qty <= 0;
+            card.classList.toggle('out-of-stock', isOutOfStock);
+            if (isOutOfStock && card.classList.contains('selected')) {
+                card.classList.remove('selected');
+                if (state.selectedSize === size) state.selectedSize = null;
+            }
             if (stockBadge) {
-                card.classList.remove('out-of-stock');
-
-                const qty = hasInventoryData ? (inventory[size] ?? 0) : null;
-                const isOutOfStock = hasInventoryData && qty === 0;
-
                 if (isOutOfStock) {
                     stockBadge.textContent = 'Out of Stock';
                     stockBadge.style.color = '#ef4444';
-                    card.classList.add('out-of-stock');
+                } else if (hasInventoryData && qty <= 12) {
+                    stockBadge.textContent = qty + ' left';
+                    stockBadge.style.color = '#d97706';
                 } else {
-                    stockBadge.textContent = 'Available';
+                    stockBadge.textContent = 'In Stock';
                     stockBadge.style.color = '#22c55e';
-                    card.style.opacity = '1';
-                    card.style.cursor = 'pointer';
                 }
             }
         });
+        capQuantityToStock();
     }
     
     function setupQuantity() {
@@ -2881,9 +2931,10 @@
         const totalPrice = document.getElementById('totalPrice');
         
         quantityInput.addEventListener('input', function() {
-            const qty = parseInt(this.value) || 1;
+            capQuantityToStock();
+            const qty = parseInt(this.value, 10) || 1;
             state.quantity = qty;
-            quantityDisplay.textContent = qty;
+            if (quantityDisplay) quantityDisplay.textContent = qty;
             updateTotalPrice();
         });
     }
@@ -3907,6 +3958,19 @@
                 PMKC.showFlash('Please select a size to continue', 'error');
                 document.querySelector('.size-grid, .size-grid-professional, [data-section="size"]')
                     ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+            const invNow = (state.selectedColor && state.selectedColor.inventory) || {};
+            const hasStockMap = Object.keys(invNow).length > 0;
+            const availableNow = stockQty(invNow, state.selectedSize);
+            if (hasStockMap && availableNow <= 0) {
+                PMKC.showFlash('That size is out of stock. Please choose another size or color.', 'error');
+                return;
+            }
+            if (hasStockMap && state.quantity > availableNow) {
+                PMKC.showFlash('Only ' + availableNow + ' left in that size. Please lower the quantity.', 'error');
+                state.quantity = availableNow;
+                capQuantityToStock();
                 return;
             }
             if (!state.designUrl && !state.designFile) {

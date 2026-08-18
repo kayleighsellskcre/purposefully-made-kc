@@ -199,8 +199,9 @@ function updateSizeAvailability(colorName) {
     const inv = colorInventory[colorName];
     document.querySelectorAll('.size-option').forEach(btn => {
         const size = btn.dataset.size;
-        const qty = inv ? (inv[size] ?? inv[size.replace(' ', '')] ?? -1) : -1;
-        const soldOut = inv && qty === 0;
+        const hasData = inv && Object.keys(inv).length > 0;
+        const qty = hasData ? (inv[size] ?? inv[size.replace(' ', '')] ?? 0) : 0;
+        const soldOut = hasData && qty <= 0;
         btn.classList.toggle('sold-out', soldOut);
         btn.disabled = soldOut;
         btn.title = soldOut ? 'Sold out in this color' : '';

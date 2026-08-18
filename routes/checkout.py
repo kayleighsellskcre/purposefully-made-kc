@@ -429,7 +429,7 @@ def index():
 @checkout_bp.route('/create-payment-intent', methods=['POST'])
 def create_payment_intent():
     """Create Stripe payment intent"""
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     
     cart = get_cart()
     if not cart:
@@ -441,6 +441,17 @@ def create_payment_intent():
         blocked = ordering_blocked(collection)
         if blocked:
             return jsonify({'error': blocked}), 400
+
+    from utils.stock import aggregate_cart_blanks, check_stock
+    grouped, labels = aggregate_cart_blanks(cart)
+    for sku_key, qty in grouped.items():
+        product = Product.query.get(sku_key[0])
+        color, size = labels[sku_key]
+        if not product:
+            return jsonify({'error': 'One of the items in your cart is no longer available.'}), 400
+        ok, stock_err, _remaining = check_stock(product, color, size, qty)
+        if not ok:
+            return jsonify({'error': stock_err}), 400
 
     shipping_method = data.get('shipping_method', 'pickup')
     totals = calculate_totals(cart, shipping_method)
@@ -620,6 +631,12 @@ def complete():
             db.session.execute(_text('SET LOCAL statement_timeout = 8000'))
         except Exception:
             pass
+
+        from utils.stock import reserve_cart_inventory
+        stock_ok, stock_err = reserve_cart_inventory(cart)
+        if not stock_ok:
+            db.session.rollback()
+            return _json_error(stock_err or 'That size just sold out.', 'OUT_OF_STOCK', 400, request_id=rid)
 
         is_cash = (payment_method == 'cash')
         order = Order(

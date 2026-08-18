@@ -1015,7 +1015,10 @@ def sync_api():
                     existing_variant.front_image_url = variant_data.get('front_image')
                     existing_variant.back_image_url = variant_data.get('back_image')
                     existing_variant.side_image_url = variant_data.get('side_image')
-                    existing_variant.size_inventory = variant_data.get('size_inventory')
+                    incoming_inv = variant_data.get('size_inventory')
+                    from utils.stock import is_usable_inventory_payload
+                    if is_usable_inventory_payload(incoming_inv):
+                        existing_variant.size_inventory = incoming_inv
                     existing_variant.ss_color_id = variant_data.get('color_id')
                     existing_variant.last_synced = datetime.utcnow()
                 else:
@@ -1229,7 +1232,9 @@ def sync_sanmar():
                                 existing_variant.color_hex = variant_data.get('color_hex')
                             if variant_data.get('color_swatch'):
                                 existing_variant.color_swatch_url = variant_data.get('color_swatch')
-                            existing_variant.size_inventory  = inv or existing_variant.size_inventory
+                            from utils.stock import is_usable_inventory_payload
+                            if is_usable_inventory_payload(inv):
+                                existing_variant.size_inventory = inv
                             existing_variant.last_synced     = datetime.utcnow()
                             variants_updated += 1
                         else:
@@ -1564,55 +1569,15 @@ def link_local_images():
 @admin_bp.route('/products/sync-sanmar-inventory', methods=['POST'])
 @admin_required
 def sync_sanmar_inventory():
-    """Sync live inventory quantities from SanMar API into ProductColorVariant records."""
-    import sys
-    from services.sanmar_api import SanMarAPI, check_credentials, SanMarSOAPError
-    from models import Product, ProductColorVariant
-    from datetime import datetime
+    """Sync live warehouse quantities from SanMar and S&S into every active style."""
+    from services.inventory_sync import start_inventory_sync_thread
 
-    cred_check = check_credentials()
-    if not cred_check['ok']:
-        flash('SanMar inventory sync failed — missing credentials. Check Railway variables.', 'error')
-        return redirect(url_for('admin.products'))
-
-    try:
-        # Get all BC style numbers from the DB
-        styles = [p.style_number for p in Product.query.filter(
-            Product.style_number.ilike('BC%'), Product.is_active == True
-        ).all()]
-
-        if not styles:
-            flash('No active Bella+Canvas products found to sync inventory for.', 'warning')
-            return redirect(url_for('admin.products'))
-
-        api = SanMarAPI()
-        all_inventory = api.sync_inventory_for_all_styles(styles)
-
-        updated = 0
-        for style, color_inv in all_inventory.items():
-            product = Product.query.filter_by(style_number=style).first()
-            if not product:
-                continue
-            for color_name, size_qty in color_inv.items():
-                variant = ProductColorVariant.query.filter_by(
-                    product_id=product.id, color_name=color_name
-                ).first()
-                if variant:
-                    import json as _json
-                    variant.size_inventory = _json.dumps(size_qty)
-                    variant.last_synced = datetime.utcnow()
-                    updated += 1
-
-        db.session.commit()
-        flash(f'Inventory sync complete! Updated {updated} color variants across {len(styles)} styles.', 'success')
-
-    except SanMarSOAPError as exc:
-        db.session.rollback()
-        flash(f'SanMar inventory sync error: {exc}', 'error')
-    except Exception as exc:
-        db.session.rollback()
-        flash(f'Unexpected error during inventory sync: {exc}', 'error')
-
+    start_inventory_sync_thread(current_app._get_current_object())
+    flash(
+        'Live inventory sync started for SanMar and S&S. '
+        'In-stock / out-of-stock quantities will refresh over the next few minutes.',
+        'success',
+    )
     return redirect(url_for('admin.products'))
 
 
