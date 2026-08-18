@@ -2329,6 +2329,20 @@
         if (map[key] != null) return map[key];
         return age === 'youth' ? 7.5 : 10;
     }
+    function logoWidthForSize(size) {
+        const chart = chartWidthForSize(size);
+        if (!(TRANSFER_SIZING && TRANSFER_SIZING.is_hoodie)) return chart;
+        const reduction = TRANSFER_SIZING.hoodie_width_reduction || 1;
+        const minW = TRANSFER_SIZING.hoodie_width_min || 6;
+        return Math.max(chart - reduction, minW);
+    }
+    function hoodieLogoScale() {
+        if (!(TRANSFER_SIZING && TRANSFER_SIZING.is_hoodie)) return 1;
+        const size = state.selectedSize || (sizingAge() === 'youth' ? 'M' : 'M');
+        const chart = chartWidthForSize(size);
+        if (!chart) return 1;
+        return logoWidthForSize(size) / chart;
+    }
     function sizeScaleFactor() {
         if (!state.selectedSize) return 1;
         const w = chartWidthForSize(state.selectedSize);
@@ -2659,7 +2673,9 @@
         designLayer.style.width = '';
         designLayer.style.maxWidth = '';
         designLayer.style.maxHeight = '';
-        if (placement === 'left_chest' || placement === 'right_chest') return;
+        const hoodieScale = hoodieLogoScale();
+        const isSideChest = placement === 'left_chest' || placement === 'right_chest';
+        if (isSideChest && hoodieScale === 1) return;
         const w = designImage.naturalWidth || state.designWidth || 1;
         const h = designImage.naturalHeight || state.designHeight || 1;
         const tall = h / w;
@@ -2671,19 +2687,32 @@
                     : cat === 'youth'   ? 0.82
                     : 1.0;
 
-        if (tall > 1.28) {
-            designLayer.style.width = (22 * scale).toFixed(1) + '%';
-            designLayer.style.maxWidth = Math.round(165 * scale) + 'px';
-            designLayer.style.maxHeight = (40 * scale).toFixed(1) + '%';
+        let pct = null, maxW = null, maxH = null;
+        if (isSideChest) {
+            pct = 12;
+            maxW = 90;
+            maxH = 18;
+        } else if (tall > 1.28) {
+            pct = 22 * scale;
+            maxW = 165 * scale;
+            maxH = 40 * scale;
         } else if (tall > 1.18) {
-            designLayer.style.width = (25 * scale).toFixed(1) + '%';
-            designLayer.style.maxWidth = Math.round(185 * scale) + 'px';
-            designLayer.style.maxHeight = (40 * scale).toFixed(1) + '%';
+            pct = 25 * scale;
+            maxW = 185 * scale;
+            maxH = 40 * scale;
         } else if (tall >= 0.90) {
-            designLayer.style.width = (33 * scale).toFixed(1) + '%';
-            designLayer.style.maxWidth = Math.round(246 * scale) + 'px';
-            designLayer.style.maxHeight = (42 * scale).toFixed(1) + '%';
+            pct = 33 * scale;
+            maxW = 246 * scale;
+            maxH = 42 * scale;
+        } else if (hoodieScale !== 1) {
+            pct = 30;
+            maxW = 225;
+            maxH = 40;
         }
+        if (pct == null) return;
+        designLayer.style.width = (pct * hoodieScale).toFixed(1) + '%';
+        designLayer.style.maxWidth = Math.round(maxW * hoodieScale) + 'px';
+        designLayer.style.maxHeight = (maxH * hoodieScale).toFixed(1) + '%';
     }
     
     function applyBackDesignPosition() {

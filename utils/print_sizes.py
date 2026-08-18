@@ -46,6 +46,12 @@ PLACEMENT_WIDTH_FACTOR = {
     'sleeve': 0.3,
 }
 
+# Hoodie logos sit above the kangaroo pocket. Keep the signed-off chart for
+# tees/crewnecks, and print hoodie logos 1" narrower than that chart width.
+# Personalized back name/number still uses the full chart as the safe max.
+HOODIE_PRINT_WIDTH_REDUCTION_IN = 1.0
+HOODIE_PRINT_WIDTH_MIN_IN = 6.0
+
 # Personalized back — ordered by HEIGHT. Kayleigh's size-band chart.
 # name + gap + number = total. Do not invent other heights.
 # Fallback aliases for older callers (adult S–2XL band).
@@ -323,12 +329,16 @@ def back_collar_drop_in(size=None, product=None):
     return garment_body_length_in(size, product) * BACK_COLLAR_DROP_RATIO
 
 
-def get_print_width_for_size(size, product=None):
-    """Return print width in inches for a given size.
+def is_hoodie(product=None):
+    """True for hoodie / hooded garments, not crewneck sweatshirts."""
+    if product is None:
+        return False
+    from utils.product_filters import infer_category
+    return infer_category(product) == 'Hoodie'
 
-    Use youth dimensions (e.g. S=7.5", YS=7.5") when classify_age is youth.
-    Width chart values are unchanged from the approved mapping.
-    """
+
+def chart_width_for_size(size, product=None):
+    """Approved youth/adult center-chest width. No hoodie pocket adjustment."""
     if not size:
         return None
     s = str(size).strip().upper()
@@ -360,6 +370,21 @@ def get_print_width_for_size(size, product=None):
     return None
 
 
+def get_print_width_for_size(size, product=None):
+    """Return logo/standard-transfer width in inches for a given size.
+
+    Use youth dimensions (e.g. S=7.5", YS=7.5") when classify_age is youth.
+    Width chart values are unchanged from the approved mapping except on
+    hoodies, which print 1" narrower so the logo clears the kangaroo pocket.
+    """
+    width = chart_width_for_size(size, product)
+    if width is None:
+        return None
+    if is_hoodie(product):
+        return max(width - HOODIE_PRINT_WIDTH_REDUCTION_IN, HOODIE_PRINT_WIDTH_MIN_IN)
+    return width
+
+
 def placement_label(placement):
     if not placement:
         return 'Center Chest'
@@ -374,7 +399,7 @@ def placement_width_factor(placement):
 
 def safe_print_width(size, product=None, placement=None):
     """Max printable width for this garment size (center-chest chart width)."""
-    width = get_print_width_for_size(size, product)
+    width = chart_width_for_size(size, product)
     if width is None:
         width = 7.5 if classify_age(product, size) == 'youth' else 10.0
     # Chest logos use a smaller assigned width, but the safe max is still the
@@ -571,6 +596,9 @@ def client_config(product=None):
     return {
         'age_group': age,
         'category': category,
+        'is_hoodie': is_hoodie(product),
+        'hoodie_width_reduction': HOODIE_PRINT_WIDTH_REDUCTION_IN,
+        'hoodie_width_min': HOODIE_PRINT_WIDTH_MIN_IN,
         'widths_adult': SIZE_PRINT_WIDTH_ADULT,
         'widths_youth': SIZE_PRINT_WIDTH_YOUTH,
         'placement_factors': PLACEMENT_WIDTH_FACTOR,
