@@ -130,11 +130,11 @@
             var sentTo = (data.recipients && data.recipients.length) ? data.recipients.join(', ') : email;
             statusEl.innerHTML = 'A confirmation receipt is on its way to <strong>' + sentTo + '</strong>. Please save this page too, just in case.';
         } else {
-            statusEl.innerHTML = 'We could not send the confirmation email just now. Please save this page — we still have your order and will email you when it is ready.';
+            statusEl.innerHTML = 'We could not send the confirmation email just now. Please save this page. We still have your order and will email you when it is ready.';
         }
     }).catch(function () {
         if (statusEl) {
-            statusEl.innerHTML = 'We could not send the confirmation email just now. Please save this page — we still have your order and will email you when it is ready.';
+            statusEl.innerHTML = 'We could not send the confirmation email just now. Please save this page. We still have your order and will email you when it is ready.';
         }
     });
 })();

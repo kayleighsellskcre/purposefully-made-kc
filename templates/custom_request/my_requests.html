@@ -101,7 +101,7 @@
                         </svg>
                     </div>
                     <h2>No requests yet</h2>
-                    <p>Have an image or idea you love? Send it to us — we'll recreate it as a print-ready design for your wardrobe.</p>
+                    <p>Have an image or idea you love? Send it to us and we'll recreate it as a print-ready design for your wardrobe.</p>
                     <a href="{{ url_for('custom_request.submit') }}" class="btn btn-primary">Submit a Request</a>
                 </div>
                 {% endif %}
@@ -366,7 +366,7 @@
             }
             showRqToast(data.message || 'Request removed');
         })
-        .catch(() => showRqToast('Something went wrong — please try again'))
+        .catch(() => showRqToast('Something went wrong. Please try again.'))
         .finally(() => { btn.disabled = false; btn.textContent = 'Yes, Remove'; });
     });
 

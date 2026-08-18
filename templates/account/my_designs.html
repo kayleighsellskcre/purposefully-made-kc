@@ -333,7 +333,7 @@
             }
             showMdToast(data.message || 'Design deleted');
         })
-        .catch(function() { showMdToast('Something went wrong — please try again'); })
+        .catch(function() { showMdToast('Something went wrong. Please try again.'); })
         .finally(function() { btn.disabled = false; btn.textContent = 'Yes, Delete'; });
     });
 

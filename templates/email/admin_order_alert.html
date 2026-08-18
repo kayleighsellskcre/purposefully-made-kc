@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>New Order — {{ order.order_number }}</title>
+<title>New Order: {{ order.order_number }}</title>
 </head>
 <body style="margin:0;padding:0;background:#f5f0e1;font-family:Arial,Helvetica,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0e1;padding:32px 16px;">
@@ -27,7 +27,7 @@
               &nbsp;·&nbsp;
               ${{ '%.2f'|format(order.total) }}
               &nbsp;·&nbsp;
-              {{ (order.payment_method or 'Card')|title }}{% if order.payment_status == 'pending' %} (UNPAID — Cash){% else %} ✓ Paid{% endif %}
+              {{ (order.payment_method or 'Card')|title }}{% if order.payment_status == 'pending' %} (UNPAID - Cash){% else %} ✓ Paid{% endif %}
             </p>
           </td>
         </tr>

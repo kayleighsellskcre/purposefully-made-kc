@@ -47,7 +47,7 @@
             
             <div class="form-section">
                 <h2>Items Available to Order</h2>
-                <p class="form-hint">Pick the shirts this group can order. Filter first, then tap Select these. <strong>Choose at least one style</strong> — the share link only works if there is something to order.</p>
+                <p class="form-hint">Pick the shirts this group can order. Filter first, then tap Select these. <strong>Choose at least one style.</strong> The share link only works if there is something to order.</p>
                 {% if products %}
                 {% include 'includes/catalog_filter.html' %}
                 <div class="product-checkboxes">
@@ -178,7 +178,7 @@
 
                     <!-- Back-design colour & outline (uniform style) -->
                     <div class="form-group">
-                        <label>Name &amp; Number — Text Color</label>
+                        <label>Name &amp; Number: Text Color</label>
                         <p class="form-hint">The default text color for every participant's name and number.</p>
                         <div class="coll-color-row">
                             <input type="color" id="collTextColor" name="back_design_text_color" value="#ffffff" class="coll-color-input" aria-label="Text color">
@@ -214,7 +214,7 @@
                     </div>
                     <div class="form-check" style="margin-top: 0.5rem;">
                         <input type="checkbox" id="lock_back_design_style" name="lock_back_design_style">
-                        <label for="lock_back_design_style"><strong>Lock font &amp; colors</strong> — participants cannot change the font, text color, or outline</label>
+                        <label for="lock_back_design_style"><strong>Lock font &amp; colors:</strong> participants cannot change the font, text color, or outline</label>
                     </div>
 
                     <!-- Live preview of back-design style choices -->

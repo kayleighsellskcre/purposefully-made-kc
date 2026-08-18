@@ -136,7 +136,7 @@
                 {% if order.send_home_with_child %}
                 <div class="od-info-row">
                     <span class="od-info-label">Send home</span>
-                    <span class="od-info-val">Yes — with child</span>
+                    <span class="od-info-val">Yes, with child</span>
                 </div>
                 {% if order.child_name %}
                 <div class="od-info-row">
@@ -196,7 +196,7 @@
             <div class="od-profit-left">
                 <span class="od-card-eyebrow">Management</span>
                 <h2 class="od-card-title">Details &amp; Profit</h2>
-                <p class="od-card-hint">Due date starts two weeks out. Cost of goods starts as the blank shirt from the distributor — add transfer cost after you order it.</p>
+                <p class="od-card-hint">Due date starts two weeks out. Cost of goods starts as the blank shirt from the distributor. Add transfer cost after you order it.</p>
             </div>
             <div class="od-profit-right">
                 <form method="POST" action="{{ url_for('admin.update_order_details', order_id=order.id) }}" class="od-profit-form">

@@ -285,7 +285,7 @@ async function addToCart() {
             if (btn) { btn.disabled = false; btn.textContent = 'Add to Cart (No Design)'; }
         }
     } catch (error) {
-        PMKC.showFlash('Something went wrong — please try again', 'error');
+        PMKC.showFlash('Something went wrong. Please try again.', 'error');
         if (btn) { btn.disabled = false; btn.textContent = 'Add to Cart (No Design)'; }
     }
 }

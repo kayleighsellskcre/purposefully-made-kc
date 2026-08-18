@@ -8,7 +8,7 @@
     <div class="container">
         <span class="eyebrow">Almost There</span>
         <h1>Checkout</h1>
-        <p class="lead">Secure checkout — your order is just a moment away.</p>
+        <p class="lead">Secure checkout. Your order is just a moment away.</p>
     </div>
 </div>
 
@@ -82,7 +82,7 @@
                 {% if is_group_order %}
                 <div class="checkout-section">
                     <h2>Send Home With Child</h2>
-                    <p class="send-home-intro">Optional — if you would like this order sent home from school with your child, check the box so we can print it on the packing label.</p>
+                    <p class="send-home-intro">Optional: if you would like this order sent home from school with your child, check the box so we can print it on the packing label.</p>
                     <label class="send-home-check" for="send_home_with_child">
                         <input type="checkbox" id="send_home_with_child">
                         <span>Yes, send this item home with my child</span>
@@ -389,7 +389,7 @@ document.getElementById('submit-payment').addEventListener('click', async () => 
     } else if (currentMethod === 'cash') {
         await handleCashPayment();
     } else {
-        PMKC.showFlash('PayPal & Venmo payments are coming soon — for now please use card or cash.', 'info');
+        PMKC.showFlash('PayPal & Venmo payments are coming soon. For now please use card or cash.', 'info');
     }
 });
 
@@ -447,7 +447,7 @@ async function handleStripePayment() {
     // Make sure the Payment Element is mounted (lazy init)
     await initPaymentElement();
     if (!stripeElements || !clientSecretCache) {
-        PMKC.showFlash('Payment form not ready — please wait a moment and try again.', 'error');
+        PMKC.showFlash('Payment form not ready. Please wait a moment and try again.', 'error');
         return;
     }
 

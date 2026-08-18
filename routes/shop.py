@@ -586,9 +586,6 @@ def customize(product_id):
             gallery_designs = [{'id': d.id, 'url': _resolve_image_url(d.file_path), 'title': (d.title or d.original_filename or 'Design')} for d in designs]
     except Exception:
         pass
-    if not preset_design and gallery_designs and len(gallery_designs) == 1:
-        preset_design = gallery_designs[0]
-    
     # User's own designs (profile-only, for logged-in users) — skip when the organizer locked logos
     my_designs = []
     if current_user.is_authenticated and not (collection_restricted and allowed_design_ids and not allow_custom_upload):

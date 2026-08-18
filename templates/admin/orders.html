@@ -15,7 +15,7 @@
         <h1 class="ord-title">Orders</h1>
         <p class="ord-lead">
             {% if orders.total == 1 %}1 order{% else %}{{ orders.total }} orders{% endif %}
-            {% if _status and _status != 'all' %}&nbsp;&mdash; {{ {'order_received':'Order Received','waiting_supplies':'Waiting on Supplies','ready_to_press':'Ready to Press','pressed':'Pressed','packaged_ready':'Packaged & Ready'}.get(_status, _status.replace('_',' ').title()) }}{% endif %}
+            {% if _status and _status != 'all' %}&nbsp;- {{ {'order_received':'Order Received','waiting_supplies':'Waiting on Supplies','ready_to_press':'Ready to Press','pressed':'Pressed','packaged_ready':'Packaged & Ready'}.get(_status, _status.replace('_',' ').title()) }}{% endif %}
         </p>
     </div>
     <div class="ord-header-actions">

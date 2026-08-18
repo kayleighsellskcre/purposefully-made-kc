@@ -281,7 +281,7 @@
             <div class="prod-modal-list">
                 <div class="prod-modal-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Clean flat product shots — <strong>no models</strong>
+                    Clean flat product shots, <strong>no models</strong>
                 </div>
                 <div class="prod-modal-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -289,7 +289,7 @@
                 </div>
                 <div class="prod-modal-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Only fills gaps — existing images are not overwritten
+                    Only fills gaps, existing images are not overwritten
                 </div>
             </div>
             <p class="prod-modal-note">May take a few minutes. Do not close this tab.</p>
@@ -360,7 +360,7 @@
                     Typically takes 3–5 minutes to complete
                 </div>
             </div>
-            <p class="prod-modal-note">The page will load while the sync runs — do not close the tab.</p>
+            <p class="prod-modal-note">The page will load while the sync runs. Do not close the tab.</p>
             <form action="{{ url_for('admin.sync_all_bella_canvas') }}" method="POST">
                 <div class="prod-modal-actions">
                     <button type="button" class="btn btn-outline" onclick="closeModal('fullSyncModal')">Cancel</button>
@@ -1296,7 +1296,7 @@ document.addEventListener('change', function(e) {
     })
     .catch(function() {
         allInputs.forEach(function(inp) { inp.checked = !inp.checked; });
-        showToast('Something went wrong — please try again.');
+        showToast('Something went wrong. Please try again.');
     });
 });
 
@@ -1333,7 +1333,7 @@ document.addEventListener('click', function(e) {
         showToast(data.message);
     })
     .catch(function() {
-        showToast('Something went wrong — please try again.');
+        showToast('Something went wrong. Please try again.');
     });
 });
 
@@ -1453,7 +1453,7 @@ function showToast(msg) {
                     <strong>Prices, images, sizes, and colors are untouched</strong>
                 </div>
             </div>
-            <p class="prod-modal-note">After this, use <strong>Sync Bella+Canvas from SanMar</strong> — your current prices will be preserved automatically on every future sync.</p>
+            <p class="prod-modal-note">After this, use <strong>Sync Bella+Canvas from SanMar</strong>. Your current prices will be preserved automatically on every future sync.</p>
             <form action="{{ url_for('admin.unlink_ss_bella_canvas') }}" method="POST">
                 <div class="prod-modal-actions">
                     <button type="button" class="btn btn-outline" onclick="closeModal('unlinkSSModal')">Cancel</button>

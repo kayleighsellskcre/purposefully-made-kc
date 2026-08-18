@@ -18,7 +18,7 @@
                 <form method="post" action="{{ url_for('admin.production_master_move') }}" style="display: inline;">
                     {% if selected_collection %}<input type="hidden" name="collection" value="{{ selected_collection }}">{% endif %}
                     <button type="submit" class="btn btn-primary" {% if not orders %}disabled{% endif %}>
-                        Blanks are in — Ready to Press
+                        Blanks are in: Ready to Press
                     </button>
                 </form>
             </div>

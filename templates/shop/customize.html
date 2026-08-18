@@ -1540,7 +1540,7 @@
                                 <span>Submit this design to our public gallery for others to use</span>
                             </label>
                             <p class="text-muted" style="margin: 0.25rem 0 0 1.75rem; font-size: 0.8rem;">Submissions are reviewed by our team before they're published. Leave unchecked to keep it with your profile only.</p>
-                            <p id="gallerySubmitNote" style="display:none; margin: 0.5rem 0 0 1.75rem; font-size: 0.8rem; color:#1d7a3e; font-weight:600;">✓ Submitted for review — we'll publish it to the gallery once approved.</p>
+                            <p id="gallerySubmitNote" style="display:none; margin: 0.5rem 0 0 1.75rem; font-size: 0.8rem; color:#1d7a3e; font-weight:600;">✓ Submitted for review. We'll publish it to the gallery once approved.</p>
                         </div>
                         {% endif %}
                     </div>
@@ -1579,7 +1579,7 @@
                     <div class="design-preview artwork-inspector" id="designPreview">
                         <div class="ai-status" id="aiStatus" hidden>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                            <span id="aiStatusText">Background removed — transparent PNG ready</span>
+                            <span id="aiStatusText">Background removed. Transparent PNG ready.</span>
                         </div>
                         <div class="ai-stage bg-checker" id="aiStage">
                             <img src="" alt="Original upload" id="designOriginalImage" class="ai-img ai-img-original">
@@ -1600,7 +1600,7 @@
                                 Zoom
                             </button>
                         </div>
-                        <p class="ai-white-note" id="aiWhiteNote" hidden>White artwork detected — shown on a contrasting background so you can see it. The final print file stays transparent.</p>
+                        <p class="ai-white-note" id="aiWhiteNote" hidden>White artwork detected. Shown on a contrasting background so you can see it. The final print file stays transparent.</p>
                         <div class="ai-actions">
                             <button class="btn btn-outline btn-sm" id="reprocessDesign" hidden>Reprocess (stronger cut)</button>
                             <button class="btn btn-outline btn-sm" id="removeDesign">Remove Design</button>
@@ -3133,10 +3133,10 @@
                 aiStatus.hidden = false;
                 if (aiStatusText) {
                     aiStatusText.textContent = data.engine === 'ai'
-                        ? 'AI background removal complete — transparent PNG ready'
+                        ? 'AI background removal complete. Transparent PNG ready.'
                         : (data.engine === 'preserved'
                             ? 'Transparent artwork ready'
-                            : 'Background removed — transparent PNG ready');
+                            : 'Background removed. Transparent PNG ready.');
                 }
             } else {
                 aiStatus.hidden = true;
@@ -3310,7 +3310,7 @@
                 if (err.name === 'AbortError') {
                     msg = 'This is taking longer than expected. Please try a smaller image or try again.';
                 } else if (err instanceof TypeError || /failed to fetch|networkerror/i.test(msg)) {
-                    msg = 'Network error — please check your connection and try again.';
+                    msg = 'Network error. Please check your connection and try again.';
                 }
                 uploadAreaMain.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#dc3545" stroke-width="2" style="margin-bottom: 0.5rem;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><p><strong>Upload failed</strong></p><p class="text-muted" style="font-size: 0.85rem;">' + msg.replace(/</g, '&lt;') + '</p><p class="text-muted" style="font-size: 0.8rem; margin-top: 0.5rem;">Click to try again</p>';
             }
@@ -3527,7 +3527,7 @@
             } catch (error) {
                 let msg = (error.message || 'Upload failed');
                 if (error.name === 'AbortError') msg = 'This is taking too long. Please try a smaller image or try again.';
-                else if (error instanceof TypeError || /failed to fetch|networkerror/i.test(msg)) msg = 'Network error — check your connection and try again.';
+                else if (error instanceof TypeError || /failed to fetch|networkerror/i.test(msg)) msg = 'Network error. Check your connection and try again.';
                 uploadAreaBack.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#dc3545" stroke-width="2" style="margin: 0 auto 1rem;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><p><strong>Upload failed</strong></p><p class="text-muted" style="font-size: 0.85rem;">' + msg.replace(/</g, '&lt;') + '</p><p class="text-muted" style="font-size: 0.8rem;">Click to try again</p>';
                 uploadAreaBack.style.pointerEvents = '';
             }
@@ -4101,7 +4101,7 @@
                     throw new Error('Failed to add to cart');
                 }
             } catch (error) {
-                PMKC.showFlash('Something went wrong adding to cart — please try again', 'error');
+                PMKC.showFlash('Something went wrong adding to cart. Please try again.', 'error');
                 this.textContent = 'Add Design & Continue';
                 this.disabled = false;
             }
