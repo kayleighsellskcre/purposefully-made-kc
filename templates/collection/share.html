@@ -15,6 +15,20 @@
 
             <p class="share-hint">Anyone with this link can view and order from this group order.</p>
 
+            {# QR Code #}
+            <div class="qr-section">
+                <p class="qr-label">QR Code — print or share on your flyer</p>
+                <img src="{{ url_for('collection.qr_code', slug=collection.slug) }}"
+                     alt="QR code for {{ collection.name }}"
+                     class="qr-image">
+                <div class="qr-actions">
+                    <a href="{{ url_for('collection.qr_code', slug=collection.slug) }}"
+                       download="{{ collection.slug }}-qr.png"
+                       class="btn btn-outline btn-sm">⬇ Download QR Code</a>
+                    <p class="qr-hint">Point your phone camera at the QR code to open the group order link instantly.</p>
+                </div>
+            </div>
+
             <a href="{{ url_for('collection.view', slug=collection.slug) }}" class="btn btn-outline">View Group Order</a>
             {% if can_manage %}
             <a href="{{ url_for('shop.edit_group_order', slug=collection.slug) }}" class="btn btn-outline" style="margin-left:0.5rem;">Edit store</a>
@@ -87,6 +101,12 @@
 .manage-design-name { font-size: 0.75rem; color: var(--text-secondary); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .btn-delete-design { background: none; border: none; cursor: pointer; color: #c0392b; padding: 4px; border-radius: 4px; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
 .btn-delete-design:hover { background: rgba(192,57,43,0.1); }
+.qr-section { margin: 1.5rem 0; padding: 1.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); background: var(--secondary-color, #faf7f4); text-align: center; }
+.qr-label { font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; }
+.qr-image { width: 180px; height: 180px; display: block; margin: 0 auto 1rem; border: 4px solid #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.qr-actions { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+.btn-sm { padding: 0.45rem 1rem; font-size: 0.85rem; }
+.qr-hint { font-size: 0.8rem; color: var(--text-secondary); margin: 0; }
 .export-bar { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); }
 .btn-export { display: inline-flex; align-items: center; background: #1D6F42; color: #fff; border: none; padding: 0.65rem 1.4rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; text-decoration: none; transition: background 0.2s; }
 .btn-export:hover { background: #155734; color: #fff; }

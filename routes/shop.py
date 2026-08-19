@@ -466,7 +466,7 @@ def edit_group_order(slug):
         collection=collection,
         products=catalog['products'],
         gallery_designs=designs_for_group_order_form(collection),
-        collection_colors=catalog['all_colors'],
+        collection_colors=catalog.get('colors_by_brand') or catalog['all_colors'],
         allowed_colors_list=allowed_colors_list,
         allowed_design_ids_list=allowed_design_ids_list,
         allowed_placements_list=allowed_placements_list,

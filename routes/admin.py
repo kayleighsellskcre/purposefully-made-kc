@@ -2415,7 +2415,7 @@ def add_collection():
         'admin/add_collection.html',
         products=catalog['products'],
         gallery_designs=catalog['gallery_designs'],
-        all_colors=catalog['all_colors'],
+        all_colors=catalog.get('colors_by_brand') or catalog['all_colors'],
         back_design_fonts=back_design_fonts,
         catalog_filter_opts=catalog['catalog_filter_opts'],
         catalog_filter_picker=True,
@@ -2469,11 +2469,15 @@ def edit_collection(collection_id):
     
     products = prepare_catalog(Product.query.filter_by(is_active=True).all())
     gallery_designs = designs_for_group_order_form(collection)
-    collection_color_names = set()
+    # Build colors grouped by brand from this collection's products
+    colors_by_brand: dict[str, list[str]] = {}
     for p in collection.products:
+        brand_key = p.brand or 'Other'
         for v in ProductColorVariant.query.filter_by(product_id=p.id).all():
-            collection_color_names.add(v.color_name)
-    collection_color_names = sorted(collection_color_names)
+            if v.color_name:
+                colors_by_brand.setdefault(brand_key, set()).add(v.color_name)
+    colors_by_brand = {b: sorted(c) for b, c in sorted(colors_by_brand.items())}
+    collection_color_names = colors_by_brand  # passed to template as dict
     allowed_colors_list = json.loads(collection.allowed_colors) if collection.allowed_colors else []
     allowed_design_ids_list = json.loads(collection.allowed_design_ids) if collection.allowed_design_ids else []
     allowed_placements_list = json.loads(collection.allowed_placements) if collection.allowed_placements else ['center_chest', 'left_chest', 'right_chest', 'center_back']

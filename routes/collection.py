@@ -12,6 +12,36 @@ import io
 collection_bp = Blueprint('collection', __name__, url_prefix='/c')
 
 
+@collection_bp.route('/<slug>/qr.png')
+def qr_code(slug):
+    """Return a QR code PNG for this collection's share URL."""
+    collection = Collection.query.filter_by(slug=slug).first_or_404()
+    share_url = request.url_root.rstrip('/') + url_for('collection.view', slug=slug)
+    try:
+        import qrcode
+        from qrcode.image.pil import PilImage
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(share_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color='#3A3D48', back_color='white')
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        buf.seek(0)
+        return Response(
+            buf.getvalue(),
+            mimetype='image/png',
+            headers={'Cache-Control': 'public, max-age=3600'},
+        )
+    except ImportError:
+        from flask import abort
+        abort(500, 'qrcode library not installed. Run: pip install qrcode[pil]')
+
+
 @collection_bp.route('/leave')
 def leave():
     """Drop group-order session and return to the regular shop."""

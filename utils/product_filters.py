@@ -241,23 +241,35 @@ def load_group_order_form_catalog():
     products = prepare_catalog(Product.query.filter_by(is_active=True).all())
     ids = [p.id for p in products]
     all_colors = []
+    colors_by_brand = {}   # {brand: [sorted color names]}
     gallery_designs = []
     try:
         if ids:
             rows = (
-                db.session.query(ProductColorVariant.color_name)
+                db.session.query(Product.brand, ProductColorVariant.color_name)
+                .join(ProductColorVariant, ProductColorVariant.product_id == Product.id)
                 .filter(
-                    ProductColorVariant.product_id.in_(ids),
+                    Product.id.in_(ids),
                     ProductColorVariant.color_name.isnot(None),
                     ProductColorVariant.color_name != '',
                 )
                 .distinct()
-                .order_by(ProductColorVariant.color_name)
+                .order_by(Product.brand, ProductColorVariant.color_name)
                 .all()
             )
-            all_colors = [name for (name,) in rows if name]
+            seen_colors: set[str] = set()
+            for brand, color in rows:
+                if not color:
+                    continue
+                brand_key = brand or 'Other'
+                colors_by_brand.setdefault(brand_key, [])
+                if color not in colors_by_brand[brand_key]:
+                    colors_by_brand[brand_key].append(color)
+                seen_colors.add(color)
+            all_colors = sorted(seen_colors)
     except Exception:
         all_colors = []
+        colors_by_brand = {}
     try:
         gallery_designs = (
             Design.query.filter_by(is_gallery=True)
@@ -270,6 +282,7 @@ def load_group_order_form_catalog():
     return {
         'products': products,
         'all_colors': all_colors,
+        'colors_by_brand': colors_by_brand,
         'gallery_designs': gallery_designs,
         'catalog_filter_opts': catalog_filter_options(products),
         'catalog_filter_picker': True,

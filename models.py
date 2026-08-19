@@ -153,6 +153,12 @@ class Collection(db.Model):
     # When True + restrict_options, participants cannot change font/color/outline
     lock_back_design_style = db.Column(db.Boolean, default=False)
 
+    # Back design permissions
+    # allow_back_design: False = no back design at all; True = use back_design_type
+    allow_back_design = db.Column(db.Boolean, default=True)
+    # back_design_type: 'name_number' | 'image' | 'both'  (ignored when allow_back_design=False)
+    back_design_type = db.Column(db.String(20), default='both')
+
     # Public directory — admin toggles this to list the collection on /group-orders
     show_in_directory = db.Column(db.Boolean, default=False)
 

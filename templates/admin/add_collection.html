@@ -92,15 +92,30 @@
                 <div id="organizer-choices-add" class="organizer-choices">
                     <div class="form-group">
                         <label>Allowed colors (team picks from these)</label>
+                        <p class="form-hint">Colors grouped by brand. Leave all unchecked to allow every color.</p>
                         {% if all_colors %}
-                        <div class="choice-checkboxes">
-                            {% for color in all_colors %}
-                            <label class="choice-checkbox">
-                                <input type="checkbox" name="allowed_colors" value="{{ color }}">
-                                <span>{{ color }}</span>
-                            </label>
+                          {% if all_colors is mapping %}
+                            {% for brand, colors in all_colors.items() %}
+                            <p class="brand-color-heading">{{ brand }}</p>
+                            <div class="choice-checkboxes">
+                                {% for color in colors %}
+                                <label class="choice-checkbox">
+                                    <input type="checkbox" name="allowed_colors" value="{{ color }}">
+                                    <span>{{ color }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
                             {% endfor %}
-                        </div>
+                          {% else %}
+                            <div class="choice-checkboxes">
+                                {% for color in all_colors %}
+                                <label class="choice-checkbox">
+                                    <input type="checkbox" name="allowed_colors" value="{{ color }}">
+                                    <span>{{ color }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                          {% endif %}
                         {% else %}
                         <p class="text-muted">Add products to your catalog first to see color options.</p>
                         {% endif %}
@@ -503,7 +518,8 @@ updateBackPreview(); // initial render
 .font-choice-card:hover { border-color: var(--accent-color); }
 .font-choice-card:has(input:checked) { border-color: var(--accent-color); background: rgba(184, 124, 111, 0.08); }
 .font-choice-card input { display: none; }
-.choice-checkboxes { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+.brand-color-heading { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin: 0.75rem 0 0.25rem; }
+.choice-checkboxes { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem; margin-bottom: 0.5rem; }
 .choice-checkbox { display: flex; align-items: center; padding: 0.35rem 0.75rem; background: var(--secondary-color); border-radius: 8px; cursor: pointer; }
 .choice-checkbox input { margin-right: 0.5rem; }
 .design-choice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.75rem; margin-top: 0.5rem; }

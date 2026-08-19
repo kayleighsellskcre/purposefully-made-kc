@@ -224,6 +224,15 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
     collection.back_design_outline_color = request.form.get('back_design_outline_color') or None
     collection.lock_back_design_style = request.form.get('lock_back_design_style') == 'on'
 
+    # Back design permissions
+    bdt = request.form.get('back_design_type', 'both')
+    if bdt == 'none':
+        collection.allow_back_design = False
+        collection.back_design_type  = 'both'   # stored default; irrelevant when disabled
+    else:
+        collection.allow_back_design = True
+        collection.back_design_type  = bdt if bdt in ('name_number', 'image', 'both') else 'both'
+
     password = (request.form.get('password') or '').strip()
     if request.form.get('password_protected') == 'on':
         if password:

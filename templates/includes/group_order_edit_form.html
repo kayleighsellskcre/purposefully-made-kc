@@ -67,15 +67,32 @@
                 <div id="organizer-choices" class="organizer-choices">
                     <div class="form-group">
                         <label>Allowed colors (team picks from these)</label>
+                        <p class="form-hint">Colors are grouped by brand. Leave all unchecked to allow every color.</p>
                         {% if collection_colors %}
-                        <div class="choice-checkboxes">
-                            {% for color in collection_colors %}
-                            <label class="choice-checkbox">
-                                <input type="checkbox" name="allowed_colors" value="{{ color }}" {% if color in allowed_colors_list %}checked{% endif %}>
-                                <span>{{ color }}</span>
-                            </label>
+                          {% if collection_colors is mapping %}
+                            {# Dict: {brand: [colors]} #}
+                            {% for brand, colors in collection_colors.items() %}
+                            <p class="brand-color-heading">{{ brand }}</p>
+                            <div class="choice-checkboxes">
+                                {% for color in colors %}
+                                <label class="choice-checkbox">
+                                    <input type="checkbox" name="allowed_colors" value="{{ color }}" {% if color in allowed_colors_list %}checked{% endif %}>
+                                    <span>{{ color }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
                             {% endfor %}
-                        </div>
+                          {% else %}
+                            {# Flat list fallback #}
+                            <div class="choice-checkboxes">
+                                {% for color in collection_colors %}
+                                <label class="choice-checkbox">
+                                    <input type="checkbox" name="allowed_colors" value="{{ color }}" {% if color in allowed_colors_list %}checked{% endif %}>
+                                    <span>{{ color }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                          {% endif %}
                         {% else %}
                         <p class="text-muted">Add products to this group order first to see color options.</p>
                         {% endif %}
@@ -138,6 +155,35 @@
                         </div>
                     </div>
                     <div class="form-group">
+                        <label>Back of shirt — what can team members add?</label>
+                        <p class="form-hint">Control what (if anything) goes on the back of the shirt.</p>
+                        {% set bdt = 'none' if not collection.allow_back_design else (collection.back_design_type or 'both') %}
+                        <div class="placement-checkboxes">
+                            <label class="placement-checkbox">
+                                <input type="radio" name="back_design_type" value="none" {% if bdt == 'none' %}checked{% endif %}>
+                                <span>No back design</span>
+                                <small>Front only — nothing printed on the back</small>
+                            </label>
+                            <label class="placement-checkbox">
+                                <input type="radio" name="back_design_type" value="name_number" {% if bdt == 'name_number' %}checked{% endif %}>
+                                <span>Name &amp; number only</span>
+                                <small>Team members type their name and/or number</small>
+                            </label>
+                            <label class="placement-checkbox">
+                                <input type="radio" name="back_design_type" value="image" {% if bdt == 'image' %}checked{% endif %}>
+                                <span>Uploaded image only</span>
+                                <small>Only the designs you upload can go on the back</small>
+                            </label>
+                            <label class="placement-checkbox">
+                                <input type="radio" name="back_design_type" value="both" {% if bdt == 'both' %}checked{% endif %}>
+                                <span>Both options</span>
+                                <small>Team chooses: name/number or one of your uploaded images</small>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="back-font-section" {% if bdt == 'none' or bdt == 'image' %}style="display:none"{% endif %}>
+                    <div class="form-group">
                         <label>Back design font (name &amp; number on back)</label>
                         <p class="form-hint">Choose the font for name/number on the back. Team members will use this font.</p>
                         <div class="font-choice-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; margin-top: 0.5rem;">
@@ -150,6 +196,7 @@
                             {% endfor %}
                         </div>
                     </div>
+                    </div>{# /back-font-section #}
                 </div>
             </div>
 
@@ -213,6 +260,14 @@
 </div>
 
 <script>
+// Back design type — show/hide font section
+document.querySelectorAll('input[name="back_design_type"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+        var showFont = (this.value === 'name_number' || this.value === 'both');
+        var section = document.getElementById('back-font-section');
+        if (section) section.style.display = showFont ? '' : 'none';
+    });
+});
 document.getElementById('password_protected').addEventListener('change', (e) => {
     document.getElementById('password-field').style.display = e.target.checked ? 'block' : 'none';
 });
@@ -283,7 +338,9 @@ function confirmDelete(btn) {
 .font-choice-card:hover { border-color: var(--accent-color); }
 .font-choice-card:has(input:checked) { border-color: var(--accent-color); background: rgba(184, 124, 111, 0.08); }
 .font-choice-card input { display: none; }
-.choice-checkboxes { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+.brand-color-heading { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin: 0.75rem 0 0.25rem; }
+.brand-color-heading:first-of-type { margin-top: 0.25rem; }
+.choice-checkboxes { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem; margin-bottom: 0.5rem; }
 .choice-checkbox { display: flex; align-items: center; padding: 0.35rem 0.75rem; background: var(--secondary-color); border-radius: 8px; cursor: pointer; }
 .choice-checkbox input { margin-right: 0.5rem; }
 .design-choice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.75rem; margin-top: 0.5rem; }
