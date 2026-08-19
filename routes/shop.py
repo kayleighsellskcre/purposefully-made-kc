@@ -190,18 +190,20 @@ def group_orders():
     from flask_login import current_user
     from models import Collection
     from utils.group_orders import is_deadline_passed
-    from datetime import datetime
 
-    # Fetch all active collections marked for the public directory
-    directory = Collection.query.filter_by(is_active=True, show_in_directory=True).order_by(Collection.created_at.desc()).all()
-    # Annotate each with deadline status and a preview image
+    directory = (
+        Collection.query
+        .filter_by(is_active=True, show_in_directory=True)
+        .order_by(Collection.created_at.desc())
+        .all()
+    )
     open_collections = []
     for c in directory:
         if is_deadline_passed(c):
             continue
-        # Grab first product image for the card thumbnail
         preview_img = None
-        for prod in (c.products or []):
+        products = list(c.products or [])
+        for prod in products:
             imgs = [v.front_image_url for v in (prod.color_variants or []) if v.front_image_url]
             if imgs:
                 preview_img = imgs[0]
@@ -209,7 +211,7 @@ def group_orders():
         open_collections.append({
             'collection': c,
             'preview_img': preview_img,
-            'product_count': len(c.products or []),
+            'product_count': len(products),
         })
 
     return render_template(

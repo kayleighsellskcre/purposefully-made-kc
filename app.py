@@ -154,6 +154,10 @@ def create_app(config_class=Config):
                     "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP",
                     # collection.created_by_user_id — tracks who created a group order (for delete-design permission)
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER REFERENCES \"user\"(id)",
+                    # Group-order organizer options + public directory listing
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS allow_back_design BOOLEAN DEFAULT TRUE",
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS back_design_type VARCHAR(20) DEFAULT 'both'",
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS show_in_directory BOOLEAN DEFAULT FALSE",
                     # product.spec_sheet_url — SanMar CDN PDF link added during Bella+Canvas CSV import
                     "ALTER TABLE product ADD COLUMN IF NOT EXISTS spec_sheet_url VARCHAR(500)",
                     # product_color_variant.color_swatch_url — SanMar CDN swatch image (color_hex is only 7 chars)
