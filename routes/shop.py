@@ -389,7 +389,7 @@ def create_group_order():
     return render_template('admin/add_collection.html',
                          products=catalog['products'],
                          gallery_designs=catalog['gallery_designs'],
-                         all_colors=catalog['all_colors'],
+                         all_colors=catalog.get('colors_by_brand') or catalog['all_colors'],
                          back_design_fonts=back_design_fonts,
                          catalog_filter_opts=catalog['catalog_filter_opts'],
                          catalog_filter_picker=True,
