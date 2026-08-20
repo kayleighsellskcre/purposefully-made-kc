@@ -193,6 +193,29 @@ def prepare_catalog(products):
         preview = (getattr(product, 'front_mockup_template', None) or '').strip()
         if preview and not preview.startswith(('http://', 'https://', '/', 'data:')):
             preview = '/static/' + preview
+        # If still no image, try scanning static/images/products/{style_number}/ for a front image
+        if not preview:
+            import os, glob as _glob
+            style = (getattr(product, 'style_number', None) or '').strip()
+            if style:
+                # Style numbers may be like "BC3001" — strip leading brand prefix for folder name
+                style_bare = style.lstrip('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+& ')
+                for folder in (style, style_bare):
+                    pattern = os.path.join('static', 'images', 'products', folder, '*_front.*')
+                    matches = _glob.glob(pattern)
+                    if not matches:
+                        # Try case-insensitive on Windows via explicit listdir
+                        folder_path = os.path.join('static', 'images', 'products', folder)
+                        if os.path.isdir(folder_path):
+                            matches = [
+                                os.path.join(folder_path, f)
+                                for f in os.listdir(folder_path)
+                                if '_front.' in f.lower()
+                            ]
+                    if matches:
+                        rel = matches[0].replace('\\', '/').lstrip('/')
+                        preview = '/' + rel
+                        break
         product.preview_image_url = preview
     items.sort(key=lambda p: (
         _AGE_ORDER.get(getattr(p, 'display_age', None), 9),

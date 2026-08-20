@@ -17,7 +17,9 @@ def _mockup_dirs(app):
     app_mockups = os.path.join(basedir, 'mockups')
     # Project root uploads/mockups (where bulk-uploaded mockups live)
     root_mockups = os.path.join(app.root_path, 'uploads', 'mockups')
-    return [app_mockups, root_mockups]
+    # static/images/products — SanMar-sourced product images
+    static_images = os.path.join(app.root_path, 'static', 'images', 'products')
+    return [app_mockups, root_mockups, static_images]
 
 
 def _find_mockup_file(app, style_number, color_name, view):
