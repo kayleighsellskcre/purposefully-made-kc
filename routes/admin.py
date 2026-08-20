@@ -866,14 +866,18 @@ def products():
             except (TypeError, ValueError):
                 json_count = 0
             p.color_count = variant_count if variant_count > 0 else min(json_count, 200)
-            # Build ordered fallback list: lightest DB colors first, then local folder
-            db_urls = sorted_front_mockup_urls(variants)
+            # Build ordered fallback list: local files first (guaranteed to exist),
+            # then DB/CDN urls (may 404), then template url
             local_url = get_first_shop_image_url(p, current_app)
-            all_urls = db_urls[:]
-            if local_url and local_url not in all_urls:
-                all_urls.append(local_url)
+            db_urls = sorted_front_mockup_urls(variants)
+            seen = set()
+            all_urls = []
+            for u in ([local_url] if local_url else []) + db_urls:
+                if u and u not in seen:
+                    seen.add(u)
+                    all_urls.append(u)
             template_url = (p.front_mockup_template or '').strip()
-            if template_url and template_url not in all_urls:
+            if template_url and template_url not in seen:
                 all_urls.append(template_url)
             p.thumb_url = all_urls[0] if all_urls else None
             p.thumb_fallbacks = all_urls[1:]  # remaining URLs for JS cascade
