@@ -193,7 +193,7 @@ def group_orders():
 
     directory = (
         Collection.query
-        .filter_by(is_active=True, show_in_directory=True)
+        .filter_by(is_active=True)
         .order_by(Collection.created_at.desc())
         .all()
     )

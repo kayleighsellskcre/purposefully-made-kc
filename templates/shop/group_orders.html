@@ -196,6 +196,48 @@
     width: 100%;
     text-align: center;
 }
+
+/* ── Directory search ── */
+.dir-search-wrap {
+    position: relative;
+    max-width: 420px;
+    margin: 0 auto 2rem;
+    display: flex;
+    align-items: center;
+}
+.dir-search-icon {
+    position: absolute;
+    left: 1rem;
+    color: var(--text-secondary);
+    pointer-events: none;
+}
+.dir-search-input {
+    width: 100%;
+    padding: 0.75rem 2.5rem 0.75rem 2.75rem;
+    border: 1.5px solid var(--border-color);
+    border-radius: 999px;
+    font-size: 0.95rem;
+    background: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+}
+.dir-search-input:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(184,124,111,0.15);
+}
+.dir-search-clear {
+    position: absolute;
+    right: 1rem;
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+}
+.dir-search-clear:hover { color: var(--text-primary); }
+.dir-card[hidden] { display: none !important; }
 </style>
 {% endblock %}
 {% block content %}
@@ -276,10 +318,20 @@
         <div class="directory-section">
             <h2>Open Group Orders</h2>
             <p class="section-sub">Join an existing order: pick your size, pay your own way, and you're done.</p>
-            <div class="directory-grid">
+
+            {% if open_collections|length > 3 %}
+            <div class="dir-search-wrap">
+                <svg class="dir-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <input type="text" id="dirSearchInput" class="dir-search-input" placeholder="Search group orders by name…" autocomplete="off">
+                <button type="button" id="dirSearchClear" class="dir-search-clear" style="display:none" aria-label="Clear search">×</button>
+            </div>
+            <p id="dirNoResults" style="display:none;text-align:center;color:var(--text-secondary);padding:2rem 0">No group orders match your search.</p>
+            {% endif %}
+
+            <div class="directory-grid" id="directoryGrid">
                 {% for item in open_collections %}
                 {% set c = item.collection %}
-                <div class="dir-card">
+                <div class="dir-card" data-name="{{ c.name | lower }}" data-desc="{{ (c.description or '') | lower }}">
                     <div class="dir-card-img">
                         {% if item.preview_img %}
                         <img src="{{ item.preview_img }}" alt="{{ c.name }}">
@@ -301,8 +353,10 @@
                             {% endif %}
                             {% if c.is_password_protected %}
                             <span class="dir-badge locked">🔒 Code required</span>
+                            {% elif c.show_in_directory %}
+                            <span class="dir-badge public">🌐 Public</span>
                             {% else %}
-                            <span class="dir-badge">✓ Open</span>
+                            <span class="dir-badge private">🔗 Link only</span>
                             {% endif %}
                         </div>
                     </div>
@@ -319,4 +373,34 @@
 
     </div>
 </section>
+<script>
+(function() {
+    var input = document.getElementById('dirSearchInput');
+    var clear = document.getElementById('dirSearchClear');
+    var noResults = document.getElementById('dirNoResults');
+    if (!input) return;
+
+    function filter() {
+        var q = input.value.trim().toLowerCase();
+        var cards = document.querySelectorAll('#directoryGrid .dir-card');
+        var visible = 0;
+        cards.forEach(function(card) {
+            var name = card.dataset.name || '';
+            var desc = card.dataset.desc || '';
+            var match = !q || name.includes(q) || desc.includes(q);
+            card.hidden = !match;
+            if (match) visible++;
+        });
+        clear.style.display = q ? '' : 'none';
+        if (noResults) noResults.style.display = (q && visible === 0) ? '' : 'none';
+    }
+
+    input.addEventListener('input', filter);
+    clear.addEventListener('click', function() {
+        input.value = '';
+        filter();
+        input.focus();
+    });
+})();
+</script>
 {% endblock %}
