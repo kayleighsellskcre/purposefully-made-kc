@@ -844,7 +844,7 @@ def products():
 
         # Size/color counts + lightest-color thumbnail in one variant pass
         from collections import defaultdict
-        from utils.mockups import lightest_front_mockup_url
+        from utils.mockups import lightest_front_mockup_url, sorted_front_mockup_urls, get_first_shop_image_url
 
         variants_by_pid = defaultdict(list)
         if products:
@@ -866,7 +866,17 @@ def products():
             except (TypeError, ValueError):
                 json_count = 0
             p.color_count = variant_count if variant_count > 0 else min(json_count, 200)
-            p.thumb_url = lightest_front_mockup_url(variants) or (p.front_mockup_template or '').strip() or None
+            # Build ordered fallback list: lightest DB colors first, then local folder
+            db_urls = sorted_front_mockup_urls(variants)
+            local_url = get_first_shop_image_url(p, current_app)
+            all_urls = db_urls[:]
+            if local_url and local_url not in all_urls:
+                all_urls.append(local_url)
+            template_url = (p.front_mockup_template or '').strip()
+            if template_url and template_url not in all_urls:
+                all_urls.append(template_url)
+            p.thumb_url = all_urls[0] if all_urls else None
+            p.thumb_fallbacks = all_urls[1:]  # remaining URLs for JS cascade
 
         # Check if S&S API is configured - check environment variable directly
         api_key = os.getenv('SSACTIVEWEAR_API_KEY')

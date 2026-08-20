@@ -336,6 +336,26 @@ def lightest_front_mockup_url(variants):
     return best_url
 
 
+def sorted_front_mockup_urls(variants):
+    """
+    Return all variant front_image_urls sorted lightest-first (deduped).
+    Use as a JS fallback list so if the first image 404s the next is tried.
+    """
+    scored = []
+    seen = set()
+    for variant in variants or []:
+        url = (getattr(variant, 'front_image_url', None) or '').strip()
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        lum = _hex_luminance(getattr(variant, 'color_hex', None))
+        if lum is None:
+            lum = _name_lightness(getattr(variant, 'color_name', ''))
+        scored.append((lum, url))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [url for _, url in scored]
+
+
 def get_first_shop_image_url(product, app):
     """
     Get a single image URL for shop display when carousel is empty.

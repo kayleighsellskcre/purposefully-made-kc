@@ -137,7 +137,9 @@
                     data-style="{{ product.style_number|lower }}">
                     <td class="prod-thumb-cell">
                         {% if product.thumb_url %}
-                        <img class="prod-thumb" src="{{ product.thumb_url | image_url }}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.classList.add('prod-thumb--empty'); this.removeAttribute('src')">
+                        <img class="prod-thumb" src="{{ product.thumb_url | image_url }}" alt="" loading="lazy" referrerpolicy="no-referrer"
+                             data-fallbacks="{{ (product.thumb_fallbacks or []) | tojson | forceescape }}"
+                             onerror="nextThumb(this)">
                         {% else %}
                         <span class="prod-thumb prod-thumb--empty" aria-hidden="true"></span>
                         {% endif %}
@@ -201,7 +203,9 @@
                  data-style="{{ product.style_number|lower }}">
                 <div class="prod-card-top">
                     {% if product.thumb_url %}
-                    <img class="prod-thumb" src="{{ product.thumb_url | image_url }}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.classList.add('prod-thumb--empty'); this.removeAttribute('src')">
+                    <img class="prod-thumb" src="{{ product.thumb_url | image_url }}" alt="" loading="lazy" referrerpolicy="no-referrer"
+                         data-fallbacks="{{ (product.thumb_fallbacks or []) | tojson | forceescape }}"
+                         onerror="nextThumb(this)">
                     {% else %}
                     <span class="prod-thumb prod-thumb--empty" aria-hidden="true"></span>
                     {% endif %}
@@ -1222,6 +1226,24 @@ details[open] .prod-tools-chevron { transform: rotate(180deg); }
 </style>
 
 <script>
+/* Thumbnail cascade — if the primary src 404s, try each fallback URL in order.
+   When all fail, fall back to the empty-placeholder styling. */
+function nextThumb(img) {
+    try {
+        var fallbacks = JSON.parse(img.dataset.fallbacks || '[]');
+        if (fallbacks.length > 0) {
+            img.src = fallbacks.shift();
+            img.dataset.fallbacks = JSON.stringify(fallbacks);
+        } else {
+            img.classList.add('prod-thumb--empty');
+            img.removeAttribute('src');
+        }
+    } catch(e) {
+        img.classList.add('prod-thumb--empty');
+        img.removeAttribute('src');
+    }
+}
+
 function openModal(id) {
     const m = document.getElementById(id);
     if (m) {
