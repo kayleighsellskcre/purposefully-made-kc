@@ -36,6 +36,7 @@
     --info-color: #939F80;              /* Olive Stone */
     
     --font-primary: 'Inter', sans-serif;
+    --font-secondary: 'Cormorant Garamond', 'Inter', sans-serif;
     --font-heading: 'Playfair Display', serif;
     
     --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -213,12 +214,19 @@ a:hover {
     background: rgba(184, 124, 111, 0.12);
 }
 
+/* Always-visible icon strip (cart, favorites, hamburger) */
+.nav-icons {
+    display: flex;
+    align-items: center;
+    gap: 0.1rem;
+    flex-shrink: 0;
+}
+
 .cart-link {
     position: relative;
     display: flex;
     align-items: center;
     padding: 0.5rem 0.75rem;
-    margin-left: 0.5rem;
     border-radius: 6px;
     color: var(--text-primary);
 }
@@ -233,7 +241,6 @@ a:hover {
     display: flex;
     align-items: center;
     padding: 0.5rem 0.75rem;
-    margin-left: 0.5rem;
     border-radius: 6px;
     color: var(--text-primary);
     transition: var(--transition);
@@ -1111,11 +1118,12 @@ textarea.form-control {
         touch-action: manipulation;
     }
 
+    /* cart/favorites are now in .nav-icons — always visible, touch-friendly */
     .cart-link,
     .favorites-link {
-        padding: 0.875rem 1rem;
-        min-height: 48px;
-        min-width: 48px;
+        padding: 0.6rem 0.65rem;
+        min-height: 44px;
+        min-width: 44px;
         justify-content: center;
     }
 
@@ -1860,11 +1868,12 @@ table { max-width: 100%; }
         border-radius: 8px;
         font-size: 0.9rem;
     }
+    /* cart/favorites stay in .nav-icons, always visible */
     .cart-link,
     .favorites-link {
-        padding: 0.875rem 1rem;
-        min-height: 48px;
-        justify-content: flex-start;
+        padding: 0.6rem 0.65rem;
+        min-height: 44px;
+        justify-content: center;
     }
     .mobile-menu-toggle { display: flex; }
     .logo { transform: translate(-4px, 8px); }

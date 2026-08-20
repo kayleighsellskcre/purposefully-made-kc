@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, Response
 from flask_login import current_user, login_required
 from models import db, Collection, Product, ProductColorVariant, Design
-from utils.mockups import get_carousel_colors_for_product
+from utils.mockups import get_carousel_colors_for_product, get_first_shop_image_url
 from utils.json_fields import parse_json_list
 from utils.product_filters import catalog_filter_options, prepare_catalog
 from utils.sizes import sort_sizes
@@ -81,6 +81,7 @@ def view(slug):
     for product in all_products:
         variants = get_carousel_colors_for_product(product, current_app, allowed_colors=allowed_colors)
         product.carousel_colors = variants
+        product.fallback_image_url = get_first_shop_image_url(product, current_app)
         product.available_sizes_list = sort_sizes(parse_json_list(product.available_sizes))
         # When colors are restricted, skip styles that don't come in those colors.
         if allowed_colors and not variants:

@@ -353,9 +353,19 @@
                             {% endif %}
                         </div>
                         {% else %}
-                        <img src="{{ url_for('static', filename='img/products/' + product.style_number + '.jpg') }}" 
-                             alt="{{ product.name }}"
-                             onerror="this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'">
+                        <div style="position:relative;width:100%;height:100%;">
+                            {% if product.fallback_image_url %}
+                            <img src="{{ product.fallback_image_url }}"
+                                 alt="{{ product.name }}"
+                                 style="width:100%;height:100%;object-fit:contain;padding:1rem;"
+                                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                            {% endif %}
+                            <div style="{% if product.fallback_image_url %}display:none;{% else %}display:flex;{% endif %}position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:1.5rem;background:linear-gradient(135deg,#fdf8f4 0%,#f5ede4 100%);">
+                                <div style="font-size:2rem;margin-bottom:0.4rem">📸</div>
+                                <p style="font-family:'Playfair Display',serif;font-size:0.85rem;color:#8b6f5e;font-weight:600;margin:0 0 0.25rem">This mockup skipped picture day!</p>
+                                <p style="font-size:0.75rem;color:#b09080;margin:0;line-height:1.4">Tap to customize & order ♡</p>
+                            </div>
+                        </div>
                         {% endif %}
                     </div>
                     <div class="design-card-content">
