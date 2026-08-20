@@ -195,27 +195,22 @@ def prepare_catalog(products):
             preview = '/static/' + preview
         # If still no image, try scanning static/images/products/{style_number}/ for a front image
         if not preview:
-            import os, glob as _glob
+            import os
+            _proj_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             style = (getattr(product, 'style_number', None) or '').strip()
             if style:
-                # Style numbers may be like "BC3001" — strip leading brand prefix for folder name
-                style_bare = style.lstrip('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+& ')
-                for folder in (style, style_bare):
-                    pattern = os.path.join('static', 'images', 'products', folder, '*_front.*')
-                    matches = _glob.glob(pattern)
-                    if not matches:
-                        # Try case-insensitive on Windows via explicit listdir
-                        folder_path = os.path.join('static', 'images', 'products', folder)
-                        if os.path.isdir(folder_path):
-                            matches = [
-                                os.path.join(folder_path, f)
-                                for f in os.listdir(folder_path)
-                                if '_front.' in f.lower()
-                            ]
-                    if matches:
-                        rel = matches[0].replace('\\', '/').lstrip('/')
-                        preview = '/' + rel
-                        break
+                # DB style numbers like "BC3001" → folder "3001"; "BC3001CVC" → "3001CVC"
+                import re as _re
+                style_bare = _re.sub(r'^[A-Za-z+& ]+', '', style)
+                for folder in dict.fromkeys([style_bare, style]):  # deduplicate, bare first
+                    if not folder:
+                        continue
+                    folder_path = os.path.join(_proj_root, 'static', 'images', 'products', folder)
+                    if os.path.isdir(folder_path):
+                        fronts = [f for f in os.listdir(folder_path) if '_front.' in f.lower()]
+                        if fronts:
+                            preview = f'/static/images/products/{folder}/{fronts[0]}'
+                            break
         product.preview_image_url = preview
     items.sort(key=lambda p: (
         _AGE_ORDER.get(getattr(p, 'display_age', None), 9),
