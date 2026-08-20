@@ -80,22 +80,25 @@
                 {% endif %}
             </div>
             
+            {# Always restrict options — hidden field so form handler still receives it #}
+            <input type="hidden" name="restrict_options" value="on">
+
             <div class="form-section">
-                <h2>Organizer's Choices</h2>
-                <p class="form-hint">Lock down options so the team orders matching apparel. Choose colors, designs, and placements the team can pick from.</p>
-                
-                <div class="form-check">
-                    <input type="checkbox" id="restrict_options" name="restrict_options">
-                    <label for="restrict_options">Restrict options: team can only order what you choose</label>
-                </div>
-                
-                <div id="organizer-choices-add" class="organizer-choices">
-                    <div class="form-group">
-                        <label>Allowed colors (team picks from these)</label>
-                        <p class="form-hint">Colors grouped by brand. Leave all unchecked to allow every color.</p>
+                <h2>Your Choices for This Group Order</h2>
+                <p class="form-hint">Set up colors, designs, placements, and back options. Your team will only see what you allow.</p>
+
+                <div class="organizer-block">
+                    <div class="organizer-block-label">
+                        <span class="organizer-step">1</span>
+                        <div>
+                            <strong>What colors can your team choose from?</strong>
+                            <p class="form-hint" style="margin:0">Check only the colors you want. Leave all unchecked to allow every color.</p>
+                        </div>
+                    </div>
                         {% if all_colors %}
                           {% if all_colors is mapping %}
                             {% for brand, colors in all_colors.items() %}
+                            <div class="brand-color-group" data-brand="{{ brand }}">
                             <p class="brand-color-heading">{{ brand }}</p>
                             <div class="choice-checkboxes">
                                 {% for color in colors %}
@@ -104,6 +107,7 @@
                                     <span>{{ color }}</span>
                                 </label>
                                 {% endfor %}
+                            </div>
                             </div>
                             {% endfor %}
                           {% else %}
@@ -120,122 +124,156 @@
                         <p class="text-muted">Add products to your catalog first to see color options.</p>
                         {% endif %}
                     </div>
-                    <div class="form-group">
-                        <label>Designs for this group order</label>
-                        <p class="form-hint">Upload designs the team can use, or let them upload their own.</p>
-                        
-                        <div class="collection-upload-area" id="uploadArea" onclick="document.getElementById('design_uploads').click()">
-                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                <polyline points="17 8 12 3 7 8"></polyline>
-                                <line x1="12" y1="3" x2="12" y2="15"></line>
-                            </svg>
-                            <p><strong>Click to upload</strong> or drag and drop</p>
-                            <p class="text-muted">PNG, JPG, WEBP. Designs will be added when you save.</p>
-                        </div>
-                        <input type="file" id="design_uploads" name="design_uploads" accept=".png,.jpg,.jpeg,.webp" multiple style="display: none;">
-                        <div id="uploadPreview" class="upload-preview-list" style="display: none;"></div>
-                        
-                        {% if gallery_designs %}
-                        <p class="form-hint" style="margin-top: 1rem;">Or pick from existing designs:</p>
-                        <div class="design-choice-grid">
-                            {% for d in gallery_designs %}
-                            <label class="design-choice-card">
-                                <input type="checkbox" name="allowed_designs" value="{{ d.id }}">
-                                <div class="design-choice-preview">
-                                    <img src="{{ d.file_path | image_url }}" alt="{{ d.title or d.original_filename }}">
-                                </div>
-                                <span>{{ (d.title or d.original_filename or 'Design')[:18] }}{% if ((d.title or d.original_filename or '')|length) > 18 %}...{% endif %}</span>
-                            </label>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                    </div>
-                    <div class="form-group">
-                        <label>Allowed placements (where logo/design can go on the item)</label>
-                        <p class="form-hint">Select which spots the team can put the logo on. Leave all checked to allow any placement.</p>
-                        <div class="placement-checkboxes">
-                            <label class="placement-checkbox">
-                                <input type="checkbox" name="allowed_placements" value="center_chest" checked>
-                                <span>Center Chest</span>
-                                <small>Medium size, centered</small>
-                            </label>
-                            <label class="placement-checkbox">
-                                <input type="checkbox" name="allowed_placements" value="left_chest" checked>
-                                <span>Left Chest</span>
-                                <small>Small pocket-style</small>
-                            </label>
-                            <label class="placement-checkbox">
-                                <input type="checkbox" name="allowed_placements" value="right_chest" checked>
-                                <span>Right Chest</span>
-                                <small>Small pocket-style</small>
-                            </label>
-                            <label class="placement-checkbox">
-                                <input type="checkbox" name="allowed_placements" value="center_back" checked>
-                                <span>Center Back</span>
-                                <small>Medium size, centered</small>
-                            </label>
+
+                {# ── 2. Front design ────────────────────────────────────── #}
+                <div class="organizer-block">
+                    <div class="organizer-block-label">
+                        <span class="organizer-step">2</span>
+                        <div>
+                            <strong>What design goes on the front?</strong>
+                            <p class="form-hint" style="margin:0">Upload your design(s) or pick from the gallery below.</p>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label>Back design font (name &amp; number on back)</label>
-                        <p class="form-hint">Choose the font for name/number on the back. Click to preview each style.</p>
-                        <div class="font-choice-grid">
+                    <div class="collection-upload-area" id="uploadArea" onclick="document.getElementById('design_uploads').click()">
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom:0.4rem">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <p><strong>Click to upload</strong> or drag &amp; drop</p>
+                        <p class="text-muted">PNG, JPG, WEBP</p>
+                    </div>
+                    <input type="file" id="design_uploads" name="design_uploads" accept=".png,.jpg,.jpeg,.webp" multiple style="display:none">
+                    <div id="uploadPreview" class="upload-preview-list" style="display:none"></div>
+                    {% if gallery_designs %}
+                    <p class="form-hint" style="margin-top:1rem">Or pick from existing designs:</p>
+                    <div class="design-choice-grid">
+                        {% for d in gallery_designs %}
+                        <label class="design-choice-card">
+                            <input type="checkbox" name="allowed_designs" value="{{ d.id }}">
+                            <div class="design-choice-preview">
+                                <img src="{{ d.file_path | image_url }}" alt="{{ d.title or d.original_filename }}">
+                            </div>
+                            <span>{{ d.title or d.original_filename or 'Design' }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                {# ── 3. Placement ───────────────────────────────────────── #}
+                <div class="organizer-block">
+                    <div class="organizer-block-label">
+                        <span class="organizer-step">3</span>
+                        <div>
+                            <strong>Where can the design be placed?</strong>
+                            <p class="form-hint" style="margin:0">Leave all checked to allow any spot.</p>
+                        </div>
+                    </div>
+                    <div class="placement-checkboxes">
+                        <label class="placement-checkbox">
+                            <input type="checkbox" name="allowed_placements" value="center_chest" checked>
+                            <span>Center Chest</span><small>Medium, centered</small>
+                        </label>
+                        <label class="placement-checkbox">
+                            <input type="checkbox" name="allowed_placements" value="left_chest" checked>
+                            <span>Left Chest</span><small>Small, pocket-style</small>
+                        </label>
+                        <label class="placement-checkbox">
+                            <input type="checkbox" name="allowed_placements" value="right_chest" checked>
+                            <span>Right Chest</span><small>Small, pocket-style</small>
+                        </label>
+                        <label class="placement-checkbox">
+                            <input type="checkbox" name="allowed_placements" value="center_back" checked>
+                            <span>Center Back</span><small>Medium, centered</small>
+                        </label>
+                    </div>
+                </div>
+
+                {# ── 4. Back design ─────────────────────────────────────── #}
+                <div class="organizer-block">
+                    <div class="organizer-block-label">
+                        <span class="organizer-step">4</span>
+                        <div>
+                            <strong>Do you want anything on the back?</strong>
+                            <p class="form-hint" style="margin:0">Choose what (if anything) team members can add to the back of the shirt.</p>
+                        </div>
+                    </div>
+                    <div class="placement-checkboxes">
+                        <label class="placement-checkbox">
+                            <input type="radio" name="back_design_type" value="none" checked>
+                            <span>No — front only</span>
+                            <small>Nothing printed on the back</small>
+                        </label>
+                        <label class="placement-checkbox">
+                            <input type="radio" name="back_design_type" value="name_number">
+                            <span>Yes — name &amp; number</span>
+                            <small>Team types their own name/number</small>
+                        </label>
+                        <label class="placement-checkbox">
+                            <input type="radio" name="back_design_type" value="image">
+                            <span>Yes — your uploaded image</span>
+                            <small>A design you upload goes on the back</small>
+                        </label>
+                        <label class="placement-checkbox">
+                            <input type="radio" name="back_design_type" value="both">
+                            <span>Yes — either option</span>
+                            <small>Team picks: name/number or your image</small>
+                        </label>
+                    </div>
+
+                    <div id="back-font-section" style="display:none">
+                        <p class="form-hint" style="margin-top:1rem">Choose the font for name &amp; number on the back:</p>
+                        <div class="font-choice-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.75rem;margin-top:0.5rem">
                             {% for font_value, font_label in back_design_fonts %}
                             <label class="font-choice-card">
                                 <input type="radio" name="back_design_font" value="{{ font_value }}">
-                                <div class="font-choice-preview" style="font-family: '{{ font_value }}', sans-serif;" id="fontPreview_{{ font_value | replace(' ', '_') }}">NAME 12</div>
-                                <small>{{ font_label }}</small>
+                                <div style="font-family:'{{ font_value }}',sans-serif;font-size:1.25rem;font-weight:700;color:#333;letter-spacing:0.02em">NAME 12</div>
+                                <small style="display:block;margin-top:0.5rem;color:var(--text-secondary);font-size:0.75rem">{{ font_label }}</small>
                             </label>
                             {% endfor %}
                         </div>
-                    </div>
 
-                    <!-- Back-design colour & outline (uniform style) -->
-                    <div class="form-group">
-                        <label>Name &amp; Number: Text Color</label>
-                        <p class="form-hint">The default text color for every participant's name and number.</p>
-                        <div class="coll-color-row">
-                            <input type="color" id="collTextColor" name="back_design_text_color" value="#ffffff" class="coll-color-input" aria-label="Text color">
-                            <div class="coll-swatches" data-target="collTextColor">
-                                <button type="button" class="coll-swatch active" data-color="#ffffff" title="White" style="background:#ffffff"></button>
-                                <button type="button" class="coll-swatch" data-color="#111111" title="Black" style="background:#111111"></button>
-                                <button type="button" class="coll-swatch" data-color="#1a2a52" title="Navy" style="background:#1a2a52"></button>
-                                <button type="button" class="coll-swatch" data-color="#b00020" title="Red" style="background:#b00020"></button>
-                                <button type="button" class="coll-swatch" data-color="#d4af37" title="Gold" style="background:#d4af37"></button>
-                                <button type="button" class="coll-swatch" data-color="#1b6e3c" title="Green" style="background:#1b6e3c"></button>
-                                <button type="button" class="coll-swatch" data-color="#2155cd" title="Royal blue" style="background:#2155cd"></button>
+                        <!-- Back-design color & outline -->
+                        <div class="form-group" style="margin-top:1rem">
+                            <label>Text Color</label>
+                            <div class="coll-color-row">
+                                <input type="color" id="collTextColor" name="back_design_text_color" value="#ffffff" class="coll-color-input" aria-label="Text color">
+                                <div class="coll-swatches" data-target="collTextColor">
+                                    <button type="button" class="coll-swatch active" data-color="#ffffff" title="White" style="background:#ffffff"></button>
+                                    <button type="button" class="coll-swatch" data-color="#111111" title="Black" style="background:#111111"></button>
+                                    <button type="button" class="coll-swatch" data-color="#1a2a52" title="Navy" style="background:#1a2a52"></button>
+                                    <button type="button" class="coll-swatch" data-color="#b00020" title="Red" style="background:#b00020"></button>
+                                    <button type="button" class="coll-swatch" data-color="#d4af37" title="Gold" style="background:#d4af37"></button>
+                                    <button type="button" class="coll-swatch" data-color="#1b6e3c" title="Green" style="background:#1b6e3c"></button>
+                                    <button type="button" class="coll-swatch" data-color="#2155cd" title="Royal blue" style="background:#2155cd"></button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="form-check">
-                        <input type="checkbox" id="coll_outline_toggle" checked>
-                        <label for="coll_outline_toggle">Add an outline around the name &amp; number</label>
-                        <!-- Hidden input carries the value; JS keeps it in sync with the checkbox -->
-                        <input type="hidden" name="back_design_outline" id="coll_outline_value" value="on">
-                    </div>
-                    <div class="form-group" id="collOutlineColorGroup" style="margin-top: 0.75rem;">
-                        <label>Outline Color</label>
-                        <div class="coll-color-row">
-                            <input type="color" id="collOutlineColor" name="back_design_outline_color" value="#000000" class="coll-color-input" aria-label="Outline color">
-                            <div class="coll-swatches" data-target="collOutlineColor">
-                                <button type="button" class="coll-swatch active" data-color="#000000" title="Black" style="background:#000000"></button>
-                                <button type="button" class="coll-swatch" data-color="#ffffff" title="White" style="background:#ffffff"></button>
-                                <button type="button" class="coll-swatch" data-color="#1a2a52" title="Navy" style="background:#1a2a52"></button>
-                                <button type="button" class="coll-swatch" data-color="#b00020" title="Red" style="background:#b00020"></button>
-                                <button type="button" class="coll-swatch" data-color="#d4af37" title="Gold" style="background:#d4af37"></button>
+                        <div class="form-check">
+                            <input type="checkbox" id="coll_outline_toggle" checked>
+                            <label for="coll_outline_toggle">Add an outline around the name &amp; number</label>
+                            <input type="hidden" name="back_design_outline" id="coll_outline_value" value="on">
+                        </div>
+                        <div class="form-group" id="collOutlineColorGroup" style="margin-top:0.75rem">
+                            <label>Outline Color</label>
+                            <div class="coll-color-row">
+                                <input type="color" id="collOutlineColor" name="back_design_outline_color" value="#000000" class="coll-color-input" aria-label="Outline color">
+                                <div class="coll-swatches" data-target="collOutlineColor">
+                                    <button type="button" class="coll-swatch active" data-color="#000000" title="Black" style="background:#000000"></button>
+                                    <button type="button" class="coll-swatch" data-color="#ffffff" title="White" style="background:#ffffff"></button>
+                                    <button type="button" class="coll-swatch" data-color="#1a2a52" title="Navy" style="background:#1a2a52"></button>
+                                    <button type="button" class="coll-swatch" data-color="#b00020" title="Red" style="background:#b00020"></button>
+                                    <button type="button" class="coll-swatch" data-color="#d4af37" title="Gold" style="background:#d4af37"></button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="form-check" style="margin-top: 0.5rem;">
-                        <input type="checkbox" id="lock_back_design_style" name="lock_back_design_style">
-                        <label for="lock_back_design_style"><strong>Lock font &amp; colors:</strong> participants cannot change the font, text color, or outline</label>
-                    </div>
-
-                    <!-- Live preview of back-design style choices -->
-                    <div class="coll-back-preview" id="collBackPreview">
-                        <span class="coll-back-preview-name" id="collPreviewName">SMITH</span>
-                        <span class="coll-back-preview-number" id="collPreviewNumber">12</span>
+                        <div class="form-check" style="margin-top:0.5rem">
+                            <input type="checkbox" id="lock_back_design_style" name="lock_back_design_style">
+                            <label for="lock_back_design_style"><strong>Lock font &amp; colors:</strong> participants cannot change the font, text color, or outline</label>
+                        </div>
+                        <div class="coll-back-preview" id="collBackPreview">
+                            <span class="coll-back-preview-name" id="collPreviewName">SMITH</span>
+                            <span class="coll-back-preview-number" id="collPreviewNumber">12</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -293,6 +331,42 @@
 </div>
 
 <script>
+// Colors by brand — show only brands with checked products
+function syncBrandColors() {
+    var checked = document.querySelectorAll('input[name="products"]:checked');
+    var activeBrands = new Set();
+    checked.forEach(function(cb) {
+        var label = cb.closest('[data-brand-raw]');
+        if (label) activeBrands.add(label.dataset.brandRaw);
+    });
+    document.querySelectorAll('.brand-color-group[data-brand]').forEach(function(grp) {
+        if (activeBrands.size === 0) {
+            grp.style.display = '';
+        } else {
+            grp.style.display = activeBrands.has(grp.dataset.brand) ? '' : 'none';
+        }
+    });
+}
+document.querySelectorAll('input[name="products"]').forEach(function(cb) {
+    cb.addEventListener('change', syncBrandColors);
+});
+syncBrandColors();
+
+// ── Back design type radio toggle ─────────────────────────────────────────
+(function() {
+    var fontSection = document.getElementById('back-font-section');
+    function updateBackSection() {
+        var val = document.querySelector('input[name="back_design_type"]:checked');
+        if (!val || !fontSection) return;
+        var show = (val.value === 'name_number' || val.value === 'both');
+        fontSection.style.display = show ? '' : 'none';
+    }
+    document.querySelectorAll('input[name="back_design_type"]').forEach(function(r) {
+        r.addEventListener('change', updateBackSection);
+    });
+    updateBackSection();
+})();
+
 // ── Auto-generate slug ─────────────────────────────────────────────────────
 document.getElementById('name').addEventListener('input', function(e) {
     const slugField = document.getElementById('slug');
@@ -513,7 +587,10 @@ updateBackPreview(); // initial render
 
 .product-checkbox small { color: var(--text-secondary); font-size: 0.78rem; }
 
-.organizer-choices { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color); }
+.organizer-block { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); }
+.organizer-block:first-child { margin-top: 0.5rem; padding-top: 0.5rem; border-top: none; }
+.organizer-block-label { display: flex; align-items: flex-start; gap: 0.85rem; margin-bottom: 1rem; }
+.organizer-step { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--accent-color, #b87c6f); color: #fff; font-size: 0.8rem; font-weight: 700; margin-top: 2px; }
 .font-choice-card { cursor: pointer; border: 2px solid var(--border-color); border-radius: 8px; padding: 1rem; text-align: center; transition: var(--transition); }
 .font-choice-card:hover { border-color: var(--accent-color); }
 .font-choice-card:has(input:checked) { border-color: var(--accent-color); background: rgba(184, 124, 111, 0.08); }

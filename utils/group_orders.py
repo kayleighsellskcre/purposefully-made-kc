@@ -190,7 +190,7 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
 
     collection.is_active = request.form.get('is_active') == 'on'
 
-    collection.restrict_options = request.form.get('restrict_options') == 'on'
+    collection.restrict_options = True  # always restricted — checkbox removed from UI
     collection.allow_custom_upload = True
     allowed_colors = request.form.getlist('allowed_colors')
     collection.allowed_colors = json.dumps(allowed_colors) if allowed_colors else None

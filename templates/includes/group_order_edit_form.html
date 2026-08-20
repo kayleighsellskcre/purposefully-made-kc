@@ -55,23 +55,26 @@
                 {% endif %}
             </div>
 
+            {# Always restrict options — hidden field so the form handler still receives it #}
+            <input type="hidden" name="restrict_options" value="on">
+
             <div class="form-section">
-                <h2>Organizer's Choices</h2>
-                <p class="form-hint">Lock down style, color, and logo so your team orders matching apparel. Team members only choose size.</p>
+                <h2>Your Choices for This Group Order</h2>
+                <p class="form-hint">Set up colors, designs, placements, and back options. Your team will only see what you allow.</p>
 
-                <div class="form-check">
-                    <input type="checkbox" id="restrict_options" name="restrict_options" {% if collection.restrict_options %}checked{% endif %}>
-                    <label for="restrict_options">Restrict options: team can only order what you choose below</label>
-                </div>
-
-                <div id="organizer-choices" class="organizer-choices">
-                    <div class="form-group">
-                        <label>Allowed colors (team picks from these)</label>
-                        <p class="form-hint">Colors are grouped by brand. Leave all unchecked to allow every color.</p>
-                        {% if collection_colors %}
-                          {% if collection_colors is mapping %}
-                            {# Dict: {brand: [colors]} #}
-                            {% for brand, colors in collection_colors.items() %}
+                {# ── 1. Colors ──────────────────────────────────────────── #}
+                <div class="organizer-block">
+                    <div class="organizer-block-label">
+                        <span class="organizer-step">1</span>
+                        <div>
+                            <strong>What colors can your team choose from?</strong>
+                            <p class="form-hint" style="margin:0">Check only the colors you want available. Leave all unchecked to allow every color.</p>
+                        </div>
+                    </div>
+                    {% if collection_colors %}
+                      {% if collection_colors is mapping %}
+                        {% for brand, colors in collection_colors.items() %}
+                        <div class="brand-color-group" data-brand="{{ brand }}">
                             <p class="brand-color-heading">{{ brand }}</p>
                             <div class="choice-checkboxes">
                                 {% for color in colors %}
@@ -81,122 +84,131 @@
                                 </label>
                                 {% endfor %}
                             </div>
+                        </div>
+                        {% endfor %}
+                      {% else %}
+                        <div class="choice-checkboxes">
+                            {% for color in collection_colors %}
+                            <label class="choice-checkbox">
+                                <input type="checkbox" name="allowed_colors" value="{{ color }}" {% if color in allowed_colors_list %}checked{% endif %}>
+                                <span>{{ color }}</span>
+                            </label>
                             {% endfor %}
-                          {% else %}
-                            {# Flat list fallback #}
-                            <div class="choice-checkboxes">
-                                {% for color in collection_colors %}
-                                <label class="choice-checkbox">
-                                    <input type="checkbox" name="allowed_colors" value="{{ color }}" {% if color in allowed_colors_list %}checked{% endif %}>
-                                    <span>{{ color }}</span>
-                                </label>
-                                {% endfor %}
+                        </div>
+                      {% endif %}
+                    {% else %}
+                    <p class="text-muted" style="margin-top:0.5rem">Select products above first to see color options.</p>
+                    {% endif %}
+                </div>
+
+                {# ── 2. Front design ────────────────────────────────────── #}
+                <div class="organizer-block">
+                    <div class="organizer-block-label">
+                        <span class="organizer-step">2</span>
+                        <div>
+                            <strong>What design goes on the front?</strong>
+                            <p class="form-hint" style="margin:0">Upload your design(s) or pick from the gallery below.</p>
+                        </div>
+                    </div>
+                    <div class="collection-upload-area" id="uploadArea" onclick="document.getElementById('design_uploads').click()">
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom:0.4rem">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <p><strong>Click to upload</strong> or drag &amp; drop</p>
+                        <p class="text-muted">PNG, JPG, WEBP</p>
+                    </div>
+                    <input type="file" id="design_uploads" name="design_uploads" accept=".png,.jpg,.jpeg,.webp" multiple style="display:none">
+                    <div id="uploadPreview" class="upload-preview-list" style="display:none"></div>
+                    {% if gallery_designs %}
+                    <p class="form-hint" style="margin-top:1rem">Or pick from existing designs:</p>
+                    <div class="design-choice-grid">
+                        {% for d in gallery_designs %}
+                        <label class="design-choice-card">
+                            <input type="checkbox" name="allowed_designs" value="{{ d.id }}" {% if d.id in allowed_design_ids_list %}checked{% endif %}>
+                            <div class="design-choice-preview">
+                                <img src="{{ d.file_path | image_url }}" alt="{{ d.title or d.original_filename }}">
                             </div>
-                          {% endif %}
-                        {% else %}
-                        <p class="text-muted">Add products to this group order first to see color options.</p>
-                        {% endif %}
+                            <span>{{ d.title or d.original_filename or 'Design' }}</span>
+                        </label>
+                        {% endfor %}
                     </div>
-                    <div class="form-group">
-                        <label>Designs for this group order</label>
-                        <p class="form-hint">Upload designs the team can use, or pick from the designs below.</p>
+                    {% endif %}
+                </div>
 
-                        <div class="collection-upload-area" id="uploadArea" onclick="document.getElementById('design_uploads').click()">
-                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                <polyline points="17 8 12 3 7 8"></polyline>
-                                <line x1="12" y1="3" x2="12" y2="15"></line>
-                            </svg>
-                            <p><strong>Click to upload</strong> or drag and drop</p>
-                            <p class="text-muted">PNG, JPG, WEBP. Designs will be added when you save.</p>
+                {# ── 3. Placement ───────────────────────────────────────── #}
+                <div class="organizer-block">
+                    <div class="organizer-block-label">
+                        <span class="organizer-step">3</span>
+                        <div>
+                            <strong>Where can the design be placed?</strong>
+                            <p class="form-hint" style="margin:0">Leave all checked to allow any spot.</p>
                         </div>
-                        <input type="file" id="design_uploads" name="design_uploads" accept=".png,.jpg,.jpeg,.webp" multiple style="display: none;">
-                        <div id="uploadPreview" class="upload-preview-list" style="display: none;"></div>
+                    </div>
+                    <div class="placement-checkboxes">
+                        <label class="placement-checkbox">
+                            <input type="checkbox" name="allowed_placements" value="center_chest" {% if 'center_chest' in allowed_placements_list %}checked{% endif %}>
+                            <span>Center Chest</span><small>Medium, centered</small>
+                        </label>
+                        <label class="placement-checkbox">
+                            <input type="checkbox" name="allowed_placements" value="left_chest" {% if 'left_chest' in allowed_placements_list %}checked{% endif %}>
+                            <span>Left Chest</span><small>Small, pocket-style</small>
+                        </label>
+                        <label class="placement-checkbox">
+                            <input type="checkbox" name="allowed_placements" value="right_chest" {% if 'right_chest' in allowed_placements_list %}checked{% endif %}>
+                            <span>Right Chest</span><small>Small, pocket-style</small>
+                        </label>
+                        <label class="placement-checkbox">
+                            <input type="checkbox" name="allowed_placements" value="center_back" {% if 'center_back' in allowed_placements_list %}checked{% endif %}>
+                            <span>Center Back</span><small>Medium, centered</small>
+                        </label>
+                    </div>
+                </div>
 
-                        {% if gallery_designs %}
-                        <p class="form-hint" style="margin-top: 1rem;">Or pick from existing designs:</p>
-                        <div class="design-choice-grid">
-                            {% for d in gallery_designs %}
-                            <label class="design-choice-card">
-                                <input type="checkbox" name="allowed_designs" value="{{ d.id }}" {% if d.id in allowed_design_ids_list %}checked{% endif %}>
-                                <div class="design-choice-preview">
-                                    <img src="{{ d.file_path | image_url }}" alt="{{ d.title or d.original_filename }}">
-                                </div>
-                                <span>{{ d.title or d.original_filename or 'Design' }}{% if (d.title or d.original_filename)|length > 18 %}...{% endif %}</span>
-                            </label>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                    </div>
-                    <div class="form-group">
-                        <label>Allowed placements (where logo/design can go on the item)</label>
-                        <p class="form-hint">Select which spots the team can put the logo on. Leave all checked to allow any placement.</p>
-                        <div class="placement-checkboxes">
-                            <label class="placement-checkbox">
-                                <input type="checkbox" name="allowed_placements" value="center_chest" {% if 'center_chest' in allowed_placements_list %}checked{% endif %}>
-                                <span>Center Chest</span>
-                                <small>Medium size, centered</small>
-                            </label>
-                            <label class="placement-checkbox">
-                                <input type="checkbox" name="allowed_placements" value="left_chest" {% if 'left_chest' in allowed_placements_list %}checked{% endif %}>
-                                <span>Left Chest</span>
-                                <small>Small pocket-style</small>
-                            </label>
-                            <label class="placement-checkbox">
-                                <input type="checkbox" name="allowed_placements" value="right_chest" {% if 'right_chest' in allowed_placements_list %}checked{% endif %}>
-                                <span>Right Chest</span>
-                                <small>Small pocket-style</small>
-                            </label>
-                            <label class="placement-checkbox">
-                                <input type="checkbox" name="allowed_placements" value="center_back" {% if 'center_back' in allowed_placements_list %}checked{% endif %}>
-                                <span>Center Back</span>
-                                <small>Medium size, centered</small>
-                            </label>
+                {# ── 4. Back design ─────────────────────────────────────── #}
+                {% set bdt = 'none' if not collection.allow_back_design else (collection.back_design_type or 'both') %}
+                <div class="organizer-block">
+                    <div class="organizer-block-label">
+                        <span class="organizer-step">4</span>
+                        <div>
+                            <strong>Do you want anything on the back?</strong>
+                            <p class="form-hint" style="margin:0">Choose what (if anything) team members can add to the back of the shirt.</p>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label>Back of shirt — what can team members add?</label>
-                        <p class="form-hint">Control what (if anything) goes on the back of the shirt.</p>
-                        {% set bdt = 'none' if not collection.allow_back_design else (collection.back_design_type or 'both') %}
-                        <div class="placement-checkboxes">
-                            <label class="placement-checkbox">
-                                <input type="radio" name="back_design_type" value="none" {% if bdt == 'none' %}checked{% endif %}>
-                                <span>No back design</span>
-                                <small>Front only — nothing printed on the back</small>
-                            </label>
-                            <label class="placement-checkbox">
-                                <input type="radio" name="back_design_type" value="name_number" {% if bdt == 'name_number' %}checked{% endif %}>
-                                <span>Name &amp; number only</span>
-                                <small>Team members type their name and/or number</small>
-                            </label>
-                            <label class="placement-checkbox">
-                                <input type="radio" name="back_design_type" value="image" {% if bdt == 'image' %}checked{% endif %}>
-                                <span>Uploaded image only</span>
-                                <small>Only the designs you upload can go on the back</small>
-                            </label>
-                            <label class="placement-checkbox">
-                                <input type="radio" name="back_design_type" value="both" {% if bdt == 'both' %}checked{% endif %}>
-                                <span>Both options</span>
-                                <small>Team chooses: name/number or one of your uploaded images</small>
-                            </label>
-                        </div>
+                    <div class="placement-checkboxes">
+                        <label class="placement-checkbox">
+                            <input type="radio" name="back_design_type" value="none" {% if bdt == 'none' %}checked{% endif %}>
+                            <span>No — front only</span>
+                            <small>Nothing printed on the back</small>
+                        </label>
+                        <label class="placement-checkbox">
+                            <input type="radio" name="back_design_type" value="name_number" {% if bdt == 'name_number' %}checked{% endif %}>
+                            <span>Yes — name &amp; number</span>
+                            <small>Team types their own name/number</small>
+                        </label>
+                        <label class="placement-checkbox">
+                            <input type="radio" name="back_design_type" value="image" {% if bdt == 'image' %}checked{% endif %}>
+                            <span>Yes — your uploaded image</span>
+                            <small>A design you upload goes on the back</small>
+                        </label>
+                        <label class="placement-checkbox">
+                            <input type="radio" name="back_design_type" value="both" {% if bdt == 'both' %}checked{% endif %}>
+                            <span>Yes — either option</span>
+                            <small>Team picks: name/number or your image</small>
+                        </label>
                     </div>
 
                     <div id="back-font-section" {% if bdt == 'none' or bdt == 'image' %}style="display:none"{% endif %}>
-                    <div class="form-group">
-                        <label>Back design font (name &amp; number on back)</label>
-                        <p class="form-hint">Choose the font for name/number on the back. Team members will use this font.</p>
-                        <div class="font-choice-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; margin-top: 0.5rem;">
+                        <p class="form-hint" style="margin-top:1rem">Choose the font for name &amp; number on the back:</p>
+                        <div class="font-choice-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.75rem;margin-top:0.5rem">
                             {% for font_value, font_label in back_design_fonts %}
-                            <label class="font-choice-card" style="cursor: pointer; border: 2px solid var(--border-color); border-radius: 8px; padding: 1.25rem; text-align: center; transition: var(--transition);">
-                                <input type="radio" name="back_design_font" value="{{ font_value }}" {% if collection.back_design_font == font_value %}checked{% endif %} style="display: none;">
-                                <div style="font-family: '{{ font_value }}', sans-serif; font-size: 1.25rem; font-weight: 700; color: #333; letter-spacing: 0.02em;">NAME 12</div>
-                                <small style="display: block; margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.75rem;">{{ font_label }}</small>
+                            <label class="font-choice-card">
+                                <input type="radio" name="back_design_font" value="{{ font_value }}" {% if collection.back_design_font == font_value %}checked{% endif %}>
+                                <div style="font-family:'{{ font_value }}',sans-serif;font-size:1.25rem;font-weight:700;color:#333;letter-spacing:0.02em">NAME 12</div>
+                                <small style="display:block;margin-top:0.5rem;color:var(--text-secondary);font-size:0.75rem">{{ font_label }}</small>
                             </label>
                             {% endfor %}
                         </div>
                     </div>
-                    </div>{# /back-font-section #}
                 </div>
             </div>
 
@@ -260,6 +272,27 @@
 </div>
 
 <script>
+// Colors by brand — show only brands with checked products
+function syncBrandColors() {
+    var checked = document.querySelectorAll('input[name="products"]:checked');
+    var activeBrands = new Set();
+    checked.forEach(function(cb) {
+        var label = cb.closest('[data-brand-raw]');
+        if (label) activeBrands.add(label.dataset.brandRaw);
+    });
+    document.querySelectorAll('.brand-color-group[data-brand]').forEach(function(grp) {
+        if (activeBrands.size === 0) {
+            grp.style.display = '';  // no products checked → show all brands
+        } else {
+            grp.style.display = activeBrands.has(grp.dataset.brand) ? '' : 'none';
+        }
+    });
+}
+document.querySelectorAll('input[name="products"]').forEach(function(cb) {
+    cb.addEventListener('change', syncBrandColors);
+});
+syncBrandColors(); // run on load
+
 // Back design type — show/hide font section
 document.querySelectorAll('input[name="back_design_type"]').forEach(function(radio) {
     radio.addEventListener('change', function() {
@@ -333,7 +366,10 @@ function confirmDelete(btn) {
 .product-checkbox input:checked + span { font-weight: 600; }
 .product-checkbox input { margin-right: 0.5rem; }
 .product-checkbox small { color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.15rem; }
-.organizer-choices { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color); }
+.organizer-block { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); }
+.organizer-block:first-child { margin-top: 0.5rem; padding-top: 0.5rem; border-top: none; }
+.organizer-block-label { display: flex; align-items: flex-start; gap: 0.85rem; margin-bottom: 1rem; }
+.organizer-step { flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--accent-color, #b87c6f); color: #fff; font-size: 0.8rem; font-weight: 700; margin-top: 2px; }
 .font-choice-card { cursor: pointer; border: 2px solid var(--border-color); border-radius: 8px; padding: 1rem; text-align: center; transition: var(--transition); }
 .font-choice-card:hover { border-color: var(--accent-color); }
 .font-choice-card:has(input:checked) { border-color: var(--accent-color); background: rgba(184, 124, 111, 0.08); }
