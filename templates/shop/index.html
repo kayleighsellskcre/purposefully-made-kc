@@ -188,12 +188,17 @@
                                 <div class="color-carousel" data-product-id="{{ product.id }}">
                                     <div class="carousel-images">
                                         {% for variant in product.carousel_colors %}
-                                        <div class="carousel-slide {% if loop.first %}active{% endif %}" 
+                                        <div class="carousel-slide {% if loop.first %}active{% endif %}"
                                              data-color="{{ variant.color_name }}">
                                             <img src="{{ variant.front_image_url }}"
                                                  alt="{{ product.name }} - {{ variant.color_name }}"
                                                  referrerpolicy="no-referrer"
-                                                 onerror="this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'">
+                                                 onerror="{% if loop.first %}this.style.display='none';this.parentElement.querySelector('.no-mockup-msg').style.display='flex'{% else %}this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'{% endif %}">
+                                            {% if loop.first %}<div class="no-mockup-msg" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;background:linear-gradient(135deg,#fdf8f4 0%,#f5ede4 100%);">
+                                                <div style="font-size:2.5rem;margin-bottom:0.5rem">📸</div>
+                                                <p style="font-family:'Playfair Display',serif;font-size:1rem;color:#8b6f5e;font-weight:600;margin:0 0 0.4rem">This mockup skipped picture day!</p>
+                                                <p style="font-size:0.8rem;color:#b09080;margin:0;line-height:1.5">No worries, you can still order.<br>Just choose your favorite design! ♡</p>
+                                            </div>{% endif %}
                                         </div>
                                         {% endfor %}
                                     </div>
@@ -219,10 +224,15 @@
                                     {% endif %}
                                 </div>
                                 {% else %}
-                                <div class="product-image">
-                                    <img src="{{ product.fallback_image_url or url_for('static', filename='img/products/' + product.style_number + '.jpg') }}" 
+                                <div class="product-image" style="position:relative">
+                                    <img src="{{ product.fallback_image_url or url_for('static', filename='img/products/' + product.style_number + '.jpg') }}"
                                          alt="{{ product.name }}"
-                                         onerror="this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'">
+                                         onerror="this.style.display='none';this.parentElement.querySelector('.no-mockup-msg').style.display='flex'">
+                                    <div class="no-mockup-msg" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;background:linear-gradient(135deg,#fdf8f4 0%,#f5ede4 100%);">
+                                        <div style="font-size:2.5rem;margin-bottom:0.5rem">📸</div>
+                                        <p style="font-family:'Playfair Display',serif;font-size:1rem;color:#8b6f5e;font-weight:600;margin:0 0 0.4rem">This mockup skipped picture day!</p>
+                                        <p style="font-size:0.8rem;color:#b09080;margin:0;line-height:1.5">No worries, you can still order.<br>Just choose your favorite design! ♡</p>
+                                    </div>
                                 </div>
                                 {% endif %}
                             </div>
