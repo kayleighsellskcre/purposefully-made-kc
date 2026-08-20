@@ -188,6 +188,14 @@
     color: var(--text-secondary);
     background: #f0f0f0;
 }
+.dir-badge.public {
+    color: #1b6e3c;
+    background: #e6f4ec;
+}
+.dir-badge.private {
+    color: #7a5c00;
+    background: #fdf3d0;
+}
 .dir-card-footer {
     padding: 1rem 1.25rem;
     border-top: 1px solid var(--border-light);
@@ -331,7 +339,7 @@
             <div class="directory-grid" id="directoryGrid">
                 {% for item in open_collections %}
                 {% set c = item.collection %}
-                <div class="dir-card" data-name="{{ c.name | lower }}" data-desc="{{ (c.description or '') | lower }}">
+                <div class="dir-card" data-name="{{ c.name | lower }}" data-desc="{{ (c.description or '') | lower }}" data-visibility="{% if c.is_password_protected %}code required{% elif c.show_in_directory %}public{% else %}link only private{% endif %}">
                     <div class="dir-card-img">
                         {% if item.preview_img %}
                         <img src="{{ item.preview_img }}" alt="{{ c.name }}">
@@ -387,7 +395,8 @@
         cards.forEach(function(card) {
             var name = card.dataset.name || '';
             var desc = card.dataset.desc || '';
-            var match = !q || name.includes(q) || desc.includes(q);
+            var vis = card.dataset.visibility || '';
+            var match = !q || name.includes(q) || desc.includes(q) || vis.includes(q);
             card.hidden = !match;
             if (match) visible++;
         });
