@@ -161,6 +161,9 @@ class Collection(db.Model):
 
     # Public directory — admin toggles this to list the collection on /group-orders
     show_in_directory = db.Column(db.Boolean, default=False)
+    # Optional cover photo + short title for the public directory card
+    cover_image = db.Column(db.String(500))
+    card_title = db.Column(db.String(200))
 
     # Creator tracking — set when a logged-in user creates via /shop/group-orders/create
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)

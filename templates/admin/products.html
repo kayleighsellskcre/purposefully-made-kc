@@ -118,6 +118,7 @@
         <table class="adm-table prod-table" id="prodTable">
             <thead>
                 <tr>
+                    <th></th>
                     <th>Style #</th>
                     <th>Name</th>
                     <th>Category</th>
@@ -134,6 +135,13 @@
                 <tr data-product-id="{{ product.id }}"
                     data-name="{{ product.name|lower }}"
                     data-style="{{ product.style_number|lower }}">
+                    <td class="prod-thumb-cell">
+                        {% if product.thumb_url %}
+                        <img class="prod-thumb" src="{{ product.thumb_url | image_url }}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.classList.add('prod-thumb--empty'); this.removeAttribute('src')">
+                        {% else %}
+                        <span class="prod-thumb prod-thumb--empty" aria-hidden="true"></span>
+                        {% endif %}
+                    </td>
                     <td><strong class="prod-style">{{ product.style_number }}</strong></td>
                     <td class="prod-name-cell">
                         {{ product.name }}
@@ -192,6 +200,12 @@
                  data-name="{{ product.name|lower }}"
                  data-style="{{ product.style_number|lower }}">
                 <div class="prod-card-top">
+                    {% if product.thumb_url %}
+                    <img class="prod-thumb" src="{{ product.thumb_url | image_url }}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.classList.add('prod-thumb--empty'); this.removeAttribute('src')">
+                    {% else %}
+                    <span class="prod-thumb prod-thumb--empty" aria-hidden="true"></span>
+                    {% endif %}
+                    <div>
                     <div class="prod-card-meta">
                         <span class="prod-card-style">{{ product.style_number }}</span>
                     </div>
@@ -199,6 +213,7 @@
                         {{ product.name }}
                         <span class="prod-fav-flag" data-fav-flag {% if not product.is_customer_favorite %}hidden{% endif %}>Favorite</span>
                     </h4>
+                    </div>
                 </div>
                 <div class="prod-card-details">
                     <div class="prod-card-detail">
@@ -816,6 +831,23 @@ details[open] .prod-tools-chevron { transform: rotate(180deg); }
     font-size: 0.875rem;
 }
 
+.prod-thumb-cell {
+    width: 56px;
+    padding-right: 0.35rem !important;
+    vertical-align: middle;
+}
+.prod-thumb {
+    width: 48px;
+    height: 58px;
+    object-fit: contain;
+    background: #f7f1ea;
+    border-radius: 7px;
+    display: block;
+    border: 1px solid var(--border-light, #eadfd4);
+}
+.prod-thumb--empty {
+    background: #f0ebe4;
+}
 .prod-style {
     font-family: 'Courier New', monospace;
     font-weight: 700;
@@ -919,7 +951,12 @@ details[open] .prod-tools-chevron { transform: rotate(180deg); }
 
 .prod-card:last-child { border-bottom: none; }
 
-.prod-card-top { margin-bottom: 0.65rem; }
+.prod-card-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 0.65rem;
+}
 
 .prod-card-meta {
     display: flex;

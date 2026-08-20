@@ -201,16 +201,9 @@ def group_orders():
     for c in directory:
         if is_deadline_passed(c):
             continue
-        preview_img = None
         products = list(c.products or [])
-        for prod in products:
-            imgs = [v.front_image_url for v in (prod.color_variants or []) if v.front_image_url]
-            if imgs:
-                preview_img = imgs[0]
-                break
         open_collections.append({
             'collection': c,
-            'preview_img': preview_img,
             'product_count': len(products),
         })
 
@@ -313,6 +306,9 @@ def create_group_order():
             collection.back_design_outline = request.form.get('back_design_outline') != 'off'
             collection.back_design_outline_color = request.form.get('back_design_outline_color') or None
             collection.lock_back_design_style = request.form.get('lock_back_design_style') == 'on'
+
+            from utils.group_orders import apply_collection_card
+            apply_collection_card(collection)
 
             password = request.form.get('password')
             if password:

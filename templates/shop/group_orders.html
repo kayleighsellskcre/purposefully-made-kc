@@ -129,8 +129,8 @@
     box-shadow: 0 8px 28px rgba(0,0,0,0.1);
 }
 .dir-card-img {
-    height: 160px;
-    background: linear-gradient(135deg, #fdf8f4 0%, #f5ede4 100%);
+    height: 180px;
+    background: linear-gradient(145deg, #3A3D48 0%, #5c4638 55%, #b87c6f 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -141,9 +141,22 @@
     height: 100%;
     object-fit: cover;
 }
-.dir-card-img .dir-no-img {
-    font-size: 2.5rem;
-    opacity: 0.4;
+.dir-card-lettermark {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem 1.4rem;
+    text-align: center;
+}
+.dir-card-lettermark span {
+    font-family: var(--font-heading);
+    color: #fff;
+    font-size: clamp(1.15rem, 3.2vw, 1.65rem);
+    line-height: 1.25;
+    letter-spacing: 0.03em;
+    text-shadow: 0 1px 8px rgba(0,0,0,0.25);
 }
 .dir-card-body {
     padding: 1.25rem;
@@ -339,12 +352,15 @@
             <div class="directory-grid" id="directoryGrid">
                 {% for item in open_collections %}
                 {% set c = item.collection %}
-                <div class="dir-card" data-name="{{ c.name | lower }}" data-desc="{{ (c.description or '') | lower }}" data-visibility="{% if c.is_password_protected %}code required{% elif c.show_in_directory %}public{% else %}link only private{% endif %}">
+                <div class="dir-card" data-name="{{ (c.card_title or '') | lower }} {{ c.name | lower }}" data-desc="{{ (c.description or '') | lower }}" data-visibility="{% if c.is_password_protected %}code required{% elif c.show_in_directory %}public{% else %}link only private{% endif %}">
                     <div class="dir-card-img">
-                        {% if item.preview_img %}
-                        <img src="{{ item.preview_img }}" alt="{{ c.name }}">
+                        {% set card_label = c.card_title or c.name %}
+                        {% if c.cover_image %}
+                        <img src="{{ c.cover_image | image_url }}" alt="{{ card_label }}"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                        <div class="dir-card-lettermark" style="display:none"><span>{{ card_label }}</span></div>
                         {% else %}
-                        <span class="dir-no-img">👕</span>
+                        <div class="dir-card-lettermark"><span>{{ card_label }}</span></div>
                         {% endif %}
                     </div>
                     <div class="dir-card-body">

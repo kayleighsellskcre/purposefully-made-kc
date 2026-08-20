@@ -277,6 +277,65 @@ def get_carousel_colors_for_product(product, app, allowed_colors=None):
     return result
 
 
+def _hex_luminance(hex_color):
+    """0–255 perceived brightness, or None if the hex is unusable."""
+    h = str(hex_color or '').strip().lstrip('#')
+    if len(h) == 3:
+        h = ''.join(ch * 2 for ch in h)
+    if len(h) != 6:
+        return None
+    try:
+        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    except ValueError:
+        return None
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+_LIGHT_NAME_SCORES = (
+    ('white', 252),
+    ('ivory', 246),
+    ('snow', 248),
+    ('cream', 242),
+    ('natural', 238),
+    ('bone', 232),
+    ('oatmeal', 224),
+    ('sand', 210),
+    ('ice', 220),
+    ('ash', 198),
+    ('silver', 190),
+    ('light', 186),
+    ('heather', 168),
+    ('grey', 150),
+    ('gray', 150),
+)
+
+
+def _name_lightness(color_name):
+    key = str(color_name or '').lower()
+    score = 80
+    for token, value in _LIGHT_NAME_SCORES:
+        if token in key:
+            score = max(score, value)
+    return score
+
+
+def lightest_front_mockup_url(variants):
+    """Front mockup URL for the lightest color that actually has a photo."""
+    best_url = None
+    best_score = -1
+    for variant in variants or []:
+        url = (getattr(variant, 'front_image_url', None) or '').strip()
+        if not url:
+            continue
+        lum = _hex_luminance(getattr(variant, 'color_hex', None))
+        if lum is None:
+            lum = _name_lightness(getattr(variant, 'color_name', ''))
+        if lum > best_score:
+            best_score = lum
+            best_url = url
+    return best_url
+
+
 def get_first_shop_image_url(product, app):
     """
     Get a single image URL for shop display when carousel is empty.
@@ -291,6 +350,20 @@ def get_first_shop_image_url(product, app):
         url = c.get('front_image_url') or c.get('front_image')
         if url:
             return url
+    # Last resort: check static/images/products/ with brand-prefix stripped
+    # e.g. BC3001 → 3001, STTU755 → 755
+    import re as _re
+    style = (getattr(product, 'style_number', None) or '').strip()
+    if style:
+        style_bare = _re.sub(r'^[A-Za-z+& ]+', '', style)
+        for candidate in dict.fromkeys([style_bare, style]):
+            if not candidate:
+                continue
+            folder_path = os.path.join(app.root_path, 'static', 'images', 'products', candidate)
+            if os.path.isdir(folder_path):
+                fronts = [f for f in os.listdir(folder_path) if '_front.' in f.lower()]
+                if fronts:
+                    return f'/static/images/products/{candidate}/{fronts[0]}'
     return None
 
 

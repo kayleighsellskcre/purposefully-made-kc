@@ -842,20 +842,31 @@ def products():
                                   Product.style_number).all()
         favorite_count = Product.query.filter(Product.is_customer_favorite.is_(True)).count()
 
-        # Compute size/color counts - use ProductColorVariant for colors (authoritative for display)
+        # Size/color counts + lightest-color thumbnail in one variant pass
+        from collections import defaultdict
+        from utils.mockups import lightest_front_mockup_url
+
+        variants_by_pid = defaultdict(list)
+        if products:
+            for variant in ProductColorVariant.query.filter(
+                ProductColorVariant.product_id.in_([p.id for p in products])
+            ).all():
+                variants_by_pid[variant.product_id].append(variant)
+
         for p in products:
             try:
                 p.size_count = len(json.loads(p.available_sizes)) if p.available_sizes else 0
             except (TypeError, ValueError):
                 p.size_count = 0
-            # Color count: prefer ProductColorVariant count (what we actually show); fallback to JSON
-            variant_count = ProductColorVariant.query.filter_by(product_id=p.id).count()
+            variants = variants_by_pid.get(p.id, [])
+            variant_count = len(variants)
             try:
                 parsed = json.loads(p.available_colors) if p.available_colors else []
                 json_count = len(parsed) if isinstance(parsed, list) else 0
             except (TypeError, ValueError):
                 json_count = 0
             p.color_count = variant_count if variant_count > 0 else min(json_count, 200)
+            p.thumb_url = lightest_front_mockup_url(variants) or (p.front_mockup_template or '').strip() or None
 
         # Check if S&S API is configured - check environment variable directly
         api_key = os.getenv('SSACTIVEWEAR_API_KEY')
@@ -2354,6 +2365,9 @@ def add_collection():
             collection.back_design_outline = request.form.get('back_design_outline') != 'off'
             collection.back_design_outline_color = request.form.get('back_design_outline_color') or None
             collection.lock_back_design_style = request.form.get('lock_back_design_style') == 'on'
+
+            from utils.group_orders import apply_collection_card
+            apply_collection_card(collection)
 
             password = request.form.get('password')
             if password:

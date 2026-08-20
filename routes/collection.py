@@ -78,25 +78,19 @@ def view(slug):
     # Get products in this collection with carousel colors (DB + mockup folder)
     all_products = collection.products
     products = []
-    unavailable_products = []  # Products that don't have any of the chosen colors
     for product in all_products:
         variants = get_carousel_colors_for_product(product, current_app, allowed_colors=allowed_colors)
         product.carousel_colors = variants
         product.available_sizes_list = sort_sizes(parse_json_list(product.available_sizes))
-        # When colors are restricted: only show products that have at least one matching color
-        if allowed_colors:
-            if variants:
-                products.append(product)
-            else:
-                unavailable_products.append(product.name)
-        else:
-            products.append(product)
+        # When colors are restricted, skip styles that don't come in those colors.
+        if allowed_colors and not variants:
+            continue
+        products.append(product)
 
     products = prepare_catalog(products)
     return render_template('collection/view.html',
                          collection=collection,
                          products=products,
-                         unavailable_products=unavailable_products,
                          catalog_filter_opts=catalog_filter_options(products))
 
 

@@ -34,6 +34,38 @@ def is_deadline_passed(collection):
     return deadline < datetime.utcnow()
 
 
+_COVER_EXTS = {'.png', '.jpg', '.jpeg', '.webp', '.gif'}
+
+
+def apply_collection_card(collection):
+    """Save directory card title and optional cover photo from the request."""
+    from pathlib import Path
+    from flask import current_app, request
+    from werkzeug.utils import secure_filename
+    from utils.cloud_storage import upload_image
+
+    title = (request.form.get('card_title') or '').strip()
+    collection.card_title = title[:200] if title else None
+
+    if request.form.get('remove_cover') == 'on':
+        collection.cover_image = None
+
+    cover = request.files.get('cover_image')
+    if not cover or not cover.filename:
+        return
+    ext = Path(secure_filename(cover.filename)).suffix.lower()
+    if ext not in _COVER_EXTS:
+        return
+    path = upload_image(
+        cover, current_app,
+        subfolder='group-covers',
+        public_id_prefix='cover',
+        process_artwork=False,
+    )
+    if path:
+        collection.cover_image = path
+
+
 def allowed_design_ids(collection):
     ids = []
     for raw in parse_json_list(getattr(collection, 'allowed_design_ids', None) or ''):
@@ -179,6 +211,7 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
             collection.slug = new_slug
 
     collection.description = request.form.get('description')
+    apply_collection_card(collection)
     collection.pickup_address = request.form.get('pickup_address')
     collection.pickup_instructions = request.form.get('pickup_instructions')
     collection.shipping_enabled = request.form.get('shipping_enabled') == 'on'

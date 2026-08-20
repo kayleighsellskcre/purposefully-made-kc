@@ -158,6 +158,8 @@ def create_app(config_class=Config):
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS allow_back_design BOOLEAN DEFAULT TRUE",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS back_design_type VARCHAR(20) DEFAULT 'both'",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS show_in_directory BOOLEAN DEFAULT FALSE",
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS cover_image VARCHAR(500)",
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS card_title VARCHAR(200)",
                     # product.spec_sheet_url — SanMar CDN PDF link added during Bella+Canvas CSV import
                     "ALTER TABLE product ADD COLUMN IF NOT EXISTS spec_sheet_url VARCHAR(500)",
                     # product_color_variant.color_swatch_url — SanMar CDN swatch image (color_hex is only 7 chars)

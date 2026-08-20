@@ -1,0 +1,41 @@
+{# Optional cover photo + short title for the public Group Orders card. #}
+<div class="form-group">
+    <label for="card_title">Name on the card</label>
+    <input type="text" id="card_title" name="card_title" class="form-control" maxlength="80"
+           value="{{ collection.card_title if collection is defined and collection.card_title else '' }}"
+           placeholder="Leave blank to use the group order name">
+    <small>This is the pretty title people see on the Group Orders page. You can keep it short, like “Riverview Spirit Wear”.</small>
+</div>
+<div class="form-group">
+    <label for="cover_image">Cover photo (optional)</label>
+    {% if collection is defined and collection.cover_image %}
+    <div class="cover-current" style="margin-bottom:0.75rem">
+        <img src="{{ collection.cover_image | image_url }}" alt="Current cover" style="max-width:220px;max-height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--border-light)">
+        <label class="form-check" style="margin-top:0.5rem">
+            <input type="checkbox" name="remove_cover" value="on">
+            Remove this photo
+        </label>
+    </div>
+    {% endif %}
+    <input type="file" id="cover_image" name="cover_image" class="form-control" accept=".png,.jpg,.jpeg,.webp,.gif">
+    <small>School logo, team photo, or any image. If you skip this, we’ll show the name in a styled header instead of a shirt photo.</small>
+    <div id="coverPreview" style="display:none;margin-top:0.75rem"></div>
+</div>
+<script>
+(function () {
+    var input = document.getElementById('cover_image');
+    var preview = document.getElementById('coverPreview');
+    if (!input || !preview) return;
+    input.addEventListener('change', function () {
+        preview.innerHTML = '';
+        preview.style.display = 'none';
+        var file = this.files && this.files[0];
+        if (!file) return;
+        var img = document.createElement('img');
+        img.style.cssText = 'max-width:220px;max-height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--border-light)';
+        img.src = URL.createObjectURL(file);
+        preview.appendChild(img);
+        preview.style.display = 'block';
+    });
+})();
+</script>
