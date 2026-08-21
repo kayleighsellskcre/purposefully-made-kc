@@ -590,11 +590,8 @@
 }
 .logo-gallery-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
     gap: 0.5rem;
-    max-height: 200px;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
 }
 .logo-gallery-item {
     cursor: pointer;
@@ -614,7 +611,7 @@
 }
 .logo-gallery-item img {
     width: 100%;
-    height: 48px;
+    height: 64px;
     object-fit: contain;
     display: block;
     margin-bottom: 0.25rem;
