@@ -44,7 +44,7 @@ FLOW_STEPS = [
         'id': 'blanks',
         'num': '3',
         'label': 'Order blanks',
-        'hint': 'Buy shirts before you press',
+        'hint': 'Weekly list, buy once',
         'endpoint': 'admin.production_master',
         'active_eps': ('admin.production_master', 'admin.blank_apparel_list', 'admin.production'),
         'params': {'stage': ['order_received', 'waiting_supplies']},
@@ -76,7 +76,7 @@ STAGE_TOOLS = {
     ],
     'waiting_supplies': [
         ('admin.production_master', 'Blank + design list', {'stage': ['waiting_supplies']}),
-        ('admin.blank_apparel_list', 'Purchase list', {'stage': ['waiting_supplies']}),
+        ('admin.blank_apparel_list', 'Weekly shopping list', {'stage': ['waiting_supplies']}),
     ],
     'ready_to_press': [
         ('admin.transfer_production', 'Press sheets', {'stage': ['ready_to_press']}),

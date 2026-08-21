@@ -12,7 +12,7 @@
                 <p class="page-subtitle">Everything to buy before you press. When the shirts are in, move these orders to Ready to Press.</p>
             </div>
             <div class="master-actions">
-                <a href="{{ ops_url('admin.blank_apparel_list') }}" class="btn btn-outline">Purchase list</a>
+                <a href="{{ ops_url('admin.blank_apparel_list') }}" class="btn btn-primary">Weekly shopping list</a>
                 <a href="{{ ops_url('admin.transfer_production', stage=['ready_to_press']) }}" class="btn btn-outline">Press sheets</a>
                 <a href="{{ ops_url('admin.orders', stage='order_received') }}" class="btn btn-outline">View Orders</a>
                 <form method="post" action="{{ url_for('admin.production_master_move') }}" style="display: inline;">
@@ -33,7 +33,7 @@
             <!-- Blank Apparel -->
             <div class="master-section">
                 <h2>Blank Apparel to Order</h2>
-                <p class="section-hint">Order these from your blank supplier (S&S, Bella+Canvas, etc.)</p>
+                <p class="section-hint">Use the weekly shopping list to copy these into S&amp;S or SanMar. Nothing is purchased until you check out there.</p>
                 <div class="table-container">
                     <table class="admin-table">
                         <thead>

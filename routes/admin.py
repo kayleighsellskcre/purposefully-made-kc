@@ -2715,54 +2715,40 @@ def production():
 @admin_bp.route('/production/blank-apparel-list')
 @admin_required
 def blank_apparel_list():
-    """Generate blank apparel purchase order list"""
+    """Weekly blank shopping list — nothing is purchased until you check out at S&S/SanMar."""
     from utils.ops_flow import ops_order_query
+    from utils.blank_orders import build_blank_shopping_list
     query, _stages, collection_id = ops_order_query(['order_received', 'waiting_supplies'])
     orders = query.all()
-    
-    # Aggregate by style/color/size
-    apparel_totals = {}
-    
-    for order in orders:
-        for item in order.items:
-            key = (item.style_number, item.product_name, item.color, item.size)
-            if key not in apparel_totals:
-                apparel_totals[key] = {
-                    'style_number': item.style_number,
-                    'product_name': item.product_name,
-                    'color': item.color,
-                    'size': item.size,
-                    'quantity': 0
-                }
-            apparel_totals[key]['quantity'] += item.quantity
-    
-    # Sort by style, color, size
-    apparel_list = sorted(apparel_totals.values(), 
-                         key=lambda x: (x['style_number'], x['color'], x['size']))
-    
-    # Export as CSV if requested
+    shopping = build_blank_shopping_list(orders)
+
     if request.args.get('format') == 'csv':
         output = StringIO()
-        writer = csv.DictWriter(output, fieldnames=['style_number', 'product_name', 'color', 'size', 'quantity'])
+        writer = csv.DictWriter(
+            output,
+            fieldnames=['vendor', 'brand', 'style_number', 'product_name', 'color', 'size', 'quantity'],
+        )
         writer.writeheader()
-        writer.writerows(apparel_list)
-        
+        writer.writerows(shopping['flat'])
         response = BytesIO(output.getvalue().encode('utf-8'))
         return send_file(
             response,
             mimetype='text/csv',
             as_attachment=True,
-            download_name=f'blank_apparel_list_{datetime.now().strftime("%Y%m%d")}.csv'
+            download_name=f'blank_apparel_list_{datetime.now().strftime("%Y%m%d")}.csv',
         )
-    
+
     collections = Collection.query.all()
-    total_quantity = sum(item['quantity'] for item in apparel_list)
-    return render_template('admin/blank_apparel_list.html',
-                         apparel_list=apparel_list,
-                         apparel_totals=apparel_list,
-                         total_quantity=total_quantity,
-                         total_cost=0,
-                         collections=collections)
+    return render_template(
+        'admin/blank_apparel_list.html',
+        vendors=shopping['vendors'],
+        all_copy=shopping['all_copy'],
+        total_quantity=shopping['total_quantity'],
+        total_cost=shopping['total_cost'],
+        style_count=shopping['style_count'],
+        order_count=len(orders),
+        collections=collections,
+    )
 
 
 @admin_bp.route('/orders/print-labels')

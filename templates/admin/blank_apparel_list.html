@@ -1,180 +1,144 @@
 {% extends "admin/base_admin.html" %}
 
-{% block title %}Blank Apparel Purchase List - Admin - Purposefully Made KC{% endblock %}
+{% block title %}Weekly blank shopping list - Admin - Purposefully Made KC{% endblock %}
 
 {% block admin_content %}
 <div class="admin-page">
     <div class="container">
         <div class="admin-header">
-            <span class="adm-eyebrow">Admin / Daily Operations · Step 3</span>
-            <h1>Blank Apparel Purchase List</h1>
-            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-                <a href="{{ ops_url('admin.production_master') }}" class="btn btn-outline">Back to blanks + designs</a>
-                <button onclick="window.print()" class="btn btn-primary">Print List</button>
+            <div>
+                <span class="adm-eyebrow">Admin / Daily Operations · Step 3</span>
+                <h1>Weekly blank shopping list</h1>
+                <p class="page-subtitle">Nothing is purchased from here. Add these to S&amp;S or SanMar, then check out once for free shipping.</p>
             </div>
+            <div class="shop-actions no-print">
+                <button type="button" class="btn btn-primary" data-copy-target="copy-all" {% if not vendors %}disabled{% endif %}>Copy all</button>
+                <a href="{{ ops_url('admin.blank_apparel_list', format='csv') }}" class="btn btn-outline">Download CSV</a>
+                <button type="button" class="btn btn-outline" onclick="window.print()">Print</button>
+                <a href="{{ ops_url('admin.production_master') }}" class="btn btn-outline">Back to blanks + designs</a>
+            </div>
+            <textarea id="copy-all" class="copy-src" hidden readonly>{{ all_copy }}</textarea>
         </div>
-        
-        <p class="page-subtitle">Total quantities needed by style, color, and size</p>
-        
-        {% if apparel_totals %}
-        <div class="apparel-table-container">
-            <table class="apparel-table">
-                <thead>
-                    <tr>
-                        <th>Style #</th>
-                        <th>Product Name</th>
-                        <th>Color</th>
-                        <th>Size</th>
-                        <th>Quantity</th>
-                        <th>Cost Each</th>
-                        <th>Total Cost</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in apparel_totals %}
-                    <tr>
-                        <td><strong>{{ item.style_number }}</strong></td>
-                        <td>{{ item.product_name }}</td>
-                        <td>{{ item.color }}</td>
-                        <td>{{ item.size }}</td>
-                        <td class="qty">{{ item.quantity }}</td>
-                        <td>${{ "%.2f"|format(item.cost_each or 0) }}</td>
-                        <td>${{ "%.2f"|format((item.cost_each or 0) * item.quantity) }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-                <tfoot>
-                    <tr class="total-row">
-                        <td colspan="4"><strong>TOTAL</strong></td>
-                        <td class="qty"><strong>{{ total_quantity }}</strong></td>
-                        <td></td>
-                        <td><strong>${{ "%.2f"|format(total_cost) }}</strong></td>
-                    </tr>
-                </tfoot>
-            </table>
+
+        {% if vendors %}
+        <div class="shop-summary">
+            <p><strong>{{ order_count }}</strong> order{{ 's' if order_count != 1 }} · <strong>{{ style_count }}</strong> style{{ 's' if style_count != 1 }} · <strong>{{ total_quantity }}</strong> shirt{{ 's' if total_quantity != 1 }}</p>
         </div>
-        
-        <div class="purchase-notes">
-            <h3>Purchase Notes</h3>
-            <ul>
-                <li>Order from your preferred blank supplier (e.g., S&S Activewear, Bella+Canvas direct)</li>
-                <li>Check inventory availability before placing order</li>
-                <li>Consider ordering 5-10% extra for potential replacements</li>
-            </ul>
-        </div>
+
+        {% for vendor in vendors %}
+        <section class="vendor-block">
+            <div class="vendor-head">
+                <div>
+                    <h2>{{ vendor.name }}</h2>
+                    <p>{{ vendor.quantity }} shirt{{ 's' if vendor.quantity != 1 }}</p>
+                </div>
+                <div class="vendor-actions no-print">
+                    <textarea id="copy-vendor-{{ loop.index }}" class="copy-src" hidden readonly>{{ vendor.copy_text }}</textarea>
+                    <button type="button" class="btn btn-outline btn-sm" data-copy-target="copy-vendor-{{ loop.index }}">Copy {{ vendor.name }} list</button>
+                    {% if vendor.shop_url %}
+                    <a class="btn btn-primary btn-sm" href="{{ vendor.shop_url }}" target="_blank" rel="noopener">Open {{ vendor.name }}</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% set vendor_i = loop.index %}
+            {% for style in vendor.styles %}
+            <article class="style-card">
+                <div class="style-card-head">
+                    <div>
+                        <p class="style-num">{{ style.style_number }}</p>
+                        <p class="style-name">{{ style.product_name }}{% if style.brand %} · {{ style.brand }}{% endif %}</p>
+                    </div>
+                    <textarea id="copy-style-{{ vendor_i }}-{{ loop.index }}" class="copy-src" hidden readonly>{{ style.copy_text }}</textarea>
+                    <button type="button" class="btn btn-outline btn-sm no-print" data-copy-target="copy-style-{{ vendor_i }}-{{ loop.index }}">Copy</button>
+                </div>
+                {% for color in style.colors %}
+                <div class="color-row">
+                    <p class="color-name">{{ color.color }} <span>· {{ color.quantity }}</span></p>
+                    <div class="size-chips">
+                        {% for size in color.sizes %}
+                        <span class="size-chip"><strong>{{ size.size }}</strong> × {{ size.qty }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </article>
+            {% endfor %}
+        </section>
+        {% endfor %}
+
+        <p class="shop-note no-print">When the boxes arrive, go back to Order blanks and tap <strong>Blanks are in: Ready to Press</strong>.</p>
         {% else %}
         <div class="empty-state">
-            <p>No orders to process. Start taking orders to generate your purchase list!</p>
+            <p>No shirts waiting to be ordered. New paid orders will show up here.</p>
             <a href="{{ url_for('admin.orders') }}" class="btn btn-primary">View Orders</a>
         </div>
         {% endif %}
     </div>
 </div>
 
+<div id="copyToast" class="copy-toast" hidden>Copied</div>
+
 <style>
+.admin-page { padding: 4rem 0; }
+.admin-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.page-subtitle { color: var(--text-secondary); margin-top: 0.5rem; max-width: 38rem; }
+.shop-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.shop-summary { margin-bottom: 1.5rem; padding: 1rem 1.25rem; background: var(--secondary-color); border-radius: var(--border-radius); }
+.vendor-block { background: #fff; border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: var(--box-shadow); }
+.vendor-head { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: flex-start; margin-bottom: 1.25rem; }
+.vendor-head h2 { font-family: var(--font-heading); font-size: 1.35rem; margin: 0 0 0.2rem; }
+.vendor-head p { color: var(--text-secondary); margin: 0; }
+.vendor-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.style-card { border: 1px solid var(--border-light, #eadfd4); border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 0.85rem; }
+.style-card:last-child { margin-bottom: 0; }
+.style-card-head { display: flex; justify-content: space-between; gap: 0.75rem; align-items: flex-start; margin-bottom: 0.75rem; }
+.style-num { font-family: 'Courier New', monospace; font-weight: 700; color: var(--aged-bronze); margin: 0; }
+.style-name { margin: 0.15rem 0 0; color: var(--text-secondary); font-size: 0.92rem; }
+.color-row { padding: 0.65rem 0; border-top: 1px solid var(--border-light, #eadfd4); }
+.color-name { margin: 0 0 0.45rem; font-weight: 600; }
+.color-name span { color: var(--text-secondary); font-weight: 500; }
+.size-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.size-chip { background: var(--soft-bg, #fdf8f4); border-radius: 999px; padding: 0.25rem 0.7rem; font-size: 0.88rem; }
+.shop-note { color: var(--text-secondary); margin-top: 0.5rem; }
+.copy-src { position: absolute; left: -9999px; width: 1px; height: 1px; }
+.copy-toast { position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%); background: #3A3D48; color: #fff; padding: 0.5rem 1rem; border-radius: 999px; font-size: 0.85rem; z-index: 50; }
 @media print {
-    .admin-header button,
-    .page-subtitle,
-    .purchase-notes {
-        display: none;
-    }
+    .no-print, .ops-flow { display: none !important; }
+    .vendor-block { box-shadow: none; break-inside: avoid; }
 }
-
-.admin-page {
-    padding: 4rem 0;
-}
-
-.admin-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.page-subtitle {
-    color: var(--text-secondary);
-    margin-bottom: 2rem;
-}
-
-.apparel-table-container {
-    background: #fff;
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
-    overflow-x: auto;
-    margin-bottom: 3rem;
-}
-
-.apparel-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.apparel-table thead {
-    background: var(--secondary-color);
-}
-
-.apparel-table th,
-.apparel-table td {
-    padding: 1rem;
-    text-align: left;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.apparel-table td.qty {
-    text-align: center;
-    font-weight: 600;
-    color: var(--accent-color);
-}
-
-.apparel-table tfoot {
-    background: var(--accent-color);
-    color: #fff;
-}
-
-.apparel-table tfoot td {
-    border: none;
-    padding: 1.5rem 1rem;
-}
-
-.total-row {
-    font-size: 1.125rem;
-}
-
-.purchase-notes {
-    background: var(--secondary-color);
-    border-radius: var(--border-radius);
-    padding: 2rem;
-}
-
-.purchase-notes h3 {
-    margin-bottom: 1rem;
-}
-
-.purchase-notes ul {
-    list-style: none;
-    padding: 0;
-}
-
-.purchase-notes li {
-    padding: 0.5rem 0;
-    padding-left: 2rem;
-    position: relative;
-}
-
-.purchase-notes li::before {
-    content: "•";
-    position: absolute;
-    left: 0.5rem;
-    color: var(--accent-color);
-    font-weight: 700;
-    font-size: 1.5rem;
-}
-
-.empty-state {
-    text-align: center;
-    padding: 4rem 2rem;
-    background: #fff;
-    border-radius: var(--border-radius);
+@media (max-width: 700px) {
+    .admin-page { padding: 2rem 0; }
+    .size-chip { min-height: 36px; display: inline-flex; align-items: center; }
 }
 </style>
+<script>
+(function () {
+    const toast = document.getElementById('copyToast');
+    function flash() {
+        if (!toast) return;
+        toast.hidden = false;
+        clearTimeout(flash._t);
+        flash._t = setTimeout(function () { toast.hidden = true; }, 1200);
+    }
+    document.querySelectorAll('[data-copy-target]').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+            const src = document.getElementById(btn.getAttribute('data-copy-target'));
+            const text = src ? src.value : '';
+            try {
+                await navigator.clipboard.writeText(text);
+                flash();
+            } catch (err) {
+                const area = document.createElement('textarea');
+                area.value = text;
+                document.body.appendChild(area);
+                area.select();
+                document.execCommand('copy');
+                area.remove();
+                flash();
+            }
+        });
+    });
+})();
+</script>
 {% endblock %}
