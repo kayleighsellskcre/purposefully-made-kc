@@ -1622,7 +1622,9 @@
                         <div class="ai-zoom-hint">Scroll to pan &bull; use + / &minus; to zoom &bull; click the background to close</div>
                     </div>
 
+                    {% if not collection_restricted %}
                     <a href="{{ url_for('shop.design_gallery', product_id=product.id) }}" class="btn btn-outline btn-sm" style="margin-top: 0.75rem; display: inline-block;">Browse full design gallery</a>
+                    {% endif %}
                 </div>
                 
                 <!-- Placement Selection -->
@@ -1649,8 +1651,19 @@
                     </div>
                 </div>
                 
-                <!-- Add Back Design Option - always visible so users can add name/number without front design -->
+                <!-- Add Back Design Option -->
+                {% if not collection_restricted or allow_back_design %}
                 <div class="panel-section" id="backDesignSection" style="display: block;">
+                    {% if collection_restricted and allow_back_design %}
+                    {# Group order: organizer allows back design — show simplified header without price toggle #}
+                    <div style="padding: 1.25rem; background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.05)); border-radius: 12px; border: 2px solid #e8e8e8; margin-bottom: 1rem;">
+                        <strong style="font-size: 1.1rem; color: #333;">
+                            {% if back_design_type == 'name_number' %}Add Your Name &amp; Number{% elif back_design_type == 'image' %}Add Back Design{% else %}Optional Back Design{% endif %}
+                        </strong>
+                        <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #666;">Set by your group organizer — see options below</p>
+                    </div>
+                    {% else %}
+                    {# Regular shop: show toggle button with price #}
                     <div style="padding: 1.25rem; background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.05)); border-radius: 12px; border: 2px solid #e8e8e8;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                             <div>
@@ -1665,12 +1678,18 @@
                             <span id="backDesignBtnText">Add Back Design</span>
                         </button>
                     </div>
+                    {% endif %}
                     
-                    <!-- Back Design Options - only visible after Add Back Design is confirmed -->
-                    <div id="backDesignUploadArea" style="display: none; margin-top: 1rem;">
+                    <!-- Back Design Options - auto-shown for group orders, toggled for regular shop -->
+                    <div id="backDesignUploadArea" style="display: {% if collection_restricted and allow_back_design %}block{% else %}none{% endif %}; margin-top: 1rem;">
                         <h4 style="margin-bottom: 0.75rem;">Back Design</h4>
                         
                         {% if not collection_restricted %}
+                        <div class="back-design-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                            <button type="button" class="btn btn-outline btn-sm back-design-tab active" data-mode="name_number">Name & Number</button>
+                            <button type="button" class="btn btn-outline btn-sm back-design-tab" data-mode="upload">Upload Image</button>
+                        </div>
+                        {% elif back_design_type == 'both' %}
                         <div class="back-design-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
                             <button type="button" class="btn btn-outline btn-sm back-design-tab active" data-mode="name_number">Name & Number</button>
                             <button type="button" class="btn btn-outline btn-sm back-design-tab" data-mode="upload">Upload Image</button>
@@ -1771,7 +1790,8 @@
                         </div>
                     </div>
                 </div>
-                
+                {% endif %}{# end allow_back_design #}
+
                 <!-- Quantity -->
                 <div class="panel-section">
                     <h3>Quantity</h3>
@@ -1865,7 +1885,7 @@
         designUrl: null,
         designWidth: null,
         designHeight: null,
-        backDesignEnabled: false,
+        backDesignEnabled: {% if collection_restricted and allow_back_design %}true{% else %}false{% endif %},
         backDesignMode: 'name_number',
         backDesignName: '',
         backDesignNumber: '',
@@ -1922,6 +1942,13 @@
             if (firstColor) {
                 firstColor.click();
             }
+        }
+
+        // Group order: back design enabled by organizer — show fee row and sync UI
+        if (state.backDesignEnabled) {
+            const feeRow = document.getElementById('backDesignFeeRow');
+            if (feeRow) feeRow.style.display = 'flex';
+            updateTotalPrice();
         }
     });
     
