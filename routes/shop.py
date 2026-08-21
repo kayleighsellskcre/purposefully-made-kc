@@ -189,7 +189,7 @@ def group_orders():
     """Group order landing page + public directory of open collections"""
     from flask_login import current_user
     from models import Collection
-    from utils.group_orders import is_deadline_passed
+    from utils.group_orders import is_deadline_passed, is_not_yet_open
 
     directory = (
         Collection.query
@@ -205,6 +205,7 @@ def group_orders():
         open_collections.append({
             'collection': c,
             'product_count': len(products),
+            'not_yet_open': is_not_yet_open(c),
         })
 
     return render_template(
@@ -249,16 +250,6 @@ def create_group_order():
             except (TypeError, ValueError):
                 flash('Tax rate must be a number (e.g. 8.5). Please correct it and try again.', 'error')
                 return redirect(url_for('shop.create_group_order'))
-
-            order_deadline = None
-            deadline_str = (request.form.get('order_deadline') or '').strip()
-            if deadline_str:
-                try:
-                    from utils.group_orders import parse_order_deadline
-                    order_deadline = parse_order_deadline(deadline_str)
-                except ValueError:
-                    flash('The order deadline date is invalid. Please pick a valid date.', 'error')
-                    return redirect(url_for('shop.create_group_order'))
 
             # ── 4. Create the collection ────────────────────────────────────
             collection = Collection(
@@ -307,14 +298,16 @@ def create_group_order():
             collection.back_design_outline_color = request.form.get('back_design_outline_color') or None
             collection.lock_back_design_style = request.form.get('lock_back_design_style') == 'on'
 
-            from utils.group_orders import apply_collection_card
+            from utils.group_orders import apply_collection_card, apply_schedule_from_form, set_collection_products_from_form
             apply_collection_card(collection)
 
             password = request.form.get('password')
             if password:
                 collection.set_password(password)
-            if order_deadline:
-                collection.order_deadline = order_deadline
+            ok, schedule_error = apply_schedule_from_form(collection)
+            if not ok:
+                flash(schedule_error, 'error')
+                return redirect(url_for('shop.create_group_order'))
 
             # Track who created this group order (for permission checks)
             collection.created_by_user_id = current_user.id
@@ -323,16 +316,7 @@ def create_group_order():
             db.session.flush()
 
             # ── 5. Link selected products ───────────────────────────────────
-            selected_products = []
-            for product_id in request.form.getlist('products'):
-                try:
-                    pid = int(product_id)
-                except (TypeError, ValueError):
-                    continue
-                product = Product.query.get(pid)
-                if product:
-                    selected_products.append(product)
-                    collection.products.append(product)
+            selected_products = set_collection_products_from_form(collection)
             if not selected_products:
                 db.session.rollback()
                 flash('Please pick at least one shirt style so your team has something to order.', 'error')

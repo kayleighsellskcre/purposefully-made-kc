@@ -32,8 +32,11 @@
                 <div class="collection-info">
                     <p><strong>Slug:</strong> {{ collection.slug }}</p>
                     <p><strong>Orders:</strong> {{ collection.orders.count() }}</p>
+                    {% if collection.order_opens_at %}
+                    <p><strong>Opens:</strong> {{ collection.order_opens_at|kc_date('%b %d, %Y') }}</p>
+                    {% endif %}
                     {% if collection.order_deadline %}
-                    <p><strong>Deadline:</strong> {{ collection.order_deadline.strftime('%b %d, %Y') }}</p>
+                    <p><strong>Deadline:</strong> {{ collection.order_deadline|kc_date('%b %d, %Y') }}</p>
                     {% endif %}
                 </div>
 

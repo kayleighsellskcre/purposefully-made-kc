@@ -20,18 +20,113 @@ def parse_order_deadline(date_str):
     return local_end.astimezone(UTC).replace(tzinfo=None)
 
 
+def parse_order_opens(date_str):
+    """Start of the chosen calendar day in Kansas City time, stored as naive UTC."""
+    raw = (date_str or '').strip()
+    if not raw:
+        return None
+    day = datetime.strptime(raw[:10], '%Y-%m-%d').date()
+    local_start = datetime.combine(day, time(0, 0, 0), tzinfo=CHICAGO)
+    return local_start.astimezone(UTC).replace(tzinfo=None)
+
+
+def _as_naive_utc(dt):
+    if dt is None:
+        return None
+    if dt.tzinfo is not None:
+        return dt.astimezone(UTC).replace(tzinfo=None)
+    return dt
+
+
+def schedule_date_input(dt):
+    """YYYY-MM-DD for date inputs, in Kansas City time."""
+    if not dt:
+        return ''
+    naive = _as_naive_utc(dt)
+    if naive.hour == 0 and naive.minute == 0 and naive.second == 0:
+        return naive.strftime('%Y-%m-%d')
+    from utils.local_time import to_central
+    local = to_central(dt)
+    return local.strftime('%Y-%m-%d') if local else ''
+
+
+def format_schedule_date(dt, fmt='%B %d, %Y'):
+    if not dt:
+        return ''
+    naive = _as_naive_utc(dt)
+    if naive.hour == 0 and naive.minute == 0 and naive.second == 0:
+        return naive.strftime(fmt)
+    from utils.local_time import format_central
+    return format_central(dt, fmt)
+
+
 def is_deadline_passed(collection):
     if not collection or not collection.order_deadline:
         return False
-    deadline = collection.order_deadline
-    if deadline.tzinfo is not None:
-        deadline = deadline.astimezone(UTC).replace(tzinfo=None)
+    deadline = _as_naive_utc(collection.order_deadline)
     # Date-only values used to be stored as midnight, which closed the order
     # at the start of the deadline day. Keep that calendar day open in KC.
     if deadline.hour == 0 and deadline.minute == 0 and deadline.second == 0:
         local_end = datetime.combine(deadline.date(), time(23, 59, 59), tzinfo=CHICAGO)
         deadline = local_end.astimezone(UTC).replace(tzinfo=None)
     return deadline < datetime.utcnow()
+
+
+def is_not_yet_open(collection):
+    if not collection or not getattr(collection, 'order_opens_at', None):
+        return False
+    opens = _as_naive_utc(collection.order_opens_at)
+    return datetime.utcnow() < opens
+
+
+def apply_schedule_from_form(collection):
+    """Set order_opens_at and order_deadline from the current request.
+
+    Returns (ok, error_message).
+    """
+    from flask import request
+
+    opens_str = (request.form.get('order_opens_at') or '').strip()
+    deadline_str = (request.form.get('order_deadline') or '').strip()
+    try:
+        opens = parse_order_opens(opens_str) if opens_str else None
+    except ValueError:
+        return False, 'The order start date is invalid. Please pick a valid date.'
+    try:
+        deadline = parse_order_deadline(deadline_str) if deadline_str else None
+    except ValueError:
+        return False, 'The order deadline date is invalid. Please pick a valid date.'
+    if opens and deadline and opens > deadline:
+        return False, 'The start date needs to be on or before the deadline.'
+    collection.order_opens_at = opens
+    collection.order_deadline = deadline
+    return True, None
+
+
+def set_collection_products_from_form(collection):
+    """Replace collection.products from the products[] form field in one query."""
+    from flask import request
+    from models import Product
+
+    ids = []
+    seen = set()
+    for raw in request.form.getlist('products'):
+        try:
+            pid = int(raw)
+        except (TypeError, ValueError):
+            continue
+        if pid in seen:
+            continue
+        seen.add(pid)
+        ids.append(pid)
+    if not ids:
+        collection.products = []
+        return []
+    found = Product.query.filter(Product.id.in_(ids)).all()
+    by_id = {p.id: p for p in found}
+    selected = [by_id[i] for i in ids if i in by_id]
+    collection.products = selected
+    return selected
 
 
 _COVER_EXTS = {'.png', '.jpg', '.jpeg', '.webp', '.gif'}
@@ -193,7 +288,6 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
     rollback; this function does not commit.
     """
     from flask import request
-    from models import Product
     from utils.privacy import selectable_group_order_design_ids
     import json
 
@@ -274,26 +368,11 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
         collection.is_password_protected = False
         collection.password_hash = None
 
-    deadline_str = (request.form.get('order_deadline') or '').strip()
-    if deadline_str:
-        try:
-            collection.order_deadline = parse_order_deadline(deadline_str)
-        except ValueError:
-            return False, 'The order deadline date is invalid. Please pick a valid date.', 0
-    else:
-        collection.order_deadline = None
+    ok, error = apply_schedule_from_form(collection)
+    if not ok:
+        return False, error, 0
 
-    selected_products = []
-    collection.products = []
-    for product_id in request.form.getlist('products'):
-        try:
-            pid = int(product_id)
-        except (TypeError, ValueError):
-            continue
-        product = Product.query.get(pid)
-        if product:
-            selected_products.append(product)
-            collection.products.append(product)
+    selected_products = set_collection_products_from_form(collection)
     if require_products and not selected_products:
         return False, 'Please pick at least one shirt style so your team has something to order.', 0
 
@@ -331,8 +410,11 @@ def ordering_blocked(collection, product_id=None):
         return 'This group order is no longer active.'
     if is_deadline_passed(collection):
         deadline = collection.order_deadline
-        label = deadline.strftime('%B %d, %Y') if deadline else 'the deadline'
+        label = format_schedule_date(deadline) if deadline else 'the deadline'
         return f'This group order closed on {label}. Ordering is no longer available.'
+    if is_not_yet_open(collection):
+        label = format_schedule_date(collection.order_opens_at)
+        return f'This group order opens on {label}. Ordering is not available yet.'
     if product_id and collection_has_products(collection) and not product_in_collection(collection, product_id):
         return 'That style is not part of this group order. Please pick from the styles on the group store.'
     return None

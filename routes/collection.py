@@ -64,8 +64,10 @@ def view(slug):
             return redirect(url_for('collection.password', slug=slug))
     
     # Check if deadline has passed — show warning but still allow viewing
-    from utils.group_orders import attach_collection, is_deadline_passed
+    from utils.group_orders import attach_collection, is_deadline_passed, is_not_yet_open
     collection.deadline_passed = is_deadline_passed(collection)
+    collection.not_yet_open = is_not_yet_open(collection)
+    collection.cannot_order = collection.deadline_passed or collection.not_yet_open
 
     # Keep this group order in session so customize/cart/checkout stay attached
     attach_collection(collection)
@@ -283,7 +285,10 @@ def _build_group_order_xlsx(collection):
     ws_sum['A2'].font = Font(italic=True, color='888888', size=9)
     ws_sum.merge_cells('A2:F2')
 
-    ws_sum['A3'] = f'Deadline: {collection.order_deadline.strftime("%B %d, %Y") if collection.order_deadline else "—"}'
+    from utils.group_orders import format_schedule_date
+    opens_label = format_schedule_date(collection.order_opens_at) or '—'
+    deadline_label = format_schedule_date(collection.order_deadline) or '—'
+    ws_sum['A3'] = f'Opens: {opens_label}   Deadline: {deadline_label}'
     ws_sum.merge_cells('A3:F3')
 
     paid_orders   = [o for o in orders if o.payment_status == 'paid']

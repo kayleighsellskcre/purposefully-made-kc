@@ -2348,16 +2348,6 @@ def add_collection():
             except (TypeError, ValueError):
                 tax_rate = 0.0
 
-            order_deadline = None
-            deadline_str = (request.form.get('order_deadline') or '').strip()
-            if deadline_str:
-                try:
-                    from utils.group_orders import parse_order_deadline
-                    order_deadline = parse_order_deadline(deadline_str)
-                except ValueError:
-                    flash('The order deadline date is invalid. Please pick a valid date.', 'error')
-                    return redirect(url_for('admin.add_collection'))
-
             collection = Collection(
                 name=name,
                 slug=slug,
@@ -2403,28 +2393,21 @@ def add_collection():
             collection.back_design_outline_color = request.form.get('back_design_outline_color') or None
             collection.lock_back_design_style = request.form.get('lock_back_design_style') == 'on'
 
-            from utils.group_orders import apply_collection_card
+            from utils.group_orders import apply_collection_card, apply_schedule_from_form, set_collection_products_from_form
             apply_collection_card(collection)
 
             password = request.form.get('password')
             if password:
                 collection.set_password(password)
-            if order_deadline:
-                collection.order_deadline = order_deadline
+            ok, schedule_error = apply_schedule_from_form(collection)
+            if not ok:
+                flash(schedule_error, 'error')
+                return redirect(url_for('admin.add_collection'))
 
             db.session.add(collection)
             db.session.flush()
 
-            selected_products = []
-            for product_id in request.form.getlist('products'):
-                try:
-                    pid = int(product_id)
-                except (TypeError, ValueError):
-                    continue
-                product = Product.query.get(pid)
-                if product:
-                    selected_products.append(product)
-                    collection.products.append(product)
+            selected_products = set_collection_products_from_form(collection)
             if not selected_products:
                 db.session.rollback()
                 flash('Please pick at least one shirt style so your team has something to order.', 'error')

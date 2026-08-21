@@ -372,8 +372,11 @@
                             {% if item.product_count %}
                             <span>{{ item.product_count }} style{{ 's' if item.product_count != 1 }}</span>
                             {% endif %}
+                            {% if item.not_yet_open and c.order_opens_at %}
+                            <span>Opens {{ c.order_opens_at|kc_date('%b %d') }}</span>
+                            {% endif %}
                             {% if c.order_deadline %}
-                            <span>Closes {{ c.order_deadline.strftime('%b') }} {{ c.order_deadline.day }}</span>
+                            <span>Closes {{ c.order_deadline|kc_date('%b %d') }}</span>
                             {% endif %}
                             {% if c.is_password_protected %}
                             <span class="dir-badge locked">🔒 Code required</span>
@@ -386,7 +389,9 @@
                     </div>
                     <div class="dir-card-footer">
                         <a href="{{ url_for('collection.view', slug=c.slug) }}" class="btn btn-primary">
-                            {% if c.is_password_protected %}Enter Code & Join{% else %}Join This Order{% endif %}
+                            {% if item.not_yet_open %}View Store
+                            {% elif c.is_password_protected %}Enter Code & Join
+                            {% else %}Join This Order{% endif %}
                         </a>
                     </div>
                 </div>

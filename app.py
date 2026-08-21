@@ -127,6 +127,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS password_hash VARCHAR(256)",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS pickup_address TEXT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS pickup_instructions TEXT",
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS order_opens_at TIMESTAMP",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS order_deadline TIMESTAMP",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS shipping_enabled BOOLEAN DEFAULT TRUE",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS tax_rate DOUBLE PRECISION DEFAULT 0",
@@ -470,6 +471,18 @@ def create_app(config_class=Config):
         """Show a stored UTC datetime in Kansas City time."""
         from utils.local_time import format_central
         return format_central(dt, fmt)
+
+    @app.template_filter('kc_date')
+    def kc_date_filter(dt, fmt='%B %d, %Y'):
+        """Group-order calendar date in Kansas City time."""
+        from utils.group_orders import format_schedule_date
+        return format_schedule_date(dt, fmt)
+
+    @app.template_filter('kc_date_input')
+    def kc_date_input_filter(dt):
+        """YYYY-MM-DD for date inputs, in Kansas City time."""
+        from utils.group_orders import schedule_date_input
+        return schedule_date_input(dt)
 
     @app.template_filter('from_json')
     def from_json_filter(value):

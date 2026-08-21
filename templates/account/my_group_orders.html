@@ -41,6 +41,7 @@
                     {% for c in collections %}
                     {% set order_count = c.orders.count() %}
                     {% set is_expired = c.deadline_passed %}
+                    {% set is_upcoming = c.not_yet_open %}
                     <div style="background:#fff;border:1px solid var(--border-light);border-radius:var(--border-radius);padding:1.25rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
                         <div>
                             <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.3rem;">
@@ -49,14 +50,19 @@
                                 <span style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:#e0e0e0;color:#666;padding:0.2rem 0.55rem;border-radius:20px;">Inactive</span>
                                 {% elif is_expired %}
                                 <span style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:rgba(192,57,43,0.1);color:#c0392b;padding:0.2rem 0.55rem;border-radius:20px;">Closed</span>
+                                {% elif is_upcoming %}
+                                <span style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:rgba(184,124,111,0.15);color:#8a5a50;padding:0.2rem 0.55rem;border-radius:20px;">Opens {{ c.order_opens_at|kc_date('%b %d') }}</span>
                                 {% else %}
                                 <span style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:rgba(39,174,96,0.12);color:#1e8449;padding:0.2rem 0.55rem;border-radius:20px;">Active</span>
                                 {% endif %}
                             </div>
                             <p style="font-size:0.85rem;color:var(--text-secondary);margin:0;">
                                 {{ order_count }} order{{ 's' if order_count != 1 }}
+                                {% if c.order_opens_at %}
+                                · Opens: {{ c.order_opens_at|kc_date('%b %d, %Y') }}
+                                {% endif %}
                                 {% if c.order_deadline %}
-                                · Deadline: {{ c.order_deadline.strftime('%b %d, %Y') }}
+                                · Deadline: {{ c.order_deadline|kc_date('%b %d, %Y') }}
                                 {% endif %}
                                 · Created {{ c.created_at.strftime('%b %d, %Y') }}
                             </p>

@@ -134,6 +134,7 @@ class Collection(db.Model):
     # Settings
     pickup_address = db.Column(db.Text)
     pickup_instructions = db.Column(db.Text)
+    order_opens_at = db.Column(db.DateTime)  # start of ordering window (KC calendar day)
     order_deadline = db.Column(db.DateTime)
     shipping_enabled = db.Column(db.Boolean, default=True)
     tax_rate = db.Column(db.Float, default=0.0)

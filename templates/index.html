@@ -38,7 +38,7 @@
 .features-section-eyebrow {
     display: block;
     text-align: center;
-    font-size: 0.7rem;
+    font-size: 0.9rem;
     font-weight: 700;
     letter-spacing: 0.18em;
     text-transform: uppercase;
@@ -257,8 +257,11 @@
                     {% if collection.description %}
                     <p class="collection-description">{{ collection.description }}</p>
                     {% endif %}
+                    {% if collection.order_opens_at %}
+                    <p class="collection-deadline">Opens {{ collection.order_opens_at|kc_date }}</p>
+                    {% endif %}
                     {% if collection.order_deadline %}
-                    <p class="collection-deadline">Order by {{ collection.order_deadline.strftime('%B %d, %Y') }}</p>
+                    <p class="collection-deadline">Order by {{ collection.order_deadline|kc_date }}</p>
                     {% endif %}
                     <a href="{{ url_for('collection.view', slug=collection.slug) }}" class="btn btn-outline">
                         Shop This Collection

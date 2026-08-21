@@ -162,18 +162,19 @@ a:hover {
     display: flex;
     align-items: center;
     text-decoration: none;
+    transform: translate(-10px, 48px);
     position: relative;
     z-index: 10;
     flex-shrink: 0;
 }
 
 .logo-image {
-    height: 88px !important;
+    height: 248px !important;
     width: auto !important;
     max-width: none;
     display: block;
     transition: var(--transition);
-    border: 1.5px solid rgba(184, 124, 111, 0.45);
+    border: 2px solid rgba(184, 124, 111, 0.5);
     border-radius: 6px;
 }
 
@@ -192,11 +193,11 @@ a:hover {
 
 .nav-link {
     font-weight: 500;
-    font-size: 0.85rem;
+    font-size: 1rem;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     color: var(--text-primary);
-    padding: 0.5rem 0.65rem;
+    padding: 0.6rem 0.85rem;
     border-radius: 6px;
     white-space: nowrap;
 }
@@ -231,15 +232,15 @@ a:hover {
 .nav-account-btn {
     font-family: inherit;
     font-weight: 600;
-    font-size: 0.85rem;
+    font-size: 1rem;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     color: var(--text-primary);
     background: rgba(184, 124, 111, 0.1);
     border: 1px solid rgba(184, 124, 111, 0.25);
     border-radius: 8px;
-    padding: 0.5rem 0.85rem;
-    min-height: 40px;
+    padding: 0.6rem 1rem;
+    min-height: 44px;
     cursor: pointer;
 }
 
@@ -291,7 +292,7 @@ a:hover {
 }
 
 .nav-auth-link {
-    font-size: 0.85rem;
+    font-size: 1rem;
 }
 
 .cart-link {
@@ -609,7 +610,7 @@ a.btn-customize:hover {
 .page-header .eyebrow,
 .eyebrow {
     display: block;
-    font-size: 0.72rem;
+    font-size: 0.95rem;
     font-weight: 700;
     letter-spacing: 0.18em;
     text-transform: uppercase;
@@ -1197,7 +1198,7 @@ textarea.form-control {
         display: flex;
         align-items: center;
         border-radius: 8px;
-        font-size: 0.9rem;
+        font-size: 1.05rem;
         touch-action: manipulation;
     }
 
@@ -1215,7 +1216,7 @@ textarea.form-control {
     }
 
     .logo { transform: none; }
-    .logo-image { height: 64px !important; }
+    .logo-image { height: 120px !important; }
 
     /* Hero - Mobile */
     .hero {
@@ -1347,8 +1348,8 @@ textarea.form-control {
     .hero { padding: 2rem 1rem; }
     .hero-title { font-size: 1.75rem; }
     .features { padding: 2rem 0; }
-    .logo-image { height: 56px !important; }
-    .logo { transform: none; }
+    .logo-image { height: 88px !important; }
+    .logo { transform: translate(-4px, 10px); }
 
     /* Nav menu must scroll in landscape since height is very small */
     .nav-links {
@@ -1952,7 +1953,7 @@ table { max-width: 100%; }
         display: flex;
         align-items: center;
         border-radius: 8px;
-        font-size: 0.9rem;
+        font-size: 1.05rem;
     }
     /* cart/favorites stay in .nav-icons, always visible */
     .cart-link,
@@ -1962,8 +1963,8 @@ table { max-width: 100%; }
         justify-content: center;
     }
     .mobile-menu-toggle { display: flex; }
-    .logo { transform: none; }
-    .logo-image { height: 72px !important; }
+    .logo { transform: translate(-6px, 28px); }
+    .logo-image { height: 160px !important; }
     .nav-account-menu {
         right: 0;
     }
@@ -1976,11 +1977,11 @@ table { max-width: 100%; }
    Keep the header proportional to the small viewport. */
 @media (max-width: 768px) {
     .navbar { padding: 0.4rem 0; }
-    .logo { transform: none !important; }
-    .logo-image { height: 64px !important; }
+    .logo { transform: translate(-4px, 16px) !important; }
+    .logo-image { height: 120px !important; }
 }
 @media (max-width: 480px) {
-    .logo-image { height: 56px !important; }
+    .logo-image { height: 96px !important; }
 }
 
 /* 3 ── Fluid headings (smooth scaling between breakpoints) ──── */
@@ -2015,8 +2016,8 @@ table { max-width: 100%; }
 /* 7 ── Very short landscape screens ─────────────────────────── */
 @media (max-height: 480px) and (orientation: landscape) {
     .navbar { padding: 0.15rem 0; }
-    .logo-image { height: 56px !important; }
-    .logo { transform: none; }
+    .logo-image { height: 88px !important; }
+    .logo { transform: translate(-4px, 8px); }
     .account-page,
     .legal-page,
     .error-page { padding-top: 1.5rem; padding-bottom: 1.5rem; }

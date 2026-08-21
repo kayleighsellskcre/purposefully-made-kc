@@ -41,7 +41,8 @@ def index():
             Collection.is_active == True,
             Collection.is_password_protected == False,
             Collection.created_by_user_id.is_(None),
-            (Collection.order_deadline == None) | (Collection.order_deadline >= now)
+            (Collection.order_deadline == None) | (Collection.order_deadline >= now),
+            (Collection.order_opens_at == None) | (Collection.order_opens_at <= now),
         ).order_by(Collection.created_at.desc()).limit(6).all()
         return render_template('index.html', 
                              featured_products=featured_products,

@@ -180,7 +180,7 @@ def infer_brand(item):
     return 'Bella+Canvas' if style else ''
 
 
-def prepare_catalog(products):
+def prepare_catalog(products, *, scan_folders=True):
     """Attach display labels and sort so similar items sit together."""
     items = list(products or [])
     for product in items:
@@ -193,8 +193,9 @@ def prepare_catalog(products):
         preview = (getattr(product, 'front_mockup_template', None) or '').strip()
         if preview and not preview.startswith(('http://', 'https://', '/', 'data:')):
             preview = '/static/' + preview
-        # If still no image, try scanning static/images/products/{style_number}/ for a front image
-        if not preview:
+        # Shop pages can scan folders; group-order forms skip this — listdir
+        # per product is what made Create Group Order feel stuck.
+        if not preview and scan_folders:
             import os
             _proj_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             style = (getattr(product, 'style_number', None) or '').strip()
@@ -254,9 +255,26 @@ def load_group_order_form_catalog():
     That N+1 pattern was crashing the logged-in Create Group Order page
     (Cloudflare ERR_HTTP2_PROTOCOL_ERROR / origin reset).
     """
+    from sqlalchemy.orm import load_only
     from models import Design, Product, ProductColorVariant, db
 
-    products = prepare_catalog(Product.query.filter_by(is_active=True).all())
+    products = prepare_catalog(
+        Product.query.filter_by(is_active=True).options(
+            load_only(
+                Product.id,
+                Product.name,
+                Product.style_number,
+                Product.brand,
+                Product.category,
+                Product.age_group,
+                Product.fit_type,
+                Product.base_price,
+                Product.front_mockup_template,
+                Product.is_active,
+            )
+        ).all(),
+        scan_folders=False,
+    )
     ids = [p.id for p in products]
     all_colors = []
     colors_by_brand = {}   # {brand: [sorted color names]}
@@ -291,8 +309,16 @@ def load_group_order_form_catalog():
     try:
         gallery_designs = (
             Design.query.filter_by(is_gallery=True)
+            .options(load_only(
+                Design.id,
+                Design.title,
+                Design.original_filename,
+                Design.file_path,
+                Design.uploaded_at,
+                Design.is_gallery,
+            ))
             .order_by(Design.uploaded_at.desc())
-            .limit(80)
+            .limit(48)
             .all()
         )
     except Exception:

@@ -3,8 +3,8 @@
 {% block title %}Create Group Order - Purposefully Made KC{% endblock %}
 
 {% block extra_css %}
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@500;600;700&family=Anton&family=Teko:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://fonts.cdnfonts.com/css/jersey-m54" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@500;600;700&family=Anton&family=Teko:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="https://fonts.cdnfonts.com/css/jersey-m54" media="print" onload="this.media='all'">
 {% endblock %}
 
 {% block content %}
@@ -152,7 +152,7 @@
                         <label class="design-choice-card">
                             <input type="checkbox" name="allowed_designs" value="{{ d.id }}">
                             <div class="design-choice-preview">
-                                <img src="{{ d.file_path | image_url }}" alt="{{ d.title or d.original_filename }}">
+                                <img src="{{ d.file_path | image_url }}" alt="{{ d.title or d.original_filename }}" loading="lazy" decoding="async">
                             </div>
                             <span>{{ d.title or d.original_filename or 'Design' }}</span>
                         </label>
@@ -284,8 +284,15 @@
                 <h2>Settings</h2>
                 
                 <div class="form-group">
-                    <label for="order_deadline">Order Deadline (optional)</label>
+                    <label for="order_opens_at">Orders open (optional)</label>
+                    <input type="date" id="order_opens_at" name="order_opens_at" class="form-control">
+                    <small>Leave blank to open as soon as you create the group order. Your team can view the store before this date, but they cannot order until it arrives.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="order_deadline">Order deadline (optional)</label>
                     <input type="date" id="order_deadline" name="order_deadline" class="form-control">
+                    <small>Last day people can order. The store stays open through this date in Kansas City time.</small>
                 </div>
                 
                 <div class="form-group">
@@ -327,12 +334,20 @@
                 {% endif %}
             </div>
             
-            <button type="submit" class="btn btn-primary btn-lg">Create Group Order</button>
+            <button type="submit" class="btn btn-primary btn-lg" id="createGroupOrderBtn">Create Group Order</button>
         </form>
     </div>
 </div>
 
 <script>
+document.querySelector('.collection-form')?.addEventListener('submit', function() {
+    var btn = document.getElementById('createGroupOrderBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Creating…';
+    }
+});
+
 // Colors by brand — show only brands with checked products
 function syncBrandColors() {
     var checked = document.querySelectorAll('input[name="products"]:checked');
