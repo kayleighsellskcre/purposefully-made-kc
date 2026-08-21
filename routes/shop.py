@@ -527,8 +527,10 @@ def customize(product_id):
     allowed_design_ids = None
     coll = get_active_collection()
     if coll:
+        from utils.group_orders import is_not_yet_open
         blocked = ordering_blocked(coll, product.id)
-        if blocked:
+        if blocked and not is_not_yet_open(coll):
+            # Order is closed/past deadline — redirect away entirely
             flash(blocked, 'error')
             return redirect(url_for('collection.view', slug=coll.slug))
         has_colors = bool(parse_json_list(coll.allowed_colors or ''))
@@ -596,6 +598,9 @@ def customize(product_id):
     is_adult = classify_age(product) == 'adult'
     transfer_sizing = client_config(product)
     
+    from utils.group_orders import is_not_yet_open as _is_not_yet_open, format_schedule_date
+    ordering_not_yet_open = bool(coll and _is_not_yet_open(coll))
+    collection_opens_label = format_schedule_date(coll.order_opens_at, '%B %-d') if (ordering_not_yet_open and coll) else ''
     return render_template('shop/customize.html',
                          product=product,
                          available_sizes=available_sizes,
@@ -616,4 +621,6 @@ def customize(product_id):
                          lock_back_design_style=lock_back_design_style,
                          allowed_design_ids=allowed_design_ids,
                          is_adult=is_adult,
-                         transfer_sizing=transfer_sizing)
+                         transfer_sizing=transfer_sizing,
+                         ordering_not_yet_open=ordering_not_yet_open,
+                         collection_opens_label=collection_opens_label)

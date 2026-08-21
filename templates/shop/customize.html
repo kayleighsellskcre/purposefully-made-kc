@@ -1811,7 +1811,13 @@
                     </div>
                 </div>
                 
+                {% if ordering_not_yet_open %}
+                <button class="btn btn-primary btn-block" id="addToCart" disabled style="opacity:0.65;cursor:not-allowed;" title="Orders open {{ collection_opens_label }}">
+                    🗓 Orders Open {{ collection_opens_label }}
+                </button>
+                {% else %}
                 <button class="btn btn-primary btn-block" id="addToCart">Add to Cart</button>
+                {% endif %}
             </div>
         </div>
     </div>

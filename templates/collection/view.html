@@ -329,8 +329,8 @@
         {% if products %}
         <div class="design-board-grid">
             {% for product in products %}
-            <article class="design-card {% if collection.cannot_order %}deadline-passed{% endif %}" data-catalog-item data-age="{{ product.display_age or '' }}" data-age-raw="{{ product.age_group or '' }}" data-category="{{ product.display_category or '' }}" data-category-raw="{{ product.category or '' }}" data-brand="{{ product.display_brand or '' }}" data-brand-raw="{{ product.brand or '' }}" data-style="{{ product.style_number or '' }}">
-                {% if collection.cannot_order %}
+            <article class="design-card {% if collection.deadline_passed %}deadline-passed{% endif %}" data-catalog-item data-age="{{ product.display_age or '' }}" data-age-raw="{{ product.age_group or '' }}" data-category="{{ product.display_category or '' }}" data-category-raw="{{ product.category or '' }}" data-brand="{{ product.display_brand or '' }}" data-brand-raw="{{ product.brand or '' }}" data-style="{{ product.style_number or '' }}">
+                {% if collection.deadline_passed %}
                 <div>
                 {% else %}
                 <a href="{{ url_for('shop.customize', product_id=product.id) }}">
@@ -399,16 +399,16 @@
                         {% endif %}
                         <div class="price-row">
                             <span class="price">${{ "%.2f"|format(product.base_price) }}</span>
-                            {% if not collection.cannot_order %}
-                            <span class="cta">Customize</span>
-                            {% elif collection.not_yet_open %}
-                            <span class="cta" style="background:var(--text-secondary);box-shadow:none;cursor:not-allowed;opacity:0.6;">Opens {{ collection.order_opens_at|kc_date('%b %d') }}</span>
-                            {% else %}
+                            {% if collection.deadline_passed %}
                             <span class="cta" style="background:var(--text-secondary);box-shadow:none;cursor:not-allowed;opacity:0.6;">Closed</span>
+                            {% elif collection.not_yet_open %}
+                            <span class="cta" style="background:var(--terra-cotta);opacity:0.75;cursor:default;">Opens {{ collection.order_opens_at|kc_date('%b %-d') }}</span>
+                            {% else %}
+                            <span class="cta">Customize</span>
                             {% endif %}
                         </div>
                     </div>
-                {% if collection.cannot_order %}
+                {% if collection.deadline_passed %}
                 </div>
                 {% else %}
                 </a>
