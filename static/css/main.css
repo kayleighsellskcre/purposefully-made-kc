@@ -1361,8 +1361,8 @@ textarea.form-control {
     h3 { font-size: 1.25rem; }
 }
 
-/* Landscape Mobile */
-@media (max-height: 600px) and (orientation: landscape) {
+/* Landscape Mobile — phones only, not short desktop browser windows */
+@media (max-height: 600px) and (orientation: landscape) and (max-width: 900px) {
     .hero { padding: 2rem 1rem; }
     .hero-title { font-size: 1.75rem; }
     .features { padding: 2rem 0; }
@@ -2019,6 +2019,7 @@ table { max-width: 100%; }
 }
 @media (max-width: 480px) {
     .logo-image { height: 50px !important; }
+}
 
 /* 3 ── Fluid headings (smooth scaling between breakpoints) ──── */
 /* clamp() keeps type proportional at EVERY width, including the
