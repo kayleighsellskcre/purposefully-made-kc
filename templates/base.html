@@ -24,7 +24,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,300;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
     
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=30">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=31">
     {% block extra_css %}{% endblock %}
     
     <!-- Favicon -->
@@ -48,6 +48,22 @@
                     <a href="{{ url_for('custom_request.index') }}" class="nav-link">Have Us Recreate</a>
                     <a href="{{ url_for('main.about') }}" class="nav-link">About</a>
                     <a href="{{ url_for('main.contact') }}" class="nav-link">Contact</a>
+                    {# Account links in hamburger — mobile only #}
+                    {% if current_user.is_authenticated %}
+                    <div class="nav-link-divider mobile-only"></div>
+                    <a href="{{ url_for('account.index') }}" class="nav-link mobile-only">My Account</a>
+                    {% if is_site_admin %}
+                    <a href="{{ url_for('admin.index') }}" class="nav-link admin-link mobile-only">Admin</a>
+                    {% endif %}
+                    <form method="post" action="{{ url_for('auth.logout') }}" class="mobile-only">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="nav-link" style="background:none;border:none;width:100%;text-align:left;cursor:pointer;font:inherit;padding:0.5rem 0.65rem;color:var(--terra-cotta);font-weight:600;">Log Out</button>
+                    </form>
+                    {% else %}
+                    <div class="nav-link-divider mobile-only"></div>
+                    <a href="{{ url_for('auth.login') }}" class="nav-link mobile-only">Login</a>
+                    <a href="{{ url_for('auth.register') }}" class="nav-link mobile-only">Register</a>
+                    {% endif %}
                 </div>
 
                 {# Always-visible: account, favorites, cart, hamburger #}
