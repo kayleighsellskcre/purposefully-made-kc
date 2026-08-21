@@ -163,6 +163,7 @@ a:hover {
     align-items: center;
     gap: 0.5rem;
     width: 100%;
+    height: 68px; /* fixed nav row height so logo can hang below */
 }
 
 .logo {
@@ -172,18 +173,24 @@ a:hover {
     position: relative;
     z-index: 10;
     flex-shrink: 0;
+    height: 68px;
+    overflow: visible;
+    /* Center the logo between the left edge and SHOP */
+    margin-left: clamp(1rem, 4vw, 4rem);
 }
 
 .logo-image {
-    position: static !important;
-    height: 100px !important;
+    position: absolute !important;
+    left: 0;
+    top: -10px; /* hang above and below the nav line */
+    height: 130px !important;
     width: auto !important;
     max-width: none !important;
     display: block;
     transition: var(--transition);
-    border: none;
-    border-radius: 0;
-    filter: drop-shadow(0 2px 8px rgba(58, 61, 72, 0.12));
+    border: 1.5px solid rgba(184, 124, 111, 0.45);
+    border-radius: 8px;
+    filter: drop-shadow(0 4px 14px rgba(58, 61, 72, 0.15));
 }
 
 .logo:hover .logo-image {
@@ -1231,8 +1238,14 @@ textarea.form-control {
         display: flex;
     }
 
+    /* On mobile collapse the hanging logo back into the nav bar */
+    .nav-content { height: 56px; }
+    .logo { height: 56px; margin-left: 0; }
     .logo-image {
-        height: 64px !important;
+        position: relative !important;
+        top: 0 !important;
+        height: 52px !important;
+        border: 1px solid rgba(184, 124, 111, 0.35);
         filter: none;
     }
 
