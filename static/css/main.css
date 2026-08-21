@@ -264,7 +264,12 @@ a:hover {
     min-height: 44px;
     cursor: pointer;
     white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
 }
+
+.nav-account-icon { display: none; }
 
 .nav-account-btn:hover,
 .nav-account-btn[aria-expanded="true"] {
@@ -1998,8 +2003,29 @@ table { max-width: 100%; }
         height: 3.25rem;
     }
     .logo-image { height: 8.5rem !important; }
+    /* Account button: icon-only on mobile, no box */
+    .nav-account-btn {
+        background: none;
+        border: none;
+        padding: 0.45rem 0.5rem;
+        min-height: 44px;
+        min-width: 44px;
+        justify-content: center;
+        border-radius: 6px;
+    }
+    .nav-account-btn:hover,
+    .nav-account-btn[aria-expanded="true"] {
+        background: rgba(184, 124, 111, 0.12);
+    }
+    .nav-account-label { display: none; }
+    .nav-account-icon { display: block; }
+
+    /* Dropdown: stay within viewport on all phone sizes */
     .nav-account-menu {
         right: 0;
+        left: auto;
+        min-width: 160px;
+        max-width: calc(100vw - 1rem);
     }
 }
 

@@ -24,7 +24,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,300;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
     
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=20">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=21">
     {% block extra_css %}{% endblock %}
     
     <!-- Favicon -->
@@ -54,8 +54,12 @@
                 <div class="nav-icons">
                     {% if current_user.is_authenticated %}
                     <div class="nav-account">
-                        <button type="button" class="nav-account-btn" id="navAccountBtn" aria-expanded="false" aria-haspopup="true">
-                            Account
+                        <button type="button" class="nav-account-btn" id="navAccountBtn" aria-expanded="false" aria-haspopup="true" aria-label="Account menu">
+                            <span class="nav-account-label">Account</span>
+                            <svg class="nav-account-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
                         </button>
                         <div class="nav-account-menu" id="navAccountMenu" hidden>
                             <a href="{{ url_for('account.index') }}">My account</a>
