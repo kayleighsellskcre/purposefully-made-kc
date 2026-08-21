@@ -24,7 +24,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,300;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
     
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=17">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=18">
     {% block extra_css %}{% endblock %}
     
     <!-- Favicon -->
@@ -48,21 +48,30 @@
                     <a href="{{ url_for('custom_request.index') }}" class="nav-link">Have Us Recreate</a>
                     <a href="{{ url_for('main.about') }}" class="nav-link">About</a>
                     <a href="{{ url_for('main.contact') }}" class="nav-link">Contact</a>
-
-                    {% if current_user.is_authenticated %}
-                        <a href="{{ url_for('account.index') }}" class="nav-link">Account</a>
-                        {% if is_site_admin %}
-                            <a href="{{ url_for('admin.index') }}" class="nav-link admin-link">Admin</a>
-                        {% endif %}
-                        <a href="{{ url_for('auth.logout') }}" class="nav-link">Logout</a>
-                    {% else %}
-                        <a href="{{ url_for('auth.login') }}" class="nav-link">Login</a>
-                        <a href="{{ url_for('auth.register') }}" class="nav-link">Register</a>
-                    {% endif %}
                 </div>
 
-                {# ── Always-visible icon strip: favorites + cart + hamburger ── #}
+                {# Always-visible: account, favorites, cart, hamburger #}
                 <div class="nav-icons">
+                    {% if current_user.is_authenticated %}
+                    <div class="nav-account">
+                        <button type="button" class="nav-account-btn" id="navAccountBtn" aria-expanded="false" aria-haspopup="true">
+                            Account
+                        </button>
+                        <div class="nav-account-menu" id="navAccountMenu" hidden>
+                            <a href="{{ url_for('account.index') }}">My account</a>
+                            {% if is_site_admin %}
+                            <a href="{{ url_for('admin.index') }}" class="admin-link">Admin</a>
+                            {% endif %}
+                            <form method="post" action="{{ url_for('auth.logout') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit">Log out</button>
+                            </form>
+                        </div>
+                    </div>
+                    {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="nav-link nav-auth-link">Login</a>
+                    <a href="{{ url_for('auth.register') }}" class="nav-link nav-auth-link">Register</a>
+                    {% endif %}
                     <a href="{{ url_for('favorites.index') }}" class="favorites-link" title="My Favorites" aria-label="Favorites">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
@@ -198,7 +207,7 @@
     </footer>
     
     <!-- Scripts -->
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=2"></script>
     {% block extra_js %}{% endblock %}
 
     <!-- ── CSRF auto-protection ─────────────────────────────────────────────

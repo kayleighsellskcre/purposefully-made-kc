@@ -268,10 +268,12 @@ def reset_password(token):
     return render_template('auth/reset_password.html', token=token)
 
 
-@auth_bp.route('/logout')
-@login_required
+@auth_bp.route('/logout', methods=['GET', 'POST'])
 def logout():
     logout_user()
     session.clear()
-    flash('You have been logged out', 'info')
-    return redirect(url_for('main.index'))
+    flash('You have been logged out.', 'info')
+    response = redirect(url_for('main.index'))
+    remember_name = current_app.config.get('REMEMBER_COOKIE_NAME', 'remember_token')
+    response.delete_cookie(remember_name)
+    return response
