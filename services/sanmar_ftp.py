@@ -519,3 +519,30 @@ def run_dip_sync(
     }
     print(f'[SanMarFTP] Sync complete: {result}', file=sys.stderr, flush=True)
     return result
+
+
+# ---------------------------------------------------------------------------
+# Background thread helper (mirrors inventory_sync pattern)
+# ---------------------------------------------------------------------------
+
+def start_dip_sync_thread(app, styles_only: bool = True):
+    """
+    Run run_dip_sync() in a daemon thread so the HTTP request can return immediately.
+    styles_only=True  → only curated brands from sanmar_catalog.CURATED_BRANDS
+    styles_only=False → full SanMar catalog
+    """
+    import threading
+
+    def _run():
+        with app.app_context():
+            try:
+                result = run_dip_sync(styles_only=styles_only, app=app)
+                print(f'[SanMarFTP] Background DIP sync finished: {result}',
+                      file=sys.stderr, flush=True)
+            except Exception as exc:
+                print(f'[SanMarFTP] Background DIP sync failed: {exc}',
+                      file=sys.stderr, flush=True)
+
+    thread = threading.Thread(target=_run, daemon=True, name='sanmar-dip-sync')
+    thread.start()
+    return thread

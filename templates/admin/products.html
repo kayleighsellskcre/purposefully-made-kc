@@ -326,11 +326,11 @@
 <div id="sanmarSyncModal" class="prod-modal" role="dialog" aria-modal="true" aria-labelledby="sanmarSyncTitle">
     <div class="prod-modal-card">
         <div class="prod-modal-header">
-            <h2 id="sanmarSyncTitle">Sync bestsellers from SanMar</h2>
+            <h2 id="sanmarSyncTitle">Sync Products from SanMar</h2>
             <button class="prod-modal-close" onclick="closeModal('sanmarSyncModal')" aria-label="Close">&times;</button>
         </div>
         <div class="prod-modal-body">
-            <p>Pulls the <strong>most popular styles</strong> from Bella+Canvas, Comfort Colors, Stanley/Stella, Port &amp; Company, Sport-Tek, District, Rabbit Skins, and Gildan. Hats are skipped for now.</p>
+            <p>Downloads your curated styles from SanMar's SFTP server (Daily Inventory &amp; Pricing file) and syncs everything into your store.</p>
             <div class="prod-modal-list">
                 <div class="prod-modal-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -338,15 +338,15 @@
                 </div>
                 <div class="prod-modal-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Pulls real pricing and fabric/material details
+                    Syncs live inventory, pricing, and color variants
                 </div>
                 <div class="prod-modal-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Syncs color variants with front/back images
+                    Pulls front/back images and color hex codes
                 </div>
             </div>
-            <p class="prod-modal-note">This can take a few minutes. Stay on the page until it finishes. Existing Bella prices are kept. Requires SanMar credentials in Railway.</p>
-            <form action="{{ url_for('admin.sync_sanmar') }}" method="POST">
+            <p class="prod-modal-note">Runs in the background — you can leave this page. Check back in a few minutes. Requires SanMar FTP credentials in Railway.</p>
+            <form action="{{ url_for('admin.sync_sanmar_dip') }}" method="POST">
                 <div class="prod-modal-actions">
                     <button type="button" class="btn btn-outline" onclick="closeModal('sanmarSyncModal')">Cancel</button>
                     <button type="submit" class="btn btn-primary">Start SanMar Sync</button>

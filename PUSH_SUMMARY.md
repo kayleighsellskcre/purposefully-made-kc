@@ -79,10 +79,38 @@ Bumped CSS version from `?v=14` → `?v=15` so browsers pick up all the CSS chan
 
 ---
 
-## Push command — run this in Cursor terminal
+---
+
+### 🗃️ Admin Thumbnails — Local-First Fallback Cascade
+**Problem:** Admin products page showed broken images because CDN URLs (S&S) sometimes 404.  
+**Fix:** Thumbnails now try local mockup files first (`static/images/products/3001/`), then CDN URLs, cascading via JS `nextThumb()` function using `data-fallbacks` attribute.  
+**Files:** `utils/mockups.py`, `routes/admin.py`, `templates/admin/products.html`
+
+---
+
+### 📐 Mockup Sizing Disclaimer
+**Added:** "Mockup sizing is for visual reference only. Your final item will be sized proportionally for the best fit!" below the mockup preview on the customize page.  
+**Files:** `templates/shop/customize.html`
+
+---
+
+### 📦 SanMar FTP DIP Sync — Wired to Admin Panel
+**Problem:** The "SanMar Sync" button called the SOAP `getProductInfoByBrand` API, which is asynchronous — it queues a CSV on FTP rather than returning product data directly.  
+**Fix:** Added `start_dip_sync_thread()` to `services/sanmar_ftp.py` and a new `/products/sync-sanmar-dip` admin route. The "Start SanMar Sync" button now downloads directly from SanMar's SFTP server (the daily DIP file) — gets inventory, pricing, images, and color variants all in one background job.  
+**Files:** `services/sanmar_ftp.py`, `routes/admin.py`, `templates/admin/products.html`
+
+---
+
+## Push command — run these in Cursor terminal (one at a time)
 
 ```
-git add -A && git commit -m "Overnight audit: mobile nav, image fallbacks, group orders UX, CSS vars" && git push
+git add -A
+```
+```
+git commit -m "Admin thumbnails, mockup disclaimer, SanMar FTP DIP sync wired up"
+```
+```
+git push
 ```
 
 That's everything! The site should look and work much better on phones now. 🎉

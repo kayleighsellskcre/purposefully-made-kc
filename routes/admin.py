@@ -1606,6 +1606,29 @@ def sync_sanmar_inventory():
     return redirect(url_for('admin.products'))
 
 
+@admin_bp.route('/products/sync-sanmar-dip', methods=['POST'])
+@admin_required
+def sync_sanmar_dip():
+    """
+    Download and import the SanMar Daily Inventory & Pricing (DIP) file via SFTP.
+    Runs in a background thread — response returns immediately.
+    The DIP file contains inventory, pricing, images, and color variants for all
+    curated styles.  This is the correct approach for getProductInfoByBrand because
+    that SOAP call is *asynchronous* — it only queues a file on SanMar's FTP; it
+    does not return product rows directly.
+    """
+    from services.sanmar_ftp import start_dip_sync_thread
+
+    start_dip_sync_thread(current_app._get_current_object(), styles_only=True)
+    flash(
+        'SanMar FTP sync started! Downloading product data, inventory, and pricing '
+        'from SanMar\'s SFTP server. This runs in the background — check Railway logs '
+        'for progress. Products will update within a few minutes.',
+        'success',
+    )
+    return redirect(url_for('admin.products'))
+
+
 @admin_bp.route('/products/test-sanmar', methods=['GET'])
 @admin_required
 def test_sanmar_api():
