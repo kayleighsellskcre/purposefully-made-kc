@@ -66,34 +66,46 @@ def selectable_group_order_design_ids(raw_ids, user=None, keep_ids=None):
 
     user = _user(user)
     keep = set(keep_ids or [])
-    out = []
+
+    # Parse all IDs first (deduplicated, in order)
+    parsed = []
     seen = set()
     for did in raw_ids or []:
         try:
             did = int(did)
         except (TypeError, ValueError):
             continue
-        if did in seen:
-            continue
-        if did in keep:
-            out.append(did)
+        if did not in seen:
             seen.add(did)
-            continue
-        design = Design.query.get(did)
+            parsed.append(did)
+
+    # IDs already on the collection are always kept — no DB lookup needed
+    keep_only = [did for did in parsed if did in keep]
+    need_lookup = [did for did in parsed if did not in keep]
+
+    out = list(keep_only)
+
+    if not need_lookup:
+        return out
+
+    # Single bulk query instead of one query per ID
+    designs_by_id = {
+        d.id: d
+        for d in Design.query.filter(Design.id.in_(need_lookup)).all()
+    }
+
+    admin = is_admin_user(user)
+    user_id = getattr(user, 'id', None) if (user and getattr(user, 'is_authenticated', False)) else None
+
+    for did in need_lookup:
+        design = designs_by_id.get(did)
         if not design:
             continue
-        if getattr(design, 'is_gallery', False):
+        if getattr(design, 'is_gallery', False) or admin:
             out.append(did)
-            seen.add(did)
-            continue
-        if is_admin_user(user):
+        elif user_id and design.uploaded_by_user_id == user_id:
             out.append(did)
-            seen.add(did)
-            continue
-        if user is not None and getattr(user, 'is_authenticated', False):
-            if design.uploaded_by_user_id == user.id:
-                out.append(did)
-                seen.add(did)
+
     return out
 
 
