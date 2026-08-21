@@ -288,8 +288,8 @@
             ⚠ This group order closed on {{ collection.order_deadline|kc_date }}. Ordering is no longer available.
         </p>
         {% elif collection.not_yet_open %}
-        <p class="collection-header-subtitle" style="margin-top:0.5rem; color:#b87c6f; font-weight:600;">
-            Ordering opens {{ collection.order_opens_at|kc_date }}. You can look around now — checkout starts that day.
+        <p class="collection-header-subtitle" style="margin-top:0.5rem; color:#b87c6f; font-weight:600; font-style:italic; letter-spacing:0.01em;">
+            ✨ Orders open {{ collection.order_opens_at|kc_date('%A, %B %-d') }} and will stay open throughout the school year — so no rush, just excitement! Feel free to look around now.
         </p>
         {% else %}
             {% if collection.order_opens_at %}
@@ -320,8 +320,9 @@
             <strong>Ordering is closed.</strong> The deadline for this group order has passed. Contact the organizer if you have questions.
         </div>
         {% elif collection.not_yet_open %}
-        <div class="alert alert-warning" style="max-width:700px;margin:0 auto 2rem;padding:1rem 1.25rem;background:rgba(184,124,111,0.1);border:1px solid rgba(184,124,111,0.35);border-radius:8px;color:var(--text-primary);text-align:center;">
-            <strong>Ordering opens {{ collection.order_opens_at|kc_date }}.</strong> Browse the styles now — checkout will unlock that morning.
+        <div style="max-width:700px;margin:0 auto 2rem;padding:1.25rem 1.5rem;background:linear-gradient(135deg,rgba(184,124,111,0.08),rgba(184,124,111,0.04));border:1px solid rgba(184,124,111,0.3);border-radius:12px;color:var(--text-primary);text-align:center;">
+            <p style="font-size:1.15rem;font-weight:700;margin:0 0 0.4rem;color:#8a5a50;letter-spacing:0.01em;">🎉 Orders Open {{ collection.order_opens_at|kc_date('%A, %B %-d') }}!</p>
+            <p style="margin:0;font-size:0.95rem;color:var(--text-secondary);line-height:1.6;">This store will be open <em>throughout the entire school year</em> — so there's no pressure, just Falcon pride. Browse the styles now and come back to order whenever you're ready!</p>
         </div>
         {% endif %}
 
