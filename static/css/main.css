@@ -154,23 +154,25 @@ a:hover {
     justify-content: space-between;
     align-items: center;
     overflow: visible;
+    gap: 0.75rem;
+    width: 100%;
 }
 
 .logo {
     display: flex;
     align-items: center;
     text-decoration: none;
-    transform: translate(-10px, 48px);
     position: relative;
     z-index: 10;
+    flex-shrink: 0;
 }
 
 .logo-image {
-    height: 248px !important;
+    height: 64px !important;
     width: auto !important;
     display: block;
     transition: var(--transition);
-    border: 2px solid rgba(184, 124, 111, 0.5);
+    border: 1.5px solid rgba(184, 124, 111, 0.45);
     border-radius: 6px;
 }
 
@@ -190,11 +192,11 @@ a:hover {
 
 .nav-link {
     font-weight: 500;
-    font-size: 0.8rem;
+    font-size: 0.72rem;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.05em;
     color: var(--text-primary);
-    padding: 0.5rem 0.75rem;
+    padding: 0.4rem 0.45rem;
     border-radius: 6px;
     white-space: nowrap;
 }
@@ -226,9 +228,10 @@ a:hover {
     position: relative;
     display: flex;
     align-items: center;
-    padding: 0.5rem 0.75rem;
+    padding: 0.45rem 0.5rem;
     border-radius: 6px;
     color: var(--text-primary);
+    flex-shrink: 0;
 }
 
 .cart-link:hover {
@@ -1141,7 +1144,7 @@ textarea.form-control {
         display: flex;
     }
 
-    .logo { transform: translate(-4px, 24px); }
+    .logo { transform: none; }
     .logo-image { height: 160px !important; }
 
     /* Hero - Mobile */
@@ -1274,8 +1277,8 @@ textarea.form-control {
     .hero { padding: 2rem 1rem; }
     .hero-title { font-size: 1.75rem; }
     .features { padding: 2rem 0; }
-    .logo-image { height: 120px !important; }
-    .logo { transform: translate(-4px, 14px); }
+    .logo-image { height: 56px !important; }
+    .logo { transform: none; }
 
     /* Nav menu must scroll in landscape since height is very small */
     .nav-links {
@@ -1851,7 +1854,10 @@ table { max-width: 100%; }
 /* Below desktop but above phone the full inline menu + large logo
    used to crowd/overflow. Switch to the hamburger menu and shrink
    the logo so the header stays proportional on tablets. */
-@media (min-width: 769px) and (max-width: 968px) {
+/* 2 ── Laptop, tablet & small-desktop nav (up to 1180px) ────── */
+/* The full inline menu plus logo used to overflow on laptops, clipping
+   the cart. Use the hamburger until there is enough width to show every link. */
+@media (min-width: 769px) and (max-width: 1180px) {
     .nav-links {
         display: none;
         flex-direction: column;
@@ -1886,8 +1892,8 @@ table { max-width: 100%; }
         justify-content: center;
     }
     .mobile-menu-toggle { display: flex; }
-    .logo { transform: translate(-4px, 8px); }
-    .logo-image { height: 92px !important; }
+    .logo { transform: none; }
+    .logo-image { height: 56px !important; }
 }
 
 /* 2b ── Compact header on phones ────────────────────────────── */
@@ -1897,11 +1903,11 @@ table { max-width: 100%; }
    Keep the header proportional to the small viewport. */
 @media (max-width: 768px) {
     .navbar { padding: 0.4rem 0; }
-    .logo { transform: translate(-2px, 4px) !important; }
-    .logo-image { height: 72px !important; }
+    .logo { transform: none !important; }
+    .logo-image { height: 52px !important; }
 }
 @media (max-width: 480px) {
-    .logo-image { height: 60px !important; }
+    .logo-image { height: 48px !important; }
 }
 
 /* 3 ── Fluid headings (smooth scaling between breakpoints) ──── */
@@ -1936,8 +1942,8 @@ table { max-width: 100%; }
 /* 7 ── Very short landscape screens ─────────────────────────── */
 @media (max-height: 480px) and (orientation: landscape) {
     .navbar { padding: 0.15rem 0; }
-    .logo-image { height: 90px !important; }
-    .logo { transform: translate(-4px, 8px); }
+    .logo-image { height: 48px !important; }
+    .logo { transform: none; }
     .account-page,
     .legal-page,
     .error-page { padding-top: 1.5rem; padding-bottom: 1.5rem; }
