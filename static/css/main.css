@@ -257,16 +257,17 @@ a:hover {
     text-transform: uppercase;
     letter-spacing: 0.055em;
     color: var(--text-primary);
-    background: rgba(184, 124, 111, 0.1);
-    border: 1px solid rgba(184, 124, 111, 0.25);
-    border-radius: 8px;
-    padding: 0.5rem clamp(0.5rem, 0.7vw, 0.85rem);
+    background: none;
+    border: none;
+    border-radius: 6px;
+    padding: 0.45rem clamp(0.4rem, 0.6vw, 0.75rem);
     min-height: 44px;
     cursor: pointer;
     white-space: nowrap;
     display: flex;
     align-items: center;
     gap: 0.3rem;
+    transition: color 0.18s;
 }
 
 .nav-account-icon { display: none; }
@@ -274,7 +275,7 @@ a:hover {
 .nav-account-btn:hover,
 .nav-account-btn[aria-expanded="true"] {
     color: var(--terra-cotta);
-    background: rgba(184, 124, 111, 0.16);
+    background: none;
 }
 
 .nav-account-menu {
