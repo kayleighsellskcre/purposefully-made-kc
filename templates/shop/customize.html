@@ -3361,7 +3361,8 @@
                 if (uploadAreaMain) uploadAreaMain.innerHTML = '<p style="margin:1rem 0;color:#dc3545;"><strong>Unsupported file</strong></p><p class="text-muted" style="font-size:0.85rem;">Please choose a PNG, JPG, HEIC, or WEBP image.</p><p class="text-muted" style="font-size:0.8rem;">Click to try again</p>';
                 return;
             }
-            frontUpload(file, 'auto');
+            // Group-order logos are already edited — skip background removal entirely.
+            frontUpload(file, {% if collection_restricted %}'none'{% else %}'auto'{% endif %});
         }
 
         if (uploadAreaMain && fileInputMain) {
@@ -3373,7 +3374,7 @@
         const reprocessBtn = document.getElementById('reprocessDesign');
         if (reprocessBtn) {
             reprocessBtn.addEventListener('click', function() {
-                if (state.lastUploadedFile) frontUpload(state.lastUploadedFile, 'aggressive');
+                if (state.lastUploadedFile) frontUpload(state.lastUploadedFile, {% if collection_restricted %}'none'{% else %}'aggressive'{% endif %});
             });
         }
 
@@ -3532,6 +3533,8 @@
             try {
                 const formData = new FormData();
                 formData.append('file', file);
+                // Group-order back designs are pre-edited — skip background removal.
+                formData.append('bg_removal', {% if collection_restricted %}'none'{% else %}'auto'{% endif %});
                 const bkCtrl = new AbortController();
                 const bkTimeout = setTimeout(() => bkCtrl.abort(), 45000);
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
