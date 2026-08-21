@@ -313,64 +313,6 @@ document.querySelectorAll('input[name="back_design_type"]').forEach(function(rad
 document.getElementById('password_protected').addEventListener('change', (e) => {
     document.getElementById('password-field').style.display = e.target.checked ? 'block' : 'none';
 });
-// Upload designs immediately via AJAX so Save is just a fast DB write (no file bytes in the POST).
-document.getElementById('design_uploads').addEventListener('change', async function() {
-    const preview = document.getElementById('uploadPreview');
-    const uploadArea = document.getElementById('uploadArea');
-    const files = Array.from(this.files);
-    if (!files.length) { preview.style.display = 'none'; return; }
-
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
-    preview.innerHTML = '';
-    preview.style.display = 'block';
-    uploadArea.style.pointerEvents = 'none';
-    uploadArea.style.opacity = '0.6';
-
-    for (const f of files) {
-        const div = document.createElement('div');
-        div.className = 'upload-preview-item';
-        div.innerHTML = '<span style="font-size:0.75rem;color:var(--text-secondary)">Uploading…</span>';
-        preview.appendChild(div);
-
-        try {
-            const fd = new FormData();
-            fd.append('file', f);
-            fd.append('bg_removal', 'none'); // logos are pre-edited, skip processing
-            const res = await fetch('/design/upload', {
-                method: 'POST',
-                body: fd,
-                headers: csrfToken ? { 'X-CSRFToken': csrfToken } : {}
-            });
-            const data = await res.json().catch(() => ({}));
-            if (data.success && data.design_id) {
-                // Store design ID as a pre-checked hidden input so the form POST includes it
-                const hidden = document.createElement('input');
-                hidden.type = 'hidden';
-                hidden.name = 'allowed_designs';
-                hidden.value = data.design_id;
-                document.querySelector('.collection-form').appendChild(hidden);
-
-                div.innerHTML = '';
-                const img = document.createElement('img');
-                img.src = data.url;
-                img.alt = f.name;
-                div.appendChild(img);
-                const span = document.createElement('span');
-                span.textContent = f.name;
-                div.appendChild(span);
-            } else {
-                div.innerHTML = '<span style="color:#dc3545;font-size:0.75rem">' + (data.error || 'Upload failed') + '</span>';
-            }
-        } catch (err) {
-            div.innerHTML = '<span style="color:#dc3545;font-size:0.75rem">Upload failed</span>';
-        }
-    }
-
-    // Clear the file input — files are already uploaded, don't re-send them in the form POST
-    this.value = '';
-    uploadArea.style.pointerEvents = '';
-    uploadArea.style.opacity = '';
-});
 function confirmDelete(btn) {
     if (!btn) btn = document.querySelector('[onclick*="confirmDelete"]');
     if (btn && btn.dataset.confirming === 'true') {
@@ -446,3 +388,4 @@ function confirmDelete(btn) {
 .upload-preview-item img { width: 60px; height: 60px; object-fit: contain; margin-bottom: 0.25rem; }
 .upload-preview-item span { font-size: 0.7rem; color: var(--text-secondary); max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
+{% include 'includes/group_order_logo_upload.js.html' %}

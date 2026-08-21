@@ -401,27 +401,6 @@ document.getElementById('password_protected').addEventListener('change', functio
 // Organizer choices (logo, colors, placements) stay visible so a logo can
 // be uploaded without hunting for the restrict checkbox.
 
-// ── Design file preview ────────────────────────────────────────────────────
-document.getElementById('design_uploads').addEventListener('change', function() {
-    const preview = document.getElementById('uploadPreview');
-    preview.innerHTML = '';
-    if (this.files.length > 0) {
-        preview.style.display = 'flex';
-        Array.from(this.files).forEach(function(f) {
-            const div = document.createElement('div');
-            div.className = 'upload-preview-item';
-            if (f.type.startsWith('image/')) {
-                const img = document.createElement('img');
-                img.src = URL.createObjectURL(f); img.alt = f.name;
-                div.appendChild(img);
-            }
-            const span = document.createElement('span');
-            span.textContent = f.name; div.appendChild(span);
-            preview.appendChild(div);
-        });
-    } else { preview.style.display = 'none'; }
-});
-
 // ── Back-design uniform style preview ─────────────────────────────────────
 function updateBackPreview() {
     const nameEl   = document.getElementById('collPreviewName');
@@ -713,4 +692,5 @@ updateBackPreview(); // initial render
 .coll-back-preview-name  { font-size: 1.5rem; font-weight: 700; letter-spacing: 0.06em; line-height: 1.1; }
 .coll-back-preview-number { font-size: 3rem; font-weight: 700; line-height: 1; }
 </style>
+{% include 'includes/group_order_logo_upload.js.html' %}
 {% endblock content %}

@@ -28,6 +28,35 @@ def _safe_ext(filename):
     return '.' + filename.rsplit('.', 1)[1].lower()
 
 
+def _heic_to_png(filepath):
+    """Decode HEIC to PNG without background-cut. Used when bg_removal=none."""
+    meta = {
+        'engine': 'none',
+        'white_artwork': False,
+        'validation': {'ok': True, 'issues': [], 'metrics': {}},
+        'messages': [],
+        'has_transparency': True,
+    }
+    try:
+        from PIL import Image, ImageOps
+        path = Path(filepath)
+        with Image.open(path) as img:
+            try:
+                img = ImageOps.exif_transpose(img)
+            except Exception:
+                pass
+            out = path.with_suffix('.png')
+            img.convert('RGBA').save(out, 'PNG')
+        if out != path and path.exists():
+            try:
+                path.unlink()
+            except OSError:
+                pass
+        return out, out.name, meta
+    except Exception:
+        return filepath, Path(filepath).name, meta
+
+
 def _remove_background(filepath, mode='auto'):
     """
     Produce a clean, true-transparent PNG cutout of the uploaded artwork.
@@ -100,8 +129,19 @@ def upload():
         if mode not in ('auto', 'aggressive', 'none'):
             mode = 'auto'
 
-        # Produce a clean transparent-PNG cutout with crisp, print-ready edges.
-        filepath, unique_name, art_meta = _remove_background(filepath, mode=mode)
+        art_meta = {
+            'engine': 'none',
+            'white_artwork': False,
+            'validation': {'ok': True, 'issues': [], 'metrics': {}},
+            'messages': [],
+            'has_transparency': ext in ('.png', '.webp'),
+        }
+        # Group-order logos send none — never re-encode as PNG. That step
+        # turned phone JPEGs into 80MB files and froze Uploading… for minutes.
+        if mode != 'none':
+            filepath, unique_name, art_meta = _remove_background(filepath, mode=mode)
+        elif ext in ('.heic', '.heif'):
+            filepath, unique_name, art_meta = _heic_to_png(filepath)
 
         # Upload to R2 if configured; otherwise fall back to local static path
         from utils.cloud_storage import r2_configured, _upload_to_r2

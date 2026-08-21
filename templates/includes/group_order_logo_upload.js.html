@@ -1,0 +1,81 @@
+{# Instant logo upload for create/edit group-order forms.
+   One file at a time (Railway runs a single worker). 20s timeout per file. #}
+<script>
+(function() {
+    var input = document.getElementById('design_uploads');
+    var preview = document.getElementById('uploadPreview');
+    var uploadArea = document.getElementById('uploadArea');
+    var form = document.querySelector('.collection-form');
+    if (!input || !preview || !form) return;
+
+    input.addEventListener('change', function() {
+        var files = Array.from(this.files || []);
+        this.value = '';
+        if (!files.length) return;
+
+        var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        preview.style.display = 'block';
+        if (uploadArea) {
+            uploadArea.style.pointerEvents = 'none';
+            uploadArea.style.opacity = '0.6';
+        }
+
+        var chain = Promise.resolve();
+        files.forEach(function(f) {
+            chain = chain.then(function() { return uploadOne(f); });
+        });
+        chain.finally(function() {
+            if (uploadArea) {
+                uploadArea.style.pointerEvents = '';
+                uploadArea.style.opacity = '';
+            }
+        });
+
+        function uploadOne(f) {
+            var div = document.createElement('div');
+            div.className = 'upload-preview-item';
+            div.innerHTML = '<span style="font-size:0.75rem;color:var(--text-secondary)">Uploading…</span>';
+            preview.appendChild(div);
+
+            var fd = new FormData();
+            fd.append('file', f);
+            fd.append('bg_removal', 'none');
+
+            var ctrl = new AbortController();
+            var timer = setTimeout(function() { ctrl.abort(); }, 20000);
+
+            return fetch('/design/upload', {
+                method: 'POST',
+                body: fd,
+                headers: csrfToken ? { 'X-CSRFToken': csrfToken } : {},
+                signal: ctrl.signal
+            }).then(function(res) {
+                return res.json().catch(function() { return {}; });
+            }).then(function(data) {
+                if (data.success && data.design_id) {
+                    var hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = 'allowed_designs';
+                    hidden.value = data.design_id;
+                    form.appendChild(hidden);
+                    div.innerHTML = '';
+                    var img = document.createElement('img');
+                    img.src = data.url;
+                    img.alt = f.name;
+                    div.appendChild(img);
+                    var span = document.createElement('span');
+                    span.textContent = f.name;
+                    div.appendChild(span);
+                } else {
+                    div.innerHTML = '<span style="color:#dc3545;font-size:0.75rem">' +
+                        (data.error || 'Failed — try again') + '</span>';
+                }
+            }).catch(function() {
+                div.innerHTML = '<span style="color:#dc3545;font-size:0.75rem">Timed out — try a smaller file</span>';
+            }).finally(function() {
+                clearTimeout(timer);
+            });
+        }
+    });
+})();
+</script>

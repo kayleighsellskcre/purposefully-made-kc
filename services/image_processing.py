@@ -110,6 +110,19 @@ def process_artwork_bytes(data: bytes, mode: str = 'auto', engine=None) -> dict:
 def process_artwork_file(path, mode: str = 'auto', engine=None) -> dict:
     from pathlib import Path
     path = Path(path)
+    if mode == 'none':
+        return {
+            'data': b'',
+            'engine': 'none',
+            'white_artwork': False,
+            'validation': {'ok': True, 'issues': [], 'metrics': {}},
+            'has_transparency': path.suffix.lower() in ('.png', '.webp'),
+            'width': None,
+            'height': None,
+            'changed': False,
+            'path': path,
+            'filename': path.name,
+        }
     try:
         data = path.read_bytes()
         result = process_artwork_bytes(data, mode=mode, engine=engine)
