@@ -1978,16 +1978,8 @@ table { max-width: 100%; }
         justify-content: center;
     }
     .mobile-menu-toggle { display: flex; }
-    .logo {
-        transform: none !important;
-        width: 3rem;
-        height: 3rem;
-        overflow: hidden;
-        border-radius: 4px;
-    }
     .logo-image {
-        position: relative !important;
-        height: 3rem !important;
+        height: 64px !important;
         filter: none;
     }
     /* Account button: icon-only on mobile, no box */
@@ -2023,19 +2015,10 @@ table { max-width: 100%; }
    Keep the header proportional to the small viewport. */
 @media (max-width: 768px) {
     .navbar { padding: 0.35rem 0; }
-    .logo {
-        transform: none !important;
-        width: 2.75rem;
-        height: 2.75rem;
-        overflow: hidden;
-        border-radius: 4px;
-    }
-    .logo-image { position: relative !important; height: 2.75rem !important; filter: none; }
+    .logo-image { height: 56px !important; filter: none; }
 }
 @media (max-width: 480px) {
-    .logo { width: 2.5rem; height: 2.5rem; }
-    .logo-image { height: 2.5rem !important; }
-}
+    .logo-image { height: 50px !important; }
 
 /* 3 ── Fluid headings (smooth scaling between breakpoints) ──── */
 /* clamp() keeps type proportional at EVERY width, including the
@@ -2069,8 +2052,7 @@ table { max-width: 100%; }
 /* 7 ── Very short landscape screens ─────────────────────────── */
 @media (max-height: 480px) and (orientation: landscape) {
     .navbar { padding: 0.15rem 0; }
-    .logo { width: 2.25rem; height: 2.25rem; transform: none !important; overflow: hidden; border-radius: 4px; }
-    .logo-image { position: relative !important; height: 2.25rem !important; filter: none; }
+    .logo-image { height: 44px !important; filter: none; }
     .account-page,
     .legal-page,
     .error-page { padding-top: 1.5rem; padding-bottom: 1.5rem; }
