@@ -66,19 +66,19 @@ class DesignUploadError(Exception):
 
 
 def _save_collection_design(file, user_id):
-    """Save a design uploaded for a specific group order / collection.
+    """Save artwork for a group order.
 
-    Unlike _save_uploaded_design, designs saved here are is_gallery=False —
-    they are private to the collection and never appear on the public gallery
-    unless an admin explicitly publishes them later.
+    Skip background-cut here — that pipeline can take minutes on a phone
+    photo and freeze Create Group Order on 'Creating…'. The file is stored
+    as uploaded; cut happens later when someone actually prints it.
     """
-    design = _save_uploaded_design(file, user_id)
+    design = _save_uploaded_design(file, user_id, process_artwork=False)
     if design is not None:
-        design.is_gallery = False   # keep private to this group order
+        design.is_gallery = False
     return design
 
 
-def _save_uploaded_design(file, user_id):
+def _save_uploaded_design(file, user_id, *, process_artwork=True):
     """Save an uploaded file to the Design gallery. Returns Design or None."""
     if not file or not file.filename:
         return None
@@ -100,7 +100,7 @@ def _save_uploaded_design(file, user_id):
             current_app._get_current_object(),
             subfolder='designs',
             public_id_prefix='gallery',
-            process_artwork=True,
+            process_artwork=process_artwork,
         )
     except Exception as e:
         current_app.logger.exception('Gallery design upload failed (%s): %s', filename, e)
@@ -2370,17 +2370,9 @@ def add_collection():
             allowed_design_ids = selectable_group_order_design_ids(
                 request.form.getlist('allowed_designs'), current_user
             )
-            upload_count = 0
-            for f in request.files.getlist('design_uploads'):
-                if f and f.filename:
-                    try:
-                        design = _save_collection_design(f, current_user.id)
-                    except Exception as e:
-                        current_app.logger.exception('Collection design upload failed: %s', e)
-                        design = None
-                    if design:
-                        allowed_design_ids.append(design.id)
-                        upload_count += 1
+            pending_uploads = [
+                f for f in request.files.getlist('design_uploads') if f and f.filename
+            ]
             if allowed_design_ids:
                 collection.allowed_design_ids = json.dumps(allowed_design_ids)
             if allowed_design_ids or allowed_colors:
@@ -2414,6 +2406,23 @@ def add_collection():
                 return redirect(url_for('admin.add_collection'))
 
             db.session.commit()
+
+            upload_count = 0
+            if pending_uploads:
+                for f in pending_uploads:
+                    try:
+                        design = _save_collection_design(f, current_user.id)
+                    except Exception as e:
+                        current_app.logger.exception('Collection design upload failed: %s', e)
+                        design = None
+                    if design:
+                        allowed_design_ids.append(design.id)
+                        upload_count += 1
+                if upload_count:
+                    collection.allowed_design_ids = json.dumps(allowed_design_ids)
+                    collection.restrict_options = True
+                    db.session.commit()
+
             msg = 'Group order created successfully'
             if upload_count:
                 msg += f' with {upload_count} design(s) uploaded'

@@ -271,22 +271,16 @@ def create_group_order():
             allowed_placements = request.form.getlist('allowed_placements')
             collection.allowed_placements = json.dumps(allowed_placements) if allowed_placements else None
 
-            # Collect chosen gallery / own designs + any newly uploaded artwork
+            # Collect chosen gallery designs now. File uploads wait until the
+            # group order is saved — background-cut used to freeze this page
+            # for minutes before anything was written.
             from utils.privacy import selectable_group_order_design_ids
             allowed_design_ids = selectable_group_order_design_ids(
                 request.form.getlist('allowed_designs'), current_user
             )
-            upload_count = 0
-            for f in request.files.getlist('design_uploads'):
-                if f and f.filename:
-                    try:
-                        design = _save_collection_design(f, current_user.id)
-                    except Exception as e:
-                        current_app.logger.exception('Group order artwork upload failed: %s', e)
-                        design = None
-                    if design:
-                        allowed_design_ids.append(design.id)
-                        upload_count += 1
+            pending_uploads = [
+                f for f in request.files.getlist('design_uploads') if f and f.filename
+            ]
             if allowed_design_ids:
                 collection.allowed_design_ids = json.dumps(allowed_design_ids)
             if allowed_design_ids or allowed_colors:
@@ -322,8 +316,25 @@ def create_group_order():
                 flash('Please pick at least one shirt style so your team has something to order.', 'error')
                 return redirect(url_for('shop.create_group_order'))
 
-            # ── 6. Commit ───────────────────────────────────────────────────
+            # ── 6. Commit the store first so a slow logo upload cannot
+            #     hold the whole create on "Creating…" with nothing saved.
             db.session.commit()
+
+            upload_count = 0
+            if pending_uploads:
+                for f in pending_uploads:
+                    try:
+                        design = _save_collection_design(f, current_user.id)
+                    except Exception as e:
+                        current_app.logger.exception('Group order artwork upload failed: %s', e)
+                        design = None
+                    if design:
+                        allowed_design_ids.append(design.id)
+                        upload_count += 1
+                if upload_count:
+                    collection.allowed_design_ids = json.dumps(allowed_design_ids)
+                    collection.restrict_options = True
+                    db.session.commit()
 
             # ── 7. Verify it saved with a valid, accessible ID ──────────────
             if not collection.id:

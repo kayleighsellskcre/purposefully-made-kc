@@ -158,7 +158,12 @@ def _upload_to_r2(file_storage, app, subfolder, public_id_prefix):
         aws_access_key_id=app.config['R2_ACCESS_KEY_ID'],
         aws_secret_access_key=app.config['R2_SECRET_ACCESS_KEY'],
         region_name='auto',
-        config=Config(signature_version='s3v4'),
+        config=Config(
+            signature_version='s3v4',
+            connect_timeout=8,
+            read_timeout=20,
+            retries={'max_attempts': 2},
+        ),
     )
 
     key = _make_key(file_storage, subfolder, public_id_prefix)
@@ -172,6 +177,11 @@ def _upload_to_r2(file_storage, app, subfolder, public_id_prefix):
         'gif': 'image/gif', 'svg': 'image/svg+xml',
     }
     content_type = content_types.get(ext, 'application/octet-stream')
+
+    try:
+        file_storage.stream.seek(0)
+    except Exception:
+        pass
 
     s3.upload_fileobj(
         file_storage,
