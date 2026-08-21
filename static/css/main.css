@@ -176,7 +176,7 @@ a:hover {
 
 .logo-image {
     position: static !important;
-    height: 72px !important;
+    height: 100px !important;
     width: auto !important;
     max-width: none !important;
     display: block;
@@ -1232,7 +1232,7 @@ textarea.form-control {
     }
 
     .logo-image {
-        height: 52px !important;
+        height: 64px !important;
         filter: none;
     }
 
