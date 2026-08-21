@@ -188,7 +188,7 @@ a:hover {
     max-width: none !important;
     display: block;
     transition: var(--transition);
-    border: 1.5px solid rgba(184, 124, 111, 0.45);
+    border: 3px solid rgba(184, 124, 111, 0.55);
     border-radius: 8px;
     filter: drop-shadow(0 4px 14px rgba(58, 61, 72, 0.15));
 }
