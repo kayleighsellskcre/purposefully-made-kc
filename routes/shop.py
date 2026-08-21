@@ -547,7 +547,8 @@ def customize(product_id):
         back_design_outline_color = getattr(coll, 'back_design_outline_color', None)
         lock_back_design_style = bool(getattr(coll, 'lock_back_design_style', False))
         back_design_type = getattr(coll, 'back_design_type', 'both') or 'both'
-        allow_back_design = back_design_type not in ('none', '')
+        _allow = getattr(coll, 'allow_back_design', None)
+        allow_back_design = bool(_allow) if _allow is not None else True
         if has_colors:
             allowed = parse_json_list(coll.allowed_colors)
             color_variants_data = [v for v in color_variants_data if v['color_name'] in allowed]

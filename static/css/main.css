@@ -2026,6 +2026,8 @@ table { max-width: 100%; }
 @media (max-width: 768px) {
     .navbar { padding: 0.35rem 0; }
     .logo-image { height: 56px !important; filter: none; }
+    /* Hide Account button on phones — lives in hamburger menu only */
+    .nav-account { display: none !important; }
 }
 @media (max-width: 480px) {
     .logo-image { height: 50px !important; }
