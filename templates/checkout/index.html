@@ -371,7 +371,7 @@ if (savedAddressSelect) {
 
 function updateTotals(shippingCost) {
     const subtotal = {{ totals.subtotal }};
-    const tax = Math.round(subtotal * 0.065 * 100) / 100;  // KS 6.5%
+    const tax = Math.round(subtotal * 0.095 * 100) / 100;  // 9.5%
     const total = subtotal + shippingCost + tax;
     
     document.getElementById('shipping-amount').textContent = '$' + shippingCost.toFixed(2);

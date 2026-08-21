@@ -321,7 +321,7 @@ def get_cart():
     """Get cart from session"""
     return session.get('cart', [])
 
-KS_SALES_TAX_RATE = 0.065  # Kansas state sales tax 6.5%
+KS_SALES_TAX_RATE = 0.095  # Sales tax 9.5%
 
 def calculate_totals(cart, shipping_method='pickup'):
     """Calculate order totals"""
@@ -331,7 +331,7 @@ def calculate_totals(cart, shipping_method='pickup'):
     if shipping_method == 'shipping':
         shipping_cost = current_app.config['SHIPPING_FLAT_RATE']
     
-    # Kansas 6.5% sales tax applied to the subtotal only (shipping is not taxed)
+    # 9.5% sales tax applied to the subtotal only (shipping is not taxed)
     tax = round(subtotal * KS_SALES_TAX_RATE, 2)
     
     total = subtotal + shipping_cost + tax
