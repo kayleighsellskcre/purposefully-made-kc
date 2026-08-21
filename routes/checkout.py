@@ -423,7 +423,8 @@ def index():
                          addresses=addresses,
                          is_group_order=is_group_order,
                          group_collection=collection,
-                         stripe_public_key=current_app.config.get('STRIPE_PUBLIC_KEY'))
+                         stripe_public_key=current_app.config.get('STRIPE_PUBLIC_KEY'),
+                         shipping_flat_rate=current_app.config.get('SHIPPING_FLAT_RATE', 11.00))
 
 
 @checkout_bp.route('/create-payment-intent', methods=['POST'])
@@ -458,7 +459,7 @@ def create_payment_intent():
     
     try:
         intent = stripe.PaymentIntent.create(
-            amount=int(totals['total'] * 100),  # Convert to cents
+            amount=int(round(totals['total'] * 100)),
             currency='usd',
             # automatic_payment_methods enables card, Apple Pay, Google Pay,
             # Venmo, and any other methods enabled in the Stripe dashboard.
@@ -616,6 +617,32 @@ def complete():
                 400,
                 request_id=rid,
             )
+        if payment_method == 'stripe' and payment_id:
+            try:
+                intent = stripe.PaymentIntent.retrieve(payment_id)
+            except Exception:
+                current_app.logger.exception('checkout rid=%s stripe retrieve failed', rid)
+                return _json_error(
+                    'We could not confirm the card payment. Please try again.',
+                    'PAYMENT_LOOKUP_FAILED',
+                    400,
+                    request_id=rid,
+                )
+            expected_cents = int(round(totals['total'] * 100))
+            if getattr(intent, 'amount', None) != expected_cents:
+                return _json_error(
+                    'The card total does not match this order. Please wait a moment and try checkout again.',
+                    'PAYMENT_AMOUNT_MISMATCH',
+                    400,
+                    request_id=rid,
+                )
+            if getattr(intent, 'status', None) not in ('succeeded', 'processing'):
+                return _json_error(
+                    'Card payment was not completed. Please try the card again.',
+                    'PAYMENT_NOT_COMPLETE',
+                    400,
+                    request_id=rid,
+                )
     except Exception as pre_err:
         current_app.logger.exception('checkout.complete pre-processing error rid=%s: %s', rid, pre_err)
         return _json_error(

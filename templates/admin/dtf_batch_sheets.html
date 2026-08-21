@@ -1,195 +1,217 @@
 {% extends "admin/base_admin.html" %}
 
-{% block title %}DTF Transfer Batch Sheets - Admin - Purposefully Made KC{% endblock %}
+{% block title %}Weekly DTF shopping list - Admin - Purposefully Made KC{% endblock %}
 
 {% block admin_content %}
 <div class="admin-page">
     <div class="container">
         <div class="admin-header">
-            <span class="adm-eyebrow">Admin / Operations</span>
-            <h1>DTF Transfer Batch Sheets</h1>
-            <button onclick="window.print()" class="btn btn-primary">Print Sheets</button>
+            <div>
+                <span class="adm-eyebrow">Admin / Daily Operations · Step 3</span>
+                <h1>Weekly DTF shopping list</h1>
+                <p class="page-subtitle">Nothing is purchased from here. Download each PNG, upload it on your DTF site, then type the size and quantity shown.</p>
+            </div>
+            <div class="shop-actions no-print">
+                <button type="button" class="btn btn-primary" data-copy-target="copy-all" {% if not has_items %}disabled{% endif %}>Copy all</button>
+                <a href="{{ ops_url('admin.dtf_batch_sheets', format='csv') }}" class="btn btn-outline">Download CSV</a>
+                <button type="button" class="btn btn-outline" onclick="window.print()">Print</button>
+                <a href="{{ ops_url('admin.production_master') }}" class="btn btn-outline">Back to blanks + designs</a>
+            </div>
+            <textarea id="copy-all" class="copy-src" hidden readonly>{{ all_copy }}</textarea>
         </div>
-        
-        <p class="page-subtitle">Gang sheet instructions for DTF printing</p>
-        
-        {% if batch_groups %}
-        <div class="batch-sheets">
-            {% for group in batch_groups %}
-            <div class="batch-sheet">
-                <div class="batch-header">
-                    <h2>Batch #{{ loop.index }}</h2>
-                    <span class="batch-qty">{{ group.total_quantity }} transfers</span>
+
+        {% if has_items %}
+        <ol class="dtf-steps no-print">
+            <li><strong>Download</strong> the PNG for that logo or name.</li>
+            <li><strong>Upload</strong> it on your DTF website.</li>
+            <li><strong>Type the size</strong> exactly as shown, then set the quantity. Logos use width. Names and numbers use height.</li>
+        </ol>
+
+        <div class="shop-summary">
+            <p>
+                <strong>{{ order_count }}</strong> order{{ 's' if order_count != 1 }}
+                · <strong>{{ logo_count }}</strong> logo size{{ 's' if logo_count != 1 }} ({{ logo_qty }} print{{ 's' if logo_qty != 1 }})
+                · <strong>{{ personal_count }}</strong> name/number{{ 's' if personal_count != 1 }}
+            </p>
+        </div>
+
+        {% if logos %}
+        <section class="vendor-block">
+            <div class="vendor-head">
+                <div>
+                    <h2>Logos</h2>
+                    <p>On the DTF site, set <strong>width</strong>, then quantity. Height follows the file.</p>
                 </div>
-                
-                <div class="batch-info">
-                    <p><strong>Design:</strong> {{ group.design_name or 'No design name' }}</p>
-                    <p><strong>Placement:</strong> {{ group.placement.replace('_', ' ').title() }}</p>
-                    <p><strong>Print Size:</strong> {{ group.print_width }}" × {{ group.print_height }}"</p>
-                </div>
-                
-                <table class="batch-table">
-                    <thead>
-                        <tr>
-                            <th>Order #</th>
-                            <th>Size</th>
-                            <th>Quantity</th>
-                            <th>Notes</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in group.items %}
-                        <tr>
-                            <td>{{ item.order.order_number }}</td>
-                            <td>{{ item.size }}</td>
-                            <td>{{ item.quantity }}</td>
-                            <td>{{ item.notes or '-' }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                
-                <div class="batch-notes">
-                    <p><strong>Special Instructions:</strong></p>
-                    <ul>
-                        <li>Mirror image for DTF transfer</li>
-                        <li>Ensure transparent background</li>
-                        <li>Check DPI for print quality</li>
-                    </ul>
+                <div class="vendor-actions no-print">
+                    <textarea id="copy-logos" class="copy-src" hidden readonly>{{ logo_copy }}</textarea>
+                    <button type="button" class="btn btn-outline btn-sm" data-copy-target="copy-logos">Copy logos</button>
                 </div>
             </div>
-            {% endfor %}
-        </div>
+
+            <div class="dtf-cards">
+                {% for row in logos %}
+                <article class="dtf-card">
+                    <div class="dtf-preview">
+                        {% if row.preview_url %}
+                        <a href="{{ row.preview_url | image_url }}" target="_blank" rel="noopener" title="Open full size">
+                            <img src="{{ row.preview_url | image_url }}" alt="{{ row.design_name }}">
+                        </a>
+                        {% else %}
+                        <div class="no-art">No file</div>
+                        {% endif %}
+                    </div>
+                    <div class="dtf-info">
+                        <p class="style-num">{{ row.design_name }}</p>
+                        <p class="style-name">{{ row.placement }}</p>
+                        <p class="dtf-size">Enter width <strong>{{ row.width_display }}″</strong></p>
+                        <p class="style-name">File is {{ row.width_display }}″ W × {{ row.height_display }}″ H</p>
+                        <p class="qty-line">Qty <strong>{{ row.quantity }}</strong></p>
+                        <div class="dtf-btns no-print">
+                            <a class="btn btn-primary btn-sm" href="{{ url_for('admin.save_item_artwork', order_id=row.order_id, item_id=row.item_id, side='front') }}">Download PNG</a>
+                            <a class="btn btn-outline btn-sm" href="{{ url_for('admin.photos_item_artwork', order_id=row.order_id, item_id=row.item_id, side='front') }}">Save to phone</a>
+                            <textarea id="copy-logo-{{ loop.index }}" class="copy-src" hidden readonly>{{ row.copy_text }}</textarea>
+                            <button type="button" class="btn btn-outline btn-sm" data-copy-target="copy-logo-{{ loop.index }}">Copy</button>
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if personal %}
+        <section class="vendor-block">
+            <div class="vendor-head">
+                <div>
+                    <h2>Names &amp; numbers</h2>
+                    <p>Each one is its own file. On the DTF site, set <strong>height</strong>, then quantity.</p>
+                </div>
+                <div class="vendor-actions no-print">
+                    <textarea id="copy-personal" class="copy-src" hidden readonly>{{ personal_copy }}</textarea>
+                    <button type="button" class="btn btn-outline btn-sm" data-copy-target="copy-personal">Copy names</button>
+                </div>
+            </div>
+
+            <div class="dtf-cards">
+                {% for row in personal %}
+                <article class="dtf-card">
+                    <div class="dtf-preview">
+                        <a href="{{ url_for('admin.preview_item_artwork', order_id=row.order_id, item_id=row.item_id, side='back') }}" target="_blank" rel="noopener" title="Open full size">
+                            <img src="{{ url_for('admin.preview_item_artwork', order_id=row.order_id, item_id=row.item_id, side='back') }}" alt="{{ row.name }} {{ row.number }}">
+                        </a>
+                    </div>
+                    <div class="dtf-info">
+                        <p class="style-num">{{ row.name or '—' }}{% if row.number %} #{{ row.number }}{% endif %}</p>
+                        <p class="style-name">{{ row.order_number }}</p>
+                        {% if row.name %}
+                        <p class="dtf-size">Name height <strong>{{ row.name_height_display }}″</strong> <span>({{ row.name_width_display }}″ wide)</span></p>
+                        {% endif %}
+                        {% if row.number %}
+                        <p class="dtf-size">Number height <strong>{{ row.number_height_display }}″</strong> <span>({{ row.number_width_display }}″ wide)</span></p>
+                        {% endif %}
+                        <p class="qty-line">Qty <strong>{{ row.quantity }}</strong></p>
+                        <div class="dtf-btns no-print">
+                            {% if row.name %}
+                            <a class="btn btn-primary btn-sm" href="{{ url_for('admin.save_item_artwork', order_id=row.order_id, item_id=row.item_id, side='back-name') }}">Download name</a>
+                            {% endif %}
+                            {% if row.number %}
+                            <a class="btn btn-primary btn-sm" href="{{ url_for('admin.save_item_artwork', order_id=row.order_id, item_id=row.item_id, side='back-number') }}">Download number</a>
+                            {% endif %}
+                            <a class="btn btn-outline btn-sm" href="{{ url_for('admin.photos_item_artwork', order_id=row.order_id, item_id=row.item_id, side='back') }}">Save to phone</a>
+                            <textarea id="copy-personal-{{ loop.index }}" class="copy-src" hidden readonly>{{ row.copy_text }}</textarea>
+                            <button type="button" class="btn btn-outline btn-sm" data-copy-target="copy-personal-{{ loop.index }}">Copy</button>
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <p class="shop-note no-print">When blanks and transfers are both in, go back to Order blanks and tap <strong>Blanks are in: Ready to Press</strong>.</p>
         {% else %}
         <div class="empty-state">
-            <p>No designs to print. Orders with custom designs will appear here.</p>
+            <p>No logos waiting to be ordered. New paid orders will show up here.</p>
             <a href="{{ url_for('admin.orders') }}" class="btn btn-primary">View Orders</a>
         </div>
         {% endif %}
     </div>
 </div>
 
+<div id="copyToast" class="copy-toast" hidden>Copied</div>
+
 <style>
+.admin-page { padding: 4rem 0; }
+.admin-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.page-subtitle { color: var(--text-secondary); margin-top: 0.5rem; max-width: 40rem; }
+.shop-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.dtf-steps { margin: 0 0 1.25rem; padding: 1rem 1rem 1rem 2.1rem; background: #fff; border: 1px solid var(--border-color); border-radius: var(--border-radius); color: var(--text-secondary); }
+.dtf-steps li { margin: 0.25rem 0; }
+.shop-summary { margin-bottom: 1.5rem; padding: 1rem 1.25rem; background: var(--secondary-color); border-radius: var(--border-radius); }
+.vendor-block { background: #fff; border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: var(--box-shadow); }
+.vendor-head { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: flex-start; margin-bottom: 1.25rem; }
+.vendor-head h2 { font-family: var(--font-heading); font-size: 1.35rem; margin: 0 0 0.2rem; }
+.vendor-head p { color: var(--text-secondary); margin: 0; }
+.vendor-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.dtf-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+.dtf-card { border: 1px solid var(--border-light, #eadfd4); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+.dtf-preview { aspect-ratio: 1; background:
+    linear-gradient(45deg, #eee 25%, transparent 25%),
+    linear-gradient(-45deg, #eee 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #eee 75%),
+    linear-gradient(-45deg, transparent 75%, #eee 75%);
+    background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0; background-color: #f7f7f7;
+    display: flex; align-items: center; justify-content: center; }
+.dtf-preview a { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; padding: 0.75rem; }
+.dtf-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.no-art { color: var(--text-secondary); }
+.dtf-info { padding: 0.9rem 1rem 1rem; }
+.style-num { font-weight: 700; color: var(--aged-bronze, #8a6a4a); margin: 0; }
+.style-name { margin: 0.15rem 0 0; color: var(--text-secondary); font-size: 0.92rem; }
+.dtf-size { margin: 0.55rem 0 0; }
+.dtf-size span { color: var(--text-secondary); font-weight: 500; }
+.qty-line { margin: 0.35rem 0 0; color: var(--accent-color); }
+.dtf-btns { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
+.shop-note { color: var(--text-secondary); margin-top: 0.5rem; }
+.empty-state { text-align: center; padding: 4rem 2rem; background: #fff; border-radius: var(--border-radius); }
+.copy-src { position: absolute; left: -9999px; width: 1px; height: 1px; }
+.copy-toast { position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%); background: #3A3D48; color: #fff; padding: 0.5rem 1rem; border-radius: 999px; font-size: 0.85rem; z-index: 50; }
 @media print {
-    .admin-header button,
-    .page-subtitle {
-        display: none;
-    }
-    
-    .batch-sheet {
-        page-break-after: always;
-    }
+    .no-print, .ops-flow { display: none !important; }
+    .vendor-block { box-shadow: none; break-inside: avoid; }
 }
-
-.admin-page {
-    padding: 4rem 0;
-}
-
-.admin-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.page-subtitle {
-    color: var(--text-secondary);
-    margin-bottom: 2rem;
-}
-
-.batch-sheets {
-    display: flex;
-    flex-direction: column;
-    gap: 3rem;
-}
-
-.batch-sheet {
-    background: #fff;
-    border: 2px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 2rem;
-}
-
-.batch-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 2px solid var(--accent-color);
-}
-
-.batch-header h2 {
-    color: var(--accent-color);
-}
-
-.batch-qty {
-    background: var(--accent-color);
-    color: #fff;
-    padding: 0.5rem 1rem;
-    border-radius: var(--border-radius);
-    font-weight: 600;
-}
-
-.batch-info {
-    background: var(--secondary-color);
-    border-radius: var(--border-radius);
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-}
-
-.batch-info p {
-    margin: 0.5rem 0;
-}
-
-.batch-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 2rem;
-}
-
-.batch-table thead {
-    background: var(--secondary-color);
-}
-
-.batch-table th,
-.batch-table td {
-    padding: 1rem;
-    text-align: left;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.batch-notes {
-    background: #fff9e5;
-    border-left: 4px solid #f59e0b;
-    padding: 1.5rem;
-    border-radius: var(--border-radius);
-}
-
-.batch-notes ul {
-    list-style: none;
-    padding: 0;
-    margin: 1rem 0 0;
-}
-
-.batch-notes li {
-    padding: 0.5rem 0;
-    padding-left: 2rem;
-    position: relative;
-}
-
-.batch-notes li::before {
-    content: "⚠";
-    position: absolute;
-    left: 0;
-    color: #f59e0b;
-}
-
-.empty-state {
-    text-align: center;
-    padding: 4rem 2rem;
-    background: #fff;
-    border-radius: var(--border-radius);
+@media (max-width: 700px) {
+    .admin-page { padding: 2rem 0; }
+    .dtf-btns .btn { min-height: 40px; }
 }
 </style>
+<script>
+(function () {
+    const toast = document.getElementById('copyToast');
+    function flash() {
+        if (!toast) return;
+        toast.hidden = false;
+        clearTimeout(flash._t);
+        flash._t = setTimeout(function () { toast.hidden = true; }, 1200);
+    }
+    document.querySelectorAll('[data-copy-target]').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+            const src = document.getElementById(btn.getAttribute('data-copy-target'));
+            const text = src ? src.value : '';
+            try {
+                await navigator.clipboard.writeText(text);
+                flash();
+            } catch (err) {
+                const area = document.createElement('textarea');
+                area.value = text;
+                document.body.appendChild(area);
+                area.select();
+                document.execCommand('copy');
+                area.remove();
+                flash();
+            }
+        });
+    });
+})();
+</script>
 {% endblock %}

@@ -232,7 +232,7 @@
                         <span id="shipping-amount">${{ "%.2f"|format(totals.shipping_cost) }}</span>
                     </div>
                     <div class="summary-row">
-                        <span>Tax (KS 6.5%):</span>
+                        <span>Tax (KS 9.5%):</span>
                         <span id="tax-amount">${{ "%.2f"|format(totals.tax) }}</span>
                     </div>
                     <div class="summary-row total">
@@ -255,6 +255,19 @@ const stripe = Stripe('{{ stripe_public_key }}');
 let stripeElements = null;   // initialized lazily on first card-tab focus
 let paymentElement = null;
 let clientSecretCache = null;
+const shippingFlatRate = {{ shipping_flat_rate|default(11) }};
+
+async function resetPaymentElement() {
+    if (paymentElement) {
+        try { paymentElement.unmount(); } catch (e) {}
+        paymentElement = null;
+        stripeElements = null;
+        clientSecretCache = null;
+    }
+    const mount = document.getElementById('payment-element');
+    if (mount) mount.innerHTML = '';
+    await initPaymentElement();
+}
 
 async function initPaymentElement() {
     if (paymentElement) return;  // already mounted
@@ -311,12 +324,13 @@ document.querySelectorAll('input[name="fulfillment"]').forEach(radio => {
         // Show/hide shipping form
         const shippingSection = document.querySelector('.shipping-section');
         if (currentFulfillment === 'shipping') {
-            shippingSection.style.display = 'block';
-            updateTotals(11.00);
+            if (shippingSection) shippingSection.style.display = 'block';
+            updateTotals(shippingFlatRate);
         } else {
-            shippingSection.style.display = 'none';
+            if (shippingSection) shippingSection.style.display = 'none';
             updateTotals(0);
         }
+        resetPaymentElement();
     });
 });
 
@@ -398,7 +412,9 @@ function restorePayButton() {
     const button = document.getElementById('submit-payment');
     if (!button) return;
     button.disabled = false;
-    button.innerHTML = 'Complete Order - $<span id="total-amount">{{ "%.2f"|format(totals.total) }}</span>';
+    const shown = (document.getElementById('summary-total') || {}).textContent || '${{ "%.2f"|format(totals.total) }}';
+    const amount = String(shown).replace(/^\$/, '');
+    button.innerHTML = 'Complete Order - $<span id="total-amount">' + amount + '</span>';
 }
 
 function checkoutToken() {

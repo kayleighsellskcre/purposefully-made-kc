@@ -87,9 +87,10 @@
                 </div>
                 
                 <div class="summary-row total">
-                    <span>Total:</span>
+                    <span>Subtotal:</span>
                     <span class="total-amount">${{ "%.2f"|format(subtotal) }}</span>
                 </div>
+                <p class="cart-tax-note">Tax and shipping are added at checkout.</p>
                 
                 <a href="{{ url_for('checkout.index') }}" class="btn btn-primary btn-block">
                     Proceed to Checkout
@@ -131,6 +132,12 @@
     font-size: 0.78rem;
     font-weight: 600;
     letter-spacing: 0.02em;
+}
+
+.cart-tax-note {
+    margin: 0.35rem 0 1rem;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
 }
 
 .cart-section {
@@ -342,6 +349,13 @@
     .item-details {
         text-align: left;
     }
+    .item-price {
+        grid-column: 1 / -1;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+    }
     .btn-remove {
         min-height: 44px;
         min-width: 44px;
@@ -387,6 +401,10 @@ document.querySelectorAll('.quantity-input').forEach(input => {
             });
             
             if (response.ok) {
+                window.location.reload();
+            } else {
+                const data = await response.json().catch(function () { return {}; });
+                PMKC.showFlash(data.error || 'Could not update that quantity.', 'error');
                 window.location.reload();
             }
         } catch (error) {

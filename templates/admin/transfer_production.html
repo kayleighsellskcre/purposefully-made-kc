@@ -14,7 +14,7 @@
             <a class="btn btn-outline" href="{{ url_for('admin.order_detail', order_id=order.id) }}">Back to order</a>
             <a class="btn btn-outline" href="{{ url_for('admin.order_transfer_csv', order_id=order.id) }}">Download CSV</a>
             {% else %}
-            <a class="btn btn-outline" href="{{ ops_url('admin.dtf_batch_sheets', stage=['ready_to_press', 'pressed']) }}">DTF batches</a>
+            <a class="btn btn-outline" href="{{ ops_url('admin.dtf_batch_sheets') }}">Weekly DTF list</a>
             <a class="btn btn-outline" href="{{ ops_url('admin.print_labels', stage=['pressed', 'packaged_ready']) }}">Print labels</a>
             <a class="btn btn-outline" href="{{ ops_url('admin.transfer_production', stage=selected_status, group=group_by, format='csv') }}">Download CSV</a>
             {% endif %}

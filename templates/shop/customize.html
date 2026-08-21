@@ -1658,7 +1658,7 @@
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                             <div>
                                 <strong style="font-size: 1.1rem; color: #333;">Add Design on Other Side</strong>
-                                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #666;">Front + Back printing</p>
+                                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #666;">Optional name, number, or second logo</p>
                             </div>
                             <div style="text-align: right;">
                                 <strong style="font-size: 1.25rem; color: var(--terra-cotta);">+$6.00</strong>
@@ -3985,7 +3985,7 @@
             // Validation — toast + scroll-to missing section
             if (!state.selectedColor) {
                 PMKC.showFlash('Please select a color to continue', 'error');
-                document.querySelector('.color-section, [data-section="color"], .color-grid, .color-cards')
+                document.querySelector('.color-grid-professional, .color-section, [data-section="color"], .color-grid, .color-cards')
                     ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
@@ -4008,8 +4008,13 @@
                 capQuantityToStock();
                 return;
             }
-            if (!state.designUrl && !state.designFile) {
-                PMKC.showFlash('Please upload a design or choose one from the gallery', 'error');
+            const hasFrontDesign = !!(state.designUrl || state.designFile || state.presetDesignId);
+            const hasBackDesign = !!(state.backDesignEnabled && (
+                (state.backDesignMode === 'name_number' && (state.backDesignName || state.backDesignNumber)) ||
+                (state.backDesignMode === 'upload' && (state.backDesignFile || state.backDesignUrl))
+            ));
+            if (!hasFrontDesign && !hasBackDesign) {
+                PMKC.showFlash('Please upload a design or add a name and number', 'error');
                 document.querySelector('.design-upload-section, [data-section="design"], .upload-area')
                     ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
@@ -4121,9 +4126,12 @@
                     method: 'POST',
                     body: formData
                 });
-                
-                if (response.ok) {
-                    // Success animation
+                const result = await response.json().catch(function () { return {}; });
+
+                if (response.ok && result.success) {
+                    if (result.notice) {
+                        PMKC.showFlash(result.notice, 'info');
+                    }
                     this.textContent = '✓ Added to Cart!';
                     this.style.background = 'var(--olive-stone)';
                     
@@ -4131,11 +4139,11 @@
                         window.location.href = '/cart';
                     }, 800);
                 } else {
-                    throw new Error('Failed to add to cart');
+                    throw new Error(result.error || 'Failed to add to cart');
                 }
             } catch (error) {
-                PMKC.showFlash('Something went wrong adding to cart. Please try again.', 'error');
-                this.textContent = 'Add Design & Continue';
+                PMKC.showFlash(error.message || 'Something went wrong adding to cart. Please try again.', 'error');
+                this.textContent = 'Add to Cart';
                 this.disabled = false;
             }
         });

@@ -44,18 +44,18 @@ FLOW_STEPS = [
         'id': 'blanks',
         'num': '3',
         'label': 'Order blanks',
-        'hint': 'Weekly list, buy once',
+        'hint': 'Blanks + logos, buy once',
         'endpoint': 'admin.production_master',
-        'active_eps': ('admin.production_master', 'admin.blank_apparel_list', 'admin.production'),
+        'active_eps': ('admin.production_master', 'admin.blank_apparel_list', 'admin.dtf_batch_sheets', 'admin.production'),
         'params': {'stage': ['order_received', 'waiting_supplies']},
     },
     {
         'id': 'press',
         'num': '4',
         'label': 'Press',
-        'hint': 'Press sheets and DTF',
+        'hint': 'Hand to the presser',
         'endpoint': 'admin.transfer_production',
-        'active_eps': ('admin.transfer_production', 'admin.order_transfer_summary', 'admin.dtf_batch_sheets', 'admin.production_bulk_sheet'),
+        'active_eps': ('admin.transfer_production', 'admin.order_transfer_summary', 'admin.production_bulk_sheet'),
         'params': {'stage': ['ready_to_press', 'pressed']},
     },
     {
@@ -76,11 +76,12 @@ STAGE_TOOLS = {
     ],
     'waiting_supplies': [
         ('admin.production_master', 'Blank + design list', {'stage': ['waiting_supplies']}),
-        ('admin.blank_apparel_list', 'Weekly shopping list', {'stage': ['waiting_supplies']}),
+        ('admin.blank_apparel_list', 'Weekly blanks list', {'stage': ['waiting_supplies']}),
+        ('admin.dtf_batch_sheets', 'Weekly DTF list', {'stage': ['waiting_supplies']}),
     ],
     'ready_to_press': [
         ('admin.transfer_production', 'Press sheets', {'stage': ['ready_to_press']}),
-        ('admin.dtf_batch_sheets', 'DTF batches', {'stage': ['ready_to_press']}),
+        ('admin.dtf_batch_sheets', 'Weekly DTF list', {'stage': ['ready_to_press']}),
     ],
     'pressed': [
         ('admin.print_labels', 'Print labels', {'stage': ['pressed']}),

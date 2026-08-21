@@ -2827,40 +2827,44 @@ def production_bulk_sheet():
 @admin_bp.route('/production/dtf-batch-sheets')
 @admin_required
 def dtf_batch_sheets():
-    """Generate DTF transfer batch sheets"""
-    from utils.print_sizes import get_print_width_for_size
+    """Weekly DTF shopping list — nothing is purchased until you check out on the DTF site."""
     from utils.ops_flow import ops_order_query
-    query, _stages, collection_id = ops_order_query(['ready_to_press', 'pressed'])
-    orders = query.all()
-    
-    # Group by design + placement + size
-    batch_groups = {}
-    
-    for order in orders:
-        for item in order.items:
-            if not item.design_id:
-                continue
-            pw = get_print_width_for_size(item.size, item.product) or item.print_width
-            ph = item.print_height or pw
-            key = (item.design_id, item.placement, pw, ph)
-            if key not in batch_groups:
-                batch_groups[key] = {
-                    'design': item.design,
-                    'placement': item.placement,
-                    'print_width': pw,
-                    'print_height': ph,
-                    'quantity': 0,
-                    'items': []
-                }
-            batch_groups[key]['quantity'] += item.quantity
-            batch_groups[key]['items'].append(item)
-    
-    batch_list = list(batch_groups.values())
-    
+    from utils.dtf_orders import build_dtf_shopping_list
+    query, _stages, collection_id = ops_order_query(['order_received', 'waiting_supplies'])
+    orders = query.order_by(Order.created_at).all()
+    shopping = build_dtf_shopping_list(orders)
+
+    if request.args.get('format') == 'csv':
+        output = StringIO()
+        writer = csv.DictWriter(
+            output,
+            fieldnames=['kind', 'design_or_name', 'placement', 'order_by', 'size_in', 'height_in', 'quantity', 'order_number'],
+        )
+        writer.writeheader()
+        writer.writerows(shopping['csv_rows'])
+        return send_file(
+            BytesIO(output.getvalue().encode('utf-8')),
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name=f'dtf_shopping_list_{datetime.now().strftime("%Y%m%d")}.csv',
+        )
+
     collections = Collection.query.all()
-    return render_template('admin/dtf_batch_sheets.html',
-                         batch_groups=batch_list,
-                         collections=collections)
+    return render_template(
+        'admin/dtf_batch_sheets.html',
+        logos=shopping['logos'],
+        personal=shopping['personal'],
+        all_copy=shopping['all_copy'],
+        logo_copy=shopping['logo_copy'],
+        personal_copy=shopping['personal_copy'],
+        logo_count=shopping['logo_count'],
+        personal_count=shopping['personal_count'],
+        logo_qty=shopping['logo_qty'],
+        personal_qty=shopping['personal_qty'],
+        order_count=shopping['order_count'],
+        has_items=shopping['has_items'],
+        collections=collections,
+    )
 
 
 # ===== DESIGNS =====

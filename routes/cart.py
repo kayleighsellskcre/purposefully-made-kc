@@ -256,9 +256,14 @@ def add():
             pb.save(str(upload_dir / pb_name))
             proof_back_url = f"/static/uploads/proofs/{pb_name}"
     
-    # Determine whether this item is blank (no design / transfer)
-    has_design = bool(design_url or design_id or
-                      'design' in request.files and request.files['design'].filename)
+    has_back = bool(
+        back_design_url
+        or (isinstance(back_design_meta, dict) and (back_design_meta.get('name') or back_design_meta.get('number')))
+    )
+    has_design = bool(
+        design_url or design_id or has_back
+        or ('design' in request.files and request.files['design'].filename)
+    )
     is_blank = not has_design
 
     # Unit price: use override from customizer (includes placement discount, back design fee, size upcharge) or calculate
@@ -435,8 +440,14 @@ def add():
         item for item in cart
         if isinstance(item, dict) and (item.get('collection_id') or None) != new_cid
     ]
+    mixed_notice = None
     if mixed:
         cart[:] = [item for item in cart if isinstance(item, dict) and (item.get('collection_id') or None) == new_cid]
+        mixed_notice = (
+            'This group order replaced other items in your cart so everything stays in one store.'
+            if new_cid else
+            'Items from a group order were removed so they are not mixed with a regular shop order.'
+        )
     
     # Check if identical item exists
     found = False
@@ -462,7 +473,8 @@ def add():
     return jsonify({
         'success': True,
         'message': 'Added to cart',
-        'cart_count': cart_count
+        'cart_count': cart_count,
+        'notice': mixed_notice,
     })
 
 

@@ -9,10 +9,11 @@
             <div>
                 <span class="adm-eyebrow">Admin / Daily Operations · Step 3</span>
                 <h1>Order blanks</h1>
-                <p class="page-subtitle">Everything to buy before you press. When the shirts are in, move these orders to Ready to Press.</p>
+                <p class="page-subtitle">Buy shirts and logos this week. When both are in, move these orders to Ready to Press.</p>
             </div>
             <div class="master-actions">
-                <a href="{{ ops_url('admin.blank_apparel_list') }}" class="btn btn-primary">Weekly shopping list</a>
+                <a href="{{ ops_url('admin.blank_apparel_list') }}" class="btn btn-primary">Weekly blanks list</a>
+                <a href="{{ ops_url('admin.dtf_batch_sheets') }}" class="btn btn-primary">Weekly DTF list</a>
                 <a href="{{ ops_url('admin.transfer_production', stage=['ready_to_press']) }}" class="btn btn-outline">Press sheets</a>
                 <a href="{{ ops_url('admin.orders', stage='order_received') }}" class="btn btn-outline">View Orders</a>
                 <form method="post" action="{{ url_for('admin.production_master_move') }}" style="display: inline;">
@@ -63,7 +64,7 @@
             <!-- Designs / Logos -->
             <div class="master-section">
                 <h2>Designs & Logos to Print</h2>
-                <p class="section-hint">DTF transfers needed, grouped by design, placement, and print size.</p>
+                <p class="section-hint">Use the weekly DTF list to download each PNG and order it on your DTF site. Logos are grouped by size. Names are one file each.</p>
                 <div class="design-cards">
                     {% for group in design_list %}
                     <div class="design-master-card">
