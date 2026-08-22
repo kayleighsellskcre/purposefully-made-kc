@@ -464,6 +464,8 @@ def create_payment_intent():
             # automatic_payment_methods enables card, Apple Pay, Google Pay,
             # Venmo, and any other methods enabled in the Stripe dashboard.
             automatic_payment_methods={'enabled': True},
+            # Statement descriptor shown on customer's card statement (max 22 chars)
+            statement_descriptor_suffix='PMKC ORDER',
             metadata={
                 'shipping_method': shipping_method
             }
