@@ -158,10 +158,10 @@ a:hover {
 }
 
 .nav-content {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
+    display: flex;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: space-between;
+    position: relative;
     width: 100%;
     height: 68px; /* fixed nav row height so logo can hang below */
 }
@@ -175,8 +175,9 @@ a:hover {
     flex-shrink: 0;
     height: 68px;
     overflow: visible;
-    /* Center the logo between the left edge and SHOP */
     margin-left: clamp(1rem, 4vw, 4rem);
+    /* Reserve real width in the flex row so the absolute nav-links center clears the logo */
+    min-width: 140px;
 }
 
 .logo-image {
@@ -203,8 +204,12 @@ a:hover {
     align-items: center;
     gap: 0.25rem;
     justify-content: center;
-    min-width: 0;
     flex-wrap: nowrap;
+    /* Pin dead-center on the container regardless of logo/icon widths */
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
 }
 
 /* Thin vertical separator between nav sections */
