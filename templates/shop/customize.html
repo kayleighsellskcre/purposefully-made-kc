@@ -1519,9 +1519,10 @@
                 <div class="panel-section step-section">
                     <div class="step-badge">3</div>
                     <h3>Choose Logo or Design</h3>
-                    <p class="step-hint">{% if collection_restricted and gallery_designs and not allow_custom_upload %}Pick the group logo below{% elif collection_restricted %}Pick the group logo below, or upload if you have your own{% else %}Upload your own or pick from the gallery{% endif %}</p>
-                    
-                    {% if not collection_restricted or allow_custom_upload %}
+                    <p class="step-hint">{% if collection_restricted %}Pick the group logo below{% else %}Upload your own or pick from the gallery{% endif %}</p>
+
+                    {% if not collection_restricted %}
+                    {# Regular shop: show upload box + personal designs #}
                     <div class="upload-own-section" style="margin-bottom: 1.25rem;">
                         <div class="upload-area" id="uploadAreaMain" onclick="document.getElementById('designFileMain').click()">
                             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;">
