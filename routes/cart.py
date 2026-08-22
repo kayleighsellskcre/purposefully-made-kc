@@ -130,7 +130,9 @@ def add():
     )
     collection = get_active_collection()
     if collection:
-        blocked = ordering_blocked(collection, product_id)
+        # Don't pass product_id — any shop item can be ordered while in a group order.
+        # Only blocks on deadline/closed/inactive; color restrictions apply via session.
+        blocked = ordering_blocked(collection)
         if blocked:
             return jsonify({'error': blocked}), 400
     

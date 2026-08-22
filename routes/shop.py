@@ -530,7 +530,9 @@ def customize(product_id):
     coll = get_active_collection()
     if coll:
         from utils.group_orders import is_not_yet_open
-        blocked = ordering_blocked(coll, product.id)
+        # Don't pass product.id — customers can customize any shop item while in a group order.
+        # Only block on deadline/closed/inactive; product-membership check is skipped here.
+        blocked = ordering_blocked(coll)
         if blocked and not is_not_yet_open(coll):
             # Order is closed/past deadline — redirect away entirely
             flash(blocked, 'error')
