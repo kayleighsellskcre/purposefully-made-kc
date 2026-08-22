@@ -139,7 +139,7 @@ def _save_design_for_user(file, user_id, title=None, design_fee=0):
 
     Stores locally first (instant), then the caller promotes to R2 after commit.
     Skips background-cut — admin uploads are already edited.
-    Returns (design, file_bytes, r2_prefix) or (None, None, None).
+    Returns (design, local_path, r2_prefix) or (None, None, None).
     """
     if not file or not file.filename:
         return None, None, None
@@ -174,6 +174,7 @@ def _save_design_for_user(file, user_id, title=None, design_fee=0):
         raise DesignUploadError('storage_failed') from e
 
     file_path = f'uploads/designs/{unique_name}'
+    local_path = str(upload_dir / unique_name)
     design = Design(
         filename=unique_name,
         original_filename=file.filename,
@@ -195,7 +196,7 @@ def _save_design_for_user(file, user_id, title=None, design_fee=0):
         pass
     db.session.add(design)
     db.session.flush()
-    return design, file_bytes, prefix
+    return design, local_path, prefix
 
 
 def _email_design_request_decision(req_id, decision, reason=None):
@@ -204,14 +205,19 @@ def _email_design_request_decision(req_id, decision, reason=None):
         _send_design_request_decision_email(req, decision, reason)
 
 
-def _promote_design_to_r2(design_id, file_bytes, filename, prefix):
-    if not file_bytes:
+def _promote_design_to_r2(design_id, local_path, prefix):
+    if not local_path:
         return
+    from pathlib import Path as _Path
+    path = _Path(local_path)
+    if not path.is_file():
+        return
+    file_bytes = path.read_bytes()
     from utils.cloud_storage import r2_configured, upload_bytes
     app = current_app._get_current_object()
     if not r2_configured(app):
         return
-    url = upload_bytes(file_bytes, app, filename, subfolder='designs', public_id_prefix=prefix)
+    url = upload_bytes(file_bytes, app, path.name, subfolder='designs', public_id_prefix=prefix)
     if not url:
         return
     d = Design.query.get(design_id)
@@ -3340,97 +3346,104 @@ def custom_design_requests():
 def custom_design_request_detail(request_id):
     """View request and upload completed design for customer"""
     req = CustomDesignRequest.query.get_or_404(request_id)
-    
-    if request.method == 'POST':
-        action = request.form.get('action')
-        if action == 'upload_design':
-            file = request.files.get('design_file')
-            title = request.form.get('title', '').strip() or (req.description[:50] + '...' if len(req.description or '') > 50 else req.description)
-            design_fee = request.form.get('design_fee', '0')
-            if not file or not file.filename:
-                flash('Please select a design file to upload.', 'error')
-            else:
-                try:
-                    design, file_bytes, r2_prefix = _save_design_for_user(
-                        file, req.user_id, title=title or None, design_fee=design_fee,
-                    )
-                except DesignUploadError:
-                    db.session.rollback()
-                    design = None
-                    file_bytes = None
-                    r2_prefix = None
-                    flash('The image could not be stored. Please try uploading it again.', 'error')
-                except Exception as e:
-                    db.session.rollback()
-                    design = None
-                    file_bytes = None
-                    r2_prefix = None
-                    current_app.logger.exception(
-                        'Unexpected error uploading design to user %s profile: %s',
-                        req.user_id, e,
-                    )
-                    flash('Something went wrong while saving the design. Please try again.', 'error')
-                else:
-                    if design is None:
-                        flash('Unsupported file type. Use PNG, JPG, WEBP, or HEIC.', 'error')
-                    else:
-                        try:
-                            req.created_design_id = design.id
-                            req.status = 'completed'
-                            req.design_fee = float(design_fee or 0)
-                            req.admin_notes = (req.admin_notes or '') + f"\n[Design uploaded: {design.filename}, fee: ${design.design_fee:.0f}]"
-                            db.session.commit()
-                        except Exception as e:
-                            db.session.rollback()
-                            current_app.logger.exception(
-                                'Failed to link design %s to request %s: %s',
-                                getattr(design, 'id', '?'), req.id, e,
-                            )
-                            flash('The image uploaded but could not be linked to the request. Please try again.', 'error')
-                        else:
-                            from utils.background import run_in_background
-                            app_obj = current_app._get_current_object()
-                            if file_bytes:
-                                run_in_background(
-                                    app_obj,
-                                    _promote_design_to_r2,
-                                    design.id, file_bytes, file.filename, r2_prefix,
-                                )
-                            run_in_background(
-                                app_obj,
-                                _email_design_request_decision,
-                                req.id, 'completed',
-                            )
-                            flash(
-                                f"Image added to {req.user.full_name}'s profile successfully! "
-                                "It's now in their My Designs and they can order any style or color. "
-                                "Customer has been notified by email.",
-                                'success',
-                            )
-        elif action == 'add_notes':
-            req.admin_notes = request.form.get('admin_notes', '')
-            db.session.commit()
-            flash('Notes saved', 'success')
-        elif action == 'decline':
-            reason = (request.form.get('decline_reason') or '').strip()
-            req.status = 'declined'
-            req.admin_notes = (req.admin_notes or '') + '\n' + (reason or 'Declined')
-            db.session.commit()
-            from utils.background import run_in_background
-            run_in_background(
-                current_app._get_current_object(),
-                _email_design_request_decision,
-                req.id, 'declined', reason or None,
-            )
-            flash('Request declined and customer notified by email.', 'info')
-        elif action == 'delete':
-            db.session.delete(req)
-            db.session.commit()
-            flash('Request permanently deleted.', 'info')
-            return redirect(url_for('admin.custom_design_requests'))
-        return redirect(url_for('admin.custom_design_request_detail', request_id=request_id))
 
-    return render_template('admin/custom_design_request_detail.html', req=req)
+    if request.method == 'POST':
+        try:
+            return _handle_design_request_post(req)
+        except Exception as e:
+            current_app.logger.exception(
+                'custom design request %s POST failed: %s', request_id, e,
+            )
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+            flash('Something went wrong. Please refresh and try again.', 'error')
+            return redirect(url_for('admin.custom_design_request_detail', request_id=request_id))
+
+    try:
+        return render_template('admin/custom_design_request_detail.html', req=req)
+    except Exception as e:
+        current_app.logger.exception(
+            'custom design request %s GET render failed: %s', request_id, e,
+        )
+        flash('The design was saved. Refresh this page to see it.', 'info')
+        return redirect(url_for('admin.custom_design_requests'))
+
+
+def _handle_design_request_post(req):
+    action = request.form.get('action')
+    if action == 'upload_design':
+        if req.status == 'completed' and req.created_design_id:
+            flash('This request already has a design on the customer profile.', 'info')
+            return redirect(url_for('admin.custom_design_request_detail', request_id=req.id))
+
+        file = request.files.get('design_file')
+        title = request.form.get('title', '').strip() or (
+            req.description[:50] + '...' if len(req.description or '') > 50 else req.description
+        )
+        design_fee = request.form.get('design_fee', '0')
+        if not file or not file.filename:
+            flash('Please select a design file to upload.', 'error')
+            return redirect(url_for('admin.custom_design_request_detail', request_id=req.id))
+
+        try:
+            design, local_path, r2_prefix = _save_design_for_user(
+                file, req.user_id, title=title or None, design_fee=design_fee,
+            )
+        except DesignUploadError:
+            db.session.rollback()
+            flash('The image could not be stored. Please try uploading it again.', 'error')
+            return redirect(url_for('admin.custom_design_request_detail', request_id=req.id))
+
+        if design is None:
+            flash('Unsupported file type. Use PNG, JPG, WEBP, or HEIC.', 'error')
+            return redirect(url_for('admin.custom_design_request_detail', request_id=req.id))
+
+        req.created_design_id = design.id
+        req.status = 'completed'
+        req.design_fee = float(design_fee or 0)
+        req.admin_notes = (req.admin_notes or '') + (
+            f"\n[Design uploaded: {design.filename}, fee: ${design.design_fee:.0f}]"
+        )
+        customer_name = getattr(getattr(req, 'user', None), 'full_name', None) or 'the customer'
+        db.session.commit()
+
+        try:
+            from utils.background import run_in_background
+            app_obj = current_app._get_current_object()
+            run_in_background(app_obj, _promote_design_to_r2, design.id, local_path, r2_prefix)
+            run_in_background(app_obj, _email_design_request_decision, req.id, 'completed')
+        except Exception:
+            current_app.logger.exception('background follow-up failed after design upload')
+        flash(
+            f"Image added to {customer_name}'s profile. It's in their My Designs now.",
+            'success',
+        )
+        return redirect(url_for('admin.custom_design_request_detail', request_id=req.id))
+
+    if action == 'add_notes':
+        req.admin_notes = request.form.get('admin_notes', '')
+        db.session.commit()
+        flash('Notes saved', 'success')
+    elif action == 'decline':
+        reason = (request.form.get('decline_reason') or '').strip()
+        req.status = 'declined'
+        req.admin_notes = (req.admin_notes or '') + '\n' + (reason or 'Declined')
+        db.session.commit()
+        from utils.background import run_in_background
+        run_in_background(
+            current_app._get_current_object(),
+            _email_design_request_decision,
+            req.id, 'declined', reason or None,
+        )
+        flash('Request declined and customer notified by email.', 'info')
+    elif action == 'delete':
+        db.session.delete(req)
+        db.session.commit()
+        flash('Request permanently deleted.', 'info')
+        return redirect(url_for('admin.custom_design_requests'))
+    return redirect(url_for('admin.custom_design_request_detail', request_id=req.id))
 
 
 def _send_design_request_decision_email(req, decision, reason=None):
