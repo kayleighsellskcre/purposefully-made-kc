@@ -240,6 +240,61 @@ a:hover {
     flex-shrink: 0;
 }
 
+/* Desktop inline account links — My Account | Admin | Log Out */
+.nav-user-links {
+    display: flex;
+    align-items: center;
+    gap: 0.1rem;
+    flex-shrink: 0;
+}
+
+.nav-user-link {
+    font-weight: 500;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-primary);
+    padding: 0.4rem 0.55rem;
+    border-radius: 6px;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: var(--transition);
+    background: none;
+    border: none;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+}
+
+.nav-user-link:hover {
+    color: var(--terra-cotta);
+    background: rgba(184, 124, 111, 0.07);
+}
+
+.nav-user-link.admin-link {
+    color: var(--terra-cotta);
+    font-weight: 600;
+    background: rgba(184, 124, 111, 0.08);
+}
+
+.nav-user-link.admin-link:hover {
+    background: rgba(184, 124, 111, 0.14);
+}
+
+.nav-logout-link {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    border-left: 1px solid var(--border-light);
+    margin-left: 0.15rem;
+    padding-left: 0.65rem;
+}
+
+.nav-logout-link:hover {
+    color: var(--terra-cotta);
+    background: none;
+}
+
 .nav-account {
     position: relative;
 }
@@ -1251,6 +1306,18 @@ textarea.form-control {
         filter: none;
     }
 
+    /* Show mobile-only items in hamburger dropdown */
+    .mobile-only { display: flex !important; }
+    .nav-link-divider.mobile-only {
+        width: 100%;
+        height: 1px;
+        background: rgba(184, 124, 111, 0.2);
+        margin: 0.25rem 0;
+    }
+
+    /* Hide desktop-only account links */
+    .nav-user-links { display: none !important; }
+
     /* Hero - Mobile */
     .hero {
         padding: 2rem 1rem;
@@ -1997,8 +2064,9 @@ table { max-width: 100%; }
         height: 64px !important;
         filter: none;
     }
-    /* Hide Account button on mobile — it moves into the hamburger menu */
+    /* Hide Account dropdown + inline user links on tablet — both live in hamburger */
     .nav-account { display: none; }
+    .nav-user-links { display: none; }
     .nav-auth-link { display: none; }
     /* Show mobile-only items inside hamburger */
     .mobile-only { display: flex !important; }
