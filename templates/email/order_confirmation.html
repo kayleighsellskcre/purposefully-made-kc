@@ -209,7 +209,7 @@
             </p>
             {% endif %}
             <p style="margin:0;font-family:'Georgia',serif;font-size:15px;color:#b87c6f;font-style:italic;">Made with purpose, for you.</p>
-            <p style="margin:6px 0 0;font-size:11px;color:#ccc;font-family:Arial,sans-serif;">© {{ order.created_at.year }} Purposefully Made KC · Kansas City, MO</p>
+            <p style="margin:6px 0 0;font-size:11px;color:#ccc;font-family:Arial,sans-serif;">© {{ order.created_at.year if order.created_at else 2025 }} Purposefully Made KC · Kansas City, MO</p>
           </td>
         </tr>
 
