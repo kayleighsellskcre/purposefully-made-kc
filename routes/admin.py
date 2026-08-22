@@ -3303,9 +3303,15 @@ def custom_design_request_detail(request_id):
                             )
                             flash('The image uploaded but could not be linked to the request. Please try again.', 'error')
                         else:
+                            # Email the customer
+                            try:
+                                _send_design_request_decision_email(req, 'completed')
+                            except Exception:
+                                pass
                             flash(
                                 f"Image added to {req.user.full_name}'s profile successfully! "
-                                "It's now in their My Designs and they can order any style or color.",
+                                "It's now in their My Designs and they can order any style or color. "
+                                "Customer has been notified by email.",
                                 'success',
                             )
         elif action == 'add_notes':
@@ -3313,13 +3319,83 @@ def custom_design_request_detail(request_id):
             db.session.commit()
             flash('Notes saved', 'success')
         elif action == 'decline':
+            reason = (request.form.get('decline_reason') or '').strip()
             req.status = 'declined'
-            req.admin_notes = (req.admin_notes or '') + '\n' + (request.form.get('decline_reason') or 'Declined')
+            req.admin_notes = (req.admin_notes or '') + '\n' + (reason or 'Declined')
             db.session.commit()
-            flash('Request declined', 'info')
+            # Email the customer
+            try:
+                _send_design_request_decision_email(req, 'declined', reason or None)
+            except Exception:
+                pass
+            flash('Request declined and customer notified by email.', 'info')
+        elif action == 'delete':
+            db.session.delete(req)
+            db.session.commit()
+            flash('Request permanently deleted.', 'info')
+            return redirect(url_for('admin.custom_design_requests'))
         return redirect(url_for('admin.custom_design_request_detail', request_id=request_id))
-    
+
     return render_template('admin/custom_design_request_detail.html', req=req)
+
+
+def _send_design_request_decision_email(req, decision, reason=None):
+    """Email the customer when their design request is approved or declined."""
+    try:
+        from flask_mail import Message as MailMessage
+        mail = current_app.extensions.get('mail')
+        if not mail:
+            return False
+        cfg = current_app.config
+        if not (cfg.get('MAIL_SERVER') and cfg.get('MAIL_USERNAME') and cfg.get('MAIL_PASSWORD')):
+            current_app.logger.warning('design request email skipped — mail not configured')
+            return False
+
+        user = req.user
+        email = getattr(user, 'email', None)
+        if not email:
+            return False
+
+        first = getattr(user, 'first_name', None) or 'there'
+        sender = cfg.get('MAIL_DEFAULT_SENDER') or cfg.get('MAIL_USERNAME')
+
+        if decision == 'completed':
+            subject = "Your custom design is ready! — Purposefully Made KC"
+            body = (
+                f"Hi {first},\n\n"
+                f"Great news — your custom design request has been completed!\n\n"
+                f"Your design is now in your My Designs. Log in and head to "
+                f"My Account → My Designs to find it. From there you can apply "
+                f"it to any shirt style, color, or size.\n\n"
+                f"https://purposefullymadekc.com/account\n\n"
+                f"Questions? Reply here or email purposefullymadekc@gmail.com\n\n"
+                f"— Purposefully Made KC"
+            )
+        else:
+            subject = "Update on your design request — Purposefully Made KC"
+            reason_line = f"\n\nReason: {reason}" if reason else ""
+            body = (
+                f"Hi {first},\n\n"
+                f"Unfortunately we're unable to complete your design request at this time.{reason_line}\n\n"
+                f"If you have questions or would like to submit a different request, "
+                f"feel free to reach out at purposefullymadekc@gmail.com or submit a new request "
+                f"at https://purposefullymadekc.com/custom-design/submit\n\n"
+                f"— Purposefully Made KC"
+            )
+
+        msg = MailMessage(
+            subject=subject,
+            recipients=[email],
+            body=body,
+            sender=sender,
+            reply_to='purposefullymadekc@gmail.com',
+        )
+        mail.send(msg)
+        current_app.logger.info('design request %s email sent to %s (%s)', decision, email, req.id)
+        return True
+    except Exception as e:
+        current_app.logger.exception('design request decision email failed for request %s: %s', req.id, e)
+        return False
 
 
 @admin_bp.route('/designs/<int:design_id>/delete', methods=['POST'])

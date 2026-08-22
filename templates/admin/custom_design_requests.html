@@ -26,7 +26,21 @@
                     <p class="request-desc">{{ r.description[:120] }}{% if r.description|length > 120 %}...{% endif %}</p>
                     <p class="request-meta"><strong>{{ r.user.full_name }}</strong> · {{ r.created_at.strftime('%b %d, %Y') }}</p>
                     <span class="badge badge-{{ r.status }}">{{ r.status.title() }}</span>
-                    <a href="{{ url_for('admin.custom_design_request_detail', request_id=r.id) }}" class="btn btn-outline btn-sm">View & Upload</a>
+                    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem;">
+                        <a href="{{ url_for('admin.custom_design_request_detail', request_id=r.id) }}" class="btn btn-outline btn-sm">View &amp; Upload</a>
+                        {% if r.status == 'pending' %}
+                        <form method="post" action="{{ url_for('admin.custom_design_request_detail', request_id=r.id) }}"
+                              onsubmit="return confirm('Decline and email customer?')" style="margin:0">
+                            <input type="hidden" name="action" value="decline">
+                            <button type="submit" class="btn btn-outline btn-sm" style="color:var(--terra-cotta);border-color:var(--terra-cotta);">Decline</button>
+                        </form>
+                        {% endif %}
+                        <form method="post" action="{{ url_for('admin.custom_design_request_detail', request_id=r.id) }}"
+                              onsubmit="return confirm('Permanently delete this request?')" style="margin:0">
+                            <input type="hidden" name="action" value="delete">
+                            <button type="submit" class="btn btn-outline btn-sm" style="color:#dc2626;border-color:#dc2626;">Delete</button>
+                        </form>
+                    </div>
                 </div>
             </div>
             {% endfor %}

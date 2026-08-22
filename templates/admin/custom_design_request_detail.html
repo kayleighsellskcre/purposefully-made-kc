@@ -57,10 +57,13 @@
                 <form method="post" style="margin-top: 1.5rem;">
                     <input type="hidden" name="action" value="decline">
                     <div class="form-group">
-                        <label>Decline reason (optional)</label>
-                        <input type="text" name="decline_reason" class="form-control" placeholder="e.g. Cannot recreate">
+                        <label>Decline reason (optional — included in customer email)</label>
+                        <input type="text" name="decline_reason" class="form-control" placeholder="e.g. Too complex to recreate">
                     </div>
-                    <button type="button" class="btn btn-outline decline-req-btn">Decline Request</button>
+                    <button type="submit" class="btn btn-outline" style="color:var(--terra-cotta);border-color:var(--terra-cotta);"
+                        onclick="return confirm('Decline this request and email the customer?')">
+                        Decline &amp; Notify Customer
+                    </button>
                 </form>
                 {% elif req.created_design %}
                 <div class="completed-info">
@@ -78,6 +81,15 @@
                         <input type="hidden" name="action" value="add_notes">
                         <textarea name="admin_notes" class="form-control" rows="3">{{ req.admin_notes or '' }}</textarea>
                         <button type="submit" class="btn btn-outline btn-sm" style="margin-top: 0.5rem;">Save Notes</button>
+                    </form>
+                </div>
+
+                <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+                    <form method="post" onsubmit="return confirm('Permanently delete this request? This cannot be undone.')">
+                        <input type="hidden" name="action" value="delete">
+                        <button type="submit" class="btn btn-outline btn-sm" style="color:#dc2626;border-color:#dc2626;">
+                            🗑 Delete Request Permanently
+                        </button>
                     </form>
                 </div>
             </div>
@@ -104,29 +116,5 @@
 .badge-pending, .badge-completed, .badge-declined { padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.85rem; }
 </style>
 
-<script>
-(function() {
-    var btn = document.querySelector('.decline-req-btn');
-    if (!btn) return;
-    var form = btn.closest('form');
-    btn.addEventListener('click', function() {
-        if (this.dataset.confirming === 'true') { form.submit(); return; }
-        this.dataset.confirming = 'true';
-        var orig = this.textContent;
-        this.textContent = 'Tap again to decline';
-        this.style.color = 'var(--terra-cotta, #b87c6f)';
-        this.style.borderColor = 'var(--terra-cotta, #b87c6f)';
-        var self = this;
-        setTimeout(function() {
-            if (self.dataset.confirming === 'true') {
-                delete self.dataset.confirming;
-                self.textContent = orig;
-                self.style.color = '';
-                self.style.borderColor = '';
-            }
-        }, 3000);
-    });
-})();
-</script>
 
 {% endblock %}
