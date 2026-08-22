@@ -799,16 +799,22 @@ def test_email():
 @admin_required
 def resend_order_email(order_id):
     """Resend the customer confirmation email for an existing order."""
-    from routes.checkout import send_order_confirmation_email
-    order = Order.query.get_or_404(order_id)
-    if not order.email:
-        flash('This order has no customer email on file.', 'error')
-        return redirect(url_for('admin.order_detail', order_id=order.id))
-    if send_order_confirmation_email(order, force=True):
-        flash(f'Confirmation email sent to {order.email}.', 'success')
-    else:
-        flash('Could not send the confirmation email. Check MAIL_SERVER, MAIL_USERNAME, and MAIL_PASSWORD on Railway.', 'error')
-    return redirect(url_for('admin.order_detail', order_id=order.id))
+    try:
+        from routes.checkout import send_order_confirmation_email
+        order = Order.query.get_or_404(order_id)
+        if not order.email:
+            flash('This order has no customer email on file.', 'error')
+            return redirect(url_for('admin.order_detail', order_id=order_id))
+        sent = send_order_confirmation_email(order, force=True)
+        if sent:
+            flash(f'Confirmation email sent to {order.email}.', 'success')
+        else:
+            flash('Could not send — check that MAIL_SERVER, MAIL_USERNAME, and MAIL_PASSWORD are set in Railway Variables.', 'error')
+        return redirect(url_for('admin.order_detail', order_id=order_id))
+    except Exception as e:
+        current_app.logger.exception('resend_order_email failed for order_id=%s: %s', order_id, e)
+        flash(f'Server error sending email: {e}', 'error')
+        return redirect(url_for('admin.orders'))
 
 
 @admin_bp.route('/orders/<int:order_id>/update-details', methods=['POST'])
