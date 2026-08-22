@@ -562,9 +562,9 @@ def create_app(config_class=Config):
                 is_site_admin = False
 
         from datetime import datetime as _dt
-        from utils.group_orders import get_active_collection
         active_group_order = None
         try:
+            from utils.group_orders import get_active_collection
             active_group_order = get_active_collection(session.get('cart'))
         except Exception:
             active_group_order = None
