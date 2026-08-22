@@ -586,9 +586,9 @@ def customize(product_id):
             gallery_designs = [{'id': d.id, 'url': _resolve_image_url(d.file_path), 'title': (d.title or d.original_filename or 'Design')} for d in designs]
     except Exception:
         pass
-    # User's own designs (profile-only, for logged-in users) — skip when the organizer locked logos
+    # User's own designs — hidden in group orders so only organizer-approved designs show
     my_designs = []
-    if current_user.is_authenticated and not (collection_restricted and allowed_design_ids and not allow_custom_upload):
+    if current_user.is_authenticated and not collection_restricted:
         try:
             my_designs = Design.query.filter(
                 Design.uploaded_by_user_id == current_user.id,
