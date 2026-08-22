@@ -24,7 +24,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,300;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
     
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=33">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=34">
     {% block extra_css %}{% endblock %}
     
     <!-- Favicon -->
@@ -48,7 +48,25 @@
                     <a href="{{ url_for('custom_request.index') }}" class="nav-link">Have Us Recreate</a>
                     <a href="{{ url_for('main.about') }}" class="nav-link">About</a>
                     <a href="{{ url_for('main.contact') }}" class="nav-link">Contact</a>
-                    {# Account links in hamburger — mobile only #}
+
+                    {# Desktop account links — inline in nav, hidden on mobile (hamburger has them) #}
+                    {% if current_user.is_authenticated %}
+                    <span class="nav-separator desktop-only" aria-hidden="true"></span>
+                    <a href="{{ url_for('account.index') }}" class="nav-user-link desktop-only">My Account</a>
+                    {% if is_site_admin %}
+                    <a href="{{ url_for('admin.index') }}" class="nav-user-link admin-link desktop-only">Admin</a>
+                    {% endif %}
+                    <form method="post" action="{{ url_for('auth.logout') }}" class="desktop-only" style="margin:0;display:flex;align-items:center;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="nav-user-link nav-logout-link">Log Out</button>
+                    </form>
+                    {% else %}
+                    <span class="nav-separator desktop-only" aria-hidden="true"></span>
+                    <a href="{{ url_for('auth.login') }}" class="nav-user-link desktop-only">Login</a>
+                    <a href="{{ url_for('auth.register') }}" class="nav-user-link desktop-only">Register</a>
+                    {% endif %}
+
+                    {# Hamburger-only items — hidden on desktop #}
                     {% if current_user.is_authenticated %}
                     <div class="nav-link-divider mobile-only"></div>
                     <a href="{{ url_for('account.index') }}" class="nav-link mobile-only">My Account</a>
@@ -66,23 +84,8 @@
                     {% endif %}
                 </div>
 
-                {# Always-visible: account, favorites, cart, hamburger #}
+                {# Always-visible: favorites, cart, hamburger #}
                 <div class="nav-icons">
-                    {% if current_user.is_authenticated %}
-                    <div class="nav-user-links">
-                        <a href="{{ url_for('account.index') }}" class="nav-user-link">My Account</a>
-                        {% if is_site_admin %}
-                        <a href="{{ url_for('admin.index') }}" class="nav-user-link admin-link">Admin</a>
-                        {% endif %}
-                        <form method="post" action="{{ url_for('auth.logout') }}" style="margin:0;display:flex;align-items:center;">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="nav-user-link nav-logout-link">Log Out</button>
-                        </form>
-                    </div>
-                    {% else %}
-                    <a href="{{ url_for('auth.login') }}" class="nav-link nav-auth-link">Login</a>
-                    <a href="{{ url_for('auth.register') }}" class="nav-link nav-auth-link">Register</a>
-                    {% endif %}
                     <a href="{{ url_for('favorites.index') }}" class="favorites-link" title="My Favorites" aria-label="Favorites">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>

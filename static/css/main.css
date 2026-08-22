@@ -201,10 +201,26 @@ a:hover {
 .nav-links {
     display: flex;
     align-items: center;
-    gap: 0.1rem;
-    flex-shrink: 1;
+    gap: 0.25rem;
+    flex: 1;
+    justify-content: center;
     min-width: 0;
+    flex-wrap: nowrap;
 }
+
+/* Thin vertical separator between nav sections */
+.nav-separator {
+    width: 1px;
+    height: 1.1em;
+    background: var(--border-color);
+    flex-shrink: 0;
+    margin: 0 0.35rem;
+    opacity: 0.7;
+}
+
+/* Desktop-only: visible on large screens, hidden on mobile/tablet */
+.desktop-only { display: flex; align-items: center; }
+
 
 .nav-link {
     font-weight: 500;
@@ -1315,8 +1331,9 @@ textarea.form-control {
         margin: 0.25rem 0;
     }
 
-    /* Hide desktop-only account links */
+    /* Hide desktop-only items on phones */
     .nav-user-links { display: none !important; }
+    .desktop-only { display: none !important; }
 
     /* Hero - Mobile */
     .hero {
@@ -2064,9 +2081,10 @@ table { max-width: 100%; }
         height: 64px !important;
         filter: none;
     }
-    /* Hide Account dropdown + inline user links on tablet — both live in hamburger */
+    /* Hide desktop-only elements on tablet — they live in hamburger */
     .nav-account { display: none; }
     .nav-user-links { display: none; }
+    .desktop-only { display: none !important; }
     .nav-auth-link { display: none; }
     /* Show mobile-only items inside hamburger */
     .mobile-only { display: flex !important; }
