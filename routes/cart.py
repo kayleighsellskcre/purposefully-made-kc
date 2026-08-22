@@ -156,14 +156,11 @@ def add():
             
             filepath = upload_dir / unique_filename
             design_file.save(str(filepath))
-            try:
-                from services.image_processing import process_artwork_file
-                _res = process_artwork_file(filepath, mode='auto')
-                if _res.get('path') is not None:
-                    unique_filename = _res['path'].name
-            except Exception:
-                pass
+            # Artwork is already cut on /design/upload. Re-running rembg here
+            # blocked Add to Cart (and every other click) on the one worker.
             design_url = f"/static/uploads/designs/{unique_filename}"
+    elif data.get('design_url'):
+        design_url = data.get('design_url')
     elif design_id:
         # Gallery, this group order's logos, or the shopper's own uploads only
         from models import Design
@@ -188,20 +185,6 @@ def add():
             unique_filename = f"back_{name}_{timestamp}{ext}"
             filepath = upload_dir / unique_filename
             back_file.save(str(filepath))
-            # Generated name/number transfers are already transparent production
-            # art. Background-cut would eat white letters and collapse spacing.
-            is_name_number = bool(
-                (data.get('back_design_name') or '').strip()
-                or (data.get('back_design_number') or '').strip()
-            )
-            if not is_name_number:
-                try:
-                    from services.image_processing import process_artwork_file
-                    _res = process_artwork_file(filepath, mode='auto')
-                    if _res.get('path') is not None:
-                        unique_filename = _res['path'].name
-                except Exception:
-                    pass
             back_design_url = f"/static/uploads/designs/{unique_filename}"
     elif data.get('back_design_url'):
         back_design_url = data.get('back_design_url')

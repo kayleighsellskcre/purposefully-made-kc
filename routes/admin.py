@@ -135,46 +135,45 @@ def _save_uploaded_design(file, user_id, *, process_artwork=True):
 
 
 def _save_design_for_user(file, user_id, title=None, design_fee=0):
-    """Save an uploaded file as a design for a specific user (not gallery).
+    """Save print-ready artwork for a customer profile.
 
-    Returns the Design on success, or None when no usable file / unsupported
-    type was provided. Raises DesignUploadError when a valid file was given but
-    storage genuinely failed (so the caller can show an accurate error).
+    Stores locally first (instant), then the caller promotes to R2 after commit.
+    Skips background-cut — admin uploads are already edited.
+    Returns (design, file_bytes, r2_prefix) or (None, None, None).
     """
     if not file or not file.filename:
-        return None
+        return None, None, None
     filename = secure_filename(file.filename)
     if '.' not in filename:
-        return None
+        return None, None, None
     name, ext = os.path.splitext(filename)
     ext = ext.lower()
     if ext not in _ALLOWED_DESIGN_EXTS:
-        return None
+        return None, None, None
 
-    from utils.cloud_storage import upload_image
     try:
-        file_path = upload_image(
-            file,
-            current_app._get_current_object(),
-            subfolder='designs',
-            public_id_prefix=f'user_{user_id}',
-            process_artwork=True,
-        )
-    except Exception as e:
-        current_app.logger.exception(
-            'Design upload to user %s profile failed (%s): %s', user_id, filename, e,
-        )
-        raise DesignUploadError('storage_failed') from e
-    if not file_path:
-        current_app.logger.error(
-            'Design upload to user %s profile returned no path (%s)', user_id, filename,
-        )
+        file.stream.seek(0)
+    except Exception:
+        pass
+    file_bytes = file.read()
+    if not file_bytes:
         raise DesignUploadError('storage_failed')
 
     import time
     timestamp = int(time.time())
     unique_name = f"user_{user_id}_{name}_{timestamp}{ext}"
+    prefix = f'user_{user_id}'
+    upload_dir = Path(current_app.config['UPLOAD_FOLDER']) / 'designs'
+    try:
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        (upload_dir / unique_name).write_bytes(file_bytes)
+    except Exception as e:
+        current_app.logger.exception(
+            'Design upload to user %s profile failed (%s): %s', user_id, filename, e,
+        )
+        raise DesignUploadError('storage_failed') from e
 
+    file_path = f'uploads/designs/{unique_name}'
     design = Design(
         filename=unique_name,
         original_filename=file.filename,
@@ -188,19 +187,37 @@ def _save_design_for_user(file, user_id, title=None, design_fee=0):
     )
     try:
         from PIL import Image
-        import io
-        # For local paths, try to read from disk; for Cloudinary URLs, skip size detection
-        if not file_path.startswith('http'):
-            from pathlib import Path as _Path
-            filepath = _Path('static') / file_path
-            img = Image.open(filepath)
-            design.width, design.height = img.size
-            design.file_size = filepath.stat().st_size
+        from io import BytesIO
+        img = Image.open(BytesIO(file_bytes))
+        design.width, design.height = img.size
+        design.file_size = len(file_bytes)
     except Exception:
         pass
     db.session.add(design)
     db.session.flush()
-    return design
+    return design, file_bytes, prefix
+
+
+def _email_design_request_decision(req_id, decision, reason=None):
+    req = CustomDesignRequest.query.get(req_id)
+    if req:
+        _send_design_request_decision_email(req, decision, reason)
+
+
+def _promote_design_to_r2(design_id, file_bytes, filename, prefix):
+    if not file_bytes:
+        return
+    from utils.cloud_storage import r2_configured, upload_bytes
+    app = current_app._get_current_object()
+    if not r2_configured(app):
+        return
+    url = upload_bytes(file_bytes, app, filename, subfolder='designs', public_id_prefix=prefix)
+    if not url:
+        return
+    d = Design.query.get(design_id)
+    if d:
+        d.file_path = url
+        db.session.commit()
 
 
 @admin_bp.route('/')
@@ -3334,14 +3351,20 @@ def custom_design_request_detail(request_id):
                 flash('Please select a design file to upload.', 'error')
             else:
                 try:
-                    design = _save_design_for_user(file, req.user_id, title=title or None, design_fee=design_fee)
+                    design, file_bytes, r2_prefix = _save_design_for_user(
+                        file, req.user_id, title=title or None, design_fee=design_fee,
+                    )
                 except DesignUploadError:
                     db.session.rollback()
                     design = None
+                    file_bytes = None
+                    r2_prefix = None
                     flash('The image could not be stored. Please try uploading it again.', 'error')
                 except Exception as e:
                     db.session.rollback()
                     design = None
+                    file_bytes = None
+                    r2_prefix = None
                     current_app.logger.exception(
                         'Unexpected error uploading design to user %s profile: %s',
                         req.user_id, e,
@@ -3365,11 +3388,19 @@ def custom_design_request_detail(request_id):
                             )
                             flash('The image uploaded but could not be linked to the request. Please try again.', 'error')
                         else:
-                            # Email the customer
-                            try:
-                                _send_design_request_decision_email(req, 'completed')
-                            except Exception:
-                                pass
+                            from utils.background import run_in_background
+                            app_obj = current_app._get_current_object()
+                            if file_bytes:
+                                run_in_background(
+                                    app_obj,
+                                    _promote_design_to_r2,
+                                    design.id, file_bytes, file.filename, r2_prefix,
+                                )
+                            run_in_background(
+                                app_obj,
+                                _email_design_request_decision,
+                                req.id, 'completed',
+                            )
                             flash(
                                 f"Image added to {req.user.full_name}'s profile successfully! "
                                 "It's now in their My Designs and they can order any style or color. "
@@ -3385,11 +3416,12 @@ def custom_design_request_detail(request_id):
             req.status = 'declined'
             req.admin_notes = (req.admin_notes or '') + '\n' + (reason or 'Declined')
             db.session.commit()
-            # Email the customer
-            try:
-                _send_design_request_decision_email(req, 'declined', reason or None)
-            except Exception:
-                pass
+            from utils.background import run_in_background
+            run_in_background(
+                current_app._get_current_object(),
+                _email_design_request_decision,
+                req.id, 'declined', reason or None,
+            )
             flash('Request declined and customer notified by email.', 'info')
         elif action == 'delete':
             db.session.delete(req)

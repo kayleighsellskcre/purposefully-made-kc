@@ -70,7 +70,7 @@ def contact():
         subject = request.form.get('subject', '').strip()
         message = request.form.get('message', '').strip()
 
-        # Send email to admin if mail is configured
+        # Send email to admin if mail is configured — after the thank-you redirect.
         try:
             from flask_mail import Message as MailMessage
             mail = current_app.extensions.get('mail')
@@ -91,7 +91,8 @@ def contact():
                     reply_to=email or admin_email,
                     body=body,
                 )
-                mail.send(msg)
+                from utils.background import run_in_background
+                run_in_background(current_app._get_current_object(), mail.send, msg)
         except Exception as e:
             import sys
             print(f"Contact email error: {e}", file=sys.stderr)

@@ -4094,7 +4094,9 @@
                 if (naturalNameW) formData.append('name_width_in', naturalNameW);
                 if (naturalNumberW) formData.append('number_width_in', naturalNumberW);
                 
-                if (state.designFile) {
+                if (state.designUrl) {
+                    formData.append('design_url', state.designUrl);
+                } else if (state.designFile) {
                     formData.append('design', state.designFile);
                 }
                 if (state.presetDesignId) {
@@ -4174,10 +4176,7 @@
                     }
                     this.textContent = '✓ Added to Cart!';
                     this.style.background = 'var(--olive-stone)';
-                    
-                    setTimeout(() => {
-                        window.location.href = '/cart';
-                    }, 800);
+                    window.location.href = '/cart';
                 } else {
                     throw new Error(result.error || 'Failed to add to cart');
                 }

@@ -265,6 +265,22 @@
             }
             return _fetch.call(this, url, opts);
         };
+
+        /* 3 — Instant feedback on every form submit so clicks never feel stuck */
+        document.addEventListener('submit', function (e) {
+            var form = e.target;
+            if (!form || form.tagName !== 'FORM') return;
+            if (form.getAttribute('data-no-busy') === 'true') return;
+            var btn = e.submitter || form.querySelector('button[type="submit"], input[type="submit"], button:not([type])');
+            if (!btn || btn.disabled) return;
+            btn.disabled = true;
+            if (btn.tagName === 'BUTTON') {
+                var label = (btn.textContent || '').trim();
+                if (label && label.indexOf('…') === -1 && label.length < 48) {
+                    btn.textContent = label.replace(/\.+$/, '') + '…';
+                }
+            }
+        }, true);
     })();
     </script>
 </body>

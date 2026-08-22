@@ -205,7 +205,8 @@ def forgot_password():
         if user:
             token = user.generate_reset_token()
             db.session.commit()
-            _send_reset_email(user, token)
+            from utils.background import run_in_background
+            run_in_background(current_app._get_current_object(), _send_reset_email, user.id, token)
 
         flash(
             "If that email is in our system, you'll receive a reset link shortly. "
@@ -217,11 +218,16 @@ def forgot_password():
     return render_template('auth/forgot_password.html')
 
 
-def _send_reset_email(user, token):
+def _send_reset_email(user_or_id, token):
     """Send the password reset email via Flask-Mail."""
     try:
         from app import mail
         from flask_mail import Message
+        user = user_or_id
+        if isinstance(user_or_id, int):
+            user = User.query.get(user_or_id)
+            if not user:
+                return
         reset_url = url_for('auth.reset_password', token=token, _external=True)
         name = user.first_name or 'there'
         msg = Message(
@@ -232,7 +238,7 @@ def _send_reset_email(user, token):
         )
         mail.send(msg)
     except Exception as e:
-        current_app.logger.error(f'Password reset email failed for {user.email}: {e}')
+        current_app.logger.error('Password reset email failed: %s', e)
 
 
 @auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
