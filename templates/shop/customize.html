@@ -1545,6 +1545,11 @@
                         </div>
                         {% endif %}
                     </div>
+                    <div style="margin-top:0.85rem;text-align:center;">
+                        <a href="{{ url_for('custom_request.index') }}" style="display:inline-flex;align-items:center;gap:0.4rem;font-size:0.82rem;color:var(--terra-cotta);text-decoration:none;font-weight:600;padding:0.45rem 0.9rem;border:1.5px dashed var(--terra-cotta);border-radius:20px;background:rgba(184,124,111,0.06);transition:background 0.2s;" onmouseover="this.style.background='rgba(184,124,111,0.13)'" onmouseout="this.style.background='rgba(184,124,111,0.06)'">
+                            ✨ Need a logo recreated? We can do that!
+                        </a>
+                    </div>
                     {% if my_designs and current_user and current_user.is_authenticated %}
                     <p class="logo-gallery-label" style="margin-bottom: 0.5rem;">Your designs:</p>
                     <div class="logo-gallery-inline" id="myDesignsInline">
