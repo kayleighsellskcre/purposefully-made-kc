@@ -770,6 +770,31 @@ def delete_order(order_id):
     return redirect(url_for('admin.orders'))
 
 
+@admin_bp.route('/test-email', methods=['POST'])
+@admin_required
+def test_email():
+    """Send a test email to the admin address to verify SMTP is working."""
+    from flask_mail import Message as MailMessage
+    from routes.checkout import _mail_ready, _mail_sender
+    if not _mail_ready():
+        flash('Mail is NOT configured — MAIL_SERVER, MAIL_USERNAME, or MAIL_PASSWORD is missing on Railway.', 'error')
+        return redirect(request.referrer or url_for('admin.dashboard'))
+    mail = current_app.extensions.get('mail')
+    recipient = current_app.config.get('ADMIN_EMAIL') or current_user.email or 'purposefullymadekc@gmail.com'
+    try:
+        msg = MailMessage(
+            subject='✅ Test email — Purposefully Made KC mail is working!',
+            recipients=[recipient],
+            body=f'Mail is configured correctly on Railway.\n\nSMTP: {current_app.config.get("MAIL_SERVER")}:{current_app.config.get("MAIL_PORT")}\nSender: {_mail_sender()}',
+            sender=_mail_sender(),
+        )
+        mail.send(msg)
+        flash(f'Test email sent to {recipient} — check your inbox!', 'success')
+    except Exception as e:
+        flash(f'Mail send FAILED: {e}', 'error')
+    return redirect(request.referrer or url_for('admin.dashboard'))
+
+
 @admin_bp.route('/orders/<int:order_id>/resend-email', methods=['POST'])
 @admin_required
 def resend_order_email(order_id):
