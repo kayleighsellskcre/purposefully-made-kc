@@ -96,7 +96,7 @@
                     Proceed to Checkout
                 </a>
                 
-                <a href="{{ url_for('shop.index') }}" class="btn btn-outline btn-block">
+                <a href="{{ url_for('collection.view', slug=active_group_order.slug) if active_group_order else url_for('shop.index') }}" class="btn btn-outline btn-block">
                     Continue Shopping
                 </a>
             </div>

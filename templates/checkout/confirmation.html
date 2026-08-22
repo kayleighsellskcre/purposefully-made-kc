@@ -82,7 +82,7 @@
                 {% if current_user.is_authenticated %}
                 <a href="{{ url_for('account.orders') }}" class="btn btn-primary">View My Orders</a>
                 {% endif %}
-                <a href="{{ url_for('shop.index') }}" class="btn btn-outline">Continue Shopping</a>
+                <a href="{{ url_for('collection.view', slug=active_group_order.slug) if active_group_order else url_for('shop.index') }}" class="btn btn-outline">Continue Shopping</a>
             </div>
         </div>
     </div>
