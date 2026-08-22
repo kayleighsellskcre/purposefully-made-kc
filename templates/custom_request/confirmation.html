@@ -32,7 +32,9 @@
             <div class="confirmation-message">
                 <h2>What you sent</h2>
                 {% if req.reference_file_path %}
-                <img class="request-preview" src="{{ req.reference_file_path | image_url }}" alt="Your reference image">
+                <div class="request-preview-wrap">
+                    <img class="request-preview" src="{{ req.reference_file_path | image_url }}" alt="Your reference image">
+                </div>
                 {% endif %}
                 <p>{{ req.description }}</p>
             </div>
@@ -64,7 +66,23 @@
 .confirmation-message { padding: 2rem; border-bottom: 1px solid var(--border-color); }
 .confirmation-message h2 { margin-bottom: 1rem; }
 .confirmation-message p { color: var(--text-secondary); line-height: 1.6; }
-.request-preview { display: block; width: 100%; max-height: 280px; object-fit: contain; background: var(--secondary-color); border-radius: var(--border-radius); margin-bottom: 1rem; }
+.request-preview-wrap {
+    background: #fff;
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.request-preview {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    max-height: 280px;
+    object-fit: contain;
+    mix-blend-mode: multiply;
+}
 .confirmation-actions { padding: 2rem; display: flex; gap: 1rem; justify-content: center; }
 @media (max-width: 768px) { .confirmation-actions { flex-direction: column; } }
 </style>
