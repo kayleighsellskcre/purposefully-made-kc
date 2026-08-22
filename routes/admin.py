@@ -2561,6 +2561,37 @@ def delete_collection(collection_id):
     return redirect(url_for('admin.collections'))
 
 
+@admin_bp.route('/collections/<int:collection_id>/designs/<int:design_id>/remove', methods=['POST'])
+@admin_required
+def collection_design_remove(collection_id, design_id):
+    """Remove a design from a collection's approved list and permanently delete it."""
+    import json as _json
+    collection = Collection.query.get_or_404(collection_id)
+    design = Design.query.get_or_404(design_id)
+
+    # Remove from allowed_design_ids
+    ids = _json.loads(collection.allowed_design_ids) if collection.allowed_design_ids else []
+    ids = [i for i in ids if i != design_id]
+    collection.allowed_design_ids = _json.dumps(ids) if ids else None
+
+    # Delete the design record and its file
+    try:
+        _delete_design_file(design)
+    except Exception as e:
+        current_app.logger.warning('Could not delete design file for design %s: %s', design_id, e)
+    db.session.delete(design)
+
+    try:
+        db.session.commit()
+        flash('Design removed from group order.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('collection_design_remove failed: %s', e)
+        flash('Could not remove design. Please try again.', 'error')
+
+    return redirect(url_for('admin.edit_collection', collection_id=collection_id))
+
+
 # ===== PRODUCTION CENTER =====
 
 @admin_bp.route('/production/master')

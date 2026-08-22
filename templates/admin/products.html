@@ -148,6 +148,7 @@
                     <td class="prod-name-cell">
                         {{ product.name }}
                         <span class="prod-fav-flag" data-fav-flag {% if not product.is_customer_favorite %}hidden{% endif %}>Favorite</span>
+                        {% if not product.thumb_url %}<span class="prod-badge prod-badge--inactive" style="font-size:0.65rem;margin-left:0.4rem;" title="No mockup images — edit this product to upload photos">📷 No image</span>{% endif %}
                     </td>
                     <td>{{ product.category or '—' }}</td>
                     <td>${{ "%.2f"|format(product.base_price) }}</td>
@@ -216,6 +217,7 @@
                     <h4 class="prod-card-name">
                         {{ product.name }}
                         <span class="prod-fav-flag" data-fav-flag {% if not product.is_customer_favorite %}hidden{% endif %}>Favorite</span>
+                        {% if not product.thumb_url %}<span class="prod-badge prod-badge--inactive" style="font-size:0.65rem;display:inline-block;margin-top:0.2rem;" title="No mockup images">📷 No image</span>{% endif %}
                     </h4>
                     </div>
                 </div>
