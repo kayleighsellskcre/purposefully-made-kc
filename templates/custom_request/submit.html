@@ -20,14 +20,15 @@
                     <p class="form-hint">Screenshot or save the image you want recreated (PNG, JPG, WEBP, HEIC)</p>
                     <div class="file-upload-wrapper">
                         <input type="file" id="reference_image" name="reference_image" accept=".png,.jpg,.jpeg,.webp,.heic,.heif,image/*" required class="file-input-hidden">
-                        <label for="reference_image" class="file-upload-label">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <label for="reference_image" class="file-upload-label" id="upload-label">
+                            <img id="image-preview" src="" alt="Preview" style="display:none;max-width:100%;max-height:220px;border-radius:8px;object-fit:contain;margin-bottom:0.5rem;">
+                            <svg id="upload-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                 <polyline points="17 8 12 3 7 8"></polyline>
                                 <line x1="12" y1="3" x2="12" y2="15"></line>
                             </svg>
-                            <span class="file-upload-text">Choose file</span>
-                            <span class="file-upload-chosen">No file chosen</span>
+                            <span class="file-upload-text" id="upload-text">Choose file</span>
+                            <span class="file-upload-chosen" id="upload-chosen">No file chosen</span>
                         </label>
                     </div>
                 </div>
@@ -212,27 +213,83 @@
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const fileInput = document.getElementById('reference_image');
-    const label = document.querySelector('.file-upload-label');
-    const chosenSpan = label.querySelector('.file-upload-chosen');
-    
-    fileInput.addEventListener('change', function() {
-        if (this.files && this.files.length > 0) {
-            chosenSpan.textContent = this.files[0].name;
-            label.classList.add('has-file');
-        } else {
+document.addEventListener('DOMContentLoaded', function () {
+    const fileInput  = document.getElementById('reference_image');
+    const preview    = document.getElementById('image-preview');
+    const icon       = document.getElementById('upload-icon');
+    const uploadText = document.getElementById('upload-text');
+    const chosenSpan = document.getElementById('upload-chosen');
+    const label      = document.getElementById('upload-label');
+    const form       = document.getElementById('recreate-form');
+    const submitBtn  = document.getElementById('recreate-submit');
+
+    // Holds the compressed Blob to swap in on submit
+    let compressedBlob = null;
+    let compressedName = null;
+
+    fileInput.addEventListener('change', function () {
+        const file = this.files && this.files[0];
+        if (!file) {
+            preview.style.display = 'none';
+            icon.style.display    = '';
+            uploadText.style.display = '';
             chosenSpan.textContent = 'No file chosen';
             label.classList.remove('has-file');
+            compressedBlob = null;
+            return;
         }
+
+        chosenSpan.textContent = file.name;
+        label.classList.add('has-file');
+
+        // Show preview immediately via FileReader
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const src = e.target.result;
+            preview.src = src;
+            preview.style.display = 'block';
+            icon.style.display    = 'none';
+            uploadText.style.display = 'none';
+
+            // Compress: draw onto canvas at max 1800px, export as JPEG ≤85%
+            const img = new Image();
+            img.onload = function () {
+                const MAX = 1800;
+                let w = img.width, h = img.height;
+                if (w > MAX || h > MAX) {
+                    if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+                    else       { w = Math.round(w * MAX / h); h = MAX; }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                canvas.toBlob(function (blob) {
+                    compressedBlob = blob;
+                    compressedName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+                }, 'image/jpeg', 0.85);
+            };
+            img.src = src;
+        };
+        reader.readAsDataURL(file);
     });
 
-    var form = document.getElementById('recreate-form');
-    var submitBtn = document.getElementById('recreate-submit');
+    // On submit: swap in compressed file if available, then disable button
     if (form && submitBtn) {
-        form.addEventListener('submit', function () {
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Sending your request…';
+        form.addEventListener('submit', function (e) {
+            if (compressedBlob) {
+                e.preventDefault();
+                // Build a new FileList-like DataTransfer with the compressed blob
+                const dt = new DataTransfer();
+                dt.items.add(new File([compressedBlob], compressedName, { type: 'image/jpeg' }));
+                fileInput.files = dt.files;
+                compressedBlob = null; // prevent double-submit loop
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Sending your request…';
+                form.submit();
+            } else {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Sending your request…';
+            }
         });
     }
 });
