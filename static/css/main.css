@@ -205,9 +205,9 @@ a:hover {
     gap: 0.25rem;
     justify-content: center;
     flex-wrap: nowrap;
-    /* Pin dead-center on the container regardless of logo/icon widths */
+    /* Shift right ~80px to clear the oversized logo image */
     position: absolute;
-    left: 50%;
+    left: calc(50% + 80px);
     transform: translateX(-50%);
     white-space: nowrap;
 }
