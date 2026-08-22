@@ -160,9 +160,9 @@ def _upload_to_r2(file_storage, app, subfolder, public_id_prefix):
         region_name='auto',
         config=Config(
             signature_version='s3v4',
-            connect_timeout=8,
-            read_timeout=20,
-            retries={'max_attempts': 2},
+            connect_timeout=5,
+            read_timeout=15,
+            retries={'max_attempts': 1},
         ),
     )
 

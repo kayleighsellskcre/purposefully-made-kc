@@ -38,28 +38,63 @@ def submit():
             flash('Please upload a PNG, JPG, WEBP, or HEIC image.', 'error')
             return redirect(url_for('custom_request.submit'))
 
-        # Save reference image (R2 if configured, local fallback for dev).
-        # Only treat the upload as failed if storage truly fails — never show a
-        # false error after the file has actually been stored.
-        from utils.cloud_storage import upload_image
+        # Save reference image.
+        # Strategy: save locally first (instant), then promote to R2 in background.
+        # This keeps the response under Railway's 30-second timeout even when R2 is slow.
+        from utils.cloud_storage import _save_locally, r2_configured
+        app_obj = current_app._get_current_object()
+        prefix = f'request_{secrets.token_hex(8)}'
         relative_path = None
         try:
-            relative_path = upload_image(
-                file,
-                current_app._get_current_object(),
-                subfolder='custom_requests',
-                public_id_prefix=f'request_{secrets.token_hex(8)}',
-            )
+            relative_path = _save_locally(file, app_obj, 'custom_requests', prefix)
         except Exception as e:
             current_app.logger.exception(
-                'Custom request reference image upload failed for user %s: %s',
-                current_user.id, e,
+                'Custom request local save failed for user %s: %s', current_user.id, e,
             )
-            relative_path = None
 
         if not relative_path:
-            flash('We could not upload your image. Please try a different photo or file, or try again in a moment.', 'error')
+            flash('We could not save your image. Please try a different photo or file.', 'error')
             return redirect(url_for('custom_request.submit'))
+
+        # Kick off R2 upload in background so the response returns immediately.
+        if r2_configured(app_obj):
+            import threading, io as _io
+            from utils.cloud_storage import _upload_to_r2, _make_key
+            from werkzeug.datastructures import FileStorage as _FileStorage
+            try:
+                file.stream.seek(0)
+                file_bytes = file.stream.read()
+            except Exception:
+                file_bytes = None
+
+            def _bg_upload(file_bytes, filename, content_type, local_path, prefix, app):
+                if not file_bytes:
+                    return
+                try:
+                    with app.app_context():
+                        fs = _FileStorage(
+                            stream=_io.BytesIO(file_bytes),
+                            filename=filename,
+                            content_type=content_type,
+                        )
+                        r2_url = _upload_to_r2(fs, app, 'custom_requests', prefix)
+                        if r2_url:
+                            # Update any matching request rows to the R2 URL
+                            reqs = CustomDesignRequest.query.filter_by(
+                                reference_file_path=local_path
+                            ).all()
+                            for r in reqs:
+                                r.reference_file_path = r2_url
+                            db.session.commit()
+                except Exception as ex:
+                    app.logger.warning('Background R2 upload failed for %s: %s', local_path, ex)
+
+            t = threading.Thread(
+                target=_bg_upload,
+                args=(file_bytes, file.filename, file.content_type, relative_path, prefix, app_obj),
+                daemon=True,
+            )
+            t.start()
 
         try:
             req = CustomDesignRequest(
