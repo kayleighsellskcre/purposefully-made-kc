@@ -2,6 +2,11 @@
 
 {% block title %}Page Not Found - Purposefully Made KC{% endblock %}
 
+{# Any mistyped or stale URL renders this. Without noindex, every one of them is
+   a candidate for the index under the same canonical. #}
+{% block robots %}noindex, follow{% endblock %}
+{% block meta_description %}That page could not be found. Browse our custom apparel, design gallery, or get in touch.{% endblock %}
+
 {% block content %}
 <div class="err-page">
     <div class="container">

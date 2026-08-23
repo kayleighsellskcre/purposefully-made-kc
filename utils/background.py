@@ -13,4 +13,11 @@ def run_in_background(app, fn, *args, **kwargs):
                 app.logger.exception('background task failed: %s', getattr(fn, '__name__', fn))
             except Exception:
                 pass
+
+    if app.config.get('TESTING'):
+        # Inline under test, so assertions see the effect and a second thread
+        # cannot interleave transactions on SQLite's single shared connection.
+        _run()
+        return
+
     threading.Thread(target=_run, daemon=True).start()

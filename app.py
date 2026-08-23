@@ -1,6 +1,6 @@
 import os
 import sys
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_from_directory
+from flask import Flask, Request, render_template, request, redirect, url_for, flash, session, jsonify, send_from_directory
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_mail import Mail
 from flask_wtf.csrf import CSRFProtect
@@ -15,6 +15,27 @@ import paypalrestsdk
 mail = Mail()
 csrf = CSRFProtect()
 limiter = Limiter(key_func=get_remote_address, default_limits=[])
+
+
+class SiteRequest(Request):
+    """Form limits sized for this site's largest form.
+
+    Werkzeug allows 1000 multipart parts by default, counting every checkbox,
+    not just files. The Create Group Order form renders one checkbox per active
+    product and one per brand/colour pair — 995 parts on the live catalogue.
+    Adding a single colour pushed it over, and "Create Group Order" started
+    failing with 413 Request Entity Too Large; it did so six times on 17 Aug
+    before anyone understood why, because the message talks about data size and
+    the payload was only about 100 KB.
+
+    These are set on the request class rather than in config because Flask only
+    began reading them from config in 3.1, and requirements.txt pins 3.0.
+
+    MAX_CONTENT_LENGTH in config.py is still the real upload guard.
+    """
+
+    max_form_parts = 5000
+    max_form_memory_size = 2 * 1024 * 1024
 
 
 def _sync_mockups_to_static(app):
@@ -41,6 +62,7 @@ def _sync_mockups_to_static(app):
 
 def create_app(config_class=Config):
     app = Flask(__name__)
+    app.request_class = SiteRequest
     app.config.from_object(config_class)
 
     # Ensure all externally generated URLs use https in production.
@@ -148,6 +170,9 @@ def create_app(config_class=Config):
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS design_id INTEGER REFERENCES design(id)",
                     # custom_design_request.is_deleted — soft-delete flag so dismissed cards stay gone
                     "ALTER TABLE custom_design_request ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE",
+                    # custom_design_request.emails_sent_at — idempotency marker for the
+                    # customer confirmation + business notification pair
+                    "ALTER TABLE custom_design_request ADD COLUMN IF NOT EXISTS emails_sent_at TIMESTAMP",
                     # user.failed_logins / locked_until — brute-force lockout tracking
                     "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS failed_logins INTEGER DEFAULT 0",
                     "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP",
@@ -175,6 +200,22 @@ def create_app(config_class=Config):
                             conn.rollback()
                         except Exception:
                             pass
+
+                # Enforce one order per checkout token at the database level, so
+                # two simultaneous submits cannot both pass the application's
+                # duplicate check and create a double order. Partial index keeps
+                # the many NULL tokens (admin-created orders) legal.
+                try:
+                    conn.execute(text(
+                        'CREATE UNIQUE INDEX IF NOT EXISTS uq_order_checkout_token '
+                        'ON "order" (checkout_token) WHERE checkout_token IS NOT NULL'
+                    ))
+                    conn.commit()
+                except Exception:
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
 
             # Create favorites table if it doesn't exist
             from models import Favorite
@@ -554,8 +595,11 @@ def create_app(config_class=Config):
 
         # Fresh DB lookup so is_site_admin is always accurate.
         # Wrapped tightly so a DB hiccup never breaks template rendering.
+        # getattr rather than cu.is_authenticated: outside a request context
+        # (background email threads) the proxy resolves to None, and the bare
+        # attribute access raised AttributeError mid-render.
         is_site_admin = False
-        if cu.is_authenticated:
+        if getattr(cu, 'is_authenticated', False):
             try:
                 is_site_admin = bool(getattr(cu, 'is_admin', False))
             except Exception:
@@ -568,12 +612,45 @@ def create_app(config_class=Config):
             active_group_order = get_active_collection(session.get('cart'))
         except Exception:
             active_group_order = None
+        # Canonical URL and origin for <link rel="canonical"> and Open Graph.
+        #
+        # request.base_url was used before, which echoes whatever host the
+        # visitor happened to arrive on. Reaching the site as www and non-www,
+        # or over http, produced a different canonical each time and told search
+        # engines the same page lived at several addresses. SITE_ORIGIN pins it
+        # to one preferred address.
+        site_origin = (app.config.get('SITE_ORIGIN') or '').rstrip('/')
+        try:
+            if site_origin:
+                canonical_url = site_origin + request.path
+            else:
+                canonical_url = request.base_url
+        except Exception:
+            canonical_url = site_origin or ''
+
+        # Whole areas of the site should never appear in search results: the
+        # admin, a customer's account, the cart and checkout, and the sign-in
+        # pages. Deciding this from the blueprint covers every template at once,
+        # including the forty-odd admin ones, and cannot be forgotten on a new
+        # page. A template can still override the `robots` block.
+        private_blueprints = {
+            'admin', 'account', 'auth', 'cart', 'checkout', 'favorites',
+        }
+        try:
+            is_private = request.blueprint in private_blueprints
+        except Exception:
+            is_private = False
+        robots_directive = 'noindex, nofollow' if is_private else 'index, follow'
+
         return {
             'cart_count': cart_count,
             'current_year': _dt.now().year,
             'admin_email': admin_email,
             'is_site_admin': is_site_admin,
             'active_group_order': active_group_order,
+            'site_origin': site_origin,
+            'canonical_url': canonical_url,
+            'robots_directive': robots_directive,
         }
     
     # Error handlers
@@ -583,13 +660,38 @@ def create_app(config_class=Config):
 
     @app.errorhandler(413)
     def request_too_large(error):
-        """Handle uploads that exceed MAX_CONTENT_LENGTH.
+        """Handle a request that exceeded one of the body limits.
+
+        Two very different things land here, and saying "your file was too
+        large" for both sent us chasing an imaginary upload problem for the
+        group-order form, where the payload was 100 KB of checkboxes. Compare
+        the declared length against the limit to tell them apart.
 
         - AJAX/JSON requests → JSON error (fetch() in customize.html can parse it)
-        - Regular form POSTs → flash + redirect back so the user sees a clear message
+        - Regular form POSTs → flash + redirect back so the user sees a message
         """
         from flask import request as _req, jsonify as _json, redirect, flash as _flash
-        limit_mb = int(app.config.get('MAX_CONTENT_LENGTH', 50 * 1024 * 1024)) // (1024 * 1024)
+        limit_bytes = int(app.config.get('MAX_CONTENT_LENGTH') or 50 * 1024 * 1024)
+        limit_mb = limit_bytes // (1024 * 1024)
+        oversized_body = (_req.content_length or 0) > limit_bytes
+
+        if oversized_body:
+            message = (
+                f'That upload is too large (limit: {limit_mb} MB). '
+                'On iPhone: share the photo and choose "Medium" size. '
+                'On Android: use a photo editor to reduce the size first.'
+            )
+        else:
+            message = (
+                'That form had too many options selected at once for us to '
+                'process. Please choose fewer colours or styles and try again — '
+                'and let us know, because this is our bug, not yours.'
+            )
+            app.logger.error(
+                '413 with only %s bytes on %s — form part limit (%s) was hit',
+                _req.content_length, _req.path, _req.max_form_parts,
+            )
+
         is_ajax = (
             _req.path.startswith('/design/')
             or 'json' in _req.headers.get('Accept', '')
@@ -597,21 +699,10 @@ def create_app(config_class=Config):
             or _req.headers.get('X-Requested-With') == 'XMLHttpRequest'
         )
         if is_ajax:
-            return _json({
-                'error': (
-                    f'File is too large (limit: {limit_mb} MB). '
-                    'On iPhone: share the photo and choose "Medium" size. '
-                    'On Android: use a photo editor to reduce size before uploading.'
-                )
-            }), 413
-        # Regular form POST — redirect back with a helpful flash message
-        _flash(
-            f'Your file upload was too large (limit: {limit_mb} MB). '
-            'Please compress or resize your image and try again.',
-            'error'
-        )
-        referrer = _req.referrer or '/'
-        return redirect(referrer)
+            return _json({'error': message}), 413
+
+        _flash(message, 'error')
+        return redirect(_req.referrer or '/')
 
     @app.errorhandler(500)
     def internal_error(error):

@@ -3,6 +3,7 @@ Resolve product mockup image URLs from DB (color variants) or from uploads/mocku
 All mockups under uploads/mockups/{style_number}/ are used so each product shows its uploaded mockups.
 """
 import os
+import time
 from pathlib import Path
 
 
@@ -22,6 +23,138 @@ def _mockup_dirs(app):
     return [app_mockups, root_mockups, static_images]
 
 
+MOCKUP_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.webp')
+
+# Resolving one colour's mockup used to cost up to 12 stat() calls plus up to
+# 12 directory globs. /shop/ renders every colour of every product — about 1350
+# colour/view pairs on the live catalogue — so a single page load made tens of
+# thousands of filesystem calls. That is why /shop/ took 2.7 seconds while every
+# other page answered in under 30ms.
+#
+# Each style folder is now listed once and turned into two lookup tables, so the
+# same resolution is a dictionary hit.
+#
+# (mockup search roots, style_number) -> _StyleIndex
+_STYLE_INDEX = {}
+
+# How long a cached index is trusted before its folders are stat()ed again.
+# Mockups only change when an admin uploads them, so a second of staleness costs
+# nothing, and it keeps a catalogue render from re-stat()ing the same folder
+# once per colour.
+_INDEX_TTL_SECONDS = 1.0
+
+
+class _StyleIndex:
+    """Everything /shop/ needs to know about one style's mockup folders.
+
+    `filenames` is the union of every filename across the folders, used for the
+    exact-match naming scheme. `by_color_view` resolves the descriptive naming
+    scheme, holding the first match in the original search order (folder
+    preference, then extension, then name). `listings` keeps the per-folder
+    names in order for colour discovery, which wants the *last* match rather
+    than the first.
+    """
+
+    __slots__ = ('fingerprint', 'checked_at', 'listings', 'filenames', 'by_color_view')
+
+    def __init__(self, fingerprint, checked_at, listings, filenames, by_color_view):
+        self.fingerprint = fingerprint
+        self.checked_at = checked_at
+        self.listings = listings
+        self.filenames = filenames
+        self.by_color_view = by_color_view
+
+
+def _style_dirs(app, style_number):
+    """Existing folders holding this style's mockups, most preferred first."""
+    dirs = []
+    for mockup_dir in _mockup_dirs(app):
+        if not mockup_dir:
+            continue
+        style_dir = os.path.join(mockup_dir, str(style_number))
+        if os.path.isdir(style_dir):
+            dirs.append(style_dir)
+    return dirs
+
+
+def _fingerprint(style_dirs):
+    """Modification times of the folders, so a new upload invalidates the cache.
+
+    Adding a file changes its containing directory's mtime, so an admin who
+    uploads a mockup sees it without waiting for a restart.
+    """
+    marks = []
+    for path in style_dirs:
+        try:
+            marks.append((path, os.stat(path).st_mtime_ns))
+        except OSError:
+            marks.append((path, None))
+    return tuple(marks)
+
+
+def _color_key(color_name):
+    return (color_name or '').strip().lower().replace(' ', '_')
+
+
+def _build_style_index(app, style_number, now):
+    style_dirs = _style_dirs(app, style_number)
+    fingerprint = _fingerprint(style_dirs)
+
+    listings = []
+    for style_dir in style_dirs:
+        try:
+            listings.append(sorted(os.listdir(style_dir)))
+        except OSError:
+            listings.append([])
+
+    filenames = set()
+    for names in listings:
+        filenames.update(names)
+
+    # First match wins, in the same folder-then-extension-then-name order the
+    # old per-colour scan used.
+    by_color_view = {}
+    for names in listings:
+        for ext in MOCKUP_EXTENSIONS:
+            for name in names:
+                if not name.lower().endswith(ext):
+                    continue
+                parsed_color, parsed_view = _parse_mockup_filename(
+                    style_number, name[: -len(ext)])
+                if not parsed_color or not parsed_view:
+                    continue
+                by_color_view.setdefault((_color_key(parsed_color), parsed_view), name)
+
+    return _StyleIndex(fingerprint, now, listings, filenames, by_color_view)
+
+
+def _style_index(app, style_number):
+    # Keyed by the search roots as well as the style. app.py builds an app at
+    # module scope and the test suite builds another, so two apps can share this
+    # process with different root_path or UPLOAD_FOLDER values. Keying on the
+    # style alone let the TTL shortcut below hand one app the other's index,
+    # because that path deliberately skips the fingerprint check.
+    key = (tuple(_mockup_dirs(app)), str(style_number))
+
+    now = time.monotonic()
+    cached = _STYLE_INDEX.get(key)
+    if cached is not None:
+        if now - cached.checked_at < _INDEX_TTL_SECONDS:
+            return cached
+        if _fingerprint(_style_dirs(app, style_number)) == cached.fingerprint:
+            cached.checked_at = now
+            return cached
+
+    index = _build_style_index(app, style_number, now)
+    _STYLE_INDEX[key] = index
+    return index
+
+
+def clear_mockup_cache():
+    """Forget every remembered folder listing. For tests and after bulk uploads."""
+    _STYLE_INDEX.clear()
+
+
 def _find_mockup_file(app, style_number, color_name, view):
     """
     Look for a mockup file in uploads/mockups for the given style, color, and view.
@@ -31,33 +164,22 @@ def _find_mockup_file(app, style_number, color_name, view):
     safe_color = (color_name or '').replace(' ', '_').strip()
     if not safe_color:
         return None
+
+    index = _style_index(app, style_number)
+    if not index.filenames:
+        return None
+
     # Format A: 3001_Aqua_front.jpg
     base_name = f"{style_number}_{safe_color}_{view}"
-    for ext in ('.jpg', '.jpeg', '.png', '.webp'):
+    for ext in MOCKUP_EXTENSIONS:
         filename = base_name + ext
-        for mockup_dir in _mockup_dirs(app):
-            if not mockup_dir or not os.path.isdir(mockup_dir):
-                continue
-            style_dir = os.path.join(mockup_dir, str(style_number))
-            filepath = os.path.join(style_dir, filename)
-            if os.path.isfile(filepath):
-                return f"{style_number}/{filename}"
-    # Format B: scan folder for BELLA_+_CANVAS_3001Y_Ash_Front_High style
-    color_lower = (color_name or '').lower().replace(' ', '_')
-    view_needle = view.lower()
-    for mockup_dir in _mockup_dirs(app):
-        if not mockup_dir or not os.path.isdir(mockup_dir):
-            continue
-        style_dir = os.path.join(mockup_dir, str(style_number))
-        if not os.path.isdir(style_dir):
-            continue
-        for ext in ('.jpg', '.jpeg', '.png', '.webp'):
-            for f in Path(style_dir).glob('*' + ext):
-                parsed_color, parsed_view = _parse_mockup_filename(style_number, f.stem)
-                if parsed_color and parsed_view == view_needle:
-                    color_match = parsed_color.lower().replace(' ', '_') == color_lower
-                    if color_match:
-                        return f"{style_number}/{f.name}"
+        if filename in index.filenames:
+            return f"{style_number}/{filename}"
+
+    # Format B: BELLA_+_CANVAS_3001Y_Ash_Front_High.jpg
+    name = index.by_color_view.get((_color_key(color_name), view.lower()))
+    if name:
+        return f"{style_number}/{name}"
     return None
 
 
@@ -129,18 +251,15 @@ def discover_colors_from_mockup_folder(app, style_number):
     [{'color_name': 'Aqua', 'front_image': url or None, 'back_image': url or None, 'inventory': {}}, ...]
     """
     colors_seen = {}
-    for mockup_dir in _mockup_dirs(app):
-        if not mockup_dir or not os.path.isdir(mockup_dir):
-            continue
-        style_dir = os.path.join(mockup_dir, str(style_number))
-        if not os.path.isdir(style_dir):
-            continue
-        for ext in ('.jpg', '.jpeg', '.png', '.webp'):
-            for f in Path(style_dir).glob('*' + ext):
-                color_name, view = _parse_mockup_filename(style_number, f.stem)
+    for names in _style_index(app, style_number).listings:
+        for ext in MOCKUP_EXTENSIONS:
+            for name in names:
+                if not name.lower().endswith(ext):
+                    continue
+                color_name, view = _parse_mockup_filename(style_number, name[: -len(ext)])
                 if not color_name or not view:
                     continue
-                rel = f"{style_number}/{f.name}"
+                rel = f"{style_number}/{name}"
                 url = _mockup_url(app, rel)
                 if color_name not in colors_seen:
                     colors_seen[color_name] = {'color_name': color_name, 'color_hex': None, 'front_image': None, 'back_image': None, 'front_image_url': None, 'back_image_url': None, 'inventory': {}}
@@ -356,12 +475,16 @@ def sorted_front_mockup_urls(variants):
     return [url for _, url in scored]
 
 
-def get_first_shop_image_url(product, app):
+def get_first_shop_image_url(product, app, carousel=None):
     """
     Get a single image URL for shop display when carousel is empty.
     Returns first available front mockup from folder or DB, else None.
+
+    Pass `carousel` when the caller has already built the colour list. /shop/
+    called this straight after get_carousel_colors_for_product() for every
+    product, so the whole list was being built twice per row.
     """
-    colors = get_carousel_colors_for_product(product, app)
+    colors = carousel if carousel is not None else get_carousel_colors_for_product(product, app)
     if colors:
         return colors[0].get('front_image_url')
     # Fallback: scan folder for any front image

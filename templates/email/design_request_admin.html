@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>New Design Request: #{{ req.id }}</title>
+<style>
+  @media only screen and (max-width: 520px) {
+    .pmkc-pad { padding-left:18px !important; padding-right:18px !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#f5f0e1;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0e1;padding:32px 16px;">
+  <tr>
+    <td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:#3a3d48;padding:28px 32px;text-align:center;">
+            <p style="margin:0 0 6px;font-family:'Georgia',serif;font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:#b87c6f;">Purposefully Made KC</p>
+            <h1 style="margin:0;font-family:'Georgia',serif;font-size:22px;font-weight:400;color:#f5f0e1;letter-spacing:0.04em;">New Design Request</h1>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="background:#b87c6f;padding:14px 32px;text-align:center;">
+            <p style="margin:0;font-family:Arial,sans-serif;font-size:18px;font-weight:700;color:#fff;letter-spacing:0.08em;">
+              Request #{{ req.id }} &nbsp;·&nbsp; {{ customer_name }}
+            </p>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="pmkc-pad" style="padding:28px 32px 0;">
+
+            <!-- Open in dashboard -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+              <tr>
+                <td align="center">
+                  <a href="{{ request_url }}"
+                     style="display:inline-block;padding:12px 28px;background:#b87c6f;color:#fff;text-decoration:none;border-radius:8px;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">
+                    Open Request in Dashboard &rarr;
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Customer -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;background:#faf8f5;border-radius:10px;border:1px solid #e8d0b1;">
+              <tr>
+                <td style="padding:14px 18px;">
+                  <p style="margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#b87c6f;font-family:Arial,sans-serif;">Customer</p>
+                  <p style="margin:0;font-size:15px;font-weight:700;color:#3a3d48;font-family:'Georgia',serif;">{{ customer_name }}</p>
+                  <p style="margin:4px 0 0;font-size:13px;color:#5a5d68;font-family:Arial,sans-serif;">
+                    {{ customer_email or 'no email on file' }}{% if customer_phone %} &middot; {{ customer_phone }}{% endif %}
+                  </p>
+                  <p style="margin:4px 0 0;font-size:12px;color:#9a9da8;font-family:Arial,sans-serif;">Submitted {{ submitted|central }}</p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- What they want -->
+            <p style="margin:0 0 10px;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#b87c6f;font-family:Arial,sans-serif;">What They Want</p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;border:1px solid #e8d0b1;border-radius:10px;">
+              <tr>
+                <td style="padding:14px 18px;">
+                  <p style="margin:0;font-size:14px;color:#3a3d48;font-family:Arial,sans-serif;line-height:1.65;white-space:pre-wrap;">{{ req.description }}</p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Reference artwork -->
+            <p style="margin:0 0 10px;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#b87c6f;font-family:Arial,sans-serif;">Reference Artwork</p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;background:#faf8f5;border-radius:10px;border:1px solid #e8d0b1;">
+              <tr>
+                <td style="padding:14px 18px;">
+                  <p style="margin:0 0 6px;font-size:13px;color:#5a5d68;font-family:Arial,sans-serif;">
+                    File: <strong style="color:#3a3d48;">{{ req.reference_original_filename or 'unnamed upload' }}</strong>
+                  </p>
+                  {% if reference_url %}
+                  <p style="margin:0 0 12px;font-size:13px;font-family:Arial,sans-serif;">
+                    <a href="{{ reference_url }}" style="color:#b87c6f;font-weight:700;text-decoration:none;">Open the full-size reference &rarr;</a>
+                  </p>
+                  <img src="{{ reference_url }}" alt="Reference image the customer uploaded"
+                       width="240" style="max-width:240px;height:auto;display:block;border-radius:8px;border:1px solid #e8d0b1;background:#fff;">
+                  {% else %}
+                  <p style="margin:0;font-size:13px;color:#c0392b;font-family:Arial,sans-serif;">
+                    Reference file link unavailable — open the dashboard to view it.
+                  </p>
+                  {% endif %}
+                </td>
+              </tr>
+            </table>
+
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="padding:20px 32px 28px;text-align:center;border-top:1px solid #e8d0b1;">
+            <a href="{{ request_url }}" style="font-family:Arial,sans-serif;font-size:13px;color:#b87c6f;text-decoration:none;font-weight:700;">
+              Open request #{{ req.id }} in Dashboard &rarr;
+            </a>
+            <p style="margin:10px 0 0;font-size:11px;color:#9a9da8;font-family:Arial,sans-serif;">
+              Purposefully Made KC &middot; purposefullymadekc.com
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

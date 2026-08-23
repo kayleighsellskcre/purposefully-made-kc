@@ -85,11 +85,20 @@ def _mail_ready():
     )
 
 
+MAIL_SENDER_NAME = 'Purposefully Made KC'
+
+
 def _mail_sender():
-    return (
+    """(display name, address) so inboxes show the business, not a bare address."""
+    address = (
         current_app.config.get('MAIL_DEFAULT_SENDER')
         or current_app.config.get('MAIL_USERNAME')
     )
+    if isinstance(address, (tuple, list)):
+        return tuple(address)
+    if not address:
+        return None
+    return (MAIL_SENDER_NAME, address)
 
 
 def _receipt_recipients(order):
@@ -117,11 +126,21 @@ def _receipt_recipients(order):
 
 
 def _render_email(template, **context):
-    try:
+    """Render an email template with a request context guaranteed to exist.
+
+    Receipts are sent from a background thread, which has an app context but no
+    request. Flask still runs context processors during render, and ours reads
+    flask_login's current_user — that proxy resolves to None outside a request,
+    so rendering raised AttributeError and every receipt was silently lost.
+    Supplying a request context also lets url_for(_external=True) produce real
+    absolute links instead of failing.
+    """
+    from flask import has_request_context
+    if has_request_context():
         return render_template(template, **context)
-    except RuntimeError:
-        with current_app.test_request_context():
-            return render_template(template, **context)
+    base_url = current_app.config.get('ADMIN_BASE_URL') or 'https://purposefullymadekc.com'
+    with current_app.test_request_context(base_url=base_url):
+        return render_template(template, **context)
 
 
 def send_order_confirmation_email(order, force=False):
@@ -164,11 +183,27 @@ def _send_order_confirmation_email(order):
 
     # ── Build shared text pieces ───────────────────────────────────────────
     placed_at = order.created_at or datetime.utcnow()
-    items_text = '\n'.join(
-        f"  • {item.product_name} – {item.color}, Size {item.size}"
-        f" × {item.quantity}  =  ${float(item.subtotal or 0):.2f}"
-        for item in (order.items.all() if hasattr(order.items, 'all') else list(order.items or []))
-    )
+
+    def _item_lines(item):
+        """One item as plain text, including placement and personalization."""
+        head = (
+            f"  • {item.product_name} – {item.color}, Size {item.size}"
+            f" × {item.quantity}  =  ${float(item.subtotal or 0):.2f}"
+        )
+        detail = []
+        if item.placement:
+            detail.append(f"placement: {str(item.placement).replace('_', ' ')}")
+        personalization = item.back_design_details or {}
+        if personalization.get('name'):
+            detail.append(f"name: {personalization['name']}")
+        if personalization.get('number'):
+            detail.append(f"number: {personalization['number']}")
+        if detail:
+            head += f"\n      ({', '.join(detail)})"
+        return head
+
+    order_items = order.items.all() if hasattr(order.items, 'all') else list(order.items or [])
+    items_text = '\n'.join(_item_lines(item) for item in order_items)
     if order.fulfillment_method == 'shipping':
         addr_parts = list(filter(None, [
             order.shipping_recipient or order.full_name,
@@ -197,6 +232,7 @@ def _send_order_confirmation_email(order):
             f"Items:\n{items_text}\n\n"
             f"Subtotal : ${float(order.subtotal or 0):.2f}\n"
             f"Shipping : {'$' + f'{float(order.shipping_cost):.2f}' if order.shipping_cost else 'Free (Pickup)'}\n"
+            f"Tax      : ${float(order.tax or 0):.2f}\n"
             f"Total    : ${float(order.total or 0):.2f}\n\n"
             f"Delivery:\n{delivery_text}\n\n"
             f"Questions? Email us at purposefullymadekc@gmail.com\n\n"
@@ -219,34 +255,19 @@ def _send_order_confirmation_email(order):
             account_order_url=account_order_url,
         )
 
-        timeout = int(current_app.config.get('MAIL_TIMEOUT') or 20)
-        _prev = _socket.getdefaulttimeout()
-        _socket.setdefaulttimeout(timeout)
-        try:
-            msg = Message(
-                subject=f"Your receipt — {order.order_number} | Purposefully Made KC",
-                recipients=recipients,
-                body=plain_body,
-                html=html_body,
-                sender=_mail_sender(),
-                reply_to=current_app.config.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com',
-            )
-            mail.send(msg)
-            email_sent = True
-            current_app.logger.info(
-                'customer confirmation email sent for %s to %s',
-                getattr(order, 'order_number', '?'),
-                ', '.join(recipients),
-            )
-        except Exception as e:
-            print(f"Customer confirmation email error: {e}", file=sys.stderr)
-            current_app.logger.exception(
-                'customer confirmation email error for %s to %s',
-                getattr(order, 'order_number', '?'),
-                ', '.join(recipients),
-            )
-        finally:
-            _socket.setdefaulttimeout(_prev)
+        from utils.mailer import send as _send_mail
+        msg = Message(
+            subject=f"Your receipt — {order.order_number} | Purposefully Made KC",
+            recipients=recipients,
+            body=plain_body,
+            html=html_body,
+            sender=_mail_sender(),
+            reply_to=current_app.config.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com',
+        )
+        email_sent = _send_mail(
+            current_app._get_current_object(), msg,
+            description=f'customer receipt for {order.order_number}',
+        )
     elif not recipients:
         current_app.logger.error(
             'order email skipped for %s — no customer email on the order or account',
@@ -271,22 +292,19 @@ def _send_order_confirmation_email(order):
             f"Delivery: {delivery_text}\n\n"
             f"View order: {admin_base_url}/admin/orders/{order.id}"
         )
-        timeout = int(current_app.config.get('MAIL_TIMEOUT') or 20)
-        _prev = _socket.getdefaulttimeout()
-        _socket.setdefaulttimeout(timeout)
-        try:
-            admin_msg = Message(
-                subject=f"🛍 New Order — {order.order_number} · ${order.total:.2f}",
-                recipients=[admin_email],
-                body=admin_plain,
-                html=admin_html,
-                sender=_mail_sender(),
-            )
-            mail.send(admin_msg)
-        except Exception as e:
-            print(f"Admin order alert email error: {e}", file=sys.stderr)
-        finally:
-            _socket.setdefaulttimeout(_prev)
+        from utils.mailer import send as _send_mail
+        admin_msg = Message(
+            subject=f"New Order — {order.order_number} · ${order.total:.2f}",
+            recipients=[admin_email],
+            body=admin_plain,
+            html=admin_html,
+            sender=_mail_sender(),
+            reply_to=order.email or None,
+        )
+        _send_mail(
+            current_app._get_current_object(), admin_msg,
+            description=f'business new-order alert for {order.order_number}',
+        )
 
     # ── 3. Admin SMS alert (non-critical) ─────────────────────────────────
     try:
@@ -314,6 +332,12 @@ def queue_order_confirmation_email(order_id):
         except Exception:
             app.logger.exception('background confirmation email failed for order_id=%s', order_id)
 
+    if app.config.get('TESTING'):
+        # Run inline under test so assertions are deterministic, and so a second
+        # thread cannot interleave transactions on SQLite's single connection.
+        _run()
+        return
+
     Thread(target=_run, daemon=True).start()
 
 
@@ -321,12 +345,61 @@ def get_cart():
     """Get cart from session"""
     return session.get('cart', [])
 
+
+def reprice_cart(cart, persist=True):
+    """Recompute every line's unit price from the database.
+
+    The cart lives in the session, so a stale price (the product was edited
+    after the item was added) or a tampered one must be corrected before we
+    quote a total or take payment. Returns the list of corrections made, which
+    is empty on the normal path.
+    """
+    from utils.pricing import price_cart_item
+
+    corrections = []
+    for item in cart:
+        if not isinstance(item, dict):
+            continue
+        product = Product.query.get(_int_or_none(item.get('product_id')))
+        if not product:
+            continue
+        design = None
+        design_id = _int_or_none(item.get('design_id'))
+        if design_id:
+            design = Design.query.get(design_id)
+
+        correct = price_cart_item(item, product, design=design)
+        stored = _float_or_none(item.get('unit_price'))
+        if stored is None or abs(stored - correct) > 0.01:
+            corrections.append({
+                'product_id': product.id,
+                'was': stored,
+                'now': correct,
+            })
+            item['unit_price'] = correct
+
+    if corrections and persist:
+        session['cart'] = cart
+        session.modified = True
+        current_app.logger.warning('cart repriced at checkout: %s', corrections)
+    return corrections
+
+
 KS_SALES_TAX_RATE = 0.095  # Sales tax 9.5%
 
 def calculate_totals(cart, shipping_method='pickup'):
-    """Calculate order totals"""
-    subtotal = sum(item['quantity'] * item['unit_price'] for item in cart)
-    
+    """Calculate order totals.
+
+    Assumes reprice_cart() has already run, so item unit prices are trusted
+    server-side values rather than whatever the session happened to hold.
+    """
+    subtotal = 0.0
+    for item in cart:
+        qty = _int_or_none(item.get('quantity')) or 0
+        unit = _float_or_none(item.get('unit_price')) or 0.0
+        subtotal += qty * unit
+    subtotal = round(subtotal, 2)
+
     shipping_cost = 0
     if shipping_method == 'shipping':
         shipping_cost = current_app.config['SHIPPING_FLAT_RATE']
@@ -334,7 +407,7 @@ def calculate_totals(cart, shipping_method='pickup'):
     # 9.5% sales tax applied to the subtotal only (shipping is not taxed)
     tax = round(subtotal * KS_SALES_TAX_RATE, 2)
     
-    total = subtotal + shipping_cost + tax
+    total = round(subtotal + shipping_cost + tax, 2)
     
     return {
         'subtotal': subtotal,
@@ -360,6 +433,8 @@ def index():
         if blocked:
             flash(blocked, 'error')
             return redirect(url_for('collection.view', slug=collection.slug))
+    if reprice_cart(cart):
+        flash('Some prices in your cart were updated to current pricing.', 'info')
     totals = calculate_totals(cart)
     
     from utils.order_artwork import FRONT_PLACEMENTS, mockup_urls
@@ -455,6 +530,8 @@ def create_payment_intent():
             return jsonify({'error': stock_err}), 400
 
     shipping_method = data.get('shipping_method', 'pickup')
+    # Price the intent from the database, never from the session's stored prices.
+    reprice_cart(cart)
     totals = calculate_totals(cart, shipping_method)
     
     try:
@@ -478,6 +555,28 @@ def create_payment_intent():
         return jsonify({'error': str(e)}), 400
 
 
+PENDING_CHECKOUT_FIELDS = (
+    'shipping_method', 'email', 'first_name', 'last_name', 'phone',
+    'shipping_info', 'checkout_token', 'send_home_with_child',
+    'teacher_name', 'child_grade', 'child_name',
+)
+
+
+@checkout_bp.route('/prepare', methods=['POST'])
+def prepare():
+    """Stash the checkout form server-side just before payment is confirmed.
+
+    Wallet payments (Apple Pay, Google Pay, Venmo) redirect the customer off
+    the page to authorize, and Stripe sends them back to /payment-return with
+    nothing but a PaymentIntent id. Without this, the name, email, and shipping
+    address typed into the form are gone by the time the order is created.
+    """
+    data = request.get_json(silent=True) or {}
+    session['pending_checkout'] = {k: data.get(k) for k in PENDING_CHECKOUT_FIELDS}
+    session.modified = True
+    return jsonify({'success': True})
+
+
 @checkout_bp.route('/payment-return')
 def payment_return():
     """
@@ -497,10 +596,23 @@ def payment_return():
         status = intent.get('status')
 
         if status == 'succeeded':
-            # Delegate to /checkout/complete so all order-creation logic is reused
-            # We POST the payment_intent_id so complete() can validate it
-            from flask import make_response
+            # Delegate to /checkout/complete so all order-creation logic is reused.
+            # The payload must use the same field names complete() reads —
+            # payment_method and payment_id. Sending only payment_intent_id made
+            # complete() fall through to its 'cash' default, which skipped Stripe
+            # verification and saved a paid card order as unpaid cash.
             import json as _json
+            pending = session.get('pending_checkout') or {}
+            payload = {k: pending.get(k) for k in PENDING_CHECKOUT_FIELDS}
+            payload['payment_method'] = 'stripe'
+            payload['payment_id'] = payment_intent_id
+            if not payload.get('shipping_method'):
+                payload['shipping_method'] = 'pickup'
+            # Reuse the same idempotency key so a repeated return cannot
+            # create a second order for one payment.
+            if not payload.get('checkout_token'):
+                payload['checkout_token'] = f'pi:{payment_intent_id}'[:64]
+
             # Build an internal call via the same app context
             with current_app.test_client() as c:
                 # Preserve session
@@ -508,12 +620,21 @@ def payment_return():
                     sess.update(session)
                 resp = c.post(
                     url_for('checkout.complete'),
-                    data=_json.dumps({'payment_intent_id': payment_intent_id}),
+                    data=_json.dumps(payload),
                     content_type='application/json',
                 )
                 result = resp.get_json() or {}
 
             if result.get('success'):
+                # The internal client owns its own session, so mirror the
+                # success markers onto the real one or the customer will be
+                # denied their own confirmation page.
+                session['checkout_success_token'] = payload.get('checkout_token')
+                session['checkout_success_order'] = result.get('order_number')
+                session['cart'] = []
+                session.pop('pending_checkout', None)
+                session.pop('collection_id', None)
+                session.modified = True
                 return redirect(url_for('checkout.confirmation',
                                         order_number=result.get('order_number', '')))
             else:
@@ -591,6 +712,10 @@ def complete():
         last_name = _clip(data.get('last_name'), 100)
         phone = _clip(data.get('phone'), 20)
         shipping_info = data.get('shipping_info') or {}
+        # Final authority on price. Runs before the Stripe amount comparison
+        # below, so a session whose prices were altered after the intent was
+        # created fails the comparison instead of being charged the wrong sum.
+        reprice_cart(cart)
         totals = calculate_totals(cart, shipping_method)
 
         if not email:
@@ -842,6 +967,28 @@ def complete():
             db.session.rollback()
         except Exception:
             pass
+        # A unique-token collision means a concurrent request already saved this
+        # exact checkout. That is a duplicate submit, not a failure: hand the
+        # customer the order that won the race instead of an error.
+        if checkout_token:
+            winner = Order.query.filter_by(checkout_token=checkout_token).first()
+            if winner:
+                current_app.logger.info(
+                    'checkout rid=%s duplicate submit resolved to %s',
+                    rid, winner.order_number,
+                )
+                session['checkout_success_token'] = checkout_token
+                session['checkout_success_order'] = winner.order_number
+                session['cart'] = []
+                session.pop('collection_id', None)
+                session.modified = True
+                return jsonify({
+                    'success': True,
+                    'order_number': winner.order_number,
+                    'redirect_url': url_for('checkout.confirmation', order_number=winner.order_number),
+                    'replayed': True,
+                    'request_id': rid,
+                })
         current_app.logger.exception('checkout.complete integrity error rid=%s: %s', rid, e)
         return _json_error(
             'This order could not be saved. Your cart is still here — please try again.',
@@ -890,6 +1037,83 @@ def complete():
         'redirect_url': url_for('checkout.confirmation', order_number=order.order_number),
         'request_id': rid,
     })
+
+
+@checkout_bp.route('/stripe-webhook', methods=['POST'])
+def stripe_webhook():
+    """Stripe's authenticated confirmation that a payment really succeeded.
+
+    Until now nothing consumed STRIPE_WEBHOOK_SECRET, so order creation relied
+    entirely on the customer's browser posting back to /complete. If they closed
+    the tab or lost signal after paying, the money arrived and no order existed.
+
+    This handler is deliberately narrow: it does not create orders (it has no
+    cart), it reconciles ones that already exist and raises a loud alert for a
+    payment with no order so it can be fixed by hand.
+    """
+    secret = current_app.config.get('STRIPE_WEBHOOK_SECRET')
+    if not secret:
+        current_app.logger.error('stripe webhook received but STRIPE_WEBHOOK_SECRET is not set')
+        return jsonify({'error': 'Webhook not configured'}), 503
+
+    payload = request.get_data()
+    signature = request.headers.get('Stripe-Signature', '')
+    try:
+        event = stripe.Webhook.construct_event(payload, signature, secret)
+    except ValueError:
+        current_app.logger.warning('stripe webhook rejected: malformed payload')
+        return jsonify({'error': 'Invalid payload'}), 400
+    except stripe.error.SignatureVerificationError:
+        current_app.logger.warning('stripe webhook rejected: bad signature')
+        return jsonify({'error': 'Invalid signature'}), 400
+
+    event_type = event.get('type')
+    obj = (event.get('data') or {}).get('object') or {}
+    intent_id = obj.get('id')
+
+    if event_type == 'payment_intent.succeeded' and intent_id:
+        order = Order.query.filter_by(payment_intent_id=intent_id).first()
+        if order is None:
+            # Paid, but no order row. Alert rather than guess at a cart.
+            current_app.logger.error(
+                'ORPHANED PAYMENT: stripe intent %s succeeded for %s cents with no matching order',
+                intent_id, obj.get('amount'),
+            )
+            try:
+                from utils.sms import send_server_error_alert
+                send_server_error_alert(
+                    current_app._get_current_object(),
+                    'ORPHANED-PAY',
+                    f'stripe/{intent_id}',
+                    'Payment succeeded with no order. Check the Stripe dashboard.',
+                )
+            except Exception:
+                pass
+            return jsonify({'received': True, 'orphaned': True})
+
+        # Idempotent: Stripe retries webhooks, so re-delivery must be a no-op.
+        if order.payment_status != 'paid':
+            order.payment_status = 'paid'
+            order.status = 'paid' if order.status == 'new' else order.status
+            order.paid_at = order.paid_at or datetime.utcnow()
+            db.session.commit()
+            current_app.logger.info('webhook marked %s paid', order.order_number)
+
+        # Covers the case where the browser never reached the thank-you page.
+        if not getattr(order, 'confirmation_email_sent_at', None):
+            queue_order_confirmation_email(order.id)
+
+        return jsonify({'received': True, 'order_number': order.order_number})
+
+    if event_type == 'payment_intent.payment_failed' and intent_id:
+        order = Order.query.filter_by(payment_intent_id=intent_id).first()
+        if order and order.payment_status == 'pending':
+            order.payment_status = 'failed'
+            db.session.commit()
+            current_app.logger.info('webhook marked %s failed', order.order_number)
+        return jsonify({'received': True})
+
+    return jsonify({'received': True, 'ignored': event_type})
 
 
 @checkout_bp.route('/confirmation/<order_number>')

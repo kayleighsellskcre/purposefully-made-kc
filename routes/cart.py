@@ -251,33 +251,36 @@ def add():
     )
     is_blank = not has_design
 
-    # Unit price: use override from customizer (includes placement discount, back design fee, size upcharge) or calculate
-    if unit_price_override is not None:
-        unit_price = float(unit_price_override)
-        # If blank, subtract $12 from whatever the customizer sent (customizer may not know about this discount)
-        if is_blank:
-            unit_price = max(0.0, unit_price - 12.0)
-    else:
-        unit_price = product.base_price
-        if placement in ('left_chest', 'right_chest'):
-            unit_price -= 2.0
-        # Size upcharge for adult 2XL+ ($2, $3, $4)
-        if size and 'youth' not in (product.name or '').lower():
-            s = str(size).upper()
-            if s in ('2XL', '2X', 'XXL'):
-                unit_price += 2
-            elif s in ('3XL', '3X', 'XXXL'):
-                unit_price += 3
-            elif s in ('4XL', '4X'):
-                unit_price += 4
-        # Blank item discount — no design/transfer ordered
-        if is_blank:
-            unit_price = max(0.0, unit_price - 12.0)
-    # Add custom design fee ($4 or $20) when design was created from "Have Us Recreate"
+    # Unit price is decided here, on the server, from the product row.
+    # The browser also computes a price to display, and sends it as
+    # `unit_price`, but that figure is never charged — a tampered or stale
+    # request would otherwise set its own price. We only compare the two so a
+    # genuine drift between the JS rules and utils/pricing.py gets logged.
+    from utils.pricing import calculate_unit_price
+
+    design_fee = 0.0
     if design_id:
         design = Design.query.get(design_id)
         if design and getattr(design, 'design_fee', 0):
-            unit_price += float(design.design_fee)
+            design_fee = float(design.design_fee)
+
+    unit_price = calculate_unit_price(
+        product,
+        size=size,
+        placement=placement,
+        has_back_design=has_back,
+        is_blank=is_blank,
+        design_fee=design_fee,
+    )
+
+    if unit_price_override is not None and abs(unit_price_override - unit_price) > 0.01:
+        from flask import current_app
+        current_app.logger.warning(
+            'cart price mismatch: browser sent %.2f, server charged %.2f '
+            '(product=%s size=%s placement=%s back=%s blank=%s fee=%.2f)',
+            unit_price_override, unit_price, product_id, size, placement,
+            has_back, is_blank, design_fee,
+        )
     
     # Transfer production — one source of truth (utils.print_sizes)
     from utils.print_sizes import build_item_production

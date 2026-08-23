@@ -1,6 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}Shop - Purposefully Made KC{% endblock %}
+{% block title %}Shop Custom Apparel - Purposefully Made KC{% endblock %}
+
+{% block meta_description %}Browse tees, hoodies, crewnecks and more from Bella+Canvas, Comfort Colors and Gildan. Filter by brand, colour and fit, then add your own design. Printed to order in Kansas City.{% endblock %}
+
+{# Filter and search combinations are the same catalogue reordered, so they all
+   point at /shop/ rather than competing with it in search results. #}
+{% block canonical_url %}{{ site_origin }}{{ url_for('shop.index') }}{% endblock %}
+
+{% block robots %}{% if request.args %}noindex, follow{% else %}index, follow{% endif %}{% endblock %}
 
 {% block content %}
 <div class="page-header shop-page-header">
@@ -62,10 +70,14 @@
                     <input type="hidden" name="color" id="searchColor" value="{{ request.args.get('color', '') }}">
                     <input type="hidden" name="brand" id="searchBrand" value="{{ request.args.get('brand', '') }}">
                     <div class="shop-search-field">
-                        <svg class="shop-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                        {# The placeholder is not a label: it disappears as soon as
+                           the customer types, and screen readers do not reliably
+                           announce it. #}
+                        <label for="shopSearchInput" class="visually-hidden">Search products</label>
+                        <svg class="shop-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                         <input type="text" name="q" id="shopSearchInput" class="shop-search-input" placeholder="Search by name, style, or keyword…" value="{{ request.args.get('q', '') }}" autocomplete="off">
                         {% if request.args.get('q') %}
-                        <button type="button" class="shop-search-clear" onclick="document.getElementById('shopSearchInput').value=''; document.getElementById('shopSearchForm').submit();" title="Clear search">×</button>
+                        <button type="button" class="shop-search-clear" onclick="document.getElementById('shopSearchInput').value=''; document.getElementById('shopSearchForm').submit();" title="Clear search" aria-label="Clear search">×</button>
                         {% endif %}
                     </div>
                 </form>
@@ -163,14 +175,21 @@
                 
                 <div class="products-grid">
                     {% for product in products %}
+                    {# The colour carousel below is a nested loop, whose own `loop`
+                       shadows this one. Aliased so the image tags can tell which
+                       cards are in the first row and should not be lazy-loaded. #}
+                    {% set product_loop = loop %}
                     <div class="product-card">
                         <!-- Favorite Button -->
-                        <button class="btn-favorite" 
+                        {# Every card's button announced the same "Add to favorites",
+                           so a screen reader user could not tell them apart. #}
+                        <button type="button" class="btn-favorite" 
                                 data-product-id="{{ product.id }}"
                                 data-color-name=""
                                 onclick="toggleFavorite(event, {{ product.id }}, '')"
-                                title="Add to favorites">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                title="Add to favorites"
+                                aria-label="Add {{ product.name }} to favorites">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                             </svg>
                         </button>
@@ -190,8 +209,15 @@
                                         {% for variant in product.carousel_colors %}
                                         <div class="carousel-slide {% if loop.first %}active{% endif %}"
                                              data-color="{{ variant.color_name }}">
+                                            {# Inactive slides are hidden with opacity, not display:none, so
+                                               the browser used to fetch every colour of every product at full
+                                               priority — around 1350 images on the full catalogue. Only the
+                                               first row of cards is on screen at load, so everything else is
+                                               deferred. The carousel reveals a slide by adding .active, which
+                                               is when the browser fetches it. #}
                                             <img src="{{ variant.front_image_url }}"
                                                  alt="{{ product.name }} - {{ variant.color_name }}"
+                                                 {% if loop.first and product_loop.index0 < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
                                                  referrerpolicy="no-referrer"
                                                  onerror="{% if loop.first %}this.style.display='none';this.parentElement.querySelector('.no-mockup-msg').style.display='flex'{% else %}this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'{% endif %}">
                                             {% if loop.first %}<div class="no-mockup-msg" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;background:linear-gradient(135deg,#fdf8f4 0%,#f5ede4 100%);">
@@ -227,6 +253,7 @@
                                 <div class="product-image" style="position:relative">
                                     <img src="{{ product.fallback_image_url or url_for('static', filename='img/products/' + product.style_number + '.jpg') }}"
                                          alt="{{ product.name }}"
+                                         {% if product_loop.index0 < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
                                          onerror="this.style.display='none';this.parentElement.querySelector('.no-mockup-msg').style.display='flex'">
                                     <div class="no-mockup-msg" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;background:linear-gradient(135deg,#fdf8f4 0%,#f5ede4 100%);">
                                         <div style="font-size:2.5rem;margin-bottom:0.5rem">📸</div>
@@ -238,7 +265,10 @@
                             </div>
                             
                             <div class="product-info">
-                                <h3 class="product-name">{{ product.name }}</h3>
+                                {# h2: each card is a section under the page h1,
+                                   so h3 skipped a level. .product-name carries
+                                   the size, so this looks identical. #}
+                                <h2 class="product-name">{{ product.name }}</h2>
                                 <p class="product-style">{% if product.brand %}{{ product.brand }} · {% endif %}Style {{ product.style_number }}</p>
                                 {% if product.display_category or product.category %}
                                 <p class="product-category">{{ product.display_category or product.category }}</p>

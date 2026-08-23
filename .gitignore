@@ -28,6 +28,7 @@ node_modules/
 *~
 .coverage
 htmlcov/
+.pytest_cache/
 dist/
 build/
 *.egg-info/

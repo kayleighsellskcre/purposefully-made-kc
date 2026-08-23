@@ -3,6 +3,7 @@ Design upload routes - simple, reliable upload for product customizer.
 """
 from flask import Blueprint, request, jsonify, current_app
 from flask_login import current_user
+from werkzeug.exceptions import HTTPException
 from werkzeug.utils import secure_filename
 from pathlib import Path
 import os
@@ -252,12 +253,19 @@ def upload():
             'gallery_status': 'pending' if submitted_to_gallery else None,
         })
 
-    except OSError as e:
-        return jsonify({'error': f'Could not save file. Check folder permissions.'}), 500
-    except Exception as e:
-        if current_app.debug:
-            current_app.logger.exception('Design upload failed')
-        return jsonify({'error': str(e) or 'Upload failed'}), 500
+    except HTTPException:
+        # An oversized body raises RequestEntityTooLarge the moment
+        # request.files is touched. Catching it here turned a clear "too large"
+        # message into a bare 500 "Upload failed", so let the app's own 413
+        # handler answer instead.
+        raise
+    except OSError:
+        current_app.logger.exception('Design upload could not write to disk')
+        return jsonify({'error': 'Could not save file. Please try again.'}), 500
+    except Exception:
+        # str(e) used to go straight to the browser, which leaks internals.
+        current_app.logger.exception('Design upload failed')
+        return jsonify({'error': 'Upload failed. Please try again.'}), 500
 
 
 @design_bp.route('/<int:design_id>/delete', methods=['POST'])

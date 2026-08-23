@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design Request Received – #{{ req.id }}</title>
+<style>
+  @media only screen and (max-width: 520px) {
+    .pmkc-pad { padding-left:18px !important; padding-right:18px !important; }
+    .pmkc-big { font-size:22px !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#f5f0e8;font-family:'Georgia',serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0e8;padding:40px 16px;">
+  <tr>
+    <td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+        <!-- Header -->
+        <tr>
+          <td align="center" style="padding-bottom:32px;">
+            <p style="margin:0;font-family:'Georgia',serif;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#b87c6f;">Purposefully Made KC</p>
+            <h1 class="pmkc-big" style="margin:8px 0 0;font-family:'Georgia',serif;font-size:28px;font-weight:400;color:#3a3d48;letter-spacing:0.04em;">We Got Your Design Request</h1>
+            <p style="margin:8px 0 0;font-size:14px;color:#888;font-family:Arial,sans-serif;">Thank you, {{ customer_name }}. Nothing more is needed from you right now.</p>
+          </td>
+        </tr>
+
+        <!-- Request number card -->
+        <tr>
+          <td>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#b87c6f;border-radius:14px;margin-bottom:20px;">
+              <tr>
+                <td align="center" style="padding:28px 24px;">
+                  <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.75);font-family:Arial,sans-serif;">Request Number</p>
+                  <p class="pmkc-big" style="margin:0;font-family:'Georgia',serif;font-size:30px;font-weight:700;color:#fff;letter-spacing:0.06em;">#{{ req.id }}</p>
+                  <p style="margin:10px 0 0;font-size:13px;color:rgba(255,255,255,0.8);font-family:Arial,sans-serif;">Submitted {{ submitted|central }}</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- What you asked for -->
+        <tr>
+          <td>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;border:1px solid #e8d0b1;margin-bottom:20px;">
+              <tr>
+                <td class="pmkc-pad" style="padding:28px;">
+                  <p style="margin:0 0 12px;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#b87c6f;font-family:Arial,sans-serif;">Your Request</p>
+                  <p style="margin:0 0 16px;font-size:14px;color:#3a3d48;font-family:Arial,sans-serif;line-height:1.65;white-space:pre-wrap;">{{ req.description }}</p>
+                  {% if req.reference_original_filename %}
+                  <p style="margin:0;font-size:13px;color:#888;font-family:Arial,sans-serif;">
+                    Reference image received: <strong style="color:#3a3d48;">{{ req.reference_original_filename }}</strong>
+                  </p>
+                  {% endif %}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- What happens next -->
+        <tr>
+          <td>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:14px;border:1px solid #e8d0b1;margin-bottom:28px;">
+              <tr>
+                <td class="pmkc-pad" style="padding:24px 28px;">
+                  <p style="margin:0 0 14px;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#b87c6f;font-family:Arial,sans-serif;">What Happens Next</p>
+                  <table cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="padding:5px 0;vertical-align:top;">
+                        <span style="display:inline-block;width:22px;height:22px;border-radius:50%;background:#b87c6f;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:22px;font-family:Arial,sans-serif;margin-right:10px;">1</span>
+                      </td>
+                      <td style="padding:5px 0;font-size:13px;color:#555;font-family:Arial,sans-serif;line-height:1.55;vertical-align:top;">We review your reference image and notes.</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:5px 0;vertical-align:top;">
+                        <span style="display:inline-block;width:22px;height:22px;border-radius:50%;background:#b87c6f;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:22px;font-family:Arial,sans-serif;margin-right:10px;">2</span>
+                      </td>
+                      <td style="padding:5px 0;font-size:13px;color:#555;font-family:Arial,sans-serif;line-height:1.55;vertical-align:top;">We reply {{ response_time }} with the design or any questions.</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:5px 0;vertical-align:top;">
+                        <span style="display:inline-block;width:22px;height:22px;border-radius:50%;background:#b87c6f;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:22px;font-family:Arial,sans-serif;margin-right:10px;">3</span>
+                      </td>
+                      <td style="padding:5px 0;font-size:13px;color:#555;font-family:Arial,sans-serif;line-height:1.55;vertical-align:top;">Your finished design lands in My Designs, ready to put on any garment.</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td align="center" style="padding-bottom:40px;">
+            <p style="margin:0 0 20px;">
+              <a href="{{ my_requests_url }}" style="font-family:Arial,sans-serif;font-size:13px;color:#b87c6f;text-decoration:none;font-weight:700;">Track this request in your account &rarr;</a>
+            </p>
+            <p style="margin:0 0 6px;font-size:13px;color:#888;font-family:Arial,sans-serif;">Questions? Reply to this email or reach out at</p>
+            <p style="margin:0 0 20px;font-size:13px;font-weight:600;color:#b87c6f;font-family:Arial,sans-serif;">purposefullymadekc@gmail.com</p>
+            <p style="margin:0;font-family:'Georgia',serif;font-size:15px;color:#b87c6f;font-style:italic;">Made with purpose, for you.</p>
+            <p style="margin:6px 0 0;font-size:11px;color:#ccc;font-family:Arial,sans-serif;">Purposefully Made KC &middot; Kansas City, MO</p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>

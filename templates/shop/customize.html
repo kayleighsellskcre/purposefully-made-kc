@@ -2,6 +2,8 @@
 
 {% block title %}Customize {{ product.name }} - Purposefully Made KC{% endblock %}
 
+{% block meta_description %}Design your own {{ product.name }}{% if product.brand %} by {{ product.brand }}{% endif %}. Pick a colour and size, upload your artwork or choose from our gallery, and see it previewed before you order.{% endblock %}
+
 {% block extra_css %}
 <link href="https://fonts.googleapis.com/css2?family=Freshman&family=Black+Ops+One&family=Graduate&family=Squada+One&family=Bebas+Neue:wght@400&family=Oswald:wght@400;700&family=Anton&family=Teko:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/personalization-fonts.css') }}">
@@ -392,6 +394,16 @@
         margin-bottom: 1.25rem;
         padding-bottom: 1.25rem;
     }
+}
+
+/* The page heading. It is an h1 for document structure, sized as the h2 it
+   used to be because the customizer panel is narrow. */
+.customize-product-title {
+    font-size: 2.5rem;
+}
+
+@media (max-width: 768px) {
+    .customize-product-title { font-size: 1.75rem; }
 }
 
 .panel-section h3 {
@@ -1417,7 +1429,10 @@
                     Customer Favorite
                 </span>
                 {% endif %}
-                <h2>{{ product.name }}</h2>
+                {# The product name is this page's heading, so it has to be the h1;
+                   the page had none at all. The class keeps the size it had as an
+                   h2, since the panel is narrow and 3.5rem would wrap badly. #}
+                <h1 class="customize-product-title">{{ product.name }}</h1>
                 <p class="product-style">
                     Style {{ product.style_number }}
                     {% if product.spec_sheet_url %}
@@ -1433,8 +1448,8 @@
                 <!-- Size Chart Button -->
                 {% if product.size_chart %}
                 <div style="margin: 1rem 0;">
-                    <button onclick="toggleSizeChart()" class="size-chart-btn-customize">
-                        📏 Size Chart
+                    <button type="button" onclick="toggleSizeChart()" class="size-chart-btn-customize">
+                        <span aria-hidden="true">📏</span> Size Chart
                     </button>
                 </div>
                 {% endif %}
@@ -1446,25 +1461,27 @@
                     <p class="step-hint">Select your color. {{ color_variants|length if color_variants else available_colors|length }} available.</p>
                     
                     <div class="color-search-box" style="margin-bottom: 0.75rem;">
+                        <label for="colorSearch" class="visually-hidden">Search colors</label>
                         <input type="text" id="colorSearch" class="color-search-input" placeholder="Search colors..." autocomplete="off">
-                        <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <circle cx="11" cy="11" r="8"></circle>
                             <path d="m21 21-4.35-4.35"></path>
                         </svg>
                     </div>
                     
-                    <div class="color-filter-tabs-simple" id="colorFilterTabs">
-                        <button class="filter-tab active" data-filter="all">All</button>
-                        <button class="filter-tab" data-filter="heather">Heather</button>
-                        <button class="filter-tab" data-filter="solid">Solid</button>
-                        <button class="filter-tab" data-filter="neon">Neon</button>
-                        <button class="filter-tab" data-filter="vintage">Vintage</button>
+                    <div class="color-filter-tabs-simple" id="colorFilterTabs" role="group" aria-label="Filter colors by family">
+                        <button type="button" class="filter-tab active" data-filter="all" aria-pressed="true">All</button>
+                        <button type="button" class="filter-tab" data-filter="heather" aria-pressed="false">Heather</button>
+                        <button type="button" class="filter-tab" data-filter="solid" aria-pressed="false">Solid</button>
+                        <button type="button" class="filter-tab" data-filter="neon" aria-pressed="false">Neon</button>
+                        <button type="button" class="filter-tab" data-filter="vintage" aria-pressed="false">Vintage</button>
                     </div>
                     
                     <div class="color-grid-professional" id="colorGrid">
                         {% if color_variants %}
                             {% for variant in color_variants %}
                             <div class="color-card" 
+                                 role="button" tabindex="0" aria-pressed="false"
                                  data-color="{{ variant.color_name }}"
                                  data-front-image="{{ variant.front_image or '' }}"
                                  data-back-image="{{ variant.back_image or '' }}"
@@ -1485,6 +1502,7 @@
                         {% else %}
                             {% for color in available_colors %}
                             <div class="color-card" 
+                                 role="button" tabindex="0" aria-pressed="false"
                                  data-color="{{ color }}" 
                                  onclick="selectColor(this)">
                                 <div class="color-image-wrapper">
@@ -1507,7 +1525,8 @@
                     <p class="step-hint">Select your size. Pick a color first to see availability.</p>
                     <div class="size-grid-professional" id="sizeGrid">
                         {% for size in available_sizes|sort_sizes %}
-                        <div class="size-card" data-size="{{ size }}" onclick="selectSize(this)">
+                        <div class="size-card" role="button" tabindex="0" aria-pressed="false"
+                             data-size="{{ size }}" onclick="selectSize(this)">
                             <div class="size-label">{{ size }}</div>
                             <div class="stock-badge"></div>
                         </div>
@@ -1531,8 +1550,10 @@
                     {% if not collection_restricted %}
                     {# Regular shop: show upload box + personal designs #}
                     <div class="upload-own-section" style="margin-bottom: 1.25rem;">
-                        <div class="upload-area" id="uploadAreaMain" onclick="document.getElementById('designFileMain').click()">
-                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;">
+                        <div class="upload-area" id="uploadAreaMain" role="button" tabindex="0"
+                             aria-controls="designFileMain"
+                             onclick="document.getElementById('designFileMain').click()">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;" aria-hidden="true">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                 <polyline points="17 8 12 3 7 8"></polyline>
                                 <line x1="12" y1="3" x2="12" y2="15"></line>
@@ -1617,7 +1638,8 @@
                     
                     <div class="design-warnings" id="designWarnings"></div>
 
-                    <div class="ai-zoom-modal" id="aiZoomModal" hidden>
+                    <div class="ai-zoom-modal" id="aiZoomModal" hidden
+                         role="dialog" aria-modal="true" aria-label="Zoomed artwork">
                         <div class="ai-zoom-bar">
                             <button type="button" id="aiZoomOut" aria-label="Zoom out">&minus;</button>
                             <button type="button" id="aiZoomIn" aria-label="Zoom in">+</button>
@@ -1639,19 +1661,19 @@
                     <h3>Placement</h3>
                     <p style="font-size: 0.85rem; color: #666; margin-bottom: 1rem;">Choose where you want your design placed when wearing the shirt</p>
                     <div class="placement-grid" id="placementGrid">
-                        <div class="placement-option" data-placement="center_chest">
+                        <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="center_chest">
                             <strong>Center Chest</strong>
                             <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Medium size, centered</small>
                         </div>
-                        <div class="placement-option" data-placement="left_chest">
+                        <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="left_chest">
                             <strong>Left Chest</strong>
                             <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Small logo, your left</small>
                         </div>
-                        <div class="placement-option" data-placement="right_chest">
+                        <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="right_chest">
                             <strong>Right Chest</strong>
                             <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Small logo, your right</small>
                         </div>
-                        <div class="placement-option" data-placement="center_back">
+                        <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="center_back">
                             <strong>Center Back</strong>
                             <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Medium size, centered</small>
                         </div>
@@ -1803,6 +1825,8 @@
                 <div class="panel-section">
                     <h3>Quantity</h3>
                     <div class="form-group">
+                        {# A nearby heading is not a label; the field needs its own. #}
+                        <label for="quantity" class="visually-hidden">Quantity</label>
                         <input type="number" id="quantity" class="form-control" value="1" min="1" max="100">
                     </div>
                 </div>
@@ -1849,9 +1873,10 @@
 
 <!-- Size Chart Modal -->
 {% if product.size_chart %}
-<div id="sizeChartModal" class="size-chart-modal" style="display: none;">
+<div id="sizeChartModal" class="size-chart-modal" style="display: none;"
+     role="dialog" aria-modal="true" aria-labelledby="sizeChartTitle">
     <div class="size-chart-content">
-        <h3>Size Chart - {{ product.style_number }}</h3>
+        <h3 id="sizeChartTitle">Size Chart - {{ product.style_number }}</h3>
         <table class="size-chart-table">
             <thead>
                 <tr>
@@ -1874,7 +1899,7 @@
         <p style="font-size: 0.85rem; color: #666; margin-top: 1rem;">
             <strong>Note:</strong> Measurements are taken with garment laying flat. Chest width measured 1" below armhole.
         </p>
-        <button class="btn btn-outline" onclick="toggleSizeChart()" style="margin-top: 1rem;">Close</button>
+        <button type="button" class="btn btn-outline" onclick="toggleSizeChart()" style="margin-top: 1rem;">Close</button>
     </div>
 </div>
 {% endif %}
@@ -3260,21 +3285,30 @@
             if (zoomImg) zoomImg.style.width = (zoom * 100) + '%';
         }
         if (zoomBtn && modal && zoomImg) {
+            // Routed through PMKC.dialog (static/js/a11y.js) so Escape closes it,
+            // Tab cannot wander onto the page behind it, and focus returns to the
+            // zoom button afterwards.
+            const openZoom = function () {
+                PMKC.dialog.show(modal, {
+                    onOpen: function () { modal.hidden = false; },
+                    onClose: function () { modal.hidden = true; },
+                });
+            };
             zoomBtn.addEventListener('click', function () {
                 const showBefore = aiStage && aiStage.classList.contains('show-before');
                 const resultImg = document.getElementById('designPreviewImage');
                 const beforeImg = document.getElementById('designOriginalImage');
                 zoomImg.src = (showBefore && beforeImg) ? beforeImg.src : (resultImg ? resultImg.src : '');
                 setZoom(2);
-                modal.hidden = false;
+                openZoom();
             });
             const zin = document.getElementById('aiZoomIn');
             const zout = document.getElementById('aiZoomOut');
             const zclose = document.getElementById('aiZoomClose');
             if (zin) zin.addEventListener('click', function () { setZoom(zoom + 0.5); });
             if (zout) zout.addEventListener('click', function () { setZoom(zoom - 0.5); });
-            if (zclose) zclose.addEventListener('click', function () { modal.hidden = true; });
-            modal.addEventListener('click', function (e) { if (e.target === modal) modal.hidden = true; });
+            if (zclose) zclose.addEventListener('click', function () { PMKC.dialog.close(); });
+            modal.addEventListener('click', function (e) { if (e.target === modal) PMKC.dialog.close(); });
             zoomImg.addEventListener('wheel', function (e) {
                 e.preventDefault();
                 setZoom(zoom + (e.deltaY < 0 ? 0.3 : -0.3));
@@ -4189,15 +4223,15 @@
     }
 })();
 
-// Size chart modal toggle
+// Size chart modal toggle. PMKC.dialog (static/js/a11y.js) adds Escape, keeps
+// Tab inside the panel, and puts focus back on the link that opened it.
 function toggleSizeChart() {
     const modal = document.getElementById('sizeChartModal');
-    if (modal) {
-        if (modal.style.display === 'none' || !modal.style.display) {
-            modal.style.display = 'flex';
-        } else {
-            modal.style.display = 'none';
-        }
+    if (!modal) return;
+    if (PMKC.dialog.isOpen(modal)) {
+        PMKC.dialog.close();
+    } else {
+        PMKC.dialog.show(modal, { display: 'flex' });
     }
 }
 </script>

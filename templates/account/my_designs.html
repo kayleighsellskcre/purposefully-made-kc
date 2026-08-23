@@ -267,11 +267,11 @@
 </style>
 
 <!-- Delete Confirmation Modal -->
-<div id="myDesignDeleteModal" class="md-overlay" role="dialog" aria-modal="true">
+<div id="myDesignDeleteModal" class="md-overlay" role="dialog" aria-modal="true" aria-labelledby="mdTitle">
     <div class="md-card">
         <div class="md-header">
-            <h3>Delete Design?</h3>
-            <button class="md-close" onclick="closeMdModal()" aria-label="Close">&times;</button>
+            <h3 id="mdTitle">Delete Design?</h3>
+            <button type="button" class="md-close" onclick="closeMdModal()" aria-label="Close">&times;</button>
         </div>
         <div class="md-body">
             <p><strong id="mdDesignName"></strong><br>This will permanently delete the design. It cannot be undone.</p>
@@ -285,31 +285,41 @@
     </div>
 </div>
 
-<div id="myDesignToast"></div>
+<div id="myDesignToast" role="status" aria-live="polite"></div>
 
 <script>
 (function() {
     let _mdUrl = '', _mdId = 0;
 
+    const modal = document.getElementById('myDesignDeleteModal');
+
+    // PMKC.dialog (static/js/a11y.js) supplies Escape, keeps Tab inside the
+    // card, and returns focus to the delete button that opened it. It also
+    // moves focus into the dialog, which matters here: this asks for
+    // confirmation of something irreversible, and a keyboard user was
+    // previously left on the page behind it with no way to reach the buttons.
     window.confirmDesignDelete = function(id, name, url) {
         _mdId  = id;
         _mdUrl = url;
         document.getElementById('mdDesignName').textContent = name;
-        document.getElementById('myDesignDeleteModal').classList.add('is-open');
-        document.body.style.overflow = 'hidden';
+        PMKC.dialog.show(modal, {
+            onOpen: function() {
+                modal.classList.add('is-open');
+                document.body.style.overflow = 'hidden';
+            },
+            onClose: function() {
+                modal.classList.remove('is-open');
+                document.body.style.overflow = '';
+            },
+        });
     };
 
     window.closeMdModal = function() {
-        document.getElementById('myDesignDeleteModal').classList.remove('is-open');
-        document.body.style.overflow = '';
+        PMKC.dialog.close();
     };
 
-    document.getElementById('myDesignDeleteModal').addEventListener('click', function(e) {
+    modal.addEventListener('click', function(e) {
         if (e.target === this) window.closeMdModal();
-    });
-
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') window.closeMdModal();
     });
 
     document.getElementById('mdConfirmBtn').addEventListener('click', function() {

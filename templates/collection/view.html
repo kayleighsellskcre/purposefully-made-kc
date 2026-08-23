@@ -1,5 +1,12 @@
 {% extends "base.html" %}
-{% block title %}{{ collection.name }} - Purposefully Made KC{% endblock %}
+{% block title %}{{ collection.card_title or collection.name }} - Purposefully Made KC{% endblock %}
+
+{% block meta_description %}{% if collection.description %}{{ collection.description|striptags|truncate(155, true, '…') }}{% else %}Order your {{ collection.name }} apparel. Pick your size and pay for your own items — we print and sort the whole group order.{% endif %}{% endblock %}
+
+{# A link-only or password-protected group order is private, so keep it out of
+   search results even though the URL itself is reachable. This matches which
+   collections the sitemap lists. #}
+{% block robots %}{% if collection.show_in_directory and not collection.is_password_protected %}index, follow{% else %}noindex, nofollow{% endif %}{% endblock %}
 {% block extra_css %}
 <style>
 .collection-header-subtitle {
@@ -329,6 +336,10 @@
         {% if products %}
         <div class="design-board-grid">
             {% for product in products %}
+            {# The colour carousel below is a nested loop whose own `loop` shadows
+               this one. Aliased so the image tags can tell which cards are in the
+               first row and should not be lazy-loaded. #}
+            {% set product_loop = loop %}
             <article class="design-card {% if collection.deadline_passed %}deadline-passed{% endif %}" data-catalog-item data-age="{{ product.display_age or '' }}" data-age-raw="{{ product.age_group or '' }}" data-category="{{ product.display_category or '' }}" data-category-raw="{{ product.category or '' }}" data-brand="{{ product.display_brand or '' }}" data-brand-raw="{{ product.brand or '' }}" data-style="{{ product.style_number or '' }}">
                 {% if collection.deadline_passed %}
                 <div>
@@ -341,8 +352,12 @@
                             <div class="carousel-images">
                                 {% for variant in product.carousel_colors %}
                                 <div class="carousel-slide {% if loop.first %}active{% endif %}" data-color="{{ variant.color_name }}">
+                                    {# Inactive slides are hidden with opacity rather than display, so
+                                       without this the browser fetched every colour of every product
+                                       at full priority. #}
                                     <img src="{{ variant.front_image_url }}"
                                          alt="{{ product.name }} – {{ variant.color_name }}"
+                                         {% if loop.first and product_loop.index0 < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
                                          referrerpolicy="no-referrer"
                                          onerror="this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'">
                                 </div>
@@ -371,6 +386,7 @@
                             <img src="{{ product.fallback_image_url }}"
                                  alt="{{ product.name }}"
                                  style="width:100%;height:100%;object-fit:contain;padding:1rem;"
+                                 {% if product_loop.index0 < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
                                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
                             {% endif %}
                             <div style="{% if product.fallback_image_url %}display:none;{% else %}display:flex;{% endif %}position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:1.5rem;background:linear-gradient(135deg,#fdf8f4 0%,#f5ede4 100%);">

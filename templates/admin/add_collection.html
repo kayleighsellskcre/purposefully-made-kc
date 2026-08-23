@@ -136,13 +136,18 @@
                             <p class="form-hint" style="margin:0">Upload your design(s) or pick from the gallery below.</p>
                         </div>
                     </div>
-                    <div class="collection-upload-area" id="uploadArea" onclick="document.getElementById('design_uploads').click()">
-                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom:0.4rem">
+                    <div class="collection-upload-area" id="uploadArea" role="button" tabindex="0"
+                         aria-controls="design_uploads"
+                         onclick="document.getElementById('design_uploads').click()">
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom:0.4rem" aria-hidden="true">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
                         </svg>
                         <p><strong>Click to upload</strong> or drag &amp; drop</p>
-                        <p class="text-muted">PNG, JPG, WEBP</p>
+                        <p class="text-muted">PNG, JPG, WEBP — large photos are shrunk automatically</p>
                     </div>
+                    {# No data-shrink here: these files are uploaded by
+                       group_order_logo_upload.js.html, which shrinks them
+                       itself and then clears this input. #}
                     <input type="file" id="design_uploads" name="design_uploads" accept=".png,.jpg,.jpeg,.webp" multiple style="display:none">
                     <div id="uploadPreview" class="upload-preview-list" style="display:none"></div>
                     {% if gallery_designs %}
@@ -620,9 +625,13 @@ updateBackPreview(); // initial render
     transition: var(--transition);
     margin-top: 0.5rem;
 }
-.collection-upload-area:hover {
+.collection-upload-area:hover,
+.collection-upload-area.is-dragover {
     border-color: var(--accent-color);
     background: rgba(184, 124, 111, 0.05);
+}
+.collection-upload-area.is-dragover {
+    border-style: solid;
 }
 .upload-preview-list {
     display: flex;

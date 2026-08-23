@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Group Orders - Purposefully Made KC{% endblock %}
+{% block title %}Group Orders &amp; Spirit Wear - Purposefully Made KC{% endblock %}
+{% block meta_description %}Set up a group order for your team, school, church or business. Everyone picks their own size and pays for themselves, and we print and sort the whole order.{% endblock %}
 {% block extra_css %}
 <style>
 .group-orders-content {
@@ -272,6 +273,10 @@
 
 <section class="group-orders-content">
     <div class="container">
+        {# The three step cards are h3s with no h2 above them, which left a gap
+           in the outline. The design has no visible heading here, so this names
+           the section for screen readers only. #}
+        <h2 class="visually-hidden">How group orders work</h2>
         <div class="steps-grid">
             <div class="step-card">
                 <div class="step-num">1</div>
@@ -342,11 +347,12 @@
 
             {% if open_collections|length > 3 %}
             <div class="dir-search-wrap">
-                <svg class="dir-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <label for="dirSearchInput" class="visually-hidden">Search group orders</label>
+                <svg class="dir-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                 <input type="text" id="dirSearchInput" class="dir-search-input" placeholder="Search group orders by name…" autocomplete="off">
                 <button type="button" id="dirSearchClear" class="dir-search-clear" style="display:none" aria-label="Clear search">×</button>
             </div>
-            <p id="dirNoResults" style="display:none;text-align:center;color:var(--text-secondary);padding:2rem 0">No group orders match your search.</p>
+            <p id="dirNoResults" role="status" style="display:none;text-align:center;color:var(--text-secondary);padding:2rem 0">No group orders match your search.</p>
             {% endif %}
 
             <div class="directory-grid" id="directoryGrid">

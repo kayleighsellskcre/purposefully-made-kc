@@ -70,7 +70,38 @@
                   <p style="margin:0;font-size:12px;color:#5a5d68;font-family:Arial,sans-serif;">
                     Style {{ item.style_number }} · {{ item.color }} · Size {{ item.size }} · Qty {{ item.quantity }}
                     {% if item.placement %} · {{ item.placement|replace('_',' ')|title }}{% endif %}
+                    {% if item.print_width and item.print_height %} · {{ item.print_width }}″ × {{ item.print_height }}″{% endif %}
                   </p>
+                  {% set personalization = item.back_design_details %}
+                  {% if personalization and (personalization.name or personalization.number) %}
+                  <p style="margin:4px 0 0;font-size:12px;color:#b87c6f;font-family:Arial,sans-serif;font-weight:700;">
+                    Back:
+                    {%- if personalization.name %} {{ personalization.name }}{% endif %}
+                    {%- if personalization.number %} #{{ personalization.number }}{% endif %}
+                    {%- if personalization.font %} · {{ personalization.font }}{% endif %}
+                  </p>
+                  {% endif %}
+                  {# Production needs the actual files, so link every piece of artwork. #}
+                  {% if item.design and item.design.file_path %}
+                  <p style="margin:4px 0 0;font-size:12px;font-family:Arial,sans-serif;">
+                    <a href="{% if item.design.file_path.startswith('http') %}{{ item.design.file_path }}{% else %}{{ admin_base_url }}/static/{{ item.design.file_path }}{% endif %}"
+                       style="color:#b87c6f;font-weight:700;text-decoration:none;">Front artwork{% if item.design.title %}: {{ item.design.title }}{% endif %} →</a>
+                  </p>
+                  {% elif item.design_file_name %}
+                  <p style="margin:4px 0 0;font-size:12px;color:#5a5d68;font-family:Arial,sans-serif;">Front artwork: {{ item.design_file_name }}</p>
+                  {% endif %}
+                  {% if item.proof_image %}
+                  <p style="margin:4px 0 0;font-size:12px;font-family:Arial,sans-serif;">
+                    <a href="{% if item.proof_image.startswith('http') %}{{ item.proof_image }}{% else %}{{ admin_base_url }}{{ item.proof_image }}{% endif %}"
+                       style="color:#b87c6f;font-weight:700;text-decoration:none;">Customer-approved front proof →</a>
+                  </p>
+                  {% endif %}
+                  {% if item.proof_back_image %}
+                  <p style="margin:4px 0 0;font-size:12px;font-family:Arial,sans-serif;">
+                    <a href="{% if item.proof_back_image.startswith('http') %}{{ item.proof_back_image }}{% else %}{{ admin_base_url }}{{ item.proof_back_image }}{% endif %}"
+                       style="color:#b87c6f;font-weight:700;text-decoration:none;">Customer-approved back proof →</a>
+                  </p>
+                  {% endif %}
                 </td>
                 <td style="padding:12px 18px;text-align:right;border-bottom:{% if not loop.last %}1px solid #e8d0b1{% else %}none{% endif %};">
                   <p style="margin:0;font-size:14px;font-weight:700;color:#3a3d48;font-family:'Georgia',serif;">${{ '%.2f'|format(item.subtotal) }}</p>

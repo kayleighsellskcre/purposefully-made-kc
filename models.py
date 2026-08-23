@@ -366,6 +366,10 @@ class CustomDesignRequest(db.Model):
     # Soft-delete: True = customer dismissed the request card (reference image stays in account)
     is_deleted = db.Column(db.Boolean, default=False, nullable=True)
 
+    # Set once the customer confirmation and business notification have gone out,
+    # so a refresh or a repeated submit cannot send the pair twice.
+    emails_sent_at = db.Column(db.DateTime)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -434,7 +438,10 @@ class Order(db.Model):
     due_date = db.Column(db.DateTime)
     cost_of_goods = db.Column(db.Float)  # Total COGS for this order
     profit = db.Column(db.Float)  # total - cost_of_goods
-    checkout_token = db.Column(db.String(64), index=True)
+    # Unique so two concurrent submits of the same checkout cannot both create
+    # an order. NULL is allowed many times over (admin-created orders have no
+    # token), which both Postgres and SQLite permit under a unique constraint.
+    checkout_token = db.Column(db.String(64), index=True, unique=True)
     confirmation_email_sent_at = db.Column(db.DateTime)
     is_refunded = db.Column(db.Boolean, default=False)
     refund_notes = db.Column(db.Text)

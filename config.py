@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from sqlalchemy.pool import StaticPool
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '.env'))
@@ -36,23 +37,29 @@ class Config:
     # 4 Gunicorn workers × pool_size=2 = 8 connections max (well under Railway's limit).
     # pool_pre_ping validates the connection before use (fixes stale connection 500s).
     # pool_recycle prevents connections from going stale after Railway's idle timeout.
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_pre_ping': True,
-        'pool_recycle': 280,
-        'pool_size': 2,
-        'max_overflow': 2,
-        'pool_timeout': 10,
-        'connect_args': {
-            'connect_timeout': 5,        # TCP handshake timeout (seconds)
-            # TCP keepalives: detect dead connections ~11s after they go silent
-            'keepalives': 1,
-            'keepalives_idle': 5,
-            'keepalives_interval': 2,
-            'keepalives_count': 3,
-            # Kill any query that runs longer than 8 seconds at the PostgreSQL level
-            'options': '-c statement_timeout=8000 -c lock_timeout=5000',
-        },
-    }
+    #
+    # Every key below except pool_pre_ping is psycopg2-only. SQLite rejects them,
+    # so the SQLite fallback above is only usable when they are left off.
+    if _db_url.startswith('postgresql'):
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            'pool_pre_ping': True,
+            'pool_recycle': 280,
+            'pool_size': 2,
+            'max_overflow': 2,
+            'pool_timeout': 10,
+            'connect_args': {
+                'connect_timeout': 5,        # TCP handshake timeout (seconds)
+                # TCP keepalives: detect dead connections ~11s after they go silent
+                'keepalives': 1,
+                'keepalives_idle': 5,
+                'keepalives_interval': 2,
+                'keepalives_count': 3,
+                # Kill any query that runs longer than 8 seconds at the PostgreSQL level
+                'options': '-c statement_timeout=8000 -c lock_timeout=5000',
+            },
+        }
+    else:
+        SQLALCHEMY_ENGINE_OPTIONS = {'pool_pre_ping': True}
     # Flask-Limiter: force in-memory storage so it never tries to connect to Redis.
     RATELIMIT_STORAGE_URI = "memory://"
     
@@ -64,8 +71,11 @@ class Config:
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50 MB
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'pdf', 'heic', 'heif'}
     
-    # Scheduler settings
-    SCHEDULER_ENABLED = True  # Set to False to disable automated background jobs
+    # Scheduler settings.
+    # Env-driven so the module-level create_app() in app.py can be told not to
+    # start APScheduler. Without that, importing app.py during a test run spun
+    # up a real scheduler that fired the startup inventory sync 20 seconds in.
+    SCHEDULER_ENABLED = os.environ.get('SCHEDULER_ENABLED', 'true').lower() not in ('false', '0', 'no')
     SCHEDULER_API_ENABLED = False  # Don't expose scheduler API endpoints
     
     # Stripe settings
@@ -87,6 +97,10 @@ class Config:
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or os.environ.get('MAIL_USERNAME') or 'noreply@purposefullymadekc.com'
     MAIL_TIMEOUT = int(os.environ.get('MAIL_TIMEOUT', 20))
     ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL')
+    # Safety valve for non-production deployments: when set, every outbound
+    # email is redirected to this address so a dev or staging run can never
+    # reach a real customer. Leave unset in production.
+    MAIL_TEST_REDIRECT = os.environ.get('MAIL_TEST_REDIRECT')
     
     # Shipping
     SHIPPING_FLAT_RATE = float(os.environ.get('SHIPPING_FLAT_RATE', 11.00))
@@ -112,8 +126,59 @@ class Config:
 
     # Application settings
     ITEMS_PER_PAGE = 20
-    ADMIN_BASE_URL = os.environ.get('ADMIN_BASE_URL', 'http://localhost:5000')
+    # Used for absolute links inside emails and SMS. Defaults to the live site
+    # because a localhost default put unusable links in real customer emails.
+    ADMIN_BASE_URL = os.environ.get('ADMIN_BASE_URL', 'https://purposefullymadekc.com')
+
+    # The one address the site should be indexed under. Used for canonical links
+    # and Open Graph URLs so arriving via www, non-www, or the raw Railway
+    # hostname does not advertise a different canonical for the same page.
+    SITE_ORIGIN = os.environ.get('SITE_ORIGIN', 'https://purposefullymadekc.com')
 
     # Force https:// on all url_for() calls with _external=True in production.
     # This fixes OG image tags, share links, and email links that were using http://.
     PREFERRED_URL_SCHEME = os.environ.get('PREFERRED_URL_SCHEME', 'https')
+
+
+class TestConfig(Config):
+    """Throwaway in-memory database. Never touches production data or the network."""
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = 'sqlite://'
+    # StaticPool keeps a single shared connection, so an in-memory database stays
+    # visible to background threads instead of each thread seeing an empty one.
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'poolclass': StaticPool,
+        'connect_args': {'check_same_thread': False},
+    }
+
+    # The test client talks http://, so a Secure cookie would never be sent back
+    # and every logged-in test would silently run as an anonymous visitor.
+    SESSION_COOKIE_SECURE = False
+    REMEMBER_COOKIE_SECURE = False
+
+    # Tests post forms directly without scraping a token first.
+    WTF_CSRF_ENABLED = False
+
+    # Never open an SMTP socket. Flask-Mail still records messages so tests can
+    # assert on subject, recipients, and body via mail.record_messages().
+    MAIL_SUPPRESS_SEND = True
+    MAIL_SERVER = 'localhost'
+    MAIL_USERNAME = 'test@example.com'
+    MAIL_PASSWORD = 'test-password'
+    MAIL_DEFAULT_SENDER = 'test@example.com'
+    ADMIN_EMAIL = 'admin-test@example.com'
+
+    # No APScheduler threads, no vendor API calls during tests.
+    SCHEDULER_ENABLED = False
+
+    # Flask-Limiter counts per client address, and the whole suite shares
+    # 127.0.0.1, so limits would leak between unrelated tests. The limits
+    # themselves are covered by tests/test_security.py, which turns this on.
+    RATELIMIT_ENABLED = False
+
+    SECRET_KEY = 'test-secret-key'
+    STRIPE_PUBLIC_KEY = 'pk_test_fake'
+    STRIPE_SECRET_KEY = 'sk_test_fake'
+    STRIPE_WEBHOOK_SECRET = 'whsec_test_fake'
+    ADMIN_BASE_URL = 'https://purposefullymadekc.com'
+    SHIPPING_FLAT_RATE = 11.00

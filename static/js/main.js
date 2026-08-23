@@ -145,7 +145,7 @@ function showFlash(message, category = 'info') {
     flashDiv.innerHTML = `
         <div class="container">
             <span>${message}</span>
-            <button class="flash-close">&times;</button>
+            <button class="flash-close" type="button" aria-label="Dismiss message">&times;</button>
         </div>
     `;
     
@@ -165,8 +165,14 @@ function showFlash(message, category = 'info') {
 }
 
 function createFlashContainer() {
+    // base.html always renders this container, so this is only a fallback for
+    // a page that does not extend it. Announcing content inserted into a region
+    // created in the same moment is unreliable, which is why base.html renders
+    // it up front rather than relying on this.
     const container = document.createElement('div');
     container.className = 'flash-messages';
+    container.setAttribute('role', 'status');
+    container.setAttribute('aria-live', 'polite');
     document.body.appendChild(container);
     return container;
 }

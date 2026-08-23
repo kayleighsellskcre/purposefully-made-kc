@@ -6,42 +6,74 @@
     <title>{% block title %}Purposefully Made KC - Custom Apparel{% endblock %}</title>
     <meta name="description" content="{% block meta_description %}Purposefully Made KC, premium custom apparel with DTF printing. Bella+Canvas, Comfort Colors, and more. Design your own t-shirts, hoodies, and group orders online.{% endblock %}">
 
+    {# robots_directive is derived from the blueprint in app.py, so the admin,
+       account, cart, checkout and auth areas are all noindex without each
+       template having to remember. robots.txt already disallows them, but a
+       page a crawler reaches by a link found elsewhere still needs the tag. #}
+    <meta name="robots" content="{% block robots %}{{ robots_directive }}{% endblock %}">
+
     <!-- Canonical URL -->
-    <link rel="canonical" href="{{ request.base_url }}">
+    <link rel="canonical" href="{% block canonical_url %}{{ canonical_url }}{% endblock %}">
 
     <!-- Open Graph -->
-    <meta property="og:title" content="{% block og_title %}Purposefully Made KC - Custom Apparel{% endblock %}">
-    <meta property="og:description" content="{% block og_description %}Premium custom apparel with DTF printing. Bella+Canvas, Comfort Colors, and more. Design your own shirts, hoodies, and team orders.{% endblock %}">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="{{ request.base_url }}">
-    <meta property="og:image" content="https://purposefullymadekc.com/static/img/logo.png">
+    <meta property="og:site_name" content="Purposefully Made KC">
+    <meta property="og:title" content="{% block og_title %}{{ self.title() }}{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}{{ self.meta_description() }}{% endblock %}">
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:url" content="{% block og_url %}{{ canonical_url }}{% endblock %}">
+    {# logo.png, because that is what exists. A purpose-made 1200x630 card would
+       preview better on Facebook and iMessage — noted as an open item. #}
+    <meta property="og:image" content="{% block og_image %}{{ site_origin }}/static/img/logo.png{% endblock %}">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="https://purposefullymadekc.com/static/img/logo.png">
+    <meta name="twitter:title" content="{{ self.og_title() }}">
+    <meta name="twitter:description" content="{{ self.og_description() }}">
+    <meta name="twitter:image" content="{{ self.og_image() }}">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,300;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+    {# Loaded without blocking the first paint: the browser fetches a print
+       stylesheet at low priority, then the onload promotes it to all media.
+       Three other templates in this project already do this; this link is on
+       every page, so it was the one actually costing render time. The URL
+       already carries display=swap, so text has always appeared in the fallback
+       font first and swapped on arrival — that behaviour is unchanged. #}
+    <link rel="stylesheet" media="print" onload="this.media='all'"
+          href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,300;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap">
+    <noscript>
+        <link rel="stylesheet"
+              href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,300;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap">
+    </noscript>
     
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=39">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=40">
     {% block extra_css %}{% endblock %}
     
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='img/favicon-192.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
+    <meta name="theme-color" content="#b87c6f">
     <!-- CSRF token available to JS -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
+    {# Keyboard and screen-reader users would otherwise have to tab through all
+       eleven navigation links on every single page before reaching the content. #}
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    {# The banner landmark is the sticky element itself, not a wrapper around it.
+       A wrapper would become the navbar's containing block, and a sticky element
+       cannot stick beyond its containing block, so the nav would scroll away. #}
+    <header class="navbar">
         <div class="container">
             <div class="nav-content">
                 <a href="{{ url_for('main.index') }}" class="logo">
                     <img src="{{ url_for('static', filename='img/logo-monogram.png') }}" alt="Purposefully Made KC" class="logo-image">
                 </a>
                 
-                <div class="nav-links">
+                <nav class="nav-links" aria-label="Main">
                     <a href="{{ url_for('shop.index') }}" class="nav-link">Shop</a>
                     <a href="{{ url_for('shop.design_gallery') }}" class="nav-link">Design Gallery</a>
                     <a href="{{ url_for('shop.group_orders') }}" class="nav-link">Group Orders</a>
@@ -82,7 +114,7 @@
                     <a href="{{ url_for('auth.login') }}" class="nav-link mobile-only">Login</a>
                     <a href="{{ url_for('auth.register') }}" class="nav-link mobile-only">Register</a>
                     {% endif %}
-                </div>
+                </nav>
 
                 {# Always-visible: favorites, cart, hamburger #}
                 <div class="nav-icons">
@@ -111,7 +143,7 @@
                 </div>
             </div>
         </div>
-    </nav>
+    </header>
 
     {% if active_group_order %}
     <div class="group-order-banner">
@@ -133,24 +165,28 @@
     </style>
     {% endif %}
     
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div class="flash-messages">
-                {% for category, message in messages %}
-                    <div class="flash-message flash-{{ category }}">
-                        <div class="container">
-                            <span>{{ message }}</span>
-                            <button class="flash-close" type="button" aria-label="Dismiss message">&times;</button>
-                        </div>
+    {# Flash messages.
+
+       The container is always rendered, and is a live region, because
+       PMKC.showFlash() injects into it after page load — for "Added to cart",
+       upload errors, and checkout validation. A screen reader only announces
+       inserted content if the region existed beforehand, so rendering the
+       wrapper conditionally meant those messages were silent. #}
+    <div class="flash-messages" role="status" aria-live="polite" aria-atomic="false">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="flash-message flash-{{ category }}">
+                    <div class="container">
+                        <span>{{ message }}</span>
+                        <button class="flash-close" type="button" aria-label="Dismiss message">&times;</button>
                     </div>
-                {% endfor %}
-            </div>
-        {% endif %}
-    {% endwith %}
-    
+                </div>
+            {% endfor %}
+        {% endwith %}
+    </div>
+
     <!-- Main Content -->
-    <main class="main-content">
+    <main class="main-content" id="main-content" tabindex="-1">
         {% block content %}{% endblock %}
     </main>
     
@@ -164,7 +200,6 @@
                     <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Purposefully Made KC" class="footer-logo-img">
                 </a>
                 <p class="footer-brand-desc">Luxury custom apparel for every occasion that deserves something special.</p>
-                <!-- Social media links — update the href values with your actual profile URLs -->
                 <div class="footer-social">
                     <a href="https://www.instagram.com/purposefullymadekc" target="_blank" rel="noopener" aria-label="Instagram" class="footer-social-link">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
@@ -221,7 +256,8 @@
     </footer>
     
     <!-- Scripts -->
-    <script src="{{ url_for('static', filename='js/main.js') }}?v=2"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=3"></script>
+    <script src="{{ url_for('static', filename='js/a11y.js') }}?v=1"></script>
     {% block extra_js %}{% endblock %}
 
     <!-- ── CSRF auto-protection ─────────────────────────────────────────────

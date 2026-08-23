@@ -40,7 +40,8 @@
                 <div class="account-content-header">
                     <div>
                         <span class="account-content-eyebrow">Account</span>
-                        <h1>My Requests</h1>
+                        {# h2: the page h1 is already in .page-header above. #}
+                        <h2>My Requests</h2>
                     </div>
                     <a href="{{ url_for('custom_request.submit') }}" class="btn btn-primary btn-sm">+ New Request</a>
                 </div>
@@ -254,11 +255,11 @@
 </style>
 
 <!-- ── Delete confirmation modal ── -->
-<div id="rqDeleteModal" class="md-overlay" role="dialog" aria-modal="true">
+<div id="rqDeleteModal" class="md-overlay" role="dialog" aria-modal="true" aria-labelledby="rqModalTitle">
     <div class="md-card">
         <div class="md-header">
-            <h3>Remove Request?</h3>
-            <button class="md-close" onclick="closeRqModal()" aria-label="Close">&times;</button>
+            <h3 id="rqModalTitle">Remove Request?</h3>
+            <button type="button" class="md-close" onclick="closeRqModal()" aria-label="Close">&times;</button>
         </div>
         <div class="md-body">
             <p>
@@ -275,7 +276,7 @@
     </div>
 </div>
 
-<div id="rqToast"></div>
+<div id="rqToast" role="status" aria-live="polite"></div>
 
 <style>
 /* Shared modal styles (matches my_designs.html) */
@@ -324,25 +325,32 @@
 <script>
 (function () {
     let _rqId = 0, _rqDesc = '';
+    const rqModal = document.getElementById('rqDeleteModal');
 
     window.confirmRqDelete = function (id, desc) {
         _rqId = id;
         _rqDesc = desc;
         document.getElementById('rqModalDesc').textContent = desc;
-        document.getElementById('rqDeleteModal').classList.add('is-open');
-        document.body.style.overflow = 'hidden';
+        // PMKC.dialog (static/js/a11y.js): Escape, Tab containment, focus moved
+        // into the card and returned to the trigger afterwards.
+        PMKC.dialog.show(rqModal, {
+            onOpen: function () {
+                rqModal.classList.add('is-open');
+                document.body.style.overflow = 'hidden';
+            },
+            onClose: function () {
+                rqModal.classList.remove('is-open');
+                document.body.style.overflow = '';
+            },
+        });
     };
 
     window.closeRqModal = function () {
-        document.getElementById('rqDeleteModal').classList.remove('is-open');
-        document.body.style.overflow = '';
+        PMKC.dialog.close();
     };
 
-    document.getElementById('rqDeleteModal').addEventListener('click', function (e) {
+    rqModal.addEventListener('click', function (e) {
         if (e.target === this) window.closeRqModal();
-    });
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') window.closeRqModal();
     });
 
     document.getElementById('rqConfirmBtn').addEventListener('click', function () {

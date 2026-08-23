@@ -21,7 +21,13 @@
     
     --text-primary: #3A3D48;            /* Midnight Charcoal */
     --text-secondary: #7F6C50;          /* Aged Bronze */
-    --text-light: #939F80;              /* Olive Stone */
+    /* A darker olive than the --olive-stone brand token it used to mirror.
+       As #939F80 this hit 2.8:1 on white — well under the 4.5:1 needed for
+       body text, and it is used for product categories, form placeholders and
+       account hint text. #656F52 is the same hue at 5.3:1 on white and 4.7:1
+       on ivory. The brand token itself is unchanged, so borders, success
+       notices and decorative use look exactly as before. */
+    --text-light: #656F52;
     
     --bg-primary: #FFFFFF;
     --bg-secondary: #F5F0E1;            /* Ivory Silk */
@@ -495,6 +501,14 @@ a:hover {
     width: calc(100% - 2rem);
     max-width: 600px;
     padding: 0 0.5rem;
+    /* The container is always in the DOM so it can act as a live region for
+       messages JavaScript inserts later. Empty, it is an invisible 600px band
+       across the top of the page, so it must not intercept clicks. */
+    pointer-events: none;
+}
+
+.flash-messages > * {
+    pointer-events: auto;
 }
 
 .flash-message {
@@ -1143,7 +1157,10 @@ a.btn-customize:hover {
     padding: 1.1rem 0;
     text-align: center;
     font-size: 0.72rem;
-    color: rgba(44, 32, 22, 0.45);
+    /* Was 0.45 alpha, which came out at 2.5:1 against the sand footer — at
+       0.72rem that is the least legible text on the site. 0.85 clears 4.5:1
+       across the whole gradient, including its darker end. */
+    color: rgba(44, 32, 22, 0.85);
     letter-spacing: 0.05em;
 }
 
@@ -1641,7 +1658,10 @@ textarea.form-control {
     gap: 1rem;
 }
 
-.account-content-header h1 {
+/* h2 as well as h1: the account pages already carry the page h1 in
+   .page-header, so a second h1 here would give the page two. */
+.account-content-header h1,
+.account-content-header h2 {
     font-size: 1.85rem;
     margin: 0;
 }
@@ -2345,6 +2365,51 @@ textarea:focus-visible,
 [tabindex]:focus-visible {
     outline: 3px solid rgba(184, 124, 111, 0.45);
     outline-offset: 2px;
+}
+
+/* The skip link's target. It only holds tabindex="-1" so the browser will move
+   focus there, and a ring around the whole page body would look like damage. */
+#main-content:focus,
+#main-content:focus-visible {
+    outline: none;
+}
+
+/* ── Skip to main content ─────────────────────────────────────────────────
+   Off-screen until focused, rather than display:none, because a hidden
+   element cannot receive keyboard focus. */
+.skip-link {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -120%);
+    z-index: 10000;
+    padding: 0.75rem 1.25rem;
+    background: var(--midnight-charcoal);
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    transition: transform 0.15s ease;
+}
+
+.skip-link:focus {
+    transform: translate(-50%, 0);
+    outline: 3px solid rgba(184, 124, 111, 0.65);
+    outline-offset: 2px;
+}
+
+/* Available to a screen reader, invisible on screen. Use for text that names
+   an icon-only control when a visible label would crowd the layout. */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 /* ── Mobile readability floor: keep core text comfortably legible ─────── */

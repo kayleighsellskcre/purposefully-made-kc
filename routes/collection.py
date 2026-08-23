@@ -83,7 +83,8 @@ def view(slug):
     for product in all_products:
         variants = get_carousel_colors_for_product(product, current_app, allowed_colors=allowed_colors)
         product.carousel_colors = variants
-        product.fallback_image_url = get_first_shop_image_url(product, current_app)
+        product.fallback_image_url = get_first_shop_image_url(
+            product, current_app, carousel=variants)
         product.available_sizes_list = sort_sizes(parse_json_list(product.available_sizes))
         # When colors are restricted, skip styles that don't come in those colors.
         if allowed_colors and not variants:

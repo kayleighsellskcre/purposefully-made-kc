@@ -173,7 +173,10 @@
                         <!-- Stripe Payment Element (card, Apple Pay, Google Pay, Venmo) -->
                         <div class="payment-panel" id="card-panel">
                             <div id="payment-element"></div>
-                            <div id="card-errors" class="error-message" style="margin-top:0.75rem;"></div>
+                            {# role="alert": a declined card is announced the
+                               moment Stripe reports it, rather than silently
+                               appearing where a screen reader user never sees it. #}
+                            <div id="card-errors" class="error-message" role="alert" aria-live="assertive" style="margin-top:0.75rem;"></div>
                         </div>
 
                         <!-- Cash Payment -->
@@ -472,6 +475,19 @@ async function handleStripePayment() {
     button.disabled = true;
     button.textContent = 'Processing...';
 
+    // Wallet payments (Apple Pay, Google Pay, Venmo) leave the page to
+    // authorize and come back with only a PaymentIntent id, so hand the form
+    // to the server first or these details are lost.
+    try {
+        await fetch('/checkout/prepare', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(buildOrderPayload(null, 'stripe'))
+        });
+    } catch (e) {
+        // Non-fatal: the on-page card flow posts the same details itself.
+    }
+
     try {
         // confirmPayment handles card, Apple Pay, Venmo, Google Pay — all in one call.
         // On success the customer is redirected to /checkout/payment-return?...
@@ -533,7 +549,7 @@ async function handleCashPayment() {
     }
 }
 
-async function completeOrder(paymentId, paymentMethodOverride) {
+function buildOrderPayload(paymentId, paymentMethodOverride) {
     const paymentMethod = paymentMethodOverride || (paymentId ? 'stripe' : 'cash');
     const shippingInfo = currentFulfillment === 'shipping' ? {
         recipient: document.getElementById('ship_recipient').value,
@@ -543,8 +559,8 @@ async function completeOrder(paymentId, paymentMethodOverride) {
         state: document.getElementById('ship_state').value,
         zip: document.getElementById('ship_zip').value
     } : null;
-    
-    const payload = {
+
+    return {
         payment_method: paymentMethod,
         payment_id: paymentId,
         shipping_method: currentFulfillment,
@@ -559,6 +575,10 @@ async function completeOrder(paymentId, paymentMethodOverride) {
         child_grade: ((document.getElementById('child_grade') || {}).value || '').trim(),
         child_name: ((document.getElementById('child_name') || {}).value || '').trim()
     };
+}
+
+async function completeOrder(paymentId, paymentMethodOverride) {
+    const payload = buildOrderPayload(paymentId, paymentMethodOverride);
 
     async function readOrderResponse(response) {
         const contentType = response.headers.get('content-type') || '';

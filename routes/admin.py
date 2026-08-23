@@ -199,6 +199,24 @@ def _save_design_for_user(file, user_id, title=None, design_fee=0):
     return design, local_path, prefix
 
 
+def _form_money(field, default=None):
+    """Parse a money field from the current form. Returns default when absent.
+
+    float(request.form.get(...)) crashed with TypeError whenever a numeric
+    input arrived empty or missing, which took down the product save.
+    """
+    raw = request.form.get(field)
+    if raw is None:
+        return default
+    raw = str(raw).strip().replace('$', '').replace(',', '')
+    if raw == '':
+        return default
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return default
+
+
 def _email_design_request_decision(req_id, decision, reason=None):
     req = CustomDesignRequest.query.get(req_id)
     if req:
@@ -796,25 +814,52 @@ def delete_order(order_id):
 @admin_bp.route('/test-email', methods=['POST'])
 @admin_required
 def test_email():
-    """Send a test email to the admin address to verify SMTP is working."""
+    """Send a test email to the admin address to verify SMTP is working.
+
+    Names the exact missing variable rather than listing all three, so a
+    misconfigured deployment can be fixed without guessing.
+    """
     from flask_mail import Message as MailMessage
-    from routes.checkout import _mail_ready, _mail_sender
-    if not _mail_ready():
-        flash('Mail is NOT configured — MAIL_SERVER, MAIL_USERNAME, or MAIL_PASSWORD is missing on Railway.', 'error')
-        return redirect(request.referrer or url_for('admin.dashboard'))
-    mail = current_app.extensions.get('mail')
-    recipient = current_app.config.get('ADMIN_EMAIL') or current_user.email or 'purposefullymadekc@gmail.com'
-    try:
-        msg = MailMessage(
-            subject='✅ Test email — Purposefully Made KC mail is working!',
-            recipients=[recipient],
-            body=f'Mail is configured correctly on Railway.\n\nSMTP: {current_app.config.get("MAIL_SERVER")}:{current_app.config.get("MAIL_PORT")}\nSender: {_mail_sender()}',
-            sender=_mail_sender(),
+    from routes.checkout import _mail_sender
+
+    missing = [
+        name for name in ('MAIL_SERVER', 'MAIL_USERNAME', 'MAIL_PASSWORD')
+        if not current_app.config.get(name)
+    ]
+    if missing:
+        flash(
+            'Mail is NOT configured. Add these to Railway → Variables, then redeploy: '
+            + ', '.join(missing),
+            'error',
         )
-        mail.send(msg)
-        flash(f'Test email sent to {recipient} — check your inbox!', 'success')
-    except Exception as e:
-        flash(f'Mail send FAILED: {e}', 'error')
+        return redirect(request.referrer or url_for('admin.dashboard'))
+
+    recipient = current_app.config.get('ADMIN_EMAIL') or current_user.email or 'purposefullymadekc@gmail.com'
+    redirect_note = current_app.config.get('MAIL_TEST_REDIRECT')
+    body = (
+        'Mail is configured correctly.\n\n'
+        f'SMTP server  : {current_app.config.get("MAIL_SERVER")}:{current_app.config.get("MAIL_PORT")}\n'
+        f'TLS          : {current_app.config.get("MAIL_USE_TLS")}\n'
+        f'From         : {_mail_sender()}\n'
+        f'Reply-to     : {current_app.config.get("ADMIN_EMAIL")}\n'
+        f'Link base    : {current_app.config.get("ADMIN_BASE_URL")}\n'
+        f'Test redirect: {redirect_note or "off (live sending)"}\n'
+    )
+    from utils.mailer import send as _send_mail
+    msg = MailMessage(
+        subject='Test email — Purposefully Made KC mail is working',
+        recipients=[recipient],
+        body=body,
+        sender=_mail_sender(),
+    )
+    if _send_mail(current_app._get_current_object(), msg, description='admin mail test'):
+        flash(f'Test email sent to {recipient} — check your inbox.', 'success')
+    else:
+        flash(
+            'Mail send FAILED. The credentials are present but the SMTP relay '
+            'rejected or timed out. Check the Railway deploy logs for the full error.',
+            'error',
+        )
     return redirect(request.referrer or url_for('admin.dashboard'))
 
 
@@ -852,11 +897,11 @@ def update_order_details(order_id):
         except ValueError:
             pass
     order.order_type = request.form.get('order_type') or 'retail'
-    order.cost_of_goods = float(request.form.get('cost_of_goods') or 0) or None
+    order.cost_of_goods = _form_money('cost_of_goods', 0.0) or None
     if order.cost_of_goods is not None and order.total:
         order.profit = order.total - order.cost_of_goods
     else:
-        order.profit = float(request.form.get('profit') or 0) or None
+        order.profit = _form_money('profit', 0.0) or None
     order.is_refunded = request.form.get('is_refunded') == 'on'
     order.refund_notes = request.form.get('refund_notes')
     db.session.commit()
@@ -2133,13 +2178,17 @@ def add_product():
     """Add new product"""
     if request.method == 'POST':
         from utils.json_fields import store_json_list
+        base_price = _form_money('base_price')
+        if base_price is None or base_price < 0:
+            flash('Enter a base price (a number, 0 or higher) before saving.', 'error')
+            return render_template('admin/add_product.html')
         product = Product(
             style_number=request.form.get('style_number'),
             name=request.form.get('name'),
             category=request.form.get('category'),
             description=request.form.get('description'),
-            base_price=float(request.form.get('base_price')),
-            wholesale_cost=float(request.form.get('wholesale_cost') or 0),
+            base_price=base_price,
+            wholesale_cost=_form_money('wholesale_cost', 0.0),
             is_active=request.form.get('is_active') == 'on',
             is_customer_favorite=request.form.get('is_customer_favorite') == 'on',
             available_sizes=store_json_list(request.form.get('available_sizes')),
@@ -2165,7 +2214,14 @@ def edit_product(product_id):
     if request.method == 'POST':
         from werkzeug.utils import secure_filename
         import os
-        
+
+        # Validate the price before touching the row, so a bad value cannot
+        # leave the product half-updated.
+        base_price = _form_money('base_price')
+        if base_price is None or base_price < 0:
+            flash('Enter a base price (a number, 0 or higher) before saving.', 'error')
+            return render_template('admin/edit_product.html', product=product)
+
         product.style_number = request.form.get('style_number')
         product.name = request.form.get('name')
         product.brand = request.form.get('brand')
@@ -2175,8 +2231,8 @@ def edit_product(product_id):
         product.neck_style = request.form.get('neck_style')
         product.sleeve_length = request.form.get('sleeve_length')
         product.description = request.form.get('description')
-        product.base_price = float(request.form.get('base_price'))
-        product.wholesale_cost = float(request.form.get('wholesale_cost') or 0)
+        product.base_price = base_price
+        product.wholesale_cost = _form_money('wholesale_cost', 0.0)
         product.is_active = request.form.get('is_active') == 'on'
         product.is_customer_favorite = request.form.get('is_customer_favorite') == 'on'
         from utils.json_fields import store_json_list
@@ -2398,7 +2454,7 @@ def add_collection():
                 flash(f'URL slug adjusted to "{slug}" (original was already in use).', 'info')
 
             try:
-                tax_rate = float(request.form.get('tax_rate') or 0)
+                tax_rate = _form_money('tax_rate', 0.0)
             except (TypeError, ValueError):
                 tax_rate = 0.0
 
@@ -3463,8 +3519,10 @@ def _send_design_request_decision_email(req, decision, reason=None):
         if not email:
             return False
 
+        from utils.mailer import sender as _sender_tuple
+        app_obj = current_app._get_current_object()
         first = getattr(user, 'first_name', None) or 'there'
-        sender = cfg.get('MAIL_DEFAULT_SENDER') or cfg.get('MAIL_USERNAME')
+        sender = _sender_tuple(app_obj)
 
         if decision == 'completed':
             subject = "Your custom design is ready! — Purposefully Made KC"
@@ -3490,6 +3548,7 @@ def _send_design_request_decision_email(req, decision, reason=None):
                 f"— Purposefully Made KC"
             )
 
+        from utils.mailer import send as _send_mail
         msg = MailMessage(
             subject=subject,
             recipients=[email],
@@ -3497,9 +3556,10 @@ def _send_design_request_decision_email(req, decision, reason=None):
             sender=sender,
             reply_to='purposefullymadekc@gmail.com',
         )
-        mail.send(msg)
-        current_app.logger.info('design request %s email sent to %s (%s)', decision, email, req.id)
-        return True
+        return _send_mail(
+            app_obj, msg,
+            description=f'design request {decision} notice for request {req.id}',
+        )
     except Exception as e:
         current_app.logger.exception('design request decision email failed for request %s: %s', req.id, e)
         return False
@@ -3550,7 +3610,7 @@ def inventory():
 def add_apparel_inventory():
     inv = ApparelInventory(brand=request.form.get('brand'), color=request.form.get('color'),
                            size=request.form.get('size'), quantity=int(request.form.get('quantity') or 0),
-                           cost_per_unit=float(request.form.get('cost_per_unit') or 0) or None,
+                           cost_per_unit=_form_money('cost_per_unit', 0.0) or None,
                            reorder_threshold=int(request.form.get('reorder_threshold') or 5))
     db.session.add(inv)
     db.session.commit()
@@ -3563,7 +3623,7 @@ def add_apparel_inventory():
 def update_apparel_inventory(id):
     inv = ApparelInventory.query.get_or_404(id)
     inv.quantity = int(request.form.get('quantity') or 0)
-    inv.cost_per_unit = float(request.form.get('cost_per_unit') or 0) or None
+    inv.cost_per_unit = _form_money('cost_per_unit', 0.0) or None
     inv.reorder_threshold = int(request.form.get('reorder_threshold') or 5)
     db.session.commit()
     flash('Apparel updated', 'success')
@@ -3575,7 +3635,7 @@ def update_apparel_inventory(id):
 def add_supply():
     s = Supply(category=request.form.get('category'), name=request.form.get('name'),
                quantity=int(request.form.get('quantity') or 0), unit=request.form.get('unit') or 'ea',
-               cost_per_unit=float(request.form.get('cost_per_unit') or 0) or None,
+               cost_per_unit=_form_money('cost_per_unit', 0.0) or None,
                reorder_threshold=int(request.form.get('reorder_threshold') or 0))
     db.session.add(s)
     db.session.commit()
@@ -3588,7 +3648,7 @@ def add_supply():
 def update_supply(id):
     s = Supply.query.get_or_404(id)
     s.quantity = int(request.form.get('quantity') or 0)
-    s.cost_per_unit = float(request.form.get('cost_per_unit') or 0) or None
+    s.cost_per_unit = _form_money('cost_per_unit', 0.0) or None
     s.reorder_threshold = int(request.form.get('reorder_threshold') or 0)
     db.session.commit()
     flash('Supply updated', 'success')
@@ -3600,7 +3660,7 @@ def update_supply(id):
 def add_transfer_inventory():
     t = TransferInventory(design_name=request.form.get('design_name'), size=request.form.get('size'),
                           quantity=int(request.form.get('quantity') or 0),
-                          cost_per_sheet=float(request.form.get('cost_per_sheet') or 0) or None,
+                          cost_per_sheet=_form_money('cost_per_sheet', 0.0) or None,
                           vendor_id=int(request.form.get('vendor_id')) if request.form.get('vendor_id') else None,
                           delivery_time=request.form.get('delivery_time'))
     db.session.add(t)
@@ -3709,7 +3769,7 @@ def financial():
 @admin_bp.route('/operations/financial/entry/add', methods=['POST'])
 @admin_required
 def add_financial_entry():
-    e = FinancialEntry(category=request.form.get('category'), amount=float(request.form.get('amount')),
+    e = FinancialEntry(category=request.form.get('category'), amount=_form_money('amount', 0.0),
                        description=request.form.get('description'))
     db.session.add(e)
     db.session.commit()
@@ -3748,7 +3808,7 @@ def sync_growth_metrics():
 def add_growth_metric():
     m = GrowthMetric(week_start=datetime.fromisoformat(request.form.get('week_start')),
                      units_sold=int(request.form.get('units_sold') or 0),
-                     revenue=float(request.form.get('revenue') or 0),
+                     revenue=_form_money('revenue', 0.0),
                      website_traffic=int(request.form.get('website_traffic') or 0),
                      events_booked=int(request.form.get('events_booked') or 0),
                      wholesale_inquiries=int(request.form.get('wholesale_inquiries') or 0),
@@ -3767,7 +3827,7 @@ def edit_growth_metric(id):
     if request.method == 'POST':
         m.week_start = datetime.fromisoformat(request.form.get('week_start'))
         m.units_sold = int(request.form.get('units_sold') or 0)
-        m.revenue = float(request.form.get('revenue') or 0)
+        m.revenue = _form_money('revenue', 0.0)
         m.website_traffic = int(request.form.get('website_traffic') or 0)
         m.events_booked = int(request.form.get('events_booked') or 0)
         m.wholesale_inquiries = int(request.form.get('wholesale_inquiries') or 0)

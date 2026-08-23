@@ -1,5 +1,12 @@
-{# Instant logo upload for create/edit group-order forms.
-   One file at a time (Railway runs a single worker). 20s timeout per file. #}
+{# Instant design upload for the create/edit group-order forms.
+
+   Files go straight to /design/upload one at a time (Railway runs a single
+   worker) and the returned design id is added to the form as a hidden
+   allowed_designs field, so the form POST itself carries no file data.
+
+   The drop zone advertised "drag & drop" but only ever responded to clicks,
+   so dropping a logo on it did nothing. It works now. #}
+<script src="{{ url_for('static', filename='js/image-shrink.js') }}" defer></script>
 <script>
 (function() {
     var input = document.getElementById('design_uploads');
@@ -8,37 +15,37 @@
     var form = document.querySelector('.collection-form');
     if (!input || !preview || !form) return;
 
-    input.addEventListener('change', function() {
-        var files = Array.from(this.files || []);
-        this.value = '';
-        if (!files.length) return;
+    var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    var ACCEPTED = /\.(png|jpe?g|webp)$/i;
 
-        var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
-        preview.style.display = 'block';
-        if (uploadArea) {
-            uploadArea.style.pointerEvents = 'none';
-            uploadArea.style.opacity = '0.6';
-        }
+    function busy(state) {
+        if (!uploadArea) return;
+        uploadArea.style.pointerEvents = state ? 'none' : '';
+        uploadArea.style.opacity = state ? '0.6' : '';
+    }
 
-        var chain = Promise.resolve();
-        files.forEach(function(f) {
-            chain = chain.then(function() { return uploadOne(f); });
-        });
-        chain.finally(function() {
-            if (uploadArea) {
-                uploadArea.style.pointerEvents = '';
-                uploadArea.style.opacity = '';
-            }
-        });
+    function note(message, colour) {
+        var div = document.createElement('div');
+        div.className = 'upload-preview-item';
+        div.innerHTML = '<span style="font-size:0.75rem;color:' + colour + '">' +
+            message + '</span>';
+        preview.appendChild(div);
+        preview.style.display = 'flex';
+        return div;
+    }
 
-        function uploadOne(f) {
-            var div = document.createElement('div');
-            div.className = 'upload-preview-item';
-            div.innerHTML = '<span style="font-size:0.75rem;color:var(--text-secondary)">Uploading…</span>';
-            preview.appendChild(div);
+    function uploadOne(original) {
+        var div = note('Uploading…', 'var(--text-secondary)');
 
+        // /design/upload refuses anything over 15 MB and a single phone photo
+        // clears that on its own, so shrink in the browser first.
+        var ready = (window.PMKC && window.PMKC.shrinkImage)
+            ? window.PMKC.shrinkImage(original)
+            : Promise.resolve(original);
+
+        return ready.then(function(file) {
             var fd = new FormData();
-            fd.append('file', f);
+            fd.append('file', file);
             fd.append('bg_removal', 'none');
 
             var ctrl = new AbortController();
@@ -52,30 +59,74 @@
             }).then(function(res) {
                 return res.json().catch(function() { return {}; });
             }).then(function(data) {
-                if (data.success && data.design_id) {
-                    var hidden = document.createElement('input');
-                    hidden.type = 'hidden';
-                    hidden.name = 'allowed_designs';
-                    hidden.value = data.design_id;
-                    form.appendChild(hidden);
-                    div.innerHTML = '';
-                    var img = document.createElement('img');
-                    img.src = data.url;
-                    img.alt = f.name;
-                    div.appendChild(img);
-                    var span = document.createElement('span');
-                    span.textContent = f.name;
-                    div.appendChild(span);
-                } else {
+                if (!data.success || !data.design_id) {
                     div.innerHTML = '<span style="color:#dc3545;font-size:0.75rem">' +
                         (data.error || 'Failed — try again') + '</span>';
+                    return;
                 }
+                var hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'allowed_designs';
+                hidden.value = data.design_id;
+                form.appendChild(hidden);
+
+                div.innerHTML = '';
+                var img = document.createElement('img');
+                img.src = data.url;
+                img.alt = original.name;
+                div.appendChild(img);
+                var span = document.createElement('span');
+                span.textContent = original.name;
+                div.appendChild(span);
             }).catch(function() {
-                div.innerHTML = '<span style="color:#dc3545;font-size:0.75rem">Timed out — try a smaller file</span>';
+                div.innerHTML = '<span style="color:#dc3545;font-size:0.75rem">' +
+                    'Timed out — try a smaller file</span>';
             }).finally(function() {
                 clearTimeout(timer);
             });
-        }
+        });
+    }
+
+    function uploadAll(files) {
+        var usable = files.filter(function(f) { return ACCEPTED.test(f.name); });
+        files.filter(function(f) { return !ACCEPTED.test(f.name); })
+             .forEach(function(f) {
+                 note(f.name + ' — needs to be PNG, JPG, or WEBP', '#dc3545');
+             });
+        if (!usable.length) return;
+
+        preview.style.display = 'flex';
+        busy(true);
+        usable.reduce(function(chain, f) {
+            return chain.then(function() { return uploadOne(f); });
+        }, Promise.resolve()).finally(function() { busy(false); });
+    }
+
+    input.addEventListener('change', function() {
+        var files = Array.from(this.files || []);
+        // Clear the input so the same file can be picked again, and so the
+        // form POST never carries the file data a second time.
+        this.value = '';
+        uploadAll(files);
     });
+
+    if (uploadArea) {
+        ['dragenter', 'dragover'].forEach(function(name) {
+            uploadArea.addEventListener(name, function(e) {
+                e.preventDefault();
+                uploadArea.classList.add('is-dragover');
+            });
+        });
+        ['dragleave', 'dragend'].forEach(function(name) {
+            uploadArea.addEventListener(name, function() {
+                uploadArea.classList.remove('is-dragover');
+            });
+        });
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('is-dragover');
+            uploadAll(Array.from((e.dataTransfer && e.dataTransfer.files) || []));
+        });
+    }
 })();
 </script>

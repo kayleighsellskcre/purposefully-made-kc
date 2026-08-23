@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, session, current_app, send_file, send_from_directory, request, flash, redirect, url_for
+from flask import Blueprint, Response, render_template, session, current_app, send_file, send_from_directory, request, flash, redirect, url_for
 from models import Product, Collection
 from datetime import datetime, timezone
 import os
@@ -92,7 +92,12 @@ def contact():
                     body=body,
                 )
                 from utils.background import run_in_background
-                run_in_background(current_app._get_current_object(), mail.send, msg)
+                from utils.mailer import send as _send_mail
+                run_in_background(
+                    current_app._get_current_object(), _send_mail,
+                    current_app._get_current_object(), msg,
+                    description=f'contact form message from {email}',
+                )
         except Exception as e:
             import sys
             print(f"Contact email error: {e}", file=sys.stderr)
@@ -100,6 +105,100 @@ def contact():
         flash('Thank you for reaching out! We will get back to you within 1 to 2 business days.', 'success')
         return redirect(url_for('main.contact'))
     return render_template('contact.html')
+
+
+@main_bp.route('/robots.txt')
+def robots_txt():
+    """Tell crawlers what to index. Keeps carts, accounts, and admin out of search."""
+    lines = [
+        'User-agent: *',
+        'Allow: /',
+        # Nothing behind these is public or useful in search results, and
+        # crawling them wastes budget on pages that require a session.
+        'Disallow: /admin/',
+        'Disallow: /account/',
+        'Disallow: /cart/',
+        'Disallow: /checkout/',
+        'Disallow: /auth/',
+        'Disallow: /design/',
+        'Disallow: /custom-design/submit',
+        'Disallow: /custom-design/my-requests',
+        'Disallow: /status',
+        'Disallow: /version',
+        '',
+        f'Sitemap: {url_for("main.sitemap_xml", _external=True)}',
+        '',
+    ]
+    return Response('\n'.join(lines), mimetype='text/plain')
+
+
+@main_bp.route('/sitemap.xml')
+def sitemap_xml():
+    """Generated sitemap of the public pages and every active product."""
+    from xml.sax.saxutils import escape
+
+    entries = []
+
+    def add(endpoint, changefreq, priority, lastmod=None, **values):
+        try:
+            loc = url_for(endpoint, _external=True, **values)
+        except Exception:
+            return
+        entries.append({
+            'loc': loc,
+            'changefreq': changefreq,
+            'priority': priority,
+            'lastmod': lastmod,
+        })
+
+    add('main.index', 'weekly', '1.0')
+    add('shop.index', 'daily', '0.9')
+    add('shop.design_gallery', 'weekly', '0.8')
+    add('shop.group_orders', 'weekly', '0.7')
+    add('custom_request.index', 'monthly', '0.7')
+    add('main.about', 'yearly', '0.5')
+    add('main.contact', 'yearly', '0.5')
+    add('main.privacy', 'yearly', '0.3')
+    add('main.terms', 'yearly', '0.3')
+
+    try:
+        products = Product.query.filter_by(is_active=True).all()
+        for product in products:
+            lastmod = product.updated_at or product.created_at
+            add(
+                'shop.product_detail', 'weekly', '0.8',
+                lastmod=lastmod.date().isoformat() if lastmod else None,
+                product_id=product.id,
+            )
+    except Exception:
+        current_app.logger.exception('sitemap product listing failed')
+
+    try:
+        # Only collections the owner has deliberately published to the
+        # public directory, and never a password-protected one.
+        collections = Collection.query.filter(
+            Collection.is_active == True,
+            Collection.show_in_directory == True,
+            Collection.is_password_protected == False,
+        ).all()
+        for collection in collections:
+            add('collection.view', 'weekly', '0.6', slug=collection.slug)
+    except Exception:
+        current_app.logger.exception('sitemap collection listing failed')
+
+    parts = ['<?xml version="1.0" encoding="UTF-8"?>',
+             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for entry in entries:
+        parts.append('  <url>')
+        parts.append(f'    <loc>{escape(entry["loc"])}</loc>')
+        if entry['lastmod']:
+            parts.append(f'    <lastmod>{entry["lastmod"]}</lastmod>')
+        parts.append(f'    <changefreq>{entry["changefreq"]}</changefreq>')
+        parts.append(f'    <priority>{entry["priority"]}</priority>')
+        parts.append('  </url>')
+    parts.append('</urlset>')
+
+    return Response('\n'.join(parts), mimetype='application/xml')
 
 
 @main_bp.route('/privacy')

@@ -23,12 +23,14 @@
                     <img src="{{ fav.product.carousel_colors[0].front_image_url }}"
                          alt="{{ fav.product.name }}"
                          class="carousel-image"
+                         {% if loop.index0 < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
                          referrerpolicy="no-referrer"
                          onerror="this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'">
                 </div>
                 {% elif fav.product.fallback_image_url %}
                 <img src="{{ fav.product.fallback_image_url }}"
                      alt="{{ fav.product.name }}"
+                     {% if loop.index0 < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
                      onerror="this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'">
                 {% else %}
                 <div class="no-image">
@@ -42,7 +44,8 @@
                 {% endif %}
 
                 <div class="product-info">
-                    <h3>{{ fav.product.name }}</h3>
+                    {# h2: each card is a section under the page h1. #}
+                    <h2>{{ fav.product.name }}</h2>
                     <p class="product-category">{{ fav.product.category or 'Apparel' }}</p>
                     {% if fav.color_name %}
                     <p class="favorite-color">Color: {{ fav.color_name }}</p>
@@ -157,7 +160,9 @@ async function removeFavorite(productId, colorName) {
     padding: 1.5rem;
 }
 
-.product-info h3 {
+/* Sized explicitly so promoting this from h3 to h2 changed the outline without
+   changing a pixel. */
+.product-info h2 {
     margin-bottom: 0.5rem;
     font-size: 1.1rem;
 }

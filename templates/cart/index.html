@@ -32,7 +32,10 @@
                     </div>
                     
                     <div class="item-details">
-                        <h3>{{ item.product.name }}</h3>
+                        {# h2, not h3: the cart h1 is followed by these line items
+                           and then an "Order Summary" h2, so an h3 here made the
+                           outline jump a level and then go backwards. #}
+                        <h2>{{ item.product.name }}</h2>
                         <p class="item-specs">
                             Color: {{ item.color }} | Size: {{ item.size }}
                             {% if item.placement %}
@@ -55,8 +58,9 @@
                         {% endif %}
                         
                         <div class="item-quantity">
-                            <label>Quantity:</label>
-                            <input type="number" 
+                            <label for="cartQty{{ loop.index0 }}">Quantity:</label>
+                            <input type="number"
+                                   id="cartQty{{ loop.index0 }}"
                                    value="{{ item.quantity }}" 
                                    min="1" 
                                    max="100"
@@ -67,7 +71,10 @@
                     
                     <div class="item-price">
                         <p class="price">${{ "%.2f"|format(item.item_total) }}</p>
-                        <button class="btn-remove" data-index="{{ loop.index0 }}">Remove</button>
+                        {# Every row's button reads simply "Remove" otherwise, so a
+                           screen reader user cannot tell which item they are on. #}
+                        <button type="button" class="btn-remove" data-index="{{ loop.index0 }}"
+                                aria-label="Remove {{ item.product.name }}, {{ item.color }}, size {{ item.size }} from cart">Remove</button>
                     </div>
                 </div>
                 {% endfor %}
@@ -210,7 +217,10 @@
 }
 
 
-.item-details h3 {
+/* Sized explicitly so promoting this from h3 to h2 changed the outline without
+   changing a pixel. */
+.item-details h2 {
+    font-size: 1.75rem;
     margin-bottom: 0.5rem;
 }
 

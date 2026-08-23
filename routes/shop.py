@@ -45,6 +45,11 @@ def index():
                 )
             )
         
+        # Eager-load the colour variants. Every product's carousel walks them,
+        # so lazy loading meant one extra SELECT per product on a page that
+        # renders the whole catalogue.
+        query = query.options(db.selectinload(Product.color_variants))
+
         products = query.order_by(Product.style_number).all()
         products = [
             p for p in products
@@ -69,7 +74,8 @@ def index():
 
         for product in products:
             product.carousel_colors = get_carousel_colors_for_product(product, current_app)
-            product.fallback_image_url = get_first_shop_image_url(product, current_app)
+            product.fallback_image_url = get_first_shop_image_url(
+                product, current_app, carousel=product.carousel_colors)
             product.display_category = infer_category(product)
             product.display_age = infer_age(product)
             product.display_fit = infer_fit(product)

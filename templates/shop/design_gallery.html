@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Design Gallery - Purposefully Made KC{% endblock %}
+{% block meta_description %}Browse ready-to-print designs you can put on any garment we stock. Pick one, choose your shirt and colour, and order.{% endblock %}
 
 {% block content %}
 
@@ -37,7 +38,9 @@
                     </div>
                 </div>
                 <div class="gallery-card-body">
-                    <h3 class="gallery-card-title">{{ design.title or design.original_filename }}</h3>
+                    {# h2: each card is a section under the page h1. The size
+                       lives on .gallery-card-title, so this looks unchanged. #}
+                    <h2 class="gallery-card-title">{{ design.title or design.original_filename }}</h2>
                     {% if product_id %}
                     <a href="{{ url_for('shop.customize', product_id=product_id, design_id=design.id) }}" class="gallery-card-link">Use this design &rarr;</a>
                     {% else %}

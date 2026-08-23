@@ -20,7 +20,11 @@ def allowed_file(filename):
 
 
 def _finish_request_in_background(app, file_bytes, filename, local_path, prefix, req_id, customer_name):
-    """Promote the image to R2 and text the admin. Never blocks the customer response."""
+    """Promote the image to R2, email both parties, and text the admin.
+
+    Runs after the customer already has their confirmation page, so none of
+    this can slow down or fail their submission.
+    """
     with app.app_context():
         if file_bytes:
             try:
@@ -42,6 +46,15 @@ def _finish_request_in_background(app, file_bytes, filename, local_path, prefix,
                     db.session.rollback()
                 except Exception:
                     pass
+
+        # Emails come after the R2 promotion so the artwork link in the business
+        # notification points at the permanent URL rather than local disk.
+        try:
+            from utils.design_request_mail import send_design_request_emails
+            send_design_request_emails(app, req_id)
+        except Exception as ex:
+            app.logger.warning('Design-request emails failed for request %s: %s', req_id, ex)
+
         try:
             from utils.sms import send_design_request_alert
             send_design_request_alert(app, customer_name, req_id)
@@ -146,19 +159,24 @@ def _handle_submit_post():
         flash('Your image uploaded, but we could not save your request. Please try again.', 'error')
         return redirect(url_for('custom_request.submit'))
 
-    threading.Thread(
-        target=_finish_request_in_background,
-        args=(
-            app_obj,
-            file_bytes,
-            original_name,
-            relative_path,
-            prefix,
-            req.id,
-            current_user.full_name,
-        ),
-        daemon=True,
-    ).start()
+    follow_up_args = (
+        app_obj,
+        file_bytes,
+        original_name,
+        relative_path,
+        prefix,
+        req.id,
+        current_user.full_name,
+    )
+    if app_obj.config.get('TESTING'):
+        # Inline under test so email assertions are deterministic.
+        _finish_request_in_background(*follow_up_args)
+    else:
+        threading.Thread(
+            target=_finish_request_in_background,
+            args=follow_up_args,
+            daemon=True,
+        ).start()
 
     return redirect(url_for('custom_request.confirmation', req_id=req.id))
 

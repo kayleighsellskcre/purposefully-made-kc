@@ -18,7 +18,8 @@ def index():
             if fav.product and fav.product.is_active:
                 product = fav.product
                 product.carousel_colors = get_carousel_colors_for_product(product, current_app)
-                product.fallback_image_url = get_first_shop_image_url(product, current_app)
+                product.fallback_image_url = get_first_shop_image_url(
+                    product, current_app, carousel=product.carousel_colors)
                 favorites.append({
                     'id': fav.id,
                     'product': product,
@@ -31,7 +32,8 @@ def index():
             product = Product.query.get(fav_data.get('product_id'))
             if product and product.is_active:
                 product.carousel_colors = get_carousel_colors_for_product(product, current_app)
-                product.fallback_image_url = get_first_shop_image_url(product, current_app)
+                product.fallback_image_url = get_first_shop_image_url(
+                    product, current_app, carousel=product.carousel_colors)
                 favorites.append({
                     'id': None,
                     'product': product,

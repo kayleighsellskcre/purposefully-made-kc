@@ -2,6 +2,14 @@
 
 {% block title %}{{ product.name }} - Purposefully Made KC{% endblock %}
 
+{% block meta_description %}{% if product.description %}{{ product.description|striptags|truncate(155, true, '…') }}{% else %}Customise a {{ product.name }}{% if product.brand %} by {{ product.brand }}{% endif %} with your own design. Choose your colour, size and placement — printed to order by Purposefully Made KC.{% endif %}{% endblock %}
+
+{% block og_type %}product{% endblock %}
+
+{# The product's own mockup, so a shared link previews the garment rather than
+   the shop logo. #}
+{% block og_image %}{% if product.front_mockup_template %}{% if product.front_mockup_template.startswith('http') %}{{ product.front_mockup_template }}{% else %}{{ site_origin }}{{ url_for('static', filename=product.front_mockup_template) }}{% endif %}{% else %}{{ site_origin }}/static/img/logo.png{% endif %}{% endblock %}
+
 {% block content %}
 <div class="product-detail-page">
     <div class="container">
@@ -18,14 +26,20 @@
                 <div class="image-thumbnails">
                     {% set front_url = product.front_mockup_template if product.front_mockup_template.startswith('http') else url_for('static', filename=product.front_mockup_template) %}
                     {% set back_url  = product.back_mockup_template  if product.back_mockup_template.startswith('http')  else url_for('static', filename=product.back_mockup_template) %}
-                    <img src="{{ front_url }}"
-                         alt="Front"
-                         class="thumbnail active"
-                         onclick="changeImage('{{ front_url }}', this)">
-                    <img src="{{ back_url }}"
-                         alt="Back"
-                         class="thumbnail"
-                         onclick="changeImage('{{ back_url }}', this)">
+                    {# Buttons, not bare images with onclick: an <img> cannot be
+                       reached by Tab or activated with Enter. #}
+                    <button type="button"
+                            class="thumbnail active"
+                            aria-label="Show front view"
+                            onclick="changeImage('{{ front_url }}', this)">
+                        <img src="{{ front_url }}" alt="">
+                    </button>
+                    <button type="button"
+                            class="thumbnail"
+                            aria-label="Show back view"
+                            onclick="changeImage('{{ back_url }}', this)">
+                        <img src="{{ back_url }}" alt="">
+                    </button>
                 </div>
                 {% endif %}
                 {% else %}
@@ -89,14 +103,17 @@
                 
                 {% if product.size_chart %}
                 <div class="size-chart-link">
-                    <a href="javascript:void(0)" onclick="toggleSizeChart()" class="size-chart-btn">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-1px"><path d="M3 3h18v5H3z"/><path d="M3 10h18v5H3z"/><path d="M3 17h18v4H3z"/></svg>
+                    {# A button, not an anchor with javascript:void(0) — it performs
+                       an action on this page rather than going anywhere. #}
+                    <button type="button" onclick="toggleSizeChart()" class="size-chart-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-1px" aria-hidden="true"><path d="M3 3h18v5H3z"/><path d="M3 10h18v5H3z"/><path d="M3 17h18v4H3z"/></svg>
                         Size Chart
-                    </a>
+                    </button>
                 </div>
-                <div id="sizeChartModal" class="size-chart-modal" style="display: none;">
+                <div id="sizeChartModal" class="size-chart-modal" style="display: none;"
+                     role="dialog" aria-modal="true" aria-labelledby="sizeChartTitle">
                     <div class="size-chart-content">
-                        <h3>Size Chart</h3>
+                        <h3 id="sizeChartTitle">Size Chart</h3>
                         <table class="size-chart-table">
                             <thead>
                                 <tr>
@@ -116,31 +133,36 @@
                                 {% endfor %}
                             </tbody>
                         </table>
-                        <button class="btn btn-outline btn-sm" onclick="toggleSizeChart()">Close</button>
+                        <button type="button" class="btn btn-outline btn-sm" onclick="toggleSizeChart()">Close</button>
                     </div>
                 </div>
                 {% endif %}
                 
+                {# These are button groups, not single inputs, so the caption is a
+                   labelled group rather than a <label> — a <label> with no `for`
+                   names nothing. #}
                 {% if available_sizes %}
                 <div class="product-option">
-                    <label>Size</label>
-                    <div class="size-selector" id="sizeSelector">
+                    <span class="option-label" id="sizeLabel">Size</span>
+                    <div class="size-selector" id="sizeSelector" role="group" aria-labelledby="sizeLabel">
                         {% for size in available_sizes|sort_sizes %}
-                        <button class="size-option" data-size="{{ size }}">{{ size }}</button>
+                        <button type="button" class="size-option" data-size="{{ size }}" aria-pressed="false">{{ size }}</button>
                         {% endfor %}
                     </div>
                 </div>
                 {% endif %}
                 <div class="product-option">
-                    <label>Color</label>
-                    <div class="color-selector">
+                    <span class="option-label" id="colorLabel">Color</span>
+                    <div class="color-selector" role="group" aria-labelledby="colorLabel">
                         {% for variant in color_variants %}
-                        <button class="color-option"
+                        <button type="button" class="color-option"
                                 data-color="{{ variant.color_name }}"
-                                title="{{ variant.color_name }}">
+                                title="{{ variant.color_name }}"
+                                aria-label="{{ variant.color_name }}"
+                                aria-pressed="false">
                             {% set swatch = variant.color_swatch_url if variant.color_swatch_url is defined else '' %}
                             {% if swatch %}
-                            <img src="{{ swatch }}" alt="{{ variant.color_name }}" style="width:100%;height:100%;object-fit:cover;border-radius:3px;">
+                            <img src="{{ swatch }}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:3px;">
                             {% elif variant.color_hex %}
                             <span style="background:{{ variant.color_hex }};display:block;width:100%;height:100%;border-radius:3px;"></span>
                             {% else %}
@@ -152,11 +174,11 @@
                 </div>
                 
                 <div class="product-option">
-                    <label>Quantity</label>
+                    <label for="quantity">Quantity</label>
                     <div class="quantity-selector">
-                        <button onclick="changeQuantity(-1)">-</button>
+                        <button type="button" onclick="changeQuantity(-1)" aria-label="Decrease quantity">-</button>
                         <input type="number" id="quantity" value="1" min="1" readonly>
-                        <button onclick="changeQuantity(1)">+</button>
+                        <button type="button" onclick="changeQuantity(1)" aria-label="Increase quantity">+</button>
                     </div>
                 </div>
                 
@@ -207,25 +229,34 @@ function updateSizeAvailability(colorName) {
         btn.title = soldOut ? 'Sold out in this color' : '';
         // If the currently selected size just became sold out, deselect it
         if (soldOut && selectedSize === size) {
-            btn.classList.remove('active');
+            setChoice(btn, false);
             selectedSize = null;
         }
     });
 }
 
+/* The `active` class is what the eye sees; aria-pressed is what a screen
+   reader hears. Both have to move together or the two disagree. */
+function setChoice(btn, on) {
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+}
+
+function chooseOne(selector, btn) {
+    document.querySelectorAll(selector).forEach(b => setChoice(b, b === btn));
+}
+
 document.querySelectorAll('.size-option').forEach(btn => {
     btn.addEventListener('click', () => {
         if (btn.disabled) return;
-        document.querySelectorAll('.size-option').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
+        chooseOne('.size-option', btn);
         selectedSize = btn.dataset.size;
     });
 });
 
 document.querySelectorAll('.color-option').forEach(btn => {
     btn.addEventListener('click', () => {
-        document.querySelectorAll('.color-option').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
+        chooseOne('.color-option', btn);
         selectedColor = btn.dataset.color;
         updateSizeAvailability(selectedColor);
     });
@@ -290,12 +321,15 @@ async function addToCart() {
     }
 }
 
+// PMKC.dialog (static/js/a11y.js) adds Escape, keeps Tab inside the panel, and
+// returns focus to the Size Chart button on close.
 function toggleSizeChart() {
     const modal = document.getElementById('sizeChartModal');
-    if (modal.style.display === 'none' || !modal.style.display) {
-        modal.style.display = 'flex';
+    if (!modal) return;
+    if (PMKC.dialog.isOpen(modal)) {
+        PMKC.dialog.close();
     } else {
-        modal.style.display = 'none';
+        PMKC.dialog.show(modal, { display: 'flex' });
     }
 }
 </script>
@@ -348,11 +382,21 @@ function toggleSizeChart() {
 .thumbnail {
     width: 80px;
     height: 80px;
-    object-fit: cover;
+    padding: 0;
+    background: none;
     border-radius: var(--border-radius);
     border: 2px solid var(--border-color);
     cursor: pointer;
     transition: var(--transition);
+    overflow: hidden;
+    line-height: 0;
+}
+
+.thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 
 .thumbnail.active {
@@ -441,8 +485,12 @@ function toggleSizeChart() {
     background: var(--accent-color);
     color: #fff;
     text-decoration: none;
+    border: none;
     border-radius: var(--border-radius);
+    font-family: inherit;
+    font-size: inherit;
     font-weight: 600;
+    cursor: pointer;
     transition: var(--transition);
 }
 
@@ -506,7 +554,8 @@ function toggleSizeChart() {
     margin-bottom: 2rem;
 }
 
-.product-option label {
+.product-option label,
+.product-option .option-label {
     display: block;
     font-weight: 600;
     margin-bottom: 1rem;

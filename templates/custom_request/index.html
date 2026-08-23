@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}Have Us Recreate - Purposefully Made KC{% endblock %}
+{% block title %}Have Us Recreate Your Design - Purposefully Made KC{% endblock %}
+{% block meta_description %}Send us a sketch, a photo or an old logo and we will redraw it as a clean, print-ready design for your apparel.{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -24,6 +25,9 @@
             {% endif %}
         </div>
 
+        {# Names the step section for screen readers; the design shows no
+           heading here, so the h3s below had no h2 to sit under. #}
+        <h2 class="visually-hidden">How it works</h2>
         <div class="recreate-flow">
             <div class="recreate-step">
                 <span class="step-num">1</span>
