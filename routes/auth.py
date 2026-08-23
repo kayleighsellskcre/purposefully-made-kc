@@ -6,19 +6,10 @@ import os
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
-# Rate limiting applied in app.py via limiter — imported here for decoration
-try:
-    from app import limiter
-except ImportError:
-    limiter = None
-
-def _rate_limit(limit_string):
-    """Apply a rate limit if Flask-Limiter is available, otherwise no-op."""
-    def decorator(f):
-        if limiter:
-            return limiter.limit(limit_string)(f)
-        return f
-    return decorator
+# Counting POSTs only. These routes answer GET and POST from one view, so the
+# previous bare limit meant simply loading the sign-in page ten times in a
+# minute locked a customer out of a form they had not yet submitted.
+from utils.rate_limit import post_only as _rate_limit
 
 
 def _clean_email(raw):
@@ -29,8 +20,8 @@ def _clean_email(raw):
     then never receive a receipt or a password reset — they were locked out of
     their own account with no way back. And because the duplicate check was an
     exact match while login looks the address up case-insensitively, the same
-    person could register twice as "Casey@..." and "casey@...", after which
-    which account they signed into was down to row order.
+    person could register twice as "Casey@..." and "casey@...", after which the
+    account they signed into was down to row order.
     """
     email = (raw or '').strip().lower()
     if not email:

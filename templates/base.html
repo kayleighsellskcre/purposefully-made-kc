@@ -70,7 +70,10 @@
         <div class="container">
             <div class="nav-content">
                 <a href="{{ url_for('main.index') }}" class="logo">
-                    <img src="{{ url_for('static', filename='img/logo-monogram.png') }}" alt="Purposefully Made KC" class="logo-image">
+                    {# Eager and high priority: it is the first thing visible on
+                       every page, so deferring it would delay the largest
+                       contentful paint. #}
+                    <img src="{{ url_for('static', filename='img/logo-monogram.png') }}" alt="Purposefully Made KC" class="logo-image" loading="eager" fetchpriority="high">
                 </a>
                 
                 <nav class="nav-links" aria-label="Main">
@@ -197,7 +200,8 @@
             <!-- Logo + tagline centered -->
             <div class="footer-brand">
                 <a href="{{ url_for('main.index') }}" class="footer-logo-link">
-                    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Purposefully Made KC" class="footer-logo-img">
+                    {# The footer is below the fold on every page. #}
+                    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Purposefully Made KC" class="footer-logo-img" loading="lazy" decoding="async">
                 </a>
                 <p class="footer-brand-desc">Luxury custom apparel for every occasion that deserves something special.</p>
                 <div class="footer-social">

@@ -126,7 +126,7 @@ def test_group_order_page_defers_off_screen_images(client, seed):
 
 
 def test_design_gallery_defers_images(client, seed):
-    resp = client.get('/shop/design-gallery')
+    resp = client.get('/shop/designs')
     assert resp.status_code == 200
     html = resp.get_data(as_text=True)
     found = images_in(html)
@@ -137,11 +137,17 @@ def test_design_gallery_defers_images(client, seed):
 
 # ── Non-blocking webfonts ────────────────────────────────────────────────────
 
+# Only stylesheet links. A rel="preconnect" hint also points at
+# fonts.googleapis.com but downloads nothing, so it neither blocks rendering nor
+# carries a display= parameter.
+FONT_STYLESHEET = r'<link[^>]*fonts\.googleapis\.com/css2[^>]*>'
+
+
 def test_webfont_stylesheet_does_not_block_the_first_paint(client):
     """The Google Fonts link must be fetched without holding up rendering."""
     html = client.get('/').get_data(as_text=True)
 
-    font_links = re.findall(r'<link[^>]*fonts\.googleapis\.com[^>]*>', html)
+    font_links = re.findall(FONT_STYLESHEET, html)
     assert font_links, 'no Google Fonts stylesheet found on the home page'
 
     # The <noscript> copy is deliberately blocking; that is the fallback for a
@@ -168,7 +174,9 @@ def test_webfont_has_a_noscript_fallback(client):
 def test_webfont_url_still_asks_for_swap(client):
     """Without display=swap the text is invisible until the font arrives."""
     html = client.get('/').get_data(as_text=True)
-    for link in re.findall(r'<link[^>]*fonts\.googleapis\.com[^>]*>', html):
+    links = re.findall(FONT_STYLESHEET, html)
+    assert links, 'no Google Fonts stylesheet found on the home page'
+    for link in links:
         assert 'display=swap' in link, f'font link missing display=swap: {link}'
 
 

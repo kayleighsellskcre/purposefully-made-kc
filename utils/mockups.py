@@ -351,18 +351,28 @@ def ensure_variant_mockup_urls(app):
             ))
 
 
-def get_carousel_colors_for_product(product, app, allowed_colors=None):
+def get_carousel_colors_for_product(product, app, allowed_colors=None, variants=None):
     """
     Build carousel color list for a product, merging DB variants with mockup folder.
     Returns list of dicts with color_name and front_image_url for shop carousel.
     Ensures ALL colors from uploads/mockups show in carousel with correct images.
     allowed_colors: optional set to filter (e.g. for collection restrictions)
+    variants: optional pre-fetched colour variants for this product.
+
+    `Product.color_variants` is a dynamic relationship, so iterating it runs a
+    SELECT. On a page rendering the whole catalogue that is one query per
+    product. A caller with many products can fetch every variant in one query
+    and pass this product's share in. It cannot be solved with eager loading:
+    SQLAlchemy rejects selectinload on a dynamic relationship outright.
     """
     result = []
     seen = set()
 
+    if variants is None:
+        variants = getattr(product, 'color_variants', []) or []
+
     # 1. DB variants - prefer mockup folder URL over DB URL (DB may have old S&S CDN links)
-    for v in getattr(product, 'color_variants', []) or []:
+    for v in variants:
         if v.color_name in seen:
             continue
         if allowed_colors and v.color_name not in allowed_colors:

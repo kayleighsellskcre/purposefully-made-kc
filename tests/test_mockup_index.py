@@ -17,27 +17,32 @@ from utils import mockups
 
 
 @pytest.fixture()
-def mockup_app(app, tmp_path):
-    """The real app, pointed at an empty uploads tree we control.
+def mockup_app(app, tmp_path, monkeypatch):
+    """The real app, searching only an empty mockup tree we control.
 
-    UPLOAD_FOLDER is what _mockup_dirs() builds `<folder>/mockups` from, so
-    redirecting it keeps these tests off the repository's real mockup files.
+    Redirecting UPLOAD_FOLDER alone is not enough. _mockup_dirs() returns three
+    roots — the upload folder, `<root>/uploads/mockups`, and
+    `<root>/static/images/products` — and the last two are real directories in
+    this repository holding the actual catalogue. Left in the search path they
+    make an "empty" style folder resolve 96 colours and let a real 3001 .jpg
+    beat the .png a test just wrote.
     """
-    uploads = tmp_path / 'uploads'
-    (uploads / 'mockups').mkdir(parents=True)
+    root = tmp_path / 'mockups'
+    root.mkdir(parents=True)
 
-    original = app.config.get('UPLOAD_FOLDER')
-    app.config['UPLOAD_FOLDER'] = str(uploads)
+    monkeypatch.setattr(mockups, '_mockup_dirs', lambda app_: [str(root)])
+    app.config['_TEST_MOCKUP_ROOT'] = str(root)
+
     mockups.clear_mockup_cache()
     try:
         yield app
     finally:
-        app.config['UPLOAD_FOLDER'] = original
+        app.config.pop('_TEST_MOCKUP_ROOT', None)
         mockups.clear_mockup_cache()
 
 
 def style_dir(mockup_app, style):
-    path = os.path.join(mockup_app.config['UPLOAD_FOLDER'], 'mockups', str(style))
+    path = os.path.join(mockup_app.config['_TEST_MOCKUP_ROOT'], str(style))
     os.makedirs(path, exist_ok=True)
     return path
 
@@ -214,31 +219,29 @@ def test_repeated_lookups_do_not_relist_the_folder(mockup_app, monkeypatch):
     assert len(builds) == 1, f'scanned the folder {len(builds)} times, expected once'
 
 
-def test_two_apps_do_not_share_an_index(app, tmp_path):
+def test_two_apps_do_not_share_an_index(app, tmp_path, monkeypatch):
     """The cache key includes the search roots.
 
     app.py builds an app at module scope and the test suite builds another, so
-    two apps with different UPLOAD_FOLDERs can share this process. Keying on the
+    two apps with different upload folders can share this process. Keying on the
     style alone let the time-to-live shortcut serve one app the other's index,
     because that path skips the fingerprint check on purpose.
     """
     first = tmp_path / 'first'
     second = tmp_path / 'second'
-    (first / 'mockups' / '3001').mkdir(parents=True)
-    (second / 'mockups' / '3001').mkdir(parents=True)
-    write(str(first / 'mockups' / '3001'), '3001_Aqua_front.jpg')
+    (first / '3001').mkdir(parents=True)
+    (second / '3001').mkdir(parents=True)
+    write(str(first / '3001'), '3001_Aqua_front.jpg')
 
     mockups.clear_mockup_cache()
-    original = app.config.get('UPLOAD_FOLDER')
     try:
-        app.config['UPLOAD_FOLDER'] = str(first)
+        monkeypatch.setattr(mockups, '_mockup_dirs', lambda app_: [str(first)])
         assert mockups._find_mockup_file(app, '3001', 'Aqua', 'front') is not None
 
-        # Immediately, well inside the TTL window.
-        app.config['UPLOAD_FOLDER'] = str(second)
+        # Immediately, well inside the time-to-live window.
+        monkeypatch.setattr(mockups, '_mockup_dirs', lambda app_: [str(second)])
         assert mockups._find_mockup_file(app, '3001', 'Aqua', 'front') is None
     finally:
-        app.config['UPLOAD_FOLDER'] = original
         mockups.clear_mockup_cache()
 
 

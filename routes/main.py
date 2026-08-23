@@ -1,5 +1,6 @@
 from flask import Blueprint, Response, render_template, session, current_app, send_file, send_from_directory, request, flash, redirect, url_for
 from models import Product, Collection
+from utils.rate_limit import post_only
 from datetime import datetime, timezone
 import os
 
@@ -62,6 +63,11 @@ def about():
     return render_template('about.html')
 
 @main_bp.route('/contact', methods=['GET', 'POST'])
+# Public, unauthenticated, and it sends an email on every POST. Without a limit
+# it is a relay into the owner's inbox and burns the mail provider's quota.
+# Generous enough that a customer who mistypes their address and resubmits a
+# few times is unaffected.
+@post_only("5 per hour")
 def contact():
     """Contact page"""
     if request.method == 'POST':

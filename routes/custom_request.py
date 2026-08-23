@@ -8,6 +8,7 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
 from models import db, CustomDesignRequest
+from utils.rate_limit import post_only
 
 custom_request_bp = Blueprint('custom_request', __name__, url_prefix='/custom-design')
 
@@ -70,6 +71,10 @@ def index():
 
 @custom_request_bp.route('/submit', methods=['GET', 'POST'])
 @login_required
+# Each accepted request emails the customer, emails the business, and sends an
+# SMS. Sign-in already bounds who can do this, so the cap only needs to stop one
+# account from flooding those three channels.
+@post_only("10 per hour")
 def submit():
     """Submit a custom design request - reference image + description"""
     if request.method == 'POST':

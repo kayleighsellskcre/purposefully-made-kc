@@ -2327,12 +2327,13 @@ def import_widen_images():
     One-shot endpoint: accepts scraped Widen flat-image data from the browser
     and bulk-upserts ProductColorVariant records.
 
-    Auth: simple shared secret in JSON body (no session needed so we can POST
-    from medialibrary1.com). CORS headers allow any origin.
+    Auth: shared secret in JSON body (no session needed so we can POST from
+    medialibrary1.com). CORS headers allow any origin. The secret comes from
+    WIDEN_IMPORT_SECRET; when that is unset this endpoint refuses everything.
 
     Expected body:
       {
-        "secret": "widen-import-2024",
+        "secret": "<the value of WIDEN_IMPORT_SECRET>",
         "images": {
           "CC1717": {
             "Dusk": {"front": "<url>", "back": "<url>"},
@@ -2356,8 +2357,10 @@ def import_widen_images():
     if rq.method == 'OPTIONS':
         return ('', 204, cors_headers)
 
+    from utils.widen_import_auth import secret_matches
+
     body = rq.get_json(silent=True) or {}
-    if body.get('secret') != 'widen-import-2024':
+    if not secret_matches(body.get('secret')):
         return (jsonify({'error': 'unauthorized'}), 403, cors_headers)
 
     images = body.get('images', {})

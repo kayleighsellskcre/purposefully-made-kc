@@ -45,11 +45,6 @@ def index():
                 )
             )
         
-        # Eager-load the colour variants. Every product's carousel walks them,
-        # so lazy loading meant one extra SELECT per product on a page that
-        # renders the whole catalogue.
-        query = query.options(db.selectinload(Product.color_variants))
-
         products = query.order_by(Product.style_number).all()
         products = [
             p for p in products
@@ -72,8 +67,23 @@ def index():
             ]
             products = [p for p in products if p.id in product_ids]
 
+        # Every product's carousel walks its colour variants, and
+        # Product.color_variants is a dynamic relationship, so reading it costs
+        # one SELECT per product on a page that renders the whole catalogue.
+        # Fetched in one query here and handed to each product. Eager loading is
+        # not an option: SQLAlchemy rejects it on a dynamic relationship.
+        variants_by_product = {}
+        if products:
+            from models import ProductColorVariant
+            for variant in ProductColorVariant.query.filter(
+                ProductColorVariant.product_id.in_([p.id for p in products])
+            ).all():
+                variants_by_product.setdefault(variant.product_id, []).append(variant)
+
         for product in products:
-            product.carousel_colors = get_carousel_colors_for_product(product, current_app)
+            product.carousel_colors = get_carousel_colors_for_product(
+                product, current_app,
+                variants=variants_by_product.get(product.id, []))
             product.fallback_image_url = get_first_shop_image_url(
                 product, current_app, carousel=product.carousel_colors)
             product.display_category = infer_category(product)

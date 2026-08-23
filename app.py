@@ -857,8 +857,13 @@ def widen_import():
     if rq.method == 'OPTIONS':
         return cors(make_response('', 204))
 
+    from utils.widen_import_auth import secret_matches
+
     body = rq.get_json(silent=True) or {}
-    if body.get('secret') != 'widen-import-2024':
+    # Unset WIDEN_IMPORT_SECRET disables this endpoint outright. It writes image
+    # URLs for every product with no login session and wildcard CORS, so it
+    # should only be reachable while an import is actually being run.
+    if not secret_matches(body.get('secret')):
         return cors(make_response(jsonify({'error': 'unauthorized'}), 403))
 
     images = body.get('images', {})
@@ -901,9 +906,12 @@ def widen_import():
                 product.back_mockup_template = first_back
         try:
             db.session.commit()
-        except Exception as e:
+        except Exception:
             db.session.rollback()
-            return cors(make_response(jsonify({'error': str(e)}), 500))
+            # The raw exception text names tables and columns, and this endpoint
+            # answers any origin. Logged for us, not returned to the caller.
+            app.logger.exception('widen-import commit failed')
+            return cors(make_response(jsonify({'error': 'import failed'}), 500))
 
     return cors(make_response(jsonify({'ok': True, 'updated': updated, 'created': created, 'skipped': skipped}), 200))
 
