@@ -24,7 +24,9 @@ CURATED_BRANDS = [
             'BC3501', '3501',           # Long sleeve tee
             'BC3719', '3719',           # Pullover hoodie
             'BC3739', '3739',           # Full-zip hoodie
-            'BC3901', '3901',           # Sweatshirt
+            'BC3901', '3901',           # Sweatshirt (raglan crew)
+            'BC3901Y', '3901Y',         # Youth sponge fleece raglan crew
+            'BC3945', '3945',           # Drop shoulder sweatshirt
             'BC6400', '6400',           # Women's relaxed tee
             'BC6400CVC', '6400CVC',
         ],
@@ -67,6 +69,7 @@ CURATED_BRANDS = [
             'PC147Y',                   # Youth Tie-Dye tee
             'LPC147V',                  # Ladies Tie-Dye v-neck
             'PC147LS',                  # Tie-Dye long sleeve
+            'PC147YLS',                 # Youth Tie-Dye long sleeve
             'PC144',                    # Crystal Tie-Dye hoodie
             'PC145',                    # Crystal Tie-Dye tee
         ],

@@ -24,13 +24,15 @@ except Exception:
 from dotenv import load_dotenv
 load_dotenv(os.path.join(ROOT, '.env'))
 
-STYLES = ['PC147', 'PC147Y', 'LPC147V', 'PC147LS', 'PC145', 'PC144']
+STYLES = ['PC147', 'PC147Y', 'LPC147V', 'PC147LS', 'PC147YLS', 'PC145', 'PC144']
 
 A4P_PAGES = {
     'PC147': 'https://www.apparel4print.com/port-company/port-company-pc147-tie-dye-tee.html',
     'PC147Y': 'https://www.apparel4print.com/port-company/port-company-pc147y-youth-tie-dye-tee.html',
     'LPC147V': 'https://www.apparel4print.com/port-company/port-company-lpc147v-ladies-tie-dye-v-neck-tee.html',
     'PC147LS': 'https://www.apparel4print.com/port-company/port-company-pc147ls-tie-dye-long-sleeve-tee.html',
+    # Youth LS often mirrors adult LS flats when a dedicated dealer page is missing.
+    'PC147YLS': 'https://www.apparel4print.com/port-company/port-company-pc147ls-tie-dye-long-sleeve-tee.html',
     'PC145': 'https://www.apparel4print.com/port-company/port-company-pc145-crystal-tie-dye-tee.html',
     'PC144': 'https://www.apparel4print.com/port-company/port-company-pc144-crystal-tie-dye-pullover-hoodie.html',
 }

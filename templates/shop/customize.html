@@ -1657,6 +1657,26 @@
                     {% endif %}
                     
                     {% if gallery_designs %}
+                    {% if collection_restricted %}
+                    {# Group orders: show every approved logo as thumbnails.
+                       There are usually only a few, and organizers expect the
+                       team to see them all at once — not hide them in a menu. #}
+                    <div class="logo-gallery-inline" id="logoGalleryInline">
+                        <p class="logo-gallery-label">Group logos — tap one to use</p>
+                        <div class="logo-gallery-grid" id="logoGalleryGrid">
+                            {% for d in gallery_designs %}
+                            <div class="logo-gallery-item{% if preset_design and preset_design.id == d.id %} selected{% endif %}"
+                                 data-design-id="{{ d.id }}" data-design-url="{{ d.url }}" data-design-title="{{ d.title }}"
+                                 role="button" tabindex="0" title="{{ d.title }}">
+                                <img src="{{ d.url }}" alt="{{ d.title }}" draggable="false">
+                                <span class="logo-gallery-item-label">{{ d.title }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    {# Regular shop: the public gallery can grow large, so keep
+                       a compact dropdown and a small selected preview. #}
                     <div class="gallery-design-picker" id="logoGalleryInline">
                         <label for="galleryDesignSelect" class="logo-gallery-label">Gallery designs</label>
                         <select id="galleryDesignSelect" class="form-control gallery-design-select">
@@ -1673,6 +1693,7 @@
                             <span id="galleryDesignSelectedTitle">{{ preset_design.title if preset_design else '' }}</span>
                         </div>
                     </div>
+                    {% endif %}
                     {% endif %}
                     
                     <div class="design-preview artwork-inspector" id="designPreview">
@@ -2076,29 +2097,56 @@
     
     function setupLogoGalleryClicks() {
         const select = document.getElementById('galleryDesignSelect');
-        if (!select) return;
-        function applyFromSelect() {
-            const opt = select.options[select.selectedIndex];
-            const preview = document.getElementById('galleryDesignSelected');
-            const img = document.getElementById('galleryDesignSelectedImg');
-            const title = document.getElementById('galleryDesignSelectedTitle');
-            if (!opt || !opt.value || !opt.dataset.url) {
-                if (preview) preview.hidden = true;
-                return;
+        if (select) {
+            function applyFromSelect() {
+                const opt = select.options[select.selectedIndex];
+                const preview = document.getElementById('galleryDesignSelected');
+                const img = document.getElementById('galleryDesignSelectedImg');
+                const title = document.getElementById('galleryDesignSelectedTitle');
+                if (!opt || !opt.value || !opt.dataset.url) {
+                    if (preview) preview.hidden = true;
+                    return;
+                }
+                const design = { id: opt.value, url: opt.dataset.url, title: opt.dataset.title || opt.textContent };
+                try {
+                    applyPresetDesign(design);
+                    if (img) { img.src = design.url; img.alt = design.title; }
+                    if (title) title.textContent = design.title;
+                    if (preview) preview.hidden = false;
+                    document.querySelectorAll('.logo-gallery-item').forEach(el => el.classList.remove('selected'));
+                } catch (err) {
+                    console.error('Gallery design error:', err);
+                }
             }
-            const design = { id: opt.value, url: opt.dataset.url, title: opt.dataset.title || opt.textContent };
+            select.addEventListener('change', applyFromSelect);
+            if (select.value) applyFromSelect();
+        }
+
+        const grid = document.getElementById('logoGalleryGrid');
+        if (!grid) return;
+        grid.addEventListener('click', function(e) {
+            const card = e.target.closest('.logo-gallery-item');
+            if (!card || !card.dataset.designUrl) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const design = { id: card.dataset.designId, url: card.dataset.designUrl, title: card.dataset.designTitle };
             try {
                 applyPresetDesign(design);
-                if (img) { img.src = design.url; img.alt = design.title; }
-                if (title) title.textContent = design.title;
-                if (preview) preview.hidden = false;
                 document.querySelectorAll('.logo-gallery-item').forEach(el => el.classList.remove('selected'));
+                card.classList.add('selected');
             } catch (err) {
-                console.error('Gallery design error:', err);
+                console.error('Group logo error:', err);
             }
-        }
-        select.addEventListener('change', applyFromSelect);
-        if (select.value) applyFromSelect();
+        });
+        grid.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                const card = e.target.closest('.logo-gallery-item');
+                if (card) {
+                    e.preventDefault();
+                    card.click();
+                }
+            }
+        });
     }
     
     function setupMyDesignsClicks() {

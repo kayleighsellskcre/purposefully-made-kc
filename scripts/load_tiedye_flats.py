@@ -21,7 +21,7 @@ except Exception:
 from dotenv import load_dotenv
 load_dotenv(os.path.join(ROOT, '.env'))
 
-STYLES = ['PC147', 'PC147Y', 'LPC147V', 'PC147LS', 'PC145', 'PC144']
+STYLES = ['PC147', 'PC147Y', 'LPC147V', 'PC147LS', 'PC147YLS', 'PC145', 'PC144']
 SHOP = 'https://www.bigtopshirtshop.com'
 HEADERS = {
     'User-Agent': (
@@ -57,7 +57,13 @@ def search_handles(query, style=None):
     for h in handles:
         hl = h.lower()
         if token in hl or hl.endswith(token_end):
-            if style.upper() == 'PC147' and ('pc147y' in hl or 'pc147ls' in hl or 'lpc147' in hl):
+            if style.upper() == 'PC147' and (
+                'pc147y' in hl or 'pc147ls' in hl or 'pc147yls' in hl or 'lpc147' in hl
+            ):
+                continue
+            if style.upper() == 'PC147LS' and 'pc147yls' in hl:
+                continue
+            if style.upper() == 'PC147Y' and 'pc147yls' in hl:
                 continue
             out.append(h)
     return out

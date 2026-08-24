@@ -125,6 +125,23 @@ def test_finds_a_descriptive_name(mockup_app):
     )
 
 
+def test_bc_prefixed_style_finds_bare_folder(mockup_app):
+    """DB styles like BC3901Y resolve mockups in folder 3901Y."""
+    directory = style_dir(mockup_app, '3901Y')
+    write(directory, 'BELLA_+_CANVAS_3901Y_Black_Front_High.jpg')
+    write(directory, 'BELLA_+_CANVAS_3901Y_Black_Back_High.jpg')
+    assert find(mockup_app, 'BC3901Y', 'Black', 'front') == (
+        '3901Y/BELLA_+_CANVAS_3901Y_Black_Front_High.jpg'
+    )
+    assert find(mockup_app, 'BC3901Y', 'Black', 'back') == (
+        '3901Y/BELLA_+_CANVAS_3901Y_Black_Back_High.jpg'
+    )
+    colors = mockups.discover_colors_from_mockup_folder(mockup_app, 'BC3901Y')
+    assert len(colors) == 1
+    assert colors[0]['color_name'] == 'Black'
+    assert '/static/uploads/mockups/3901Y/' in (colors[0]['front_image'] or '')
+
+
 def test_descriptive_name_matches_colour_case_insensitively(mockup_app):
     directory = style_dir(mockup_app, '3001Y')
     write(directory, 'BELLA_+_CANVAS_3001Y_Ash_Front_High.jpg')

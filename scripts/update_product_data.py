@@ -194,6 +194,20 @@ PRODUCTS = {
         "Unisex sizing; true to size. Relaxed fit.",
         'https://www.sanmar.com/p/BC3787',
     ),
+    'BC3901': (
+        22.38, 45.00,
+        '52% combed and ring-spun cotton, 48% polyester sponge fleece; 7.2 oz',
+        "Unisex Sponge Fleece Raglan Crewneck — the classic Bella+Canvas crew with raglan sleeves. Soft, warm, and perfect for school spirit and team orders.",
+        "Unisex sizing; true to size. Relaxed fit.",
+        'https://www.sanmar.com/p/BC3901',
+    ),
+    'BC3901Y': (
+        20.98, 42.00,
+        '52% combed and ring-spun cotton, 48% polyester sponge fleece; 7.2 oz',
+        "Youth Sponge Fleece Raglan Crewneck — the same soft sponge fleece as the adult BC3901, sized for kids who want to match the grown-ups.",
+        "Youth sizing; true to size.",
+        'https://www.sanmar.com/p/BC3901Y',
+    ),
     'BC3945': (
         24.98, 48.00,
         '52% combed and ring-spun cotton, 48% polyester sponge fleece; 7.2 oz',
@@ -295,6 +309,13 @@ PRODUCTS = {
         "Tie-Dye Long Sleeve Tee — the PC147 look with rib-knit cuffs for cooler weather, camps, and fall events.",
         "Unisex classic fit; true to size. Slight color variation is part of the tie-dye process.",
         'https://www.sanmar.com/p/PC147LS',
+    ),
+    'PC147YLS': (
+        12.80, 28.00,
+        '100% cotton; 5.4 oz; prepared-for-dye tie-dye; rib knit cuffs',
+        "Youth Tie-Dye Long Sleeve Tee — vibrant prepared-for-dye color with rib-knit cuffs, sized for kids. Perfect for camps and fall spirit wear.",
+        "Youth classic fit; sizes XS–XL. Slight color variation is part of the tie-dye process.",
+        'https://www.sanmar.com/p/PC147YLS',
     ),
     'PC145': (
         11.60, 28.00,

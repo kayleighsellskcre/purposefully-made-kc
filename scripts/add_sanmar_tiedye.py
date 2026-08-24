@@ -7,6 +7,7 @@ Adds Port & Company tie-dye styles from SanMar to the database:
   PC147Y    Youth Tie-Dye Tee
   LPC147V   Women's Tie-Dye V-Neck
   PC147LS   Tie-Dye Long Sleeve
+  PC147YLS  Youth Tie-Dye Long Sleeve
   PC145     Crystal Tie-Dye Tee
   PC144     Crystal Tie-Dye Pullover Hoodie
 
@@ -127,6 +128,29 @@ NEW_TIEDYE = [
         'fabric_details': '5.4 oz / 100% cotton; rib knit cuffs; prepared-for-dye',
         'fit_guide': 'Unisex classic fit; true to size. Each garment has slight color variation.',
         'spec_sheet_url': 'https://www.sanmar.com/p/PC147LS',
+        'is_active': True,
+        'is_customer_favorite': False,
+    },
+    {
+        'style_number': 'PC147YLS',
+        'name': 'Port & Company Youth Tie-Dye Long Sleeve Tee',
+        'brand': 'Port & Company',
+        'category': 'Long Sleeve',
+        'age_group': 'youth',
+        'fit_type': 'Unisex',
+        'neck_style': 'Crew Neck',
+        'sleeve_length': 'Long Sleeve',
+        'base_price': 28.00,
+        'wholesale_cost': 12.80,
+        'available_sizes': YOUTH_SIZES,
+        'description': (
+            "Youth Tie-Dye Long Sleeve Tee — the same vibrant prepared-for-dye "
+            "PC147 look with rib-knit cuffs, sized for kids. Great for camps, "
+            "fall spirit wear, and matching family group orders."
+        ),
+        'fabric_details': '5.4 oz / 100% cotton; rib knit cuffs; prepared-for-dye; tear-away label',
+        'fit_guide': 'Youth classic fit; sizes XS–XL. Each garment has slight color variation.',
+        'spec_sheet_url': 'https://www.sanmar.com/p/PC147YLS',
         'is_active': True,
         'is_customer_favorite': False,
     },

@@ -162,8 +162,12 @@ def add():
     elif data.get('design_url'):
         design_url = data.get('design_url')
     elif design_id:
-        # Gallery, this group order's logos, or the shopper's own uploads only
-        from models import Design
+        # Gallery, this group order's logos, or the shopper's own uploads only.
+        # Design is imported at module scope — do not re-import it here. A local
+        # `from models import Design` made Design a local for the whole function,
+        # so when design_id arrived with a design_url (or file) the later
+        # Design.query.get call crashed with UnboundLocalError and Add to Cart
+        # returned 500.
         from utils.privacy import user_can_use_design
         design = Design.query.get(int(design_id)) if str(design_id).isdigit() else None
         if design and user_can_use_design(design, collection=collection):

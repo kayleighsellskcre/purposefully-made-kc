@@ -54,14 +54,14 @@ BRAND_STYLES = {
         'BC3480', 'BC3480CVC',
         'BC3501', 'BC3501CVC',
         'BC3719', 'BC3719Y',
-        'BC3739', 'BC3787', 'BC3945',
+        'BC3739', 'BC3787', 'BC3901', 'BC3901Y', 'BC3945',
         'BC6400', 'BC6400CVC',
         'BC8800',
     ],
     # Comfort Colors
     'CC': ['CC1717', 'CC1566', 'CC1466'],
     # Port & Company
-    'PC': ['PC54', 'PC78H', 'LPC54', 'PC147', 'PC147Y', 'LPC147V', 'PC147LS', 'PC145', 'PC144'],
+    'PC': ['PC54', 'PC78H', 'LPC54', 'PC147', 'PC147Y', 'LPC147V', 'PC147LS', 'PC147YLS', 'PC145', 'PC144'],
     # Sport-Tek
     'ST': ['ST350', 'ST254', 'LST350'],
     # District

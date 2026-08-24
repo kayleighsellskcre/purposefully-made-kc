@@ -3,6 +3,7 @@ Resolve product mockup image URLs from DB (color variants) or from uploads/mocku
 All mockups under uploads/mockups/{style_number}/ are used so each product shows its uploaded mockups.
 """
 import os
+import re
 import time
 from pathlib import Path
 
@@ -52,28 +53,62 @@ class _StyleIndex:
     scheme, holding the first match in the original search order (folder
     preference, then extension, then name). `listings` keeps the per-folder
     names in order for colour discovery, which wants the *last* match rather
-    than the first.
+    than the first. `file_folder` maps each filename to the on-disk folder
+    name so URLs use a real path (e.g. BC3901Y → 3901Y/...).
     """
 
-    __slots__ = ('fingerprint', 'checked_at', 'listings', 'filenames', 'by_color_view')
+    __slots__ = (
+        'fingerprint', 'checked_at', 'listings', 'filenames',
+        'by_color_view', 'file_folder',
+    )
 
-    def __init__(self, fingerprint, checked_at, listings, filenames, by_color_view):
+    def __init__(self, fingerprint, checked_at, listings, filenames,
+                 by_color_view, file_folder):
         self.fingerprint = fingerprint
         self.checked_at = checked_at
         self.listings = listings
         self.filenames = filenames
         self.by_color_view = by_color_view
+        self.file_folder = file_folder
+
+
+def _style_aliases(style_number):
+    """Folder / filename style tokens to try for a DB style_number.
+
+    Products are stored as BC3719Y / BC3901Y, but mockup folders on disk are
+    usually the bare SanMar code (3719Y / 3901Y). Without this alias, youth
+    sponge-fleece styles never found their flat front/back images.
+    """
+    style = str(style_number or '').strip()
+    if not style:
+        return []
+    aliases = [style]
+    bare = re.sub(r'^[A-Za-z+&]+', '', style)
+    if bare and bare != style:
+        aliases.append(bare)
+    if bare and bare[0].isdigit() and not style.upper().startswith('BC'):
+        aliases.append('BC' + bare)
+    out = []
+    for alias in aliases:
+        if alias and alias not in out:
+            out.append(alias)
+    return out
 
 
 def _style_dirs(app, style_number):
     """Existing folders holding this style's mockups, most preferred first."""
     dirs = []
+    seen = set()
     for mockup_dir in _mockup_dirs(app):
         if not mockup_dir:
             continue
-        style_dir = os.path.join(mockup_dir, str(style_number))
-        if os.path.isdir(style_dir):
-            dirs.append(style_dir)
+        for alias in _style_aliases(style_number):
+            style_dir = os.path.join(mockup_dir, alias)
+            if style_dir in seen:
+                continue
+            if os.path.isdir(style_dir):
+                seen.add(style_dir)
+                dirs.append(style_dir)
     return dirs
 
 
@@ -101,11 +136,16 @@ def _build_style_index(app, style_number, now):
     fingerprint = _fingerprint(style_dirs)
 
     listings = []
+    file_folder = {}
     for style_dir in style_dirs:
+        folder_name = os.path.basename(style_dir.rstrip('\\/'))
         try:
-            listings.append(sorted(os.listdir(style_dir)))
+            names = sorted(os.listdir(style_dir))
         except OSError:
-            listings.append([])
+            names = []
+        listings.append(names)
+        for name in names:
+            file_folder.setdefault(name, folder_name)
 
     filenames = set()
     for names in listings:
@@ -114,18 +154,25 @@ def _build_style_index(app, style_number, now):
     # First match wins, in the same folder-then-extension-then-name order the
     # old per-colour scan used.
     by_color_view = {}
+    aliases = _style_aliases(style_number)
     for names in listings:
         for ext in MOCKUP_EXTENSIONS:
             for name in names:
                 if not name.lower().endswith(ext):
                     continue
-                parsed_color, parsed_view = _parse_mockup_filename(
-                    style_number, name[: -len(ext)])
+                stem = name[: -len(ext)]
+                parsed_color = parsed_view = None
+                for alias in aliases:
+                    parsed_color, parsed_view = _parse_mockup_filename(alias, stem)
+                    if parsed_color and parsed_view:
+                        break
                 if not parsed_color or not parsed_view:
                     continue
                 by_color_view.setdefault((_color_key(parsed_color), parsed_view), name)
 
-    return _StyleIndex(fingerprint, now, listings, filenames, by_color_view)
+    return _StyleIndex(
+        fingerprint, now, listings, filenames, by_color_view, file_folder,
+    )
 
 
 def _style_index(app, style_number):
@@ -155,6 +202,12 @@ def clear_mockup_cache():
     _STYLE_INDEX.clear()
 
 
+def _rel_for_filename(index, style_number, filename):
+    """Build folder/filename using the real on-disk folder when aliased."""
+    folder = index.file_folder.get(filename) or _style_aliases(style_number)[-1] or style_number
+    return f"{folder}/{filename}"
+
+
 def _find_mockup_file(app, style_number, color_name, view):
     """
     Look for a mockup file in uploads/mockups for the given style, color, and view.
@@ -169,17 +222,18 @@ def _find_mockup_file(app, style_number, color_name, view):
     if not index.filenames:
         return None
 
-    # Format A: 3001_Aqua_front.jpg
-    base_name = f"{style_number}_{safe_color}_{view}"
-    for ext in MOCKUP_EXTENSIONS:
-        filename = base_name + ext
-        if filename in index.filenames:
-            return f"{style_number}/{filename}"
+    # Format A: 3001_Aqua_front.jpg (also try bare style aliases)
+    for alias in _style_aliases(style_number):
+        base_name = f"{alias}_{safe_color}_{view}"
+        for ext in MOCKUP_EXTENSIONS:
+            filename = base_name + ext
+            if filename in index.filenames:
+                return _rel_for_filename(index, style_number, filename)
 
     # Format B: BELLA_+_CANVAS_3001Y_Ash_Front_High.jpg
     name = index.by_color_view.get((_color_key(color_name), view.lower()))
     if name:
-        return f"{style_number}/{name}"
+        return _rel_for_filename(index, style_number, name)
     return None
 
 
@@ -251,15 +305,22 @@ def discover_colors_from_mockup_folder(app, style_number):
     [{'color_name': 'Aqua', 'front_image': url or None, 'back_image': url or None, 'inventory': {}}, ...]
     """
     colors_seen = {}
-    for names in _style_index(app, style_number).listings:
+    index = _style_index(app, style_number)
+    aliases = _style_aliases(style_number)
+    for names in index.listings:
         for ext in MOCKUP_EXTENSIONS:
             for name in names:
                 if not name.lower().endswith(ext):
                     continue
-                color_name, view = _parse_mockup_filename(style_number, name[: -len(ext)])
+                stem = name[: -len(ext)]
+                color_name = view = None
+                for alias in aliases:
+                    color_name, view = _parse_mockup_filename(alias, stem)
+                    if color_name and view:
+                        break
                 if not color_name or not view:
                     continue
-                rel = f"{style_number}/{name}"
+                rel = _rel_for_filename(index, style_number, name)
                 url = _mockup_url(app, rel)
                 if color_name not in colors_seen:
                     colors_seen[color_name] = {'color_name': color_name, 'color_hex': None, 'front_image': None, 'back_image': None, 'front_image_url': None, 'back_image_url': None, 'inventory': {}}

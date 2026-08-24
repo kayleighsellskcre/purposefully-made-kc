@@ -52,6 +52,23 @@ def test_adding_a_mockup_only_colour_succeeds(client, seed):
     assert resp.get_json()['success'] is True
 
 
+def test_add_to_cart_with_design_id_and_url_does_not_crash(client, seed):
+    """Regression: UnboundLocalError on Design when both design_id and design_url
+    were sent — the live Add to Cart 500 on /cart/add.
+    """
+    resp = client.post('/cart/add', json={
+        'product_id': seed['tee_id'],
+        'size': 'M',
+        'color': 'Black',
+        'quantity': 1,
+        'placement': 'center_chest',
+        'design_id': seed['free_design_id'],
+        'design_url': '/static/uploads/designs/gallery-logo.png',
+    })
+    assert resp.status_code == 200, resp.get_data(as_text=True)
+    assert resp.get_json()['success'] is True
+
+
 def test_shop_card_counts_colours_that_have_no_photo(app, seed):
     with app.app_context():
         product = Product.query.get(seed['hoodie_id'])
@@ -70,6 +87,35 @@ def test_customize_page_includes_varsity_regular_and_a_gallery_dropdown(client, 
     assert '+$6.00' in html
     assert 'back-design-fee-amount' in html
     assert '$6.0"' not in html
+
+
+def test_group_order_customize_shows_logo_thumbnails_not_a_dropdown(client, app, seed):
+    """Group logos are few — show them as a grid, not a select menu."""
+    with app.app_context():
+        from models import Collection
+        coll = db.session.get(Collection, seed['collection_id'])
+        coll.allowed_design_ids = json.dumps([seed['free_design_id']])
+        coll.restrict_options = True
+        db.session.commit()
+    with client.session_transaction() as sess:
+        sess['collection_id'] = seed['collection_id']
+    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    assert 'logoGalleryGrid' in html
+    assert 'id="galleryDesignSelect"' not in html
+    assert 'Group logos' in html
+
+
+def test_header_shop_link_leaves_the_group_order(client, seed):
+    with client.session_transaction() as sess:
+        sess['collection_id'] = seed['collection_id']
+    html = client.get(f'/c/{seed["collection_slug"]}').get_data(as_text=True)
+    assert '/c/leave?next=' in html
+    assert '/shop/' in html
+    resp = client.get('/c/leave?next=/shop/', follow_redirects=False)
+    assert resp.status_code == 302
+    assert resp.headers['Location'].endswith('/shop/')
+    with client.session_transaction() as sess:
+        assert 'collection_id' not in sess
 
 
 def test_varsity_regular_font_file_is_present():

@@ -44,9 +44,17 @@ def qr_code(slug):
 
 @collection_bp.route('/leave')
 def leave():
-    """Drop group-order session and return to the regular shop."""
+    """Drop group-order session and return to the regular shop.
+
+    Header links pass ?next=/path so leaving Shop / About / etc. lands on the
+    page the shopper asked for, without staying stuck in the group banner.
+    """
     from utils.group_orders import leave_group_order
     leave_group_order()
+    next_url = (request.args.get('next') or '').strip()
+    # Same-site relative paths only — never bounce to an absolute URL.
+    if next_url.startswith('/') and not next_url.startswith('//'):
+        return redirect(next_url)
     flash('You left the group order. You can still shop the regular store.', 'info')
     return redirect(url_for('shop.index'))
 

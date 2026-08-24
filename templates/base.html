@@ -69,7 +69,18 @@
     <header class="navbar">
         <div class="container">
             <div class="nav-content">
-                <a href="{{ url_for('main.index') }}" class="logo">
+                {# While a group order is active, header text links exit that
+                   session first (via /c/leave?next=…) so Shop / About / etc.
+                   do not keep the dark "You're ordering for…" banner. Cart and
+                   Favorites stay in-group so checkout can still finish. #}
+                {% macro site_href(endpoint) -%}
+                    {%- if active_group_order -%}
+                        {{ url_for('collection.leave', next=url_for(endpoint)) }}
+                    {%- else -%}
+                        {{ url_for(endpoint) }}
+                    {%- endif -%}
+                {%- endmacro %}
+                <a href="{{ site_href('main.index') }}" class="logo">
                     {# Eager and high priority: it is the first thing visible on
                        every page, so deferring it would delay the largest
                        contentful paint. #}
@@ -77,19 +88,19 @@
                 </a>
                 
                 <nav class="nav-links" aria-label="Main">
-                    <a href="{{ url_for('shop.index') }}" class="nav-link">Shop</a>
-                    <a href="{{ url_for('shop.design_gallery') }}" class="nav-link">Design Gallery</a>
-                    <a href="{{ url_for('shop.group_orders') }}" class="nav-link">Group Orders</a>
-                    <a href="{{ url_for('custom_request.index') }}" class="nav-link">Have Us Recreate</a>
-                    <a href="{{ url_for('main.about') }}" class="nav-link">About</a>
-                    <a href="{{ url_for('main.contact') }}" class="nav-link">Contact</a>
+                    <a href="{{ site_href('shop.index') }}" class="nav-link">Shop</a>
+                    <a href="{{ site_href('shop.design_gallery') }}" class="nav-link">Design Gallery</a>
+                    <a href="{{ site_href('shop.group_orders') }}" class="nav-link">Group Orders</a>
+                    <a href="{{ site_href('custom_request.index') }}" class="nav-link">Have Us Recreate</a>
+                    <a href="{{ site_href('main.about') }}" class="nav-link">About</a>
+                    <a href="{{ site_href('main.contact') }}" class="nav-link">Contact</a>
 
                     {# Desktop account links — inline in nav, hidden on mobile (hamburger has them) #}
                     {% if current_user.is_authenticated %}
                     <span class="nav-separator desktop-only" aria-hidden="true"></span>
-                    <a href="{{ url_for('account.index') }}" class="nav-user-link desktop-only">My Account</a>
+                    <a href="{{ site_href('account.index') }}" class="nav-user-link desktop-only">My Account</a>
                     {% if is_site_admin %}
-                    <a href="{{ url_for('admin.index') }}" class="nav-user-link admin-link desktop-only">Admin</a>
+                    <a href="{{ site_href('admin.index') }}" class="nav-user-link admin-link desktop-only">Admin</a>
                     {% endif %}
                     <form method="post" action="{{ url_for('auth.logout') }}" class="desktop-only" style="margin:0;display:flex;align-items:center;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -97,16 +108,16 @@
                     </form>
                     {% else %}
                     <span class="nav-separator desktop-only" aria-hidden="true"></span>
-                    <a href="{{ url_for('auth.login') }}" class="nav-user-link desktop-only">Login</a>
-                    <a href="{{ url_for('auth.register') }}" class="nav-user-link desktop-only">Register</a>
+                    <a href="{{ site_href('auth.login') }}" class="nav-user-link desktop-only">Login</a>
+                    <a href="{{ site_href('auth.register') }}" class="nav-user-link desktop-only">Register</a>
                     {% endif %}
 
                     {# Hamburger-only items — hidden on desktop #}
                     {% if current_user.is_authenticated %}
                     <div class="nav-link-divider mobile-only"></div>
-                    <a href="{{ url_for('account.index') }}" class="nav-link mobile-only">My Account</a>
+                    <a href="{{ site_href('account.index') }}" class="nav-link mobile-only">My Account</a>
                     {% if is_site_admin %}
-                    <a href="{{ url_for('admin.index') }}" class="nav-link admin-link mobile-only">Admin</a>
+                    <a href="{{ site_href('admin.index') }}" class="nav-link admin-link mobile-only">Admin</a>
                     {% endif %}
                     <form method="post" action="{{ url_for('auth.logout') }}" class="mobile-only">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -114,8 +125,8 @@
                     </form>
                     {% else %}
                     <div class="nav-link-divider mobile-only"></div>
-                    <a href="{{ url_for('auth.login') }}" class="nav-link mobile-only">Login</a>
-                    <a href="{{ url_for('auth.register') }}" class="nav-link mobile-only">Register</a>
+                    <a href="{{ site_href('auth.login') }}" class="nav-link mobile-only">Login</a>
+                    <a href="{{ site_href('auth.register') }}" class="nav-link mobile-only">Register</a>
                     {% endif %}
                 </nav>
 
