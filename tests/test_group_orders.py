@@ -8,7 +8,6 @@ def _base_form(seed, **over):
     form = {
         'name': 'Riverview Spirit Wear 2026',
         'products': [str(seed['tee_id'])],
-        'tax_rate': '9.5',
         'allowed_placements': ['center_chest', 'left_chest'],
     }
     form.update(over)
@@ -114,12 +113,21 @@ def test_a_group_order_needs_at_least_one_product(customer_client, seed, app):
         assert Collection.query.filter_by(name=form['name']).count() == 0
 
 
-def test_a_bad_tax_rate_is_rejected_without_crashing(customer_client, seed, app):
+def test_tax_rate_from_the_form_is_ignored_and_fixed_at_9_5(customer_client, seed, app):
+    """Tax is fixed at KS 9.5% — form values (even garbage) must not change it."""
     resp = _post(customer_client, _base_form(seed, tax_rate='nine and a half'))
     assert resp.status_code == 200
-    assert 'tax rate must be a number' in resp.get_data(as_text=True).lower()
     with app.app_context():
-        assert Collection.query.filter_by(name='Riverview Spirit Wear 2026').count() == 0
+        collection = Collection.query.filter_by(name='Riverview Spirit Wear 2026').one()
+        assert collection.tax_rate == 9.5
+
+
+def test_created_group_orders_always_get_fixed_tax(customer_client, seed, app):
+    resp = _post(customer_client, _base_form(seed, tax_rate='1'))
+    assert resp.status_code == 200
+    with app.app_context():
+        collection = Collection.query.filter_by(slug='riverview-spirit-wear-2026').one()
+        assert collection.tax_rate == 9.5
 
 
 def test_a_duplicate_name_gets_its_own_url(customer_client, seed, app):
@@ -221,7 +229,7 @@ def test_admin_can_save_pickup_instructions(admin_client, seed, app):
     cid = seed['collection_id']
     with app.app_context():
         collection = db.session.get(Collection, cid)
-        collection.tax_rate = 9.5
+        collection.tax_rate = 0.0  # stale value; save must force 9.5
         collection.back_design_text_color = '#112233'
         collection.lock_back_design_style = True
         db.session.commit()
@@ -234,7 +242,7 @@ def test_admin_can_save_pickup_instructions(admin_client, seed, app):
             'pickup_instructions': 'Riverview front office or send home with child',
             'shipping_enabled': 'on',
             'is_active': 'on',
-            'tax_rate': '9.5',
+            'tax_rate': '3.0',  # must be ignored
         },
         follow_redirects=False,
     )
@@ -252,14 +260,13 @@ def test_admin_can_save_pickup_instructions(admin_client, seed, app):
         assert saved.lock_back_design_style is True
 
 
-def test_admin_save_does_not_wipe_tax_when_the_field_is_omitted(
-        admin_client, seed, app):
+def test_admin_save_always_forces_fixed_tax_rate(admin_client, seed, app):
     from models import Collection
 
     cid = seed['collection_id']
     with app.app_context():
         collection = db.session.get(Collection, cid)
-        collection.tax_rate = 9.5
+        collection.tax_rate = 0.0
         db.session.commit()
 
     admin_client.post(

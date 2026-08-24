@@ -102,7 +102,11 @@
         <h2 class="gallery-list-title">Gallery Designs <span class="gallery-count">({{ designs|length }})</span></h2>
         <div class="designs-grid">
             {% for design in designs %}
-            <div class="design-card" data-design-id="{{ design.id }}">
+            <div class="design-card" data-design-id="{{ design.id }}"
+                 data-title="{{ design.title or design.original_filename or '' }}"
+                 data-folder="{{ design.folder or 'custom_orders' }}"
+                 data-sku="{{ design.sku or '' }}"
+                 data-edit-url="{{ url_for('admin.design_gallery_edit', design_id=design.id) }}">
                 <div class="design-card-image">
                     <img src="{{ design.file_path | image_url }}" alt="{{ design.title or design.original_filename }}">
                 </div>
@@ -110,12 +114,16 @@
                     <strong class="design-card-name">{{ design.title or design.original_filename }}</strong>
                     <p class="design-card-meta">{{ design.folder or 'No folder' }} &middot; {{ design.sku or 'No SKU' }}</p>
                     <div class="design-card-actions">
+                        <button type="button" class="btn btn-primary btn-sm"
+                                onclick="openGalleryEdit({{ design.id }})">
+                            Edit
+                        </button>
                         <button type="button" class="btn btn-outline btn-sm"
-                                onclick="galleryConfirm('remove', {{ design.id }}, '{{ (design.title or design.original_filename or 'Design')|replace("'", "\'") }}', '{{ url_for('admin.design_gallery_remove', design_id=design.id) }}')">
+                                onclick="galleryConfirm('remove', {{ design.id }}, '{{ (design.title or design.original_filename or 'Design')|replace("'", "\\'") }}', '{{ url_for('admin.design_gallery_remove', design_id=design.id) }}')">
                             Remove from Gallery
                         </button>
                         <button type="button" class="btn btn-outline btn-sm btn-danger"
-                                onclick="galleryConfirm('delete', {{ design.id }}, '{{ (design.title or design.original_filename or 'Design')|replace("'", "\'") }}', '{{ url_for('admin.design_gallery_delete', design_id=design.id) }}')">
+                                onclick="galleryConfirm('delete', {{ design.id }}, '{{ (design.title or design.original_filename or 'Design')|replace("'", "\\'") }}', '{{ url_for('admin.design_gallery_delete', design_id=design.id) }}')">
                             Delete
                         </button>
                     </div>
@@ -354,6 +362,49 @@
 .gallery-back-link { margin-top: 2.5rem; }
 </style>
 
+<!-- Gallery Edit Modal -->
+<div id="galleryEditModal" class="prod-modal" role="dialog" aria-modal="true" aria-labelledby="galleryEditTitle">
+    <div class="prod-modal-card">
+        <div class="prod-modal-header">
+            <h2 id="galleryEditTitle">Edit Design</h2>
+            <button class="prod-modal-close" onclick="closeGalleryEdit()" aria-label="Close">&times;</button>
+        </div>
+        <div class="prod-modal-body">
+            <form id="galleryEditForm" enctype="multipart/form-data">
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <label for="editTitle" class="form-label">Display Name</label>
+                    <input type="text" id="editTitle" name="title" class="form-control" maxlength="200" required>
+                </div>
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <label for="editFolder" class="form-label">Folder</label>
+                    <select id="editFolder" name="folder" class="form-control">
+                        <option value="custom_orders">Custom Orders</option>
+                        <option value="evergreen">Evergreen</option>
+                        <option value="school">School</option>
+                        <option value="holiday">Holiday</option>
+                        <option value="sports">Sports</option>
+                        <option value="funny">Funny</option>
+                        <option value="luxury_basics">Luxury Basics</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <label for="editSku" class="form-label">SKU</label>
+                    <input type="text" id="editSku" name="sku" class="form-control" maxlength="50" placeholder="e.g. DSG-001">
+                </div>
+                <div class="form-group" style="margin-bottom:0.5rem;">
+                    <label for="editFile" class="form-label">Replace Image <span style="font-weight:400;color:var(--text-secondary);">(optional)</span></label>
+                    <input type="file" id="editFile" name="file" class="form-control" accept=".png,.jpg,.jpeg,.webp,.heic,.heif">
+                </div>
+                <p style="font-size:0.8rem;color:var(--text-secondary);margin:0 0 1rem;">Leave the file blank to keep the current image.</p>
+                <div class="prod-modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeGalleryEdit()">Cancel</button>
+                    <button type="submit" id="galleryEditSaveBtn" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Gallery Action Confirmation Modal -->
 <div id="galleryActionModal" class="prod-modal" role="dialog" aria-modal="true" aria-labelledby="galleryModalTitle">
     <div class="prod-modal-card">
@@ -384,6 +435,71 @@ function showGalleryToast(msg) {
 }
 
 let _gUrl = '', _gId = 0, _gAction = '';
+let _editUrl = '';
+
+function openGalleryEdit(id) {
+    const card = document.querySelector('.design-card[data-design-id="' + id + '"]');
+    if (!card) return;
+    _gId = id;
+    _editUrl = card.getAttribute('data-edit-url') || '';
+    document.getElementById('editTitle').value = card.getAttribute('data-title') || '';
+    document.getElementById('editFolder').value = card.getAttribute('data-folder') || 'custom_orders';
+    document.getElementById('editSku').value = card.getAttribute('data-sku') || '';
+    document.getElementById('editFile').value = '';
+    document.getElementById('galleryEditModal').classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+    setTimeout(function() { document.getElementById('editTitle').focus(); }, 50);
+}
+
+function closeGalleryEdit() {
+    document.getElementById('galleryEditModal').classList.remove('is-open');
+    document.body.style.overflow = '';
+}
+
+document.getElementById('galleryEditModal').addEventListener('click', function(e) {
+    if (e.target === this) closeGalleryEdit();
+});
+
+document.getElementById('galleryEditForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    if (!_editUrl) return;
+    const btn = document.getElementById('galleryEditSaveBtn');
+    btn.disabled = true;
+    const orig = btn.textContent;
+    btn.textContent = 'Saving…';
+    const fd = new FormData(this);
+    fetch(_editUrl, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: fd
+    })
+    .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+    .then(function(res) {
+        if (!res.ok || res.data.error || res.data.ok === false) {
+            showGalleryToast('Error: ' + ((res.data && res.data.error) || 'Could not save'));
+            return;
+        }
+        const d = res.data.design || {};
+        const card = document.querySelector('.design-card[data-design-id="' + _gId + '"]');
+        if (card) {
+            card.setAttribute('data-title', d.title || '');
+            card.setAttribute('data-folder', d.folder || 'custom_orders');
+            card.setAttribute('data-sku', d.sku || '');
+            const nameEl = card.querySelector('.design-card-name');
+            if (nameEl) nameEl.textContent = d.title || 'Design';
+            const metaEl = card.querySelector('.design-card-meta');
+            if (metaEl) metaEl.textContent = (d.folder || 'No folder') + ' · ' + (d.sku || 'No SKU');
+            if (d.image_url) {
+                const img = card.querySelector('.design-card-image img');
+                if (img) img.src = d.image_url;
+            }
+        }
+        closeGalleryEdit();
+        showGalleryToast(res.data.message || 'Saved');
+    })
+    .catch(function() { showGalleryToast('Something went wrong. Please try again.'); })
+    .finally(function() { btn.disabled = false; btn.textContent = orig; });
+});
 
 function galleryConfirm(action, id, name, url) {
     _gAction = action; _gId = id; _gUrl = url;
@@ -412,7 +528,12 @@ document.getElementById('galleryActionModal').addEventListener('click', function
 });
 
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeGalleryModal();
+    if (e.key !== 'Escape') return;
+    if (document.getElementById('galleryEditModal').classList.contains('is-open')) {
+        closeGalleryEdit();
+        return;
+    }
+    closeGalleryModal();
 });
 
 document.getElementById('galleryModalConfirmBtn').addEventListener('click', function() {

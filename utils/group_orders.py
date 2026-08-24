@@ -287,7 +287,7 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
     Returns (ok, error_message, upload_count). On failure the caller should
     rollback; this function does not commit.
     """
-    from flask import request
+    from flask import current_app, request
     from utils.privacy import selectable_group_order_design_ids
     import json
 
@@ -310,13 +310,8 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
     collection.pickup_instructions = request.form.get('pickup_instructions')
     collection.shipping_enabled = request.form.get('shipping_enabled') == 'on'
     collection.show_in_directory = request.form.get('show_in_directory') == 'on'
-    # The edit form used to omit tax_rate. Treating a missing field as 0
-    # wiped a live group order's rate the first time Save actually worked.
-    if 'tax_rate' in request.form:
-        try:
-            collection.tax_rate = float(request.form.get('tax_rate') or 0)
-        except (TypeError, ValueError):
-            collection.tax_rate = 0.0
+    # Tax is fixed at KS 9.5% — ignore any form value so it cannot be adjusted.
+    collection.tax_rate = float(current_app.config['KS_SALES_TAX_PERCENT'])
 
     collection.is_active = request.form.get('is_active') == 'on'
 

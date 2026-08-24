@@ -165,12 +165,12 @@
                 <div class="checkout-section">
                     <h2>Payment Method</h2>
                     <div class="payment-tabs">
-                        <button class="payment-tab active" data-method="card">Card / Apple Pay / Venmo</button>
+                        <button class="payment-tab active" data-method="card">Card / Apple Pay / Google Pay</button>
                         <button class="payment-tab" data-method="cash">Cash / Pay at Pickup</button>
                     </div>
 
                     <div class="payment-content">
-                        <!-- Stripe Payment Element (card, Apple Pay, Google Pay, Venmo) -->
+                        <!-- Stripe Payment Element (card, Apple Pay, Google Pay) -->
                         <div class="payment-panel" id="card-panel">
                             <div id="payment-element"></div>
                             {# role="alert": a declined card is announced the
@@ -235,7 +235,7 @@
                         <span id="shipping-amount">${{ "%.2f"|format(totals.shipping_cost) }}</span>
                     </div>
                     <div class="summary-row">
-                        <span>Tax (KS 9.5%):</span>
+                        <span>Tax (KS {{ config.KS_SALES_TAX_PERCENT }}%):</span>
                         <span id="tax-amount">${{ "%.2f"|format(totals.tax) }}</span>
                     </div>
                     <div class="summary-row total">
@@ -251,8 +251,8 @@
 <script src="https://js.stripe.com/v3/"></script>
 <script>
 // ── Stripe Payment Element setup ─────────────────────────────────────────────
-// Supports: credit/debit card, Apple Pay, Google Pay, Venmo — automatically
-// shown based on customer's device/browser and what's enabled in Stripe dashboard.
+// Supports: credit/debit card, Apple Pay, Google Pay — wallets appear when
+// the customer's device/browser supports them. Venmo and bank/ACH are not offered.
 const stripe = Stripe('{{ stripe_public_key }}');
 
 let stripeElements = null;   // initialized lazily on first card-tab focus
@@ -301,7 +301,7 @@ async function initPaymentElement() {
         });
 
         paymentElement = stripeElements.create('payment', {
-            layout: 'tabs',   // shows card / Apple Pay / Venmo as tabs
+            layout: 'tabs',   // card + Apple Pay / Google Pay wallets when available
         });
         paymentElement.mount('#payment-element');
     } catch (err) {
@@ -388,7 +388,7 @@ if (savedAddressSelect) {
 
 function updateTotals(shippingCost) {
     const subtotal = {{ totals.subtotal }};
-    const tax = Math.round(subtotal * 0.095 * 100) / 100;  // 9.5%
+    const tax = Math.round(subtotal * {{ config.KS_SALES_TAX_RATE }} * 100) / 100;
     const total = subtotal + shippingCost + tax;
     
     document.getElementById('shipping-amount').textContent = '$' + shippingCost.toFixed(2);
@@ -406,7 +406,7 @@ document.getElementById('submit-payment').addEventListener('click', async () => 
     } else if (currentMethod === 'cash') {
         await handleCashPayment();
     } else {
-        PMKC.showFlash('PayPal & Venmo payments are coming soon. For now please use card or cash.', 'info');
+        PMKC.showFlash('Please choose card or cash to complete your order.', 'info');
     }
 });
 
@@ -475,7 +475,7 @@ async function handleStripePayment() {
     button.disabled = true;
     button.textContent = 'Processing...';
 
-    // Wallet payments (Apple Pay, Google Pay, Venmo) leave the page to
+    // Wallet payments (Apple Pay, Google Pay) may leave the page to
     // authorize and come back with only a PaymentIntent id, so hand the form
     // to the server first or these details are lost.
     try {
@@ -489,7 +489,7 @@ async function handleStripePayment() {
     }
 
     try {
-        // confirmPayment handles card, Apple Pay, Venmo, Google Pay — all in one call.
+        // confirmPayment handles card, Apple Pay, and Google Pay.
         // On success the customer is redirected to /checkout/payment-return?...
         // which reads the PaymentIntent result and calls completeOrder.
         const firstName = (document.getElementById('first_name') || {}).value || '';
@@ -508,7 +508,7 @@ async function handleStripePayment() {
                 }
             },
             // redirect: 'if_required' — stays on page for card payments (no redirect),
-            // redirects only for wallet payments (Apple Pay, Venmo) that need it.
+            // redirects only for wallet payments that need it.
             redirect: 'if_required',
         });
 

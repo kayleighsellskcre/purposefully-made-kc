@@ -260,8 +260,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="tax_rate">Tax Rate % (optional)</label>
-                    <input type="number" id="tax_rate" name="tax_rate" class="form-control" value="{{ collection.tax_rate or 0 }}" min="0" max="30" step="0.01" style="max-width: 140px;">
+                    <label>Sales tax</label>
+                    <p class="form-control-plaintext" style="margin:0;">{{ config.KS_SALES_TAX_PERCENT }}% (Kansas — fixed)</p>
                 </div>
 
                 <div class="form-check">
@@ -426,5 +426,17 @@ function confirmDelete(btn) {
 .upload-preview-item { display: flex; flex-direction: column; align-items: center; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.5rem; background: #fff; }
 .upload-preview-item img { width: 60px; height: 60px; object-fit: contain; margin-bottom: 0.25rem; }
 .upload-preview-item span { font-size: 0.7rem; color: var(--text-secondary); max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 768px) {
+    .admin-page { padding: 1rem 0 2.5rem; }
+    .admin-header { flex-direction: column; align-items: stretch; }
+    .admin-header .btn { width: 100%; justify-content: center; min-height: 48px; }
+    .collection-form { max-width: none; }
+    .form-section { padding: 1.15rem; }
+    .product-checkboxes { grid-template-columns: 1fr; }
+    .form-actions { flex-direction: column; }
+    .form-actions .btn { width: 100%; justify-content: center; min-height: 48px; }
+    .placement-checkboxes { grid-template-columns: 1fr 1fr; }
+}
 </style>
 {% include 'includes/group_order_logo_upload.js.html' %}

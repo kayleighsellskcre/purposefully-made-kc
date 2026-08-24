@@ -120,9 +120,31 @@
     background: #fff;
 }
 @media (max-width: 768px) {
-    .ops-flow { padding: 0.75rem; }
+    .ops-flow {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 0.75rem;
+        gap: 0.75rem;
+    }
+    .ops-flow-steps {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        gap: 0.35rem;
+        padding-bottom: 0.15rem;
+    }
+    .ops-flow-steps::-webkit-scrollbar { display: none; }
     .ops-flow-copy em { display: none; }
     .ops-flow-arrow { display: none; }
+    .ops-flow-step {
+        flex: 0 0 auto;
+        padding: 0.55rem 0.75rem;
+        min-height: 44px;
+        background: var(--ivory-silk, #faf7f2);
+    }
+    .ops-flow-group { width: 100%; }
+    .ops-flow-group select { width: 100%; min-width: 0; min-height: 44px; }
 }
 @media print { .ops-flow { display: none !important; } }
 </style>

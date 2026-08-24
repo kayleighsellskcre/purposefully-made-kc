@@ -2504,11 +2504,6 @@ def add_collection():
             if slug != base_slug:
                 flash(f'URL slug adjusted to "{slug}" (original was already in use).', 'info')
 
-            try:
-                tax_rate = _form_money('tax_rate', 0.0)
-            except (TypeError, ValueError):
-                tax_rate = 0.0
-
             collection = Collection(
                 name=name,
                 slug=slug,
@@ -2517,7 +2512,7 @@ def add_collection():
                 pickup_address=request.form.get('pickup_address'),
                 pickup_instructions=request.form.get('pickup_instructions'),
                 shipping_enabled=request.form.get('shipping_enabled') == 'on',
-                tax_rate=tax_rate,
+                tax_rate=float(current_app.config['KS_SALES_TAX_PERCENT']),
             )
 
             collection.restrict_options = request.form.get('restrict_options') == 'on'
@@ -3212,6 +3207,123 @@ def design_gallery_upload():
         current_app.logger.exception('design_gallery_upload unexpected error: %s', e)
         flash('Something went wrong while uploading the design. Please try again.', 'error')
         return redirect(url_for('admin.design_gallery'))
+
+
+@admin_bp.route('/design-gallery/<int:design_id>/edit', methods=['POST'])
+@admin_required
+def design_gallery_edit(design_id):
+    """Update gallery design metadata (and optionally replace the image file)."""
+    from sqlalchemy.exc import SQLAlchemyError
+
+    design = Design.query.get_or_404(design_id)
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    GALLERY_FOLDERS = {
+        'custom_orders', 'evergreen', 'school', 'holiday',
+        'sports', 'funny', 'luxury_basics',
+    }
+
+    title = (request.form.get('title') or '').strip()
+    folder = (request.form.get('folder') or '').strip() or design.folder or 'custom_orders'
+    if folder not in GALLERY_FOLDERS:
+        folder = 'custom_orders'
+    sku = (request.form.get('sku') or '').strip()
+
+    try:
+        if title:
+            design.title = title[:200]
+        design.folder = folder
+        design.sku = sku[:50] if sku else None
+
+        new_file = request.files.get('file')
+        if new_file and new_file.filename:
+            filename = secure_filename(new_file.filename)
+            if '.' not in filename:
+                msg = 'Replacement file must have an extension (PNG, JPG, etc.).'
+                if is_ajax:
+                    return jsonify({'ok': False, 'error': msg}), 400
+                flash(msg, 'error')
+                return redirect(url_for('admin.design_gallery'))
+            ext = os.path.splitext(filename)[1].lower()
+            if ext not in _ALLOWED_DESIGN_EXTS:
+                msg = 'Unsupported format. Use PNG, JPG, WEBP, or HEIC.'
+                if is_ajax:
+                    return jsonify({'ok': False, 'error': msg}), 400
+                flash(msg, 'error')
+                return redirect(url_for('admin.design_gallery'))
+
+            from utils.cloud_storage import upload_image
+            import time
+            name = os.path.splitext(filename)[0]
+            unique_name = f"gallery_{name}_{int(time.time())}{ext}"
+            new_path = upload_image(
+                new_file,
+                current_app._get_current_object(),
+                subfolder='designs',
+                public_id_prefix='gallery',
+                process_artwork=True,
+            )
+            if not new_path:
+                msg = 'Could not store the new image. Please try again.'
+                if is_ajax:
+                    return jsonify({'ok': False, 'error': msg}), 500
+                flash(msg, 'error')
+                return redirect(url_for('admin.design_gallery'))
+
+            old_path = design.file_path
+            design.filename = unique_name
+            design.original_filename = new_file.filename
+            design.file_path = new_path
+            design.has_transparency = True
+            try:
+                from PIL import Image
+                if not new_path.startswith('http'):
+                    filepath = Path('static') / new_path
+                    img = Image.open(filepath)
+                    design.width, design.height = img.size
+                    design.file_size = filepath.stat().st_size
+            except Exception:
+                pass
+            # Remove previous local file only (leave remote URLs alone)
+            if old_path and not str(old_path).startswith('http'):
+                try:
+                    old_full = Path('static') / old_path
+                    if old_full.is_file():
+                        old_full.unlink()
+                except OSError:
+                    pass
+
+        db.session.commit()
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        current_app.logger.exception('design_gallery_edit DB error %s: %s', design_id, e)
+        if is_ajax:
+            return jsonify({'ok': False, 'error': 'Could not save changes. Please try again.'}), 500
+        flash('Could not save changes. Please try again.', 'error')
+        return redirect(url_for('admin.design_gallery'))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('design_gallery_edit unexpected error %s: %s', design_id, e)
+        if is_ajax:
+            return jsonify({'ok': False, 'error': 'Something went wrong. Please try again.'}), 500
+        flash('Something went wrong while saving. Please try again.', 'error')
+        return redirect(url_for('admin.design_gallery'))
+
+    from utils.cloud_storage import image_url as resolve_image_url
+    payload = {
+        'ok': True,
+        'message': f'Updated "{design.title or design.original_filename}"',
+        'design': {
+            'id': design.id,
+            'title': design.title or design.original_filename or 'Design',
+            'folder': design.folder or 'custom_orders',
+            'sku': design.sku or '',
+            'image_url': resolve_image_url(design.file_path) if design.file_path else '',
+        },
+    }
+    if is_ajax:
+        return jsonify(payload)
+    flash(payload['message'], 'success')
+    return redirect(url_for('admin.design_gallery'))
 
 
 @admin_bp.route('/design-gallery/<int:design_id>/remove', methods=['POST'])

@@ -152,7 +152,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS order_opens_at TIMESTAMP",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS order_deadline TIMESTAMP",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS shipping_enabled BOOLEAN DEFAULT TRUE",
-                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS tax_rate DOUBLE PRECISION DEFAULT 0",
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS tax_rate DOUBLE PRECISION DEFAULT 9.5",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS restrict_options BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS allowed_colors TEXT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS allowed_design_ids TEXT",
@@ -237,6 +237,19 @@ def create_app(config_class=Config):
                         _conn.commit()
                 except Exception:
                     pass
+
+            # KS sales tax is fixed at 9.5% — normalize any stale/0 rates from when
+            # organizers could edit the field.
+            try:
+                _tax_pct = float(app.config.get('KS_SALES_TAX_PERCENT', 9.5))
+                with db.engine.connect() as _conn:
+                    _conn.execute(text(
+                        "UPDATE collection SET tax_rate = :rate "
+                        "WHERE tax_rate IS NULL OR tax_rate <> :rate"
+                    ), {"rate": _tax_pct})
+                    _conn.commit()
+            except Exception:
+                pass
         except Exception:
             # Migration errors shouldn't crash the app
             pass

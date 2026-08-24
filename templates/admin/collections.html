@@ -82,11 +82,11 @@ function copyLink(url, btn) {
 
 <style>
 .admin-page { padding: 4rem 0; }
-.admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-.collections-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 2rem; }
-.collection-card { background: #fff; border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 2rem; }
-.collection-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
-.collection-header h3 { font-size: 1.25rem; }
+.admin-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
+.collections-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 1.25rem; }
+.collection-card { background: #fff; border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1.5rem; }
+.collection-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 1.5rem; }
+.collection-header h3 { font-size: 1.15rem; min-width: 0; }
 .badge-active { background: rgba(16, 185, 129, 0.1); color: #10b981; }
 .badge-inactive { background: rgba(156, 163, 175, 0.1); color: var(--text-secondary); }
 .badge-restricted { background: rgba(184, 124, 111, 0.2); color: var(--accent-color); }

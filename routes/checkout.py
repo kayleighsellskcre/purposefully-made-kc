@@ -385,8 +385,6 @@ def reprice_cart(cart, persist=True):
     return corrections
 
 
-KS_SALES_TAX_RATE = 0.095  # Sales tax 9.5%
-
 def calculate_totals(cart, shipping_method='pickup'):
     """Calculate order totals.
 
@@ -404,8 +402,8 @@ def calculate_totals(cart, shipping_method='pickup'):
     if shipping_method == 'shipping':
         shipping_cost = current_app.config['SHIPPING_FLAT_RATE']
     
-    # 9.5% sales tax applied to the subtotal only (shipping is not taxed)
-    tax = round(subtotal * KS_SALES_TAX_RATE, 2)
+    # Fixed KS sales tax on subtotal only (shipping is not taxed)
+    tax = round(subtotal * float(current_app.config['KS_SALES_TAX_RATE']), 2)
     
     total = round(subtotal + shipping_cost + tax, 2)
     
@@ -538,9 +536,9 @@ def create_payment_intent():
         intent = stripe.PaymentIntent.create(
             amount=int(round(totals['total'] * 100)),
             currency='usd',
-            # automatic_payment_methods enables card, Apple Pay, Google Pay,
-            # Venmo, and any other methods enabled in the Stripe dashboard.
-            automatic_payment_methods={'enabled': True},
+            # Card only (Apple Pay / Google Pay still appear via wallets).
+            # Venmo needs PayPal onboarding and bank/ACH adds delay — both excluded.
+            payment_method_types=['card'],
             # Statement descriptor shown on customer's card statement (max 22 chars)
             statement_descriptor_suffix='PMKC ORDER',
             metadata={
@@ -566,7 +564,7 @@ PENDING_CHECKOUT_FIELDS = (
 def prepare():
     """Stash the checkout form server-side just before payment is confirmed.
 
-    Wallet payments (Apple Pay, Google Pay, Venmo) redirect the customer off
+    Wallet payments (Apple Pay, Google Pay) may redirect the customer off
     the page to authorize, and Stripe sends them back to /payment-return with
     nothing but a PaymentIntent id. Without this, the name, email, and shipping
     address typed into the form are gone by the time the order is created.
@@ -580,7 +578,7 @@ def prepare():
 @checkout_bp.route('/payment-return')
 def payment_return():
     """
-    Return URL for wallet-based payments (Apple Pay, Google Pay, Venmo) that
+    Return URL for wallet-based payments (Apple Pay, Google Pay) that
     redirect the user away from the page to authorize. Stripe sends them back
     here with ?payment_intent=... and ?payment_intent_client_secret=...
     """

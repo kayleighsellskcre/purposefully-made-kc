@@ -261,14 +261,7 @@ def create_group_order():
             if slug != base_slug:
                 flash(f'URL slug adjusted to "{slug}" (original was already in use).', 'info')
 
-            # ── 3. Parse + validate optional settings with specific errors ──
-            try:
-                tax_rate = float(request.form.get('tax_rate') or 0)
-            except (TypeError, ValueError):
-                flash('Tax rate must be a number (e.g. 8.5). Please correct it and try again.', 'error')
-                return redirect(url_for('shop.create_group_order'))
-
-            # ── 4. Create the collection ────────────────────────────────────
+            # ── 3. Create the collection (tax is fixed at KS 9.5%) ───────────
             collection = Collection(
                 name=name,
                 slug=slug,
@@ -279,7 +272,7 @@ def create_group_order():
                 pickup_address=request.form.get('pickup_address'),
                 pickup_instructions=request.form.get('pickup_instructions'),
                 shipping_enabled=request.form.get('shipping_enabled') == 'on',
-                tax_rate=tax_rate,
+                tax_rate=float(current_app.config['KS_SALES_TAX_PERCENT']),
             )
             collection.restrict_options = request.form.get('restrict_options') == 'on'
             collection.allow_custom_upload = True
