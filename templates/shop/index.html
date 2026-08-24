@@ -49,10 +49,14 @@
 <section class="shop-section">
     <div class="container">
         <!-- Filter Bar -->
+        {# Also decides whether the collapsed panel starts open, so someone
+           arriving on a filtered link can see which filters are cutting the
+           results down rather than wondering where the products went. #}
+        {% set filters_active = selected_brand or selected_category or selected_age_group or selected_color or selected_fit_type or selected_neck_style or selected_sleeve_length or request.args.get('q') %}
         <div class="filter-bar">
             <div class="filter-bar-header">
                 <span class="filter-bar-title">Refine Your Selection</span>
-                {% if selected_brand or selected_category or selected_age_group or selected_color or selected_fit_type or selected_neck_style or selected_sleeve_length or request.args.get('q') %}
+                {% if filters_active %}
                 <button class="clear-filters-btn" onclick="clearFilters()">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     Clear Filters
@@ -82,7 +86,18 @@
                     </div>
                 </form>
             </div>
-            <div class="filter-controls">
+            {# On a phone the six stacked dropdowns pushed the first product
+               more than a screen below the fold. This button exists only
+               under 768px; the panel is always open on wider screens. #}
+            <button type="button" class="filter-toggle" id="filterToggle"
+                    aria-expanded="{{ 'true' if filters_active else 'false' }}"
+                    aria-controls="filterControls"
+                    onclick="toggleShopFilters()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+                <span>Filter Products</span>
+                <svg class="filter-toggle-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="filter-controls{% if filters_active %} open{% endif %}" id="filterControls">
                 <div class="filter-group">
                     <label for="brandFilter">Brand</label>
                     <div class="select-wrap">
@@ -561,11 +576,53 @@
     background: rgba(184, 124, 111, 0.06);
 }
 
+/* Mobile-only filter toggle. Hidden here so desktop is entirely unaffected. */
+.filter-toggle { display: none; }
+.filter-toggle-chevron { transition: transform 0.2s ease; }
+.filter-toggle[aria-expanded="true"] .filter-toggle-chevron { transform: rotate(180deg); }
+
 @media (max-width: 768px) {
-    .filter-controls { flex-direction: column; }
+    .filter-controls { flex-direction: column; display: none; }
+    .filter-controls.open { display: flex; }
+
+    .filter-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+        min-height: 44px;
+        padding: 0.75rem 1.25rem;
+        border: none;
+        border-top: 1px solid rgba(232, 208, 177, 0.4);
+        background: transparent;
+        color: var(--text-secondary);
+        font-family: var(--font-heading);
+        font-size: 0.8rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        cursor: pointer;
+    }
+
     .filter-divider { width: 100%; height: 1px; margin: 0; }
     .filter-group { padding: 0.7rem 1.25rem; min-width: unset; }
     .filter-bar-header { padding: 0.85rem 1.25rem 0.65rem; }
+
+    /* Gaps above the first product, none of which carry any words.
+       4rem of section padding and 2.5rem under the filter bar look considered
+       on a 1440px screen; stacked on a 390px one they were spending most of a
+       phone screen on empty background before a single garment appeared. */
+    .shop-section { padding-top: 1.5rem; }
+    .filter-bar { margin-bottom: 1.25rem; }
+    .daily-affirmation-wrap { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+    .daily-affirmation-card { padding-top: 0.85rem; padding-bottom: 0.85rem; }
+
+    /* "40 products" is one 26px line that was carrying 64px of padding and
+       margin around it, which bought nothing on a screen this narrow. */
+    .shop-header { padding-bottom: 0.25rem; margin-bottom: 0.75rem; }
+    .product-count { margin-bottom: 0; }
+    .shop-header-actions { margin-top: 0.75rem; }
 }
 
 .shop-layout {
@@ -1096,6 +1153,16 @@ function applyFilters() {
 function clearFilters() {
     const designId = new URLSearchParams(window.location.search).get('design_id');
     window.location.href = '/shop' + (designId ? '?design_id=' + designId : '');
+}
+
+// Show or hide the filter dropdowns on phones. The button is display:none
+// above 768px, so this never runs on desktop.
+function toggleShopFilters() {
+    const panel = document.getElementById('filterControls');
+    const button = document.getElementById('filterToggle');
+    if (!panel || !button) return;
+    const open = panel.classList.toggle('open');
+    button.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
 
 // Keep search form hidden inputs in sync with dropdowns before form submit

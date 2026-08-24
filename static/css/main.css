@@ -743,9 +743,17 @@ a.btn-customize:hover {
 }
 
 @media (max-width: 768px) {
-    .page-header { padding: 1.75rem 1.25rem 1.5rem; }
+    /* Trimmed from 1.75/1.5rem. On a 390px screen this band is the first thing
+       between the navbar and the page's actual content, and the desktop
+       proportions cost 16px there without carrying any words. */
+    .page-header { padding: 1.25rem 1.25rem 1rem; }
     .page-header h1 { font-size: 1.85rem; }
     .lead { font-size: 0.9rem; }
+    /* 1rem below a single line of small caps reads as a gap on a phone.
+       Both selectors are needed: the rule above sets this on
+       `.page-header .eyebrow`, which a bare `.eyebrow` here cannot outrank. */
+    .page-header .eyebrow,
+    .eyebrow { margin-bottom: 0.5rem; }
 }
 
 /* Hero Section - Luxury */
