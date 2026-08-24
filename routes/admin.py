@@ -2274,8 +2274,56 @@ def edit_product(product_id):
 @admin_bp.route('/products/<int:product_id>/delete', methods=['POST'])
 @admin_required
 def delete_product(product_id):
-    """Legacy route — kept so any existing bookmarks still work. Redirects to toggle."""
-    return toggle_product_active(product_id)
+    """Remove a product from the catalog.
+
+    OrderItem.product_id is a non-nullable foreign key, so a style that
+    appears in any past order cannot be removed without leaving that order
+    pointing at nothing. Those are hidden from the shop instead. Styles
+    nobody has ever bought — the unbuyable ones with no sizes, for example —
+    are deleted outright, including colour variants, favorites, and group-order
+    memberships.
+    """
+    from sqlalchemy.exc import IntegrityError
+    from models import Favorite, collection_products
+
+    product = Product.query.get_or_404(product_id)
+    name = product.name
+    style = product.style_number
+
+    if product.order_items.count():
+        product.is_active = False
+        db.session.commit()
+        flash(
+            f'"{name}" appears in past orders, so it was hidden from the shop '
+            f'instead of deleted. Order history stays readable.',
+            'success',
+        )
+        return redirect(url_for('admin.products'))
+
+    Favorite.query.filter_by(product_id=product.id).delete(synchronize_session=False)
+    db.session.execute(
+        collection_products.delete().where(
+            collection_products.c.product_id == product.id
+        )
+    )
+    db.session.delete(product)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        leftover = Product.query.get(product_id)
+        if leftover:
+            leftover.is_active = False
+            db.session.commit()
+            flash(
+                f'"{name}" could not be deleted because something still points '
+                f'at it. It was hidden from the shop instead.',
+                'warning',
+            )
+        return redirect(url_for('admin.products'))
+
+    flash(f'"{name}" ({style}) was removed from the catalog.', 'success')
+    return redirect(url_for('admin.products'))
 
 
 @admin_bp.route('/products/<int:product_id>/toggle-active', methods=['POST'])
