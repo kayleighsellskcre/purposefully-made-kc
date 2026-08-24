@@ -1,9 +1,10 @@
 from flask import Blueprint, request, jsonify, current_app, url_for
-from flask_login import current_user
+from flask_login import current_user, login_required
 from werkzeug.utils import secure_filename
 from models import db, Design, Product, ProductColorVariant
 from PIL import Image
 from utils.mockups import get_mockup_url_for_variant, _find_mockup_file
+from utils.rate_limit import rate_limit
 import os
 import secrets
 import json
@@ -127,10 +128,17 @@ def cron_sync_ss():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+# Spelled out here rather than read from config, so that widening the config
+# for some other purpose cannot quietly re-admit scriptable formats on the one
+# route that stores a file and returns a same-origin URL for it.
+_UPLOAD_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'heic', 'heif'}
+
+
 def allowed_file(filename):
     """Check if file extension is allowed"""
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
+    if not filename or '.' not in filename:
+        return False
+    return filename.rsplit('.', 1)[1].lower() in _UPLOAD_EXTENSIONS
 
 def analyze_image(file_path):
     """Analyze image properties"""
@@ -164,6 +172,13 @@ def analyze_image(file_path):
         return None
 
 @api_bp.route('/upload-design', methods=['POST'])
+# Every call writes up to 50 MB to disk, adds a row, and returns a URL on our
+# own domain, so anonymous callers could park arbitrary pictures on the site.
+# Nothing in the app calls this — the customizer that did was removed — so a
+# login requirement costs no working behaviour. Restoring a guest upload flow
+# means deciding that anonymous writes are acceptable, not just deleting a line.
+@login_required
+@rate_limit("20 per hour")
 def upload_design():
     """Upload design artwork"""
     if 'file' not in request.files:
@@ -175,7 +190,7 @@ def upload_design():
         return jsonify({'error': 'No file selected'}), 400
     
     if not allowed_file(file.filename):
-        return jsonify({'error': 'Invalid file type. Allowed: PNG, JPG, SVG, PDF'}), 400
+        return jsonify({'error': 'Invalid file type. Allowed: PNG, JPG, WEBP, GIF, HEIC'}), 400
     
     # Generate unique filename
     original_filename = secure_filename(file.filename)

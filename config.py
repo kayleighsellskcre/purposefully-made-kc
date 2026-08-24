@@ -69,7 +69,10 @@ class Config:
     # large; the upload route enforces its own per-file guard before
     # touching disk. Env var override is intentionally ignored here.
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50 MB
-    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'pdf', 'heic', 'heif'}
+    # Raster only. Uploads land under static/ and are handed back as
+    # same-origin URLs, so an accepted SVG becomes stored script running on our
+    # own domain, and a PDF opens in a viewer that can script too.
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'heic', 'heif'}
     
     # Scheduler settings.
     # Env-driven so the module-level create_app() in app.py can be told not to
