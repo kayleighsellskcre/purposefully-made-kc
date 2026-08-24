@@ -836,40 +836,39 @@ def create_app(config_class=Config):
         except Exception as e:
             print(f'Error syncing growth metrics: {e}')
 
-    return app
+    # ── Widen image import — no blueprint, CORS-open ─────────────────────────
+    # Registered inside the factory. It used to be attached to the module-level
+    # `app` below, which meant any app built by create_app() — every test, every
+    # script — had no such route. A security-critical, unauthenticated,
+    # CORS-open endpoint that writes product images cannot be one that tests are
+    # structurally unable to reach.
+    @app.route('/widen-import', methods=['POST', 'OPTIONS'])
+    def widen_import():
+        from flask import request as rq, jsonify, make_response
+        from models import db, Product, ProductColorVariant
+        from datetime import datetime
 
+        def cors(resp):
+            resp.headers['Access-Control-Allow-Origin'] = '*'
+            resp.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+            resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+            return resp
 
-app = create_app()
+        if rq.method == 'OPTIONS':
+            return cors(make_response('', 204))
 
-# ── Widen image import — standalone route, no blueprint, CORS-open ─────────────
-@app.route('/widen-import', methods=['POST', 'OPTIONS'])
-def widen_import():
-    from flask import request as rq, jsonify, make_response
-    from models import db, Product, ProductColorVariant
-    from datetime import datetime
+        from utils.widen_import_auth import secret_matches
 
-    def cors(resp):
-        resp.headers['Access-Control-Allow-Origin'] = '*'
-        resp.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
-        resp.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-        return resp
+        body = rq.get_json(silent=True) or {}
+        # Unset WIDEN_IMPORT_SECRET disables this endpoint outright. It writes
+        # image URLs for every product with no login session and wildcard CORS,
+        # so it should only be reachable while an import is actually running.
+        if not secret_matches(body.get('secret')):
+            return cors(make_response(jsonify({'error': 'unauthorized'}), 403))
 
-    if rq.method == 'OPTIONS':
-        return cors(make_response('', 204))
+        images = body.get('images', {})
+        updated = created = skipped = 0
 
-    from utils.widen_import_auth import secret_matches
-
-    body = rq.get_json(silent=True) or {}
-    # Unset WIDEN_IMPORT_SECRET disables this endpoint outright. It writes image
-    # URLs for every product with no login session and wildcard CORS, so it
-    # should only be reachable while an import is actually being run.
-    if not secret_matches(body.get('secret')):
-        return cors(make_response(jsonify({'error': 'unauthorized'}), 403))
-
-    images = body.get('images', {})
-    updated = created = skipped = 0
-
-    with app.app_context():
         for style_number, color_map in images.items():
             product = Product.query.filter_by(style_number=style_number).first()
             if not product:
@@ -913,7 +912,13 @@ def widen_import():
             app.logger.exception('widen-import commit failed')
             return cors(make_response(jsonify({'error': 'import failed'}), 500))
 
-    return cors(make_response(jsonify({'ok': True, 'updated': updated, 'created': created, 'skipped': skipped}), 200))
+        return cors(make_response(jsonify(
+            {'ok': True, 'updated': updated, 'created': created, 'skipped': skipped}), 200))
+
+    return app
+
+
+app = create_app()
 
 
 if __name__ == '__main__':
