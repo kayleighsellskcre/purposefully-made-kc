@@ -1,6 +1,6 @@
 """
-Resolve product mockup image URLs from DB (color variants) or from uploads/mockups folder.
-All mockups under uploads/mockups/{style_number}/ are used so each product shows its uploaded mockups.
+Resolve product mockup image URLs from DB (color variants) or from on-disk flat folders.
+Prefers SanMar garment flats (no models), then products/, then uploads/mockups.
 """
 import os
 import re
@@ -8,20 +8,42 @@ import time
 from pathlib import Path
 
 
-def _mockup_dirs(app):
-    """Return list of directories to search for mockup files (most preferred first)."""
-    # App uploads: static/uploads/mockups (UPLOAD_FOLDER is typically static/uploads)
+def _mockup_roots(app):
+    """Return [(abs_dir, url_prefix), ...] most preferred first.
+
+    IMPORTANT: url_prefix must match where Flask actually serves the files.
+    Finding a file under static/images/products but linking /static/uploads/mockups/
+    caused hundreds of broken shop thumbnails.
+    """
     basedir = app.config.get('UPLOAD_FOLDER')
     if not basedir:
         basedir = os.path.join(app.root_path, 'static', 'uploads')
     if not os.path.isabs(basedir):
         basedir = os.path.join(app.root_path, basedir)
     app_mockups = os.path.join(basedir, 'mockups')
-    # Project root uploads/mockups (where bulk-uploaded mockups live)
     root_mockups = os.path.join(app.root_path, 'uploads', 'mockups')
-    # static/images/products — SanMar-sourced product images
+    static_sanmar = os.path.join(app.root_path, 'static', 'sanmar')
     static_images = os.path.join(app.root_path, 'static', 'images', 'products')
-    return [app_mockups, root_mockups, static_images]
+    return [
+        (static_sanmar, '/static/sanmar'),
+        (static_images, '/static/images/products'),
+        (app_mockups, '/static/uploads/mockups'),
+        (root_mockups, '/uploads/mockups'),
+    ]
+
+
+def _mockup_dirs(app):
+    """Directory paths only (tests may patch this)."""
+    return [path for path, _prefix in _mockup_roots(app)]
+
+
+def _root_url_prefix(app, abs_dir):
+    """Map an absolute style-parent directory back to its public URL prefix."""
+    abs_dir = os.path.normcase(os.path.abspath(abs_dir))
+    for path, prefix in _mockup_roots(app):
+        if os.path.normcase(os.path.abspath(path)) == abs_dir:
+            return prefix
+    return '/static/uploads/mockups'
 
 
 MOCKUP_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.webp')
@@ -53,23 +75,23 @@ class _StyleIndex:
     scheme, holding the first match in the original search order (folder
     preference, then extension, then name). `listings` keeps the per-folder
     names in order for colour discovery, which wants the *last* match rather
-    than the first. `file_folder` maps each filename to the on-disk folder
-    name so URLs use a real path (e.g. BC3901Y → 3901Y/...).
+    than the first. `file_url` maps each filename to its public URL path
+    (including the correct /static/... root).
     """
 
     __slots__ = (
         'fingerprint', 'checked_at', 'listings', 'filenames',
-        'by_color_view', 'file_folder',
+        'by_color_view', 'file_url',
     )
 
     def __init__(self, fingerprint, checked_at, listings, filenames,
-                 by_color_view, file_folder):
+                 by_color_view, file_url):
         self.fingerprint = fingerprint
         self.checked_at = checked_at
         self.listings = listings
         self.filenames = filenames
         self.by_color_view = by_color_view
-        self.file_folder = file_folder
+        self.file_url = file_url
 
 
 def _style_aliases(style_number):
@@ -95,11 +117,23 @@ def _style_aliases(style_number):
     return out
 
 
-def _style_dirs(app, style_number):
-    """Existing folders holding this style's mockups, most preferred first."""
-    dirs = []
+def _style_dir_entries(app, style_number):
+    """Existing (style_dir, url_prefix) pairs, most preferred first."""
+    entries = []
     seen = set()
-    for mockup_dir in _mockup_dirs(app):
+    # Prefer _mockup_roots when available; fall back if tests patch only _mockup_dirs.
+    try:
+        roots = _mockup_roots(app)
+    except Exception:
+        roots = [(d, '/static/uploads/mockups') for d in _mockup_dirs(app)]
+    # If tests patched _mockup_dirs to a custom list, honour that exclusively.
+    patched_dirs = _mockup_dirs(app)
+    root_paths = [os.path.normcase(os.path.abspath(p)) for p, _ in roots]
+    patched_paths = [os.path.normcase(os.path.abspath(p)) for p in patched_dirs if p]
+    if patched_paths and patched_paths != root_paths:
+        roots = [(d, '/static/uploads/mockups') for d in patched_dirs if d]
+
+    for mockup_dir, url_prefix in roots:
         if not mockup_dir:
             continue
         for alias in _style_aliases(style_number):
@@ -108,8 +142,13 @@ def _style_dirs(app, style_number):
                 continue
             if os.path.isdir(style_dir):
                 seen.add(style_dir)
-                dirs.append(style_dir)
-    return dirs
+                entries.append((style_dir, url_prefix))
+    return entries
+
+
+def _style_dirs(app, style_number):
+    """Existing folders holding this style's mockups, most preferred first."""
+    return [path for path, _prefix in _style_dir_entries(app, style_number)]
 
 
 def _fingerprint(style_dirs):
@@ -132,12 +171,13 @@ def _color_key(color_name):
 
 
 def _build_style_index(app, style_number, now):
-    style_dirs = _style_dirs(app, style_number)
+    dir_entries = _style_dir_entries(app, style_number)
+    style_dirs = [path for path, _ in dir_entries]
     fingerprint = _fingerprint(style_dirs)
 
     listings = []
-    file_folder = {}
-    for style_dir in style_dirs:
+    file_url = {}
+    for style_dir, url_prefix in dir_entries:
         folder_name = os.path.basename(style_dir.rstrip('\\/'))
         try:
             names = sorted(os.listdir(style_dir))
@@ -145,7 +185,7 @@ def _build_style_index(app, style_number, now):
             names = []
         listings.append(names)
         for name in names:
-            file_folder.setdefault(name, folder_name)
+            file_url.setdefault(name, f"{url_prefix}/{folder_name}/{name}")
 
     filenames = set()
     for names in listings:
@@ -171,7 +211,7 @@ def _build_style_index(app, style_number, now):
                 by_color_view.setdefault((_color_key(parsed_color), parsed_view), name)
 
     return _StyleIndex(
-        fingerprint, now, listings, filenames, by_color_view, file_folder,
+        fingerprint, now, listings, filenames, by_color_view, file_url,
     )
 
 
@@ -202,17 +242,24 @@ def clear_mockup_cache():
     _STYLE_INDEX.clear()
 
 
-def _rel_for_filename(index, style_number, filename):
-    """Build folder/filename using the real on-disk folder when aliased."""
-    folder = index.file_folder.get(filename) or _style_aliases(style_number)[-1] or style_number
-    return f"{folder}/{filename}"
+def _url_for_filename(index, style_number, filename):
+    """Public URL for a mockup filename, using the root it was found under."""
+    url = index.file_url.get(filename)
+    if url:
+        return url
+    # Fallback for tests / odd indexes without file_url entries
+    aliases = _style_aliases(style_number)
+    folder = aliases[-1] if aliases else style_number
+    return f"/static/uploads/mockups/{folder}/{filename}"
 
 
 def _find_mockup_file(app, style_number, color_name, view):
     """
-    Look for a mockup file in uploads/mockups for the given style, color, and view.
-    Tries format A (3001_Aqua_front.jpg) first, then scans for format B (BELLA_+_CANVAS_3001Y_Ash_Front_High.jpg).
-    Returns the relative path for URL (e.g. 3001/3001_Aqua_front.jpg) if found, else None.
+    Look for a mockup file for the given style, color, and view.
+    Tries format A (3001_Aqua_front.jpg) first, then format B
+    (BELLA_+_CANVAS_3001Y_Ash_Front_High.jpg).
+    Returns the public URL path (e.g. /static/sanmar/3001/3001_Aqua_front.jpg)
+    if found, else None.
     """
     safe_color = (color_name or '').replace(' ', '_').strip()
     if not safe_color:
@@ -228,29 +275,34 @@ def _find_mockup_file(app, style_number, color_name, view):
         for ext in MOCKUP_EXTENSIONS:
             filename = base_name + ext
             if filename in index.filenames:
-                return _rel_for_filename(index, style_number, filename)
+                return _url_for_filename(index, style_number, filename)
 
     # Format B: BELLA_+_CANVAS_3001Y_Ash_Front_High.jpg
     name = index.by_color_view.get((_color_key(color_name), view.lower()))
     if name:
-        return _rel_for_filename(index, style_number, name)
+        return _url_for_filename(index, style_number, name)
     return None
 
 
 def _mockup_url(app, rel):
-    """Return URL for mockup - uses static path directly."""
-    # Return path like /static/uploads/mockups/3001/3001_Aqua_front.jpg
+    """Return a public URL for a mockup path or relative key."""
+    if not rel:
+        return None
+    if rel.startswith('/'):
+        return rel
+    if rel.startswith('http://') or rel.startswith('https://'):
+        return rel
     return f"/static/uploads/mockups/{rel}"
 
 
 def get_mockup_url_for_variant(product, variant, view, app):
     """
     Return the best available mockup URL for a product color variant and view (front/back).
-    Prefers local uploads/mockups so customer-uploaded images always show for design preview.
+    Prefers local flat folders so customer-uploaded images always show for design preview.
     """
-    rel = _find_mockup_file(app, product.style_number, getattr(variant, 'color_name', None), view)
-    if rel:
-        return _mockup_url(app, rel)
+    url = _find_mockup_file(app, product.style_number, getattr(variant, 'color_name', None), view)
+    if url:
+        return url
     if view == 'front' and getattr(variant, 'front_image_url', None):
         return variant.front_image_url
     if view == 'back' and getattr(variant, 'back_image_url', None):
@@ -320,8 +372,7 @@ def discover_colors_from_mockup_folder(app, style_number):
                         break
                 if not color_name or not view:
                     continue
-                rel = _rel_for_filename(index, style_number, name)
-                url = _mockup_url(app, rel)
+                url = _url_for_filename(index, style_number, name)
                 if color_name not in colors_seen:
                     colors_seen[color_name] = {'color_name': color_name, 'color_hex': None, 'front_image': None, 'back_image': None, 'front_image_url': None, 'back_image_url': None, 'inventory': {}}
                 if view == 'front':
@@ -408,13 +459,13 @@ def ensure_variant_mockup_urls(app):
         # 1. Fill missing URLs on existing variants
         for v in ProductColorVariant.query.filter_by(product_id=product.id).all():
             if not v.front_image_url:
-                rel = _find_mockup_file(app, product.style_number, v.color_name, 'front')
-                if rel:
-                    v.front_image_url = _mockup_url(app, rel)
+                url = _find_mockup_file(app, product.style_number, v.color_name, 'front')
+                if url:
+                    v.front_image_url = url
             if not v.back_image_url:
-                rel = _find_mockup_file(app, product.style_number, v.color_name, 'back')
-                if rel:
-                    v.back_image_url = _mockup_url(app, rel)
+                url = _find_mockup_file(app, product.style_number, v.color_name, 'back')
+                if url:
+                    v.back_image_url = url
 
         # 2. Create variants for mockup folder colors not yet in DB
         for c in discover_colors_from_mockup_folder(app, product.style_number):
@@ -466,10 +517,8 @@ def get_carousel_colors_for_product(product, app, allowed_colors=None, variants=
         if allowed_colors and v.color_name not in allowed_colors:
             continue
         # Try mockup folder FIRST
-        rel = _find_mockup_file(app, product.style_number, v.color_name, 'front')
-        if rel:
-            url = _mockup_url(app, rel)
-        else:
+        url = _find_mockup_file(app, product.style_number, v.color_name, 'front')
+        if not url:
             raw = v.front_image_url or ''
             # Fix bare relative paths stored without /static/ prefix
             if raw and not raw.startswith('http') and not raw.startswith('/'):

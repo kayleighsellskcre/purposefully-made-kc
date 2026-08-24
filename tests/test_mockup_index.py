@@ -61,21 +61,29 @@ def find(mockup_app, style, colour, view):
 def test_finds_an_exact_name(mockup_app):
     directory = style_dir(mockup_app, '3001')
     write(directory, '3001_Aqua_front.jpg')
-    assert find(mockup_app, '3001', 'Aqua', 'front') == '3001/3001_Aqua_front.jpg'
+    assert find(mockup_app, '3001', 'Aqua', 'front') == (
+        '/static/uploads/mockups/3001/3001_Aqua_front.jpg'
+    )
 
 
 def test_spaces_in_the_colour_become_underscores(mockup_app):
     directory = style_dir(mockup_app, '3001')
     write(directory, '3001_Sport_Grey_front.jpg')
-    assert find(mockup_app, '3001', 'Sport Grey', 'front') == '3001/3001_Sport_Grey_front.jpg'
+    assert find(mockup_app, '3001', 'Sport Grey', 'front') == (
+        '/static/uploads/mockups/3001/3001_Sport_Grey_front.jpg'
+    )
 
 
 def test_front_and_back_are_separate(mockup_app):
     directory = style_dir(mockup_app, '3001')
     write(directory, '3001_Aqua_front.jpg')
     write(directory, '3001_Aqua_back.jpg')
-    assert find(mockup_app, '3001', 'Aqua', 'front') == '3001/3001_Aqua_front.jpg'
-    assert find(mockup_app, '3001', 'Aqua', 'back') == '3001/3001_Aqua_back.jpg'
+    assert find(mockup_app, '3001', 'Aqua', 'front') == (
+        '/static/uploads/mockups/3001/3001_Aqua_front.jpg'
+    )
+    assert find(mockup_app, '3001', 'Aqua', 'back') == (
+        '/static/uploads/mockups/3001/3001_Aqua_back.jpg'
+    )
 
 
 def test_missing_colour_returns_none(mockup_app):
@@ -98,7 +106,7 @@ def test_unknown_style_returns_none(mockup_app):
 def test_every_supported_extension_is_found(mockup_app, extension):
     directory = style_dir(mockup_app, '3001')
     write(directory, '3001_Aqua_front' + extension)
-    assert find(mockup_app, '3001', 'Aqua', 'front') == f'3001/3001_Aqua_front{extension}'
+    assert find(mockup_app, '3001', 'Aqua', 'front') == f'/static/uploads/mockups/3001/3001_Aqua_front{extension}'
 
 
 def test_jpg_wins_over_png(mockup_app):
@@ -106,7 +114,7 @@ def test_jpg_wins_over_png(mockup_app):
     directory = style_dir(mockup_app, '3001')
     write(directory, '3001_Aqua_front.png')
     write(directory, '3001_Aqua_front.jpg')
-    assert find(mockup_app, '3001', 'Aqua', 'front') == '3001/3001_Aqua_front.jpg'
+    assert find(mockup_app, '3001', 'Aqua', 'front') == '/static/uploads/mockups/3001/3001_Aqua_front.jpg'
 
 
 def test_unsupported_extension_is_ignored(mockup_app):
@@ -121,7 +129,7 @@ def test_finds_a_descriptive_name(mockup_app):
     directory = style_dir(mockup_app, '3001Y')
     write(directory, 'BELLA_+_CANVAS_3001Y_Ash_Front_High.jpg')
     assert find(mockup_app, '3001Y', 'Ash', 'front') == (
-        '3001Y/BELLA_+_CANVAS_3001Y_Ash_Front_High.jpg'
+        '/static/uploads/mockups/3001Y/BELLA_+_CANVAS_3001Y_Ash_Front_High.jpg'
     )
 
 
@@ -131,15 +139,39 @@ def test_bc_prefixed_style_finds_bare_folder(mockup_app):
     write(directory, 'BELLA_+_CANVAS_3901Y_Black_Front_High.jpg')
     write(directory, 'BELLA_+_CANVAS_3901Y_Black_Back_High.jpg')
     assert find(mockup_app, 'BC3901Y', 'Black', 'front') == (
-        '3901Y/BELLA_+_CANVAS_3901Y_Black_Front_High.jpg'
+        '/static/uploads/mockups/3901Y/BELLA_+_CANVAS_3901Y_Black_Front_High.jpg'
     )
     assert find(mockup_app, 'BC3901Y', 'Black', 'back') == (
-        '3901Y/BELLA_+_CANVAS_3901Y_Black_Back_High.jpg'
+        '/static/uploads/mockups/3901Y/BELLA_+_CANVAS_3901Y_Black_Back_High.jpg'
     )
     colors = mockups.discover_colors_from_mockup_folder(mockup_app, 'BC3901Y')
     assert len(colors) == 1
     assert colors[0]['color_name'] == 'Black'
     assert '/static/uploads/mockups/3901Y/' in (colors[0]['front_image'] or '')
+
+
+def test_sanmar_root_urls_are_not_rewritten_to_uploads(app, tmp_path, monkeypatch):
+    """Files under static/sanmar must keep /static/sanmar/ URLs."""
+    sanmar = tmp_path / 'sanmar'
+    (sanmar / '3001Y').mkdir(parents=True)
+    write(str(sanmar / '3001Y'), '3001Y_Ash_front.jpg')
+    mockups.clear_mockup_cache()
+    monkeypatch.setattr(
+        mockups,
+        '_mockup_roots',
+        lambda app_: [(str(sanmar), '/static/sanmar')],
+    )
+    monkeypatch.setattr(
+        mockups,
+        '_mockup_dirs',
+        lambda app_: [str(sanmar)],
+    )
+    try:
+        assert mockups._find_mockup_file(app, 'BC3001Y', 'Ash', 'front') == (
+            '/static/sanmar/3001Y/3001Y_Ash_front.jpg'
+        )
+    finally:
+        mockups.clear_mockup_cache()
 
 
 def test_descriptive_name_matches_colour_case_insensitively(mockup_app):
@@ -154,7 +186,7 @@ def test_exact_name_wins_over_descriptive_name(mockup_app):
     directory = style_dir(mockup_app, '3001')
     write(directory, 'BELLA_+_CANVAS_3001_Ash_Front_High.jpg')
     write(directory, '3001_Ash_front.png')
-    assert find(mockup_app, '3001', 'Ash', 'front') == '3001/3001_Ash_front.png'
+    assert find(mockup_app, '3001', 'Ash', 'front') == '/static/uploads/mockups/3001/3001_Ash_front.png'
 
 
 def test_descriptive_name_for_the_wrong_colour_is_not_returned(mockup_app):
@@ -187,7 +219,7 @@ def test_a_new_upload_is_picked_up(mockup_app, monkeypatch):
     write(directory, '3001_Aqua_front.jpg')
     _expire_and_touch(monkeypatch, directory)
 
-    assert find(mockup_app, '3001', 'Aqua', 'front') == '3001/3001_Aqua_front.jpg'
+    assert find(mockup_app, '3001', 'Aqua', 'front') == '/static/uploads/mockups/3001/3001_Aqua_front.jpg'
 
 
 def test_a_deleted_mockup_stops_being_returned(mockup_app, monkeypatch):
@@ -206,7 +238,7 @@ def test_clearing_the_cache_forces_a_rescan(mockup_app):
     assert find(mockup_app, '3001', 'Aqua', 'front') is None
     write(directory, '3001_Aqua_front.jpg')
     mockups.clear_mockup_cache()
-    assert find(mockup_app, '3001', 'Aqua', 'front') == '3001/3001_Aqua_front.jpg'
+    assert find(mockup_app, '3001', 'Aqua', 'front') == '/static/uploads/mockups/3001/3001_Aqua_front.jpg'
 
 
 def test_repeated_lookups_do_not_relist_the_folder(mockup_app, monkeypatch):

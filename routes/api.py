@@ -330,8 +330,10 @@ def get_product_mockup(product_id):
         if variant:
             mockup_path = get_mockup_url_for_variant(product, variant, view, current_app)
         if not mockup_path:
-            rel = _find_mockup_file(current_app, product.style_number, color, view)
-            if rel:
+            mockup_path = _find_mockup_file(current_app, product.style_number, color, view)
+            # Legacy serve_mockup helper expects a relative uploads/mockups path
+            if mockup_path and mockup_path.startswith('/static/uploads/mockups/'):
+                rel = mockup_path[len('/static/uploads/mockups/'):]
                 mockup_path = url_for('main.serve_mockup', path=rel)
     if not mockup_path:
         mockup_path = product.front_mockup_template if view == 'front' else product.back_mockup_template
