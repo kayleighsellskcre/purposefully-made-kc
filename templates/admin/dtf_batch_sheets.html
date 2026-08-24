@@ -153,7 +153,7 @@
 .vendor-head h2 { font-family: var(--font-heading); font-size: 1.35rem; margin: 0 0 0.2rem; }
 .vendor-head p { color: var(--text-secondary); margin: 0; }
 .vendor-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-.dtf-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+.dtf-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 1rem; }
 .dtf-card { border: 1px solid var(--border-light, #eadfd4); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
 .dtf-preview { aspect-ratio: 1; background:
     linear-gradient(45deg, #eee 25%, transparent 25%),
@@ -182,7 +182,24 @@
 }
 @media (max-width: 700px) {
     .admin-page { padding: 2rem 0; }
-    .dtf-btns .btn { min-height: 40px; }
+    .shop-actions,
+    .vendor-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+    .shop-actions .btn,
+    .vendor-actions .btn {
+        width: 100%;
+        justify-content: center;
+        min-height: 48px;
+    }
+    .dtf-cards { grid-template-columns: 1fr; }
+    .dtf-btns { flex-direction: column; }
+    .dtf-btns .btn {
+        width: 100%;
+        justify-content: center;
+        min-height: 48px;
+    }
 }
 </style>
 <script>

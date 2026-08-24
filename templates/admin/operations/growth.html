@@ -15,7 +15,7 @@
 <div class="ops-card">
     <h2>Add Weekly Metric</h2>
     <form method="POST" action="{{ url_for('admin.add_growth_metric') }}">
-        <div class="form-inline">
+        <div class="ops-form-inline">
             <input type="date" name="week_start" required>
             <input type="number" name="units_sold" placeholder="Units sold" value="0">
             <input type="number" name="revenue" step="0.01" placeholder="Revenue" value="0">
@@ -30,6 +30,7 @@
 </div>
 
 <div class="ops-card">
+    <div class="ops-table-scroll">
     <table class="admin-table">
         <thead><tr><th>Week</th><th>Units</th><th>Revenue</th><th>Traffic</th><th>Events</th><th>Wholesale</th><th>Social</th><th></th></tr></thead>
         <tbody>
@@ -47,9 +48,14 @@
             {% else %}<tr><td colspan="8" class="text-muted">No metrics yet. Click "Auto-Sync Now" to pull from your data.</td></tr>{% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 <style>
 .growth-auto-sync { margin-bottom: 2rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .growth-sync-hint { color: var(--text-secondary); font-size: 0.9rem; }
+@media (max-width: 768px) {
+    .growth-auto-sync { flex-direction: column; align-items: stretch; }
+    .growth-auto-sync .btn { width: 100%; justify-content: center; min-height: 48px; }
+}
 </style>
 {% endblock %}

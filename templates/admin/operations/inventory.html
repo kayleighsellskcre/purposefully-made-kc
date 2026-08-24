@@ -17,6 +17,7 @@
             <input type="number" name="reorder_threshold" placeholder="Reorder" value="5">
             <button type="submit" class="btn btn-primary">Add</button>
         </form>
+        <div class="ops-table-scroll">
         <table class="admin-table">
             <thead><tr><th>Brand</th><th>Color</th><th>Size</th><th>Qty</th><th>Cost</th><th>Reorder</th><th></th></tr></thead>
             <tbody>
@@ -25,8 +26,8 @@
                     <td>{{ item.brand }}</td><td>{{ item.color }}</td><td>{{ item.size }}</td>
                     <td>{{ item.quantity }}</td><td>{{ "$%.2f"|format(item.cost_per_unit or 0) }}</td><td>{{ item.reorder_threshold }}</td>
                     <td>
-                        <form method="POST" action="{{ url_for('admin.update_apparel_inventory', id=item.id) }}" style="display:inline">
-                            <input type="number" name="quantity" value="{{ item.quantity }}" min="0" style="width:60px">
+                        <form method="POST" action="{{ url_for('admin.update_apparel_inventory', id=item.id) }}" class="ops-qty-form">
+                            <input type="number" name="quantity" value="{{ item.quantity }}" min="0" class="ops-qty-input">
                             <button type="submit" class="btn btn-sm">Update</button>
                         </form>
                     </td>
@@ -34,6 +35,7 @@
                 {% else %}<tr><td colspan="7" class="text-muted">No apparel yet.</td></tr>{% endfor %}
             </tbody>
         </table>
+        </div>
     </div>
 
     <div class="ops-card">
@@ -47,6 +49,7 @@
             <input type="number" name="reorder_threshold" placeholder="Reorder" value="0">
             <button type="submit" class="btn btn-primary">Add</button>
         </form>
+        <div class="ops-table-scroll">
         <table class="admin-table">
             <thead><tr><th>Category</th><th>Name</th><th>Qty</th><th>Unit</th><th>Cost</th><th>Reorder</th><th></th></tr></thead>
             <tbody>
@@ -55,8 +58,8 @@
                     <td>{{ item.category }}</td><td>{{ item.name }}</td><td>{{ item.quantity }}</td><td>{{ item.unit }}</td>
                     <td>{{ "$%.2f"|format(item.cost_per_unit or 0) }}</td><td>{{ item.reorder_threshold }}</td>
                     <td>
-                        <form method="POST" action="{{ url_for('admin.update_supply', id=item.id) }}" style="display:inline">
-                            <input type="number" name="quantity" value="{{ item.quantity }}" min="0" style="width:60px">
+                        <form method="POST" action="{{ url_for('admin.update_supply', id=item.id) }}" class="ops-qty-form">
+                            <input type="number" name="quantity" value="{{ item.quantity }}" min="0" class="ops-qty-input">
                             <button type="submit" class="btn btn-sm">Update</button>
                         </form>
                     </td>
@@ -64,6 +67,7 @@
                 {% else %}<tr><td colspan="7" class="text-muted">No supplies yet.</td></tr>{% endfor %}
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 
@@ -78,6 +82,7 @@
         <input type="text" name="delivery_time" placeholder="Delivery time">
         <button type="submit" class="btn btn-primary">Add</button>
     </form>
+    <div class="ops-table-scroll">
     <table class="admin-table">
         <thead><tr><th>Design</th><th>Size</th><th>Qty</th><th>Cost</th><th>Vendor</th></tr></thead>
         <tbody>
@@ -87,5 +92,22 @@
             {% else %}<tr><td colspan="5" class="text-muted">No transfers yet.</td></tr>{% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
+<style>
+.ops-qty-form { display: inline-flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+.ops-qty-input {
+    width: 4.5rem;
+    min-height: 40px;
+    padding: 0.35rem 0.5rem;
+    border-radius: 8px;
+    border: 1.5px solid rgba(232,208,177,0.8);
+    font-size: 1rem;
+}
+@media (max-width: 768px) {
+    .ops-qty-form { width: 100%; }
+    .ops-qty-input { flex: 1; min-width: 4rem; }
+    .ops-qty-form .btn { min-height: 44px; }
+}
+</style>
 {% endblock %}

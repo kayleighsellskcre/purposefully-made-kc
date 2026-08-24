@@ -47,6 +47,52 @@ def _exception_text(error):
     return f'{type(original).__name__}: {original}'
 
 
+# Query/path keys that must never appear in the admin Errors UI.
+_SENSITIVE_QUERY_KEYS = (
+    'token', 'reset', 'password', 'passwd', 'secret', 'key', 'session',
+    'code', 'auth', 'email', 'api_key', 'apikey', 'access_token', 'refresh',
+)
+
+
+def redact_query_string(query):
+    """Mask sensitive query values for display (and safer DB storage)."""
+    if not query:
+        return ''
+    from urllib.parse import parse_qsl, urlencode
+    try:
+        pairs = parse_qsl(query, keep_blank_values=True)
+    except Exception:
+        return '[redacted]'
+    safe = []
+    for k, v in pairs:
+        key_l = (k or '').lower()
+        if any(s in key_l for s in _SENSITIVE_QUERY_KEYS):
+            safe.append((k, '***'))
+        else:
+            safe.append((k, v[:80] if isinstance(v, str) else v))
+    return urlencode(safe)[:400]
+
+
+def safe_error_message(message, limit=180):
+    """Short, single-line message for the Errors UI — no stack / path dumps."""
+    text = (message or '').replace('\r', ' ').replace('\n', ' ').strip()
+    if len(text) > limit:
+        return text[: limit - 1].rstrip() + '…'
+    return text
+
+
+def safe_referrer_display(referrer):
+    """Show origin + path only — strip query/fragment that may hold tokens."""
+    if not referrer:
+        return ''
+    from urllib.parse import urlsplit, urlunsplit
+    try:
+        parts = urlsplit(referrer)
+        return urlunsplit((parts.scheme, parts.netloc, parts.path, '', ''))[:300]
+    except Exception:
+        return ''
+
+
 def record_and_notify(app, error, error_id=None):
     """Log, persist, and email/SMS the admin. Never raises. Returns (error_id, notified)."""
     error_id = error_id or new_error_id()
@@ -97,8 +143,8 @@ def _save_error(app, error_id, ctx, message, stack):
             error_id=error_id,
             path=ctx['path'][:500],
             method=ctx['method'][:10],
-            query_string=(ctx['query'] or '')[:500],
-            referrer=ctx['referrer'],
+            query_string=redact_query_string(ctx['query'] or '')[:500],
+            referrer=safe_referrer_display(ctx['referrer']) or (ctx['referrer'] or '')[:300],
             user_agent=ctx['user_agent'],
             user_id=ctx['user_id'],
             message=message[:2000],

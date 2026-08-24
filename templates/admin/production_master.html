@@ -35,7 +35,7 @@
             <div class="master-section">
                 <h2>Blank Apparel to Order</h2>
                 <p class="section-hint">Use the weekly shopping list to copy these into S&amp;S or SanMar. Nothing is purchased until you check out there.</p>
-                <div class="table-container">
+                <div class="table-container apparel-table-only">
                     <table class="admin-table">
                         <thead>
                             <tr>
@@ -58,6 +58,18 @@
                             {% endfor %}
                         </tbody>
                     </table>
+                </div>
+                <div class="apparel-card-list">
+                    {% for item in apparel_list %}
+                    <article class="apparel-card">
+                        <div>
+                            <p class="apparel-card-style">{{ item.style_number }}</p>
+                            <p class="apparel-card-name">{{ item.product_name }}</p>
+                            <p class="apparel-card-meta">{{ item.color }} · {{ item.size }}</p>
+                        </div>
+                        <span class="apparel-card-qty">×{{ item.quantity }}</span>
+                    </article>
+                    {% endfor %}
                 </div>
             </div>
             
@@ -133,19 +145,35 @@
 .admin-page { padding: 4rem 0; }
 .admin-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 2rem; }
 .page-subtitle { color: var(--text-secondary); margin-top: 0.5rem; }
-.master-actions { display: flex; gap: 1rem; align-items: center; }
+.master-actions { display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap; }
+.master-actions form { display: inline; }
 .master-summary { margin-bottom: 2rem; padding: 1rem; background: var(--secondary-color); border-radius: var(--border-radius); }
 .master-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
 @media (max-width: 968px) { .master-grid { grid-template-columns: 1fr; } }
 .master-section { background: #fff; border-radius: var(--border-radius); padding: 2rem; box-shadow: var(--box-shadow); border: 1px solid var(--border-color); }
 .master-section h2 { font-family: var(--font-heading); font-size: 1.25rem; margin-bottom: 0.5rem; }
 .section-hint { color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem; }
-.table-container { overflow-x: auto; }
+.table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .admin-table { width: 100%; border-collapse: collapse; }
 .admin-table th, .admin-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color); }
 .admin-table thead { background: var(--secondary-color); }
 .qty { font-weight: 600; }
-.design-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+.apparel-card-list { display: none; }
+.apparel-card {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.35rem 0.75rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    margin-bottom: 0.65rem;
+    background: var(--ivory-silk, #faf7f2);
+}
+.apparel-card-style { font-family: 'Courier New', monospace; font-weight: 700; color: var(--aged-bronze); margin: 0; }
+.apparel-card-name { margin: 0; font-size: 0.88rem; color: var(--text-primary); }
+.apparel-card-meta { margin: 0; font-size: 0.82rem; color: var(--text-secondary); grid-column: 1 / -1; }
+.apparel-card-qty { font-weight: 700; color: var(--accent-color); font-size: 1.05rem; align-self: start; }
+.design-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)); gap: 1rem; }
 .design-master-card { border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); overflow: hidden; }
 .design-master-preview { aspect-ratio: 1; background: var(--ivory-silk); display: flex; align-items: center; justify-content: center; padding: 0.5rem; position: relative; text-decoration: none; color: inherit; }
 .design-master-preview-link { cursor: pointer; transition: var(--transition, 0.2s ease); }
@@ -157,5 +185,29 @@
 .design-master-info { padding: 1rem; font-size: 0.9rem; }
 .qty-badge { font-weight: 600; color: var(--accent-color); margin-top: 0.5rem; }
 .empty-state { text-align: center; padding: 4rem 2rem; background: #fff; border-radius: var(--border-radius); }
+
+@media (max-width: 768px) {
+    .master-actions {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .master-actions .btn,
+    .master-actions form,
+    .master-actions button {
+        width: 100%;
+        justify-content: center;
+        min-height: 48px;
+    }
+    .master-actions form { display: block; }
+    .master-section { padding: 1.15rem; }
+    .apparel-table-only { display: none; }
+    .apparel-card-list { display: block; }
+    .design-click-hint { opacity: 1; } /* touch devices can't hover */
+    .design-master-info .btn { width: 100%; justify-content: center; min-height: 44px; }
+}
+@media (max-width: 400px) {
+    .design-cards { grid-template-columns: 1fr; }
+}
 </style>
 {% endblock %}

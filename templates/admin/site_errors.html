@@ -1,44 +1,133 @@
-{% extends "base.html" %}
-{% block title %}Site Errors - Admin{% endblock %}
+{% extends "admin/base_admin.html" %}
+{% block title %}Site Errors - Admin - Purposefully Made KC{% endblock %}
 
-{% block content %}
-<div class="container" style="padding: 2rem 1.25rem 4rem; max-width: 1100px;">
-    <p class="adm-eyebrow">Admin</p>
-    <h1 style="font-family: var(--font-heading); margin: 0 0 0.5rem;">Site Errors</h1>
-    <p style="color: var(--text-secondary); margin: 0 0 1.75rem;">
-        Each customer-facing 500 shows a reference ID. Match that ID to the row below.
-    </p>
+{% block admin_content %}
+<div class="err-page">
+    <div class="err-header">
+        <div>
+            <span class="adm-eyebrow">Admin / Safety</span>
+            <h1 class="adm-page-title">Site Errors</h1>
+            <p class="adm-page-lead">
+                Each customer-facing 500 shows a reference ID. Match that ID here.
+                Sensitive query values are redacted. Full stacks stay in email/logs only.
+            </p>
+        </div>
+    </div>
 
     {% if errors %}
-    <div style="overflow-x: auto;">
-        <table class="admin-table" style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+    {# Desktop table #}
+    <div class="adm-table-wrap err-table-only">
+        <table class="adm-table">
             <thead>
-                <tr style="text-align: left; border-bottom: 1px solid rgba(0,0,0,0.12);">
-                    <th style="padding: 0.6rem 0.5rem;">When (Central)</th>
-                    <th style="padding: 0.6rem 0.5rem;">Reference ID</th>
-                    <th style="padding: 0.6rem 0.5rem;">Request</th>
-                    <th style="padding: 0.6rem 0.5rem;">Error</th>
-                    <th style="padding: 0.6rem 0.5rem;">Notified</th>
+                <tr>
+                    <th>When (Central)</th>
+                    <th>Reference ID</th>
+                    <th>Request</th>
+                    <th>Error</th>
+                    <th>Notified</th>
                 </tr>
             </thead>
             <tbody>
                 {% for err in errors %}
-                <tr style="border-bottom: 1px solid rgba(0,0,0,0.06); vertical-align: top;">
-                    <td style="padding: 0.7rem 0.5rem; white-space: nowrap;">{{ err.created_at|central }}</td>
-                    <td style="padding: 0.7rem 0.5rem;"><code>{{ err.error_id }}</code></td>
-                    <td style="padding: 0.7rem 0.5rem;">
-                        <strong>{{ err.method }}</strong> {{ err.path }}{% if err.query_string %}?{{ err.query_string }}{% endif %}
-                        {% if err.referrer %}<div style="color: var(--text-secondary); font-size: 0.8rem;">from {{ err.referrer }}</div>{% endif %}
+                <tr>
+                    <td class="err-when">{{ err.created_at|central }}</td>
+                    <td><code class="err-id">{{ err.error_id }}</code></td>
+                    <td>
+                        <strong>{{ err.method }}</strong> {{ err.path }}{% if err.query_safe %}?{{ err.query_safe }}{% endif %}
+                        {% if err.referrer_safe %}<div class="err-from">from {{ err.referrer_safe }}</div>{% endif %}
                     </td>
-                    <td style="padding: 0.7rem 0.5rem; max-width: 360px;">{{ err.message }}</td>
-                    <td style="padding: 0.7rem 0.5rem;">{{ 'Yes' if err.notified else 'No' }}</td>
+                    <td class="err-msg">{{ err.message_safe }}</td>
+                    <td>{{ 'Yes' if err.notified else 'No' }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+
+    {# Phone cards #}
+    <div class="err-card-list">
+        {% for err in errors %}
+        <article class="err-card">
+            <div class="err-card-top">
+                <code class="err-id">{{ err.error_id }}</code>
+                <span class="err-notified {% if err.notified %}is-yes{% endif %}">{{ 'Notified' if err.notified else 'Not sent' }}</span>
+            </div>
+            <p class="err-when">{{ err.created_at|central }}</p>
+            <p class="err-req"><strong>{{ err.method }}</strong> {{ err.path }}{% if err.query_safe %}?{{ err.query_safe }}{% endif %}</p>
+            {% if err.referrer_safe %}<p class="err-from">from {{ err.referrer_safe }}</p>{% endif %}
+            <p class="err-msg">{{ err.message_safe }}</p>
+        </article>
+        {% endfor %}
+    </div>
     {% else %}
-    <p>No recorded 500s yet.</p>
+    <div class="err-empty">
+        <p>No recorded 500s yet. That’s a good day.</p>
+    </div>
     {% endif %}
 </div>
+
+<style>
+.err-page { padding: 0 0 1rem; }
+.err-header { margin-bottom: 1.5rem; }
+.err-when { white-space: nowrap; font-size: 0.85rem; color: var(--text-secondary); }
+.err-id {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--aged-bronze);
+    background: var(--ivory-silk);
+    padding: 0.2rem 0.45rem;
+    border-radius: 6px;
+    word-break: break-all;
+}
+.err-from { color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.2rem; }
+.err-msg { max-width: 28rem; font-size: 0.88rem; }
+.err-table-only { display: block; margin-bottom: 1.5rem; }
+.err-card-list { display: none; }
+.err-card {
+    background: #fff;
+    border: 1px solid rgba(232,208,177,0.55);
+    border-radius: 14px;
+    padding: 1rem 1.1rem;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 2px 10px rgba(58,61,72,0.04);
+}
+.err-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.45rem;
+}
+.err-notified {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    background: var(--ivory-silk);
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    flex-shrink: 0;
+}
+.err-notified.is-yes {
+    color: #059669;
+    background: rgba(16,185,129,0.12);
+}
+.err-req { margin: 0.35rem 0 0; font-size: 0.9rem; word-break: break-word; }
+.err-card .err-msg { margin: 0.55rem 0 0; max-width: none; color: var(--text-primary); }
+.err-empty {
+    background: #fff;
+    border: 1px dashed rgba(232,208,177,0.8);
+    border-radius: 14px;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+    .err-table-only { display: none; }
+    .err-card-list { display: block; }
+}
+</style>
 {% endblock %}

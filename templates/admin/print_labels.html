@@ -236,6 +236,21 @@
     .pl-action-btns { width: 100%; flex-direction: column; }
     .pl-action-btns .btn,
     .pl-print-btn { width: 100%; justify-content: center; min-height: 48px; }
+
+    /* Keep Avery geometry for print; on screen, scroll + hint */
+    .labels-preview {
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 0.5rem;
+    }
+    .labels-preview::before {
+        content: "Swipe sideways to preview · Print for full-size Avery sheet";
+        display: block;
+        font-size: 0.78rem;
+        color: var(--text-secondary, #888);
+        margin-bottom: 0.65rem;
+    }
 }
 
 @media print {

@@ -304,11 +304,30 @@ def index():
 @admin_required
 def site_errors():
     """Recent customer-facing 500s, matched by the reference ID on the error page."""
+    from utils.error_notify import (
+        redact_query_string,
+        safe_error_message,
+        safe_referrer_display,
+    )
     try:
-        errors = SiteError.query.order_by(SiteError.created_at.desc()).limit(50).all()
+        rows = SiteError.query.order_by(SiteError.created_at.desc()).limit(50).all()
     except Exception:
         db.session.rollback()
-        errors = []
+        rows = []
+
+    # Never render raw query strings / long exception dumps in the UI.
+    errors = []
+    for err in rows:
+        errors.append({
+            'created_at': err.created_at,
+            'error_id': err.error_id,
+            'method': err.method,
+            'path': err.path,
+            'query_safe': redact_query_string(err.query_string or ''),
+            'referrer_safe': safe_referrer_display(err.referrer or ''),
+            'message_safe': safe_error_message(err.message),
+            'notified': err.notified,
+        })
     return render_template('admin/site_errors.html', errors=errors)
 
 

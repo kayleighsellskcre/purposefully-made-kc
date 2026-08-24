@@ -10,6 +10,7 @@
 </div>
 
 <div class="ops-card vendor-list-card">
+    <div class="ops-table-scroll">
     <table class="admin-table">
         <thead><tr><th>Name</th><th>Contact</th><th>Lead Time</th><th>MOQ</th><th>Quality</th><th>Actions</th></tr></thead>
         <tbody>
@@ -20,16 +21,19 @@
                 <td>{{ v.lead_time_days or '-' }} days</td>
                 <td>{{ v.moq or '-' }}</td>
                 <td>{% if v.quality_rating %}{{ '★' * v.quality_rating }}{% else %}-{% endif %}</td>
-                <td><a href="{{ url_for('admin.edit_vendor', id=v.id) }}" class="btn-link">Edit</a></td>
+                <td><a href="{{ url_for('admin.edit_vendor', id=v.id) }}" class="btn btn-outline btn-sm">Edit</a></td>
             </tr>
             {% else %}<tr><td colspan="6" class="text-muted">No vendors yet.</td></tr>{% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 <style>
-.ops-header-actions { margin-bottom: 2rem; }
-.vendor-list-card { overflow: hidden; }
+.ops-header-actions { margin-bottom: 1.5rem; }
 .vendor-list-card .admin-table td { vertical-align: middle; }
 .vendor-list-card td small { color: var(--text-secondary); font-size: 0.85rem; }
+@media (max-width: 768px) {
+    .ops-header-actions .btn { width: 100%; justify-content: center; min-height: 48px; }
+}
 </style>
 {% endblock %}

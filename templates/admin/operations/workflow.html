@@ -655,11 +655,10 @@
     .wf-summary-pill { padding: 0.4rem 0.65rem; }
 }
 
-/* Landscape phone: show compact board instead of full accordion */
+/* Landscape phones: keep accordion — horizontal board is too cramped */
 @media (max-width: 900px) and (orientation: landscape) {
-    .wf-board-scroll { display: block; }
-    .wf-mobile       { display: none; }
-    .wf-board        { min-width: 800px; grid-template-columns: repeat(5, minmax(180px, 1fr)); }
+    .wf-board-scroll { display: none; }
+    .wf-mobile       { display: block; }
 }
 </style>
 

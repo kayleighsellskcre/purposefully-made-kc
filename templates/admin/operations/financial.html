@@ -34,6 +34,7 @@
 
 <div class="ops-card">
     <h2>Recent Entries</h2>
+    <div class="ops-table-scroll">
     <table class="admin-table">
         <thead><tr><th>Date</th><th>Category</th><th>Amount</th><th>Description</th></tr></thead>
         <tbody>
@@ -43,6 +44,16 @@
             {% else %}<tr><td colspan="4" class="text-muted">No entries yet.</td></tr>{% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
-<style>.ops-stat{text-align:center}.stat-number{font-size:2rem;font-weight:700}.profit{color:var(--success-color)}.positive{color:var(--success-color)}.negative{color:var(--error-color)}</style>
+<style>
+.ops-stat{text-align:center}
+.stat-number{font-size:2rem;font-weight:700}
+.profit{color:var(--success-color)}
+.positive{color:var(--success-color)}
+.negative{color:var(--error-color)}
+@media (max-width: 480px) {
+    .stat-number { font-size: 1.55rem; }
+}
+</style>
 {% endblock %}
