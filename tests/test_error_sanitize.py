@@ -11,7 +11,9 @@ def test_redact_query_string_masks_tokens_and_emails():
     out = redact_query_string(q)
     assert 'supersecret' not in out
     assert 'person' not in out
-    assert '***' in out
+    assert 'person%40' not in out
+    # urlencode turns "***" into "%2A%2A%2A"
+    assert ('***' in out) or ('%2A%2A%2A' in out)
     assert 'order=12' in out
     assert 'color=navy' in out
 
