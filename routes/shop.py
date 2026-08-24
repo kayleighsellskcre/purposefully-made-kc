@@ -13,7 +13,8 @@ from utils.product_filters import (
     matches_filters,
     prepare_catalog,
 )
-from utils.sizes import sort_sizes
+from utils.sizes import shop_sizes_for_product
+from utils.fonts import CUSTOMIZE_BACK_FONTS, GROUP_ORDER_FONTS
 import json
 
 shop_bp = Blueprint('shop', __name__, url_prefix='/shop')
@@ -382,38 +383,17 @@ def create_group_order():
     
     from utils.product_filters import load_group_order_form_catalog
     catalog = load_group_order_form_catalog()
-    back_design_fonts = [
-        ('Freshman', 'Freshman — Classic college jersey'),
-        ('Black Ops One', 'Black Ops One — Bold varsity block'),
-        ('Graduate', 'Graduate — Collegiate style'),
-        ('Squada One', 'Squada One — Modern athletic numbers'),
-        ('Bebas Neue', 'Bebas Neue — Clean jersey'),
-        ('Oswald', 'Oswald — Bold athletic'),
-        ('Anton', 'Anton — Strong block'),
-        ('Teko', 'Teko — College jersey'),
-        ('Jersey M54', 'Jersey M54 — Classic sports jersey'),
-    ]
     return render_template('admin/add_collection.html',
                          products=catalog['products'],
                          gallery_designs=catalog['gallery_designs'],
                          all_colors=catalog.get('colors_by_brand') or catalog['all_colors'],
-                         back_design_fonts=back_design_fonts,
+                         back_design_fonts=GROUP_ORDER_FONTS,
                          catalog_filter_opts=catalog['catalog_filter_opts'],
                          catalog_filter_picker=True,
                          is_user_create=True)
 
 
-_GROUP_ORDER_FONTS = [
-    ('Freshman', 'Freshman — Classic college jersey'),
-    ('Black Ops One', 'Black Ops One — Bold varsity block'),
-    ('Graduate', 'Graduate — Collegiate style'),
-    ('Squada One', 'Squada One — Modern athletic numbers'),
-    ('Bebas Neue', 'Bebas Neue — Clean jersey'),
-    ('Oswald', 'Oswald — Bold athletic'),
-    ('Anton', 'Anton — Strong block'),
-    ('Teko', 'Teko — College jersey'),
-    ('Jersey M54', 'Jersey M54 — Classic sports jersey'),
-]
+_GROUP_ORDER_FONTS = GROUP_ORDER_FONTS
 
 
 @shop_bp.route('/group-orders/<slug>/edit', methods=['GET', 'POST'])
@@ -502,7 +482,7 @@ def design_gallery():
 def product_detail(product_id):
     """Product detail page with customizer"""
     product = Product.query.get_or_404(product_id)
-    available_sizes = sort_sizes(parse_json_list(product.available_sizes))
+    available_sizes = shop_sizes_for_product(product)
     available_colors = parse_json_list(product.available_colors)
     print_area_config = parse_json_object(product.print_area_config)
     color_variants_data = get_color_variants_data_for_product(product, current_app)
@@ -526,7 +506,7 @@ def customize(product_id):
     )
 
     product = Product.query.get_or_404(product_id)
-    available_sizes = sort_sizes(parse_json_list(product.available_sizes))
+    available_sizes = shop_sizes_for_product(product)
     available_colors = parse_json_list(product.available_colors)
     print_area_config = parse_json_object(product.print_area_config)
     color_variants_data = get_color_variants_data_for_product(product, current_app)
@@ -600,7 +580,7 @@ def customize(product_id):
         if coll and allowed_design_ids:
             gallery_designs = load_collection_designs(coll)
         else:
-            designs = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).limit(24).all()
+            designs = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).limit(200).all()
             gallery_designs = [{'id': d.id, 'url': _resolve_image_url(d.file_path), 'title': (d.title or d.original_filename or 'Design')} for d in designs]
     except Exception:
         pass
@@ -633,6 +613,7 @@ def customize(product_id):
                          preset_design=preset_design,
                          gallery_designs=gallery_designs,
                          my_designs=my_designs,
+                         customize_back_fonts=CUSTOMIZE_BACK_FONTS,
                          current_user=current_user,
                          collection_restricted=collection_restricted,
                          allow_custom_upload=allow_custom_upload,

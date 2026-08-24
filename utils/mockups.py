@@ -272,6 +272,17 @@ def discover_colors_from_mockup_folder(app, style_number):
     return list(colors_seen.values())
 
 
+SHOP_PLACEHOLDER_IMAGE = '/static/img/placeholder-product.svg'
+
+
+def _shop_inventory_for_variant(raw_inventory, shop_sizes, listed_sizes):
+    from utils.stock import inventory_for_display, _qty_int
+    inventory = inventory_for_display(raw_inventory, shop_sizes)
+    if not listed_sizes and inventory and all(_qty_int(qty) <= 0 for qty in inventory.values()):
+        return {}
+    return inventory
+
+
 def get_color_variants_data_for_product(product, app):
     """
     Build color_variants_data for product detail/customize pages.
@@ -279,12 +290,14 @@ def get_color_variants_data_for_product(product, app):
     Returns list of dicts: color_name, color_hex, front_image, back_image, inventory.
     """
     from utils.json_fields import parse_json_list
-    from utils.stock import inventory_for_display
-    shop_sizes = parse_json_list(getattr(product, 'available_sizes', None))
+    from utils.sizes import shop_sizes_for_product
+    listed_sizes = parse_json_list(getattr(product, 'available_sizes', None))
+    raw_variants = list(getattr(product, 'color_variants', []) or [])
+    shop_sizes = shop_sizes_for_product(product, raw_variants)
     color_variants_data = []
     seen_colors = set()
-    for variant in getattr(product, 'color_variants', []) or []:
-        inventory = inventory_for_display(variant.size_inventory, shop_sizes)
+    for variant in raw_variants:
+        inventory = _shop_inventory_for_variant(variant.size_inventory, shop_sizes, listed_sizes)
         front_image = get_mockup_url_for_variant(product, variant, 'front', app) or variant.front_image_url
         back_image = get_mockup_url_for_variant(product, variant, 'back', app) or variant.back_image_url
         color_variants_data.append({
@@ -304,7 +317,18 @@ def get_color_variants_data_for_product(product, app):
             'color_hex': extra.get('color_hex'),
             'front_image': extra.get('front_image_url') or extra.get('front_image'),
             'back_image': extra.get('back_image_url') or extra.get('back_image'),
-            'inventory': inventory_for_display(extra.get('inventory', {}), shop_sizes)
+            'inventory': _shop_inventory_for_variant(extra.get('inventory', {}), shop_sizes, listed_sizes)
+        })
+    for color_name in parse_json_list(getattr(product, 'available_colors', None)):
+        if color_name in seen_colors:
+            continue
+        seen_colors.add(color_name)
+        color_variants_data.append({
+            'color_name': color_name,
+            'color_hex': None,
+            'front_image': None,
+            'back_image': None,
+            'inventory': {}
         })
     return color_variants_data
 
@@ -365,8 +389,11 @@ def get_carousel_colors_for_product(product, app, allowed_colors=None, variants=
     and pass this product's share in. It cannot be solved with eager loading:
     SQLAlchemy rejects selectinload on a dynamic relationship outright.
     """
+    from utils.json_fields import parse_json_list
+
     result = []
     seen = set()
+    pending_names = []
 
     if variants is None:
         variants = getattr(product, 'color_variants', []) or []
@@ -377,7 +404,6 @@ def get_carousel_colors_for_product(product, app, allowed_colors=None, variants=
             continue
         if allowed_colors and v.color_name not in allowed_colors:
             continue
-        seen.add(v.color_name)
         # Try mockup folder FIRST
         rel = _find_mockup_file(app, product.style_number, v.color_name, 'front')
         if rel:
@@ -389,7 +415,10 @@ def get_carousel_colors_for_product(product, app, allowed_colors=None, variants=
                 raw = '/static/' + raw
             url = raw or None
         if url:
+            seen.add(v.color_name)
             result.append({'color_name': v.color_name, 'front_image_url': url})
+        else:
+            pending_names.append(v.color_name)
 
     # 2. Colors from mockup folder not yet in result
     for c in discover_colors_from_mockup_folder(app, product.style_number):
@@ -402,6 +431,16 @@ def get_carousel_colors_for_product(product, app, allowed_colors=None, variants=
         seen.add(c['color_name'])
         url = c.get('front_image_url') or c.get('front_image')
         result.append({'color_name': c['color_name'], 'front_image_url': url})
+
+    # 3. Colours that exist in the catalog but have no photo yet still count,
+    # so the shop card does not read "0 colors" while the customizer shows 35.
+    for name in pending_names + parse_json_list(getattr(product, 'available_colors', None)):
+        if not name or name in seen:
+            continue
+        if allowed_colors and name not in allowed_colors:
+            continue
+        seen.add(name)
+        result.append({'color_name': name, 'front_image_url': SHOP_PLACEHOLDER_IMAGE})
 
     return result
 
@@ -495,6 +534,10 @@ def get_first_shop_image_url(product, app, carousel=None):
     product, so the whole list was being built twice per row.
     """
     colors = carousel if carousel is not None else get_carousel_colors_for_product(product, app)
+    for color in colors or []:
+        url = (color.get('front_image_url') or '').strip()
+        if url and SHOP_PLACEHOLDER_IMAGE not in url:
+            return url
     if colors:
         return colors[0].get('front_image_url')
     # Fallback: scan folder for any front image

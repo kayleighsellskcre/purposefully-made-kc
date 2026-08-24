@@ -2607,20 +2607,14 @@ def add_collection():
             return redirect(url_for('admin.add_collection'))
     
     from utils.product_filters import load_group_order_form_catalog
+    from utils.fonts import GROUP_ORDER_FONTS
     catalog = load_group_order_form_catalog()
-    back_design_fonts = [
-        ('Bebas Neue', 'Bebas Neue — Classic jersey'),
-        ('Oswald', 'Oswald — Bold athletic'),
-        ('Anton', 'Anton — Strong block'),
-        ('Teko', 'Teko — College jersey'),
-        ('Jersey M54', 'Jersey M54 — Classic sports jersey'),
-    ]
     return render_template(
         'admin/add_collection.html',
         products=catalog['products'],
         gallery_designs=catalog['gallery_designs'],
         all_colors=catalog.get('colors_by_brand') or catalog['all_colors'],
-        back_design_fonts=back_design_fonts,
+        back_design_fonts=GROUP_ORDER_FONTS,
         catalog_filter_opts=catalog['catalog_filter_opts'],
         catalog_filter_picker=True,
     )
@@ -2685,18 +2679,7 @@ def edit_collection(collection_id):
     allowed_colors_list = json.loads(collection.allowed_colors) if collection.allowed_colors else []
     allowed_design_ids_list = json.loads(collection.allowed_design_ids) if collection.allowed_design_ids else []
     allowed_placements_list = json.loads(collection.allowed_placements) if collection.allowed_placements else ['center_chest', 'left_chest', 'right_chest', 'center_back']
-    back_design_fonts = [
-        ('Freshman', 'Freshman — Classic college jersey'),
-        ('Black Ops One', 'Black Ops One — Bold varsity block'),
-        ('Graduate', 'Graduate — Collegiate style'),
-        ('Squada One', 'Squada One — Modern athletic numbers'),
-        ('Bebas Neue', 'Bebas Neue — Clean jersey'),
-        ('Oswald', 'Oswald — Bold athletic'),
-        ('Anton', 'Anton — Strong block'),
-        ('Teko', 'Teko — College jersey'),
-        ('Jersey M54', 'Jersey M54 — Classic sports jersey'),
-    ]
-    
+    from utils.fonts import GROUP_ORDER_FONTS
     return render_template('admin/edit_collection.html',
                          collection=collection,
                          products=products,
@@ -2705,7 +2688,7 @@ def edit_collection(collection_id):
                          allowed_colors_list=allowed_colors_list,
                          allowed_design_ids_list=allowed_design_ids_list,
                          allowed_placements_list=allowed_placements_list,
-                         back_design_fonts=back_design_fonts,
+                         back_design_fonts=GROUP_ORDER_FONTS,
                          collection_product_ids=[p.id for p in collection.products],
                          catalog_filter_opts=catalog_filter_options(products),
                          catalog_filter_picker=True)

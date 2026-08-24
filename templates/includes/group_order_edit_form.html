@@ -139,11 +139,17 @@
                                 <span>{{ d.title or d.original_filename or 'Design' }}</span>
                             </label>
                             {% if not is_user_edit %}
-                            <form method="post" action="{{ url_for('admin.collection_design_remove', collection_id=collection.id, design_id=d.id) }}"
-                                  onsubmit="return confirm('Permanently delete this design from the group order?')"
-                                  style="position:absolute;top:4px;right:4px;margin:0;">
-                                <button type="submit" title="Delete this design" style="background:#dc2626;border:none;border-radius:50%;width:22px;height:22px;color:#fff;font-size:13px;line-height:22px;text-align:center;cursor:pointer;padding:0;">&times;</button>
-                            </form>
+                            {# Button only. Its form is emitted after the collection
+                               form closes, and is targeted here by id. A <form>
+                               at this point sits inside the collection form, and
+                               the HTML parser discards nested forms — which turned
+                               this button into a submit for the collection itself,
+                               so clicking it saved the group order, skipped the
+                               confirmation, and left the design in place. #}
+                            <button type="submit" form="removeDesign{{ d.id }}"
+                                    onclick="return confirm('Permanently delete this design from the group order?')"
+                                    title="Delete this design"
+                                    style="position:absolute;top:4px;right:4px;background:#dc2626;border:none;border-radius:50%;width:22px;height:22px;color:#fff;font-size:13px;line-height:22px;text-align:center;cursor:pointer;padding:0;">&times;</button>
                             {% endif %}
                         </div>
                         {% endfor %}
@@ -290,6 +296,15 @@
         </form>
         {% if not is_user_edit %}
         <form id="delete-form" action="{{ url_for('admin.delete_collection', collection_id=collection.id) }}" method="POST" style="display: none;"></form>
+        {# One per gallery design, out here where the parser keeps them. The `or []`
+           matters because this block renders even on the branches that never
+           defined gallery_designs. #}
+        {% for d in gallery_designs or [] %}
+        <form id="removeDesign{{ d.id }}" method="post" style="display:none;"
+              action="{{ url_for('admin.collection_design_remove', collection_id=collection.id, design_id=d.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+        {% endfor %}
         {% endif %}
     </div>
 </div>

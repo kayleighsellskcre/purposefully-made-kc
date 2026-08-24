@@ -92,6 +92,53 @@ def size_sort_key(size):
     return (99, 999, raw)
 
 
+DEFAULT_ADULT_SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL']
+DEFAULT_YOUTH_SIZES = ['YS', 'YM', 'YL', 'YXL']
+_YOUTH_AGE_GROUPS = frozenset(('youth', 'toddler', 'baby', 'kids', 'kid', 'infant'))
+
+
+def _inventory_size_labels(inventory):
+    if isinstance(inventory, dict):
+        data = inventory
+    else:
+        from utils.json_fields import parse_json_object
+        data = parse_json_object(inventory)
+    return [str(key).strip() for key in (data or {}) if str(key).strip()]
+
+
+def shop_sizes_for_product(product, variants=None):
+    """Sizes the customizer should offer, even when available_sizes was never saved.
+
+    A style can have 30 colour mockups and still ship with an empty size list.
+    The size grid then rendered nothing, so the customer could pick a colour
+    and never a size. Prefer the listed sizes, then inventory keys, then a
+    default adult/youth run so the page is always orderable.
+    """
+    from utils.json_fields import parse_json_list
+
+    listed = parse_json_list(getattr(product, 'available_sizes', None))
+    if listed:
+        return sort_sizes(listed)
+
+    if variants is None:
+        variants = list(getattr(product, 'color_variants', None) or [])
+
+    labels = []
+    for variant in variants:
+        if isinstance(variant, dict):
+            inventory = variant.get('inventory') or variant.get('size_inventory')
+        else:
+            inventory = getattr(variant, 'size_inventory', None)
+        labels.extend(_inventory_size_labels(inventory))
+    if labels:
+        return sort_sizes(labels)
+
+    age = (getattr(product, 'age_group', None) or '').strip().lower()
+    if age in _YOUTH_AGE_GROUPS:
+        return list(DEFAULT_YOUTH_SIZES)
+    return list(DEFAULT_ADULT_SIZES)
+
+
 def sort_sizes(sizes):
     """Return a new list in true ascending size order. Drops empties, keeps uniqueness."""
     if not sizes:

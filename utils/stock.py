@@ -110,11 +110,17 @@ def available_qty(product, color, size):
     """Return on-hand qty, or None when this color has not been warehouse-synced."""
     variant = find_color_variant(product, color)
     if not variant:
-        return 0
+        # Mockup-only colours never get a warehouse row. Blocking them made
+        # Add to Cart fail after the customer had already picked the colour.
+        return None
     if not is_usable_inventory_payload(variant.size_inventory):
         return None
-    shop_sizes = parse_json_list(getattr(product, 'available_sizes', None))
-    display = inventory_for_display(variant.size_inventory, shop_sizes)
+    listed_sizes = parse_json_list(getattr(product, 'available_sizes', None))
+    display = inventory_for_display(variant.size_inventory, listed_sizes)
+    # Mockup import writes {S:0, M:0, ...} when the style has no size list.
+    # That is placeholder data, not a confirmed stock-out.
+    if not listed_sizes and display and all(_qty_int(qty) <= 0 for qty in display.values()):
+        return None
     if size in display:
         return _qty_int(display[size])
     return lookup_qty(variant.size_inventory, size)

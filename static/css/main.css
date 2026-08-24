@@ -742,6 +742,24 @@ a.btn-customize:hover {
     text-align: center !important;
 }
 
+/* Stands in for the size picker on a style with no sizes recorded. Lives here
+   rather than in either template because both the customizer and the product
+   page need it. */
+.size-unavailable-note {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    background: rgba(232, 208, 177, 0.18);
+    border: 1px solid rgba(232, 208, 177, 0.55);
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+    margin: 0;
+}
+.size-unavailable-note a {
+    color: var(--terra-cotta);
+    font-weight: 600;
+}
+
 @media (max-width: 768px) {
     /* Trimmed from 1.75/1.5rem. On a 390px screen this band is the first thing
        between the navbar and the page's actual content, and the desktop

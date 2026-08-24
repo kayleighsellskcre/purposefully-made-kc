@@ -27,6 +27,8 @@ FONT_FILES = {
     'Oswald': 'Oswald-Bold.ttf',
     'Anton': 'Anton-Regular.ttf',
     'Teko': 'Teko-Bold.ttf',
+    # Alumni Sans Collegiate One (OFL), served to customers as Varsity Regular.
+    'Varsity Regular': 'VarsityRegular.ttf',
 }
 
 _FONT_CACHE = {}

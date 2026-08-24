@@ -150,6 +150,14 @@
                         {% endfor %}
                     </div>
                 </div>
+                {% else %}
+                {# With no sizes recorded the block above renders nothing, and
+                   addToCart() still answers with "Please select a size" — pointing
+                   the customer at a control that isn't on the page. #}
+                <p class="size-unavailable-note">
+                    This one can't be ordered just yet. <a href="{{ url_for('shop.index') }}">Browse other styles</a>
+                    or <a href="{{ url_for('main.contact') }}">ask us about it</a> — we're happy to help.
+                </p>
                 {% endif %}
                 <div class="product-option">
                     <span class="option-label" id="colorLabel">Color</span>

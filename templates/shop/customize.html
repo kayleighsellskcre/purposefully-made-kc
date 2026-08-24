@@ -618,22 +618,73 @@
 }
 .logo-gallery-item.selected {
     border-color: var(--accent-color);
-    background: rgba(184, 124, 111, 0.08);
+    box-shadow: 0 0 0 2px rgba(184, 124, 111, 0.25);
 }
 .logo-gallery-item img {
     width: 100%;
-    height: 64px;
+    height: 70px;
     object-fit: contain;
     display: block;
-    margin-bottom: 0.25rem;
+    margin: 0 auto 0.35rem;
 }
-.logo-gallery-item span {
-    font-size: 0.7rem;
-    color: var(--text-secondary);
+.logo-gallery-item span,
+.logo-gallery-item-label {
     display: block;
+    font-size: 0.7rem;
+    line-height: 1.2;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.gallery-design-picker {
+    margin-bottom: 1rem;
+}
+.gallery-design-select {
+    width: 100%;
+    min-height: 44px;
+}
+.gallery-design-selected {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.6rem;
+    padding: 0.5rem 0.65rem;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+.gallery-design-selected img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+.gallery-design-selected span {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.back-design-offer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+.back-design-fee-amount {
+    flex-shrink: 0;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    font-size: 1.25rem;
+    color: var(--terra-cotta);
+}
+@media (max-width: 420px) {
+    .back-design-offer-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.2rem;
+    }
 }
 .or-divider {
     text-align: center;
@@ -1522,7 +1573,15 @@
                 <div class="panel-section step-section">
                     <div class="step-badge">2</div>
                     <h3>Choose Size</h3>
-                    <p class="step-hint">Select your size. Pick a color first to see availability.</p>
+                    {# available_sizes comes back empty for a style that was imported
+                       without its size list. The grid then renders nothing at all,
+                       while the hint still told the customer to pick a color first
+                       and Add to Cart sat greyed out with no reason given — which
+                       reads as a broken page rather than an unavailable garment. #}
+                    <p class="step-hint">
+                        {%- if available_sizes %}Select your size. Pick a color first to see availability.
+                        {%- else %}Sizes for this style aren't listed yet.{% endif %}
+                    </p>
                     <div class="size-grid-professional" id="sizeGrid">
                         {% for size in available_sizes|sort_sizes %}
                         <div class="size-card" role="button" tabindex="0" aria-pressed="false"
@@ -1532,6 +1591,12 @@
                         </div>
                         {% endfor %}
                     </div>
+                    {% if not available_sizes %}
+                    <p class="size-unavailable-note">
+                        This one can't be ordered just yet. <a href="{{ url_for('shop.index') }}">Browse other styles</a>
+                        or <a href="{{ url_for('main.contact') }}">ask us about it</a> — we're happy to help.
+                    </p>
+                    {% endif %}
                 </div>
                 
                 <!-- Step 3: Logo / Design -->
@@ -1592,15 +1657,20 @@
                     {% endif %}
                     
                     {% if gallery_designs %}
-                    <div class="logo-gallery-inline" id="logoGalleryInline">
-                        <p class="logo-gallery-label">Gallery designs. Click to use.</p>
-                        <div class="logo-gallery-grid" id="logoGalleryGrid">
+                    <div class="gallery-design-picker" id="logoGalleryInline">
+                        <label for="galleryDesignSelect" class="logo-gallery-label">Gallery designs</label>
+                        <select id="galleryDesignSelect" class="form-control gallery-design-select">
+                            <option value="">Choose a gallery design…</option>
                             {% for d in gallery_designs %}
-                            <div class="logo-gallery-item{% if preset_design and preset_design.id == d.id %} selected{% endif %}" data-design-id="{{ d.id }}" data-design-url="{{ d.url }}" data-design-title="{{ d.title }}" role="button" tabindex="0" title="{{ d.title }}">
-                                <img src="{{ d.url }}" alt="{{ d.title }}" draggable="false">
-                                <span class="logo-gallery-item-label">{{ d.title }}</span>
-                            </div>
+                            <option value="{{ d.id }}"
+                                    data-url="{{ d.url }}"
+                                    data-title="{{ d.title }}"
+                                    {% if preset_design and preset_design.id == d.id %}selected{% endif %}>{{ d.title }}</option>
                             {% endfor %}
+                        </select>
+                        <div class="gallery-design-selected" id="galleryDesignSelected"{% if not (preset_design and preset_design.id) %} hidden{% endif %}>
+                            <img src="{{ preset_design.url if preset_design else '' }}" alt="{{ preset_design.title if preset_design else '' }}" id="galleryDesignSelectedImg">
+                            <span id="galleryDesignSelectedTitle">{{ preset_design.title if preset_design else '' }}</span>
                         </div>
                     </div>
                     {% endif %}
@@ -1694,17 +1764,15 @@
                     {% else %}
                     {# Regular shop: show toggle button with price #}
                     <div style="padding: 1.25rem; background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.05)); border-radius: 12px; border: 2px solid #e8e8e8;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                        <div class="back-design-offer-header">
                             <div>
                                 <strong style="font-size: 1.1rem; color: #333;">Add Design on Other Side</strong>
                                 <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #666;">Optional name, number, or second logo</p>
                             </div>
-                            <div style="text-align: right;">
-                                <strong style="font-size: 1.25rem; color: var(--terra-cotta);">+$6.00</strong>
-                            </div>
+                            <strong class="back-design-fee-amount">+$6.00</strong>
                         </div>
                         <button class="btn btn-outline btn-block" id="addBackDesignBtn" onclick="toggleBackDesign()" style="margin-top: 0.75rem;">
-                            <span id="backDesignBtnText">Add Back Design</span>
+                            <span id="backDesignBtnText">Add Back Design (+$6.00)</span>
                         </button>
                     </div>
                     {% endif %}
@@ -1745,11 +1813,9 @@
                                 <input type="hidden" id="backDesignFont" value="{{ back_design_font }}">
                                 {% else %}
                                 <select id="backDesignFont" class="form-control">
-                                    <option value="Bebas Neue">Bebas Neue (Classic jersey)</option>
-                                    <option value="Oswald">Oswald (Bold athletic)</option>
-                                    <option value="Anton">Anton (Strong block)</option>
-                                    <option value="Teko">Teko (College jersey)</option>
-                                    <option value="Jersey M54">Jersey M54 (Classic sports jersey)</option>
+                                    {% for font_value, font_label in customize_back_fonts %}
+                                    <option value="{{ font_value }}">{{ font_label }}</option>
+                                    {% endfor %}
                                 </select>
                                 {% endif %}
                             </div>
@@ -2009,31 +2075,30 @@
     }
     
     function setupLogoGalleryClicks() {
-        const grid = document.getElementById('logoGalleryGrid');
-        if (!grid) return;
-        grid.addEventListener('click', function(e) {
-            const card = e.target.closest('.logo-gallery-item');
-            if (!card || !card.dataset.designUrl) return;
-            e.preventDefault();
-            e.stopPropagation();
-            const design = { id: card.dataset.designId, url: card.dataset.designUrl, title: card.dataset.designTitle };
+        const select = document.getElementById('galleryDesignSelect');
+        if (!select) return;
+        function applyFromSelect() {
+            const opt = select.options[select.selectedIndex];
+            const preview = document.getElementById('galleryDesignSelected');
+            const img = document.getElementById('galleryDesignSelectedImg');
+            const title = document.getElementById('galleryDesignSelectedTitle');
+            if (!opt || !opt.value || !opt.dataset.url) {
+                if (preview) preview.hidden = true;
+                return;
+            }
+            const design = { id: opt.value, url: opt.dataset.url, title: opt.dataset.title || opt.textContent };
             try {
                 applyPresetDesign(design);
+                if (img) { img.src = design.url; img.alt = design.title; }
+                if (title) title.textContent = design.title;
+                if (preview) preview.hidden = false;
                 document.querySelectorAll('.logo-gallery-item').forEach(el => el.classList.remove('selected'));
-                card.classList.add('selected');
             } catch (err) {
                 console.error('Gallery design error:', err);
             }
-        });
-        grid.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' || e.key === ' ') {
-                const card = e.target.closest('.logo-gallery-item');
-                if (card) {
-                    e.preventDefault();
-                    card.click();
-                }
-            }
-        });
+        }
+        select.addEventListener('change', applyFromSelect);
+        if (select.value) applyFromSelect();
     }
     
     function setupMyDesignsClicks() {
@@ -2820,7 +2885,8 @@
         'Oswald': { nameSpacing: '0.07em', numberSpacing: '0.04em' },
         'Anton': { nameSpacing: '0.05em', numberSpacing: '0.02em' },
         'Teko': { nameSpacing: '0.06em', numberSpacing: '0.03em' },
-        'Jersey M54': { nameSpacing: '0.05em', numberSpacing: '0.02em' }
+        'Jersey M54': { nameSpacing: '0.05em', numberSpacing: '0.02em' },
+        'Varsity Regular': { nameSpacing: '0.04em', numberSpacing: '0.02em' }
     };
     
     function buildBackOutlineShadow(color) {
@@ -4164,45 +4230,15 @@
                     }
                 }
                 
-                // Capture proof images (design on shirt) for cart display
-                if (typeof html2canvas === 'function') {
-                    const previewEl = document.getElementById('previewCanvas');
-                    const frontHasDesign = state.designUrl || state.designFile || state.presetDesignId;
-                    const backHasDesign = state.backDesignEnabled && (
-                        (state.backDesignMode === 'name_number' && (state.backDesignName || state.backDesignNumber)) ||
-                        (state.backDesignMode === 'upload' && state.backDesignUrl)
-                    );
-                    try {
-                        state.currentView = 'front';
-                        updateMockupImage();
-                        updateDesignLayerVisibility();
-                        await new Promise(r => setTimeout(r, 150));
-                        const frontCanvas = await html2canvas(previewEl, { scale: 1, useCORS: true, allowTaint: true, backgroundColor: '#f5f0e1' });
-                        const frontBlob = await new Promise(res => frontCanvas.toBlob(res, 'image/png'));
-                        if (frontBlob && frontHasDesign) {
-                            formData.append('proof_front', new File([frontBlob], 'proof_front.png', { type: 'image/png' }));
-                        }
-                        if (backHasDesign) {
-                            state.currentView = 'back';
-                            updateMockupImage();
-                            updateDesignLayerVisibility();
-                            await new Promise(r => setTimeout(r, 200));
-                            const backCanvas = await html2canvas(previewEl, { scale: 1, useCORS: true, allowTaint: true, backgroundColor: '#f5f0e1' });
-                            const backBlob = await new Promise(res => backCanvas.toBlob(res, 'image/png'));
-                            if (backBlob) formData.append('proof_back', new File([backBlob], 'proof_back.png', { type: 'image/png' }));
-                        }
-                        state.currentView = 'front';
-                        updateMockupImage();
-                        updateDesignLayerVisibility();
-                        await new Promise(r => setTimeout(r, 50));
-                    } catch (e) { console.warn('Proof capture failed:', e); }
-                }
-                
                 const response = await fetch('/cart/add', {
                     method: 'POST',
                     body: formData
                 });
-                const result = await response.json().catch(function () { return {}; });
+                let result = {};
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.indexOf('application/json') !== -1) {
+                    result = await response.json().catch(function () { return {}; });
+                }
 
                 if (response.ok && result.success) {
                     if (result.notice) {
@@ -4212,7 +4248,10 @@
                     this.style.background = 'var(--olive-stone)';
                     window.location.href = '/cart';
                 } else {
-                    throw new Error(result.error || 'Failed to add to cart');
+                    const message = result.error
+                        || (response.status === 413 ? 'That design is too large to add. Try a smaller file.' : '')
+                        || 'Failed to add to cart';
+                    throw new Error(message);
                 }
             } catch (error) {
                 PMKC.showFlash(error.message || 'Something went wrong adding to cart. Please try again.', 'error');
@@ -4235,7 +4274,4 @@ function toggleSizeChart() {
     }
 }
 </script>
-{% endblock %}
-{% block extra_js %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHVLRZA3MzSME5bIZU5JNFtmH4sJTqpXGQBSfP/aB+bDQE7BF+HUvp2a3kZe0VqJmYRlkTFA==" crossorigin="anonymous"></script>
 {% endblock %}

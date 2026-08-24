@@ -50,3 +50,18 @@
     font-display: block;
     src: url('/static/fonts/Teko-Bold.ttf') format('truetype');
 }
+/* Alumni Sans Collegiate One (SIL OFL), shown to customers as Varsity Regular. */
+@font-face {
+    font-family: 'Varsity Regular';
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url('/static/fonts/VarsityRegular.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Varsity Regular';
+    font-style: normal;
+    font-weight: 700;
+    font-display: block;
+    src: url('/static/fonts/VarsityRegular.ttf') format('truetype');
+}
