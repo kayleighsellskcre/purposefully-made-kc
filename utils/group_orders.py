@@ -310,10 +310,13 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
     collection.pickup_instructions = request.form.get('pickup_instructions')
     collection.shipping_enabled = request.form.get('shipping_enabled') == 'on'
     collection.show_in_directory = request.form.get('show_in_directory') == 'on'
-    try:
-        collection.tax_rate = float(request.form.get('tax_rate') or 0)
-    except (TypeError, ValueError):
-        collection.tax_rate = 0.0
+    # The edit form used to omit tax_rate. Treating a missing field as 0
+    # wiped a live group order's rate the first time Save actually worked.
+    if 'tax_rate' in request.form:
+        try:
+            collection.tax_rate = float(request.form.get('tax_rate') or 0)
+        except (TypeError, ValueError):
+            collection.tax_rate = 0.0
 
     collection.is_active = request.form.get('is_active') == 'on'
 
@@ -346,10 +349,16 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
         collection.restrict_options = True
 
     collection.back_design_font = request.form.get('back_design_font') or None
-    collection.back_design_text_color = request.form.get('back_design_text_color') or None
-    collection.back_design_outline = request.form.get('back_design_outline') != 'off'
-    collection.back_design_outline_color = request.form.get('back_design_outline_color') or None
-    collection.lock_back_design_style = request.form.get('lock_back_design_style') == 'on'
+    # Create sends these; edit does not. Only overwrite when the form has them
+    # so a successful admin save cannot blank the organizer's style lock.
+    if 'back_design_text_color' in request.form:
+        collection.back_design_text_color = request.form.get('back_design_text_color') or None
+    if 'back_design_outline' in request.form:
+        collection.back_design_outline = request.form.get('back_design_outline') != 'off'
+    if 'back_design_outline_color' in request.form:
+        collection.back_design_outline_color = request.form.get('back_design_outline_color') or None
+    if 'lock_back_design_style' in request.form:
+        collection.lock_back_design_style = request.form.get('lock_back_design_style') == 'on'
 
     # Back design permissions
     bdt = request.form.get('back_design_type', 'both')

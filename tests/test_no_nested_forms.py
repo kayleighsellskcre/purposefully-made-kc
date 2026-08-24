@@ -18,8 +18,16 @@ one logs anything:
 The fix in both cases is to move the inner form after the outer form's closing
 tag and point the button at it with the `form` attribute.
 
-Known limit: this reads each template on its own, so it cannot see nesting that
-only appears once an {% include %} is placed inside a form by its parent.
+There is a third silent failure, which is how Save Changes died on the admin
+group-order editor: the inner `<form>` start tag is ignored, but its `</form>`
+still closes the outer form. Everything after that first nested close —
+pickup instructions, the settings checkboxes, Save Changes — is no longer
+inside any form. The brown button is still on the page. Clicking it does
+nothing.
+
+Includes are expanded before counting, because that is how the design-delete
+forms sat inside the collection form: they lived in this file, but a parent
+page can also {% include %} a form into another form.
 """
 
 import re
@@ -34,10 +42,32 @@ TEMPLATES = Path(__file__).resolve().parent.parent / 'templates'
 JINJA_COMMENT = re.compile(r'\{#.*?#\}', re.DOTALL)
 HTML_COMMENT = re.compile(r'<!--.*?-->', re.DOTALL)
 FORM_TAG = re.compile(r'<\s*(/?)form\b', re.IGNORECASE)
+INCLUDE = re.compile(r"""\{%\s*include\s+['"]([^'"]+)['"]""")
 
 
 def template_files():
     return sorted(TEMPLATES.rglob('*.html'))
+
+
+def expand_includes(path, seen=None):
+    """Read a template and splice in each {% include %}, so nesting across
+    files is visible the same way the browser sees the rendered page.
+    """
+    path = Path(path)
+    seen = seen if seen is not None else set()
+    key = str(path.resolve())
+    if key in seen:
+        return ''
+    seen.add(key)
+    raw = path.read_text(encoding='utf-8', errors='ignore')
+
+    def _include(match):
+        included = TEMPLATES / match.group(1)
+        if not included.is_file():
+            return ''
+        return expand_includes(included, seen)
+
+    return INCLUDE.sub(_include, raw)
 
 
 def first_nested_form(text):
@@ -55,7 +85,7 @@ def first_nested_form(text):
 
 @pytest.mark.parametrize('path', template_files(), ids=lambda p: p.name)
 def test_template_has_no_nested_form(path):
-    raw = path.read_text(encoding='utf-8', errors='ignore')
+    raw = expand_includes(path)
     text = HTML_COMMENT.sub('', JINJA_COMMENT.sub('', raw))
 
     line = first_nested_form(text)

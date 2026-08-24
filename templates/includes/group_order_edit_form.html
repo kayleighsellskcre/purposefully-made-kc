@@ -14,7 +14,7 @@
             {% endif %}
         </div>
 
-        <form method="POST" class="collection-form" enctype="multipart/form-data">
+        <form method="POST" id="collection-form" class="collection-form" enctype="multipart/form-data">
             <div class="form-section">
                 <h2>Basic Information</h2>
 
@@ -259,6 +259,11 @@
                     <textarea id="pickup_instructions" name="pickup_instructions" class="form-control" rows="2">{{ collection.pickup_instructions or '' }}</textarea>
                 </div>
 
+                <div class="form-group">
+                    <label for="tax_rate">Tax Rate % (optional)</label>
+                    <input type="number" id="tax_rate" name="tax_rate" class="form-control" value="{{ collection.tax_rate or 0 }}" min="0" max="30" step="0.01" style="max-width: 140px;">
+                </div>
+
                 <div class="form-check">
                     <input type="checkbox" id="shipping_enabled" name="shipping_enabled" {% if collection.shipping_enabled %}checked{% endif %}>
                     <label for="shipping_enabled">Allow shipping (+$11)</label>
@@ -286,7 +291,10 @@
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary btn-lg">Save Changes</button>
+                {# form= keeps this button attached even if a later nested
+                   </form> (the HTML parser's other silent failure) closes the
+                   collection form early. The fields still have to stay inside. #}
+                <button type="submit" form="collection-form" class="btn btn-primary btn-lg">Save Changes</button>
                 {% if not is_user_edit %}
                 <button type="button" class="btn btn-outline btn-danger" onclick="confirmDelete(this)">Delete</button>
                 {% else %}

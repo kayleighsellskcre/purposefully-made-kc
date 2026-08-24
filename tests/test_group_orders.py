@@ -175,3 +175,101 @@ def test_the_organizer_can_open_their_own_edit_page(customer_client, seed):
 def test_the_group_orders_directory_loads(client):
     resp = client.get('/shop/group-orders')
     assert resp.status_code == 200
+
+
+# ── Admin edit / Save Changes ────────────────────────────────────────────────
+
+def _collection_form_html(html):
+    """Inner HTML of .collection-form, stopping at the first </form>.
+
+    That first close is what the browser uses too: a nested design-delete
+    </form> used to terminate the collection form early, which left Save
+    Changes and the pickup fields outside any form.
+    """
+    start = html.find('class="collection-form"')
+    if start < 0:
+        start = html.find("class='collection-form'")
+    assert start != -1, 'the edit page did not render a collection form'
+    open_at = html.rfind('<form', 0, start)
+    close_at = html.find('</form>', start)
+    assert close_at != -1
+    return html[open_at:close_at]
+
+
+def test_admin_edit_keeps_save_and_pickup_inside_the_form(admin_client, seed):
+    """Regression: one gallery design was enough to make Save Changes dead.
+
+    The red × sat in a <form> inside the collection form. The parser ignored
+    that inner start tag, then treated its </form> as the end of the collection
+    form. Pickup instructions and Save Changes rendered on the page but
+    belonged to nothing, so the brown button did nothing.
+    """
+    html = admin_client.get(
+        f'/admin/collections/{seed["collection_id"]}/edit'
+    ).get_data(as_text=True)
+    inner = _collection_form_html(html)
+    assert 'name="pickup_instructions"' in inner
+    assert 'Save Changes' in inner
+    assert 'form="collection-form"' in inner
+    # Gallery designs (and their delete buttons) must not close the form.
+    assert 'name="allowed_designs"' in inner or 'gallery' in html.lower()
+
+
+def test_admin_can_save_pickup_instructions(admin_client, seed, app):
+    from models import Collection
+
+    cid = seed['collection_id']
+    with app.app_context():
+        collection = db.session.get(Collection, cid)
+        collection.tax_rate = 9.5
+        collection.back_design_text_color = '#112233'
+        collection.lock_back_design_style = True
+        db.session.commit()
+
+    resp = admin_client.post(
+        f'/admin/collections/{cid}/edit',
+        data={
+            'name': 'Test Elementary Spirit Wear',
+            'products': [str(seed['tee_id'])],
+            'pickup_instructions': 'Riverview front office or send home with child',
+            'shipping_enabled': 'on',
+            'is_active': 'on',
+            'tax_rate': '9.5',
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert '/admin/collections' in (resp.headers.get('Location') or '')
+    with app.app_context():
+        saved = db.session.get(Collection, cid)
+        assert saved.pickup_instructions == (
+            'Riverview front office or send home with child'
+        )
+        assert saved.shipping_enabled is True
+        assert saved.is_active is True
+        assert saved.tax_rate == 9.5
+        assert saved.back_design_text_color == '#112233'
+        assert saved.lock_back_design_style is True
+
+
+def test_admin_save_does_not_wipe_tax_when_the_field_is_omitted(
+        admin_client, seed, app):
+    from models import Collection
+
+    cid = seed['collection_id']
+    with app.app_context():
+        collection = db.session.get(Collection, cid)
+        collection.tax_rate = 9.5
+        db.session.commit()
+
+    admin_client.post(
+        f'/admin/collections/{cid}/edit',
+        data={
+            'name': 'Test Elementary Spirit Wear',
+            'products': [str(seed['tee_id'])],
+            'is_active': 'on',
+        },
+        follow_redirects=False,
+    )
+    with app.app_context():
+        assert db.session.get(Collection, cid).tax_rate == 9.5
