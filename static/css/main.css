@@ -1448,8 +1448,13 @@ textarea.form-control {
 
 /* Small Mobile Devices (up to 480px) */
 @media (max-width: 480px) {
+    /* This is the rule that governs actual phones — an iPhone is 390px, so it
+       wins over the 768px block above. It was 13px, which shrank every
+       rem-based size by nearly 20% on the screens most orders arrive from.
+       Sizes below are already tuned per element; the root does not need to
+       shrink them again. */
     html {
-        font-size: 13px;
+        font-size: 16px;
     }
     
     .container {
@@ -2197,6 +2202,15 @@ table { max-width: 100%; }
     .footer-social-link {
         width: 44px;
         height: 44px;
+    }
+
+    /* At the larger root size "FRONT VIEW" no longer fits on one line inside
+       these side-by-side buttons, and wrapping made them 66px tall. Trimming
+       the side padding buys back the room the longer word needs. */
+    .preview-controls .btn {
+        white-space: nowrap;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
     }
 }
 
