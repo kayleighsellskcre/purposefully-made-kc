@@ -1274,8 +1274,12 @@ textarea.form-control {
 
 /* Mobile Devices (up to 768px) */
 @media (max-width: 768px) {
+    /* Was 14px, which shrank every rem-based size by 12.5% on the narrowest
+       screens — where text is hardest to read, and where most orders come
+       from. 16px is the browser default, so type here now matches the size
+       the rest of the web is set at. */
     html {
-        font-size: 14px;
+        font-size: 16px;
     }
     
     .container {
@@ -2164,13 +2168,36 @@ table { max-width: 100%; }
 @media (max-width: 768px) {
     /* Forms should never overflow their padding on small screens */
     input, select, textarea, .form-control { max-width: 100%; }
-    /* Avoid iOS zoom-on-focus by keeping inputs >= 16px */
-    input, select, textarea { font-size: 16px; }
+    /* Avoid iOS zoom-on-focus by keeping inputs >= 16px.
+       iOS Safari zooms the whole page when a field under 16px is focused, and
+       does not zoom back out. !important is needed rather than tidier: these
+       fields carry .form-input / .form-control classes, which outrank a bare
+       element selector, and several templates restyle them again in a <style>
+       block that the browser reads after this file. */
+    input, select, textarea { font-size: 16px !important; }
     /* Side-by-side action rows stack and go full width */
     .error-actions,
     .hero-actions { flex-direction: column; }
     .error-actions .btn,
     .hero-actions .btn { width: 100%; }
+
+    /* Footer links were 14px tall, because an inline anchor is only as tall as
+       its line of text and vertical padding does not grow its hit area. Going
+       block-level gives a full-width row that is easy to hit with a thumb. */
+    .footer-links a {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 0.75rem;
+    }
+    .footer-links li { margin-bottom: 0; }
+
+    /* The three social circles were 36px, under the 44px comfortable minimum. */
+    .footer-social-link {
+        width: 44px;
+        height: 44px;
+    }
 }
 
 /* 6 ── Tablet landscape / large phones landscape (969–1180) ─── */
