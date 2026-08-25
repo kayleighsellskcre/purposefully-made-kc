@@ -167,6 +167,42 @@
     color: var(--primary-color);
 }
 
+.age-badge {
+    display: inline-block;
+    padding: 0.15rem 0.65rem;
+    border-radius: 20px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+}
+.age-badge--adult {
+    background: #fef0eb;
+    color: #b87c6f;
+}
+.age-badge--youth {
+    background: #e8f4fd;
+    color: #2471a3;
+}
+
+.qf-pill {
+    padding: 0.45rem 1rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-color, #e6ddd0);
+    background: #fff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s;
+    min-height: 38px;
+}
+.qf-pill:hover, .qf-pill.qf-active {
+    background: #222;
+    color: #fff;
+    border-color: #222;
+}
+
 .design-card-content .style-label {
     font-size: 0.85rem;
     color: var(--text-secondary);
@@ -319,6 +355,7 @@
             {% endif %}
         </div>
         {% if products %}
+        <div id="quickFilterRow" style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;margin-bottom:1.25rem;"></div>
         {% include 'includes/catalog_filter.html' %}
         {% endif %}
 
@@ -399,6 +436,9 @@
                     </div>
                     <div class="design-card-content">
                         <h3>{{ product.name }}</h3>
+                        {% if product.display_age %}
+                        <span class="age-badge {% if 'outh' in (product.display_age or '') %}age-badge--youth{% else %}age-badge--adult{% endif %}">{{ product.display_age }}</span>
+                        {% endif %}
                         <p class="style-label">{{ product.display_brand }}{% if product.display_category %} · {{ product.display_category }}{% endif %} · {{ product.style_number }}</p>
                         {% if product.available_sizes_list %}
                         <p class="sizes-label">Sizes: {{ product.available_sizes_list | sort_sizes | join(', ') }}</p>
@@ -459,5 +499,62 @@ document.querySelectorAll('.color-carousel').forEach(carousel => {
     if (prev) prev.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); go(i - 1); });
     if (next) next.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); go(i + 1); });
 });
+
+// Build quick-filter pills from the WHO × TYPE combinations that actually exist
+(function() {
+    var items = Array.from(document.querySelectorAll('[data-catalog-item]'));
+    var row = document.getElementById('quickFilterRow');
+    if (!row || !items.length) return;
+
+    var seen = {};
+    var combos = [];
+    items.forEach(function(el) {
+        var age = el.getAttribute('data-age') || '';
+        var cat = el.getAttribute('data-category') || '';
+        if (!age && !cat) return;
+        var key = (age + '|' + cat).toLowerCase();
+        if (!seen[key]) { seen[key] = true; combos.push({age: age, cat: cat}); }
+    });
+
+    combos.sort(function(a, b) {
+        var aYouth = /youth/i.test(a.age) ? 1 : 0;
+        var bYouth = /youth/i.test(b.age) ? 1 : 0;
+        if (aYouth !== bYouth) return aYouth - bYouth;
+        return (a.age + ' ' + a.cat).localeCompare(b.age + ' ' + b.cat);
+    });
+
+    var pills = [];
+
+    function applyQuick(age, cat) {
+        document.dispatchEvent(new CustomEvent('catf:quick', {detail: {age: age, cat: cat}}));
+        pills.forEach(function(p) { p.classList.remove('qf-active'); });
+        var match = pills.find(function(p) {
+            return p.dataset.age === age && p.dataset.cat === cat;
+        });
+        if (match) match.classList.add('qf-active');
+    }
+
+    var allPill = document.createElement('button');
+    allPill.type = 'button';
+    allPill.textContent = 'All';
+    allPill.dataset.age = '';
+    allPill.dataset.cat = '';
+    allPill.className = 'qf-pill qf-active';
+    allPill.addEventListener('click', function() { applyQuick('', ''); });
+    row.appendChild(allPill);
+    pills.push(allPill);
+
+    combos.forEach(function(c) {
+        var pill = document.createElement('button');
+        pill.type = 'button';
+        pill.textContent = [c.age, c.cat].filter(Boolean).join(' ');
+        pill.dataset.age = c.age;
+        pill.dataset.cat = c.cat;
+        pill.className = 'qf-pill';
+        pill.addEventListener('click', function() { applyQuick(c.age, c.cat); });
+        row.appendChild(pill);
+        pills.push(pill);
+    });
+})();
 </script>
 {% endblock %}
