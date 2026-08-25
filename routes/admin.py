@@ -2536,8 +2536,9 @@ def add_collection():
 
             collection.restrict_options = request.form.get('restrict_options') == 'on'
             collection.allow_custom_upload = True
-            allowed_colors = request.form.getlist('allowed_colors')
-            collection.allowed_colors = json.dumps(allowed_colors) if allowed_colors else None
+            from utils.group_orders import serialize_allowed_colors_from_form
+            allowed_colors_json = serialize_allowed_colors_from_form(request.form.getlist('allowed_colors'))
+            collection.allowed_colors = allowed_colors_json
             allowed_placements = request.form.getlist('allowed_placements')
             collection.allowed_placements = json.dumps(allowed_placements) if allowed_placements else None
 
@@ -2550,7 +2551,7 @@ def add_collection():
             ]
             if allowed_design_ids:
                 collection.allowed_design_ids = json.dumps(allowed_design_ids)
-            if allowed_design_ids or allowed_colors:
+            if allowed_design_ids or allowed_colors_json:
                 collection.restrict_options = True
 
             collection.back_design_font = request.form.get('back_design_font') or None
@@ -2583,6 +2584,7 @@ def add_collection():
             db.session.commit()
 
             upload_count = 0
+            new_upload_ids = []
             if pending_uploads:
                 for f in pending_uploads:
                     try:
@@ -2592,11 +2594,22 @@ def add_collection():
                         design = None
                     if design:
                         allowed_design_ids.append(design.id)
+                        new_upload_ids.append(design.id)
                         upload_count += 1
                 if upload_count:
                     collection.allowed_design_ids = json.dumps(allowed_design_ids)
                     collection.restrict_options = True
-                    db.session.commit()
+
+            from utils.group_orders import resolve_showcase_design_ids
+            showcase_ids = resolve_showcase_design_ids(
+                allowed_design_ids,
+                form_showcase=request.form.getlist('showcase_designs'),
+                new_upload_ids=new_upload_ids,
+                showcase_new_uploads=request.form.get('showcase_new_uploads') == 'on',
+            )
+            collection.showcase_design_ids = json.dumps(showcase_ids) if showcase_ids else None
+            if upload_count or showcase_ids:
+                db.session.commit()
 
             msg = 'Group order created successfully'
             if upload_count:
@@ -2690,8 +2703,15 @@ def edit_collection(collection_id):
                 colors_by_brand.setdefault(brand_key, set()).add(v.color_name)
     colors_by_brand = {b: sorted(c) for b, c in sorted(colors_by_brand.items())}
     collection_color_names = colors_by_brand  # passed to template as dict
-    allowed_colors_list = json.loads(collection.allowed_colors) if collection.allowed_colors else []
+    from utils.group_orders import allowed_color_form_keys
+    allowed_color_keys = allowed_color_form_keys(collection)
+    try:
+        _raw_colors = json.loads(collection.allowed_colors) if collection.allowed_colors else []
+        allowed_colors_list = _raw_colors if isinstance(_raw_colors, list) else []
+    except (TypeError, ValueError, json.JSONDecodeError):
+        allowed_colors_list = []
     allowed_design_ids_list = json.loads(collection.allowed_design_ids) if collection.allowed_design_ids else []
+    showcase_design_ids_list = json.loads(collection.showcase_design_ids) if getattr(collection, 'showcase_design_ids', None) else []
     allowed_placements_list = json.loads(collection.allowed_placements) if collection.allowed_placements else ['center_chest', 'left_chest', 'right_chest', 'center_back']
     from utils.fonts import GROUP_ORDER_FONTS
     return render_template('admin/edit_collection.html',
@@ -2700,7 +2720,9 @@ def edit_collection(collection_id):
                          gallery_designs=gallery_designs,
                          collection_colors=collection_color_names,
                          allowed_colors_list=allowed_colors_list,
+                         allowed_color_keys=allowed_color_keys,
                          allowed_design_ids_list=allowed_design_ids_list,
+                         showcase_design_ids_list=showcase_design_ids_list,
                          allowed_placements_list=allowed_placements_list,
                          back_design_fonts=GROUP_ORDER_FONTS,
                          collection_product_ids=[p.id for p in collection.products],

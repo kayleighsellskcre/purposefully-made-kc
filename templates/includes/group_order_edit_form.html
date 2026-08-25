@@ -81,7 +81,7 @@
                             <div class="choice-checkboxes">
                                 {% for color in colors %}
                                 <label class="choice-checkbox">
-                                    <input type="checkbox" name="allowed_colors" value="{{ color }}" {% if color in allowed_colors_list %}checked{% endif %}>
+                                    <input type="checkbox" name="allowed_colors" value="{{ brand }}||{{ color }}" {% if (brand ~ '||' ~ color) in (allowed_color_keys or []) or color in (allowed_color_keys or []) %}checked{% endif %}>
                                     <span>{{ color }}</span>
                                 </label>
                                 {% endfor %}
@@ -138,6 +138,10 @@
                                 </div>
                                 <span>{{ d.title or d.original_filename or 'Design' }}</span>
                             </label>
+                            <label class="showcase-opt">
+                                <input type="checkbox" name="showcase_designs" value="{{ d.id }}" {% if d.id in (showcase_design_ids_list or []) %}checked{% endif %}>
+                                Show at top
+                            </label>
                             {% if not is_user_edit %}
                             {# Button only. Its form is emitted after the collection
                                form closes, and is targeted here by id. A <form>
@@ -154,7 +158,12 @@
                         </div>
                         {% endfor %}
                     </div>
+                    <p class="form-hint" style="margin-top:0.75rem">Check <strong>Show at top</strong> on logos you want shoppers to see first when they open this group order. Those designs must also be selected above as available front designs.</p>
                     {% endif %}
+                    <label class="showcase-new-opt" style="display:flex;align-items:flex-start;gap:0.5rem;margin-top:0.85rem;cursor:pointer;">
+                        <input type="checkbox" name="showcase_new_uploads" value="on" checked style="margin-top:0.2rem;">
+                        <span class="form-hint" style="margin:0">Also show newly uploaded logos at the top of the group order</span>
+                    </label>
                 </div>
 
                 {# ── 3. Placement ───────────────────────────────────────── #}
@@ -327,10 +336,14 @@ function syncBrandColors() {
         if (label) activeBrands.add(label.dataset.brandRaw);
     });
     document.querySelectorAll('.brand-color-group[data-brand]').forEach(function(grp) {
-        if (activeBrands.size === 0) {
-            grp.style.display = '';  // no products checked → show all brands
-        } else {
-            grp.style.display = activeBrands.has(grp.dataset.brand) ? '' : 'none';
+        var show = activeBrands.size === 0 || activeBrands.has(grp.dataset.brand);
+        grp.style.display = show ? '' : 'none';
+        // Hidden brand colors must not submit — otherwise Navy under Brand A
+        // would also restrict Brand B when that brand was deselected.
+        if (!show) {
+            grp.querySelectorAll('input[name="allowed_colors"]').forEach(function(cb) {
+                cb.checked = false;
+            });
         }
     });
 }
@@ -408,6 +421,8 @@ function confirmDelete(btn) {
 .design-choice-preview { aspect-ratio: 1; padding: 0.5rem; background: #f9f9f9; }
 .design-choice-preview img { width: 100%; height: 100%; object-fit: contain; }
 .design-choice-card span { display: block; font-size: 0.75rem; padding: 0.35rem; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.showcase-opt { display: flex; align-items: center; justify-content: center; gap: 0.35rem; margin-top: 0.35rem; font-size: 0.7rem; color: var(--text-secondary); cursor: pointer; }
+.showcase-opt input { margin: 0; }
 .placement-checkboxes { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; margin-top: 0.5rem; }
 .placement-checkbox { display: flex; flex-direction: column; padding: 0.75rem 1rem; background: var(--secondary-color); border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: var(--transition); }
 .placement-checkbox:hover { border-color: var(--border-color); }

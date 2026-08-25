@@ -4,10 +4,154 @@ from zoneinfo import ZoneInfo
 
 from flask import session
 from models import Collection, Design, collection_products, db
-from utils.json_fields import parse_json_list
+from utils.json_fields import parse_json_list, parse_json_object
 
 CHICAGO = ZoneInfo('America/Chicago')
 UTC = ZoneInfo('UTC')
+
+# Brand-scoped color picks: form value "Port & Company||Navy" → JSON {"Port & Company": ["Navy"]}
+ALLOWED_COLOR_SEP = '||'
+
+
+def serialize_allowed_colors_from_form(raw_values):
+    """Turn checkbox values into JSON for Collection.allowed_colors.
+
+    Accepts brand-scoped "Brand||Color" values (preferred) or legacy bare color
+    names. Returns None when nothing was selected.
+    """
+    import json
+    from collections import defaultdict
+
+    by_brand = defaultdict(list)
+    legacy = []
+    seen_brand = set()
+    seen_legacy = set()
+    for raw in raw_values or []:
+        text = (raw or '').strip()
+        if not text:
+            continue
+        if ALLOWED_COLOR_SEP in text:
+            brand, color = text.split(ALLOWED_COLOR_SEP, 1)
+            brand = brand.strip()
+            color = color.strip()
+            if not brand or not color:
+                continue
+            key = (brand, color)
+            if key in seen_brand:
+                continue
+            seen_brand.add(key)
+            by_brand[brand].append(color)
+        else:
+            if text in seen_legacy:
+                continue
+            seen_legacy.add(text)
+            legacy.append(text)
+    if by_brand:
+        # Brand-scoped wins when any scoped value is present.
+        return json.dumps(dict(by_brand), separators=(',', ':'))
+    if legacy:
+        return json.dumps(legacy, separators=(',', ':'))
+    return None
+
+
+def parse_allowed_colors_by_brand(raw):
+    """Return {brand: [colors]} or {None: [colors]} for legacy flat lists.
+
+    Empty dict means no color restriction was stored.
+    """
+    import json
+
+    if raw is None or raw == '':
+        return {}
+    if isinstance(raw, dict):
+        out = {}
+        for brand, colors in raw.items():
+            if isinstance(colors, (list, tuple)):
+                cleaned = [str(c).strip() for c in colors if str(c).strip()]
+            elif colors:
+                cleaned = [str(colors).strip()]
+            else:
+                cleaned = []
+            out[str(brand)] = cleaned
+        return out
+    text = str(raw).strip()
+    if not text:
+        return {}
+    try:
+        parsed = json.loads(text)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return {None: parse_json_list(text)}
+    if isinstance(parsed, dict):
+        return parse_allowed_colors_by_brand(parsed)
+    if isinstance(parsed, list):
+        from collections import defaultdict
+        scoped = defaultdict(list)
+        legacy = []
+        has_scoped = False
+        for item in parsed:
+            s = str(item).strip()
+            if not s:
+                continue
+            if ALLOWED_COLOR_SEP in s:
+                has_scoped = True
+                brand, color = s.split(ALLOWED_COLOR_SEP, 1)
+                brand = brand.strip()
+                color = color.strip()
+                if brand and color and color not in scoped[brand]:
+                    scoped[brand].append(color)
+            else:
+                if s not in legacy:
+                    legacy.append(s)
+        if has_scoped:
+            return dict(scoped)
+        return {None: legacy} if legacy else {}
+    return {}
+
+
+def collection_has_color_restrictions(collection):
+    by_brand = parse_allowed_colors_by_brand(getattr(collection, 'allowed_colors', None))
+    return any(bool(colors) for colors in by_brand.values())
+
+
+def allowed_colors_for_product(product, collection_or_raw):
+    """Color names allowed for this product, or None if unrestricted.
+
+    Brand-scoped restrictions only apply to matching brands — picking Navy under
+    Port & Company must not hide Bella+Canvas Navy (or force it).
+    Legacy flat lists still apply to every product.
+    """
+    raw = collection_or_raw
+    if collection_or_raw is not None and hasattr(collection_or_raw, 'allowed_colors'):
+        raw = collection_or_raw.allowed_colors
+    by_brand = parse_allowed_colors_by_brand(raw)
+    if not by_brand:
+        return None
+    if None in by_brand and len(by_brand) == 1:
+        colors = by_brand[None]
+        return set(colors) if colors else None
+    brand = (getattr(product, 'brand', None) or 'Other').strip() or 'Other'
+    if brand not in by_brand:
+        # Other brands were restricted; this brand was left alone → all its colors.
+        return None
+    return set(by_brand[brand])
+
+
+def allowed_color_form_keys(collection_or_raw):
+    """Checkbox values that should render checked: 'Brand||Color' and legacy bare names."""
+    raw = collection_or_raw
+    if collection_or_raw is not None and hasattr(collection_or_raw, 'allowed_colors'):
+        raw = collection_or_raw.allowed_colors
+    by_brand = parse_allowed_colors_by_brand(raw)
+    keys = set()
+    for brand, colors in by_brand.items():
+        if brand is None:
+            keys.update(colors)
+        else:
+            for color in colors:
+                keys.add(f'{brand}{ALLOWED_COLOR_SEP}{color}')
+                # Keep bare color so older templates still highlight something.
+                keys.add(color)
+    return keys
 
 
 def parse_order_deadline(date_str):
@@ -171,6 +315,60 @@ def allowed_design_ids(collection):
     return ids
 
 
+def showcase_design_ids(collection):
+    """Design IDs chosen as hero logos at the top of the group-order page."""
+    ids = []
+    for raw in parse_json_list(getattr(collection, 'showcase_design_ids', None) or ''):
+        try:
+            ids.append(int(raw))
+        except (TypeError, ValueError):
+            continue
+    return ids
+
+
+def load_showcase_designs(collection):
+    """Ordered design dicts for the storefront logo strip (subset of allowed designs)."""
+    allowed = set(allowed_design_ids(collection))
+    ids = [i for i in showcase_design_ids(collection) if i in allowed]
+    if not ids:
+        return []
+    designs = Design.query.filter(Design.id.in_(ids)).all()
+    by_id = {d.id: d for d in designs}
+    from utils.cloud_storage import image_url as resolve_image_url
+    out = []
+    for i in ids:
+        d = by_id.get(i)
+        if not d:
+            continue
+        out.append({
+            'id': d.id,
+            'url': resolve_image_url(d.file_path),
+            'title': (d.title or d.original_filename or 'Design'),
+        })
+    return out
+
+
+def resolve_showcase_design_ids(design_ids, form_showcase=None, new_upload_ids=None, showcase_new_uploads=False):
+    """Build showcase ID list: form picks ∩ allowed, optionally plus new uploads."""
+    allowed_set = set(design_ids or [])
+    showcase_ids = []
+    seen = set()
+    for raw in form_showcase or []:
+        try:
+            sid = int(raw)
+        except (TypeError, ValueError):
+            continue
+        if sid in allowed_set and sid not in seen:
+            showcase_ids.append(sid)
+            seen.add(sid)
+    if showcase_new_uploads:
+        for sid in new_upload_ids or []:
+            if sid in allowed_set and sid not in seen:
+                showcase_ids.append(sid)
+                seen.add(sid)
+    return showcase_ids
+
+
 def product_in_collection(collection, product_id):
     if not collection or not product_id:
         return False
@@ -317,8 +515,9 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
 
     collection.restrict_options = True  # always restricted — checkbox removed from UI
     collection.allow_custom_upload = True
-    allowed_colors = request.form.getlist('allowed_colors')
-    collection.allowed_colors = json.dumps(allowed_colors) if allowed_colors else None
+    allowed_colors_json = serialize_allowed_colors_from_form(request.form.getlist('allowed_colors'))
+    collection.allowed_colors = allowed_colors_json
+    allowed_colors = bool(allowed_colors_json)
     allowed_placements = request.form.getlist('allowed_placements')
     collection.allowed_placements = json.dumps(allowed_placements) if allowed_placements else None
 
@@ -329,6 +528,7 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
         keep_ids=keep_design_ids,
     )
     upload_count = 0
+    new_upload_ids = []
     from routes.admin import _save_collection_design
     for f in request.files.getlist('design_uploads'):
         if f and f.filename:
@@ -338,10 +538,20 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
                 design = None
             if design:
                 design_ids.append(design.id)
+                new_upload_ids.append(design.id)
                 upload_count += 1
     collection.allowed_design_ids = json.dumps(design_ids) if design_ids else None
     if design_ids or allowed_colors:
         collection.restrict_options = True
+
+    # Hero logos at the top of the storefront — must be in allowed_design_ids.
+    showcase_ids = resolve_showcase_design_ids(
+        design_ids,
+        form_showcase=request.form.getlist('showcase_designs'),
+        new_upload_ids=new_upload_ids,
+        showcase_new_uploads=request.form.get('showcase_new_uploads') == 'on',
+    )
+    collection.showcase_design_ids = json.dumps(showcase_ids) if showcase_ids else None
 
     collection.back_design_font = request.form.get('back_design_font') or None
     # Create sends these; edit does not. Only overwrite when the form has them

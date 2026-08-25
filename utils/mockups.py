@@ -514,7 +514,7 @@ def get_carousel_colors_for_product(product, app, allowed_colors=None, variants=
     for v in variants:
         if v.color_name in seen:
             continue
-        if allowed_colors and v.color_name not in allowed_colors:
+        if allowed_colors is not None and v.color_name not in allowed_colors:
             continue
         # Try mockup folder FIRST
         url = _find_mockup_file(app, product.style_number, v.color_name, 'front')
@@ -534,7 +534,7 @@ def get_carousel_colors_for_product(product, app, allowed_colors=None, variants=
     for c in discover_colors_from_mockup_folder(app, product.style_number):
         if c['color_name'] in seen:
             continue
-        if allowed_colors and c['color_name'] not in allowed_colors:
+        if allowed_colors is not None and c['color_name'] not in allowed_colors:
             continue
         if not c.get('front_image') and not c.get('front_image_url'):
             continue
@@ -547,7 +547,7 @@ def get_carousel_colors_for_product(product, app, allowed_colors=None, variants=
     for name in pending_names + parse_json_list(getattr(product, 'available_colors', None)):
         if not name or name in seen:
             continue
-        if allowed_colors and name not in allowed_colors:
+        if allowed_colors is not None and name not in allowed_colors:
             continue
         seen.add(name)
         result.append({'color_name': name, 'front_image_url': SHOP_PLACEHOLDER_IMAGE})

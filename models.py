@@ -141,8 +141,10 @@ class Collection(db.Model):
     
     # Organizer/Admin choices - restrict what team can order (keeps everyone matching)
     restrict_options = db.Column(db.Boolean, default=False)
-    allowed_colors = db.Column(db.Text)  # JSON: ["Navy", "White", ...]
+    allowed_colors = db.Column(db.Text)  # JSON list (legacy) or {brand: [colors]}
     allowed_design_ids = db.Column(db.Text)  # JSON: [1, 2, ...]
+    # Logos shown at the top of the group-order storefront (subset of allowed_design_ids)
+    showcase_design_ids = db.Column(db.Text)  # JSON: [1, 2, ...]
     allowed_placements = db.Column(db.Text)  # JSON: ["center_chest", "left_chest", "right_chest", "center_back"]
     allow_custom_upload = db.Column(db.Boolean, default=True)  # When restricted, team can still upload their own design
     back_design_font = db.Column(db.String(50))  # Organizer's chosen font for name/number on back

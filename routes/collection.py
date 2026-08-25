@@ -72,37 +72,35 @@ def view(slug):
             return redirect(url_for('collection.password', slug=slug))
     
     # Check if deadline has passed — show warning but still allow viewing
-    from utils.group_orders import attach_collection, is_deadline_passed, is_not_yet_open
+    from utils.group_orders import attach_collection, is_deadline_passed, is_not_yet_open, load_showcase_designs, allowed_colors_for_product
     collection.deadline_passed = is_deadline_passed(collection)
     collection.not_yet_open = is_not_yet_open(collection)
     collection.cannot_order = collection.deadline_passed or collection.not_yet_open
 
     # Keep this group order in session so customize/cart/checkout stay attached
     attach_collection(collection)
-    
-    # Get allowed colors when organizer restricted options
-    allowed_colors = None
-    if collection.allowed_colors:
-        allowed_colors = set(parse_json_list(collection.allowed_colors)) or None
-    
+
     # Get products in this collection with carousel colors (DB + mockup folder)
     all_products = collection.products
     products = []
     for product in all_products:
+        allowed_colors = allowed_colors_for_product(product, collection)
         variants = get_carousel_colors_for_product(product, current_app, allowed_colors=allowed_colors)
         product.carousel_colors = variants
         product.fallback_image_url = get_first_shop_image_url(
             product, current_app, carousel=variants)
         product.available_sizes_list = sort_sizes(parse_json_list(product.available_sizes))
         # When colors are restricted, skip styles that don't come in those colors.
-        if allowed_colors and not variants:
+        if allowed_colors is not None and not variants:
             continue
         products.append(product)
 
     products = prepare_catalog(products)
+    showcase_designs = load_showcase_designs(collection)
     return render_template('collection/view.html',
                          collection=collection,
                          products=products,
+                         showcase_designs=showcase_designs,
                          catalog_filter_opts=catalog_filter_options(products))
 
 

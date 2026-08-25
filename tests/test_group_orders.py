@@ -280,3 +280,80 @@ def test_admin_save_always_forces_fixed_tax_rate(admin_client, seed, app):
     )
     with app.app_context():
         assert db.session.get(Collection, cid).tax_rate == 9.5
+
+
+def test_brand_scoped_colors_do_not_leak_across_brands():
+    from types import SimpleNamespace
+    from utils.group_orders import (
+        allowed_colors_for_product,
+        serialize_allowed_colors_from_form,
+    )
+    import json
+
+    payload = serialize_allowed_colors_from_form([
+        'Port & Company||Navy',
+        'Port & Company||Black',
+        'Bella+Canvas||White',
+    ])
+    data = json.loads(payload)
+    assert data['Port & Company'] == ['Navy', 'Black']
+    assert data['Bella+Canvas'] == ['White']
+
+    port = SimpleNamespace(brand='Port & Company')
+    bella = SimpleNamespace(brand='Bella+Canvas')
+    assert allowed_colors_for_product(port, payload) == {'Navy', 'Black'}
+    assert allowed_colors_for_product(bella, payload) == {'White'}
+    # Brand with no picks stays unrestricted (does not inherit Port Navy)
+    other = SimpleNamespace(brand='Independent Trading Co.')
+    assert allowed_colors_for_product(other, payload) is None
+
+
+def test_admin_can_save_showcase_logos(admin_client, seed, app):
+    """Organizer picks which allowed logos appear at the top of the storefront."""
+    from models import Collection
+    import json
+
+    cid = seed['collection_id']
+    design_id = seed['free_design_id']
+    admin_client.post(
+        f'/admin/collections/{cid}/edit',
+        data={
+            'name': 'Test Elementary Spirit Wear',
+            'products': [str(seed['tee_id'])],
+            'is_active': 'on',
+            'allowed_designs': [str(design_id)],
+            'showcase_designs': [str(design_id)],
+        },
+        follow_redirects=False,
+    )
+    with app.app_context():
+        saved = db.session.get(Collection, cid)
+        assert json.loads(saved.allowed_design_ids or '[]') == [design_id]
+        assert json.loads(saved.showcase_design_ids or '[]') == [design_id]
+
+
+def test_showcase_ignores_designs_not_in_allowed(admin_client, seed, app):
+    from models import Collection
+    import json
+
+    cid = seed['collection_id']
+    admin_client.post(
+        f'/admin/collections/{cid}/edit',
+        data={
+            'name': 'Test Elementary Spirit Wear',
+            'products': [str(seed['tee_id'])],
+            'is_active': 'on',
+            'allowed_designs': [str(seed['free_design_id'])],
+            'showcase_designs': [str(seed['fee_4_design_id'])],
+        },
+        follow_redirects=False,
+    )
+    with app.app_context():
+        saved = db.session.get(Collection, cid)
+        assert json.loads(saved.showcase_design_ids or '[]') == []
+
+
+def test_group_order_filter_panel_starts_closed(client, seed):
+    html = client.get(f'/c/{seed["collection_slug"]}').get_data(as_text=True)
+    assert 'id="catalogFilterPanel" hidden' in html
+    assert 'aria-expanded="false"' in html

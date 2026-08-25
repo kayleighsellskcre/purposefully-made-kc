@@ -276,8 +276,9 @@ def create_group_order():
             )
             collection.restrict_options = request.form.get('restrict_options') == 'on'
             collection.allow_custom_upload = True
-            allowed_colors = request.form.getlist('allowed_colors')
-            collection.allowed_colors = json.dumps(allowed_colors) if allowed_colors else None
+            from utils.group_orders import serialize_allowed_colors_from_form
+            allowed_colors_json = serialize_allowed_colors_from_form(request.form.getlist('allowed_colors'))
+            collection.allowed_colors = allowed_colors_json
             allowed_placements = request.form.getlist('allowed_placements')
             collection.allowed_placements = json.dumps(allowed_placements) if allowed_placements else None
 
@@ -293,7 +294,7 @@ def create_group_order():
             ]
             if allowed_design_ids:
                 collection.allowed_design_ids = json.dumps(allowed_design_ids)
-            if allowed_design_ids or allowed_colors:
+            if allowed_design_ids or allowed_colors_json:
                 collection.restrict_options = True
             collection.back_design_font = request.form.get('back_design_font') or None
             # Uniform back-design style controls
@@ -331,6 +332,7 @@ def create_group_order():
             db.session.commit()
 
             upload_count = 0
+            new_upload_ids = []
             if pending_uploads:
                 for f in pending_uploads:
                     try:
@@ -340,11 +342,22 @@ def create_group_order():
                         design = None
                     if design:
                         allowed_design_ids.append(design.id)
+                        new_upload_ids.append(design.id)
                         upload_count += 1
                 if upload_count:
                     collection.allowed_design_ids = json.dumps(allowed_design_ids)
                     collection.restrict_options = True
-                    db.session.commit()
+
+            from utils.group_orders import resolve_showcase_design_ids
+            showcase_ids = resolve_showcase_design_ids(
+                allowed_design_ids,
+                form_showcase=request.form.getlist('showcase_designs'),
+                new_upload_ids=new_upload_ids,
+                showcase_new_uploads=request.form.get('showcase_new_uploads') == 'on',
+            )
+            collection.showcase_design_ids = json.dumps(showcase_ids) if showcase_ids else None
+            if upload_count or showcase_ids:
+                db.session.commit()
 
             # ── 7. Verify it saved with a valid, accessible ID ──────────────
             if not collection.id:
@@ -440,8 +453,15 @@ def edit_group_order(slug):
             return redirect(url_for('shop.edit_group_order', slug=slug))
 
     catalog = load_group_order_form_catalog()
-    allowed_colors_list = json.loads(collection.allowed_colors) if collection.allowed_colors else []
+    from utils.group_orders import allowed_color_form_keys
+    allowed_color_keys = allowed_color_form_keys(collection)
+    try:
+        _raw_colors = json.loads(collection.allowed_colors) if collection.allowed_colors else []
+        allowed_colors_list = _raw_colors if isinstance(_raw_colors, list) else []
+    except (TypeError, ValueError, json.JSONDecodeError):
+        allowed_colors_list = []
     allowed_design_ids_list = json.loads(collection.allowed_design_ids) if collection.allowed_design_ids else []
+    showcase_design_ids_list = json.loads(collection.showcase_design_ids) if getattr(collection, 'showcase_design_ids', None) else []
     allowed_placements_list = json.loads(collection.allowed_placements) if collection.allowed_placements else ['center_chest', 'left_chest', 'right_chest', 'center_back']
     return render_template(
         'shop/edit_group_order.html',
@@ -450,7 +470,9 @@ def edit_group_order(slug):
         gallery_designs=designs_for_group_order_form(collection),
         collection_colors=catalog.get('colors_by_brand') or catalog['all_colors'],
         allowed_colors_list=allowed_colors_list,
+        allowed_color_keys=allowed_color_keys,
         allowed_design_ids_list=allowed_design_ids_list,
+        showcase_design_ids_list=showcase_design_ids_list,
         allowed_placements_list=allowed_placements_list,
         back_design_fonts=_GROUP_ORDER_FONTS,
         collection_product_ids=[p.id for p in collection.products],
@@ -492,7 +514,9 @@ def customize(product_id):
     """Product customizer interface"""
     from flask_login import current_user
     from utils.group_orders import (
+        allowed_colors_for_product,
         allowed_design_ids as collection_design_id_list,
+        collection_has_color_restrictions,
         get_active_collection,
         load_collection_designs,
         ordering_blocked,
@@ -526,7 +550,7 @@ def customize(product_id):
             # Order is closed/past deadline — redirect away entirely
             flash(blocked, 'error')
             return redirect(url_for('collection.view', slug=coll.slug))
-        has_colors = bool(parse_json_list(coll.allowed_colors or ''))
+        has_colors = collection_has_color_restrictions(coll)
         has_designs = bool(collection_design_id_list(coll))
         has_placements = bool(parse_json_list(coll.allowed_placements or ''))
         collection_restricted = bool(coll.restrict_options or has_colors or has_designs)
@@ -541,8 +565,9 @@ def customize(product_id):
         _allow = getattr(coll, 'allow_back_design', None)
         allow_back_design = bool(_allow) if _allow is not None else True
         if has_colors:
-            allowed = parse_json_list(coll.allowed_colors)
-            color_variants_data = [v for v in color_variants_data if v['color_name'] in allowed]
+            allowed = allowed_colors_for_product(product, coll)
+            if allowed is not None:
+                color_variants_data = [v for v in color_variants_data if v['color_name'] in allowed]
             if not color_variants_data:
                 flash(
                     f'"{product.name}" is not available in the colors chosen for this order. Please select a different style.',
