@@ -1,0 +1,111 @@
+﻿YOUTH STYLES / MOCKUP MATCH REPORT
+Generated for kb_apparel_site — no secrets included.
+
+================================================================================
+1. DEV.DB — product where style_number like '%Y' or '%y%'
+================================================================================
+(id, style_number, name, age_group, category, base_price)
+
+(211, 'BC3001Y', 'BELLA+CANVAS – Youth Jersey Short Sleeve Tee. BC3001Y', 'youth', 'Tee', 22.0)
+(243, 'BC3001YCVC', 'BELLA+CANVAS– Youth Heather CVC Tee BC3001YCVC', 'youth', 'Tee', 22.0)
+(215, 'BC3413Y', 'BELLA+CANVAS – Youth Triblend Short Sleeve Tee. BC3413Y', 'youth', 'Tee', 26.0)
+(240, 'BC3719Y', 'BELLA+CANVAS – Youth Sponge Fleece Pullover Hoodie BC3719Y', 'youth', 'Hoodie', 45.0)
+
+Count: 4
+
+================================================================================
+2. Top-level folders under static/uploads/mockups/ ending with Y
+================================================================================
+3001Y
+3413Y
+3501Y
+3513Y
+3719Y
+3901Y
+
+(Note: folders use numeric/style codes WITHOUT brand prefix, e.g. 3719Y not BC3719Y)
+
+================================================================================
+3. _find_mockup_file / style folders vs BC3719Y — BC prefix stripping?
+================================================================================
+Source: utils/mockups.py
+
+_style_dirs(app, style_number):
+  - Looks for: uploads/mockups/{style_number}/ exactly
+  - NO brand-prefix stripping
+  - For product BC3719Y it searches: .../mockups/BC3719Y/
+  - Actual folder on disk: .../mockups/3719Y/
+  => MISMATCH: _find_mockup_file will NOT find mockups for BC3719Y via style folder
+
+_find_mockup_file(app, style_number, color_name, view):
+  - Uses _style_index -> _style_dirs with raw style_number
+  - Builds filename base as "{style_number}_{safe_color}_{view}"
+  - No BC / brand prefix stripping
+
+Brand-prefix stripping EXISTS only in get_first_shop_image_url() last-resort path:
+  - Comment: e.g. BC3001 -> 3001, STTU755 -> 755
+  - Code: style_bare = re.sub(r'^[A-Za-z+& ]+', '', style)
+  - Only checks: static/images/products/{candidate}/ (NOT uploads/mockups/)
+  - Tries candidates: [style_bare, style] e.g. 3719Y then BC3719Y
+  - This is a fallback when carousel/folder discovery already failed; it does NOT
+    help _find_mockup_file or discover_colors_from_mockup_folder for BC3719Y
+
+Conclusion for BC3719Y:
+  - Primary mockup lookup uses exact "BC3719Y" folder name
+  - Disk has "3719Y" only
+  - BC strip applies only to static/images/products/ last resort, not mockups/
+
+================================================================================
+4. PRODUCTION (DATABASE_URL masked)
+================================================================================
+DATABASE_URL=postgresql://postgres:***@yamabiko.proxy.rlwy.net:14645/railway
+
+--- PROD youth styles (style like %Y / %y%) ---
+(211, 'BC3001Y', 'BELLA+CANVAS – Youth Jersey Short Sleeve Tee. BC3001Y', 'youth', 'Tee', 22.0)
+(215, 'BC3413Y', 'BELLA+CANVAS – Youth Triblend Short Sleeve Tee. BC3413Y', 'youth', 'Tee', 26.0)
+(334, 'BC3501Y', 'BELLA+CANVAS – Youth Jersey Long Sleeve Tee', 'youth', 'Long Sleeve', 26.0)
+(240, 'BC3719Y', 'BELLA+CANVAS – Youth Sponge Fleece Pullover Hoodie BC3719Y', 'youth', 'Hoodie', 45.0)
+(336, 'BC3945Y', 'BELLA+CANVAS– Youth Sponge Fleece Crewneck Sweatshirt', 'youth', 'Sweatshirt', 45.0)
+(337, 'PC146Y', 'Port & Company Youth Crystal Tie-Dye Pullover Hooded Sweatshirt', 'youth', 'Hoodie', 45.0)
+(329, 'PC147Y', 'Port & Company Youth Tie-Dye Tee', 'youth', 'Tee', 24.0)
+
+Count: 7
+
+--- Collection 8 = Riverview Falcons Spirit Wear 26-27 ---
+Total products in collection: 15
+
+Youth sweatshirt / hoodie styles IN collection 8: YES
+  (240, 'BC3719Y', ... Youth Sponge Fleece Pullover Hoodie ..., 'youth', 'Hoodie', 45.0)
+  (336, 'BC3945Y', ... Youth Sponge Fleece Crewneck Sweatshirt ..., 'youth', 'Sweatshirt', 45.0)
+
+--- collection_products join collection_id=8 where name like '%Youth%' OR style like '%Y' ---
+(211, 'BC3001Y', ..., 'youth', 'Tee', 22.0)
+(243, 'BC3001YCVC', ..., 'youth', 'Tee', 22.0)
+(334, 'BC3501Y', ..., 'youth', 'Long Sleeve', 26.0)
+(335, 'BC3501YCVC', ..., 'youth', 'Long Sleeve', 26.0)
+(240, 'BC3719Y', ..., 'youth', 'Hoodie', 45.0)
+(336, 'BC3945Y', ..., 'youth', 'Sweatshirt', 45.0)
+(329, 'PC147Y', ..., 'youth', 'Tee', 24.0)
+
+Count: 7
+
+--- All collection 8 styles (compact) ---
+  BC3001 | adult | Tee
+  BC3001CVC | adult | Tee
+  BC3001Y | youth | Tee
+  BC3001YCVC | youth | Tee
+  BC3501 | adult | Long Sleeve
+  BC3501CVC | adult | Long Sleeve
+  BC3501Y | youth | Long Sleeve
+  BC3501YCVC | youth | Long Sleeve
+  BC3719 | adult | Hoodie
+  BC3719Y | youth | Hoodie
+  BC3901 | adult | Sweatshirt
+  BC3945Y | youth | Sweatshirt
+  PC147 | adult | Tee
+  PC147LS | adult | Long Sleeve
+  PC147Y | youth | Tee
+
+DEV vs PROD note:
+  - Dev has BC3001YCVC + BC3413Y; missing BC3501Y, BC3945Y, PC146Y, PC147Y
+  - Prod has more youth styles (7 vs 4 on the %Y query; Riverview also links BC3001YCVC / BC3501YCVC which may not match simple '%Y' end-only filters depending on query)

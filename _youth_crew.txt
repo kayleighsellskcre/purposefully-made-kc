@@ -1,0 +1,20 @@
+=== DEV ===
+product image/mockup-related columns (pragma table_info):
+  cid=15 name=front_mockup_template type=VARCHAR(500) notnull=0 dflt=None pk=0
+  cid=16 name=back_mockup_template type=VARCHAR(500) notnull=0 dflt=None pk=0
+Note: no front_image/back_image; using front_mockup_template/back_mockup_template IS NOT NULL
+
+matching products:
+(221, 'BC3719', 'BELLA+CANVAS ® Unisex Sponge Fleece Pullover Hoodie. BC3719', 'adult', 'Hoodie', 1, 1, 1)
+(224, 'BC3739', 'BELLA+CANVAS ® Unisex Sponge Fleece Full-Zip Hoodie. BC3739', 'adult', 'Hoodie', 1, 1, 1)
+(225, 'BC3901', 'BELLA+CANVAS ® Unisex Sponge Fleece Raglan Sweatshirt. BC3901', 'adult', 'Sweatshirt', 1, 1, 1)
+(227, 'BC3945', 'BELLA+CANVAS ® Unisex Sponge Fleece Drop Shoulder Sweatshirt. BC3945', 'adult', 'Sweatshirt', 1, 1, 1)
+(240, 'BC3719Y', 'BELLA+CANVAS ® Youth Sponge Fleece Pullover Hoodie BC3719Y', 'youth', 'Hoodie', 1, 1, 1)
+
+=== PROD CONFIG (no secrets) ===
+DATABASE_URL present in .env: True
+Postgres configured: True
+
+=== PROD QUERY ===
+Skipping live production connection (prefer not connecting unless easy/safe).
+Postgres is configured via DATABASE_URL; query not run.

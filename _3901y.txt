@@ -1,0 +1,156 @@
+﻿================================================================================
+3901Y INVESTIGATION REPORT
+Generated: 2026-08-24
+================================================================================
+
+1) MOCKUP FILE LISTS
+--------------------------------------------------------------------------------
+
+### static/uploads/mockups/3901Y/
+
+NON-BAK (17):
+  BELLA_+_CANVAS_3901Y_Athletic_Heather_Back_High.jpg
+  BELLA_+_CANVAS_3901Y_Athletic_Heather_Front_High.jpg
+  BELLA_+_CANVAS_3901Y_Black_Back_High.jpg
+  BELLA_+_CANVAS_3901Y_Black_Front_High.jpg
+  BELLA_+_CANVAS_3901Y_Dark_Grey_Heather_Back_High.jpg
+  BELLA_+_CANVAS_3901Y_Dark_Grey_Heather_Front_High.jpg
+  BELLA_+_CANVAS_3901Y_Deep_Heather_Back_High.jpg
+  BELLA_+_CANVAS_3901Y_Deep_Heather_Front_High.jpg
+  BELLA_+_CANVAS_3901Y_Heather_Forest_Back_High.jpg
+  BELLA_+_CANVAS_3901Y_Heather_Forest_Front_High.jpg
+  BELLA_+_CANVAS_3901Y_Heather_Navy_Back_High.jpg
+  BELLA_+_CANVAS_3901Y_Heather_Navy_Front_High.jpg
+  BELLA_+_CANVAS_3901Y_Mauve_Back_High.jpg
+  BELLA_+_CANVAS_3901Y_Mauve_Front_High.jpg
+  BELLA_+_CANVAS_3901Y_Red_Back_High.jpg
+  BELLA_+_CANVAS_3901Y_Red_Front_High.jpg
+  README.txt
+
+BAK (15):
+  BELLA_+_CANVAS_3901Y_Athletic_Heather_Back_High.jpg.bak
+  BELLA_+_CANVAS_3901Y_Athletic_Heather_Front_High.jpg.bak
+  BELLA_+_CANVAS_3901Y_Black_Back_High.jpg.bak
+  BELLA_+_CANVAS_3901Y_Black_Front_High.jpg.bak
+  BELLA_+_CANVAS_3901Y_Dark_Grey_Heather_Back_High.jpg.bak
+  BELLA_+_CANVAS_3901Y_Dark_Grey_Heather_Front_High.jpg.bak
+  BELLA_+_CANVAS_3901Y_Deep_Heather_Back_High.jpg.bak
+  BELLA_+_CANVAS_3901Y_Deep_Heather_Front_High.jpg.bak
+  BELLA_+_CANVAS_3901Y_Heather_Forest_Back_High.jpg.bak
+  BELLA_+_CANVAS_3901Y_Heather_Forest_Front_High.jpg.bak
+  BELLA_+_CANVAS_3901Y_Heather_Navy_Front_High.jpg.bak
+  BELLA_+_CANVAS_3901Y_Mauve_Back_High.jpg.bak
+  BELLA_+_CANVAS_3901Y_Mauve_Front_High.jpg.bak
+  BELLA_+_CANVAS_3901Y_Red_Back_High.jpg.bak
+  BELLA_+_CANVAS_3901Y_Red_Front_High.jpg.bak
+
+Note: Heather_Navy_Back_High.jpg has no matching .bak in static.
+
+COUNTS (non-bak images; Front_High / Back_High; name has neither Model nor Side):
+  Front_High: 8
+  Back_High:  8
+  (No Model / Side files present)
+
+
+### uploads/mockups/3901Y/
+
+NON-BAK (17):
+  BELLA_+_CANVAS_3901Y_Athletic_Heather_Back_High.jpg
+  BELLA_+_CANVAS_3901Y_Athletic_Heather_Front_High.jpg
+  BELLA_+_CANVAS_3901Y_Black_Back_High.jpg
+  BELLA_+_CANVAS_3901Y_Black_Front_High.jpg
+  BELLA_+_CANVAS_3901Y_Dark_Grey_Heather_Back_High.jpg
+  BELLA_+_CANVAS_3901Y_Dark_Grey_Heather_Front_High.jpg
+  BELLA_+_CANVAS_3901Y_Deep_Heather_Back_High.jpg
+  BELLA_+_CANVAS_3901Y_Deep_Heather_Front_High.jpg
+  BELLA_+_CANVAS_3901Y_Heather_Forest_Back_High.jpg
+  BELLA_+_CANVAS_3901Y_Heather_Forest_Front_High.jpg
+  BELLA_+_CANVAS_3901Y_Heather_Navy_Back_High.jpg
+  BELLA_+_CANVAS_3901Y_Heather_Navy_Front_High.jpg
+  BELLA_+_CANVAS_3901Y_Mauve_Back_High.jpg
+  BELLA_+_CANVAS_3901Y_Mauve_Front_High.jpg
+  BELLA_+_CANVAS_3901Y_Red_Back_High.jpg
+  BELLA_+_CANVAS_3901Y_Red_Front_High.jpg
+  README.txt
+
+BAK (0): (none)
+
+COUNTS (non-bak images; Front_High / Back_High; name has neither Model nor Side):
+  Front_High: 8
+  Back_High:  8
+  (No Model / Side files present)
+
+Colors represented (8): Athletic Heather, Black, Dark Grey Heather, Deep Heather,
+Heather Forest, Heather Navy, Mauve, Red.
+
+
+2) DATABASE QUERIES
+--------------------------------------------------------------------------------
+
+### A) sqlite3 on dev.db
+Query: select id, style_number, name, is_active from product where style_number like '%3901%'
+
+Result:
+  (225, 'BC3901', 'BELLA+CANVAS Unisex Sponge Fleece Raglan Sweatshirt. BC3901', 1)
+
+Exact 3901Y / BC3901Y: NONE
+Related: BC3901 (id=225) has product_color_variant count = 47
+
+
+### B) Production via DATABASE_URL (.env) + SQLAlchemy text
+URL (masked): postgresql://postgres:***@yamabiko.proxy.rlwy.net:14645/railway
+Connection: SUCCESS
+
+Query for style 3901Y / BC3901Y product row:
+  No product rows for 3901Y / BC3901Y
+  -> product_color_variant count: N/A (product does not exist)
+
+Broader check (style_number LIKE '%3901%') on production:
+  id=225, style_number='BC3901', name='BELLA+CANVAS Unisex Sponge Fleece Raglan Sweatshirt. BC3901', is_active=True
+  (adult BC3901 exists; youth 3901Y / BC3901Y does not)
+
+
+3) HOW MOCKUPS GET LINKED (brief)
+--------------------------------------------------------------------------------
+
+Source docs:
+  - uploads/mockups/README_UPLOAD_INSTRUCTIONS.txt
+  - uploads/mockups/UPLOAD_TEMPLATE.txt
+  - uploads/mockups/3901Y/README.txt (and mirror under static/)
+  - import_mockup_images.py: NOT in working tree (removed historically; only
+    __pycache__/import_mockup_images.cpython-314.pyc remains)
+  - Live linking code: utils/mockups.py + routes/admin.py
+
+Workflow (from README + current code):
+
+1. Place images under uploads/mockups/{STYLE}/ (e.g. 3901Y/).
+   Expected naming in docs: {STYLE}_ColorName_front.jpg / _back.jpg
+   (Actual 3901Y files use Bella+Canvas descriptive names:
+    BELLA_+_CANVAS_3901Y_{Color}_Front_High.jpg / _Back_High.jpg)
+
+2. Optionally sync/copy to static/uploads/mockups/ so Flask can serve them
+   (app.py syncs uploads/mockups -> static/uploads/mockups).
+
+3. Runtime resolution (utils/mockups.py):
+   - Searches static/uploads/mockups and uploads/mockups (and static/images/products)
+   - Matches by style folder + color + view (front/back)
+   - Used for shop carousel / design preview even when DB URLs are missing
+
+4. Admin linking (POST /admin/products/link-mockups):
+   - create_products_from_mockup_folders(): creates Product + ProductColorVariant
+     for any mockup folder that has no product yet
+   - ensure_variant_mockup_urls(): fills missing front/back image URLs on variants
+     from the mockup folder, and creates variants for colors found on disk but
+     not yet in DB
+
+5. S&S sync path (admin sync-api) can also sync only styles that have mockup
+   folders (sync_mockup_styles), then variants get mockup URLs ensured.
+
+Bottom line: files in uploads/mockups/{style}/ are the source of truth for
+colors/images; admin "link mockups" (or ensure_variant_mockup_urls) writes those
+paths onto ProductColorVariant; the shop also falls back to scanning the folder
+directly. import_mockup_images.py is documented but no longer present as .py.
+
+================================================================================
+END
+================================================================================

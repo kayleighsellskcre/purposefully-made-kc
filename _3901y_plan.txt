@@ -1,0 +1,143 @@
+﻿================================================================================
+3901Y / YOUTH CREW PLAN DATA
+Generated: 2026-08-24
+DATABASE_URL (masked): postgresql://postgres:***@yamabiko.proxy.rlwy.net:14645/railway
+================================================================================
+
+1) MOCKUP FOLDERS (static/uploads/mockups/)
+--------------------------------------------------------------------------------
+
+Does folder exist?
+  BC3719Y : MISSING
+  BC3901Y : MISSING
+  BC3945Y : MISSING
+
+Related (non-BC) folders that DO exist:
+  3719Y   : EXISTS (45 files: Front/Back High jpgs + .bak + README)
+  3901Y   : EXISTS (images present; see prior _3901y.txt inventory)
+  3945    : EXISTS (adult style folder; NOT 3945Y)
+  3945Y   : MISSING
+  3719    : EXISTS (adult)
+  3901    : EXISTS (adult)
+
+BC*-prefixed mockup folders:
+  (none)
+
+  Full mockup folder list under static/uploads/mockups/ (21 dirs):
+  3001, 3001CVC, 3001Y, 3001YCVC, 3413, 3413Y, 3501, 3501CVC, 3501Y,
+  3501YCVC, 3513, 3513Y, 3719, 3719Y, 3729, 3901, 3901Y, 3945, 4711,
+  4719, 6400
+
+  Convention: folders are SanMar/Bella numeric style codes (e.g. 3719Y),
+  NOT the DB style_number with BC prefix (e.g. BC3719Y).
+
+
+2) PRODUCTION QUERIES
+--------------------------------------------------------------------------------
+
+### Full product rows: BC3945Y and BC3719Y
+
+BC3719Y:
+  id=240
+  style_number=BC3719Y
+  name=BELLA+CANVAS Youth Sponge Fleece Pullover Hoodie BC3719Y
+  age_group=youth
+  category=Hoodie
+  base_price=45.0
+  available_sizes=["S", "M", "L"]
+  front_mockup_template=/static/sanmar/3719Y/3719Y_Athletic_Heather_front.jpg
+  back_mockup_template=/static/sanmar/3719Y/3719Y_Athletic_Heather_back.jpg
+  is_active=True
+
+BC3945Y:
+  id=336
+  style_number=BC3945Y
+  name=BELLA+CANVAS Youth Sponge Fleece Crewneck Sweatshirt
+  age_group=youth
+  category=Sweatshirt
+  base_price=45.0
+  available_sizes=[]          <-- EMPTY
+  front_mockup_template=None
+  back_mockup_template=None
+  is_active=True
+
+### BC3945Y variants
+  count: 0
+  sample 3 (color_name + front_image_url + back_image_url): N/A (no variants)
+
+
+### ALL products where style_number LIKE '%3945%'
+         OR name ILIKE '%Youth%Sponge%'
+         OR name ILIKE '%Youth%Crew%'
+
+  id=240  BC3719Y  BELLA+CANVAS Youth Sponge Fleece Pullover Hoodie BC3719Y
+                   age_group=youth  category=Hoodie  is_active=True
+  id=227  BC3945   BELLA+CANVAS Unisex Sponge Fleece Drop Shoulder Sweatshirt. BC3945
+                   age_group=adult  category=Sweatshirt  is_active=True
+  id=336  BC3945Y  BELLA+CANVAS Youth Sponge Fleece Crewneck Sweatshirt
+                   age_group=youth  category=Sweatshirt  is_active=True
+
+  Note: No BC3901Y / 3901Y product row in production (adult BC3901 id=225 exists).
+
+
+### Collection 8 — sweatshirt / crew category products
+  collection_id=8  name="Riverview Falcons Spirit Wear 26-27"
+  total products in collection: 15
+  category breakdown: Hoodie=2, Long Sleeve=5, Sweatshirt=2, Tee=6
+
+  Sweatshirt/crew category (id, style_number):
+    225  BC3901     (adult Sweatshirt)
+    336  BC3945Y    (youth Sweatshirt)  <-- shell product, 0 variants, empty sizes
+
+
+3) HOW BC3719Y GETS IMAGES (folder is 3719Y, not BC3719Y)
+--------------------------------------------------------------------------------
+
+Answer: DB variant URLs point at /static/sanmar/3719Y/..., NOT at
+/static/uploads/mockups/3719Y/... and NOT at /static/uploads/mockups/BC3719Y/...
+
+Product BC3719Y (id=240) has 13 color variants:
+
+  Path breakdown:
+    11 variants -> /static/sanmar/3719Y/3719Y_{Color}_front.jpg (+ matching back)
+    2 variants  -> Widen CDN (embed.widencdn.net) with lowercase slug color names
+                   (athleticheather, darkgreyheather) — look like duplicates
+
+  Sample (sanmar-local):
+    Athletic Heather | /static/sanmar/3719Y/3719Y_Athletic_Heather_front.jpg
+                     | /static/sanmar/3719Y/3719Y_Athletic_Heather_back.jpg
+    Black            | /static/sanmar/3719Y/3719Y_Black_front.jpg
+                     | /static/sanmar/3719Y/3719Y_Black_back.jpg
+
+  Counts:
+    front_image_url LIKE '%/mockups/3719Y/%'   = 0
+    front_image_url LIKE '%/mockups/BC3719Y/%' = 0
+    front_image_url under /static/sanmar/3719Y/ = 11
+    front_image_url Widen CDN                   = 2
+
+On-disk confirmation:
+  static/sanmar/3719Y/           EXISTS (e.g. 3719Y_Athletic_Heather_front.jpg)
+  static/uploads/mockups/3719Y/  EXISTS (BELLA_+_CANVAS_3719Y_*_Front_High.jpg naming)
+  static/uploads/mockups/BC3719Y DOES NOT EXIST
+
+Why folder name != style_number:
+  - utils/mockups._style_dirs() looks for mockups/{exact style_number}/
+    so product.style_number "BC3719Y" would look for folder "BC3719Y", which
+    does not exist. Mockup-folder fallback does NOT auto-strip the BC prefix.
+  - Admin/SanMar sync paths DO strip/add BC when matching products
+    (routes/admin.py ~1317-1320, ~1900, ~4015; services/bella_canvas_csv.py).
+  - Live images for BC3719Y were written onto ProductColorVariant from SanMar
+    assets under static/sanmar/3719Y/ (and a couple Widen CDN URLs), which use
+    the numeric folder 3719Y — matching SanMar style codes, not BC-prefixed DB keys.
+
+Implication for BC3945Y / BC3901Y work:
+  - Creating product with style_number BC3945Y will NOT auto-pick up mockups from
+    a folder named 3945Y unless you (a) name the folder BC3945Y, or (b) strip BC
+    in mockup resolution / link-mockups, or (c) write URLs explicitly (as done
+    for BC3719Y via /static/sanmar/3719Y/...).
+  - BC3945Y currently has no variants, no sizes, no mockup templates — not shop-ready.
+  - 3901Y mockup files exist on disk but no BC3901Y/3901Y product exists in prod.
+
+================================================================================
+END
+================================================================================
