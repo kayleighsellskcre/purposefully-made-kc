@@ -16,6 +16,9 @@
                 <span class="confirmation-eyebrow">Order Received</span>
                 <h1>Thank You!</h1>
                 <p>Your order has been confirmed and is being prepared with care.</p>
+                <p class="production-timeline-note" style="margin:1rem auto 0;max-width:36rem;text-align:left;">
+                    Please allow <strong>2–3 weeks</strong> for your order. Most orders are finished within about a week and a half.
+                </p>
             </div>
 
             <div class="order-info">
@@ -50,9 +53,11 @@
                     {{ order.shipping_city }}, {{ order.shipping_state }} {{ order.shipping_zip }}
                 </address>
                 <p>You'll receive a shipping notification with tracking information once your order ships.</p>
+                <p>Please allow <strong>2–3 weeks</strong> for your order. Most orders are finished within about a week and a half.</p>
                 {% else %}
                 <p><strong>Pickup Instructions:</strong></p>
                 <p>Your order will be ready for pickup soon. We'll email you when it's ready!</p>
+                <p>Please allow <strong>2–3 weeks</strong> for your order. Most orders are finished within about a week and a half.</p>
                 {% endif %}
                 {% if order.send_home_with_child %}
                 <p><strong>Send home with child:</strong></p>

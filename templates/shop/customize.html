@@ -665,6 +665,45 @@
     color: var(--text-primary);
 }
 
+.gallery-image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    gap: 0.65rem;
+    margin-top: 0.5rem;
+}
+.gallery-image-grid .logo-gallery-item {
+    aspect-ratio: 1;
+    margin: 0;
+    padding: 0.35rem;
+}
+.gallery-image-grid .logo-gallery-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+.gallery-image-grid .logo-gallery-item-label {
+    display: none;
+}
+.upload-rights-note {
+    margin-top: 0.75rem;
+    padding: 0.75rem 0.85rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: var(--text-secondary);
+}
+.production-timeline-note {
+    margin: 0.75rem 0 0;
+    padding: 0.85rem 1rem;
+    background: rgba(184, 124, 111, 0.08);
+    border-left: 3px solid var(--terra-cotta, #b87c6f);
+    border-radius: 0 8px 8px 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--text-primary);
+}
+
 .back-design-offer-header {
     display: flex;
     justify-content: space-between;
@@ -1627,16 +1666,9 @@
                             <p class="text-muted">PNG, JPG, HEIC, WEBP</p>
                         </div>
                         <input type="file" id="designFileMain" accept="image/*,.heic,.heif,.png,.jpg,.jpeg,.webp" style="display: none;">
-                        {% if current_user and current_user.is_authenticated %}
-                        <div class="share-gallery-option" id="shareGalleryOption" style="margin-top: 0.75rem; padding: 0.75rem; background: #f8f9fa; border-radius: 8px;">
-                            <label style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; font-size: 0.9rem;">
-                                <input type="checkbox" id="shareInGalleryCheckbox" style="margin-top: 0.2rem;">
-                                <span>Submit this design to our public gallery for others to use</span>
-                            </label>
-                            <p class="text-muted" style="margin: 0.25rem 0 0 1.75rem; font-size: 0.8rem;">Submissions are reviewed by our team before they're published. Leave unchecked to keep it with your profile only.</p>
-                            <p id="gallerySubmitNote" style="display:none; margin: 0.5rem 0 0 1.75rem; font-size: 0.8rem; color:#1d7a3e; font-weight:600;">✓ Submitted for review. We'll publish it to the gallery once approved.</p>
-                        </div>
-                        {% endif %}
+                        <p class="upload-rights-note">
+                            Uploading an image gives Purposefully Made KC the right to add it to our design gallery and offer it to our clients.
+                        </p>
                     </div>
                     {% if my_designs and current_user and current_user.is_authenticated %}
                     <p class="logo-gallery-label" style="margin-bottom: 0.5rem;">Your designs:</p>
@@ -1645,7 +1677,6 @@
                             {% for d in my_designs %}
                             <div class="logo-gallery-item" data-design-id="{{ d.id }}" data-design-url="{{ d.url }}" data-design-title="{{ d.title }}" role="button" tabindex="0" title="{{ d.title }}">
                                 <img src="{{ d.url }}" alt="{{ d.title }}" draggable="false">
-                                <span class="logo-gallery-item-label">{{ d.title }}</span>
                             </div>
                             {% endfor %}
                         </div>
@@ -1663,34 +1694,28 @@
                        team to see them all at once — not hide them in a menu. #}
                     <div class="logo-gallery-inline" id="logoGalleryInline">
                         <p class="logo-gallery-label">Group logos — tap one to use</p>
-                        <div class="logo-gallery-grid" id="logoGalleryGrid">
+                        <div class="logo-gallery-grid gallery-image-grid" id="logoGalleryGrid">
                             {% for d in gallery_designs %}
                             <div class="logo-gallery-item{% if preset_design and preset_design.id == d.id %} selected{% endif %}"
                                  data-design-id="{{ d.id }}" data-design-url="{{ d.url }}" data-design-title="{{ d.title }}"
                                  role="button" tabindex="0" title="{{ d.title }}">
-                                <img src="{{ d.url }}" alt="{{ d.title }}" draggable="false">
-                                <span class="logo-gallery-item-label">{{ d.title }}</span>
+                                <img src="{{ d.url }}" alt="{{ d.title }}" loading="lazy" decoding="async" draggable="false">
                             </div>
                             {% endfor %}
                         </div>
                     </div>
                     {% else %}
-                    {# Regular shop: the public gallery can grow large, so keep
-                       a compact dropdown and a small selected preview. #}
-                    <div class="gallery-design-picker" id="logoGalleryInline">
-                        <label for="galleryDesignSelect" class="logo-gallery-label">Gallery designs</label>
-                        <select id="galleryDesignSelect" class="form-control gallery-design-select">
-                            <option value="">Choose a gallery design…</option>
+                    {# Regular shop: image grid (no dropdown names / preview box). #}
+                    <div class="logo-gallery-inline gallery-design-picker" id="logoGalleryInline">
+                        <p class="logo-gallery-label">Gallery designs — tap one to use</p>
+                        <div class="logo-gallery-grid gallery-image-grid" id="logoGalleryGrid">
                             {% for d in gallery_designs %}
-                            <option value="{{ d.id }}"
-                                    data-url="{{ d.url }}"
-                                    data-title="{{ d.title }}"
-                                    {% if preset_design and preset_design.id == d.id %}selected{% endif %}>{{ d.title }}</option>
+                            <div class="logo-gallery-item{% if preset_design and preset_design.id == d.id %} selected{% endif %}"
+                                 data-design-id="{{ d.id }}" data-design-url="{{ d.url }}" data-design-title="{{ d.title }}"
+                                 role="button" tabindex="0" title="{{ d.title }}">
+                                <img src="{{ d.url }}" alt="{{ d.title }}" loading="lazy" decoding="async" draggable="false">
+                            </div>
                             {% endfor %}
-                        </select>
-                        <div class="gallery-design-selected" id="galleryDesignSelected"{% if not (preset_design and preset_design.id) %} hidden{% endif %}>
-                            <img src="{{ preset_design.url if preset_design else '' }}" alt="{{ preset_design.title if preset_design else '' }}" id="galleryDesignSelectedImg">
-                            <span id="galleryDesignSelectedTitle">{{ preset_design.title if preset_design else '' }}</span>
                         </div>
                     </div>
                     {% endif %}
@@ -2091,32 +2116,6 @@
     }
     
     function setupLogoGalleryClicks() {
-        const select = document.getElementById('galleryDesignSelect');
-        if (select) {
-            function applyFromSelect() {
-                const opt = select.options[select.selectedIndex];
-                const preview = document.getElementById('galleryDesignSelected');
-                const img = document.getElementById('galleryDesignSelectedImg');
-                const title = document.getElementById('galleryDesignSelectedTitle');
-                if (!opt || !opt.value || !opt.dataset.url) {
-                    if (preview) preview.hidden = true;
-                    return;
-                }
-                const design = { id: opt.value, url: opt.dataset.url, title: opt.dataset.title || opt.textContent };
-                try {
-                    applyPresetDesign(design);
-                    if (img) { img.src = design.url; img.alt = design.title; }
-                    if (title) title.textContent = design.title;
-                    if (preview) preview.hidden = false;
-                    document.querySelectorAll('.logo-gallery-item').forEach(el => el.classList.remove('selected'));
-                } catch (err) {
-                    console.error('Gallery design error:', err);
-                }
-            }
-            select.addEventListener('change', applyFromSelect);
-            if (select.value) applyFromSelect();
-        }
-
         const grid = document.getElementById('logoGalleryGrid');
         if (!grid) return;
         grid.addEventListener('click', function(e) {
@@ -2130,7 +2129,7 @@
                 document.querySelectorAll('.logo-gallery-item').forEach(el => el.classList.remove('selected'));
                 card.classList.add('selected');
             } catch (err) {
-                console.error('Group logo error:', err);
+                console.error('Gallery logo error:', err);
             }
         });
         grid.addEventListener('keydown', function(e) {
@@ -3470,8 +3469,6 @@
                 const formData = new FormData();
                 formData.append('file', file);
                 if (mode) formData.append('bg_removal', mode);
-                const shareCheckbox = document.getElementById('shareInGalleryCheckbox');
-                if (shareCheckbox) formData.append('share_in_gallery', shareCheckbox.checked ? 'true' : 'false');
 
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 45000);
@@ -3526,8 +3523,6 @@
                 }
 
                 applyInspectorResult(data, file);
-                const gNote = document.getElementById('gallerySubmitNote');
-                if (gNote) gNote.style.display = data.submitted_to_gallery ? 'block' : 'none';
                 clearInterval(_dotTimer);
                 uploadAreaMain.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Design uploaded!</strong></p><p class="text-muted">Click to change</p>';
             } catch (err) {
