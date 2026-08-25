@@ -31,13 +31,13 @@
                     <button type="button"
                             class="thumbnail active"
                             aria-label="Show front view"
-                            onclick="changeImage('{{ front_url }}', this)">
+                            onclick="changeImage('{{ front_url }}', this, 'front')">
                         <img src="{{ front_url }}" alt="">
                     </button>
                     <button type="button"
                             class="thumbnail"
                             aria-label="Show back view"
-                            onclick="changeImage('{{ back_url }}', this)">
+                            onclick="changeImage('{{ back_url }}', this, 'back')">
                         <img src="{{ back_url }}" alt="">
                     </button>
                 </div>
@@ -165,6 +165,8 @@
                         {% for variant in color_variants %}
                         <button type="button" class="color-option"
                                 data-color="{{ variant.color_name }}"
+                                data-front-image="{{ variant.front_image or '' }}"
+                                data-back-image="{{ variant.back_image or '' }}"
                                 title="{{ variant.color_name }}"
                                 aria-label="{{ variant.color_name }}"
                                 aria-pressed="false">
@@ -267,11 +269,39 @@ document.querySelectorAll('.color-option').forEach(btn => {
         chooseOne('.color-option', btn);
         selectedColor = btn.dataset.color;
         updateSizeAvailability(selectedColor);
+        // Swap the main product image to this color immediately
+        const mainImg = document.getElementById('main-image');
+        const front = btn.dataset.frontImage || '';
+        if (mainImg && front) {
+            mainImg.src = front;
+            mainImg.alt = ({{ product.name | tojson }}) + ' — ' + selectedColor;
+            // Keep front thumbnail active when color changes
+            document.querySelectorAll('.thumbnail').forEach((t, i) => {
+                t.classList.toggle('active', i === 0);
+            });
+        }
     });
 });
 
-function changeImage(src, thumbnail) {
-    document.getElementById('main-image').src = src;
+// Pre-select first color so size availability + image match on load
+(function () {
+    const first = document.querySelector('.color-option');
+    if (first) first.click();
+})();
+
+function changeImage(src, thumbnail, view) {
+    const mainImg = document.getElementById('main-image');
+    if (!mainImg) return;
+    let url = src;
+    const activeColor = document.querySelector('.color-option.active');
+    if (activeColor) {
+        if (view === 'back' && activeColor.dataset.backImage) {
+            url = activeColor.dataset.backImage;
+        } else if (view === 'front' && activeColor.dataset.frontImage) {
+            url = activeColor.dataset.frontImage;
+        }
+    }
+    mainImg.src = url;
     document.querySelectorAll('.thumbnail').forEach(t => t.classList.remove('active'));
     thumbnail.classList.add('active');
 }

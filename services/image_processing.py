@@ -155,7 +155,7 @@ def issue_messages(validation: dict) -> list:
     msgs = []
     for issue in validation.get('issues', []):
         if issue == 'background_may_remain':
-            msgs.append('Some background may still be visible. Try "Reprocess" for a stronger cut.')
+            msgs.append('Some background may still be visible. Try uploading a cleaner version with a solid background.')
         elif issue == 'artwork_mostly_removed':
             msgs.append('Most of the artwork was removed — try uploading a higher-contrast version.')
         elif issue == 'low_resolution':

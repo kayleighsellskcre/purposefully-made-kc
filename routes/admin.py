@@ -2531,6 +2531,7 @@ def add_collection():
                 pickup_address=request.form.get('pickup_address'),
                 pickup_instructions=request.form.get('pickup_instructions'),
                 shipping_enabled=request.form.get('shipping_enabled') == 'on',
+                allow_cash_pickup=request.form.get('allow_cash_pickup') == 'on',
                 tax_rate=float(current_app.config['KS_SALES_TAX_PERCENT']),
             )
 

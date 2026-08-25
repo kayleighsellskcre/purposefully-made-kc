@@ -1721,8 +1721,7 @@
                             </button>
                         </div>
                         <p class="ai-white-note" id="aiWhiteNote" hidden>White artwork detected. Shown on a contrasting background so you can see it. The final print file stays transparent.</p>
-                        <div class="ai-actions">
-                            <button class="btn btn-outline btn-sm" id="reprocessDesign" hidden>Reprocess (stronger cut)</button>
+                            <div class="ai-actions">
                             <button class="btn btn-outline btn-sm" id="removeDesign">Remove Design</button>
                         </div>
                     </div>
@@ -1996,6 +1995,7 @@
 (function() {
     const state = {
         selectedColor: null,
+        _mockupGen: 0,
         selectedSize: null,
         selectedPlacement: 'center_chest',
         quantity: 1,
@@ -2054,14 +2054,9 @@
         if (presetDesign && presetDesign.url) {
             applyPresetDesign(presetDesign);
         }
-        
-        // Pre-select first color if available
-        if (state.colorVariants.length > 0) {
-            const firstColor = document.querySelector('.color-option');
-            if (firstColor) {
-                firstColor.click();
-            }
-        }
+
+        // Color pre-select happens in setupColorSelection() via selectColor(firstColor)
+        // — do not delay-click here (that raced with the customer's first tap).
 
         // Group order: back design enabled by organizer — show fee row and sync UI
         if (state.backDesignEnabled) {
@@ -2179,63 +2174,63 @@
     
     // Global function for color selection
     window.selectColor = function(element) {
+        if (!element) return;
+
         // Remove selected from all
         document.querySelectorAll('.color-card').forEach(card => {
             card.classList.remove('selected');
+            card.setAttribute('aria-pressed', 'false');
         });
-        
+
         // Add selected to clicked
         element.classList.add('selected');
-        
+        element.setAttribute('aria-pressed', 'true');
+
         // Get color data
         const colorName = element.dataset.color;
         const frontImage = element.dataset.frontImage || '';
         const backImage = element.dataset.backImage || '';
         const inventoryStr = element.dataset.inventory || '{}';
-        
+
         let inventory = {};
         try {
             inventory = JSON.parse(inventoryStr);
         } catch (e) {
             console.error('Failed to parse inventory:', e);
         }
-        
-        // Update state
+
+        // Update state synchronously so size/qty/options always see the latest color
         state.selectedColor = {
             name: colorName,
             frontImage: frontImage,
             backImage: backImage,
             inventory: inventory
         };
-        
-        // Update mockup image with smooth transition
-        const mockupImg = document.getElementById('mockupImage');
-        mockupImg.style.opacity = '0';
-        
-        setTimeout(() => {
-            updateMockupImage();
-        }, 150);
-        
-        // Update selected color display
+
+        // Update selected color display immediately (do not wait on image load)
         const colorNameEl = document.getElementById('selectedColorName');
-        colorNameEl.textContent = colorName;
-        colorNameEl.style.color = 'var(--terra-cotta)';
-        colorNameEl.style.fontWeight = '700';
-        
-        // Update size inventory
+        if (colorNameEl) {
+            colorNameEl.textContent = colorName;
+            colorNameEl.style.color = 'var(--terra-cotta)';
+            colorNameEl.style.fontWeight = '700';
+        }
+
+        // Update size inventory for this color
         updateSizeInventory(inventory);
+
+        // Swap mockup immediately — no delayed click / opacity race
+        updateMockupImage();
     };
-    
+
     function setupColorSelection() {
         // Initialize color filtering
         initializeColorFiltering();
-        
-        // Pre-select first color on load
+
+        // Pre-select first visible color synchronously. A delayed .click() used
+        // to overwrite the customer's first tap if they chose a color quickly.
         const firstColor = document.querySelector('.color-card:not(.hidden)');
-        if (firstColor) {
-            setTimeout(() => {
-                firstColor.click();
-            }, 300);
+        if (firstColor && !state.selectedColor) {
+            selectColor(firstColor);
         }
     }
     
@@ -2399,35 +2394,50 @@
     function updateMockupImage() {
         const mockupImg = document.getElementById('mockupImage');
         const previewCanvas = document.getElementById('previewCanvas');
-        if (!state.selectedColor) {
+        if (!mockupImg || !state.selectedColor) {
             return;
         }
-        
-        const imageUrl = state.currentView === 'front' 
-            ? state.selectedColor.frontImage 
+
+        const imageUrl = state.currentView === 'front'
+            ? state.selectedColor.frontImage
             : state.selectedColor.backImage;
-        
-        if (imageUrl && imageUrl !== '') {
-            // Hide the no-preview placeholder
-            const ph = document.getElementById('noMockupPlaceholder');
-            if (ph) ph.style.display = 'none';
-            // Show spinner while image fetches
-            mockupImg.style.opacity = '0';
-            if (previewCanvas) previewCanvas.classList.add('loading');
-            mockupImg.onload = function() {
-                if (previewCanvas) previewCanvas.classList.remove('loading');
-                this.style.opacity = '1';
-                // Preview scale depends on this photo's size and silhouette.
+
+        const gen = ++state._mockupGen;
+
+        const finish = function(ok) {
+            // Ignore stale loads from a previous color/view click
+            if (gen !== state._mockupGen) return;
+            if (previewCanvas) previewCanvas.classList.remove('loading');
+            if (ok) {
+                mockupImg.style.opacity = '1';
                 updateBackDesignPreview();
                 applyBackDesignPosition();
-            };
-            mockupImg.onerror = function() {
-                if (previewCanvas) previewCanvas.classList.remove('loading');
-                this.style.opacity = '0';
+            } else {
+                mockupImg.style.opacity = '0';
                 const ph = document.getElementById('noMockupPlaceholder');
                 if (ph) ph.style.display = 'flex';
-            };
-            mockupImg.src = imageUrl;
+            }
+        };
+
+        if (imageUrl && imageUrl !== '') {
+            const ph = document.getElementById('noMockupPlaceholder');
+            if (ph) ph.style.display = 'none';
+            mockupImg.style.opacity = '0';
+            if (previewCanvas) previewCanvas.classList.add('loading');
+
+            mockupImg.onload = function() { finish(true); };
+            mockupImg.onerror = function() { finish(false); };
+
+            // Same URL already loaded (common on re-select / cached) — onload
+            // may not fire, which previously left opacity stuck at 0.
+            if (mockupImg.getAttribute('src') === imageUrl && mockupImg.complete && mockupImg.naturalWidth > 0) {
+                finish(true);
+            } else {
+                mockupImg.src = imageUrl;
+                if (mockupImg.complete && mockupImg.naturalWidth > 0) {
+                    finish(true);
+                }
+            }
         } else {
             if (previewCanvas) previewCanvas.classList.remove('loading');
             mockupImg.style.opacity = '0';
@@ -3298,13 +3308,11 @@
     function resetArtworkInspector() {
         const aiStatus = document.getElementById('aiStatus');
         const aiWhiteNote = document.getElementById('aiWhiteNote');
-        const reprocessBtn = document.getElementById('reprocessDesign');
         const viewToggle = document.getElementById('aiViewToggle');
         const aiStage = document.getElementById('aiStage');
         const designWarnings = document.getElementById('designWarnings');
         if (aiStatus) aiStatus.hidden = true;
         if (aiWhiteNote) aiWhiteNote.hidden = true;
-        if (reprocessBtn) reprocessBtn.hidden = true;
         if (viewToggle) {
             viewToggle.style.display = 'none';
             viewToggle.querySelectorAll('.ai-toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.view === 'after'));
@@ -3321,7 +3329,6 @@
         const aiStage = document.getElementById('aiStage');
         const designOriginalImage = document.getElementById('designOriginalImage');
         const viewToggle = document.getElementById('aiViewToggle');
-        const reprocessBtn = document.getElementById('reprocessDesign');
         const designWarnings = document.getElementById('designWarnings');
 
         // Before image (only for fresh uploads where we still hold the raw file)
@@ -3357,19 +3364,20 @@
         if (aiWhiteNote) aiWhiteNote.hidden = !isWhite;
         setStageBg(isWhite ? 'dark' : 'checker');
 
-        // Validation messages + optional reprocess
-        const validation = (data && data.validation) || { ok: true };
+        // Validation / helpful messages (no customer reprocess control)
         const messages = (data && (data.messages || data.warnings)) || [];
         if (designWarnings) {
             designWarnings.innerHTML = '';
             messages.forEach(function (m) {
+                const text = String(m || '');
+                // Drop any leftover "Reprocess" wording from older processing messages
+                if (/reprocess/i.test(text)) return;
                 const div = document.createElement('div');
                 div.className = 'warning-item';
-                div.textContent = m;
+                div.textContent = text;
                 designWarnings.appendChild(div);
             });
         }
-        if (reprocessBtn) reprocessBtn.hidden = validation.ok !== false;
     }
 
     function setupArtworkInspector() {
@@ -3447,14 +3455,14 @@
                 uploadAreaMain.style.pointerEvents = '';
                 return;
             }
-            uploadAreaMain.innerHTML = '<p style="margin: 2rem 0;">' + (mode === 'aggressive' ? 'Reprocessing…' : 'Uploading…') + '</p>';
+            uploadAreaMain.innerHTML = '<p style="margin: 2rem 0;">Uploading…</p>';
             uploadAreaMain.style.pointerEvents = 'none';
 
             // Animated dots so user knows it's still working (AI removal can take 10-30s)
             let _dots = 0;
             const _dotTimer = setInterval(() => {
                 _dots = (_dots + 1) % 4;
-                const base = mode === 'aggressive' ? 'Reprocessing &amp; removing background' : 'Uploading &amp; removing background';
+                const base = 'Uploading &amp; removing background';
                 if (uploadAreaMain) uploadAreaMain.querySelector('p') && (uploadAreaMain.querySelector('p').innerHTML = base + '.'.repeat(_dots || 1));
             }, 700);
 
@@ -3553,13 +3561,6 @@
         if (uploadAreaMain && fileInputMain) {
             fileInputMain.addEventListener('change', function() {
                 handlePickedFile(this.files[0]);
-            });
-        }
-
-        const reprocessBtn = document.getElementById('reprocessDesign');
-        if (reprocessBtn) {
-            reprocessBtn.addEventListener('click', function() {
-                if (state.lastUploadedFile) frontUpload(state.lastUploadedFile, {% if collection_restricted %}'none'{% else %}'aggressive'{% endif %});
             });
         }
 

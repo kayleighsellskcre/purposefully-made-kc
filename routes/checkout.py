@@ -598,14 +598,19 @@ def index():
         addresses = current_user.addresses.all()
     
     is_group_order = bool(collection)
+    allow_cash_payment = bool(
+        collection and getattr(collection, 'allow_cash_pickup', False)
+    )
+    paypal_client_id = (current_app.config.get('PAYPAL_CLIENT_ID') or '').strip()
     return render_template('checkout/index.html',
                          cart=enriched_cart,
                          totals=totals,
                          addresses=addresses,
                          is_group_order=is_group_order,
                          group_collection=collection,
+                         allow_cash_payment=allow_cash_payment,
                          stripe_public_key=current_app.config.get('STRIPE_PUBLIC_KEY'),
-                         paypal_client_id=current_app.config.get('PAYPAL_CLIENT_ID') or '',
+                         paypal_client_id=paypal_client_id,
                          shipping_flat_rate=current_app.config.get('SHIPPING_FLAT_RATE', 11.00))
 
 
@@ -645,8 +650,9 @@ def create_payment_intent():
         intent = stripe.PaymentIntent.create(
             amount=int(round(totals['total'] * 100)),
             currency='usd',
-            # Card only (Apple Pay / Google Pay still appear via wallets).
-            # Venmo needs PayPal onboarding and bank/ACH adds delay — both excluded.
+            # Explicit card-only list: Apple Pay / Google Pay still appear as
+            # wallets. Do NOT use automatic_payment_methods here — that would
+            # surface Klarna, bank debit, and other methods from the Dashboard.
             payment_method_types=['card'],
             # Statement descriptor shown on customer's card statement (max 22 chars)
             statement_descriptor_suffix='PMKC ORDER',
@@ -831,8 +837,18 @@ def complete():
             return _json_error('Please enter your first and last name.', 'NAME_REQUIRED', 400, request_id=rid)
         if payment_method not in ('cash', 'stripe', 'paypal'):
             return _json_error('Please choose a payment method.', 'PAYMENT_METHOD_INVALID', 400, request_id=rid)
+        if payment_method == 'cash':
+            if not collection or not getattr(collection, 'allow_cash_pickup', False):
+                return _json_error(
+                    'Cash / pay at pickup is only available for group orders when the organizer allows it.',
+                    'CASH_NOT_ALLOWED',
+                    400,
+                    request_id=rid,
+                )
         if payment_method == 'stripe' and not payment_id:
             return _json_error('Card payment was not completed. Please try the card again.', 'PAYMENT_ID_REQUIRED', 400, request_id=rid)
+        if payment_method == 'paypal' and not payment_id:
+            return _json_error('PayPal payment was not completed. Please try again.', 'PAYMENT_ID_REQUIRED', 400, request_id=rid)
         if shipping_method == 'shipping':
             missing = [k for k in ('street', 'city', 'state', 'zip') if not (shipping_info.get(k) or '').strip()]
             if missing:

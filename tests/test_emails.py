@@ -26,7 +26,14 @@ def _fill_cart(client, seed):
     assert resp.status_code == 200
 
 
-def _place_cash_order(client, seed, token='tok-mail-1', email='buyer@example.com'):
+def _place_cash_order(client, seed, app, token='tok-mail-1', email='buyer@example.com'):
+    from models import Collection, db
+    with app.app_context():
+        c = db.session.get(Collection, seed['collection_id'])
+        c.allow_cash_pickup = True
+        db.session.commit()
+    with client.session_transaction() as sess:
+        sess['collection_id'] = seed['collection_id']
     _fill_cart(client, seed)
     body = client.post('/checkout/complete', json={
         'payment_method': 'cash', 'shipping_method': 'pickup',
@@ -43,7 +50,7 @@ def test_order_emails_actually_send(client, seed, outbox, app):
     """Regression for the root cause: rendering a receipt outside a request
     context hit flask_login's current_user (None) and raised AttributeError,
     so confirmation_email_sent_at stayed NULL and nothing was ever delivered."""
-    order_number = _place_cash_order(client, seed)
+    order_number = _place_cash_order(client, seed, app)
     assert len(outbox) >= 1, 'no email was generated for a completed order'
     with app.app_context():
         order = Order.query.filter_by(order_number=order_number).one()
@@ -66,8 +73,8 @@ def test_receipt_renders_with_no_request_context(app, seed):
     assert 'CTX-1' in html
 
 
-def test_both_customer_and_business_emails_are_sent(client, seed, outbox):
-    _place_cash_order(client, seed)
+def test_both_customer_and_business_emails_are_sent(client, seed, outbox, app):
+    _place_cash_order(client, seed, app)
     subjects = [m.subject for m in outbox]
     assert any('receipt' in s.lower() for s in subjects), subjects
     assert any('new order' in s.lower() for s in subjects), subjects
@@ -75,14 +82,14 @@ def test_both_customer_and_business_emails_are_sent(client, seed, outbox):
 
 # ── Sender identity ──────────────────────────────────────────────────────────
 
-def test_sender_shows_the_business_name(client, seed, outbox):
-    _place_cash_order(client, seed)
+def test_sender_shows_the_business_name(client, seed, outbox, app):
+    _place_cash_order(client, seed, app)
     for message in outbox:
         assert SENDER_NAME in str(message.sender), message.sender
 
 
-def test_customer_receipt_has_a_reply_to(client, seed, outbox):
-    _place_cash_order(client, seed)
+def test_customer_receipt_has_a_reply_to(client, seed, outbox, app):
+    _place_cash_order(client, seed, app)
     receipt = next(m for m in outbox if 'receipt' in m.subject.lower())
     assert receipt.reply_to
 
@@ -90,8 +97,8 @@ def test_customer_receipt_has_a_reply_to(client, seed, outbox):
 # ── Receipt content ──────────────────────────────────────────────────────────
 
 @pytest.fixture()
-def receipt(client, seed, outbox):
-    _place_cash_order(client, seed)
+def receipt(client, seed, outbox, app):
+    _place_cash_order(client, seed, app)
     return next(m for m in outbox if 'receipt' in m.subject.lower())
 
 
@@ -130,7 +137,7 @@ def test_receipt_breaks_out_every_money_line(receipt):
 
 
 def test_receipt_totals_are_internally_consistent(client, seed, outbox, app):
-    order_number = _place_cash_order(client, seed)
+    order_number = _place_cash_order(client, seed, app)
     receipt = next(m for m in outbox if 'receipt' in m.subject.lower())
     with app.app_context():
         order = Order.query.filter_by(order_number=order_number).one()
@@ -156,8 +163,8 @@ def test_receipt_has_no_localhost_links(receipt):
 # ── Business alert content ───────────────────────────────────────────────────
 
 @pytest.fixture()
-def business_alert(client, seed, outbox):
-    _place_cash_order(client, seed)
+def business_alert(client, seed, outbox, app):
+    _place_cash_order(client, seed, app)
     return next(m for m in outbox if 'new order' in m.subject.lower())
 
 
@@ -194,7 +201,7 @@ def test_business_alert_shows_personalization(business_alert):
 # ── Idempotency ──────────────────────────────────────────────────────────────
 
 def test_receipt_is_not_sent_twice_for_one_order(client, seed, outbox, app):
-    order_number = _place_cash_order(client, seed)
+    order_number = _place_cash_order(client, seed, app)
     first_count = len(outbox)
 
     with app.app_context():
@@ -205,8 +212,8 @@ def test_receipt_is_not_sent_twice_for_one_order(client, seed, outbox, app):
     assert len(outbox) == first_count, 'a second receipt was generated'
 
 
-def test_resending_the_confirmation_page_does_not_duplicate(client, seed, outbox):
-    order_number = _place_cash_order(client, seed)
+def test_resending_the_confirmation_page_does_not_duplicate(client, seed, outbox, app):
+    order_number = _place_cash_order(client, seed, app)
     before = len(outbox)
     for _ in range(3):
         client.post(f'/checkout/confirmation/{order_number}/send-email')
@@ -215,7 +222,7 @@ def test_resending_the_confirmation_page_does_not_duplicate(client, seed, outbox
 
 def test_force_allows_a_deliberate_resend(client, seed, outbox, app):
     """The owner must still be able to re-send a receipt on request."""
-    order_number = _place_cash_order(client, seed)
+    order_number = _place_cash_order(client, seed, app)
     before = len(outbox)
     with app.app_context():
         from routes.checkout import send_order_confirmation_email
@@ -360,7 +367,7 @@ def test_mail_test_redirect_protects_real_customers(app, seed, outbox, client):
     """With MAIL_TEST_REDIRECT set, no customer address can receive mail."""
     app.config['MAIL_TEST_REDIRECT'] = 'owner-only@example.com'
     try:
-        _place_cash_order(client, seed, email='real-customer@example.com')
+        _place_cash_order(client, seed, app, email='real-customer@example.com')
         assert outbox, 'expected at least one message'
         for message in outbox:
             assert message.recipients == ['owner-only@example.com']
@@ -383,7 +390,7 @@ def test_a_mail_outage_does_not_lose_a_paid_order(client, seed, app):
     # Connection.send is the real work; app.extensions['mail'] is a state
     # object rather than the Mail instance, so patching Mail.send misses it.
     with patch('flask_mail.Connection.send', side_effect=Exception('smtp down')):
-        order_number = _place_cash_order(client, seed, token='tok-outage')
+        order_number = _place_cash_order(client, seed, app, token='tok-outage')
 
     with app.app_context():
         order = Order.query.filter_by(order_number=order_number).one()
@@ -392,7 +399,7 @@ def test_a_mail_outage_does_not_lose_a_paid_order(client, seed, app):
 
 def test_an_order_with_no_email_left_unsent_can_be_retried(client, seed, app, outbox):
     with patch('flask_mail.Connection.send', side_effect=Exception('smtp down')):
-        order_number = _place_cash_order(client, seed, token='tok-retry')
+        order_number = _place_cash_order(client, seed, app, token='tok-retry')
     assert len(outbox) == 0
 
     with app.app_context():
@@ -407,7 +414,7 @@ def test_missing_mail_credentials_are_reported_not_crashed(app, seed, client):
     original = app.config['MAIL_SERVER']
     app.config['MAIL_SERVER'] = None
     try:
-        order_number = _place_cash_order(client, seed, token='tok-nocreds')
+        order_number = _place_cash_order(client, seed, app, token='tok-nocreds')
         assert order_number
     finally:
         app.config['MAIL_SERVER'] = original

@@ -137,6 +137,8 @@ class Collection(db.Model):
     order_opens_at = db.Column(db.DateTime)  # start of ordering window (KC calendar day)
     order_deadline = db.Column(db.DateTime)
     shipping_enabled = db.Column(db.Boolean, default=True)
+    # Cash / pay-at-pickup — only offered at checkout when this is on (group orders)
+    allow_cash_pickup = db.Column(db.Boolean, default=False)
     tax_rate = db.Column(db.Float, default=9.5)  # always KS 9.5%; not user-editable
     
     # Organizer/Admin choices - restrict what team can order (keeps everyone matching)

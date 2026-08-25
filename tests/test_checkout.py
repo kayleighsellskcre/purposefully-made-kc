@@ -98,7 +98,10 @@ def test_reprice_picks_up_a_price_change(app, seed):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _fill_cart(client, seed, qty=1, size='M'):
+def _fill_cart(client, seed, qty=1, size='M', *, app=None, allow_cash=False):
+    if allow_cash:
+        assert app is not None
+        _enable_cash_for_group(client, seed, app)
     resp = client.post('/cart/add', data={
         'product_id': seed['tee_id'], 'size': size, 'color': 'Black',
         'quantity': qty, 'placement': 'center_chest',
@@ -106,6 +109,17 @@ def _fill_cart(client, seed, qty=1, size='M'):
     })
     assert resp.status_code == 200
     return resp
+
+
+def _enable_cash_for_group(client, seed, app):
+    """Cash is only allowed on group orders when the organizer opts in."""
+    from models import Collection, db
+    with app.app_context():
+        collection = db.session.get(Collection, seed['collection_id'])
+        collection.allow_cash_pickup = True
+        db.session.commit()
+    with client.session_transaction() as sess:
+        sess['collection_id'] = seed['collection_id']
 
 
 def _cash_payload(**over):
@@ -129,7 +143,7 @@ def _stripe_intent(amount_cents, status='succeeded', intent_id='pi_test_123'):
 # ── Cash orders ───────────────────────────────────────────────────────────────
 
 def test_cash_order_is_created_as_pending(client, seed, app):
-    _fill_cart(client, seed)
+    _fill_cart(client, seed, app=app, allow_cash=True)
     resp = client.post('/checkout/complete', json=_cash_payload())
     assert resp.status_code == 200
     body = resp.get_json()
@@ -144,7 +158,7 @@ def test_cash_order_is_created_as_pending(client, seed, app):
 
 
 def test_order_totals_match_the_line_items(client, seed, app):
-    _fill_cart(client, seed, qty=3)
+    _fill_cart(client, seed, qty=3, app=app, allow_cash=True)
     body = client.post('/checkout/complete', json=_cash_payload()).get_json()
     with app.app_context():
         order = Order.query.filter_by(order_number=body['order_number']).one()
@@ -154,8 +168,8 @@ def test_order_totals_match_the_line_items(client, seed, app):
         assert order.total == round(order.subtotal + order.tax + order.shipping_cost, 2)
 
 
-def test_cart_is_cleared_after_a_successful_order(client, seed):
-    _fill_cart(client, seed)
+def test_cart_is_cleared_after_a_successful_order(client, seed, app):
+    _fill_cart(client, seed, app=app, allow_cash=True)
     client.post('/checkout/complete', json=_cash_payload())
     with client.session_transaction() as sess:
         assert sess['cart'] == []
@@ -165,6 +179,13 @@ def test_checkout_rejects_an_empty_cart(client, seed):
     resp = client.post('/checkout/complete', json=_cash_payload())
     assert resp.status_code == 400
     assert resp.get_json()['error_code'] == 'CART_EMPTY'
+
+
+def test_cash_rejected_without_group_organizer_opt_in(client, seed):
+    _fill_cart(client, seed)  # no allow_cash
+    resp = client.post('/checkout/complete', json=_cash_payload())
+    assert resp.status_code == 400
+    assert resp.get_json()['error_code'] == 'CASH_NOT_ALLOWED'
 
 
 def test_checkout_requires_an_email(client, seed):
@@ -179,8 +200,8 @@ def test_checkout_requires_a_name(client, seed):
     assert resp.get_json()['error_code'] == 'NAME_REQUIRED'
 
 
-def test_shipping_requires_a_full_address(client, seed):
-    _fill_cart(client, seed)
+def test_shipping_requires_a_full_address(client, seed, app):
+    _fill_cart(client, seed, app=app, allow_cash=True)
     resp = client.post('/checkout/complete', json=_cash_payload(
         shipping_method='shipping', shipping_info={'street': '123 Main'},
     ))
@@ -266,10 +287,10 @@ def test_unknown_payment_method_is_refused(client, seed):
 # ── Duplicate submits ─────────────────────────────────────────────────────────
 
 def test_repeat_submit_returns_the_same_order(client, seed, app):
-    _fill_cart(client, seed)
+    _fill_cart(client, seed, app=app, allow_cash=True)
     first = client.post('/checkout/complete', json=_cash_payload()).get_json()
 
-    _fill_cart(client, seed)
+    _fill_cart(client, seed, app=app, allow_cash=True)
     second = client.post('/checkout/complete', json=_cash_payload()).get_json()
 
     assert second['success'] is True
@@ -280,9 +301,9 @@ def test_repeat_submit_returns_the_same_order(client, seed, app):
 
 
 def test_two_different_tokens_create_two_orders(client, seed, app):
-    _fill_cart(client, seed)
+    _fill_cart(client, seed, app=app, allow_cash=True)
     client.post('/checkout/complete', json=_cash_payload(checkout_token='tok-a'))
-    _fill_cart(client, seed)
+    _fill_cart(client, seed, app=app, allow_cash=True)
     client.post('/checkout/complete', json=_cash_payload(checkout_token='tok-b'))
     with app.app_context():
         assert Order.query.count() == 2
@@ -320,15 +341,15 @@ def test_many_null_checkout_tokens_are_allowed(app, seed):
 
 # ── Confirmation page access ──────────────────────────────────────────────────
 
-def test_buyer_can_see_their_confirmation(client, seed):
-    _fill_cart(client, seed)
+def test_buyer_can_see_their_confirmation(client, seed, app):
+    _fill_cart(client, seed, app=app, allow_cash=True)
     body = client.post('/checkout/complete', json=_cash_payload()).get_json()
     resp = client.get(f"/checkout/confirmation/{body['order_number']}")
     assert resp.status_code == 200
 
 
 def test_a_stranger_cannot_see_someone_elses_confirmation(client, seed, app):
-    _fill_cart(client, seed)
+    _fill_cart(client, seed, app=app, allow_cash=True)
     body = client.post('/checkout/complete', json=_cash_payload()).get_json()
     order_number = body['order_number']
 

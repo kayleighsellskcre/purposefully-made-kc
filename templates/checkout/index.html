@@ -165,15 +165,17 @@
                 <div class="checkout-section">
                     <h2>Payment Method</h2>
                     <div class="payment-tabs">
-                        <button class="payment-tab active" data-method="card">Card / Apple Pay / Google Pay</button>
+                        <button type="button" class="payment-tab active" data-method="card">Card / Apple Pay / Google Pay</button>
                         {% if paypal_client_id %}
-                        <button class="payment-tab" data-method="paypal">PayPal / Venmo</button>
+                        <button type="button" class="payment-tab" data-method="paypal">PayPal / Venmo</button>
                         {% endif %}
-                        <button class="payment-tab" data-method="cash">Cash / Pay at Pickup</button>
+                        {% if allow_cash_payment %}
+                        <button type="button" class="payment-tab" data-method="cash">Cash / Pay at Pickup</button>
+                        {% endif %}
                     </div>
 
                     <div class="payment-content">
-                        <!-- Stripe Payment Element (card, Apple Pay, Google Pay) -->
+                        <!-- Stripe Payment Element (card + Apple Pay / Google Pay only — no Klarna, bank, or Link ACH) -->
                         <div class="payment-panel" id="card-panel">
                             <div id="payment-element"></div>
                             {# role="alert": a declined card is announced the
@@ -191,13 +193,15 @@
                         </div>
                         {% endif %}
 
-                        <!-- Cash Payment -->
+                        <!-- Cash Payment (group orders only, when organizer allows) -->
+                        {% if allow_cash_payment %}
                         <div class="payment-panel" id="cash-panel" style="display: none;">
                             <div class="cash-payment-info">
                                 <p><strong>Pay at pickup or when order is ready.</strong></p>
                                 <p>Your order will be created and you can pay with cash when you collect your items.</p>
                             </div>
                         </div>
+                        {% endif %}
                     </div>
                 </div>
                 
@@ -247,7 +251,7 @@
                         <span id="shipping-amount">${{ "%.2f"|format(totals.shipping_cost) }}</span>
                     </div>
                     <div class="summary-row">
-                        <span>Tax (KS {{ config.KS_SALES_TAX_PERCENT }}%):</span>
+                        <span>Tax:</span>
                         <span id="tax-amount">${{ "%.2f"|format(totals.tax) }}</span>
                     </div>
                     <div class="summary-row total">
@@ -261,13 +265,13 @@
 </div>
 
 {% if paypal_client_id %}
-<script src="https://www.paypal.com/sdk/js?client-id={{ paypal_client_id }}&currency=USD&components=buttons&enable-funding=venmo,paylater" defer></script>
+<script src="https://www.paypal.com/sdk/js?client-id={{ paypal_client_id }}&currency=USD&components=buttons&enable-funding=venmo&disable-funding=credit,card,paylater" defer></script>
 {% endif %}
 <script src="https://js.stripe.com/v3/"></script>
 <script>
 // ── Stripe Payment Element setup ─────────────────────────────────────────────
-// Supports: credit/debit card, Apple Pay, Google Pay — wallets appear when
-// the customer's device/browser supports them. Venmo and bank/ACH are not offered.
+// Card + Apple Pay + Google Pay only. Klarna, bank/ACH, and similar are excluded
+// by creating the PaymentIntent with payment_method_types=['card'] only.
 const stripe = Stripe('{{ stripe_public_key }}');
 
 let stripeElements = null;   // initialized lazily on first card-tab focus
@@ -316,7 +320,11 @@ async function initPaymentElement() {
         });
 
         paymentElement = stripeElements.create('payment', {
-            layout: 'tabs',   // card + Apple Pay / Google Pay wallets when available
+            layout: 'tabs',
+            wallets: {
+                applePay: 'auto',
+                googlePay: 'auto',
+            },
         });
         paymentElement.mount('#payment-element');
     } catch (err) {
@@ -366,7 +374,8 @@ document.querySelectorAll('.payment-tab').forEach(tab => {
         document.getElementById('card-panel').style.display = method === 'card' ? 'block' : 'none';
         const paypalPanel = document.getElementById('paypal-panel');
         if (paypalPanel) paypalPanel.style.display = method === 'paypal' ? 'block' : 'none';
-        document.getElementById('cash-panel').style.display = method === 'cash' ? 'block' : 'none';
+        const cashPanel = document.getElementById('cash-panel');
+        if (cashPanel) cashPanel.style.display = method === 'cash' ? 'block' : 'none';
 
         // Hide the main submit button when PayPal is selected (PayPal has its own button)
         const submitBtn = document.getElementById('submit-payment');
@@ -425,7 +434,7 @@ document.getElementById('submit-payment').addEventListener('click', async () => 
     } else if (currentMethod === 'cash') {
         await handleCashPayment();
     } else {
-        PMKC.showFlash('Please choose card or cash to complete your order.', 'info');
+        PMKC.showFlash('Please choose a payment method to complete your order.', 'info');
     }
 });
 

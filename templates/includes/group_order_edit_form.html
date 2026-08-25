@@ -270,12 +270,18 @@
 
                 <div class="form-group">
                     <label>Sales tax</label>
-                    <p class="form-control-plaintext" style="margin:0;">{{ config.KS_SALES_TAX_PERCENT }}% (Kansas — fixed)</p>
+                    <p class="form-control-plaintext" style="margin:0;">Tax is calculated automatically at checkout</p>
                 </div>
 
                 <div class="form-check">
                     <input type="checkbox" id="shipping_enabled" name="shipping_enabled" {% if collection.shipping_enabled %}checked{% endif %}>
                     <label for="shipping_enabled">Allow shipping (+$11)</label>
+                </div>
+
+                <div class="form-check">
+                    <input type="checkbox" id="allow_cash_pickup" name="allow_cash_pickup" {% if collection.allow_cash_pickup %}checked{% endif %}>
+                    <label for="allow_cash_pickup">Allow cash / pay at pickup</label>
+                    <p class="form-hint" style="margin:0.25rem 0 0 1.5rem;">When checked, shoppers on this group order can choose cash at checkout. Regular shop orders never offer cash.</p>
                 </div>
 
                 <div class="form-check">

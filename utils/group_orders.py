@@ -507,6 +507,7 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
     collection.pickup_address = request.form.get('pickup_address')
     collection.pickup_instructions = request.form.get('pickup_instructions')
     collection.shipping_enabled = request.form.get('shipping_enabled') == 'on'
+    collection.allow_cash_pickup = request.form.get('allow_cash_pickup') == 'on'
     collection.show_in_directory = request.form.get('show_in_directory') == 'on'
     # Tax is fixed at KS 9.5% — ignore any form value so it cannot be adjusted.
     collection.tax_rate = float(current_app.config['KS_SALES_TAX_PERCENT'])

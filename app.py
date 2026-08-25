@@ -152,6 +152,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS order_opens_at TIMESTAMP",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS order_deadline TIMESTAMP",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS shipping_enabled BOOLEAN DEFAULT TRUE",
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS allow_cash_pickup BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS tax_rate DOUBLE PRECISION DEFAULT 9.5",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS restrict_options BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS allowed_colors TEXT",
