@@ -338,8 +338,9 @@ def queue_order_confirmation_email(order_id):
 
 
 def get_cart():
-    """Get cart from session"""
-    return session.get('cart', [])
+    """Get cart (DB-backed when logged in, session for guests)."""
+    from utils.cart_store import get_cart as _get_cart
+    return _get_cart()
 
 
 def reprice_cart(cart, persist=True):
@@ -351,6 +352,7 @@ def reprice_cart(cart, persist=True):
     is empty on the normal path.
     """
     from utils.pricing import price_cart_item
+    from utils.cart_store import save_cart
 
     corrections = []
     for item in cart:
@@ -375,8 +377,7 @@ def reprice_cart(cart, persist=True):
             item['unit_price'] = correct
 
     if corrections and persist:
-        session['cart'] = cart
-        session.modified = True
+        save_cart(cart)
         current_app.logger.warning('cart repriced at checkout: %s', corrections)
     return corrections
 
@@ -602,6 +603,7 @@ def index():
         collection and getattr(collection, 'allow_cash_pickup', False)
     )
     paypal_client_id = (current_app.config.get('PAYPAL_CLIENT_ID') or '').strip()
+    paypal_mode = (current_app.config.get('PAYPAL_MODE') or 'sandbox').strip().lower()
     return render_template('checkout/index.html',
                          cart=enriched_cart,
                          totals=totals,
@@ -611,6 +613,7 @@ def index():
                          allow_cash_payment=allow_cash_payment,
                          stripe_public_key=current_app.config.get('STRIPE_PUBLIC_KEY'),
                          paypal_client_id=paypal_client_id,
+                         paypal_mode=paypal_mode,
                          shipping_flat_rate=current_app.config.get('SHIPPING_FLAT_RATE', 11.00))
 
 
@@ -748,7 +751,8 @@ def payment_return():
                 # denied their own confirmation page.
                 session['checkout_success_token'] = payload.get('checkout_token')
                 session['checkout_success_order'] = result.get('order_number')
-                session['cart'] = []
+                from utils.cart_store import clear_cart as _clear_cart
+                _clear_cart()
                 session.pop('pending_checkout', None)
                 session.pop('collection_id', None)
                 session.modified = True
@@ -808,7 +812,8 @@ def complete():
             if existing:
                 session['checkout_success_token'] = checkout_token
                 session['checkout_success_order'] = existing.order_number
-                session['cart'] = []
+                from utils.cart_store import clear_cart as _clear_cart
+                _clear_cart()
                 session.modified = True
                 return jsonify({
                     'success': True,
@@ -1115,7 +1120,8 @@ def complete():
                 )
                 session['checkout_success_token'] = checkout_token
                 session['checkout_success_order'] = winner.order_number
-                session['cart'] = []
+                from utils.cart_store import clear_cart as _clear_cart
+                _clear_cart()
                 session.pop('collection_id', None)
                 session.modified = True
                 return jsonify({
@@ -1161,7 +1167,8 @@ def complete():
     # answer the browser so SMTP cannot turn a saved order into a timeout.
     session['checkout_success_token'] = checkout_token
     session['checkout_success_order'] = order.order_number
-    session['cart'] = []
+    from utils.cart_store import clear_cart as _clear_cart
+    _clear_cart()
     session.pop('collection_id', None)
     session.modified = True
 

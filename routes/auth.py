@@ -90,9 +90,16 @@ def promote_admin():
 
 
 def _start_fresh_login_session():
-    """New session on login/register so carts and cookies cannot leak across accounts."""
+    """New session on login/register so cookies cannot leak across accounts.
+
+    Guest cart lines are preserved so they can be merged into the account cart
+    after login_user().
+    """
+    guest_cart = session.get('cart') if session.get('cart_owner_id') in (None, 'guest') else None
     session.clear()
     session.permanent = True
+    if guest_cart:
+        session['_pending_guest_cart'] = guest_cart
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -148,6 +155,8 @@ def login():
         db.session.commit()
         _start_fresh_login_session()
         login_user(user, remember=remember)
+        from utils.cart_store import adopt_guest_cart_on_login
+        adopt_guest_cart_on_login(user, session.pop('_pending_guest_cart', None))
 
         next_page = request.args.get('next')
         if not next_page or urlparse(next_page).netloc != '':
@@ -210,6 +219,8 @@ def register():
 
         _start_fresh_login_session()
         login_user(user)
+        from utils.cart_store import adopt_guest_cart_on_login
+        adopt_guest_cart_on_login(user, session.pop('_pending_guest_cart', None))
         flash('Account created successfully!', 'success')
         return redirect(url_for('main.index'))
     

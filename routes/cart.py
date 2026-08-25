@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, session, redirec
 from flask_login import current_user
 from models import Product, Design
 from utils.order_artwork import FRONT_PLACEMENTS, mockup_urls
+from utils.cart_store import get_cart, save_cart, clear_cart, cart_count, cart_fingerprint
 from werkzeug.utils import secure_filename
 from utils.cloud_storage import image_url as _resolve_image_url
 import json
@@ -22,31 +23,6 @@ def _back_overlay_class(meta):
     if meta.get('name') or meta.get('number'):
         return 'back_name_number'
     return 'center_back'
-
-def get_cart():
-    """Get cart from session. Isolate per user - clear if cart belongs to different user."""
-    owner = session.get('cart_owner_id')
-    if current_user.is_authenticated:
-        if owner != current_user.id:
-            session['cart'] = []
-            session['cart_owner_id'] = current_user.id
-            session.modified = True
-    else:
-        if owner not in (None, 'guest'):
-            session['cart'] = []
-            session['cart_owner_id'] = 'guest'
-            session.modified = True
-    if 'cart' not in session:
-        session['cart'] = []
-        session['cart_owner_id'] = current_user.id if current_user.is_authenticated else 'guest'
-        session.modified = True
-    return session['cart']
-
-def save_cart(cart):
-    """Save cart to session"""
-    session['cart'] = cart
-    session['cart_owner_id'] = current_user.id if current_user.is_authenticated else 'guest'
-    session.modified = True
 
 @cart_bp.route('/')
 def index():
@@ -460,12 +436,11 @@ def add():
     
     save_cart(cart)
     
-    cart_count = sum(item['quantity'] for item in cart)
-    
     return jsonify({
         'success': True,
         'message': 'Added to cart',
-        'cart_count': cart_count,
+        'cart_count': cart_count(cart),
+        'cart_fingerprint': cart_fingerprint(cart),
         'notice': mixed_notice,
     })
 
@@ -499,7 +474,11 @@ def update(index):
     cart[index]['quantity'] = quantity
     save_cart(cart)
     
-    return jsonify({'success': True})
+    return jsonify({
+        'success': True,
+        'cart_count': cart_count(cart),
+        'cart_fingerprint': cart_fingerprint(cart),
+    })
 
 
 @cart_bp.route('/remove/<int:index>', methods=['POST'])
@@ -513,12 +492,30 @@ def remove(index):
     cart.pop(index)
     save_cart(cart)
     
-    return jsonify({'success': True})
+    return jsonify({
+        'success': True,
+        'cart_count': cart_count(cart),
+        'cart_fingerprint': cart_fingerprint(cart),
+    })
 
 
 @cart_bp.route('/clear', methods=['POST'])
 def clear():
     """Clear cart"""
-    session['cart'] = []
-    session.modified = True
-    return jsonify({'success': True})
+    clear_cart()
+    return jsonify({
+        'success': True,
+        'cart_count': 0,
+        'cart_fingerprint': cart_fingerprint([]),
+    })
+
+
+@cart_bp.route('/status')
+def status():
+    """Lightweight cart fingerprint for cross-device sync polling."""
+    cart = get_cart()
+    return jsonify({
+        'cart_count': cart_count(cart),
+        'cart_fingerprint': cart_fingerprint(cart),
+        'authenticated': bool(current_user.is_authenticated),
+    })

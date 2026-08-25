@@ -25,6 +25,10 @@ class User(UserMixin, db.Model):
     reset_token         = db.Column(db.String(128), nullable=True, index=True)
     reset_token_expires = db.Column(db.DateTime, nullable=True)
 
+    # Logged-in cart shared across devices (JSON array of cart line dicts)
+    cart_json = db.Column(db.Text, nullable=True)
+    cart_updated_at = db.Column(db.DateTime, nullable=True)
+
     # Relationships
     addresses = db.relationship('Address', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     orders = db.relationship('Order', backref='user', lazy='dynamic')

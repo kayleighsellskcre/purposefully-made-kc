@@ -283,7 +283,13 @@
 </div>
 
 {% if paypal_client_id %}
-<script src="https://www.paypal.com/sdk/js?client-id={{ paypal_client_id }}&currency=USD&intent=capture&components=buttons,funding-eligibility&enable-funding=venmo&disable-funding=credit,card,paylater"></script>
+{# enable-funding=venmo forces Venmo into the button stack for US/USD.
+   Sandbox needs buyer-country=US or Venmo stays hidden. #}
+{% set paypal_sdk_qs = 'client-id=' ~ paypal_client_id ~ '&currency=USD&intent=capture&commit=true&components=buttons,funding-eligibility&enable-funding=venmo&disable-funding=credit,card,paylater&locale=en_US' %}
+{% if (paypal_mode or 'sandbox') == 'sandbox' %}
+{% set paypal_sdk_qs = paypal_sdk_qs ~ '&buyer-country=US' %}
+{% endif %}
+<script src="https://www.paypal.com/sdk/js?{{ paypal_sdk_qs }}"></script>
 {% endif %}
 <script src="https://js.stripe.com/v3/"></script>
 <script>
@@ -726,17 +732,19 @@ function buildOrderPayload(paymentId, paymentMethodOverride) {
 }
 
 {% if paypal_client_id %}
-// ── PayPal + standalone Venmo buttons ────────────────────────────────────────
+// ── PayPal + Venmo (standalone buttons, US/USD) ──────────────────────────────
 function buildPayPalButtonConfig(fundingSource) {
     const errEl = document.getElementById('paypal-errors');
+    const isVenmo = fundingSource === paypal.FUNDING.VENMO;
     return {
         fundingSource: fundingSource,
         style: {
             layout: 'vertical',
-            color: fundingSource === paypal.FUNDING.VENMO ? 'blue' : 'gold',
+            color: isVenmo ? 'blue' : 'gold',
             shape: 'rect',
-            label: fundingSource === paypal.FUNDING.VENMO ? 'pay' : 'paypal',
+            label: isVenmo ? 'pay' : 'paypal',
             height: 48,
+            tagline: false,
         },
         createOrder: async function() {
             const fieldError = validateCheckoutFields();
@@ -775,7 +783,9 @@ function buildPayPalButtonConfig(fundingSource) {
             }
         },
         onError: function() {
-            const msg = 'PayPal encountered an error. Please try again or choose card payment.';
+            const msg = isVenmo
+                ? 'Venmo could not complete checkout. Try PayPal, or open this page in Safari (iPhone) / Chrome (Android) with the Venmo app installed.'
+                : 'PayPal encountered an error. Please try again or choose card payment.';
             if (errEl) { errEl.textContent = msg; errEl.style.display = ''; }
             PMKC.showFlash(msg, 'error');
         },
@@ -787,23 +797,52 @@ function buildPayPalButtonConfig(fundingSource) {
 
 function renderPayPalFundingButton(fundingSource, containerId) {
     const mount = document.getElementById(containerId);
-    if (!mount || typeof paypal === 'undefined') return false;
-    const button = paypal.Buttons(buildPayPalButtonConfig(fundingSource));
-    if (!button.isEligible()) return false;
-    button.render('#' + containerId);
-    return true;
+    if (!mount || typeof paypal === 'undefined') return Promise.resolve(false);
+    mount.innerHTML = '';
+    try {
+        const button = paypal.Buttons(buildPayPalButtonConfig(fundingSource));
+        // Try render even when isEligible is false — enable-funding=venmo should
+        // allow it for US/USD; a false-negative was hiding Venmo on phones.
+        return button.render('#' + containerId).then(function () {
+            return mount.childNodes.length > 0;
+        }).catch(function () {
+            return false;
+        });
+    } catch (err) {
+        return Promise.resolve(false);
+    }
 }
 
 function initPayPalButtons() {
     if (typeof paypal === 'undefined') return;
-    if (!document.getElementById('paypal-buttons-container')) return;
-    if (document.getElementById('paypal-buttons-container').dataset.ready === '1') return;
-    document.getElementById('paypal-buttons-container').dataset.ready = '1';
+    const stack = document.getElementById('paypal-buttons-container');
+    if (!stack || stack.dataset.ready === '1') return;
+    stack.dataset.ready = '1';
 
-    renderPayPalFundingButton(paypal.FUNDING.PAYPAL, 'paypal-button');
-    const venmoShown = renderPayPalFundingButton(paypal.FUNDING.VENMO, 'venmo-button');
-    const venmoNote = document.getElementById('venmo-unavailable');
-    if (venmoNote) venmoNote.hidden = !!venmoShown;
+    Promise.all([
+        renderPayPalFundingButton(paypal.FUNDING.PAYPAL, 'paypal-button'),
+        renderPayPalFundingButton(paypal.FUNDING.VENMO, 'venmo-button'),
+    ]).then(function (results) {
+        const venmoShown = !!results[1];
+        const venmoNote = document.getElementById('venmo-unavailable');
+        if (venmoNote) {
+            venmoNote.hidden = venmoShown;
+            if (!venmoShown) {
+                venmoNote.textContent = 'Venmo needs a US phone with the Venmo app, using Safari (iPhone) or Chrome (Android). If you still do not see it, Venmo may need to be enabled on the store PayPal account.';
+            }
+        }
+        // Last resort: one vertical smart stack (PayPal SDK inserts Venmo when eligible)
+        if (!results[0] && !venmoShown) {
+            const cfg = buildPayPalButtonConfig(paypal.FUNDING.PAYPAL);
+            paypal.Buttons({
+                style: { layout: 'vertical', color: 'gold', shape: 'rect', height: 48, tagline: false },
+                createOrder: cfg.createOrder,
+                onApprove: cfg.onApprove,
+                onError: cfg.onError,
+                onCancel: cfg.onCancel,
+            }).render('#paypal-button');
+        }
+    });
 }
 
 function whenPayPalReady(cb, tries) {
@@ -812,7 +851,7 @@ function whenPayPalReady(cb, tries) {
         cb();
         return;
     }
-    if (tries > 80) return;
+    if (tries > 100) return;
     setTimeout(function() { whenPayPalReady(cb, tries + 1); }, 100);
 }
 

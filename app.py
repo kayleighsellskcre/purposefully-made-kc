@@ -180,6 +180,9 @@ def create_app(config_class=Config):
                     "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP",
                     "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS reset_token VARCHAR(128)",
                     "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP",
+                    # Logged-in cart shared across phone + computer
+                    "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS cart_json TEXT",
+                    "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS cart_updated_at TIMESTAMP",
                     # collection.created_by_user_id — tracks who created a group order (for delete-design permission)
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER REFERENCES \"user\"(id)",
                     # Group-order organizer options + public directory listing
@@ -595,17 +598,17 @@ def create_app(config_class=Config):
     def inject_globals():
         from flask_login import current_user as cu
         cart_count = 0
+        cart_fingerprint = ''
+        cart = []
         try:
-            cart = session.get('cart')
-            if isinstance(cart, list):
-                for item in cart:
-                    if isinstance(item, dict):
-                        try:
-                            cart_count += int(item.get('quantity') or 0)
-                        except (TypeError, ValueError):
-                            pass
+            from utils.cart_store import get_cart as _get_cart, cart_count as _cart_count, cart_fingerprint as _cart_fp
+            cart = _get_cart()
+            cart_count = _cart_count(cart)
+            cart_fingerprint = _cart_fp(cart)
         except Exception:
             cart_count = 0
+            cart_fingerprint = ''
+            cart = session.get('cart') if isinstance(session.get('cart'), list) else []
         admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').lower().strip()
 
         # Fresh DB lookup so is_site_admin is always accurate.
@@ -624,7 +627,7 @@ def create_app(config_class=Config):
         active_group_order = None
         try:
             from utils.group_orders import get_active_collection
-            active_group_order = get_active_collection(session.get('cart'))
+            active_group_order = get_active_collection(cart)
         except Exception:
             active_group_order = None
         # Canonical URL and origin for <link rel="canonical"> and Open Graph.
@@ -659,6 +662,7 @@ def create_app(config_class=Config):
 
         return {
             'cart_count': cart_count,
+            'cart_fingerprint': cart_fingerprint,
             'current_year': _dt.now().year,
             'admin_email': admin_email,
             'is_site_admin': is_site_admin,

@@ -138,15 +138,13 @@
                         </svg>
                     </a>
 
-                    <a href="{{ url_for('cart.index') }}" class="cart-link" aria-label="Shopping cart" title="Shopping cart">
+                    <a href="{{ url_for('cart.index') }}" class="cart-link" aria-label="Shopping cart" title="Shopping cart" data-cart-link>
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <circle cx="9" cy="21" r="1"></circle>
                             <circle cx="20" cy="21" r="1"></circle>
                             <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
                         </svg>
-                        {% if cart_count > 0 %}
-                            <span class="cart-count">{{ cart_count }}</span>
-                        {% endif %}
+                        <span class="cart-count" data-cart-count {% if cart_count <= 0 %}hidden{% endif %}>{{ cart_count if cart_count > 0 else '' }}</span>
                     </a>
 
                     <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Open menu" aria-expanded="false">
@@ -344,5 +342,51 @@
         }, true);
     })();
     </script>
+    {# Keep logged-in carts in sync across phone + computer. Guests stay session-only. #}
+    {% if current_user.is_authenticated %}
+    <script>
+    (function () {
+        var fingerprint = {{ (cart_fingerprint or '')|tojson }};
+        var onCartPage = {{ 'true' if request.endpoint == 'cart.index' else 'false' }};
+
+        function applyCount(count) {
+            document.querySelectorAll('[data-cart-count]').forEach(function (el) {
+                var n = parseInt(count, 10) || 0;
+                if (n > 0) {
+                    el.hidden = false;
+                    el.textContent = String(n);
+                } else {
+                    el.hidden = true;
+                    el.textContent = '';
+                }
+            });
+        }
+
+        function pollCart() {
+            if (document.hidden) return;
+            fetch('/cart/status', { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (data) {
+                    if (!data) return;
+                    applyCount(data.cart_count);
+                    if (data.cart_fingerprint && data.cart_fingerprint !== fingerprint) {
+                        fingerprint = data.cart_fingerprint;
+                        if (onCartPage) {
+                            window.location.reload();
+                        }
+                    }
+                })
+                .catch(function () {});
+        }
+
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden) pollCart();
+        });
+        window.addEventListener('focus', pollCart);
+        setInterval(pollCart, 8000);
+        setTimeout(pollCart, 1500);
+    })();
+    </script>
+    {% endif %}
 </body>
 </html>
