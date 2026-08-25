@@ -167,6 +167,13 @@ _BRAND_PREFIXES = (
 )
 
 _AGE_ORDER = {'adult': 0, 'youth': 1, 'toddler': 2, 'baby': 3}
+_AGE_LABELS = (
+    ('adult', 'Adult'),
+    ('youth', 'Youth'),
+    ('toddler', 'Toddler'),
+    ('baby', 'Baby'),
+)
+_CATEGORY_ORDER = {key: i for i, (key, _label) in enumerate(SHOP_CATEGORIES)}
 
 
 def infer_brand(item):
@@ -178,6 +185,40 @@ def infer_brand(item):
         if style.startswith(prefix):
             return brand
     return 'Bella+Canvas' if style else ''
+
+
+def catalog_sort_key(product):
+    """Adult → Youth → Toddler → Baby, then garment type, brand, name."""
+    age = getattr(product, 'display_age', None) or infer_age(product) or ''
+    category = getattr(product, 'display_category', None) or infer_category(product) or ''
+    brand = (getattr(product, 'display_brand', None) or infer_brand(product) or '').lower()
+    return (
+        _AGE_ORDER.get(age, 9),
+        _CATEGORY_ORDER.get(category, 99),
+        brand,
+        (getattr(product, 'name', None) or ''),
+    )
+
+
+def sort_catalog(products):
+    items = list(products or [])
+    items.sort(key=catalog_sort_key)
+    return items
+
+
+def group_catalog_by_age(products):
+    """Split a sorted catalog into Adult / Youth / Toddler / Baby sections."""
+    buckets = {key: [] for key, _label in _AGE_LABELS}
+    for product in products or []:
+        age = getattr(product, 'display_age', None) or infer_age(product) or 'adult'
+        if age not in buckets:
+            age = 'adult'
+        buckets[age].append(product)
+    return [
+        {'key': key, 'label': label, 'products': buckets[key]}
+        for key, label in _AGE_LABELS
+        if buckets[key]
+    ]
 
 
 def prepare_catalog(products, *, scan_folders=True):
@@ -213,13 +254,7 @@ def prepare_catalog(products, *, scan_folders=True):
                             preview = f'/static/images/products/{folder}/{fronts[0]}'
                             break
         product.preview_image_url = preview
-    items.sort(key=lambda p: (
-        _AGE_ORDER.get(getattr(p, 'display_age', None), 9),
-        getattr(p, 'display_category', None) or '',
-        (getattr(p, 'display_brand', None) or '').lower(),
-        p.name or '',
-    ))
-    return items
+    return sort_catalog(items)
 
 
 def catalog_filter_options(products):

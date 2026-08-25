@@ -650,15 +650,20 @@ def create_payment_intent():
         intent = stripe.PaymentIntent.create(
             amount=int(round(totals['total'] * 100)),
             currency='usd',
-            # Explicit card-only list: Apple Pay / Google Pay still appear as
-            # wallets. Do NOT use automatic_payment_methods here — that would
-            # surface Klarna, bank debit, and other methods from the Dashboard.
+            # Card only. Apple Pay / Google Pay attach as wallets on 'card'.
+            # Never enable automatic_payment_methods — that pulls Bank / Klarna
+            # / Link ACH from the Stripe Dashboard into the Payment Element.
             payment_method_types=['card'],
-            # Statement descriptor shown on customer's card statement (max 22 chars)
+            payment_method_options={
+                'card': {
+                    # Prefer 3D Secure when the card network requests it
+                    'request_three_d_secure': 'automatic',
+                },
+            },
             statement_descriptor_suffix='PMKC ORDER',
             metadata={
-                'shipping_method': shipping_method
-            }
+                'shipping_method': shipping_method,
+            },
         )
 
         return jsonify({

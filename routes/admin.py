@@ -71,10 +71,25 @@ def _save_collection_design(file, user_id):
     Skip background-cut here — that pipeline can take minutes on a phone
     photo and freeze Create Group Order on 'Creating…'. The file is stored
     as uploaded; cut happens later when someone actually prints it.
+
+    Organizer / customer uploads stay on that user's My Designs. Admin
+    uploads are group-order-only (no uploaded_by_user_id) so they do not
+    clutter the admin account library.
     """
-    design = _save_uploaded_design(file, user_id, process_artwork=False)
+    owner_id = user_id
+    if user_id:
+        from models import User
+        uploader = User.query.get(user_id)
+        if uploader is not None and getattr(uploader, 'is_admin', False):
+            owner_id = None
+
+    design = _save_uploaded_design(file, owner_id, process_artwork=False)
     if design is not None:
         design.is_gallery = False
+        # Ensure admin group-order logos never land in My Designs even if
+        # _save_uploaded_design defaults change later.
+        if owner_id is None:
+            design.uploaded_by_user_id = None
     return design
 
 

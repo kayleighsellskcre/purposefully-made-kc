@@ -7,11 +7,13 @@ from utils.json_fields import parse_json_list, parse_json_object
 from utils.product_filters import (
     canonical_category_param,
     catalog_filter_options,
+    group_catalog_by_age,
     infer_age,
     infer_category,
     infer_fit,
     matches_filters,
     prepare_catalog,
+    sort_catalog,
 )
 from utils.sizes import shop_sizes_for_product
 from utils.fonts import CUSTOMIZE_BACK_FONTS, GROUP_ORDER_FONTS
@@ -46,7 +48,7 @@ def index():
                 )
             )
         
-        products = query.order_by(Product.style_number).all()
+        products = query.all()
         products = [
             p for p in products
             if matches_filters(p, age_group=age_group, category=category, fit_type=fit_type)
@@ -90,6 +92,10 @@ def index():
             product.display_category = infer_category(product)
             product.display_age = infer_age(product)
             product.display_fit = infer_fit(product)
+
+        # Adult → Youth → Toddler → Baby, then garment type within each age
+        products = sort_catalog(products)
+        product_sections = group_catalog_by_age(products)
         
         categories = db.session.query(Product.category).filter(
             Product.is_active == True
@@ -162,6 +168,7 @@ def index():
 
         return render_template('shop/index.html', 
                              products=products,
+                             product_sections=product_sections,
                              categories=categories,
                              fit_types=fit_types,
                              neck_styles=neck_styles,
@@ -185,6 +192,7 @@ def index():
         traceback.print_exc()
         return render_template('shop/index.html', 
                              products=[],
+                             product_sections=[],
                              categories=[],
                              fit_types=[],
                              neck_styles=[],

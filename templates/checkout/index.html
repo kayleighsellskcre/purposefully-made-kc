@@ -178,9 +178,18 @@
                     </div>
 
                     <div class="payment-content">
-                        <!-- Stripe Payment Element (card + Apple Pay / Google Pay only — no Klarna, bank, or Link ACH) -->
+                        <!-- Card + wallets: Express Checkout for Apple/Google Pay;
+                             Payment Element locked to card only (no Bank / Link / Klarna). -->
                         <div class="payment-panel" id="card-panel">
+                            <div id="express-checkout-element"></div>
+                            <div id="express-checkout-separator" class="express-checkout-separator" hidden>
+                                <span>Or pay with card</span>
+                            </div>
                             <div id="payment-element"></div>
+                            <p class="payment-wallet-hint">
+                                Apple Pay appears on supported Apple devices (Safari / iPhone).
+                                Google Pay appears when available on this device.
+                            </p>
                             {# role="alert": a declined card is announced the
                                moment Stripe reports it, rather than silently
                                appearing where a screen reader user never sees it. #}
@@ -272,33 +281,78 @@
 {% endif %}
 <script src="https://js.stripe.com/v3/"></script>
 <script>
-// ── Stripe Payment Element setup ─────────────────────────────────────────────
-// Card + Apple Pay + Google Pay only. Klarna, bank/ACH, and similar are excluded
-// by creating the PaymentIntent with payment_method_types=['card'] only.
+// ── Stripe setup ─────────────────────────────────────────────────────────────
+// Security model:
+//   1) Server creates a PaymentIntent with payment_method_types=['card'] only
+//      (no us_bank_account / Klarna / ACH).
+//   2) Express Checkout Element shows Apple Pay / Google Pay when the device
+//      supports them.
+//   3) Payment Element is card-only with Link disabled — prevents the Bank tab.
 const stripe = Stripe('{{ stripe_public_key }}');
 
-let stripeElements = null;   // initialized lazily on first card-tab focus
+let stripeElements = null;
 let paymentElement = null;
+let expressCheckoutElement = null;
 let clientSecretCache = null;
 const shippingFlatRate = {{ shipping_flat_rate|default(11) }};
 
 async function resetPaymentElement() {
+    if (expressCheckoutElement) {
+        try { expressCheckoutElement.unmount(); } catch (e) {}
+        expressCheckoutElement = null;
+    }
     if (paymentElement) {
         try { paymentElement.unmount(); } catch (e) {}
         paymentElement = null;
-        stripeElements = null;
-        clientSecretCache = null;
     }
+    stripeElements = null;
+    clientSecretCache = null;
     const mount = document.getElementById('payment-element');
     if (mount) mount.innerHTML = '';
+    const expressMount = document.getElementById('express-checkout-element');
+    if (expressMount) expressMount.innerHTML = '';
+    const sep = document.getElementById('express-checkout-separator');
+    if (sep) sep.hidden = true;
     await initPaymentElement();
 }
 
+async function stashCheckoutForWallets() {
+    try {
+        await fetch('/checkout/prepare', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(buildOrderPayload(null, 'stripe'))
+        });
+    } catch (e) {
+        // Non-fatal for on-page card; wallets need this for return_url flow.
+    }
+}
+
+async function confirmStripeElementsPayment() {
+    const firstName = (document.getElementById('first_name') || {}).value || '';
+    const lastName  = (document.getElementById('last_name')  || {}).value || '';
+    const email     = (document.getElementById('email')       || {}).value || '';
+
+    const {error} = await stripe.confirmPayment({
+        elements: stripeElements,
+        confirmParams: {
+            return_url: window.location.origin + '/checkout/payment-return',
+            payment_method_data: {
+                billing_details: {
+                    name: (firstName + ' ' + lastName).trim(),
+                    email: email,
+                }
+            }
+        },
+        redirect: 'if_required',
+    });
+    return error || null;
+}
+
 async function initPaymentElement() {
-    if (paymentElement) return;  // already mounted
+    if (paymentElement) return;
 
     try {
-        // Fetch a PaymentIntent so the Payment Element knows the amount
         const resp = await fetch('/checkout/create-payment-intent', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -322,12 +376,65 @@ async function initPaymentElement() {
             }
         });
 
+        // Dedicated Apple Pay / Google Pay buttons (only when the browser/device supports them)
+        const expressMount = document.getElementById('express-checkout-element');
+        if (expressMount) {
+            expressCheckoutElement = stripeElements.create('expressCheckout', {
+                buttonHeight: 48,
+                paymentMethods: {
+                    applePay: 'auto',
+                    googlePay: 'auto',
+                    link: 'never',
+                    paypal: 'never',
+                    amazonPay: 'never',
+                    klarna: 'never',
+                },
+            });
+            expressCheckoutElement.mount('#express-checkout-element');
+            expressCheckoutElement.on('ready', function (event) {
+                const sep = document.getElementById('express-checkout-separator');
+                const methods = (event && event.availablePaymentMethods) || {};
+                const hasWallet = !!(methods.applePay || methods.googlePay);
+                if (sep) sep.hidden = !hasWallet;
+            });
+            expressCheckoutElement.on('click', function (event) {
+                const fieldError = validateCheckoutFields();
+                if (fieldError) {
+                    event.reject();
+                    PMKC.showFlash(fieldError, 'error');
+                    return;
+                }
+                event.resolve();
+            });
+            expressCheckoutElement.on('confirm', async function () {
+                if (placingOrder) return;
+                placingOrder = true;
+                const button = document.getElementById('submit-payment');
+                if (button) {
+                    button.disabled = true;
+                    button.textContent = 'Processing...';
+                }
+                await stashCheckoutForWallets();
+                const error = await confirmStripeElementsPayment();
+                if (error) {
+                    document.getElementById('card-errors').textContent = error.message || 'Payment failed. Please try again.';
+                    restorePayButton();
+                    return;
+                }
+                const {paymentIntent} = await stripe.retrievePaymentIntent(clientSecretCache);
+                await completeOrder(paymentIntent.id);
+            });
+        }
+
+        // Card entry only — Link/Bank chrome inside Payment Element is disabled
         paymentElement = stripeElements.create('payment', {
             layout: 'tabs',
             wallets: {
-                applePay: 'auto',
-                googlePay: 'auto',
+                applePay: 'never',
+                googlePay: 'never',
+                link: 'never',
             },
+            paymentMethodOrder: ['card'],
         });
         paymentElement.mount('#payment-element');
     } catch (err) {
@@ -506,46 +613,12 @@ async function handleStripePayment() {
     button.disabled = true;
     button.textContent = 'Processing...';
 
-    // Wallet payments (Apple Pay, Google Pay) may leave the page to
-    // authorize and come back with only a PaymentIntent id, so hand the form
-    // to the server first or these details are lost.
-    try {
-        await fetch('/checkout/prepare', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(buildOrderPayload(null, 'stripe'))
-        });
-    } catch (e) {
-        // Non-fatal: the on-page card flow posts the same details itself.
-    }
+    await stashCheckoutForWallets();
 
     try {
-        // confirmPayment handles card, Apple Pay, and Google Pay.
-        // On success the customer is redirected to /checkout/payment-return?...
-        // which reads the PaymentIntent result and calls completeOrder.
-        const firstName = (document.getElementById('first_name') || {}).value || '';
-        const lastName  = (document.getElementById('last_name')  || {}).value || '';
-        const email     = (document.getElementById('email')       || {}).value || '';
-
-        const {error} = await stripe.confirmPayment({
-            elements: stripeElements,
-            confirmParams: {
-                return_url: window.location.origin + '/checkout/payment-return',
-                payment_method_data: {
-                    billing_details: {
-                        name: (firstName + ' ' + lastName).trim(),
-                        email: email,
-                    }
-                }
-            },
-            // redirect: 'if_required' — stays on page for card payments (no redirect),
-            // redirects only for wallet payments that need it.
-            redirect: 'if_required',
-        });
+        const error = await confirmStripeElementsPayment();
 
         if (error) {
-            // Shown inline in the Payment Element for card errors,
-            // or in the error div for unexpected errors.
             if (error.type === 'card_error' || error.type === 'validation_error') {
                 document.getElementById('card-errors').textContent = error.message;
             } else {
@@ -554,7 +627,6 @@ async function handleStripePayment() {
             restorePayButton();
         } else {
             // Payment succeeded without redirect (card payment)
-            // Retrieve the PaymentIntent to get its ID
             const {paymentIntent} = await stripe.retrievePaymentIntent(clientSecretCache);
             await completeOrder(paymentIntent.id);
         }
@@ -854,6 +926,38 @@ async function completeOrder(paymentId, paymentMethodOverride) {
     border-color: var(--accent-color);
     background: var(--secondary-color);
     color: var(--accent-color);
+}
+
+.express-checkout-separator {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 1rem 0;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.express-checkout-separator::before,
+.express-checkout-separator::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-color);
+}
+
+.express-checkout-separator[hidden] {
+    display: none;
+}
+
+.payment-wallet-hint {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: 0.75rem 0 0;
+    line-height: 1.4;
+}
+
+#express-checkout-element {
+    margin-bottom: 0.25rem;
 }
 
 #card-element {

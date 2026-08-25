@@ -186,14 +186,29 @@
                 {% if products %}
                 <div class="shop-header">
                     <p class="product-count">{{ products|length }} products</p>
+                    {% if product_sections|length > 1 %}
+                    <nav class="shop-age-jump" aria-label="Jump to age group">
+                        {% for section in product_sections %}
+                        <a href="#shop-{{ section.key }}">{{ section.label }}</a>{% if not loop.last %}<span aria-hidden="true">·</span>{% endif %}
+                        {% endfor %}
+                    </nav>
+                    {% endif %}
                 </div>
-                
-                <div class="products-grid">
-                    {% for product in products %}
+
+                {% set ns = namespace(card_index=0) %}
+                {% for section in product_sections %}
+                <section class="shop-age-section" id="shop-{{ section.key }}" aria-labelledby="shop-heading-{{ section.key }}">
+                    <div class="shop-age-heading-row">
+                        <h2 class="shop-age-heading" id="shop-heading-{{ section.key }}">{{ section.label }}</h2>
+                        <span class="shop-age-count">{{ section.products|length }} style{% if section.products|length != 1 %}s{% endif %}</span>
+                    </div>
+                    <div class="products-grid">
+                    {% for product in section.products %}
                     {# The colour carousel below is a nested loop, whose own `loop`
                        shadows this one. Aliased so the image tags can tell which
                        cards are in the first row and should not be lazy-loaded. #}
                     {% set product_loop = loop %}
+                    {% set card_index = ns.card_index %}
                     <div class="product-card">
                         <!-- Favorite Button -->
                         {# Every card's button announced the same "Add to favorites",
@@ -232,7 +247,7 @@
                                                is when the browser fetches it. #}
                                             <img src="{{ variant.front_image_url }}"
                                                  alt="{{ product.name }} - {{ variant.color_name }}"
-                                                 {% if loop.first and product_loop.index0 < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
+                                                 {% if loop.first and card_index < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
                                                  referrerpolicy="no-referrer"
                                                  onerror="{% if loop.first %}this.style.display='none';this.parentElement.querySelector('.no-mockup-msg').style.display='flex'{% else %}this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'{% endif %}">
                                             {% if loop.first %}<div class="no-mockup-msg" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;background:linear-gradient(135deg,#fdf8f4 0%,#f5ede4 100%);">
@@ -268,7 +283,7 @@
                                 <div class="product-image" style="position:relative">
                                     <img src="{{ product.fallback_image_url or url_for('static', filename='img/products/' + product.style_number + '.jpg') }}"
                                          alt="{{ product.name }}"
-                                         {% if product_loop.index0 < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
+                                         {% if card_index < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
                                          onerror="this.style.display='none';this.parentElement.querySelector('.no-mockup-msg').style.display='flex'">
                                     <div class="no-mockup-msg" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;background:linear-gradient(135deg,#fdf8f4 0%,#f5ede4 100%);">
                                         <div style="font-size:2.5rem;margin-bottom:0.5rem">📸</div>
@@ -280,10 +295,8 @@
                             </div>
                             
                             <div class="product-info">
-                                {# h2: each card is a section under the page h1,
-                                   so h3 skipped a level. .product-name carries
-                                   the size, so this looks identical. #}
-                                <h2 class="product-name">{{ product.name }}</h2>
+                                {# h3 under the age-group h2 so heading order stays sensible. #}
+                                <h3 class="product-name">{{ product.name }}</h3>
                                 <p class="product-style">{% if product.brand %}{{ product.brand }} · {% endif %}Style {{ product.style_number }}</p>
                                 {% if product.display_category or product.category %}
                                 <p class="product-category">{{ product.display_category or product.category }}</p>
@@ -293,8 +306,11 @@
                             </div>
                         </a>
                     </div>
+                    {% set ns.card_index = ns.card_index + 1 %}
                     {% endfor %}
-                </div>
+                    </div>
+                </section>
+                {% endfor %}
                 {% else %}
                 <div class="empty-state">
                     <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -634,13 +650,74 @@
 }
 
 .shop-header {
-    margin-bottom: 2rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+    margin-bottom: 1.5rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--border-color);
 }
 
 .product-count {
     color: var(--text-secondary);
+}
+
+.shop-age-jump {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem 0.65rem;
+    font-size: 0.9rem;
+}
+
+.shop-age-jump a {
+    color: var(--accent-color);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.shop-age-jump a:hover {
+    text-decoration: underline;
+}
+
+.shop-age-jump span {
+    color: rgba(184, 124, 111, 0.45);
+}
+
+.shop-age-section {
+    margin-bottom: 2.75rem;
+    scroll-margin-top: 6rem;
+}
+
+.shop-age-section:last-child {
+    margin-bottom: 0;
+}
+
+.shop-age-heading-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid rgba(184, 124, 111, 0.28);
+}
+
+.shop-age-heading {
+    margin: 0;
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: clamp(1.45rem, 2.4vw, 1.85rem);
+    font-weight: 600;
+    color: var(--text-primary, #3a3d48);
+    letter-spacing: 0.01em;
+}
+
+.shop-age-count {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
 }
 
 .products-grid {
