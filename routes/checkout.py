@@ -651,12 +651,11 @@ def create_payment_intent():
             amount=int(round(totals['total'] * 100)),
             currency='usd',
             # Card only. Apple Pay / Google Pay attach as wallets on 'card'.
-            # Never enable automatic_payment_methods — that pulls Bank / Klarna
-            # / Link ACH from the Stripe Dashboard into the Payment Element.
+            # Never use automatic_payment_methods — Dashboard methods like
+            # Klarna / bank would otherwise appear in Stripe Elements UIs.
             payment_method_types=['card'],
             payment_method_options={
                 'card': {
-                    # Prefer 3D Secure when the card network requests it
                     'request_three_d_secure': 'automatic',
                 },
             },

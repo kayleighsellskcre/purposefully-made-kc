@@ -178,14 +178,14 @@
                     </div>
 
                     <div class="payment-content">
-                        <!-- Card + wallets: Express Checkout for Apple/Google Pay;
-                             Payment Element locked to card only (no Bank / Link / Klarna). -->
+                        <!-- Card Element (never shows Bank / Klarna / Link tabs) +
+                             Express Checkout for Apple Pay / Google Pay when available. -->
                         <div class="payment-panel" id="card-panel">
                             <div id="express-checkout-element"></div>
                             <div id="express-checkout-separator" class="express-checkout-separator" hidden>
                                 <span>Or pay with card</span>
                             </div>
-                            <div id="payment-element"></div>
+                            <div id="card-element"></div>
                             <p class="payment-wallet-hint">
                                 Apple Pay appears on supported Apple devices (Safari / iPhone).
                                 Google Pay appears when available on this device.
@@ -199,8 +199,14 @@
                         <!-- PayPal / Venmo -->
                         {% if paypal_client_id %}
                         <div class="payment-panel" id="paypal-panel" style="display:none;">
-                            <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:1rem;">Pay securely with your PayPal account or Venmo.</p>
-                            <div id="paypal-buttons-container"></div>
+                            <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:1rem;">Pay securely with PayPal or Venmo.</p>
+                            <div id="paypal-buttons-container" class="paypal-buttons-stack">
+                                <div id="paypal-button" class="paypal-funding-slot"></div>
+                                <div id="venmo-button" class="paypal-funding-slot"></div>
+                            </div>
+                            <p id="venmo-unavailable" class="payment-wallet-hint" hidden>
+                                Venmo isn’t available in this browser right now. Use PayPal here, or open checkout in Safari / Chrome on your phone.
+                            </p>
                             <div id="paypal-errors" class="error-message" role="alert" aria-live="assertive" style="margin-top:0.75rem;display:none;"></div>
                         </div>
                         {% endif %}
@@ -277,37 +283,50 @@
 </div>
 
 {% if paypal_client_id %}
-<script src="https://www.paypal.com/sdk/js?client-id={{ paypal_client_id }}&currency=USD&components=buttons&enable-funding=venmo&disable-funding=credit,card,paylater" defer></script>
+<script src="https://www.paypal.com/sdk/js?client-id={{ paypal_client_id }}&currency=USD&intent=capture&components=buttons,funding-eligibility&enable-funding=venmo&disable-funding=credit,card,paylater"></script>
 {% endif %}
 <script src="https://js.stripe.com/v3/"></script>
 <script>
 // ── Stripe setup ─────────────────────────────────────────────────────────────
 // Security model:
 //   1) Server creates a PaymentIntent with payment_method_types=['card'] only
-//      (no us_bank_account / Klarna / ACH).
-//   2) Express Checkout Element shows Apple Pay / Google Pay when the device
-//      supports them.
-//   3) Payment Element is card-only with Link disabled — prevents the Bank tab.
+//      (no Klarna / bank / ACH).
+//   2) Express Checkout Element shows Apple Pay / Google Pay when supported.
+//   3) Card Element collects the card — never renders Bank / Klarna / Link tabs
+//      (Payment Element was still surfacing those on some phones).
 const stripe = Stripe('{{ stripe_public_key }}');
 
-let stripeElements = null;
-let paymentElement = null;
+let stripeElements = null;       // clientSecret Elements for Express Checkout
+let cardElements = null;         // separate Elements instance for Card Element
+let cardElement = null;
 let expressCheckoutElement = null;
 let clientSecretCache = null;
 const shippingFlatRate = {{ shipping_flat_rate|default(11) }};
+
+const stripeAppearance = {
+    theme: 'stripe',
+    variables: {
+        colorPrimary: '#b87c6f',
+        colorBackground: '#ffffff',
+        colorText: '#3a3d48',
+        borderRadius: '8px',
+        fontFamily: '"Nunito", system-ui, sans-serif',
+    }
+};
 
 async function resetPaymentElement() {
     if (expressCheckoutElement) {
         try { expressCheckoutElement.unmount(); } catch (e) {}
         expressCheckoutElement = null;
     }
-    if (paymentElement) {
-        try { paymentElement.unmount(); } catch (e) {}
-        paymentElement = null;
+    if (cardElement) {
+        try { cardElement.unmount(); } catch (e) {}
+        cardElement = null;
     }
     stripeElements = null;
+    cardElements = null;
     clientSecretCache = null;
-    const mount = document.getElementById('payment-element');
+    const mount = document.getElementById('card-element');
     if (mount) mount.innerHTML = '';
     const expressMount = document.getElementById('express-checkout-element');
     if (expressMount) expressMount.innerHTML = '';
@@ -328,20 +347,23 @@ async function stashCheckoutForWallets() {
     }
 }
 
-async function confirmStripeElementsPayment() {
+function billingDetailsFromForm() {
     const firstName = (document.getElementById('first_name') || {}).value || '';
     const lastName  = (document.getElementById('last_name')  || {}).value || '';
     const email     = (document.getElementById('email')       || {}).value || '';
+    return {
+        name: (firstName + ' ' + lastName).trim(),
+        email: email,
+    };
+}
 
+async function confirmStripeWalletPayment() {
     const {error} = await stripe.confirmPayment({
         elements: stripeElements,
         confirmParams: {
             return_url: window.location.origin + '/checkout/payment-return',
             payment_method_data: {
-                billing_details: {
-                    name: (firstName + ' ' + lastName).trim(),
-                    email: email,
-                }
+                billing_details: billingDetailsFromForm(),
             }
         },
         redirect: 'if_required',
@@ -349,8 +371,18 @@ async function confirmStripeElementsPayment() {
     return error || null;
 }
 
+async function confirmStripeCardPayment() {
+    const {error, paymentIntent} = await stripe.confirmCardPayment(clientSecretCache, {
+        payment_method: {
+            card: cardElement,
+            billing_details: billingDetailsFromForm(),
+        },
+    });
+    return {error: error || null, paymentIntent: paymentIntent || null};
+}
+
 async function initPaymentElement() {
-    if (paymentElement) return;
+    if (cardElement) return;
 
     try {
         const resp = await fetch('/checkout/create-payment-intent', {
@@ -364,19 +396,9 @@ async function initPaymentElement() {
 
         stripeElements = stripe.elements({
             clientSecret: clientSecretCache,
-            appearance: {
-                theme: 'stripe',
-                variables: {
-                    colorPrimary: '#b87c6f',
-                    colorBackground: '#ffffff',
-                    colorText: '#3a3d48',
-                    borderRadius: '8px',
-                    fontFamily: '"Nunito", system-ui, sans-serif',
-                }
-            }
+            appearance: stripeAppearance,
         });
 
-        // Dedicated Apple Pay / Google Pay buttons (only when the browser/device supports them)
         const expressMount = document.getElementById('express-checkout-element');
         if (expressMount) {
             expressCheckoutElement = stripeElements.create('expressCheckout', {
@@ -415,7 +437,7 @@ async function initPaymentElement() {
                     button.textContent = 'Processing...';
                 }
                 await stashCheckoutForWallets();
-                const error = await confirmStripeElementsPayment();
+                const error = await confirmStripeWalletPayment();
                 if (error) {
                     document.getElementById('card-errors').textContent = error.message || 'Payment failed. Please try again.';
                     restorePayButton();
@@ -426,17 +448,25 @@ async function initPaymentElement() {
             });
         }
 
-        // Card entry only — Link/Bank chrome inside Payment Element is disabled
-        paymentElement = stripeElements.create('payment', {
-            layout: 'tabs',
-            wallets: {
-                applePay: 'never',
-                googlePay: 'never',
-                link: 'never',
+        // Plain card fields — no Klarna / Bank / Link tabs on desktop or phone
+        cardElements = stripe.elements({ appearance: stripeAppearance });
+        cardElement = cardElements.create('card', {
+            hidePostalCode: false,
+            style: {
+                base: {
+                    fontFamily: '"Nunito", system-ui, sans-serif',
+                    fontSize: '16px',
+                    color: '#3a3d48',
+                    '::placeholder': { color: '#9aa0a6' },
+                },
+                invalid: { color: '#c0392b' },
             },
-            paymentMethodOrder: ['card'],
         });
-        paymentElement.mount('#payment-element');
+        cardElement.mount('#card-element');
+        cardElement.on('change', function (event) {
+            const err = document.getElementById('card-errors');
+            if (err) err.textContent = event.error ? event.error.message : '';
+        });
     } catch (err) {
         document.getElementById('card-errors').textContent =
             'Could not load payment form: ' + err.message;
@@ -601,9 +631,9 @@ async function handleStripePayment() {
     const fieldError = validateCheckoutFields();
     if (fieldError) { PMKC.showFlash(fieldError, 'error'); return; }
 
-    // Make sure the Payment Element is mounted (lazy init)
+    // Make sure the card form is mounted (lazy init)
     await initPaymentElement();
-    if (!stripeElements || !clientSecretCache) {
+    if (!cardElement || !clientSecretCache) {
         PMKC.showFlash('Payment form not ready. Please wait a moment and try again.', 'error');
         return;
     }
@@ -616,7 +646,7 @@ async function handleStripePayment() {
     await stashCheckoutForWallets();
 
     try {
-        const error = await confirmStripeElementsPayment();
+        const {error, paymentIntent} = await confirmStripeCardPayment();
 
         if (error) {
             if (error.type === 'card_error' || error.type === 'validation_error') {
@@ -625,10 +655,25 @@ async function handleStripePayment() {
                 PMKC.showFlash(error.message || 'Payment failed. Please try again.', 'error');
             }
             restorePayButton();
-        } else {
-            // Payment succeeded without redirect (card payment)
-            const {paymentIntent} = await stripe.retrievePaymentIntent(clientSecretCache);
+        } else if (paymentIntent && paymentIntent.status === 'succeeded') {
             await completeOrder(paymentIntent.id);
+        } else if (paymentIntent && paymentIntent.status === 'requires_action') {
+            // 3DS / redirect handled by confirmCardPayment; if still pending, re-check
+            const retrieved = await stripe.retrievePaymentIntent(clientSecretCache);
+            if (retrieved.paymentIntent && retrieved.paymentIntent.status === 'succeeded') {
+                await completeOrder(retrieved.paymentIntent.id);
+            } else {
+                PMKC.showFlash('Additional authentication is required. Please try again.', 'error');
+                restorePayButton();
+            }
+        } else {
+            const retrieved = await stripe.retrievePaymentIntent(clientSecretCache);
+            if (retrieved.paymentIntent && retrieved.paymentIntent.status === 'succeeded') {
+                await completeOrder(retrieved.paymentIntent.id);
+            } else {
+                PMKC.showFlash('Payment could not be completed. Please try again.', 'error');
+                restorePayButton();
+            }
         }
     } catch (err) {
         PMKC.showFlash('Payment failed: ' + err.message, 'error');
@@ -681,15 +726,18 @@ function buildOrderPayload(paymentId, paymentMethodOverride) {
 }
 
 {% if paypal_client_id %}
-// ── PayPal / Venmo Buttons ────────────────────────────────────────────────────
-function initPayPalButtons() {
-    if (typeof paypal === 'undefined' || !document.getElementById('paypal-buttons-container')) return;
+// ── PayPal + standalone Venmo buttons ────────────────────────────────────────
+function buildPayPalButtonConfig(fundingSource) {
     const errEl = document.getElementById('paypal-errors');
-
-    paypal.Buttons({
-        style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal' },
-        fundingSource: undefined,  // shows all eligible (PayPal + Venmo)
-
+    return {
+        fundingSource: fundingSource,
+        style: {
+            layout: 'vertical',
+            color: fundingSource === paypal.FUNDING.VENMO ? 'blue' : 'gold',
+            shape: 'rect',
+            label: fundingSource === paypal.FUNDING.VENMO ? 'pay' : 'paypal',
+            height: 48,
+        },
         createOrder: async function() {
             const fieldError = validateCheckoutFields();
             if (fieldError) {
@@ -705,10 +753,8 @@ function initPayPalButtons() {
             if (data.error) { PMKC.showFlash(data.error, 'error'); throw new Error(data.error); }
             return data.id;
         },
-
         onApprove: async function(data) {
             if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
-            // Capture server-side
             const captureResp = await fetch('/checkout/paypal/capture-order', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -721,7 +767,6 @@ function initPayPalButtons() {
                 PMKC.showFlash(msg, 'error');
                 return;
             }
-            // Finalize the order in our system
             try {
                 await completeOrder(data.orderID, 'paypal');
             } catch (err) {
@@ -729,28 +774,49 @@ function initPayPalButtons() {
                 PMKC.showFlash(err.message, 'error');
             }
         },
-
-        onError: function(err) {
+        onError: function() {
             const msg = 'PayPal encountered an error. Please try again or choose card payment.';
             if (errEl) { errEl.textContent = msg; errEl.style.display = ''; }
             PMKC.showFlash(msg, 'error');
         },
-
         onCancel: function() {
-            PMKC.showFlash('PayPal checkout was cancelled.', 'info');
+            PMKC.showFlash('Checkout was cancelled.', 'info');
         }
-    }).render('#paypal-buttons-container');
+    };
 }
 
-// PayPal SDK loads async — init buttons once it's ready
-if (typeof paypal !== 'undefined') {
-    initPayPalButtons();
-} else {
-    window.addEventListener('load', function() {
-        // Small delay to let the deferred PayPal script finish
-        setTimeout(initPayPalButtons, 500);
-    });
+function renderPayPalFundingButton(fundingSource, containerId) {
+    const mount = document.getElementById(containerId);
+    if (!mount || typeof paypal === 'undefined') return false;
+    const button = paypal.Buttons(buildPayPalButtonConfig(fundingSource));
+    if (!button.isEligible()) return false;
+    button.render('#' + containerId);
+    return true;
 }
+
+function initPayPalButtons() {
+    if (typeof paypal === 'undefined') return;
+    if (!document.getElementById('paypal-buttons-container')) return;
+    if (document.getElementById('paypal-buttons-container').dataset.ready === '1') return;
+    document.getElementById('paypal-buttons-container').dataset.ready = '1';
+
+    renderPayPalFundingButton(paypal.FUNDING.PAYPAL, 'paypal-button');
+    const venmoShown = renderPayPalFundingButton(paypal.FUNDING.VENMO, 'venmo-button');
+    const venmoNote = document.getElementById('venmo-unavailable');
+    if (venmoNote) venmoNote.hidden = !!venmoShown;
+}
+
+function whenPayPalReady(cb, tries) {
+    tries = tries || 0;
+    if (typeof paypal !== 'undefined') {
+        cb();
+        return;
+    }
+    if (tries > 80) return;
+    setTimeout(function() { whenPayPalReady(cb, tries + 1); }, 100);
+}
+
+whenPayPalReady(initPayPalButtons);
 {% endif %}
 
 async function completeOrder(paymentId, paymentMethodOverride) {
@@ -965,6 +1031,18 @@ async function completeOrder(paymentId, paymentMethodOverride) {
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
     background: #fff;
+    min-height: 44px;
+}
+
+.paypal-buttons-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-width: 420px;
+}
+
+.paypal-funding-slot {
+    min-height: 48px;
 }
 
 .error-message {
@@ -1106,6 +1184,17 @@ async function completeOrder(paymentId, paymentMethodOverride) {
     }
     .fulfillment-option {
         padding: 1rem;
+    }
+    #card-element {
+        padding: 0.9rem 0.85rem;
+        font-size: 16px; /* prevents iOS zoom on focus */
+    }
+    .paypal-buttons-stack {
+        max-width: none;
+        width: 100%;
+    }
+    #express-checkout-element {
+        min-height: 48px;
     }
 }
 </style>
