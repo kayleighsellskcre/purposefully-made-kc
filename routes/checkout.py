@@ -77,12 +77,8 @@ checkout_bp = Blueprint('checkout', __name__, url_prefix='/checkout')
 
 
 def _mail_ready():
-    return bool(
-        current_app.extensions.get('mail')
-        and current_app.config.get('MAIL_SERVER')
-        and current_app.config.get('MAIL_USERNAME')
-        and current_app.config.get('MAIL_PASSWORD')
-    )
+    from utils.mailer import mail_configured
+    return mail_configured(current_app)
 
 
 MAIL_SENDER_NAME = 'Purposefully Made KC'
@@ -414,6 +410,118 @@ def calculate_totals(cart, shipping_method='pickup'):
         'total': total
     }
 
+def _paypal_base_url(app):
+    mode = (app.config.get('PAYPAL_MODE') or 'sandbox').strip().lower()
+    return 'https://api-m.paypal.com' if mode == 'live' else 'https://api-m.sandbox.paypal.com'
+
+
+def _get_paypal_access_token(app):
+    """Fetch a short-lived PayPal OAuth token. Returns None on any failure."""
+    import requests as _req
+    import base64
+    client_id = (app.config.get('PAYPAL_CLIENT_ID') or '').strip()
+    secret = (app.config.get('PAYPAL_CLIENT_SECRET') or '').strip()
+    if not client_id or not secret:
+        return None
+    auth = base64.b64encode(f'{client_id}:{secret}'.encode()).decode()
+    try:
+        resp = _req.post(
+            f'{_paypal_base_url(app)}/v1/oauth2/token',
+            headers={'Authorization': f'Basic {auth}', 'Content-Type': 'application/x-www-form-urlencoded'},
+            data='grant_type=client_credentials',
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            return resp.json().get('access_token')
+        app.logger.error('PayPal token error %s: %s', resp.status_code, resp.text[:200])
+    except Exception:
+        app.logger.exception('PayPal access token request failed')
+    return None
+
+
+@checkout_bp.route('/paypal/create-order', methods=['POST'])
+def paypal_create_order():
+    """Create a PayPal Orders v2 order and return its ID to the client."""
+    import requests as _req
+    data = request.get_json(silent=True) or {}
+    cart = get_cart()
+    if not cart:
+        return jsonify({'error': 'Cart is empty'}), 400
+
+    from utils.group_orders import get_active_collection, ordering_blocked
+    collection = get_active_collection(cart)
+    if collection:
+        blocked = ordering_blocked(collection)
+        if blocked:
+            return jsonify({'error': blocked}), 400
+
+    reprice_cart(cart)
+    shipping_method = data.get('shipping_method', 'pickup')
+    totals = calculate_totals(cart, shipping_method)
+
+    token = _get_paypal_access_token(current_app)
+    if not token:
+        return jsonify({'error': 'PayPal is not configured on this store.'}), 500
+
+    try:
+        resp = _req.post(
+            f'{_paypal_base_url(current_app)}/v2/checkout/orders',
+            headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'},
+            json={
+                'intent': 'CAPTURE',
+                'purchase_units': [{
+                    'amount': {'currency_code': 'USD', 'value': f'{totals["total"]:.2f}'},
+                    'description': 'Purposefully Made KC Order',
+                }],
+            },
+            timeout=15,
+        )
+        if resp.status_code in (200, 201):
+            return jsonify({'id': resp.json()['id']})
+        current_app.logger.error('PayPal create-order %s: %s', resp.status_code, resp.text[:300])
+        return jsonify({'error': 'Could not start PayPal checkout.'}), 500
+    except Exception:
+        current_app.logger.exception('PayPal create-order request failed')
+        return jsonify({'error': 'PayPal is unavailable right now.'}), 500
+
+
+@checkout_bp.route('/paypal/capture-order', methods=['POST'])
+def paypal_capture_order():
+    """Capture an approved PayPal order. Records success in session so /complete can verify it."""
+    import requests as _req
+    data = request.get_json(silent=True) or {}
+    order_id = (data.get('order_id') or '').strip()
+    if not order_id:
+        return jsonify({'success': False, 'error': 'Missing PayPal order_id'}), 400
+
+    token = _get_paypal_access_token(current_app)
+    if not token:
+        return jsonify({'success': False, 'error': 'PayPal not configured'}), 500
+
+    try:
+        resp = _req.post(
+            f'{_paypal_base_url(current_app)}/v2/checkout/orders/{order_id}/capture',
+            headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'},
+            timeout=15,
+        )
+        if resp.status_code in (200, 201):
+            result = resp.json()
+            if result.get('status') == 'COMPLETED':
+                # Store captured ID in session so /complete can verify without re-hitting PayPal
+                captured = session.get('paypal_captured_ids', [])
+                if order_id not in captured:
+                    captured.append(order_id)
+                session['paypal_captured_ids'] = captured
+                session.modified = True
+                return jsonify({'success': True})
+            return jsonify({'success': False, 'error': f'PayPal status: {result.get("status")}'}), 400
+        current_app.logger.error('PayPal capture %s %s: %s', order_id, resp.status_code, resp.text[:300])
+        return jsonify({'success': False, 'error': 'PayPal capture failed.'}), 500
+    except Exception:
+        current_app.logger.exception('PayPal capture request failed for %s', order_id)
+        return jsonify({'success': False, 'error': 'PayPal is unavailable right now.'}), 500
+
+
 @checkout_bp.route('/')
 def index():
     """Checkout page"""
@@ -497,6 +605,7 @@ def index():
                          is_group_order=is_group_order,
                          group_collection=collection,
                          stripe_public_key=current_app.config.get('STRIPE_PUBLIC_KEY'),
+                         paypal_client_id=current_app.config.get('PAYPAL_CLIENT_ID') or '',
                          shipping_flat_rate=current_app.config.get('SHIPPING_FLAT_RATE', 11.00))
 
 
@@ -742,6 +851,15 @@ def complete():
                 400,
                 request_id=rid,
             )
+        if payment_method == 'paypal' and payment_id:
+            captured_ids = session.get('paypal_captured_ids', [])
+            if payment_id not in captured_ids:
+                return _json_error(
+                    'PayPal payment was not captured. Please complete the PayPal flow before placing your order.',
+                    'PAYPAL_NOT_CAPTURED',
+                    400,
+                    request_id=rid,
+                )
         if payment_method == 'stripe' and payment_id:
             try:
                 intent = stripe.PaymentIntent.retrieve(payment_id)

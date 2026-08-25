@@ -166,6 +166,9 @@
                     <h2>Payment Method</h2>
                     <div class="payment-tabs">
                         <button class="payment-tab active" data-method="card">Card / Apple Pay / Google Pay</button>
+                        {% if paypal_client_id %}
+                        <button class="payment-tab" data-method="paypal">PayPal / Venmo</button>
+                        {% endif %}
                         <button class="payment-tab" data-method="cash">Cash / Pay at Pickup</button>
                     </div>
 
@@ -178,6 +181,15 @@
                                appearing where a screen reader user never sees it. #}
                             <div id="card-errors" class="error-message" role="alert" aria-live="assertive" style="margin-top:0.75rem;"></div>
                         </div>
+
+                        <!-- PayPal / Venmo -->
+                        {% if paypal_client_id %}
+                        <div class="payment-panel" id="paypal-panel" style="display:none;">
+                            <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:1rem;">Pay securely with your PayPal account or Venmo.</p>
+                            <div id="paypal-buttons-container"></div>
+                            <div id="paypal-errors" class="error-message" role="alert" aria-live="assertive" style="margin-top:0.75rem;display:none;"></div>
+                        </div>
+                        {% endif %}
 
                         <!-- Cash Payment -->
                         <div class="payment-panel" id="cash-panel" style="display: none;">
@@ -248,6 +260,9 @@
     </div>
 </div>
 
+{% if paypal_client_id %}
+<script src="https://www.paypal.com/sdk/js?client-id={{ paypal_client_id }}&currency=USD&components=buttons&enable-funding=venmo,paylater" defer></script>
+{% endif %}
 <script src="https://js.stripe.com/v3/"></script>
 <script>
 // ── Stripe Payment Element setup ─────────────────────────────────────────────
@@ -352,6 +367,10 @@ document.querySelectorAll('.payment-tab').forEach(tab => {
         const paypalPanel = document.getElementById('paypal-panel');
         if (paypalPanel) paypalPanel.style.display = method === 'paypal' ? 'block' : 'none';
         document.getElementById('cash-panel').style.display = method === 'cash' ? 'block' : 'none';
+
+        // Hide the main submit button when PayPal is selected (PayPal has its own button)
+        const submitBtn = document.getElementById('submit-payment');
+        if (submitBtn) submitBtn.style.display = method === 'paypal' ? 'none' : '';
 
         // Lazily mount the Payment Element when card tab is selected
         if (method === 'card') initPaymentElement();
@@ -576,6 +595,79 @@ function buildOrderPayload(paymentId, paymentMethodOverride) {
         child_name: ((document.getElementById('child_name') || {}).value || '').trim()
     };
 }
+
+{% if paypal_client_id %}
+// ── PayPal / Venmo Buttons ────────────────────────────────────────────────────
+function initPayPalButtons() {
+    if (typeof paypal === 'undefined' || !document.getElementById('paypal-buttons-container')) return;
+    const errEl = document.getElementById('paypal-errors');
+
+    paypal.Buttons({
+        style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal' },
+        fundingSource: undefined,  // shows all eligible (PayPal + Venmo)
+
+        createOrder: async function() {
+            const fieldError = validateCheckoutFields();
+            if (fieldError) {
+                PMKC.showFlash(fieldError, 'error');
+                throw new Error(fieldError);
+            }
+            const resp = await fetch('/checkout/paypal/create-order', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({shipping_method: currentFulfillment})
+            });
+            const data = await resp.json();
+            if (data.error) { PMKC.showFlash(data.error, 'error'); throw new Error(data.error); }
+            return data.id;
+        },
+
+        onApprove: async function(data) {
+            if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
+            // Capture server-side
+            const captureResp = await fetch('/checkout/paypal/capture-order', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({order_id: data.orderID})
+            });
+            const captured = await captureResp.json();
+            if (!captured.success) {
+                const msg = captured.error || 'PayPal capture failed. Please try again.';
+                if (errEl) { errEl.textContent = msg; errEl.style.display = ''; }
+                PMKC.showFlash(msg, 'error');
+                return;
+            }
+            // Finalize the order in our system
+            try {
+                await completeOrder(data.orderID, 'paypal');
+            } catch (err) {
+                if (errEl) { errEl.textContent = err.message; errEl.style.display = ''; }
+                PMKC.showFlash(err.message, 'error');
+            }
+        },
+
+        onError: function(err) {
+            const msg = 'PayPal encountered an error. Please try again or choose card payment.';
+            if (errEl) { errEl.textContent = msg; errEl.style.display = ''; }
+            PMKC.showFlash(msg, 'error');
+        },
+
+        onCancel: function() {
+            PMKC.showFlash('PayPal checkout was cancelled.', 'info');
+        }
+    }).render('#paypal-buttons-container');
+}
+
+// PayPal SDK loads async — init buttons once it's ready
+if (typeof paypal !== 'undefined') {
+    initPayPalButtons();
+} else {
+    window.addEventListener('load', function() {
+        // Small delay to let the deferred PayPal script finish
+        setTimeout(initPayPalButtons, 500);
+    });
+}
+{% endif %}
 
 async function completeOrder(paymentId, paymentMethodOverride) {
     const payload = buildOrderPayload(paymentId, paymentMethodOverride);
