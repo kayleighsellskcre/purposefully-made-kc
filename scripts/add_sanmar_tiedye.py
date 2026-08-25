@@ -8,6 +8,8 @@ Adds Port & Company tie-dye styles from SanMar to the database:
   LPC147V   Women's Tie-Dye V-Neck
   PC147LS   Tie-Dye Long Sleeve
   PC147YLS  Youth Tie-Dye Long Sleeve
+  PC146     Tie-Dye Pullover Hooded Sweatshirt (regular / spiral)
+  PC146Y    Youth Tie-Dye Pullover Hooded Sweatshirt
   PC145     Crystal Tie-Dye Tee
   PC144     Crystal Tie-Dye Pullover Hoodie
 
@@ -151,6 +153,52 @@ NEW_TIEDYE = [
         'fabric_details': '5.4 oz / 100% cotton; rib knit cuffs; prepared-for-dye; tear-away label',
         'fit_guide': 'Youth classic fit; sizes XS–XL. Each garment has slight color variation.',
         'spec_sheet_url': 'https://www.sanmar.com/p/PC147YLS',
+        'is_active': True,
+        'is_customer_favorite': False,
+    },
+    {
+        'style_number': 'PC146',
+        'name': 'Port & Company Tie-Dye Pullover Hooded Sweatshirt',
+        'brand': 'Port & Company',
+        'category': 'Hoodie',
+        'age_group': 'adult',
+        'fit_type': 'Unisex',
+        'neck_style': 'Hooded',
+        'sleeve_length': 'Long Sleeve',
+        'base_price': 51.00,
+        'wholesale_cost': 32.06,
+        'available_sizes': ADULT_SIZES,
+        'description': (
+            "Port & Company Tie-Dye Pullover Hooded Sweatshirt — the classic spiral "
+            "tie-dye hoodie (not crystal). Hand-dyed 80/20 fleece with a two-ply hood "
+            "and pouch pocket. Perfect for group orders that want the regular PC147 look."
+        ),
+        'fabric_details': '7.8 oz / 80% cotton, 20% polyester fleece; prepared-for-dye; tear-away label',
+        'fit_guide': 'Unisex classic fit; true to size. Each garment has slight color variation.',
+        'spec_sheet_url': 'https://www.sanmar.com/p/PC146',
+        'is_active': True,
+        'is_customer_favorite': True,
+    },
+    {
+        'style_number': 'PC146Y',
+        'name': 'Port & Company Youth Tie-Dye Pullover Hooded Sweatshirt',
+        'brand': 'Port & Company',
+        'category': 'Hoodie',
+        'age_group': 'youth',
+        'fit_type': 'Unisex',
+        'neck_style': 'Hooded',
+        'sleeve_length': 'Long Sleeve',
+        'base_price': 45.00,
+        'wholesale_cost': 24.00,
+        'available_sizes': YOUTH_SIZES,
+        'description': (
+            "Youth Tie-Dye Pullover Hooded Sweatshirt — the regular (non-crystal) PC146 "
+            "hoodie sized for kids. Hand-dyed fleece with a two-ply hood (no drawcord) "
+            "and front pouch pocket."
+        ),
+        'fabric_details': '7.8 oz / 80% cotton, 20% polyester fleece; prepared-for-dye; no drawcord',
+        'fit_guide': 'Youth classic fit; sizes XS–XL. Each garment has slight color variation.',
+        'spec_sheet_url': 'https://www.sanmar.com/p/PC146Y',
         'is_active': True,
         'is_customer_favorite': False,
     },

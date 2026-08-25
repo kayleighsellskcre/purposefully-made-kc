@@ -70,6 +70,8 @@ CURATED_BRANDS = [
             'LPC147V',                  # Ladies Tie-Dye v-neck
             'PC147LS',                  # Tie-Dye long sleeve
             'PC147YLS',                 # Youth Tie-Dye long sleeve
+            'PC146',                    # Tie-Dye hoodie (regular / spiral)
+            'PC146Y',                   # Youth Tie-Dye hoodie (regular / spiral)
             'PC144',                    # Crystal Tie-Dye hoodie
             'PC145',                    # Crystal Tie-Dye tee
         ],

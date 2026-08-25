@@ -21,7 +21,7 @@ except Exception:
 from dotenv import load_dotenv
 load_dotenv(os.path.join(ROOT, '.env'))
 
-STYLES = ['PC147', 'PC147Y', 'LPC147V', 'PC147LS', 'PC147YLS', 'PC145', 'PC144']
+STYLES = ['PC147', 'PC147Y', 'LPC147V', 'PC147LS', 'PC147YLS', 'PC146', 'PC146Y', 'PC145', 'PC144']
 SHOP = 'https://www.bigtopshirtshop.com'
 HEADERS = {
     'User-Agent': (

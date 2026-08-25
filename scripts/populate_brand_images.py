@@ -61,7 +61,7 @@ BRAND_STYLES = {
     # Comfort Colors
     'CC': ['CC1717', 'CC1566', 'CC1466'],
     # Port & Company
-    'PC': ['PC54', 'PC78H', 'LPC54', 'PC147', 'PC147Y', 'LPC147V', 'PC147LS', 'PC147YLS', 'PC145', 'PC144'],
+    'PC': ['PC54', 'PC78H', 'LPC54', 'PC147', 'PC147Y', 'LPC147V', 'PC147LS', 'PC147YLS', 'PC146', 'PC146Y', 'PC145', 'PC144'],
     # Sport-Tek
     'ST': ['ST350', 'ST254', 'LST350'],
     # District

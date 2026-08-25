@@ -317,6 +317,20 @@ PRODUCTS = {
         "Youth classic fit; sizes XS–XL. Slight color variation is part of the tie-dye process.",
         'https://www.sanmar.com/p/PC147YLS',
     ),
+    'PC146': (
+        32.06, 51.00,
+        '80% cotton, 20% polyester; 7.8 oz fleece; prepared-for-dye tie-dye',
+        "Port & Company Tie-Dye Pullover Hooded Sweatshirt — the classic spiral tie-dye hoodie (not crystal). Hand-dyed fleece with a two-ply hood and pouch pocket.",
+        "Unisex classic fit; true to size. Slight color variation is part of the tie-dye process.",
+        'https://www.sanmar.com/p/PC146',
+    ),
+    'PC146Y': (
+        24.00, 45.00,
+        '80% cotton, 20% polyester; 7.8 oz fleece; prepared-for-dye tie-dye; no drawcord',
+        "Youth Tie-Dye Pullover Hooded Sweatshirt — the regular (non-crystal) PC146 hoodie sized for kids. Pairs with the youth PC147Y tee.",
+        "Youth classic fit; sizes XS–XL. Slight color variation is part of the tie-dye process.",
+        'https://www.sanmar.com/p/PC146Y',
+    ),
     'PC145': (
         11.60, 28.00,
         '100% cotton; 5.4 oz; crystal tie-dye',

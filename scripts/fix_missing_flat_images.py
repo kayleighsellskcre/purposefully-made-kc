@@ -4,7 +4,7 @@ fix_missing_flat_images.py
 Fill missing front/back color variant images with garment-only flats
 (S&S colorFrontImage / colorBackImage — never ModelColor).
 
-Also seeds PC146Y color variants from PC144 when empty.
+Also seeds PC146Y color variants from PC146 when empty (regular Tie-Dye hoodie).
 
     py -3.12 scripts/fix_missing_flat_images.py --dry-run
     py -3.12 scripts/fix_missing_flat_images.py
@@ -141,10 +141,10 @@ def seed_pc146y(cur, dry_run: bool):
     if cur.fetchone()[0] > 0:
         print('  OK    PC146Y already has variants')
         return
-    cur.execute("SELECT id FROM product WHERE style_number = 'PC144'")
+    cur.execute("SELECT id FROM product WHERE style_number = 'PC146'")
     donor = cur.fetchone()
     if not donor:
-        print('  SKIP  PC146Y: no PC144 donor')
+        print('  SKIP  PC146Y: no PC146 donor')
         return
     cur.execute(
         'SELECT color_name, color_hex, color_swatch_url, front_image_url, back_image_url '
@@ -152,7 +152,7 @@ def seed_pc146y(cur, dry_run: bool):
         (donor[0],),
     )
     rows = cur.fetchall()
-    print(f'  ADD   PC146Y variants from PC144 ({len(rows)} colors)')
+    print(f'  ADD   PC146Y variants from PC146 ({len(rows)} colors)')
     if dry_run:
         return
     color_names = []
