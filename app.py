@@ -8,7 +8,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
 from config import Config
-from models import db, User, Address, Collection, Product, Design, Order, OrderItem, Favorite
+from models import db, User, Address, Collection, Product, Design, Order, OrderItem, Favorite, CartHandoff
 import stripe
 import paypalrestsdk
 

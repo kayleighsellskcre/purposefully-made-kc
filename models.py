@@ -90,6 +90,17 @@ class User(UserMixin, db.Model):
         return f'<User {self.email}>'
 
 
+class CartHandoff(db.Model):
+    """Short-lived cart transfer so 'Open in Safari' keeps the same checkout cart."""
+    __tablename__ = 'cart_handoff'
+    token = db.Column(db.String(64), primary_key=True)
+    cart_json = db.Column(db.Text, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    collection_id = db.Column(db.Integer, nullable=True)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 class Address(db.Model):
     """Shipping/billing addresses"""
     id = db.Column(db.Integer, primary_key=True)

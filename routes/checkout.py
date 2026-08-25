@@ -440,6 +440,85 @@ def _get_paypal_access_token(app):
     return None
 
 
+@checkout_bp.route('/browser-handoff', methods=['POST'])
+def browser_handoff():
+    """Create a short-lived link that restores this cart in another browser (Safari)."""
+    import json as _json
+    import secrets
+    from datetime import timedelta
+    from models import CartHandoff, db
+
+    cart = get_cart()
+    if not cart:
+        return jsonify({'error': 'Your cart is empty.'}), 400
+
+    token = secrets.token_urlsafe(24)
+    handoff = CartHandoff(
+        token=token,
+        cart_json=_json.dumps(cart),
+        user_id=current_user.id if current_user.is_authenticated else None,
+        collection_id=session.get('collection_id'),
+        expires_at=datetime.utcnow() + timedelta(minutes=45),
+    )
+    db.session.add(handoff)
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('browser-handoff save failed')
+        return jsonify({'error': 'Could not prepare Safari handoff.'}), 500
+
+    resume_path = url_for('checkout.continue_handoff', token=token, _external=True)
+    return jsonify({
+        'success': True,
+        'url': resume_path,
+        # iOS deep-link that asks Safari to open this HTTPS URL
+        'safari_url': 'x-safari-' + resume_path if resume_path.startswith('https://') else resume_path,
+    })
+
+
+@checkout_bp.route('/continue/<token>')
+def continue_handoff(token):
+    """Restore a handoff cart into this browser session, then go to checkout."""
+    import json as _json
+    from models import CartHandoff, db
+    from utils.cart_store import save_cart
+
+    token = (token or '').strip()
+    handoff = CartHandoff.query.get(token) if token else None
+    if not handoff or not handoff.expires_at or handoff.expires_at < datetime.utcnow():
+        if handoff:
+            try:
+                db.session.delete(handoff)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+        flash('That Safari link expired. Please open checkout again from your cart.', 'error')
+        return redirect(url_for('cart.index'))
+
+    try:
+        cart = _json.loads(handoff.cart_json or '[]')
+    except (TypeError, ValueError, _json.JSONDecodeError):
+        cart = []
+    if not isinstance(cart, list) or not cart:
+        flash('Could not restore your cart. Please try again.', 'error')
+        return redirect(url_for('cart.index'))
+
+    save_cart(cart)
+    if handoff.collection_id:
+        session['collection_id'] = handoff.collection_id
+        session.modified = True
+
+    try:
+        db.session.delete(handoff)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+    flash('Cart restored — you can pay with Venmo here in Safari.', 'success')
+    return redirect(url_for('checkout.index'))
+
+
 @checkout_bp.route('/paypal/create-order', methods=['POST'])
 def paypal_create_order():
     """Create a PayPal Orders v2 order and return its ID to the client."""

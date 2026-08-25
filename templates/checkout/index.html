@@ -204,9 +204,19 @@
                                 <div id="paypal-button" class="paypal-funding-slot"></div>
                                 <div id="venmo-button" class="paypal-funding-slot"></div>
                             </div>
-                            <p id="venmo-unavailable" class="payment-wallet-hint" hidden>
-                                Venmo isn’t available in this browser right now. Use PayPal here, or open checkout in Safari / Chrome on your phone.
-                            </p>
+                            <div id="venmo-safari-box" class="venmo-safari-box" hidden>
+                                <div class="venmo-safari-box-inner">
+                                    <p class="venmo-safari-title" id="venmo-safari-title">Want to pay with Venmo?</p>
+                                    <p class="venmo-safari-copy" id="venmo-safari-copy">
+                                        Venmo works best in Safari on iPhone. Tap below and we’ll open this checkout in Safari with your cart.
+                                    </p>
+                                    <div class="venmo-safari-actions">
+                                        <button type="button" class="btn btn-primary" id="venmo-open-safari">Open in Safari</button>
+                                        <button type="button" class="btn btn-secondary" id="venmo-copy-link">Copy link</button>
+                                    </div>
+                                    <p class="venmo-safari-hint" id="venmo-safari-hint" hidden></p>
+                                </div>
+                            </div>
                             <div id="paypal-errors" class="error-message" role="alert" aria-live="assertive" style="margin-top:0.75rem;display:none;"></div>
                         </div>
                         {% endif %}
@@ -813,24 +823,148 @@ function renderPayPalFundingButton(fundingSource, containerId) {
     }
 }
 
+function detectCheckoutBrowser() {
+    const ua = navigator.userAgent || '';
+    const isIOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isAndroid = /Android/i.test(ua);
+    const isChromeIOS = /CriOS/i.test(ua);
+    const isFirefoxIOS = /FxiOS/i.test(ua);
+    const isEdgeIOS = /EdgiOS/i.test(ua);
+    const isInApp = /Instagram|FBAN|FBAV|Line\/|LinkedInApp|Twitter|Snapchat|Pinterest/i.test(ua);
+    const isIOSSafari = isIOS && /Safari/i.test(ua) && !isChromeIOS && !isFirefoxIOS && !isEdgeIOS && !isInApp;
+    const isAndroidChrome = isAndroid && /Chrome/i.test(ua) && !/EdgA|OPR|SamsungBrowser/i.test(ua);
+    return { isIOS, isAndroid, isIOSSafari, isAndroidChrome, isInApp, isChromeIOS };
+}
+
+function showVenmoSafariBox(venmoShown) {
+    const box = document.getElementById('venmo-safari-box');
+    if (!box) return;
+    if (venmoShown) {
+        box.hidden = true;
+        return;
+    }
+    const info = detectCheckoutBrowser();
+    const title = document.getElementById('venmo-safari-title');
+    const copy = document.getElementById('venmo-safari-copy');
+    const openBtn = document.getElementById('venmo-open-safari');
+    const hint = document.getElementById('venmo-safari-hint');
+
+    // Already in Safari on iPhone — Venmo button should appear; if not, app/account tip
+    if (info.isIOSSafari) {
+        box.hidden = true;
+        return;
+    }
+
+    box.hidden = false;
+    if (info.isIOS || info.isInApp || info.isChromeIOS) {
+        if (title) title.textContent = 'Pay with Venmo in Safari';
+        if (copy) {
+            copy.textContent = info.isInApp
+                ? 'Venmo can’t run inside this app’s browser. Tap Open in Safari — we’ll bring your cart with you.'
+                : 'Venmo needs Safari on iPhone. Tap below to open this same checkout in Safari with your cart.';
+        }
+        if (openBtn) {
+            openBtn.hidden = false;
+            openBtn.textContent = 'Open in Safari';
+        }
+    } else if (info.isAndroid && !info.isAndroidChrome) {
+        if (title) title.textContent = 'Pay with Venmo in Chrome';
+        if (copy) copy.textContent = 'Venmo works in Chrome on Android with the Venmo app installed. Tap below to open this checkout there with your cart.';
+        if (openBtn) {
+            openBtn.hidden = false;
+            openBtn.textContent = 'Open checkout link';
+        }
+    } else {
+        if (title) title.textContent = 'Venmo on your phone';
+        if (copy) copy.textContent = 'Venmo is easiest on an iPhone in Safari (or Android Chrome) with the Venmo app. Copy this checkout link and open it there — your cart comes with you.';
+        if (openBtn) openBtn.hidden = true;
+    }
+    if (hint) {
+        hint.hidden = true;
+        hint.textContent = '';
+    }
+}
+
+async function createBrowserHandoff() {
+    const resp = await fetch('/checkout/browser-handoff', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: JSON.stringify({}),
+    });
+    const data = await resp.json();
+    if (!resp.ok || !data.success) {
+        throw new Error(data.error || 'Could not prepare Safari link.');
+    }
+    return data;
+}
+
+function wireVenmoSafariBox() {
+    const openBtn = document.getElementById('venmo-open-safari');
+    const copyBtn = document.getElementById('venmo-copy-link');
+    const hint = document.getElementById('venmo-safari-hint');
+    if (openBtn && !openBtn.dataset.wired) {
+        openBtn.dataset.wired = '1';
+        openBtn.addEventListener('click', async function () {
+            openBtn.disabled = true;
+            openBtn.textContent = 'Opening…';
+            try {
+                const data = await createBrowserHandoff();
+                const info = detectCheckoutBrowser();
+                if (info.isIOS || info.isInApp || info.isChromeIOS) {
+                    // Ask iOS to hand the URL to Safari (works from Chrome / Instagram / etc.)
+                    window.location.href = data.safari_url || ('x-safari-' + data.url);
+                    // Fallback hint if the scheme is ignored
+                    setTimeout(function () {
+                        if (hint) {
+                            hint.hidden = false;
+                            hint.textContent = 'If Safari did not open, tap Copy link, then open Safari and paste it.';
+                        }
+                        openBtn.disabled = false;
+                        openBtn.textContent = 'Open in Safari';
+                    }, 1200);
+                } else {
+                    window.location.href = data.url;
+                }
+            } catch (err) {
+                PMKC.showFlash(err.message || 'Could not open Safari.', 'error');
+                openBtn.disabled = false;
+                openBtn.textContent = 'Open in Safari';
+            }
+        });
+    }
+    if (copyBtn && !copyBtn.dataset.wired) {
+        copyBtn.dataset.wired = '1';
+        copyBtn.addEventListener('click', async function () {
+            copyBtn.disabled = true;
+            try {
+                const data = await createBrowserHandoff();
+                await navigator.clipboard.writeText(data.url);
+                if (hint) {
+                    hint.hidden = false;
+                    hint.textContent = 'Link copied. Open Safari, paste, and go — your cart will be waiting.';
+                }
+                PMKC.showFlash('Checkout link copied.', 'success');
+            } catch (err) {
+                PMKC.showFlash(err.message || 'Could not copy link.', 'error');
+            }
+            copyBtn.disabled = false;
+        });
+    }
+}
+
 function initPayPalButtons() {
     if (typeof paypal === 'undefined') return;
     const stack = document.getElementById('paypal-buttons-container');
     if (!stack || stack.dataset.ready === '1') return;
     stack.dataset.ready = '1';
+    wireVenmoSafariBox();
 
     Promise.all([
         renderPayPalFundingButton(paypal.FUNDING.PAYPAL, 'paypal-button'),
         renderPayPalFundingButton(paypal.FUNDING.VENMO, 'venmo-button'),
     ]).then(function (results) {
         const venmoShown = !!results[1];
-        const venmoNote = document.getElementById('venmo-unavailable');
-        if (venmoNote) {
-            venmoNote.hidden = venmoShown;
-            if (!venmoShown) {
-                venmoNote.textContent = 'Venmo needs a US phone with the Venmo app, using Safari (iPhone) or Chrome (Android). If you still do not see it, Venmo may need to be enabled on the store PayPal account.';
-            }
-        }
+        showVenmoSafariBox(venmoShown);
         // Last resort: one vertical smart stack (PayPal SDK inserts Venmo when eligible)
         if (!results[0] && !venmoShown) {
             const cfg = buildPayPalButtonConfig(paypal.FUNDING.PAYPAL);
@@ -1058,6 +1192,49 @@ async function completeOrder(paymentId, paymentMethodOverride) {
     font-size: 0.85rem;
     color: var(--text-secondary);
     margin: 0.75rem 0 0;
+    line-height: 1.4;
+}
+
+.venmo-safari-box {
+    margin-top: 1rem;
+    border: 1px solid rgba(184, 124, 111, 0.35);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(184, 124, 111, 0.10) 0%, rgba(250, 247, 242, 0.95) 100%);
+    padding: 1rem 1.1rem;
+}
+
+.venmo-safari-box[hidden] {
+    display: none !important;
+}
+
+.venmo-safari-title {
+    margin: 0 0 0.4rem;
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.15rem;
+    color: var(--text-primary, #3a3d48);
+}
+
+.venmo-safari-copy {
+    margin: 0 0 0.9rem;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    color: var(--text-secondary);
+}
+
+.venmo-safari-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.venmo-safari-actions .btn {
+    min-height: 44px;
+}
+
+.venmo-safari-hint {
+    margin: 0.75rem 0 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
     line-height: 1.4;
 }
 
