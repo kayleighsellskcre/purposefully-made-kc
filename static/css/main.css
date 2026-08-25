@@ -453,6 +453,11 @@ a:hover {
     box-shadow: 0 2px 8px rgba(184, 124, 111, 0.3);
 }
 
+.cart-count:empty,
+.cart-count[hidden] {
+    display: none !important;
+}
+
 .mobile-menu-toggle {
     display: none;
     flex-direction: column;
