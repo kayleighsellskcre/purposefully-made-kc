@@ -303,10 +303,10 @@ def get_mockup_url_for_variant(product, variant, view, app):
     url = _find_mockup_file(app, product.style_number, getattr(variant, 'color_name', None), view)
     if url:
         return url
-    if view == 'front' and getattr(variant, 'front_image_url', None):
-        return variant.front_image_url
-    if view == 'back' and getattr(variant, 'back_image_url', None):
-        return variant.back_image_url
+    if view == 'front':
+        return _usable_image_url(getattr(variant, 'front_image_url', None))
+    if view == 'back':
+        return _usable_image_url(getattr(variant, 'back_image_url', None))
     return None
 
 
@@ -387,6 +387,21 @@ def discover_colors_from_mockup_folder(app, style_number):
 SHOP_PLACEHOLDER_IMAGE = '/static/img/placeholder-product.svg'
 
 
+def _usable_image_url(url):
+    """Reject empty / known-broken catalog paths so the UI can fall back cleanly."""
+    if not url:
+        return None
+    raw = str(url).strip()
+    if not raw or raw == SHOP_PLACEHOLDER_IMAGE:
+        return None
+    # Old SanMar SDL dumps pointed every color at one missing style JPG.
+    if '/static/sanmar/front/SDL/' in raw or '/static/sanmar/back/SDL/' in raw:
+        return None
+    if raw.startswith('http://') or raw.startswith('https://') or raw.startswith('/'):
+        return raw
+    return '/static/' + raw.lstrip('/')
+
+
 def _shop_inventory_for_variant(raw_inventory, shop_sizes, listed_sizes):
     from utils.stock import inventory_for_display, _qty_int
     inventory = inventory_for_display(raw_inventory, shop_sizes)
@@ -410,8 +425,8 @@ def get_color_variants_data_for_product(product, app):
     seen_colors = set()
     for variant in raw_variants:
         inventory = _shop_inventory_for_variant(variant.size_inventory, shop_sizes, listed_sizes)
-        front_image = get_mockup_url_for_variant(product, variant, 'front', app) or variant.front_image_url
-        back_image = get_mockup_url_for_variant(product, variant, 'back', app) or variant.back_image_url
+        front_image = get_mockup_url_for_variant(product, variant, 'front', app)
+        back_image = get_mockup_url_for_variant(product, variant, 'back', app)
         color_variants_data.append({
             'color_name': variant.color_name,
             'color_hex': variant.color_hex,
@@ -519,11 +534,7 @@ def get_carousel_colors_for_product(product, app, allowed_colors=None, variants=
         # Try mockup folder FIRST
         url = _find_mockup_file(app, product.style_number, v.color_name, 'front')
         if not url:
-            raw = v.front_image_url or ''
-            # Fix bare relative paths stored without /static/ prefix
-            if raw and not raw.startswith('http') and not raw.startswith('/'):
-                raw = '/static/' + raw
-            url = raw or None
+            url = _usable_image_url(v.front_image_url)
         if url:
             seen.add(v.color_name)
             result.append({'color_name': v.color_name, 'front_image_url': url})
