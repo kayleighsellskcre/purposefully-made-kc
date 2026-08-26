@@ -12,19 +12,27 @@
         </div>
 
         {% if collections %}
-        <div class="collections-grid">
+        <div class="filter-tabs go-filter-tabs" role="group" aria-label="Filter group orders">
+            <button type="button" class="filter-tab active" data-filter="active" id="goFilterActive">Active</button>
+            <button type="button" class="filter-tab" data-filter="all" id="goFilterAll">Show All</button>
+        </div>
+        <p class="go-filter-hint" id="goFilterHint"></p>
+
+        <div class="collections-grid" id="collectionsGrid">
             {% for collection in collections %}
-            <div class="collection-card">
+            <div class="collection-card" data-active="{{ 'true' if collection.list_active else 'false' }}">
                 <div class="collection-header">
                     <h3>{{ collection.name }}</h3>
                     <div class="collection-badges">
                         {% if collection.restrict_options %}
                         <span class="badge badge-restricted" title="Organizer chose specific colors & designs">Restricted</span>
                         {% endif %}
-                        {% if collection.is_active %}
-                        <span class="badge badge-active">Active</span>
-                        {% else %}
+                        {% if not collection.is_active %}
                         <span class="badge badge-inactive">Inactive</span>
+                        {% elif not collection.list_active %}
+                        <span class="badge badge-expired">Expired</span>
+                        {% else %}
+                        <span class="badge badge-active">Active</span>
                         {% endif %}
                     </div>
                 </div>
@@ -57,6 +65,10 @@
             </div>
             {% endfor %}
         </div>
+        <div class="empty-state go-filter-empty" id="goFilterEmpty" hidden>
+            <h2>No active group orders</h2>
+            <p>Inactive and expired orders are hidden. Click <strong>Show All</strong> to see them.</p>
+        </div>
         {% else %}
         <div class="empty-state">
             <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -78,17 +90,74 @@ function copyLink(url, btn) {
         setTimeout(function() { if (btn) { btn.textContent = orig; btn.disabled = false; } }, 2000);
     });
 }
+
+(function() {
+    var grid = document.getElementById('collectionsGrid');
+    if (!grid) return;
+    var cards = grid.querySelectorAll('.collection-card');
+    var empty = document.getElementById('goFilterEmpty');
+    var hint = document.getElementById('goFilterHint');
+    var tabs = document.querySelectorAll('.go-filter-tabs .filter-tab');
+    var mode = 'active';
+
+    function applyFilter(next) {
+        mode = next;
+        var shown = 0;
+        cards.forEach(function(card) {
+            var isActive = card.getAttribute('data-active') === 'true';
+            var show = mode === 'all' || isActive;
+            card.hidden = !show;
+            if (show) shown += 1;
+        });
+        tabs.forEach(function(tab) {
+            tab.classList.toggle('active', tab.getAttribute('data-filter') === mode);
+        });
+        if (empty) empty.hidden = shown > 0 || mode === 'all';
+        if (hint) {
+            var total = cards.length;
+            var activeCount = 0;
+            cards.forEach(function(c) { if (c.getAttribute('data-active') === 'true') activeCount += 1; });
+            hint.textContent = mode === 'active'
+                ? 'Showing ' + shown + ' active of ' + total + ' group orders'
+                : 'Showing all ' + total + ' group orders (' + activeCount + ' active)';
+        }
+    }
+
+    tabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            applyFilter(tab.getAttribute('data-filter') || 'active');
+        });
+    });
+
+    applyFilter('active');
+})();
 </script>
 
 <style>
 .admin-page { padding: 4rem 0; }
-.admin-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
+.admin-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.go-filter-tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+.filter-tab {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+.filter-tab.active { background: var(--accent-color); color: #fff; border-color: var(--accent-color); }
+.go-filter-hint { color: var(--text-secondary); font-size: 0.875rem; margin: 0 0 1.5rem; }
 .collections-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 1.25rem; }
 .collection-card { background: #fff; border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1.5rem; }
+.collection-card[hidden] { display: none !important; }
 .collection-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 1.5rem; }
 .collection-header h3 { font-size: 1.15rem; min-width: 0; }
 .badge-active { background: rgba(16, 185, 129, 0.1); color: #10b981; }
 .badge-inactive { background: rgba(156, 163, 175, 0.1); color: var(--text-secondary); }
+.badge-expired { background: rgba(245, 158, 11, 0.12); color: #b45309; }
 .badge-restricted { background: rgba(184, 124, 111, 0.2); color: var(--accent-color); }
 .collection-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .collection-info { margin-bottom: 1.5rem; }
@@ -99,6 +168,7 @@ function copyLink(url, btn) {
 .btn-export-sm { background: #1D6F42; color: #fff !important; border-color: #1D6F42; }
 .btn-export-sm:hover { background: #155734; border-color: #155734; }
 .empty-state { text-align: center; padding: 4rem 2rem; background: #fff; border-radius: var(--border-radius); }
+.go-filter-empty { margin-top: 1rem; }
 .empty-state svg { color: var(--text-light); margin-bottom: 2rem; }
 .empty-state h2 { margin-bottom: 1rem; }
 .empty-state p { color: var(--text-secondary); margin-bottom: 2rem; }

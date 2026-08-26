@@ -5,11 +5,20 @@ from tests.conftest import CUSTOMER_EMAIL
 
 
 def test_admin_gallery_page_has_edit_controls(admin_client, seed):
-    html = admin_client.get('/admin/design-gallery').get_data(as_text=True)
+    html = admin_client.get('/admin/designs?tab=gallery').get_data(as_text=True)
     assert 'openGalleryEdit' in html
     assert '/design-gallery/' in html and '/edit' in html
     assert 'Remove from Gallery' in html
     assert 'Delete' in html
+    assert 'Design Library' in html
+    assert 'Gallery' in html
+
+
+def test_old_design_gallery_url_redirects(admin_client, seed):
+    resp = admin_client.get('/admin/design-gallery', follow_redirects=False)
+    assert resp.status_code == 301
+    assert '/admin/designs' in (resp.headers.get('Location') or '')
+    assert 'tab=gallery' in (resp.headers.get('Location') or '')
 
 
 def test_admin_can_edit_gallery_design_info(admin_client, seed, app):

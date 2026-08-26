@@ -16,8 +16,6 @@ DAILY_ENDPOINTS = {
     'admin.dtf_batch_sheets',
     'admin.production_bulk_sheet',
     'admin.blank_apparel_list',
-    'admin.custom_design_requests',
-    'admin.custom_design_request_detail',
     'admin.production',
 }
 

@@ -287,8 +287,13 @@ def index():
     except Exception:
         recent_site_errors = 0
 
-    # Recent orders
-    recent_orders = Order.query.order_by(Order.created_at.desc()).limit(8).all()
+    # Recent orders — last 5 by created date, any status (paid/completed included)
+    recent_orders = (
+        Order.query
+        .order_by(Order.created_at.desc())
+        .limit(5)
+        .all()
+    )
 
     # Greeting based on local business time (CST/CDT)
     hour = _now.hour
@@ -2511,7 +2516,12 @@ def import_widen_images():
 @admin_required
 def collections():
     """Manage collections"""
+    from utils.group_orders import is_deadline_passed
+
     collections = Collection.query.order_by(Collection.created_at.desc()).all()
+    for c in collections:
+        # Active = not marked inactive and order window not past deadline
+        c.list_active = bool(c.is_active) and not is_deadline_passed(c)
     return render_template('admin/collections.html', collections=collections)
 
 
@@ -3086,14 +3096,46 @@ def dtf_batch_sheets():
     )
 
 
-# ===== DESIGNS =====
+# ===== DESIGNS (Library + Gallery tabs) =====
+
+def _admin_designs_url(tab='gallery'):
+    """Canonical designs page URL; tab is library|gallery."""
+    tab = 'library' if tab == 'library' else 'gallery'
+    return url_for('admin.designs', tab=tab)
+
 
 @admin_bp.route('/designs')
 @admin_required
 def designs():
-    """Artwork library - customer uploads"""
-    designs = Design.query.filter_by(is_gallery=False).order_by(Design.uploaded_at.desc()).all()
-    return render_template('admin/designs.html', designs=designs)
+    """Combined Design Library (customer uploads) + Gallery (curated public designs)."""
+    tab = (request.args.get('tab') or 'library').strip().lower()
+    if tab not in ('library', 'gallery'):
+        tab = 'library'
+
+    library_designs = Design.query.filter_by(is_gallery=False).order_by(Design.uploaded_at.desc()).all()
+
+    try:
+        gallery_designs = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).all()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Failed to load admin design gallery: %s', e)
+        flash('We could not load the design gallery (a database issue). '
+              'If this persists, a database migration may be pending.', 'error')
+        gallery_designs = []
+
+    # Pending non-gallery uploads for promote-to-gallery (gallery tab)
+    try:
+        pending_designs = Design.query.filter_by(is_gallery=False).order_by(Design.uploaded_at.desc()).limit(50).all()
+    except Exception:
+        pending_designs = []
+
+    return render_template(
+        'admin/designs.html',
+        active_tab=tab,
+        library_designs=library_designs,
+        gallery_designs=gallery_designs,
+        pending_designs=pending_designs,
+    )
 
 
 # ===== DAILY AFFIRMATIONS =====
@@ -3166,26 +3208,13 @@ def affirmation_delete(aff_id):
     return redirect(url_for('admin.affirmations'))
 
 
-# ===== DESIGN GALLERY (for customers to use) =====
+# ===== DESIGN GALLERY (legacy URL → merged Designs page) =====
 
 @admin_bp.route('/design-gallery', strict_slashes=False)
 @admin_required
 def design_gallery():
-    """Upload and manage designs for customer gallery"""
-    try:
-        gallery_designs = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).all()
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.exception('Failed to load admin design gallery: %s', e)
-        flash('We could not load the design gallery (a database issue). '
-              'If this persists, a database migration may be pending.', 'error')
-        gallery_designs = []
-    # Also load non-gallery user uploads so admin can promote them
-    try:
-        pending_designs = Design.query.filter_by(is_gallery=False).order_by(Design.uploaded_at.desc()).limit(50).all()
-    except Exception:
-        pending_designs = []
-    return render_template('admin/design_gallery.html', designs=gallery_designs, pending_designs=pending_designs)
+    """Old gallery URL — permanently redirect to the merged Designs page."""
+    return redirect(_admin_designs_url('gallery'), code=301)
 
 
 @admin_bp.route('/design-gallery/<int:design_id>/promote', methods=['POST'])
@@ -3203,7 +3232,7 @@ def promote_design_to_gallery(design_id):
         db.session.rollback()
         current_app.logger.exception('Failed to promote design %s: %s', design_id, e)
         flash('Could not promote design. Please try again.', 'error')
-    return redirect(url_for('admin.design_gallery'))
+    return redirect(url_for('admin.designs', tab='gallery'))
 
 
 @admin_bp.route('/design-gallery/upload', methods=['POST'])
@@ -3214,22 +3243,22 @@ def design_gallery_upload():
 
     if 'file' not in request.files:
         flash('No file provided.', 'error')
-        return redirect(url_for('admin.design_gallery'))
+        return redirect(url_for('admin.designs', tab='gallery'))
 
     file = request.files['file']
     if not file or not file.filename:
         flash('No file selected.', 'error')
-        return redirect(url_for('admin.design_gallery'))
+        return redirect(url_for('admin.designs', tab='gallery'))
 
     filename = secure_filename(file.filename)
     if '.' not in filename:
         flash('File must have an extension (PNG, JPG, etc.).', 'error')
-        return redirect(url_for('admin.design_gallery'))
+        return redirect(url_for('admin.designs', tab='gallery'))
 
     ext = os.path.splitext(filename)[1].lower()
     if ext not in _ALLOWED_DESIGN_EXTS:
         flash('Unsupported format. Use PNG, JPG, WEBP, or HEIC.', 'error')
-        return redirect(url_for('admin.design_gallery'))
+        return redirect(url_for('admin.designs', tab='gallery'))
 
     try:
         # Use _save_uploaded_design so cloud storage (R2) and background
@@ -3237,7 +3266,7 @@ def design_gallery_upload():
         design = _save_uploaded_design(file, current_user.id)
         if design is None:
             flash('Upload failed — file could not be stored. Please try again.', 'error')
-            return redirect(url_for('admin.design_gallery'))
+            return redirect(url_for('admin.designs', tab='gallery'))
 
         # Override defaults with values from the form
         title = (request.form.get('title') or '').strip()
@@ -3251,19 +3280,19 @@ def design_gallery_upload():
 
         db.session.commit()
         flash(f'Design "{design.title or design.original_filename}" added to gallery!', 'success')
-        return redirect(url_for('admin.design_gallery'))
+        return redirect(url_for('admin.designs', tab='gallery'))
 
     except SQLAlchemyError as e:
         db.session.rollback()
         current_app.logger.exception('design_gallery_upload DB error: %s', e)
         flash('The design could not be saved — a database error occurred. '
               'If this keeps happening, run the database migration script.', 'error')
-        return redirect(url_for('admin.design_gallery'))
+        return redirect(url_for('admin.designs', tab='gallery'))
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('design_gallery_upload unexpected error: %s', e)
         flash('Something went wrong while uploading the design. Please try again.', 'error')
-        return redirect(url_for('admin.design_gallery'))
+        return redirect(url_for('admin.designs', tab='gallery'))
 
 
 @admin_bp.route('/design-gallery/<int:design_id>/edit', methods=['POST'])
@@ -3299,14 +3328,14 @@ def design_gallery_edit(design_id):
                 if is_ajax:
                     return jsonify({'ok': False, 'error': msg}), 400
                 flash(msg, 'error')
-                return redirect(url_for('admin.design_gallery'))
+                return redirect(url_for('admin.designs', tab='gallery'))
             ext = os.path.splitext(filename)[1].lower()
             if ext not in _ALLOWED_DESIGN_EXTS:
                 msg = 'Unsupported format. Use PNG, JPG, WEBP, or HEIC.'
                 if is_ajax:
                     return jsonify({'ok': False, 'error': msg}), 400
                 flash(msg, 'error')
-                return redirect(url_for('admin.design_gallery'))
+                return redirect(url_for('admin.designs', tab='gallery'))
 
             from utils.cloud_storage import upload_image
             import time
@@ -3324,7 +3353,7 @@ def design_gallery_edit(design_id):
                 if is_ajax:
                     return jsonify({'ok': False, 'error': msg}), 500
                 flash(msg, 'error')
-                return redirect(url_for('admin.design_gallery'))
+                return redirect(url_for('admin.designs', tab='gallery'))
 
             old_path = design.file_path
             design.filename = unique_name
@@ -3356,14 +3385,14 @@ def design_gallery_edit(design_id):
         if is_ajax:
             return jsonify({'ok': False, 'error': 'Could not save changes. Please try again.'}), 500
         flash('Could not save changes. Please try again.', 'error')
-        return redirect(url_for('admin.design_gallery'))
+        return redirect(url_for('admin.designs', tab='gallery'))
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('design_gallery_edit unexpected error %s: %s', design_id, e)
         if is_ajax:
             return jsonify({'ok': False, 'error': 'Something went wrong. Please try again.'}), 500
         flash('Something went wrong while saving. Please try again.', 'error')
-        return redirect(url_for('admin.design_gallery'))
+        return redirect(url_for('admin.designs', tab='gallery'))
 
     from utils.cloud_storage import image_url as resolve_image_url
     payload = {
@@ -3380,7 +3409,7 @@ def design_gallery_edit(design_id):
     if is_ajax:
         return jsonify(payload)
     flash(payload['message'], 'success')
-    return redirect(url_for('admin.design_gallery'))
+    return redirect(url_for('admin.designs', tab='gallery'))
 
 
 @admin_bp.route('/design-gallery/<int:design_id>/remove', methods=['POST'])
@@ -3400,11 +3429,11 @@ def design_gallery_remove(design_id):
         if is_ajax:
             return jsonify({'ok': False, 'error': 'Could not remove the design. Please try again.'}), 500
         flash('Could not remove the design. Please try again.', 'error')
-        return redirect(url_for('admin.design_gallery'))
+        return redirect(url_for('admin.designs', tab='gallery'))
     if is_ajax:
         return jsonify({'ok': True, 'message': f'"{name}" removed from gallery'})
     flash('Design removed from gallery', 'success')
-    return redirect(url_for('admin.design_gallery'))
+    return redirect(url_for('admin.designs', tab='gallery'))
 
 
 @admin_bp.route('/design-gallery/<int:design_id>/delete', methods=['POST'])
@@ -3424,11 +3453,11 @@ def design_gallery_delete(design_id):
         if is_ajax:
             return jsonify({'ok': False, 'error': 'Could not delete the design. Please try again.'}), 500
         flash('Could not delete the design. Please try again.', 'error')
-        return redirect(url_for('admin.design_gallery'))
+        return redirect(url_for('admin.designs', tab='gallery'))
     if is_ajax:
         return jsonify({'ok': True, 'message': f'"{name}" permanently deleted'})
     flash('Design deleted permanently', 'success')
-    return redirect(url_for('admin.design_gallery'))
+    return redirect(url_for('admin.designs', tab='gallery'))
 
 
 # ===== PUBLIC GALLERY APPROVAL QUEUE =====
@@ -3586,7 +3615,7 @@ def _inject_gallery_pending_count():
     return {'gallery_pending_count': count}
 
 
-# ===== CUSTOM DESIGN REQUESTS (Have Us Recreate) =====
+# ===== RECREATE REQUESTS (Have Us Recreate) =====
 
 @admin_bp.route('/custom-design-requests')
 @admin_required
@@ -3780,7 +3809,7 @@ def design_delete(design_id):
     flash('Design deleted permanently', 'success')
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'ok': True, 'message': f'"{name}" permanently deleted'})
-    return redirect(url_for('admin.designs'))
+    return redirect(url_for('admin.designs', tab='library'))
 
 
 def _delete_design_file(design):

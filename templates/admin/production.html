@@ -72,14 +72,14 @@
                 <a href="{{ ops_url('admin.dtf_batch_sheets') }}" class="btn btn-primary">Open DTF list</a>
             </div>
             
-            <!-- Designs Library -->
+            <!-- Designs -->
             <div class="production-card">
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                 </svg>
-                <h2>Designs Library</h2>
+                <h2>Design Library</h2>
                 <p>View all uploaded customer designs and artwork</p>
-                <a href="{{ url_for('admin.designs') }}" class="btn btn-primary">View Designs</a>
+                <a href="{{ url_for('admin.designs', tab='library') }}" class="btn btn-primary">View Designs</a>
             </div>
             
             <!-- Orders by Status -->
