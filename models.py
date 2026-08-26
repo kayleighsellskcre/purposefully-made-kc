@@ -345,6 +345,10 @@ class Design(db.Model):
     folder = db.Column(db.String(100))  # custom_orders, evergreen, school, holiday, sports, etc.
     sku = db.Column(db.String(50))  # SKU number
     
+    # Soft-hide from admin Design Library without removing the customer's copy
+    # in My Designs (same Design row / file).
+    hidden_from_admin = db.Column(db.Boolean, default=False)
+
     # Metadata
     uploaded_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)

@@ -3136,7 +3136,15 @@ def designs():
     if tab not in ('library', 'gallery'):
         tab = 'library'
 
-    library_designs = Design.query.filter_by(is_gallery=False).order_by(Design.uploaded_at.desc()).all()
+    library_designs = (
+        Design.query
+        .filter(
+            Design.is_gallery == False,
+            or_(Design.hidden_from_admin == False, Design.hidden_from_admin.is_(None)),
+        )
+        .order_by(Design.uploaded_at.desc())
+        .all()
+    )
 
     try:
         gallery_designs = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).all()
@@ -3149,7 +3157,16 @@ def designs():
 
     # Pending non-gallery uploads for promote-to-gallery (gallery tab)
     try:
-        pending_designs = Design.query.filter_by(is_gallery=False).order_by(Design.uploaded_at.desc()).limit(50).all()
+        pending_designs = (
+            Design.query
+            .filter(
+                Design.is_gallery == False,
+                or_(Design.hidden_from_admin == False, Design.hidden_from_admin.is_(None)),
+            )
+            .order_by(Design.uploaded_at.desc())
+            .limit(50)
+            .all()
+        )
     except Exception:
         pending_designs = []
 
@@ -3465,11 +3482,40 @@ def design_gallery_remove(design_id):
 @admin_bp.route('/design-gallery/<int:design_id>/delete', methods=['POST'])
 @admin_required
 def design_gallery_delete(design_id):
-    """Permanently delete a design and its file (admin only)"""
+    """Permanently delete a gallery design (admin only).
+
+    If a customer still owns the design, unpublish it instead of destroying
+    their My Designs copy.
+    """
     design = Design.query.get_or_404(design_id)
     name = design.title or design.original_filename or 'Design'
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     try:
+        if design.uploaded_by_user_id:
+            design.is_gallery = False
+            design.gallery_status = None
+            design.hidden_from_admin = True
+            db.session.commit()
+            msg = f'"{name}" unpublished and removed from admin lists. Customer copy kept.'
+            if is_ajax:
+                return jsonify({'ok': True, 'message': msg})
+            flash('Design unpublished; customer copy kept', 'success')
+            return redirect(url_for('admin.designs', tab='gallery'))
+
+        try:
+            in_orders = design.order_items.count() > 0
+        except Exception:
+            in_orders = False
+        if in_orders:
+            design.is_gallery = False
+            design.hidden_from_admin = True
+            db.session.commit()
+            msg = f'"{name}" unpublished (used in orders; file kept).'
+            if is_ajax:
+                return jsonify({'ok': True, 'message': msg})
+            flash('Design unpublished (used in orders)', 'success')
+            return redirect(url_for('admin.designs', tab='gallery'))
+
         _delete_design_file(design)
         db.session.delete(design)
         db.session.commit()
@@ -3826,16 +3872,90 @@ def _send_design_request_decision_email(req, decision, reason=None):
 @admin_bp.route('/designs/<int:design_id>/delete', methods=['POST'])
 @admin_required
 def design_delete(design_id):
-    """Permanently delete a design (admin only) - used for Designs Library"""
+    """Remove a design from the admin Design Library.
+
+    Customer-owned designs are soft-hidden so My Designs (and the file) stay
+    intact. Orphan / admin-only designs with no order or request links are
+    hard-deleted. Always returns quickly with JSON for the AJAX modal.
+    """
     design = Design.query.get_or_404(design_id)
     name = design.title or design.original_filename or 'Design'
-    _delete_design_file(design)
-    db.session.delete(design)
-    db.session.commit()
-    flash('Design deleted permanently', 'success')
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({'ok': True, 'message': f'"{name}" permanently deleted'})
-    return redirect(url_for('admin.designs', tab='library'))
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    def _json_or_redirect(payload, *, ok=True, flash_msg=None, flash_cat='success'):
+        if flash_msg:
+            flash(flash_msg, flash_cat)
+        if is_ajax:
+            status = 200 if ok else 400
+            return jsonify(payload), status
+        return redirect(url_for('admin.designs', tab='library'))
+
+    try:
+        # Customer copy must survive admin cleanup of the library list.
+        if design.uploaded_by_user_id:
+            design.hidden_from_admin = True
+            db.session.commit()
+            return _json_or_redirect(
+                {
+                    'ok': True,
+                    'message': f'"{name}" removed from admin library. Customer still has their copy.',
+                },
+                flash_msg='Removed from admin library (customer copy kept)',
+            )
+
+        # Linked to orders or recreate requests — never destroy the file/row.
+        try:
+            in_orders = design.order_items.count() > 0
+        except Exception:
+            in_orders = False
+        linked_request = None
+        try:
+            from models import CustomDesignRequest
+            linked_request = CustomDesignRequest.query.filter_by(
+                created_design_id=design.id
+            ).first()
+        except Exception:
+            linked_request = None
+
+        if in_orders or linked_request:
+            design.hidden_from_admin = True
+            db.session.commit()
+            reason = 'linked to orders' if in_orders else 'linked to a recreate request'
+            return _json_or_redirect(
+                {
+                    'ok': True,
+                    'message': f'"{name}" hidden from admin library ({reason}; file kept).',
+                },
+                flash_msg=f'Hidden from library ({reason})',
+            )
+
+        # Safe hard delete for orphan admin uploads
+        file_path = design.file_path
+        db.session.delete(design)
+        db.session.commit()
+        # Unlink after commit so a stuck disk op never blocks the UI response path
+        # for future soft-hides; for hard delete we still try briefly.
+        if file_path:
+            try:
+                full_path = Path('static') / file_path
+                if full_path.exists():
+                    full_path.unlink()
+            except OSError:
+                pass
+
+        return _json_or_redirect(
+            {'ok': True, 'message': f'"{name}" permanently deleted'},
+            flash_msg='Design deleted permanently',
+        )
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Failed to delete design %s: %s', design_id, e)
+        return _json_or_redirect(
+            {'ok': False, 'error': 'Could not delete the design. Please try again.'},
+            ok=False,
+            flash_msg='Could not delete the design. Please try again.',
+            flash_cat='error',
+        )
 
 
 def _delete_design_file(design):

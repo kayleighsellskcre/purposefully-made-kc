@@ -195,6 +195,8 @@ def create_app(config_class=Config):
                     "ALTER TABLE product ADD COLUMN IF NOT EXISTS spec_sheet_url VARCHAR(500)",
                     # product_color_variant.color_swatch_url — SanMar CDN swatch image (color_hex is only 7 chars)
                     "ALTER TABLE product_color_variant ADD COLUMN IF NOT EXISTS color_swatch_url VARCHAR(500)",
+                    # Soft-hide customer designs from admin library without deleting their My Designs copy
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS hidden_from_admin BOOLEAN DEFAULT FALSE",
                 ]
                 for migration in all_migrations:
                     try:
