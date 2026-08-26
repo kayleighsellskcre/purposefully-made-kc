@@ -142,22 +142,65 @@ def _render_email(template, **context):
 def send_order_confirmation_email(order, force=False):
     """Send a branded HTML receipt to the customer + a dedicated alert to admin.
 
+    Idempotent across concurrent callers (complete background thread, confirmation
+    page, Stripe webhook). Only one worker may send unless force=True (admin resend).
+
     Never raises — a mail failure must not turn a saved order into a checkout 500.
     """
-    import socket as _socket
     import sys
 
     try:
-        if getattr(order, 'confirmation_email_sent_at', None) and not force:
-            return True
-        sent = _send_order_confirmation_email(order)
-        if sent:
+        order_id = getattr(order, 'id', None)
+        if not order_id:
+            return False
+
+        if not force:
+            # Claim the send slot BEFORE SMTP so a second concurrent call exits
+            # immediately instead of also delivering customer + admin mail.
+            claimed = (
+                Order.query
+                .filter(
+                    Order.id == order_id,
+                    Order.confirmation_email_sent_at.is_(None),
+                )
+                .update(
+                    {Order.confirmation_email_sent_at: datetime.utcnow()},
+                    synchronize_session=False,
+                )
+            )
             try:
-                order.confirmation_email_sent_at = datetime.utcnow()
                 db.session.commit()
             except Exception:
                 db.session.rollback()
-        return sent
+                return False
+            if not claimed:
+                return True
+
+        order = Order.query.get(order_id)
+        if not order:
+            return False
+
+        sent = _send_order_confirmation_email(order)
+        if sent:
+            if force:
+                try:
+                    order.confirmation_email_sent_at = datetime.utcnow()
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+            return True
+
+        # Total failure: release the claim so confirmation-page / admin retry can try again.
+        if not force:
+            try:
+                Order.query.filter_by(id=order_id).update(
+                    {Order.confirmation_email_sent_at: None},
+                    synchronize_session=False,
+                )
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+        return False
     except Exception as e:
         print(f"Order confirmation email failed: {e}", file=sys.stderr)
         current_app.logger.exception('order confirmation email failed for %s', getattr(order, 'order_number', '?'))
@@ -263,7 +306,7 @@ def _send_order_confirmation_email(order):
         email_sent = _send_mail(
             current_app._get_current_object(), msg,
             description=f'customer receipt for {order.order_number}',
-        )
+        ) or email_sent
     elif not recipients:
         current_app.logger.error(
             'order email skipped for %s — no customer email on the order or account',
@@ -297,10 +340,10 @@ def _send_order_confirmation_email(order):
             sender=_mail_sender(),
             reply_to=order.email or None,
         )
-        _send_mail(
+        email_sent = _send_mail(
             current_app._get_current_object(), admin_msg,
             description=f'business new-order alert for {order.order_number}',
-        )
+        ) or email_sent
 
     # ── 3. Admin SMS alert (non-critical) ─────────────────────────────────
     try:

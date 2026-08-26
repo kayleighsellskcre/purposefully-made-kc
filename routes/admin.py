@@ -2874,22 +2874,46 @@ def production_master():
 @admin_required
 def transfer_production():
     """Printable / filterable press sheet across selected orders."""
-    from utils.ops_flow import ops_order_query
-    status_filter = request.args.getlist('status')
-    if status_filter and not request.args.getlist('stage'):
-        query = Order.query.filter(Order.status.in_(status_filter))
-        collection_id = request.args.get('collection')
-        if collection_id:
-            query = query.filter_by(collection_id=collection_id)
-        stages = status_filter
-    else:
-        query, stages, collection_id = ops_order_query(['ready_to_press', 'pressed'])
+    from utils.ops_flow import ops_order_query, current_collection, ops_url
+    from utils.production_stages import orders_for_stages
+
+    # On-screen press sheet: Ready to Press + Pressed (hand to the presser).
+    query, stages, collection_id = ops_order_query(['ready_to_press', 'pressed'])
     group_by = request.args.get('group', 'size')
-    orders = query.order_by(Order.created_at).all()
+
     if request.args.get('format') == 'csv':
+        # CSV is for transfer sizing — include every open order that still needs
+        # a press (new orders included). The page filter of Ready to Press alone
+        # left first orders as an empty header-only download.
+        csv_stages = [
+            'order_received', 'waiting_supplies', 'ready_to_press', 'pressed',
+        ]
+        csv_query = orders_for_stages(csv_stages)
+        cid = request.args.get('collection') or current_collection() or None
+        if cid:
+            csv_query = csv_query.filter_by(collection_id=cid)
+        csv_orders = csv_query.order_by(Order.created_at).all()
         from utils.print_sizes import group_production_rows
-        rows = group_production_rows(_collect_order_productions(orders), group_by=group_by)
-        return _transfer_csv_response(rows, f'transfers_{datetime.now().strftime("%Y%m%d")}.csv')
+        rows = group_production_rows(
+            _collect_order_productions(csv_orders), group_by=group_by,
+        )
+        if not rows:
+            flash(
+                'No transfer rows yet. Orders need shirts with a design or name/number '
+                'before a press CSV can be built.',
+                'info',
+            )
+            return redirect(ops_url(
+                'admin.transfer_production',
+                stage=stages,
+                group=group_by,
+                collection=cid,
+            ))
+        return _transfer_csv_response(
+            rows, f'transfers_{datetime.now().strftime("%Y%m%d")}.csv',
+        )
+
+    orders = query.order_by(Order.created_at).all()
     shirts = _sort_press_shirts(_collect_press_shirts(orders), group_by=group_by)
     collections = Collection.query.all()
     return render_template(

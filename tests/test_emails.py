@@ -212,6 +212,56 @@ def test_receipt_is_not_sent_twice_for_one_order(client, seed, outbox, app):
     assert len(outbox) == first_count, 'a second receipt was generated'
 
 
+def test_claim_blocks_second_sender_before_smtp(app, seed, outbox):
+    """Regression: checkout thread + confirmation page used to both pass the
+    'not yet sent' check and deliver two customer + two admin emails."""
+    with app.app_context():
+        order = Order(
+            order_number='CLAIM-1',
+            email='buyer@example.com',
+            first_name='Casey',
+            last_name='Customer',
+            subtotal=30.0,
+            tax=2.85,
+            total=32.85,
+            payment_status='paid',
+            payment_method='stripe',
+            created_at=datetime.utcnow(),
+        )
+        db.session.add(order)
+        db.session.commit()
+        order_id = order.id
+
+        # First worker already claimed the slot (as send_order_confirmation_email does)
+        Order.query.filter_by(id=order_id).update(
+            {Order.confirmation_email_sent_at: datetime.utcnow()},
+            synchronize_session=False,
+        )
+        db.session.commit()
+
+        with patch('routes.checkout._send_order_confirmation_email') as mock_send:
+            from routes.checkout import send_order_confirmation_email
+            result = send_order_confirmation_email(Order.query.get(order_id))
+            assert result is True
+            mock_send.assert_not_called()
+        assert len(outbox) == 0
+
+
+def test_complete_plus_confirmation_page_send_only_once(client, seed, outbox, app):
+    """The thank-you page used to POST /send-email while the background send
+    from /complete was still in flight — both delivered."""
+    order_number = _place_cash_order(client, seed, app, token='tok-race-page')
+    before = len(outbox)
+    # Mimic the confirmation page fetch after place (already sent inline in tests)
+    client.post(f'/checkout/confirmation/{order_number}/send-email')
+    client.post(f'/checkout/confirmation/{order_number}/send-email')
+    assert len(outbox) == before
+
+    subjects = [m.subject for m in outbox]
+    assert sum(1 for s in subjects if 'new order' in s.lower()) == 1, subjects
+    assert sum(1 for s in subjects if 'receipt' in s.lower()) == 1, subjects
+
+
 def test_resending_the_confirmation_page_does_not_duplicate(client, seed, outbox, app):
     order_number = _place_cash_order(client, seed, app)
     before = len(outbox)

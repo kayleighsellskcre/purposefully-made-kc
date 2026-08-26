@@ -7,7 +7,7 @@
         <div>
             <span class="adm-eyebrow">Admin / Production</span>
             <h1>{{ title }}</h1>
-            <p class="xfer-sub">One card per shirt. Front and back stay together. Hand this to the presser. When a shirt is done, move it to Pressed in Workflow, then print labels.</p>
+            <p class="xfer-sub">One card per shirt. Front and back stay together. Hand this to the presser. When a shirt is done, move it to Pressed in Workflow, then print labels. <strong>Download CSV</strong> includes all open orders (even new ones still waiting on blanks).</p>
         </div>
         <div class="xfer-actions">
             {% if order %}
@@ -43,7 +43,7 @@
         </label>
         {% endif %}
         {% for st in selected_status %}
-        <input type="hidden" name="status" value="{{ st }}">
+        <input type="hidden" name="stage" value="{{ st }}">
         {% endfor %}
     </form>
     {% endif %}
