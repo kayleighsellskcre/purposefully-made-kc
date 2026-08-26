@@ -3178,7 +3178,8 @@ def affirmations():
 def affirmation_add():
     """Add a new affirmation."""
     from models import Affirmation
-    text = request.form.get('text', '').strip()
+    from affirmations_seed import normalize_affirmation_text
+    text = normalize_affirmation_text(request.form.get('text', ''))
     if not text:
         flash('Affirmation text cannot be empty.', 'error')
         return redirect(url_for('admin.affirmations'))
@@ -3194,8 +3195,9 @@ def affirmation_add():
 def affirmation_edit(aff_id):
     """Update the text of an existing affirmation."""
     from models import Affirmation
+    from affirmations_seed import normalize_affirmation_text
     aff = Affirmation.query.get_or_404(aff_id)
-    text = request.form.get('text', '').strip()
+    text = normalize_affirmation_text(request.form.get('text', ''))
     if not text:
         flash('Affirmation text cannot be empty.', 'error')
         return redirect(url_for('admin.affirmations'))

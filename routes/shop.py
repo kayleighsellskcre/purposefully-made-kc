@@ -143,14 +143,19 @@ def index():
                     .all()
                 )
                 if db_affirmations:
-                    daily_affirmation = db_affirmations[day_index % len(db_affirmations)].text
+                    from affirmations_seed import normalize_affirmation_text
+                    daily_affirmation = normalize_affirmation_text(
+                        db_affirmations[day_index % len(db_affirmations)].text
+                    )
             except Exception:
                 pass
 
             # Fallback: use seed list directly if DB had nothing
             if not daily_affirmation:
-                from affirmations_seed import AFFIRMATIONS
-                daily_affirmation = AFFIRMATIONS[day_index % len(AFFIRMATIONS)]
+                from affirmations_seed import AFFIRMATIONS, normalize_affirmation_text
+                daily_affirmation = normalize_affirmation_text(
+                    AFFIRMATIONS[day_index % len(AFFIRMATIONS)]
+                )
         except Exception:
             pass
 
