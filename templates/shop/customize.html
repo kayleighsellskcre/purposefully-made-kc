@@ -4164,6 +4164,80 @@
         });
     }
     
+    function capturePreviewProofBlob(side) {
+        /** Snapshot the live preview (shirt + logo) for admin "how they ordered it". */
+        return new Promise(function (resolve) {
+            const viewBtn = document.getElementById(side === 'back' ? 'viewBack' : 'viewFront');
+            if (viewBtn) viewBtn.click();
+            applyDesignFit();
+            if (typeof applyBackDesignPosition === 'function') applyBackDesignPosition();
+
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    try {
+                        const preview = document.getElementById('previewCanvas');
+                        const mockup = document.getElementById('mockupImage');
+                        if (!preview || !mockup || !mockup.naturalWidth) {
+                            resolve(null);
+                            return;
+                        }
+                        const prect = preview.getBoundingClientRect();
+                        const scale = 2;
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.max(1, Math.round(prect.width * scale));
+                        canvas.height = Math.max(1, Math.round(prect.height * scale));
+                        const ctx = canvas.getContext('2d');
+                        if (!ctx) {
+                            resolve(null);
+                            return;
+                        }
+                        ctx.scale(scale, scale);
+                        ctx.fillStyle = '#faf7f2';
+                        ctx.fillRect(0, 0, prect.width, prect.height);
+
+                        function drawEl(el) {
+                            if (!el) return;
+                            const r = el.getBoundingClientRect();
+                            const x = r.left - prect.left;
+                            const y = r.top - prect.top;
+                            if (el.tagName === 'IMG' && el.naturalWidth) {
+                                try {
+                                    ctx.drawImage(el, x, y, r.width, r.height);
+                                } catch (e) { /* tainted canvas from CDN — skip */ }
+                            }
+                        }
+
+                        drawEl(mockup);
+
+                        if (side === 'front') {
+                            const layer = document.getElementById('designLayer');
+                            if (layer && layer.style.display !== 'none') {
+                                drawEl(document.getElementById('designImage'));
+                            }
+                        } else {
+                            const layer = document.getElementById('backDesignLayer');
+                            if (layer && layer.style.display !== 'none') {
+                                const backImg = document.getElementById('backDesignImage');
+                                if (backImg && backImg.style.display !== 'none') {
+                                    drawEl(backImg);
+                                } else {
+                                    // Name/number are text nodes — rasterize the layer via SVG foreignObject fallback: skip
+                                    // Admin will size the back overlay from print geometry instead.
+                                }
+                            }
+                        }
+
+                        canvas.toBlob(function (blob) {
+                            resolve(blob && blob.size > 800 ? blob : null);
+                        }, 'image/png');
+                    } catch (err) {
+                        resolve(null);
+                    }
+                });
+            });
+        });
+    }
+
     function setupAddToCart() {
         document.getElementById('addToCart').addEventListener('click', async function() {
             // Validation — toast + scroll-to missing section
@@ -4272,6 +4346,20 @@
                     } else if (state.backDesignUrl) {
                         formData.append('back_design_url', state.backDesignUrl);
                     }
+                }
+
+                // Snapshot what the customer sees — used on admin order pages
+                try {
+                    const frontProof = await capturePreviewProofBlob('front');
+                    if (frontProof) formData.append('proof_front', frontProof, 'proof_front.png');
+                    if (state.backDesignEnabled) {
+                        const backProof = await capturePreviewProofBlob('back');
+                        if (backProof) formData.append('proof_back', backProof, 'proof_back.png');
+                        const frontBtn = document.getElementById('viewFront');
+                        if (frontBtn) frontBtn.click();
+                    }
+                } catch (proofErr) {
+                    console.warn('Could not save mockup proof snapshot', proofErr);
                 }
                 
                 const response = await fetch('/cart/add', {

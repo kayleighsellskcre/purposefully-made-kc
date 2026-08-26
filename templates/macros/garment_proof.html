@@ -1,4 +1,4 @@
-{% macro garment_proof(mockup_url, overlay_url, placement, label) %}
+{% macro garment_proof(mockup_url, overlay_url, placement, label, overlay_style='') %}
 <div class="pm-proof">
     {% if label %}<span class="pm-proof-label">{{ label }}</span>{% endif %}
     {% if mockup_url %}
@@ -9,6 +9,7 @@
     {% endif %}
     {% if overlay_url %}
     <img class="pm-proof-overlay {{ placement or 'center_chest' }}" src="{{ overlay_url }}" alt=""
+         {% if overlay_style %}style="{{ overlay_style }}"{% endif %}
          onerror="this.style.display='none'">
     {% endif %}
 </div>

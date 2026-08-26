@@ -2533,6 +2533,9 @@ textarea:focus-visible,
     object-position: center;
     pointer-events: none;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+    /* Never let a missing placement class or huge PNG blow past the shirt */
+    max-width: 34%;
+    max-height: 42%;
 }
 .pm-proof-overlay.center_chest,
 .pm-proof-overlay.center_back {

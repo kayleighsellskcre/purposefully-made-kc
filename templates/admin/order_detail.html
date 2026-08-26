@@ -282,9 +282,9 @@
                 <section>
                     <h4 class="od-kit-label">How they ordered it</h4>
                     <div class="pm-proofs od-kit-proofs">
-                        {{ garment_proof(kit.front_mockup_url, kit.front_overlay_url, kit.placement, 'Front') }}
-                        {% if kit.has_back_print %}
-                        {{ garment_proof(kit.back_mockup_url, kit.proof_back_url or kit.back_overlay_url, kit.back_overlay_class or 'center_back', 'Back') }}
+                        {{ garment_proof(kit.front_mockup_url, kit.front_overlay_url, kit.placement, 'Front', kit.front_overlay_style) }}
+                        {% if kit.has_back_print or kit.proof_back_url %}
+                        {{ garment_proof(kit.back_mockup_url, kit.back_overlay_url, kit.back_overlay_class or 'center_back', 'Back', kit.back_overlay_style) }}
                         {% endif %}
                     </div>
                 </section>
