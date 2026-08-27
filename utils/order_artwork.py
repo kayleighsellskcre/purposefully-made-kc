@@ -235,31 +235,32 @@ def preview_overlay_style(item, placement='center_chest'):
     hoodie_scale = max(0.55, min(hoodie_scale, 1.0))
 
     if is_side:
-        pct, max_w, max_h = 12.0, 90.0, 18.0
+        pct, max_w, max_h = 10.0, 78.0, 15.0
         top, left = 32, 62 if placement == 'left_chest' else 38
     elif tall > 1.28:
-        pct, max_w, max_h = 22.0 * cat_scale, 165.0 * cat_scale, 40.0 * cat_scale
+        pct, max_w, max_h = 18.0 * cat_scale, 140.0 * cat_scale, 34.0 * cat_scale
         top, left = 38, 50
-    elif tall > 1.18:
-        pct, max_w, max_h = 25.0 * cat_scale, 185.0 * cat_scale, 40.0 * cat_scale
+    elif tall > 1.12:
+        pct, max_w, max_h = 20.0 * cat_scale, 155.0 * cat_scale, 33.0 * cat_scale
         top, left = 38, 50
-    elif tall >= 0.90:
-        pct, max_w, max_h = 30.0 * cat_scale, 225.0 * cat_scale, 40.0 * cat_scale
+    elif tall >= 0.88:
+        pct, max_w, max_h = 23.0 * cat_scale, 170.0 * cat_scale, 32.0 * cat_scale
         top, left = 38, 50
     else:
-        # Wide / banner logos — keep them chest-width, not full garment
-        pct, max_w, max_h = 30.0 * cat_scale, 225.0 * cat_scale, 36.0 * cat_scale
+        # Wide / banner logos — chest-width, not full garment
+        pct, max_w, max_h = 25.0 * cat_scale, 185.0 * cat_scale, 28.0 * cat_scale
         top, left = 38, 50
 
     pct *= hoodie_scale
     max_w *= hoodie_scale
+    max_h *= hoodie_scale
     # Hard cap so a bad print_width cannot blow up the preview
     if is_side:
-        pct = min(pct, 16.0)
-        max_h = min(max_h, 20.0)
+        pct = min(pct, 14.0)
+        max_h = min(max_h, 18.0)
     else:
-        pct = min(pct, 34.0)
-        max_h = min(max_h, 42.0)
+        pct = min(pct, 27.0)
+        max_h = min(max_h, 36.0)
 
     return (
         f'width:{pct:.1f}%;max-width:{int(round(max_w))}px;max-height:{max_h:.1f}%;'

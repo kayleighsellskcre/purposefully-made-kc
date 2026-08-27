@@ -201,14 +201,14 @@
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 
-/* Placement-specific sizing — slightly smaller than a full-chest takeover.
-   Center of the overlay sits mid-chest (~38% down the mockup), not at the collar.
+/* Placement-specific sizing — preview only (print inches are unchanged).
+   Keep logos readable on the chest without covering most of the shirt.
    Tall designs get a narrower width via JS (applyDesignFit). */
 .design-layer[data-placement="center_chest"] {
-    width: 30%;
-    max-width: 225px;
-    max-height: 40%;
-    min-height: 50px;
+    width: 24%;
+    max-width: 175px;
+    max-height: 32%;
+    min-height: 40px;
     top: 38%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -216,9 +216,9 @@
 
 /* Left chest = appears on RIGHT side of mockup (wearer's left when wearing) */
 .design-layer[data-placement="left_chest"] {
-    width: 12%;
-    max-width: 90px;
-    max-height: 18%;
+    width: 10%;
+    max-width: 78px;
+    max-height: 15%;
     top: 32%;
     left: 62%;
     transform: translate(-50%, -50%);
@@ -226,18 +226,18 @@
 
 /* Right chest = appears on LEFT side of mockup (wearer's right when wearing) */
 .design-layer[data-placement="right_chest"] {
-    width: 12%;
-    max-width: 90px;
-    max-height: 18%;
+    width: 10%;
+    max-width: 78px;
+    max-height: 15%;
     top: 32%;
     left: 38%;
     transform: translate(-50%, -50%);
 }
 
 .design-layer[data-placement="center_back"] {
-    width: 30%;
-    max-width: 225px;
-    max-height: 40%;
+    width: 24%;
+    max-width: 175px;
+    max-height: 32%;
     top: 38%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -2875,44 +2875,59 @@
         designLayer.style.maxHeight = '';
         const hoodieScale = hoodieLogoScale();
         const isSideChest = placement === 'left_chest' || placement === 'right_chest';
-        if (isSideChest && hoodieScale === 1) return;
         const w = designImage.naturalWidth || state.designWidth || 1;
         const h = designImage.naturalHeight || state.designHeight || 1;
         const tall = h / w;
 
-        // Scale down overlay for smaller garments so design looks proportional
+        // Preview-only scales. Production print width/height are NOT derived from these.
         const cat = (typeof productCategory === 'function') ? productCategory() : 'adult';
-        const scale = cat === 'baby' ? 0.55
-                    : cat === 'toddler' ? 0.68
-                    : cat === 'youth'   ? 0.82
-                    : 1.0;
+        const ageScale = cat === 'baby' ? 0.55
+                       : cat === 'toddler' ? 0.68
+                       : cat === 'youth'   ? 0.82
+                       : 1.0;
 
-        let pct = null, maxW = null, maxH = null;
+        let pct, maxW, maxH;
         if (isSideChest) {
-            pct = 12;
-            maxW = 90;
-            maxH = 18;
+            pct = 10;
+            maxW = 78;
+            maxH = 15;
         } else if (tall > 1.28) {
-            pct = 22 * scale;
-            maxW = 165 * scale;
-            maxH = 40 * scale;
-        } else if (tall > 1.18) {
-            pct = 25 * scale;
-            maxW = 185 * scale;
-            maxH = 40 * scale;
-        } else if (tall >= 0.90) {
-            pct = 33 * scale;
-            maxW = 246 * scale;
-            maxH = 42 * scale;
-        } else if (hoodieScale !== 1) {
-            pct = 30;
-            maxW = 225;
-            maxH = 40;
+            // Tall stacks (e.g. vertical FALCONS) — keep narrow so they don't flood the torso
+            pct = 18 * ageScale;
+            maxW = 140 * ageScale;
+            maxH = 34 * ageScale;
+        } else if (tall > 1.12) {
+            pct = 20 * ageScale;
+            maxW = 155 * ageScale;
+            maxH = 33 * ageScale;
+        } else if (tall >= 0.88) {
+            // Near-square logos — previous 33%/246px looked overpowering on tees
+            pct = 23 * ageScale;
+            maxW = 170 * ageScale;
+            maxH = 32 * ageScale;
+        } else {
+            // Wide / banner logos
+            pct = 25 * ageScale;
+            maxW = 185 * ageScale;
+            maxH = 28 * ageScale;
         }
-        if (pct == null) return;
-        designLayer.style.width = (pct * hoodieScale).toFixed(1) + '%';
-        designLayer.style.maxWidth = Math.round(maxW * hoodieScale) + 'px';
-        designLayer.style.maxHeight = (maxH * hoodieScale).toFixed(1) + '%';
+
+        pct *= hoodieScale;
+        maxW *= hoodieScale;
+        maxH *= hoodieScale;
+
+        // Soft caps so a huge PNG never eats the whole mockup
+        if (isSideChest) {
+            pct = Math.min(pct, 14);
+            maxH = Math.min(maxH, 18);
+        } else {
+            pct = Math.min(pct, 27);
+            maxH = Math.min(maxH, 36);
+        }
+
+        designLayer.style.width = pct.toFixed(1) + '%';
+        designLayer.style.maxWidth = Math.round(maxW) + 'px';
+        designLayer.style.maxHeight = maxH.toFixed(1) + '%';
     }
     
     function applyBackDesignPosition() {
