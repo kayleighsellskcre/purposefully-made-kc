@@ -137,13 +137,22 @@ def _swatch_url(row: dict) -> str:
 
 
 def _spec_sheet_url(row: dict) -> str:
-    """Spec sheet PDF — only if the file exists locally."""
+    """SanMar CDN measurement PDF for this style (local SDL PDF if present)."""
+    from utils.spec_sheets import sanmar_cdn_spec_sheet_url
+
     spec = (row.get('SPEC_SHEET', '') or row.get('PRODUCT_MEASUREMENTS', '')).strip()
     if spec and spec.lower().endswith('.pdf'):
         path = os.path.join(_STATIC_ROOT, 'sanmar', 'front', 'SDL', 'SpecSheetMeasurements', spec)
         if os.path.exists(path):
             return f'{_SDL_BASE}/SpecSheetMeasurements/{spec}'
-    return ''
+        # Filename often matches style — still prefer CDN over a dead local path
+        style_from_file = spec[:-4]
+        cdn = sanmar_cdn_spec_sheet_url(style_from_file)
+        if cdn:
+            return cdn
+
+    style = (row.get('STYLE#', '') or '').strip()
+    return sanmar_cdn_spec_sheet_url(style)
 
 
 def parse_csv(source) -> list[dict]:

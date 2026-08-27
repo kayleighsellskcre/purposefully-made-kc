@@ -168,7 +168,7 @@ def ensure_bc3901y(cur, dry_run: bool) -> int | None:
         ),
         'fabric_details': '52% combed and ring-spun cotton, 48% polyester sponge fleece; 7.2 oz',
         'fit_guide': 'Youth sizing; true to size. Relaxed fit.',
-        'spec_sheet_url': 'https://www.sanmar.com/p/BC3901Y',
+        'spec_sheet_url': 'https://cdnm.sanmar.com/SpecSheetMeasurements/BC3901Y.pdf',
         'is_active': True,
         'front_mockup_template': first_front,
         'back_mockup_template': first_back,
@@ -235,7 +235,7 @@ def ensure_pc147yls(cur, dry_run: bool) -> int | None:
         ),
         'fabric_details': '5.4 oz / 100% cotton; rib knit cuffs; prepared-for-dye; tear-away label',
         'fit_guide': 'Youth classic fit; sizes XS–XL. Each garment has slight color variation.',
-        'spec_sheet_url': 'https://www.sanmar.com/p/PC147YLS',
+        'spec_sheet_url': 'https://cdnm.sanmar.com/SpecSheetMeasurements/PC147YLS.pdf',
         'is_active': True,
     }
     pid = upsert_product(cur, 'PC147YLS', fields, dry_run)

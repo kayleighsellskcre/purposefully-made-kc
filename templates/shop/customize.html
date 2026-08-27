@@ -1525,12 +1525,14 @@
                 <h1 class="customize-product-title">{{ product.name }}</h1>
                 <p class="product-style">
                     Style {{ product.style_number }}
-                    {% if product.spec_sheet_url %}
-                    <a href="{{ product.spec_sheet_url }}"
+                    {% set sheet_url = product|spec_sheet_url %}
+                    {% if sheet_url %}
+                    <a href="{{ sheet_url }}"
                        target="_blank"
+                       rel="noopener"
                        class="spec-sheet-link"
-                       title="View official spec sheet">
-                        📄 Spec Sheet
+                       title="View official size &amp; measurement spec sheet (PDF)">
+                        Spec Sheet
                     </a>
                     {% endif %}
                 </p>

@@ -70,12 +70,13 @@
                 
                 <p class="product-style">
                     Style #{{ product.style_number }}
-                    {% if product.spec_sheet_url %}
-                    <a href="{{ product.spec_sheet_url }}"
+                    {% set sheet_url = product|spec_sheet_url %}
+                    {% if sheet_url %}
+                    <a href="{{ sheet_url }}"
                        target="_blank"
                        rel="noopener"
                        class="spec-sheet-link"
-                       title="View official spec sheet">
+                       title="View official size &amp; measurement spec sheet (PDF)">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-1px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                         Spec Sheet
                     </a>

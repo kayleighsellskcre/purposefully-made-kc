@@ -57,7 +57,7 @@ PC146 = {
     ),
     'fabric_details': '7.8 oz / 80% cotton, 20% polyester fleece; prepared-for-dye; tear-away label',
     'fit_guide': 'Unisex classic fit; true to size. Each garment has slight color variation from the tie-dye process.',
-    'spec_sheet_url': 'https://www.sanmar.com/p/PC146',
+    'spec_sheet_url': 'https://cdnm.sanmar.com/SpecSheetMeasurements/PC146.pdf',
     'is_active': True,
     'is_customer_favorite': True,
 }
@@ -81,7 +81,7 @@ PC146Y = {
     ),
     'fabric_details': '7.8 oz / 80% cotton, 20% polyester fleece; prepared-for-dye; no drawcord; tear-away label',
     'fit_guide': 'Youth classic fit; sizes XS–XL. Each garment has slight color variation.',
-    'spec_sheet_url': 'https://www.sanmar.com/p/PC146Y',
+    'spec_sheet_url': 'https://cdnm.sanmar.com/SpecSheetMeasurements/PC146Y.pdf',
     'is_active': True,
     'is_customer_favorite': False,
 }

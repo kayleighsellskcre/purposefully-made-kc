@@ -289,6 +289,18 @@ def create_app(config_class=Config):
         except Exception:
             pass
 
+        # Repair broken SanMar /p/STYLE spec links → CDN measurement PDFs
+        try:
+            from utils.spec_sheets import rewrite_broken_spec_sheet_urls
+            n = rewrite_broken_spec_sheet_urls(db.session, Product)
+            if n:
+                import sys
+                print(f'Repaired {n} product spec_sheet_url values.', file=sys.stderr, flush=True)
+        except Exception:
+            import sys, traceback
+            print('spec_sheet_url repair failed:', file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+
     # Flask-Login setup
     login_manager = LoginManager()
     login_manager.init_app(app)
@@ -504,6 +516,12 @@ def create_app(config_class=Config):
             return path_or_url
         from flask import url_for
         return url_for('static', filename=path_or_url)
+
+    @app.template_filter('spec_sheet_url')
+    def spec_sheet_url_filter(product):
+        """Working SanMar CDN measurement PDF for a product (never the broken /p/ page)."""
+        from utils.spec_sheets import resolve_spec_sheet_url
+        return resolve_spec_sheet_url(product)
 
     @app.template_filter('sort_sizes')
     def sort_sizes_filter(sizes):
