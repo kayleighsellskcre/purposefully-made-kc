@@ -936,7 +936,7 @@
     border-color: #e8e8e8;
 }
 
-/* Spec Sheet Link */
+/* Spec Sheet Link (anchor or button) */
 .spec-sheet-link {
     display: inline-flex;
     align-items: center;
@@ -952,6 +952,9 @@
     font-weight: 600;
     transition: var(--transition);
     white-space: nowrap;
+    cursor: pointer;
+    font-family: inherit;
+    line-height: inherit;
 }
 
 .spec-sheet-link:hover {
@@ -1525,15 +1528,22 @@
                 <h1 class="customize-product-title">{{ product.name }}</h1>
                 <p class="product-style">
                     Style {{ product.style_number }}
-                    {% set sheet_url = product|spec_sheet_url %}
-                    {% if sheet_url %}
-                    <a href="{{ sheet_url }}"
+                    {% set sheet = product|spec_sheet_target %}
+                    {% if sheet.mode == 'external' and sheet.url %}
+                    <a href="{{ sheet.url }}"
                        target="_blank"
                        rel="noopener"
                        class="spec-sheet-link"
-                       title="View official size &amp; measurement spec sheet (PDF)">
+                       title="View official size &amp; product specs">
                         Spec Sheet
                     </a>
+                    {% elif sheet.mode == 'size_chart' %}
+                    <button type="button"
+                            class="spec-sheet-link"
+                            onclick="toggleSizeChart()"
+                            title="View size &amp; measurement chart">
+                        Spec Sheet
+                    </button>
                     {% endif %}
                 </p>
                 

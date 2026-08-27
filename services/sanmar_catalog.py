@@ -127,6 +127,7 @@ CURATED_BRANDS = [
     },
     {
         'name': 'MV Sport',
+        # Sourced via S&S Activewear (not SanMar) — images/inventory/spec links use S&S.
         'group': 'Athletic / Lifestyle',
         'api_names': ['MV Sport', 'MV SPORT'],
         'styles': [
@@ -138,6 +139,7 @@ CURATED_BRANDS = [
     },
     {
         'name': 'C2 Sport',
+        # Sourced via S&S Activewear (not SanMar) — specs link to c2sport.com / S&S.
         'group': 'Athletic / Performance',
         'api_names': ['C2 Sport', 'C2 SPORT'],
         'styles': [
@@ -148,7 +150,6 @@ CURATED_BRANDS = [
         ],
     },
 ]
-
 
 def shop_brand_names():
     return [brand['name'] for brand in CURATED_BRANDS]

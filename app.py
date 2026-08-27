@@ -519,9 +519,18 @@ def create_app(config_class=Config):
 
     @app.template_filter('spec_sheet_url')
     def spec_sheet_url_filter(product):
-        """Working SanMar CDN measurement PDF for a product (never the broken /p/ page)."""
-        from utils.spec_sheets import resolve_spec_sheet_url
-        return resolve_spec_sheet_url(product)
+        """External Spec Sheet URL when available (never broken SanMar CDN links)."""
+        from utils.spec_sheets import resolve_spec_sheet_url, SIZE_CHART_SENTINEL
+        url = resolve_spec_sheet_url(product)
+        if url == SIZE_CHART_SENTINEL:
+            return ''
+        return url
+
+    @app.template_filter('spec_sheet_target')
+    def spec_sheet_target_filter(product):
+        """{mode: external|size_chart|'', url: str} for Spec Sheet buttons."""
+        from utils.spec_sheets import resolve_spec_sheet_target
+        return resolve_spec_sheet_target(product)
 
     @app.template_filter('sort_sizes')
     def sort_sizes_filter(sizes):

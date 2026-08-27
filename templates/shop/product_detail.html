@@ -70,16 +70,24 @@
                 
                 <p class="product-style">
                     Style #{{ product.style_number }}
-                    {% set sheet_url = product|spec_sheet_url %}
-                    {% if sheet_url %}
-                    <a href="{{ sheet_url }}"
+                    {% set sheet = product|spec_sheet_target %}
+                    {% if sheet.mode == 'external' and sheet.url %}
+                    <a href="{{ sheet.url }}"
                        target="_blank"
                        rel="noopener"
                        class="spec-sheet-link"
-                       title="View official size &amp; measurement spec sheet (PDF)">
+                       title="View official size &amp; product specs">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-1px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                         Spec Sheet
                     </a>
+                    {% elif sheet.mode == 'size_chart' %}
+                    <button type="button"
+                            class="spec-sheet-link"
+                            onclick="toggleSizeChart()"
+                            title="View size &amp; measurement chart">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-1px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Spec Sheet
+                    </button>
                     {% endif %}
                 </p>
                 
@@ -469,9 +477,13 @@ function toggleSizeChart() {
     background: var(--accent-color);
     color: #fff;
     text-decoration: none;
+    border: none;
     border-radius: var(--border-radius);
     font-size: 0.75rem;
     font-weight: 600;
+    font-family: inherit;
+    line-height: inherit;
+    cursor: pointer;
     transition: var(--transition);
     white-space: nowrap;
 }
