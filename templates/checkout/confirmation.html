@@ -3,6 +3,11 @@
 {% block title %}Order Confirmation - Purposefully Made KC{% endblock %}
 
 {% block content %}
+<div class="print-only print-doc-header" aria-hidden="true">
+    <strong>Purposefully Made KC</strong>
+    <span>Order Receipt</span>
+    <span>Order {{ order.order_number }} · {{ order.created_at|central }}</span>
+</div>
 <div class="confirmation-page">
     <div class="container">
         <div class="confirmation-card">
@@ -83,9 +88,12 @@
                 {% endfor %}
             </div>
 
-            <div class="confirmation-actions">
+            <div class="confirmation-actions no-print">
+                <button type="button" class="btn btn-primary" id="printReceiptBtn" onclick="window.print()">
+                    Print Receipt
+                </button>
                 {% if current_user.is_authenticated %}
-                <a href="{{ url_for('account.orders') }}" class="btn btn-primary">View My Orders</a>
+                <a href="{{ url_for('account.orders') }}" class="btn btn-outline">View My Orders</a>
                 {% endif %}
                 <a href="{{ url_for('collection.view', slug=active_group_order.slug) if active_group_order else url_for('shop.index') }}" class="btn btn-outline">Continue Shopping</a>
             </div>
@@ -118,8 +126,51 @@
 .confirmation-item:last-child { border-bottom: none; }
 .confirmation-item p { color: var(--text-secondary); font-size: 0.875rem; margin: 0.25rem 0 0; }
 .item-total { font-weight: 600; color: var(--accent-color); }
-.confirmation-actions { padding: 2rem; display: flex; gap: 1rem; justify-content: center; }
+.confirmation-actions { padding: 2rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
 @media (max-width: 768px) { .confirmation-actions { flex-direction: column; } }
+.print-only { display: none; }
+.print-doc-header {
+    margin: 0 auto 1.25rem;
+    max-width: 700px;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #222;
+}
+.print-doc-header strong { display: block; font-size: 1.25rem; margin-bottom: 0.25rem; }
+.print-doc-header span { display: block; font-size: 0.95rem; }
+@media print {
+    .print-only { display: block !important; }
+    .no-print,
+    .navbar,
+    .logo,
+    .nav-links,
+    .mobile-menu-toggle,
+    .flash-messages,
+    .footer {
+        display: none !important;
+    }
+    .confirmation-page { padding: 0; }
+    .confirmation-card {
+        max-width: none;
+        box-shadow: none;
+        border: 1px solid #ccc;
+    }
+    .confirmation-header {
+        background: #fff !important;
+        color: #111 !important;
+        padding: 1.5rem 1.25rem 1rem;
+    }
+    .confirmation-header h1,
+    .confirmation-header p,
+    .confirmation-eyebrow,
+    .success-icon-wrap {
+        color: #111 !important;
+    }
+    .success-icon-wrap {
+        border-color: #111;
+        background: transparent;
+    }
+    body { background: #fff !important; }
+}
 </style>
 {% if not email_sent %}
 <script>

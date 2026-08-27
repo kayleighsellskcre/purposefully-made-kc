@@ -4,6 +4,11 @@
 {% block title %}Checkout - Purposefully Made KC{% endblock %}
 
 {% block content %}
+<div class="print-only print-doc-header" aria-hidden="true">
+    <strong>Purposefully Made KC</strong>
+    <span>Order Estimate</span>
+    <span class="print-doc-date" id="printEstimateDate"></span>
+</div>
 <div class="page-header">
     <div class="container">
         <span class="eyebrow">Almost There</span>
@@ -15,7 +20,7 @@
     </div>
 </div>
 
-<div class="checkout-page">
+<div class="checkout-page print-estimate-page">
     <div class="container">
         <div class="checkout-grid">
             <!-- Left Column: Forms -->
@@ -287,6 +292,11 @@
                         <strong id="summary-total">${{ "%.2f"|format(totals.total) }}</strong>
                     </div>
                 </div>
+
+                <button type="button" class="btn btn-outline btn-block no-print" id="printEstimateBtn" onclick="window.print()">
+                    Print Estimate
+                </button>
+                <p class="print-estimate-note no-print">Save a copy of this estimate for your records before paying.</p>
             </div>
         </div>
     </div>
@@ -1413,5 +1423,73 @@ async function completeOrder(paymentId, paymentMethodOverride) {
         min-height: 48px;
     }
 }
+
+.print-only { display: none; }
+.print-estimate-note {
+    margin: 0.65rem 0 0;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    color: var(--text-secondary);
+    text-align: center;
+}
+#printEstimateBtn {
+    margin-top: 1.1rem;
+}
+.print-doc-header {
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #222;
+}
+.print-doc-header strong {
+    display: block;
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
+}
+.print-doc-header span {
+    display: block;
+    font-size: 0.95rem;
+}
+
+@media print {
+    .print-only { display: block !important; }
+    .no-print,
+    .checkout-forms,
+    .page-header,
+    .navbar,
+    .logo,
+    .nav-links,
+    .mobile-menu-toggle,
+    .flash-messages,
+    .footer,
+    #submit-payment {
+        display: none !important;
+    }
+    .checkout-page,
+    .checkout-grid,
+    .order-summary {
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
+        position: static !important;
+        box-shadow: none !important;
+        background: #fff !important;
+    }
+    .order-summary {
+        border: 1px solid #ccc;
+        padding: 1rem;
+    }
+    body { background: #fff !important; }
+}
 </style>
+<script>
+(function () {
+    var el = document.getElementById('printEstimateDate');
+    if (el) {
+        el.textContent = new Date().toLocaleString(undefined, {
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: 'numeric', minute: '2-digit'
+        });
+    }
+})();
+</script>
 {% endblock %}
