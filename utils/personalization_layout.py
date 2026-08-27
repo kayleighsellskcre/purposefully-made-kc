@@ -28,7 +28,9 @@ FONT_FILES = {
     'Anton': 'Anton-Regular.ttf',
     'Teko': 'Teko-Bold.ttf',
     # Alumni Sans Collegiate One (OFL), served to customers as Varsity Regular.
+    # Numbers keep the outlined collegiate glyphs; names use the solid companion.
     'Varsity Regular': 'VarsityRegular.ttf',
+    'Varsity Regular Solid': 'VarsityRegularSolid.ttf',
 }
 
 _FONT_CACHE = {}
@@ -42,6 +44,13 @@ def font_path(font_name):
     filename = FONT_FILES.get(font_name) or FONT_FILES['Bebas Neue']
     path = fonts_dir() / filename
     return path if path.is_file() else None
+
+
+def name_font_name(font_name):
+    """Varsity names use solid ExtraBold; numbers keep outlined Collegiate One."""
+    if (font_name or '').strip() == 'Varsity Regular':
+        return 'Varsity Regular Solid'
+    return font_name or 'Bebas Neue'
 
 
 def font_available(font_name):
@@ -334,14 +343,21 @@ def render_snapshot_png(snapshot, dpi=PRODUCTION_DPI):
     pad_px = max(4, int(round(pad_in * dpi)))
 
     # Probe ink ratio so font-size produces the saved VISIBLE height, not the em box.
-    name_font_px = _font_px_for_ink(font_name, name_px, 'H') if name else 0
-    number_font_px = _font_px_for_ink(font_name, number_px, '8') if number else 0
-    name_font = _load_font(font_name, name_font_px) if name else None
-    number_font = _load_font(font_name, number_font_px) if number else None
+    name_face = name_font_name(font_name)
+    number_face = font_name
+    if name and not font_available(name_face):
+        raise FileNotFoundError(f'The production font "{name_face}" is not installed on the server.')
+    name_font_px = _font_px_for_ink(name_face, name_px, 'H') if name else 0
+    number_font_px = _font_px_for_ink(number_face, number_px, '8') if number else 0
+    name_font = _load_font(name_face, name_font_px) if name else None
+    number_font = _load_font(number_face, number_font_px) if number else None
 
     fill = _hex_rgba(snapshot.get('text_color'))
     stroke = _hex_rgba(snapshot.get('outline_color'), (0, 0, 0, 255))
-    stroke_w_name = max(1, int(round(name_font_px * 0.08))) if snapshot.get('outline') else 0
+    # Varsity names are intentionally solid (no outline); numbers keep Collegiate
+    # glyph outline and may also get the optional stroke outline.
+    name_wants_outline = bool(snapshot.get('outline')) and name_face != 'Varsity Regular Solid'
+    stroke_w_name = max(1, int(round(name_font_px * 0.08))) if name_wants_outline else 0
     stroke_w_num = max(1, int(round(number_font_px * 0.08))) if snapshot.get('outline') else 0
 
     name_spacing = _num(snapshot.get('name_letter_spacing_em'))
@@ -489,6 +505,14 @@ def validate_snapshot_geometry(snapshot):
             'code': 'font_missing',
             'label': 'Font file',
             'expected': font_name,
+            'actual': 'not installed',
+        })
+    name_face = name_font_name(font_name)
+    if snapshot.get('name') and not font_available(name_face):
+        failures.append({
+            'code': 'font_missing',
+            'label': 'Name font file',
+            'expected': name_face,
             'actual': 'not installed',
         })
     if not snapshot.get('complete'):

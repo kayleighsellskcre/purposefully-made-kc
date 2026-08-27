@@ -1986,6 +1986,8 @@
                                         <button type="button" class="bd-swatch" data-color="#d4af37" title="Gold" style="background:#d4af37"></button>
                                         <button type="button" class="bd-swatch" data-color="#1b6e3c" title="Green" style="background:#1b6e3c"></button>
                                         <button type="button" class="bd-swatch" data-color="#2155cd" title="Royal blue" style="background:#2155cd"></button>
+                                        <button type="button" class="bd-swatch" data-color="#ff2eb6" title="Bright pink" style="background:#ff2eb6"></button>
+                                        <button type="button" class="bd-swatch" data-color="#ffd400" title="Yellow" style="background:#ffd400"></button>
                                     </div>
                                 </div>
                             </div>
@@ -3119,6 +3121,12 @@
         'Jersey M54': { nameSpacing: '0.05em', numberSpacing: '0.02em' },
         'Varsity Regular': { nameSpacing: '0.04em', numberSpacing: '0.02em' }
     };
+
+    function backNameFontFamily(font) {
+        // Varsity Regular numbers keep the outlined Collegiate glyphs; names use
+        // the solid Alumni Sans ExtraBold companion so they have no built-in outline.
+        return (font === 'Varsity Regular') ? 'Varsity Regular Solid' : font;
+    }
     
     function buildBackOutlineShadow(color) {
         const c = color || '#000000';
@@ -3147,24 +3155,35 @@
             const name = (nameInput && nameInput.value) ? nameInput.value.trim().toUpperCase() : '';
             const number = (numberInput && numberInput.value) ? numberInput.value.trim() : '';
             const font = (fontSelect && fontSelect.value) ? fontSelect.value : 'Bebas Neue';
+            const nameFont = backNameFontFamily(font);
+            const numberFont = font;
             const cfg = BACK_FONT_CONFIG[font] || BACK_FONT_CONFIG['Bebas Neue'];
             const textColor = textColorEl ? textColorEl.value : (state.backDesignTextColor || '#ffffff');
             const outlineOn = outlineToggleEl ? outlineToggleEl.checked : (state.backDesignOutline !== false);
             const outlineColor = outlineColorEl ? outlineColorEl.value : (state.backDesignOutlineColor || '#000000');
             nameEl.textContent = name;
             numberEl.textContent = number;
-            textContainer.style.fontFamily = `"${font}", sans-serif`;
+            nameEl.style.fontFamily = `"${nameFont}", sans-serif`;
+            numberEl.style.fontFamily = `"${numberFont}", sans-serif`;
+            textContainer.style.fontFamily = `"${numberFont}", sans-serif`;
             textContainer.style.color = textColor;
-            textContainer.style.textShadow = outlineOn ? buildBackOutlineShadow(outlineColor) : 'none';
-            requestBackFont(font);
+            // Apply outline per line. Varsity names stay solid (no CSS outline).
+            textContainer.style.textShadow = 'none';
+            const shadow = outlineOn ? buildBackOutlineShadow(outlineColor) : 'none';
+            nameEl.style.textShadow = (outlineOn && nameFont !== 'Varsity Regular Solid') ? shadow : 'none';
+            numberEl.style.textShadow = shadow;
+            nameEl.style.color = textColor;
+            numberEl.style.color = textColor;
+            requestBackFont(nameFont);
+            requestBackFont(numberFont);
             const box = garmentBox();
             const pxPerInch = box ? box.pxPerInch : 0;
             const nameH = nameHeightIn();
             const gapH = gapHeightIn();
             const numH = numberHeightIn();
             const safeIn = safeWidthIn();
-            const nameInk = inkMetrics(font, INK_REF_NAME);
-            const numberInk = inkMetrics(font, INK_REF_NUMBER);
+            const nameInk = inkMetrics(nameFont, INK_REF_NAME);
+            const numberInk = inkMetrics(numberFont, INK_REF_NUMBER);
             // Reference-glyph scaling: every name gets the same letter height,
             // and one digit is the same height as two.
             const nameFontPx = pxPerInch ? (nameH * pxPerInch) / nameInk.ink : 0;
@@ -3176,13 +3195,13 @@
             const minSpacing = -0.06;
             const numberSpacingEm = parseFloat(cfg.numberSpacing) || 0.02;
             let spacingEm = baseSpacing;
-            let naturalNameIn = pxPerInch ? measureTextWidthPx(name, font, nameFontPx, spacingEm) / pxPerInch : 0;
+            let naturalNameIn = pxPerInch ? measureTextWidthPx(name, nameFont, nameFontPx, spacingEm) / pxPerInch : 0;
             while (name && naturalNameIn > safeIn && spacingEm > minSpacing + 0.001) {
                 spacingEm = Math.max(minSpacing, spacingEm - 0.01);
-                naturalNameIn = measureTextWidthPx(name, font, nameFontPx, spacingEm) / pxPerInch;
+                naturalNameIn = measureTextWidthPx(name, nameFont, nameFontPx, spacingEm) / pxPerInch;
             }
             const condense = (name && naturalNameIn > safeIn) ? (safeIn / naturalNameIn) : 1;
-            const numberFit = numberGroupFit(number, font, numberFontPx, numberSpacingEm, safeIn * pxPerInch);
+            const numberFit = numberGroupFit(number, numberFont, numberFontPx, numberSpacingEm, safeIn * pxPerInch);
             const numberTrackEm = numberFit.spacingEm;
             const numberCondense = numberFit.scale;
             const naturalNumberIn = pxPerInch ? numberFit.naturalPx / pxPerInch : 0;
@@ -4252,6 +4271,8 @@
             const name = (state.backDesignName || '').toUpperCase().trim();
             const number = (state.backDesignNumber || '').trim();
             const font = state.backDesignFont || 'Bebas Neue';
+            const nameFont = backNameFontFamily(font);
+            const numberFont = font;
             if (!name && !number) return resolve(null);
 
             const dpi = 300;
@@ -4274,15 +4295,18 @@
                 if (document.fonts) {
                     const loads = [];
                     if (document.fonts.load) {
-                        loads.push(document.fonts.load(`bold ${Math.round(numInkPx || 200)}px "${font}"`));
-                        loads.push(document.fonts.load(`bold ${Math.round(nameInkPx || 200)}px "${font}"`));
+                        loads.push(document.fonts.load(`bold ${Math.round(numInkPx || 200)}px "${numberFont}"`));
+                        loads.push(document.fonts.load(`bold ${Math.round(nameInkPx || 200)}px "${nameFont}"`));
                     }
                     if (document.fonts.ready) loads.push(document.fonts.ready);
                     await Promise.all(loads);
                 }
             } catch (e) {}
             const fontReady = document.fonts && document.fonts.check
-                ? document.fonts.check(`bold 80px "${font}"`)
+                ? (
+                    document.fonts.check(`bold 80px "${numberFont}"`)
+                    && document.fonts.check(`bold 80px "${nameFont}"`)
+                )
                 : false;
             if (!fontReady) {
                 PMKC.showFlash('The jersey font is still loading. Please wait a moment and add to cart again.', 'error');
@@ -4290,13 +4314,13 @@
             }
 
             // Font size that makes the visible letters exactly the chart height.
-            const nameInk = inkMetrics(font, INK_REF_NAME);
-            const numberInk = inkMetrics(font, INK_REF_NUMBER);
+            const nameInk = inkMetrics(nameFont, INK_REF_NAME);
+            const numberInk = inkMetrics(numberFont, INK_REF_NUMBER);
             const namePx = nameInkPx / nameInk.ink;
             const numPx = numInkPx / numberInk.ink;
             const nameSpacing = namePx * spacingEm;
             const safePx = safeWidthIn() * dpi;
-            const numberFit = numberGroupFit(number, font, numPx, numberSpacingEm, safePx);
+            const numberFit = numberGroupFit(number, numberFont, numPx, numberSpacingEm, safePx);
             // Print what the customer approved: reuse the tracking and squeeze
             // the preview resolved, and only fall back if it never ran.
             const numberTrackEm = (state.numberTrackingEm != null)
@@ -4310,9 +4334,9 @@
             const outlineColor = state.backDesignOutlineColor
                 || (document.getElementById('backDesignOutlineColor') || {}).value || '#000000';
 
-            function measureSpaced(text, fontSize, charSpacing) {
+            function measureSpaced(text, face, fontSize, charSpacing) {
                 if (!text) return 0;
-                ctx.font = `bold ${fontSize}px "${font}", sans-serif`;
+                ctx.font = `bold ${fontSize}px "${face}", sans-serif`;
                 if (text.length > 1) {
                     let total = 0;
                     for (let i = 0; i < text.length; i++) {
@@ -4324,11 +4348,11 @@
                 return ctx.measureText(text).width;
             }
 
-            const naturalNamePx = measureSpaced(name, namePx, nameSpacing);
+            const naturalNamePx = measureSpaced(name, nameFont, namePx, nameSpacing);
             const condense = (name && naturalNamePx > safePx) ? (safePx / naturalNamePx) : 1;
             const numberCondense = (state.numberCondense != null) ? state.numberCondense : numberFit.scale;
             const nameWpx = naturalNamePx * condense;
-            const numberWpx = measureSpaced(number, numPx, numberSpacing) * numberCondense;
+            const numberWpx = measureSpaced(number, numberFont, numPx, numberSpacing) * numberCondense;
             const contentW = Math.max(nameWpx, numberWpx, 1);
             // Ink to ink, so the PNG measures what the transfer sheet says.
             const contentH = (name ? nameInkPx : 0) + (name && number ? gapPx : 0) + (number ? numInkPx : 0);
@@ -4346,12 +4370,12 @@
             ctx.miterLimit = 2;
 
             // yPos is the baseline, so ink lands exactly where it is placed.
-            function drawTextWithSpacing(text, yPos, fontSize, charSpacing, scaleX) {
+            function drawTextWithSpacing(text, yPos, face, fontSize, charSpacing, scaleX, useOutline) {
                 if (!text) return;
                 ctx.save();
                 ctx.translate(canvas.width / 2, yPos);
                 if (scaleX && scaleX < 0.999) ctx.scale(scaleX, 1);
-                ctx.font = `bold ${fontSize}px "${font}", sans-serif`;
+                ctx.font = `bold ${fontSize}px "${face}", sans-serif`;
                 ctx.lineWidth = Math.max(4, Math.round(fontSize * 0.08));
                 if (text.length > 1) {
                     let totalWidth = 0;
@@ -4363,12 +4387,12 @@
                     }
                     let x = -totalWidth / 2 + widths[0] / 2;
                     for (let i = 0; i < text.length; i++) {
-                        if (outlineOn) ctx.strokeText(text[i], x, 0);
+                        if (useOutline) ctx.strokeText(text[i], x, 0);
                         ctx.fillText(text[i], x, 0);
                         x += widths[i] + charSpacing;
                     }
                 } else {
-                    if (outlineOn) ctx.strokeText(text, 0, 0);
+                    if (useOutline) ctx.strokeText(text, 0, 0);
                     ctx.fillText(text, 0, 0);
                 }
                 ctx.restore();
@@ -4376,12 +4400,13 @@
 
             let y = pad;
             if (name) {
-                drawTextWithSpacing(name, y + nameInk.ascent * namePx, namePx, nameSpacing, condense);
+                const nameOutline = outlineOn && nameFont !== 'Varsity Regular Solid';
+                drawTextWithSpacing(name, y + nameInk.ascent * namePx, nameFont, namePx, nameSpacing, condense, nameOutline);
                 y += nameInkPx;
                 if (number) y += gapPx;
             }
             if (number) {
-                drawTextWithSpacing(number, y + numberInk.ascent * numPx, numPx, numberSpacing, numberCondense);
+                drawTextWithSpacing(number, y + numberInk.ascent * numPx, numberFont, numPx, numberSpacing, numberCondense, outlineOn);
             }
 
             canvas.toBlob(function(blob) {

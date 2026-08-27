@@ -143,6 +143,7 @@ FONT_METRICS = {
     'Teko': {'char_width': 0.50, 'letter_spacing': 0.06, 'number_spacing': 0.03, 'cap_ratio': 0.66},
     'Jersey M54': {'char_width': 0.58, 'letter_spacing': 0.05, 'number_spacing': 0.02, 'cap_ratio': 0.72},
     'Varsity Regular': {'char_width': 0.62, 'letter_spacing': 0.04, 'number_spacing': 0.02, 'cap_ratio': 0.70},
+    'Varsity Regular Solid': {'char_width': 0.58, 'letter_spacing': 0.04, 'number_spacing': 0.02, 'cap_ratio': 0.72},
 }
 DEFAULT_CAP_RATIO = 0.72
 

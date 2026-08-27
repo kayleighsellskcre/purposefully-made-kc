@@ -82,7 +82,7 @@ def test_shop_card_counts_colours_that_have_no_photo(app, seed):
 def test_customize_page_includes_varsity_regular_and_a_gallery_dropdown(client, seed):
     html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
     assert 'Varsity Regular' in html
-    assert 'galleryDesignSelect' in html
+    assert 'logoGalleryGrid' in html or 'gallery-design-picker' in html
     assert 'html2canvas' not in html
     assert '+$6.00' in html
     assert 'back-design-fee-amount' in html
@@ -120,12 +120,28 @@ def test_header_shop_link_leaves_the_group_order(client, seed):
 
 def test_varsity_regular_font_file_is_present():
     assert font_path('Varsity Regular') is not None
+    assert font_path('Varsity Regular Solid') is not None
+
+
+def test_varsity_names_use_solid_companion_font():
+    from utils.personalization_layout import name_font_name
+    assert name_font_name('Varsity Regular') == 'Varsity Regular Solid'
+    assert name_font_name('Bebas Neue') == 'Bebas Neue'
 
 
 def test_group_order_font_list_includes_varsity_regular():
     values = [value for value, _label in GROUP_ORDER_FONTS]
     assert 'Varsity Regular' in values
     assert 'Varsity Regular' in [value for value, _label in CUSTOMIZE_BACK_FONTS]
+
+
+def test_customize_offers_bright_pink_and_yellow_text_swatches(client, app, seed):
+    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    assert 'data-color="#ff2eb6"' in html
+    assert 'data-color="#ffd400"' in html
+    assert 'Bright pink' in html
+    assert 'Yellow' in html
+    assert 'Varsity Regular Solid' in html
 
 
 def test_group_order_create_form_offers_varsity_regular(customer_client):
