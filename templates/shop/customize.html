@@ -1371,6 +1371,17 @@
     margin-top: 0.5rem;
 }
 
+.add-to-cart-hint {
+    margin: 0.7rem 0 0;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--text-secondary);
+    text-align: center;
+}
+.add-to-cart-hint[hidden] {
+    display: none !important;
+}
+
 @media (max-width: 1024px) {
     .customizer-container {
         grid-template-columns: minmax(0, 1fr);
@@ -2064,11 +2075,14 @@
                 </div>
                 
                 {% if ordering_not_yet_open %}
-                <button class="btn btn-primary btn-block" id="addToCart" disabled style="opacity:0.65;cursor:not-allowed;" title="Orders open {{ collection_opens_label }}">
+                <button class="btn btn-primary btn-block" id="addToCart" disabled data-ordering-closed="1" style="opacity:0.65;cursor:not-allowed;" title="Orders open {{ collection_opens_label }}">
                     🗓 Orders Open {{ collection_opens_label }}
                 </button>
                 {% else %}
-                <button class="btn btn-primary btn-block" id="addToCart">Add to Cart</button>
+                <button class="btn btn-primary btn-block" id="addToCart" disabled style="opacity:0.65;cursor:not-allowed;">Add to Cart</button>
+                <p class="add-to-cart-hint" id="addToCartHint" aria-live="polite">
+                    If Add to Cart is greyed out, choose a size and upload or select a design.
+                </p>
                 {% endif %}
             </div>
         </div>
@@ -2161,6 +2175,7 @@
         setupAddToCart();
         setupLogoGalleryClicks();
         setupMyDesignsClicks();
+        refreshAddToCartButton();
         window.addEventListener('resize', function() {
             applyDesignFit();
             updateBackDesignPreview();
@@ -3269,9 +3284,57 @@
         state.quantity = qty;
         const quantityDisplay = document.getElementById('quantityDisplay');
         if (quantityDisplay) quantityDisplay.textContent = qty;
+        refreshAddToCartButton(max);
+    }
+
+    function hasCartReadyDesign() {
+        const hasFrontDesign = !!(state.designUrl || state.designFile || state.presetDesignId);
+        const hasBackDesign = !!(state.backDesignEnabled && (
+            (state.backDesignMode === 'name_number' && (state.backDesignName || state.backDesignNumber)) ||
+            (state.backDesignMode === 'upload' && (state.backDesignFile || state.backDesignUrl))
+        ));
+        return hasFrontDesign || hasBackDesign;
+    }
+
+    function refreshAddToCartButton(stockMax) {
         const addBtn = document.getElementById('addToCart');
-        if (addBtn && addBtn.dataset.busy !== '1') {
-            addBtn.disabled = !state.selectedSize || max <= 0;
+        const hint = document.getElementById('addToCartHint');
+        if (!addBtn || addBtn.dataset.orderingClosed === '1') return;
+
+        let max = stockMax;
+        if (typeof max !== 'number') {
+            const inv = (state.selectedColor && state.selectedColor.inventory) || {};
+            const hasInventoryData = Object.keys(inv).length > 0;
+            const available = hasInventoryData && state.selectedSize ? stockQty(inv, state.selectedSize) : 100;
+            max = Math.max(0, available);
+        }
+
+        const hasSize = !!state.selectedSize;
+        const hasDesign = hasCartReadyDesign();
+        const outOfStock = hasSize && max <= 0;
+        const ready = hasSize && hasDesign && !outOfStock;
+
+        if (addBtn.dataset.busy !== '1') {
+            addBtn.disabled = !ready;
+            addBtn.style.opacity = ready ? '' : '0.65';
+            addBtn.style.cursor = ready ? '' : 'not-allowed';
+        }
+
+        if (!hint) return;
+        if (ready) {
+            hint.hidden = true;
+            hint.textContent = '';
+            return;
+        }
+        hint.hidden = false;
+        if (outOfStock) {
+            hint.textContent = 'That size is out of stock — try another size or color.';
+        } else if (!hasSize && !hasDesign) {
+            hint.textContent = 'If Add to Cart is greyed out, choose a size and upload or select a design.';
+        } else if (!hasSize) {
+            hint.textContent = 'Select a size to continue.';
+        } else {
+            hint.textContent = 'Upload or select a design to continue.';
         }
     }
 
@@ -3404,6 +3467,7 @@
         
         updateDesignLayerVisibility();
         updateTotalPrice();
+        refreshAddToCartButton();
     }
     
     function applyPresetDesign(preset) {
@@ -3448,6 +3512,7 @@
         applyDesignFit();
         updateDesignLayerVisibility();
         if (typeof updateTotalPrice === 'function') updateTotalPrice();
+        refreshAddToCartButton();
         
         const dragHint = document.getElementById('dragHint');
         if (dragHint) dragHint.style.display = 'block';
@@ -3677,6 +3742,7 @@
                     applyDesignFit();
                     updateDesignLayerVisibility();
                     updateTotalPrice();
+                    refreshAddToCartButton();
                     const dragHint = document.getElementById('dragHint');
                     if (dragHint) dragHint.style.display = 'block';
                 }
@@ -3741,6 +3807,7 @@
                 if (uploadAreaMain) {
                     uploadAreaMain.innerHTML = UPLOAD_PROMPT;
                 }
+                refreshAddToCartButton();
             });
         }
 
@@ -3762,6 +3829,7 @@
         function syncBackDesignPreview() {
             updateBackDesignPreview();
             updateDesignLayerVisibility();
+            refreshAddToCartButton();
         }
         const backDesignContainer = document.getElementById('backDesignUploadArea');
         if (backDesignContainer) {
@@ -3896,6 +3964,7 @@
                 
                 updateBackDesignPreview();
                 updateDesignLayerVisibility();
+                refreshAddToCartButton();
                 
                 uploadAreaBack.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 1rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Back design uploaded!</strong></p><p class="text-muted">Click to change</p>';
                 uploadAreaBack.style.pointerEvents = '';
@@ -3919,6 +3988,7 @@
                 state.backDesignFile = null;
                 state.backDesignUrl = null;
                 updateDesignLayerVisibility();
+                refreshAddToCartButton();
                 
                 // Reset upload area
                 uploadAreaBack.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 1rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Upload back design</strong></p><p class="text-muted">PNG, JPG, WEBP (Max 16MB)</p>';
