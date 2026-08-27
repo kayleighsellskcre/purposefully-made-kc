@@ -3147,7 +3147,8 @@ def designs():
     )
 
     try:
-        gallery_designs = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).all()
+        from utils.design_variants import gallery_mains_query
+        gallery_designs = gallery_mains_query(Design).all()
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('Failed to load admin design gallery: %s', e)
@@ -3321,8 +3322,34 @@ def design_gallery_upload():
         if sku:
             design.sku = sku
 
+        # Optional: upload as a color variant of an existing main design
+        from utils.design_variants import ensure_not_nested_parent
+        parent_id = request.form.get('parent_design_id', type=int)
+        variant_label = (request.form.get('variant_label') or '').strip()[:80]
+        if parent_id:
+            parent = Design.query.get(parent_id)
+            parent = ensure_not_nested_parent(parent)
+            if parent and parent.is_gallery and parent.id != design.id:
+                design.parent_design_id = parent.id
+                design.variant_label = variant_label or 'Color'
+                if not (parent.variant_label or '').strip():
+                    parent.variant_label = 'Default'
+                if not title:
+                    design.title = parent.title or parent.original_filename
+                if not sku and parent.sku:
+                    design.sku = parent.sku
+                design.folder = parent.folder or design.folder
+                design.is_gallery = True
+
         db.session.commit()
-        flash(f'Design "{design.title or design.original_filename}" added to gallery!', 'success')
+        if design.parent_design_id:
+            flash(
+                f'Color "{design.variant_label}" added to '
+                f'"{design.parent_design.title or design.parent_design.original_filename}".',
+                'success',
+            )
+        else:
+            flash(f'Design "{design.title or design.original_filename}" added to gallery!', 'success')
         return redirect(url_for('admin.designs', tab='gallery'))
 
     except SQLAlchemyError as e:
@@ -3356,12 +3383,14 @@ def design_gallery_edit(design_id):
     if folder not in GALLERY_FOLDERS:
         folder = 'custom_orders'
     sku = (request.form.get('sku') or '').strip()
+    variant_label = (request.form.get('variant_label') or '').strip()[:80]
 
     try:
         if title:
             design.title = title[:200]
         design.folder = folder
         design.sku = sku[:50] if sku else None
+        design.variant_label = variant_label or design.variant_label
 
         new_file = request.files.get('file')
         if new_file and new_file.filename:
@@ -3455,6 +3484,39 @@ def design_gallery_edit(design_id):
     return redirect(url_for('admin.designs', tab='gallery'))
 
 
+def _unpublish_design_and_variants(design):
+    """Unpublish a gallery design and any color variants attached to it."""
+    from utils.design_variants import unpublish_color_variants
+    design.is_gallery = False
+    design.gallery_status = None
+    unpublish_color_variants(design)
+
+
+def _hard_delete_design_and_variants(design):
+    """Delete color children first (FK), then the main design."""
+    from utils.design_variants import unpublish_color_variants
+    children = list(design.color_variants.all())
+    for child in children:
+        try:
+            in_orders = child.order_items.count() > 0
+        except Exception:
+            in_orders = False
+        if child.uploaded_by_user_id or in_orders:
+            child.is_gallery = False
+            child.gallery_status = None
+            child.hidden_from_admin = True
+            child.parent_design_id = None
+        else:
+            _delete_design_file(child)
+            db.session.delete(child)
+    # Detach any remaining soft-kept children before deleting parent
+    unpublish_color_variants(design)
+    for child in design.color_variants.all():
+        child.parent_design_id = None
+    _delete_design_file(design)
+    db.session.delete(design)
+
+
 @admin_bp.route('/design-gallery/<int:design_id>/remove', methods=['POST'])
 @admin_required
 def design_gallery_remove(design_id):
@@ -3463,8 +3525,8 @@ def design_gallery_remove(design_id):
     name = design.title or design.original_filename or 'Design'
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     try:
-        if design.is_gallery:
-            design.is_gallery = False
+        if design.is_gallery or design.color_variants.filter_by(is_gallery=True).count():
+            _unpublish_design_and_variants(design)
             db.session.commit()
     except Exception as e:
         db.session.rollback()
@@ -3485,16 +3547,17 @@ def design_gallery_delete(design_id):
     """Permanently delete a gallery design (admin only).
 
     If a customer still owns the design, unpublish it instead of destroying
-    their My Designs copy.
+    their My Designs copy. Color variants follow the main design.
     """
     design = Design.query.get_or_404(design_id)
     name = design.title or design.original_filename or 'Design'
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     try:
         if design.uploaded_by_user_id:
-            design.is_gallery = False
-            design.gallery_status = None
+            _unpublish_design_and_variants(design)
             design.hidden_from_admin = True
+            for child in design.color_variants.all():
+                child.hidden_from_admin = True
             db.session.commit()
             msg = f'"{name}" unpublished and removed from admin lists. Customer copy kept.'
             if is_ajax:
@@ -3507,8 +3570,10 @@ def design_gallery_delete(design_id):
         except Exception:
             in_orders = False
         if in_orders:
-            design.is_gallery = False
+            _unpublish_design_and_variants(design)
             design.hidden_from_admin = True
+            for child in design.color_variants.all():
+                child.hidden_from_admin = True
             db.session.commit()
             msg = f'"{name}" unpublished (used in orders; file kept).'
             if is_ajax:
@@ -3516,8 +3581,7 @@ def design_gallery_delete(design_id):
             flash('Design unpublished (used in orders)', 'success')
             return redirect(url_for('admin.designs', tab='gallery'))
 
-        _delete_design_file(design)
-        db.session.delete(design)
+        _hard_delete_design_and_variants(design)
         db.session.commit()
     except Exception as e:
         db.session.rollback()

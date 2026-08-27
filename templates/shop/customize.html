@@ -684,6 +684,78 @@
 .gallery-image-grid .logo-gallery-item-label {
     display: none;
 }
+.logo-gallery-item {
+    position: relative;
+}
+.logo-gallery-color-dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    min-width: 1.15rem;
+    height: 1.15rem;
+    padding: 0 0.25rem;
+    border-radius: 999px;
+    background: var(--terra-cotta, #b87c6f);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    line-height: 1.15rem;
+    text-align: center;
+    pointer-events: none;
+}
+.logo-color-chooser {
+    margin-top: 0.75rem;
+    padding: 0.85rem 0.9rem;
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+}
+.logo-color-chooser[hidden] {
+    display: none !important;
+}
+.logo-color-chooser-label {
+    margin: 0 0 0.65rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+.logo-color-chooser-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+    gap: 0.55rem;
+}
+.logo-color-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: #fafafa;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+}
+.logo-color-option:hover {
+    border-color: var(--terra-cotta, #b87c6f);
+}
+.logo-color-option.selected {
+    border-color: var(--terra-cotta, #b87c6f);
+    box-shadow: 0 0 0 2px rgba(184, 124, 111, 0.22);
+    background: #fff;
+}
+.logo-color-option img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: contain;
+    display: block;
+}
+.logo-color-option span {
+    font-size: 0.72rem;
+    line-height: 1.2;
+    text-align: center;
+    word-break: break-word;
+}
 .upload-rights-note {
     margin-top: 0.75rem;
     padding: 0.75rem 0.85rem;
@@ -1717,17 +1789,26 @@
                         </div>
                     </div>
                     {% else %}
-                    {# Regular shop: image grid (no dropdown names / preview box). #}
+                    {# Regular shop: one card per design; multi-color designs open a quick color picker. #}
                     <div class="logo-gallery-inline gallery-design-picker" id="logoGalleryInline">
                         <p class="logo-gallery-label">Gallery designs — tap one to use</p>
                         <div class="logo-gallery-grid gallery-image-grid" id="logoGalleryGrid">
                             {% for d in gallery_designs %}
-                            <div class="logo-gallery-item{% if preset_design and preset_design.id == d.id %} selected{% endif %}"
-                                 data-design-id="{{ d.id }}" data-design-url="{{ d.url }}" data-design-title="{{ d.title }}"
-                                 role="button" tabindex="0" title="{{ d.title }}">
+                            <div class="logo-gallery-item{% if preset_design and (preset_design.id == d.id or preset_design.parent_design_id == d.id) %} selected{% endif %}"
+                                 data-design-id="{{ d.id }}"
+                                 data-design-url="{{ d.url }}"
+                                 data-design-title="{{ d.title }}"
+                                 data-has-colors="{{ '1' if d.has_colors else '0' }}"
+                                 data-variants='{{ d.variants | tojson }}'
+                                 role="button" tabindex="0" title="{{ d.title }}{% if d.has_colors %} ({{ d.color_count }} colors){% endif %}">
                                 <img src="{{ d.url }}" alt="{{ d.title }}" loading="lazy" decoding="async" draggable="false">
+                                {% if d.has_colors %}<span class="logo-gallery-color-dot">{{ d.color_count }}</span>{% endif %}
                             </div>
                             {% endfor %}
+                        </div>
+                        <div id="logoColorChooser" class="logo-color-chooser" hidden>
+                            <p class="logo-color-chooser-label">Pick a color for <strong id="logoColorChooserTitle"></strong></p>
+                            <div id="logoColorChooserGrid" class="logo-color-chooser-grid"></div>
                         </div>
                     </div>
                     {% endif %}
@@ -2130,16 +2211,67 @@
     function setupLogoGalleryClicks() {
         const grid = document.getElementById('logoGalleryGrid');
         if (!grid) return;
+        const chooser = document.getElementById('logoColorChooser');
+        const chooserGrid = document.getElementById('logoColorChooserGrid');
+        const chooserTitle = document.getElementById('logoColorChooserTitle');
+
+        function applyFromVariant(v, title) {
+            applyPresetDesign({ id: v.id, url: v.url, title: title || v.label || 'Design' });
+            document.querySelectorAll('.logo-gallery-item').forEach(el => el.classList.remove('selected'));
+        }
+
+        function showColorChooser(card, variants) {
+            if (!chooser || !chooserGrid) {
+                applyFromVariant(variants[0], card.dataset.designTitle);
+                return;
+            }
+            chooserTitle.textContent = card.dataset.designTitle || 'this design';
+            chooserGrid.innerHTML = '';
+            variants.forEach(function(v, idx) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'logo-color-option' + (idx === 0 ? ' selected' : '');
+                btn.innerHTML = '<img src="' + (v.url || '') + '" alt=""><span></span>';
+                btn.querySelector('span').textContent = v.label || ('Color ' + (idx + 1));
+                btn.addEventListener('click', function() {
+                    chooserGrid.querySelectorAll('.logo-color-option').forEach(function(b) {
+                        b.classList.remove('selected');
+                    });
+                    btn.classList.add('selected');
+                    applyFromVariant(v, card.dataset.designTitle);
+                    card.classList.add('selected');
+                });
+                chooserGrid.appendChild(btn);
+            });
+            chooser.hidden = false;
+            applyFromVariant(variants[0], card.dataset.designTitle);
+            card.classList.add('selected');
+            chooser.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
         grid.addEventListener('click', function(e) {
             const card = e.target.closest('.logo-gallery-item');
             if (!card || !card.dataset.designUrl) return;
             e.preventDefault();
             e.stopPropagation();
-            const design = { id: card.dataset.designId, url: card.dataset.designUrl, title: card.dataset.designTitle };
+            let variants = [];
+            try { variants = JSON.parse(card.dataset.variants || '[]'); } catch (err) { variants = []; }
+            const hasColors = card.dataset.hasColors === '1' && variants.length > 1;
             try {
-                applyPresetDesign(design);
-                document.querySelectorAll('.logo-gallery-item').forEach(el => el.classList.remove('selected'));
-                card.classList.add('selected');
+                if (hasColors) {
+                    document.querySelectorAll('.logo-gallery-item').forEach(el => el.classList.remove('selected'));
+                    showColorChooser(card, variants);
+                } else {
+                    if (chooser) chooser.hidden = true;
+                    const design = {
+                        id: (variants[0] && variants[0].id) || card.dataset.designId,
+                        url: (variants[0] && variants[0].url) || card.dataset.designUrl,
+                        title: card.dataset.designTitle
+                    };
+                    applyPresetDesign(design);
+                    document.querySelectorAll('.logo-gallery-item').forEach(el => el.classList.remove('selected'));
+                    card.classList.add('selected');
+                }
             } catch (err) {
                 console.error('Gallery logo error:', err);
             }

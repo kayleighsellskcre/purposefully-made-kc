@@ -116,6 +116,20 @@
                             <label for="sku" class="form-label">SKU</label>
                             <input type="text" id="sku" name="sku" class="form-control" placeholder="e.g. DSG-001">
                         </div>
+                        <div class="form-group">
+                            <label for="parent_design_id" class="form-label">Color of existing design <span style="font-weight:400;color:var(--text-secondary);">(optional)</span></label>
+                            <select id="parent_design_id" name="parent_design_id" class="form-control">
+                                <option value="">— New main design —</option>
+                                {% for d in gallery_designs %}
+                                <option value="{{ d.id }}">{{ d.title or d.original_filename or ('Design #' ~ d.id) }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="variant_label" class="form-label">Color name</label>
+                            <input type="text" id="variant_label" name="variant_label" class="form-control" placeholder="e.g. Navy, White, Glitter Gold" maxlength="80">
+                            <p class="form-hint" style="margin:0.35rem 0 0;font-size:0.8rem;color:var(--text-secondary);">Only needed when adding a color to an existing design. Customers see this when choosing a color.</p>
+                        </div>
                     </div>
 
                     <div class="form-group gallery-file-group">
@@ -178,23 +192,45 @@
 
             {% if gallery_designs %}
             <h2 class="gallery-list-title">Gallery Designs <span class="gallery-count">({{ gallery_designs|length }})</span></h2>
+            <p style="color:var(--text-secondary);margin:-0.5rem 0 1.25rem;font-size:0.9rem;">
+                To offer the same artwork in multiple colors without crowding the public gallery, upload extra files and choose
+                <strong>Color of existing design</strong> above. Customers see one card, then pick a color.
+            </p>
             <div class="gallery-designs-grid">
                 {% for design in gallery_designs %}
+                {% set variants = design.color_variants.filter_by(is_gallery=True).all() %}
                 <div class="gallery-design-card" data-design-id="{{ design.id }}"
                      data-title="{{ design.title or design.original_filename or '' }}"
                      data-folder="{{ design.folder or 'custom_orders' }}"
                      data-sku="{{ design.sku or '' }}"
+                     data-variant-label="{{ design.variant_label or '' }}"
                      data-edit-url="{{ url_for('admin.design_gallery_edit', design_id=design.id) }}">
                     <div class="design-card-image">
                         <img src="{{ design.file_path | image_url }}" alt="{{ design.title or design.original_filename }}">
                     </div>
                     <div class="design-card-body">
                         <strong class="design-card-name">{{ design.title or design.original_filename }}</strong>
-                        <p class="design-card-meta">{{ design.folder or 'No folder' }} &middot; {{ design.sku or 'No SKU' }}</p>
+                        <p class="design-card-meta">{{ design.folder or 'No folder' }} &middot; {{ design.sku or 'No SKU' }}{% if variants %} &middot; {{ variants|length + 1 }} colors{% endif %}</p>
+                        {% if variants %}
+                        <div class="gallery-variant-thumbs" style="display:flex;flex-wrap:wrap;gap:0.35rem;margin:0.5rem 0 0.75rem;">
+                            <span title="{{ design.variant_label or 'Default' }}" style="width:36px;height:36px;border-radius:6px;overflow:hidden;border:1px solid var(--border-color);background:#fff;display:inline-flex;">
+                                <img src="{{ design.file_path | image_url }}" alt="" style="width:100%;height:100%;object-fit:contain;">
+                            </span>
+                            {% for v in variants %}
+                            <span title="{{ v.variant_label or 'Color' }}" style="width:36px;height:36px;border-radius:6px;overflow:hidden;border:1px solid var(--border-color);background:#fff;display:inline-flex;">
+                                <img src="{{ v.file_path | image_url }}" alt="{{ v.variant_label or '' }}" style="width:100%;height:100%;object-fit:contain;">
+                            </span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
                         <div class="design-card-actions">
                             <button type="button" class="btn btn-primary btn-sm"
                                     onclick="openGalleryEdit({{ design.id }})">
                                 Edit
+                            </button>
+                            <button type="button" class="btn btn-outline btn-sm"
+                                    onclick="document.getElementById('parent_design_id').value='{{ design.id }}'; document.getElementById('variant_label').focus(); document.getElementById('title').value='{{ (design.title or '')|replace("'", "\\'") }}'; window.scrollTo({top:0,behavior:'smooth'});">
+                                Add Color
                             </button>
                             <button type="button" class="btn btn-outline btn-sm"
                                     onclick="galleryConfirm('remove', {{ design.id }}, '{{ (design.title or design.original_filename or 'Design')|replace("'", "\\'") }}', '{{ url_for('admin.design_gallery_remove', design_id=design.id) }}')">
@@ -594,6 +630,10 @@
                     <label for="editSku" class="form-label">SKU</label>
                     <input type="text" id="editSku" name="sku" class="form-control" maxlength="50" placeholder="e.g. DSG-001">
                 </div>
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <label for="editVariantLabel" class="form-label">Color name <span style="font-weight:400;color:var(--text-secondary);">(optional)</span></label>
+                    <input type="text" id="editVariantLabel" name="variant_label" class="form-control" maxlength="80" placeholder="e.g. Default, Navy, White">
+                </div>
                 <div class="form-group" style="margin-bottom:0.5rem;">
                     <label for="editFile" class="form-label">Replace Image <span style="font-weight:400;color:var(--text-secondary);">(optional)</span></label>
                     <input type="file" id="editFile" name="file" class="form-control" accept=".png,.jpg,.jpeg,.webp,.heic,.heif">
@@ -730,6 +770,7 @@ function openGalleryEdit(id) {
     document.getElementById('editTitle').value = card.getAttribute('data-title') || '';
     document.getElementById('editFolder').value = card.getAttribute('data-folder') || 'custom_orders';
     document.getElementById('editSku').value = card.getAttribute('data-sku') || '';
+    document.getElementById('editVariantLabel').value = card.getAttribute('data-variant-label') || '';
     document.getElementById('editFile').value = '';
     document.getElementById('galleryEditModal').classList.add('is-open');
     document.body.style.overflow = 'hidden';

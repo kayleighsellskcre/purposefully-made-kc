@@ -498,9 +498,10 @@ def edit_group_order(slug):
 
 @shop_bp.route('/designs')
 def design_gallery():
-    """Browse designs available for custom apparel"""
+    """Browse designs available for custom apparel (grouped color variants)."""
+    from utils.design_variants import gallery_cards_for_public
     try:
-        designs = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).all()
+        designs = gallery_cards_for_public(Design, resolve_url=_resolve_image_url)
     except Exception:
         designs = []
     product_id = request.args.get('product_id', type=int)
@@ -606,14 +607,16 @@ def customize(product_id):
                 'title': (d.title or d.original_filename or 'Design')
             }
     
-    # Gallery designs for inline "choose logo" section
+    # Gallery designs for inline "choose logo" section (mains + color variants)
     gallery_designs = []
     try:
         if coll and allowed_design_ids:
             gallery_designs = load_collection_designs(coll)
         else:
-            designs = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).limit(200).all()
-            gallery_designs = [{'id': d.id, 'url': _resolve_image_url(d.file_path), 'title': (d.title or d.original_filename or 'Design')} for d in designs]
+            from utils.design_variants import gallery_cards_for_public
+            gallery_designs = gallery_cards_for_public(
+                Design, resolve_url=_resolve_image_url, limit=200
+            )
     except Exception:
         pass
     # User's own designs — hidden in group orders so only organizer-approved designs show

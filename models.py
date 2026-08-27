@@ -349,6 +349,11 @@ class Design(db.Model):
     # in My Designs (same Design row / file).
     hidden_from_admin = db.Column(db.Boolean, default=False)
 
+    # Color variants: child rows point at a main gallery design (parent).
+    # Public gallery shows parents only; clicking opens color choices.
+    parent_design_id = db.Column(db.Integer, db.ForeignKey('design.id'), nullable=True, index=True)
+    variant_label = db.Column(db.String(80))  # e.g. "Navy", "White", "Glitter Red"
+
     # Metadata
     uploaded_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -357,6 +362,12 @@ class Design(db.Model):
     # Relationships
     user = db.relationship('User', backref='uploaded_designs', foreign_keys=[uploaded_by_user_id])
     order_items = db.relationship('OrderItem', backref='design', lazy='dynamic')
+    color_variants = db.relationship(
+        'Design',
+        backref=db.backref('parent_design', remote_side=[id]),
+        foreign_keys=[parent_design_id],
+        lazy='dynamic',
+    )
     
     def __repr__(self):
         return f'<Design {self.filename}>'

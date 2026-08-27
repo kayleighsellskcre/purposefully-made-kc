@@ -197,6 +197,9 @@ def create_app(config_class=Config):
                     "ALTER TABLE product_color_variant ADD COLUMN IF NOT EXISTS color_swatch_url VARCHAR(500)",
                     # Soft-hide customer designs from admin library without deleting their My Designs copy
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS hidden_from_admin BOOLEAN DEFAULT FALSE",
+                    # Gallery color variants — children point at a main design
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS parent_design_id INTEGER REFERENCES design(id)",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS variant_label VARCHAR(80)",
                 ]
                 for migration in all_migrations:
                     try:
