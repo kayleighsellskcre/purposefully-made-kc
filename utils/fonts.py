@@ -12,7 +12,7 @@ CUSTOMIZE_BACK_FONTS = [
     ('Anton', 'Anton (Strong block)'),
     ('Teko', 'Teko (College jersey)'),
     ('Jersey M54', 'Jersey M54 (Classic sports jersey)'),
-    ('Varsity Regular', 'Varsity Regular (Classic varsity)'),
+    ('Varsity Regular', 'Varsity Regular (Cricut-style classic)'),
 ]
 
 # Organizer-facing list. Preview-only webfonts (Freshman, etc.) still fall back
@@ -27,5 +27,5 @@ GROUP_ORDER_FONTS = [
     ('Anton', 'Anton — Strong block'),
     ('Teko', 'Teko — College jersey'),
     ('Jersey M54', 'Jersey M54 — Classic sports jersey'),
-    ('Varsity Regular', 'Varsity Regular — Classic varsity block'),
+    ('Varsity Regular', 'Varsity Regular — Cricut-style classic varsity'),
 ]

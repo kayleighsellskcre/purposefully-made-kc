@@ -27,8 +27,8 @@ FONT_FILES = {
     'Oswald': 'Oswald-Bold.ttf',
     'Anton': 'Anton-Regular.ttf',
     'Teko': 'Teko-Bold.ttf',
-    # Alumni Sans Collegiate One (OFL), served to customers as Varsity Regular.
-    # Numbers keep the outlined collegiate glyphs; names use the solid companion.
+    # Matthew Welch "College" — closest free commercial match to Cricut /
+    # Brøderbund Varsity Regular (classic slab-serif jersey lettering).
     'Varsity Regular': 'VarsityRegular.ttf',
     'Varsity Regular Solid': 'VarsityRegularSolid.ttf',
 }
@@ -47,10 +47,52 @@ def font_path(font_name):
 
 
 def name_font_name(font_name):
-    """Varsity names use solid ExtraBold; numbers keep outlined Collegiate One."""
+    """Varsity names use the solid College cut; numbers get the Cricut-style ring."""
     if (font_name or '').strip() == 'Varsity Regular':
         return 'Varsity Regular Solid'
     return font_name or 'Bebas Neue'
+
+
+def _alpha_mask(image):
+    if image.mode != 'RGBA':
+        image = image.convert('RGBA')
+    return image.split()[-1]
+
+
+def _expand_mask(mask, pixels):
+    """Grow a greyscale mask by roughly `pixels` using MaxFilter passes."""
+    from PIL import ImageFilter
+    out = mask
+    steps = max(0, int(round(pixels)))
+    for _ in range(steps):
+        out = out.filter(ImageFilter.MaxFilter(3))
+    return out
+
+
+def apply_varsity_ring(layer, fill, gap_px=None, ring_px=None):
+    """Cricut Varsity look: solid fill, transparent gap, same-color outer ring."""
+    if layer is None:
+        return None
+    layer = layer.convert('RGBA')
+    solid = _alpha_mask(layer)
+    # Scale ring to letter size so 1-digit and 2-digit numbers stay balanced.
+    ink = solid.getbbox()
+    letter_h = (ink[3] - ink[1]) if ink else layer.height
+    gap = gap_px if gap_px is not None else max(2, int(round(letter_h * 0.035)))
+    ring = ring_px if ring_px is not None else max(2, int(round(letter_h * 0.045)))
+    # Pad canvas so the outer ring is not clipped.
+    pad = gap + ring + 2
+    canvas = Image.new('L', (layer.width + pad * 2, layer.height + pad * 2), 0)
+    canvas.paste(solid, (pad, pad))
+    outer = _expand_mask(canvas, gap + ring)
+    inner_ring = _expand_mask(canvas, gap)
+    from PIL import ImageChops
+    ring_mask = ImageChops.subtract(outer, inner_ring)
+    out = Image.new('RGBA', canvas.size, (0, 0, 0, 0))
+    color_layer = Image.new('RGBA', canvas.size, fill)
+    out = Image.composite(color_layer, out, ring_mask)
+    out = Image.composite(color_layer, out, canvas)
+    return out
 
 
 def font_available(font_name):
@@ -354,11 +396,13 @@ def render_snapshot_png(snapshot, dpi=PRODUCTION_DPI):
 
     fill = _hex_rgba(snapshot.get('text_color'))
     stroke = _hex_rgba(snapshot.get('outline_color'), (0, 0, 0, 255))
-    # Varsity names are intentionally solid (no outline); numbers keep Collegiate
-    # glyph outline and may also get the optional stroke outline.
-    name_wants_outline = bool(snapshot.get('outline')) and name_face != 'Varsity Regular Solid'
+    is_varsity = (font_name or '').strip() == 'Varsity Regular'
+    # Varsity names stay solid. Varsity numbers get the Cricut-style same-color
+    # ring (fill + gap + outer stroke), not a simple contrasting outline.
+    name_wants_outline = bool(snapshot.get('outline')) and not is_varsity
+    number_wants_outline = bool(snapshot.get('outline')) and not is_varsity
     stroke_w_name = max(1, int(round(name_font_px * 0.08))) if name_wants_outline else 0
-    stroke_w_num = max(1, int(round(number_font_px * 0.08))) if snapshot.get('outline') else 0
+    stroke_w_num = max(1, int(round(number_font_px * 0.08))) if number_wants_outline else 0
 
     name_spacing = _num(snapshot.get('name_letter_spacing_em'))
     if name_spacing is None:
@@ -376,6 +420,8 @@ def render_snapshot_png(snapshot, dpi=PRODUCTION_DPI):
     number_layer = _draw_line_layer(
         number, number_font, fill, stroke, stroke_w_num, number_spacing, number_font_px, number_scale,
     ) if number else None
+    if number_layer is not None and is_varsity:
+        number_layer = apply_varsity_ring(number_layer, fill)
 
     # Fit each layer to the saved visible height, then stack by the saved gap
     # measured ink-bottom to ink-top — never CSS line-height.
