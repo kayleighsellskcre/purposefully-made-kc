@@ -202,13 +202,13 @@
 }
 
 /* Placement-specific sizing — preview only (print inches are unchanged).
-   Keep logos readable on the chest without covering most of the shirt.
+   Chest logos should read clearly without covering most of the shirt.
    Tall designs get a narrower width via JS (applyDesignFit). */
 .design-layer[data-placement="center_chest"] {
-    width: 24%;
-    max-width: 175px;
-    max-height: 32%;
-    min-height: 40px;
+    width: 28%;
+    max-width: 210px;
+    max-height: 36%;
+    min-height: 44px;
     top: 38%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -216,9 +216,9 @@
 
 /* Left chest = appears on RIGHT side of mockup (wearer's left when wearing) */
 .design-layer[data-placement="left_chest"] {
-    width: 10%;
-    max-width: 78px;
-    max-height: 15%;
+    width: 11%;
+    max-width: 88px;
+    max-height: 16%;
     top: 32%;
     left: 62%;
     transform: translate(-50%, -50%);
@@ -226,18 +226,18 @@
 
 /* Right chest = appears on LEFT side of mockup (wearer's right when wearing) */
 .design-layer[data-placement="right_chest"] {
-    width: 10%;
-    max-width: 78px;
-    max-height: 15%;
+    width: 11%;
+    max-width: 88px;
+    max-height: 16%;
     top: 32%;
     left: 38%;
     transform: translate(-50%, -50%);
 }
 
 .design-layer[data-placement="center_back"] {
-    width: 24%;
-    max-width: 175px;
-    max-height: 32%;
+    width: 28%;
+    max-width: 210px;
+    max-height: 36%;
     top: 38%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -2888,28 +2888,28 @@
 
         let pct, maxW, maxH;
         if (isSideChest) {
-            pct = 10;
-            maxW = 78;
-            maxH = 15;
+            pct = 11;
+            maxW = 88;
+            maxH = 16;
         } else if (tall > 1.28) {
             // Tall stacks (e.g. vertical FALCONS) — keep narrow so they don't flood the torso
-            pct = 18 * ageScale;
-            maxW = 140 * ageScale;
-            maxH = 34 * ageScale;
+            pct = 22 * ageScale;
+            maxW = 165 * ageScale;
+            maxH = 37 * ageScale;
         } else if (tall > 1.12) {
-            pct = 20 * ageScale;
-            maxW = 155 * ageScale;
-            maxH = 33 * ageScale;
+            pct = 24 * ageScale;
+            maxW = 180 * ageScale;
+            maxH = 36 * ageScale;
         } else if (tall >= 0.88) {
-            // Near-square logos — previous 33%/246px looked overpowering on tees
-            pct = 23 * ageScale;
-            maxW = 170 * ageScale;
-            maxH = 32 * ageScale;
+            // Near-square logos
+            pct = 28 * ageScale;
+            maxW = 205 * ageScale;
+            maxH = 36 * ageScale;
         } else {
             // Wide / banner logos
-            pct = 25 * ageScale;
-            maxW = 185 * ageScale;
-            maxH = 28 * ageScale;
+            pct = 30 * ageScale;
+            maxW = 220 * ageScale;
+            maxH = 32 * ageScale;
         }
 
         pct *= hoodieScale;
@@ -2918,11 +2918,11 @@
 
         // Soft caps so a huge PNG never eats the whole mockup
         if (isSideChest) {
-            pct = Math.min(pct, 14);
+            pct = Math.min(pct, 15);
             maxH = Math.min(maxH, 18);
         } else {
-            pct = Math.min(pct, 27);
-            maxH = Math.min(maxH, 36);
+            pct = Math.min(pct, 32);
+            maxH = Math.min(maxH, 40);
         }
 
         designLayer.style.width = pct.toFixed(1) + '%';

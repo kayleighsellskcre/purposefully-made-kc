@@ -2534,38 +2534,38 @@ textarea:focus-visible,
     pointer-events: none;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
     /* Never let a missing placement class or huge PNG blow past the shirt */
-    max-width: 27%;
-    max-height: 36%;
+    max-width: 32%;
+    max-height: 40%;
 }
 .pm-proof-overlay.center_chest,
 .pm-proof-overlay.center_back {
-    width: 24%;
-    max-width: 27%;
-    max-height: 32%;
+    width: 28%;
+    max-width: 32%;
+    max-height: 36%;
     top: 38%;
     left: 50%;
     transform: translate(-50%, -50%);
 }
 .pm-proof-overlay.left_chest {
-    width: 10%;
-    max-width: 14%;
-    max-height: 15%;
+    width: 11%;
+    max-width: 15%;
+    max-height: 16%;
     top: 32%;
     left: 62%;
     transform: translate(-50%, -50%);
 }
 .pm-proof-overlay.right_chest {
-    width: 10%;
-    max-width: 14%;
-    max-height: 15%;
+    width: 11%;
+    max-width: 15%;
+    max-height: 16%;
     top: 32%;
     left: 38%;
     transform: translate(-50%, -50%);
 }
 .pm-proof-overlay.back_name_number {
     width: auto;
-    max-width: 36%;
-    max-height: 32%;
+    max-width: 40%;
+    max-height: 36%;
     height: auto;
     top: 38%;
     left: 50%;
