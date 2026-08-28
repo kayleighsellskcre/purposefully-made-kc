@@ -6,7 +6,7 @@
 
 {% block extra_css %}
 <link href="https://fonts.googleapis.com/css2?family=Freshman&family=Black+Ops+One&family=Graduate&family=Squada+One&family=Bebas+Neue:wght@400&family=Oswald:wght@400;700&family=Anton&family=Teko:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/personalization-fonts.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/personalization-fonts.css') }}?v=48">
 <style>
 .customizer-page {
     padding: 2rem 0;
@@ -263,15 +263,12 @@
     justify-content: center;
     text-align: center;
     color: #fff;
-    /* Bold to match the printed transfer, which is drawn bold. */
+    /* Most jersey fonts are drawn bold; Varsity Regular overrides to 400 in JS
+       because College has no true bold and faux-bold wrecks large digits. */
     font-weight: 700;
     width: auto;
     max-width: none;
-    /* Strong outline so name/number visible on both light and dark shirts */
-    text-shadow: 
-        -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000,
-        -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000,
-        0 0 8px rgba(0,0,0,0.9);
+    text-shadow: none;
 }
 /* Name stays on one horizontal line. Width grows; height never shrinks. */
 .back-design-name {
@@ -285,7 +282,6 @@
     transform-origin: center center;
 }
 .back-design-number {
-    font-weight: 700;
     line-height: 1;
     text-align: center;
     display: block;
@@ -2867,14 +2863,14 @@
     function fontIsLoaded(font) {
         if (_fontReady[font]) return true;
         if (!document.fonts || !document.fonts.check) return true;
-        try { return document.fonts.check(`bold ${INK_PROBE}px "${font}"`); } catch (e) { return true; }
+        try { return document.fonts.check(backCssFont(INK_PROBE, font)); } catch (e) { return true; }
     }
 
     // Webfonts land after first paint; re-measure and redraw once they do.
     function requestBackFont(font) {
         if (!font || _fontReady[font] || !document.fonts || !document.fonts.load) return;
         try {
-            document.fonts.load(`bold ${INK_PROBE}px "${font}"`).then(function () {
+            document.fonts.load(backCssFont(INK_PROBE, font)).then(function () {
                 _fontReady[font] = true;
                 delete _inkCache[font + '|' + INK_REF_NAME];
                 delete _inkCache[font + '|' + INK_REF_NUMBER];
@@ -2895,7 +2891,7 @@
             canvas.height = Math.ceil(size * 2);
             const ctx = canvas.getContext('2d', { willReadFrequently: true });
             const baseline = Math.round(size * 1.4);
-            ctx.font = `bold ${size}px "${font}", sans-serif`;
+            ctx.font = backCssFont(size, font);
             ctx.textBaseline = 'alphabetic';
             ctx.fillStyle = '#000';
             ctx.fillText(ref, Math.round(size * 0.25), baseline);
@@ -2918,7 +2914,7 @@
     }
 
     function inkMetrics(font, ref) {
-        const key = font + '|' + ref;
+        const key = font + '|' + ref + '|' + backFontWeight(font);
         if (_inkCache[key]) return _inkCache[key];
         const cap = ((TRANSFER_SIZING.fonts || {})[font] || {}).cap_ratio
             || TRANSFER_SIZING.default_cap_ratio || 0.72;
@@ -2927,7 +2923,7 @@
         let metrics = { ink: cap, ascent: cap, boxTop: (1 - cap) / 2, measured: false };
         try {
             const ctx = measureCtx();
-            ctx.font = `bold ${INK_PROBE}px "${font}", sans-serif`;
+            ctx.font = backCssFont(INK_PROBE, font);
             const m = ctx.measureText(ref);
             const raster = fontIsLoaded(font) ? rasterInk(font, ref) : null;
             const ascent = raster ? raster.ascent * INK_PROBE : m.actualBoundingBoxAscent;
@@ -2951,7 +2947,7 @@
     function measureTextWidthPx(text, font, fontPx, spacingEm) {
         if (!text || !fontPx) return 0;
         const ctx = measureCtx();
-        ctx.font = `bold ${fontPx}px "${font}", sans-serif`;
+        ctx.font = backCssFont(fontPx, font);
         const spacing = (spacingEm || 0) * fontPx;
         let total = 0;
         for (let i = 0; i < text.length; i++) {
@@ -2983,7 +2979,7 @@
     // differ per face, so this is measured rather than assumed.
     function inkGapEm(a, b, font, spacingEm) {
         const ctx = measureCtx();
-        ctx.font = `bold ${INK_PROBE}px "${font}", sans-serif`;
+        ctx.font = backCssFont(INK_PROBE, font);
         const left = ctx.measureText(a);
         const right = ctx.measureText(b);
         const rightBearing = left.width - left.actualBoundingBoxRight;
@@ -3131,6 +3127,19 @@
     function backNumberFontFamily(font) {
         return backNameFontFamily(font);
     }
+
+    function backFontWeight(fontFamily) {
+        // College Regular has no real bold. Browser faux-bold fattens strokes and
+        // makes large jersey numbers look wrong next to the name.
+        if (fontFamily === 'Varsity Regular' || fontFamily === 'Varsity Regular Solid') {
+            return '400';
+        }
+        return '700';
+    }
+
+    function backCssFont(sizePx, fontFamily) {
+        return backFontWeight(fontFamily) + ' ' + Math.round(sizePx) + 'px "' + fontFamily + '", sans-serif';
+    }
     
     function buildBackOutlineShadow(color) {
         const c = color || '#000000';
@@ -3169,7 +3178,10 @@
             numberEl.textContent = number;
             nameEl.style.fontFamily = `"${nameFont}", sans-serif`;
             numberEl.style.fontFamily = `"${numberFont}", sans-serif`;
+            nameEl.style.fontWeight = backFontWeight(nameFont);
+            numberEl.style.fontWeight = backFontWeight(numberFont);
             textContainer.style.fontFamily = `"${numberFont}", sans-serif`;
+            textContainer.style.fontWeight = backFontWeight(numberFont);
             textContainer.style.color = textColor;
             textContainer.style.textShadow = 'none';
             const shadow = outlineOn ? buildBackOutlineShadow(outlineColor) : 'none';
@@ -3188,7 +3200,9 @@
             const numH = numberHeightIn();
             const safeIn = safeWidthIn();
             const nameInk = inkMetrics(nameFont, INK_REF_NAME);
-            const numberInk = inkMetrics(numberFont, INK_REF_NUMBER);
+            // Size from the actual digit(s) so a lone "4" isn't scaled from an "8".
+            const numberInkRef = (number && number.length === 1) ? number : INK_REF_NUMBER;
+            const numberInk = inkMetrics(numberFont, numberInkRef);
             // Reference-glyph scaling: every name gets the same letter height,
             // and one digit is the same height as two.
             const nameFontPx = pxPerInch ? (nameH * pxPerInch) / nameInk.ink : 0;
@@ -4300,8 +4314,8 @@
                 if (document.fonts) {
                     const loads = [];
                     if (document.fonts.load) {
-                        loads.push(document.fonts.load(`bold ${Math.round(numInkPx || 200)}px "${numberFont}"`));
-                        loads.push(document.fonts.load(`bold ${Math.round(nameInkPx || 200)}px "${nameFont}"`));
+                        loads.push(document.fonts.load(backCssFont(numInkPx || 200, numberFont)));
+                        loads.push(document.fonts.load(backCssFont(nameInkPx || 200, nameFont)));
                     }
                     if (document.fonts.ready) loads.push(document.fonts.ready);
                     await Promise.all(loads);
@@ -4309,8 +4323,8 @@
             } catch (e) {}
             const fontReady = document.fonts && document.fonts.check
                 ? (
-                    document.fonts.check(`bold 80px "${numberFont}"`)
-                    && document.fonts.check(`bold 80px "${nameFont}"`)
+                    document.fonts.check(backCssFont(80, numberFont))
+                    && document.fonts.check(backCssFont(80, nameFont))
                 )
                 : false;
             if (!fontReady) {
@@ -4320,7 +4334,8 @@
 
             // Font size that makes the visible letters exactly the chart height.
             const nameInk = inkMetrics(nameFont, INK_REF_NAME);
-            const numberInk = inkMetrics(numberFont, INK_REF_NUMBER);
+            const numberInkRef = (number && number.length === 1) ? number : INK_REF_NUMBER;
+            const numberInk = inkMetrics(numberFont, numberInkRef);
             const namePx = nameInkPx / nameInk.ink;
             const numPx = numInkPx / numberInk.ink;
             const nameSpacing = namePx * spacingEm;
@@ -4341,7 +4356,7 @@
 
             function measureSpaced(text, face, fontSize, charSpacing) {
                 if (!text) return 0;
-                ctx.font = `bold ${fontSize}px "${face}", sans-serif`;
+                ctx.font = backCssFont(fontSize, face);
                 if (text.length > 1) {
                     let total = 0;
                     for (let i = 0; i < text.length; i++) {
@@ -4380,7 +4395,7 @@
                 ctx.save();
                 ctx.translate(canvas.width / 2, yPos);
                 if (scaleX && scaleX < 0.999) ctx.scale(scaleX, 1);
-                ctx.font = `bold ${fontSize}px "${face}", sans-serif`;
+                ctx.font = backCssFont(fontSize, face);
                 ctx.lineWidth = Math.max(4, Math.round(fontSize * 0.08));
                 if (text.length > 1) {
                     let totalWidth = 0;

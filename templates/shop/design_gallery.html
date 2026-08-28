@@ -88,7 +88,7 @@
         </div>
         <p id="gcolorSelectedLabel" class="gcolor-selected-label"></p>
         <div id="gcolorSwatches" class="gcolor-swatches" role="listbox" aria-label="Color options"></div>
-        <a id="gcolorContinue" class="btn btn-primary gcolor-continue" href="#">Continue</a>
+        <button type="button" id="gcolorContinue" class="btn btn-primary gcolor-continue">Continue</button>
     </div>
 </div>
 
@@ -284,12 +284,15 @@
 }
 .gcolor-card {
     position: relative;
+    z-index: 1;
     background: #fff;
     border-radius: 16px;
-    width: min(440px, 100%);
-    max-height: min(90vh, 720px);
-    overflow: auto;
-    padding: 1.5rem 1.35rem 1.35rem;
+    width: min(720px, 96vw);
+    max-height: min(92vh, 820px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 1.35rem 1.5rem 1.25rem;
     box-shadow: 0 20px 50px rgba(0,0,0,0.25);
 }
 .gcolor-close {
@@ -302,28 +305,32 @@
     line-height: 1;
     cursor: pointer;
     color: var(--text-secondary);
+    z-index: 2;
 }
 .gcolor-title {
     font-family: var(--font-heading);
     font-size: 1.35rem;
     margin: 0 0 0.35rem;
     padding-right: 1.5rem;
+    flex-shrink: 0;
 }
 .gcolor-sub {
     color: var(--text-secondary);
     font-size: 0.92rem;
-    margin: 0 0 1rem;
+    margin: 0 0 0.85rem;
+    flex-shrink: 0;
 }
 .gcolor-preview {
-    aspect-ratio: 1;
+    height: clamp(140px, 22vh, 220px);
     border-radius: 12px;
     border: 1px solid rgba(232, 208, 177, 0.7);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1.25rem;
-    margin-bottom: 0.75rem;
+    padding: 0.85rem;
+    margin-bottom: 0.55rem;
     background: #f7f3ec;
+    flex-shrink: 0;
 }
 .gcolor-preview img {
     max-width: 100%;
@@ -334,20 +341,25 @@
     text-align: center;
     font-weight: 700;
     font-size: 0.95rem;
-    margin: 0 0 0.85rem;
+    margin: 0 0 0.65rem;
     color: var(--text-primary);
+    flex-shrink: 0;
 }
 .gcolor-swatches {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
-    gap: 0.55rem;
-    margin-bottom: 1.15rem;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 0.65rem;
+    margin-bottom: 0.85rem;
+    overflow: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0.15rem;
 }
 .gcolor-swatch {
     border: 2px solid transparent;
     border-radius: 10px;
     background: #f7f3ec;
-    padding: 0.4rem;
+    padding: 0.45rem;
     cursor: pointer;
     text-align: center;
     font-family: inherit;
@@ -365,7 +377,7 @@
 .gcolor-swatch span {
     display: block;
     margin-top: 0.3rem;
-    font-size: 0.68rem;
+    font-size: 0.72rem;
     font-weight: 600;
     color: var(--text-secondary);
     line-height: 1.2;
@@ -375,6 +387,28 @@
     display: block;
     width: 100%;
     text-align: center;
+    flex-shrink: 0;
+    margin-top: auto;
+    min-height: 48px;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: none;
+}
+@media (max-width: 540px) {
+    .gcolor-card {
+        width: min(96vw, 520px);
+        padding: 1.15rem 1rem 1rem;
+    }
+    .gcolor-preview {
+        height: clamp(120px, 20vh, 180px);
+    }
+    .gcolor-swatches {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 0.5rem;
+    }
 }
 </style>
 
@@ -392,14 +426,16 @@
     let designTitle = '';
 
     function continueUrl(designId) {
+        const id = encodeURIComponent(String(designId));
         if (productId) {
-            return '/shop/customize/' + productId + '?design_id=' + designId;
+            return '/shop/customize/' + productId + '?design_id=' + id;
         }
-        return '/shop/?design_id=' + designId;
+        return '/shop/?design_id=' + id;
     }
 
     function goWithDesign(designId) {
-        window.location.href = continueUrl(designId);
+        if (!designId && designId !== 0) return;
+        window.location.assign(continueUrl(designId));
     }
 
     function selectVariant(v) {
@@ -407,7 +443,6 @@
         preview.src = v.url || '';
         preview.alt = (designTitle + ' — ' + (v.label || 'Color'));
         labelEl.textContent = v.label || 'Selected';
-        continueBtn.href = continueUrl(v.id);
         swatches.querySelectorAll('.gcolor-swatch').forEach(function(btn) {
             btn.classList.toggle('is-selected', String(btn.dataset.id) === String(v.id));
         });
@@ -435,7 +470,11 @@
             btn.setAttribute('role', 'option');
             btn.innerHTML = '<img src="' + (v.url || '') + '" alt=""><span></span>';
             btn.querySelector('span').textContent = v.label || ('Color ' + (idx + 1));
-            btn.addEventListener('click', function() { selectVariant(v); });
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                selectVariant(v);
+            });
             swatches.appendChild(btn);
         });
         selectVariant(variants[0]);
@@ -446,7 +485,16 @@
     function closePicker() {
         modal.hidden = true;
         document.body.style.overflow = '';
+        selected = null;
     }
+
+    continueBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = selected && selected.id;
+        if (!id && id !== 0) return;
+        goWithDesign(id);
+    });
 
     document.querySelectorAll('.gallery-card').forEach(function(card) {
         card.querySelectorAll('.gallery-open-colors').forEach(function(btn) {

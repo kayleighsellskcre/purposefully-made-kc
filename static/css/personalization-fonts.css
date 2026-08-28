@@ -52,7 +52,7 @@
 }
 /* Matthew Welch "College" (free for commercial use with credit) — closest
    match to Cricut / Brøderbund Varsity Regular classic slab-serif lettering.
-   Name and number both use the solid cut for clean jersey digits. */
+   Use weight 400 only; this face has no true bold and faux-bold distorts digits. */
 @font-face {
     font-family: 'Varsity Regular';
     font-style: normal;
@@ -61,23 +61,9 @@
     src: url('/static/fonts/VarsityRegular.ttf') format('truetype');
 }
 @font-face {
-    font-family: 'Varsity Regular';
-    font-style: normal;
-    font-weight: 700;
-    font-display: block;
-    src: url('/static/fonts/VarsityRegular.ttf') format('truetype');
-}
-@font-face {
     font-family: 'Varsity Regular Solid';
     font-style: normal;
     font-weight: 400;
-    font-display: block;
-    src: url('/static/fonts/VarsityRegularSolid.ttf') format('truetype');
-}
-@font-face {
-    font-family: 'Varsity Regular Solid';
-    font-style: normal;
-    font-weight: 700;
     font-display: block;
     src: url('/static/fonts/VarsityRegularSolid.ttf') format('truetype');
 }
