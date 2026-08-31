@@ -11,6 +11,7 @@ Otherwise the UI opens the on-site size chart modal.
 from __future__ import annotations
 
 import re
+from urllib.parse import quote
 
 # Template sentinel: open the on-site size-chart modal instead of an external URL.
 SIZE_CHART_SENTINEL = '__onsite_size_chart__'
@@ -34,6 +35,12 @@ _BROKEN_SANMAR_PRODUCT_PAGE = re.compile(
 )
 _BROKEN_SANMAR_CDN = re.compile(
     r'^https?://cdn[-.]?nm\.sanmar\.com/SpecSheetMeasurements/',
+    re.IGNORECASE,
+)
+# Old builder used https://www.bellacanvas.com/{style} — that 404s for CVC/Y
+# styles (and is not a real product or spec URL). Keep /product/ and /spec/.
+_BROKEN_BELLA_SHORT = re.compile(
+    r'^https?://(?:www\.)?bellacanvas\.com/([^/?#]+)/?$',
     re.IGNORECASE,
 )
 
@@ -86,6 +93,11 @@ def is_broken_spec_url(url: str | None) -> bool:
         return True
     if _BROKEN_SANMAR_CDN.match(u) or 'SpecSheetMeasurements' in u:
         return True
+    m = _BROKEN_BELLA_SHORT.match(u)
+    if m:
+        first = (m.group(1) or '').lower()
+        if first not in ('product', 'spec', 'fit-size-charts', 'search'):
+            return True
     if u.startswith('/static/') or u.startswith('static/'):
         return True
     return False
@@ -139,14 +151,23 @@ def brand_spec_sheet_url(brand: str | None, style_number: str | None) -> str:
     if key in ('bellacanvas', 'bella') or ('bella' in key and 'canvas' in key):
         path = _strip_bella_prefix(style) if style else ''
         if path:
-            return f'https://www.bellacanvas.com/{path}'
+            # Official measurement PDF for this style (true "spec sheet").
+            # Product page also works at /product/{STYLE}/ if the PDF moves.
+            return f'https://www.bellacanvas.com/spec/{quote(path + " specs.pdf")}'
         return 'https://www.bellacanvas.com/'
 
     if 'comfortcolors' in key or key == 'comfort':
-        # Brand Shopify storefront paths are unreliable; use on-site chart.
+        path = _strip_comfort_prefix(style) if style else ''
+        if path:
+            # Official brand catalog search lands on the correct style page.
+            return f'https://www.comfortcolors.com/us/en/search?text={path}'
         return SIZE_CHART_SENTINEL
 
     if 'portcompany' in key or key.startswith('port'):
+        # Port & Company is SanMar-distributed; brand site needs a login.
+        # S&S catalog search is the reliable public size/spec page.
+        if style:
+            return f'https://www.ssactivewear.com/search?q={style}'
         return SIZE_CHART_SENTINEL
 
     if 'gildan' in key:
@@ -156,15 +177,24 @@ def brand_spec_sheet_url(brand: str | None, style_number: str | None) -> str:
         return SIZE_CHART_SENTINEL
 
     if 'rabbit' in key:
+        path = style[2:] if style.upper().startswith('RS') else style
+        if path:
+            return f'https://www.ssactivewear.com/search?q={path}'
         return SIZE_CHART_SENTINEL
 
     if 'district' in key:
+        if style:
+            return f'https://www.ssactivewear.com/search?q={style}'
         return SIZE_CHART_SENTINEL
 
     if 'sporttek' in key:
+        if style:
+            return f'https://www.ssactivewear.com/search?q={style}'
         return SIZE_CHART_SENTINEL
 
     if 'stanley' in key or 'stella' in key:
+        if style:
+            return f'https://www.ssactivewear.com/search?q={style}'
         return SIZE_CHART_SENTINEL
 
     # Unknown brand: prefer on-site chart over a broken SanMar guess
@@ -201,11 +231,12 @@ def resolve_spec_sheet_url(product_or_url=None, style_number: str | None = None,
         ss = ss_activewear_style_url(recovered)
         if ss:
             return ss
-        # Bella-looking codes
+        # Bella-looking codes → official measurement PDF
         if recovered.startswith('BC') or recovered.isdigit() or (
             len(recovered) > 2 and recovered[0].isdigit()
         ):
-            return f'https://www.bellacanvas.com/{_strip_bella_prefix(recovered)}'
+            path = _strip_bella_prefix(recovered)
+            return f'https://www.bellacanvas.com/spec/{quote(path + " specs.pdf")}'
 
     return ''
 
@@ -221,13 +252,16 @@ def resolve_spec_sheet_target(product) -> dict:
             return {'mode': 'size_chart', 'url': ''}
         # No chart JSON yet — send shoppers to a live catalog search rather than
         # a dead SanMar PDF. Real browsers can open S&S; bots often get 403.
-        if style:
-            return {
-                'mode': 'external',
-                'url': f'https://www.ssactivewear.com/search?q={style}',
-            }
         brand = getattr(product, 'brand', None)
         key = _brand_key(brand)
+        search_q = style
+        if 'comfort' in key:
+            search_q = _strip_comfort_prefix(style) or style
+        if search_q:
+            return {
+                'mode': 'external',
+                'url': f'https://www.ssactivewear.com/search?q={search_q}',
+            }
         if key in ('c2sport', 'c2'):
             return {'mode': 'external', 'url': 'https://www.c2sport.com/'}
         if key in ('mvsport', 'mv'):
