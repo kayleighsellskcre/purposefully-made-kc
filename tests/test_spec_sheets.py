@@ -84,14 +84,21 @@ def test_gildan_uses_ss_style_page():
     assert resolve_spec_sheet_url(product) == 'https://www.ssactivewear.com/p/32'
 
 
-def test_port_company_uses_sanmar_search():
+def test_port_company_uses_sanmar_spec_sheet_measurements():
     product = _ProductStub(style_number='PC54', brand='Port & Company')
-    assert resolve_spec_sheet_url(product) == 'https://www.sanmar.com/search?text=PC54'
+    assert resolve_spec_sheet_url(product) == 'https://www.sanmar.com/p/3985/specSheetMeasurements'
 
 
-def test_sport_tek_uses_sanmar_search():
+def test_sport_tek_uses_sanmar_spec_sheet_measurements():
     product = _ProductStub(style_number='ST350', brand='Sport-Tek')
-    assert 'sanmar.com/search?text=ST350' in resolve_spec_sheet_url(product)
+    assert resolve_spec_sheet_url(product) == 'https://www.sanmar.com/p/4349/specSheetMeasurements'
+
+
+def test_sanmar_style_without_known_id_uses_spec_pdf():
+    product = _ProductStub(style_number='STSW013', brand='Stanley/Stella')
+    url = resolve_spec_sheet_url(product)
+    assert url.endswith('SpecSheetMeasurements_STSW013.pdf')
+    assert 'companycasuals.com' in url
 
 
 def test_stanley_stella_uses_product_sheet_pdf():

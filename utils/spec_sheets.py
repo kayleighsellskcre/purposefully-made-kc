@@ -149,8 +149,10 @@ def is_broken_spec_url(url: str | None) -> bool:
         return True
     if 'gildan.com' in u.lower() and '/search' in u.lower():
         return True
-    # S&S search is weaker than a direct /p/{id} page when we know the id.
+    # S&S / SanMar search pages are weaker than a direct style resource.
     if 'ssactivewear.com/search' in u.lower():
+        return True
+    if 'sanmar.com/search' in u.lower():
         return True
     if u.startswith('/static/') or u.startswith('static/'):
         return True
@@ -189,11 +191,48 @@ def ss_activewear_style_url(style_number: str | None) -> str:
     return f'https://www.ssactivewear.com/p/{sid}'
 
 
+# SanMar numeric product IDs for styles we sell. Used to deep-link the
+# "Spec Sheet + Measurements" resource page (not the product landing page).
+SANMAR_STYLE_PRODUCT_IDS = {
+    'PC54': 3985,
+    'LPC54': 6464,
+    'PC78H': 4180,
+    'PC146': 6463,
+    'PC146Y': 6467,
+    'PC147': 4667,
+    'PC147Y': 4668,
+    'PC147LS': 7054,
+    'PC147YLS': 7055,
+    'LPC147V': 7064,
+    'ST350': 4349,
+    'ST254': 5512,
+    'LST350': 4296,
+    'DT6000': 5708,
+    'DM130': 7462,
+    'DT8000': 10175,
+}
+
+
 def sanmar_search_url(style_number: str | None) -> str:
     style = normalize_style_for_spec(style_number)
     if not style:
         return ''
     return f'https://www.sanmar.com/search?text={quote(style)}'
+
+
+def sanmar_spec_sheet_url(style_number: str | None) -> str:
+    """Direct Spec Sheet + Measurements page (or PDF) for a SanMar style."""
+    style = normalize_style_for_spec(style_number)
+    if not style:
+        return ''
+    pid = SANMAR_STYLE_PRODUCT_IDS.get(style)
+    if pid:
+        return f'https://www.sanmar.com/p/{pid}/specSheetMeasurements'
+    # Same Spec Sheet + Measurements document SanMar publishes, by style number.
+    return (
+        'https://docs.companycasuals.com/productspecifications/'
+        f'SpecSheetMeasurements_{quote(style)}.pdf'
+    )
 
 
 def stanley_stella_spec_url(style_number: str | None) -> str:
@@ -253,7 +292,7 @@ def brand_spec_sheet_url(brand: str | None, style_number: str | None) -> str:
         return SIZE_CHART_SENTINEL
 
     if 'portcompany' in key or key.startswith('port'):
-        return sanmar_search_url(style) or SIZE_CHART_SENTINEL
+        return sanmar_spec_sheet_url(style) or SIZE_CHART_SENTINEL
 
     if 'gildan' in key:
         ss = ss_activewear_style_url(style) or ss_activewear_style_url(
@@ -276,16 +315,16 @@ def brand_spec_sheet_url(brand: str | None, style_number: str | None) -> str:
         return SIZE_CHART_SENTINEL
 
     if 'district' in key:
-        return sanmar_search_url(style) or SIZE_CHART_SENTINEL
+        return sanmar_spec_sheet_url(style) or SIZE_CHART_SENTINEL
 
     if 'sporttek' in key:
-        return sanmar_search_url(style) or SIZE_CHART_SENTINEL
+        return sanmar_spec_sheet_url(style) or SIZE_CHART_SENTINEL
 
     if 'stanley' in key or 'stella' in key:
         # Prefer official product sheet PDF; STSW013 and a few legacy codes 404,
-        # so fall back to SanMar search for those.
+        # so fall back to SanMar Spec Sheet for those.
         if style in ('STSW013',):
-            return sanmar_search_url(style) or SIZE_CHART_SENTINEL
+            return sanmar_spec_sheet_url(style) or SIZE_CHART_SENTINEL
         return stanley_stella_spec_url(style) or SIZE_CHART_SENTINEL
 
     # Unknown brand: prefer on-site chart over a broken SanMar guess
@@ -350,7 +389,7 @@ def resolve_spec_sheet_target(product) -> dict:
         if search_q:
             # SanMar brands land better on SanMar search; others on S&S.
             if key.startswith('port') or 'district' in key or 'sporttek' in key:
-                return {'mode': 'external', 'url': sanmar_search_url(search_q)}
+                return {'mode': 'external', 'url': sanmar_spec_sheet_url(search_q)}
             return {
                 'mode': 'external',
                 'url': f'https://www.ssactivewear.com/search?q={quote(search_q)}',
