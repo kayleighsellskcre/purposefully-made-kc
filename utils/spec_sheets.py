@@ -6,8 +6,9 @@ SanMar's old product pages (sanmar.com/p/STYLE) and CDN measurement PDFs
 
 Preferred destinations:
 - Bella+Canvas: brand product page (/product/{STYLE}/) which includes size chart
-- C2 / MV / Comfort Colors / Gildan / Rabbit Skins: S&S Activewear style page
-- Port & Company / Sport-Tek / District: SanMar catalog search (public)
+- C2 / MV / Comfort Colors / Gildan / Rabbit Skins: S&S ItemSpecSheet
+  (ShopNow/ItemSpecSheet.aspx?ID={styleID}) — bare /p/{styleID} 404s
+- Port & Company / Sport-Tek / District: SanMar Spec Sheet + Measurements
 - Stanley/Stella: official ProductSheet PDF when available
 """
 from __future__ import annotations
@@ -85,6 +86,11 @@ _WEAK_HOMEPAGE_ONLY = re.compile(
     r'^https?://(?:www\.)?(?:mvsport\.com|c2sport\.com)/?$',
     re.IGNORECASE,
 )
+# Bare numeric S&S paths (/p/2281) error out; use ItemSpecSheet.aspx instead.
+_BROKEN_SS_NUMERIC_PRODUCT = re.compile(
+    r'^https?://(?:www\.)?ssactivewear\.com/p/\d+/?(?:\?.*)?$',
+    re.IGNORECASE,
+)
 
 
 def normalize_style_for_spec(style_number: str | None) -> str:
@@ -133,7 +139,12 @@ def is_broken_spec_url(url: str | None) -> bool:
         return True
     if _BROKEN_SANMAR_PRODUCT_PAGE.match(u):
         return True
-    if _BROKEN_SANMAR_CDN.match(u) or 'SpecSheetMeasurements' in u:
+    # Dead SanMar CDN measurement PDFs (HTML "File Not Found"), not the
+    # working docs.companycasuals.com SpecSheetMeasurements_*.pdf links or
+    # sanmar.com/p/{id}/specSheetMeasurements pages.
+    if _BROKEN_SANMAR_CDN.match(u):
+        return True
+    if 'cdnm.sanmar.com' in u.lower() and 'SpecSheetMeasurements' in u:
         return True
     if _BROKEN_BELLA_SPEC_PDF.match(u):
         return True
@@ -144,7 +155,9 @@ def is_broken_spec_url(url: str | None) -> bool:
             return True
     if _WEAK_HOMEPAGE_ONLY.match(u):
         return True
-    # Old Comfort Colors / Gildan search pages; prefer S&S style pages now.
+    if _BROKEN_SS_NUMERIC_PRODUCT.match(u):
+        return True
+    # Old Comfort Colors / Gildan search pages; prefer S&S ItemSpecSheet now.
     if 'comfortcolors.com' in u.lower() and '/search' in u.lower():
         return True
     if 'gildan.com' in u.lower() and '/search' in u.lower():
@@ -172,6 +185,11 @@ def is_usable_spec_sheet_url(url: str | None) -> bool:
 
 
 def ss_activewear_style_url(style_number: str | None) -> str:
+    """S&S Item Spec Sheet (Finished Measurements) for a known styleID.
+
+    Bare catalog paths like /p/2281 redirect to an error page. The working
+    resource is ShopNow/ItemSpecSheet.aspx?ID={styleID}&LanguageCode=en.
+    """
     style = normalize_style_for_spec(style_number)
     if not style:
         return ''
@@ -188,7 +206,10 @@ def ss_activewear_style_url(style_number: str | None) -> str:
                 break
     if not sid:
         return ''
-    return f'https://www.ssactivewear.com/p/{sid}'
+    return (
+        'https://www.ssactivewear.com/ShopNow/ItemSpecSheet.aspx'
+        f'?ID={sid}&LanguageCode=en'
+    )
 
 
 # SanMar numeric product IDs for styles we sell. Used to deep-link the

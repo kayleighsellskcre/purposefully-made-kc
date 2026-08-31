@@ -47,23 +47,29 @@ def test_bella_prefers_product_page_over_stale_spec_pdf():
     assert resolve_spec_sheet_url(product) == 'https://www.bellacanvas.com/product/3005/'
 
 
-def test_c2_sport_uses_ss_style_id():
+_SS_SPEC = (
+    'https://www.ssactivewear.com/ShopNow/ItemSpecSheet.aspx'
+    '?ID={}&LanguageCode=en'
+)
+
+
+def test_c2_sport_uses_ss_item_spec_sheet():
     product = _ProductStub(style_number='5100', brand='C2 Sport')
-    assert resolve_spec_sheet_url(product) == 'https://www.ssactivewear.com/p/2281'
+    assert resolve_spec_sheet_url(product) == _SS_SPEC.format(2281)
 
 
 def test_mv_sport_uses_ss_activewear_style_id():
     product = _ProductStub(style_number='17116', brand='MV Sport')
-    assert resolve_spec_sheet_url(product) == 'https://www.ssactivewear.com/p/7466'
+    assert resolve_spec_sheet_url(product) == _SS_SPEC.format(7466)
 
 
 def test_mv_sport_womens_styles_have_ss_ids():
     assert resolve_spec_sheet_url(
         _ProductStub(style_number='W23716', brand='MV Sport')
-    ) == 'https://www.ssactivewear.com/p/11175'
+    ) == _SS_SPEC.format(11175)
     assert resolve_spec_sheet_url(
         _ProductStub(style_number='W25167', brand='MV Sport')
-    ) == 'https://www.ssactivewear.com/p/16260'
+    ) == _SS_SPEC.format(16260)
 
 
 def test_comfort_colors_uses_ss_style_page():
@@ -73,7 +79,7 @@ def test_comfort_colors_uses_ss_style_page():
         size_chart='{"M":{"chest":"20","length":"28"}}',
     )
     url = resolve_spec_sheet_url(product)
-    assert url == 'https://www.ssactivewear.com/p/1822'
+    assert url == _SS_SPEC.format(1822)
     target = resolve_spec_sheet_target(product)
     assert target['mode'] == 'external'
     assert target['url'] == url
@@ -81,7 +87,7 @@ def test_comfort_colors_uses_ss_style_page():
 
 def test_gildan_uses_ss_style_page():
     product = _ProductStub(style_number='G64000', brand='Gildan')
-    assert resolve_spec_sheet_url(product) == 'https://www.ssactivewear.com/p/32'
+    assert resolve_spec_sheet_url(product) == _SS_SPEC.format(32)
 
 
 def test_port_company_uses_sanmar_spec_sheet_measurements():
@@ -115,9 +121,12 @@ def test_broken_urls_detected():
     assert is_broken_spec_url('https://www.bellacanvas.com/spec/3001%20specs.pdf')
     assert is_broken_spec_url('https://www.mvsport.com/')
     assert is_broken_spec_url('https://www.ssactivewear.com/search?q=PC54')
+    assert is_broken_spec_url('https://www.ssactivewear.com/p/2281')
+    assert not is_broken_spec_url(_SS_SPEC.format(2281))
     assert not is_broken_spec_url('https://www.bellacanvas.com/product/3001CVC/')
     assert not is_usable_spec_sheet_url('https://cdnm.sanmar.com/SpecSheetMeasurements/BC3001.pdf')
     assert not is_usable_spec_sheet_url('https://www.bellacanvas.com/3001CVC')
+    assert not is_usable_spec_sheet_url('https://www.ssactivewear.com/p/2281')
 
 
 def test_normalize_style_for_spec_uppercases():
