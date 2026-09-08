@@ -3027,9 +3027,39 @@ def print_labels():
         child = (getattr(order, 'child_name', None) or '').strip().lower()
         return (send_home, teacher, grade, child, order.created_at or datetime.min)
 
+    def _logo_label(item):
+        design = getattr(item, 'design', None)
+        title = (getattr(design, 'title', None) or '').strip() if design else ''
+        if title:
+            return title
+        raw = (item.design_file_name or '').strip()
+        if not raw:
+            return ''
+        raw = raw.replace('\\', '/').split('/')[-1]
+        if '.' in raw:
+            raw = raw.rsplit('.', 1)[0]
+        return raw.replace('_', ' ').replace('-', ' ').strip()
+
+    def _label_items(order):
+        rows = []
+        for item in order.items.all():
+            product = getattr(item, 'product', None)
+            brand = (getattr(product, 'brand', None) or '').strip() if product else ''
+            rows.append({
+                'qty': item.quantity or 1,
+                'size': (item.size or '').strip(),
+                'color': (item.color or '').strip(),
+                'brand': brand,
+                'style': (item.style_number or '').strip(),
+                'logo': _logo_label(item),
+            })
+        return rows
+
     orders = sorted(query.all(), key=_label_sort_key)
+    for order in orders:
+        order.label_items = _label_items(order)
     collections = Collection.query.all()
-    
+
     return render_template('admin/print_labels.html',
                          orders=orders,
                          collections=collections,

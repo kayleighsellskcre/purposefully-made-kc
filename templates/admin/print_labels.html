@@ -164,7 +164,7 @@
 .label-cell {
     width: 2.625in;
     height: 1in;
-    padding: 0.055in 0.1in 0.04in 0.1in;
+    padding: 0.05in 0.08in 0.04in 0.08in;
     font-size: 9px;
     line-height: 1.15;
     overflow: hidden;
@@ -177,9 +177,9 @@
 
 .label-cell .label-order-num {
     font-weight: 700;
-    font-size: 7.5px;
+    font-size: 7px;
     letter-spacing: 0.02em;
-    color: #555;
+    color: #666;
     line-height: 1.1;
     white-space: nowrap;
     overflow: hidden;
@@ -188,15 +188,34 @@
     margin-bottom: 0.02in;
 }
 
-.label-cell .label-content {
+.label-cell .label-body {
     flex: 1 1 auto;
     min-height: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0.07in;
+    overflow: hidden;
+}
+
+.label-cell .label-who {
+    flex: 1.15 1 0;
+    min-width: 0;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: 0.02in;
-    font-size: 9px;
-    line-height: 1.15;
+    gap: 0.015in;
+}
+
+.label-cell .label-what {
+    flex: 0.95 1 0;
+    min-width: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0.04in;
+    padding-left: 0.07in;
+    border-left: 0.5px solid #cfcfcf;
 }
 
 .label-cell .label-line {
@@ -208,7 +227,7 @@
 
 .label-cell .label-send-home-tag {
     font-weight: 700;
-    font-size: 8px;
+    font-size: 7px;
     letter-spacing: 0.05em;
     text-transform: uppercase;
     color: #111;
@@ -218,31 +237,71 @@
 
 .label-cell .label-child,
 .label-cell .label-name {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
-    line-height: 1.12;
+    line-height: 1.1;
     color: #111;
     flex-shrink: 0;
-    max-height: 0.28in;
+    max-height: 0.26in;
     overflow: hidden;
 }
 
 .label-cell .label-meta {
-    font-size: 9px;
-    line-height: 1.15;
+    font-size: 8px;
+    line-height: 1.12;
     color: #222;
 }
 
 .label-cell .label-contact {
-    font-size: 8.5px;
-    line-height: 1.12;
-    color: #222;
+    font-size: 7.5px;
+    line-height: 1.1;
+    color: #333;
 }
 
 .label-cell .label-contact-row {
     white-space: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
+}
+
+.label-cell .label-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.01in;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.label-cell .label-item-top {
+    font-size: 8.5px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: #111;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.label-cell .label-item-brand,
+.label-cell .label-item-logo {
+    font-size: 7.5px;
+    line-height: 1.1;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.label-cell .label-item-logo {
+    font-style: italic;
+    color: #222;
+}
+
+.label-cell .label-more {
+    font-size: 7px;
+    font-weight: 600;
+    color: #555;
+    line-height: 1.1;
 }
 
 /* Empty label cells (screen preview only) */
@@ -472,7 +531,8 @@
                             {% set order = orders[order_index] %}
                             <div class="label-cell {% if order.send_home_with_child %}send-home{% elif order.fulfillment_method == 'shipping' %}shipping{% else %}pickup{% endif %}">
                                 <span class="label-order-num">{{ order.order_number }}</span>
-                                <div class="label-content">
+                                <div class="label-body">
+                                    <div class="label-who">
                                     {% if order.send_home_with_child %}
                                         {% set parent_name = ((order.first_name or '') ~ ' ' ~ (order.last_name or ''))|trim %}
                                         <span class="label-send-home-tag">Send home with child</span>
@@ -483,8 +543,8 @@
                                         {% if parent_name %}
                                         <span class="label-meta label-line">Parent: {{ parent_name }}</span>
                                         {% endif %}
-                                        {% if order.phone or order.email %}
-                                        <span class="label-contact label-line label-contact-row">{% if order.phone %}{{ order.phone }}{% endif %}{% if order.phone and order.email %} · {% endif %}{% if order.email %}{{ order.email }}{% endif %}</span>
+                                        {% if order.phone %}
+                                        <span class="label-contact label-line label-contact-row">{{ order.phone }}</span>
                                         {% endif %}
                                     {% elif order.fulfillment_method == 'shipping' %}
                                         {% set name_part = (order.first_name or '') ~ ' ' ~ (order.last_name or '') %}
@@ -495,15 +555,31 @@
                                         {% if order.shipping_city %}
                                         <span class="label-meta label-line">{{ order.shipping_city }}, {{ order.shipping_state }} {{ order.shipping_zip }}</span>
                                         {% endif %}
-                                        {% if order.shipping_country and order.shipping_country != 'USA' %}
-                                        <span class="label-meta label-line">{{ order.shipping_country }}</span>
-                                        {% endif %}
                                     {% else %}
                                         {% set pickup_name = ((order.first_name or '') ~ ' ' ~ (order.last_name or ''))|trim %}
                                         <span class="label-name label-line">{{ pickup_name or order.email or 'Customer' }}</span>
-                                        {% if order.phone or order.email %}
-                                        <span class="label-contact label-line label-contact-row">{% if order.phone %}{{ order.phone }}{% endif %}{% if order.phone and order.email %} · {% endif %}{% if order.email %}{{ order.email }}{% endif %}</span>
+                                        {% if order.phone %}<span class="label-contact label-line label-contact-row">{{ order.phone }}</span>{% endif %}
+                                        {% if order.email %}<span class="label-contact label-line label-contact-row">{{ order.email }}</span>{% endif %}
+                                    {% endif %}
+                                    </div>
+                                    {% set items = order.label_items or [] %}
+                                    {% if items %}
+                                    <div class="label-what">
+                                        {% for item in items[:2] %}
+                                        <div class="label-item">
+                                            <span class="label-item-top">{% if item.qty %}{{ item.qty }}× {% endif %}{% if item.color %}{{ item.color }}{% endif %}{% if item.color and item.size %} · {% endif %}{% if item.size %}{{ item.size }}{% endif %}</span>
+                                            {% if item.brand or item.style %}
+                                            <span class="label-item-brand">{% if item.brand %}{{ item.brand }}{% endif %}{% if item.brand and item.style %} · {% endif %}{% if item.style %}{{ item.style }}{% endif %}</span>
+                                            {% endif %}
+                                            {% if item.logo %}
+                                            <span class="label-item-logo">{{ item.logo }}</span>
+                                            {% endif %}
+                                        </div>
+                                        {% endfor %}
+                                        {% if items|length > 2 %}
+                                        <span class="label-more">+{{ items|length - 2 }} more</span>
                                         {% endif %}
+                                    </div>
                                     {% endif %}
                                 </div>
                             </div>
