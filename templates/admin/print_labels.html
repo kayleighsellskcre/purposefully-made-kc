@@ -130,8 +130,9 @@
     font-size: 0.95rem;
 }
 
-/* Label sheet - 3 columns × 10 rows = 30 per page */
-/* Standard Avery 5160: 1" × 2.625" per label, 3×10 per sheet */
+/* Label sheet — Avery 5160 exact geometry:
+   2.625" × 1" labels, 3×10, top/bottom 0.5", left/right 0.1875",
+   0.125" gutters between columns, no vertical gutter. */
 .labels-preview {
     background: #fff;
     max-width: 8.5in;
@@ -140,84 +141,114 @@
 
 .label-sheet {
     width: 8.5in;
-    min-height: 11in;
-    padding: 0.5in;
-    margin-bottom: 2rem;
+    height: 11in;
+    padding: 0.5in 0.1875in;
+    margin: 0 auto 2rem;
     box-sizing: border-box;
     background: #fff;
     border: 1px dashed #ccc;
     break-after: page;
+    overflow: hidden;
 }
 
 .label-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(10, 1fr);
-    gap: 0.125in 0.125in;
-    width: 100%;
+    grid-template-columns: 2.625in 2.625in 2.625in;
+    grid-template-rows: repeat(10, 1in);
+    column-gap: 0.125in;
+    row-gap: 0;
+    width: 8.125in;
     height: 10in;
     box-sizing: border-box;
 }
 
 .label-cell {
-    border: 1px solid #333;
-    padding: 0.15in 0.2in;
-    font-size: 9px;
-    line-height: 1.3;
+    width: 2.625in;
+    height: 1in;
+    padding: 0.05in 0.1in 0.04in 0.1in;
+    font-size: 7.5px;
+    line-height: 1.12;
     overflow: hidden;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
+    border: 1px solid #bbb;
 }
 
 .label-cell .label-order-num {
     font-weight: 700;
-    font-size: 8px;
-    color: #666;
-    margin-bottom: 0.1in;
+    font-size: 6.5px;
+    letter-spacing: 0.02em;
+    color: #555;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
 }
 
 .label-cell .label-content {
-    flex: 1;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0.015in;
+    font-size: 7.5px;
+    line-height: 1.12;
 }
 
-.label-cell.shipping .label-content {
-    font-family: inherit;
-}
-
-.label-cell.pickup .label-content {
-    font-family: inherit;
-}
-
-.label-cell.send-home {
-    justify-content: flex-start;
+.label-cell .label-line {
+    display: block;
+    overflow: hidden;
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 
 .label-cell .label-send-home-tag {
     font-weight: 700;
-    font-size: 7.5px;
-    letter-spacing: 0.08em;
+    font-size: 6.5px;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     color: #111;
-    margin-bottom: 0.04in;
+    line-height: 1.1;
+    flex-shrink: 0;
 }
 
-.label-cell .label-child {
-    font-size: 11px;
+.label-cell .label-child,
+.label-cell .label-name {
+    font-size: 9.5px;
     font-weight: 700;
+    line-height: 1.1;
+    color: #111;
+    flex-shrink: 0;
+    max-height: 0.24in;
+    overflow: hidden;
+}
+
+.label-cell .label-meta {
+    font-size: 7px;
     line-height: 1.15;
-    margin-bottom: 0.04in;
+    color: #222;
 }
 
-.label-cell.send-home .label-content {
-    font-size: 8px;
-    line-height: 1.25;
+.label-cell .label-contact {
+    font-size: 7px;
+    line-height: 1.1;
+    color: #222;
 }
 
-/* Empty label cells */
+.label-cell .label-contact-row {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+/* Empty label cells (screen preview only) */
 .label-cell.empty {
     border-color: #ccc;
+    border-style: dashed;
     background: #f9f9f9;
 }
 
@@ -260,56 +291,72 @@
     .flash-messages {
         display: none !important;
     }
-    
-    body {
-        padding: 0;
-        margin: 0;
-    }
-    
-    .admin-page {
+
+    html, body {
+        width: 8.5in;
+        height: auto;
+        margin: 0 !important;
         padding: 0 !important;
+        background: #fff !important;
     }
-    
+
+    .admin-page,
+    .admin-page > .container {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: none !important;
+        width: 8.5in !important;
+    }
+
     .labels-preview {
         max-width: none !important;
         margin: 0 !important;
         padding: 0 !important;
     }
-    
+
     .label-sheet {
         width: 8.5in !important;
-        min-height: 11in !important;
-        padding: 0.5in !important;
+        height: 11in !important;
+        padding: 0.5in 0.1875in !important;
         margin: 0 !important;
         border: none !important;
         break-after: page !important;
         page-break-after: always !important;
+        box-shadow: none !important;
+        overflow: hidden !important;
     }
-    
+
     .label-sheet:last-child {
         break-after: auto !important;
         page-break-after: auto !important;
     }
-    
+
     .label-grid {
+        width: 8.125in !important;
         height: 10in !important;
-        gap: 0.08in 0.08in !important;
+        grid-template-columns: 2.625in 2.625in 2.625in !important;
+        grid-template-rows: repeat(10, 1in) !important;
+        column-gap: 0.125in !important;
+        row-gap: 0 !important;
     }
-    
+
     .label-cell {
-        border: 1px solid #000 !important;
+        width: 2.625in !important;
+        height: 1in !important;
+        border: none !important;
+        background: transparent !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
-    
+
     .label-cell.empty {
-        border: 1px dotted #999 !important;
+        border: none !important;
         background: transparent !important;
     }
-    
+
     @page {
         size: letter;
-        margin: 0.5in;
+        margin: 0;
     }
 }
 </style>
@@ -324,7 +371,7 @@
             <div>
                 <span class="adm-eyebrow">Admin / Daily Operations</span>
                 <h1>Print Order Labels</h1>
-                <p class="page-subtitle">Step 5: print labels for packaged and pressed orders. Send-home group orders are sorted by coach/teacher, then grade, then child. Avery 5160, 3×10 per sheet.</p>
+                <p class="page-subtitle">Step 5: print labels for packaged and pressed orders. Send-home group orders are sorted by coach/teacher, then grade, then child. Avery 5160 (1&Prime; × 2.625&Prime;, 3×10). In the print dialog set Margins to <strong>None</strong> and Scale to <strong>100%</strong>.</p>
             </div>
         </div>
 
@@ -399,26 +446,36 @@
                                 <span class="label-order-num">{{ order.order_number }}</span>
                                 <div class="label-content">
                                     {% if order.send_home_with_child %}
-                                        <div class="label-send-home-tag">Send home with child</div>
-                                        <div class="label-child">{{ order.child_name or 'Child' }}</div>
-                                        {% if order.teacher_name %}{{ order.teacher_name }}{% endif %}{% if order.teacher_name and order.child_grade %} · {% endif %}{% if order.child_grade %}Grade {{ order.child_grade }}{% endif %}
                                         {% set parent_name = ((order.first_name or '') ~ ' ' ~ (order.last_name or ''))|trim %}
-                                        {% if parent_name %}<br>Parent: {{ parent_name }}{% endif %}
+                                        <span class="label-send-home-tag">Send home with child</span>
+                                        <span class="label-child label-line">{{ order.child_name or 'Child' }}</span>
+                                        {% if order.teacher_name or order.child_grade %}
+                                        <span class="label-meta label-line">{% if order.teacher_name %}{{ order.teacher_name }}{% endif %}{% if order.teacher_name and order.child_grade %} · {% endif %}{% if order.child_grade %}Grade {{ order.child_grade }}{% endif %}</span>
+                                        {% endif %}
+                                        {% if parent_name %}
+                                        <span class="label-meta label-line">Parent: {{ parent_name }}</span>
+                                        {% endif %}
+                                        {% if order.phone or order.email %}
+                                        <span class="label-contact label-line label-contact-row">{% if order.phone %}{{ order.phone }}{% endif %}{% if order.phone and order.email %} · {% endif %}{% if order.email %}{{ order.email }}{% endif %}</span>
+                                        {% endif %}
                                     {% elif order.fulfillment_method == 'shipping' %}
-                                        {# Shipping format: Name + Address #}
                                         {% set name_part = (order.first_name or '') ~ ' ' ~ (order.last_name or '') %}
                                         {% set recipient = order.shipping_recipient or name_part|trim or order.email or 'Customer' %}
-                                        <strong>{{ recipient }}</strong><br>
-                                        {% if order.shipping_street %}{{ order.shipping_street }}<br>{% endif %}
-                                        {% if order.shipping_street_2 %}{{ order.shipping_street_2 }}<br>{% endif %}
-                                        {% if order.shipping_city %}{{ order.shipping_city }}, {{ order.shipping_state }} {{ order.shipping_zip }}{% endif %}
-                                        {% if order.shipping_country and order.shipping_country != 'USA' %}<br>{{ order.shipping_country }}{% endif %}
+                                        <span class="label-name label-line">{{ recipient }}</span>
+                                        {% if order.shipping_street %}<span class="label-meta label-line">{{ order.shipping_street }}</span>{% endif %}
+                                        {% if order.shipping_street_2 %}<span class="label-meta label-line">{{ order.shipping_street_2 }}</span>{% endif %}
+                                        {% if order.shipping_city %}
+                                        <span class="label-meta label-line">{{ order.shipping_city }}, {{ order.shipping_state }} {{ order.shipping_zip }}</span>
+                                        {% endif %}
+                                        {% if order.shipping_country and order.shipping_country != 'USA' %}
+                                        <span class="label-meta label-line">{{ order.shipping_country }}</span>
+                                        {% endif %}
                                     {% else %}
-                                        {# Pickup format: Name, Phone, Email #}
                                         {% set pickup_name = ((order.first_name or '') ~ ' ' ~ (order.last_name or ''))|trim %}
-                                        <strong>{{ pickup_name or order.email or 'Customer' }}</strong><br>
-                                        {% if order.phone %}{{ order.phone }}<br>{% endif %}
-                                        {% if order.email %}{{ order.email }}{% endif %}
+                                        <span class="label-name label-line">{{ pickup_name or order.email or 'Customer' }}</span>
+                                        {% if order.phone or order.email %}
+                                        <span class="label-contact label-line label-contact-row">{% if order.phone %}{{ order.phone }}{% endif %}{% if order.phone and order.email %} · {% endif %}{% if order.email %}{{ order.email }}{% endif %}</span>
+                                        {% endif %}
                                     {% endif %}
                                 </div>
                             </div>
