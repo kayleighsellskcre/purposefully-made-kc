@@ -14,7 +14,6 @@
             <div class="shop-actions no-print">
                 <button type="button" class="btn btn-primary" data-copy-target="copy-all" {% if not has_items %}disabled{% endif %}>Copy all</button>
                 <a href="{{ ops_url('admin.dtf_batch_sheets', format='xlsx') }}" class="btn btn-outline">Download Excel</a>
-                <a href="{{ ops_url('admin.dtf_batch_sheets', format='csv') }}" class="btn btn-outline">Download CSV</a>
                 <button type="button" class="btn btn-outline" onclick="window.print()">Print</button>
                 <a href="{{ ops_url('admin.production_master') }}" class="btn btn-outline">Back to blanks + designs</a>
             </div>
