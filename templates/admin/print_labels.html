@@ -143,11 +143,10 @@
     width: 8.5in;
     height: 11in;
     padding: 0.5in 0.1875in;
-    margin: 0 auto 2rem;
+    margin: 0 auto 1.5rem;
     box-sizing: border-box;
     background: #fff;
     border: 1px dashed #ccc;
-    break-after: page;
     overflow: hidden;
 }
 
@@ -165,9 +164,9 @@
 .label-cell {
     width: 2.625in;
     height: 1in;
-    padding: 0.05in 0.1in 0.04in 0.1in;
-    font-size: 7.5px;
-    line-height: 1.12;
+    padding: 0.055in 0.1in 0.04in 0.1in;
+    font-size: 9px;
+    line-height: 1.15;
     overflow: hidden;
     box-sizing: border-box;
     display: flex;
@@ -178,7 +177,7 @@
 
 .label-cell .label-order-num {
     font-weight: 700;
-    font-size: 6.5px;
+    font-size: 7.5px;
     letter-spacing: 0.02em;
     color: #555;
     line-height: 1.1;
@@ -186,6 +185,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     flex-shrink: 0;
+    margin-bottom: 0.02in;
 }
 
 .label-cell .label-content {
@@ -194,9 +194,9 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: 0.015in;
-    font-size: 7.5px;
-    line-height: 1.12;
+    gap: 0.02in;
+    font-size: 9px;
+    line-height: 1.15;
 }
 
 .label-cell .label-line {
@@ -208,8 +208,8 @@
 
 .label-cell .label-send-home-tag {
     font-weight: 700;
-    font-size: 6.5px;
-    letter-spacing: 0.06em;
+    font-size: 8px;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
     color: #111;
     line-height: 1.1;
@@ -218,24 +218,24 @@
 
 .label-cell .label-child,
 .label-cell .label-name {
-    font-size: 9.5px;
+    font-size: 12px;
     font-weight: 700;
-    line-height: 1.1;
+    line-height: 1.12;
     color: #111;
     flex-shrink: 0;
-    max-height: 0.24in;
+    max-height: 0.28in;
     overflow: hidden;
 }
 
 .label-cell .label-meta {
-    font-size: 7px;
+    font-size: 9px;
     line-height: 1.15;
     color: #222;
 }
 
 .label-cell .label-contact {
-    font-size: 7px;
-    line-height: 1.1;
+    font-size: 8.5px;
+    line-height: 1.12;
     color: #222;
 }
 
@@ -252,7 +252,14 @@
     background: #f9f9f9;
 }
 
-/* Print-specific styles */
+.pl-preview-hint {
+    display: none;
+    font-size: 0.78rem;
+    color: var(--text-secondary, #888);
+    margin-bottom: 0.65rem;
+}
+
+/* Screen-only responsive chrome */
 @media (max-width: 768px) {
     .pl-header {
         flex-direction: column;
@@ -268,67 +275,92 @@
     .pl-action-btns .btn,
     .pl-print-btn { width: 100%; justify-content: center; min-height: 48px; }
 
-    /* Keep Avery geometry for print; on screen, scroll + hint */
     .labels-preview {
         max-width: 100%;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
         padding-bottom: 0.5rem;
     }
-    .labels-preview::before {
-        content: "Swipe sideways to preview · Print for full-size Avery sheet";
-        display: block;
-        font-size: 0.78rem;
-        color: var(--text-secondary, #888);
-        margin-bottom: 0.65rem;
-    }
+    .pl-preview-hint { display: block; }
 }
 
+/* Print: labels only — hide every site chrome element */
 @media print {
-    .no-print,
-    .navbar,
-    .footer,
-    .flash-messages {
-        display: none !important;
+    @page {
+        size: letter;
+        margin: 0;
     }
 
     html, body {
-        width: 8.5in;
-        height: auto;
+        width: 8.5in !important;
+        height: auto !important;
         margin: 0 !important;
         padding: 0 !important;
         background: #fff !important;
     }
 
+    /* Remove all non-label UI from the print layout (display:none so it
+       does not reserve height and create a blank second page). */
+    .no-print,
+    .navbar,
+    .footer,
+    .flash-messages,
+    .group-order-banner,
+    .ops-nav,
+    .ops-flow,
+    .pl-header,
+    .pl-filter-card,
+    .pl-empty,
+    .pl-preview-hint,
+    header,
+    footer,
+    nav {
+        display: none !important;
+    }
+
+    .ops-page,
+    .ops-page > .container,
     .admin-page,
     .admin-page > .container {
+        display: block !important;
         padding: 0 !important;
         margin: 0 !important;
         max-width: none !important;
         width: 8.5in !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: #fff !important;
     }
 
     .labels-preview {
+        display: block !important;
+        width: 8.5in !important;
         max-width: none !important;
         margin: 0 !important;
         padding: 0 !important;
+        background: #fff !important;
+        overflow: visible !important;
     }
 
     .label-sheet {
         width: 8.5in !important;
         height: 11in !important;
+        max-height: 11in !important;
         padding: 0.5in 0.1875in !important;
         margin: 0 !important;
         border: none !important;
-        break-after: page !important;
-        page-break-after: always !important;
         box-shadow: none !important;
         overflow: hidden !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        page-break-after: auto !important;
+        break-after: auto !important;
     }
 
-    .label-sheet:last-child {
-        break-after: auto !important;
-        page-break-after: auto !important;
+    /* Only force a page break BETWEEN sheets, never after the last one */
+    .label-sheet:not(:last-child) {
+        page-break-after: always !important;
+        break-after: page !important;
     }
 
     .label-grid {
@@ -352,11 +384,6 @@
     .label-cell.empty {
         border: none !important;
         background: transparent !important;
-    }
-
-    @page {
-        size: letter;
-        margin: 0;
     }
 }
 </style>
@@ -432,6 +459,7 @@
         {% else %}
         <!-- Label Sheets -->
         <div class="labels-preview">
+            <p class="pl-preview-hint no-print">Swipe sideways to preview · Print for full-size Avery sheet</p>
             {% set labels_per_sheet = 30 %}
             {% set num_sheets = ((orders|length + 29) / labels_per_sheet)|int %}
             
