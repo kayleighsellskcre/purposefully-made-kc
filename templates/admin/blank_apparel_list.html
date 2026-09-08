@@ -104,8 +104,168 @@
 .copy-src { position: absolute; left: -9999px; width: 1px; height: 1px; }
 .copy-toast { position: fixed; bottom: 1.25rem; left: 50%; transform: translateX(-50%); background: #3A3D48; color: #fff; padding: 0.5rem 1rem; border-radius: 999px; font-size: 0.85rem; z-index: 50; }
 @media print {
-    .no-print, .ops-flow { display: none !important; }
-    .vendor-block { box-shadow: none; break-inside: avoid; }
+    @page {
+        size: letter;
+        margin: 0.4in;
+    }
+
+    .no-print,
+    .navbar,
+    .footer,
+    .flash-messages,
+    .group-order-banner,
+    .ops-nav,
+    .ops-flow,
+    .adm-eyebrow,
+    .shop-actions,
+    .vendor-actions,
+    .copy-toast,
+    header,
+    footer,
+    nav {
+        display: none !important;
+    }
+
+    html, body {
+        background: #fff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        font-size: 10pt;
+        line-height: 1.25;
+        color: #111;
+    }
+
+    .ops-page,
+    .ops-page > .container,
+    .admin-page,
+    .admin-page > .container {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: none !important;
+        width: 100% !important;
+        box-shadow: none !important;
+        background: #fff !important;
+    }
+
+    .admin-header {
+        display: block !important;
+        margin: 0 0 0.35rem !important;
+        gap: 0 !important;
+    }
+
+    .admin-header h1 {
+        font-size: 14pt !important;
+        margin: 0 0 0.15rem !important;
+        line-height: 1.2 !important;
+    }
+
+    .page-subtitle {
+        font-size: 8.5pt !important;
+        margin: 0 !important;
+        max-width: none !important;
+        color: #333 !important;
+    }
+
+    .shop-summary {
+        margin: 0 0 0.45rem !important;
+        padding: 0.25rem 0 !important;
+        background: transparent !important;
+        border-radius: 0 !important;
+        border-bottom: 1px solid #ccc;
+        font-size: 9.5pt;
+    }
+
+    .shop-summary p { margin: 0 !important; }
+
+    .vendor-block {
+        background: transparent !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        padding: 0.35rem 0 0.5rem !important;
+        margin: 0 0 0.35rem !important;
+        border-bottom: 1.5px solid #222 !important;
+        /* Allow vendor sections to split across pages — avoid was leaving blank pages */
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+    }
+
+    .vendor-head {
+        margin: 0 0 0.25rem !important;
+        align-items: baseline !important;
+    }
+
+    .vendor-head h2 {
+        font-size: 11.5pt !important;
+        margin: 0 !important;
+        line-height: 1.2 !important;
+    }
+
+    .vendor-head p {
+        font-size: 9pt !important;
+        color: #333 !important;
+    }
+
+    .style-card {
+        border: none !important;
+        border-radius: 0 !important;
+        padding: 0.2rem 0 0.25rem !important;
+        margin: 0 !important;
+        border-top: 1px solid #ddd !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+    }
+
+    .style-card-head {
+        margin: 0 0 0.1rem !important;
+        gap: 0.35rem !important;
+    }
+
+    .style-num {
+        font-size: 9.5pt !important;
+        display: inline !important;
+    }
+
+    .style-name {
+        font-size: 8.5pt !important;
+        margin: 0 !important;
+        color: #333 !important;
+        display: inline !important;
+    }
+
+    .style-name::before {
+        content: " · ";
+    }
+
+    .color-row {
+        padding: 0.08rem 0 !important;
+        border-top: none !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: baseline !important;
+        gap: 0.25rem 0.5rem !important;
+    }
+
+    .color-name {
+        margin: 0 !important;
+        font-size: 9pt !important;
+        min-width: 7rem;
+    }
+
+    .size-chips {
+        gap: 0.2rem !important;
+        display: inline-flex !important;
+        flex-wrap: wrap !important;
+    }
+
+    .size-chip {
+        background: transparent !important;
+        border: 1px solid #bbb !important;
+        border-radius: 3px !important;
+        padding: 0.05rem 0.3rem !important;
+        font-size: 8.5pt !important;
+        line-height: 1.2 !important;
+    }
 }
 @media (max-width: 700px) {
     .admin-page { padding: 2rem 0; }
