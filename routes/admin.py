@@ -4224,6 +4224,68 @@ def update_order_stage(order_id):
     return redirect(request.referrer or url_for('admin.production_workflow'))
 
 
+@admin_bp.route('/orders/bulk-update-stage', methods=['POST'])
+@admin_required
+def bulk_update_order_stage():
+    """Move one or many orders to a production stage (form or JSON)."""
+    from utils.production_stages import STAGE_LABELS, apply_stage
+
+    payload = request.get_json(silent=True) or {}
+    stage = (request.form.get('stage') or payload.get('stage') or '').strip()
+    raw_ids = request.form.getlist('order_ids')
+    if not raw_ids:
+        raw_ids = payload.get('order_ids') or []
+    if isinstance(raw_ids, str):
+        raw_ids = [raw_ids]
+
+    order_ids = []
+    for raw in raw_ids:
+        try:
+            order_ids.append(int(raw))
+        except (TypeError, ValueError):
+            continue
+    # De-dupe while preserving order
+    seen = set()
+    order_ids = [i for i in order_ids if not (i in seen or seen.add(i))]
+
+    wants_json = (
+        request.is_json
+        or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or 'application/json' in (request.headers.get('Accept') or '')
+    )
+
+    if stage not in STAGE_LABELS:
+        if wants_json:
+            return jsonify({'ok': False, 'error': 'Invalid stage'}), 400
+        flash('Invalid stage', 'error')
+        return redirect(request.referrer or url_for('admin.orders'))
+
+    if not order_ids:
+        if wants_json:
+            return jsonify({'ok': False, 'error': 'No orders selected'}), 400
+        flash('Select at least one order', 'error')
+        return redirect(request.referrer or url_for('admin.orders'))
+
+    updated = 0
+    for order in Order.query.filter(Order.id.in_(order_ids)).all():
+        if apply_stage(order, stage):
+            updated += 1
+    db.session.commit()
+
+    if wants_json:
+        return jsonify({
+            'ok': True,
+            'updated': updated,
+            'stage': stage,
+            'stage_label': STAGE_LABELS[stage],
+            'order_ids': order_ids,
+        })
+
+    label = STAGE_LABELS[stage]
+    flash(f'Moved {updated} order{"s" if updated != 1 else ""} to {label}', 'success')
+    return redirect(request.referrer or url_for('admin.orders'))
+
+
 # ===== OPERATIONS: FINANCIAL =====
 
 @admin_bp.route('/operations/financial')

@@ -67,11 +67,37 @@
 
 {% if orders.items %}
 
+<!-- Bulk action bar -->
+<div class="ord-bulk-bar" id="ordBulkBar" hidden>
+    <div class="ord-bulk-left">
+        <strong id="ordBulkCount">0</strong>
+        <span>selected</span>
+        <button type="button" class="ord-bulk-clear" id="ordBulkClear">Clear</button>
+    </div>
+    <form method="POST" action="{{ url_for('admin.bulk_update_order_stage') }}" class="ord-bulk-form" id="ordBulkForm">
+        <select name="stage" id="ordBulkStage" class="ord-bulk-select" required>
+            <option value="" disabled selected>Move to stage…</option>
+            <option value="order_received">Order Received</option>
+            <option value="waiting_supplies">Waiting on Supplies</option>
+            <option value="ready_to_press">Ready to Press</option>
+            <option value="pressed">Pressed</option>
+            <option value="packaged_ready">Packaged &amp; Ready</option>
+        </select>
+        <div id="ordBulkIds"></div>
+        <button type="submit" class="btn btn-primary ord-bulk-move" id="ordBulkMove" disabled>Move selected</button>
+    </form>
+</div>
+
 <!-- Desktop Table -->
 <div class="adm-table-wrap ord-table-only">
     <table class="adm-table">
         <thead>
             <tr>
+                <th class="ord-check-col">
+                    <label class="ord-check" title="Select all on this page">
+                        <input type="checkbox" id="ordSelectAll" aria-label="Select all orders on this page">
+                    </label>
+                </th>
                 <th>Order #</th>
                 <th>Customer</th>
                 <th>Email</th>
@@ -88,12 +114,17 @@
             {% set stage_labels = {'order_received':'Order Received','waiting_supplies':'Waiting on Supplies','ready_to_press':'Ready to Press','pressed':'Pressed','packaged_ready':'Packaged & Ready'} %}
             {% set stage_label = stage_labels.get(order.production_stage, order.status.replace('_',' ').title()) %}
             {% set stage_key = order.production_stage or order.status %}
-            <tr onclick="window.location='{{ url_for('admin.order_detail', order_id=order.id) }}'" style="cursor:pointer;">
+            <tr class="ord-row" data-order-id="{{ order.id }}" onclick="if(!event.target.closest('.ord-check, a')) window.location='{{ url_for('admin.order_detail', order_id=order.id) }}'" style="cursor:pointer;">
+                <td class="ord-check-col" onclick="event.stopPropagation()">
+                    <label class="ord-check">
+                        <input type="checkbox" class="ord-order-check" name="order_ids" value="{{ order.id }}" aria-label="Select order {{ order.order_number }}">
+                    </label>
+                </td>
                 <td><strong class="ord-num">{{ order.order_number }}</strong></td>
                 <td class="ord-name">{{ order.full_name }}</td>
                 <td class="ord-email">{{ order.email }}</td>
                 <td class="ord-center">{{ order.items.count() }}</td>
-                <td><strong>${{ "%.2f"|format(order.total) }}</strong></td>
+                <td class="ord-total"><strong>${{ "%.2f"|format(order.total) }}</strong></td>
                 <td><span class="ord-badge ord-badge--{{ stage_key }}">{{ stage_label }}</span></td>
                 <td><span class="ord-type">{{ (order.order_type or 'retail').title() }}</span></td>
                 <td class="ord-date">{{ order.created_at.strftime('%b %d') }}</td>
@@ -110,26 +141,31 @@
     {% set stage_labels = {'order_received':'Order Received','waiting_supplies':'Waiting on Supplies','ready_to_press':'Ready to Press','pressed':'Pressed','packaged_ready':'Packaged & Ready'} %}
     {% set stage_label = stage_labels.get(order.production_stage, order.status.replace('_',' ').title()) %}
     {% set stage_key = order.production_stage or order.status %}
-    <a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="ord-card">
-        <div class="ord-card-top">
-            <div class="ord-card-num-row">
-                <strong class="ord-num">#{{ order.order_number }}</strong>
-                <span class="ord-badge ord-badge--{{ stage_key }}">{{ stage_label }}</span>
+    <div class="ord-card ord-card--selectable" data-order-id="{{ order.id }}">
+        <label class="ord-check ord-card-check">
+            <input type="checkbox" class="ord-order-check" name="order_ids" value="{{ order.id }}" aria-label="Select order {{ order.order_number }}">
+        </label>
+        <a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="ord-card-link">
+            <div class="ord-card-top">
+                <div class="ord-card-num-row">
+                    <strong class="ord-num">#{{ order.order_number }}</strong>
+                    <span class="ord-badge ord-badge--{{ stage_key }}">{{ stage_label }}</span>
+                </div>
+                <p class="ord-card-name">{{ order.full_name }}</p>
+                <p class="ord-card-email">{{ order.email }}</p>
             </div>
-            <p class="ord-card-name">{{ order.full_name }}</p>
-            <p class="ord-card-email">{{ order.email }}</p>
-        </div>
-        <div class="ord-card-footer">
-            <div class="ord-card-meta">
-                <span>{{ order.items.count() }} item{% if order.items.count() != 1 %}s{% endif %}</span>
-                <span class="ord-card-sep">&bull;</span>
-                <span>{{ (order.order_type or 'retail').title() }}</span>
-                <span class="ord-card-sep">&bull;</span>
-                <span>{{ order.created_at.strftime('%b %d, %Y') }}</span>
+            <div class="ord-card-footer">
+                <div class="ord-card-meta">
+                    <span>{{ order.items.count() }} item{% if order.items.count() != 1 %}s{% endif %}</span>
+                    <span class="ord-card-sep">&bull;</span>
+                    <span>{{ (order.order_type or 'retail').title() }}</span>
+                    <span class="ord-card-sep">&bull;</span>
+                    <span>{{ order.created_at.strftime('%b %d, %Y') }}</span>
+                </div>
+                <strong class="ord-card-total">${{ "%.2f"|format(order.total) }}</strong>
             </div>
-            <strong class="ord-card-total">${{ "%.2f"|format(order.total) }}</strong>
-        </div>
-    </a>
+        </a>
+    </div>
     {% endfor %}
 </div>
 
@@ -299,8 +335,111 @@
 .ord-name { font-weight: 600; }
 .ord-email { font-size: 0.82rem; color: var(--text-secondary); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ord-center { text-align: center; }
+.ord-total { white-space: nowrap; }
 .ord-date { font-size: 0.82rem; color: var(--text-secondary); white-space: nowrap; }
 .ord-type { font-size: 0.78rem; color: var(--text-secondary); }
+
+/* Selection checkboxes */
+.ord-check-col {
+    width: 40px;
+    text-align: center;
+    vertical-align: middle;
+}
+.ord-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    margin: 0;
+}
+.ord-check input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--terra-cotta, #b87c6f);
+    cursor: pointer;
+}
+.ord-row.is-selected { background: rgba(184,124,111,0.08); }
+
+.ord-card--selectable {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    padding: 1.1rem 1.25rem;
+    border-bottom: 1px solid rgba(232,208,177,0.5);
+    color: inherit;
+}
+.ord-card--selectable:last-child { border-bottom: none; }
+.ord-card--selectable.is-selected { background: rgba(184,124,111,0.08); }
+.ord-card-check { flex-shrink: 0; margin-top: 0.15rem; }
+.ord-card-link {
+    flex: 1;
+    min-width: 0;
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Sticky bulk bar */
+.ord-bulk-bar {
+    position: sticky;
+    top: 0.75rem;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 0.85rem 1.1rem;
+    margin-bottom: 1rem;
+    background: #fff;
+    border: 1.5px solid rgba(184,124,111,0.45);
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(58,61,72,0.12);
+}
+.ord-bulk-bar[hidden] { display: none !important; }
+.ord-bulk-left {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+.ord-bulk-clear {
+    border: none;
+    background: none;
+    color: var(--terra-cotta);
+    font: inherit;
+    font-weight: 600;
+    font-size: 0.82rem;
+    cursor: pointer;
+    padding: 0.2rem 0.4rem;
+}
+.ord-bulk-form {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+.ord-bulk-select {
+    min-height: 40px;
+    padding: 0.4rem 0.85rem;
+    border: 1.5px solid rgba(232,208,177,0.8);
+    border-radius: 10px;
+    font: inherit;
+    font-size: 0.85rem;
+    background: #fff;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+.ord-bulk-select:focus {
+    outline: none;
+    border-color: var(--terra-cotta);
+}
+.ord-bulk-move:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
 
 /* Status badges */
 .ord-badge {
@@ -486,8 +625,77 @@
 @media (max-width: 480px) {
     .ord-title { font-size: 1.65rem; }
     .ord-action-btn { font-size: 0.82rem; }
-    .ord-card { padding: 1rem; }
+    .ord-card--selectable { padding: 1rem; }
+    .ord-bulk-bar { top: 0.4rem; }
 }
 </style>
+
+<script>
+(function () {
+    var checks = Array.prototype.slice.call(document.querySelectorAll('.ord-order-check'));
+    var selectAll = document.getElementById('ordSelectAll');
+    var bar = document.getElementById('ordBulkBar');
+    var countEl = document.getElementById('ordBulkCount');
+    var form = document.getElementById('ordBulkForm');
+    var idsWrap = document.getElementById('ordBulkIds');
+    var stageSel = document.getElementById('ordBulkStage');
+    var moveBtn = document.getElementById('ordBulkMove');
+    var clearBtn = document.getElementById('ordBulkClear');
+    if (!checks.length || !bar || !form) return;
+
+    function selectedChecks() {
+        return checks.filter(function (c) { return c.checked; });
+    }
+
+    function sync() {
+        var selected = selectedChecks();
+        var n = selected.length;
+        bar.hidden = n === 0;
+        countEl.textContent = String(n);
+        moveBtn.disabled = n === 0 || !stageSel.value;
+        if (selectAll) {
+            selectAll.checked = n > 0 && n === checks.length;
+            selectAll.indeterminate = n > 0 && n < checks.length;
+        }
+        checks.forEach(function (c) {
+            var row = c.closest('.ord-row, .ord-card--selectable');
+            if (row) row.classList.toggle('is-selected', c.checked);
+        });
+        idsWrap.innerHTML = '';
+        selected.forEach(function (c) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'order_ids';
+            input.value = c.value;
+            idsWrap.appendChild(input);
+        });
+    }
+
+    checks.forEach(function (c) { c.addEventListener('change', sync); });
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            checks.forEach(function (c) { c.checked = selectAll.checked; });
+            sync();
+        });
+    }
+    if (stageSel) stageSel.addEventListener('change', sync);
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function () {
+            checks.forEach(function (c) { c.checked = false; });
+            if (selectAll) selectAll.checked = false;
+            sync();
+        });
+    }
+    form.addEventListener('submit', function (e) {
+        if (!selectedChecks().length || !stageSel.value) {
+            e.preventDefault();
+            return;
+        }
+        moveBtn.disabled = true;
+        moveBtn.textContent = 'Moving…';
+    });
+    sync();
+})();
+</script>
 
 {% endblock %}
