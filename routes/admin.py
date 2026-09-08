@@ -2991,6 +2991,41 @@ def blank_apparel_list():
             download_name=f'blank_apparel_list_{datetime.now().strftime("%Y%m%d")}.csv',
         )
 
+    if request.args.get('format') in ('xlsx', 'excel'):
+        from openpyxl import Workbook
+        from openpyxl.styles import Font
+        from openpyxl.utils import get_column_letter
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = 'Blank shopping list'
+        headers = ['vendor', 'brand', 'style_number', 'product_name', 'color', 'size', 'quantity']
+        ws.append(headers)
+        for cell in ws[1]:
+            cell.font = Font(bold=True)
+        for row in shopping['flat']:
+            ws.append([row.get(h, '') for h in headers])
+
+        # Size columns to fit content so free Excel / Excel Online opens readable
+        for col_idx, header in enumerate(headers, start=1):
+            letter = get_column_letter(col_idx)
+            max_len = len(header)
+            for cell in ws[letter]:
+                val = '' if cell.value is None else str(cell.value)
+                if len(val) > max_len:
+                    max_len = len(val)
+            ws.column_dimensions[letter].width = min(max(max_len + 2, 10), 48)
+
+        buf = BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        return send_file(
+            buf,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=f'blank_apparel_list_{datetime.now().strftime("%Y%m%d")}.xlsx',
+        )
+
     collections = Collection.query.all()
     return render_template(
         'admin/blank_apparel_list.html',
