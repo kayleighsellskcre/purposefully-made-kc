@@ -483,6 +483,7 @@
         grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
         gap: 0.5rem;
         max-height: none;
+        overflow: visible;
     }
 }
 
@@ -532,9 +533,12 @@
         padding: 0.5rem 1rem;
         font-size: 0.8rem;
     }
-    
+
+    /* Do NOT re-cap height here. A later max-height with overflow:visible
+       lets color cards paint over Size / Upload sections on phones. */
     .color-grid-professional {
-        max-height: 350px;
+        max-height: none;
+        overflow: visible;
     }
     
     .color-search-input {
