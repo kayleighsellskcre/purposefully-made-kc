@@ -268,6 +268,9 @@ class Product(db.Model):
     fit_guide = db.Column(db.Text)  # Fit description (e.g., "Unisex sizing", "Runs small")
     fabric_details = db.Column(db.Text)  # Fabric composition and care
     spec_sheet_url = db.Column(db.String(500))  # PDF spec sheet from SanMar CDN
+    # Softness merchandising (1=Everyday … 4=Ultra Soft); seeded by style number
+    softness_rating = db.Column(db.Integer)  # 1–4
+    fabric_summary = db.Column(db.String(80))
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

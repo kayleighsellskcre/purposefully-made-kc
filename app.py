@@ -195,6 +195,9 @@ def create_app(config_class=Config):
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS card_title VARCHAR(200)",
                     # product.spec_sheet_url — SanMar CDN PDF link added during Bella+Canvas CSV import
                     "ALTER TABLE product ADD COLUMN IF NOT EXISTS spec_sheet_url VARCHAR(500)",
+                    # Softness rating + short fabric blurb (seeded by style number)
+                    "ALTER TABLE product ADD COLUMN IF NOT EXISTS softness_rating INTEGER",
+                    "ALTER TABLE product ADD COLUMN IF NOT EXISTS fabric_summary VARCHAR(80)",
                     # product_color_variant.color_swatch_url — SanMar CDN swatch image (color_hex is only 7 chars)
                     "ALTER TABLE product_color_variant ADD COLUMN IF NOT EXISTS color_swatch_url VARCHAR(500)",
                     # Soft-hide customer designs from admin library without deleting their My Designs copy

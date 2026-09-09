@@ -247,15 +247,18 @@ PRODUCTS = {
     ),
     'CC1566': (
         34.98, 62.00,
-        '100% ring-spun cotton; 8.5 oz; garment-dyed',
-        "The Comfort Colors Garment-Dyed Pullover Hoodie. Heavyweight, pigment-washed fleece with that vintage, worn-in look. The colors are rich and unique — no two are exactly alike.",
+        '80% ring-spun cotton / 20% polyester; 9.5 oz; garment-dyed fleece',
+        "The Comfort Colors 1566 Unisex Garment-Dyed Crewneck Sweatshirt. "
+        "Heavyweight 3-end fleece with a 100% cotton face, pigment-washed color, "
+        "and a relaxed lived-in feel — a crewneck sweatshirt, not a tee or hoodie.",
         "Unisex relaxed fit; runs slightly large. Size down for a more fitted look.",
         'https://cdnm.sanmar.com/SpecSheetMeasurements/CC1566.pdf',
     ),
     'CC1466': (
         28.98, 54.00,
-        '100% ring-spun cotton; 9.5 oz; garment-dyed',
-        "The Comfort Colors Garment-Dyed Crewneck Sweatshirt. The heaviest fleece we carry — thick, warm, and with that unmistakable pigment-dyed character.",
+        '80% cotton / 20% polyester; garment-dyed lightweight fleece',
+        "The Comfort Colors 1466 Unisex Garment-Dyed Lightweight Crewneck Sweatshirt. "
+        "A lighter crew (not a hoodie) with the same pigment-dyed character as the 1566.",
         "Unisex relaxed fit; runs slightly large. Size down for a more fitted look.",
         'https://cdnm.sanmar.com/SpecSheetMeasurements/CC1466.pdf',
     ),

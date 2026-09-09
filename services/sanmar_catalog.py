@@ -45,8 +45,9 @@ CURATED_BRANDS = [
             '1717', 'C1717',            # Garment-dyed heavyweight tee
             '1567',                     # Garment-dyed long sleeve
             '9018',                     # Youth garment-dyed tee
-            '1566',                     # Garment-dyed hoodie
-            '6030',                     # Garment-dyed crew
+            '1566',                     # Garment-dyed crewneck sweatshirt
+            '1466',                     # Garment-dyed lightweight crewneck
+            '6030',                     # Garment-dyed crew (legacy catalog note)
         ],
     },
     {

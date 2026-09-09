@@ -43,33 +43,39 @@ NEW_PRODUCTS = [
     },
     {
         'style_number': 'CC1566',
-        'name': "Comfort Colors Garment-Dyed Ladies Tee",
+        'name': 'Comfort Colors Unisex Garment-Dyed Crewneck Sweatshirt',
         'brand': 'Comfort Colors',
-        'category': 'Tee',
-        'age_group': 'adult',
-        'fit_type': "Women's",
-        'neck_style': 'Crew Neck',
-        'sleeve_length': 'Short Sleeve',
-        'base_price': 18.99,
-        'wholesale_cost': 8.50,
-        'available_sizes': ADULT_SIZES,
-        'description': "Women's cut of the iconic 1717. Same garment-dyed look, fitted silhouette. Great for coordinating sets.",
-        'fabric_details': '6.1 oz / 100% ring-spun cotton, garment-dyed',
-    },
-    {
-        'style_number': 'CC1466',
-        'name': 'Comfort Colors Garment-Dyed Pullover Hoodie',
-        'brand': 'Comfort Colors',
-        'category': 'Hoodie',
+        'category': 'Sweatshirt',
         'age_group': 'adult',
         'fit_type': 'Unisex',
-        'neck_style': 'Hooded',
+        'neck_style': 'Crew Neck',
         'sleeve_length': 'Long Sleeve',
         'base_price': 34.99,
         'wholesale_cost': 16.00,
         'available_sizes': ADULT_SIZES,
-        'description': 'Garment-dyed hoodie in matching colorways to the 1717 tee. Cotton-poly fleece with a vintage, broken-in feel.',
-        'fabric_details': '8.5 oz / 80% cotton, 20% polyester fleece, garment-dyed',
+        'description': (
+            'Comfort Colors garment-dyed crewneck sweatshirt. 9.5 oz 80/20 '
+            'ring-spun cotton/polyester fleece with a lived-in pigment-dyed finish.'
+        ),
+        'fabric_details': '9.5 oz / 80% ring-spun cotton, 20% polyester fleece, garment-dyed',
+    },
+    {
+        'style_number': 'CC1466',
+        'name': 'Comfort Colors Unisex Garment-Dyed Lightweight Crewneck Sweatshirt',
+        'brand': 'Comfort Colors',
+        'category': 'Sweatshirt',
+        'age_group': 'adult',
+        'fit_type': 'Unisex',
+        'neck_style': 'Crew Neck',
+        'sleeve_length': 'Long Sleeve',
+        'base_price': 32.99,
+        'wholesale_cost': 14.00,
+        'available_sizes': ADULT_SIZES,
+        'description': (
+            'Comfort Colors lightweight garment-dyed crewneck sweatshirt. '
+            'Lighter fleece with the same pigment-washed character — not a hoodie.'
+        ),
+        'fabric_details': '80% cotton / 20% polyester, garment-dyed lightweight fleece',
     },
 
     # ── PORT & COMPANY ───────────────────────────────────────────────────────
@@ -217,9 +223,9 @@ NEW_PRODUCTS = [
     # ── RABBIT SKINS ─────────────────────────────────────────────────────────
     {
         'style_number': 'RS3401',
-        'name': 'Rabbit Skins Infant Fine Jersey Bodysuit',
+        'name': 'Rabbit Skins Infant Fine Jersey Tee',
         'brand': 'Rabbit Skins',
-        'category': 'Bodysuit',
+        'category': 'Tee',
         'age_group': 'baby',
         'fit_type': 'Unisex',
         'neck_style': 'Crew Neck',
@@ -227,7 +233,10 @@ NEW_PRODUCTS = [
         'base_price': 10.99,
         'wholesale_cost': 4.00,
         'available_sizes': INFANT_SIZES,
-        'description': 'Soft combed ring-spun cotton onesie with lap shoulders for easy dressing. The #1 custom infant item for boutique shops.',
+        'description': (
+            'Soft combed ring-spun cotton infant tee — short sleeve jersey shirt '
+            'for babies (not a onesie/bodysuit; use RS4400 for bodysuits).'
+        ),
         'fabric_details': '4.5 oz / 100% combed ring-spun cotton fine jersey',
         'is_customer_favorite': True,
     },
