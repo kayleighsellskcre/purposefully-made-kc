@@ -32,16 +32,23 @@ os.environ.setdefault('SCHEDULER_ENABLED', '0')
 # style_key → (softness_rating, fabric_summary)
 # Keys are catalog style numbers; matching is case-insensitive and tolerates
 # common brand prefixes (BC / CC / RS / G) present or absent in the DB.
+#
+# Ranking rationale (hand-feel, not marketing):
+#   4 Ultra Soft  — triblend / CVC heather / micro-rib stretch / soft poly-rich fleece
+#                   (blends typically feel silkier than solid cotton)
+#   3 Super Soft  — premium solid cotton (Airlume, garment-dyed, organic) + sponge fleece
+#   2 Soft        — Softstyle / midweight fleece / tie-dye / lighter performance
+#   1 Everyday    — core cotton, Heavy Blend, heavyweight fleece, technical poly
 SOFTNESS_BY_STYLE = {
-    # BELLA+CANVAS
-    'BC3001': (4, '100% Airlume combed ring-spun cotton, lightweight'),
-    'BC3001CVC': (3, '52% combed cotton / 48% polyester CVC, heathered'),
-    'BC3001Y': (4, '100% Airlume combed ring-spun cotton, lightweight'),
-    'BC3001YCVC': (3, '52% combed cotton / 48% polyester CVC, heathered'),
-    'BC3501': (4, '100% Airlume combed ring-spun cotton, lightweight'),
-    'BC3501CVC': (3, '52% combed cotton / 48% polyester CVC, heathered'),
-    'BC3501Y': (4, '100% Airlume combed ring-spun cotton, lightweight'),
-    'BC3501YCVC': (3, '52% combed cotton / 48% polyester CVC, heathered'),
+    # BELLA+CANVAS — CVC / triblend beat solid Airlume on hand-feel
+    'BC3001': (3, '100% Airlume combed ring-spun cotton, lightweight'),
+    'BC3001CVC': (4, '52% combed cotton / 48% polyester CVC, heathered'),
+    'BC3001Y': (3, '100% Airlume combed ring-spun cotton, lightweight'),
+    'BC3001YCVC': (4, '52% combed cotton / 48% polyester CVC, heathered'),
+    'BC3501': (3, '100% Airlume combed ring-spun cotton, lightweight'),
+    'BC3501CVC': (4, '52% combed cotton / 48% polyester CVC, heathered'),
+    'BC3501Y': (3, '100% Airlume combed ring-spun cotton, lightweight'),
+    'BC3501YCVC': (4, '52% combed cotton / 48% polyester CVC, heathered'),
     'BC3719': (3, '52% cotton / 48% polyester sponge fleece'),
     'BC3719Y': (3, '52% cotton / 48% polyester sponge fleece'),
     'BC3901': (3, '52% cotton / 48% polyester sponge fleece, raglan'),
@@ -51,29 +58,29 @@ SOFTNESS_BY_STYLE = {
     'BC3739': (3, '52% cotton / 48% polyester sponge fleece, full-zip'),
     'BC3413': (4, '50/25/25 poly / combed cotton / rayon triblend'),
     'BC3413Y': (4, '50/25/25 poly / combed cotton / rayon triblend'),
-    'BC3480': (4, '100% Airlume combed ring-spun cotton, jersey tank'),
-    'BC3480CVC': (3, '52% combed cotton / 48% polyester CVC tank'),
-    'BC3005': (4, '100% Airlume combed ring-spun cotton, V-neck'),
-    'BC3005CVC': (3, '52% combed cotton / 48% polyester CVC, V-neck'),
-    'BC6400': (4, '100% Airlume combed ring-spun cotton, relaxed fit'),
-    'BC6400CVC': (3, '52% combed cotton / 48% polyester CVC, relaxed'),
-    'BC8800': (3, '100% polyester, flowy racerback'),
-    'BC1080': (3, '95% cotton / 5% spandex baby rib'),
-    'BC1200': (3, '95% cotton / 5% spandex micro rib, 3/4 sleeve'),
-    'BC1201': (3, '95% cotton / 5% spandex micro rib'),
-    'BC1501': (3, '95% cotton / 5% spandex micro rib, long sleeve'),
+    'BC3480': (3, '100% Airlume combed ring-spun cotton, jersey tank'),
+    'BC3480CVC': (4, '52% combed cotton / 48% polyester CVC tank'),
+    'BC3005': (3, '100% Airlume combed ring-spun cotton, V-neck'),
+    'BC3005CVC': (4, '52% combed cotton / 48% polyester CVC, V-neck'),
+    'BC6400': (3, '100% Airlume combed ring-spun cotton, relaxed fit'),
+    'BC6400CVC': (4, '52% combed cotton / 48% polyester CVC, relaxed'),
+    'BC8800': (2, '100% polyester, flowy racerback'),
+    'BC1080': (4, '95% cotton / 5% spandex baby rib'),
+    'BC1200': (4, '95% cotton / 5% spandex micro rib, 3/4 sleeve'),
+    'BC1201': (4, '95% cotton / 5% spandex micro rib'),
+    'BC1501': (4, '95% cotton / 5% spandex micro rib, long sleeve'),
     'BC3787': (3, '52% cotton / 48% polyester sponge fleece'),
     # BELLA+CANVAS INFANT & TODDLER
-    '100B': (4, '100% Airlume combed ring-spun cotton, infant'),
+    '100B': (3, '100% Airlume combed ring-spun cotton, infant'),
     '134B': (4, '50/25/25 poly / combed cotton / rayon triblend, infant'),
-    '3001B': (4, '100% Airlume combed ring-spun cotton, infant tee'),
+    '3001B': (3, '100% Airlume combed ring-spun cotton, infant tee'),
     '3413B': (4, '50/25/25 poly / combed cotton / rayon triblend, infant'),
-    '3001T': (4, '100% Airlume combed ring-spun cotton, toddler'),
-    '3501T': (4, '100% Airlume combed ring-spun cotton, toddler'),
+    '3001T': (3, '100% Airlume combed ring-spun cotton, toddler'),
+    '3501T': (3, '100% Airlume combed ring-spun cotton, toddler'),
     '3719T': (3, '52% cotton / 48% polyester sponge fleece, toddler'),
     '3413T': (4, '50/25/25 poly / combed cotton / rayon triblend, toddler'),
-    '3200T': (2, '50% polyester / 25% cotton / 25% rayon, baseball tee'),
-    # RABBIT SKINS
+    '3200T': (4, '50% polyester / 25% cotton / 25% rayon, baseball tee'),
+    # RABBIT SKINS — fine jersey cotton (premium kids cotton, not blend-soft)
     'RS3401': (3, '100% combed ring-spun cotton fine jersey, infant tee'),
     'RS3321': (3, '100% combed ring-spun cotton fine jersey, toddler'),
     'RS4400': (3, '100% combed ring-spun cotton baby rib, infant'),
@@ -90,12 +97,12 @@ SOFTNESS_BY_STYLE = {
     'PC54': (1, '100% cotton, core cotton'),
     'LPC54': (1, '100% cotton, ladies core cotton'),
     'PC78H': (1, '50% cotton / 50% polyester core fleece'),
-    # C2 SPORT
-    '5100': (2, '100% polyester moisture-wicking performance'),
-    '5104': (2, '100% polyester moisture-wicking performance, long sleeve'),
-    '5200': (2, '100% polyester moisture-wicking performance, youth'),
-    '5600': (2, "100% polyester moisture-wicking performance, women's"),
-    # COMFORT COLORS
+    # C2 SPORT — technical poly (smooth, not cotton-soft)
+    '5100': (1, '100% polyester moisture-wicking performance'),
+    '5104': (1, '100% polyester moisture-wicking performance, long sleeve'),
+    '5200': (1, '100% polyester moisture-wicking performance, youth'),
+    '5600': (1, "100% polyester moisture-wicking performance, women's"),
+    # COMFORT COLORS — soft broken-in cotton / soft fleece
     'CC1717': (3, '100% ring-spun cotton, garment-dyed heavyweight'),
     'CC1566': (3, '80% cotton / 20% polyester fleece, garment-dyed crew'),
     'CC1466': (3, '80% cotton / 20% polyester, garment-dyed light crew'),
@@ -109,7 +116,7 @@ SOFTNESS_BY_STYLE = {
     'G64000': (2, '100% ring-spun cotton Softstyle'),
     'G64400': (2, '100% ring-spun cotton Softstyle, long sleeve'),
     'G64500': (2, '100% ring-spun cotton Softstyle, V-neck'),
-    # INDEPENDENT TRADING CO.
+    # INDEPENDENT TRADING CO. — Special Blend (poly-rich) softer than cotton-heavy
     'IND3000': (1, '80% cotton / 20% polyester heavyweight fleece'),
     'IND4000': (1, '80% cotton / 20% polyester heavyweight fleece, hoodie'),
     'SS3000': (2, '80% cotton / 20% polyester midweight fleece'),
@@ -118,24 +125,24 @@ SOFTNESS_BY_STYLE = {
     'SS4500Z': (2, '80% cotton / 20% polyester midweight, full-zip'),
     'SS4001Y': (2, '80% cotton / 20% polyester midweight fleece, youth'),
     'SS4001YZ': (2, '80% cotton / 20% polyester midweight full-zip, youth'),
-    'PRM30SBC': (3, '70% polyester / 30% cotton Special Blend fleece'),
-    'PRM33SBP': (3, '70% polyester / 30% cotton Special Blend hoodie'),
-    'PRM15YSB': (3, '70% polyester / 30% cotton Special Blend, youth'),
-    'PRM15YSBC': (3, '70% polyester / 30% cotton Special Blend, youth'),
-    'PRM10TSB': (3, '70% polyester / 30% cotton Special Blend, toddler'),
-    'PRM10TSBC': (3, '70% polyester / 30% cotton Special Blend, toddler'),
-    # SPORT-TEK
-    'ST350': (2, '100% polyester PosiCharge moisture-wicking'),
-    'LST350': (2, "100% polyester PosiCharge moisture-wicking, women's"),
-    'ST254': (2, '100% polyester PosiCharge moisture-wicking hoodie'),
-    # STANLEY/STELLA
-    'STTU755': (4, '100% organic ring-spun cotton, Creator 2.0'),
-    'STTU169': (4, "100% organic ring-spun cotton, women's"),
-    'STSW013': (4, '85% organic cotton / 15% recycled polyester hoodie'),
+    'PRM30SBC': (4, '70% polyester / 30% cotton Special Blend fleece'),
+    'PRM33SBP': (4, '70% polyester / 30% cotton Special Blend hoodie'),
+    'PRM15YSB': (4, '70% polyester / 30% cotton Special Blend, youth'),
+    'PRM15YSBC': (4, '70% polyester / 30% cotton Special Blend, youth'),
+    'PRM10TSB': (4, '70% polyester / 30% cotton Special Blend, toddler'),
+    'PRM10TSBC': (4, '70% polyester / 30% cotton Special Blend, toddler'),
+    # SPORT-TEK — technical poly
+    'ST350': (1, '100% polyester PosiCharge moisture-wicking'),
+    'LST350': (1, "100% polyester PosiCharge moisture-wicking, women's"),
+    'ST254': (1, '100% polyester PosiCharge moisture-wicking hoodie'),
+    # STANLEY/STELLA — premium organic cotton (soft, still below silky blends)
+    'STTU755': (3, '100% organic ring-spun cotton, Creator 2.0'),
+    'STTU169': (3, "100% organic ring-spun cotton, women's"),
+    'STSW013': (3, '85% organic cotton / 15% recycled polyester hoodie'),
     # MV SPORT
     '17116': (2, '80% cotton / 20% polyester vintage fleece raglan'),
     '496': (2, '60% cotton / 40% polyester Pro-Weave fleece'),
-    'W23716': (3, "83% polyester / 17% cotton sueded fleece, women's"),
+    'W23716': (4, "83% polyester / 17% cotton sueded fleece, women's"),
     'W25167': (3, '60% cotton / 40% polyester Coastal Color fleece'),
 }
 
