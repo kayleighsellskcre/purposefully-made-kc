@@ -106,7 +106,7 @@
     max-width: 100%;
     /* Leave room inside sticky panel for Front/Back + selected-color row */
     max-height: calc(100vh - 260px);
-    min-height: 0;
+    min-height: 420px;
     flex: 1 1 auto;
 }
 
@@ -121,7 +121,7 @@
     height: 100%;
     max-height: calc(100vh - 140px);
     object-fit: contain;
-    object-position: center center;
+    object-position: center top;
     transition: opacity 0.3s ease;
     position: relative;
     z-index: 1;
@@ -169,8 +169,9 @@
     .preview-canvas {
         width: 100%;
         max-width: 100%;
-        height: 40vh;
-        max-height: 40vh;
+        height: 50vw;
+        min-height: 220px;
+        max-height: 320px;
         aspect-ratio: auto;
         margin-left: auto;
         margin-right: auto;
@@ -180,11 +181,37 @@
     .mockup-image {
         width: 100%;
         height: 100%;
-        max-height: 40vh;
+        max-height: 320px;
         object-fit: contain;
-        object-position: center center;
+        object-position: center top;
         margin-left: auto;
         margin-right: auto;
+    }
+}
+
+/* Mobile: prevent upload area and design sections from overlapping color grid */
+@media (max-width: 768px) {
+    .panel-section {
+        position: relative;
+        z-index: 1;
+        overflow: hidden;
+    }
+
+    .upload-area {
+        position: relative;
+        z-index: 1;
+    }
+
+    .color-grid-professional {
+        position: relative;
+        z-index: 1;
+        max-height: none;
+    }
+
+    .logo-gallery-inline {
+        position: relative;
+        z-index: 1;
+        clear: both;
     }
 }
 
