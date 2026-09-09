@@ -691,11 +691,22 @@ def index():
             enriched['product_name'] = prod.name if prod else 'Item'
             front_image, back_image = mockup_urls(prod, item.get('color'))
             placement = item.get('placement') or 'center_chest'
-            enriched['front_image'] = front_image
-            enriched['back_image'] = back_image
+            # Prefer the exact composite the customer approved in the customizer
+            proof_front = item.get('proof_front_url') or item.get('proof_image')
+            proof_back = item.get('proof_back_url') or item.get('proof_back_image')
+            if proof_front:
+                enriched['front_image'] = proof_front
+                enriched['design_overlay'] = None
+            else:
+                enriched['front_image'] = front_image
+                enriched['design_overlay'] = item.get('design_url') if placement in FRONT_PLACEMENTS else None
+            if proof_back:
+                enriched['back_image'] = proof_back
+                enriched['back_overlay'] = None
+            else:
+                enriched['back_image'] = back_image
+                enriched['back_overlay'] = item.get('back_design_url')
             enriched['placement'] = placement
-            enriched['design_overlay'] = item.get('design_url') if placement in FRONT_PLACEMENTS else None
-            enriched['back_overlay'] = item.get('back_design_url')
             _back_meta = item.get('back_design_meta') or {}
             if isinstance(_back_meta, str):
                 try:

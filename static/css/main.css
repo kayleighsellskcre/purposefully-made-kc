@@ -2533,39 +2533,39 @@ textarea:focus-visible,
     object-position: center;
     pointer-events: none;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
-    /* Never let a missing placement class or huge PNG blow past the shirt */
-    max-width: 32%;
-    max-height: 40%;
+    /* Soft ceiling only — JS/admin inline styles set the real size */
+    max-width: 44%;
+    max-height: 50%;
 }
 .pm-proof-overlay.center_chest,
 .pm-proof-overlay.center_back {
-    width: 28%;
-    max-width: 32%;
-    max-height: 36%;
+    width: 38%;
+    max-width: 44%;
+    max-height: 46%;
     top: 38%;
     left: 50%;
     transform: translate(-50%, -50%);
 }
 .pm-proof-overlay.left_chest {
-    width: 11%;
-    max-width: 15%;
-    max-height: 16%;
+    width: 14%;
+    max-width: 16%;
+    max-height: 20%;
     top: 32%;
     left: 62%;
     transform: translate(-50%, -50%);
 }
 .pm-proof-overlay.right_chest {
-    width: 11%;
-    max-width: 15%;
-    max-height: 16%;
+    width: 14%;
+    max-width: 16%;
+    max-height: 20%;
     top: 32%;
     left: 38%;
     transform: translate(-50%, -50%);
 }
 .pm-proof-overlay.back_name_number {
     width: auto;
-    max-width: 40%;
-    max-height: 36%;
+    max-width: 48%;
+    max-height: 42%;
     height: auto;
     top: 38%;
     left: 50%;

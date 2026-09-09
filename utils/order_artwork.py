@@ -192,10 +192,10 @@ def _is_composite_proof(url):
 
 
 def preview_overlay_style(item, placement='center_chest'):
-    """Match customize.html applyDesignFit / hoodieLogoScale for live admin overlays."""
+    """Match customize.html applyDesignFit for live admin overlays (preview only)."""
     from utils.print_sizes import (
-        chart_width_for_size,
-        classify_age,
+        PREVIEW_REF_PCT,
+        PREVIEW_REF_WIDTH_IN,
         get_print_width_for_size,
     )
 
@@ -223,47 +223,34 @@ def preview_overlay_style(item, placement='center_chest'):
         print_h = None
 
     tall = (print_h / print_w) if (print_w and print_h and print_w > 0) else 1.0
-    age = classify_age(product, size) if product is not None or size else 'adult'
-    cat_scale = {'baby': 0.55, 'toddler': 0.68, 'youth': 0.82}.get(age, 1.0)
 
-    chart = chart_width_for_size(size, product) or 10.0
-    ordered = print_w or get_print_width_for_size(size, product) or chart
+    # Prefer ordered print width; fall back to chart width (hoodie-adjusted).
+    ordered = print_w or get_print_width_for_size(size, product)
     try:
-        hoodie_scale = float(ordered) / float(chart) if chart else 1.0
-    except (TypeError, ValueError, ZeroDivisionError):
-        hoodie_scale = 1.0
-    hoodie_scale = max(0.55, min(hoodie_scale, 1.0))
+        ordered = float(ordered) if ordered else PREVIEW_REF_WIDTH_IN
+    except (TypeError, ValueError):
+        ordered = PREVIEW_REF_WIDTH_IN
+
+    pct = float(PREVIEW_REF_PCT) * (ordered / float(PREVIEW_REF_WIDTH_IN))
 
     if is_side:
-        pct, max_w, max_h = 11.0, 88.0, 16.0
+        pct *= 0.42
+        max_h = 20.0
+        pct = min(max(pct, 10.0), 16.0)
+        max_h = min(max_h, 22.0)
         top, left = 32, 62 if placement == 'left_chest' else 38
-    elif tall > 1.28:
-        pct, max_w, max_h = 22.0 * cat_scale, 165.0 * cat_scale, 37.0 * cat_scale
-        top, left = 38, 50
-    elif tall > 1.12:
-        pct, max_w, max_h = 24.0 * cat_scale, 180.0 * cat_scale, 36.0 * cat_scale
-        top, left = 38, 50
-    elif tall >= 0.88:
-        pct, max_w, max_h = 28.0 * cat_scale, 205.0 * cat_scale, 36.0 * cat_scale
-        top, left = 38, 50
     else:
-        # Wide / banner logos — chest-width, not full garment
-        pct, max_w, max_h = 30.0 * cat_scale, 220.0 * cat_scale, 32.0 * cat_scale
+        if tall > 1.4:
+            pct *= 0.88
+        elif tall > 1.2:
+            pct *= 0.94
+        max_h = 46.0
+        pct = min(max(pct, 26.0), 44.0)
+        max_h = min(max_h, 50.0)
         top, left = 38, 50
-
-    pct *= hoodie_scale
-    max_w *= hoodie_scale
-    max_h *= hoodie_scale
-    # Hard cap so a bad print_width cannot blow up the preview
-    if is_side:
-        pct = min(pct, 15.0)
-        max_h = min(max_h, 18.0)
-    else:
-        pct = min(pct, 32.0)
-        max_h = min(max_h, 40.0)
 
     return (
-        f'width:{pct:.1f}%;max-width:{int(round(max_w))}px;max-height:{max_h:.1f}%;'
+        f'width:{pct:.1f}%;max-width:none;max-height:{max_h:.1f}%;'
         f'top:{top}%;left:{left}%;transform:translate(-50%,-50%);'
     )
 

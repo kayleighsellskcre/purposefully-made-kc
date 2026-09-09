@@ -93,9 +93,10 @@ TWO_DIGIT_WIDTH_SCALE = 0.875
 TWO_DIGIT_TRACKING_EM = -0.02
 MIN_DIGIT_GAP_EM = 0.012
 
-# Preview: adult M 10" center print is the 30% mockup overlay.
+# Preview: adult M 10" center print maps to this % of the mockup garment box.
+# Visual only — production print_width/print_height come from the size chart.
 PREVIEW_REF_WIDTH_IN = 10.0
-PREVIEW_REF_PCT = 30.0
+PREVIEW_REF_PCT = 38.0
 
 # ---------------------------------------------------------------------------
 # Preview calibration only — never a production measurement.

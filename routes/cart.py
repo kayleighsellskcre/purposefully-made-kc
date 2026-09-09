@@ -46,18 +46,28 @@ def index():
             item_total = qty * unit_price
             front_image, back_image = mockup_urls(product, item.get('color'))
             placement = item.get('placement') or 'center_chest'
-            front_design = item.get('design_url') if (item.get('design_url') and placement in FRONT_PLACEMENTS) else None
+            # Prefer the exact composite the customer approved in the customizer
+            proof_front = item.get('proof_front_url') or item.get('proof_image')
+            proof_back = item.get('proof_back_url') or item.get('proof_back_image')
+            front_design = None
+            if proof_front:
+                display_front = proof_front
+            else:
+                display_front = front_image
+                front_design = item.get('design_url') if (item.get('design_url') and placement in FRONT_PLACEMENTS) else None
+            back_display = proof_back or back_image
+            back_overlay = None if proof_back else item.get('back_design_url')
 
             cart_items.append({
                 **item,
                 'product': product,
                 'item_total': item_total,
-                'image_url': front_image or None,
-                'front_image': front_image,
-                'back_image': back_image,
-                'display_image': front_image,
+                'image_url': display_front or None,
+                'front_image': display_front,
+                'back_image': back_display,
+                'display_image': display_front,
                 'design_overlay': front_design,
-                'back_overlay': item.get('back_design_url'),
+                'back_overlay': back_overlay,
                 'back_overlay_class': _back_overlay_class(item.get('back_design_meta')),
                 'placement': placement
             })
