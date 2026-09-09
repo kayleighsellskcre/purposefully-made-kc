@@ -146,6 +146,29 @@ def flats_from_product(handle):
     return color, front, back
 
 
+# Blankstyle hosts true LPC147V V-neck garment flats (not PC147 crew stand-ins).
+BLANKSTYLE_LPC147V = {
+    'Gold': 'gold',
+    'Kelly': 'kelly',
+    'Neon Rainbow': 'neon-rainbow',
+    'Pastel Rainbow': 'pastel-rainbow',
+    'Purple': 'purple',
+    'Rainbow': 'rainbow',
+    'Royal': 'royal',
+    'Turquoise': 'turquoise',
+}
+BLANKSTYLE_LPC147V_BASE = 'https://www.blankstyle.com/files/p_images/11713/'
+
+
+def blankstyle_lpc147v_flats(color_name):
+    slug = BLANKSTYLE_LPC147V.get(color_name)
+    if not slug:
+        return None, None
+    front = f'{BLANKSTYLE_LPC147V_BASE}port---company_LPC147V-{slug}-frontFlat.jpg'
+    back = f'{BLANKSTYLE_LPC147V_BASE}port---company_LPC147V-{slug}-backFlat.jpg'
+    return front, back
+
+
 def main():
     dry = '--dry-run' in sys.argv
     from app import create_app
@@ -174,8 +197,33 @@ def main():
             first_front = first_back = None
             matched = 0
 
-            def apply_handle(handle):
+            def apply_urls(target, front, back, source=''):
                 nonlocal first_front, first_back, matched, updated
+                if target in matched_names:
+                    return
+                variant = next(v for v in variants if v.color_name == target)
+                print(f'         {target}: front={bool(front)} back={bool(back)} {source}')
+                matched += 1
+                matched_names.add(target)
+                if dry:
+                    return
+                if front:
+                    variant.front_image_url = front
+                    first_front = first_front or front
+                if back:
+                    variant.back_image_url = back
+                    first_back = first_back or back
+                variant.last_synced = datetime.utcnow()
+                updated += 1
+
+            # LPC147V: prefer Blankstyle V-neck flats (never PC147 crew stand-ins)
+            if style.upper() == 'LPC147V':
+                for color in existing:
+                    front, back = blankstyle_lpc147v_flats(color)
+                    if front:
+                        apply_urls(color, front, back, 'blankstyle-vneck')
+
+            def apply_handle(handle):
                 if handle in seen_handles:
                     return
                 seen_handles.add(handle)
@@ -191,22 +239,10 @@ def main():
                 if not target:
                     print(f'         unmatched color {color!r} from {handle}')
                     return
-                if target in matched_names:
+                # Do not overwrite Blankstyle LPC147V V-neck flats with BigTop
+                if style.upper() == 'LPC147V' and target in matched_names:
                     return
-                variant = next(v for v in variants if v.color_name == target)
-                print(f'         {target}: front={bool(front)} back={bool(back)}')
-                matched += 1
-                matched_names.add(target)
-                if dry:
-                    return
-                if front:
-                    variant.front_image_url = front
-                    first_front = first_front or front
-                if back:
-                    variant.back_image_url = back
-                    first_back = first_back or back
-                variant.last_synced = datetime.utcnow()
-                updated += 1
+                apply_urls(target, front, back, handle)
 
             for handle in handles:
                 apply_handle(handle)
