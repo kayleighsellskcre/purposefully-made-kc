@@ -404,6 +404,24 @@
     .customize-product-title { font-size: 1.75rem; }
 }
 
+.product-feel {
+    margin: 0.35rem 0 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+.product-feel-softness {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--terra-cotta, #b87c6f);
+    letter-spacing: 0.02em;
+}
+.product-feel-fabric {
+    font-size: 0.875rem;
+    color: var(--text-secondary, #6b6b6b);
+    line-height: 1.4;
+}
+
 .panel-section h3 {
     font-size: 1.25rem;
     margin-bottom: 1.25rem;
@@ -1628,6 +1646,16 @@
                     </button>
                     {% endif %}
                 </p>
+                {% if product.softness_label or product.fabric_summary %}
+                <div class="product-feel">
+                    {% if product.softness_label %}
+                    <span class="product-feel-softness">{{ product.softness_label }}</span>
+                    {% endif %}
+                    {% if product.fabric_summary %}
+                    <span class="product-feel-fabric">{{ product.fabric_summary }}</span>
+                    {% endif %}
+                </div>
+                {% endif %}
                 
                 <!-- Size Chart Button -->
                 {% if product.size_chart %}

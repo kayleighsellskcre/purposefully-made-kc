@@ -90,6 +90,17 @@
                     </button>
                     {% endif %}
                 </p>
+
+                {% if product.softness_label or product.fabric_summary %}
+                <div class="product-feel">
+                    {% if product.softness_label %}
+                    <p class="product-feel-softness">{{ product.softness_label }}</p>
+                    {% endif %}
+                    {% if product.fabric_summary %}
+                    <p class="product-feel-fabric">{{ product.fabric_summary }}</p>
+                    {% endif %}
+                </div>
+                {% endif %}
                 
                 <div class="product-price">
                     <span class="price">${{ "%.2f"|format(product.base_price) }}</span>
@@ -465,7 +476,23 @@ function toggleSizeChart() {
 .product-style {
     color: var(--text-secondary);
     font-size: 0.875rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.product-feel {
+    margin: 0 0 1.25rem;
+}
+.product-feel-softness {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--accent-color);
+    margin: 0 0 0.25rem;
+}
+.product-feel-fabric {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+    margin: 0;
 }
 
 .spec-sheet-link {

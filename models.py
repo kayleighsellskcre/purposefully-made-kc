@@ -279,6 +279,22 @@ class Product(db.Model):
     order_items = db.relationship('OrderItem', backref='product', lazy='dynamic')
     color_variants = db.relationship('ProductColorVariant', backref='product', lazy='dynamic', cascade='all, delete-orphan')
     
+    SOFTNESS_LABELS = {
+        1: 'Everyday',
+        2: 'Soft',
+        3: 'Super Soft',
+        4: 'Ultra Soft',
+    }
+
+    @property
+    def softness_label(self):
+        """Human label for softness_rating, or None if unset/invalid."""
+        try:
+            rating = int(self.softness_rating) if self.softness_rating is not None else None
+        except (TypeError, ValueError):
+            return None
+        return self.SOFTNESS_LABELS.get(rating)
+    
     def __repr__(self):
         return f'<Product {self.style_number} - {self.name}>'
 

@@ -301,6 +301,9 @@
                                 {% if product.display_category or product.category %}
                                 <p class="product-category">{{ product.display_category or product.category }}</p>
                                 {% endif %}
+                                {% if product.softness_label %}
+                                <p class="product-softness">{{ product.softness_label }}</p>
+                                {% endif %}
                                 <p class="product-price">${{ "%.2f"|format(product.base_price) }}</p>
                                 <span class="btn btn-customize btn-sm">Customize</span>
                             </div>
@@ -962,7 +965,15 @@
     font-size: 0.875rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.35rem;
+}
+
+.product-softness {
+    color: var(--accent-color);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin: 0 0 0.65rem;
 }
 
 .product-price {
