@@ -234,8 +234,16 @@ def apply_colors(product, colors, dry_run):
             product_id=product.id, color_name=color_name
         ).first()
         if existing:
-            existing.front_image_url = front or existing.front_image_url
-            existing.back_image_url = back or existing.back_image_url
+            # Never replace a garment flat with an on-model dealer shot
+            existing_front = (existing.front_image_url or '').lower()
+            new_is_model = front and 'flat' not in front.lower() and (
+                'model' in front.lower() or 'apparel4print' in front.lower()
+            )
+            keep_flat = 'flat' in existing_front and new_is_model
+            if front and not keep_flat:
+                existing.front_image_url = front or existing.front_image_url
+            if back and not keep_flat:
+                existing.back_image_url = back or existing.back_image_url
             if hex_val:
                 existing.color_hex = hex_val
             if swatch:

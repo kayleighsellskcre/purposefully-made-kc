@@ -96,6 +96,7 @@ COLOR_ALIASES = {
     'sherbetorange': 'Sherbet Colorburst',
     'sherbet': 'Sherbet Colorburst',
     'kellygreen': 'Kelly',
+    'kelly': 'Kelly Green',
     'navyblue': 'Navy',
     'blacktealgreen': 'Black/Teal',
     'tealgreen': 'Teal',
