@@ -14,9 +14,15 @@ CURATED_BRANDS = [
             'BC3001', '3001',           # Unisex jersey tee
             'BC3001CVC', '3001CVC',     # Heather CVC tee
             'BC3001Y', '3001Y',         # Youth tee
-            'BC3001T', '3001T',         # Toddler tee
-            'BC3001B', '3001B',         # Infant tee
-            'BC100B', '100B',           # Infant onesie
+            'BC3001T', '3001T',         # Toddler jersey tee (active)
+            'BC3001B', '3001B',         # Infant jersey tee (active)
+            'BC100B', '100B',           # Infant jersey onesie (active)
+            'BC134B', '134B',           # Infant triblend onesie (inactive)
+            'BC3413B', '3413B',         # Infant triblend tee (inactive)
+            'BC3501T', '3501T',         # Toddler jersey long sleeve (active)
+            'BC3719T', '3719T',         # Toddler sponge fleece hoodie (active)
+            'BC3413T', '3413T',         # Toddler triblend tee (inactive)
+            'BC3200T', '3200T',         # Toddler baseball tee (inactive)
             'BC3005', '3005',           # Unisex v-neck
             'BC3200', '3200',           # Baseball tee
             'BC3413', '3413',           # Triblend tee
@@ -151,6 +157,16 @@ CURATED_BRANDS = [
     },
 ]
 
+# Styles that stay in the DB for future use but must not appear on the storefront.
+# Keys are normalized uppercase (no punctuation); BC-prefixed forms are also matched.
+HIDDEN_STYLES = {
+    '134B', 'BC134B',       # Infant Triblend Short Sleeve One Piece
+    '3413B', 'BC3413B',     # Infant Triblend Short Sleeve Tee
+    '3413T', 'BC3413T',     # Toddler Triblend Short Sleeve Tee
+    '3200T', 'BC3200T',     # Toddler 3/4 Sleeve Baseball Tee
+}
+
+
 def shop_brand_names():
     return [brand['name'] for brand in CURATED_BRANDS]
 
@@ -160,3 +176,19 @@ def all_allowed_styles():
     for brand in CURATED_BRANDS:
         styles.extend(brand['styles'])
     return styles
+
+
+def style_default_is_active(style: str) -> bool:
+    """False for curated styles that should exist but stay hidden from shop views."""
+    from services.sanmar_api import normalize_style_key
+    key = normalize_style_key(style)
+    if not key:
+        return True
+    hidden = {normalize_style_key(s) for s in HIDDEN_STYLES}
+    if key in hidden:
+        return False
+    if key.startswith('BC') and key[2:] in hidden:
+        return False
+    if f'BC{key}' in hidden:
+        return False
+    return True

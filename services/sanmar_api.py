@@ -418,8 +418,12 @@ def _parse_list_response(row: ET.Element) -> dict:
         'description': _ns_find(row, 'productDescription') or _ns_find(row, 'description'),
         'material':    _ns_find(row, 'material') or _ns_find(row, 'fabric'),
         'front_image': (_ns_find(row, 'colorProductImage')
+                        or _ns_find(row, 'frontFlat')
+                        or _ns_find(row, 'FRONT_FLAT')
                         or _ns_find(row, 'frontModel')),
         'back_image':  (_ns_find(row, 'colorProductImageBack')
+                        or _ns_find(row, 'backFlat')
+                        or _ns_find(row, 'BACK_FLAT')
                         or _ns_find(row, 'backModel')),
         'color_swatch':_ns_find(row, 'colorSquareImage') or _ns_find(row, 'colorSwatchImage'),
         'color_hex':   _ns_find(row, 'colorHex') or '',
@@ -675,6 +679,8 @@ class SanMarAPI:
 
         retail = (math.ceil(wholesale) + 19) if wholesale else 0.0
 
+        from services.sanmar_catalog import style_default_is_active
+
         return {
             'style_number':          style,
             'name':                  raw_name,
@@ -688,7 +694,7 @@ class SanMarAPI:
             'category':              category,
             'age_group':             age_group,
             'fit_type':              fit_type,
-            'is_active':             True,
+            'is_active':             style_default_is_active(style),
             'is_customer_favorite':  True,
             'front_mockup_template': next(
                 (cv['front_image'] for cv in color_variants.values() if cv.get('front_image')), ''

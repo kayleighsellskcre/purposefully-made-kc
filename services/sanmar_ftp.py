@@ -269,8 +269,8 @@ def parse_dip_file(
                     'piece_price':         piece_price,
                     'sale_price':          sale_price,
                     'sale_active':         sale_active,
-                    'front_image':         g(row, 'FRONT_MODEL') or g(row, 'FRONT_FLAT'),
-                    'back_image':          g(row, 'BACK_MODEL')  or g(row, 'BACK_FLAT'),
+                    'front_image':         g(row, 'FRONT_FLAT') or g(row, 'FRONT_MODEL'),
+                    'back_image':          g(row, 'BACK_FLAT')  or g(row, 'BACK_MODEL'),
                     'color_swatch':        g(row, 'COLOR_SQUARE_IMAGE'),
                     'color_product_image': g(row, 'COLOR_PRODUCT_IMAGE'),
                     'color_hex':           g(row, 'COLOR_HEX'),
@@ -385,6 +385,9 @@ def upsert_from_dip(entries: list[dict], app=None) -> tuple[int, int, int]:
                 age_group = infer_age(attrs)
                 fit_type  = infer_fit(attrs)
 
+                from services.sanmar_catalog import style_default_is_active
+                default_active = style_default_is_active(style)
+
                 product = Product.query.filter_by(style_number=style).first()
 
                 if product is None:
@@ -399,7 +402,7 @@ def upsert_from_dip(entries: list[dict], app=None) -> tuple[int, int, int]:
                         category          = category,
                         age_group         = age_group,
                         fit_type          = fit_type,
-                        is_active         = True,
+                        is_active         = default_active,
                     )
                     db.session.add(product)
                     db.session.flush()   # get product.id before inserting variants
@@ -426,6 +429,7 @@ def upsert_from_dip(entries: list[dict], app=None) -> tuple[int, int, int]:
                     ).first()
 
                     inv_json = json.dumps(e['sizes']) if e['sizes'] else '{}'
+                    # Prefer flat/ghost product shots over lifestyle models
                     front  = e['front_image'] or e['color_product_image']
                     back   = e['back_image']
                     swatch = e['color_swatch']
