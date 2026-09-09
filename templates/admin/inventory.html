@@ -1,0 +1,117 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Inventory - Admin - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Business</span>
+<h1 class="ops-title">Inventory</h1>
+<p class="ops-subtitle">DTF transfer pricing for cost of goods, plus stock counts.</p>
+
+<div class="ops-card">
+    <h2>DTF Transfer Costs</h2>
+    <p class="inv-section-lead">Saved server-side for order COGS calculations. Not exposed on the public site.</p>
+    <form method="POST" action="{{ url_for('admin.save_inventory_costs') }}" class="inv-costs-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="inv-form-grid">
+            <label class="inv-field">
+                <span class="inv-label">Cost per sq in</span>
+                <input type="number" name="dtf_per_sq_in" step="0.0001" min="0"
+                       value="{{ '%.4f'|format(costs.dtf_per_sq_in|float) }}" required>
+                <span class="inv-hint">Standard DTF transfers (default $0.05)</span>
+            </label>
+
+            <label class="inv-field">
+                <span class="inv-label">Gang sheet per foot</span>
+                <input type="number" name="dtf_gang_sheet_per_foot" step="0.01" min="0"
+                       value="{{ '%.2f'|format(costs.dtf_gang_sheet_per_foot|float) }}" required>
+                <span class="inv-hint">Gang sheet orders (default $11.50)</span>
+            </label>
+
+            <label class="inv-field inv-field--wide">
+                <span class="inv-label">DTF vendor</span>
+                <input type="text" name="dtf_vendor" maxlength="120"
+                       value="{{ costs.dtf_vendor }}" placeholder="JiffyShirts.com" required>
+            </label>
+
+            <label class="inv-field inv-field--wide">
+                <span class="inv-label">Notes</span>
+                <textarea name="dtf_notes" rows="4"
+                          placeholder="e.g. free shipping over $29, bulk discount at $49">{{ costs.dtf_notes }}</textarea>
+            </label>
+        </div>
+
+        <div class="inv-form-actions">
+            <button type="submit" class="btn btn-primary">Save DTF Costs</button>
+        </div>
+    </form>
+</div>
+
+<div class="ops-card">
+    <h2>Stock Counts</h2>
+    <p class="inv-section-lead">Track on-hand apparel, transfers, and supplies.</p>
+    <a href="{{ url_for('admin.operations_inventory') }}" class="btn btn-primary">Open stock inventory</a>
+</div>
+
+<style>
+.inv-section-lead {
+    margin: -0.75rem 0 1.25rem;
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+.inv-costs-form { margin: 0; }
+.inv-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.15rem 1.25rem;
+}
+.inv-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin: 0;
+}
+.inv-field--wide { grid-column: 1 / -1; }
+.inv-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+.inv-hint {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+.inv-field input,
+.inv-field textarea {
+    width: 100%;
+    min-height: 44px;
+    padding: 0.65rem 0.85rem;
+    border-radius: 10px;
+    border: 1.5px solid rgba(232, 208, 177, 0.85);
+    background: #fff;
+    font: inherit;
+    color: var(--text-primary);
+}
+.inv-field textarea {
+    min-height: 110px;
+    resize: vertical;
+    line-height: 1.45;
+}
+.inv-field input:focus,
+.inv-field textarea:focus {
+    outline: none;
+    border-color: var(--cashmere-sand, #c4a574);
+    box-shadow: 0 0 0 3px rgba(196, 165, 116, 0.2);
+}
+.inv-form-actions {
+    margin-top: 1.35rem;
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+@media (max-width: 700px) {
+    .inv-form-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}

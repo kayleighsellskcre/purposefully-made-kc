@@ -33,6 +33,21 @@ SS_ACTIVEWEAR_STYLE_IDS = {
     '496': 12262,
     'W23716': 11175,
     'W25167': 16260,
+    # Independent Trading Co.
+    'SS3000': 2771,
+    'SS3001Y': 16945,
+    'SS4500': 1828,
+    'SS4001Y': 3692,
+    'SS4500Z': 1829,
+    'SS4001YZ': 3693,
+    'PRM33SBP': 3304,
+    'PRM15YSB': 4235,
+    'PRM10TSB': 4233,
+    'PRM30SBC': 3303,
+    'PRM15YSBC': 12353,
+    'PRM10TSBC': 12354,
+    'IND4000': 403,
+    'IND3000': 11977,
     # Comfort Colors (SanMar CC#### and bare ####)
     'CC1717': 1822,
     '1717': 1822,
@@ -291,6 +306,14 @@ def brand_spec_sheet_url(brand: str | None, style_number: str | None) -> str:
         if style:
             return f'https://www.ssactivewear.com/search?q={quote(style)}'
         return 'https://www.mvsport.com/'
+
+    if 'independent' in key:
+        ss = ss_activewear_style_url(style)
+        if ss:
+            return ss
+        if style:
+            return f'https://www.ssactivewear.com/search?q={quote(style)}'
+        return 'https://www.independenttradingco.com/'
 
     # ── Manufacturer sites ──────────────────────────────────────────────────
     if key in ('bellacanvas', 'bella') or ('bella' in key and 'canvas' in key):

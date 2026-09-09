@@ -1,7 +1,7 @@
 {# Shared admin top nav — desktop hover menus, phone accordion #}
 {% set daily_eps = ['admin.orders','admin.completed_orders','admin.order_detail','admin.production_workflow','admin.production_master','admin.transfer_production','admin.order_transfer_summary','admin.print_labels','admin.dtf_batch_sheets','admin.production_bulk_sheet','admin.blank_apparel_list','admin.custom_design_requests','admin.custom_design_request_detail','admin.production'] %}
 {% set store_eps = ['admin.products','admin.add_product','admin.edit_product','admin.collections','admin.add_collection','admin.edit_collection','admin.design_gallery','admin.gallery_queue','admin.designs','admin.affirmations'] %}
-{% set biz_eps = ['admin.inventory','admin.vendors','admin.financial','admin.growth','admin.customers','admin.packaging_sop'] %}
+{% set biz_eps = ['admin.inventory','admin.save_inventory_costs','admin.operations_inventory','admin.vendors','admin.financial','admin.growth','admin.customers','admin.packaging_sop'] %}
 
 <nav class="ops-nav" id="opsNav" aria-label="Admin navigation">
     <div class="ops-nav-top">
@@ -87,7 +87,7 @@
                 <svg class="ops-chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div class="ops-dropdown-menu" role="menu">
-                <a href="{{ url_for('admin.inventory') }}" class="ops-drop-item {% if request.endpoint == 'admin.inventory' %}ops-drop-active{% endif %}" role="menuitem">
+                <a href="{{ url_for('admin.inventory') }}" class="ops-drop-item {% if request.endpoint in ['admin.inventory','admin.save_inventory_costs','admin.operations_inventory'] %}ops-drop-active{% endif %}" role="menuitem">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
                     Inventory
                 </a>

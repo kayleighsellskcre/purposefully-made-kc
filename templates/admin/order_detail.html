@@ -196,7 +196,7 @@
             <div class="od-profit-left">
                 <span class="od-card-eyebrow">Management</span>
                 <h2 class="od-card-title">Details &amp; Profit</h2>
-                <p class="od-card-hint">Due date starts two weeks out. Cost of goods starts as the blank shirt from the distributor. Add transfer cost after you order it.</p>
+                <p class="od-card-hint">Due date starts two weeks out. Cost of goods auto-calculates from blank wholesale + DTF transfer size when you view the order.</p>
             </div>
             <div class="od-profit-right">
                 <form method="POST" action="{{ url_for('admin.update_order_details', order_id=order.id) }}" class="od-profit-form">
@@ -225,7 +225,7 @@
                                 <span class="od-prefix">$</span>
                                 <input type="number" name="cost_of_goods" class="od-input od-input-prefixed" step="0.01" min="0" value="{{ '%.2f'|format(order.cost_of_goods) if order.cost_of_goods is not none else '' }}" placeholder="0.00">
                             </div>
-                            <p class="od-field-hint">Blank shirt cost from the distributor. Update this after you add the transfer.</p>
+                            <p class="od-field-hint">Auto-filled from blank wholesale + DTF when you open this order. You can still override.</p>
                         </div>
                         <div class="od-field">
                             <label>Profit Override</label>
@@ -277,6 +277,44 @@
                 </div>
                 <div class="od-kit-price">${{ "%.2f"|format(item.subtotal) }}</div>
             </header>
+
+            {% set cost = (cost_breakdown.lines_by_item_id or {}).get(item.id) if cost_breakdown else none %}
+            {% if cost %}
+            <section class="od-cost-card" aria-label="Cost breakdown">
+                <h4 class="od-kit-label">Cost Breakdown</h4>
+                <div class="od-cost-grid">
+                    <div class="od-cost-cell">
+                        <span class="od-cost-label">Blank cost</span>
+                        <span class="od-cost-val">${{ "%.2f"|format(cost.blank_cost) }}</span>
+                        {% if cost.missing_blank %}<span class="od-cost-note">No wholesale on product</span>{% else %}<span class="od-cost-note">${{ "%.2f"|format(cost.blank_unit) }} × {{ cost.quantity }}</span>{% endif %}
+                    </div>
+                    <div class="od-cost-cell">
+                        <span class="od-cost-label">DTF transfer</span>
+                        <span class="od-cost-val">${{ "%.2f"|format(cost.dtf_cost) }}</span>
+                        {% if cost.missing_print_size %}
+                        <span class="od-cost-note">No print size on file</span>
+                        {% else %}
+                        <span class="od-cost-note">{{ "%.1f"|format(cost.print_sq_in) }} sq in × ${{ "%.2f"|format(cost.dtf_rate) }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="od-cost-cell">
+                        <span class="od-cost-label">Item cost</span>
+                        <span class="od-cost-val">${{ "%.2f"|format(cost.item_cost) }}</span>
+                        <span class="od-cost-note">Blank + DTF</span>
+                    </div>
+                    <div class="od-cost-cell">
+                        <span class="od-cost-label">Customer paid</span>
+                        <span class="od-cost-val">${{ "%.2f"|format(cost.customer_paid) }}</span>
+                        <span class="od-cost-note">Line subtotal</span>
+                    </div>
+                    <div class="od-cost-cell od-cost-profit od-margin-{{ cost.margin_band }}">
+                        <span class="od-cost-label">Profit</span>
+                        <span class="od-cost-val">${{ "%.2f"|format(cost.profit) }}</span>
+                        <span class="od-cost-note">{% if cost.margin_pct is not none %}{{ "%.1f"|format(cost.margin_pct) }}% margin{% else %}n/a{% endif %}</span>
+                    </div>
+                </div>
+            </section>
+            {% endif %}
 
             <div class="od-kit-grid">
                 <section>
@@ -469,6 +507,28 @@
         </div>
         {% endif %}
         {% endfor %}
+
+        {% if cost_breakdown %}
+        <div class="od-cost-summary" aria-label="Order cost totals">
+            <h3 class="od-cost-summary-title">Order Totals (Cost)</h3>
+            <div class="od-cost-summary-grid">
+                <div class="od-cost-cell">
+                    <span class="od-cost-label">Total cost of goods</span>
+                    <span class="od-cost-val">${{ "%.2f"|format(cost_breakdown.total_cogs) }}</span>
+                </div>
+                <div class="od-cost-cell">
+                    <span class="od-cost-label">Total customer paid</span>
+                    <span class="od-cost-val">${{ "%.2f"|format(cost_breakdown.total_customer_paid) }}</span>
+                </div>
+                <div class="od-cost-cell od-cost-profit od-margin-{{ cost_breakdown.overall_margin_band }}">
+                    <span class="od-cost-label">Total profit</span>
+                    <span class="od-cost-val">${{ "%.2f"|format(cost_breakdown.total_profit) }}</span>
+                    <span class="od-cost-note">{% if cost_breakdown.overall_margin_pct is not none %}{{ "%.1f"|format(cost_breakdown.overall_margin_pct) }}% overall margin{% else %}n/a{% endif %}</span>
+                </div>
+            </div>
+            <p class="od-cost-summary-hint">COGS and profit on this order were auto-updated from blank wholesale + DTF (${{ "%.2f"|format(cost_breakdown.dtf_rate) }}/sq in).</p>
+        </div>
+        {% endif %}
 
         <!-- Totals -->
         <div class="od-totals">
@@ -1079,6 +1139,75 @@ a.od-btn-outline { color: var(--text-primary); }
     font-size: 0.78rem;
     font-weight: 700;
     color: #9a3412;
+}
+
+.od-cost-card {
+    margin: 0 0 1.15rem;
+    padding: 1rem 1.1rem;
+    background: #fff;
+    border: 1px solid rgba(232, 208, 177, 0.65);
+    border-radius: 12px;
+}
+.od-cost-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+.od-cost-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+.od-cost-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+.od-cost-val {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+.od-cost-note {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.3;
+}
+.od-cost-profit.od-margin-good .od-cost-val { color: #059669; }
+.od-cost-profit.od-margin-ok .od-cost-val { color: #b45309; }
+.od-cost-profit.od-margin-low .od-cost-val { color: #b91c1c; }
+.od-cost-profit.od-margin-good { background: #ecfdf5; border-radius: 10px; padding: 0.55rem 0.65rem; }
+.od-cost-profit.od-margin-ok { background: #fffbeb; border-radius: 10px; padding: 0.55rem 0.65rem; }
+.od-cost-profit.od-margin-low { background: #fef2f2; border-radius: 10px; padding: 0.55rem 0.65rem; }
+.od-cost-summary {
+    margin: 1.75rem 0 0.5rem;
+    padding: 1.15rem 1.25rem;
+    background: #fff;
+    border: 1px solid rgba(232, 208, 177, 0.65);
+    border-radius: 14px;
+}
+.od-cost-summary-title {
+    margin: 0 0 0.85rem;
+    font-size: 0.95rem;
+    font-family: var(--font-heading);
+}
+.od-cost-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem;
+}
+.od-cost-summary-hint {
+    margin: 0.85rem 0 0;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+@media (max-width: 900px) {
+    .od-cost-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .od-cost-summary-grid { grid-template-columns: 1fr; }
 }
 
 .od-totals {

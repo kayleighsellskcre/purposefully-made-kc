@@ -423,7 +423,7 @@ def orders_completed():
 def order_detail(order_id):
     """View order details"""
     from utils.print_sizes import get_print_width_for_size, production_from_order_item
-    from utils.order_costs import apply_order_defaults
+    from utils.order_costs import apply_order_defaults, order_cost_breakdown, apply_calculated_cogs
     order = Order.query.get_or_404(order_id)
     try:
         if apply_order_defaults(order):
@@ -452,12 +452,22 @@ def order_detail(order_id):
                 'needs_review': (not snap.get('complete')) or (not ok),
             }
         item_productions.append((item, prod, kit, layout))
+
+    # Admin-only cost breakdown (blank + DTF) — never exposed publicly
+    cost_breakdown = order_cost_breakdown(order, item_productions=item_productions)
+    try:
+        if apply_calculated_cogs(order, cost_breakdown):
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+
     return render_template(
         'admin/order_detail.html',
         order=order,
         get_print_width=get_print_width,
         get_display_print_width=get_display_print_width,
         item_productions=item_productions,
+        cost_breakdown=cost_breakdown,
     )
 
 
@@ -4135,12 +4145,35 @@ def _delete_design_file(design):
                 pass
 
 
-# ===== OPERATIONS: INVENTORY =====
+# ===== INVENTORY (DTF costs + stock counts) =====
+
+@admin_bp.route('/inventory')
+@admin_required
+def inventory():
+    """Inventory hub: DTF transfer cost settings used for order COGS."""
+    from utils.order_costs import get_dtf_costs
+    return render_template('admin/inventory.html', costs=get_dtf_costs())
+
+
+@admin_bp.route('/inventory/save-costs', methods=['POST'])
+@admin_required
+def save_inventory_costs():
+    """Persist DTF transfer pricing to data/costs.json (server-side only)."""
+    from utils.order_costs import save_dtf_costs
+    save_dtf_costs({
+        'dtf_per_sq_in': request.form.get('dtf_per_sq_in'),
+        'dtf_gang_sheet_per_foot': request.form.get('dtf_gang_sheet_per_foot'),
+        'dtf_vendor': request.form.get('dtf_vendor'),
+        'dtf_notes': request.form.get('dtf_notes'),
+    })
+    flash('DTF transfer costs saved.', 'success')
+    return redirect(url_for('admin.inventory'))
+
 
 @admin_bp.route('/operations/inventory')
 @admin_required
-def inventory():
-    """Inventory management - apparel, transfers, supplies"""
+def operations_inventory():
+    """Stock counts - apparel, transfers, supplies"""
     apparel = ApparelInventory.query.order_by(ApparelInventory.brand, ApparelInventory.color).all()
     transfers = TransferInventory.query.order_by(TransferInventory.design_name).all()
     supplies = Supply.query.order_by(Supply.category, Supply.name).all()
@@ -4159,7 +4192,7 @@ def add_apparel_inventory():
     db.session.add(inv)
     db.session.commit()
     flash('Apparel added', 'success')
-    return redirect(url_for('admin.inventory'))
+    return redirect(url_for('admin.operations_inventory'))
 
 
 @admin_bp.route('/operations/inventory/apparel/<int:id>/update', methods=['POST'])
@@ -4171,7 +4204,7 @@ def update_apparel_inventory(id):
     inv.reorder_threshold = int(request.form.get('reorder_threshold') or 5)
     db.session.commit()
     flash('Apparel updated', 'success')
-    return redirect(url_for('admin.inventory'))
+    return redirect(url_for('admin.operations_inventory'))
 
 
 @admin_bp.route('/operations/inventory/supply/add', methods=['POST'])
@@ -4184,7 +4217,7 @@ def add_supply():
     db.session.add(s)
     db.session.commit()
     flash('Supply added', 'success')
-    return redirect(url_for('admin.inventory'))
+    return redirect(url_for('admin.operations_inventory'))
 
 
 @admin_bp.route('/operations/inventory/supply/<int:id>/update', methods=['POST'])
@@ -4196,7 +4229,7 @@ def update_supply(id):
     s.reorder_threshold = int(request.form.get('reorder_threshold') or 0)
     db.session.commit()
     flash('Supply updated', 'success')
-    return redirect(url_for('admin.inventory'))
+    return redirect(url_for('admin.operations_inventory'))
 
 
 @admin_bp.route('/operations/inventory/transfer/add', methods=['POST'])
@@ -4210,7 +4243,7 @@ def add_transfer_inventory():
     db.session.add(t)
     db.session.commit()
     flash('Transfer added', 'success')
-    return redirect(url_for('admin.inventory'))
+    return redirect(url_for('admin.operations_inventory'))
 
 
 # ===== OPERATIONS: VENDORS =====
