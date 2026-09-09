@@ -57,7 +57,7 @@
                 </div>
                 
                 <!-- Fulfillment Method -->
-                <div class="checkout-section">
+                <div class="checkout-section"{% if family_promo_active %} id="fulfillment-section"{% endif %}>
                     <h2>Fulfillment Method</h2>
                     <div class="fulfillment-options">
                         <label class="fulfillment-option active">
@@ -75,7 +75,7 @@
                             </div>
                         </label>
                         
-                        {% if not is_group_order or not group_collection or group_collection.shipping_enabled %}
+                        {% if not family_promo_active and (not is_group_order or not group_collection or group_collection.shipping_enabled) %}
                         <label class="fulfillment-option">
                             <input type="radio" name="fulfillment" value="shipping">
                             <div>
@@ -169,10 +169,34 @@
                     </div>
                 </div>
                 
+                <!-- Promo code -->
+                <div class="checkout-section" id="promo-section">
+                    <h2>Promo Code</h2>
+                    <div class="promo-row">
+                        <input type="text" id="promo_code" class="form-control" autocomplete="off"
+                               placeholder="Enter code"
+                               value="{{ family_promo_code or '' }}"
+                               {% if family_promo_active %}readonly{% endif %}>
+                        {% if family_promo_active %}
+                        <button type="button" class="btn btn-secondary" id="clear-promo">Clear</button>
+                        {% else %}
+                        <button type="button" class="btn btn-secondary" id="apply-promo">Apply</button>
+                        {% endif %}
+                    </div>
+                    <p class="promo-message" id="promo-message" role="status" aria-live="polite">
+                        {% if family_promo_active %}Promo applied.{% endif %}
+                    </p>
+                </div>
+
                 <!-- Payment Method -->
-                <div class="checkout-section">
+                <div class="checkout-section" id="payment-section">
                     <h2>Payment Method</h2>
-                    <div class="payment-tabs">
+                    {% if family_promo_active %}
+                    <div class="family-cash-only" id="family-cash-only">
+                        <p class="cash-payment-info"><strong>Pay Cash</strong> when you pick up your order.</p>
+                    </div>
+                    {% else %}
+                    <div class="payment-tabs" id="payment-tabs">
                         <button type="button" class="payment-tab active" data-method="card">Card / Apple Pay / Google Pay</button>
                         {% if paypal_client_id %}
                         <button type="button" class="payment-tab" data-method="paypal">PayPal / Venmo</button>
@@ -236,15 +260,22 @@
                         </div>
                         {% endif %}
                     </div>
+                    {% endif %}
                 </div>
                 
+                {% if family_promo_active %}
+                <button id="submit-payment" class="btn btn-primary btn-block btn-lg">
+                    Pay Cash — $<span id="total-amount">{{ "%.2f"|format(totals.total) }}</span>
+                </button>
+                {% else %}
                 <button id="submit-payment" class="btn btn-primary btn-block btn-lg">
                     Complete Order - $<span id="total-amount">{{ "%.2f"|format(totals.total) }}</span>
                 </button>
+                {% endif %}
             </div>
             
             <!-- Right Column: Order Summary -->
-            <div class="order-summary">
+            <div class="order-summary{% if family_promo_active %} order-summary--family-promo{% endif %}">
                 <h2>Order Summary</h2>
                 
                 <div class="summary-items">
@@ -269,12 +300,20 @@
                             {% endif %}
                             <p>{{ item.color }} · {{ item.size }}</p>
                         </div>
+                        {% if not family_promo_active %}
                         <div class="item-price">${{ "%.2f"|format(item.quantity * item.unit_price) }}</div>
+                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
                 
                 <div class="summary-totals">
+                    {% if family_promo_active %}
+                    <div class="summary-row total">
+                        <strong>Total Due:</strong>
+                        <strong id="summary-total">${{ "%.2f"|format(totals.total) }}</strong>
+                    </div>
+                    {% else %}
                     <div class="summary-row">
                         <span>Subtotal:</span>
                         <span id="subtotal-amount">${{ "%.2f"|format(totals.subtotal) }}</span>
@@ -291,6 +330,7 @@
                         <strong>Total:</strong>
                         <strong id="summary-total">${{ "%.2f"|format(totals.total) }}</strong>
                     </div>
+                    {% endif %}
                 </div>
 
                 <button type="button" class="btn btn-outline btn-block no-print" id="printEstimateBtn" onclick="window.print()">
@@ -317,17 +357,21 @@
 // Security model:
 //   1) Server creates a PaymentIntent with payment_method_types=['card'] only
 //      (no Klarna / bank / ACH).
+const familyPromoActive = {{ 'true' if family_promo_active else 'false' }};
+const familyPromoCode = {{ (family_promo_code or '')|tojson }};
+const retailSubtotal = {{ totals.subtotal if not family_promo_active else 0 }};
+const taxRate = {{ config.KS_SALES_TAX_RATE }};
+const shippingFlatRate = {{ shipping_flat_rate|default(11) }};
 //   2) Express Checkout Element shows Apple Pay / Google Pay when supported.
 //   3) Card Element collects the card — never renders Bank / Klarna / Link tabs
 //      (Payment Element was still surfacing those on some phones).
-const stripe = Stripe('{{ stripe_public_key }}');
+const stripe = familyPromoActive ? null : Stripe('{{ stripe_public_key }}');
 
 let stripeElements = null;       // clientSecret Elements for Express Checkout
 let cardElements = null;         // separate Elements instance for Card Element
 let cardElement = null;
 let expressCheckoutElement = null;
 let clientSecretCache = null;
-const shippingFlatRate = {{ shipping_flat_rate|default(11) }};
 
 const stripeAppearance = {
     theme: 'stripe',
@@ -408,6 +452,7 @@ async function confirmStripeCardPayment() {
 }
 
 async function initPaymentElement() {
+    if (familyPromoActive || !stripe) return;
     if (cardElement) return;
 
     try {
@@ -499,12 +544,55 @@ async function initPaymentElement() {
     }
 }
 
-let currentMethod = 'card';
+let currentMethod = familyPromoActive ? 'cash' : 'card';
 let currentFulfillment = 'pickup';
+
+// Promo code apply / clear — reload so totals + payment UI stay server-authoritative
+async function submitPromoCode(code) {
+    const msg = document.getElementById('promo-message');
+    try {
+        const resp = await fetch('/checkout/apply-promo', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+            body: JSON.stringify({code: code || '', shipping_method: currentFulfillment})
+        });
+        const data = await resp.json();
+        if (!data.success) {
+            if (msg) msg.textContent = data.error || 'That promo code is not valid.';
+            PMKC.showFlash(data.error || 'That promo code is not valid.', 'error');
+            return;
+        }
+        window.location.reload();
+    } catch (err) {
+        if (msg) msg.textContent = 'Could not apply promo code. Please try again.';
+        PMKC.showFlash('Could not apply promo code. Please try again.', 'error');
+    }
+}
+const applyPromoBtn = document.getElementById('apply-promo');
+if (applyPromoBtn) {
+    applyPromoBtn.addEventListener('click', () => {
+        const input = document.getElementById('promo_code');
+        submitPromoCode((input && input.value) || '');
+    });
+}
+const clearPromoBtn = document.getElementById('clear-promo');
+if (clearPromoBtn) {
+    clearPromoBtn.addEventListener('click', () => submitPromoCode(''));
+}
+const promoInput = document.getElementById('promo_code');
+if (promoInput && !familyPromoActive) {
+    promoInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            submitPromoCode(promoInput.value || '');
+        }
+    });
+}
 
 // Fulfillment method switching
 document.querySelectorAll('input[name="fulfillment"]').forEach(radio => {
     radio.addEventListener('change', (e) => {
+        if (familyPromoActive) return;
         currentFulfillment = e.target.value;
         
         // Update active state
@@ -529,6 +617,7 @@ document.querySelectorAll('input[name="fulfillment"]').forEach(radio => {
 // Payment method tabs
 document.querySelectorAll('.payment-tab').forEach(tab => {
     tab.addEventListener('click', () => {
+        if (familyPromoActive) return;
         const method = tab.dataset.method;
         currentMethod = method;
 
@@ -537,7 +626,8 @@ document.querySelectorAll('.payment-tab').forEach(tab => {
         tab.classList.add('active');
 
         // Update panels
-        document.getElementById('card-panel').style.display = method === 'card' ? 'block' : 'none';
+        const cardPanel = document.getElementById('card-panel');
+        if (cardPanel) cardPanel.style.display = method === 'card' ? 'block' : 'none';
         const paypalPanel = document.getElementById('paypal-panel');
         if (paypalPanel) paypalPanel.style.display = method === 'paypal' ? 'block' : 'none';
         const cashPanel = document.getElementById('cash-panel');
@@ -552,8 +642,10 @@ document.querySelectorAll('.payment-tab').forEach(tab => {
     });
 });
 
-// Mount Payment Element on page load (card is default)
-initPaymentElement();
+// Mount Payment Element on page load (card is default) — skip for family cash promo
+if (!familyPromoActive) {
+    initPaymentElement();
+}
 
 const sendHomeCheckbox = document.getElementById('send_home_with_child');
 const sendHomeFields = document.getElementById('send-home-fields');
@@ -581,12 +673,15 @@ if (savedAddressSelect) {
 }
 
 function updateTotals(shippingCost) {
-    const subtotal = {{ totals.subtotal }};
-    const tax = Math.round(subtotal * {{ config.KS_SALES_TAX_RATE }} * 100) / 100;
+    if (familyPromoActive) return;
+    const subtotal = retailSubtotal;
+    const tax = Math.round(subtotal * taxRate * 100) / 100;
     const total = subtotal + shippingCost + tax;
     
-    document.getElementById('shipping-amount').textContent = '$' + shippingCost.toFixed(2);
-    document.getElementById('tax-amount').textContent = '$' + tax.toFixed(2);
+    const shipEl = document.getElementById('shipping-amount');
+    const taxEl = document.getElementById('tax-amount');
+    if (shipEl) shipEl.textContent = '$' + shippingCost.toFixed(2);
+    if (taxEl) taxEl.textContent = '$' + tax.toFixed(2);
     document.getElementById('total-amount').textContent = total.toFixed(2);
     document.getElementById('summary-total').textContent = '$' + total.toFixed(2);
 }
@@ -595,10 +690,10 @@ function updateTotals(shippingCost) {
 let placingOrder = false;
 document.getElementById('submit-payment').addEventListener('click', async () => {
     if (placingOrder) return;
-    if (currentMethod === 'card') {
-        await handleStripePayment();
-    } else if (currentMethod === 'cash') {
+    if (familyPromoActive || currentMethod === 'cash') {
         await handleCashPayment();
+    } else if (currentMethod === 'card') {
+        await handleStripePayment();
     } else {
         PMKC.showFlash('Please choose a payment method to complete your order.', 'info');
     }
@@ -611,7 +706,11 @@ function restorePayButton() {
     button.disabled = false;
     const shown = (document.getElementById('summary-total') || {}).textContent || '${{ "%.2f"|format(totals.total) }}';
     const amount = String(shown).replace(/^\$/, '');
-    button.innerHTML = 'Complete Order - $<span id="total-amount">' + amount + '</span>';
+    if (familyPromoActive) {
+        button.innerHTML = 'Pay Cash — $<span id="total-amount">' + amount + '</span>';
+    } else {
+        button.innerHTML = 'Complete Order - $<span id="total-amount">' + amount + '</span>';
+    }
 }
 
 function checkoutToken() {
@@ -737,13 +836,14 @@ function buildOrderPayload(paymentId, paymentMethodOverride) {
     return {
         payment_method: paymentMethod,
         payment_id: paymentId,
-        shipping_method: currentFulfillment,
+        shipping_method: familyPromoActive ? 'pickup' : currentFulfillment,
         email: document.getElementById('email').value,
         first_name: document.getElementById('first_name').value,
         last_name: document.getElementById('last_name').value,
         phone: document.getElementById('phone').value,
         shipping_info: shippingInfo,
         checkout_token: checkoutToken(),
+        promo_code: familyPromoActive ? (familyPromoCode || ((document.getElementById('promo_code') || {}).value || '')) : '',
         send_home_with_child: !!(document.getElementById('send_home_with_child') && document.getElementById('send_home_with_child').checked),
         teacher_name: ((document.getElementById('teacher_name') || {}).value || '').trim(),
         child_grade: ((document.getElementById('child_grade') || {}).value || '').trim(),
@@ -1071,6 +1171,23 @@ async function completeOrder(paymentId, paymentMethodOverride) {
     font-size: 0.875rem;
     color: var(--text-secondary);
     line-height: 1.45;
+}
+
+.promo-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: stretch;
+}
+.promo-row .form-control { flex: 1; }
+.promo-message {
+    margin: 0.6rem 0 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    min-height: 1.2em;
+}
+.family-cash-only .cash-payment-info {
+    margin: 0;
+    color: var(--text-secondary);
 }
 
 .form-row {

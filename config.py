@@ -112,6 +112,10 @@ class Config:
     # Kansas sales tax — fixed site-wide; not adjustable via forms or env
     KS_SALES_TAX_PERCENT = 9.5
     KS_SALES_TAX_RATE = 0.095
+
+    # Family at-cost promo: wholesale + DTF + flat fee, cash only (no tax/shipping)
+    FAMILY_PROMO_CODE = os.environ.get('FAMILY_PROMO_CODE', 'AIRMATTRESS')
+    FAMILY_PROMO_FLAT_FEE = float(os.environ.get('FAMILY_PROMO_FLAT_FEE', 5.00))
     
     # Text alerts for design requests - choose one:
     # Option A: Email-to-SMS (no extra platform) - set ADMIN_PHONE_CARRIER (verizon, att, tmobile, sprint)

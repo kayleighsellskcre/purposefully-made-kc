@@ -143,6 +143,8 @@ def create_app(config_class=Config):
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS teacher_name VARCHAR(120)",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS child_grade VARCHAR(40)",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS child_name VARCHAR(120)",
+                    "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS amount_paid DOUBLE PRECISION",
+                    "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS promo_code VARCHAR(50)",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS description TEXT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS is_password_protected BOOLEAN DEFAULT FALSE",

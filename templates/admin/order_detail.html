@@ -22,6 +22,9 @@
             {% set stage_labels = {'order_received':'Order Received','waiting_supplies':'Waiting on Supplies','ready_to_press':'Ready to Press','pressed':'Pressed','packaged_ready':'Packaged & Ready'} %}
             <span class="od-status-badge od-status-{{ order.production_stage or order.status }}">{{ stage_labels.get(order.production_stage, order.status.replace('_',' ').title()) }}</span>
             <span class="od-status-badge od-payment-{{ order.payment_status }}">{{ order.payment_status.title() }}</span>
+            {% if order.payment_method == 'cash' and (order.payment_status or '') == 'pending' %}
+            <span class="od-status-badge od-cash-due">Cash Due</span>
+            {% endif %}
             <a href="{{ url_for('admin.print_labels', order_id=order.id) }}" class="od-btn od-btn-outline">Print label</a>
             {% set _stage = order.production_stage or 'order_received' %}
             {% if _stage in ['order_received', 'waiting_supplies'] %}
@@ -173,6 +176,24 @@
                     <span class="od-info-label">Status</span>
                     <span class="od-status-badge od-payment-{{ order.payment_status }}">{{ order.payment_status.title() }}</span>
                 </div>
+                {% if order.payment_method == 'cash' and (order.payment_status or '') == 'pending' %}
+                <div class="od-info-row">
+                    <span class="od-info-label">Collect</span>
+                    <span class="od-status-badge od-cash-due">Cash Due</span>
+                </div>
+                {% endif %}
+                {% if order.amount_paid is not none %}
+                <div class="od-info-row">
+                    <span class="od-info-label">Amount Paid</span>
+                    <span class="od-info-val">${{ '%.2f'|format(order.amount_paid) }}</span>
+                </div>
+                {% endif %}
+                {% if order.promo_code %}
+                <div class="od-info-row">
+                    <span class="od-info-label">Promo</span>
+                    <span class="od-info-val">{{ order.promo_code }}</span>
+                </div>
+                {% endif %}
                 {% if order.paid_at %}
                 <div class="od-info-row">
                     <span class="od-info-label">Paid At</span>
@@ -630,6 +651,11 @@
 .od-payment-paid                      { background: rgba(16,185,129,0.1);  color: #059669; }
 .od-payment-pending, .od-payment-unpaid { background: rgba(245,158,11,0.1); color: #d97706; }
 .od-payment-refunded, .od-payment-failed { background: rgba(184,124,111,0.12); color: var(--terra-cotta); }
+.od-cash-due {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #f59e0b;
+}
 
 .od-delete-btn {
     display: inline-flex;

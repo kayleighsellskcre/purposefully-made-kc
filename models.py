@@ -455,11 +455,13 @@ class Order(db.Model):
     total = db.Column(db.Float, nullable=False)
     
     # Payment
-    payment_method = db.Column(db.String(50))  # stripe, paypal
+    payment_method = db.Column(db.String(50))  # stripe, paypal, cash
     payment_status = db.Column(db.String(50), default='pending')  # pending, paid, failed, refunded
     payment_intent_id = db.Column(db.String(200))  # Stripe payment intent ID
     paypal_order_id = db.Column(db.String(200))  # PayPal order ID
     paid_at = db.Column(db.DateTime)
+    amount_paid = db.Column(db.Float)  # 0 for cash-due family promo; card/PayPal = total
+    promo_code = db.Column(db.String(50))  # e.g. AIRMATTRESS family at-cost
     
     # Order status
     status = db.Column(db.String(50), default='new')  # new, paid, in_production, ready, picked_up, shipped, completed, cancelled

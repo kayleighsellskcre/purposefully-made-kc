@@ -425,12 +425,19 @@ def reprice_cart(cart, persist=True):
     return corrections
 
 
-def calculate_totals(cart, shipping_method='pickup'):
+def calculate_totals(cart, shipping_method='pickup', *, family_promo=False):
     """Calculate order totals.
 
     Assumes reprice_cart() has already run, so item unit prices are trusted
     server-side values rather than whatever the session happened to hold.
+
+    When family_promo is True, each line is wholesale + DTF, shipping and tax
+    are waived, and a flat family fee is added to the order total.
     """
+    if family_promo:
+        from utils.family_promo import family_promo_totals
+        return family_promo_totals(cart)
+
     subtotal = 0.0
     for item in cart:
         qty = _int_or_none(item.get('quantity')) or 0
@@ -451,7 +458,10 @@ def calculate_totals(cart, shipping_method='pickup'):
         'subtotal': subtotal,
         'shipping_cost': shipping_cost,
         'tax': tax,
-        'total': total
+        'flat_fee': 0.0,
+        'total': total,
+        'family_promo': False,
+        'promo_code': None,
     }
 
 def _paypal_base_url(app):
@@ -566,6 +576,10 @@ def continue_handoff(token):
 def paypal_create_order():
     """Create a PayPal Orders v2 order and return its ID to the client."""
     import requests as _req
+    from utils.family_promo import get_session_family_promo
+    if get_session_family_promo():
+        return jsonify({'error': 'PayPal is not available with this promo. Please use Pay Cash.'}), 400
+
     data = request.get_json(silent=True) or {}
     cart = get_cart()
     if not cart:
@@ -664,7 +678,9 @@ def index():
             return redirect(url_for('collection.view', slug=collection.slug))
     if reprice_cart(cart):
         flash('Some prices in your cart were updated to current pricing.', 'info')
-    totals = calculate_totals(cart)
+    from utils.family_promo import get_session_family_promo
+    family_promo_active = bool(get_session_family_promo())
+    totals = calculate_totals(cart, family_promo=family_promo_active)
     
     from utils.order_artwork import FRONT_PLACEMENTS, mockup_urls
     enriched_cart = []
@@ -723,7 +739,7 @@ def index():
     is_group_order = bool(collection)
     allow_cash_payment = bool(
         collection and getattr(collection, 'allow_cash_pickup', False)
-    )
+    ) or family_promo_active
     paypal_client_id = (current_app.config.get('PAYPAL_CLIENT_ID') or '').strip()
     paypal_mode = (current_app.config.get('PAYPAL_MODE') or 'sandbox').strip().lower()
     return render_template('checkout/index.html',
@@ -733,15 +749,63 @@ def index():
                          is_group_order=is_group_order,
                          group_collection=collection,
                          allow_cash_payment=allow_cash_payment,
+                         family_promo_active=family_promo_active,
+                         family_promo_code=get_session_family_promo() or '',
                          stripe_public_key=current_app.config.get('STRIPE_PUBLIC_KEY'),
                          paypal_client_id=paypal_client_id,
                          paypal_mode=paypal_mode,
                          shipping_flat_rate=current_app.config.get('SHIPPING_FLAT_RATE', 11.00))
 
 
+@checkout_bp.route('/apply-promo', methods=['POST'])
+def apply_promo():
+    """Apply or clear the family at-cost promo code for this checkout session."""
+    from utils.family_promo import (
+        is_family_promo_code,
+        set_session_family_promo,
+        clear_session_family_promo,
+        get_session_family_promo,
+    )
+
+    data = request.get_json(silent=True) or {}
+    code = (data.get('code') or '').strip()
+    cart = get_cart()
+    if not cart:
+        return jsonify({'success': False, 'error': 'Your cart is empty.'}), 400
+
+    reprice_cart(cart)
+    if not code:
+        clear_session_family_promo()
+        totals = calculate_totals(cart, data.get('shipping_method') or 'pickup')
+        return jsonify({
+            'success': True,
+            'family_promo': False,
+            'promo_code': None,
+            'totals': totals,
+            'message': 'Promo code cleared.',
+        })
+
+    if not is_family_promo_code(code):
+        return jsonify({'success': False, 'error': 'That promo code is not valid.'}), 400
+
+    applied = set_session_family_promo(code)
+    totals = calculate_totals(cart, family_promo=True)
+    return jsonify({
+        'success': True,
+        'family_promo': True,
+        'promo_code': applied,
+        'totals': totals,
+        'message': 'Promo applied.',
+    })
+
+
 @checkout_bp.route('/create-payment-intent', methods=['POST'])
 def create_payment_intent():
     """Create Stripe payment intent"""
+    from utils.family_promo import get_session_family_promo
+    if get_session_family_promo():
+        return jsonify({'error': 'Card payment is not available with this promo. Please use Pay Cash.'}), 400
+
     data = request.get_json(silent=True) or {}
     
     cart = get_cart()
@@ -959,8 +1023,24 @@ def complete():
         # Final authority on price. Runs before the Stripe amount comparison
         # below, so a session whose prices were altered after the intent was
         # created fails the comparison instead of being charged the wrong sum.
+        from utils.family_promo import (
+            get_session_family_promo,
+            is_family_promo_code,
+            set_session_family_promo,
+            clear_session_family_promo,
+        )
+        # Accept promo from session or matching client payload (session wins if set).
+        family_code = get_session_family_promo()
+        client_promo = (data.get('promo_code') or '').strip()
+        if not family_code and client_promo and is_family_promo_code(client_promo):
+            family_code = set_session_family_promo(client_promo)
+        family_promo_active = bool(family_code)
+        if family_promo_active:
+            shipping_method = 'pickup'
+            shipping_info = {}
+
         reprice_cart(cart)
-        totals = calculate_totals(cart, shipping_method)
+        totals = calculate_totals(cart, shipping_method, family_promo=family_promo_active)
 
         if not email:
             return _json_error('Please enter your email so we can send the order confirmation.', 'EMAIL_REQUIRED', 400, request_id=rid)
@@ -968,8 +1048,18 @@ def complete():
             return _json_error('Please enter your first and last name.', 'NAME_REQUIRED', 400, request_id=rid)
         if payment_method not in ('cash', 'stripe', 'paypal'):
             return _json_error('Please choose a payment method.', 'PAYMENT_METHOD_INVALID', 400, request_id=rid)
+        if family_promo_active and payment_method != 'cash':
+            return _json_error(
+                'This promo is cash only. Please use Pay Cash to place your order.',
+                'FAMILY_PROMO_CASH_ONLY',
+                400,
+                request_id=rid,
+            )
         if payment_method == 'cash':
-            if not collection or not getattr(collection, 'allow_cash_pickup', False):
+            cash_ok = family_promo_active or (
+                collection and getattr(collection, 'allow_cash_pickup', False)
+            )
+            if not cash_ok:
                 return _json_error(
                     'Cash / pay at pickup is only available for group orders when the organizer allows it.',
                     'CASH_NOT_ALLOWED',
@@ -1072,6 +1162,8 @@ def complete():
             payment_intent_id=payment_id if payment_method == 'stripe' and payment_id else None,
             paypal_order_id=payment_id if payment_method == 'paypal' and payment_id else None,
             paid_at=None if is_cash else datetime.utcnow(),
+            amount_paid=0.0 if is_cash else float(totals['total']),
+            promo_code=family_code if family_promo_active else None,
             status='new' if is_cash else 'paid',
             production_stage='order_received',
             due_date=default_due_date(),
@@ -1290,7 +1382,9 @@ def complete():
     session['checkout_success_token'] = checkout_token
     session['checkout_success_order'] = order.order_number
     from utils.cart_store import clear_cart as _clear_cart
+    from utils.family_promo import clear_session_family_promo
     _clear_cart()
+    clear_session_family_promo()
     session.pop('collection_id', None)
     session.modified = True
 
