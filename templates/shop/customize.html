@@ -114,7 +114,8 @@
     background: #fff;
     border-radius: var(--border-radius);
     overflow: hidden;
-    aspect-ratio: 1;
+    /* Portrait flats (SanMar / dealer) read better taller than square */
+    aspect-ratio: 3 / 4;
     width: 100%;
     max-width: 100%;
 }
@@ -122,14 +123,14 @@
 /* Fallback for browsers that don't support aspect-ratio (older mobile)
    so the preview never collapses to zero height and disappears. */
 @supports not (aspect-ratio: 1) {
-    .preview-canvas { min-height: 320px; }
+    .preview-canvas { min-height: 380px; }
 }
 
-/* On phones/tablets keep the square preview from filling the whole
+/* On phones/tablets keep the preview from filling the whole
    screen, so the color/size/design controls below stay visible. */
 @media (max-width: 968px) {
     .preview-canvas {
-        max-width: min(100%, 62vh);
+        max-width: min(100%, 70vh);
         margin-left: auto;
         margin-right: auto;
     }
@@ -138,7 +139,8 @@
 .mockup-image {
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
+    object-position: center 18%;
     transition: opacity 0.3s ease;
     position: relative;
     z-index: 1;
@@ -424,8 +426,9 @@
     grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
     gap: 1rem;
     margin-top: 1rem;
-    max-height: 400px;
-    overflow-y: auto;
+    max-height: none;
+    min-height: 8rem;
+    overflow: visible;
     padding: 1rem;
     background: rgba(245, 240, 225, 0.3);
     border-radius: 12px;
@@ -461,7 +464,7 @@
     .color-grid-professional {
         grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
         gap: 0.5rem;
-        max-height: 300px;
+        max-height: none;
     }
 }
 
@@ -1652,6 +1655,7 @@
                     
                     <div class="color-filter-tabs-simple" id="colorFilterTabs" role="group" aria-label="Filter colors by family">
                         <button type="button" class="filter-tab active" data-filter="all" aria-pressed="true">All</button>
+                        <button type="button" class="filter-tab" data-filter="tiedye" aria-pressed="false">Tie-Dye</button>
                         <button type="button" class="filter-tab" data-filter="heather" aria-pressed="false">Heather</button>
                         <button type="button" class="filter-tab" data-filter="solid" aria-pressed="false">Solid</button>
                         <button type="button" class="filter-tab" data-filter="neon" aria-pressed="false">Neon</button>
@@ -1670,7 +1674,7 @@
                                  onclick="selectColor(this)">
                                 <div class="color-image-wrapper">
                                     {% if variant.front_image %}
-                                    <img src="{{ variant.front_image }}" alt="{{ variant.color_name }}" class="color-preview-img" loading="lazy" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <img src="{{ variant.front_image }}" alt="{{ variant.color_name }}" class="color-preview-img" loading="eager" decoding="async" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='block';">
                                     <div class="color-placeholder color-fallback" style="display: none; {% if variant.color_hex %}background-color: {{ variant.color_hex }};{% elif variant.color_name|color_hex_fallback %}background-color: {{ variant.color_name|color_hex_fallback }};{% else %}background: linear-gradient(135deg, #ddd, #bbb);{% endif %}"></div>
                                     {% else %}
                                     <div class="color-placeholder" style="{% if variant.color_hex %}background-color: {{ variant.color_hex }};{% elif variant.color_name|color_hex_fallback %}background-color: {{ variant.color_name|color_hex_fallback }};{% else %}background: linear-gradient(135deg, #ddd, #bbb);{% endif %}"></div>
@@ -2400,19 +2404,30 @@
         function categorizeColor(colorName) {
             const name = colorName.toLowerCase();
             const categories = [];
-            
+
             if (name.includes('heather')) categories.push('heather');
             if (name.includes('neon')) categories.push('neon');
             if (name.includes('vintage')) categories.push('vintage');
-            
+            if (
+                name.includes('tie') ||
+                name.includes('dye') ||
+                name.includes('rainbow') ||
+                name.includes('spiral') ||
+                name.includes('galaxy') ||
+                name.includes('colorburst') ||
+                name.includes('watercolor')
+            ) {
+                categories.push('tiedye');
+            }
+
             // If no special category, it's a solid
             if (categories.length === 0) categories.push('solid');
-            
+
             return categories;
         }
         
         // Add category data to each card and count categories
-        const categoryCounts = { all: 0, heather: 0, solid: 0, neon: 0, vintage: 0 };
+        const categoryCounts = { all: 0, heather: 0, solid: 0, neon: 0, vintage: 0, tiedye: 0 };
         
         colorCards.forEach(card => {
             const colorName = card.dataset.color;
@@ -2421,6 +2436,23 @@
             
             categoryCounts.all++;
             categories.forEach(cat => categoryCounts[cat]++);
+        });
+        
+        // Hide filter tabs that match nothing (e.g. Heather on a tie-dye-only style)
+        filterTabs.forEach(tab => {
+            const key = tab.dataset.filter;
+            if (key === 'all') return;
+            const count = categoryCounts[key] || 0;
+            tab.hidden = count === 0;
+            if (count === 0 && tab.classList.contains('active')) {
+                tab.classList.remove('active');
+                tab.setAttribute('aria-pressed', 'false');
+                const allTab = document.querySelector('.filter-tab[data-filter="all"]');
+                if (allTab) {
+                    allTab.classList.add('active');
+                    allTab.setAttribute('aria-pressed', 'true');
+                }
+            }
         });
         
         // Update count badges
@@ -2787,8 +2819,8 @@
         return bodyLengthIn() * ratio;
     }
 
-    // Where the mockup photo actually lands inside the square canvas
-    // (object-fit: contain letterboxes it).
+    // Where the mockup photo actually lands inside the preview canvas
+    // (object-fit: cover crops to fill; object-position center 18%).
     function mockupDisplayRect() {
         const canvas = document.getElementById('previewCanvas');
         const img = document.getElementById('mockupImage');
@@ -2798,10 +2830,13 @@
         const nw = img ? img.naturalWidth : 0;
         const nh = img ? img.naturalHeight : 0;
         if (!nw || !nh) return { left: 0, top: 0, width: cw, height: ch };
-        const scale = Math.min(cw / nw, ch / nh);
+        const scale = Math.max(cw / nw, ch / nh);
         const w = nw * scale;
         const h = nh * scale;
-        return { left: (cw - w) / 2, top: (ch - h) / 2, width: w, height: h };
+        // Match CSS object-position: center 18%
+        const left = (cw - w) / 2;
+        const top = (ch - h) * 0.18;
+        return { left: left, top: top, width: w, height: h };
     }
 
     function garmentSilhouette() {
