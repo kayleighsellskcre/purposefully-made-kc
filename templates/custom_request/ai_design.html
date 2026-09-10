@@ -367,10 +367,17 @@
             img.onerror = function() { _showError('Image failed to load. Please try again.'); };
             img.src = _currentImgUrl;
 
-            // Wire up customize button
+            // Wire up customize button — store image in sessionStorage to avoid
+            // putting a multi-MB base64 string in the URL (breaks the link)
             var custBtn = document.getElementById('aiCustomizeBtn');
             if (custBtn) {
-                custBtn.href = '{{ url_for("shop.design_gallery") }}?ai_image=' + encodeURIComponent(_currentImgUrl);
+                try {
+                    sessionStorage.setItem('ai_generated_image', _currentImgUrl);
+                    custBtn.href = '{{ url_for("shop.design_gallery") }}?ai_image=session';
+                } catch(e) {
+                    // sessionStorage full or unavailable — fall back to direct URL (may be long)
+                    custBtn.href = '{{ url_for("shop.design_gallery") }}';
+                }
             }
 
             // Show revised prompt if different
