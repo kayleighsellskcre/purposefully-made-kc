@@ -90,7 +90,7 @@
         <div class="ai-loading" id="aiLoading" style="display:none;">
             <div class="ai-spinner"></div>
             <p class="ai-loading-text">Creating your design<span class="ai-dots"></span></p>
-            <p class="ai-loading-sub">This takes about 10-15 seconds</p>
+            <p class="ai-loading-sub">High-quality designs take about 30–60 seconds</p>
         </div>
 
         {# ── Error state ── #}
@@ -331,72 +331,93 @@
         }
     };
 
-    // ── Generate ──
+    // ── Loading messages that cycle while the AI works ──
+    var _loadingMsgs = ['Creating your design…', 'Adding details…', 'Applying texture…', 'Almost there…', 'Putting on finishing touches…'];
+    var _loadingInterval = null;
+    var _pollTimer = null;
+    var _pollAttempts = 0;
+    var _MAX_POLLS = 50; // 50 × 3s = 150s max
+
+    function _startLoadingCycle() {
+        var el = document.querySelector('.ai-loading-text');
+        if (!el) return;
+        var i = 0;
+        el.textContent = _loadingMsgs[0];
+        _loadingInterval = setInterval(function() { i = (i + 1) % _loadingMsgs.length; el.textContent = _loadingMsgs[i]; }, 4000);
+    }
+    function _stopLoadingCycle() {
+        if (_loadingInterval) { clearInterval(_loadingInterval); _loadingInterval = null; }
+    }
+    function _cancelPoll() {
+        if (_pollTimer) { clearTimeout(_pollTimer); _pollTimer = null; }
+        _stopLoadingCycle();
+    }
+
+    // ── Generate: POST to start job, then poll ──
     window.aiGenerate = function() {
         var prompt = (document.getElementById('aiPromptInput').value || '').trim();
-        if (!prompt) {
-            document.getElementById('aiPromptInput').focus();
-            return;
-        }
+        if (!prompt) { document.getElementById('aiPromptInput').focus(); return; }
         var fullPrompt = _selectedStyle ? prompt + ' — style: ' + _selectedStyle : prompt;
 
+        _cancelPoll();
         _showState('loading');
+        _startLoadingCycle();
 
         fetch('{{ url_for("custom_request.ai_design_generate") }}', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token() }}',
-            },
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' },
             body: JSON.stringify({ prompt: fullPrompt }),
         })
         .then(function(r) {
-            if (r.status === 429) { _showError('You have reached the limit of 5 designs per hour. Please try again later.'); return Promise.reject('rate'); }
+            if (r.status === 429) { _cancelPoll(); _showError('You have reached the limit of 5 designs per hour. Please try again later.'); return Promise.reject('rate'); }
             return r.json();
         })
         .then(function(data) {
-            if (!data || !data.ok) {
-                _showError((data && data.error) || 'Generation failed. Please try again.');
-                return;
-            }
-            _currentImgUrl = data.image_url;
-
-            // Pre-load the image before showing it
-            var img = document.getElementById('aiResultImg');
-            img.onload = function() { _showState('result'); };
-            img.onerror = function() { _showError('Image failed to load. Please try again.'); };
-            img.src = _currentImgUrl;
-
-            // Wire up customize button — store image in sessionStorage to avoid
-            // putting a multi-MB base64 string in the URL (breaks the link)
-            var custBtn = document.getElementById('aiCustomizeBtn');
-            if (custBtn) {
-                try {
-                    sessionStorage.setItem('ai_generated_image', _currentImgUrl);
-                    custBtn.href = '{{ url_for("shop.design_gallery") }}?ai_image=session';
-                } catch(e) {
-                    // sessionStorage full or unavailable — fall back to direct URL (may be long)
-                    custBtn.href = '{{ url_for("shop.design_gallery") }}';
-                }
-            }
-
-            // Show revised prompt if different
-            var revised = data.revised_prompt || '';
-            var revWrap = document.getElementById('aiRevisedWrap');
-            var revText = document.getElementById('aiRevisedText');
-            if (revised && revWrap && revText) {
-                revText.textContent = revised;
-                revWrap.style.display = '';
-            } else if (revWrap) {
-                revWrap.style.display = 'none';
-            }
+            if (!data || !data.ok) { _cancelPoll(); _showError((data && data.error) || 'Generation failed. Please try again.'); return; }
+            _pollAttempts = 0;
+            _pollJob(data.job_id);
         })
         .catch(function(err) {
-            if (err !== 'rate') _showError('Something went wrong. Please check your connection and try again.');
+            if (err !== 'rate') { _cancelPoll(); _showError('Something went wrong. Please check your connection and try again.'); }
         });
     };
 
-    window.aiBack = function() { _showState('prompt'); };
+    function _pollJob(jobId) {
+        _pollTimer = setTimeout(function() {
+            fetch('{{ url_for("custom_request.ai_design_status", job_id="PLACEHOLDER") }}'.replace('PLACEHOLDER', jobId))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.status === 'done') {
+                    _stopLoadingCycle();
+                    _currentImgUrl = data.image_url;
+                    var img = document.getElementById('aiResultImg');
+                    img.onload = function() { _showState('result'); };
+                    img.onerror = function() { _showError('Image failed to load. Please try again.'); };
+                    img.src = _currentImgUrl;
+                    var custBtn = document.getElementById('aiCustomizeBtn');
+                    if (custBtn) {
+                        try { sessionStorage.setItem('ai_generated_image', _currentImgUrl); custBtn.href = '{{ url_for("shop.design_gallery") }}?ai_image=session'; }
+                        catch(e) { custBtn.href = '{{ url_for("shop.design_gallery") }}'; }
+                    }
+                    var revised = data.revised_prompt || '';
+                    var revWrap = document.getElementById('aiRevisedWrap');
+                    var revText = document.getElementById('aiRevisedText');
+                    if (revised && revWrap && revText) { revText.textContent = revised; revWrap.style.display = ''; }
+                    else if (revWrap) { revWrap.style.display = 'none'; }
+                } else if (data.status === 'error') {
+                    _stopLoadingCycle();
+                    _showError(data.error || 'Generation failed. Please try again.');
+                } else {
+                    _pollAttempts++;
+                    if (_pollAttempts >= _MAX_POLLS) { _stopLoadingCycle(); _showError('Generation is taking longer than expected. Please try again.'); }
+                    else { _pollJob(jobId); }
+                }
+            })
+            .catch(function() { _stopLoadingCycle(); _showError('Connection error. Please try again.'); });
+        }, 3000);
+    }
+
+    window.aiBack = function() { _cancelPoll(); _showState('prompt'); };
 
     function _showState(state) {
         document.getElementById('aiPromptCard').style.display  = state === 'prompt'  ? '' : 'none';

@@ -1,7 +1,10 @@
 """Custom design requests - customers upload reference images for recreation"""
 from pathlib import Path
+import re
 import secrets
 import threading
+import time
+import uuid
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
 from flask_login import login_required, current_user
@@ -9,6 +12,79 @@ from werkzeug.utils import secure_filename
 
 from models import db, CustomDesignRequest
 from utils.rate_limit import post_only, rate_limit
+
+# ── AI job store ─────────────────────────────────────────────────────────────
+# In-memory dict keyed by job UUID. Safe with a single Gunicorn worker (Railway
+# default). Each entry: {status, image_url, revised_prompt, error, created_at}
+_ai_jobs: dict = {}
+_ai_jobs_lock = threading.Lock()
+_JOB_TTL = 600  # seconds — jobs older than 10 min are discarded
+
+
+def _cleanup_old_jobs() -> None:
+    """Remove jobs older than _JOB_TTL. Call while holding _ai_jobs_lock."""
+    cutoff = time.time() - _JOB_TTL
+    stale = [jid for jid, j in _ai_jobs.items() if j.get('created_at', 0) < cutoff]
+    for jid in stale:
+        del _ai_jobs[jid]
+
+
+def _run_image_generation(app, job_id: str, api_key: str, enhanced_prompt: str) -> None:
+    """Background thread: call OpenAI and write result into _ai_jobs."""
+    with app.app_context():
+        try:
+            import requests as req_lib
+            headers = {
+                'Authorization': f'Bearer {api_key}',
+                'Content-Type': 'application/json',
+            }
+            body = {
+                'model': 'gpt-image-1',
+                'prompt': enhanced_prompt,
+                'n': 1,
+                'size': '1024x1024',
+                'quality': 'high',          # full ChatGPT-quality output
+                'background': 'transparent',  # native transparent PNG
+                'output_format': 'png',
+            }
+            resp = req_lib.post(
+                'https://api.openai.com/v1/images/generations',
+                headers=headers,
+                json=body,
+                timeout=120,  # OpenAI can take up to ~90s for hd; give headroom
+            )
+            if resp.status_code != 200:
+                api_err = resp.text[:400]
+                app.logger.warning('AI image error %s: %s', resp.status_code, api_err)
+                try:
+                    err_msg = (resp.json().get('error') or {}).get('message', api_err)
+                except Exception:
+                    err_msg = api_err
+                with _ai_jobs_lock:
+                    if job_id in _ai_jobs:
+                        _ai_jobs[job_id]['status'] = 'error'
+                        _ai_jobs[job_id]['error'] = f'Generation failed: {err_msg}'
+                return
+
+            item = resp.json()['data'][0]
+            if 'b64_json' in item:
+                image_url = f"data:image/png;base64,{item['b64_json']}"
+            else:
+                image_url = item.get('url', '')
+            revised = item.get('revised_prompt', '')
+
+            with _ai_jobs_lock:
+                if job_id in _ai_jobs:
+                    _ai_jobs[job_id]['status'] = 'done'
+                    _ai_jobs[job_id]['image_url'] = image_url
+                    _ai_jobs[job_id]['revised_prompt'] = revised
+
+        except Exception as e:
+            app.logger.exception('AI background generation error: %s', e)
+            with _ai_jobs_lock:
+                if job_id in _ai_jobs:
+                    _ai_jobs[job_id]['status'] = 'error'
+                    _ai_jobs[job_id]['error'] = 'Something went wrong. Please try again.'
 
 custom_request_bp = Blueprint('custom_request', __name__, url_prefix='/custom-design')
 
@@ -235,25 +311,26 @@ def ai_design():
 
 
 @custom_request_bp.route('/ai-design/generate', methods=['POST'])
-@rate_limit('5 per hour')          # 5 AI images per IP per hour — anti-abuse
-@rate_limit('20 per day')          # 20 per IP per day hard cap
+@rate_limit('5 per hour')   # 5 AI images per IP per hour
+@rate_limit('20 per day')   # 20 per IP per day hard cap
 def ai_design_generate():
-    """Call DALL-E 3, return the image URL as JSON.
+    """Kick off a background image generation job, return the job ID immediately.
 
-    Rate-limited at 5/hour and 20/day per IP address. The key never leaves
-    the server; the frontend only ever receives the generated image URL.
+    The client polls /ai-design/status/<job_id> until status == 'done' or 'error'.
+    This avoids holding an HTTP connection open for 60-90 seconds (which would
+    time out at Cloudflare's proxy layer).
     """
     api_key = current_app.config.get('OPENAI_API_KEY', '').strip()
     if not api_key:
         return jsonify({'ok': False, 'error': 'AI design is not configured yet. Please try again soon.'})
 
-    prompt = (request.json or {}).get('prompt', '').strip() if request.is_json else request.form.get('prompt', '').strip()
+    payload = request.get_json(silent=True) or {}
+    prompt = payload.get('prompt', '').strip() if request.is_json else request.form.get('prompt', '').strip()
     if not prompt:
         return jsonify({'ok': False, 'error': 'Please describe the design you want.'})
     if len(prompt) > 800:
         return jsonify({'ok': False, 'error': 'Description is too long (800 character limit).'})
 
-    # Append quality/print directives — customer prompt is preserved as-is
     enhanced_prompt = (
         f'{prompt}. '
         'Design for DTF heat-transfer printing on a t-shirt. Transparent background. '
@@ -261,46 +338,42 @@ def ai_design_generate():
         'Bold, high-contrast colors. Clean crisp edges. No text unless specifically requested.'
     )
 
-    try:
-        import requests as req_lib
-        headers = {
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type': 'application/json',
+    job_id = str(uuid.uuid4())
+    with _ai_jobs_lock:
+        _cleanup_old_jobs()
+        _ai_jobs[job_id] = {
+            'status': 'pending',
+            'image_url': None,
+            'revised_prompt': '',
+            'error': None,
+            'created_at': time.time(),
         }
-        body = {
-            'model': 'gpt-image-1',
-            'prompt': enhanced_prompt,
-            'n': 1,
-            'size': '1024x1024',
-            'quality': 'medium',       # 'high' takes 60-90s and times out at Cloudflare
-            'background': 'transparent',  # native transparent PNG — no post-processing needed
-            'output_format': 'png',
-        }
-        resp = req_lib.post(
-            'https://api.openai.com/v1/images/generations',
-            headers=headers,
-            json=body,
-            timeout=55,   # must finish before Cloudflare's ~60s connection timeout
-        )
-        if resp.status_code != 200:
-            api_err = resp.text[:400]
-            current_app.logger.warning('Image API error %s: %s', resp.status_code, api_err)
-            try:
-                err_json = resp.json()
-                err_msg = (err_json.get('error') or {}).get('message', api_err)
-            except Exception:
-                err_msg = api_err
-            return jsonify({'ok': False, 'error': f'OpenAI {resp.status_code}: {err_msg}'})
-        data = resp.json()
-        item = data['data'][0]
-        # gpt-image-1 returns base64; older models returned a URL
-        if 'b64_json' in item:
-            image_url = f"data:image/png;base64,{item['b64_json']}"
-        else:
-            image_url = item.get('url', '')
-        revised_prompt = item.get('revised_prompt', '')
-        return jsonify({'ok': True, 'image_url': image_url, 'revised_prompt': revised_prompt})
 
-    except Exception as e:
-        current_app.logger.exception('AI design generate error: %s', e)
-        return jsonify({'ok': False, 'error': 'Something went wrong. Please try again.'})
+    app_obj = current_app._get_current_object()
+    threading.Thread(
+        target=_run_image_generation,
+        args=(app_obj, job_id, api_key, enhanced_prompt),
+        daemon=True,
+    ).start()
+
+    return jsonify({'ok': True, 'job_id': job_id})
+
+
+@custom_request_bp.route('/ai-design/status/<job_id>')
+def ai_design_status(job_id):
+    """Poll endpoint: returns {status, image_url, revised_prompt, error}."""
+    if not re.match(r'^[0-9a-f\-]{36}$', job_id):
+        return jsonify({'status': 'error', 'error': 'Invalid job ID.'})
+
+    with _ai_jobs_lock:
+        job = dict(_ai_jobs.get(job_id) or {})
+
+    if not job:
+        return jsonify({'status': 'error', 'error': 'Job not found. Please try again.'})
+
+    return jsonify({
+        'status': job['status'],
+        'image_url': job.get('image_url'),
+        'revised_prompt': job.get('revised_prompt', ''),
+        'error': job.get('error'),
+    })
