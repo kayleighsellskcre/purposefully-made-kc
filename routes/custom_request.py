@@ -10,7 +10,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
-from models import db, CustomDesignRequest
+from models import db, CustomDesignRequest, Design
 from utils.rate_limit import post_only, rate_limit
 
 # ── AI job store ─────────────────────────────────────────────────────────────
@@ -416,3 +416,66 @@ def ai_design_status(job_id):
         'revised_prompt': job.get('revised_prompt', ''),
         'error': job.get('error'),
     })
+
+
+@custom_request_bp.route('/ai-design/save', methods=['POST'])
+@login_required
+def ai_design_save():
+    """Save a completed AI design to the logged-in user's My Designs.
+
+    Reads the image from the job file (already on disk from generation) so
+    we avoid re-uploading several MB of base64 over the wire.
+    """
+    import base64 as _b64_save
+    payload = request.get_json(silent=True) or {}
+    job_id  = payload.get('job_id', '').strip()
+    title   = (payload.get('title') or 'AI Design')[:200]
+
+    if not re.match(r'^[0-9a-f\-]{36}$', job_id):
+        return jsonify({'ok': False, 'error': 'Invalid job.'})
+
+    job = _read_job(job_id)
+    if not job or job.get('status') != 'done' or not job.get('image_url'):
+        return jsonify({'ok': False, 'error': 'Design expired — please generate again.'})
+
+    try:
+        raw_b64 = job['image_url']
+        img_bytes = _b64_save.b64decode(
+            raw_b64.split(',', 1)[1] if ',' in raw_b64 else raw_b64
+        )
+
+        filename = f'ai_{current_user.id}_{secrets.token_hex(8)}.png'
+        save_dir = Path(current_app.config['UPLOAD_FOLDER']) / 'ai_designs'
+        save_dir.mkdir(parents=True, exist_ok=True)
+        (save_dir / filename).write_bytes(img_bytes)
+        file_path = f'uploads/ai_designs/{filename}'  # relative — served from static/
+
+        # Promote to R2 if configured so images survive redeployments
+        try:
+            from utils.cloud_storage import r2_configured, upload_bytes
+            app_obj = current_app._get_current_object()
+            if r2_configured(app_obj):
+                r2_url = upload_bytes(img_bytes, app_obj, filename, subfolder='ai_designs')
+                if r2_url:
+                    file_path = r2_url
+        except Exception as r2_err:
+            current_app.logger.warning('R2 upload skipped for AI design: %s', r2_err)
+
+        design = Design(
+            filename=filename,
+            original_filename=filename,
+            file_path=file_path,
+            title=title,
+            is_gallery=False,
+            has_transparency=True,
+            uploaded_by_user_id=current_user.id,
+            folder='custom_orders',
+        )
+        db.session.add(design)
+        db.session.commit()
+        return jsonify({'ok': True, 'design_id': design.id})
+
+    except Exception as e:
+        current_app.logger.exception('AI design save error for user %s: %s', current_user.id, e)
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': 'Could not save. Please try again.'})

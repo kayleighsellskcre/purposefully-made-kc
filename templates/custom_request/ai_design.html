@@ -81,27 +81,35 @@
                         <img id="aiResultImg" src="" alt="Your AI-generated design" class="ai-result-img">
                     </div>
                     <div class="ai-result-actions">
-                        <button type="button" class="btn btn-primary" onclick="aiUseDesign()">Use This Design</button>
-                        <button type="button" class="btn btn-outline" onclick="aiDownload()">⬇ Download PNG</button>
+                        <button type="button" class="btn btn-primary" id="aiSaveBtn" onclick="aiSaveDesign()">💾 Save to My Designs</button>
+                        <button type="button" class="btn btn-outline ai-tweak-toggle" onclick="aiToggleTweak()">🔧 Tweak Your Design</button>
                         <button type="button" class="btn btn-outline" onclick="aiGenerate()">Generate Another</button>
                         <button type="button" class="btn btn-outline" onclick="aiBack()">Change Description</button>
                     </div>
-                    {# Next-step prompt shown after clicking Use This Design #}
-                    <div class="ai-next-step" id="aiNextStep" style="display:none;">
-                        <p class="ai-next-title">✅ Design saved!</p>
-                        <p class="ai-next-text">Your design downloaded. <strong>Browse our shirts below</strong> and mention "AI Design" in your order — we'll apply it for you!</p>
-                        <a href="{{ url_for('shop.index') }}" class="btn btn-primary" style="margin-top:0.5rem;">Browse Shirts →</a>
+                    {# Tweak panel — hidden until user clicks "Tweak Your Design" #}
+                    <div class="ai-tweak-panel" id="aiTweakPanel" style="display:none;">
+                        <p class="ai-label" style="margin-top:0.75rem;">What would you like to change?</p>
+                        <textarea id="aiTweakInput" class="ai-textarea" rows="2"
+                            placeholder="e.g. make the colors brighter, add a banner that says 'Jake', change to vintage style..."
+                            maxlength="400"></textarea>
+                        <button type="button" class="btn btn-primary ai-tweak-apply-btn" onclick="aiApplyTweak()">Apply Tweak →</button>
+                    </div>
+                    {# Saved confirmation — shown after successful save #}
+                    <div class="ai-saved-panel" id="aiSavedPanel" style="display:none;">
+                        <p class="ai-saved-title">✅ Saved to My Designs!</p>
+                        <p class="ai-saved-text">Find it in <a href="{{ url_for('account.my_designs') }}">My Designs</a>, or browse shirts to put it on one.</p>
+                        <a href="{{ url_for('shop.index') }}" class="btn btn-primary btn-sm" style="margin-top:0.5rem;">Browse Shirts →</a>
                     </div>
                 </div>
                 <div class="ai-result-info">
                     <h2 class="ai-result-title">Your Design is Ready!</h2>
-                    <p class="ai-result-sub">Click "Use This Design" to put it on any shirt we carry.</p>
+                    <p class="ai-result-sub">Save it to your account, tweak it, or generate a fresh one.</p>
                     <div class="ai-revised-wrap" id="aiRevisedWrap" style="display:none;">
                         <p class="ai-revised-label">What AI created:</p>
                         <p class="ai-revised-text" id="aiRevisedText"></p>
                     </div>
                     <div class="ai-tip">
-                        <strong>Tip:</strong> Not quite right? Click "Generate Another" for a fresh take, or "Change Description" to refine your idea.
+                        <strong>Tip:</strong> Use "Tweak Your Design" to make small adjustments — the AI will use your current design as a starting point so changes stay close to what you've got.
                     </div>
                 </div>
             </div>
@@ -327,16 +335,31 @@
 }
 .ai-error p { margin-bottom: 1rem; }
 
-/* Next-step panel */
-.ai-next-step {
+/* Saved confirmation panel */
+.ai-saved-panel {
     margin-top: 1rem;
     background: #f0faf4;
     border: 1px solid #b7dfc6;
     border-radius: 10px;
     padding: 0.85rem 1rem;
 }
-.ai-next-title { font-weight: 700; margin: 0 0 0.25rem; color: #2d7a4f; font-size: 0.95rem; }
-.ai-next-text  { font-size: 0.85rem; color: var(--text-secondary); margin: 0; }
+.ai-saved-title { font-weight: 700; margin: 0 0 0.25rem; color: #2d7a4f; font-size: 0.95rem; }
+.ai-saved-text  { font-size: 0.85rem; color: var(--text-secondary); margin: 0; }
+.ai-saved-text a { color: var(--terra-cotta, #b87c6f); }
+
+/* Tweak panel */
+.ai-tweak-panel {
+    margin-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+    padding-top: 0.75rem;
+}
+.ai-tweak-apply-btn { width: 100%; margin-top: 0.5rem; }
+.ai-tweak-toggle.active {
+    border-color: var(--terra-cotta, #b87c6f);
+    background: rgba(184,124,111,0.08);
+    color: var(--terra-cotta, #b87c6f);
+    font-weight: 600;
+}
 
 /* Limit note */
 .ai-limit-note {
@@ -351,7 +374,9 @@
 (function() {
     var _selectedStyle  = '';
     var _currentImgUrl  = '';
-    var _referenceImg   = null;  // base64 data URL of optional reference image
+    var _referenceImg        = null;  // base64 data URL of optional reference image
+    var _currentJobId        = '';    // job_id of the last completed generation
+    var _originalBasePrompt  = '';    // raw prompt text (before style was appended)
 
     // ── Reference image upload ──
     var refInput = document.getElementById('aiReferenceInput');
@@ -436,6 +461,8 @@
         var prompt = (document.getElementById('aiPromptInput').value || '').trim();
         if (!prompt) { document.getElementById('aiPromptInput').focus(); return; }
         var fullPrompt = _selectedStyle ? prompt + ' — style: ' + _selectedStyle : prompt;
+        _originalBasePrompt = prompt;
+        _currentJobId = '';
 
         _cancelPoll();
         _showState('loading');
@@ -468,15 +495,20 @@
                 if (data.status === 'done') {
                     _stopLoadingCycle();
                     _currentImgUrl = data.image_url;
+                    _currentJobId  = jobId;
+                    // Reset action panels for each new result
+                    var sp = document.getElementById('aiSavedPanel');
+                    if (sp) sp.style.display = 'none';
+                    var tp = document.getElementById('aiTweakPanel');
+                    if (tp) tp.style.display = 'none';
+                    var tb = document.querySelector('.ai-tweak-toggle');
+                    if (tb) tb.classList.remove('active');
+                    var saveBtn = document.getElementById('aiSaveBtn');
+                    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 Save to My Designs'; }
                     var img = document.getElementById('aiResultImg');
                     img.onload = function() { _showState('result'); };
                     img.onerror = function() { _showError('Image failed to load. Please try again.'); };
                     img.src = _currentImgUrl;
-                    var custBtn = document.getElementById('aiCustomizeBtn');
-                    if (custBtn) {
-                        try { sessionStorage.setItem('ai_generated_image', _currentImgUrl); custBtn.href = '{{ url_for("shop.design_gallery") }}?ai_image=session'; }
-                        catch(e) { custBtn.href = '{{ url_for("shop.design_gallery") }}'; }
-                    }
                     var revised = data.revised_prompt || '';
                     var revWrap = document.getElementById('aiRevisedWrap');
                     var revText = document.getElementById('aiRevisedText');
@@ -495,21 +527,85 @@
         }, 3000);
     }
 
+    // ── Save to My Designs ──
+    window.aiSaveDesign = function() {
+        if (!_currentJobId) return;
+        {% if not current_user.is_authenticated %}
+        window.location.href = '{{ url_for("auth.login") }}?next={{ url_for("custom_request.ai_design") }}';
+        return;
+        {% endif %}
+        var btn = document.getElementById('aiSaveBtn');
+        if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+        var sp = document.getElementById('aiSavedPanel');
+        if (sp) sp.style.display = 'none';
+        fetch('{{ url_for("custom_request.ai_design_save") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' },
+            body: JSON.stringify({ job_id: _currentJobId, title: _originalBasePrompt.substring(0, 120) }),
+        })
+        .then(function(r) {
+            if (r.redirected) {
+                window.location.href = '{{ url_for("auth.login") }}?next={{ url_for("custom_request.ai_design") }}';
+                return Promise.reject('auth');
+            }
+            return r.json();
+        })
+        .then(function(data) {
+            if (btn) { btn.disabled = false; btn.textContent = '💾 Save to My Designs'; }
+            if (data && data.ok) {
+                if (sp) sp.style.display = '';
+            } else {
+                alert((data && data.error) || 'Could not save. Please try again.');
+            }
+        })
+        .catch(function(err) {
+            if (err !== 'auth' && btn) { btn.disabled = false; btn.textContent = '💾 Save to My Designs'; }
+        });
+    };
+
+    // ── Tweak Your Design ──
+    window.aiToggleTweak = function() {
+        var panel = document.getElementById('aiTweakPanel');
+        var btn   = document.querySelector('.ai-tweak-toggle');
+        if (!panel) return;
+        var isVisible = panel.style.display !== 'none';
+        panel.style.display = isVisible ? 'none' : '';
+        if (btn) btn.classList.toggle('active', !isVisible);
+        if (!isVisible) {
+            var inp = document.getElementById('aiTweakInput');
+            if (inp) inp.focus();
+        }
+    };
+
+    window.aiApplyTweak = function() {
+        var tweak = (document.getElementById('aiTweakInput').value || '').trim();
+        if (!tweak) { document.getElementById('aiTweakInput').focus(); return; }
+        // Use current generated design as reference image for the next generation
+        _referenceImg = _currentImgUrl;
+        // Build the new prompt: original description + tweak instruction
+        var promptInput = document.getElementById('aiPromptInput');
+        if (promptInput) {
+            promptInput.value = (_originalBasePrompt || '') + '. ' + tweak;
+            promptInput.dispatchEvent(new Event('input'));
+        }
+        // Clear tweak state
+        document.getElementById('aiTweakInput').value = '';
+        var panel = document.getElementById('aiTweakPanel');
+        if (panel) panel.style.display = 'none';
+        var tb = document.querySelector('.ai-tweak-toggle');
+        if (tb) tb.classList.remove('active');
+        aiGenerate();
+    };
+
+    // ── Download (utility) ──
     window.aiDownload = function() {
-        var src = _currentImgUrl || sessionStorage.getItem('ai_generated_image');
-        if (!src) return;
+        if (!_currentImgUrl) return;
         var a = document.createElement('a');
-        a.href = src;
+        a.href = _currentImgUrl;
         a.download = 'my-ai-design.png';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-    };
-
-    window.aiUseDesign = function() {
-        aiDownload();
-        var ns = document.getElementById('aiNextStep');
-        if (ns) ns.style.display = '';
     };
 
     window.aiBack = function() { _cancelPoll(); _showState('prompt'); };
