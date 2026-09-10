@@ -81,9 +81,16 @@
                         <img id="aiResultImg" src="" alt="Your AI-generated design" class="ai-result-img">
                     </div>
                     <div class="ai-result-actions">
-                        <a id="aiCustomizeBtn" href="#" class="btn btn-primary">Use This Design</a>
+                        <button type="button" class="btn btn-primary" onclick="aiUseDesign()">Use This Design</button>
+                        <button type="button" class="btn btn-outline" onclick="aiDownload()">⬇ Download PNG</button>
                         <button type="button" class="btn btn-outline" onclick="aiGenerate()">Generate Another</button>
                         <button type="button" class="btn btn-outline" onclick="aiBack()">Change Description</button>
+                    </div>
+                    {# Next-step prompt shown after clicking Use This Design #}
+                    <div class="ai-next-step" id="aiNextStep" style="display:none;">
+                        <p class="ai-next-title">✅ Design saved!</p>
+                        <p class="ai-next-text">Your design downloaded. <strong>Browse our shirts below</strong> and mention "AI Design" in your order — we'll apply it for you!</p>
+                        <a href="{{ url_for('shop.index') }}" class="btn btn-primary" style="margin-top:0.5rem;">Browse Shirts →</a>
                     </div>
                 </div>
                 <div class="ai-result-info">
@@ -320,6 +327,17 @@
 }
 .ai-error p { margin-bottom: 1rem; }
 
+/* Next-step panel */
+.ai-next-step {
+    margin-top: 1rem;
+    background: #f0faf4;
+    border: 1px solid #b7dfc6;
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+}
+.ai-next-title { font-weight: 700; margin: 0 0 0.25rem; color: #2d7a4f; font-size: 0.95rem; }
+.ai-next-text  { font-size: 0.85rem; color: var(--text-secondary); margin: 0; }
+
 /* Limit note */
 .ai-limit-note {
     text-align: center;
@@ -476,6 +494,23 @@
             .catch(function() { _stopLoadingCycle(); _showError('Connection error. Please try again.'); });
         }, 3000);
     }
+
+    window.aiDownload = function() {
+        var src = _currentImgUrl || sessionStorage.getItem('ai_generated_image');
+        if (!src) return;
+        var a = document.createElement('a');
+        a.href = src;
+        a.download = 'my-ai-design.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    };
+
+    window.aiUseDesign = function() {
+        aiDownload();
+        var ns = document.getElementById('aiNextStep');
+        if (ns) ns.style.display = '';
+    };
 
     window.aiBack = function() { _cancelPoll(); _showState('prompt'); };
 
