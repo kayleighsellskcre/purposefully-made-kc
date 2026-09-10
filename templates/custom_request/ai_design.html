@@ -344,13 +344,19 @@
 
         fetch('{{ url_for("custom_request.ai_design_generate") }}', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}',
+            },
             body: JSON.stringify({ prompt: fullPrompt }),
         })
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+            if (r.status === 429) { _showError('You have reached the limit of 5 designs per hour. Please try again later.'); return Promise.reject('rate'); }
+            return r.json();
+        })
         .then(function(data) {
-            if (!data.ok) {
-                _showError(data.error || 'Generation failed. Please try again.');
+            if (!data || !data.ok) {
+                _showError((data && data.error) || 'Generation failed. Please try again.');
                 return;
             }
             _currentImgUrl = data.image_url;
@@ -379,7 +385,7 @@
             }
         })
         .catch(function(err) {
-            _showError('Something went wrong. Please check your connection and try again.');
+            if (err !== 'rate') _showError('Something went wrong. Please check your connection and try again.');
         });
     };
 
