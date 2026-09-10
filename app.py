@@ -108,6 +108,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS has_transparency BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS title VARCHAR(200)",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS folder VARCHAR(100)",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS extra_categories TEXT",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS sku VARCHAR(50)",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS gallery_submitted BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS gallery_status VARCHAR(20)",

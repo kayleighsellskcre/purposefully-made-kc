@@ -1954,6 +1954,7 @@
                     {% else %}
                     {# Regular shop: tabbed category picker + search + paginated grid #}
                     {%- macro _dcat(d) -%}{%- set _f = (d.folder or '')|lower -%}{%- if _f in ['faith','bible','inspirational'] -%}Faith & Inspiration{%- elif _f == 'sports' -%}Sports{%- elif _f == 'school' -%}School{%- elif _f in ['couples','family'] -%}Couples & Family{%- elif _f in ['holiday','seasonal'] -%}Holiday{%- elif _f == 'kc' -%}Kansas City{%- elif _f == 'funny' -%}Funny{%- elif _f in ['luxury_basics','luxury'] -%}Luxury Basics{%- else -%}Fan Favorites{%- endif -%}{%- endmacro -%}
+                    {%- macro _rawcat(f) -%}{%- set _f = (f or '')|lower|trim -%}{%- if _f in ['faith','bible','inspirational'] -%}Faith & Inspiration{%- elif _f == 'sports' -%}Sports{%- elif _f == 'school' -%}School{%- elif _f in ['couples','family'] -%}Couples & Family{%- elif _f in ['holiday','seasonal'] -%}Holiday{%- elif _f == 'kc' -%}Kansas City{%- elif _f == 'funny' -%}Funny{%- elif _f in ['luxury_basics','luxury'] -%}Luxury Basics{%- elif _f in ['evergreen','favorites'] -%}Fan Favorites{%- else -%}{%- endif -%}{%- endmacro -%}
                     {%- set _ns = namespace(faith=0,sports=0,school=0,couples=0,holiday=0,kc=0,funny=0,luxury=0,favs=0) -%}
                     {%- for d in gallery_designs -%}{%- set _f=(d.folder or '')|lower -%}{%- if _f in ['faith','bible','inspirational'] -%}{%- set _ns.faith=_ns.faith+1 -%}{%- elif _f=='sports' -%}{%- set _ns.sports=_ns.sports+1 -%}{%- elif _f=='school' -%}{%- set _ns.school=_ns.school+1 -%}{%- elif _f in ['couples','family'] -%}{%- set _ns.couples=_ns.couples+1 -%}{%- elif _f in ['holiday','seasonal'] -%}{%- set _ns.holiday=_ns.holiday+1 -%}{%- elif _f=='kc' -%}{%- set _ns.kc=_ns.kc+1 -%}{%- elif _f=='funny' -%}{%- set _ns.funny=_ns.funny+1 -%}{%- elif _f in ['luxury_basics','luxury'] -%}{%- set _ns.luxury=_ns.luxury+1 -%}{%- else -%}{%- set _ns.favs=_ns.favs+1 -%}{%- endif -%}{%- endfor -%}
                     <div class="logo-gallery-inline gallery-design-picker" id="logoGalleryInline">
@@ -1989,11 +1990,15 @@
                         {# ── Design grid — all tiles, JS shows/hides ── #}
                         <div class="logo-gallery-grid gallery-image-grid" id="logoGalleryGrid">
                             {%- for d in gallery_designs -%}
+                            {%- set _primary_cat = _dcat(d) -%}
+                            {%- set _extra_ns = namespace(cats=_primary_cat) -%}
+                            {%- for _raw in (d.extra_categories or '').split(',') -%}{%- set _raw = _raw.strip() -%}{%- if _raw -%}{%- set _mapped = _rawcat(_raw) -%}{%- if _mapped != _primary_cat -%}{%- set _extra_ns.cats = _extra_ns.cats + '|' + _mapped -%}{%- endif -%}{%- endif -%}{%- endfor -%}
                             <div class="logo-gallery-item{% if preset_design and (preset_design.id == d.id or preset_design.parent_design_id == d.id) %} selected{% endif %}"
                                  data-design-id="{{ d.id }}"
                                  data-design-url="{{ d.url }}"
                                  data-design-title="{{ d.title }}"
-                                 data-category="{{ _dcat(d) }}"
+                                 data-category="{{ _primary_cat }}"
+                                 data-categories="{{ _extra_ns.cats }}"
                                  data-has-colors="{{ '1' if d.has_colors else '0' }}"
                                  data-variants='{{ d.variants | tojson }}'
                                  role="button" tabindex="0"
@@ -4917,7 +4922,9 @@
         var q = _searchQuery.toLowerCase().trim();
         var passing = [];
         _tiles().forEach(function(tile) {
-            var catMatch   = (_activeTab === 'All') || (tile.dataset.category === _activeTab);
+            var catMatch = (_activeTab === 'All') ||
+                (tile.getAttribute('data-categories') || tile.dataset.category || '')
+                    .split('|').indexOf(_activeTab) !== -1;
             var titleMatch = !q || (tile.getAttribute('data-design-title') || '').toLowerCase().indexOf(q) !== -1;
             if (catMatch && titleMatch) passing.push(tile);
         });

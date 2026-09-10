@@ -361,7 +361,8 @@ class Design(db.Model):
     gallery_reviewed_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     
     # Design organization
-    folder = db.Column(db.String(100))  # custom_orders, evergreen, school, holiday, sports, etc.
+    folder = db.Column(db.String(100))  # primary category: custom_orders, evergreen, school, holiday, sports, etc.
+    extra_categories = db.Column(db.Text)   # comma-separated additional folder tags, e.g. "kc,sports"
     sku = db.Column(db.String(50))  # SKU number
     
     # Soft-hide from admin Design Library without removing the customer's copy

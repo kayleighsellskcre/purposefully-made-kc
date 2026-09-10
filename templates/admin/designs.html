@@ -205,6 +205,7 @@
                 <div class="gallery-design-card" data-design-id="{{ design.id }}"
                      data-title="{{ design.title or design.original_filename or '' }}"
                      data-folder="{{ design.folder or 'custom_orders' }}"
+                     data-extra-categories="{{ design.extra_categories or '' }}"
                      data-sku="{{ design.sku or '' }}"
                      data-variant-label="{{ design.variant_label or '' }}"
                      data-edit-url="{{ url_for('admin.design_gallery_edit', design_id=design.id) }}">
@@ -213,7 +214,7 @@
                     </div>
                     <div class="design-card-body">
                         <strong class="design-card-name">{{ design.title or design.original_filename }}</strong>
-                        <p class="design-card-meta">{{ design.folder or 'No folder' }} &middot; {{ design.sku or 'No SKU' }}{% if variants %} &middot; {{ variants|length + 1 }} colors{% endif %}</p>
+                        <p class="design-card-meta">{{ design.folder or 'No folder' }}{% if design.extra_categories %} <span style="color:var(--terra-cotta,#b87c6f);">+{{ design.extra_categories.split(',')|length }}</span>{% endif %} &middot; {{ design.sku or 'No SKU' }}{% if variants %} &middot; {{ variants|length + 1 }} colors{% endif %}</p>
                         {% if variants %}
                         <div class="gallery-variant-thumbs" style="display:flex;flex-wrap:wrap;gap:0.35rem;margin:0.5rem 0 0.75rem;">
                             <span title="{{ design.variant_label or 'Default' }}" style="width:36px;height:36px;border-radius:6px;overflow:hidden;border:1px solid var(--border-color);background:#fff;display:inline-flex;">
@@ -414,6 +415,12 @@
 .prod-modal-body { padding: 1.25rem 1.75rem 1.75rem; }
 .prod-modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; flex-wrap: wrap; }
 @media (max-width: 480px) { .prod-modal-actions { flex-direction: column-reverse; } .prod-modal-actions .btn { width: 100%; } }
+
+/* Category chip checkboxes */
+.cat-chip { display:inline-flex; align-items:center; gap:0.35rem; padding:0.3rem 0.8rem; border-radius:999px; border:1.5px solid var(--border-color,#e0d8cc); font-size:0.78rem; cursor:pointer; transition:border-color 0.15s,background 0.15s,color 0.15s; user-select:none; font-family:inherit; }
+.cat-chip:hover { border-color:var(--terra-cotta,#b87c6f); }
+.cat-chip input[type="checkbox"] { width:0.82rem; height:0.82rem; accent-color:var(--terra-cotta,#b87c6f); margin:0; flex-shrink:0; }
+.cat-chip:has(input:checked) { border-color:var(--terra-cotta,#b87c6f); background:rgba(184,124,111,0.12); color:var(--terra-cotta,#b87c6f); font-weight:600; }
 
 .pending-designs-section { margin-bottom: 3rem; padding: 1.5rem; background: rgba(212,175,55,0.07); border: 1px dashed var(--aged-bronze, #b8956f); border-radius: 12px; }
 
@@ -633,6 +640,21 @@
                     </select>
                 </div>
                 <div class="form-group" style="margin-bottom:1rem;">
+                    <label class="form-label" style="margin-bottom:0.5rem;">Also appears in <small style="font-weight:400;color:#aaa;">— select all other tabs this design fits</small></label>
+                    <div id="editExtraCategories" style="display:flex;flex-wrap:wrap;gap:0.4rem;">
+                        <label class="cat-chip"><input type="checkbox" name="extra_categories" value="faith"> Faith &amp; Inspiration</label>
+                        <label class="cat-chip"><input type="checkbox" name="extra_categories" value="sports"> Sports</label>
+                        <label class="cat-chip"><input type="checkbox" name="extra_categories" value="school"> School</label>
+                        <label class="cat-chip"><input type="checkbox" name="extra_categories" value="couples"> Couples &amp; Family</label>
+                        <label class="cat-chip"><input type="checkbox" name="extra_categories" value="holiday"> Holiday</label>
+                        <label class="cat-chip"><input type="checkbox" name="extra_categories" value="kc"> Kansas City</label>
+                        <label class="cat-chip"><input type="checkbox" name="extra_categories" value="evergreen"> Fan Favorites</label>
+                        <label class="cat-chip"><input type="checkbox" name="extra_categories" value="funny"> Funny</label>
+                        <label class="cat-chip"><input type="checkbox" name="extra_categories" value="luxury_basics"> Luxury Basics</label>
+                    </div>
+                    <small style="color:#bbb;font-size:0.75rem;margin-top:0.35rem;display:block;">The primary Folder above is always included — these add it to extra tabs too.</small>
+                </div>
+                <div class="form-group" style="margin-bottom:1rem;">
                     <label for="editSku" class="form-label">SKU</label>
                     <input type="text" id="editSku" name="sku" class="form-control" maxlength="50" placeholder="e.g. DSG-001">
                 </div>
@@ -778,6 +800,11 @@ function openGalleryEdit(id) {
     document.getElementById('editSku').value = card.getAttribute('data-sku') || '';
     document.getElementById('editVariantLabel').value = card.getAttribute('data-variant-label') || '';
     document.getElementById('editFile').value = '';
+    // Pre-check extra category boxes
+    const extras = (card.getAttribute('data-extra-categories') || '').split(',').map(s => s.trim()).filter(Boolean);
+    document.querySelectorAll('#editExtraCategories input[type="checkbox"]').forEach(function(cb) {
+        cb.checked = extras.indexOf(cb.value) !== -1;
+    });
     document.getElementById('galleryEditModal').classList.add('is-open');
     document.body.style.overflow = 'hidden';
     setTimeout(function() { document.getElementById('editTitle').focus(); }, 50);

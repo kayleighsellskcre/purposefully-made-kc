@@ -3496,11 +3496,15 @@ def design_gallery_edit(design_id):
         folder = 'custom_orders'
     sku = (request.form.get('sku') or '').strip()
     variant_label = (request.form.get('variant_label') or '').strip()[:80]
+    # Extra categories: comma-separated additional tabs this design appears in
+    extra_cats_raw = request.form.getlist('extra_categories')
+    extra_cats = ','.join(c for c in extra_cats_raw if c in GALLERY_FOLDERS and c != folder)
 
     try:
         if title:
             design.title = title[:200]
         design.folder = folder
+        design.extra_categories = extra_cats or None
         design.sku = sku[:50] if sku else None
         design.variant_label = variant_label or design.variant_label
 
@@ -3586,6 +3590,7 @@ def design_gallery_edit(design_id):
             'id': design.id,
             'title': design.title or design.original_filename or 'Design',
             'folder': design.folder or 'custom_orders',
+            'extra_categories': design.extra_categories or '',
             'sku': design.sku or '',
             'image_url': resolve_image_url(design.file_path) if design.file_path else '',
         },
