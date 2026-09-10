@@ -19,7 +19,8 @@
 
         {% if designs %}
 
-        {# ── Category macros ── #}
+        {# ── Category + auto-group macros ── #}
+        {%- macro _autogroup(title) -%}{%- set _t=(title or '')|lower -%}{%- if 'chief' in _t -%}Kansas City Chiefs{%- elif 'royal' in _t -%}Kansas City Royals{%- elif 'sporting' in _t -%}Sporting KC{%- elif 'kc current' in _t or 'current fc' in _t -%}KC Current{%- elif 'jayhawk' in _t -%}KU Jayhawks{%- elif 'wildcat' in _t or 'k-state' in _t or 'kstate' in _t -%}K-State Wildcats{%- elif 'mizzou' in _t or ('tiger' in _t and 'mu' in _t) -%}Mizzou Tigers{%- elif 'riverview' in _t -%}Riverview Falcons{%- elif 'falcon' in _t -%}Falcons{%- elif 'eagle' in _t -%}Eagles{%- elif 'bulldog' in _t -%}Bulldogs{%- elif 'bear' in _t -%}Bears{%- elif 'patriot' in _t -%}Patriots{%- elif 'trojan' in _t -%}Trojans{%- elif 'panther' in _t -%}Panthers{%- elif 'cardinal' in _t -%}Cardinals{%- elif 'tiger' in _t -%}Tigers{%- elif 'hawk' in _t -%}Hawks{%- else -%}{%- endif -%}{%- endmacro -%}
         {%- macro _dcat(d) -%}{%- set _f=(d.folder or '')|lower -%}{%- if _f in ['faith','bible','inspirational'] -%}Faith & Inspiration{%- elif _f=='sports' -%}Sports{%- elif _f=='school' -%}School{%- elif _f in ['couples','family'] -%}Couples & Family{%- elif _f in ['holiday','seasonal'] -%}Holiday{%- elif _f=='kc' -%}Kansas City{%- elif _f=='funny' -%}Funny{%- elif _f in ['luxury_basics','luxury'] -%}Luxury Basics{%- else -%}Fan Favorites{%- endif -%}{%- endmacro -%}
         {%- macro _rawcat(f) -%}{%- set _f=(f or '')|lower|trim -%}{%- if _f in ['faith','bible','inspirational'] -%}Faith & Inspiration{%- elif _f=='sports' -%}Sports{%- elif _f=='school' -%}School{%- elif _f in ['couples','family'] -%}Couples & Family{%- elif _f in ['holiday','seasonal'] -%}Holiday{%- elif _f=='kc' -%}Kansas City{%- elif _f=='funny' -%}Funny{%- elif _f in ['luxury_basics','luxury'] -%}Luxury Basics{%- elif _f in ['evergreen','favorites','fan_favorites'] -%}Fan Favorites{%- else -%}{%- endif -%}{%- endmacro -%}
         {%- macro _ck(f) -%}{%- set _f=(f or '')|lower|trim -%}{%- if _f in ['faith','bible','inspirational'] -%}faith{%- elif _f=='sports' -%}sports{%- elif _f=='school' -%}school{%- elif _f in ['couples','family'] -%}couples{%- elif _f in ['holiday','seasonal'] -%}holiday{%- elif _f=='kc' -%}kc{%- elif _f=='funny' -%}funny{%- elif _f in ['luxury_basics','luxury'] -%}luxury{%- elif _f in ['evergreen','favorites','fan_favorites'] -%}favs{%- else -%}{%- endif -%}{%- endmacro -%}
@@ -57,7 +58,8 @@
                  data-title="{{ design.title }}"
                  data-has-colors="{{ '1' if design.has_colors else '0' }}"
                  data-variants='{{ design.variants | tojson }}'
-                 data-categories="{{ _extra_ns.cats }}">
+                 data-categories="{{ _extra_ns.cats }}"
+                 data-group="{{ _autogroup(design.title) }}">
                 <div class="gallery-card-image">
                     <img src="{{ design.url }}"
                          alt="{{ design.title }}"
@@ -161,6 +163,27 @@
     padding: 3rem 1rem;
     color: var(--text-secondary);
     display: none;
+}
+.dg-group-header {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1.5rem 0 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--terra-cotta, #b87c6f);
+}
+.dg-group-header::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-color, #e0d8cc);
+}
+.dg-group-header:first-child {
+    margin-top: 0;
 }
 
 /* ── Gallery Section ── */
@@ -588,29 +611,77 @@
     });
 })();
 
-// ── Design Gallery category filter ──────────────────────────────
+// ── Design Gallery category filter + group headers ───────────────
 (function() {
     var _activeTab = 'All';
 
-    function _cards() {
+    function _allCards() {
         return Array.from(document.querySelectorAll('#dgGrid .gallery-card'));
     }
 
+    function _removeGroupHeaders() {
+        document.querySelectorAll('#dgGrid .dg-group-header').forEach(function(h) { h.remove(); });
+    }
+
     function _applyFilter() {
-        var cards = _cards();
-        var visible = 0;
+        var grid = document.getElementById('dgGrid');
+        if (!grid) return;
+
+        _removeGroupHeaders();
+
+        var cards = _allCards();
+
+        // Separate visible from hidden
+        var visible = [];
         cards.forEach(function(card) {
             var cats = (card.getAttribute('data-categories') || '').split('|');
             var show = _activeTab === 'All' || cats.indexOf(_activeTab) !== -1;
             card.style.display = show ? '' : 'none';
-            if (show) visible++;
+            if (show) visible.push(card);
         });
-        var counter = document.getElementById('dgCount');
-        if (counter) {
-            counter.textContent = visible + ' design' + (visible !== 1 ? 's' : '') + ' available';
+
+        // Group and re-order when NOT on "All" tab
+        if (_activeTab !== 'All' && visible.length > 0) {
+            var groups = {};
+            var noGroup = [];
+            visible.forEach(function(card) {
+                var g = (card.getAttribute('data-group') || '').trim();
+                if (g) {
+                    if (!groups[g]) groups[g] = [];
+                    groups[g].push(card);
+                } else {
+                    noGroup.push(card);
+                }
+            });
+
+            var groupNames = Object.keys(groups).sort();
+
+            // Re-insert cards in group order with headers
+            groupNames.forEach(function(g) {
+                var hdr = document.createElement('div');
+                hdr.className = 'dg-group-header';
+                hdr.textContent = g;
+                grid.appendChild(hdr);
+                groups[g].forEach(function(card) { grid.appendChild(card); });
+            });
+
+            // Ungrouped at end — no header unless there were named groups
+            if (noGroup.length > 0) {
+                if (groupNames.length > 0) {
+                    var other = document.createElement('div');
+                    other.className = 'dg-group-header';
+                    other.textContent = 'Other';
+                    grid.appendChild(other);
+                }
+                noGroup.forEach(function(card) { grid.appendChild(card); });
+            }
         }
+
+        // Update count + empty state
+        var counter = document.getElementById('dgCount');
+        if (counter) counter.textContent = visible.length + ' design' + (visible.length !== 1 ? 's' : '') + ' available';
         var empty = document.getElementById('dgEmptyState');
-        if (empty) empty.style.display = visible === 0 ? 'block' : 'none';
+        if (empty) empty.style.display = visible.length === 0 ? 'block' : 'none';
     }
 
     window.dgTab = function(btn) {

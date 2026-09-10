@@ -686,6 +686,26 @@
     color: var(--text-primary);
 }
 
+.cust-group-header {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.85rem 0 0.15rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--terra-cotta, #b87c6f);
+}
+.cust-group-header::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-color, #e0d8cc);
+}
+.cust-group-header:first-child { margin-top: 0; }
+
 .gallery-image-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
@@ -1953,6 +1973,7 @@
                     </div>
                     {% else %}
                     {# Regular shop: tabbed category picker + search + paginated grid #}
+                    {%- macro _autogroup(title) -%}{%- set _t=(title or '')|lower -%}{%- if 'chief' in _t -%}Kansas City Chiefs{%- elif 'royal' in _t -%}Kansas City Royals{%- elif 'sporting' in _t -%}Sporting KC{%- elif 'kc current' in _t or 'current fc' in _t -%}KC Current{%- elif 'jayhawk' in _t -%}KU Jayhawks{%- elif 'wildcat' in _t or 'k-state' in _t or 'kstate' in _t -%}K-State Wildcats{%- elif 'mizzou' in _t or ('tiger' in _t and 'mu' in _t) -%}Mizzou Tigers{%- elif 'riverview' in _t -%}Riverview Falcons{%- elif 'falcon' in _t -%}Falcons{%- elif 'eagle' in _t -%}Eagles{%- elif 'bulldog' in _t -%}Bulldogs{%- elif 'bear' in _t -%}Bears{%- elif 'patriot' in _t -%}Patriots{%- elif 'trojan' in _t -%}Trojans{%- elif 'panther' in _t -%}Panthers{%- elif 'cardinal' in _t -%}Cardinals{%- elif 'tiger' in _t -%}Tigers{%- elif 'hawk' in _t -%}Hawks{%- else -%}{%- endif -%}{%- endmacro -%}
                     {%- macro _dcat(d) -%}{%- set _f = (d.folder or '')|lower -%}{%- if _f in ['faith','bible','inspirational'] -%}Faith & Inspiration{%- elif _f == 'sports' -%}Sports{%- elif _f == 'school' -%}School{%- elif _f in ['couples','family'] -%}Couples & Family{%- elif _f in ['holiday','seasonal'] -%}Holiday{%- elif _f == 'kc' -%}Kansas City{%- elif _f == 'funny' -%}Funny{%- elif _f in ['luxury_basics','luxury'] -%}Luxury Basics{%- elif _f in ['evergreen','favorites','fan_favorites',''] -%}Fan Favorites{%- else -%}Fan Favorites{%- endif -%}{%- endmacro -%}
                     {%- macro _rawcat(f) -%}{%- set _f = (f or '')|lower|trim -%}{%- if _f in ['faith','bible','inspirational'] -%}Faith & Inspiration{%- elif _f == 'sports' -%}Sports{%- elif _f == 'school' -%}School{%- elif _f in ['couples','family'] -%}Couples & Family{%- elif _f in ['holiday','seasonal'] -%}Holiday{%- elif _f == 'kc' -%}Kansas City{%- elif _f == 'funny' -%}Funny{%- elif _f in ['luxury_basics','luxury'] -%}Luxury Basics{%- elif _f in ['evergreen','favorites'] -%}Fan Favorites{%- else -%}{%- endif -%}{%- endmacro -%}
                     {%- set _ns = namespace(faith=0,sports=0,school=0,couples=0,holiday=0,kc=0,funny=0,luxury=0,favs=0) -%}
@@ -2007,6 +2028,7 @@
                                  data-design-title="{{ d.title }}"
                                  data-category="{{ _primary_cat }}"
                                  data-categories="{{ _extra_ns.cats }}"
+                                 data-group="{{ _autogroup(d.title) }}"
                                  data-has-colors="{{ '1' if d.has_colors else '0' }}"
                                  data-variants='{{ d.variants | tojson }}'
                                  role="button" tabindex="0"
@@ -4937,11 +4959,42 @@
             if (catMatch && titleMatch) passing.push(tile);
         });
 
+        // Sort by group when on a specific category (no search active)
+        if (_activeTab !== 'All' && !q && passing.length > 0) {
+            passing.sort(function(a, b) {
+                var ga = a.getAttribute('data-group') || 'zzz';
+                var gb = b.getAttribute('data-group') || 'zzz';
+                return ga < gb ? -1 : ga > gb ? 1 : 0;
+            });
+        }
+
         var total  = passing.length;
         var toShow = Math.min(_visibleCount, total);
 
+        // Remove old group headers
+        grid.querySelectorAll('.cust-group-header').forEach(function(h) { h.remove(); });
+
         _tiles().forEach(function(t) { t.style.display = 'none'; });
-        for (var i = 0; i < toShow; i++) passing[i].style.display = '';
+
+        // Re-insert visible tiles in group order with headers
+        if (_activeTab !== 'All' && !q && toShow > 0) {
+            var lastGroup = null;
+            for (var i = 0; i < toShow; i++) {
+                var tile = passing[i];
+                var g = (tile.getAttribute('data-group') || '').trim();
+                if (g && g !== lastGroup) {
+                    var hdr = document.createElement('div');
+                    hdr.className = 'cust-group-header';
+                    hdr.textContent = g;
+                    grid.appendChild(hdr);
+                    lastGroup = g;
+                }
+                grid.appendChild(tile);
+                tile.style.display = '';
+            }
+        } else {
+            for (var i = 0; i < toShow; i++) passing[i].style.display = '';
+        }
 
         if (counter) {
             counter.textContent = total === 0 ? '' :
