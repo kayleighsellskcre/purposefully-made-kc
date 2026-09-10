@@ -37,6 +37,20 @@
                 <button type="button" class="ai-chip" data-style="faith Christian inspirational">Faith</button>
             </div>
 
+            {# Optional reference image #}
+            <p class="ai-label" style="margin-top:1.25rem;">Got a reference image? (optional)</p>
+            <div class="ai-ref-upload" id="aiRefUploadArea" onclick="document.getElementById('aiReferenceInput').click()">
+                <input type="file" id="aiReferenceInput" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none">
+                <div class="ai-ref-placeholder" id="aiRefPlaceholder">
+                    <span class="ai-ref-icon">🖼️</span>
+                    <span>Upload a photo or screenshot for the AI to draw from</span>
+                </div>
+                <div class="ai-ref-preview-wrap" id="aiRefPreviewWrap" style="display:none">
+                    <img id="aiRefPreviewImg" src="" alt="Reference" class="ai-ref-preview-img">
+                    <button type="button" class="ai-ref-remove" id="aiRefRemoveBtn" onclick="event.stopPropagation(); aiRemoveReference()">✕ Remove</button>
+                </div>
+            </div>
+
             <p class="ai-label" style="margin-top:1.25rem;">Describe your design</p>
             <textarea id="aiPromptInput" class="ai-textarea"
                 placeholder="e.g. Kansas City Chiefs helmet surrounded by sunflowers in a vintage style..."
@@ -161,6 +175,27 @@
     color: var(--terra-cotta, #b87c6f);
     font-weight: 600;
 }
+
+/* Reference image upload */
+.ai-ref-upload {
+    border: 2px dashed var(--border-color, #e0d8cc);
+    border-radius: 10px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: #faf9f6;
+    margin-bottom: 0.25rem;
+}
+.ai-ref-upload:hover { border-color: var(--terra-cotta, #b87c6f); background: rgba(184,124,111,0.04); }
+.ai-ref-placeholder { display: flex; align-items: center; gap: 0.6rem; color: var(--text-secondary); font-size: 0.88rem; }
+.ai-ref-icon { font-size: 1.3rem; }
+.ai-ref-preview-wrap { display: flex; align-items: center; gap: 1rem; }
+.ai-ref-preview-img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-color); }
+.ai-ref-remove {
+    background: none; border: 1px solid #fcc; color: #c0392b; border-radius: 6px;
+    font-size: 0.78rem; padding: 0.25rem 0.6rem; cursor: pointer;
+}
+.ai-ref-remove:hover { background: #fff5f5; }
 
 /* Textarea */
 .ai-textarea {
@@ -298,6 +333,31 @@
 (function() {
     var _selectedStyle  = '';
     var _currentImgUrl  = '';
+    var _referenceImg   = null;  // base64 data URL of optional reference image
+
+    // ── Reference image upload ──
+    var refInput = document.getElementById('aiReferenceInput');
+    if (refInput) {
+        refInput.addEventListener('change', function() {
+            var file = this.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                _referenceImg = e.target.result;
+                document.getElementById('aiRefPreviewImg').src = _referenceImg;
+                document.getElementById('aiRefPreviewWrap').style.display = '';
+                document.getElementById('aiRefPlaceholder').style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    window.aiRemoveReference = function() {
+        _referenceImg = null;
+        var inp = document.getElementById('aiReferenceInput');
+        if (inp) inp.value = '';
+        document.getElementById('aiRefPreviewWrap').style.display = 'none';
+        document.getElementById('aiRefPlaceholder').style.display = '';
+    };
 
     // ── Style chip toggle ──
     document.querySelectorAll('.ai-chip').forEach(function(chip) {
@@ -366,7 +426,7 @@
         fetch('{{ url_for("custom_request.ai_design_generate") }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' },
-            body: JSON.stringify({ prompt: fullPrompt }),
+            body: JSON.stringify({ prompt: fullPrompt, reference_image: _referenceImg || null }),
         })
         .then(function(r) {
             if (r.status === 429) { _cancelPoll(); _showError('You have reached the limit of 5 designs per hour. Please try again later.'); return Promise.reject('rate'); }

@@ -51,30 +51,53 @@ def _cleanup_old_jobs() -> None:
         pass
 
 
-def _run_image_generation(app, job_id: str, api_key: str, enhanced_prompt: str) -> None:
-    """Background thread: call OpenAI and write result to /tmp/ai_jobs/."""
+def _run_image_generation(app, job_id: str, api_key: str, enhanced_prompt: str,
+                          reference_b64: str | None = None) -> None:
+    """Background thread: call OpenAI and write result to /tmp/ai_jobs/.
+
+    If reference_b64 is provided (a data-URL base64 string) we use the
+    /images/edits endpoint so the AI uses it as visual inspiration.
+    Otherwise we use /images/generations.
+    """
+    import io as _io
+    import base64 as _b64
     with app.app_context():
         try:
             import requests as req_lib
-            headers = {
-                'Authorization': f'Bearer {api_key}',
-                'Content-Type': 'application/json',
-            }
-            body = {
-                'model': 'gpt-image-1',
-                'prompt': enhanced_prompt,
-                'n': 1,
-                'size': '1024x1024',
-                'quality': 'high',
-                'background': 'transparent',
-                'output_format': 'png',
-            }
-            resp = req_lib.post(
-                'https://api.openai.com/v1/images/generations',
-                headers=headers,
-                json=body,
-                timeout=120,
-            )
+            auth_header = {'Authorization': f'Bearer {api_key}'}
+
+            if reference_b64:
+                # Strip the data-URL prefix (data:image/png;base64,...)
+                raw = reference_b64.split(',', 1)[1] if ',' in reference_b64 else reference_b64
+                img_bytes = _b64.b64decode(raw)
+                resp = req_lib.post(
+                    'https://api.openai.com/v1/images/edits',
+                    headers=auth_header,
+                    files={'image': ('reference.png', _io.BytesIO(img_bytes), 'image/png')},
+                    data={
+                        'model': 'gpt-image-1',
+                        'prompt': enhanced_prompt,
+                        'n': '1',
+                        'size': '1024x1024',
+                        'quality': 'high',
+                    },
+                    timeout=120,
+                )
+            else:
+                resp = req_lib.post(
+                    'https://api.openai.com/v1/images/generations',
+                    headers={**auth_header, 'Content-Type': 'application/json'},
+                    json={
+                        'model': 'gpt-image-1',
+                        'prompt': enhanced_prompt,
+                        'n': 1,
+                        'size': '1024x1024',
+                        'quality': 'high',
+                        'background': 'transparent',
+                        'output_format': 'png',
+                    },
+                    timeout=120,
+                )
             if resp.status_code != 200:
                 api_err = resp.text[:400]
                 app.logger.warning('AI image error %s: %s', resp.status_code, api_err)
@@ -345,6 +368,8 @@ def ai_design_generate():
     if len(prompt) > 800:
         return jsonify({'ok': False, 'error': 'Description is too long (800 character limit).'})
 
+    reference_b64 = payload.get('reference_image') or None  # optional data-URL from frontend
+
     enhanced_prompt = (
         f'{prompt}. '
         'Design for DTF heat-transfer printing on a t-shirt. Transparent background. '
@@ -359,7 +384,7 @@ def ai_design_generate():
     app_obj = current_app._get_current_object()
     threading.Thread(
         target=_run_image_generation,
-        args=(app_obj, job_id, api_key, enhanced_prompt),
+        args=(app_obj, job_id, api_key, enhanced_prompt, reference_b64),
         daemon=True,
     ).start()
 
