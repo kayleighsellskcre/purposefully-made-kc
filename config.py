@@ -81,6 +81,9 @@ class Config:
     SCHEDULER_ENABLED = os.environ.get('SCHEDULER_ENABLED', 'true').lower() not in ('false', '0', 'no')
     SCHEDULER_API_ENABLED = False  # Don't expose scheduler API endpoints
     
+    # OpenAI / AI Design Studio
+    OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+
     # Stripe settings
     STRIPE_PUBLIC_KEY = os.environ.get('STRIPE_PUBLIC_KEY')
     STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
