@@ -1533,6 +1533,122 @@
 .size-chart-table tr:last-child td {
     border-bottom: none;
 }
+
+/* ── Tabbed Design Picker ──────────────────────────────────────── */
+.design-picker-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-bottom: 0.75rem;
+}
+.design-tab-btn {
+    padding: 0.4rem 1rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--terra-cotta, #b87c6f);
+    background: transparent;
+    color: var(--terra-cotta, #b87c6f);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+    white-space: nowrap;
+    line-height: 1.3;
+    font-family: inherit;
+}
+.design-tab-btn:hover {
+    background: rgba(184,124,111,0.1);
+}
+.design-tab-btn.active {
+    background: var(--terra-cotta, #b87c6f);
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(184,124,111,0.3);
+}
+.design-tab-count {
+    opacity: 0.75;
+    font-weight: 400;
+    font-size: 0.72rem;
+}
+.design-search-wrap {
+    position: relative;
+    margin-bottom: 0.75rem;
+}
+.design-search-icon {
+    position: absolute;
+    left: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #aaa;
+    font-size: 0.85rem;
+    pointer-events: none;
+    line-height: 1;
+}
+.design-search-input {
+    width: 100%;
+    border: 1.5px solid #ddd;
+    border-radius: 999px;
+    padding: 0.5rem 2.4rem 0.5rem 2.2rem;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+    font-family: inherit;
+    background: #fff;
+}
+.design-search-input:focus {
+    border-color: var(--terra-cotta, #b87c6f);
+}
+.design-search-clear {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #aaa;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0.2rem;
+    display: none;
+}
+.design-search-clear:hover { color: #555; }
+.design-picker-counter {
+    font-size: 0.78rem;
+    color: var(--text-light, #999);
+    text-align: center;
+    margin-top: 0.5rem;
+    min-height: 1.1em;
+}
+.design-empty-state {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--text-secondary, #888);
+    display: none;
+}
+.design-empty-icon { font-size: 2rem; margin-bottom: 0.4rem; }
+.design-empty-state a {
+    color: var(--terra-cotta, #b87c6f);
+    cursor: pointer;
+    text-decoration: underline;
+}
+.design-show-more-btn {
+    display: none;
+    margin: 0.75rem auto 0;
+    padding: 0.45rem 1.4rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--terra-cotta, #b87c6f);
+    background: transparent;
+    color: var(--terra-cotta, #b87c6f);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    font-family: inherit;
+}
+.design-show-more-btn:hover {
+    background: var(--terra-cotta, #b87c6f);
+    color: #fff;
+}
 </style>
 {% endblock %}
 
@@ -1809,9 +1925,6 @@
                         </div>
                     </div>
                     {% endif %}
-                    {% if gallery_designs %}
-                    <p class="logo-gallery-label" style="margin-bottom: 0.5rem;">Or pick from gallery:</p>
-                    {% endif %}
                     {% endif %}
                     
                     {% if gallery_designs %}
@@ -1832,23 +1945,63 @@
                         </div>
                     </div>
                     {% else %}
-                    {# Regular shop: one card per design; multi-color designs open a quick color picker. #}
+                    {# Regular shop: tabbed category picker + search + paginated grid #}
+                    {%- macro _dcat(d) -%}{%- set _f = (d.folder or '')|lower -%}{%- if _f in ['faith','bible','inspirational'] -%}Faith & Inspiration{%- elif _f == 'sports' -%}Sports{%- elif _f == 'school' -%}School{%- elif _f in ['couples','family'] -%}Couples & Family{%- elif _f in ['holiday','seasonal'] -%}Holiday{%- else -%}Fan Favorites{%- endif -%}{%- endmacro -%}
+                    {%- set _ns = namespace(faith=0,sports=0,school=0,couples=0,holiday=0,favs=0) -%}
+                    {%- for d in gallery_designs -%}{%- set _f=(d.folder or '')|lower -%}{%- if _f in ['faith','bible','inspirational'] -%}{%- set _ns.faith=_ns.faith+1 -%}{%- elif _f=='sports' -%}{%- set _ns.sports=_ns.sports+1 -%}{%- elif _f=='school' -%}{%- set _ns.school=_ns.school+1 -%}{%- elif _f in ['couples','family'] -%}{%- set _ns.couples=_ns.couples+1 -%}{%- elif _f in ['holiday','seasonal'] -%}{%- set _ns.holiday=_ns.holiday+1 -%}{%- else -%}{%- set _ns.favs=_ns.favs+1 -%}{%- endif -%}{%- endfor -%}
                     <div class="logo-gallery-inline gallery-design-picker" id="logoGalleryInline">
-                        <p class="logo-gallery-label">Gallery designs — tap one to use</p>
+
+                        {# ── Tab bar ── #}
+                        <div class="design-picker-tabs" id="designTabBar" role="tablist" aria-label="Design categories">
+                            <button class="design-tab-btn active" data-tab="All" onclick="filterDesignTab(this)" role="tab" aria-selected="true">All <span class="design-tab-count">({{ gallery_designs|length }})</span></button>
+                            {%- if _ns.faith > 0 %}<button class="design-tab-btn" data-tab="Faith & Inspiration" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Faith & Inspiration <span class="design-tab-count">({{ _ns.faith }})</span></button>{% endif -%}
+                            {%- if _ns.sports > 0 %}<button class="design-tab-btn" data-tab="Sports" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Sports <span class="design-tab-count">({{ _ns.sports }})</span></button>{% endif -%}
+                            {%- if _ns.school > 0 %}<button class="design-tab-btn" data-tab="School" onclick="filterDesignTab(this)" role="tab" aria-selected="false">School <span class="design-tab-count">({{ _ns.school }})</span></button>{% endif -%}
+                            {%- if _ns.couples > 0 %}<button class="design-tab-btn" data-tab="Couples & Family" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Couples & Family <span class="design-tab-count">({{ _ns.couples }})</span></button>{% endif -%}
+                            {%- if _ns.holiday > 0 %}<button class="design-tab-btn" data-tab="Holiday" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Holiday <span class="design-tab-count">({{ _ns.holiday }})</span></button>{% endif -%}
+                            {%- if _ns.favs > 0 %}<button class="design-tab-btn" data-tab="Fan Favorites" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Fan Favorites <span class="design-tab-count">({{ _ns.favs }})</span></button>{% endif -%}
+                        </div>
+
+                        {# ── Search bar ── #}
+                        <div class="design-search-wrap">
+                            <span class="design-search-icon">🔍</span>
+                            <input type="text" class="design-search-input" id="designSearchInput"
+                                   placeholder="Search designs…" autocomplete="off"
+                                   oninput="onDesignSearch(this.value)">
+                            <button class="design-search-clear" id="designSearchClear"
+                                    onclick="clearDesignSearch()" aria-label="Clear search">✕</button>
+                        </div>
+
+                        {# ── Design grid — all tiles, JS shows/hides ── #}
                         <div class="logo-gallery-grid gallery-image-grid" id="logoGalleryGrid">
-                            {% for d in gallery_designs %}
+                            {%- for d in gallery_designs -%}
                             <div class="logo-gallery-item{% if preset_design and (preset_design.id == d.id or preset_design.parent_design_id == d.id) %} selected{% endif %}"
                                  data-design-id="{{ d.id }}"
                                  data-design-url="{{ d.url }}"
                                  data-design-title="{{ d.title }}"
+                                 data-category="{{ _dcat(d) }}"
                                  data-has-colors="{{ '1' if d.has_colors else '0' }}"
                                  data-variants='{{ d.variants | tojson }}'
-                                 role="button" tabindex="0" title="{{ d.title }}{% if d.has_colors %} ({{ d.color_count }} colors){% endif %}">
+                                 role="button" tabindex="0"
+                                 title="{{ d.title }}{% if d.has_colors %} ({{ d.color_count }} colors){% endif %}">
                                 <img src="{{ d.url }}" alt="{{ d.title }}" loading="lazy" decoding="async" draggable="false">
-                                {% if d.has_colors %}<span class="logo-gallery-color-dot">{{ d.color_count }}</span>{% endif %}
+                                {%- if d.has_colors %}<span class="logo-gallery-color-dot">{{ d.color_count }}</span>{%- endif -%}
                             </div>
-                            {% endfor %}
+                            {%- endfor -%}
                         </div>
+
+                        {# ── Empty state ── #}
+                        <div class="design-empty-state" id="designEmptyState">
+                            <div class="design-empty-icon">🎨</div>
+                            <p>No designs found.</p>
+                            <p><a onclick="clearDesignSearch();filterDesignTab(document.querySelector('.design-tab-btn'))">Clear &amp; show all</a></p>
+                        </div>
+
+                        {# ── Counter + show more ── #}
+                        <p class="design-picker-counter" id="designCounter"></p>
+                        <button class="design-show-more-btn" id="designShowMore" onclick="showMoreDesigns()">Show more designs ↓</button>
+
+                        {# ── Color chooser (unchanged) ── #}
                         <div id="logoColorChooser" class="logo-color-chooser" hidden>
                             <p class="logo-color-chooser-label">Pick a color for <strong id="logoColorChooserTitle"></strong></p>
                             <div id="logoColorChooserGrid" class="logo-color-chooser-grid"></div>
@@ -4710,6 +4863,92 @@
             }
         });
     }
+})();
+
+// ── Tabbed Design Picker ────────────────────────────────────────
+(function() {
+    var _activeTab   = 'All';
+    var _searchQuery = '';
+    var _visibleCount = 30;
+    var _PAGE_SIZE    = 30;
+
+    function _tiles() {
+        return Array.from(document.querySelectorAll('#logoGalleryGrid .logo-gallery-item'));
+    }
+
+    function _applyFilters() {
+        var grid       = document.getElementById('logoGalleryGrid');
+        var counter    = document.getElementById('designCounter');
+        var emptyState = document.getElementById('designEmptyState');
+        var showMoreBtn = document.getElementById('designShowMore');
+        if (!grid) return;
+
+        var q = _searchQuery.toLowerCase().trim();
+        var passing = [];
+        _tiles().forEach(function(tile) {
+            var catMatch   = (_activeTab === 'All') || (tile.dataset.category === _activeTab);
+            var titleMatch = !q || (tile.dataset.designTitle || tile.getAttribute('data-design-title') || '').toLowerCase().indexOf(q) !== -1;
+            if (catMatch && titleMatch) passing.push(tile);
+        });
+
+        var total  = passing.length;
+        var toShow = Math.min(_visibleCount, total);
+
+        _tiles().forEach(function(t) { t.style.display = 'none'; });
+        for (var i = 0; i < toShow; i++) passing[i].style.display = '';
+
+        if (counter) {
+            if (total === 0) {
+                counter.textContent = '';
+            } else if (toShow < total) {
+                counter.textContent = 'Showing ' + toShow + ' of ' + total + ' designs';
+            } else {
+                counter.textContent = total + ' design' + (total === 1 ? '' : 's');
+            }
+        }
+        if (emptyState) emptyState.style.display = total === 0 ? 'block' : 'none';
+        if (showMoreBtn) showMoreBtn.style.display = (toShow < total) ? 'block' : 'none';
+    }
+
+    window.filterDesignTab = function(btn) {
+        if (!btn) return;
+        document.querySelectorAll('.design-tab-btn').forEach(function(b) {
+            b.classList.remove('active');
+            b.setAttribute('aria-selected', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+        _activeTab    = btn.dataset.tab;
+        _visibleCount = _PAGE_SIZE;
+        _applyFilters();
+    };
+
+    window.onDesignSearch = function(val) {
+        _searchQuery  = val;
+        _visibleCount = _PAGE_SIZE;
+        var clearBtn  = document.getElementById('designSearchClear');
+        if (clearBtn) clearBtn.style.display = val ? 'block' : 'none';
+        _applyFilters();
+    };
+
+    window.clearDesignSearch = function() {
+        var input = document.getElementById('designSearchInput');
+        if (input) { input.value = ''; input.focus(); }
+        var clearBtn = document.getElementById('designSearchClear');
+        if (clearBtn) clearBtn.style.display = 'none';
+        _searchQuery  = '';
+        _visibleCount = _PAGE_SIZE;
+        _applyFilters();
+    };
+
+    window.showMoreDesigns = function() {
+        _visibleCount += _PAGE_SIZE;
+        _applyFilters();
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        if (document.getElementById('logoGalleryGrid')) _applyFilters();
+    });
 })();
 
 // Size chart modal toggle. PMKC.dialog (static/js/a11y.js) adds Escape, keeps
