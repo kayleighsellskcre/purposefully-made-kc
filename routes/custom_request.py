@@ -370,12 +370,21 @@ def ai_design_generate():
 
     reference_b64 = payload.get('reference_image') or None  # optional data-URL from frontend
 
-    enhanced_prompt = (
-        f'{prompt}. '
-        'Design for DTF heat-transfer printing on a t-shirt. Transparent background. '
-        'Subtle natural texture (slight grain or worn feel) for depth and warmth. '
-        'Bold, high-contrast colors. Clean crisp edges. No text unless specifically requested.'
-    )
+    if reference_b64:
+        # When recreating a reference, don't add style overrides — let the image lead
+        enhanced_prompt = (
+            f'{prompt}. '
+            'Recreate this design as faithfully as possible, preserving the style, shapes, lines, '
+            'and composition of the reference image. Transparent background. '
+            'Print-ready for DTF heat-transfer on a t-shirt. Keep the same artistic style as the reference.'
+        )
+    else:
+        enhanced_prompt = (
+            f'{prompt}. '
+            'Design for DTF heat-transfer printing on a t-shirt. Transparent background. '
+            'Subtle natural texture (slight grain or worn feel) for depth and warmth. '
+            'Bold, high-contrast colors. Clean crisp edges. No text unless specifically requested.'
+        )
 
     job_id = str(uuid.uuid4())
     _cleanup_old_jobs()
