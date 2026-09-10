@@ -256,11 +256,9 @@ def ai_design_generate():
     # Append quality/print directives — customer prompt is preserved as-is
     enhanced_prompt = (
         f'{prompt}. '
-        'Completely transparent background — no background color, no backdrop, no shadow, '
-        'no gradient behind the design. The design itself should have a subtle natural texture '
-        '(slight grain, worn, or organic feel) that gives it depth and warmth without looking '
-        'digital-flat. Clean edges, bold high-contrast colors, print-ready for DTF heat-transfer '
-        'on a t-shirt. No text unless specifically requested.'
+        'Design for DTF heat-transfer printing on a t-shirt. Transparent background. '
+        'Subtle natural texture (slight grain or worn feel) for depth and warmth. '
+        'Bold, high-contrast colors. Clean crisp edges. No text unless specifically requested.'
     )
 
     try:
@@ -274,13 +272,15 @@ def ai_design_generate():
             'prompt': enhanced_prompt,
             'n': 1,
             'size': '1024x1024',
-            'quality': 'high',
+            'quality': 'medium',       # 'high' takes 60-90s and times out at Cloudflare
+            'background': 'transparent',  # native transparent PNG — no post-processing needed
+            'output_format': 'png',
         }
         resp = req_lib.post(
             'https://api.openai.com/v1/images/generations',
             headers=headers,
             json=body,
-            timeout=120,
+            timeout=55,   # must finish before Cloudflare's ~60s connection timeout
         )
         if resp.status_code != 200:
             api_err = resp.text[:400]
