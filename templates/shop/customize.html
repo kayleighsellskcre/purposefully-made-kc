@@ -1953,9 +1953,9 @@
                     </div>
                     {% else %}
                     {# Regular shop: tabbed category picker + search + paginated grid #}
-                    {%- macro _dcat(d) -%}{%- set _f = (d.folder or '')|lower -%}{%- if _f in ['faith','bible','inspirational'] -%}Faith & Inspiration{%- elif _f == 'sports' -%}Sports{%- elif _f == 'school' -%}School{%- elif _f in ['couples','family'] -%}Couples & Family{%- elif _f in ['holiday','seasonal'] -%}Holiday{%- else -%}Fan Favorites{%- endif -%}{%- endmacro -%}
-                    {%- set _ns = namespace(faith=0,sports=0,school=0,couples=0,holiday=0,favs=0) -%}
-                    {%- for d in gallery_designs -%}{%- set _f=(d.folder or '')|lower -%}{%- if _f in ['faith','bible','inspirational'] -%}{%- set _ns.faith=_ns.faith+1 -%}{%- elif _f=='sports' -%}{%- set _ns.sports=_ns.sports+1 -%}{%- elif _f=='school' -%}{%- set _ns.school=_ns.school+1 -%}{%- elif _f in ['couples','family'] -%}{%- set _ns.couples=_ns.couples+1 -%}{%- elif _f in ['holiday','seasonal'] -%}{%- set _ns.holiday=_ns.holiday+1 -%}{%- else -%}{%- set _ns.favs=_ns.favs+1 -%}{%- endif -%}{%- endfor -%}
+                    {%- macro _dcat(d) -%}{%- set _f = (d.folder or '')|lower -%}{%- if _f in ['faith','bible','inspirational'] -%}Faith & Inspiration{%- elif _f == 'sports' -%}Sports{%- elif _f == 'school' -%}School{%- elif _f in ['couples','family'] -%}Couples & Family{%- elif _f in ['holiday','seasonal'] -%}Holiday{%- elif _f == 'funny' -%}Funny{%- elif _f in ['luxury_basics','luxury'] -%}Luxury Basics{%- else -%}Fan Favorites{%- endif -%}{%- endmacro -%}
+                    {%- set _ns = namespace(faith=0,sports=0,school=0,couples=0,holiday=0,funny=0,luxury=0,favs=0) -%}
+                    {%- for d in gallery_designs -%}{%- set _f=(d.folder or '')|lower -%}{%- if _f in ['faith','bible','inspirational'] -%}{%- set _ns.faith=_ns.faith+1 -%}{%- elif _f=='sports' -%}{%- set _ns.sports=_ns.sports+1 -%}{%- elif _f=='school' -%}{%- set _ns.school=_ns.school+1 -%}{%- elif _f in ['couples','family'] -%}{%- set _ns.couples=_ns.couples+1 -%}{%- elif _f in ['holiday','seasonal'] -%}{%- set _ns.holiday=_ns.holiday+1 -%}{%- elif _f=='funny' -%}{%- set _ns.funny=_ns.funny+1 -%}{%- elif _f in ['luxury_basics','luxury'] -%}{%- set _ns.luxury=_ns.luxury+1 -%}{%- else -%}{%- set _ns.favs=_ns.favs+1 -%}{%- endif -%}{%- endfor -%}
                     <div class="logo-gallery-inline gallery-design-picker" id="logoGalleryInline">
 
                         {# ── Label + Tab bar ── #}
@@ -1967,6 +1967,8 @@
                             {%- if _ns.school > 0 %}<button class="design-tab-btn" data-tab="School" onclick="filterDesignTab(this)" role="tab" aria-selected="false">School <span class="design-tab-count">({{ _ns.school }})</span></button>{% endif -%}
                             {%- if _ns.couples > 0 %}<button class="design-tab-btn" data-tab="Couples & Family" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Couples & Family <span class="design-tab-count">({{ _ns.couples }})</span></button>{% endif -%}
                             {%- if _ns.holiday > 0 %}<button class="design-tab-btn" data-tab="Holiday" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Holiday <span class="design-tab-count">({{ _ns.holiday }})</span></button>{% endif -%}
+                            {%- if _ns.funny > 0 %}<button class="design-tab-btn" data-tab="Funny" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Funny <span class="design-tab-count">({{ _ns.funny }})</span></button>{% endif -%}
+                            {%- if _ns.luxury > 0 %}<button class="design-tab-btn" data-tab="Luxury Basics" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Luxury Basics <span class="design-tab-count">({{ _ns.luxury }})</span></button>{% endif -%}
                             {%- if _ns.favs > 0 %}<button class="design-tab-btn" data-tab="Fan Favorites" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Fan Favorites <span class="design-tab-count">({{ _ns.favs }})</span></button>{% endif -%}
                         </div>
 

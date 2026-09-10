@@ -3487,7 +3487,7 @@ def design_gallery_edit(design_id):
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     GALLERY_FOLDERS = {
         'custom_orders', 'evergreen', 'school', 'holiday',
-        'sports', 'funny', 'luxury_basics',
+        'sports', 'funny', 'luxury_basics', 'faith', 'couples',
     }
 
     title = (request.form.get('title') or '').strip()
