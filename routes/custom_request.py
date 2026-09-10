@@ -14,23 +14,45 @@ from models import db, CustomDesignRequest
 from utils.rate_limit import post_only, rate_limit
 
 # ── AI job store ─────────────────────────────────────────────────────────────
-# In-memory dict keyed by job UUID. Safe with a single Gunicorn worker (Railway
-# default). Each entry: {status, image_url, revised_prompt, error, created_at}
-_ai_jobs: dict = {}
-_ai_jobs_lock = threading.Lock()
-_JOB_TTL = 600  # seconds — jobs older than 10 min are discarded
+# Jobs are stored as JSON files in /tmp/ai_jobs/ so all Gunicorn workers share
+# the same state (an in-memory dict is per-worker and breaks multi-worker setups).
+import json as _json
+
+_AI_JOB_DIR = Path('/tmp/ai_jobs')
+_JOB_TTL = 600  # seconds — job files older than 10 min are cleaned up
+
+
+def _job_path(job_id: str) -> Path:
+    return _AI_JOB_DIR / f'{job_id}.json'
+
+
+def _write_job(job_id: str, data: dict) -> None:
+    _AI_JOB_DIR.mkdir(parents=True, exist_ok=True)
+    _job_path(job_id).write_text(_json.dumps(data))
+
+
+def _read_job(job_id: str) -> dict | None:
+    p = _job_path(job_id)
+    if not p.exists():
+        return None
+    try:
+        return _json.loads(p.read_text())
+    except Exception:
+        return None
 
 
 def _cleanup_old_jobs() -> None:
-    """Remove jobs older than _JOB_TTL. Call while holding _ai_jobs_lock."""
     cutoff = time.time() - _JOB_TTL
-    stale = [jid for jid, j in _ai_jobs.items() if j.get('created_at', 0) < cutoff]
-    for jid in stale:
-        del _ai_jobs[jid]
+    try:
+        for p in _AI_JOB_DIR.glob('*.json'):
+            if p.stat().st_mtime < cutoff:
+                p.unlink(missing_ok=True)
+    except Exception:
+        pass
 
 
 def _run_image_generation(app, job_id: str, api_key: str, enhanced_prompt: str) -> None:
-    """Background thread: call OpenAI and write result into _ai_jobs."""
+    """Background thread: call OpenAI and write result to /tmp/ai_jobs/."""
     with app.app_context():
         try:
             import requests as req_lib
@@ -43,15 +65,15 @@ def _run_image_generation(app, job_id: str, api_key: str, enhanced_prompt: str) 
                 'prompt': enhanced_prompt,
                 'n': 1,
                 'size': '1024x1024',
-                'quality': 'high',          # full ChatGPT-quality output
-                'background': 'transparent',  # native transparent PNG
+                'quality': 'high',
+                'background': 'transparent',
                 'output_format': 'png',
             }
             resp = req_lib.post(
                 'https://api.openai.com/v1/images/generations',
                 headers=headers,
                 json=body,
-                timeout=120,  # OpenAI can take up to ~90s for hd; give headroom
+                timeout=120,
             )
             if resp.status_code != 200:
                 api_err = resp.text[:400]
@@ -60,31 +82,23 @@ def _run_image_generation(app, job_id: str, api_key: str, enhanced_prompt: str) 
                     err_msg = (resp.json().get('error') or {}).get('message', api_err)
                 except Exception:
                     err_msg = api_err
-                with _ai_jobs_lock:
-                    if job_id in _ai_jobs:
-                        _ai_jobs[job_id]['status'] = 'error'
-                        _ai_jobs[job_id]['error'] = f'Generation failed: {err_msg}'
+                _write_job(job_id, {'status': 'error', 'error': f'Generation failed: {err_msg}'})
                 return
 
             item = resp.json()['data'][0]
-            if 'b64_json' in item:
-                image_url = f"data:image/png;base64,{item['b64_json']}"
-            else:
-                image_url = item.get('url', '')
-            revised = item.get('revised_prompt', '')
-
-            with _ai_jobs_lock:
-                if job_id in _ai_jobs:
-                    _ai_jobs[job_id]['status'] = 'done'
-                    _ai_jobs[job_id]['image_url'] = image_url
-                    _ai_jobs[job_id]['revised_prompt'] = revised
+            image_url = (
+                f"data:image/png;base64,{item['b64_json']}"
+                if 'b64_json' in item else item.get('url', '')
+            )
+            _write_job(job_id, {
+                'status': 'done',
+                'image_url': image_url,
+                'revised_prompt': item.get('revised_prompt', ''),
+            })
 
         except Exception as e:
             app.logger.exception('AI background generation error: %s', e)
-            with _ai_jobs_lock:
-                if job_id in _ai_jobs:
-                    _ai_jobs[job_id]['status'] = 'error'
-                    _ai_jobs[job_id]['error'] = 'Something went wrong. Please try again.'
+            _write_job(job_id, {'status': 'error', 'error': 'Something went wrong. Please try again.'})
 
 custom_request_bp = Blueprint('custom_request', __name__, url_prefix='/custom-design')
 
@@ -339,15 +353,8 @@ def ai_design_generate():
     )
 
     job_id = str(uuid.uuid4())
-    with _ai_jobs_lock:
-        _cleanup_old_jobs()
-        _ai_jobs[job_id] = {
-            'status': 'pending',
-            'image_url': None,
-            'revised_prompt': '',
-            'error': None,
-            'created_at': time.time(),
-        }
+    _cleanup_old_jobs()
+    _write_job(job_id, {'status': 'pending', 'image_url': None, 'revised_prompt': '', 'error': None})
 
     app_obj = current_app._get_current_object()
     threading.Thread(
@@ -365,9 +372,7 @@ def ai_design_status(job_id):
     if not re.match(r'^[0-9a-f\-]{36}$', job_id):
         return jsonify({'status': 'error', 'error': 'Invalid job ID.'})
 
-    with _ai_jobs_lock:
-        job = dict(_ai_jobs.get(job_id) or {})
-
+    job = _read_job(job_id)
     if not job:
         return jsonify({'status': 'error', 'error': 'Job not found. Please try again.'})
 
