@@ -67,6 +67,8 @@ def gallery_card_dict(design, resolve_url=None):
         'variants': variants,
         'has_colors': len(variants) > 1,
         'color_count': len(variants),
+        'folder': design.folder or '',
+        'extra_categories': design.extra_categories or '',
     }
 
 

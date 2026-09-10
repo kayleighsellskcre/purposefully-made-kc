@@ -9,7 +9,7 @@
     <div class="container">
         <span class="eyebrow">Curated Collection</span>
         <h1>Design Gallery</h1>
-        <p class="lead">Choose a design you love. If it comes in more than one color, you’ll pick the color next — simple and clear.</p>
+        <p class="lead">Choose a design you love. If it comes in more than one color, you will pick the color next.</p>
     </div>
 </div>
 
@@ -18,17 +18,46 @@
     <div class="container">
 
         {% if designs %}
-        <div class="gallery-meta">
-            <p class="gallery-count">{{ designs|length }} design{{ 's' if designs|length != 1 else '' }} available</p>
+
+        {# ── Category macros ── #}
+        {%- macro _dcat(d) -%}{%- set _f=(d.folder or '')|lower -%}{%- if _f in ['faith','bible','inspirational'] -%}Faith & Inspiration{%- elif _f=='sports' -%}Sports{%- elif _f=='school' -%}School{%- elif _f in ['couples','family'] -%}Couples & Family{%- elif _f in ['holiday','seasonal'] -%}Holiday{%- elif _f=='kc' -%}Kansas City{%- elif _f=='funny' -%}Funny{%- elif _f in ['luxury_basics','luxury'] -%}Luxury Basics{%- else -%}Fan Favorites{%- endif -%}{%- endmacro -%}
+        {%- macro _rawcat(f) -%}{%- set _f=(f or '')|lower|trim -%}{%- if _f in ['faith','bible','inspirational'] -%}Faith & Inspiration{%- elif _f=='sports' -%}Sports{%- elif _f=='school' -%}School{%- elif _f in ['couples','family'] -%}Couples & Family{%- elif _f in ['holiday','seasonal'] -%}Holiday{%- elif _f=='kc' -%}Kansas City{%- elif _f=='funny' -%}Funny{%- elif _f in ['luxury_basics','luxury'] -%}Luxury Basics{%- elif _f in ['evergreen','favorites','fan_favorites'] -%}Fan Favorites{%- else -%}{%- endif -%}{%- endmacro -%}
+        {%- macro _ck(f) -%}{%- set _f=(f or '')|lower|trim -%}{%- if _f in ['faith','bible','inspirational'] -%}faith{%- elif _f=='sports' -%}sports{%- elif _f=='school' -%}school{%- elif _f in ['couples','family'] -%}couples{%- elif _f in ['holiday','seasonal'] -%}holiday{%- elif _f=='kc' -%}kc{%- elif _f=='funny' -%}funny{%- elif _f in ['luxury_basics','luxury'] -%}luxury{%- elif _f in ['evergreen','favorites','fan_favorites'] -%}favs{%- else -%}{%- endif -%}{%- endmacro -%}
+        {%- set _ns = namespace(faith=0,sports=0,school=0,couples=0,holiday=0,kc=0,funny=0,luxury=0,favs=0) -%}
+        {%- for d in designs -%}
+          {%- set _pk=_ck(d.folder) -%}{%- if _pk=='faith' -%}{%- set _ns.faith=_ns.faith+1 -%}{%- elif _pk=='sports' -%}{%- set _ns.sports=_ns.sports+1 -%}{%- elif _pk=='school' -%}{%- set _ns.school=_ns.school+1 -%}{%- elif _pk=='couples' -%}{%- set _ns.couples=_ns.couples+1 -%}{%- elif _pk=='holiday' -%}{%- set _ns.holiday=_ns.holiday+1 -%}{%- elif _pk=='kc' -%}{%- set _ns.kc=_ns.kc+1 -%}{%- elif _pk=='funny' -%}{%- set _ns.funny=_ns.funny+1 -%}{%- elif _pk=='luxury' -%}{%- set _ns.luxury=_ns.luxury+1 -%}{%- else -%}{%- set _ns.favs=_ns.favs+1 -%}{%- endif -%}
+          {%- for _ec in (d.extra_categories or '').split(',') -%}{%- set _ek=_ck(_ec) -%}{%- if _ek=='faith' -%}{%- set _ns.faith=_ns.faith+1 -%}{%- elif _ek=='sports' -%}{%- set _ns.sports=_ns.sports+1 -%}{%- elif _ek=='school' -%}{%- set _ns.school=_ns.school+1 -%}{%- elif _ek=='couples' -%}{%- set _ns.couples=_ns.couples+1 -%}{%- elif _ek=='holiday' -%}{%- set _ns.holiday=_ns.holiday+1 -%}{%- elif _ek=='kc' -%}{%- set _ns.kc=_ns.kc+1 -%}{%- elif _ek=='funny' -%}{%- set _ns.funny=_ns.funny+1 -%}{%- elif _ek=='luxury' -%}{%- set _ns.luxury=_ns.luxury+1 -%}{%- elif _ek=='favs' -%}{%- set _ns.favs=_ns.favs+1 -%}{%- endif -%}{%- endfor -%}
+        {%- endfor -%}
+
+        {# ── Filter tab bar ── #}
+        <div class="dg-filter-bar" id="dgFilterBar" role="tablist" aria-label="Design categories">
+            <button class="dg-tab active" data-tab="All" onclick="dgTab(this)" role="tab" aria-selected="true">All <span class="dg-tab-count">({{ designs|length }})</span></button>
+            <button class="dg-tab" data-tab="Faith & Inspiration" onclick="dgTab(this)" role="tab" aria-selected="false">Faith &amp; Inspiration{% if _ns.faith > 0 %} <span class="dg-tab-count">({{ _ns.faith }})</span>{% endif %}</button>
+            <button class="dg-tab" data-tab="Sports" onclick="dgTab(this)" role="tab" aria-selected="false">Sports{% if _ns.sports > 0 %} <span class="dg-tab-count">({{ _ns.sports }})</span>{% endif %}</button>
+            <button class="dg-tab" data-tab="School" onclick="dgTab(this)" role="tab" aria-selected="false">School{% if _ns.school > 0 %} <span class="dg-tab-count">({{ _ns.school }})</span>{% endif %}</button>
+            <button class="dg-tab" data-tab="Couples & Family" onclick="dgTab(this)" role="tab" aria-selected="false">Couples &amp; Family{% if _ns.couples > 0 %} <span class="dg-tab-count">({{ _ns.couples }})</span>{% endif %}</button>
+            <button class="dg-tab" data-tab="Holiday" onclick="dgTab(this)" role="tab" aria-selected="false">Holiday{% if _ns.holiday > 0 %} <span class="dg-tab-count">({{ _ns.holiday }})</span>{% endif %}</button>
+            <button class="dg-tab" data-tab="Kansas City" onclick="dgTab(this)" role="tab" aria-selected="false">Kansas City{% if _ns.kc > 0 %} <span class="dg-tab-count">({{ _ns.kc }})</span>{% endif %}</button>
+            <button class="dg-tab" data-tab="Funny" onclick="dgTab(this)" role="tab" aria-selected="false">Funny{% if _ns.funny > 0 %} <span class="dg-tab-count">({{ _ns.funny }})</span>{% endif %}</button>
+            <button class="dg-tab" data-tab="Luxury Basics" onclick="dgTab(this)" role="tab" aria-selected="false">Luxury Basics{% if _ns.luxury > 0 %} <span class="dg-tab-count">({{ _ns.luxury }})</span>{% endif %}</button>
+            <button class="dg-tab" data-tab="Fan Favorites" onclick="dgTab(this)" role="tab" aria-selected="false">Fan Favorites{% if _ns.favs > 0 %} <span class="dg-tab-count">({{ _ns.favs }})</span>{% endif %}</button>
         </div>
 
-        <div class="gallery-grid">
+        <div class="gallery-meta" style="margin-top:1rem;">
+            <p class="gallery-count" id="dgCount">{{ designs|length }} design{{ 's' if designs|length != 1 else '' }} available</p>
+        </div>
+
+        <div class="gallery-grid" id="dgGrid">
             {% for design in designs %}
+            {%- set _primary_cat = _dcat(design) -%}
+            {%- set _extra_ns = namespace(cats=_primary_cat) -%}
+            {%- for _raw in (design.extra_categories or '').split(',') -%}{%- set _raw=_raw.strip() -%}{%- if _raw -%}{%- set _mapped=_rawcat(_raw) -%}{%- if _mapped and _mapped != _primary_cat -%}{%- set _extra_ns.cats=_extra_ns.cats+'|'+_mapped -%}{%- endif -%}{%- endif -%}{%- endfor -%}
             <div class="gallery-card"
                  data-design-id="{{ design.id }}"
                  data-title="{{ design.title }}"
                  data-has-colors="{{ '1' if design.has_colors else '0' }}"
-                 data-variants='{{ design.variants | tojson }}'>
+                 data-variants='{{ design.variants | tojson }}'
+                 data-categories="{{ _extra_ns.cats }}">
                 <div class="gallery-card-image">
                     <img src="{{ design.url }}"
                          alt="{{ design.title }}"
@@ -50,6 +79,10 @@
                 </div>
             </div>
             {% endfor %}
+        </div>
+
+        <div class="dg-empty-state" id="dgEmptyState">
+            <p>No designs in this category yet. Check back soon!</p>
         </div>
 
         <div class="gallery-footer">
@@ -93,6 +126,43 @@
 </div>
 
 <style>
+/* ── Gallery filter tabs ── */
+.dg-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+}
+.dg-tab {
+    padding: 0.4rem 1rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--border-color, #e0d8cc);
+    background: transparent;
+    font-size: 0.82rem;
+    font-family: inherit;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+.dg-tab:hover,
+.dg-tab.active {
+    border-color: var(--terra-cotta, #b87c6f);
+    background: rgba(184,124,111,0.1);
+    color: var(--terra-cotta, #b87c6f);
+    font-weight: 600;
+}
+.dg-tab-count {
+    font-weight: 400;
+    opacity: 0.75;
+}
+.dg-empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-secondary);
+    display: none;
+}
+
 /* ── Gallery Section ── */
 .gallery-section {
     padding: 3.5rem 0 6rem;
@@ -516,6 +586,43 @@
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && !modal.hidden) closePicker();
     });
+})();
+
+// ── Design Gallery category filter ──────────────────────────────
+(function() {
+    var _activeTab = 'All';
+
+    function _cards() {
+        return Array.from(document.querySelectorAll('#dgGrid .gallery-card'));
+    }
+
+    function _applyFilter() {
+        var cards = _cards();
+        var visible = 0;
+        cards.forEach(function(card) {
+            var cats = (card.getAttribute('data-categories') || '').split('|');
+            var show = _activeTab === 'All' || cats.indexOf(_activeTab) !== -1;
+            card.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+        var counter = document.getElementById('dgCount');
+        if (counter) {
+            counter.textContent = visible + ' design' + (visible !== 1 ? 's' : '') + ' available';
+        }
+        var empty = document.getElementById('dgEmptyState');
+        if (empty) empty.style.display = visible === 0 ? 'block' : 'none';
+    }
+
+    window.dgTab = function(btn) {
+        document.querySelectorAll('.dg-tab').forEach(function(b) {
+            b.classList.remove('active');
+            b.setAttribute('aria-selected', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+        _activeTab = btn.getAttribute('data-tab');
+        _applyFilter();
+    };
 })();
 </script>
 {% endblock %}
