@@ -9,6 +9,7 @@ from werkzeug.utils import secure_filename
 
 from models import db, CustomDesignRequest
 from utils.rate_limit import post_only, rate_limit
+from app import csrf
 
 custom_request_bp = Blueprint('custom_request', __name__, url_prefix='/custom-design')
 
@@ -235,6 +236,7 @@ def ai_design():
 
 
 @custom_request_bp.route('/ai-design/generate', methods=['POST'])
+@csrf.exempt                        # JSON endpoint — CSRF handled by rate limits + same-origin fetch
 @rate_limit('5 per hour')          # 5 AI images per IP per hour — anti-abuse
 @rate_limit('20 per day')          # 20 per IP per day hard cap
 def ai_design_generate():
