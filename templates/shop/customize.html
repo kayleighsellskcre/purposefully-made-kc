@@ -1649,6 +1649,13 @@
     background: var(--terra-cotta, #b87c6f);
     color: #fff;
 }
+.design-browse-prompt {
+    font-size: 0.85rem;
+    color: var(--text-light, #aaa);
+    text-align: center;
+    padding: 1.25rem 0 0.5rem;
+    font-style: italic;
+}
 </style>
 {% endblock %}
 
@@ -1951,9 +1958,10 @@
                     {%- for d in gallery_designs -%}{%- set _f=(d.folder or '')|lower -%}{%- if _f in ['faith','bible','inspirational'] -%}{%- set _ns.faith=_ns.faith+1 -%}{%- elif _f=='sports' -%}{%- set _ns.sports=_ns.sports+1 -%}{%- elif _f=='school' -%}{%- set _ns.school=_ns.school+1 -%}{%- elif _f in ['couples','family'] -%}{%- set _ns.couples=_ns.couples+1 -%}{%- elif _f in ['holiday','seasonal'] -%}{%- set _ns.holiday=_ns.holiday+1 -%}{%- else -%}{%- set _ns.favs=_ns.favs+1 -%}{%- endif -%}{%- endfor -%}
                     <div class="logo-gallery-inline gallery-design-picker" id="logoGalleryInline">
 
-                        {# ── Tab bar ── #}
+                        {# ── Label + Tab bar ── #}
+                        <p class="logo-gallery-label" style="margin-bottom:0.6rem;font-weight:600;">Design Gallery — pick a category to browse</p>
                         <div class="design-picker-tabs" id="designTabBar" role="tablist" aria-label="Design categories">
-                            <button class="design-tab-btn active" data-tab="All" onclick="filterDesignTab(this)" role="tab" aria-selected="true">All <span class="design-tab-count">({{ gallery_designs|length }})</span></button>
+                            <button class="design-tab-btn" data-tab="All" onclick="filterDesignTab(this)" role="tab" aria-selected="false">All <span class="design-tab-count">({{ gallery_designs|length }})</span></button>
                             {%- if _ns.faith > 0 %}<button class="design-tab-btn" data-tab="Faith & Inspiration" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Faith & Inspiration <span class="design-tab-count">({{ _ns.faith }})</span></button>{% endif -%}
                             {%- if _ns.sports > 0 %}<button class="design-tab-btn" data-tab="Sports" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Sports <span class="design-tab-count">({{ _ns.sports }})</span></button>{% endif -%}
                             {%- if _ns.school > 0 %}<button class="design-tab-btn" data-tab="School" onclick="filterDesignTab(this)" role="tab" aria-selected="false">School <span class="design-tab-count">({{ _ns.school }})</span></button>{% endif -%}
@@ -1962,8 +1970,11 @@
                             {%- if _ns.favs > 0 %}<button class="design-tab-btn" data-tab="Fan Favorites" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Fan Favorites <span class="design-tab-count">({{ _ns.favs }})</span></button>{% endif -%}
                         </div>
 
-                        {# ── Search bar ── #}
-                        <div class="design-search-wrap">
+                        {# ── Tap-to-browse prompt (hidden once a tab is selected) ── #}
+                        <p class="design-browse-prompt" id="designBrowsePrompt">Tap a category above to browse designs ↑</p>
+
+                        {# ── Search bar (hidden until tab selected) ── #}
+                        <div class="design-search-wrap" id="designSearchWrap" style="display:none;">
                             <span class="design-search-icon">🔍</span>
                             <input type="text" class="design-search-input" id="designSearchInput"
                                    placeholder="Search designs…" autocomplete="off"
@@ -4867,8 +4878,8 @@
 
 // ── Tabbed Design Picker ────────────────────────────────────────
 (function() {
-    var _activeTab   = 'All';
-    var _searchQuery = '';
+    var _activeTab    = null;   // null = nothing selected yet
+    var _searchQuery  = '';
     var _visibleCount = 30;
     var _PAGE_SIZE    = 30;
 
@@ -4876,18 +4887,35 @@
         return Array.from(document.querySelectorAll('#logoGalleryGrid .logo-gallery-item'));
     }
 
+    function _revealControls() {
+        // Show search bar, hide the "tap a category" prompt
+        var wrap   = document.getElementById('designSearchWrap');
+        var prompt = document.getElementById('designBrowsePrompt');
+        if (wrap)   wrap.style.display   = '';
+        if (prompt) prompt.style.display = 'none';
+    }
+
     function _applyFilters() {
-        var grid       = document.getElementById('logoGalleryGrid');
-        var counter    = document.getElementById('designCounter');
-        var emptyState = document.getElementById('designEmptyState');
+        var grid        = document.getElementById('logoGalleryGrid');
+        var counter     = document.getElementById('designCounter');
+        var emptyState  = document.getElementById('designEmptyState');
         var showMoreBtn = document.getElementById('designShowMore');
         if (!grid) return;
+
+        // Nothing selected yet — keep everything hidden
+        if (_activeTab === null) {
+            _tiles().forEach(function(t) { t.style.display = 'none'; });
+            if (counter)     counter.textContent = '';
+            if (emptyState)  emptyState.style.display = 'none';
+            if (showMoreBtn) showMoreBtn.style.display  = 'none';
+            return;
+        }
 
         var q = _searchQuery.toLowerCase().trim();
         var passing = [];
         _tiles().forEach(function(tile) {
             var catMatch   = (_activeTab === 'All') || (tile.dataset.category === _activeTab);
-            var titleMatch = !q || (tile.dataset.designTitle || tile.getAttribute('data-design-title') || '').toLowerCase().indexOf(q) !== -1;
+            var titleMatch = !q || (tile.getAttribute('data-design-title') || '').toLowerCase().indexOf(q) !== -1;
             if (catMatch && titleMatch) passing.push(tile);
         });
 
@@ -4898,16 +4926,12 @@
         for (var i = 0; i < toShow; i++) passing[i].style.display = '';
 
         if (counter) {
-            if (total === 0) {
-                counter.textContent = '';
-            } else if (toShow < total) {
-                counter.textContent = 'Showing ' + toShow + ' of ' + total + ' designs';
-            } else {
-                counter.textContent = total + ' design' + (total === 1 ? '' : 's');
-            }
+            counter.textContent = total === 0 ? '' :
+                (toShow < total ? 'Showing ' + toShow + ' of ' + total + ' designs' :
+                 total + ' design' + (total === 1 ? '' : 's'));
         }
-        if (emptyState) emptyState.style.display = total === 0 ? 'block' : 'none';
-        if (showMoreBtn) showMoreBtn.style.display = (toShow < total) ? 'block' : 'none';
+        if (emptyState)  emptyState.style.display  = total === 0 ? 'block' : 'none';
+        if (showMoreBtn) showMoreBtn.style.display  = toShow < total ? 'block' : 'none';
     }
 
     window.filterDesignTab = function(btn) {
@@ -4920,6 +4944,7 @@
         btn.setAttribute('aria-selected', 'true');
         _activeTab    = btn.dataset.tab;
         _visibleCount = _PAGE_SIZE;
+        _revealControls();
         _applyFilters();
     };
 
@@ -4946,6 +4971,7 @@
         _applyFilters();
     };
 
+    // On load: hide all tiles, no tab active yet
     document.addEventListener('DOMContentLoaded', function() {
         if (document.getElementById('logoGalleryGrid')) _applyFilters();
     });
