@@ -275,7 +275,6 @@ def ai_design_generate():
             'n': 1,
             'size': '1024x1024',
             'quality': 'hd',
-            'response_format': 'url',
         }
         resp = req_lib.post(
             'https://api.openai.com/v1/images/generations',
