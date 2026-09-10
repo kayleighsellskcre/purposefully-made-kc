@@ -284,8 +284,14 @@ def ai_design_generate():
             timeout=60,
         )
         if resp.status_code != 200:
-            current_app.logger.warning('DALL-E error %s: %s', resp.status_code, resp.text[:300])
-            return jsonify({'ok': False, 'error': 'AI generation failed. Please try a different description.'}), 502
+            dalle_err = resp.text[:400]
+            current_app.logger.warning('DALL-E error %s: %s', resp.status_code, dalle_err)
+            try:
+                err_json = resp.json()
+                err_msg = (err_json.get('error') or {}).get('message', dalle_err)
+            except Exception:
+                err_msg = dalle_err
+            return jsonify({'ok': False, 'error': f'OpenAI {resp.status_code}: {err_msg}'}), 502
         data = resp.json()
         image_url = data['data'][0]['url']
         revised_prompt = data['data'][0].get('revised_prompt', '')
