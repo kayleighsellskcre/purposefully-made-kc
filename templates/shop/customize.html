@@ -1883,7 +1883,7 @@
                     {% if not available_sizes %}
                     <p class="size-unavailable-note">
                         This one can't be ordered just yet. <a href="{{ url_for('shop.index') }}">Browse other styles</a>
-                        or <a href="{{ url_for('main.contact') }}">ask us about it</a> — we're happy to help.
+                        or <a href="{{ url_for('main.contact') }}">ask us about it</a>. We are happy to help.
                     </p>
                     {% endif %}
                 </div>
@@ -1940,7 +1940,7 @@
                        There are usually only a few, and organizers expect the
                        team to see them all at once — not hide them in a menu. #}
                     <div class="logo-gallery-inline" id="logoGalleryInline">
-                        <p class="logo-gallery-label">Group logos — tap one to use</p>
+                        <p class="logo-gallery-label">Group logos: tap one to use</p>
                         <div class="logo-gallery-grid gallery-image-grid" id="logoGalleryGrid">
                             {% for d in gallery_designs %}
                             <div class="logo-gallery-item{% if preset_design and preset_design.id == d.id %} selected{% endif %}"
@@ -1968,18 +1968,18 @@
                     <div class="logo-gallery-inline gallery-design-picker" id="logoGalleryInline">
 
                         {# ── Label + Tab bar ── #}
-                        <p class="logo-gallery-label" style="margin-bottom:0.6rem;font-weight:600;">Design Gallery — pick a category to browse</p>
+                        <p class="logo-gallery-label" style="margin-bottom:0.6rem;font-weight:600;">Design Gallery: pick a category to browse</p>
                         <div class="design-picker-tabs" id="designTabBar" role="tablist" aria-label="Design categories">
                             <button class="design-tab-btn" data-tab="All" onclick="filterDesignTab(this)" role="tab" aria-selected="false">All <span class="design-tab-count">({{ gallery_designs|length }})</span></button>
-                            {%- if _ns.faith > 0 %}<button class="design-tab-btn" data-tab="Faith & Inspiration" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Faith & Inspiration <span class="design-tab-count">({{ _ns.faith }})</span></button>{% endif -%}
-                            {%- if _ns.sports > 0 %}<button class="design-tab-btn" data-tab="Sports" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Sports <span class="design-tab-count">({{ _ns.sports }})</span></button>{% endif -%}
-                            {%- if _ns.school > 0 %}<button class="design-tab-btn" data-tab="School" onclick="filterDesignTab(this)" role="tab" aria-selected="false">School <span class="design-tab-count">({{ _ns.school }})</span></button>{% endif -%}
-                            {%- if _ns.couples > 0 %}<button class="design-tab-btn" data-tab="Couples & Family" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Couples & Family <span class="design-tab-count">({{ _ns.couples }})</span></button>{% endif -%}
-                            {%- if _ns.holiday > 0 %}<button class="design-tab-btn" data-tab="Holiday" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Holiday <span class="design-tab-count">({{ _ns.holiday }})</span></button>{% endif -%}
-                            {%- if _ns.kc > 0 %}<button class="design-tab-btn" data-tab="Kansas City" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Kansas City <span class="design-tab-count">({{ _ns.kc }})</span></button>{% endif -%}
-                            {%- if _ns.funny > 0 %}<button class="design-tab-btn" data-tab="Funny" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Funny <span class="design-tab-count">({{ _ns.funny }})</span></button>{% endif -%}
-                            {%- if _ns.luxury > 0 %}<button class="design-tab-btn" data-tab="Luxury Basics" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Luxury Basics <span class="design-tab-count">({{ _ns.luxury }})</span></button>{% endif -%}
-                            {%- if _ns.favs > 0 %}<button class="design-tab-btn" data-tab="Fan Favorites" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Fan Favorites <span class="design-tab-count">({{ _ns.favs }})</span></button>{% endif -%}
+                            <button class="design-tab-btn" data-tab="Faith &amp; Inspiration" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Faith &amp; Inspiration{% if _ns.faith > 0 %} <span class="design-tab-count">({{ _ns.faith }})</span>{% endif %}</button>
+                            <button class="design-tab-btn" data-tab="Sports" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Sports{% if _ns.sports > 0 %} <span class="design-tab-count">({{ _ns.sports }})</span>{% endif %}</button>
+                            <button class="design-tab-btn" data-tab="School" onclick="filterDesignTab(this)" role="tab" aria-selected="false">School{% if _ns.school > 0 %} <span class="design-tab-count">({{ _ns.school }})</span>{% endif %}</button>
+                            <button class="design-tab-btn" data-tab="Couples &amp; Family" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Couples &amp; Family{% if _ns.couples > 0 %} <span class="design-tab-count">({{ _ns.couples }})</span>{% endif %}</button>
+                            <button class="design-tab-btn" data-tab="Holiday" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Holiday{% if _ns.holiday > 0 %} <span class="design-tab-count">({{ _ns.holiday }})</span>{% endif %}</button>
+                            <button class="design-tab-btn" data-tab="Kansas City" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Kansas City{% if _ns.kc > 0 %} <span class="design-tab-count">({{ _ns.kc }})</span>{% endif %}</button>
+                            <button class="design-tab-btn" data-tab="Funny" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Funny{% if _ns.funny > 0 %} <span class="design-tab-count">({{ _ns.funny }})</span>{% endif %}</button>
+                            <button class="design-tab-btn" data-tab="Luxury Basics" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Luxury Basics{% if _ns.luxury > 0 %} <span class="design-tab-count">({{ _ns.luxury }})</span>{% endif %}</button>
+                            <button class="design-tab-btn" data-tab="Fan Favorites" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Fan Favorites{% if _ns.favs > 0 %} <span class="design-tab-count">({{ _ns.favs }})</span>{% endif %}</button>
                         </div>
 
                         {# ── Tap-to-browse prompt (hidden once a tab is selected) ── #}
@@ -2120,7 +2120,7 @@
                         <strong style="font-size: 1.1rem; color: #333;">
                             {% if back_design_type == 'name_number' %}Add Your Name &amp; Number{% elif back_design_type == 'image' %}Add Back Design{% else %}Optional Back Design{% endif %}
                         </strong>
-                        <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #666;">Set by your group organizer — see options below</p>
+                        <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #666;">Set by your group organizer. See options below.</p>
                     </div>
                     {% else %}
                     {# Regular shop: show toggle button with price #}
@@ -3591,7 +3591,7 @@
         }
         hint.hidden = false;
         if (outOfStock) {
-            hint.textContent = 'That size is out of stock — try another size or color.';
+            hint.textContent = 'That size is out of stock. Try another size or color.';
         } else if (!hasSize && !hasDesign) {
             hint.textContent = 'If Add to Cart is greyed out, choose a size and upload or select a design.';
         } else if (!hasSize) {
