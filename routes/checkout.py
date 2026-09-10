@@ -9,7 +9,7 @@ import secrets
 import stripe
 import paypalrestsdk
 import json
-from utils.order_costs import default_due_date, shirt_unit_cost
+from utils.order_costs import default_due_date
 from utils.local_time import format_central
 
 
@@ -1204,8 +1204,6 @@ def complete():
         db.session.flush()
 
         saved_items = 0
-        blank_cogs = 0.0
-        cogs_found = False
         for cart_item in cart:
             try:
                 product = Product.query.get(_int_or_none(cart_item.get('product_id')))
@@ -1298,10 +1296,6 @@ def complete():
                     pass
                 db.session.add(order_item)
                 saved_items += 1
-                shirt_cost = shirt_unit_cost(product)
-                if shirt_cost is not None:
-                    blank_cogs += shirt_cost * qty
-                    cogs_found = True
             except Exception as item_err:
                 current_app.logger.exception('checkout rid=%s item failed: %s', rid, item_err)
                 db.session.rollback()
@@ -1322,9 +1316,18 @@ def complete():
                 request_id=rid,
             )
 
-        if cogs_found:
-            order.cost_of_goods = round(blank_cogs, 2)
-            order.profit = round(float(order.total or 0) - order.cost_of_goods, 2)
+        # COGS = blank wholesale + DTF (sq in × rate); profit vs order total
+        try:
+            from utils.order_costs import order_cost_breakdown, apply_calculated_cogs
+            from utils.print_sizes import production_from_order_item
+            item_productions = [
+                (item, production_from_order_item(item, customer_name=order.full_name))
+                for item in order.items
+            ]
+            breakdown = order_cost_breakdown(order, item_productions=item_productions)
+            apply_calculated_cogs(order, breakdown)
+        except Exception as cogs_err:
+            current_app.logger.warning('checkout rid=%s COGS calc skipped: %s', rid, cogs_err)
 
         db.session.commit()
 

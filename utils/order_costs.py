@@ -113,17 +113,21 @@ def shirt_cogs_for_order(order):
 
 
 def apply_order_defaults(order):
-    """Fill due date and blank-shirt COGS when they are still empty."""
+    """Fill due date and COGS (blank wholesale + DTF) when they are still empty."""
     changed = False
     if not order.due_date:
         order.due_date = default_due_date(order.created_at)
         changed = True
     if order.cost_of_goods is None:
-        cogs = shirt_cogs_for_order(order)
+        # Prefer full blank + DTF; fall back to blank-only if breakdown is empty.
+        breakdown = order_cost_breakdown(order)
+        cogs = breakdown.get('total_cogs')
+        if cogs is None or (cogs == 0 and shirt_cogs_for_order(order) is None):
+            cogs = shirt_cogs_for_order(order)
         if cogs is not None:
-            order.cost_of_goods = cogs
+            order.cost_of_goods = round(float(cogs), 2)
             if order.total is not None:
-                order.profit = round(float(order.total) - cogs, 2)
+                order.profit = round(float(order.total) - order.cost_of_goods, 2)
             changed = True
     return changed
 
