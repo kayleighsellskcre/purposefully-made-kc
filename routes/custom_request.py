@@ -8,7 +8,7 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
 from models import db, CustomDesignRequest
-from utils.rate_limit import post_only
+from utils.rate_limit import post_only, rate_limit
 
 custom_request_bp = Blueprint('custom_request', __name__, url_prefix='/custom-design')
 
@@ -222,3 +222,73 @@ def delete_request(req_id):
     req.is_deleted = True
     db.session.commit()
     return jsonify({'ok': True, 'message': 'Request removed from your list'})
+
+
+# ── AI Design Generator ──────────────────────────────────────────
+
+@custom_request_bp.route('/ai-design')
+def ai_design():
+    """AI design generator landing page."""
+    api_key = current_app.config.get('OPENAI_API_KEY') or ''
+    available = bool(api_key and api_key.startswith('sk-'))
+    return render_template('custom_request/ai_design.html', ai_available=available)
+
+
+@custom_request_bp.route('/ai-design/generate', methods=['POST'])
+@rate_limit('5 per hour')          # 5 AI images per IP per hour — anti-abuse
+@rate_limit('20 per day')          # 20 per IP per day hard cap
+def ai_design_generate():
+    """Call DALL-E 3, return the image URL as JSON.
+
+    Rate-limited at 5/hour and 20/day per IP address. The key never leaves
+    the server; the frontend only ever receives the generated image URL.
+    """
+    api_key = current_app.config.get('OPENAI_API_KEY', '').strip()
+    if not api_key:
+        return jsonify({'ok': False, 'error': 'AI design is not configured yet. Please try again soon.'}), 503
+
+    prompt = (request.json or {}).get('prompt', '').strip() if request.is_json else request.form.get('prompt', '').strip()
+    if not prompt:
+        return jsonify({'ok': False, 'error': 'Please describe the design you want.'}), 400
+    if len(prompt) > 800:
+        return jsonify({'ok': False, 'error': 'Description is too long (800 character limit).'}), 400
+
+    # Prepend a quality enhancer so outputs look like printable apparel designs
+    enhanced_prompt = (
+        f'{prompt}. '
+        'Design style: clean vector-art illustration suitable for DTF heat-transfer '
+        'printing on a t-shirt. Transparent or white background. '
+        'Bold, high-contrast colors. No text unless specifically requested.'
+    )
+
+    try:
+        import requests as req_lib
+        headers = {
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+        }
+        body = {
+            'model': 'dall-e-3',
+            'prompt': enhanced_prompt,
+            'n': 1,
+            'size': '1024x1024',
+            'quality': 'standard',
+            'response_format': 'url',
+        }
+        resp = req_lib.post(
+            'https://api.openai.com/v1/images/generations',
+            headers=headers,
+            json=body,
+            timeout=60,
+        )
+        if resp.status_code != 200:
+            current_app.logger.warning('DALL-E error %s: %s', resp.status_code, resp.text[:300])
+            return jsonify({'ok': False, 'error': 'AI generation failed. Please try a different description.'}), 502
+        data = resp.json()
+        image_url = data['data'][0]['url']
+        revised_prompt = data['data'][0].get('revised_prompt', '')
+        return jsonify({'ok': True, 'image_url': image_url, 'revised_prompt': revised_prompt})
+
+    except Exception as e:
+        current_app.logger.exception('AI design generate error: %s', e)
+        return jsonify({'ok': False, 'error': 'Something went wrong. Please try again.'}), 500

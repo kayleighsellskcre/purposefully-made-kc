@@ -1,0 +1,401 @@
+{% extends "base.html" %}
+{% block title %}AI Design Studio - Purposefully Made KC{% endblock %}
+{% block meta_description %}Describe the design you want and our AI will create it instantly — ready to print on any shirt we carry.{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <span class="eyebrow">AI Design Studio</span>
+        <h1>Create a Design with AI</h1>
+        <p class="lead">Describe what you want and our AI generates it instantly. Free with every order.</p>
+    </div>
+</div>
+
+<section class="ai-section">
+    <div class="container ai-container">
+
+        {% if not ai_available %}
+        <div class="ai-unavailable">
+            <p>AI design generation is coming soon. In the meantime, <a href="{{ url_for('custom_request.submit') }}">send us your idea</a> and we will create it for you.</p>
+        </div>
+        {% else %}
+
+        {# ── Prompt form ── #}
+        <div class="ai-card" id="aiPromptCard">
+            <h2 class="ai-card-title">What should your design look like?</h2>
+
+            {# Style chips #}
+            <p class="ai-label">Pick a style (optional)</p>
+            <div class="ai-style-chips" id="aiStyleChips">
+                <button type="button" class="ai-chip" data-style="vintage retro">Vintage</button>
+                <button type="button" class="ai-chip" data-style="bold modern">Bold</button>
+                <button type="button" class="ai-chip" data-style="minimalist simple">Minimalist</button>
+                <button type="button" class="ai-chip" data-style="watercolor artistic">Watercolor</button>
+                <button type="button" class="ai-chip" data-style="cartoon illustrated">Cartoon</button>
+                <button type="button" class="ai-chip" data-style="floral elegant">Floral</button>
+                <button type="button" class="ai-chip" data-style="sporty athletic">Sporty</button>
+                <button type="button" class="ai-chip" data-style="faith Christian inspirational">Faith</button>
+            </div>
+
+            <p class="ai-label" style="margin-top:1.25rem;">Describe your design</p>
+            <textarea id="aiPromptInput" class="ai-textarea"
+                placeholder="e.g. Kansas City Chiefs helmet surrounded by sunflowers in a vintage style..."
+                maxlength="800" rows="4"></textarea>
+            <div class="ai-char-count"><span id="aiCharCount">0</span>/800</div>
+
+            {# Example prompts #}
+            <p class="ai-label ai-examples-label">Need inspiration? Try one of these:</p>
+            <div class="ai-examples">
+                <button type="button" class="ai-example" onclick="aiUseExample(this)">KC Chiefs helmet with sunflowers, vintage style</button>
+                <button type="button" class="ai-example" onclick="aiUseExample(this)">Mama bear with two cubs, floral wreath, pastel colors</button>
+                <button type="button" class="ai-example" onclick="aiUseExample(this)">Faith over fear, cross with wildflowers, watercolor</button>
+                <button type="button" class="ai-example" onclick="aiUseExample(this)">Funny cat wearing sunglasses, cartoon style</button>
+                <button type="button" class="ai-example" onclick="aiUseExample(this)">KU Jayhawk mascot, bold modern design</button>
+                <button type="button" class="ai-example" onclick="aiUseExample(this)">Bride squad, floral wreath, elegant minimalist</button>
+            </div>
+
+            <button type="button" class="btn btn-primary ai-generate-btn" id="aiGenerateBtn" onclick="aiGenerate()">
+                Generate Design
+            </button>
+        </div>
+
+        {# ── Result area ── #}
+        <div class="ai-card ai-result-card" id="aiResultCard" style="display:none;">
+            <div class="ai-result-inner">
+                <div class="ai-preview-wrap">
+                    <div class="ai-preview-bg">
+                        <img id="aiResultImg" src="" alt="Your AI-generated design" class="ai-result-img">
+                    </div>
+                    <div class="ai-result-actions">
+                        <a id="aiCustomizeBtn" href="#" class="btn btn-primary">Use This Design</a>
+                        <button type="button" class="btn btn-outline" onclick="aiGenerate()">Generate Another</button>
+                        <button type="button" class="btn btn-outline" onclick="aiBack()">Change Description</button>
+                    </div>
+                </div>
+                <div class="ai-result-info">
+                    <h2 class="ai-result-title">Your Design is Ready!</h2>
+                    <p class="ai-result-sub">Click "Use This Design" to put it on any shirt we carry.</p>
+                    <div class="ai-revised-wrap" id="aiRevisedWrap" style="display:none;">
+                        <p class="ai-revised-label">What AI created:</p>
+                        <p class="ai-revised-text" id="aiRevisedText"></p>
+                    </div>
+                    <div class="ai-tip">
+                        <strong>Tip:</strong> Not quite right? Click "Generate Another" for a fresh take, or "Change Description" to refine your idea.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# ── Loading state ── #}
+        <div class="ai-loading" id="aiLoading" style="display:none;">
+            <div class="ai-spinner"></div>
+            <p class="ai-loading-text">Creating your design<span class="ai-dots"></span></p>
+            <p class="ai-loading-sub">This takes about 10-15 seconds</p>
+        </div>
+
+        {# ── Error state ── #}
+        <div class="ai-error" id="aiError" style="display:none;">
+            <p id="aiErrorText">Something went wrong. Please try again.</p>
+            <button type="button" class="btn btn-outline" onclick="aiBack()">Try Again</button>
+        </div>
+
+        {# ── Rate limit notice ── #}
+        <p class="ai-limit-note">Free to use. Limit of 5 designs per hour to keep it fair for everyone.</p>
+
+        {% endif %}
+    </div>
+</section>
+
+<style>
+.ai-section { padding: 3rem 0 5rem; }
+.ai-container { max-width: 860px; }
+
+.ai-unavailable {
+    text-align: center;
+    padding: 3rem;
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+
+.ai-card {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    padding: 2rem;
+    box-shadow: 0 2px 16px rgba(58,61,72,0.07);
+    margin-bottom: 1.5rem;
+}
+.ai-card-title {
+    font-family: var(--font-heading);
+    font-size: 1.3rem;
+    margin: 0 0 1.25rem;
+}
+.ai-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin: 0 0 0.5rem;
+}
+
+/* Style chips */
+.ai-style-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.ai-chip {
+    padding: 0.35rem 0.9rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--border-color, #e0d8cc);
+    background: transparent;
+    font-size: 0.82rem;
+    font-family: inherit;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.15s;
+}
+.ai-chip:hover,
+.ai-chip.active {
+    border-color: var(--terra-cotta, #b87c6f);
+    background: rgba(184,124,111,0.1);
+    color: var(--terra-cotta, #b87c6f);
+    font-weight: 600;
+}
+
+/* Textarea */
+.ai-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.85rem 1rem;
+    border: 1.5px solid var(--border-color, #e0d8cc);
+    border-radius: 10px;
+    font-size: 1rem;
+    font-family: inherit;
+    color: var(--text-primary);
+    resize: vertical;
+    transition: border-color 0.2s;
+    background: #faf9f6;
+}
+.ai-textarea:focus {
+    outline: none;
+    border-color: var(--terra-cotta, #b87c6f);
+    background: #fff;
+}
+.ai-char-count {
+    text-align: right;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin: 0.25rem 0 0;
+}
+
+/* Example prompts */
+.ai-examples-label { margin-top: 1.25rem; }
+.ai-examples { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1.5rem; }
+.ai-example {
+    padding: 0.3rem 0.75rem;
+    border-radius: 8px;
+    border: 1px dashed var(--border-color);
+    background: #faf9f6;
+    font-size: 0.8rem;
+    font-family: inherit;
+    color: var(--text-secondary);
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+}
+.ai-example:hover {
+    border-color: var(--terra-cotta);
+    color: var(--terra-cotta);
+    background: rgba(184,124,111,0.06);
+}
+
+.ai-generate-btn { width: 100%; padding: 0.9rem; font-size: 1rem; }
+
+/* Result */
+.ai-result-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: start;
+}
+@media (max-width: 640px) {
+    .ai-result-inner { grid-template-columns: 1fr; }
+}
+.ai-preview-wrap {}
+.ai-preview-bg {
+    background: linear-gradient(135deg, var(--ivory-silk, #f9f5ee) 0%, #f0ebe0 100%);
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    margin-bottom: 1rem;
+}
+.ai-result-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+.ai-result-actions { display: flex; flex-direction: column; gap: 0.5rem; }
+.ai-result-title {
+    font-family: var(--font-heading);
+    font-size: 1.3rem;
+    margin: 0 0 0.5rem;
+    color: var(--terra-cotta, #b87c6f);
+}
+.ai-result-sub { color: var(--text-secondary); margin-bottom: 1rem; }
+.ai-revised-wrap { background: #faf9f6; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1rem; }
+.ai-revised-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); margin: 0 0 0.25rem; }
+.ai-revised-text { font-size: 0.85rem; color: var(--text-secondary); margin: 0; font-style: italic; }
+.ai-tip { font-size: 0.85rem; color: var(--text-secondary); padding: 0.75rem; border-left: 3px solid var(--border-color); }
+
+/* Loading */
+.ai-loading {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+.ai-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--border-color);
+    border-top-color: var(--terra-cotta, #b87c6f);
+    border-radius: 50%;
+    animation: ai-spin 0.9s linear infinite;
+    margin: 0 auto 1.25rem;
+}
+@keyframes ai-spin { to { transform: rotate(360deg); } }
+.ai-loading-text { font-size: 1.1rem; font-weight: 600; margin: 0 0 0.35rem; }
+.ai-loading-sub { color: var(--text-secondary); font-size: 0.9rem; margin: 0; }
+.ai-dots::after {
+    content: '';
+    animation: ai-dots 1.5s steps(4, end) infinite;
+}
+@keyframes ai-dots {
+    0%   { content: ''; }
+    25%  { content: '.'; }
+    50%  { content: '..'; }
+    75%  { content: '...'; }
+}
+
+/* Error */
+.ai-error {
+    text-align: center;
+    padding: 2.5rem;
+    background: #fff5f5;
+    border-radius: 12px;
+    border: 1px solid #fcc;
+    color: #c0392b;
+}
+.ai-error p { margin-bottom: 1rem; }
+
+/* Limit note */
+.ai-limit-note {
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-top: 0.75rem;
+}
+</style>
+
+<script>
+(function() {
+    var _selectedStyle  = '';
+    var _currentImgUrl  = '';
+
+    // ── Style chip toggle ──
+    document.querySelectorAll('.ai-chip').forEach(function(chip) {
+        chip.addEventListener('click', function() {
+            var alreadyActive = this.classList.contains('active');
+            document.querySelectorAll('.ai-chip').forEach(function(c) { c.classList.remove('active'); });
+            if (!alreadyActive) {
+                this.classList.add('active');
+                _selectedStyle = this.getAttribute('data-style');
+            } else {
+                _selectedStyle = '';
+            }
+        });
+    });
+
+    // ── Character counter ──
+    var textarea = document.getElementById('aiPromptInput');
+    if (textarea) {
+        textarea.addEventListener('input', function() {
+            document.getElementById('aiCharCount').textContent = this.value.length;
+        });
+    }
+
+    // ── Use example ──
+    window.aiUseExample = function(btn) {
+        var input = document.getElementById('aiPromptInput');
+        if (input) {
+            input.value = btn.textContent.trim();
+            input.dispatchEvent(new Event('input'));
+            input.focus();
+        }
+    };
+
+    // ── Generate ──
+    window.aiGenerate = function() {
+        var prompt = (document.getElementById('aiPromptInput').value || '').trim();
+        if (!prompt) {
+            document.getElementById('aiPromptInput').focus();
+            return;
+        }
+        var fullPrompt = _selectedStyle ? prompt + ' — style: ' + _selectedStyle : prompt;
+
+        _showState('loading');
+
+        fetch('{{ url_for("custom_request.ai_design_generate") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: fullPrompt }),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.ok) {
+                _showError(data.error || 'Generation failed. Please try again.');
+                return;
+            }
+            _currentImgUrl = data.image_url;
+
+            // Pre-load the image before showing it
+            var img = document.getElementById('aiResultImg');
+            img.onload = function() { _showState('result'); };
+            img.onerror = function() { _showError('Image failed to load. Please try again.'); };
+            img.src = _currentImgUrl;
+
+            // Wire up customize button
+            var custBtn = document.getElementById('aiCustomizeBtn');
+            if (custBtn) {
+                custBtn.href = '{{ url_for("shop.design_gallery") }}?ai_image=' + encodeURIComponent(_currentImgUrl);
+            }
+
+            // Show revised prompt if different
+            var revised = data.revised_prompt || '';
+            var revWrap = document.getElementById('aiRevisedWrap');
+            var revText = document.getElementById('aiRevisedText');
+            if (revised && revWrap && revText) {
+                revText.textContent = revised;
+                revWrap.style.display = '';
+            } else if (revWrap) {
+                revWrap.style.display = 'none';
+            }
+        })
+        .catch(function(err) {
+            _showError('Something went wrong. Please check your connection and try again.');
+        });
+    };
+
+    window.aiBack = function() { _showState('prompt'); };
+
+    function _showState(state) {
+        document.getElementById('aiPromptCard').style.display  = state === 'prompt'  ? '' : 'none';
+        document.getElementById('aiLoading').style.display     = state === 'loading' ? '' : 'none';
+        document.getElementById('aiResultCard').style.display  = state === 'result'  ? '' : 'none';
+        document.getElementById('aiError').style.display       = state === 'error'   ? '' : 'none';
+    }
+
+    function _showError(msg) {
+        document.getElementById('aiErrorText').textContent = msg;
+        _showState('error');
+    }
+})();
+</script>
+{% endblock %}
