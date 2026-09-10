@@ -253,12 +253,14 @@ def ai_design_generate():
     if len(prompt) > 800:
         return jsonify({'ok': False, 'error': 'Description is too long (800 character limit).'}), 400
 
-    # Prepend a quality enhancer so outputs look like printable apparel designs
+    # Append quality/print directives — customer prompt is preserved as-is
     enhanced_prompt = (
         f'{prompt}. '
-        'Design style: clean vector-art illustration suitable for DTF heat-transfer '
-        'printing on a t-shirt. Transparent or white background. '
-        'Bold, high-contrast colors. No text unless specifically requested.'
+        'Completely transparent background — no background color, no backdrop, no shadow, '
+        'no gradient behind the design. The design itself should have a subtle natural texture '
+        '(slight grain, worn, or organic feel) that gives it depth and warmth without looking '
+        'digital-flat. Clean edges, bold high-contrast colors, print-ready for DTF heat-transfer '
+        'on a t-shirt. No text unless specifically requested.'
     )
 
     try:
@@ -272,7 +274,7 @@ def ai_design_generate():
             'prompt': enhanced_prompt,
             'n': 1,
             'size': '1024x1024',
-            'quality': 'standard',
+            'quality': 'hd',
             'response_format': 'url',
         }
         resp = req_lib.post(
