@@ -245,13 +245,13 @@ def ai_design_generate():
     """
     api_key = current_app.config.get('OPENAI_API_KEY', '').strip()
     if not api_key:
-        return jsonify({'ok': False, 'error': 'AI design is not configured yet. Please try again soon.'}), 503
+        return jsonify({'ok': False, 'error': 'AI design is not configured yet. Please try again soon.'})
 
     prompt = (request.json or {}).get('prompt', '').strip() if request.is_json else request.form.get('prompt', '').strip()
     if not prompt:
-        return jsonify({'ok': False, 'error': 'Please describe the design you want.'}), 400
+        return jsonify({'ok': False, 'error': 'Please describe the design you want.'})
     if len(prompt) > 800:
-        return jsonify({'ok': False, 'error': 'Description is too long (800 character limit).'}), 400
+        return jsonify({'ok': False, 'error': 'Description is too long (800 character limit).'})
 
     # Append quality/print directives — customer prompt is preserved as-is
     enhanced_prompt = (
@@ -291,7 +291,7 @@ def ai_design_generate():
                 err_msg = (err_json.get('error') or {}).get('message', dalle_err)
             except Exception:
                 err_msg = dalle_err
-            return jsonify({'ok': False, 'error': f'OpenAI {resp.status_code}: {err_msg}'}), 502
+            return jsonify({'ok': False, 'error': f'OpenAI {resp.status_code}: {err_msg}'})
         data = resp.json()
         image_url = data['data'][0]['url']
         revised_prompt = data['data'][0].get('revised_prompt', '')
@@ -299,4 +299,4 @@ def ai_design_generate():
 
     except Exception as e:
         current_app.logger.exception('AI design generate error: %s', e)
-        return jsonify({'ok': False, 'error': 'Something went wrong. Please try again.'}), 500
+        return jsonify({'ok': False, 'error': 'Something went wrong. Please try again.'})
