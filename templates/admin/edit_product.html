@@ -109,6 +109,16 @@
                 </div>
 
                 <div class="ep-field">
+                    <label>Wholesale Cost <small style="font-weight:normal;color:#888;">(your cost from supplier)</small></label>
+                    <div class="ep-prefix-wrap">
+                        <span class="ep-prefix">$</span>
+                        <input type="number" name="wholesale_cost" step="0.01" min="0"
+                               value="{{ '%.2f'|format(product.wholesale_cost or 0) }}">
+                    </div>
+                    <small>Used for AIRMATTRESS promo pricing. Never shown to customers.</small>
+                </div>
+
+                <div class="ep-field">
                     <label>Description</label>
                     <textarea name="description" rows="3">{{ product.description or '' }}</textarea>
                     <small>Shown to customers on the product page</small>
