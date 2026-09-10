@@ -270,30 +270,35 @@ def ai_design_generate():
             'Content-Type': 'application/json',
         }
         body = {
-            'model': 'dall-e-3',
+            'model': 'gpt-image-1',
             'prompt': enhanced_prompt,
             'n': 1,
             'size': '1024x1024',
-            'quality': 'hd',
+            'quality': 'high',
         }
         resp = req_lib.post(
             'https://api.openai.com/v1/images/generations',
             headers=headers,
             json=body,
-            timeout=60,
+            timeout=120,
         )
         if resp.status_code != 200:
-            dalle_err = resp.text[:400]
-            current_app.logger.warning('DALL-E error %s: %s', resp.status_code, dalle_err)
+            api_err = resp.text[:400]
+            current_app.logger.warning('Image API error %s: %s', resp.status_code, api_err)
             try:
                 err_json = resp.json()
-                err_msg = (err_json.get('error') or {}).get('message', dalle_err)
+                err_msg = (err_json.get('error') or {}).get('message', api_err)
             except Exception:
-                err_msg = dalle_err
+                err_msg = api_err
             return jsonify({'ok': False, 'error': f'OpenAI {resp.status_code}: {err_msg}'})
         data = resp.json()
-        image_url = data['data'][0]['url']
-        revised_prompt = data['data'][0].get('revised_prompt', '')
+        item = data['data'][0]
+        # gpt-image-1 returns base64; older models returned a URL
+        if 'b64_json' in item:
+            image_url = f"data:image/png;base64,{item['b64_json']}"
+        else:
+            image_url = item.get('url', '')
+        revised_prompt = item.get('revised_prompt', '')
         return jsonify({'ok': True, 'image_url': image_url, 'revised_prompt': revised_prompt})
 
     except Exception as e:
