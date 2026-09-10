@@ -625,22 +625,7 @@
                     <input type="text" id="editTitle" name="title" class="form-control" maxlength="200" required>
                 </div>
                 <div class="form-group" style="margin-bottom:1rem;">
-                    <label for="editFolder" class="form-label">Folder</label>
-                    <select id="editFolder" name="folder" class="form-control">
-                        <option value="custom_orders">Custom Orders</option>
-                        <option value="faith">Faith &amp; Inspiration</option>
-                        <option value="sports">Sports</option>
-                        <option value="school">School</option>
-                        <option value="couples">Couples &amp; Family</option>
-                        <option value="holiday">Holiday</option>
-                        <option value="kc">Kansas City</option>
-                        <option value="evergreen">Fan Favorites</option>
-                        <option value="funny">Funny</option>
-                        <option value="luxury_basics">Luxury Basics</option>
-                    </select>
-                </div>
-                <div class="form-group" style="margin-bottom:1rem;">
-                    <label class="form-label" style="margin-bottom:0.5rem;">Also appears in <small style="font-weight:400;color:#aaa;">— select all other tabs this design fits</small></label>
+                    <label class="form-label" style="margin-bottom:0.5rem;">Show in categories <small style="font-weight:400;color:#aaa;">— check every tab this design should appear in</small></label>
                     <div id="editExtraCategories" style="display:flex;flex-wrap:wrap;gap:0.4rem;">
                         <label class="cat-chip"><input type="checkbox" name="extra_categories" value="faith"> Faith &amp; Inspiration</label>
                         <label class="cat-chip"><input type="checkbox" name="extra_categories" value="sports"> Sports</label>
@@ -652,7 +637,7 @@
                         <label class="cat-chip"><input type="checkbox" name="extra_categories" value="funny"> Funny</label>
                         <label class="cat-chip"><input type="checkbox" name="extra_categories" value="luxury_basics"> Luxury Basics</label>
                     </div>
-                    <small style="color:#bbb;font-size:0.75rem;margin-top:0.35rem;display:block;">The primary Folder above is always included — these add it to extra tabs too.</small>
+                    <small style="color:#bbb;font-size:0.75rem;margin-top:0.35rem;display:block;">Check all tabs where this design should appear. At least one is required.</small>
                 </div>
                 <div class="form-group" style="margin-bottom:1rem;">
                     <label for="editSku" class="form-label">SKU</label>
@@ -796,14 +781,15 @@ function openGalleryEdit(id) {
     _gId = id;
     _editUrl = card.getAttribute('data-edit-url') || '';
     document.getElementById('editTitle').value = card.getAttribute('data-title') || '';
-    document.getElementById('editFolder').value = card.getAttribute('data-folder') || 'custom_orders';
     document.getElementById('editSku').value = card.getAttribute('data-sku') || '';
     document.getElementById('editVariantLabel').value = card.getAttribute('data-variant-label') || '';
     document.getElementById('editFile').value = '';
-    // Pre-check extra category boxes
+    // Pre-check all category boxes (primary folder + extra_categories)
+    const primaryFolder = (card.getAttribute('data-folder') || '').trim();
     const extras = (card.getAttribute('data-extra-categories') || '').split(',').map(s => s.trim()).filter(Boolean);
+    const allCats = primaryFolder ? [primaryFolder].concat(extras) : extras;
     document.querySelectorAll('#editExtraCategories input[type="checkbox"]').forEach(function(cb) {
-        cb.checked = extras.indexOf(cb.value) !== -1;
+        cb.checked = allCats.indexOf(cb.value) !== -1;
     });
     document.getElementById('galleryEditModal').classList.add('is-open');
     document.body.style.overflow = 'hidden';

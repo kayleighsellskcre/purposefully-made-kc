@@ -3491,14 +3491,16 @@ def design_gallery_edit(design_id):
     }
 
     title = (request.form.get('title') or '').strip()
-    folder = (request.form.get('folder') or '').strip() or design.folder or 'custom_orders'
-    if folder not in GALLERY_FOLDERS:
-        folder = 'custom_orders'
     sku = (request.form.get('sku') or '').strip()
     variant_label = (request.form.get('variant_label') or '').strip()[:80]
-    # Extra categories: comma-separated additional tabs this design appears in
-    extra_cats_raw = request.form.getlist('extra_categories')
-    extra_cats = ','.join(c for c in extra_cats_raw if c in GALLERY_FOLDERS and c != folder)
+    # All selected categories from checkboxes — first one becomes the primary folder
+    all_cats_raw = [c for c in request.form.getlist('extra_categories') if c in GALLERY_FOLDERS]
+    if all_cats_raw:
+        folder = all_cats_raw[0]
+        extra_cats = ','.join(all_cats_raw[1:])
+    else:
+        folder = design.folder or 'custom_orders'
+        extra_cats = ''
 
     try:
         if title:
