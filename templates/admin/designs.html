@@ -94,70 +94,66 @@
                 <h2 class="gallery-upload-title">Add Design to Gallery</h2>
                 <p class="gallery-upload-subtitle">Upload a new design to make it available in the customizer</p>
 
-                <form method="post" action="{{ url_for('admin.design_gallery_upload') }}" enctype="multipart/form-data" class="gallery-upload-form">
-                    <div class="gallery-form-grid">
-                        <div class="form-group">
-                            <label for="title" class="form-label">Display Name</label>
-                            <input type="text" id="title" name="title" class="form-control" placeholder="e.g. Falcons Logo">
+                <form id="galleryUploadForm" class="gallery-upload-form">
+
+                    {# ── Categories (replaces Folder dropdown) ── #}
+                    <div class="form-group upload-cats-group">
+                        <label class="form-label">Categories <small style="font-weight:400;color:var(--text-secondary);">— check every tab this design should appear in</small></label>
+                        <div class="upload-cat-chips">
+                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="custom_orders"> Custom Orders</label>
+                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="faith"> Faith &amp; Inspiration</label>
+                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="sports"> Sports</label>
+                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="school"> School</label>
+                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="couples"> Couples &amp; Family</label>
+                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="holiday"> Holiday</label>
+                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="kc"> Kansas City</label>
+                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="evergreen"> Fan Favorites</label>
+                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="funny"> Funny</label>
+                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="luxury_basics"> Luxury Basics</label>
                         </div>
-                        <div class="form-group">
-                            <label for="folder" class="form-label">Folder</label>
-                            <select id="folder" name="folder" class="form-control">
-                                <option value="custom_orders">Custom Orders</option>
-                                <option value="faith">Faith &amp; Inspiration</option>
-                                <option value="sports">Sports</option>
-                                <option value="school">School</option>
-                                <option value="couples">Couples &amp; Family</option>
-                                <option value="holiday">Holiday</option>
-                                <option value="kc">Kansas City</option>
-                                <option value="evergreen">Fan Favorites</option>
-                                <option value="funny">Funny</option>
-                                <option value="luxury_basics">Luxury Basics</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="sku" class="form-label">SKU</label>
-                            <input type="text" id="sku" name="sku" class="form-control" placeholder="e.g. DSG-001">
-                        </div>
-                        <div class="form-group">
-                            <label for="parent_design_id" class="form-label">Color of existing design <span style="font-weight:400;color:var(--text-secondary);">(optional)</span></label>
-                            <select id="parent_design_id" name="parent_design_id" class="form-control">
-                                <option value="">— New main design —</option>
-                                {% for d in gallery_designs %}
-                                <option value="{{ d.id }}">{{ d.title or d.original_filename or ('Design #' ~ d.id) }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="variant_label" class="form-label">Color name</label>
-                            <input type="text" id="variant_label" name="variant_label" class="form-control" placeholder="e.g. Navy, White, Glitter Gold" maxlength="80">
-                            <p class="form-hint" style="margin:0.35rem 0 0;font-size:0.8rem;color:var(--text-secondary);">Only needed when adding a color to an existing design. Customers see this when choosing a color.</p>
-                        </div>
+                        <small style="color:#bbb;font-size:0.75rem;margin-top:0.35rem;display:block;">At least one category required.</small>
                     </div>
 
+                    {# ── Multi-file drop zone ── #}
                     <div class="form-group gallery-file-group">
-                        <label class="form-label">Design File</label>
+                        <label class="form-label">Design Files <small style="font-weight:400;color:var(--text-secondary);">— select as many as you want at once</small></label>
                         <div class="gallery-file-zone" id="fileZone">
-                            <input type="file" name="file" id="designFile" accept=".png,.jpg,.jpeg,.webp,.heic,.heif" required class="gallery-file-input">
-                            <div class="gallery-file-placeholder">
+                            <input type="file" id="designFile" accept=".png,.jpg,.jpeg,.webp,.heic,.heif" multiple class="gallery-file-input">
+                            <div class="gallery-file-placeholder" id="fileZonePlaceholder">
                                 <svg class="gallery-file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                     <polyline points="17 8 12 3 7 8"></polyline>
                                     <line x1="12" y1="3" x2="12" y2="15"></line>
                                 </svg>
-                                <span class="gallery-file-text">Choose file or drag here</span>
-                                <span class="gallery-file-hint">PNG, JPG, WEBP, or HEIC</span>
-                            </div>
-                            <div class="gallery-file-selected" id="fileSelected" style="display: none;">
-                                <span class="gallery-file-name" id="fileName"></span>
-                                <button type="button" class="gallery-file-clear" id="fileClear" aria-label="Clear file">&times;</button>
+                                <span class="gallery-file-text">Choose files or drag &amp; drop here</span>
+                                <span class="gallery-file-hint">PNG, JPG, WEBP, HEIC — select multiple at once</span>
                             </div>
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary btn-lg gallery-upload-btn">
-                        <span>Upload to Gallery</span>
+                    {# ── Upload queue — rendered by JS ── #}
+                    <div id="uploadQueue" style="display:none;margin-bottom:1.5rem;">
+                        <p class="form-label" style="margin-bottom:0.5rem;">Name, SKU &amp; color are auto-filled from the filename — edit any before uploading</p>
+                        <div id="queueList" class="upload-queue"></div>
+                        <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.5rem;" onclick="clearDoneItems()">Clear completed</button>
+                    </div>
+
+                    {# ── Optional: add as color variant of existing design ── #}
+                    <div class="form-group" style="margin-bottom:1.5rem;max-width:480px;">
+                        <label for="parent_design_id" class="form-label">Color of existing design <span style="font-weight:400;color:var(--text-secondary);">(optional)</span></label>
+                        <select id="parent_design_id" name="parent_design_id" class="form-control">
+                            <option value="">— New main design —</option>
+                            {% for d in gallery_designs %}
+                            <option value="{{ d.id }}">{{ d.title or d.original_filename or ('Design #' ~ d.id) }}</option>
+                            {% endfor %}
+                        </select>
+                        <p class="form-hint" style="margin:0.35rem 0 0;font-size:0.8rem;color:var(--text-secondary);">Leave blank for new designs. Select a parent when adding color variants.</p>
+                    </div>
+
+                    <button type="button" class="btn btn-primary btn-lg gallery-upload-btn" id="uploadBtn" disabled onclick="startBatchUpload()">
+                        Select files above to upload
                     </button>
+                    <div id="uploadProgress" style="display:none;margin-top:0.6rem;font-size:0.85rem;color:var(--text-secondary);"></div>
                 </form>
             </div>
 
@@ -589,6 +585,58 @@
     font-size: 0.95rem;
 }
 .gallery-back-link { margin-top: 2.5rem; }
+
+/* Upload form — categories + queue */
+.upload-cats-group { margin-bottom: 1.5rem; }
+.upload-cat-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem; }
+
+/* Queue list */
+.upload-queue { display: flex; flex-direction: column; gap: 0.5rem; }
+.queue-item {
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 0.75rem;
+    row-gap: 0.35rem;
+    align-items: center;
+    background: #faf9f6;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem;
+    transition: background 0.2s, border-color 0.2s;
+}
+.queue-item.is-done  { background: #f0faf4; border-color: #b7dfc6; }
+.queue-item.is-error { background: #fff5f5; border-color: #fcc; }
+.queue-thumb-wrap { grid-row: 1 / 3; display: flex; align-items: center; justify-content: center; }
+.queue-thumb {
+    width: 52px; height: 52px; object-fit: contain;
+    border-radius: 6px; background: #f0ebe0; border: 1px solid var(--border-color);
+}
+.queue-fields {
+    display: grid;
+    grid-template-columns: 1fr 100px 120px auto;
+    gap: 0.4rem;
+    align-items: center;
+}
+.queue-filename { font-size: 0.72rem; color: var(--text-secondary); word-break: break-all; }
+.queue-status { font-size: 1rem; font-weight: 700; line-height: 1; padding: 0 0.25rem; }
+.queue-status.ok  { color: #2d7a4f; }
+.queue-status.err { color: #c0392b; }
+.queue-remove {
+    background: none; border: none; font-size: 1.15rem; line-height: 1;
+    color: var(--text-secondary); cursor: pointer; padding: 0.1rem 0.3rem; border-radius: 4px;
+}
+.queue-remove:hover { color: var(--terra-cotta); background: rgba(184,124,111,0.1); }
+.form-control-sm {
+    padding: 0.3rem 0.55rem; font-size: 0.82rem; border-radius: 6px;
+    border: 1.5px solid var(--border-color); background: #fff; font-family: inherit; width: 100%;
+    box-sizing: border-box;
+}
+.form-control-sm:focus { outline: none; border-color: var(--terra-cotta, #b87c6f); }
+@media (max-width: 600px) {
+    .queue-fields { grid-template-columns: 1fr auto; }
+    .queue-fields .queue-sku, .queue-fields .queue-color { display: none; }
+}
 </style>
 
 <!-- Library Delete Confirmation Modal -->
@@ -940,49 +988,183 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
     });
 });
 
+// ── Batch upload queue ──────────────────────────────────────────────────────
 (function() {
-    const zone = document.getElementById('fileZone');
-    if (!zone) return;
-    const input = document.getElementById('designFile');
-    const placeholder = zone.querySelector('.gallery-file-placeholder');
-    const selected = document.getElementById('fileSelected');
-    const fileName = document.getElementById('fileName');
-    const clearBtn = document.getElementById('fileClear');
+    var _queue    = {};      // keyed by uid → {id, file, title, sku, color, status, error}
+    var _busy     = false;
 
-    function updateFileDisplay() {
-        const file = input.files[0];
-        if (file) {
-            placeholder.style.display = 'none';
-            selected.style.display = 'flex';
-            fileName.textContent = file.name;
+    var COLORS = ['black','white','navy','red','blue','green','yellow','pink','purple',
+                  'orange','gold','silver','gray','grey','brown','tan','cream','charcoal',
+                  'maroon','teal','natural','heather','royal','forest','athletic'];
+
+    function fileToTitle(name) {
+        return name.replace(/\.[^.]+$/, '').replace(/[_\-]+/g, ' ').trim()
+            .replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+    }
+    function fileToSku(name) {
+        var letters = name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 6);
+        return letters ? 'DSG-' + letters : '';
+    }
+    function fileToColor(name) {
+        var lower = name.toLowerCase();
+        for (var i = 0; i < COLORS.length; i++) {
+            if (lower.indexOf(COLORS[i]) !== -1)
+                return COLORS[i].charAt(0).toUpperCase() + COLORS[i].slice(1);
+        }
+        return '';
+    }
+    function esc(s) {
+        return (s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function uid() { return 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6); }
+
+    function addFiles(fileList) {
+        for (var i = 0; i < fileList.length; i++) {
+            var f = fileList[i];
+            var id = uid();
+            _queue[id] = { id: id, file: f, title: fileToTitle(f.name), sku: fileToSku(f.name), color: fileToColor(f.name), status: 'pending', error: '' };
+        }
+        renderQueue();
+        updateBtn();
+    }
+
+    function renderQueue() {
+        var list    = document.getElementById('queueList');
+        var queueEl = document.getElementById('uploadQueue');
+        var entries = Object.values(_queue);
+        if (!entries.length) { queueEl.style.display = 'none'; return; }
+        queueEl.style.display = '';
+        list.innerHTML = '';
+        entries.forEach(function(item) {
+            var done = item.status === 'done';
+            var err  = item.status === 'error';
+            var busy = item.status === 'uploading';
+            var dis  = (done || err || busy) ? ' disabled' : '';
+            var row  = document.createElement('div');
+            row.className = 'queue-item' + (done ? ' is-done' : '') + (err ? ' is-error' : '');
+            row.setAttribute('data-queue-id', item.id);
+            row.innerHTML =
+                '<div class="queue-thumb-wrap"><img class="queue-thumb" id="qth_' + item.id + '" src="" alt=""></div>' +
+                '<div class="queue-fields">' +
+                  '<input type="text" class="form-control-sm queue-title" value="' + esc(item.title) + '" placeholder="Name"' + dis + '>' +
+                  '<input type="text" class="form-control-sm queue-sku"   value="' + esc(item.sku)   + '" placeholder="SKU"' + dis + '>' +
+                  '<input type="text" class="form-control-sm queue-color" value="' + esc(item.color) + '" placeholder="Color"' + dis + '>' +
+                  (busy ? '<span class="queue-status">⏳</span>' : '') +
+                  (done ? '<span class="queue-status ok">✓</span>' : '') +
+                  (err  ? '<span class="queue-status err" title="' + esc(item.error) + '">✗</span>' : '') +
+                  (!busy && !done && !err ? '<button type="button" class="queue-remove" data-id="' + item.id + '" title="Remove">×</button>' : '') +
+                '</div>' +
+                '<div class="queue-filename">' + esc(item.file.name) + (err ? ' — <span style="color:#c0392b">' + esc(item.error) + '</span>' : '') + '</div>';
+            list.appendChild(row);
+            (function(id, file) {
+                var reader = new FileReader();
+                reader.onload = function(e) { var img = document.getElementById('qth_' + id); if (img) img.src = e.target.result; };
+                reader.readAsDataURL(file);
+            })(item.id, item.file);
+        });
+        list.querySelectorAll('.queue-remove').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                delete _queue[this.getAttribute('data-id')];
+                renderQueue(); updateBtn();
+            });
+        });
+    }
+
+    function updateBtn() {
+        var btn = document.getElementById('uploadBtn');
+        var pending = Object.values(_queue).filter(function(i) { return i.status === 'pending'; });
+        var done    = Object.values(_queue).filter(function(i) { return i.status === 'done'; });
+        if (!pending.length) {
+            btn.disabled = true;
+            btn.textContent = done.length ? 'All uploaded ✓' : 'Select files above to upload';
         } else {
-            placeholder.style.display = 'flex';
-            selected.style.display = 'none';
+            btn.disabled = false;
+            btn.textContent = 'Upload ' + pending.length + ' Design' + (pending.length === 1 ? '' : 's') + ' →';
         }
     }
 
-    input.addEventListener('change', updateFileDisplay);
-    clearBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        input.value = '';
-        updateFileDisplay();
-    });
+    window.clearDoneItems = function() {
+        Object.keys(_queue).forEach(function(id) { if (_queue[id].status === 'done') delete _queue[id]; });
+        renderQueue(); updateBtn();
+    };
 
-    zone.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        zone.classList.add('drag-over');
-    });
-    zone.addEventListener('dragleave', function() {
-        zone.classList.remove('drag-over');
-    });
-    zone.addEventListener('drop', function(e) {
-        e.preventDefault();
-        zone.classList.remove('drag-over');
-        if (e.dataTransfer.files.length) {
-            input.files = e.dataTransfer.files;
-            updateFileDisplay();
+    window.startBatchUpload = function() {
+        if (_busy) return;
+        // Snapshot current field values from DOM
+        document.querySelectorAll('.queue-item[data-queue-id]').forEach(function(row) {
+            var id = row.getAttribute('data-queue-id');
+            if (_queue[id] && _queue[id].status === 'pending') {
+                _queue[id].title = row.querySelector('.queue-title').value;
+                _queue[id].sku   = row.querySelector('.queue-sku').value;
+                _queue[id].color = row.querySelector('.queue-color').value;
+            }
+        });
+        var pending = Object.values(_queue).filter(function(i) { return i.status === 'pending'; });
+        if (!pending.length) return;
+        var cats = Array.from(document.querySelectorAll('#galleryUploadForm input[name="upload_cats"]:checked')).map(function(cb) { return cb.value; });
+        if (!cats.length) { showGalleryToast('Please check at least one category first.'); return; }
+        _busy = true;
+        var prog = document.getElementById('uploadProgress');
+        prog.style.display = '';
+        uploadNext(pending, 0, prog, cats);
+    };
+
+    function uploadNext(pending, idx, prog, cats) {
+        if (idx >= pending.length) {
+            _busy = false; prog.style.display = 'none'; updateBtn(); renderQueue(); return;
         }
+        var item = pending[idx];
+        prog.textContent = 'Uploading ' + (idx + 1) + ' of ' + pending.length + ' — ' + item.file.name;
+        item.status = 'uploading'; renderQueue();
+
+        var fd = new FormData();
+        fd.append('file', item.file);
+        fd.append('title', item.title);
+        fd.append('sku', item.sku);
+        fd.append('variant_label', item.color);
+        var parent = document.getElementById('parent_design_id').value;
+        if (parent) fd.append('parent_design_id', parent);
+        cats.forEach(function(c) { fd.append('extra_categories', c); });
+        fd.append('csrf_token', '{{ csrf_token() if csrf_token is defined else "" }}');
+
+        fetch('{{ url_for("admin.design_gallery_upload") }}', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: fd
+        })
+        .then(function(r) {
+            return r.text().then(function(t) {
+                var d = {}; try { d = JSON.parse(t); } catch(e) {}
+                return { ok: r.ok, data: d };
+            });
+        })
+        .then(function(res) {
+            if (res.ok && res.data.ok !== false) {
+                _queue[item.id].status = 'done';
+            } else {
+                _queue[item.id].status = 'error';
+                _queue[item.id].error  = (res.data && res.data.error) || 'Upload failed';
+            }
+            renderQueue();
+            uploadNext(pending, idx + 1, prog, cats);
+        })
+        .catch(function() {
+            _queue[item.id].status = 'error';
+            _queue[item.id].error  = 'Network error';
+            renderQueue();
+            uploadNext(pending, idx + 1, prog, cats);
+        });
+    }
+
+    // ── File input + drag & drop ──
+    var input = document.getElementById('designFile');
+    var zone  = document.getElementById('fileZone');
+    input.addEventListener('change', function() { if (this.files.length) { addFiles(this.files); this.value = ''; } });
+    zone.addEventListener('dragover',  function(e) { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', function()  { zone.classList.remove('drag-over'); });
+    zone.addEventListener('drop', function(e) {
+        e.preventDefault(); zone.classList.remove('drag-over');
+        if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
     });
 })();
 

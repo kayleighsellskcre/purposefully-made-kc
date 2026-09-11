@@ -3394,49 +3394,73 @@ def promote_design_to_gallery(design_id):
 @admin_bp.route('/design-gallery/upload', methods=['POST'])
 @admin_required
 def design_gallery_upload():
-    """Upload a design to the customer gallery"""
+    """Upload a design to the customer gallery.
+
+    Supports both traditional form POST (redirects with flash) and AJAX
+    (X-Requested-With: XMLHttpRequest) which returns JSON.  The JS batch
+    uploader always uses the AJAX path.
+    """
     from sqlalchemy.exc import SQLAlchemyError
 
-    if 'file' not in request.files:
-        flash('No file provided.', 'error')
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    def _err(msg, status=400):
+        if is_ajax:
+            return jsonify({'ok': False, 'error': msg}), status
+        flash(msg, 'error')
         return redirect(url_for('admin.designs', tab='gallery'))
+
+    if 'file' not in request.files:
+        return _err('No file provided.')
 
     file = request.files['file']
     if not file or not file.filename:
-        flash('No file selected.', 'error')
-        return redirect(url_for('admin.designs', tab='gallery'))
+        return _err('No file selected.')
 
     filename = secure_filename(file.filename)
     if '.' not in filename:
-        flash('File must have an extension (PNG, JPG, etc.).', 'error')
-        return redirect(url_for('admin.designs', tab='gallery'))
+        return _err('File must have an extension (PNG, JPG, etc.).')
 
     ext = os.path.splitext(filename)[1].lower()
     if ext not in _ALLOWED_DESIGN_EXTS:
-        flash('Unsupported format. Use PNG, JPG, WEBP, or HEIC.', 'error')
-        return redirect(url_for('admin.designs', tab='gallery'))
+        return _err('Unsupported format. Use PNG, JPG, WEBP, or HEIC.')
 
     try:
         # Use _save_uploaded_design so cloud storage (R2) and background
         # removal are handled exactly the same way as every other upload path.
         design = _save_uploaded_design(file, current_user.id)
         if design is None:
-            flash('Upload failed — file could not be stored. Please try again.', 'error')
-            return redirect(url_for('admin.designs', tab='gallery'))
+            return _err('Upload failed — file could not be stored. Please try again.')
 
-        # Override defaults with values from the form
+        # ── Title & SKU ──
         title = (request.form.get('title') or '').strip()
         if title:
             design.title = title
-        folder = (request.form.get('folder') or 'custom_orders').strip()
-        design.folder = folder
         sku = (request.form.get('sku') or '').strip()
         if sku:
             design.sku = sku
 
-        # Optional: upload as a color variant of an existing main design
+        # ── Categories — checkboxes send 'extra_categories' (same as edit handler)
+        # The JS batch uploader uses the name 'extra_categories'; legacy form
+        # used 'folder'.  Support both so the old form still works if needed.
+        GALLERY_FOLDERS = {
+            'custom_orders', 'evergreen', 'school', 'holiday',
+            'sports', 'funny', 'luxury_basics', 'faith', 'couples', 'kc',
+        }
+        # New checkbox name used by the batch uploader
+        all_cats = [c for c in request.form.getlist('extra_categories') if c in GALLERY_FOLDERS]
+        if not all_cats:
+            # Fallback: legacy single 'folder' field
+            legacy = (request.form.get('folder') or 'custom_orders').strip()
+            all_cats = [legacy] if legacy in GALLERY_FOLDERS else ['custom_orders']
+        folder = all_cats[0]
+        extra_cats = ','.join(all_cats[1:]) if len(all_cats) > 1 else ''
+        design.folder = folder
+        design.extra_categories = extra_cats or None
+
+        # ── Optional color variant ──
         from utils.design_variants import ensure_not_nested_parent
-        parent_id = request.form.get('parent_design_id', type=int)
+        parent_id     = request.form.get('parent_design_id', type=int)
         variant_label = (request.form.get('variant_label') or '').strip()[:80]
         if parent_id:
             parent = Design.query.get(parent_id)
@@ -3454,6 +3478,10 @@ def design_gallery_upload():
                 design.is_gallery = True
 
         db.session.commit()
+
+        label = design.title or design.original_filename or 'Design'
+        if is_ajax:
+            return jsonify({'ok': True, 'design_id': design.id, 'message': f'"{label}" added to gallery!'})
         if design.parent_design_id:
             flash(
                 f'Color "{design.variant_label}" added to '
@@ -3461,20 +3489,17 @@ def design_gallery_upload():
                 'success',
             )
         else:
-            flash(f'Design "{design.title or design.original_filename}" added to gallery!', 'success')
+            flash(f'Design "{label}" added to gallery!', 'success')
         return redirect(url_for('admin.designs', tab='gallery'))
 
     except SQLAlchemyError as e:
         db.session.rollback()
         current_app.logger.exception('design_gallery_upload DB error: %s', e)
-        flash('The design could not be saved — a database error occurred. '
-              'If this keeps happening, run the database migration script.', 'error')
-        return redirect(url_for('admin.designs', tab='gallery'))
+        return _err('A database error occurred. If this keeps happening, run the migration script.', 500)
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('design_gallery_upload unexpected error: %s', e)
-        flash('Something went wrong while uploading the design. Please try again.', 'error')
-        return redirect(url_for('admin.designs', tab='gallery'))
+        return _err('Something went wrong while uploading. Please try again.', 500)
 
 
 @admin_bp.route('/design-gallery/<int:design_id>/edit', methods=['POST'])
