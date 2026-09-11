@@ -95,6 +95,67 @@ def _next_sku(folder: str) -> str:
     return f'{prefix}-{str(max_n + 1).zfill(3)}'
 
 
+def _detect_image_color(file_bytes: bytes) -> str:
+    """Return a human-readable dominant color name for image bytes.
+
+    Ignores transparent pixels (alpha < 128) and near-white pixels so we pick
+    up the actual ink color rather than the transparent/white background.
+    Returns '' if detection fails or no clear color is found.
+    """
+    _NAMED_COLORS = [
+        ('White',       (255, 255, 255)),
+        ('Black',       (  0,   0,   0)),
+        ('Charcoal',    ( 54,  69,  79)),
+        ('Gray',        (128, 128, 128)),
+        ('Silver',      (192, 192, 192)),
+        ('Red',         (220,  30,  30)),
+        ('Maroon',      (128,   0,   0)),
+        ('Burgundy',    (128,   0,  32)),
+        ('Coral',       (255, 127,  80)),
+        ('Pink',        (255, 182, 193)),
+        ('Hot Pink',    (255,  20, 147)),
+        ('Orange',      (255, 140,   0)),
+        ('Gold',        (218, 165,  32)),
+        ('Yellow',      (255, 220,   0)),
+        ('Navy',        (  0,   0, 128)),
+        ('Royal Blue',  ( 65, 105, 225)),
+        ('Blue',        (  0, 120, 210)),
+        ('Sky Blue',    (135, 206, 235)),
+        ('Teal',        (  0, 128, 128)),
+        ('Green',       ( 34, 139,  34)),
+        ('Forest Green',(  0, 100,   0)),
+        ('Olive',       (128, 128,   0)),
+        ('Purple',      (128,   0, 128)),
+        ('Lavender',    (230, 230, 250)),
+        ('Brown',       (139,  69,  19)),
+        ('Tan',         (210, 180, 140)),
+        ('Cream',       (255, 253, 208)),
+    ]
+    try:
+        from PIL import Image
+        from io import BytesIO
+        img = Image.open(BytesIO(file_bytes)).convert('RGBA')
+        img.thumbnail((120, 120), Image.LANCZOS)
+        pixels = list(img.getdata())
+        # Keep only opaque, non-white pixels
+        visible = [
+            (r, g, b) for r, g, b, a in pixels
+            if a >= 128 and not (r > 230 and g > 230 and b > 230)
+        ]
+        if not visible:
+            return ''
+        n = len(visible)
+        avg_r = sum(p[0] for p in visible) // n
+        avg_g = sum(p[1] for p in visible) // n
+        avg_b = sum(p[2] for p in visible) // n
+        def _dist(rgb):
+            return ((avg_r - rgb[0]) ** 2 + (avg_g - rgb[1]) ** 2 + (avg_b - rgb[2]) ** 2) ** 0.5
+        name, _ = min(_NAMED_COLORS, key=lambda nc: _dist(nc[1]))
+        return name
+    except Exception:
+        return ''
+
+
 class DesignUploadError(Exception):
     """Raised when an artwork upload genuinely fails to store."""
 
@@ -3460,6 +3521,14 @@ def design_gallery_upload():
         return _err('Unsupported format. Use PNG, JPG, WEBP, or HEIC.')
 
     try:
+        # Grab bytes now for color detection (stream is consumed by _save_uploaded_design)
+        try:
+            file.stream.seek(0)
+            _color_bytes = file.stream.read()
+            file.stream.seek(0)
+        except Exception:
+            _color_bytes = None
+
         # Use _save_uploaded_design so cloud storage (R2) and background
         # removal are handled exactly the same way as every other upload path.
         design = _save_uploaded_design(file, current_user.id)
@@ -3500,6 +3569,11 @@ def design_gallery_upload():
         from utils.design_variants import ensure_not_nested_parent
         parent_id     = request.form.get('parent_design_id', type=int)
         variant_label = (request.form.get('variant_label') or '').strip()[:80]
+
+        # Auto-detect color from image pixels when no label was provided
+        if not variant_label and _color_bytes:
+            variant_label = _detect_image_color(_color_bytes)
+
         if parent_id:
             parent = Design.query.get(parent_id)
             parent = ensure_not_nested_parent(parent)
@@ -3514,12 +3588,16 @@ def design_gallery_upload():
                     design.sku = parent.sku
                 design.folder = parent.folder or design.folder
                 design.is_gallery = True
+        else:
+            # Standalone upload — still store the detected/provided color label
+            if variant_label:
+                design.variant_label = variant_label
 
         db.session.commit()
 
         label = design.title or design.original_filename or 'Design'
         if is_ajax:
-            return jsonify({'ok': True, 'design_id': design.id, 'sku': design.sku or '', 'message': f'"{label}" added to gallery!'})
+            return jsonify({'ok': True, 'design_id': design.id, 'sku': design.sku or '', 'color': design.variant_label or '', 'message': f'"{label}" added to gallery!'})
         if design.parent_design_id:
             flash(
                 f'Color "{design.variant_label}" added to '

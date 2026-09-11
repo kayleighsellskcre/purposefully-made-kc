@@ -1069,9 +1069,9 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
                 '<div class="queue-thumb-wrap"><img class="queue-thumb" id="qth_' + item.id + '" src="" alt=""></div>' +
                 '<div class="queue-fields">' +
                   '<input type="text" class="form-control-sm queue-title" value="' + esc(item.title) + '" placeholder="Name"' + dis + '>' +
-                  '<input type="text" class="form-control-sm queue-color" value="' + esc(item.color) + '" placeholder="Color (opt)"' + dis + '>' +
+                  '<input type="text" class="form-control-sm queue-color" value="' + esc(done && item.assignedColor ? item.assignedColor : item.color) + '" placeholder="Color (opt)"' + dis + '>' +
                   (busy ? '<span class="queue-status">⏳</span>' : '') +
-                  (done ? '<span class="queue-status ok">✓ ' + esc(item.assignedSku || '') + '</span>' : '') +
+                  (done ? '<span class="queue-status ok">✓ ' + esc(item.assignedSku || '') + (item.assignedColor ? ' · ' + esc(item.assignedColor) : '') + '</span>' : '') +
                   (err  ? '<span class="queue-status err" title="' + esc(item.error) + '">✗</span>' : '') +
                   (!busy && !done && !err ? '<button type="button" class="queue-remove" data-id="' + item.id + '" title="Remove">×</button>' : '') +
                 '</div>' +
@@ -1180,7 +1180,8 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
         .then(function(res) {
             if (res.ok && res.data.ok !== false) {
                 _queue[item.id].status = 'done';
-                _queue[item.id].assignedSku = res.data.sku || '';
+                _queue[item.id].assignedSku   = res.data.sku   || '';
+                _queue[item.id].assignedColor = res.data.color || '';
                 // If grouping, capture first file's id as parent for the rest
                 if (groupMode && idx === 0 && res.data.design_id) {
                     _groupParentId = res.data.design_id;

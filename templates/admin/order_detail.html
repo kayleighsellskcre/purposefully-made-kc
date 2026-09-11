@@ -295,6 +295,15 @@
                 <div>
                     <h3>{{ item.product_name }}</h3>
                     <p>{{ item.style_number }} · {{ item.color }} · {{ item.size }} · {{ item.print_type or 'DTF' }} · Qty {{ item.quantity }}</p>
+                    {% if item.design %}
+                    <p class="od-design-line">
+                        🎨 <strong>{{ item.design.title or item.design_file_name or 'Design' }}</strong>
+                        {% if item.design.sku %}<span class="od-design-sku">{{ item.design.sku }}</span>{% endif %}
+                        {% if item.design.variant_label %}<span class="od-design-color-badge">{{ item.design.variant_label }}</span>{% endif %}
+                    </p>
+                    {% elif item.design_file_name %}
+                    <p class="od-design-line">🎨 {{ item.design_file_name }}</p>
+                    {% endif %}
                 </div>
                 <div class="od-kit-price">${{ "%.2f"|format(item.subtotal) }}</div>
             </header>
@@ -457,7 +466,8 @@
                 <section class="od-xfer-card">
                     <h3>FRONT TRANSFER</h3>
                     <dl>
-                        <div><dt>Design</dt><dd>{{ prod.front.design_name or item.design_file_name or '—' }}</dd></div>
+                        <div><dt>Design</dt><dd>{{ prod.front.design_name or (item.design.title if item.design else item.design_file_name) or '—' }}{% if item.design and item.design.sku %} <span style="opacity:.65;font-size:.85em;">({{ item.design.sku }})</span>{% endif %}</dd></div>
+                        {% if item.design and item.design.variant_label %}<div><dt>Design Color</dt><dd><span class="od-design-color-badge">{{ item.design.variant_label }}</span></dd></div>{% endif %}
                         <div><dt>Garment</dt><dd>{{ prod.front.garment_style or item.product_name }}</dd></div>
                         <div><dt>Size</dt><dd>{{ prod.front.age_group|title }} {{ prod.front.size }}</dd></div>
                         <div><dt>Color</dt><dd>{{ prod.front.color }}</dd></div>
@@ -941,8 +951,37 @@
 }
 .od-kit-head p {
     margin: 0.25rem 0 0;
+    /* base style inherited by od-design-line too */
     font-size: 0.84rem;
     color: var(--text-secondary);
+}
+.od-design-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0.35rem 0 0 !important;
+    font-size: 0.84rem !important;
+    color: var(--text-primary) !important;
+}
+.od-design-sku {
+    font-size: 0.75rem;
+    font-family: monospace;
+    background: rgba(0,0,0,0.06);
+    border-radius: 4px;
+    padding: 0.1rem 0.4rem;
+    color: var(--text-secondary);
+}
+.od-design-color-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: var(--warm-gold, #d4a843);
+    color: #fff;
+    border-radius: 4px;
+    padding: 0.15rem 0.5rem;
 }
 .od-kit-price {
     font-weight: 700;
