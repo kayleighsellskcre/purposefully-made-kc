@@ -133,8 +133,15 @@
 
                     {# ── Upload queue — rendered by JS ── #}
                     <div id="uploadQueue" style="display:none;margin-bottom:1.5rem;">
-                        <p class="form-label" style="margin-bottom:0.5rem;">Name, SKU &amp; color are auto-filled from the filename — edit any before uploading</p>
+                        <p class="form-label" style="margin-bottom:0.5rem;">Name &amp; color auto-filled from filename — edit before uploading. SKU is auto-assigned.</p>
                         <div id="queueList" class="upload-queue"></div>
+                        {# Group-as-variants toggle — only shown when queue has 2+ files #}
+                        <div id="groupVariantsWrap" style="display:none;margin-top:0.75rem;padding:0.65rem 0.85rem;background:rgba(184,124,111,0.07);border:1px solid rgba(184,124,111,0.25);border-radius:8px;">
+                            <label style="display:flex;align-items:flex-start;gap:0.6rem;cursor:pointer;font-size:0.88rem;line-height:1.4;">
+                                <input type="checkbox" id="groupVariantsToggle" style="margin-top:0.15rem;accent-color:var(--terra-cotta);flex-shrink:0;">
+                                <span><strong>Group as one design with multiple colors</strong> — the first file becomes the main design and the rest are added as color variants. Use this when the same artwork comes in different color versions.</span>
+                            </label>
+                        </div>
                         <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.5rem;" onclick="clearDoneItems()">Clear completed</button>
                     </div>
 
@@ -157,7 +164,10 @@
                 </form>
             </div>
 
-            <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:1.2rem;">
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:0.75rem;margin-bottom:1.2rem;flex-wrap:wrap;">
+                <button type="button" id="fixSkusBtn" onclick="fixAllSkus()" style="background:var(--terra-cotta,#b87c6f);color:#fff;border:none;padding:0.6rem 1.3rem;border-radius:6px;font-size:0.95rem;cursor:pointer;font-weight:600;">
+                    🏷 Fix All SKUs
+                </button>
                 <button type="button" id="reprocessBtn" onclick="reprocessBackgrounds()" style="background:#2d2d2d;color:#fff;border:none;padding:0.6rem 1.3rem;border-radius:6px;font-size:0.95rem;cursor:pointer;font-weight:600;">
                     ✨ Fix Backgrounds on All Designs
                 </button>
@@ -614,12 +624,12 @@
 }
 .queue-fields {
     display: grid;
-    grid-template-columns: 1fr 100px 120px auto;
+    grid-template-columns: 1fr 130px auto;
     gap: 0.4rem;
     align-items: center;
 }
 .queue-filename { font-size: 0.72rem; color: var(--text-secondary); word-break: break-all; }
-.queue-status { font-size: 1rem; font-weight: 700; line-height: 1; padding: 0 0.25rem; }
+.queue-status { font-size: 0.82rem; font-weight: 700; line-height: 1.2; padding: 0 0.25rem; white-space: nowrap; }
 .queue-status.ok  { color: #2d7a4f; }
 .queue-status.err { color: #c0392b; }
 .queue-remove {
@@ -635,7 +645,7 @@
 .form-control-sm:focus { outline: none; border-color: var(--terra-cotta, #b87c6f); }
 @media (max-width: 600px) {
     .queue-fields { grid-template-columns: 1fr auto; }
-    .queue-fields .queue-sku, .queue-fields .queue-color { display: none; }
+    .queue-fields .queue-color { display: none; }
 }
 </style>
 
@@ -990,21 +1000,21 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
 
 // ── Batch upload queue ──────────────────────────────────────────────────────
 (function() {
-    var _queue    = {};      // keyed by uid → {id, file, title, sku, color, status, error}
+    var _queue    = {};      // keyed by uid → {id, file, title, color, status, error}
     var _busy     = false;
+    var _groupParentId = null;  // set after first file uploads when grouping is ON
 
     var COLORS = ['black','white','navy','red','blue','green','yellow','pink','purple',
                   'orange','gold','silver','gray','grey','brown','tan','cream','charcoal',
-                  'maroon','teal','natural','heather','royal','forest','athletic'];
+                  'maroon','teal','natural','heather','royal','forest','athletic','coral',
+                  'sage','lavender','sand','stone','rust','burgundy'];
 
     function fileToTitle(name) {
         return name.replace(/\.[^.]+$/, '').replace(/[_\-]+/g, ' ').trim()
             .replace(/\b\w/g, function(c) { return c.toUpperCase(); });
     }
-    function fileToSku(name) {
-        var letters = name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 6);
-        return letters ? 'DSG-' + letters : '';
-    }
+    // SKU is now auto-assigned server-side; this just returns empty
+    function fileToSku() { return ''; }
     function fileToColor(name) {
         var lower = name.toLowerCase();
         for (var i = 0; i < COLORS.length; i++) {
@@ -1022,7 +1032,7 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
         for (var i = 0; i < fileList.length; i++) {
             var f = fileList[i];
             var id = uid();
-            _queue[id] = { id: id, file: f, title: fileToTitle(f.name), sku: fileToSku(f.name), color: fileToColor(f.name), status: 'pending', error: '' };
+            _queue[id] = { id: id, file: f, title: fileToTitle(f.name), color: fileToColor(f.name), status: 'pending', error: '' };
         }
         renderQueue();
         updateBtn();
@@ -1031,11 +1041,15 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
     function renderQueue() {
         var list    = document.getElementById('queueList');
         var queueEl = document.getElementById('uploadQueue');
+        var groupWrap = document.getElementById('groupVariantsWrap');
         var entries = Object.values(_queue);
         if (!entries.length) { queueEl.style.display = 'none'; return; }
         queueEl.style.display = '';
+        // Show group toggle only when 2+ files are pending/queued
+        var pendingCount = entries.filter(function(i) { return i.status === 'pending'; }).length;
+        if (groupWrap) groupWrap.style.display = (entries.length >= 2 && pendingCount >= 2) ? '' : 'none';
         list.innerHTML = '';
-        entries.forEach(function(item) {
+        entries.forEach(function(item, idx) {
             var done = item.status === 'done';
             var err  = item.status === 'error';
             var busy = item.status === 'uploading';
@@ -1043,18 +1057,25 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
             var row  = document.createElement('div');
             row.className = 'queue-item' + (done ? ' is-done' : '') + (err ? ' is-error' : '');
             row.setAttribute('data-queue-id', item.id);
+            // First-file badge when grouping
+            var badge = '';
+            var groupEl = document.getElementById('groupVariantsToggle');
+            if (groupEl && groupEl.checked && entries.length >= 2 && idx === 0 && item.status === 'pending') {
+                badge = '<span style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--terra-cotta);background:rgba(184,124,111,0.1);border-radius:4px;padding:0.1rem 0.4rem;margin-right:0.35rem;">Main</span>';
+            } else if (groupEl && groupEl.checked && entries.length >= 2 && idx > 0 && item.status === 'pending') {
+                badge = '<span style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-secondary);background:var(--border-color);border-radius:4px;padding:0.1rem 0.4rem;margin-right:0.35rem;">Color</span>';
+            }
             row.innerHTML =
                 '<div class="queue-thumb-wrap"><img class="queue-thumb" id="qth_' + item.id + '" src="" alt=""></div>' +
                 '<div class="queue-fields">' +
                   '<input type="text" class="form-control-sm queue-title" value="' + esc(item.title) + '" placeholder="Name"' + dis + '>' +
-                  '<input type="text" class="form-control-sm queue-sku"   value="' + esc(item.sku)   + '" placeholder="SKU"' + dis + '>' +
-                  '<input type="text" class="form-control-sm queue-color" value="' + esc(item.color) + '" placeholder="Color"' + dis + '>' +
+                  '<input type="text" class="form-control-sm queue-color" value="' + esc(item.color) + '" placeholder="Color (opt)"' + dis + '>' +
                   (busy ? '<span class="queue-status">⏳</span>' : '') +
-                  (done ? '<span class="queue-status ok">✓</span>' : '') +
+                  (done ? '<span class="queue-status ok">✓ ' + esc(item.assignedSku || '') + '</span>' : '') +
                   (err  ? '<span class="queue-status err" title="' + esc(item.error) + '">✗</span>' : '') +
                   (!busy && !done && !err ? '<button type="button" class="queue-remove" data-id="' + item.id + '" title="Remove">×</button>' : '') +
                 '</div>' +
-                '<div class="queue-filename">' + esc(item.file.name) + (err ? ' — <span style="color:#c0392b">' + esc(item.error) + '</span>' : '') + '</div>';
+                '<div class="queue-filename">' + badge + esc(item.file.name) + (err ? ' — <span style="color:#c0392b">' + esc(item.error) + '</span>' : '') + (done && item.assignedSku ? ' <span style="color:#2d7a4f;font-weight:600;">' + esc(item.assignedSku) + '</span>' : '') + '</div>';
             list.appendChild(row);
             (function(id, file) {
                 var reader = new FileReader();
@@ -1068,6 +1089,12 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
                 renderQueue(); updateBtn();
             });
         });
+        // Re-render when group toggle changes (updates badges)
+        var gt = document.getElementById('groupVariantsToggle');
+        if (gt && !gt._listenerAdded) {
+            gt._listenerAdded = true;
+            gt.addEventListener('change', renderQueue);
+        }
     }
 
     function updateBtn() {
@@ -1095,7 +1122,6 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
             var id = row.getAttribute('data-queue-id');
             if (_queue[id] && _queue[id].status === 'pending') {
                 _queue[id].title = row.querySelector('.queue-title').value;
-                _queue[id].sku   = row.querySelector('.queue-sku').value;
                 _queue[id].color = row.querySelector('.queue-color').value;
             }
         });
@@ -1104,6 +1130,7 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
         var cats = Array.from(document.querySelectorAll('#galleryUploadForm input[name="upload_cats"]:checked')).map(function(cb) { return cb.value; });
         if (!cats.length) { showGalleryToast('Please check at least one category first.'); return; }
         _busy = true;
+        _groupParentId = null;
         var prog = document.getElementById('uploadProgress');
         prog.style.display = '';
         uploadNext(pending, 0, prog, cats);
@@ -1111,19 +1138,31 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
 
     function uploadNext(pending, idx, prog, cats) {
         if (idx >= pending.length) {
-            _busy = false; prog.style.display = 'none'; updateBtn(); renderQueue(); return;
+            _busy = false; _groupParentId = null; prog.style.display = 'none'; updateBtn(); renderQueue(); return;
         }
         var item = pending[idx];
         prog.textContent = 'Uploading ' + (idx + 1) + ' of ' + pending.length + ' — ' + item.file.name;
         item.status = 'uploading'; renderQueue();
 
+        var groupMode = (function() {
+            var gt = document.getElementById('groupVariantsToggle');
+            return gt && gt.checked && pending.length > 1;
+        })();
+
         var fd = new FormData();
         fd.append('file', item.file);
         fd.append('title', item.title);
-        fd.append('sku', item.sku);
+        // SKU intentionally left blank — server auto-assigns via _next_sku()
         fd.append('variant_label', item.color);
-        var parent = document.getElementById('parent_design_id').value;
-        if (parent) fd.append('parent_design_id', parent);
+
+        // Parent design: group mode takes priority over manual dropdown
+        if (groupMode && idx > 0 && _groupParentId) {
+            fd.append('parent_design_id', _groupParentId);
+        } else {
+            var manualParent = document.getElementById('parent_design_id').value;
+            if (manualParent) fd.append('parent_design_id', manualParent);
+        }
+
         cats.forEach(function(c) { fd.append('extra_categories', c); });
         fd.append('csrf_token', '{{ csrf_token() if csrf_token is defined else "" }}');
 
@@ -1141,6 +1180,11 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
         .then(function(res) {
             if (res.ok && res.data.ok !== false) {
                 _queue[item.id].status = 'done';
+                _queue[item.id].assignedSku = res.data.sku || '';
+                // If grouping, capture first file's id as parent for the rest
+                if (groupMode && idx === 0 && res.data.design_id) {
+                    _groupParentId = res.data.design_id;
+                }
             } else {
                 _queue[item.id].status = 'error';
                 _queue[item.id].error  = (res.data && res.data.error) || 'Upload failed';
@@ -1167,6 +1211,29 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
         if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
     });
 })();
+
+function fixAllSkus() {
+    var btn = document.getElementById('fixSkusBtn');
+    if (!confirm('This will reassign clean sequential SKUs (KC-001, FTH-001, etc.) to every gallery design based on its category. Existing SKUs will be overwritten. Continue?')) return;
+    btn.disabled = true;
+    btn.textContent = '⏳ Fixing SKUs…';
+    fetch('{{ url_for("admin.design_gallery_fix_skus") }}', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token() if csrf_token is defined else "" }}' },
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        btn.disabled = false;
+        btn.textContent = '🏷 Fix All SKUs';
+        if (d.ok) { showGalleryToast(d.message || 'SKUs updated!'); setTimeout(function() { location.reload(); }, 1500); }
+        else { showGalleryToast('Error: ' + (d.error || 'Something went wrong')); }
+    })
+    .catch(function(e) {
+        btn.disabled = false;
+        btn.textContent = '🏷 Fix All SKUs';
+        showGalleryToast('Error: ' + e);
+    });
+}
 
 function reprocessBackgrounds() {
     var btn = document.getElementById('reprocessBtn');

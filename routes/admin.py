@@ -60,6 +60,40 @@ def _admin_account_firewall():
 
 _ALLOWED_DESIGN_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.heic', '.heif']
 
+# Short prefix used in auto-generated SKUs, keyed by gallery folder slug
+_SKU_PREFIXES = {
+    'kc':             'KC',
+    'faith':          'FTH',
+    'sports':         'SPT',
+    'school':         'SCH',
+    'couples':        'FAM',
+    'holiday':        'HOL',
+    'evergreen':      'FAV',
+    'funny':          'FUN',
+    'luxury_basics':  'LUX',
+    'custom_orders':  'DSG',
+}
+
+
+def _next_sku(folder: str) -> str:
+    """Return the next sequential SKU for the given folder, e.g. KC-003."""
+    import re as _re
+    prefix = _SKU_PREFIXES.get(folder or 'custom_orders', 'DSG')
+    existing = (
+        Design.query
+        .filter(Design.sku.ilike(f'{prefix}-%'), Design.is_gallery == True)
+        .with_entities(Design.sku)
+        .all()
+    )
+    pat = _re.compile(r'^' + _re.escape(prefix) + r'-(\d+)$', _re.IGNORECASE)
+    max_n = 0
+    for (sku,) in existing:
+        if sku:
+            m = pat.match(sku)
+            if m:
+                max_n = max(max_n, int(m.group(1)))
+    return f'{prefix}-{str(max_n + 1).zfill(3)}'
+
 
 class DesignUploadError(Exception):
     """Raised when an artwork upload genuinely fails to store."""
@@ -3458,6 +3492,10 @@ def design_gallery_upload():
         design.folder = folder
         design.extra_categories = extra_cats or None
 
+        # Auto-assign SKU if none supplied
+        if not sku:
+            design.sku = _next_sku(folder)
+
         # ── Optional color variant ──
         from utils.design_variants import ensure_not_nested_parent
         parent_id     = request.form.get('parent_design_id', type=int)
@@ -3481,7 +3519,7 @@ def design_gallery_upload():
 
         label = design.title or design.original_filename or 'Design'
         if is_ajax:
-            return jsonify({'ok': True, 'design_id': design.id, 'message': f'"{label}" added to gallery!'})
+            return jsonify({'ok': True, 'design_id': design.id, 'sku': design.sku or '', 'message': f'"{label}" added to gallery!'})
         if design.parent_design_id:
             flash(
                 f'Color "{design.variant_label}" added to '
@@ -3500,6 +3538,47 @@ def design_gallery_upload():
         db.session.rollback()
         current_app.logger.exception('design_gallery_upload unexpected error: %s', e)
         return _err('Something went wrong while uploading. Please try again.', 500)
+
+
+@admin_bp.route('/design-gallery/fix-skus', methods=['POST'])
+@admin_required
+def design_gallery_fix_skus():
+    """Re-assign clean sequential SKUs to every gallery design, grouped by folder."""
+    import re as _re
+    try:
+        # Main designs only (no variants), sorted by folder then upload date
+        mains = (
+            Design.query
+            .filter_by(is_gallery=True, parent_design_id=None)
+            .order_by(Design.folder.asc(), Design.uploaded_at.asc())
+            .all()
+        )
+        by_folder: dict[str, list] = {}
+        for d in mains:
+            by_folder.setdefault(d.folder or 'custom_orders', []).append(d)
+
+        count = 0
+        for folder, items in by_folder.items():
+            prefix = _SKU_PREFIXES.get(folder, 'DSG')
+            for i, d in enumerate(items, start=1):
+                d.sku = f'{prefix}-{str(i).zfill(3)}'
+                count += 1
+
+        # Color variants inherit their parent's SKU (keeps them grouped visually)
+        variants = Design.query.filter(
+            Design.is_gallery == True,
+            Design.parent_design_id.isnot(None)
+        ).all()
+        for v in variants:
+            if v.parent_design and v.parent_design.sku:
+                v.sku = v.parent_design.sku
+
+        db.session.commit()
+        return jsonify({'ok': True, 'message': f'Updated SKUs for {count} designs.'})
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('fix_skus error: %s', e)
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 @admin_bp.route('/design-gallery/<int:design_id>/edit', methods=['POST'])
