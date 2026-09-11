@@ -4916,6 +4916,11 @@
 
 // ── Tabbed Design Picker ────────────────────────────────────────
 (function() {
+    // Only run on the full public gallery (tab bar exists).
+    // Group orders use the same #logoGalleryGrid but show designs without tabs;
+    // running here would hide all logos because no tab is active yet.
+    if (!document.getElementById('designTabBar')) return;
+
     var _activeTab    = null;   // null = nothing selected yet
     var _searchQuery  = '';
     var _visibleCount = 30;
