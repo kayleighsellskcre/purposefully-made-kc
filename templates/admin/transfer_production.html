@@ -103,7 +103,7 @@
                 </h2>
                 <p class="xfer-who">
                     {{ (shirt.age_group or '')|title }} {{ shirt.size }}
-                    · {{ shirt.color }}
+                    · <strong class="xfer-color">{{ shirt.color }}</strong>
                     · Qty <strong>{{ shirt.quantity }}</strong>
                     {% if shirt.order_number %}<span class="xfer-ord"> · {{ shirt.order_number }}</span>{% endif %}
                 </p>
@@ -194,6 +194,7 @@
 .xfer-facts h2 { font-size: 1.15rem; margin: 0 0 0.2rem; }
 .xfer-who, .xfer-garment, .xfer-facts p { margin: 0 0 0.18rem; font-size: 0.84rem; line-height: 1.3; }
 .xfer-garment, .xfer-ord { color: #555; font-size: 0.78rem; }
+.xfer-color { font-weight: 800; color: #111; }
 .xfer-tag { font-weight: 800; letter-spacing: 0.04em; margin-right: 0.25rem; }
 .xfer-flag { outline: 2px solid #111; }
 .xfer-warn { font-weight: 800; margin-top: 0.2rem; }
@@ -222,10 +223,26 @@
     }
     .xfer-page { padding: 0; }
     .xfer-card { border-color: #000; padding: 0.35rem 0.45rem; }
-    .xfer-mock-img { filter: grayscale(1) brightness(2.1) contrast(0.8); opacity: 0.85; }
-    * { print-color-adjust: economy; -webkit-print-color-adjust: economy; }
-    .xfer-onshirt, .xfer-onshirt-name, .xfer-onshirt-num {
-        print-color-adjust: exact; -webkit-print-color-adjust: exact;
+    /* Keep garment color + logos visible for the presser (do not wash out). */
+    .xfer-mock,
+    .xfer-mock-img,
+    .xfer-logo,
+    .xfer-onshirt,
+    .xfer-onshirt-name,
+    .xfer-onshirt-num,
+    .xfer-color {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+    .xfer-mock-img,
+    .xfer-logo {
+        filter: none !important;
+        opacity: 1 !important;
+    }
+    .xfer-color {
+        font-weight: 800 !important;
+        text-decoration: underline;
     }
 }
 </style>
