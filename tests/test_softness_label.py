@@ -12,3 +12,10 @@ def test_softness_label_maps_rating():
     assert p.softness_label is None
     p.softness_rating = 9
     assert p.softness_label is None
+
+
+def test_port_company_tiedye_uses_artisan_soft_label():
+    for style in Product.PORT_COMPANY_TIEDYE_STYLES:
+        p = Product(style_number=style, name='Port & Company Tie-Dye', base_price=1)
+        p.softness_rating = 2
+        assert p.softness_label == 'Artisan Soft'

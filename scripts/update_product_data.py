@@ -337,7 +337,7 @@ PRODUCTS = {
     'PC145': (
         11.60, 28.00,
         '100% cotton; 5.4 oz; crystal tie-dye',
-        "Crystal Tie-Dye Tee — individually hand-dyed so the pattern is a little different on every shirt. A softer crystal wash than the classic PC147 spiral.",
+        "Crystal Tie-Dye Tee — individually hand-dyed so the pattern is a little different on every shirt. A more tonal crystal wash than the classic PC147 spiral.",
         "Unisex classic fit; true to size. Slight color variation is part of the tie-dye process.",
         'https://cdnm.sanmar.com/SpecSheetMeasurements/PC145.pdf',
     ),

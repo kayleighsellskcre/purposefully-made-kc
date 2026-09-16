@@ -216,7 +216,7 @@ NEW_TIEDYE = [
         'available_sizes': ADULT_SIZES,
         'description': (
             "Crystal Tie-Dye Tee — individually hand-dyed so the pattern is a little "
-            "different on every shirt. A softer crystal wash than the classic PC147 spiral."
+            "different on every shirt. A more tonal crystal wash than the classic PC147 spiral."
         ),
         'fabric_details': '5.4 oz / 100% cotton; individually hand dyed; tear-away label',
         'fit_guide': 'Unisex classic fit; true to size. Each garment has slight color variation.',

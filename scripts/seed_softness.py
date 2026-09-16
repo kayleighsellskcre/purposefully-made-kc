@@ -37,7 +37,7 @@ os.environ.setdefault('SCHEDULER_ENABLED', '0')
 #   4 Ultra Soft  — triblend / CVC heather / micro-rib stretch / soft poly-rich fleece
 #                   (blends typically feel silkier than solid cotton)
 #   3 Super Soft  — premium solid cotton (Airlume, garment-dyed, organic) + sponge fleece
-#   2 Soft        — Softstyle / midweight fleece / tie-dye / lighter performance
+#   2 Soft        — Softstyle / midweight fleece / lighter performance
 #   1 Everyday    — core cotton, Heavy Blend, heavyweight fleece, technical poly
 SOFTNESS_BY_STYLE = {
     # BELLA+CANVAS — CVC / triblend beat solid Airlume on hand-feel
@@ -84,16 +84,18 @@ SOFTNESS_BY_STYLE = {
     'RS3401': (3, '100% combed ring-spun cotton fine jersey, infant tee'),
     'RS3321': (3, '100% combed ring-spun cotton fine jersey, toddler'),
     'RS4400': (3, '100% combed ring-spun cotton baby rib, infant'),
-    # PORT & COMPANY
-    'PC146': (2, '80% cotton / 20% polyester fleece, tie-dye'),
-    'PC146Y': (2, '80% cotton / 20% polyester fleece, tie-dye youth'),
-    'PC144': (2, '80% cotton / 20% polyester fleece, crystal tie-dye'),
-    'PC145': (2, '100% cotton, crystal tie-dye'),
-    'PC147': (2, '100% cotton, tie-dye'),
-    'PC147LS': (2, '100% cotton, tie-dye long sleeve'),
-    'PC147Y': (2, '100% cotton, tie-dye youth'),
-    'PC147YLS': (2, '100% cotton, tie-dye long sleeve youth'),
-    'LPC147V': (2, '100% cotton, tie-dye V-neck'),
+    # PORT & COMPANY TIE-DYE — intentionally textured from the dye process.
+    # Product.softness_label merchandises these as "Artisan Soft" while this
+    # fabric line honestly explains that the hand improves with wear.
+    'PC146': (2, 'Hand-dyed fleece with an artisan texture that softens with wear'),
+    'PC146Y': (2, 'Hand-dyed fleece with an artisan texture that softens with wear'),
+    'PC144': (2, 'Crystal-dyed fleece with an artisan texture that softens with wear'),
+    'PC145': (2, 'Crystal-dyed cotton with an artisan texture that softens with wear'),
+    'PC147': (2, 'Hand-dyed cotton with an artisan texture that softens with wear'),
+    'PC147LS': (2, 'Hand-dyed cotton with an artisan texture that softens with wear'),
+    'PC147Y': (2, 'Hand-dyed cotton with an artisan texture that softens with wear'),
+    'PC147YLS': (2, 'Hand-dyed cotton with an artisan texture that softens with wear'),
+    'LPC147V': (2, 'Hand-dyed cotton with an artisan texture that softens with wear'),
     'PC54': (1, '100% cotton, core cotton'),
     'LPC54': (1, '100% cotton, ladies core cotton'),
     'PC78H': (1, '50% cotton / 50% polyester core fleece'),

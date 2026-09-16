@@ -285,10 +285,17 @@ class Product(db.Model):
         3: 'Super Soft',
         4: 'Ultra Soft',
     }
+    PORT_COMPANY_TIEDYE_STYLES = {
+        'PC144', 'PC145', 'PC146', 'PC146Y', 'PC147',
+        'PC147LS', 'PC147Y', 'PC147YLS', 'LPC147V',
+    }
 
     @property
     def softness_label(self):
         """Human label for softness_rating, or None if unset/invalid."""
+        style = (self.style_number or '').strip().upper()
+        if style in self.PORT_COMPANY_TIEDYE_STYLES:
+            return 'Artisan Soft'
         try:
             rating = int(self.softness_rating) if self.softness_rating is not None else None
         except (TypeError, ValueError):
