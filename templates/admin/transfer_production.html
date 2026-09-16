@@ -259,9 +259,9 @@
 
     .xfer-card {
         display: grid !important;
-        grid-template-columns: 100px 1fr !important;
+        grid-template-columns: 132px 1fr !important;
         gap: 0.35rem !important;
-        padding: 0.28rem 0.35rem !important;
+        padding: 0.24rem 0.35rem !important;
         border: 1px solid #000 !important;
         background: #fff !important;
         break-inside: avoid;
@@ -275,14 +275,14 @@
 
     .xfer-mock,
     .xfer-mock-img {
-        width: 46px !important;
-        height: 54px !important;
+        width: 62px !important;
+        height: 68px !important;
     }
 
     .xfer-shirt {
-        width: 40px !important;
-        height: 46px !important;
-        margin-top: 4px !important;
+        width: 54px !important;
+        height: 60px !important;
+        margin-top: 3px !important;
     }
 
     .xfer-side {
@@ -311,8 +311,31 @@
         font-size: 0.62rem !important;
     }
 
-    .xfer-onshirt-name { font-size: 0.38rem !important; }
-    .xfer-onshirt-num { font-size: 0.55rem !important; }
+    /* The paper sheet is a visual check, so make artwork deliberately easier
+       to recognize than a tiny exact-scale production proof. Dimensions in
+       the facts column remain the source of truth for pressing. */
+    .xfer-logo.center_chest,
+    .xfer-logo.center_back {
+        width: 46% !important;
+        max-height: 50% !important;
+        top: 40% !important;
+    }
+    .xfer-logo.left_chest {
+        width: 24% !important;
+        max-height: 28% !important;
+        top: 34% !important;
+    }
+    .xfer-logo.right_chest {
+        width: 24% !important;
+        max-height: 28% !important;
+        top: 34% !important;
+    }
+    .xfer-onshirt {
+        top: 31% !important;
+        width: 80% !important;
+    }
+    .xfer-onshirt-name { font-size: 0.5rem !important; }
+    .xfer-onshirt-num { font-size: 0.72rem !important; }
 
     /* Keep garment color + logos visible for the presser (do not wash out). */
     .xfer-mock,
