@@ -78,11 +78,6 @@
                         <span class="gallery-carousel-count">1 / {{ design.color_count }}</span>
                     </div>
                     {% endif %}
-                    <div class="gallery-card-overlay">
-                        <button type="button" class="gallery-card-cta gallery-open-colors">
-                            {% if design.has_colors %}Choose Color{% else %}{% if product_id %}Use This Design{% else %}Choose a Product{% endif %}{% endif %}
-                        </button>
-                    </div>
                 </div>
                 <div class="gallery-card-body">
                     <h2 class="gallery-card-title">{{ design.title }}</h2>
@@ -325,48 +320,9 @@
     flex-shrink: 0;
 }
 
-.gallery-card-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(58, 61, 72, 0.55);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    backdrop-filter: blur(2px);
-}
-
-.gallery-card:hover .gallery-card-overlay {
-    opacity: 1;
-}
-
-/* Keep carousel controls usable above the hover overlay. */
-.gallery-card-overlay { z-index: 3; }
 .gallery-carousel-btn,
 .gallery-carousel-indicator,
 .gallery-color-badge { z-index: 5; }
-
-.gallery-card-cta {
-    display: inline-block;
-    padding: 0.65rem 1.4rem;
-    background: #fff;
-    color: var(--text-primary);
-    border: none;
-    border-radius: 30px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    letter-spacing: 0.03em;
-    text-decoration: none;
-    cursor: pointer;
-    font-family: inherit;
-    transition: background 0.2s, color 0.2s;
-}
-
-.gallery-card-cta:hover {
-    background: var(--accent-color);
-    color: #fff;
-}
 
 .gallery-card-body {
     padding: 1.1rem 1.25rem 1.25rem;

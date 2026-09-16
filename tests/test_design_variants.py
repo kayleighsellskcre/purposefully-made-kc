@@ -112,7 +112,8 @@ def test_public_design_gallery_page_groups_variants(client, app, seed):
     html = client.get('/shop/designs').get_data(as_text=True)
     assert 'Grouped Logo' in html
     assert '2 colors' in html
-    assert 'Choose Color' in html
+    assert 'View colors &amp; continue' in html
+    assert 'gallery-card-overlay' not in html
     assert 'gallery-carousel-prev' in html
     assert 'gallery-carousel-next' in html
     assert 'gallery-carousel-color' in html
