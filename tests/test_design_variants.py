@@ -113,4 +113,34 @@ def test_public_design_gallery_page_groups_variants(client, app, seed):
     assert 'Grouped Logo' in html
     assert '2 colors' in html
     assert 'Choose Color' in html
+    assert 'gallery-carousel-prev' in html
+    assert 'gallery-carousel-next' in html
+    assert 'gallery-carousel-color' in html
     assert html.count('data-design-id="%s"' % main_id) >= 1
+
+
+def test_variant_labels_are_unique_within_family(app, seed):
+    from utils.design_metadata import unique_variant_label
+
+    with app.app_context():
+        main = _gallery_design(title='Crest', variant_label='Forest Green')
+        _gallery_design(
+            title='Crest',
+            filename='crest-green-2.png',
+            file_path='uploads/crest-green-2.png',
+            parent_design_id=main.id,
+            variant_label='Forest Green 2',
+        )
+        db.session.commit()
+
+        assert unique_variant_label(main, 'Forest Green') == 'Forest Green 3'
+        assert unique_variant_label(main, 'Gold') == 'Gold'
+
+
+def test_generic_camera_filename_is_not_used_as_customer_title():
+    from utils.design_metadata import clean_filename_title, is_generic_title
+
+    assert clean_filename_title('IMG_5902.png') == ''
+    assert clean_filename_title('best-dad-by-par-green.png') == 'Best Dad By Par Green'
+    assert is_generic_title('IMG 5902') is True
+    assert is_generic_title('Best Dad by Par') is False

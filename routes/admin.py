@@ -3535,10 +3535,33 @@ def design_gallery_upload():
         if design is None:
             return _err('Upload failed — file could not be stored. Please try again.')
 
-        # ── Title & SKU ──
+        # ── Automatic, editable name + color metadata ──
+        from utils.design_metadata import (
+            clean_filename_title,
+            color_label_from_metadata,
+            is_generic_title,
+            suggest_design_metadata,
+            unique_variant_label,
+        )
+
         title = (request.form.get('title') or '').strip()
-        if title:
-            design.title = title
+        variant_label = (request.form.get('variant_label') or '').strip()[:80]
+        needs_vision = is_generic_title(title) or not variant_label
+        metadata = {}
+        if needs_vision and _color_bytes:
+            metadata = suggest_design_metadata(
+                _color_bytes,
+                current_app.config.get('OPENAI_API_KEY') or '',
+            )
+
+        if is_generic_title(title):
+            title = (
+                (metadata.get('title') or '').strip()
+                or clean_filename_title(file.filename)
+                or 'New Design'
+            )
+        design.title = title[:200]
+
         sku = (request.form.get('sku') or '').strip()
         if sku:
             design.sku = sku
@@ -3567,23 +3590,27 @@ def design_gallery_upload():
 
         # ── Optional color variant ──
         from utils.design_variants import ensure_not_nested_parent
-        parent_id     = request.form.get('parent_design_id', type=int)
-        variant_label = (request.form.get('variant_label') or '').strip()[:80]
+        parent_id = request.form.get('parent_design_id', type=int)
 
-        # Auto-detect color from image pixels when no label was provided
+        # Vision sees multicolor palettes; pixel detection is the no-key fallback.
         if not variant_label and _color_bytes:
-            variant_label = _detect_image_color(_color_bytes)
+            variant_label = (
+                color_label_from_metadata(metadata)
+                or _detect_image_color(_color_bytes)
+            )
 
         if parent_id:
             parent = Design.query.get(parent_id)
             parent = ensure_not_nested_parent(parent)
             if parent and parent.is_gallery and parent.id != design.id:
                 design.parent_design_id = parent.id
-                design.variant_label = variant_label or 'Color'
+                design.variant_label = unique_variant_label(
+                    parent, variant_label or 'Color'
+                )
                 if not (parent.variant_label or '').strip():
                     parent.variant_label = 'Default'
-                if not title:
-                    design.title = parent.title or parent.original_filename
+                # Every color in one family uses the same customer-facing name.
+                design.title = parent.title or parent.original_filename or design.title
                 if not sku and parent.sku:
                     design.sku = parent.sku
                 design.folder = parent.folder or design.folder
@@ -3591,7 +3618,7 @@ def design_gallery_upload():
         else:
             # Standalone upload — still store the detected/provided color label
             if variant_label:
-                design.variant_label = variant_label
+                design.variant_label = unique_variant_label(None, variant_label)
 
         db.session.commit()
 
@@ -3690,7 +3717,12 @@ def design_gallery_edit(design_id):
         design.folder = folder
         design.extra_categories = extra_cats or None
         design.sku = sku[:50] if sku else None
-        design.variant_label = variant_label or design.variant_label
+        if variant_label:
+            from utils.design_metadata import unique_variant_label
+            parent = design.parent_design if design.parent_design_id else None
+            design.variant_label = unique_variant_label(
+                parent, variant_label, exclude_id=design.id
+            )
 
         new_file = request.files.get('file')
         if new_file and new_file.filename:

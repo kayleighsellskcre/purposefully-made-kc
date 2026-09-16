@@ -133,7 +133,7 @@
 
                     {# ── Upload queue — rendered by JS ── #}
                     <div id="uploadQueue" style="display:none;margin-bottom:1.5rem;">
-                        <p class="form-label" style="margin-bottom:0.5rem;">Name &amp; color auto-filled from filename — edit before uploading. SKU is auto-assigned.</p>
+                        <p class="form-label" style="margin-bottom:0.5rem;">Name &amp; artwork colors are identified automatically when uploaded. You can edit either field before or after uploading. SKU is auto-assigned.</p>
                         <div id="queueList" class="upload-queue"></div>
                         {# Group-as-variants toggle — only shown when queue has 2+ files #}
                         <div id="groupVariantsWrap" style="display:none;margin-top:0.75rem;padding:0.65rem 0.85rem;background:rgba(184,124,111,0.07);border:1px solid rgba(184,124,111,0.25);border-radius:8px;">
@@ -223,13 +223,19 @@
                         <p class="design-card-meta">{{ design.folder or 'No folder' }}{% if design.extra_categories %} <span style="color:var(--terra-cotta,#b87c6f);">+{{ design.extra_categories.split(',')|length }}</span>{% endif %} &middot; {{ design.sku or 'No SKU' }}{% if variants %} &middot; {{ variants|length + 1 }} colors{% endif %}</p>
                         {% if variants %}
                         <div class="gallery-variant-thumbs" style="display:flex;flex-wrap:wrap;gap:0.35rem;margin:0.5rem 0 0.75rem;">
-                            <span title="{{ design.variant_label or 'Default' }}" style="width:36px;height:36px;border-radius:6px;overflow:hidden;border:1px solid var(--border-color);background:#fff;display:inline-flex;">
+                            <button type="button"
+                                    title="Edit {{ design.variant_label or 'Default' }}"
+                                    onclick="openGalleryEdit({{ design.id }})"
+                                    style="width:40px;height:40px;padding:2px;border-radius:6px;overflow:hidden;border:1px solid var(--border-color);background:#fff;display:inline-flex;cursor:pointer;">
                                 <img src="{{ design.file_path | image_url }}" alt="" style="width:100%;height:100%;object-fit:contain;">
-                            </span>
+                            </button>
                             {% for v in variants %}
-                            <span title="{{ v.variant_label or 'Color' }}" style="width:36px;height:36px;border-radius:6px;overflow:hidden;border:1px solid var(--border-color);background:#fff;display:inline-flex;">
+                            <button type="button"
+                                    title="Edit {{ v.variant_label or 'Color' }}"
+                                    onclick='openGalleryVariantEdit({{ v.id }}, {{ (design.title or design.original_filename or "Design")|tojson }}, {{ (v.sku or design.sku or "")|tojson }}, {{ (v.variant_label or "")|tojson }}, {{ (design.folder or "custom_orders")|tojson }}, {{ (design.extra_categories or "")|tojson }}, {{ url_for("admin.design_gallery_edit", design_id=v.id)|tojson }})'
+                                    style="width:40px;height:40px;padding:2px;border-radius:6px;overflow:hidden;border:1px solid var(--border-color);background:#fff;display:inline-flex;cursor:pointer;">
                                 <img src="{{ v.file_path | image_url }}" alt="{{ v.variant_label or '' }}" style="width:100%;height:100%;object-fit:contain;">
-                            </span>
+                            </button>
                             {% endfor %}
                         </div>
                         {% endif %}
@@ -644,8 +650,7 @@
 }
 .form-control-sm:focus { outline: none; border-color: var(--terra-cotta, #b87c6f); }
 @media (max-width: 600px) {
-    .queue-fields { grid-template-columns: 1fr auto; }
-    .queue-fields .queue-color { display: none; }
+    .queue-fields { grid-template-columns: 1fr 1fr auto; }
 }
 </style>
 
@@ -832,10 +837,12 @@ function showGalleryToast(msg) {
 
 let _gUrl = '', _gId = 0, _gAction = '';
 let _editUrl = '';
+let _editingVariant = false;
 
 function openGalleryEdit(id) {
     const card = document.querySelector('.gallery-design-card[data-design-id="' + id + '"]');
     if (!card) return;
+    _editingVariant = false;
     _gId = id;
     _editUrl = card.getAttribute('data-edit-url') || '';
     document.getElementById('editTitle').value = card.getAttribute('data-title') || '';
@@ -854,8 +861,27 @@ function openGalleryEdit(id) {
     setTimeout(function() { document.getElementById('editTitle').focus(); }, 50);
 }
 
+function openGalleryVariantEdit(id, title, sku, variantLabel, folder, extras, editUrl) {
+    _editingVariant = true;
+    _gId = id;
+    _editUrl = editUrl || '';
+    document.getElementById('editTitle').value = title || '';
+    document.getElementById('editSku').value = sku || '';
+    document.getElementById('editVariantLabel').value = variantLabel || '';
+    document.getElementById('editFile').value = '';
+    const allCats = folder ? [folder].concat((extras || '').split(',').map(s => s.trim()).filter(Boolean)) : [];
+    document.querySelectorAll('#editExtraCategories input[type="checkbox"]').forEach(function(cb) {
+        cb.checked = allCats.indexOf(cb.value) !== -1;
+    });
+    document.getElementById('galleryEditTitle').textContent = 'Edit Design Color';
+    document.getElementById('galleryEditModal').classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+    setTimeout(function() { document.getElementById('editVariantLabel').focus(); }, 50);
+}
+
 function closeGalleryEdit() {
     document.getElementById('galleryEditModal').classList.remove('is-open');
+    document.getElementById('galleryEditTitle').textContent = 'Edit Design';
     document.body.style.overflow = '';
 }
 
@@ -899,6 +925,9 @@ document.getElementById('galleryEditForm').addEventListener('submit', function(e
         }
         closeGalleryEdit();
         showGalleryToast(res.data.message || 'Saved');
+        if (_editingVariant) {
+            setTimeout(function() { location.reload(); }, 500);
+        }
     })
     .catch(function() { showGalleryToast('Something went wrong. Please try again.'); })
     .finally(function() { btn.disabled = false; btn.textContent = orig; });
