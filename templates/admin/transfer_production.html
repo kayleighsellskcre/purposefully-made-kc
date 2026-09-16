@@ -218,11 +218,102 @@
 }
 
 @media print {
-    .no-print, .ops-nav, .navbar, .logo, .logo-image, footer, .flash-messages {
+    @page {
+        size: letter portrait;
+        margin: 0.35in;
+    }
+
+    .no-print, .ops-nav, .navbar, .logo, .logo-image, footer, .flash-messages,
+    .ops-flow {
         display: none !important; visibility: hidden !important;
     }
-    .xfer-page { padding: 0; }
-    .xfer-card { border-color: #000; padding: 0.35rem 0.45rem; }
+
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+    }
+
+    /* Use the full printable width — ignore the site container max-width */
+    .ops-page,
+    .ops-page > .container,
+    .xfer-page {
+        max-width: none !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .xfer-print-banner {
+        margin: 0 0 0.35rem;
+        padding: 0 0 0.2rem;
+        font-size: 0.72rem;
+    }
+
+    /* Two cards across so the sheet fills the page */
+    .xfer-cards {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.35rem;
+    }
+
+    .xfer-card {
+        display: grid !important;
+        grid-template-columns: 100px 1fr !important;
+        gap: 0.35rem !important;
+        padding: 0.28rem 0.35rem !important;
+        border: 1px solid #000 !important;
+        background: #fff !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .xfer-pair {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 0.2rem !important;
+    }
+
+    .xfer-mock,
+    .xfer-mock-img {
+        width: 46px !important;
+        height: 54px !important;
+    }
+
+    .xfer-shirt {
+        width: 40px !important;
+        height: 46px !important;
+        margin-top: 4px !important;
+    }
+
+    .xfer-side {
+        margin-top: 0.05rem !important;
+        font-size: 0.55rem !important;
+        letter-spacing: 0.04em !important;
+    }
+
+    .xfer-facts h2 {
+        font-size: 0.82rem !important;
+        margin: 0 0 0.1rem !important;
+        line-height: 1.15 !important;
+        word-break: break-word;
+    }
+
+    .xfer-who,
+    .xfer-garment,
+    .xfer-facts p {
+        margin: 0 0 0.08rem !important;
+        font-size: 0.68rem !important;
+        line-height: 1.2 !important;
+    }
+
+    .xfer-garment,
+    .xfer-ord {
+        font-size: 0.62rem !important;
+    }
+
+    .xfer-onshirt-name { font-size: 0.38rem !important; }
+    .xfer-onshirt-num { font-size: 0.55rem !important; }
+
     /* Keep garment color + logos visible for the presser (do not wash out). */
     .xfer-mock,
     .xfer-mock-img,
