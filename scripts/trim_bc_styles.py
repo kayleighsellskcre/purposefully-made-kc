@@ -45,7 +45,7 @@ BC_KEEP = {
     'BC3945',      # Unisex Sponge Fleece Short Sleeve Crop Tee (trending)
     'BC6400',      # Unisex Jersey Short Sleeve Tee (popular women's/unisex cut)
     'BC6400CVC',   # CVC Unisex Jersey Short Sleeve Tee
-    'BC8800',      # Unisex Sponge Fleece Pullover Hooded Sweatshirt (newer)
+    'BC8800',      # Women's Flowy Racerback Tank
     # Women's Micro Rib series — Y2K/baby tee aesthetic, very popular right now
     'BC1010',      # Women's Micro Rib Baby Tee
     'BC1012',      # Women's Micro Rib Spaghetti Strap Tank

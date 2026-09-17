@@ -63,22 +63,216 @@ IDENTITY_FIXES = {
         'softness_rating': 3,
     },
     'RS3401': {
-        'name': 'Rabbit Skins Infant Fine Jersey Tee',
+        'name': 'Rabbit Skins Infant Cotton Jersey Tee',
         'category': 'Tee',
         'age_group': 'baby',
         'fit_type': 'Unisex',
         'neck_style': 'Crew Neck',
         'sleeve_length': 'Short Sleeve',
         'description': (
-            'Rabbit Skins infant fine jersey tee — soft combed ring-spun cotton '
-            'for babies. This is a short-sleeve tee, not a onesie/bodysuit.'
+            'Rabbit Skins infant cotton jersey tee — a classic short-sleeve '
+            'shirt for babies. This is not a onesie or bodysuit.'
         ),
-        'fabric_details': '100% combed ring-spun cotton fine jersey',
-        'fabric_summary': '100% combed ring-spun cotton fine jersey, infant tee',
-        'softness_rating': 3,
+        'fabric_details': '5.5 oz / 100% cotton jersey (Ash and Heather blends vary)',
+        'fabric_summary': '100% cotton jersey, substantial infant tee',
+        'softness_rating': 2,
     },
     '3401': None,
+    'RS3321': {
+        'name': 'Rabbit Skins Toddler Fine Jersey Tee',
+        'category': 'Tee',
+        'age_group': 'toddler',
+        'fit_type': 'Unisex',
+        'neck_style': 'Crew Neck',
+        'sleeve_length': 'Short Sleeve',
+        'description': (
+            'Rabbit Skins toddler fine jersey tee — a soft short-sleeve shirt '
+            'made from combed ring-spun cotton.'
+        ),
+        'fabric_details': '4.5 oz / 100% combed ring-spun cotton fine jersey',
+        'fabric_summary': '100% combed ring-spun cotton fine jersey, toddler',
+        'softness_rating': 3,
+    },
+    'RS4400': {
+        'name': 'Rabbit Skins Infant Baby Rib Bodysuit',
+        'category': 'Onesie',
+        'age_group': 'baby',
+        'fit_type': 'Unisex',
+        'neck_style': 'Crew Neck',
+        'sleeve_length': 'Short Sleeve',
+        'description': (
+            'Rabbit Skins infant baby rib bodysuit — a soft one-piece with lap '
+            'shoulders and a reinforced three-snap closure.'
+        ),
+        'fabric_details': '5.5 oz / 100% combed ring-spun cotton baby rib',
+        'fabric_summary': '100% combed ring-spun cotton baby rib, infant',
+        'softness_rating': 3,
+    },
+    'DT8000': {
+        'name': 'District Re-Tee',
+        'category': 'Tee',
+        'age_group': 'adult',
+        'fit_type': 'Unisex',
+        'neck_style': 'Crew Neck',
+        'sleeve_length': 'Short Sleeve',
+        'description': (
+            'The District Re-Tee is a short-sleeve crewneck jersey tee made '
+            'from 100% recycled material. Substantial yet soft, it is an '
+            'easy-wearing sustainable choice.'
+        ),
+        'fabric_details': (
+            '5.3 oz / 60% recycled cotton, 40% recycled polyester jersey '
+            '(color blends vary)'
+        ),
+        'fabric_summary': (
+            '60% recycled cotton / 40% recycled polyester jersey Re-Tee'
+        ),
+        'softness_rating': 2,
+    },
+    'DM130': {
+        'name': 'District Perfect Tri Tee',
+        'category': 'Tee',
+        'age_group': 'adult',
+        'fit_type': 'Unisex',
+        'neck_style': 'Crew Neck',
+        'sleeve_length': 'Short Sleeve',
+        'description': (
+            'The District Perfect Tri Tee is a soft short-sleeve crewneck '
+            'with a heathered vintage look and lightweight tri-blend jersey.'
+        ),
+        'fabric_details': (
+            '4.5 oz / 50% polyester, 25% combed ring-spun cotton, 25% rayon'
+        ),
+        'fabric_summary': '50/25/25 poly / combed cotton / rayon Perfect Tri',
+        'softness_rating': 4,
+    },
+    'DT6000': {
+        'name': 'District Very Important Tee',
+        'category': 'Tee',
+        'age_group': 'adult',
+        'fit_type': 'Unisex',
+        'neck_style': 'Crew Neck',
+        'sleeve_length': 'Short Sleeve',
+        'fabric_details': (
+            '4.3 oz combed ring-spun cotton jersey; heather, frost, and select '
+            'colors use cotton/poly blends'
+        ),
+        'fabric_summary': (
+            'Combed ring-spun cotton jersey; heather colors use cotton/poly blends'
+        ),
+        'softness_rating': 2,
+    },
+    'ST254': {
+        'name': 'Sport-Tek PosiCharge Competitor 1/4-Zip Pullover',
+        'category': 'Long Sleeve',
+        'age_group': 'adult',
+        'fit_type': 'Unisex',
+        'neck_style': 'Quarter-Zip',
+        'sleeve_length': 'Long Sleeve',
+        'description': (
+            'Lightweight 1/4-zip performance pullover with moisture-wicking '
+            'PosiCharge color-lock technology.'
+        ),
+        'fabric_details': (
+            '3.8 oz / 100% polyester interlock with PosiCharge technology'
+        ),
+        'fabric_summary': (
+            '100% polyester PosiCharge 1/4-zip performance pullover'
+        ),
+        'softness_rating': 1,
+    },
+    'STTU169': {
+        'name': "Stanley/Stella Stella Muser Women's Tee",
+        'category': 'Tee',
+        'age_group': 'adult',
+        'fit_type': "Women's",
+        'neck_style': 'Crew Neck',
+        'sleeve_length': 'Short Sleeve',
+        'fabric_details': (
+            '5.3 oz / 100% GOTS-certified organic ring-spun cotton'
+        ),
+    },
+    'STSW013': {
+        'name': 'Stanley/Stella Cruiser 2.0 Pullover Hoodie',
+        'category': 'Hoodie',
+        'age_group': 'adult',
+        'fit_type': 'Unisex',
+        'neck_style': 'Hooded',
+        'sleeve_length': 'Long Sleeve',
+        'fabric_details': (
+            '85% organic cotton, 15% recycled polyester fleece'
+        ),
+    },
+    'BC8800': {
+        'name': "BELLA+CANVAS Women's Flowy Racerback Tank",
+        'category': 'Tank',
+        'age_group': 'adult',
+        'fit_type': "Women's",
+        'sleeve_length': 'Sleeveless',
+        'fabric_details': (
+            '3.7 oz / 65% polyester, 35% viscose (color blends vary)'
+        ),
+        'fabric_summary': '65% polyester / 35% viscose, flowy racerback',
+        'softness_rating': 4,
+    },
+    '3501T': {
+        'category': 'Long Sleeve',
+        'age_group': 'toddler',
+        'fit_type': 'Unisex',
+        'neck_style': 'Crew Neck',
+        'sleeve_length': 'Long Sleeve',
+    },
+    '3719T': {
+        'category': 'Hoodie',
+        'age_group': 'toddler',
+        'fit_type': 'Unisex',
+        'neck_style': 'Hooded',
+        'sleeve_length': 'Long Sleeve',
+    },
 }
+
+_INDEPENDENT_FABRICS = {
+    'IND3000': ('10 oz / 70% ring-spun cotton, 30% polyester 3-end fleece',
+                '70% cotton / 30% polyester heavyweight fleece', 1),
+    'IND4000': ('10 oz / 70% ring-spun cotton, 30% polyester 3-end fleece',
+                '70% cotton / 30% polyester heavyweight fleece, hoodie', 1),
+    'PRM10TSB': ('6.5 oz / 52% ring-spun cotton, 48% polyester fleece',
+                 '52% cotton / 48% polyester Special Blend, toddler', 3),
+    'PRM10TSBC': ('6.5 oz / 52% ring-spun cotton, 48% polyester fleece',
+                  '52% cotton / 48% polyester Special Blend, toddler', 3),
+    'PRM15YSB': ('6.5 oz / 52% ring-spun cotton, 48% polyester fleece',
+                 '52% cotton / 48% polyester Special Blend, youth', 3),
+    'PRM15YSBC': ('6.5 oz / 52% ring-spun cotton, 48% polyester fleece',
+                  '52% cotton / 48% polyester Special Blend, youth', 3),
+    'PRM30SBC': ('8 oz / 52% ring-spun cotton, 48% polyester fleece',
+                 '52% cotton / 48% polyester Special Blend fleece', 3),
+    'PRM33SBP': ('8 oz / 52% ring-spun cotton, 48% polyester fleece',
+                 '52% cotton / 48% polyester Special Blend hoodie', 3),
+    'SS3000': ('8.5 oz / 80% ring-spun cotton, 20% polyester fleece',
+               '80% cotton / 20% polyester midweight fleece', 2),
+    'SS3001Y': ('8.5 oz / 80% ring-spun cotton, 20% polyester fleece',
+                '80% cotton / 20% polyester midweight fleece, youth', 2),
+    'SS4001Y': ('8.5 oz / 80% ring-spun cotton, 20% polyester fleece',
+                '80% cotton / 20% polyester midweight fleece, youth', 2),
+    'SS4001YZ': ('8.5 oz / 80% ring-spun cotton, 20% polyester fleece',
+                 '80% cotton / 20% polyester midweight full-zip, youth', 2),
+    'SS4500': ('8.5 oz / 80% ring-spun cotton, 20% polyester fleece',
+               '80% cotton / 20% polyester midweight fleece, hoodie', 2),
+    'SS4500Z': ('8.5 oz / 80% ring-spun cotton, 20% polyester fleece',
+                '80% cotton / 20% polyester midweight, full-zip', 2),
+}
+_INDEPENDENT_HOODIES = {
+    'IND4000', 'PRM10TSB', 'PRM15YSB', 'PRM33SBP',
+    'SS4001Y', 'SS4001YZ', 'SS4500', 'SS4500Z',
+}
+for _style, (_details, _summary, _rating) in _INDEPENDENT_FABRICS.items():
+    IDENTITY_FIXES[_style] = {
+        'neck_style': 'Hooded' if _style in _INDEPENDENT_HOODIES else 'Crew Neck',
+        'sleeve_length': 'Long Sleeve',
+        'fabric_details': _details,
+        'fabric_summary': _summary,
+        'softness_rating': _rating,
+    }
 
 
 def normalize_style(style: str) -> str:
@@ -119,23 +313,12 @@ def apply_fixes(dry_run: bool = False) -> int:
     app = create_app()
     updated = 0
     with app.app_context():
-        # Explicit style targets first
-        targets = ['CC1566', 'CC1466', 'RS3401', '1566', '1466', '3401']
-        seen_ids = set()
-        for style in targets:
-            product = None
-            for cand in candidate_keys(style):
-                product = Product.query.filter(
-                    db.func.upper(Product.style_number) == cand
-                ).first()
-                if product:
-                    break
-            if not product or product.id in seen_ids:
-                continue
-            fix = resolve_fix(product.style_number) or resolve_fix(style)
+        # Walk the catalog so every canonical style in IDENTITY_FIXES is
+        # corrected without maintaining a second, easy-to-miss target list.
+        for product in Product.query.order_by(Product.style_number).all():
+            fix = resolve_fix(product.style_number)
             if not fix:
                 continue
-            seen_ids.add(product.id)
             changes = []
             for field, value in fix.items():
                 old = getattr(product, field, None)

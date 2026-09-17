@@ -39,7 +39,7 @@ STYLE_ID_HINTS = {
     '17116': 7466,  # MV Sport
     '496': 12262,   # MV Sport
     'G64500': 2116, # Gildan Softstyle V-Neck (64V00)
-    'RS3401': 2577, # Rabbit Skins 4424 infant bodysuit
+    'RS3401': 517,  # Rabbit Skins 3401 infant cotton jersey tee
 }
 
 

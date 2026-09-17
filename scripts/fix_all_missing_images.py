@@ -62,7 +62,7 @@ BRAND_MAP = {
 # Add more here as you confirm them
 STYLE_ID_OVERRIDES = {
     'G64500': 2116,   # S&S: 64V00 Unisex Softstyle V-Neck
-    'RS3401': 2577,   # S&S: 4424 Infant Fine Jersey Bodysuit
+    'RS3401': 517,    # Rabbit Skins 3401 Infant Cotton Jersey Tee
 }
 
 

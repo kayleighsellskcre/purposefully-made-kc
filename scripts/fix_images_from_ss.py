@@ -4,7 +4,7 @@ fix_images_from_ss.py
 Finds products that are missing images in our DB and pulls their
 front/back image URLs from S&S Activewear's API.
 
-Targets: G64500 (Gildan Softstyle V-Neck) + RS3401 (Rabbit Skins Infant Bodysuit)
+Targets: G64500 (Gildan Softstyle V-Neck) + RS3401 (Rabbit Skins Infant Cotton Jersey Tee)
          — and any other active product with no images that S&S carries.
 
 Run from project root in Cursor terminal:
@@ -25,10 +25,10 @@ load_dotenv(os.path.join(ROOT, '.env'))
 
 # Styles to fix — style_number as stored in our DB → S&S styleID (confirmed from find_ss_styles.py)
 # G64500 = SanMar style number; S&S lists it as 64V00 (styleID 2116)
-# RS3401 = SanMar style number; S&S styleID set below (fill in after find_ss_styles.py --brand "Rabbit Skins")
+# RS3401 = Rabbit Skins Infant Cotton Jersey Tee
 TARGET_STYLES = {
     'G64500':  {'brand': 'Gildan',       'ss_style_id': 2116},   # S&S: 64V00 Unisex Softstyle V-Neck
-    'RS3401':  {'brand': 'Rabbit Skins', 'ss_style_id': 2577},   # S&S: 4424 Infant Fine Jersey Bodysuit
+    'RS3401':  {'brand': 'Rabbit Skins', 'ss_style_id': 517},
 }
 
 def find_ss_style_id(api, style_number, brand_name):

@@ -127,6 +127,23 @@ PRODUCTS_TO_ADD = [
     },
 ]
 
+FABRIC_DETAILS_BY_STYLE = {
+    'IND3000': '10 oz / 70% ring-spun cotton, 30% polyester 3-end fleece',
+    'IND4000': '10 oz / 70% ring-spun cotton, 30% polyester 3-end fleece',
+    'PRM10TSB': '6.5 oz / 52% ring-spun cotton, 48% polyester fleece',
+    'PRM10TSBC': '6.5 oz / 52% ring-spun cotton, 48% polyester fleece',
+    'PRM15YSB': '6.5 oz / 52% ring-spun cotton, 48% polyester fleece',
+    'PRM15YSBC': '6.5 oz / 52% ring-spun cotton, 48% polyester fleece',
+    'PRM30SBC': '8 oz / 52% ring-spun cotton, 48% polyester fleece',
+    'PRM33SBP': '8 oz / 52% ring-spun cotton, 48% polyester fleece',
+    'SS3000': '8.5 oz / 80% ring-spun cotton, 20% polyester fleece',
+    'SS3001Y': '8.5 oz / 80% ring-spun cotton, 20% polyester fleece',
+    'SS4001Y': '8.5 oz / 80% ring-spun cotton, 20% polyester fleece',
+    'SS4001YZ': '8.5 oz / 80% ring-spun cotton, 20% polyester fleece',
+    'SS4500': '8.5 oz / 80% ring-spun cotton, 20% polyester fleece',
+    'SS4500Z': '8.5 oz / 80% ring-spun cotton, 20% polyester fleece',
+}
+
 
 def _compose_description(parsed: dict) -> str:
     """Prefer S&S description + fabric/spec details for the product description."""
@@ -152,6 +169,11 @@ def build_product_record(api_data: dict, overrides: dict) -> dict:
     record['is_active'] = True
     record['is_customer_favorite'] = False
     record['style_number'] = overrides['style_number']
+    record['sleeve_length'] = 'Long Sleeve'
+    record['neck_style'] = (
+        'Hooded' if overrides['category'] == 'Hoodie' else 'Crew Neck'
+    )
+    record['fabric_details'] = FABRIC_DETAILS_BY_STYLE[overrides['style_number']]
 
     # Keep API wholesale when present
     if overrides.get('wholesale_cost') is not None:

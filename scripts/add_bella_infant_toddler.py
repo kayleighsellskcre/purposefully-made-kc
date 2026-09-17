@@ -86,9 +86,11 @@ PRODUCTS = [
         'style_number': '3501T',
         'style_id': 8195,
         'age_group': 'toddler',
-        'category': 'Tee',
+        'category': 'Long Sleeve',
         'is_active': True,
         'title_hint': 'Toddler Jersey Long Sleeve Tee',
+        'neck_style': 'Crew Neck',
+        'sleeve_length': 'Long Sleeve',
     },
     {
         'style_number': '3719T',
@@ -97,6 +99,8 @@ PRODUCTS = [
         'category': 'Hoodie',
         'is_active': True,
         'title_hint': 'Toddler Sponge Fleece Pullover Hoodie',
+        'neck_style': 'Hooded',
+        'sleeve_length': 'Long Sleeve',
     },
     {
         'style_number': '3413T',
@@ -157,6 +161,9 @@ def build_record_from_ss(parsed: dict, overrides: dict) -> dict:
     record['category'] = overrides['category']
     record['is_active'] = bool(overrides['is_active'])
     record['is_customer_favorite'] = False
+    for field in ('neck_style', 'sleeve_length'):
+        if overrides.get(field):
+            record[field] = overrides[field]
 
     wholesale = record.get('wholesale_cost')
     record['base_price'] = _retail_from_wholesale(wholesale)

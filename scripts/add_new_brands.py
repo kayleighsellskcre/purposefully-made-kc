@@ -143,18 +143,18 @@ NEW_PRODUCTS = [
     },
     {
         'style_number': 'ST254',
-        'name': 'Sport-Tek PosiCharge Pullover Hooded Sweatshirt',
+        'name': 'Sport-Tek PosiCharge Competitor 1/4-Zip Pullover',
         'brand': 'Sport-Tek',
-        'category': 'Hoodie',
+        'category': 'Long Sleeve',
         'age_group': 'adult',
         'fit_type': 'Unisex',
-        'neck_style': 'Hooded',
+        'neck_style': 'Quarter-Zip',
         'sleeve_length': 'Long Sleeve',
         'base_price': 27.99,
         'wholesale_cost': 12.00,
         'available_sizes': ADULT_SIZES,
-        'description': 'Sport fleece hoodie with PosiCharge color-lock technology. Popular for team warmups and athletic programs.',
-        'fabric_details': 'Sport-Wick fleece / 100% polyester',
+        'description': 'Lightweight 1/4-zip performance pullover with moisture-wicking PosiCharge color-lock technology for teams, coaches, and active layering.',
+        'fabric_details': '3.8 oz / 100% polyester interlock with PosiCharge technology',
     },
     {
         'style_number': 'LST350',
@@ -186,7 +186,7 @@ NEW_PRODUCTS = [
         'wholesale_cost': 5.75,
         'available_sizes': ADULT_SIZES_XS,
         'description': "District's signature style. Soft ring-spun cotton with a fashion-forward fit — popular for lifestyle and boutique-style custom shops.",
-        'fabric_details': '4.3 oz / 100% combed ring-spun cotton',
+        'fabric_details': '4.3 oz / combed ring-spun cotton jersey (heather and frost colors are cotton/poly blends)',
         'is_customer_favorite': True,
     },
     {
@@ -206,24 +206,24 @@ NEW_PRODUCTS = [
     },
     {
         'style_number': 'DT8000',
-        'name': 'District Re-Tee Pullover Hoodie',
+        'name': 'District Re-Tee',
         'brand': 'District',
-        'category': 'Hoodie',
+        'category': 'Tee',
         'age_group': 'adult',
         'fit_type': 'Unisex',
-        'neck_style': 'Hooded',
-        'sleeve_length': 'Long Sleeve',
+        'neck_style': 'Crew Neck',
+        'sleeve_length': 'Short Sleeve',
         'base_price': 27.99,
         'wholesale_cost': 11.50,
         'available_sizes': ADULT_SIZES,
-        'description': 'On-trend sustainable hoodie made from recycled polyester. Fits the fashion-forward District aesthetic perfectly.',
-        'fabric_details': '60% recycled polyester, 40% cotton fleece',
+        'description': 'A substantial, soft jersey tee made from 100% recycled material. Its comfortable modern fit makes sustainability easy to wear.',
+        'fabric_details': '5.3 oz / 60% recycled cotton, 40% recycled polyester jersey (color blends vary)',
     },
 
     # ── RABBIT SKINS ─────────────────────────────────────────────────────────
     {
         'style_number': 'RS3401',
-        'name': 'Rabbit Skins Infant Fine Jersey Tee',
+        'name': 'Rabbit Skins Infant Cotton Jersey Tee',
         'brand': 'Rabbit Skins',
         'category': 'Tee',
         'age_group': 'baby',
@@ -234,10 +234,10 @@ NEW_PRODUCTS = [
         'wholesale_cost': 4.00,
         'available_sizes': INFANT_SIZES,
         'description': (
-            'Soft combed ring-spun cotton infant tee — short sleeve jersey shirt '
-            'for babies (not a onesie/bodysuit; use RS4400 for bodysuits).'
+            'Classic short-sleeve cotton jersey tee made for infants—not a '
+            'onesie or bodysuit. Use RS4400 for the baby rib bodysuit.'
         ),
-        'fabric_details': '4.5 oz / 100% combed ring-spun cotton fine jersey',
+        'fabric_details': '5.5 oz / 100% cotton jersey (Ash and Heather blends vary)',
         'is_customer_favorite': True,
     },
     {
@@ -259,7 +259,7 @@ NEW_PRODUCTS = [
         'style_number': 'RS4400',
         'name': 'Rabbit Skins Infant Baby Rib Bodysuit',
         'brand': 'Rabbit Skins',
-        'category': 'Bodysuit',
+        'category': 'Onesie',
         'age_group': 'baby',
         'fit_type': 'Unisex',
         'neck_style': 'Crew Neck',
