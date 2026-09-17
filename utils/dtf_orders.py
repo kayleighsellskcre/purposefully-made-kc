@@ -11,8 +11,9 @@ def _label(value):
     return (value or '').replace('_', ' ').strip() or '—'
 
 
-def _copy_logo(name, placement, width, qty):
-    return f'{name} · {placement} · {width:.2f}" wide × {qty}'
+def _copy_logo(name, placement, width, qty, code=None):
+    head = f'{code} · {name}' if code else name
+    return f'{head} · {placement} · {width:.2f}" wide × {qty}'
 
 
 def _copy_personal(name, number, name_h, number_h, qty):
@@ -56,6 +57,8 @@ def build_dtf_shopping_list(orders):
                 if not row:
                     row = {
                         'design_name': name,
+                        'design_id': getattr(item, 'design_id', None),
+                        'collection_id': getattr(order, 'collection_id', None),
                         'placement': placement,
                         'width': width,
                         'height': height,
@@ -95,16 +98,25 @@ def build_dtf_shopping_list(orders):
                     ),
                 })
 
+    from utils.logo_codes import stamp_logo_codes
+    stamp_logo_codes(orders, list(logos.values()))
+
     logo_list = []
     for row in sorted(
         logos.values(),
-        key=lambda r: (r['design_name'].lower(), r['placement'], r['width'] or 0),
+        key=lambda r: (
+            r.get('logo_code') or '',
+            r['design_name'].lower(),
+            r['placement'],
+            r['width'] or 0,
+        ),
     ):
         row['copy_text'] = _copy_logo(
             row['design_name'],
             row['placement'],
             row['width'] or 0,
             row['quantity'],
+            code=row.get('logo_code'),
         )
         logo_list.append(row)
 
@@ -126,7 +138,10 @@ def build_dtf_shopping_list(orders):
     for row in logo_list:
         csv_rows.append({
             'kind': 'logo',
-            'design_or_name': row['design_name'],
+            'design_or_name': (
+                f"{row.get('logo_code')} · {row['design_name']}"
+                if row.get('logo_code') else row['design_name']
+            ),
             'placement': row['placement'],
             'order_by': 'WIDTH',
             'size_in': row['width_display'],

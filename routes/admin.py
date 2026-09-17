@@ -815,10 +815,14 @@ def _collect_press_shirts(orders):
                     'back_mockup_url': back_m or front_m,
                     'front_overlay_url': front_print_url(item) if front else None,
                     'front_placement': getattr(item, 'placement', None) or (front or {}).get('placement') or 'center_chest',
+                    'design_id': getattr(item, 'design_id', None),
+                    'collection_id': getattr(order, 'collection_id', None),
                     'exceeds_safe_area': bool(
                         (front or {}).get('exceeds_safe_area') or (back or {}).get('exceeds_safe_area')
                     ),
                 })
+    from utils.logo_codes import stamp_logo_codes
+    stamp_logo_codes(orders, shirts)
     return shirts
 
 
@@ -3374,6 +3378,54 @@ def dtf_batch_sheets():
         order_count=shopping['order_count'],
         has_items=shopping['has_items'],
         collections=collections,
+    )
+
+
+@admin_bp.route('/production/logo-chart')
+@admin_required
+def logo_chart():
+    """Printable master logo chart: 1, 1a, 1b for each group order."""
+    from utils.ops_flow import ops_order_query
+    from utils.logo_codes import extra_design_ids_from_orders, logo_families
+
+    query, stages, collection_id = ops_order_query(
+        ['order_received', 'waiting_supplies', 'ready_to_press', 'pressed']
+    )
+    orders = query.order_by(Order.created_at).all()
+    all_collections = Collection.query.order_by(Collection.name).all()
+
+    if collection_id:
+        try:
+            cid = int(collection_id)
+        except (TypeError, ValueError):
+            cid = None
+        chosen = [c for c in all_collections if c.id == cid]
+    else:
+        cids = {order.collection_id for order in orders if order.collection_id}
+        chosen = [c for c in all_collections if c.id in cids] if cids else [
+            c for c in all_collections if c.allowed_design_ids
+        ]
+
+    charts = []
+    for collection in chosen:
+        extra = extra_design_ids_from_orders(orders, collection.id)
+        families = logo_families(collection, extra)
+        if families:
+            charts.append({
+                'collection': collection,
+                'families': families,
+                'logo_count': sum(len(family['variants']) for family in families),
+                'main_count': len(families),
+            })
+
+    return render_template(
+        'admin/logo_chart.html',
+        title='Logo chart',
+        charts=charts,
+        collections=all_collections,
+        selected_status=stages,
+        selected_collection=collection_id,
+        printable=True,
     )
 
 

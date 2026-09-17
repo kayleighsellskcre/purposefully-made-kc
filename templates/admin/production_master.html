@@ -14,6 +14,7 @@
             <div class="master-actions">
                 <a href="{{ ops_url('admin.blank_apparel_list') }}" class="btn btn-primary">Weekly blanks list</a>
                 <a href="{{ ops_url('admin.dtf_batch_sheets') }}" class="btn btn-primary">Weekly DTF list</a>
+                <a href="{{ ops_url('admin.logo_chart') }}" class="btn btn-outline">Logo chart</a>
                 <a href="{{ ops_url('admin.transfer_production', stage=['ready_to_press']) }}" class="btn btn-outline">Press sheets</a>
                 <a href="{{ ops_url('admin.orders', stage='order_received') }}" class="btn btn-outline">View Orders</a>
                 <form method="post" action="{{ url_for('admin.production_master_move') }}" style="display: inline;">

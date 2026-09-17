@@ -15,6 +15,7 @@
             <a class="btn btn-outline" href="{{ url_for('admin.order_transfer_csv', order_id=order.id) }}">Download CSV</a>
             {% else %}
             <a class="btn btn-outline" href="{{ ops_url('admin.dtf_batch_sheets') }}">Weekly DTF list</a>
+            <a class="btn btn-outline" href="{{ ops_url('admin.logo_chart') }}">Logo chart</a>
             <a class="btn btn-outline" href="{{ ops_url('admin.print_labels', stage=['pressed', 'packaged_ready']) }}">Print labels</a>
             <a class="btn btn-outline" href="{{ ops_url('admin.transfer_production', stage=selected_status, group=group_by, format='csv') }}">Download CSV</a>
             {% endif %}
@@ -101,6 +102,7 @@
                 <p class="xfer-send">Send home: <strong>{{ shirt.child_name }}</strong></p>
                 {% endif %}
                 <p class="xfer-design">
+                    {% if shirt.logo_code %}<span class="xfer-logo-code">{{ shirt.logo_code }}</span>{% endif %}
                     {% if back and (back.name or back.number) %}
                     {{ back.name or '' }}{% if back.number %} #{{ back.number }}{% endif %}
                     {% elif front %}
@@ -212,6 +214,7 @@
 .xfer-side { display: block; margin-top: 0.2rem; font-size: 0.8rem; font-weight: 800; letter-spacing: 0.08em; }
 .xfer-facts h2, .xfer-customer { font-size: 1.45rem; margin: 0 0.15rem 0.2rem 0; padding-right: 3.2rem; line-height: 1.15; }
 .xfer-design { font-size: 1.12rem; font-weight: 700; margin: 0 0 0.25rem; }
+.xfer-logo-code { display: inline-block; font-size: 1.55rem; font-weight: 900; letter-spacing: -0.03em; margin-right: 0.4rem; }
 .xfer-send { font-size: 1rem; margin: 0 0 0.2rem; }
 .xfer-who, .xfer-garment, .xfer-facts p { margin: 0 0 0.22rem; font-size: 1rem; line-height: 1.35; }
 .xfer-garment, .xfer-ord { color: #333; font-size: 0.95rem; }
@@ -332,6 +335,11 @@
         font-size: 13pt !important;
         font-weight: 800 !important;
         margin: 0 0 0.15rem !important;
+    }
+
+    .xfer-logo-code {
+        font-size: 20pt !important;
+        margin-right: 0.35rem !important;
     }
 
     .xfer-send {

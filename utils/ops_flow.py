@@ -24,6 +24,7 @@ DAILY_ENDPOINTS = {
     'admin.order_transfer_summary',
     'admin.print_labels',
     'admin.dtf_batch_sheets',
+    'admin.logo_chart',
     'admin.production_bulk_sheet',
     'admin.blank_apparel_list',
     'admin.production',
@@ -54,7 +55,7 @@ FLOW_STEPS = [
         'label': 'Order blanks',
         'hint': 'Blanks + logos, buy once',
         'endpoint': 'admin.production_master',
-        'active_eps': ('admin.production_master', 'admin.blank_apparel_list', 'admin.dtf_batch_sheets', 'admin.production'),
+        'active_eps': ('admin.production_master', 'admin.blank_apparel_list', 'admin.dtf_batch_sheets', 'admin.logo_chart', 'admin.production'),
         'params': {'stage': ['order_received', 'waiting_supplies']},
     },
     {
@@ -63,7 +64,7 @@ FLOW_STEPS = [
         'label': 'Press',
         'hint': 'Hand to the presser',
         'endpoint': 'admin.transfer_production',
-        'active_eps': ('admin.transfer_production', 'admin.order_transfer_summary', 'admin.production_bulk_sheet'),
+        'active_eps': ('admin.transfer_production', 'admin.order_transfer_summary', 'admin.production_bulk_sheet', 'admin.logo_chart'),
         'params': {'stage': ['ready_to_press', 'pressed']},
     },
     {
@@ -89,6 +90,7 @@ STAGE_TOOLS = {
     ],
     'ready_to_press': [
         ('admin.transfer_production', 'Press sheets', {'stage': ['ready_to_press']}),
+        ('admin.logo_chart', 'Logo chart', {'stage': ['ready_to_press']}),
         ('admin.dtf_batch_sheets', 'Weekly DTF list', {'stage': ['ready_to_press']}),
     ],
     'pressed': [

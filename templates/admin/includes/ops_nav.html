@@ -1,5 +1,5 @@
 {# Shared admin top nav — desktop hover menus, phone accordion #}
-{% set daily_eps = ['admin.orders','admin.completed_orders','admin.order_detail','admin.production_workflow','admin.production_master','admin.transfer_production','admin.order_transfer_summary','admin.print_labels','admin.dtf_batch_sheets','admin.production_bulk_sheet','admin.blank_apparel_list','admin.custom_design_requests','admin.custom_design_request_detail','admin.production'] %}
+{% set daily_eps = ['admin.orders','admin.completed_orders','admin.order_detail','admin.production_workflow','admin.production_master','admin.transfer_production','admin.order_transfer_summary','admin.print_labels','admin.dtf_batch_sheets','admin.logo_chart','admin.production_bulk_sheet','admin.blank_apparel_list','admin.custom_design_requests','admin.custom_design_request_detail','admin.production'] %}
 {% set store_eps = ['admin.products','admin.add_product','admin.edit_product','admin.collections','admin.add_collection','admin.edit_collection','admin.design_gallery','admin.gallery_queue','admin.designs','admin.affirmations'] %}
 {% set biz_eps = ['admin.inventory','admin.save_inventory_costs','admin.operations_inventory','admin.vendors','admin.financial','admin.growth','admin.customers','admin.packaging_sop'] %}
 
@@ -32,11 +32,11 @@
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                     2. Workflow
                 </a>
-                <a href="{{ ops_url('admin.production_master') }}" class="ops-drop-item {% if request.endpoint in ['admin.production_master','admin.blank_apparel_list','admin.dtf_batch_sheets','admin.production'] %}ops-drop-active{% endif %}" role="menuitem">
+                <a href="{{ ops_url('admin.production_master') }}" class="ops-drop-item {% if request.endpoint in ['admin.production_master','admin.blank_apparel_list','admin.dtf_batch_sheets','admin.logo_chart','admin.production'] %}ops-drop-active{% endif %}" role="menuitem">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
                     3. Order blanks
                 </a>
-                <a href="{{ ops_url('admin.transfer_production') }}" class="ops-drop-item {% if request.endpoint in ['admin.transfer_production','admin.order_transfer_summary','admin.production_bulk_sheet'] %}ops-drop-active{% endif %}" role="menuitem">
+                <a href="{{ ops_url('admin.transfer_production') }}" class="ops-drop-item {% if request.endpoint in ['admin.transfer_production','admin.order_transfer_summary','admin.production_bulk_sheet','admin.logo_chart'] %}ops-drop-active{% endif %}" role="menuitem">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
                     4. Press
                 </a>

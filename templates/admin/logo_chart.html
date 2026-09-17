@@ -1,0 +1,165 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ title }} - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<div class="logo-chart-page">
+    <div class="logo-chart-header no-print">
+        <div>
+            <span class="adm-eyebrow">Admin / Production</span>
+            <h1>Logo chart</h1>
+            <p class="logo-chart-sub">Hand this to the presser with the press sheet. Each main logo gets a number. Other colors of that same logo get a letter: 1, then 1a, 1b, 1c. The next distinct logo is 2.</p>
+        </div>
+        <div class="logo-chart-actions">
+            <a class="btn btn-outline" href="{{ ops_url('admin.dtf_batch_sheets') }}">Weekly DTF list</a>
+            <a class="btn btn-outline" href="{{ ops_url('admin.transfer_production', stage=['ready_to_press']) }}">Press sheets</a>
+            <button type="button" class="btn btn-primary" onclick="window.print()">Print</button>
+        </div>
+    </div>
+
+    <form method="get" class="logo-chart-filters no-print">
+        {% if collections %}
+        <label>Group order
+            <select name="collection" onchange="this.form.submit()">
+                <option value="">All with open orders</option>
+                {% for c in collections %}
+                <option value="{{ c.id }}" {% if selected_collection and selected_collection|string == c.id|string %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        {% endif %}
+        {% for st in selected_status %}
+        <input type="hidden" name="stage" value="{{ st }}">
+        {% endfor %}
+    </form>
+
+    {% if charts %}
+    {% for chart in charts %}
+    <section class="logo-chart-block">
+        <header class="logo-chart-banner">
+            <strong>{{ chart.collection.name }}</strong>
+            · {{ chart.main_count }} main logo{{ 's' if chart.main_count != 1 else '' }}
+            · {{ chart.logo_count }} color{{ 's' if chart.logo_count != 1 else '' }}
+        </header>
+        {% for family in chart.families %}
+        <article class="logo-family">
+            {% for variant in family.variants %}
+            <div class="logo-tile{% if loop.first %} logo-tile-main{% endif %}">
+                <span class="logo-code">{{ variant.code }}</span>
+                <div class="logo-art">
+                    {% if variant.image_url %}
+                    <img src="{{ variant.image_url }}" alt="Logo {{ variant.code }}">
+                    {% else %}
+                    <span class="logo-missing">No file</span>
+                    {% endif %}
+                </div>
+                <p class="logo-label">{{ variant.label }}</p>
+                {% if variant.title and variant.title != variant.label %}
+                <p class="logo-title">{{ variant.title }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </article>
+        {% endfor %}
+    </section>
+    {% endfor %}
+    {% else %}
+    <p class="logo-chart-empty">No group-order logos to chart yet. Pick a collection, or wait until a group order has designs assigned.</p>
+    {% endif %}
+</div>
+
+<style>
+.logo-chart-page { padding: 3.5rem 0 4rem; }
+.logo-chart-header { display: flex; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.logo-chart-sub { color: var(--text-secondary); max-width: 42rem; margin-top: 0.35rem; }
+.logo-chart-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-start; }
+.logo-chart-filters { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.logo-chart-filters label { font-size: 0.82rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.3rem; }
+.logo-chart-filters select { min-height: 40px; padding: 0.35rem 0.6rem; }
+.logo-chart-banner {
+    font-size: 1.15rem;
+    padding: 0.35rem 0 0.65rem;
+    border-bottom: 2px solid #111;
+    margin-bottom: 0.85rem;
+}
+.logo-family {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: stretch;
+    margin: 0 0 1.1rem;
+    padding-bottom: 1.1rem;
+    border-bottom: 1px solid #ddd;
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+.logo-tile {
+    position: relative;
+    width: 7.5rem;
+    border: 2px solid #111;
+    background: #fff;
+    padding: 0.45rem 0.45rem 0.55rem;
+    text-align: center;
+}
+.logo-tile-main { width: 11rem; }
+.logo-code {
+    display: block;
+    font-size: 1.85rem;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    margin-bottom: 0.3rem;
+}
+.logo-tile-main .logo-code { font-size: 2.4rem; }
+.logo-art {
+    height: 6.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+        linear-gradient(45deg, #eee 25%, transparent 25%),
+        linear-gradient(-45deg, #eee 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #eee 75%),
+        linear-gradient(-45deg, transparent 75%, #eee 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+    background-color: #f7f7f7;
+}
+.logo-tile-main .logo-art { height: 8.4rem; }
+.logo-art img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.logo-missing { color: #666; font-size: 0.9rem; }
+.logo-label { margin: 0.4rem 0 0; font-size: 1.02rem; font-weight: 800; line-height: 1.2; }
+.logo-title { margin: 0.15rem 0 0; font-size: 0.88rem; color: #444; line-height: 1.25; }
+.logo-chart-empty { padding: 2rem; background: #fff; }
+
+@media print {
+    @page { size: letter portrait; margin: 0.4in; }
+    .no-print, .ops-nav, .navbar, .logo, .logo-image, footer, .flash-messages, .ops-flow {
+        display: none !important; visibility: hidden !important;
+    }
+    html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+    .ops-page, .ops-page > .container, .logo-chart-page {
+        max-width: none !important; width: 100% !important; margin: 0 !important; padding: 0 !important;
+    }
+    .logo-chart-banner { font-size: 14pt; margin-bottom: 0.45rem; padding-bottom: 0.25rem; }
+    .logo-family { gap: 0.4rem; margin-bottom: 0.55rem; padding-bottom: 0.55rem; }
+    .logo-tile { width: 1.55in; padding: 0.2rem; border-width: 2px; }
+    .logo-tile-main { width: 2.15in; }
+    .logo-code { font-size: 22pt; margin-bottom: 0.12rem; }
+    .logo-tile-main .logo-code { font-size: 28pt; }
+    .logo-art { height: 1.35in; }
+    .logo-tile-main .logo-art { height: 1.75in; }
+    .logo-label { font-size: 11pt; }
+    .logo-title { font-size: 9pt; }
+    .logo-art img {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+}
+@media (max-width: 768px) {
+    .logo-chart-page { padding: 0.5rem 0 2.5rem; }
+    .logo-chart-header, .logo-chart-actions { flex-direction: column; align-items: stretch; }
+    .logo-chart-actions .btn { justify-content: center; min-height: 48px; }
+    .logo-tile, .logo-tile-main { width: calc(50% - 0.4rem); }
+}
+</style>
+{% endblock %}

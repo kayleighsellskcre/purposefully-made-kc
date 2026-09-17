@@ -14,6 +14,7 @@
             <div class="shop-actions no-print">
                 <button type="button" class="btn btn-primary" data-copy-target="copy-all" {% if not has_items %}disabled{% endif %}>Copy all</button>
                 <a href="{{ ops_url('admin.dtf_batch_sheets', format='xlsx') }}" class="btn btn-outline">Download Excel</a>
+                <a href="{{ ops_url('admin.logo_chart') }}" class="btn btn-outline">Logo chart</a>
                 <button type="button" class="btn btn-outline" onclick="window.print()">Print</button>
                 <a href="{{ ops_url('admin.production_master') }}" class="btn btn-outline">Back to blanks + designs</a>
             </div>
@@ -61,6 +62,9 @@
                         {% endif %}
                     </div>
                     <div class="dtf-info">
+                        {% if row.logo_code %}
+                        <p class="dtf-code">{{ row.logo_code }}</p>
+                        {% endif %}
                         <p class="style-num">{{ row.design_name }}</p>
                         <p class="style-name">{{ row.placement }}</p>
                         <p class="dtf-size">Enter width <strong>{{ row.width_display }}″</strong></p>
@@ -171,6 +175,7 @@
 .dtf-size { margin: 0.55rem 0 0; font-size: 1.12rem; }
 .dtf-size span { color: var(--text-secondary); font-weight: 500; }
 .qty-line { margin: 0.4rem 0 0; color: var(--accent-color); font-size: 1.2rem; font-weight: 800; }
+.dtf-code { margin: 0 0 0.2rem; font-size: 1.7rem; font-weight: 900; letter-spacing: -0.03em; line-height: 1; color: #111; }
 .dtf-btns { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
 .shop-note { color: var(--text-secondary); margin-top: 0.5rem; }
 .empty-state { text-align: center; padding: 4rem 2rem; background: #fff; border-radius: var(--border-radius); }
@@ -324,6 +329,12 @@
         padding: 0.4rem 0.55rem !important;
         flex: 1 !important;
         min-width: 0 !important;
+    }
+
+    .dtf-code {
+        font-size: 22pt !important;
+        margin: 0 0 0.12rem !important;
+        color: #111 !important;
     }
 
     .style-num {
