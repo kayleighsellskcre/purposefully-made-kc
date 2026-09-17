@@ -39,6 +39,7 @@
                     <table class="admin-table">
                         <thead>
                             <tr>
+                                <th>Section</th>
                                 <th>Style #</th>
                                 <th>Product</th>
                                 <th>Color</th>
@@ -49,6 +50,7 @@
                         <tbody>
                             {% for item in apparel_list %}
                             <tr>
+                                <td><strong>{{ item.section }}</strong></td>
                                 <td><strong>{{ item.style_number }}</strong></td>
                                 <td>{{ item.product_name }}</td>
                                 <td>{{ item.color }}</td>
@@ -64,6 +66,7 @@
                     <article class="apparel-card">
                         <div>
                             <p class="apparel-card-style">{{ item.style_number }}</p>
+                            <p class="apparel-card-meta"><strong>{{ item.section }}</strong></p>
                             <p class="apparel-card-name">{{ item.product_name }}</p>
                             <p class="apparel-card-meta">{{ item.color }} · {{ item.size }}</p>
                         </div>

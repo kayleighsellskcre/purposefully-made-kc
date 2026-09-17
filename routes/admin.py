@@ -2691,6 +2691,13 @@ def add_collection():
             collection.back_design_outline = request.form.get('back_design_outline') != 'off'
             collection.back_design_outline_color = request.form.get('back_design_outline_color') or None
             collection.lock_back_design_style = request.form.get('lock_back_design_style') == 'on'
+            back_type = request.form.get('back_design_type', 'both')
+            collection.allow_back_design = back_type != 'none'
+            collection.back_design_type = (
+                back_type
+                if back_type in ('name_number', 'image', 'both')
+                else 'both'
+            )
 
             from utils.group_orders import apply_collection_card, apply_schedule_from_form, set_collection_products_from_form
             apply_collection_card(collection)
@@ -2706,10 +2713,14 @@ def add_collection():
             db.session.add(collection)
             db.session.flush()
 
-            selected_products = set_collection_products_from_form(collection)
+            selected_products, product_error = set_collection_products_from_form(collection)
+            if product_error:
+                db.session.rollback()
+                flash(product_error, 'error')
+                return redirect(url_for('admin.add_collection'))
             if not selected_products:
                 db.session.rollback()
-                flash('Please pick at least one shirt style so your team has something to order.', 'error')
+                flash('Please choose a uniform or at least one shirt style for fan wear.', 'error')
                 return redirect(url_for('admin.add_collection'))
 
             db.session.commit()
@@ -2772,6 +2783,8 @@ def add_collection():
         products=catalog['products'],
         gallery_designs=catalog['gallery_designs'],
         all_colors=catalog.get('colors_by_brand') or catalog['all_colors'],
+        uniform_colors_by_product=catalog['uniform_colors_by_product'],
+        team_store={'configured': True, 'uniform': {'enabled': False}, 'fan_product_ids': []},
         back_design_fonts=GROUP_ORDER_FONTS,
         catalog_filter_opts=catalog['catalog_filter_opts'],
         catalog_filter_picker=True,
@@ -2782,8 +2795,12 @@ def add_collection():
 @admin_required
 def edit_collection(collection_id):
     """Edit collection"""
-    from utils.product_filters import catalog_filter_options, prepare_catalog
-    from utils.group_orders import apply_collection_form, designs_for_group_order_form
+    from utils.product_filters import load_group_order_form_catalog
+    from utils.group_orders import (
+        apply_collection_form,
+        designs_for_group_order_form,
+        team_store_config,
+    )
     import json
 
     collection = Collection.query.get_or_404(collection_id)
@@ -2823,17 +2840,9 @@ def edit_collection(collection_id):
             flash('Something went wrong while saving the group order. Please try again.', 'error')
             return redirect(url_for('admin.edit_collection', collection_id=collection.id))
     
-    products = prepare_catalog(Product.query.filter_by(is_active=True).all())
+    catalog = load_group_order_form_catalog()
+    products = catalog['products']
     gallery_designs = designs_for_group_order_form(collection)
-    # Build colors grouped by brand from this collection's products
-    colors_by_brand: dict[str, list[str]] = {}
-    for p in collection.products:
-        brand_key = p.brand or 'Other'
-        for v in ProductColorVariant.query.filter_by(product_id=p.id).all():
-            if v.color_name:
-                colors_by_brand.setdefault(brand_key, set()).add(v.color_name)
-    colors_by_brand = {b: sorted(c) for b, c in sorted(colors_by_brand.items())}
-    collection_color_names = colors_by_brand  # passed to template as dict
     from utils.group_orders import allowed_color_form_keys
     allowed_color_keys = allowed_color_form_keys(collection)
     try:
@@ -2849,7 +2858,9 @@ def edit_collection(collection_id):
                          collection=collection,
                          products=products,
                          gallery_designs=gallery_designs,
-                         collection_colors=collection_color_names,
+                         collection_colors=catalog.get('colors_by_brand') or catalog['all_colors'],
+                         uniform_colors_by_product=catalog['uniform_colors_by_product'],
+                         team_store=team_store_config(collection),
                          allowed_colors_list=allowed_colors_list,
                          allowed_color_keys=allowed_color_keys,
                          allowed_design_ids_list=allowed_design_ids_list,
@@ -2857,7 +2868,7 @@ def edit_collection(collection_id):
                          allowed_placements_list=allowed_placements_list,
                          back_design_fonts=GROUP_ORDER_FONTS,
                          collection_product_ids=[p.id for p in collection.products],
-                         catalog_filter_opts=catalog_filter_options(products),
+                         catalog_filter_opts=catalog['catalog_filter_opts'],
                          catalog_filter_picker=True)
 
 
@@ -2917,9 +2928,19 @@ def production_master():
     apparel_totals = {}
     for order in orders:
         for item in order.items:
-            key = (item.style_number, item.product_name, item.color, item.size)
+            section = (
+                f'{(item.uniform_kit or "Player").title()} Uniform'
+                if item.catalog_section == 'uniform'
+                else (
+                    'Family & Fan Wear'
+                    if item.catalog_section == 'fan'
+                    else 'Standard Apparel'
+                )
+            )
+            key = (section, item.style_number, item.product_name, item.color, item.size)
             if key not in apparel_totals:
                 apparel_totals[key] = {
+                    'section': section,
                     'style_number': item.style_number,
                     'product_name': item.product_name,
                     'color': item.color,
@@ -2928,7 +2949,10 @@ def production_master():
                 }
             apparel_totals[key]['quantity'] += item.quantity
     
-    apparel_list = sorted(apparel_totals.values(), key=lambda x: (x['style_number'], x['color'], x['size']))
+    apparel_list = sorted(
+        apparel_totals.values(),
+        key=lambda x: (x['section'], x['style_number'], x['color'], x['size']),
+    )
     
     # Design/logo totals (grouped by design, placement, print size)
     from utils.print_sizes import production_from_order_item, inches

@@ -154,6 +154,86 @@ def allowed_color_form_keys(collection_or_raw):
     return keys
 
 
+def team_store_config(collection):
+    """Normalized two-lane config; legacy collections are fan-wear only."""
+    import json
+
+    raw = getattr(collection, 'team_store_config', None) if collection else None
+    try:
+        parsed = json.loads(raw) if isinstance(raw, str) and raw.strip() else raw
+    except (TypeError, ValueError, json.JSONDecodeError):
+        parsed = None
+    parsed = parsed if isinstance(parsed, dict) else {}
+    uniform = parsed.get('uniform')
+    uniform = uniform if isinstance(uniform, dict) else {}
+    fan_ids = parsed.get('fan_product_ids')
+    if not isinstance(fan_ids, list):
+        fan_ids = []
+        if collection is not None:
+            fan_ids = [p.id for p in getattr(collection, 'products', [])]
+
+    def _pid(value):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    cleaned_fan = []
+    for value in fan_ids:
+        pid = _pid(value)
+        if pid and pid not in cleaned_fan:
+            cleaned_fan.append(pid)
+    uniform_pid = _pid(uniform.get('product_id'))
+    enabled = bool(uniform.get('enabled') and uniform_pid)
+    return {
+        'version': 1,
+        'configured': bool(parsed),
+        'uniform': {
+            'enabled': enabled,
+            'product_id': uniform_pid if enabled else None,
+            'home_color': (uniform.get('home_color') or '').strip(),
+            'away_color': (uniform.get('away_color') or '').strip(),
+        },
+        'fan_product_ids': cleaned_fan,
+        'fan_personalization_enabled': bool(
+            parsed.get('fan_personalization_enabled', False)
+        ),
+    }
+
+
+def team_store_choice(collection, product_id, section=None, kit=None):
+    """Validate/infer a product lane and return (section, kit, color, error)."""
+    try:
+        product_id = int(product_id)
+    except (TypeError, ValueError):
+        return None, None, None, 'That item is not part of this group order.'
+    config = team_store_config(collection)
+    uniform = config['uniform']
+    section = (section or '').strip().lower()
+    kit = (kit or '').strip().lower()
+
+    if not config['configured']:
+        return 'fan', None, None, None
+    if not section:
+        section = (
+            'uniform'
+            if uniform['enabled'] and product_id == uniform['product_id']
+            else 'fan'
+        )
+    if section == 'uniform':
+        if not uniform['enabled'] or product_id != uniform['product_id']:
+            return None, None, None, 'That item is not offered as a player uniform.'
+        if kit not in ('home', 'away'):
+            return None, None, None, 'Choose the Home or Away uniform.'
+        color = uniform[f'{kit}_color']
+        if not color:
+            return None, None, None, f'This group order does not offer an {kit.title()} uniform.'
+        return 'uniform', kit, color, None
+    if section != 'fan' or product_id not in config['fan_product_ids']:
+        return None, None, None, 'That item is not offered in Family & Fan Wear.'
+    return 'fan', None, None, None
+
+
 def parse_order_deadline(date_str):
     """Inclusive end of the chosen calendar day in Kansas City time, stored as naive UTC."""
     raw = (date_str or '').strip()
@@ -248,11 +328,15 @@ def apply_schedule_from_form(collection):
 
 
 def set_collection_products_from_form(collection):
-    """Replace collection.products from the products[] form field in one query."""
-    from flask import request
-    from models import Product
+    """Save fan/uniform configuration and replace the union product relation.
 
-    ids = []
+    Returns ``(selected_products, error_message)``.
+    """
+    import json
+    from flask import request
+    from models import Product, ProductColorVariant
+
+    fan_ids = []
     seen = set()
     for raw in request.form.getlist('products'):
         try:
@@ -262,15 +346,77 @@ def set_collection_products_from_form(collection):
         if pid in seen:
             continue
         seen.add(pid)
-        ids.append(pid)
+        fan_ids.append(pid)
+
+    configured = request.form.get('team_store_present') == '1'
+    uniform_enabled = configured and request.form.get('uniform_enabled') == 'on'
+    uniform_id = None
+    home_color = ''
+    away_color = ''
+    if uniform_enabled:
+        try:
+            uniform_id = int(request.form.get('uniform_product_id') or '')
+        except (TypeError, ValueError):
+            return [], 'Choose one apparel style for the player uniform.'
+        home_color = (request.form.get('uniform_home_color') or '').strip()
+        away_color = (request.form.get('uniform_away_color') or '').strip()
+        if not home_color:
+            return [], 'Choose a Home color for the player uniform.'
+        if away_color and away_color == home_color:
+            return [], 'Choose a different Away color, or leave Away blank.'
+        valid_colors = {
+            row[0] for row in db.session.query(ProductColorVariant.color_name)
+            .filter(
+                ProductColorVariant.product_id == uniform_id,
+                ProductColorVariant.color_name.isnot(None),
+            )
+            .all()
+            if row[0]
+        }
+        if home_color not in valid_colors:
+            return [], 'The selected Home color is not available for that uniform.'
+        if away_color and away_color not in valid_colors:
+            return [], 'The selected Away color is not available for that uniform.'
+        # One style has one purpose inside a configured store.
+        fan_ids = [pid for pid in fan_ids if pid != uniform_id]
+
+    ids = list(fan_ids)
+    if uniform_id and uniform_id not in ids:
+        ids.insert(0, uniform_id)
     if not ids:
         collection.products = []
-        return []
-    found = Product.query.filter(Product.id.in_(ids)).all()
+        if configured:
+            collection.team_store_config = json.dumps({
+                'version': 1,
+                'uniform': {'enabled': False},
+                'fan_product_ids': [],
+                'fan_personalization_enabled': False,
+            })
+        return [], None
+
+    found = Product.query.filter(Product.id.in_(ids), Product.is_active == True).all()
     by_id = {p.id: p for p in found}
     selected = [by_id[i] for i in ids if i in by_id]
+    if uniform_id and uniform_id not in by_id:
+        return [], 'The selected uniform style is not currently available.'
     collection.products = selected
-    return selected
+    if configured:
+        collection.team_store_config = json.dumps({
+            'version': 1,
+            'uniform': {
+                'enabled': bool(uniform_id),
+                'product_id': uniform_id,
+                'home_color': home_color,
+                'away_color': away_color,
+            },
+            'fan_product_ids': [pid for pid in fan_ids if pid in by_id],
+            'fan_personalization_enabled': (
+                request.form.get('fan_personalization_enabled') == 'on'
+            ),
+        }, separators=(',', ':'))
+    else:
+        collection.team_store_config = None
+    return selected, None
 
 
 _COVER_EXTS = {'.png', '.jpg', '.jpeg', '.webp', '.gif'}
@@ -587,9 +733,11 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
     if not ok:
         return False, error, 0
 
-    selected_products = set_collection_products_from_form(collection)
+    selected_products, product_error = set_collection_products_from_form(collection)
+    if product_error:
+        return False, product_error, 0
     if require_products and not selected_products:
-        return False, 'Please pick at least one shirt style so your team has something to order.', 0
+        return False, 'Please choose a uniform or at least one shirt style for fan wear.', 0
 
     return True, None, upload_count
 

@@ -294,6 +294,11 @@
             <header class="od-kit-head">
                 <div>
                     <h3>{{ item.product_name }}</h3>
+                    {% if item.catalog_section == 'uniform' %}
+                    <p><strong>{{ (item.uniform_kit or 'Player')|title }} Player Uniform</strong></p>
+                    {% elif item.catalog_section == 'fan' %}
+                    <p><strong>Family &amp; Fan Wear</strong></p>
+                    {% endif %}
                     <p>{{ item.style_number }} · {{ item.color }} · {{ item.size }} · {{ item.print_type or 'DTF' }} · Qty {{ item.quantity }}</p>
                     {% if item.design %}
                     <p class="od-design-line">
@@ -459,7 +464,7 @@
         <div class="od-xfer{% if (prod.front and prod.front.exceeds_safe_area) or (prod.back and prod.back.exceeds_safe_area) %} od-xfer-flag{% endif %}">
             <div class="od-xfer-itemhead">
                 <strong>{{ item.product_name }}</strong>
-                <span>{{ item.color }} · {{ (prod.front.age_group if prod.front else (prod.back.age_group if prod.back else ''))|title }} {{ item.size }} · Qty {{ item.quantity }}</span>
+                <span>{% if item.catalog_section == 'uniform' %}{{ (item.uniform_kit or 'Player')|title }} Uniform · {% elif item.catalog_section == 'fan' %}Fan Wear · {% endif %}{{ item.color }} · {{ (prod.front.age_group if prod.front else (prod.back.age_group if prod.back else ''))|title }} {{ item.size }} · Qty {{ item.quantity }}</span>
             </div>
             <div class="od-xfer-grid">
                 {% if prod.front %}

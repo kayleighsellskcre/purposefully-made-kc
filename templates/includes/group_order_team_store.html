@@ -1,0 +1,148 @@
+{% set _uniform = (team_store or {}).get('uniform', {}) %}
+<div class="form-section team-store-setup">
+    <input type="hidden" name="team_store_present" value="1">
+    <span class="team-store-eyebrow">Optional</span>
+    <h2>Player Uniforms</h2>
+    <p class="form-hint">Add one official jersey style. Choose a Home color and, if needed, a different Away color.</p>
+
+    <label class="team-store-toggle">
+        <input type="checkbox" id="uniform_enabled" name="uniform_enabled" value="on"
+               {% if _uniform.get('enabled') %}checked{% endif %}>
+        <span>
+            <strong>This group order includes player uniforms</strong>
+            <small>Turn this off for a fan-wear-only store.</small>
+        </span>
+    </label>
+
+    <fieldset id="uniformFields" class="team-store-fields" {% if not _uniform.get('enabled') %}hidden{% endif %}>
+        <legend class="visually-hidden">Player uniform style and colors</legend>
+        <div class="team-store-grid">
+            <div class="form-group">
+                <label for="uniform_product_id">Uniform style</label>
+                <select id="uniform_product_id" name="uniform_product_id" class="form-control">
+                    <option value="">Choose one jersey or apparel style</option>
+                    {% for product in products %}
+                    <option value="{{ product.id }}"
+                            {% if _uniform.get('product_id') == product.id %}selected{% endif %}>
+                        {{ product.name }} — {{ product.style_number }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="uniform_home_color">Home color</label>
+                <select id="uniform_home_color" name="uniform_home_color" class="form-control"
+                        data-selected="{{ _uniform.get('home_color', '') }}">
+                    <option value="">Choose the uniform style first</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="uniform_away_color">Away color <span class="text-muted">(optional)</span></label>
+                <select id="uniform_away_color" name="uniform_away_color" class="form-control"
+                        data-selected="{{ _uniform.get('away_color', '') }}">
+                    <option value="">No Away uniform</option>
+                </select>
+            </div>
+        </div>
+        <p class="form-hint">Shoppers ordering for a player can choose Home, Away, or both. Family and friends can skip directly to fan wear.</p>
+        <label class="team-store-toggle" style="margin-top:.75rem;">
+            <input type="checkbox" id="fan_personalization_enabled"
+                   name="fan_personalization_enabled" value="on"
+                   {% if (team_store or {}).get('fan_personalization_enabled') %}checked{% endif %}>
+            <span>
+                <strong>Also allow player name/number on fan wear</strong>
+                <small>Leave this off to keep player personalization on uniforms only.</small>
+            </span>
+        </label>
+    </fieldset>
+</div>
+
+<style>
+.team-store-setup { border: 2px solid rgba(184,124,111,.28); }
+.team-store-eyebrow {
+    color: var(--terra-cotta, #b87c6f); font-size:.72rem; font-weight:800;
+    letter-spacing:.12em; text-transform:uppercase;
+}
+.team-store-toggle {
+    display:flex; align-items:flex-start; gap:.75rem; margin-top:1rem; padding:1rem;
+    border:1px solid var(--border-color); border-radius:10px; background:#fff; cursor:pointer;
+}
+.team-store-toggle input { margin-top:.2rem; accent-color:var(--terra-cotta, #b87c6f); }
+.team-store-toggle span, .team-store-toggle small { display:block; }
+.team-store-toggle small { color:var(--text-secondary); margin-top:.2rem; }
+.team-store-fields {
+    border:0; margin:1rem 0 0; padding:1rem; border-radius:10px;
+    background:rgba(184,124,111,.06);
+}
+.team-store-fields[hidden] { display:none; }
+.product-checkbox.is-uniform-style { opacity:.5; cursor:not-allowed; }
+.team-store-grid {
+    display:grid; grid-template-columns:minmax(240px,1.5fr) 1fr 1fr; gap:1rem;
+}
+.visually-hidden {
+    position:absolute!important; width:1px!important; height:1px!important;
+    padding:0!important; margin:-1px!important; overflow:hidden!important;
+    clip:rect(0,0,0,0)!important; white-space:nowrap!important; border:0!important;
+}
+@media (max-width:760px) { .team-store-grid { grid-template-columns:1fr; gap:.5rem; } }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const enabled = document.getElementById('uniform_enabled');
+    const fields = document.getElementById('uniformFields');
+    const product = document.getElementById('uniform_product_id');
+    const home = document.getElementById('uniform_home_color');
+    const away = document.getElementById('uniform_away_color');
+    const fanPersonalization = document.getElementById('fan_personalization_enabled');
+    if (!enabled || !fields || !product || !home || !away) return;
+    const colors = {{ (uniform_colors_by_product or {})|tojson }};
+    const initialHome = home.dataset.selected || '';
+    const initialAway = away.dataset.selected || '';
+
+    function fillColorSelect(select, items, firstLabel, selected) {
+        select.innerHTML = '';
+        const blank = document.createElement('option');
+        blank.value = '';
+        blank.textContent = firstLabel;
+        select.appendChild(blank);
+        (items || []).forEach(function(color) {
+            const option = document.createElement('option');
+            option.value = color;
+            option.textContent = color;
+            option.selected = color === selected;
+            select.appendChild(option);
+        });
+    }
+
+    function syncFanProduct() {
+        document.querySelectorAll('input[name="products"]').forEach(function(box) {
+            const isUniform = enabled.checked && box.value === product.value;
+            if (isUniform) box.checked = false;
+            box.disabled = isUniform;
+            const card = box.closest('.product-checkbox');
+            if (card) {
+                card.classList.toggle('is-uniform-style', isUniform);
+                card.setAttribute('aria-disabled', isUniform ? 'true' : 'false');
+            }
+        });
+    }
+
+    function syncUniform(initial) {
+        fields.hidden = !enabled.checked;
+        [product, home, away, fanPersonalization].forEach(function(el) {
+            if (el) el.disabled = !enabled.checked;
+        });
+        product.required = enabled.checked;
+        home.required = enabled.checked;
+        const list = colors[String(product.value)] || [];
+        fillColorSelect(home, list, product.value ? 'Choose Home color' : 'Choose the uniform style first', initial ? initialHome : home.value);
+        fillColorSelect(away, list, 'No Away uniform', initial ? initialAway : away.value);
+        syncFanProduct();
+    }
+
+    enabled.addEventListener('change', function() { syncUniform(false); });
+    product.addEventListener('change', function() { syncUniform(false); });
+    syncUniform(true);
+});
+</script>

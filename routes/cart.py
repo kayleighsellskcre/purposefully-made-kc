@@ -111,16 +111,75 @@ def add():
         return jsonify({'error': stock_err}), 400
 
     from utils.group_orders import (
+        allowed_colors_for_product,
         get_active_collection,
         ordering_blocked,
+        team_store_config,
+        team_store_choice,
     )
     collection = get_active_collection()
+    catalog_section = None
+    uniform_kit = None
     if collection:
-        # Don't pass product_id — any shop item can be ordered while in a group order.
-        # Only blocks on deadline/closed/inactive; color restrictions apply via session.
-        blocked = ordering_blocked(collection)
+        blocked = ordering_blocked(collection, product_id)
         if blocked:
             return jsonify({'error': blocked}), 400
+        catalog_section, uniform_kit, locked_color, choice_error = (
+            team_store_choice(
+                collection,
+                product_id,
+                data.get('catalog_section'),
+                data.get('uniform_kit'),
+            )
+        )
+        if choice_error:
+            return jsonify({'error': choice_error}), 400
+        if locked_color and color != locked_color:
+            return jsonify({
+                'error': f'The {uniform_kit.title()} uniform must be {locked_color}.'
+            }), 400
+        if catalog_section == 'fan':
+            allowed = allowed_colors_for_product(product, collection)
+            if allowed is not None and color not in allowed:
+                return jsonify({
+                    'error': 'That color is not offered for this group order.'
+                }), 400
+        from utils.json_fields import parse_json_list
+        placements = set(parse_json_list(collection.allowed_placements or ''))
+        if placements and placement not in placements:
+            return jsonify({
+                'error': 'That design placement is not offered for this group order.'
+            }), 400
+        has_name_number = bool(
+            (data.get('back_design_name') or '').strip()
+            or (data.get('back_design_number') or '').strip()
+        )
+        has_back_request = bool(
+            has_name_number
+            or data.get('back_design_url')
+            or request.files.get('back_design')
+        )
+        back_allowed = getattr(collection, 'allow_back_design', True)
+        lane_config = team_store_config(collection)
+        if (
+            catalog_section == 'fan'
+            and lane_config['uniform']['enabled']
+            and not lane_config['fan_personalization_enabled']
+        ):
+            back_allowed = False
+        if has_back_request and not back_allowed:
+            return jsonify({
+                'error': 'Back designs are not offered for this group order.'
+            }), 400
+        back_type = getattr(collection, 'back_design_type', 'both') or 'both'
+        if has_name_number and back_type == 'image':
+            return jsonify({
+                'error': 'Player name and number are not enabled for this group order.'
+            }), 400
+        if has_back_request and not has_name_number and back_type == 'name_number':
+            return jsonify({
+                'error': 'Only player name and number are enabled on the back.'
+            }), 400
     
     cart = get_cart()
     
@@ -410,6 +469,8 @@ def add():
         'rotation': print_specs.get('rotation', 0),
         'proof_image': print_specs.get('proof_image'),
         'collection_id': collection.id if collection else None,
+        'catalog_section': catalog_section,
+        'uniform_kit': uniform_kit,
     }
 
     # Don't mix a group order with regular shop items (or another group)
@@ -436,7 +497,9 @@ def add():
             item.get('design_id') == design_id and
             item.get('placement') == placement and
             item.get('back_design_url') == back_design_url and
-            item.get('back_design_meta') == back_design_meta):
+            item.get('back_design_meta') == back_design_meta and
+            item.get('catalog_section') == catalog_section and
+            item.get('uniform_kit') == uniform_kit):
             item['quantity'] += quantity
             found = True
             break

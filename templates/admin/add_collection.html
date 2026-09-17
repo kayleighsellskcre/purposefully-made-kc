@@ -47,10 +47,12 @@
 
                 {% include 'includes/group_order_card_fields.html' %}
             </div>
-            
+
+            {% include 'includes/group_order_team_store.html' %}
+
             <div class="form-section">
-                <h2>Items Available to Order</h2>
-                <p class="form-hint">Pick the shirts this group can order. Filter first, then tap Select these. <strong>Choose at least one style.</strong> The share link only works if there is something to order.</p>
+                <h2>Family &amp; Fan Wear</h2>
+                <p class="form-hint">Choose the separate apparel family and friends can order. These styles do not have to match the player uniform. Leave this empty for a uniform-only store.</p>
                 {% if products %}
                 {% include 'includes/catalog_filter.html' %}
                 <div class="product-checkboxes">
@@ -94,8 +96,8 @@
                     <div class="organizer-block-label">
                         <span class="organizer-step">1</span>
                         <div>
-                            <strong>What colors can your team choose from?</strong>
-                            <p class="form-hint" style="margin:0">Check only the colors you want. Leave all unchecked to allow every color.</p>
+                            <strong>What colors can shoppers choose for fan wear?</strong>
+                            <p class="form-hint" style="margin:0">These are separate from the Home and Away uniform colors. Leave all unchecked to allow every fan-wear color.</p>
                         </div>
                     </div>
                         {% if all_colors %}

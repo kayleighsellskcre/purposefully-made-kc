@@ -1760,7 +1760,12 @@
             <div class="customizer-panel">
                 {% if collection_restricted %}
                 <div class="collection-restricted-banner">
-                    <strong>Your organizer has chosen the options below.</strong> Pick your color, size, and logo from the selections and add to your order. Everyone stays matching!
+                    {% if catalog_section == 'uniform' %}
+                    <strong>{{ uniform_kit|title }} player uniform · {{ uniform_locked_color }}</strong>
+                    Your organizer selected this uniform color. Choose the player’s size, logo, and back details.
+                    {% else %}
+                    <strong>Family &amp; Fan Wear</strong> Your organizer has chosen the available colors and designs for this group order.
+                    {% endif %}
                 </div>
                 {% endif %}
                 {% if product.is_customer_favorite %}
@@ -4819,6 +4824,12 @@
                 
                 const formData = new FormData();
                 formData.append('product_id', {{ product.id }});
+                {% if catalog_section %}
+                formData.append('catalog_section', {{ catalog_section|tojson }});
+                {% endif %}
+                {% if uniform_kit %}
+                formData.append('uniform_kit', {{ uniform_kit|tojson }});
+                {% endif %}
                 formData.append('color', state.selectedColor.name);
                 formData.append('size', state.selectedSize);
                 formData.append('quantity', state.quantity);

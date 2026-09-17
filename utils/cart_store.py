@@ -15,12 +15,22 @@ from flask_login import current_user
 def _user_cart_identity(item: dict) -> tuple:
     return (
         item.get('product_id'),
+        item.get('collection_id'),
+        item.get('catalog_section'),
+        item.get('uniform_kit'),
         item.get('size'),
         item.get('color'),
         item.get('design_id'),
+        item.get('design_url'),
         item.get('placement'),
         item.get('back_design_url'),
         json.dumps(item.get('back_design_meta') or {}, sort_keys=True, default=str),
+        item.get('print_width'),
+        item.get('print_height'),
+        item.get('position_x'),
+        item.get('position_y'),
+        item.get('rotation'),
+        json.dumps(item.get('transfer_production') or {}, sort_keys=True, default=str),
     )
 
 
@@ -141,7 +151,20 @@ def cart_fingerprint(cart=None) -> str:
 def adopt_guest_cart_on_login(user, guest_cart: list | None) -> None:
     """After login, merge any guest-session lines into the account cart."""
     stored = _read_user_cart(user)
-    merged = merge_carts(stored, guest_cart or [])
+    guest = [
+        item for item in (guest_cart or [])
+        if isinstance(item, dict) and item.get('product_id')
+    ]
+    if guest:
+        # The cart currently in this browser is the shopper's active checkout.
+        # Keep account lines only when they belong to that same store scope.
+        guest_scope = guest[0].get('collection_id') or None
+        stored = [
+            item for item in stored
+            if isinstance(item, dict)
+            and (item.get('collection_id') or None) == guest_scope
+        ]
+    merged = merge_carts(stored, guest)
     _write_user_cart(user, merged)
     session['cart'] = merged
     session['cart_owner_id'] = user.id

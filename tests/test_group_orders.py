@@ -1,7 +1,8 @@
 """The group-order create form, including the 413 that broke it in production."""
 import io
+import json
 
-from models import db, Collection
+from models import db, Collection, Product
 
 
 def _base_form(seed, **over):
@@ -89,6 +90,65 @@ def test_a_signed_in_customer_can_create_a_group_order(customer_client, seed, ap
         assert collection.is_active is True
         assert collection.created_by_user_id == seed['customer_id']
         assert [p.id for p in collection.products] == [seed['tee_id']]
+
+
+def test_uniform_and_fan_wear_are_saved_as_separate_lanes(customer_client, seed, app):
+    form = _base_form(
+        seed,
+        team_store_present='1',
+        uniform_enabled='on',
+        uniform_product_id=str(seed['tee_id']),
+        uniform_home_color='Black',
+        uniform_away_color='White',
+        products=[str(seed['hoodie_id'])],
+    )
+    resp = _post(customer_client, form)
+    assert resp.status_code == 200
+    with app.app_context():
+        collection = Collection.query.filter_by(name=form['name']).one()
+        config = json.loads(collection.team_store_config)
+        assert config['uniform'] == {
+            'enabled': True,
+            'product_id': seed['tee_id'],
+            'home_color': 'Black',
+            'away_color': 'White',
+        }
+        assert config['fan_product_ids'] == [seed['hoodie_id']]
+        assert {p.id for p in collection.products} == {
+            seed['tee_id'], seed['hoodie_id'],
+        }
+
+
+def test_a_uniform_only_store_does_not_require_fan_wear(customer_client, seed, app):
+    form = _base_form(
+        seed,
+        team_store_present='1',
+        uniform_enabled='on',
+        uniform_product_id=str(seed['tee_id']),
+        uniform_home_color='Black',
+        uniform_away_color='',
+        products=[],
+    )
+    resp = _post(customer_client, form)
+    assert resp.status_code == 200
+    with app.app_context():
+        collection = Collection.query.filter_by(name=form['name']).one()
+        assert [p.id for p in collection.products] == [seed['tee_id']]
+
+
+def test_uniform_requires_a_real_home_color(customer_client, seed, app):
+    form = _base_form(
+        seed,
+        team_store_present='1',
+        uniform_enabled='on',
+        uniform_product_id=str(seed['tee_id']),
+        uniform_home_color='Purple That Does Not Exist',
+        products=[],
+    )
+    body = _post(customer_client, form).get_data(as_text=True).lower()
+    assert 'home color is not available' in body
+    with app.app_context():
+        assert Collection.query.filter_by(name=form['name']).count() == 0
 
 
 def test_a_guest_is_sent_to_sign_in(guest, seed):
@@ -357,3 +417,66 @@ def test_group_order_filter_panel_starts_closed(client, seed):
     html = client.get(f'/c/{seed["collection_slug"]}').get_data(as_text=True)
     assert 'id="catalogFilterPanel" hidden' in html
     assert 'aria-expanded="false"' in html
+
+
+def test_team_store_offers_player_or_fan_paths(client, seed, app):
+    with app.app_context():
+        collection = db.session.get(Collection, seed['collection_id'])
+        collection.products.append(db.session.get(Product, seed['hoodie_id']))
+        collection.team_store_config = json.dumps({
+            'version': 1,
+            'uniform': {
+                'enabled': True,
+                'product_id': seed['tee_id'],
+                'home_color': 'Black',
+                'away_color': 'White',
+            },
+            'fan_product_ids': [seed['hoodie_id']],
+        })
+        db.session.commit()
+
+    html = client.get(f'/c/{seed["collection_slug"]}').get_data(as_text=True)
+    assert 'I’m ordering for a player' in html
+    assert 'I only need family &amp; fan wear' in html
+    assert 'Home Uniform' in html
+    assert 'Away Uniform' in html
+    assert 'catalog_section=uniform' in html
+    assert 'uniform_kit=home' in html
+    assert 'Family &amp; Fan Wear' in html
+
+
+def test_uniform_color_is_locked_in_customizer_and_cart(client, seed, app):
+    with app.app_context():
+        collection = db.session.get(Collection, seed['collection_id'])
+        collection.team_store_config = json.dumps({
+            'version': 1,
+            'uniform': {
+                'enabled': True,
+                'product_id': seed['tee_id'],
+                'home_color': 'Black',
+                'away_color': 'White',
+            },
+            'fan_product_ids': [],
+        })
+        db.session.commit()
+
+    client.get(f'/c/{seed["collection_slug"]}')
+    html = client.get(
+        f'/shop/customize/{seed["tee_id"]}'
+        '?catalog_section=uniform&uniform_kit=home'
+    ).get_data(as_text=True)
+    assert 'Home player uniform' in html
+    assert 'Black' in html
+    assert "formData.append('catalog_section', \"uniform\")" in html
+    assert "formData.append('uniform_kit', \"home\")" in html
+
+    response = client.post('/cart/add', data={
+        'product_id': str(seed['tee_id']),
+        'color': 'White',
+        'size': 'M',
+        'quantity': '1',
+        'catalog_section': 'uniform',
+        'uniform_kit': 'home',
+    })
+    assert response.status_code == 400
+    assert 'must be Black' in response.get_json()['error']

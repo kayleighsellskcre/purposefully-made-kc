@@ -23,6 +23,52 @@ def _json_error(message, code, status=400, **extra):
     return jsonify(payload), status
 
 
+def _group_cart_error(cart, collection):
+    """Revalidate group-store lane, product, and color before payment."""
+    scopes = {
+        item.get('collection_id') or None
+        for item in cart or []
+        if isinstance(item, dict)
+    }
+    if len(scopes) > 1:
+        return 'Your cart contains items from different stores. Please return to your cart and choose one store.'
+    if any(scopes) and collection is None:
+        return 'This group order is no longer available. Please return to the group store.'
+    if not collection:
+        return None
+
+    from utils.group_orders import (
+        allowed_colors_for_product,
+        ordering_blocked,
+        team_store_choice,
+    )
+    for item in cart or []:
+        if not isinstance(item, dict) or item.get('collection_id') != collection.id:
+            return 'Every item must come from the same group store.'
+        product = Product.query.get(_int_or_none(item.get('product_id')))
+        if not product:
+            return 'One of the items in your cart is no longer available.'
+        blocked = ordering_blocked(collection, product.id)
+        if blocked:
+            return blocked
+        section, kit, locked_color, error = team_store_choice(
+            collection,
+            product.id,
+            item.get('catalog_section'),
+            item.get('uniform_kit'),
+        )
+        if error:
+            return error
+        color = item.get('color')
+        if locked_color and color != locked_color:
+            return f'The {kit.title()} uniform is now offered in {locked_color}. Please add it again.'
+        if section == 'fan':
+            allowed = allowed_colors_for_product(product, collection)
+            if allowed is not None and color not in allowed:
+                return 'A fan-wear color in your cart is no longer offered. Please add that item again.'
+    return None
+
+
 def _clip(value, length):
     if value is None:
         return None
@@ -591,6 +637,9 @@ def paypal_create_order():
         blocked = ordering_blocked(collection)
         if blocked:
             return jsonify({'error': blocked}), 400
+    cart_error = _group_cart_error(cart, collection)
+    if cart_error:
+        return jsonify({'error': cart_error}), 400
 
     reprice_cart(cart)
     shipping_method = data.get('shipping_method', 'pickup')
@@ -676,6 +725,10 @@ def index():
         if blocked:
             flash(blocked, 'error')
             return redirect(url_for('collection.view', slug=collection.slug))
+    cart_error = _group_cart_error(cart, collection)
+    if cart_error:
+        flash(cart_error, 'error')
+        return redirect(url_for('cart.index'))
     if reprice_cart(cart):
         flash('Some prices in your cart were updated to current pricing.', 'info')
     from utils.family_promo import get_session_family_promo
@@ -829,6 +882,9 @@ def create_payment_intent():
         blocked = ordering_blocked(collection)
         if blocked:
             return jsonify({'error': blocked}), 400
+    cart_error = _group_cart_error(cart, collection)
+    if cart_error:
+        return jsonify({'error': cart_error}), 400
 
     from utils.stock import aggregate_cart_blanks, check_stock
     grouped, labels = aggregate_cart_blanks(cart)
@@ -992,6 +1048,11 @@ def complete():
             blocked = ordering_blocked(collection)
             if blocked:
                 return _json_error(blocked, 'GROUP_ORDER_CLOSED', 400, request_id=rid)
+        cart_error = _group_cart_error(cart, collection)
+        if cart_error:
+            return _json_error(
+                cart_error, 'GROUP_CART_INVALID', 400, request_id=rid
+            )
 
         checkout_token = _clip(data.get('checkout_token'), 64)
         if checkout_token and session.get('checkout_success_token') == checkout_token:
@@ -1271,6 +1332,10 @@ def complete():
                     style_number=_clip(product.style_number, 50),
                     size=_clip(cart_item.get('size'), 20) or 'M',
                     color=_clip(cart_item.get('color'), 100) or 'Unknown',
+                    catalog_section=_clip(
+                        cart_item.get('catalog_section'), 20
+                    ),
+                    uniform_kit=_clip(cart_item.get('uniform_kit'), 20),
                     quantity=qty,
                     unit_price=unit_price,
                     subtotal=qty * unit_price,

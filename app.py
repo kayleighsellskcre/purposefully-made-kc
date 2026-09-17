@@ -127,6 +127,8 @@ def create_app(config_class=Config):
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS proof_image VARCHAR(500)",
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS proof_back_image VARCHAR(500)",
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS notes TEXT",
+                    "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS catalog_section VARCHAR(20)",
+                    "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS uniform_kit VARCHAR(20)",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS collection_id INTEGER REFERENCES collection(id)",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS production_stage VARCHAR(50)",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS order_type VARCHAR(20) DEFAULT 'retail'",
@@ -194,6 +196,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS show_in_directory BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS cover_image VARCHAR(500)",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS card_title VARCHAR(200)",
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS team_store_config TEXT",
                     # product.spec_sheet_url — SanMar CDN PDF link added during Bella+Canvas CSV import
                     "ALTER TABLE product ADD COLUMN IF NOT EXISTS spec_sheet_url VARCHAR(500)",
                     # Softness rating + short fabric blurb (seeded by style number)

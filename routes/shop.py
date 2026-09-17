@@ -316,6 +316,13 @@ def create_group_order():
             collection.back_design_outline = request.form.get('back_design_outline') != 'off'
             collection.back_design_outline_color = request.form.get('back_design_outline_color') or None
             collection.lock_back_design_style = request.form.get('lock_back_design_style') == 'on'
+            back_type = request.form.get('back_design_type', 'both')
+            collection.allow_back_design = back_type != 'none'
+            collection.back_design_type = (
+                back_type
+                if back_type in ('name_number', 'image', 'both')
+                else 'both'
+            )
 
             from utils.group_orders import apply_collection_card, apply_schedule_from_form, set_collection_products_from_form
             apply_collection_card(collection)
@@ -335,10 +342,14 @@ def create_group_order():
             db.session.flush()
 
             # ── 5. Link selected products ───────────────────────────────────
-            selected_products = set_collection_products_from_form(collection)
+            selected_products, product_error = set_collection_products_from_form(collection)
+            if product_error:
+                db.session.rollback()
+                flash(product_error, 'error')
+                return redirect(url_for('shop.create_group_order'))
             if not selected_products:
                 db.session.rollback()
-                flash('Please pick at least one shirt style so your team has something to order.', 'error')
+                flash('Please choose a uniform or at least one shirt style for fan wear.', 'error')
                 return redirect(url_for('shop.create_group_order'))
 
             # ── 6. Commit the store first so a slow logo upload cannot
@@ -407,6 +418,8 @@ def create_group_order():
                          products=catalog['products'],
                          gallery_designs=catalog['gallery_designs'],
                          all_colors=catalog.get('colors_by_brand') or catalog['all_colors'],
+                         uniform_colors_by_product=catalog['uniform_colors_by_product'],
+                         team_store={'configured': True, 'uniform': {'enabled': False}, 'fan_product_ids': []},
                          back_design_fonts=GROUP_ORDER_FONTS,
                          catalog_filter_opts=catalog['catalog_filter_opts'],
                          catalog_filter_picker=True,
@@ -467,7 +480,7 @@ def edit_group_order(slug):
             return redirect(url_for('shop.edit_group_order', slug=slug))
 
     catalog = load_group_order_form_catalog()
-    from utils.group_orders import allowed_color_form_keys
+    from utils.group_orders import allowed_color_form_keys, team_store_config
     allowed_color_keys = allowed_color_form_keys(collection)
     try:
         _raw_colors = json.loads(collection.allowed_colors) if collection.allowed_colors else []
@@ -483,6 +496,8 @@ def edit_group_order(slug):
         products=catalog['products'],
         gallery_designs=designs_for_group_order_form(collection),
         collection_colors=catalog.get('colors_by_brand') or catalog['all_colors'],
+        uniform_colors_by_product=catalog['uniform_colors_by_product'],
+        team_store=team_store_config(collection),
         allowed_colors_list=allowed_colors_list,
         allowed_color_keys=allowed_color_keys,
         allowed_design_ids_list=allowed_design_ids_list,
@@ -548,6 +563,8 @@ def customize(product_id):
         get_active_collection,
         load_collection_designs,
         ordering_blocked,
+        team_store_config,
+        team_store_choice,
     )
 
     product = Product.query.get_or_404(product_id)
@@ -568,20 +585,48 @@ def customize(product_id):
     allowed_design_ids = None
     back_design_type = 'both'   # 'none' | 'name_number' | 'image' | 'both'
     allow_back_design = True
+    catalog_section = None
+    uniform_kit = None
+    uniform_locked_color = None
     coll = get_active_collection()
     if coll:
         from utils.group_orders import is_not_yet_open
-        # Don't pass product.id — customers can customize any shop item while in a group order.
-        # Only block on deadline/closed/inactive; product-membership check is skipped here.
-        blocked = ordering_blocked(coll)
+        blocked = ordering_blocked(coll, product.id)
         if blocked and not is_not_yet_open(coll):
             # Order is closed/past deadline — redirect away entirely
             flash(blocked, 'error')
             return redirect(url_for('collection.view', slug=coll.slug))
-        has_colors = collection_has_color_restrictions(coll)
+        catalog_section, uniform_kit, uniform_locked_color, choice_error = (
+            team_store_choice(
+                coll,
+                product.id,
+                request.args.get('catalog_section'),
+                request.args.get('uniform_kit'),
+            )
+        )
+        if choice_error:
+            flash(choice_error, 'warning')
+            return redirect(url_for('collection.view', slug=coll.slug))
+        if uniform_locked_color:
+            color_variants_data = [
+                v for v in color_variants_data
+                if v['color_name'] == uniform_locked_color
+            ]
+            if not color_variants_data:
+                flash('That uniform color is temporarily unavailable.', 'warning')
+                return redirect(url_for('collection.view', slug=coll.slug))
+        has_colors = (
+            catalog_section == 'fan'
+            and collection_has_color_restrictions(coll)
+        )
         has_designs = bool(collection_design_id_list(coll))
         has_placements = bool(parse_json_list(coll.allowed_placements or ''))
-        collection_restricted = bool(coll.restrict_options or has_colors or has_designs)
+        collection_restricted = bool(
+            coll.restrict_options
+            or has_colors
+            or has_designs
+            or catalog_section == 'uniform'
+        )
         allow_custom_upload = getattr(coll, 'allow_custom_upload', True)
         back_design_font = getattr(coll, 'back_design_font', None)
         back_design_text_color = getattr(coll, 'back_design_text_color', None)
@@ -606,6 +651,14 @@ def customize(product_id):
             allowed_design_ids = set(collection_design_id_list(coll))
         if has_placements:
             allowed_placements = parse_json_list(coll.allowed_placements)
+        lane_config = team_store_config(coll)
+        if (
+            catalog_section == 'fan'
+            and lane_config['uniform']['enabled']
+            and not lane_config['fan_personalization_enabled']
+        ):
+            allow_back_design = False
+            back_design_type = 'none'
     
     # Check for pre-selected design from gallery
     design_id = request.args.get('design_id', type=int)
@@ -677,4 +730,7 @@ def customize(product_id):
                          is_adult=is_adult,
                          transfer_sizing=transfer_sizing,
                          ordering_not_yet_open=ordering_not_yet_open,
-                         collection_opens_label=collection_opens_label)
+                         collection_opens_label=collection_opens_label,
+                         catalog_section=catalog_section,
+                         uniform_kit=uniform_kit,
+                         uniform_locked_color=uniform_locked_color)

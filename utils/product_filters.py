@@ -313,11 +313,16 @@ def load_group_order_form_catalog():
     ids = [p.id for p in products]
     all_colors = []
     colors_by_brand = {}   # {brand: [sorted color names]}
+    uniform_colors_by_product = {}  # {product_id: [sorted color names]}
     gallery_designs = []
     try:
         if ids:
             rows = (
-                db.session.query(Product.brand, ProductColorVariant.color_name)
+                db.session.query(
+                    Product.id,
+                    Product.brand,
+                    ProductColorVariant.color_name,
+                )
                 .join(ProductColorVariant, ProductColorVariant.product_id == Product.id)
                 .filter(
                     Product.id.in_(ids),
@@ -329,9 +334,12 @@ def load_group_order_form_catalog():
                 .all()
             )
             seen_colors: set[str] = set()
-            for brand, color in rows:
+            for product_id, brand, color in rows:
                 if not color:
                     continue
+                uniform_colors_by_product.setdefault(str(product_id), [])
+                if color not in uniform_colors_by_product[str(product_id)]:
+                    uniform_colors_by_product[str(product_id)].append(color)
                 brand_key = brand or 'Other'
                 colors_by_brand.setdefault(brand_key, [])
                 if color not in colors_by_brand[brand_key]:
@@ -341,6 +349,7 @@ def load_group_order_form_catalog():
     except Exception:
         all_colors = []
         colors_by_brand = {}
+        uniform_colors_by_product = {}
     try:
         gallery_designs = (
             Design.query.filter_by(is_gallery=True)
@@ -362,6 +371,7 @@ def load_group_order_form_catalog():
         'products': products,
         'all_colors': all_colors,
         'colors_by_brand': colors_by_brand,
+        'uniform_colors_by_product': uniform_colors_by_product,
         'gallery_designs': gallery_designs,
         'catalog_filter_opts': catalog_filter_options(products),
         'catalog_filter_picker': True,

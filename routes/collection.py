@@ -72,7 +72,14 @@ def view(slug):
             return redirect(url_for('collection.password', slug=slug))
     
     # Check if deadline has passed — show warning but still allow viewing
-    from utils.group_orders import attach_collection, is_deadline_passed, is_not_yet_open, load_showcase_designs, allowed_colors_for_product
+    from utils.group_orders import (
+        allowed_colors_for_product,
+        attach_collection,
+        is_deadline_passed,
+        is_not_yet_open,
+        load_showcase_designs,
+        team_store_config,
+    )
     collection.deadline_passed = is_deadline_passed(collection)
     collection.not_yet_open = is_not_yet_open(collection)
     collection.cannot_order = collection.deadline_passed or collection.not_yet_open
@@ -82,8 +89,41 @@ def view(slug):
 
     # Get products in this collection with carousel colors (DB + mockup folder)
     all_products = collection.products
+    store_config = team_store_config(collection)
+    fan_ids = set(store_config['fan_product_ids'])
+    uniform = store_config['uniform']
+    uniform_product = None
+    uniform_kits = []
     products = []
     for product in all_products:
+        if uniform['enabled'] and product.id == uniform['product_id']:
+            kit_colors = [
+                (key, uniform[f'{key}_color'])
+                for key in ('home', 'away')
+                if uniform.get(f'{key}_color')
+            ]
+            allowed_uniform_colors = {color for _key, color in kit_colors}
+            variants = get_carousel_colors_for_product(
+                product, current_app, allowed_colors=allowed_uniform_colors
+            )
+            by_color = {v.get('color_name'): v for v in variants}
+            product.carousel_colors = variants
+            product.fallback_image_url = get_first_shop_image_url(
+                product, current_app, carousel=variants
+            )
+            product.available_sizes_list = sort_sizes(
+                parse_json_list(product.available_sizes)
+            )
+            uniform_product = product
+            uniform_kits = [
+                {'key': key, 'label': key.title(), 'color': color,
+                 'variant': by_color.get(color)}
+                for key, color in kit_colors
+                if by_color.get(color)
+            ]
+            continue
+        if store_config['configured'] and product.id not in fan_ids:
+            continue
         allowed_colors = allowed_colors_for_product(product, collection)
         variants = get_carousel_colors_for_product(product, current_app, allowed_colors=allowed_colors)
         product.carousel_colors = variants
@@ -100,6 +140,9 @@ def view(slug):
     return render_template('collection/view.html',
                          collection=collection,
                          products=products,
+                         team_store=store_config,
+                         uniform_product=uniform_product,
+                         uniform_kits=uniform_kits,
                          showcase_designs=showcase_designs,
                          catalog_filter_opts=catalog_filter_options(products))
 
@@ -362,7 +405,7 @@ def _build_group_order_xlsx(collection):
     ws_items = wb.create_sheet('Line Items')
     item_headers = [
         'Order #', 'Customer', 'Child', 'Coach/Teacher', 'Grade',
-        'Product', 'Style #',
+        'Product', 'Style #', 'Section', 'Uniform Kit',
         'Color', 'Size', 'Qty', 'Placement',
         'Design', 'Back (Name/Number)', 'Unit Price', 'Line Total',
     ]
@@ -396,6 +439,8 @@ def _build_group_order_xlsx(collection):
                 order.child_grade or '',
                 item.product_name or '',
                 item.style_number or '',
+                'Player Uniform' if item.catalog_section == 'uniform' else 'Family & Fan Wear',
+                (item.uniform_kit or '').title(),
                 item.color or '',
                 item.size or '',
                 item.quantity,
@@ -406,11 +451,11 @@ def _build_group_order_xlsx(collection):
                 item.subtotal,
             ])
             style_data_row(ws_items, row_idx, len(item_headers), alt=(row_idx % 2 == 0))
-            ws_items.cell(row=row_idx, column=14).number_format = MONEY_FMT
-            ws_items.cell(row=row_idx, column=15).number_format = MONEY_FMT
+            ws_items.cell(row=row_idx, column=16).number_format = MONEY_FMT
+            ws_items.cell(row=row_idx, column=17).number_format = MONEY_FMT
             row_idx += 1
 
-    set_col_widths(ws_items, [18, 22, 18, 18, 10, 28, 10, 18, 7, 5, 14, 26, 22, 10, 10])
+    set_col_widths(ws_items, [18, 22, 18, 18, 10, 28, 10, 18, 13, 18, 7, 5, 14, 26, 22, 10, 10])
 
     # ════════════════════════════════════════════════════════════════════════
     # Sheet 4 — Size Breakdown (production tally)
@@ -426,7 +471,12 @@ def _build_group_order_xlsx(collection):
     all_sizes = set()
     for order in orders:
         for item in order.items:
-            key  = (item.product_name or '', item.color or '')
+            section = (
+                f'{(item.uniform_kit or "Player").title()} Uniform'
+                if item.catalog_section == 'uniform'
+                else 'Family & Fan Wear'
+            )
+            key  = (section, item.product_name or '', item.color or '')
             size = item.size or '?'
             all_sizes.add(size)
             tally.setdefault(key, {})
@@ -436,14 +486,14 @@ def _build_group_order_xlsx(collection):
     extra_sizes = sorted(s for s in all_sizes if s not in known_set)
     sorted_sizes = [s for s in SIZE_ORDER if s in all_sizes] + extra_sizes
 
-    size_hdr = ['Product', 'Color'] + sorted_sizes + ['TOTAL']
+    size_hdr = ['Section', 'Product', 'Color'] + sorted_sizes + ['TOTAL']
     ws_sizes.append(size_hdr)
     style_header_row(ws_sizes, 1, len(size_hdr))
     ws_sizes.row_dimensions[1].height = 22
 
     row_idx = 2
-    for (product_name, color), size_map in sorted(tally.items()):
-        row_data  = [product_name, color]
+    for (section, product_name, color), size_map in sorted(tally.items()):
+        row_data  = [section, product_name, color]
         row_total = 0
         for size in sorted_sizes:
             qty = size_map.get(size, 0)
@@ -456,7 +506,7 @@ def _build_group_order_xlsx(collection):
         row_idx += 1
 
     # Grand total row
-    gt_row    = ['', 'TOTAL']
+    gt_row    = ['', '', 'TOTAL']
     grand_total = 0
     for size in sorted_sizes:
         col_total = sum(tally[k].get(size, 0) for k in tally)
@@ -470,7 +520,7 @@ def _build_group_order_xlsx(collection):
         cell.font   = Font(bold=True, color='FFFFFF')
         cell.border = THIN_BORDER
 
-    set_col_widths(ws_sizes, [28, 18] + [6] * len(sorted_sizes) + [8])
+    set_col_widths(ws_sizes, [18, 28, 18] + [6] * len(sorted_sizes) + [8])
 
     buf = io.BytesIO()
     wb.save(buf)

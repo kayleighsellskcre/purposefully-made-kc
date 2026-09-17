@@ -179,6 +179,11 @@ class Collection(db.Model):
     # back_design_type: 'name_number' | 'image' | 'both'  (ignored when allow_back_design=False)
     back_design_type = db.Column(db.String(20), default='both')
 
+    # Optional two-lane team store. JSON keeps the uniform product + fixed
+    # Home/Away colors separate from the existing fan-wear product/color rules.
+    # Null means a legacy fan-wear-only group order.
+    team_store_config = db.Column(db.Text)
+
     # Public directory — admin toggles this to list the collection on /group-orders
     show_in_directory = db.Column(db.Boolean, default=False)
     # Optional cover photo + short title for the public directory card
@@ -558,6 +563,9 @@ class OrderItem(db.Model):
     style_number = db.Column(db.String(50))
     size = db.Column(db.String(20), nullable=False)
     color = db.Column(db.String(100), nullable=False)
+    # Group-store lane snapshot: fan | uniform, plus home | away for uniforms.
+    catalog_section = db.Column(db.String(20))
+    uniform_kit = db.Column(db.String(20))
     
     # Quantity and pricing
     quantity = db.Column(db.Integer, nullable=False, default=1)

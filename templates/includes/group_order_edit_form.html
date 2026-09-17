@@ -1,5 +1,6 @@
 {% set is_user_edit = is_user_edit|default(false) %}
 {% set collection_product_ids = collection_product_ids|default([]) %}
+{% set fan_product_ids = team_store.fan_product_ids if team_store and team_store.configured else collection_product_ids %}
 <div class="admin-page">
     <div class="container">
         <div class="admin-header">
@@ -38,15 +39,17 @@
                 {% include 'includes/group_order_card_fields.html' %}
             </div>
 
+            {% include 'includes/group_order_team_store.html' %}
+
             <div class="form-section">
-                <h2>Items Available to Order</h2>
-                <p class="form-hint">Pick the shirts this group can order. Filter first, then tap Select these.</p>
+                <h2>Family &amp; Fan Wear</h2>
+                <p class="form-hint">Choose apparel for family and friends separately from the player uniform. Leave this empty for a uniform-only store.</p>
                 {% if products %}
                 {% include 'includes/catalog_filter.html' %}
                 <div class="product-checkboxes">
                     {% for product in products %}
                     <label class="product-checkbox" data-catalog-item data-age="{{ product.display_age or '' }}" data-age-raw="{{ product.age_group or '' }}" data-category="{{ product.display_category or '' }}" data-category-raw="{{ product.category or '' }}" data-brand="{{ product.display_brand or '' }}" data-brand-raw="{{ product.brand or '' }}" data-style="{{ product.style_number or '' }}">
-                        <input type="checkbox" name="products" value="{{ product.id }}" {% if product.id in collection_product_ids %}checked{% endif %}>
+                        <input type="checkbox" name="products" value="{{ product.id }}" {% if product.id in fan_product_ids %}checked{% endif %}>
                         <span>{{ product.name }}</span>
                         <small>{{ product.display_brand or '' }} · {{ product.display_category or '' }} · {{ product.style_number }} · ${{ "%.2f"|format(product.base_price or 0) }}</small>
                     </label>
@@ -69,8 +72,8 @@
                     <div class="organizer-block-label">
                         <span class="organizer-step">1</span>
                         <div>
-                            <strong>What colors can your team choose from?</strong>
-                            <p class="form-hint" style="margin:0">Check only the colors you want available. Leave all unchecked to allow every color.</p>
+                            <strong>What colors can shoppers choose for fan wear?</strong>
+                            <p class="form-hint" style="margin:0">These are separate from Home and Away uniform colors. Leave all unchecked to allow every fan-wear color.</p>
                         </div>
                     </div>
                     {% if collection_colors %}
