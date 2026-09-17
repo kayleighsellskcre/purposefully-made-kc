@@ -105,7 +105,9 @@ def test_logo_chart_page_shows_codes(admin_client, app, seed):
     assert 'Riverview Falcons' in body
     print_css = body.split('@media print')[-1]
     assert 'grid-template-columns: 1fr 1fr' in print_css
-    assert 'height: 2.05in' in print_css
+    assert 'grid-auto-rows: 3.12in' in print_css
+    assert 'font-size: 16pt' in print_css
+    assert 'font-size: 26pt' in print_css
 
 
 def test_group_order_admin_pages_link_to_logo_chart(admin_client, app, seed):
