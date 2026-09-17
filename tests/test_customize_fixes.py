@@ -161,7 +161,9 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     # Front logos use one visual target across youth/adult garments and correct
     # transparent padding without changing production dimensions.
     assert 'function visibleArtworkWidthRatio(image)' in html
-    assert 'let pct = refPct / visibleWidthRatio;' in html
+    assert 'const garmentWidth = (box && box.widthPx)' in html
+    assert 'garmentWidth * targetRatio / visibleWidthRatio' in html
+    assert 'const targetRatio = isSideChest ? 0.17 : 0.46' in html
     assert 'const orderedW = logoWidthForSize(size)' not in html
     assert '/design/preview/0' in html
     # Production is still generated from state.selectedSize via the default
@@ -177,6 +179,9 @@ def test_mockup_viewport_keeps_whole_shirt_and_view_buttons_visible(client, seed
     assert 'height: calc(100dvh - 160px)' in html
     assert 'height: min(48dvh, 420px)' in html
     assert 'object-fit: contain' in html
+    assert 'grid-template-columns: 94px minmax(0, 1fr)' in html
+    assert '.preview-info .pos-controls-row' in html
+    assert 'const scale = Math.min(cw / nw, ch / nh)' in html
     assert 'class="preview-color-badge"' in html
     canvas_start = html.index('class="preview-canvas"')
     color_badge = html.index('class="preview-color-badge"', canvas_start)

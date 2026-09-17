@@ -1739,14 +1739,17 @@
         min-height: 390px;
         max-height: none;
         padding: 0.75rem;
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: 94px minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr) auto;
+        gap: 0.55rem 0.7rem;
         overflow: hidden;
     }
     .preview-canvas {
+        grid-column: 2;
+        grid-row: 1;
         width: 100%;
         min-height: 0;
-        flex: 1 1 auto;
         aspect-ratio: auto;
     }
     .mockup-image {
@@ -1754,16 +1757,49 @@
         object-position: center;
     }
     .preview-controls {
-        flex: 0 0 auto;
-        gap: 0.55rem;
-        margin-top: 0.55rem;
+        grid-column: 1;
+        grid-row: 1;
+        align-self: start;
+        flex-direction: column;
+        gap: 0.45rem;
+        margin: 0;
     }
     .preview-controls button {
+        width: 100%;
         min-height: 40px;
+        padding: 0.45rem 0.3rem;
         border-radius: 9px;
+        font-size: 0.72rem;
     }
-    .preview-info > div[style*="display: none"] {
-        margin-top: 0 !important;
+    .preview-info {
+        grid-column: 1;
+        grid-row: 1;
+        align-self: end;
+        min-width: 0;
+    }
+    .preview-info #dragHint {
+        margin: 0 0 0.4rem !important;
+        font-size: 0.66rem !important;
+        line-height: 1.25;
+    }
+    .preview-info .pos-controls-row {
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+    .preview-info .position-btn,
+    .preview-info .position-btn-reset {
+        width: 100%;
+        min-width: 0;
+        min-height: 36px;
+        padding: 0.4rem 0.25rem;
+        justify-content: center;
+        border-radius: 8px;
+        font-size: 0.7rem;
+    }
+    .preview-note {
+        grid-column: 2;
+        grid-row: 2;
+        margin-top: 0;
     }
 }
 
@@ -3233,8 +3269,8 @@
         return bodyLengthIn(sizeOverride) * ratio;
     }
 
-    // Where the mockup photo actually lands inside the preview canvas
-    // (object-fit: cover crops to fill; object-position center 18%).
+    // Where the full mockup photo lands inside the preview canvas. This must
+    // match CSS object-fit:contain so garment-relative artwork stays accurate.
     function mockupDisplayRect() {
         const canvas = document.getElementById('previewCanvas');
         const img = document.getElementById('mockupImage');
@@ -3244,12 +3280,12 @@
         const nw = img ? img.naturalWidth : 0;
         const nh = img ? img.naturalHeight : 0;
         if (!nw || !nh) return { left: 0, top: 0, width: cw, height: ch };
-        const scale = Math.max(cw / nw, ch / nh);
+        const scale = Math.min(cw / nw, ch / nh);
         const w = nw * scale;
         const h = nh * scale;
-        // Match CSS object-position: center 18%
+        // Match CSS object-position:center.
         const left = (cw - w) / 2;
-        const top = (ch - h) * 0.18;
+        const top = (ch - h) / 2;
         return { left: left, top: top, width: w, height: h };
     }
 
@@ -3264,6 +3300,8 @@
                 .then(r => r.json())
                 .then(function (data) {
                     GARMENT_SILHOUETTES[src] = (data && data.ok) ? data : 'failed';
+                    applyDesignFit();
+                    applyDesignPosition();
                     updateBackDesignPreview();
                     applyBackDesignPosition();
                 })
@@ -3279,11 +3317,14 @@
         if (!rect) return null;
         const s = garmentSilhouette() || GARMENT_FALLBACK;
         const heightPx = rect.height * s.height;
+        const widthPx = rect.width * (s.width || 0.72);
         const bodyIn = bodyLengthIn(previewReferenceSize());
-        if (!heightPx || !bodyIn) return null;
+        if (!heightPx || !widthPx || !bodyIn) return null;
         return {
             topPx: rect.top + rect.height * s.top,
             heightPx: heightPx,
+            leftPx: rect.left + rect.width * (s.left || 0.14),
+            widthPx: widthPx,
             centerPx: rect.left + rect.width * (s.center != null ? s.center : 0.5),
             pxPerInch: heightPx / bodyIn,
             measured: s.source === 'measured',
@@ -3512,28 +3553,34 @@
         designLayer.style.maxWidth = '';
         designLayer.style.maxHeight = '';
         const isSideChest = placement === 'left_chest' || placement === 'right_chest';
-        // Preview-only: every center logo has the same visible width on every
-        // mockup. Transparent file padding is ignored, and youth/adult/hoodie
-        // production charts do not alter what the customer sees here.
-        // Production print_width / print_height remain size-chart driven.
-        const refPct = (TRANSFER_SIZING && TRANSFER_SIZING.preview_ref_pct) || 38;
+        // Preview-only: size visible artwork against the detected garment,
+        // never against the surrounding white photo canvas. This prevents a
+        // narrow mockup from being overwhelmed while keeping adult and youth
+        // shirts at the same visual proportion. Production remains chart-led.
+        const previewCanvas = document.getElementById('previewCanvas');
+        const canvasWidth = (previewCanvas && previewCanvas.clientWidth) || 400;
+        const box = garmentBox();
+        const garmentWidth = (box && box.widthPx) || canvasWidth * 0.72;
         const visibleWidthRatio = visibleArtworkWidthRatio(designImage);
-        let pct = refPct / visibleWidthRatio;
+        const targetRatio = isSideChest ? 0.17 : 0.46;
+        let layerWidthPx = garmentWidth * targetRatio / visibleWidthRatio;
         let maxH;
 
         if (isSideChest) {
-            // Left/right chest stays intentionally small, but consistent.
-            pct = 14 / visibleWidthRatio;
             maxH = 20;
-            pct = Math.min(Math.max(pct, 10), 32);
-            maxH = Math.min(maxH, 22);
+            layerWidthPx = Math.min(
+                Math.max(layerWidthPx, canvasWidth * 0.08),
+                canvasWidth * 0.30
+            );
         } else {
             maxH = 60;
-            pct = Math.min(Math.max(pct, refPct), 82);
+            layerWidthPx = Math.min(
+                Math.max(layerWidthPx, canvasWidth * 0.18),
+                canvasWidth * 0.62
+            );
         }
 
-        // % of garment only — no px maxWidth (that crushed large mockup canvases)
-        designLayer.style.width = pct.toFixed(1) + '%';
+        designLayer.style.width = layerWidthPx.toFixed(1) + 'px';
         designLayer.style.maxWidth = 'none';
         designLayer.style.maxHeight = maxH.toFixed(1) + '%';
     }
@@ -4519,6 +4566,13 @@
 
         const placement = state.selectedPlacement;
         const offset = state.designDragOffset[placement] || { x: 0, y: 0 };
+        const box = garmentBox();
+        if (box) {
+            let visualCenter = box.centerPx;
+            if (placement === 'left_chest') visualCenter += box.widthPx * 0.22;
+            if (placement === 'right_chest') visualCenter -= box.widthPx * 0.22;
+            designLayer.style.left = visualCenter.toFixed(1) + 'px';
+        }
         designLayer.style.transform = `translate(-50%, -50%) translate(${offset.x}px, ${offset.y}px)`;
 
         const frontControls = document.getElementById('frontPositionControls');
