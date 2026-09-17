@@ -4637,8 +4637,10 @@
         const box = garmentBox();
         if (box) {
             let visualCenter = box.centerPx;
-            if (placement === 'left_chest') visualCenter += box.widthPx * 0.22;
-            if (placement === 'right_chest') visualCenter -= box.widthPx * 0.22;
+            // Keep small chest logos over the upper torso instead of drifting
+            // toward the sleeve or armpit on wide garment silhouettes.
+            if (placement === 'left_chest') visualCenter += box.widthPx * 0.16;
+            if (placement === 'right_chest') visualCenter -= box.widthPx * 0.16;
             designLayer.style.left = visualCenter.toFixed(1) + 'px';
         }
         designLayer.style.transform = `translate(-50%, -50%) translate(${offset.x}px, ${offset.y}px)`;
