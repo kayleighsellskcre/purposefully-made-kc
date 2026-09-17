@@ -1715,22 +1715,26 @@
 }
 .preview-note {
     position: absolute;
-    top: 0.65rem;
+    top: auto;
     right: 0.65rem;
+    bottom: 0.65rem;
     z-index: 20;
     pointer-events: none;
-    max-width: min(62%, 280px);
+    max-width: min(64%, 310px);
     margin: 0;
-    padding: 0.42rem 0.6rem;
-    border: 1px solid rgba(184, 124, 111, 0.18);
-    border-radius: 9px;
-    background: rgba(255, 252, 249, 0.9);
-    box-shadow: 0 4px 14px rgba(58, 42, 34, 0.08);
+    padding: 0.38rem 0.6rem;
+    border: 1px solid rgba(139, 111, 94, 0.16);
+    border-radius: 999px;
+    background: rgba(255, 253, 250, 0.88);
+    box-shadow: 0 3px 12px rgba(58, 42, 34, 0.055);
     backdrop-filter: blur(8px);
-    color: var(--text-secondary);
-    font-size: 0.68rem;
-    line-height: 1.3;
-    text-align: right;
+    color: #78675d;
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 0.65rem;
+    font-style: italic;
+    letter-spacing: 0.01em;
+    line-height: 1.25;
+    text-align: center;
 }
 .preview-info {
     margin: 0;
@@ -1762,10 +1766,13 @@
 .color-picker-summary-action { flex: 0 0 auto; color: var(--terra-cotta, #b87c6f); font-size: 0.78rem; font-weight: 700; }
 .color-picker-summary-action span { display: inline-block; transition: transform 0.2s ease; }
 .color-picker-disclosure[open] .color-picker-summary-action span { transform: rotate(180deg); }
-.color-picker-dropdown { padding: 0.85rem; border-top: 1px solid rgba(184, 124, 111, 0.18); background: #fff; }
+.color-picker-dropdown { padding: 0.65rem; border-top: 1px solid rgba(184, 124, 111, 0.18); background: #fff; }
 .color-picker-dropdown .color-grid-professional {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
     max-height: min(52dvh, 520px);
     min-height: 0;
+    padding: 0.65rem;
     overflow-y: auto;
     overscroll-behavior: contain;
 }
@@ -1897,11 +1904,12 @@
         border-radius: 9px;
     }
     .preview-note {
-        top: 0.45rem;
+        top: auto;
         right: 0.45rem;
-        max-width: 66%;
+        bottom: 0.45rem;
+        max-width: 60%;
         padding: 0.35rem 0.45rem;
-        font-size: 0.64rem;
+        font-size: 0.61rem;
     }
     .preview-color-badge {
         left: 0.45rem;
@@ -1945,7 +1953,7 @@
                         <strong id="selectedColorName">Loading...</strong>
                     </div>
                     <p class="preview-note">
-                        Visual mockup only — your final logo will be sized proportionally to your shirt.
+                        Mockup preview only. Final logo sizing will be adjusted proportionally for your shirt.
                     </p>
                 </div>
                 
