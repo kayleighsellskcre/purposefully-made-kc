@@ -180,6 +180,7 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert '/design/preview/0' in html
     assert 'designImage.src = instantSrc' in html
     assert 'never delay the first paint' in html
+    assert 'Keep the size the customer already saw' in html
     assert '|| (box && box.widthPx)' in html
     assert "designImage.src = previewSource" not in html
     assert 'transition: transform 0.3s ease' in html
@@ -362,4 +363,5 @@ def test_fan_wear_customize_does_not_require_a_name_or_number(client, app, seed)
     assert 'Optional. Leave this blank if you do not want a name or number' in html
     assert 'Last name (optional)' in html
     assert "Player's last name" not in html
+    assert 'A name or number on the back is optional' not in html
     assert 'if (requireBackName)' in html

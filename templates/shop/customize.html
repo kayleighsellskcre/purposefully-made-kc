@@ -1997,7 +1997,7 @@
                     <strong>{{ uniform_kit|title }} player uniform · {{ uniform_locked_color }}</strong>
                     Your organizer selected this uniform color. Choose the player’s size, logo, and back details.
                     {% else %}
-                    <strong>Family &amp; Fan Wear</strong> Your organizer has chosen the available colors and designs for this group order. A name or number on the back is optional.
+                    <strong>Family &amp; Fan Wear</strong> Your organizer has chosen the available colors and designs for this group order.
                     {% endif %}
                 </div>
                 {% endif %}
@@ -2680,6 +2680,25 @@
     };
     const requireBackName = {{ 'true' if catalog_section == 'uniform' else 'false' }};
     const TRANSFER_SIZING = {{ transfer_sizing | default({}) | tojson }};
+    const artworkPreviewTemplate = {{ url_for('design.preview_artwork', design_id=0) | tojson }};
+    const artworkFitByDesignId = {};
+
+    function cacheArtworkFit(id, image) {
+        if (id == null || !image) return;
+        artworkFitByDesignId[String(id)] = visibleArtworkWidthRatio(image);
+    }
+
+    function prefetchGroupArtworkFits() {
+        const cards = document.querySelectorAll('#logoGalleryGrid .logo-gallery-item[data-design-id]');
+        if (!cards.length || cards.length > 40) return;
+        cards.forEach(function(card) {
+            const id = card.dataset.designId;
+            if (!id || artworkFitByDesignId[String(id)]) return;
+            const img = new Image();
+            img.onload = function() { cacheArtworkFit(id, img); };
+            img.src = artworkPreviewTemplate.replace(/0$/, String(id));
+        });
+    }
     
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
@@ -2697,6 +2716,9 @@
         setupLogoGalleryClicks();
         setupMyDesignsClicks();
         refreshAddToCartButton();
+        {% if collection_restricted %}
+        prefetchGroupArtworkFits();
+        {% endif %}
         window.addEventListener('resize', function() {
             applyDesignFit();
             updateBackDesignPreview();
@@ -4152,8 +4174,9 @@
         state.designUrl = preset.url;
         state.designFile = null;
         state.presetDesignId = preset.id || null;
-        state.artworkFitDesignId = null;
-        state.artworkFitRatio = null;
+        const cachedFit = preset.id ? artworkFitByDesignId[String(preset.id)] : null;
+        state.artworkFitDesignId = cachedFit ? preset.id : null;
+        state.artworkFitRatio = cachedFit || null;
         const allowed = state.allowedPlacements;
         state.selectedPlacement = (allowed && allowed.length) ? allowed[0] : 'center_chest';
 
@@ -4197,17 +4220,14 @@
             paintOnShirt();
         }
 
-        const previewTemplate = {{ url_for('design.preview_artwork', design_id=0) | tojson }};
-        if (preset.id) {
+        if (preset.id && !artworkFitByDesignId[String(preset.id)]) {
             const measureImg = new Image();
             measureImg.onload = function() {
-                if (String(state.presetDesignId) !== String(preset.id)) return;
-                state.artworkFitDesignId = preset.id;
-                state.artworkFitRatio = visibleArtworkWidthRatio(measureImg);
-                applyDesignFit();
-                applyDesignPosition();
+                cacheArtworkFit(preset.id, measureImg);
+                // Keep the size the customer already saw. A later refit is
+                // what made logos pop bigger after they appeared.
             };
-            measureImg.src = previewTemplate.replace(/0$/, String(preset.id));
+            measureImg.src = artworkPreviewTemplate.replace(/0$/, String(preset.id));
         }
 
         if (designPreviewImage) designPreviewImage.src = preset.url;
