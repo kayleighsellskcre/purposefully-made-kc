@@ -123,6 +123,15 @@ def test_varsity_regular_font_file_is_present():
     assert font_path('Varsity Regular Solid') is not None
 
 
+def test_sports_jersey_uses_the_exact_self_hosted_athletic_font():
+    from utils.print_sizes import FONT_METRICS
+
+    assert font_path('Sports Jersey') == font_path('Jersey M54')
+    assert FONT_METRICS['Sports Jersey'] == FONT_METRICS['Jersey M54']
+    assert 'Sports Jersey' in [value for value, _label in CUSTOMIZE_BACK_FONTS]
+    assert 'Sports Jersey' in [value for value, _label in GROUP_ORDER_FONTS]
+
+
 def test_varsity_names_use_solid_companion_font():
     from utils.personalization_layout import name_font_name
     assert name_font_name('Varsity Regular') == 'Varsity Regular Solid'

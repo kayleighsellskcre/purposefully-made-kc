@@ -11,7 +11,7 @@ CUSTOMIZE_BACK_FONTS = [
     ('Oswald', 'Oswald (Bold athletic)'),
     ('Anton', 'Anton (Strong block)'),
     ('Teko', 'Teko (College jersey)'),
-    ('Jersey M54', 'Jersey M54 (Classic sports jersey)'),
+    ('Sports Jersey', 'Sports Jersey (Classic athletic block)'),
     ('Varsity Regular', 'Varsity Regular (Cricut-style classic)'),
 ]
 
@@ -26,6 +26,6 @@ GROUP_ORDER_FONTS = [
     ('Oswald', 'Oswald — Bold athletic'),
     ('Anton', 'Anton — Strong block'),
     ('Teko', 'Teko — College jersey'),
-    ('Jersey M54', 'Jersey M54 — Classic sports jersey'),
+    ('Sports Jersey', 'Sports Jersey — Classic athletic block'),
     ('Varsity Regular', 'Varsity Regular — Cricut-style classic varsity'),
 ]

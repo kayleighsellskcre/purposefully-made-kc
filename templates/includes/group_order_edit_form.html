@@ -236,7 +236,7 @@
                         <div class="font-choice-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.75rem;margin-top:0.5rem">
                             {% for font_value, font_label in back_design_fonts %}
                             <label class="font-choice-card">
-                                <input type="radio" name="back_design_font" value="{{ font_value }}" {% if collection.back_design_font == font_value %}checked{% endif %}>
+                                <input type="radio" name="back_design_font" value="{{ font_value }}" {% if collection.back_design_font == font_value or (collection.back_design_font == 'Jersey M54' and font_value == 'Sports Jersey') %}checked{% endif %}>
                                 <div style="font-family:'{{ font_value }}',sans-serif;font-size:1.25rem;font-weight:700;color:#333;letter-spacing:0.02em">NAME 12</div>
                                 <small style="display:block;margin-top:0.5rem;color:var(--text-secondary);font-size:0.75rem">{{ font_label }}</small>
                             </label>

@@ -22,6 +22,8 @@ MAX_EDGE_PX = 4500
 MAX_PIXELS = 8_000_000
 
 FONT_FILES = {
+    'Sports Jersey': 'JerseyM54.ttf',
+    # Legacy name retained for previously saved carts and orders.
     'Jersey M54': 'JerseyM54.ttf',
     'Bebas Neue': 'BebasNeue-Regular.ttf',
     'Oswald': 'Oswald-Bold.ttf',
@@ -363,7 +365,9 @@ def render_snapshot_png(snapshot, dpi=PRODUCTION_DPI):
 
     name_spacing = _num(snapshot.get('name_letter_spacing_em'))
     if name_spacing is None:
-        name_spacing = 0.05 if font_name == 'Jersey M54' else 0.06
+        name_spacing = (
+            0.05 if font_name in ('Sports Jersey', 'Jersey M54') else 0.06
+        )
     number_spacing = _num(snapshot.get('number_tracking_em'))
     if number_spacing is None:
         number_spacing = -0.02 if len(number) == 2 else 0.02
