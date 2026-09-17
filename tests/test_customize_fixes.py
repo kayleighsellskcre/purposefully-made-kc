@@ -179,15 +179,20 @@ def test_mockup_viewport_keeps_whole_shirt_and_view_buttons_visible(client, seed
     assert 'height: calc(100dvh - 160px)' in html
     assert 'height: min(48dvh, 420px)' in html
     assert 'object-fit: contain' in html
-    assert 'grid-template-columns: 94px minmax(0, 1fr)' in html
+    assert 'grid-template-columns: 116px minmax(0, 1fr)' in html
     assert '.preview-info .pos-controls-row' in html
     assert 'const scale = Math.min(cw / nw, ch / nh)' in html
     assert 'class="preview-color-badge"' in html
     canvas_start = html.index('class="preview-canvas"')
     color_badge = html.index('class="preview-color-badge"', canvas_start)
+    visual_note = html.index('class="preview-note"', canvas_start)
     controls = html.index('class="preview-controls"', canvas_start)
-    assert canvas_start < color_badge < controls
+    assert canvas_start < color_badge < visual_note < controls
     assert html.count('id="selectedColorName"') == 1
+    assert 'Visual mockup only' in html
+    assert 'id="colorPickerDisclosure"' in html
+    assert 'id="colorDisclosureName"' in html
+    assert 'disclosure.open = false' in html
 
 
 def test_visual_normalization_does_not_change_adult_or_youth_print_widths():

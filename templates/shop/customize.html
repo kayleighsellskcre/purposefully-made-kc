@@ -1714,17 +1714,60 @@
     white-space: nowrap;
 }
 .preview-note {
-    margin: 0.45rem 0 0;
+    position: absolute;
+    top: 0.65rem;
+    right: 0.65rem;
+    z-index: 20;
+    pointer-events: none;
+    max-width: min(62%, 280px);
+    margin: 0;
+    padding: 0.42rem 0.6rem;
+    border: 1px solid rgba(184, 124, 111, 0.18);
+    border-radius: 9px;
+    background: rgba(255, 252, 249, 0.9);
+    box-shadow: 0 4px 14px rgba(58, 42, 34, 0.08);
+    backdrop-filter: blur(8px);
     color: var(--text-secondary);
     font-size: 0.68rem;
-    font-style: italic;
-    line-height: 1.25;
-    text-align: center;
+    line-height: 1.3;
+    text-align: right;
 }
 .preview-info {
     margin: 0;
     padding: 0;
     text-align: center;
+}
+.color-picker-disclosure {
+    overflow: hidden;
+    border: 1px solid rgba(184, 124, 111, 0.28);
+    border-radius: 12px;
+    background: #fffcfa;
+    box-shadow: 0 5px 16px rgba(58, 42, 34, 0.06);
+}
+.color-picker-disclosure summary {
+    min-height: 58px;
+    padding: 0.7rem 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+.color-picker-disclosure summary::-webkit-details-marker { display: none; }
+.color-picker-summary-value { min-width: 0; display: flex; flex-direction: column; gap: 0.12rem; }
+.color-picker-summary-value small { color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.color-picker-summary-value strong { overflow: hidden; color: var(--text-primary); font-family: var(--font-heading); font-size: 1rem; text-overflow: ellipsis; white-space: nowrap; }
+.color-picker-summary-action { flex: 0 0 auto; color: var(--terra-cotta, #b87c6f); font-size: 0.78rem; font-weight: 700; }
+.color-picker-summary-action span { display: inline-block; transition: transform 0.2s ease; }
+.color-picker-disclosure[open] .color-picker-summary-action span { transform: rotate(180deg); }
+.color-picker-dropdown { padding: 0.85rem; border-top: 1px solid rgba(184, 124, 111, 0.18); background: #fff; }
+.color-picker-dropdown .color-grid-professional {
+    max-height: min(52dvh, 520px);
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 @media (min-width: 969px) {
@@ -1740,8 +1783,8 @@
         max-height: none;
         padding: 0.75rem;
         display: grid;
-        grid-template-columns: 94px minmax(0, 1fr);
-        grid-template-rows: minmax(0, 1fr) auto;
+        grid-template-columns: 116px minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr);
         gap: 0.55rem 0.7rem;
         overflow: hidden;
     }
@@ -1762,7 +1805,7 @@
         align-self: start;
         flex-direction: column;
         gap: 0.45rem;
-        margin: 0;
+        margin: 1.65rem 0 0;
     }
     .preview-controls button {
         width: 100%;
@@ -1796,20 +1839,12 @@
         border-radius: 8px;
         font-size: 0.7rem;
     }
-    .preview-note {
-        grid-column: 2;
-        grid-row: 2;
-        margin-top: 0;
-    }
 }
 
 @media (min-width: 969px) and (max-height: 620px) {
     .preview-section {
         height: calc(100dvh - 145px);
         min-height: 330px;
-    }
-    .preview-note {
-        display: none;
     }
 }
 
@@ -1862,7 +1897,10 @@
         border-radius: 9px;
     }
     .preview-note {
-        margin-top: 0.35rem;
+        top: 0.45rem;
+        right: 0.45rem;
+        max-width: 66%;
+        padding: 0.35rem 0.45rem;
         font-size: 0.64rem;
     }
     .preview-color-badge {
@@ -1906,16 +1944,15 @@
                         <span>Color</span>
                         <strong id="selectedColorName">Loading...</strong>
                     </div>
+                    <p class="preview-note">
+                        Visual mockup only — your final logo will be sized proportionally to your shirt.
+                    </p>
                 </div>
                 
                 <div class="preview-controls">
                     <button class="btn btn-outline btn-sm active" id="viewFront">Front View</button>
                     <button class="btn btn-outline btn-sm" id="viewBack">Back View</button>
                 </div>
-
-                <p class="preview-note">
-                    Mockup sizing is for visual reference only. Your final item will be sized proportionally for the best fit!
-                </p>
 
                 <div class="preview-info">
                     <p id="dragHint" style="margin: 0.5rem 0 0 0; font-size: 0.8rem; color: #999; display: none;">Drag up or down to reposition</p>
@@ -2019,7 +2056,16 @@
                     <div class="step-badge">1</div>
                     <h3>Choose Color</h3>
                     <p class="step-hint">Select your color. {{ color_variants|length if color_variants else available_colors|length }} available.</p>
-                    
+
+                    <details class="color-picker-disclosure" id="colorPickerDisclosure">
+                        <summary>
+                            <span class="color-picker-summary-value">
+                                <small>Selected color</small>
+                                <strong id="colorDisclosureName">Loading...</strong>
+                            </span>
+                            <span class="color-picker-summary-action">View colors <span aria-hidden="true">⌄</span></span>
+                        </summary>
+                        <div class="color-picker-dropdown">
                     <div class="color-search-box" style="margin-bottom: 0.75rem;">
                         <label for="colorSearch" class="visually-hidden">Search colors</label>
                         <input type="text" id="colorSearch" class="color-search-input" placeholder="Search colors..." autocomplete="off">
@@ -2047,7 +2093,7 @@
                                  data-front-image="{{ variant.front_image or '' }}"
                                  data-back-image="{{ variant.back_image or '' }}"
                                  data-inventory='{{ variant.inventory|tojson }}'
-                                 onclick="selectColor(this)">
+                                 onclick="selectColor(this, true)">
                                 <div class="color-image-wrapper">
                                     {% if variant.front_image %}
                                     <img src="{{ variant.front_image }}" alt="{{ variant.color_name }}" class="color-preview-img" loading="eager" decoding="async" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='block';">
@@ -2065,7 +2111,7 @@
                             <div class="color-card" 
                                  role="button" tabindex="0" aria-pressed="false"
                                  data-color="{{ color }}" 
-                                 onclick="selectColor(this)">
+                                 onclick="selectColor(this, true)">
                                 <div class="color-image-wrapper">
                                     <div class="color-placeholder" style="background-color: {{ color.lower() }};"></div>
                                 </div>
@@ -2077,6 +2123,8 @@
                     </div>
                     
                     <p class="showing-colors-text" id="showingText" style="color: var(--text-light); font-size: 0.875rem; margin-top: 0.75rem; text-align: center;"></p>
+                        </div>
+                    </details>
                 </div>
                 
                 <!-- Step 2: Size Selection -->
@@ -2768,7 +2816,7 @@
     }
     
     // Global function for color selection
-    window.selectColor = function(element) {
+    window.selectColor = function(element, closePicker) {
         if (!element) return;
 
         // Remove selected from all
@@ -2809,12 +2857,24 @@
             colorNameEl.style.color = 'var(--terra-cotta)';
             colorNameEl.style.fontWeight = '700';
         }
+        const disclosureName = document.getElementById('colorDisclosureName');
+        if (disclosureName) disclosureName.textContent = colorName;
 
         // Update size inventory for this color
         updateSizeInventory(inventory);
 
         // Swap mockup immediately — no delayed click / opacity race
         updateMockupImage();
+
+        if (closePicker) {
+            const disclosure = document.getElementById('colorPickerDisclosure');
+            if (disclosure) {
+                window.setTimeout(function() {
+                    disclosure.open = false;
+                    disclosure.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 160);
+            }
+        }
     };
 
     function setupColorSelection() {
@@ -2945,7 +3005,7 @@
                 const selectedColor = document.querySelector('.color-card.selected');
                 if (selectedColor && selectedColor.classList.contains('hidden')) {
                     const firstVisible = document.querySelector('.color-card:not(.hidden)');
-                    if (firstVisible) firstVisible.click();
+                    if (firstVisible) selectColor(firstVisible, false);
                 }
             });
         });
@@ -2958,7 +3018,7 @@
             const selectedColor = document.querySelector('.color-card.selected');
             if (selectedColor && selectedColor.classList.contains('hidden')) {
                 const firstVisible = document.querySelector('.color-card:not(.hidden)');
-                if (firstVisible) firstVisible.click();
+                if (firstVisible) selectColor(firstVisible, false);
             }
         });
         
