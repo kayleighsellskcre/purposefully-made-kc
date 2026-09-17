@@ -100,16 +100,9 @@
                     <div class="form-group upload-cats-group">
                         <label class="form-label">Categories <small style="font-weight:400;color:var(--text-secondary);">— check every tab this design should appear in</small></label>
                         <div class="upload-cat-chips">
-                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="custom_orders"> Custom Orders</label>
-                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="faith"> Faith &amp; Inspiration</label>
-                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="sports"> Sports</label>
-                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="school"> School</label>
-                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="couples"> Couples &amp; Family</label>
-                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="holiday"> Holiday</label>
-                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="kc"> Kansas City</label>
-                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="evergreen"> Fan Favorites</label>
-                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="funny"> Funny</label>
-                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="luxury_basics"> Luxury Basics</label>
+                            {% for key, label in gallery_folder_options %}
+                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="{{ key }}"> {{ label }}</label>
+                            {% endfor %}
                         </div>
                         <small style="color:#bbb;font-size:0.75rem;margin-top:0.35rem;display:block;">At least one category required.</small>
                     </div>
@@ -205,7 +198,17 @@
                 To offer the same artwork in multiple colors without crowding the public gallery, upload extra files and choose
                 <strong>Color of existing design</strong> above. Customers see one card, then pick a color.
             </p>
-            <div class="gallery-designs-grid">
+            <div class="admin-gallery-tools">
+                <input type="search" id="adminGallerySearch" class="form-control" placeholder="Search gallery designs or SKUs..." autocomplete="off">
+                <select id="adminGalleryCategory" class="form-control" aria-label="Filter gallery designs by category">
+                    <option value="">All categories</option>
+                    {% for key, label in gallery_folder_options %}
+                    <option value="{{ key }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <span id="adminGalleryCount">{{ gallery_designs|length }} shown</span>
+            </div>
+            <div class="gallery-designs-grid" id="adminGalleryGrid">
                 {% for design in gallery_designs %}
                 {% set variants = design.color_variants.filter_by(is_gallery=True).all() %}
                 <div class="gallery-design-card" data-design-id="{{ design.id }}"
@@ -530,6 +533,19 @@
     margin-bottom: 1.5rem;
 }
 .gallery-count { color: var(--text-secondary); font-weight: 400; }
+.admin-gallery-tools {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) minmax(170px, 240px) auto;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 1.25rem;
+}
+.admin-gallery-tools #adminGalleryCount {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
 .gallery-designs-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -544,6 +560,7 @@
     transition: var(--transition);
 }
 .gallery-design-card:hover { box-shadow: var(--box-shadow-hover); }
+.gallery-design-card[hidden] { display: none !important; }
 .design-card-image {
     aspect-ratio: 1;
     background: var(--ivory-silk);
@@ -651,6 +668,7 @@
 .form-control-sm:focus { outline: none; border-color: var(--terra-cotta, #b87c6f); }
 @media (max-width: 600px) {
     .queue-fields { grid-template-columns: 1fr 1fr auto; }
+    .admin-gallery-tools { grid-template-columns: 1fr; }
 }
 </style>
 
@@ -683,6 +701,7 @@
         </div>
         <div class="prod-modal-body">
             <form id="galleryEditForm" enctype="multipart/form-data">
+                <input type="hidden" name="categories_present" value="1">
                 <div class="form-group" style="margin-bottom:1rem;">
                     <label for="editTitle" class="form-label">Display Name</label>
                     <input type="text" id="editTitle" name="title" class="form-control" maxlength="200" required>
@@ -690,15 +709,9 @@
                 <div class="form-group" style="margin-bottom:1rem;">
                     <label class="form-label" style="margin-bottom:0.5rem;">Show in categories <small style="font-weight:400;color:#aaa;">— check every tab this design should appear in</small></label>
                     <div id="editExtraCategories" style="display:flex;flex-wrap:wrap;gap:0.4rem;">
-                        <label class="cat-chip"><input type="checkbox" name="extra_categories" value="faith"> Faith &amp; Inspiration</label>
-                        <label class="cat-chip"><input type="checkbox" name="extra_categories" value="sports"> Sports</label>
-                        <label class="cat-chip"><input type="checkbox" name="extra_categories" value="school"> School</label>
-                        <label class="cat-chip"><input type="checkbox" name="extra_categories" value="couples"> Couples &amp; Family</label>
-                        <label class="cat-chip"><input type="checkbox" name="extra_categories" value="holiday"> Holiday</label>
-                        <label class="cat-chip"><input type="checkbox" name="extra_categories" value="kc"> Kansas City</label>
-                        <label class="cat-chip"><input type="checkbox" name="extra_categories" value="evergreen"> Fan Favorites</label>
-                        <label class="cat-chip"><input type="checkbox" name="extra_categories" value="funny"> Funny</label>
-                        <label class="cat-chip"><input type="checkbox" name="extra_categories" value="luxury_basics"> Luxury Basics</label>
+                        {% for key, label in gallery_folder_options %}
+                        <label class="cat-chip"><input type="checkbox" name="extra_categories" value="{{ key }}"> {{ label }}</label>
+                        {% endfor %}
                     </div>
                     <small style="color:#bbb;font-size:0.75rem;margin-top:0.35rem;display:block;">Check all tabs where this design should appear. At least one is required.</small>
                 </div>
@@ -853,6 +866,7 @@ function openGalleryEdit(id) {
     const primaryFolder = (card.getAttribute('data-folder') || '').trim();
     const extras = (card.getAttribute('data-extra-categories') || '').split(',').map(s => s.trim()).filter(Boolean);
     const allCats = primaryFolder ? [primaryFolder].concat(extras) : extras;
+    if (allCats.indexOf('custom_orders') !== -1) allCats.push('evergreen');
     document.querySelectorAll('#editExtraCategories input[type="checkbox"]').forEach(function(cb) {
         cb.checked = allCats.indexOf(cb.value) !== -1;
     });
@@ -870,6 +884,7 @@ function openGalleryVariantEdit(id, title, sku, variantLabel, folder, extras, ed
     document.getElementById('editVariantLabel').value = variantLabel || '';
     document.getElementById('editFile').value = '';
     const allCats = folder ? [folder].concat((extras || '').split(',').map(s => s.trim()).filter(Boolean)) : [];
+    if (allCats.indexOf('custom_orders') !== -1) allCats.push('evergreen');
     document.querySelectorAll('#editExtraCategories input[type="checkbox"]').forEach(function(cb) {
         cb.checked = allCats.indexOf(cb.value) !== -1;
     });
@@ -913,7 +928,9 @@ document.getElementById('galleryEditForm').addEventListener('submit', function(e
         if (card) {
             card.setAttribute('data-title', d.title || '');
             card.setAttribute('data-folder', d.folder || 'custom_orders');
+            card.setAttribute('data-extra-categories', d.extra_categories || '');
             card.setAttribute('data-sku', d.sku || '');
+            card.setAttribute('data-variant-label', d.variant_label || '');
             const nameEl = card.querySelector('.design-card-name');
             if (nameEl) nameEl.textContent = d.title || 'Design';
             const metaEl = card.querySelector('.design-card-meta');
@@ -1240,6 +1257,42 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
         e.preventDefault(); zone.classList.remove('drag-over');
         if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
     });
+})();
+
+// Keep a large admin gallery quick to scan without loading another page.
+(function() {
+    var grid = document.getElementById('adminGalleryGrid');
+    var search = document.getElementById('adminGallerySearch');
+    var category = document.getElementById('adminGalleryCategory');
+    var count = document.getElementById('adminGalleryCount');
+    if (!grid || !search || !category || !count) return;
+
+    var cards = Array.from(grid.querySelectorAll('.gallery-design-card'));
+    function applyAdminGalleryFilters() {
+        var query = search.value.trim().toLowerCase();
+        var wanted = category.value;
+        var shown = 0;
+        cards.forEach(function(card) {
+            var categories = [
+                card.dataset.folder || '',
+                card.dataset.extraCategories || ''
+            ].join(',').split(',').map(function(value) { return value.trim(); });
+            var categoryMatch = !wanted || categories.indexOf(wanted) !== -1
+                || (wanted === 'evergreen' && categories.indexOf('custom_orders') !== -1);
+            var text = [
+                card.dataset.title,
+                card.dataset.sku,
+                card.dataset.variantLabel,
+                categories.join(' ')
+            ].join(' ').toLowerCase();
+            var matches = categoryMatch && (!query || text.indexOf(query) !== -1);
+            card.hidden = !matches;
+            if (matches) shown += 1;
+        });
+        count.textContent = shown + ' shown';
+    }
+    search.addEventListener('input', applyAdminGalleryFilters);
+    category.addEventListener('change', applyAdminGalleryFilters);
 })();
 
 function fixAllSkus() {

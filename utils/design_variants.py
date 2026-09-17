@@ -3,6 +3,12 @@ from __future__ import annotations
 
 from sqlalchemy import or_
 
+from utils.design_categories import (
+    GALLERY_CATEGORY_LABELS,
+    design_category_keys,
+    gallery_group_for_title,
+)
+
 
 def _resolve_url(file_path):
     try:
@@ -48,10 +54,14 @@ def color_options_for(design, *, include_self=True):
     return options
 
 
-def gallery_card_dict(design, resolve_url=None):
+def gallery_card_dict(design, resolve_url=None, options=None):
     """Payload for one public/customizer gallery card."""
     resolve = resolve_url or _resolve_url
-    options = color_options_for(design, include_self=True)
+    options = (
+        options
+        if options is not None
+        else color_options_for(design, include_self=True)
+    )
     variants = []
     for i, opt in enumerate(options):
         variants.append({
@@ -60,6 +70,10 @@ def gallery_card_dict(design, resolve_url=None):
             'label': _label_for(opt, 'Default' if i == 0 else f'Color {i + 1}'),
         })
     title = design.title or design.original_filename or 'Design'
+    category_keys = design_category_keys(
+        design.folder,
+        design.extra_categories,
+    )
     return {
         'id': design.id,
         'url': resolve(design.file_path),
@@ -69,6 +83,12 @@ def gallery_card_dict(design, resolve_url=None):
         'color_count': len(variants),
         'folder': design.folder or '',
         'extra_categories': design.extra_categories or '',
+        'category_keys': category_keys,
+        'category_labels': [
+            GALLERY_CATEGORY_LABELS[key] for key in category_keys
+        ],
+        'group': gallery_group_for_title(title),
+        'uploaded_at': design.uploaded_at.isoformat() if design.uploaded_at else '',
     }
 
 
@@ -76,7 +96,37 @@ def gallery_cards_for_public(Design, resolve_url=None, limit=None):
     q = gallery_mains_query(Design)
     if limit:
         q = q.limit(limit)
-    return [gallery_card_dict(d, resolve_url=resolve_url) for d in q.all()]
+    mains = q.all()
+    if not mains:
+        return []
+
+    # Fetch every published color child in one query. The previous dynamic
+    # relationship lookup issued one additional query per card as the gallery
+    # grew.
+    main_ids = [design.id for design in mains]
+    children = (
+        Design.query
+        .filter(
+            Design.is_gallery == True,
+            Design.parent_design_id.in_(main_ids),
+        )
+        .order_by(Design.id.asc())
+        .all()
+    )
+    children_by_parent = {design_id: [] for design_id in main_ids}
+    for child in children:
+        children_by_parent.setdefault(child.parent_design_id, []).append(child)
+    for family in children_by_parent.values():
+        family.sort(key=lambda d: ((d.variant_label or 'zzz').lower(), d.id))
+
+    return [
+        gallery_card_dict(
+            design,
+            resolve_url=resolve_url,
+            options=[design, *children_by_parent.get(design.id, [])],
+        )
+        for design in mains
+    ]
 
 
 def ensure_not_nested_parent(parent):

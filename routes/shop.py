@@ -499,13 +499,26 @@ def edit_group_order(slug):
 @shop_bp.route('/designs')
 def design_gallery():
     """Browse designs available for custom apparel (grouped color variants)."""
+    from collections import Counter
+    from utils.design_categories import GALLERY_CATEGORIES
     from utils.design_variants import gallery_cards_for_public
     try:
         designs = gallery_cards_for_public(Design, resolve_url=_resolve_image_url)
     except Exception:
         designs = []
+    category_counts = Counter(
+        key
+        for design in designs
+        for key in design.get('category_keys', [])
+    )
     product_id = request.args.get('product_id', type=int)
-    return render_template('shop/design_gallery.html', designs=designs, product_id=product_id)
+    return render_template(
+        'shop/design_gallery.html',
+        designs=designs,
+        product_id=product_id,
+        gallery_categories=GALLERY_CATEGORIES,
+        category_counts=category_counts,
+    )
 
 
 @shop_bp.route('/product/<int:product_id>')

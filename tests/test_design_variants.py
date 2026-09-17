@@ -7,6 +7,10 @@ from utils.design_variants import (
     ensure_not_nested_parent,
     unpublish_color_variants,
 )
+from utils.design_categories import (
+    design_category_keys,
+    gallery_group_for_title,
+)
 
 
 def _gallery_design(**kwargs):
@@ -117,6 +121,9 @@ def test_public_design_gallery_page_groups_variants(client, app, seed):
     assert 'gallery-carousel-prev' in html
     assert 'gallery-carousel-next' in html
     assert 'gallery-carousel-color' in html
+    assert 'id="dgSearch"' in html
+    assert 'id="dgSort"' in html
+    assert 'id="dgLoadMore"' in html
     assert html.count('data-design-id="%s"' % main_id) >= 1
 
 
@@ -145,3 +152,13 @@ def test_generic_camera_filename_is_not_used_as_customer_title():
     assert clean_filename_title('best-dad-by-par-green.png') == 'Best Dad By Par Green'
     assert is_generic_title('IMG 5902') is True
     assert is_generic_title('Best Dad by Par') is False
+
+
+def test_gallery_category_taxonomy_handles_existing_aliases():
+    assert design_category_keys('custom_orders') == ['favorites']
+    assert design_category_keys('sports', 'kc,school,sports') == [
+        'sports', 'kc', 'school',
+    ]
+    assert gallery_group_for_title('Best Dad — Kansas City Chiefs') == (
+        'Kansas City Chiefs'
+    )

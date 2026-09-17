@@ -3339,6 +3339,8 @@ def _admin_designs_url(tab='gallery'):
 @admin_required
 def designs():
     """Combined Design Library (customer uploads) + Gallery (curated public designs)."""
+    from utils.design_categories import GALLERY_FOLDER_OPTIONS
+
     tab = (request.args.get('tab') or 'library').strip().lower()
     if tab not in ('library', 'gallery'):
         tab = 'library'
@@ -3384,6 +3386,7 @@ def designs():
         library_designs=library_designs,
         gallery_designs=gallery_designs,
         pending_designs=pending_designs,
+        gallery_folder_options=GALLERY_FOLDER_OPTIONS,
     )
 
 
@@ -3569,10 +3572,8 @@ def design_gallery_upload():
         # ── Categories — checkboxes send 'extra_categories' (same as edit handler)
         # The JS batch uploader uses the name 'extra_categories'; legacy form
         # used 'folder'.  Support both so the old form still works if needed.
-        GALLERY_FOLDERS = {
-            'custom_orders', 'evergreen', 'school', 'holiday',
-            'sports', 'funny', 'luxury_basics', 'faith', 'couples', 'kc',
-        }
+        from utils.design_categories import GALLERY_FOLDER_KEYS
+        GALLERY_FOLDERS = GALLERY_FOLDER_KEYS
         # New checkbox name used by the batch uploader
         all_cats = [c for c in request.form.getlist('extra_categories') if c in GALLERY_FOLDERS]
         if not all_cats:
@@ -3694,22 +3695,34 @@ def design_gallery_edit(design_id):
 
     design = Design.query.get_or_404(design_id)
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-    GALLERY_FOLDERS = {
-        'custom_orders', 'evergreen', 'school', 'holiday',
-        'sports', 'funny', 'luxury_basics', 'faith', 'couples', 'kc',
-    }
+    from utils.design_categories import GALLERY_FOLDER_KEYS
+    GALLERY_FOLDERS = GALLERY_FOLDER_KEYS
 
     title = (request.form.get('title') or '').strip()
     sku = (request.form.get('sku') or '').strip()
     variant_label = (request.form.get('variant_label') or '').strip()[:80]
-    # All selected categories from checkboxes — first one becomes the primary folder
-    all_cats_raw = [c for c in request.form.getlist('extra_categories') if c in GALLERY_FOLDERS]
-    if all_cats_raw:
+    # Checkbox form, legacy single-folder form, and metadata-only updates all
+    # share this endpoint. Only replace categories when one of those forms
+    # explicitly supplied category state.
+    all_cats_raw = [
+        c for c in request.form.getlist('extra_categories')
+        if c in GALLERY_FOLDERS
+    ]
+    if request.form.get('categories_present') == '1':
+        if not all_cats_raw:
+            msg = 'Choose at least one gallery category.'
+            if is_ajax:
+                return jsonify({'ok': False, 'error': msg}), 400
+            flash(msg, 'error')
+            return redirect(url_for('admin.designs', tab='gallery'))
         folder = all_cats_raw[0]
         extra_cats = ','.join(all_cats_raw[1:])
+    elif (request.form.get('folder') or '').strip() in GALLERY_FOLDERS:
+        folder = request.form.get('folder').strip()
+        extra_cats = design.extra_categories or ''
     else:
         folder = design.folder or 'custom_orders'
-        extra_cats = ''
+        extra_cats = design.extra_categories or ''
 
     try:
         if title:
@@ -3808,6 +3821,7 @@ def design_gallery_edit(design_id):
             'folder': design.folder or 'custom_orders',
             'extra_categories': design.extra_categories or '',
             'sku': design.sku or '',
+            'variant_label': design.variant_label or '',
             'image_url': resolve_image_url(design.file_path) if design.file_path else '',
         },
     }
