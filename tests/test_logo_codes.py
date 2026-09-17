@@ -103,6 +103,9 @@ def test_logo_chart_page_shows_codes(admin_client, app, seed):
     assert '1a' in body
     assert 'Navy swapped' in body
     assert 'Riverview Falcons' in body
+    print_css = body.split('@media print')[-1]
+    assert 'grid-template-columns: 1fr 1fr' in print_css
+    assert 'height: 2.05in' in print_css
 
 
 def test_group_order_admin_pages_link_to_logo_chart(admin_client, app, seed):

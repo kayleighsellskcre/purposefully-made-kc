@@ -40,10 +40,10 @@
             · {{ chart.main_count }} main logo{{ 's' if chart.main_count != 1 else '' }}
             · {{ chart.logo_count }} color{{ 's' if chart.logo_count != 1 else '' }}
         </header>
-        {% for family in chart.families %}
-        <article class="logo-family">
+        <div class="logo-grid">
+            {% for family in chart.families %}
             {% for variant in family.variants %}
-            <div class="logo-tile{% if loop.first %} logo-tile-main{% endif %}">
+            <article class="logo-tile">
                 <span class="logo-code">{{ variant.code }}</span>
                 <div class="logo-art">
                     {% if variant.image_url %}
@@ -56,10 +56,10 @@
                 {% if variant.title and variant.title != variant.label %}
                 <p class="logo-title">{{ variant.title }}</p>
                 {% endif %}
-            </div>
+            </article>
             {% endfor %}
-        </article>
-        {% endfor %}
+            {% endfor %}
+        </div>
     </section>
     {% endfor %}
     {% else %}
@@ -81,26 +81,20 @@
     border-bottom: 2px solid #111;
     margin-bottom: 0.85rem;
 }
-.logo-family {
-    display: flex;
-    flex-wrap: wrap;
+.logo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
     gap: 0.75rem;
-    align-items: stretch;
-    margin: 0 0 1.1rem;
-    padding-bottom: 1.1rem;
-    border-bottom: 1px solid #ddd;
-    break-inside: avoid;
-    page-break-inside: avoid;
 }
 .logo-tile {
     position: relative;
-    width: 7.5rem;
     border: 2px solid #111;
     background: #fff;
     padding: 0.45rem 0.45rem 0.55rem;
     text-align: center;
+    break-inside: avoid;
+    page-break-inside: avoid;
 }
-.logo-tile-main { width: 11rem; }
 .logo-code {
     display: block;
     font-size: 1.85rem;
@@ -109,9 +103,8 @@
     letter-spacing: -0.03em;
     margin-bottom: 0.3rem;
 }
-.logo-tile-main .logo-code { font-size: 2.4rem; }
 .logo-art {
-    height: 6.2rem;
+    height: 7.2rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -124,7 +117,6 @@
     background-position: 0 0, 0 8px, 8px -8px, -8px 0;
     background-color: #f7f7f7;
 }
-.logo-tile-main .logo-art { height: 8.4rem; }
 .logo-art img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .logo-missing { color: #666; font-size: 0.9rem; }
 .logo-label { margin: 0.4rem 0 0; font-size: 1.02rem; font-weight: 800; line-height: 1.2; }
@@ -140,16 +132,39 @@
     .ops-page, .ops-page > .container, .logo-chart-page {
         max-width: none !important; width: 100% !important; margin: 0 !important; padding: 0 !important;
     }
-    .logo-chart-banner { font-size: 14pt; margin-bottom: 0.45rem; padding-bottom: 0.25rem; }
-    .logo-family { gap: 0.4rem; margin-bottom: 0.55rem; padding-bottom: 0.55rem; }
-    .logo-tile { width: 1.55in; padding: 0.2rem; border-width: 2px; }
-    .logo-tile-main { width: 2.15in; }
-    .logo-code { font-size: 22pt; margin-bottom: 0.12rem; }
-    .logo-tile-main .logo-code { font-size: 28pt; }
-    .logo-art { height: 1.35in; }
-    .logo-tile-main .logo-art { height: 1.75in; }
-    .logo-label { font-size: 11pt; }
-    .logo-title { font-size: 9pt; }
+    .logo-chart-banner {
+        font-size: 13pt !important;
+        margin: 0 0 0.28in !important;
+        padding: 0 0 0.12in !important;
+    }
+    /* Two columns x three rows = about 6 logos per letter page */
+    .logo-grid {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 0.22in !important;
+    }
+    .logo-tile {
+        width: auto !important;
+        padding: 0.12in !important;
+        border: 2px solid #111 !important;
+    }
+    .logo-code {
+        font-size: 20pt !important;
+        margin-bottom: 0.08in !important;
+    }
+    .logo-art {
+        height: 2.05in !important;
+    }
+    .logo-label {
+        font-size: 12pt !important;
+        margin: 0.08in 0 0 !important;
+    }
+    .logo-title {
+        font-size: 10pt !important;
+        margin: 0.04in 0 0 !important;
+        max-height: 2.4em;
+        overflow: hidden;
+    }
     .logo-art img {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
@@ -159,7 +174,7 @@
     .logo-chart-page { padding: 0.5rem 0 2.5rem; }
     .logo-chart-header, .logo-chart-actions { flex-direction: column; align-items: stretch; }
     .logo-chart-actions .btn { justify-content: center; min-height: 48px; }
-    .logo-tile, .logo-tile-main { width: calc(50% - 0.4rem); }
+    .logo-grid { grid-template-columns: 1fr 1fr; gap: 0.55rem; }
 }
 </style>
 {% endblock %}
