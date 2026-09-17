@@ -79,6 +79,7 @@
                 <div class="collection-actions">
                     <a href="{{ url_for('admin.edit_collection', collection_id=collection.id) }}" class="btn btn-outline btn-sm">✎ Edit</a>
                     <a href="{{ url_for('collection.view', slug=collection.slug) }}" class="btn btn-outline btn-sm" target="_blank">View Store ↗</a>
+                    <a href="{{ url_for('admin.logo_chart', collection=collection.id) }}" class="btn btn-outline btn-sm">Logo chart</a>
                     <a href="{{ url_for('collection.export_xlsx', slug=collection.slug) }}"
                        class="btn btn-export-sm btn-sm"
                        title="Download Excel order sheet">
@@ -255,7 +256,6 @@ function copyLink(url, btn) {
 .collection-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; }
 .collection-actions .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; border-radius: 10px; }
 .btn-export-sm { background: #1D6F42; color: #fff !important; border-color: #1D6F42; }
-.collection-actions .btn-export-sm { grid-column: 1 / -1; }
 .btn-export-sm:hover { background: #155734; border-color: #155734; }
 .empty-state { text-align: center; padding: 4rem 2rem; background: #fff; border-radius: var(--border-radius); }
 .go-filter-empty { margin-top: 1rem; }

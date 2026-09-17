@@ -105,7 +105,15 @@ def test_logo_chart_page_shows_codes(admin_client, app, seed):
     assert 'Riverview Falcons' in body
 
 
-def test_press_sheet_shows_logo_code(admin_client, app, seed):
+def test_group_order_admin_pages_link_to_logo_chart(admin_client, app, seed):
+    cid = seed['collection_id']
+    listing = admin_client.get('/admin/collections').get_data(as_text=True)
+    assert 'Logo chart' in listing
+    assert f'/admin/production/logo-chart?collection={cid}' in listing
+
+    edit = admin_client.get(f'/admin/collections/{cid}/edit').get_data(as_text=True)
+    assert 'Logo chart' in edit
+    assert f'/admin/production/logo-chart?collection={cid}' in edit
     with app.app_context():
         main = _design(title='Warmwhite Outline Red Script', filename='ww.png', variant_label='Warmwhite')
         alt = _design(
