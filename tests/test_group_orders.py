@@ -212,6 +212,43 @@ def test_the_create_page_renders_for_a_signed_in_customer(customer_client):
     assert 'Create Group Order' in resp.get_data(as_text=True)
 
 
+def test_create_form_shows_photos_from_color_variants(customer_client, seed, app):
+    """Most catalogue photos live on color variants, not front_mockup_template."""
+    from models import Product, ProductColorVariant
+
+    photo = 'https://cdn.ssactivewear.com/Images/Color/example_fm.jpg'
+    with app.app_context():
+        product = db.session.get(Product, seed['hoodie_id'])
+        product.front_mockup_template = None
+        variant = ProductColorVariant.query.filter_by(product_id=product.id).one()
+        variant.front_image_url = photo
+        db.session.commit()
+    html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
+    assert photo in html
+    assert 'product-checkbox-mockup' in html
+
+
+def test_group_order_catalog_prefers_the_lightest_variant_photo(app, seed):
+    from models import Product, ProductColorVariant
+    from utils.product_filters import load_group_order_form_catalog
+
+    with app.app_context():
+        product = db.session.get(Product, seed['tee_id'])
+        product.front_mockup_template = None
+        black = ProductColorVariant.query.filter_by(
+            product_id=product.id, color_name='Black'
+        ).one()
+        white = ProductColorVariant.query.filter_by(
+            product_id=product.id, color_name='White'
+        ).one()
+        black.front_image_url = 'https://cdn.example.test/black.jpg'
+        white.front_image_url = 'https://cdn.example.test/white.jpg'
+        db.session.commit()
+        catalog = load_group_order_form_catalog()
+        previews = {p.id: p.preview_image_url for p in catalog['products']}
+        assert previews[seed['tee_id']] == 'https://cdn.example.test/white.jpg'
+
+
 def test_create_form_asks_whether_jersey_uses_first_or_last_name(customer_client):
     html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
     assert 'name="back_design_name_part"' in html

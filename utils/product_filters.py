@@ -257,6 +257,59 @@ def prepare_catalog(products, *, scan_folders=True):
     return sort_catalog(items)
 
 
+def _usable_mockup_url(url):
+    from utils.mockups import SHOP_PLACEHOLDER_IMAGE
+    url = (url or '').strip()
+    if not url or SHOP_PLACEHOLDER_IMAGE in url:
+        return ''
+    if url.startswith('//'):
+        return 'https:' + url
+    return url
+
+
+def attach_group_order_preview_images(products):
+    """Fill missing create-form thumbnails from color-variant photos.
+
+    Group-order forms skip per-product folder scans (those stalled the page).
+    Most live catalogue photos live on ProductColorVariant.front_image_url,
+    so one extra query restores the grid without the N+1.
+    """
+    from types import SimpleNamespace
+    from models import ProductColorVariant, db
+    from utils.mockups import lightest_front_mockup_url
+
+    items = list(products or [])
+    ids = [p.id for p in items]
+    if not ids:
+        return items
+
+    rows = (
+        db.session.query(
+            ProductColorVariant.product_id,
+            ProductColorVariant.front_image_url,
+            ProductColorVariant.back_image_url,
+            ProductColorVariant.side_image_url,
+            ProductColorVariant.color_name,
+            ProductColorVariant.color_hex,
+        )
+        .filter(ProductColorVariant.product_id.in_(ids))
+        .all()
+    )
+    grouped = {}
+    for pid, front, back, side, name, hex_ in rows:
+        url = _usable_mockup_url(front) or _usable_mockup_url(back) or _usable_mockup_url(side)
+        if not url:
+            continue
+        grouped.setdefault(pid, []).append(
+            SimpleNamespace(front_image_url=url, color_name=name, color_hex=hex_)
+        )
+    for product in items:
+        variant_url = lightest_front_mockup_url(grouped.get(product.id) or [])
+        if variant_url:
+            product.preview_image_url = variant_url
+    return items
+
+
 def catalog_filter_options(products):
     """Unique Who / Type / Brand values present in this list."""
     try:
@@ -310,6 +363,7 @@ def load_group_order_form_catalog():
         ).all(),
         scan_folders=False,
     )
+    attach_group_order_preview_images(products)
     ids = [p.id for p in products]
     all_colors = []
     colors_by_brand = {}   # {brand: [sorted color names]}
