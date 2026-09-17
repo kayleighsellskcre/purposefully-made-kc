@@ -20,12 +20,26 @@
 
         <div class="collections-grid" id="collectionsGrid">
             {% for collection in collections %}
+            {% set order_count = collection.orders.count() %}
             <div class="collection-card" data-active="{{ 'true' if collection.list_active else 'false' }}">
+                <div class="collection-card-accent" aria-hidden="true"></div>
                 <div class="collection-header">
-                    <h3>{{ collection.name }}</h3>
+                    <div class="collection-identity">
+                        <div class="collection-avatar">
+                            {% if collection.cover_image %}
+                            <img src="{{ collection.cover_image | image_url }}" alt="" loading="lazy">
+                            {% else %}
+                            <span aria-hidden="true">{{ collection.name[:1] | upper }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="collection-title-wrap">
+                            <h3>{{ collection.name }}</h3>
+                            <span class="collection-slug">/{{ collection.slug }}</span>
+                        </div>
+                    </div>
                     <div class="collection-badges">
                         {% if collection.restrict_options %}
-                        <span class="badge badge-restricted" title="Organizer chose specific colors & designs">Restricted</span>
+                        <span class="badge badge-restricted" title="Organizer chose specific options">✦ Curated</span>
                         {% endif %}
                         {% if not collection.is_active %}
                         <span class="badge badge-inactive">Inactive</span>
@@ -38,28 +52,37 @@
                 </div>
 
                 <div class="collection-info">
-                    <p><strong>Slug:</strong> {{ collection.slug }}</p>
-                    <p><strong>Orders:</strong> {{ collection.orders.count() }}</p>
-                    {% if collection.order_opens_at %}
-                    <p><strong>Opens:</strong> {{ collection.order_opens_at|kc_date('%b %d, %Y') }}</p>
-                    {% endif %}
-                    {% if collection.order_deadline %}
-                    <p><strong>Deadline:</strong> {{ collection.order_deadline|kc_date('%b %d, %Y') }}</p>
-                    {% endif %}
+                    <div class="collection-order-count">
+                        <strong>{{ order_count }}</strong>
+                        <span>Order{{ '' if order_count == 1 else 's' }}</span>
+                    </div>
+                    <div class="collection-dates">
+                        <div>
+                            <span class="date-label">Opens</span>
+                            <strong>{{ collection.order_opens_at|kc_date('%b %d, %Y') if collection.order_opens_at else 'Open now' }}</strong>
+                        </div>
+                        <div>
+                            <span class="date-label">Deadline</span>
+                            <strong>{{ collection.order_deadline|kc_date('%b %d, %Y') if collection.order_deadline else 'No deadline' }}</strong>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="collection-link">
-                    <input type="text" readonly value="{{ request.url_root.rstrip('/') }}{{ url_for('collection.view', slug=collection.slug) }}" class="link-input">
-                    <button onclick="copyLink('{{ request.url_root.rstrip('/') }}{{ url_for('collection.view', slug=collection.slug) }}', this)" class="btn btn-sm btn-outline">Copy</button>
+                <div class="collection-share">
+                    <span class="collection-share-label">Share with your group</span>
+                    <div class="collection-link">
+                        <input type="text" readonly aria-label="Group order share link" value="{{ request.url_root.rstrip('/') }}{{ url_for('collection.view', slug=collection.slug) }}" class="link-input">
+                        <button type="button" onclick="copyLink('{{ request.url_root.rstrip('/') }}{{ url_for('collection.view', slug=collection.slug) }}', this)" class="btn btn-sm btn-copy">Copy Link</button>
+                    </div>
                 </div>
 
                 <div class="collection-actions">
-                    <a href="{{ url_for('admin.edit_collection', collection_id=collection.id) }}" class="btn btn-outline btn-sm">Edit</a>
-                    <a href="{{ url_for('collection.view', slug=collection.slug) }}" class="btn btn-outline btn-sm" target="_blank">View</a>
+                    <a href="{{ url_for('admin.edit_collection', collection_id=collection.id) }}" class="btn btn-outline btn-sm">✎ Edit</a>
+                    <a href="{{ url_for('collection.view', slug=collection.slug) }}" class="btn btn-outline btn-sm" target="_blank">View Store ↗</a>
                     <a href="{{ url_for('collection.export_xlsx', slug=collection.slug) }}"
                        class="btn btn-export-sm btn-sm"
                        title="Download Excel order sheet">
-                        📊 Export Excel
+                        ▥ Export Orders
                     </a>
                 </div>
             </div>
@@ -150,22 +173,89 @@ function copyLink(url, btn) {
 }
 .filter-tab.active { background: var(--accent-color); color: #fff; border-color: var(--accent-color); }
 .go-filter-hint { color: var(--text-secondary); font-size: 0.875rem; margin: 0 0 1.5rem; }
-.collections-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 1.25rem; }
-.collection-card { background: #fff; border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1.5rem; }
+.collections-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 310px), 1fr)); gap: 1.35rem; align-items: stretch; }
+.collection-card {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, #fff 0%, #fffcfa 100%);
+    border: 1px solid rgba(184, 124, 111, 0.22);
+    border-radius: 18px;
+    padding: 1.4rem;
+    box-shadow: 0 8px 24px rgba(72, 52, 43, 0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.collection-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 34px rgba(72, 52, 43, 0.13);
+}
+.collection-card-accent {
+    position: absolute;
+    inset: 0 0 auto;
+    height: 5px;
+    background: linear-gradient(90deg, var(--terra-cotta, #b87c6f), #d8ad91, var(--aged-bronze, #8a6a54));
+}
 .collection-card[hidden] { display: none !important; }
-.collection-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 1.5rem; }
-.collection-header h3 { font-size: 1.15rem; min-width: 0; }
-.badge-active { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+.collection-header { display: flex; flex-direction: column; gap: 0.9rem; margin: 0.2rem 0 1.15rem; }
+.collection-identity { display: flex; align-items: center; gap: 0.85rem; min-width: 0; }
+.collection-avatar {
+    width: 58px;
+    height: 58px;
+    flex: 0 0 58px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid rgba(184, 124, 111, 0.25);
+    border-radius: 15px;
+    background: linear-gradient(145deg, #f8e9df, #ead1c1);
+    box-shadow: inset 0 0 0 3px rgba(255,255,255,0.65);
+}
+.collection-avatar img { width: 100%; height: 100%; padding: 0.35rem; object-fit: contain; }
+.collection-avatar span { color: var(--terra-cotta, #b87c6f); font-family: var(--font-heading); font-size: 1.7rem; }
+.collection-title-wrap { min-width: 0; }
+.collection-header h3 { margin: 0; font-family: var(--font-heading); font-size: 1.2rem; line-height: 1.2; overflow-wrap: anywhere; }
+.collection-slug { display: block; margin-top: 0.25rem; color: var(--text-secondary); font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.badge { border-radius: 999px; padding: 0.28rem 0.65rem; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.01em; }
+.badge-active { background: #e8f7ef; color: #16734a; }
 .badge-inactive { background: rgba(156, 163, 175, 0.1); color: var(--text-secondary); }
 .badge-expired { background: rgba(245, 158, 11, 0.12); color: #b45309; }
-.badge-restricted { background: rgba(184, 124, 111, 0.2); color: var(--accent-color); }
+.badge-restricted { background: #f8ebe6; color: #9b5b50; }
 .collection-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-.collection-info { margin-bottom: 1.5rem; }
-.collection-info p { margin: 0.5rem 0; color: var(--text-secondary); }
-.collection-link { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
-.link-input { flex: 1; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); font-size: 0.875rem; background: var(--secondary-color); }
-.collection-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.collection-info {
+    display: grid;
+    grid-template-columns: 82px 1fr;
+    gap: 1rem;
+    margin-bottom: 1.15rem;
+    padding: 0.9rem;
+    border: 1px solid rgba(184, 124, 111, 0.15);
+    border-radius: 14px;
+    background: #fcf7f3;
+}
+.collection-order-count {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid rgba(184, 124, 111, 0.2);
+}
+.collection-order-count strong { color: var(--terra-cotta, #b87c6f); font-family: var(--font-heading); font-size: 1.8rem; line-height: 1; }
+.collection-order-count span { margin-top: 0.25rem; color: var(--text-secondary); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.collection-dates { display: grid; gap: 0.6rem; }
+.collection-dates > div { display: flex; justify-content: space-between; align-items: baseline; gap: 0.65rem; }
+.collection-dates strong { color: var(--text-primary); font-size: 0.8rem; text-align: right; }
+.date-label { color: var(--text-secondary); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.collection-share { margin-top: auto; }
+.collection-share-label { display: block; margin: 0 0 0.4rem 0.15rem; color: var(--text-secondary); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.collection-link { display: flex; gap: 0.45rem; margin-bottom: 1rem; }
+.link-input { min-width: 0; flex: 1; padding: 0.65rem 0.75rem; border: 1px solid rgba(184, 124, 111, 0.25); border-radius: 10px; font-size: 0.78rem; color: var(--text-secondary); background: #fff; }
+.btn-copy { flex: 0 0 auto; border-color: var(--terra-cotta, #b87c6f); background: #f8ebe6; color: #8d5148; white-space: nowrap; }
+.btn-copy:hover { background: var(--terra-cotta, #b87c6f); color: #fff; }
+.collection-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; }
+.collection-actions .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; border-radius: 10px; }
 .btn-export-sm { background: #1D6F42; color: #fff !important; border-color: #1D6F42; }
+.collection-actions .btn-export-sm { grid-column: 1 / -1; }
 .btn-export-sm:hover { background: #155734; border-color: #155734; }
 .empty-state { text-align: center; padding: 4rem 2rem; background: #fff; border-radius: var(--border-radius); }
 .go-filter-empty { margin-top: 1rem; }

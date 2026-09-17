@@ -291,6 +291,18 @@ def test_the_group_orders_directory_loads(client):
     assert resp.status_code == 200
 
 
+def test_admin_group_order_cards_have_polished_dashboard_structure(
+    admin_client
+):
+    html = admin_client.get('/admin/collections').get_data(as_text=True)
+    assert 'class="collection-card-accent"' in html
+    assert 'class="collection-avatar"' in html
+    assert 'class="collection-order-count"' in html
+    assert 'class="collection-share-label"' in html
+    assert 'Share with your group' in html
+    assert 'Export Orders' in html
+
+
 def test_uploaded_group_visual_is_contained_and_keeps_group_name_attached(
     client, seed, app
 ):
