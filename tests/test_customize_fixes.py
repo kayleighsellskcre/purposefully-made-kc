@@ -172,6 +172,19 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert measured > generated
 
 
+def test_mockup_viewport_keeps_whole_shirt_and_view_buttons_visible(client, seed):
+    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    assert 'height: calc(100dvh - 160px)' in html
+    assert 'height: min(48dvh, 420px)' in html
+    assert 'object-fit: contain' in html
+    assert 'class="preview-color-badge"' in html
+    canvas_start = html.index('class="preview-canvas"')
+    color_badge = html.index('class="preview-color-badge"', canvas_start)
+    controls = html.index('class="preview-controls"', canvas_start)
+    assert canvas_start < color_badge < controls
+    assert html.count('id="selectedColorName"') == 1
+
+
 def test_visual_normalization_does_not_change_adult_or_youth_print_widths():
     from types import SimpleNamespace
     from utils.print_sizes import front_transfer_size
