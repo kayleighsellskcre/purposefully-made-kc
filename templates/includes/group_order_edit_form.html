@@ -130,7 +130,7 @@
                     <input type="file" id="design_uploads" name="design_uploads" accept=".png,.jpg,.jpeg,.webp" multiple style="display:none">
                     <div id="uploadPreview" class="upload-preview-list" style="display:none"></div>
                     {% if gallery_designs %}
-                    <p class="form-hint" style="margin-top:1rem">Or pick from existing designs:</p>
+                    <p class="form-hint" style="margin-top:1rem"><strong>Artwork already uploaded to this group order:</strong></p>
                     <div class="design-choice-grid">
                         {% for d in gallery_designs %}
                         <div class="design-choice-wrapper" style="position:relative;">
@@ -161,7 +161,7 @@
                         </div>
                         {% endfor %}
                     </div>
-                    <p class="form-hint" style="margin-top:0.75rem">Check <strong>Show at top</strong> on logos you want shoppers to see first when they open this group order. Those designs must also be selected above as available front designs.</p>
+                    <p class="form-hint" style="margin-top:0.75rem">Check <strong>Show at top</strong> on this group’s logos you want shoppers to see first.</p>
                     {% endif %}
                     <label class="showcase-new-opt" style="display:flex;align-items:flex-start;gap:0.5rem;margin-top:0.85rem;cursor:pointer;">
                         <input type="checkbox" name="showcase_new_uploads" value="on" checked style="margin-top:0.2rem;">
@@ -241,6 +241,76 @@
                                 <small style="display:block;margin-top:0.5rem;color:var(--text-secondary);font-size:0.75rem">{{ font_label }}</small>
                             </label>
                             {% endfor %}
+                        </div>
+
+                        {% set back_text_color = collection.back_design_text_color or '#ffffff' %}
+                        {% set back_outline_color = collection.back_design_outline_color or '#000000' %}
+                        {% set back_outline_on = collection.back_design_outline is not sameas false %}
+                        <div class="form-group" style="margin-top:1rem">
+                            <label for="collTextColor">Name &amp; Number Color</label>
+                            <div class="coll-color-row">
+                                <input type="color" id="collTextColor" name="back_design_text_color"
+                                       value="{{ back_text_color }}" class="coll-color-input"
+                                       aria-label="Name and number color">
+                                <div class="coll-swatches" data-target="collTextColor">
+                                    {% for color, label in [
+                                        ('#ffffff', 'White'), ('#111111', 'Black'),
+                                        ('#1a2a52', 'Navy'), ('#b00020', 'Red'),
+                                        ('#d4af37', 'Gold'), ('#1b6e3c', 'Green'),
+                                        ('#2155cd', 'Royal blue'), ('#ff2eb6', 'Bright pink'),
+                                        ('#ffd400', 'Yellow')
+                                    ] %}
+                                    <button type="button"
+                                            class="coll-swatch{% if back_text_color|lower == color %} active{% endif %}"
+                                            data-color="{{ color }}" title="{{ label }}"
+                                            aria-label="{{ label }}"
+                                            style="background:{{ color }}"></button>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" id="coll_outline_toggle" {% if back_outline_on %}checked{% endif %}>
+                            <label for="coll_outline_toggle">Add an outline around the name &amp; number</label>
+                            <input type="hidden" name="back_design_outline"
+                                   id="coll_outline_value"
+                                   value="{{ 'on' if back_outline_on else 'off' }}">
+                        </div>
+                        <div class="form-group" id="collOutlineColorGroup"
+                             style="margin-top:0.75rem;{% if not back_outline_on %}display:none;{% endif %}">
+                            <label for="collOutlineColor">Outline Color</label>
+                            <div class="coll-color-row">
+                                <input type="color" id="collOutlineColor"
+                                       name="back_design_outline_color"
+                                       value="{{ back_outline_color }}"
+                                       class="coll-color-input" aria-label="Outline color">
+                                <div class="coll-swatches" data-target="collOutlineColor">
+                                    {% for color, label in [
+                                        ('#000000', 'Black'), ('#ffffff', 'White'),
+                                        ('#1a2a52', 'Navy'), ('#b00020', 'Red'),
+                                        ('#d4af37', 'Gold')
+                                    ] %}
+                                    <button type="button"
+                                            class="coll-swatch{% if back_outline_color|lower == color %} active{% endif %}"
+                                            data-color="{{ color }}" title="{{ label }}"
+                                            aria-label="{{ label }}"
+                                            style="background:{{ color }}"></button>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-check" style="margin-top:0.75rem">
+                            <input type="hidden" name="back_style_controls_present" value="1">
+                            <input type="checkbox" id="lock_back_design_style"
+                                   name="lock_back_design_style"
+                                   {% if collection.lock_back_design_style %}checked{% endif %}>
+                            <label for="lock_back_design_style">
+                                <strong>Lock these choices:</strong> shoppers cannot change the font, colors, or outline
+                            </label>
+                        </div>
+                        <div class="coll-back-preview" id="collBackPreview">
+                            <span class="coll-back-preview-name" id="collPreviewName">SMITH</span>
+                            <span class="coll-back-preview-number" id="collPreviewNumber">12</span>
                         </div>
                     </div>
                 </div>
@@ -369,6 +439,55 @@ document.querySelectorAll('input[name="back_design_type"]').forEach(function(rad
         if (section) section.style.display = showFont ? '' : 'none';
     });
 });
+
+function updateBackStylePreview() {
+    var preview = document.getElementById('collBackPreview');
+    var textColor = document.getElementById('collTextColor');
+    var outlineToggle = document.getElementById('coll_outline_toggle');
+    var outlineColor = document.getElementById('collOutlineColor');
+    if (!preview || !textColor || !outlineToggle || !outlineColor) return;
+    var fontRadio = document.querySelector('input[name="back_design_font"]:checked');
+    var font = fontRadio ? fontRadio.value : 'Bebas Neue';
+    var color = outlineColor.value || '#000000';
+    preview.style.fontFamily = '"' + font + '", sans-serif';
+    preview.style.color = textColor.value || '#ffffff';
+    preview.style.textShadow = outlineToggle.checked
+        ? '-2px -2px 0 ' + color + ', 2px -2px 0 ' + color
+          + ', -2px 2px 0 ' + color + ', 2px 2px 0 ' + color
+          + ', -2px 0 0 ' + color + ', 2px 0 0 ' + color
+          + ', 0 -2px 0 ' + color + ', 0 2px 0 ' + color
+        : 'none';
+}
+document.querySelectorAll('.coll-swatches').forEach(function(group) {
+    var input = document.getElementById(group.dataset.target);
+    group.querySelectorAll('.coll-swatch').forEach(function(swatch) {
+        swatch.addEventListener('click', function() {
+            if (input) input.value = swatch.dataset.color;
+            group.querySelectorAll('.coll-swatch').forEach(function(item) {
+                item.classList.remove('active');
+            });
+            swatch.classList.add('active');
+            updateBackStylePreview();
+        });
+    });
+});
+['collTextColor', 'collOutlineColor'].forEach(function(id) {
+    var input = document.getElementById(id);
+    if (input) input.addEventListener('input', updateBackStylePreview);
+});
+var outlineToggle = document.getElementById('coll_outline_toggle');
+if (outlineToggle) {
+    outlineToggle.addEventListener('change', function() {
+        document.getElementById('coll_outline_value').value = this.checked ? 'on' : 'off';
+        document.getElementById('collOutlineColorGroup').style.display = this.checked ? '' : 'none';
+        updateBackStylePreview();
+    });
+}
+document.querySelectorAll('input[name="back_design_font"]').forEach(function(radio) {
+    radio.addEventListener('change', updateBackStylePreview);
+});
+updateBackStylePreview();
+
 document.getElementById('password_protected').addEventListener('change', (e) => {
     document.getElementById('password-field').style.display = e.target.checked ? 'block' : 'none';
 });
@@ -450,6 +569,15 @@ function confirmDelete(btn) {
 .upload-preview-item { display: flex; flex-direction: column; align-items: center; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.5rem; background: #fff; }
 .upload-preview-item img { width: 60px; height: 60px; object-fit: contain; margin-bottom: 0.25rem; }
 .upload-preview-item span { font-size: 0.7rem; color: var(--text-secondary); max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.coll-color-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.4rem; }
+.coll-color-input { width: 44px; height: 36px; padding: 2px; border: 1px solid var(--border-color); border-radius: 8px; background: #fff; cursor: pointer; flex-shrink: 0; }
+.coll-swatches { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.coll-swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.15); cursor: pointer; padding: 0; transition: transform 0.15s, box-shadow 0.15s; }
+.coll-swatch:hover { transform: scale(1.12); }
+.coll-swatch.active { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--terra-cotta, #b87c6f); }
+.coll-back-preview { margin-top: 1.25rem; padding: 1.5rem; background: #2d3444; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 0.15em; min-height: 110px; justify-content: center; }
+.coll-back-preview-name { font-size: 1.5rem; font-weight: 700; letter-spacing: 0.06em; line-height: 1.1; }
+.coll-back-preview-number { font-size: 3rem; font-weight: 700; line-height: 1; }
 
 @media (max-width: 768px) {
     .admin-page { padding: 1rem 0 2.5rem; }

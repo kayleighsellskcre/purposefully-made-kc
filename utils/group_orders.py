@@ -559,11 +559,6 @@ def load_collection_designs(collection):
 def design_allowed_for_collection(design, collection):
     if not design:
         return False
-    if getattr(design, 'is_gallery', False):
-        ids = allowed_design_ids(collection)
-        if not ids:
-            return True
-        return design.id in ids
     return design.id in allowed_design_ids(collection)
 
 
@@ -709,7 +704,10 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
         collection.back_design_outline = request.form.get('back_design_outline') != 'off'
     if 'back_design_outline_color' in request.form:
         collection.back_design_outline_color = request.form.get('back_design_outline_color') or None
-    if 'lock_back_design_style' in request.form:
+    if (
+        'back_style_controls_present' in request.form
+        or 'lock_back_design_style' in request.form
+    ):
         collection.lock_back_design_style = request.form.get('lock_back_design_style') == 'on'
 
     # Back design permissions
@@ -743,26 +741,21 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
 
 
 def designs_for_group_order_form(collection, user=None):
-    """Gallery designs plus logos already on this store (and the organizer's uploads)."""
-    from flask_login import current_user
+    """Only artwork already assigned to this group order.
+
+    Organizers upload store-specific artwork; the general design library is
+    deliberately excluded from group-order setup.
+    """
     from models import Design
 
-    user = current_user if user is None else user
-    gallery = Design.query.filter_by(is_gallery=True).order_by(Design.uploaded_at.desc()).all()
-    by_id = {d.id: d for d in gallery}
-    for did in allowed_design_ids(collection):
-        if did not in by_id:
-            d = Design.query.get(did)
-            if d:
-                by_id[d.id] = d
-    if user is not None and getattr(user, 'is_authenticated', False):
-        own = Design.query.filter(
-            Design.uploaded_by_user_id == user.id,
-            Design.is_gallery == False,
-        ).order_by(Design.uploaded_at.desc()).limit(40).all()
-        for d in own:
-            by_id.setdefault(d.id, d)
-    return list(by_id.values())
+    ids = allowed_design_ids(collection)
+    if not ids:
+        return []
+    by_id = {
+        design.id: design
+        for design in Design.query.filter(Design.id.in_(ids)).all()
+    }
+    return [by_id[did] for did in ids if did in by_id]
 
 
 def ordering_blocked(collection, product_id=None):

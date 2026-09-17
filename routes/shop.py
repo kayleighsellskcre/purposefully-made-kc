@@ -665,8 +665,13 @@ def customize(product_id):
     preset_design = None
     if design_id:
         from utils.privacy import user_can_use_design
+        from utils.group_orders import design_allowed_for_collection
         d = Design.query.get(design_id)
-        if d and user_can_use_design(d, collection=coll):
+        permitted = (
+            design_allowed_for_collection(d, coll)
+            if coll else user_can_use_design(d)
+        )
+        if d and permitted:
             preset_design = {
                 'id': d.id,
                 'url': _resolve_image_url(d.file_path),
@@ -676,8 +681,12 @@ def customize(product_id):
     # Gallery designs for inline "choose logo" section (mains + color variants)
     gallery_designs = []
     try:
-        if coll and allowed_design_ids:
-            gallery_designs = load_collection_designs(coll)
+        if coll:
+            # Group orders only offer artwork uploaded/approved for that
+            # specific store. Never fall back to the general design gallery.
+            gallery_designs = (
+                load_collection_designs(coll) if allowed_design_ids else []
+            )
         else:
             from utils.design_variants import gallery_cards_for_public
             gallery_designs = gallery_cards_for_public(

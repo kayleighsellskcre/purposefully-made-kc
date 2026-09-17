@@ -284,14 +284,14 @@ def catalog_filter_options(products):
 
 
 def load_group_order_form_catalog():
-    """Products, colors, and designs for create/edit group-order forms.
+    """Products and colors for create/edit group-order forms.
 
     Uses one distinct color query instead of loading every variant per product.
     That N+1 pattern was crashing the logged-in Create Group Order page
     (Cloudflare ERR_HTTP2_PROTOCOL_ERROR / origin reset).
     """
     from sqlalchemy.orm import load_only
-    from models import Design, Product, ProductColorVariant, db
+    from models import Product, ProductColorVariant, db
 
     products = prepare_catalog(
         Product.query.filter_by(is_active=True).options(
@@ -314,7 +314,6 @@ def load_group_order_form_catalog():
     all_colors = []
     colors_by_brand = {}   # {brand: [sorted color names]}
     uniform_colors_by_product = {}  # {product_id: [sorted color names]}
-    gallery_designs = []
     try:
         if ids:
             rows = (
@@ -350,29 +349,14 @@ def load_group_order_form_catalog():
         all_colors = []
         colors_by_brand = {}
         uniform_colors_by_product = {}
-    try:
-        gallery_designs = (
-            Design.query.filter_by(is_gallery=True)
-            .options(load_only(
-                Design.id,
-                Design.title,
-                Design.original_filename,
-                Design.file_path,
-                Design.uploaded_at,
-                Design.is_gallery,
-            ))
-            .order_by(Design.uploaded_at.desc())
-            .limit(48)
-            .all()
-        )
-    except Exception:
-        gallery_designs = []
     return {
         'products': products,
         'all_colors': all_colors,
         'colors_by_brand': colors_by_brand,
         'uniform_colors_by_product': uniform_colors_by_product,
-        'gallery_designs': gallery_designs,
+        # Group-order organizers upload the artwork for that specific store.
+        # The general design gallery is intentionally not offered here.
+        'gallery_designs': [],
         'catalog_filter_opts': catalog_filter_options(products),
         'catalog_filter_picker': True,
     }

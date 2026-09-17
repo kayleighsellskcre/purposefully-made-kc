@@ -204,8 +204,6 @@ def add():
             # Artwork is already cut on /design/upload. Re-running rembg here
             # blocked Add to Cart (and every other click) on the one worker.
             design_url = f"/static/uploads/designs/{unique_filename}"
-    elif data.get('design_url'):
-        design_url = data.get('design_url')
     elif design_id:
         # Gallery, this group order's logos, or the shopper's own uploads only.
         # Design is imported at module scope — do not re-import it here. A local
@@ -214,11 +212,18 @@ def add():
         # Design.query.get call crashed with UnboundLocalError and Add to Cart
         # returned 500.
         from utils.privacy import user_can_use_design
+        from utils.group_orders import design_allowed_for_collection
         design = Design.query.get(int(design_id)) if str(design_id).isdigit() else None
-        if design and user_can_use_design(design, collection=collection):
+        permitted = (
+            design_allowed_for_collection(design, collection)
+            if collection else user_can_use_design(design)
+        )
+        if design and permitted:
             design_url = _resolve_image_url(design.file_path)
         else:
             design_id = None
+    elif data.get('design_url'):
+        design_url = data.get('design_url')
     
     # Handle back design: uploaded file or URL (from prior upload)
     import time as _t

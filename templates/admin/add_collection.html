@@ -153,27 +153,6 @@
                        itself and then clears this input. #}
                     <input type="file" id="design_uploads" name="design_uploads" accept=".png,.jpg,.jpeg,.webp" multiple style="display:none">
                     <div id="uploadPreview" class="upload-preview-list" style="display:none"></div>
-                    {% if gallery_designs %}
-                    <p class="form-hint" style="margin-top:1rem">Or pick from existing designs:</p>
-                    <div class="design-choice-grid">
-                        {% for d in gallery_designs %}
-                        <div class="design-choice-wrapper">
-                            <label class="design-choice-card">
-                                <input type="checkbox" name="allowed_designs" value="{{ d.id }}">
-                                <div class="design-choice-preview">
-                                    <img src="{{ d.file_path | image_url }}" alt="{{ d.title or d.original_filename }}" loading="lazy" decoding="async">
-                                </div>
-                                <span>{{ d.title or d.original_filename or 'Design' }}</span>
-                            </label>
-                            <label class="showcase-opt">
-                                <input type="checkbox" name="showcase_designs" value="{{ d.id }}">
-                                Show at top
-                            </label>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    <p class="form-hint" style="margin-top:0.75rem">Check <strong>Show at top</strong> on logos you want shoppers to see first when they open this group order.</p>
-                    {% endif %}
                     <label class="showcase-new-opt" style="display:flex;align-items:flex-start;gap:0.5rem;margin-top:0.85rem;cursor:pointer;">
                         <input type="checkbox" name="showcase_new_uploads" value="on" checked style="margin-top:0.2rem;">
                         <span class="text-muted" style="margin:0;font-size:0.85rem;">Also show newly uploaded logos at the top of the group order</span>

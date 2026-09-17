@@ -212,6 +212,52 @@ def test_the_create_page_renders_for_a_signed_in_customer(customer_client):
     assert 'Create Group Order' in resp.get_data(as_text=True)
 
 
+def test_group_order_setup_does_not_offer_the_general_design_library(customer_client):
+    html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
+    assert 'Or pick from existing designs' not in html
+    assert 'name="allowed_designs"' not in html
+    assert 'Gallery Logo' not in html
+
+
+def test_group_order_edit_does_not_offer_unassigned_gallery_art(
+    admin_client, seed
+):
+    html = admin_client.get(
+        f'/admin/collections/{seed["collection_id"]}/edit'
+    ).get_data(as_text=True)
+    assert 'Gallery Logo' not in html
+    assert 'name="allowed_designs"' not in html
+
+
+def test_group_order_shopper_does_not_get_the_general_design_gallery(
+    client, seed
+):
+    client.get(f'/c/{seed["collection_slug"]}')
+    html = client.get(
+        f'/shop/customize/{seed["tee_id"]}?catalog_section=fan'
+    ).get_data(as_text=True)
+    assert 'Gallery Logo' not in html
+
+
+def test_group_order_edit_only_shows_artwork_assigned_to_that_store(
+    admin_client, seed, app
+):
+    url = f'/admin/collections/{seed["collection_id"]}/edit'
+    with app.app_context():
+        collection = db.session.get(Collection, seed['collection_id'])
+        collection.allowed_design_ids = json.dumps([seed['free_design_id']])
+        db.session.commit()
+        from utils.group_orders import designs_for_group_order_form
+        assert [d.id for d in designs_for_group_order_form(collection)] == [
+            seed['free_design_id']
+        ]
+    response = admin_client.get(url)
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert 'Artwork already uploaded to this group order' in html
+    assert 'Gallery Logo' in html
+
+
 def test_the_create_page_shrinks_photos_before_upload(customer_client):
     """The 50 MB body limit is only safe because the browser resizes first."""
     body = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
@@ -279,8 +325,6 @@ def test_admin_edit_keeps_save_and_pickup_inside_the_form(admin_client, seed):
     assert 'name="pickup_instructions"' in inner
     assert 'Save Changes' in inner
     assert 'form="collection-form"' in inner
-    # Gallery designs (and their delete buttons) must not close the form.
-    assert 'name="allowed_designs"' in inner or 'gallery' in html.lower()
 
 
 def test_admin_can_save_pickup_instructions(admin_client, seed, app):
@@ -318,6 +362,42 @@ def test_admin_can_save_pickup_instructions(admin_client, seed, app):
         assert saved.tax_rate == 9.5
         assert saved.back_design_text_color == '#112233'
         assert saved.lock_back_design_style is True
+
+
+def test_admin_can_choose_and_unlock_back_style_controls(admin_client, seed, app):
+    cid = seed['collection_id']
+    html = admin_client.get(
+        f'/admin/collections/{cid}/edit'
+    ).get_data(as_text=True)
+    assert 'name="back_design_text_color"' in html
+    assert 'name="back_design_outline"' in html
+    assert 'name="back_design_outline_color"' in html
+    assert 'name="lock_back_design_style"' in html
+    assert 'id="collBackPreview"' in html
+
+    admin_client.post(
+        f'/admin/collections/{cid}/edit',
+        data={
+            'name': 'Test Elementary Spirit Wear',
+            'products': [str(seed['tee_id'])],
+            'is_active': 'on',
+            'back_design_type': 'name_number',
+            'back_design_font': 'Sports Jersey',
+            'back_design_text_color': '#ff2eb6',
+            'back_design_outline': 'off',
+            'back_design_outline_color': '#ffffff',
+            'back_style_controls_present': '1',
+            # lock_back_design_style deliberately unchecked
+        },
+        follow_redirects=False,
+    )
+    with app.app_context():
+        saved = db.session.get(Collection, cid)
+        assert saved.back_design_font == 'Sports Jersey'
+        assert saved.back_design_text_color == '#ff2eb6'
+        assert saved.back_design_outline is False
+        assert saved.back_design_outline_color == '#ffffff'
+        assert saved.lock_back_design_style is False
 
 
 def test_admin_save_always_forces_fixed_tax_rate(admin_client, seed, app):
