@@ -291,6 +291,21 @@ def test_the_group_orders_directory_loads(client):
     assert resp.status_code == 200
 
 
+def test_uploaded_group_visual_is_contained_and_keeps_group_name_attached(
+    client, seed, app
+):
+    with app.app_context():
+        collection = db.session.get(Collection, seed['collection_id'])
+        collection.cover_image = '/static/uploads/groups/team-visual.png'
+        db.session.commit()
+
+    html = client.get('/shop/group-orders').get_data(as_text=True)
+    assert 'class="dir-card-img has-cover"' in html
+    assert 'class="dir-card-art-frame"' in html
+    assert 'class="dir-card-cover-title">Test Elementary Spirit Wear<' in html
+    assert 'object-fit: contain' in html
+
+
 # ── Admin edit / Save Changes ────────────────────────────────────────────────
 
 def _collection_form_html(html):

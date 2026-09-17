@@ -130,17 +130,48 @@
     box-shadow: 0 8px 28px rgba(0,0,0,0.1);
 }
 .dir-card-img {
-    height: 180px;
+    height: 220px;
     background: linear-gradient(145deg, #3A3D48 0%, #5c4638 55%, #b87c6f 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
 }
-.dir-card-img img {
+.dir-card-img.has-cover {
+    flex-direction: column;
+    background: #faf7f3;
+}
+.dir-card-art-frame {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    padding: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.dir-card-img.has-cover img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+}
+.dir-card-img.has-cover .dir-card-lettermark {
+    background: linear-gradient(145deg, #3A3D48 0%, #5c4638 55%, #b87c6f 100%);
+}
+.dir-card-cover-title {
+    width: 100%;
+    min-height: 52px;
+    padding: 0.65rem 1rem;
+    border-top: 1px solid rgba(184, 124, 111, 0.2);
+    background: #f7eee8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    font-family: var(--font-heading);
+    font-size: 1.05rem;
+    line-height: 1.25;
+    text-align: center;
 }
 .dir-card-lettermark {
     width: 100%;
@@ -359,18 +390,25 @@
                 {% for item in open_collections %}
                 {% set c = item.collection %}
                 <div class="dir-card" data-name="{{ (c.card_title or '') | lower }} {{ c.name | lower }}" data-desc="{{ (c.description or '') | lower }}" data-visibility="{% if c.is_password_protected %}code required{% elif c.show_in_directory %}public{% else %}link only private{% endif %}">
-                    <div class="dir-card-img">
-                        {% set card_label = c.card_title or c.name %}
-                        {% if c.cover_image %}
-                        <img src="{{ c.cover_image | image_url }}" alt="{{ card_label }}"
-                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
-                        <div class="dir-card-lettermark" style="display:none"><span>{{ card_label }}</span></div>
-                        {% else %}
-                        <div class="dir-card-lettermark"><span>{{ card_label }}</span></div>
-                        {% endif %}
+                    {% set card_label = c.card_title or c.name %}
+                    {% if c.cover_image %}
+                    <div class="dir-card-img has-cover">
+                        <div class="dir-card-art-frame">
+                            <img src="{{ c.cover_image | image_url }}" alt="{{ card_label }} artwork for {{ c.name }}"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                            <div class="dir-card-lettermark" style="display:none"><span>{{ card_label }}</span></div>
+                        </div>
+                        <div class="dir-card-cover-title">{{ c.name }}</div>
                     </div>
+                    {% else %}
+                    <div class="dir-card-img">
+                        <div class="dir-card-lettermark"><span>{{ card_label }}</span></div>
+                    </div>
+                    {% endif %}
                     <div class="dir-card-body">
+                        {% if not c.cover_image %}
                         <p class="dir-card-name">{{ c.name }}</p>
+                        {% endif %}
                         {% if c.description %}
                         <p class="dir-card-desc">{{ c.description[:120] }}{% if c.description|length > 120 %}…{% endif %}</p>
                         {% endif %}
