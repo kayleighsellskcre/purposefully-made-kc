@@ -2391,7 +2391,9 @@
                         <strong style="font-size: 1.1rem; color: #333;">
                             {% if back_design_type == 'name_number' %}Add Your Name &amp; Number{% elif back_design_type == 'image' %}Add Back Design{% else %}Optional Back Design{% endif %}
                         </strong>
-                        <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #666;">Set by your group organizer. See options below.</p>
+                        <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #666;">
+                            {% if back_design_type in ('name_number', 'both') %}Set by your group organizer. A name or number is $3. Both are $6.{% else %}Set by your group organizer. See options below.{% endif %}
+                        </p>
                     </div>
                     {% else %}
                     {# Regular shop: show toggle button with price #}
@@ -2401,10 +2403,10 @@
                                 <strong style="font-size: 1.1rem; color: #333;">Add Design on Other Side</strong>
                                 <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #666;">Optional name, number, or second logo</p>
                             </div>
-                            <strong class="back-design-fee-amount">+$6.00</strong>
+                            <strong class="back-design-fee-amount">$3 or $6</strong>
                         </div>
                         <button class="btn btn-outline btn-block" id="addBackDesignBtn" onclick="toggleBackDesign()" style="margin-top: 0.75rem;">
-                            <span id="backDesignBtnText">Add Back Design (+$6.00)</span>
+                            <span id="backDesignBtnText">Add Back Design ($3 or $6)</span>
                         </button>
                     </div>
                     {% endif %}
@@ -2426,7 +2428,7 @@
                         {% endif %}
                         
                         <div id="backDesignNameNumber" class="back-design-mode">
-                            <p class="form-hint" style="margin-bottom: 1rem;">Perfect for jerseys. Enter name and number to preview on the back.</p>
+                            <p class="form-hint" style="margin-bottom: 1rem;">Perfect for jerseys. Enter a name, number, or both to preview the back. A name or number is $3. Both are $6.</p>
                             <div class="form-group" style="margin-bottom: 0.75rem;">
                                 <label for="backDesignNameInput">Name</label>
                                 <input type="text" id="backDesignNameInput" class="form-control" placeholder="e.g. SMITH" maxlength="20" style="text-transform: uppercase;">
@@ -2547,7 +2549,7 @@
                     </div>
                     <div class="price-row" id="backDesignFeeRow" style="display: none;">
                         <span>Back Design Fee:</span>
-                        <span style="color: var(--terra-cotta); font-weight: 600;">+$6.00</span>
+                        <span id="backDesignFeeAmount" style="color: var(--terra-cotta); font-weight: 600;">+$6.00</span>
                     </div>
                     <div class="price-row">
                         <span>Quantity:</span>
@@ -2641,7 +2643,8 @@
         isAdult: {{ 'true' if is_adult else 'false' }},
         designDragOffset: { center_chest: { x: 0, y: 0 }, left_chest: { x: 0, y: 0 }, right_chest: { x: 0, y: 0 }, center_back: { x: 0, y: 0 } },
         presetDesignId: {{ preset_design.id if preset_design else 'null' }},
-        allowedPlacements: {{ (allowed_placements | tojson) if allowed_placements else 'null' }}
+        allowedPlacements: {{ (allowed_placements | tojson) if allowed_placements else 'null' }},
+        lastFrontGarmentWidthPx: null
     };
     const TRANSFER_SIZING = {{ transfer_sizing | default({}) | tojson }};
     
@@ -3093,6 +3096,11 @@
             if (previewCanvas) previewCanvas.classList.remove('loading');
             if (ok) {
                 mockupImg.style.opacity = '1';
+                // A front/back swap changes the image geometry. Refit only
+                // after the replacement mockup has loaded so proof capture
+                // cannot leave the customer-facing logo at a stale, huge size.
+                applyDesignFit();
+                applyDesignPosition();
                 updateBackDesignPreview();
                 applyBackDesignPosition();
             } else {
@@ -3146,7 +3154,7 @@
         );
 
         // Placement is the source of truth for the uploaded design.
-        // Extra back design (paid +$6) is independent and only shows on Back View.
+        // Extra paid back design is independent and only shows on Back View.
         const showUploadedOnFront = frontHasDesign && !isCenterBack;
         const showUploadedOnBack = frontHasDesign && isCenterBack;
 
@@ -3360,6 +3368,8 @@
                 .then(r => r.json())
                 .then(function (data) {
                     GARMENT_SILHOUETTES[src] = (data && data.ok) ? data : 'failed';
+                    const current = document.getElementById('mockupImage');
+                    if (!current || current.getAttribute('src') !== src) return;
                     applyDesignFit();
                     applyDesignPosition();
                     updateBackDesignPreview();
@@ -3608,37 +3618,29 @@
         const designLayer = document.getElementById('designLayer');
         const designImage = document.getElementById('designImage');
         if (!designLayer || !designImage) return;
+        // Front artwork is sized from the FRONT mockup. Add to Cart photographs
+        // the back first, and a pending silhouette fallback is ~72% of the
+        // photo — wide enough to swallow a youth shirt. Keep the last good
+        // front size until the front garment is measured again.
+        if (state.currentView === 'back') return;
         const placement = state.selectedPlacement || 'center_chest';
-        designLayer.style.width = '';
-        designLayer.style.maxWidth = '';
-        designLayer.style.maxHeight = '';
         const isSideChest = placement === 'left_chest' || placement === 'right_chest';
-        // Preview-only: size visible artwork against the detected garment,
-        // never against the surrounding white photo canvas. This prevents a
-        // narrow mockup from being overwhelmed while keeping adult and youth
-        // shirts at the same visual proportion. Production remains chart-led.
         const previewCanvas = document.getElementById('previewCanvas');
         const canvasWidth = (previewCanvas && previewCanvas.clientWidth) || 400;
         const box = garmentBox();
-        const garmentWidth = (box && box.widthPx) || canvasWidth * 0.72;
+        if (box && box.measured && box.widthPx) {
+            state.lastFrontGarmentWidthPx = box.widthPx;
+        }
+        const garmentWidth = (box && box.measured && box.widthPx)
+            || state.lastFrontGarmentWidthPx;
+        if (!garmentWidth) return;
         const visibleWidthRatio = visibleArtworkWidthRatio(designImage);
         const targetRatio = isSideChest ? 0.17 : 0.38;
         let layerWidthPx = garmentWidth * targetRatio / visibleWidthRatio;
-        let maxH;
-
-        if (isSideChest) {
-            maxH = 20;
-            layerWidthPx = Math.min(
-                Math.max(layerWidthPx, canvasWidth * 0.08),
-                canvasWidth * 0.30
-            );
-        } else {
-            maxH = 60;
-            layerWidthPx = Math.min(
-                Math.max(layerWidthPx, canvasWidth * 0.18),
-                canvasWidth * 0.62
-            );
-        }
+        const maxH = isSideChest ? 20 : 60;
+        const maxVsGarment = garmentWidth * (isSideChest ? 0.22 : 0.50);
+        layerWidthPx = Math.min(layerWidthPx, maxVsGarment, canvasWidth * (isSideChest ? 0.22 : 0.42));
+        layerWidthPx = Math.max(layerWidthPx, garmentWidth * (isSideChest ? 0.10 : 0.22));
 
         designLayer.style.width = layerWidthPx.toFixed(1) + 'px';
         designLayer.style.maxWidth = 'none';
@@ -4001,12 +4003,23 @@
         if (s === '4XL' || s === '4X') return 4;
         return 0;
     }
+
+    function currentBackDesignFee() {
+        if (!state.backDesignEnabled) return 0;
+        if (state.backDesignMode === 'name_number') {
+            const parts = Number(Boolean((state.backDesignName || '').trim()))
+                + Number(Boolean((state.backDesignNumber || '').trim()));
+            return parts * 3;
+        }
+        return state.backDesignFee;
+    }
     
     function updateTotalPrice() {
         const totalPrice = document.getElementById('totalPrice');
         const unitPrice = document.getElementById('unitPrice');
         const placementDiscountRow = document.getElementById('placementDiscountRow');
         const sizeUpchargeRow = document.getElementById('sizeUpchargeRow');
+        const backDesignFeeRow = document.getElementById('backDesignFeeRow');
         const sizeUpchargeLabel = document.getElementById('sizeUpchargeLabel');
         const sizeUpchargeAmount = document.getElementById('sizeUpchargeAmount');
         let itemPrice = state.basePrice;
@@ -4030,9 +4043,12 @@
             sizeUpchargeRow.style.display = 'none';
         }
         
-        // Add back design fee if enabled
-        if (state.backDesignEnabled) {
-            itemPrice += state.backDesignFee;
+        const backFee = currentBackDesignFee();
+        itemPrice += backFee;
+        const backFeeAmount = document.getElementById('backDesignFeeAmount');
+        if (backFeeAmount) backFeeAmount.textContent = '+$' + backFee.toFixed(2);
+        if (backDesignFeeRow) {
+            backDesignFeeRow.style.display = backFee > 0 ? 'flex' : 'none';
         }
         
         if (unitPrice) unitPrice.textContent = '$' + (state.basePrice - smallLogoDiscount).toFixed(2);
@@ -4062,14 +4078,14 @@
             btn.style.background = 'linear-gradient(135deg, var(--terra-cotta), var(--aged-bronze))';
             btn.style.color = '#fff';
             btn.style.borderColor = 'var(--terra-cotta)';
-            btnText.textContent = 'Remove Back Design (-$6.00)';
+            btnText.textContent = 'Remove Back Design';
         } else {
             if (backDesignUploadArea) backDesignUploadArea.style.display = 'none';
             backDesignFeeRow.style.display = 'none';
             btn.style.background = '';
             btn.style.color = '';
             btn.style.borderColor = '';
-            btnText.textContent = 'Add Back Design (+$6.00)';
+            btnText.textContent = 'Add Back Design ($3 or $6)';
             // Clear back design state when removed
             state.backDesignFile = null;
             state.backDesignUrl = null;
@@ -4453,6 +4469,7 @@
         function syncBackDesignPreview() {
             updateBackDesignPreview();
             updateDesignLayerVisibility();
+            updateTotalPrice();
             refreshAddToCartButton();
         }
         const backDesignContainer = document.getElementById('backDesignUploadArea');
@@ -4547,6 +4564,7 @@
                     designPreviewBack.style.display = 'none';
                 }
                 updateDesignLayerVisibility();
+                updateTotalPrice();
             });
         });
         
@@ -4588,6 +4606,7 @@
                 
                 updateBackDesignPreview();
                 updateDesignLayerVisibility();
+                updateTotalPrice();
                 refreshAddToCartButton();
                 
                 uploadAreaBack.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 1rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Back design uploaded!</strong></p><p class="text-muted">Click to change</p>';
@@ -4612,6 +4631,7 @@
                 state.backDesignFile = null;
                 state.backDesignUrl = null;
                 updateDesignLayerVisibility();
+                updateTotalPrice();
                 refreshAddToCartButton();
                 
                 // Reset upload area
@@ -5045,15 +5065,28 @@
         return new Promise(function (resolve) {
             const viewBtn = document.getElementById(side === 'back' ? 'viewBack' : 'viewFront');
             if (viewBtn) viewBtn.click();
-            applyDesignFit();
-            if (typeof applyBackDesignPosition === 'function') applyBackDesignPosition();
+            const mockup = document.getElementById('mockupImage');
+            const expectedUrl = state.currentView === 'front'
+                ? state.selectedColor.frontImage
+                : state.selectedColor.backImage;
+            let captureStarted = false;
 
-            requestAnimationFrame(function () {
+            function beginCapture() {
+                if (captureStarted) return;
+                captureStarted = true;
+                if (side === 'front') applyDesignFit();
+                applyDesignPosition();
+                if (typeof applyBackDesignPosition === 'function') applyBackDesignPosition();
                 requestAnimationFrame(function () {
+                    requestAnimationFrame(function () {
                     try {
                         const preview = document.getElementById('previewCanvas');
-                        const mockup = document.getElementById('mockupImage');
-                        if (!preview || !mockup || !mockup.naturalWidth) {
+                        if (
+                            !preview
+                            || !mockup
+                            || mockup.getAttribute('src') !== expectedUrl
+                            || !mockup.naturalWidth
+                        ) {
                             resolve(null);
                             return;
                         }
@@ -5109,8 +5142,54 @@
                     } catch (err) {
                         resolve(null);
                     }
+                    });
                 });
-            });
+            }
+
+            const alreadyReady = mockup
+                && mockup.getAttribute('src') === expectedUrl
+                && mockup.complete
+                && mockup.naturalWidth > 0;
+            if (alreadyReady) {
+                beginCapture();
+            } else if (mockup && expectedUrl) {
+                const timeout = window.setTimeout(function() {
+                    mockup.removeEventListener('load', onReady);
+                    mockup.removeEventListener('error', onError);
+                    resolve(null);
+                }, 5000);
+                function onReady() {
+                    if (
+                        mockup.getAttribute('src') !== expectedUrl
+                        || !mockup.complete
+                        || mockup.naturalWidth <= 0
+                    ) return;
+                    window.clearTimeout(timeout);
+                    mockup.removeEventListener('load', onReady);
+                    mockup.removeEventListener('error', onError);
+                    beginCapture();
+                }
+                function onError() {
+                    if (mockup.getAttribute('src') !== expectedUrl) return;
+                    window.clearTimeout(timeout);
+                    mockup.removeEventListener('load', onReady);
+                    mockup.removeEventListener('error', onError);
+                    resolve(null);
+                }
+                mockup.addEventListener('load', onReady);
+                mockup.addEventListener('error', onError);
+                // The image may finish between the readiness check and listener
+                // registration when it comes from memory cache.
+                if (
+                    mockup.getAttribute('src') === expectedUrl
+                    && mockup.complete
+                    && mockup.naturalWidth > 0
+                ) {
+                    onReady();
+                }
+            } else {
+                resolve(null);
+            }
         });
     }
 
@@ -5171,7 +5250,7 @@
             
             try {
                 const smallLogoDiscount = (state.selectedPlacement === 'left_chest' || state.selectedPlacement === 'right_chest') ? 2 : 0;
-                const unitPrice = state.basePrice - smallLogoDiscount + getSizeUpcharge() + (state.backDesignEnabled ? state.backDesignFee : 0);
+                const unitPrice = state.basePrice - smallLogoDiscount + getSizeUpcharge() + currentBackDesignFee();
                 
                 const formData = new FormData();
                 formData.append('product_id', {{ product.id }});
@@ -5241,6 +5320,8 @@
                         if (backProof) formData.append('proof_back', backProof, 'proof_back.png');
                         const frontBtn = document.getElementById('viewFront');
                         if (frontBtn) frontBtn.click();
+                        applyDesignFit();
+                        applyDesignPosition();
                     }
                 } catch (proofErr) {
                     console.warn('Could not save mockup proof snapshot', proofErr);

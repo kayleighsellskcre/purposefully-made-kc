@@ -103,8 +103,19 @@
                     <span class="total-amount">${{ "%.2f"|format(subtotal) }}</span>
                 </div>
                 <p class="cart-tax-note">Tax and shipping are added at checkout.</p>
+
+                {% if fan_wear_url %}
+                <div class="cart-next-step">
+                    <span class="cart-next-step-eyebrow">Player uniform added</span>
+                    <strong>Need family or fan wear too?</strong>
+                    <p>Add shirts, sweatshirts, or hoodies to this same cart before checkout. You can come back for more anytime.</p>
+                    <a href="{{ fan_wear_url }}" class="btn btn-primary btn-block">
+                        Add Family &amp; Fan Wear
+                    </a>
+                </div>
+                {% endif %}
                 
-                <a href="{{ url_for('checkout.index') }}" class="btn btn-primary btn-block">
+                <a href="{{ url_for('checkout.index') }}" class="btn {% if fan_wear_url %}btn-outline{% else %}btn-primary{% endif %} btn-block">
                     Proceed to Checkout
                 </a>
                 
@@ -132,6 +143,34 @@
     font-size: 0.82rem;
     color: var(--text-secondary);
     margin: 0.25rem 0 0;
+}
+.cart-next-step {
+    margin: 1rem 0;
+    padding: 1rem;
+    border: 1px solid rgba(184, 124, 111, 0.3);
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(184, 124, 111, 0.09), rgba(232, 208, 177, 0.12));
+    text-align: center;
+}
+.cart-next-step-eyebrow {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: var(--terra-cotta);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.cart-next-step strong {
+    display: block;
+    font-family: var(--font-heading);
+    font-size: 1rem;
+}
+.cart-next-step p {
+    margin: 0.35rem 0 0.8rem;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1.45;
 }
 .item-blank-badge {
     display: inline-block;

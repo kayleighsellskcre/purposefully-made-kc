@@ -161,9 +161,13 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     # Front logos use one visual target across youth/adult garments and correct
     # transparent padding without changing production dimensions.
     assert 'function visibleArtworkWidthRatio(image)' in html
-    assert 'const garmentWidth = (box && box.widthPx)' in html
+    assert 'const garmentWidth = (box && box.measured && box.widthPx)' in html
     assert 'garmentWidth * targetRatio / visibleWidthRatio' in html
     assert 'const targetRatio = isSideChest ? 0.17 : 0.38' in html
+    assert "if (state.currentView === 'back') return;" in html
+    assert 'state.lastFrontGarmentWidthPx' in html
+    assert 'canvasWidth * 0.62' not in html
+    assert "if (side === 'front') applyDesignFit();" in html
     assert "if (placement === 'left_chest') visualCenter += box.widthPx * 0.16" in html
     assert "if (placement === 'right_chest') visualCenter -= box.widthPx * 0.16" in html
     assert 'box.widthPx * 0.22' not in html
@@ -199,6 +203,18 @@ def test_mockup_viewport_keeps_whole_shirt_and_view_buttons_visible(client, seed
     assert 'id="colorPickerDisclosure"' in html
     assert 'id="colorDisclosureName"' in html
     assert 'disclosure.open = false' in html
+
+
+def test_add_to_cart_refits_mockup_and_prices_partial_back_personalization(client, seed):
+    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    loaded = html.index("mockupImg.style.opacity = '1'")
+    assert html.index('applyDesignFit();', loaded) < html.index(
+        'updateBackDesignPreview();', loaded
+    )
+    assert 'function currentBackDesignFee()' in html
+    assert 'return parts * 3' in html
+    assert 'currentBackDesignFee();' in html
+    assert 'A name or number is $3. Both are $6.' in html
 
 
 def test_visual_normalization_does_not_change_adult_or_youth_print_widths():

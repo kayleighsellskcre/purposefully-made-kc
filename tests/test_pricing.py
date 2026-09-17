@@ -2,13 +2,16 @@
 
 Seeded prices: tee $30.00, hoodie $45.00, youth tee $24.00.
 """
+from io import BytesIO
 import json
+from pathlib import Path
 
 import pytest
 
 from models import db, Product, Design
 from utils.pricing import (
-    BACK_DESIGN_FEE, BLANK_ITEM_DISCOUNT, SMALL_LOGO_DISCOUNT,
+    BACK_DESIGN_FEE, BLANK_ITEM_DISCOUNT, SINGLE_BACK_DESIGN_FEE,
+    SMALL_LOGO_DISCOUNT,
     calculate_unit_price, size_surcharge,
 )
 
@@ -85,6 +88,19 @@ def test_back_design_fee(app, seed):
             tee, size='M', placement='center_chest', has_back_design=True,
         )
         assert price == 30.00 + BACK_DESIGN_FEE
+
+
+def test_single_name_or_number_costs_half_back_design_fee(app, seed):
+    with app.app_context():
+        tee = Product.query.get(seed['tee_id'])
+        price = calculate_unit_price(
+            tee,
+            size='M',
+            placement='center_chest',
+            has_back_design=True,
+            back_design_parts=1,
+        )
+        assert price == 30.00 + SINGLE_BACK_DESIGN_FEE
 
 
 def test_blank_item_discount(app, seed):
@@ -228,3 +244,47 @@ def test_cart_add_charges_back_design_fee(client, seed):
     )
     with client.session_transaction() as sess:
         assert sess['cart'][0]['unit_price'] == 36.00
+
+
+@pytest.mark.parametrize(
+    'personalization',
+    [
+        {'back_design_name': 'SMITH'},
+        {'back_design_number': '12'},
+    ],
+)
+def test_cart_add_charges_three_dollars_for_one_back_line(
+    client, seed, personalization
+):
+    _add_to_cart(
+        client,
+        product_id=seed['tee_id'],
+        size='M',
+        color='Black',
+        quantity=1,
+        placement='center_chest',
+        design_id=seed['free_design_id'],
+        **personalization,
+    )
+    with client.session_transaction() as sess:
+        assert sess['cart'][0]['unit_price'] == 33.00
+
+
+def test_uploaded_back_artwork_remains_six_dollars(client, seed):
+    _add_to_cart(
+        client,
+        product_id=seed['tee_id'],
+        size='M',
+        color='Black',
+        quantity=1,
+        placement='center_chest',
+        design_id=seed['free_design_id'],
+        back_design=(BytesIO(b'uploaded-artwork'), 'back-logo.png'),
+    )
+    with client.session_transaction() as sess:
+        item = dict(sess['cart'][0])
+    try:
+        assert item['unit_price'] == 36.00
+        assert item['back_design_kind'] == 'image'
+    finally:
+        Path(item['back_design_url'].lstrip('/')).unlink(missing_ok=True)

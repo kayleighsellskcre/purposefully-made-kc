@@ -28,6 +28,20 @@ def _back_overlay_class(meta):
 def index():
     """View cart"""
     cart = get_cart()
+    from utils.group_orders import get_active_collection, team_store_config
+
+    active_group_order = get_active_collection(cart)
+    fan_wear_url = None
+    if active_group_order and any(
+        isinstance(item, dict) and item.get('catalog_section') == 'uniform'
+        for item in cart
+    ):
+        store_config = team_store_config(active_group_order)
+        if store_config.get('fan_product_ids'):
+            fan_wear_url = (
+                url_for('collection.view', slug=active_group_order.slug, path='fan')
+                + '#fanWearSection'
+            )
     
     # Enrich cart items with product details
     cart_items = []
@@ -75,7 +89,9 @@ def index():
     
     return render_template('cart/index.html', 
                          cart_items=cart_items,
-                         subtotal=subtotal)
+                         subtotal=subtotal,
+                         active_group_order=active_group_order,
+                         fan_wear_url=fan_wear_url)
 
 
 @cart_bp.route('/add', methods=['POST'])
@@ -299,6 +315,11 @@ def add():
         back_design_url
         or (isinstance(back_design_meta, dict) and (back_design_meta.get('name') or back_design_meta.get('number')))
     )
+    back_design_kind = (
+        'personalization'
+        if _bd_name or _bd_number
+        else ('image' if has_back else None)
+    )
     has_design = bool(
         design_url or design_id or has_back
         or ('design' in request.files and request.files['design'].filename)
@@ -323,6 +344,11 @@ def add():
         size=size,
         placement=placement,
         has_back_design=has_back,
+        back_design_parts=(
+            int(bool(_bd_name)) + int(bool(_bd_number))
+            if back_design_kind == 'personalization'
+            else None
+        ),
         is_blank=is_blank,
         design_fee=design_fee,
     )
@@ -463,6 +489,7 @@ def add():
         'design_url': design_url,
         'placement': placement,
         'back_design_url': back_design_url,
+        'back_design_kind': back_design_kind,
         'back_design_meta': back_design_meta,
         'proof_front_url': proof_front_url,
         'proof_back_url': proof_back_url,

@@ -239,6 +239,38 @@ def test_group_order_shopper_does_not_get_the_general_design_gallery(
     assert 'Gallery Logo' not in html
 
 
+def test_uniform_cart_offers_a_direct_fan_wear_next_step(client, seed, app):
+    with app.app_context():
+        collection = db.session.get(Collection, seed['collection_id'])
+        collection.team_store_config = json.dumps({
+            'version': 1,
+            'uniform': {
+                'enabled': True,
+                'product_id': seed['tee_id'],
+                'home_color': 'Black',
+                'away_color': '',
+            },
+            'fan_product_ids': [seed['hoodie_id']],
+        })
+        db.session.commit()
+    with client.session_transaction() as sess:
+        sess['cart'] = [{
+            'product_id': seed['tee_id'],
+            'size': 'M',
+            'color': 'Black',
+            'quantity': 1,
+            'unit_price': 30.00,
+            'collection_id': seed['collection_id'],
+            'catalog_section': 'uniform',
+            'uniform_kit': 'home',
+        }]
+    html = client.get('/cart/').get_data(as_text=True)
+    assert 'Add Family &amp; Fan Wear' in html
+    assert '?path=fan#fanWearSection' in html
+    assert 'Need family or fan wear too?' in html
+    assert 'btn btn-primary btn-block' in html
+
+
 def test_group_order_edit_only_shows_artwork_assigned_to_that_store(
     admin_client, seed, app
 ):

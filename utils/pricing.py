@@ -22,8 +22,11 @@ EXTENDED_SIZE_SURCHARGES = {
     '4XL': 4.00, '4X': 4.00,
 }
 
-# A second print location on the back.
+# A second print location on the back. A single personalized line costs half
+# as much as the full name-and-number treatment; uploaded back artwork remains
+# a full second print location.
 BACK_DESIGN_FEE = 6.00
+SINGLE_BACK_DESIGN_FEE = 3.00
 
 # A garment with no artwork at all skips the transfer entirely.
 BLANK_ITEM_DISCOUNT = 12.00
@@ -43,6 +46,7 @@ def calculate_unit_price(
     size=None,
     placement=None,
     has_back_design=False,
+    back_design_parts=None,
     is_blank=False,
     design_fee=0.0,
 ):
@@ -61,7 +65,11 @@ def calculate_unit_price(
     price += size_surcharge(product, size)
 
     if has_back_design:
-        price += BACK_DESIGN_FEE
+        price += (
+            SINGLE_BACK_DESIGN_FEE
+            if back_design_parts == 1
+            else BACK_DESIGN_FEE
+        )
 
     if is_blank:
         # A blank cannot also carry a back design, but clamp anyway so a bad
@@ -92,6 +100,11 @@ def price_cart_item(item, product, design=None):
     has_back_design = bool(
         item.get('back_design_url') or meta.get('name') or meta.get('number')
     )
+    back_design_parts = (
+        int(bool(meta.get('name'))) + int(bool(meta.get('number')))
+        if meta.get('name') or meta.get('number')
+        else None
+    )
     has_front_design = bool(item.get('design_url') or item.get('design_id'))
     is_blank = not (has_front_design or has_back_design)
 
@@ -104,6 +117,7 @@ def price_cart_item(item, product, design=None):
         size=item.get('size'),
         placement=item.get('placement'),
         has_back_design=has_back_design,
+        back_design_parts=back_design_parts,
         is_blank=is_blank,
         design_fee=design_fee,
     )
