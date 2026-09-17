@@ -153,7 +153,7 @@
 .vendor-head h2 { font-family: var(--font-heading); font-size: 1.35rem; margin: 0 0 0.2rem; }
 .vendor-head p { color: var(--text-secondary); margin: 0; }
 .vendor-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-.dtf-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 1rem; }
+.dtf-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 1.15rem; }
 .dtf-card { border: 1px solid var(--border-light, #eadfd4); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
 .dtf-preview { aspect-ratio: 1; background:
     linear-gradient(45deg, #eee 25%, transparent 25%),
@@ -166,11 +166,11 @@
 .dtf-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .no-art { color: var(--text-secondary); }
 .dtf-info { padding: 0.9rem 1rem 1rem; }
-.style-num { font-weight: 700; color: var(--aged-bronze, #8a6a4a); margin: 0; }
-.style-name { margin: 0.15rem 0 0; color: var(--text-secondary); font-size: 0.92rem; }
-.dtf-size { margin: 0.55rem 0 0; }
+.style-num { font-weight: 800; color: var(--aged-bronze, #8a6a4a); margin: 0; font-size: 1.2rem; line-height: 1.25; }
+.style-name { margin: 0.2rem 0 0; color: var(--text-secondary); font-size: 1.02rem; }
+.dtf-size { margin: 0.55rem 0 0; font-size: 1.12rem; }
 .dtf-size span { color: var(--text-secondary); font-weight: 500; }
-.qty-line { margin: 0.35rem 0 0; color: var(--accent-color); }
+.qty-line { margin: 0.4rem 0 0; color: var(--accent-color); font-size: 1.2rem; font-weight: 800; }
 .dtf-btns { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
 .shop-note { color: var(--text-secondary); margin-top: 0.5rem; }
 .empty-state { text-align: center; padding: 4rem 2rem; background: #fff; border-radius: var(--border-radius); }
@@ -205,8 +205,8 @@
         background: #fff !important;
         margin: 0 !important;
         padding: 0 !important;
-        font-size: 9.5pt;
-        line-height: 1.25;
+        font-size: 13pt;
+        line-height: 1.3;
         color: #111;
     }
 
@@ -229,25 +229,25 @@
     }
 
     .admin-header h1 {
-        font-size: 13pt !important;
-        margin: 0 0 0.1rem !important;
+        font-size: 18pt !important;
+        margin: 0 0 0.15rem !important;
         line-height: 1.2 !important;
     }
 
     .page-subtitle {
-        font-size: 8pt !important;
+        font-size: 11pt !important;
         margin: 0 !important;
         max-width: none !important;
         color: #333 !important;
     }
 
     .shop-summary {
-        margin: 0 0 0.4rem !important;
-        padding: 0.2rem 0 !important;
+        margin: 0 0 0.5rem !important;
+        padding: 0.25rem 0 !important;
         background: transparent !important;
         border-radius: 0 !important;
         border-bottom: 1px solid #ccc;
-        font-size: 9pt;
+        font-size: 12pt;
     }
 
     .shop-summary p { margin: 0 !important; }
@@ -269,23 +269,23 @@
     }
 
     .vendor-head h2 {
-        font-size: 11pt !important;
+        font-size: 16pt !important;
         margin: 0 !important;
     }
 
     .vendor-head p {
-        font-size: 8pt !important;
+        font-size: 12pt !important;
         color: #333 !important;
     }
 
     .dtf-cards {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
-        gap: 0.35rem 0.5rem !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0.45rem !important;
     }
 
     .dtf-card {
-        border: 1px solid #ccc !important;
+        border: 2px solid #111 !important;
         border-radius: 4px !important;
         overflow: hidden !important;
         display: flex !important;
@@ -297,62 +297,64 @@
     }
 
     .dtf-preview {
-        width: 0.95in !important;
-        min-width: 0.95in !important;
-        max-width: 0.95in !important;
+        width: 1.6in !important;
+        min-width: 1.6in !important;
+        max-width: 1.6in !important;
         aspect-ratio: auto !important;
         height: auto !important;
-        min-height: 0.95in !important;
-        max-height: 1.15in !important;
+        min-height: 1.6in !important;
+        max-height: 1.85in !important;
         padding: 0 !important;
         background: #f3f3f3 !important;
         flex-shrink: 0 !important;
     }
 
     .dtf-preview a {
-        padding: 0.12in !important;
+        padding: 0.14in !important;
     }
 
     .dtf-preview img {
         max-width: 100% !important;
-        max-height: 0.9in !important;
+        max-height: 1.5in !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
 
     .dtf-info {
-        padding: 0.2rem 0.4rem !important;
+        padding: 0.4rem 0.55rem !important;
         flex: 1 !important;
         min-width: 0 !important;
     }
 
     .style-num {
-        font-size: 9pt !important;
+        font-size: 16pt !important;
         margin: 0 !important;
-        line-height: 1.15 !important;
+        line-height: 1.2 !important;
+        color: #111 !important;
     }
 
     .style-name {
-        font-size: 8pt !important;
-        margin: 0.05rem 0 0 !important;
-        line-height: 1.15 !important;
+        font-size: 12pt !important;
+        margin: 0.12rem 0 0 !important;
+        line-height: 1.25 !important;
+        color: #333 !important;
     }
 
     .dtf-size {
-        margin: 0.12rem 0 0 !important;
-        font-size: 8.5pt !important;
-        line-height: 1.15 !important;
+        margin: 0.2rem 0 0 !important;
+        font-size: 14pt !important;
+        line-height: 1.25 !important;
     }
 
     .qty-line {
-        margin: 0.08rem 0 0 !important;
-        font-size: 9pt !important;
+        margin: 0.15rem 0 0 !important;
+        font-size: 16pt !important;
         color: #111 !important;
-        font-weight: 700 !important;
+        font-weight: 800 !important;
     }
 
     .no-art {
-        font-size: 8pt !important;
+        font-size: 12pt !important;
     }
 }
 @media (max-width: 700px) {

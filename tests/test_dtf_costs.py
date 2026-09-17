@@ -39,6 +39,17 @@ def test_save_and_reload_dtf_costs(costs_tmpdir):
     assert raw['dtf_per_sq_in'] == 0.07
 
 
+def test_dtf_shopping_list_print_type_is_large(admin_client):
+    resp = admin_client.get('/admin/production/dtf-batch-sheets')
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    print_css = body.split('@media print')[-1]
+    assert '.dtf-cards {\n        display: flex !important;\n        flex-direction: column !important;' in print_css.replace('\r\n', '\n')
+    assert 'font-size: 16pt' in print_css
+    assert 'font-size: 14pt' in print_css
+    assert 'font-size: 8.5pt' not in print_css
+
+
 def test_inventory_routes_require_admin(client):
     assert client.get('/admin/inventory').status_code in (302, 401, 403)
     assert client.post('/admin/inventory/save-costs').status_code in (302, 400, 401, 403)
