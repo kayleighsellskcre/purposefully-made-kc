@@ -207,9 +207,9 @@
    Width is driven by applyDesignFit from ordered print inches → mockup %.
    These CSS defaults are the adult-M center fallback before JS runs. */
 .design-layer[data-placement="center_chest"] {
-    width: 30%;
+    width: 38%;
     max-width: none;
-    max-height: 32%;
+    max-height: 46%;
     min-height: 44px;
     top: 38%;
     left: 50%;
@@ -237,9 +237,9 @@
 }
 
 .design-layer[data-placement="center_back"] {
-    width: 30%;
+    width: 38%;
     max-width: none;
-    max-height: 32%;
+    max-height: 46%;
     top: 38%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -3337,7 +3337,7 @@
     const GARMENT_SILHOUETTES = {};
     // Stand-in until the real silhouette arrives: a ghost mockup fills about
     // this much of the frame. Same inch math, coarser garment box.
-    const GARMENT_FALLBACK = { top: 0.14, height: 0.68, center: 0.5, width: 0.46, left: 0.27 };
+    const GARMENT_FALLBACK = { top: 0.12, height: 0.70, center: 0.5 };
 
     function bodyLengthIn(sizeOverride) {
         const table = (TRANSFER_SIZING && TRANSFER_SIZING.body_lengths) || {};
@@ -3637,11 +3637,14 @@
             }
             if (maxX >= minX) {
                 ratio = Math.min(1, Math.max(0.2, (maxX - minX + 1) / sampleW));
+            } else {
+                // No ink found — usually a tainted CDN canvas, not empty art.
+                return 1;
             }
         } catch (error) {
             // A remote image without canvas CORS remains safe at the standard
             // width; same-origin artwork receives the transparent-edge fix.
-            ratio = 1;
+            return 1;
         }
         if (key) artworkVisibleWidthCache.set(key, ratio);
         return ratio;
@@ -3668,32 +3671,22 @@
         const garmentWidth = (box && box.measured && box.widthPx)
             || state.lastFrontGarmentWidthPx
             || (box && box.widthPx);
-        const garmentHeight = (box && box.measured && box.heightPx)
-            || state.lastFrontGarmentHeightPx
-            || (box && box.heightPx);
         if (!garmentWidth) return;
         const visibleWidthRatio = (
             state.artworkFitDesignId != null
             && String(state.artworkFitDesignId) === String(state.presetDesignId)
             && state.artworkFitRatio
         ) ? state.artworkFitRatio : visibleArtworkWidthRatio(designImage);
-        const targetRatio = isSideChest ? 0.14 : 0.30;
+        const targetRatio = isSideChest ? 0.17 : 0.38;
         let layerWidthPx = garmentWidth * targetRatio / visibleWidthRatio;
-        const natW = designImage.naturalWidth || 1;
-        const natH = designImage.naturalHeight || natW;
-        const maxHpx = (garmentHeight || garmentWidth) * (isSideChest ? 0.14 : 0.28);
-        if (natH > 0 && natW > 0) {
-            layerWidthPx = Math.min(layerWidthPx, maxHpx * (natW / natH));
-        }
-        const maxVsGarment = garmentWidth * (isSideChest ? 0.18 : 0.36);
-        layerWidthPx = Math.min(layerWidthPx, maxVsGarment, canvasWidth * (isSideChest ? 0.18 : 0.32));
-        if (box && box.measured) {
-            layerWidthPx = Math.max(layerWidthPx, garmentWidth * (isSideChest ? 0.08 : 0.16));
-        }
+        const maxH = isSideChest ? 20 : 60;
+        const maxVsGarment = garmentWidth * (isSideChest ? 0.22 : 0.50);
+        layerWidthPx = Math.min(layerWidthPx, maxVsGarment, canvasWidth * (isSideChest ? 0.22 : 0.42));
+        layerWidthPx = Math.max(layerWidthPx, garmentWidth * (isSideChest ? 0.10 : 0.22));
 
         designLayer.style.width = layerWidthPx.toFixed(1) + 'px';
         designLayer.style.maxWidth = 'none';
-        designLayer.style.maxHeight = maxHpx.toFixed(1) + 'px';
+        designLayer.style.maxHeight = maxH.toFixed(1) + '%';
     }
     
     function applyBackDesignPosition() {
