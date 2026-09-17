@@ -773,48 +773,72 @@ def _collect_press_shirts(orders):
     """One card per physical shirt: front and back stay together."""
     from utils.print_sizes import production_from_order_item
     from utils.order_artwork import front_print_url, mockup_urls
+    from utils.ops_flow import packing_sort_key
     shirts = []
     for order in orders:
-        for item in order.items:
-            prod = production_from_order_item(item, customer_name=order.full_name)
+        customer_name = (order.full_name or '').strip() or (order.email or 'Customer')
+        packing = packing_sort_key(order)
+        pending = []
+        items = order.items.all() if hasattr(order.items, 'all') else list(order.items)
+        for item_seq, item in enumerate(items):
+            prod = production_from_order_item(item, customer_name=customer_name)
             if not prod or (not prod.get('front') and not prod.get('back')):
                 continue
+            pending.append((item_seq, item, prod, getattr(item, 'quantity', 1) or 1))
+        piece_total = sum(qty for _seq, _item, _prod, qty in pending)
+        piece_index = 0
+        for item_seq, item, prod, qty in pending:
             front_m, back_m = mockup_urls(getattr(item, 'product', None), getattr(item, 'color', None))
             front = prod.get('front') or None
             back = prod.get('back') or None
-            shirts.append({
-                'order_number': getattr(order, 'order_number', None),
-                'quantity': getattr(item, 'quantity', 1) or 1,
-                'size': getattr(item, 'size', None),
-                'color': getattr(item, 'color', None),
-                'age_group': (front or back or {}).get('age_group'),
-                'garment_style': getattr(item, 'product_name', None),
-                'style_number': getattr(item, 'style_number', None),
-                'front': front,
-                'back': back,
-                'front_mockup_url': front_m,
-                'back_mockup_url': back_m or front_m,
-                'front_overlay_url': front_print_url(item) if front else None,
-                'front_placement': getattr(item, 'placement', None) or (front or {}).get('placement') or 'center_chest',
-                'exceeds_safe_area': bool(
-                    (front or {}).get('exceeds_safe_area') or (back or {}).get('exceeds_safe_area')
-                ),
-            })
+            for copy_index in range(qty):
+                piece_index += 1
+                shirts.append({
+                    'order_number': getattr(order, 'order_number', None),
+                    'customer_name': customer_name,
+                    'child_name': (getattr(order, 'child_name', None) or '').strip(),
+                    'send_home': bool(getattr(order, 'send_home_with_child', False)),
+                    'quantity': 1,
+                    'piece_index': piece_index,
+                    'piece_total': piece_total,
+                    'item_seq': item_seq,
+                    'copy_index': copy_index,
+                    'packing_sort': packing,
+                    'size': getattr(item, 'size', None),
+                    'color': getattr(item, 'color', None),
+                    'age_group': (front or back or {}).get('age_group'),
+                    'garment_style': getattr(item, 'product_name', None),
+                    'style_number': getattr(item, 'style_number', None),
+                    'front': front,
+                    'back': back,
+                    'front_mockup_url': front_m,
+                    'back_mockup_url': back_m or front_m,
+                    'front_overlay_url': front_print_url(item) if front else None,
+                    'front_placement': getattr(item, 'placement', None) or (front or {}).get('placement') or 'center_chest',
+                    'exceeds_safe_area': bool(
+                        (front or {}).get('exceeds_safe_area') or (back or {}).get('exceeds_safe_area')
+                    ),
+                })
     return shirts
 
 
-def _sort_press_shirts(shirts, group_by='size'):
+def _sort_press_shirts(shirts, group_by='label'):
     def key(shirt):
         back = shirt.get('back') or {}
         front = shirt.get('front') or {}
         name = back.get('name') or front.get('design_name') or ''
+        packing = shirt.get('packing_sort') or ()
+        item_seq = shirt.get('item_seq') or 0
+        copy_index = shirt.get('copy_index') or 0
         if group_by == 'garment':
-            return (shirt.get('garment_style') or '', shirt.get('size') or '', name)
+            return (shirt.get('garment_style') or '', shirt.get('size') or '', packing, item_seq, copy_index)
         if group_by == 'name':
-            return (name, shirt.get('size') or '')
+            return (name, shirt.get('size') or '', packing, item_seq, copy_index)
         if group_by == 'order':
-            return (shirt.get('order_number') or '', name)
-        return (shirt.get('age_group') or '', shirt.get('size') or '', name)
+            return (shirt.get('order_number') or '', packing, item_seq, copy_index)
+        if group_by == 'size':
+            return (shirt.get('age_group') or '', shirt.get('size') or '', packing, item_seq, copy_index)
+        return (packing, item_seq, copy_index)
     return sorted(shirts, key=key)
 
 
@@ -895,7 +919,7 @@ def _transfer_csv_response(rows, filename):
 @admin_required
 def order_transfer_summary(order_id):
     order = Order.query.get_or_404(order_id)
-    group_by = request.args.get('group', 'size')
+    group_by = request.args.get('group', 'label')
     shirts = _sort_press_shirts(_collect_press_shirts([order]), group_by=group_by)
     return render_template(
         'admin/transfer_production.html',
@@ -3015,7 +3039,7 @@ def transfer_production():
 
     # On-screen press sheet: Ready to Press + Pressed (hand to the presser).
     query, stages, collection_id = ops_order_query(['ready_to_press', 'pressed'])
-    group_by = request.args.get('group', 'size')
+    group_by = request.args.get('group', 'label')
 
     if request.args.get('format') == 'csv':
         # CSV is for transfer sizing — include every open order that still needs
@@ -3191,12 +3215,7 @@ def print_labels():
         if collection_id:
             query = query.filter_by(collection_id=collection_id)
 
-    def _label_sort_key(order):
-        send_home = 0 if getattr(order, 'send_home_with_child', False) else 1
-        teacher = (getattr(order, 'teacher_name', None) or '').strip().lower()
-        grade = (getattr(order, 'child_grade', None) or '').strip().lower()
-        child = (getattr(order, 'child_name', None) or '').strip().lower()
-        return (send_home, teacher, grade, child, order.created_at or datetime.min)
+    from utils.ops_flow import packing_sort_key
 
     def _logo_label(item):
         design = getattr(item, 'design', None)
@@ -3226,7 +3245,7 @@ def print_labels():
             })
         return rows
 
-    orders = sorted(query.all(), key=_label_sort_key)
+    orders = sorted(query.all(), key=packing_sort_key)
     for order in orders:
         order.label_items = _label_items(order)
     collections = Collection.query.all()

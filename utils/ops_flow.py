@@ -1,8 +1,18 @@
 """Shared Daily Operations floor: one sequence, filters carried page to page."""
+from datetime import datetime
 from flask import request, url_for
 from urllib.parse import urlencode
 
 from utils.production_stages import STAGE_LABELS, normalize_stage_arg, orders_for_stages
+
+
+def packing_sort_key(order):
+    """Same order as packing labels: send-home first, then teacher, grade, child, time."""
+    send_home = 0 if getattr(order, 'send_home_with_child', False) else 1
+    teacher = (getattr(order, 'teacher_name', None) or '').strip().lower()
+    grade = (getattr(order, 'child_grade', None) or '').strip().lower()
+    child = (getattr(order, 'child_name', None) or '').strip().lower()
+    return (send_home, teacher, grade, child, order.created_at or datetime.min)
 
 DAILY_ENDPOINTS = {
     'admin.orders',

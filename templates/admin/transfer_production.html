@@ -7,7 +7,7 @@
         <div>
             <span class="adm-eyebrow">Admin / Production</span>
             <h1>{{ title }}</h1>
-            <p class="xfer-sub">One card per shirt. Front and back stay together. Hand this to the presser. When a shirt is done, move it to Pressed in Workflow, then print labels. <strong>Download CSV</strong> includes all open orders (even new ones still waiting on blanks).</p>
+            <p class="xfer-sub">One card per shirt, in the same order as packing labels. Front and back stay together. Hand this to the presser. When a shirt is done, move it to Pressed in Workflow, then print labels. <strong>Download CSV</strong> includes all open orders (even new ones still waiting on blanks).</p>
         </div>
         <div class="xfer-actions">
             {% if order %}
@@ -26,6 +26,7 @@
     <form method="get" class="xfer-filters no-print">
         <label>Sort
             <select name="group" onchange="this.form.submit()">
+                <option value="label" {% if group_by == 'label' %}selected{% endif %}>Same as labels</option>
                 <option value="size" {% if group_by == 'size' %}selected{% endif %}>Size</option>
                 <option value="name" {% if group_by == 'name' %}selected{% endif %}>Name / design</option>
                 <option value="garment" {% if group_by == 'garment' %}selected{% endif %}>Garment</option>
@@ -60,6 +61,9 @@
         {% set front = shirt.front %}
         {% set back = shirt.back %}
         <article class="xfer-card{% if shirt.exceeds_safe_area %} xfer-flag{% endif %}">
+            {% if shirt.piece_index and shirt.piece_total %}
+            <span class="xfer-count">{{ shirt.piece_index }}/{{ shirt.piece_total }}</span>
+            {% endif %}
             <div class="xfer-pair">
                 <div class="xfer-visual">
                     <div class="xfer-mock">
@@ -92,7 +96,11 @@
                 </div>
             </div>
             <div class="xfer-facts">
-                <h2>
+                <h2 class="xfer-customer">{{ shirt.customer_name or 'Customer' }}</h2>
+                {% if shirt.send_home and shirt.child_name %}
+                <p class="xfer-send">Send home: <strong>{{ shirt.child_name }}</strong></p>
+                {% endif %}
+                <p class="xfer-design">
                     {% if back and (back.name or back.number) %}
                     {{ back.name or '' }}{% if back.number %} #{{ back.number }}{% endif %}
                     {% elif front %}
@@ -100,11 +108,10 @@
                     {% else %}
                     Shirt
                     {% endif %}
-                </h2>
+                </p>
                 <p class="xfer-who">
                     {{ (shirt.age_group or '')|title }} {{ shirt.size }}
                     · <strong class="xfer-color">{{ shirt.color }}</strong>
-                    · Qty <strong>{{ shirt.quantity }}</strong>
                     {% if shirt.order_number %}<span class="xfer-ord"> · {{ shirt.order_number }}</span>{% endif %}
                 </p>
                 <p class="xfer-garment">{{ shirt.style_number or shirt.garment_style }}</p>
@@ -138,35 +145,47 @@
 .xfer-filters label { font-size: 0.82rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.3rem; }
 .xfer-filters select { min-height: 40px; padding: 0.35rem 0.6rem; }
 .xfer-print-banner {
-    font-size: 0.85rem;
-    padding: 0.25rem 0 0.65rem;
-    border-bottom: 1px solid #222;
-    margin-bottom: 0.75rem;
+    font-size: 1rem;
+    padding: 0.35rem 0 0.75rem;
+    border-bottom: 2px solid #111;
+    margin-bottom: 0.9rem;
 }
-.xfer-cards { display: flex; flex-direction: column; gap: 0.55rem; }
+.xfer-cards { display: flex; flex-direction: column; gap: 0.85rem; }
 .xfer-card {
+    position: relative;
     display: grid;
-    grid-template-columns: 176px 1fr;
-    gap: 0.75rem;
-    padding: 0.55rem 0.7rem;
-    border: 1px solid #999;
+    grid-template-columns: 280px 1fr;
+    gap: 1rem;
+    padding: 0.85rem 1.1rem 0.85rem 0.85rem;
+    border: 2px solid #111;
     background: #fff;
     break-inside: avoid;
     page-break-inside: avoid;
 }
-.xfer-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem; }
+.xfer-count {
+    position: absolute;
+    top: 0.45rem;
+    right: 0.55rem;
+    z-index: 2;
+    font-size: 1.55rem;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: #111;
+}
+.xfer-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; }
 .xfer-visual { text-align: center; }
 .xfer-mock {
     position: relative;
-    width: 80px;
-    height: 90px;
+    width: 128px;
+    height: 144px;
     margin: 0 auto;
     overflow: hidden;
     background: #fff;
 }
 .xfer-mock-img {
-    width: 80px;
-    height: 90px;
+    width: 128px;
+    height: 144px;
     object-fit: contain;
 }
 .xfer-logo {
@@ -179,7 +198,7 @@
 }
 .xfer-logo.left_chest { width: 14%; max-height: 18%; top: 32%; left: 62%; transform: translate(-50%, -50%); }
 .xfer-logo.right_chest { width: 14%; max-height: 18%; top: 32%; left: 38%; transform: translate(-50%, -50%); }
-.xfer-shirt { width: 58px; height: 66px; margin-top: 8px; }
+.xfer-shirt { width: 96px; height: 108px; margin-top: 10px; }
 .xfer-onshirt {
     position: absolute; left: 50%; top: 36%; transform: translate(-50%, 0);
     width: 72%; text-align: center; line-height: 1.05; pointer-events: none;
@@ -188,15 +207,17 @@
     display: block; font-weight: 800; letter-spacing: 0.03em; color: inherit;
     print-color-adjust: exact; -webkit-print-color-adjust: exact;
 }
-.xfer-onshirt-name { font-size: 0.5rem; }
-.xfer-onshirt-num { font-size: 0.78rem; }
-.xfer-side { display: block; margin-top: 0.15rem; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.08em; }
-.xfer-facts h2 { font-size: 1.15rem; margin: 0 0 0.2rem; }
-.xfer-who, .xfer-garment, .xfer-facts p { margin: 0 0 0.18rem; font-size: 0.84rem; line-height: 1.3; }
-.xfer-garment, .xfer-ord { color: #555; font-size: 0.78rem; }
+.xfer-onshirt-name { font-size: 0.78rem; }
+.xfer-onshirt-num { font-size: 1.15rem; }
+.xfer-side { display: block; margin-top: 0.2rem; font-size: 0.8rem; font-weight: 800; letter-spacing: 0.08em; }
+.xfer-facts h2, .xfer-customer { font-size: 1.45rem; margin: 0 0.15rem 0.2rem 0; padding-right: 3.2rem; line-height: 1.15; }
+.xfer-design { font-size: 1.12rem; font-weight: 700; margin: 0 0 0.25rem; }
+.xfer-send { font-size: 1rem; margin: 0 0 0.2rem; }
+.xfer-who, .xfer-garment, .xfer-facts p { margin: 0 0 0.22rem; font-size: 1rem; line-height: 1.35; }
+.xfer-garment, .xfer-ord { color: #333; font-size: 0.95rem; }
 .xfer-color { font-weight: 800; color: #111; }
 .xfer-tag { font-weight: 800; letter-spacing: 0.04em; margin-right: 0.25rem; }
-.xfer-flag { outline: 2px solid #111; }
+.xfer-flag { outline: 3px solid #111; }
 .xfer-warn { font-weight: 800; margin-top: 0.2rem; }
 .xfer-empty { padding: 2rem; background: #fff; }
 
@@ -210,8 +231,10 @@
     .xfer-card {
         grid-template-columns: 1fr;
         gap: 0.65rem;
+        padding-top: 2.2rem;
     }
     .xfer-pair { grid-template-columns: 1fr 1fr; }
+    .xfer-customer { padding-right: 0; }
 }
 @media (max-width: 480px) {
     .xfer-pair { grid-template-columns: 1fr; }
@@ -220,7 +243,7 @@
 @media print {
     @page {
         size: letter portrait;
-        margin: 0.35in;
+        margin: 0.4in;
     }
 
     .no-print, .ops-nav, .navbar, .logo, .logo-image, footer, .flash-messages,
@@ -245,70 +268,88 @@
     }
 
     .xfer-print-banner {
-        margin: 0 0 0.35rem;
-        padding: 0 0 0.2rem;
-        font-size: 0.72rem;
+        margin: 0 0 0.45rem;
+        padding: 0 0 0.25rem;
+        font-size: 12pt;
+        border-bottom: 2px solid #000;
     }
 
-    /* Two cards across so the sheet fills the page */
     .xfer-cards {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.35rem;
+        display: flex !important;
+        flex-direction: column;
+        gap: 0.45rem;
     }
 
     .xfer-card {
         display: grid !important;
-        grid-template-columns: 132px 1fr !important;
-        gap: 0.35rem !important;
-        padding: 0.24rem 0.35rem !important;
-        border: 1px solid #000 !important;
+        grid-template-columns: 240px 1fr !important;
+        gap: 0.7rem !important;
+        padding: 0.55rem 0.7rem 0.55rem 0.55rem !important;
+        border: 2px solid #000 !important;
         background: #fff !important;
         break-inside: avoid;
         page-break-inside: avoid;
     }
 
+    .xfer-count {
+        top: 0.4rem !important;
+        right: 0.5rem !important;
+        font-size: 18pt !important;
+    }
+
     .xfer-pair {
         grid-template-columns: 1fr 1fr !important;
-        gap: 0.2rem !important;
+        gap: 0.35rem !important;
     }
 
     .xfer-mock,
     .xfer-mock-img {
-        width: 62px !important;
-        height: 68px !important;
+        width: 108px !important;
+        height: 122px !important;
     }
 
     .xfer-shirt {
-        width: 54px !important;
-        height: 60px !important;
-        margin-top: 3px !important;
+        width: 92px !important;
+        height: 104px !important;
+        margin-top: 6px !important;
     }
 
     .xfer-side {
-        margin-top: 0.05rem !important;
-        font-size: 0.55rem !important;
-        letter-spacing: 0.04em !important;
+        margin-top: 0.12rem !important;
+        font-size: 9pt !important;
+        letter-spacing: 0.06em !important;
     }
 
-    .xfer-facts h2 {
-        font-size: 0.82rem !important;
-        margin: 0 0 0.1rem !important;
+    .xfer-customer {
+        font-size: 16pt !important;
+        margin: 0 0.2rem 0.15rem 0 !important;
+        padding-right: 2.8rem !important;
         line-height: 1.15 !important;
         word-break: break-word;
+    }
+
+    .xfer-design {
+        font-size: 13pt !important;
+        font-weight: 800 !important;
+        margin: 0 0 0.15rem !important;
+    }
+
+    .xfer-send {
+        font-size: 12pt !important;
+        margin: 0 0 0.12rem !important;
     }
 
     .xfer-who,
     .xfer-garment,
     .xfer-facts p {
-        margin: 0 0 0.08rem !important;
-        font-size: 0.68rem !important;
-        line-height: 1.2 !important;
+        margin: 0 0 0.12rem !important;
+        font-size: 12pt !important;
+        line-height: 1.25 !important;
     }
 
     .xfer-garment,
     .xfer-ord {
-        font-size: 0.62rem !important;
+        font-size: 11pt !important;
     }
 
     /* The paper sheet is a visual check, so make artwork deliberately easier
@@ -334,8 +375,8 @@
         top: 31% !important;
         width: 80% !important;
     }
-    .xfer-onshirt-name { font-size: 0.5rem !important; }
-    .xfer-onshirt-num { font-size: 0.72rem !important; }
+    .xfer-onshirt-name { font-size: 10pt !important; }
+    .xfer-onshirt-num { font-size: 14pt !important; }
 
     /* Keep garment color + logos visible for the presser (do not wash out). */
     .xfer-mock,
