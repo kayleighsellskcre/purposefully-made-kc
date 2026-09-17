@@ -163,7 +163,7 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert 'function visibleArtworkWidthRatio(image)' in html
     assert 'const garmentWidth = (box && box.widthPx)' in html
     assert 'garmentWidth * targetRatio / visibleWidthRatio' in html
-    assert 'const targetRatio = isSideChest ? 0.17 : 0.46' in html
+    assert 'const targetRatio = isSideChest ? 0.17 : 0.38' in html
     assert 'const orderedW = logoWidthForSize(size)' not in html
     assert '/design/preview/0' in html
     # Production is still generated from state.selectedSize via the default
