@@ -139,8 +139,8 @@
 .mockup-image {
     width: 100%;
     height: 100%;
-    object-fit: cover;
-    object-position: center 18%;
+    object-fit: contain;
+    object-position: center;
     transition: opacity 0.3s ease;
     position: relative;
     z-index: 1;
@@ -207,9 +207,9 @@
    Width is driven by applyDesignFit from ordered print inches → mockup %.
    These CSS defaults are the adult-M center fallback before JS runs. */
 .design-layer[data-placement="center_chest"] {
-    width: 38%;
+    width: 30%;
     max-width: none;
-    max-height: 46%;
+    max-height: 32%;
     min-height: 44px;
     top: 38%;
     left: 50%;
@@ -237,9 +237,9 @@
 }
 
 .design-layer[data-placement="center_back"] {
-    width: 38%;
+    width: 30%;
     max-width: none;
-    max-height: 46%;
+    max-height: 32%;
     top: 38%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -1997,7 +1997,7 @@
                     <strong>{{ uniform_kit|title }} player uniform · {{ uniform_locked_color }}</strong>
                     Your organizer selected this uniform color. Choose the player’s size, logo, and back details.
                     {% else %}
-                    <strong>Family &amp; Fan Wear</strong> Your organizer has chosen the available colors and designs for this group order.
+                    <strong>Family &amp; Fan Wear</strong> Your organizer has chosen the available colors and designs for this group order. A name or number on the back is optional.
                     {% endif %}
                 </div>
                 {% endif %}
@@ -2389,10 +2389,16 @@
                     {# Group order: organizer allows back design — show simplified header without price toggle #}
                     <div style="padding: 1.25rem; background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.05)); border-radius: 12px; border: 2px solid #e8e8e8; margin-bottom: 1rem;">
                         <strong style="font-size: 1.1rem; color: #333;">
-                            {% if back_design_type == 'name_number' %}Add Your Name &amp; Number{% elif back_design_type == 'image' %}Add Back Design{% else %}Optional Back Design{% endif %}
+                            {% if catalog_section == 'uniform' and back_design_type == 'name_number' %}Add Your Name &amp; Number{% elif back_design_type == 'image' %}Add Back Design{% else %}Optional Name &amp; Number{% endif %}
                         </strong>
                         <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #666;">
-                            {% if back_design_type in ('name_number', 'both') %}Set by your group organizer. A name or number is $3. Both are $6.{% else %}Set by your group organizer. See options below.{% endif %}
+                            {% if catalog_section == 'uniform' and back_design_type in ('name_number', 'both') %}
+                            Set by your group organizer. A name or number is $3. Both are $6.
+                            {% elif back_design_type in ('name_number', 'both') %}
+                            Skip this if you do not want a name or number. A name or number is $3. Both are $6.
+                            {% else %}
+                            Set by your group organizer. See options below.
+                            {% endif %}
                         </p>
                     </div>
                     {% else %}
@@ -2430,20 +2436,27 @@
                         <div id="backDesignNameNumber" class="back-design-mode">
                             {% if in_group_order and back_design_type in ('name_number', 'both') %}
                             <p class="form-hint" style="margin-bottom: 1rem;">
+                                {% if catalog_section == 'uniform' %}
                                 {% if back_design_name_part == 'first' %}
                                 Enter the player's <strong>first name</strong>{% if back_design_type != 'image' %} and optional number{% endif %}. Your organizer asked for first names on these jerseys.
                                 {% else %}
                                 Enter the player's <strong>last name</strong>{% if back_design_type != 'image' %} and optional number{% endif %}. Your organizer asked for last names on these jerseys.
                                 {% endif %}
                                 A name or number is $3. Both are $6.
+                                {% else %}
+                                Optional. Leave this blank if you do not want a name or number on the back. A name or number is $3. Both are $6.
+                                {% endif %}
                             </p>
                             {% else %}
                             <p class="form-hint" style="margin-bottom: 1rem;">Perfect for jerseys. Enter a name, number, or both to preview the back. A name or number is $3. Both are $6.</p>
                             {% endif %}
                             <div class="form-group" style="margin-bottom: 0.75rem;">
-                                {% if in_group_order and back_design_type in ('name_number', 'both') %}
+                                {% if catalog_section == 'uniform' %}
                                 <label for="backDesignNameInput">{% if back_design_name_part == 'first' %}Player's first name{% else %}Player's last name{% endif %}</label>
                                 <input type="text" id="backDesignNameInput" class="form-control" placeholder="{% if back_design_name_part == 'first' %}e.g. JORDAN{% else %}e.g. SMITH{% endif %}" maxlength="20" style="text-transform: uppercase;">
+                                {% elif in_group_order %}
+                                <label for="backDesignNameInput">{% if back_design_name_part == 'first' %}First name (optional){% else %}Last name (optional){% endif %}</label>
+                                <input type="text" id="backDesignNameInput" class="form-control" placeholder="Optional" maxlength="20" style="text-transform: uppercase;">
                                 {% else %}
                                 <label for="backDesignNameInput">Name</label>
                                 <input type="text" id="backDesignNameInput" class="form-control" placeholder="e.g. SMITH" maxlength="20" style="text-transform: uppercase;">
@@ -2662,8 +2675,10 @@
         allowedPlacements: {{ (allowed_placements | tojson) if allowed_placements else 'null' }},
         artworkFitDesignId: null,
         artworkFitRatio: null,
-        lastFrontGarmentWidthPx: null
+        lastFrontGarmentWidthPx: null,
+        lastFrontGarmentHeightPx: null
     };
+    const requireBackName = {{ 'true' if catalog_section == 'uniform' else 'false' }};
     const TRANSFER_SIZING = {{ transfer_sizing | default({}) | tojson }};
     
     // Initialize
@@ -3322,7 +3337,7 @@
     const GARMENT_SILHOUETTES = {};
     // Stand-in until the real silhouette arrives: a ghost mockup fills about
     // this much of the frame. Same inch math, coarser garment box.
-    const GARMENT_FALLBACK = { top: 0.12, height: 0.70, center: 0.5 };
+    const GARMENT_FALLBACK = { top: 0.14, height: 0.68, center: 0.5, width: 0.46, left: 0.27 };
 
     function bodyLengthIn(sizeOverride) {
         const table = (TRANSFER_SIZING && TRANSFER_SIZING.body_lengths) || {};
@@ -3648,26 +3663,37 @@
         const box = garmentBox();
         if (box && box.measured && box.widthPx) {
             state.lastFrontGarmentWidthPx = box.widthPx;
+            state.lastFrontGarmentHeightPx = box.heightPx;
         }
         const garmentWidth = (box && box.measured && box.widthPx)
             || state.lastFrontGarmentWidthPx
             || (box && box.widthPx);
+        const garmentHeight = (box && box.measured && box.heightPx)
+            || state.lastFrontGarmentHeightPx
+            || (box && box.heightPx);
         if (!garmentWidth) return;
         const visibleWidthRatio = (
             state.artworkFitDesignId != null
             && String(state.artworkFitDesignId) === String(state.presetDesignId)
             && state.artworkFitRatio
         ) ? state.artworkFitRatio : visibleArtworkWidthRatio(designImage);
-        const targetRatio = isSideChest ? 0.17 : 0.38;
+        const targetRatio = isSideChest ? 0.14 : 0.30;
         let layerWidthPx = garmentWidth * targetRatio / visibleWidthRatio;
-        const maxH = isSideChest ? 20 : 60;
-        const maxVsGarment = garmentWidth * (isSideChest ? 0.22 : 0.50);
-        layerWidthPx = Math.min(layerWidthPx, maxVsGarment, canvasWidth * (isSideChest ? 0.22 : 0.42));
-        layerWidthPx = Math.max(layerWidthPx, garmentWidth * (isSideChest ? 0.10 : 0.22));
+        const natW = designImage.naturalWidth || 1;
+        const natH = designImage.naturalHeight || natW;
+        const maxHpx = (garmentHeight || garmentWidth) * (isSideChest ? 0.14 : 0.28);
+        if (natH > 0 && natW > 0) {
+            layerWidthPx = Math.min(layerWidthPx, maxHpx * (natW / natH));
+        }
+        const maxVsGarment = garmentWidth * (isSideChest ? 0.18 : 0.36);
+        layerWidthPx = Math.min(layerWidthPx, maxVsGarment, canvasWidth * (isSideChest ? 0.18 : 0.32));
+        if (box && box.measured) {
+            layerWidthPx = Math.max(layerWidthPx, garmentWidth * (isSideChest ? 0.08 : 0.16));
+        }
 
         designLayer.style.width = layerWidthPx.toFixed(1) + 'px';
         designLayer.style.maxWidth = 'none';
-        designLayer.style.maxHeight = maxH.toFixed(1) + '%';
+        designLayer.style.maxHeight = maxHpx.toFixed(1) + 'px';
     }
     
     function applyBackDesignPosition() {
@@ -5163,6 +5189,13 @@
                         ctx.fillStyle = '#faf7f2';
                         ctx.fillRect(0, 0, prect.width, prect.height);
 
+                        const disp = mockupDisplayRect();
+                        if (disp && mockup.naturalWidth) {
+                            try {
+                                ctx.drawImage(mockup, disp.left, disp.top, disp.width, disp.height);
+                            } catch (e) { /* tainted canvas from CDN — skip */ }
+                        }
+
                         function drawEl(el) {
                             if (!el) return;
                             const r = el.getBoundingClientRect();
@@ -5174,8 +5207,6 @@
                                 } catch (e) { /* tainted canvas from CDN — skip */ }
                             }
                         }
-
-                        drawEl(mockup);
 
                         if (side === 'front') {
                             const layer = document.getElementById('designLayer');
@@ -5294,8 +5325,10 @@
             if (state.backDesignEnabled) {
                 if (state.backDesignMode === 'name_number') {
                     if (!state.backDesignName && !state.backDesignNumber) {
-                        PMKC.showFlash('Please enter a name and/or number for the back design', 'error');
-                        return;
+                        if (requireBackName) {
+                            PMKC.showFlash('Please enter a name and/or number for the back design', 'error');
+                            return;
+                        }
                     }
                 } else if (state.backDesignMode === 'upload' && !state.backDesignFile && !state.backDesignUrl) {
                     PMKC.showFlash('Please upload a back design image', 'error');
@@ -5338,6 +5371,7 @@
                 
                 if (state.backDesignEnabled) {
                     if (state.backDesignMode === 'name_number') {
+                        if (state.backDesignName || state.backDesignNumber) {
                         const backFile = await generateBackDesignNameNumberImage();
                         if (!backFile) {
                             this.textContent = 'Add to Cart';
@@ -5363,6 +5397,7 @@
                         if (state.numberTrackingEm != null) formData.append('number_tracking_em', state.numberTrackingEm);
                         if (state.nameCondense != null) formData.append('name_condense', state.nameCondense);
                         if (state.numberCondense != null) formData.append('number_condense', state.numberCondense);
+                        }
                     } else if (state.backDesignFile) {
                         formData.append('back_design', state.backDesignFile);
                     } else if (state.backDesignUrl) {
@@ -5374,7 +5409,7 @@
                 try {
                     const frontProof = await capturePreviewProofBlob('front');
                     if (frontProof) formData.append('proof_front', frontProof, 'proof_front.png');
-                    if (state.backDesignEnabled) {
+                    if (hasBackDesign) {
                         const backProof = await capturePreviewProofBlob('back');
                         if (backProof) formData.append('proof_back', backProof, 'proof_back.png');
                         const frontBtn = document.getElementById('viewFront');

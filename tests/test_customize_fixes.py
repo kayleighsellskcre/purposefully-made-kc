@@ -165,7 +165,10 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert 'function visibleArtworkWidthRatio(image)' in html
     assert 'const garmentWidth = (box && box.measured && box.widthPx)' in html
     assert 'garmentWidth * targetRatio / visibleWidthRatio' in html
-    assert 'const targetRatio = isSideChest ? 0.17 : 0.38' in html
+    assert 'const targetRatio = isSideChest ? 0.14 : 0.30' in html
+    assert 'maxHpx * (natW / natH)' in html
+    assert 'ctx.drawImage(mockup, disp.left, disp.top, disp.width, disp.height)' in html
+    assert 'object-position: center 18%' not in html
     assert "if (state.currentView === 'back') return;" in html
     assert 'state.lastFrontGarmentWidthPx' in html
     assert 'canvasWidth * 0.62' not in html
@@ -281,14 +284,27 @@ def test_group_customize_tells_parents_to_enter_first_name(client, app, seed):
         coll.back_design_name_part = 'first'
         coll.allow_back_design = True
         coll.back_design_type = 'name_number'
+        coll.team_store_config = json.dumps({
+            'version': 1,
+            'uniform': {
+                'enabled': True,
+                'product_id': seed['tee_id'],
+                'home_color': 'Black',
+                'away_color': '',
+            },
+            'fan_product_ids': [seed['hoodie_id']],
+        })
         db.session.commit()
     with client.session_transaction() as sess:
         sess['collection_id'] = seed['collection_id']
-    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    html = client.get(
+        f'/shop/customize/{seed["tee_id"]}?catalog_section=uniform&uniform_kit=home'
+    ).get_data(as_text=True)
     assert "Player's first name" in html
     assert 'e.g. JORDAN' in html
     assert 'first names on these jerseys' in html
     assert "Player's last name" not in html
+    assert 'const requireBackName = true' in html
 
 
 def test_group_customize_defaults_to_last_name_on_jerseys(client, app, seed):
@@ -297,10 +313,53 @@ def test_group_customize_defaults_to_last_name_on_jerseys(client, app, seed):
         coll = db.session.get(Collection, seed['collection_id'])
         coll.allow_back_design = True
         coll.back_design_type = 'name_number'
+        coll.team_store_config = json.dumps({
+            'version': 1,
+            'uniform': {
+                'enabled': True,
+                'product_id': seed['tee_id'],
+                'home_color': 'Black',
+                'away_color': '',
+            },
+            'fan_product_ids': [seed['hoodie_id']],
+        })
         db.session.commit()
     with client.session_transaction() as sess:
         sess['collection_id'] = seed['collection_id']
-    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    html = client.get(
+        f'/shop/customize/{seed["tee_id"]}?catalog_section=uniform&uniform_kit=home'
+    ).get_data(as_text=True)
     assert "Player's last name" in html
     assert 'e.g. SMITH' in html
     assert 'last names on these jerseys' in html
+
+
+def test_fan_wear_customize_does_not_require_a_name_or_number(client, app, seed):
+    with app.app_context():
+        from models import Collection
+        coll = db.session.get(Collection, seed['collection_id'])
+        coll.allow_back_design = True
+        coll.back_design_type = 'name_number'
+        coll.restrict_options = True
+        coll.team_store_config = json.dumps({
+            'version': 1,
+            'uniform': {
+                'enabled': True,
+                'product_id': seed['tee_id'],
+                'home_color': 'Black',
+                'away_color': '',
+            },
+            'fan_product_ids': [seed['tee_id']],
+            'fan_personalization_enabled': True,
+        })
+        db.session.commit()
+    with client.session_transaction() as sess:
+        sess['collection_id'] = seed['collection_id']
+    html = client.get(
+        f'/shop/customize/{seed["tee_id"]}?catalog_section=fan'
+    ).get_data(as_text=True)
+    assert 'const requireBackName = false' in html
+    assert 'Optional. Leave this blank if you do not want a name or number' in html
+    assert 'Last name (optional)' in html
+    assert "Player's last name" not in html
+    assert 'if (requireBackName)' in html
