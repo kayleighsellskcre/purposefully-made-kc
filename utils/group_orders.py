@@ -718,6 +718,8 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
     else:
         collection.allow_back_design = True
         collection.back_design_type  = bdt if bdt in ('name_number', 'image', 'both') else 'both'
+        name_part = (request.form.get('back_design_name_part') or 'last').strip().lower()
+        collection.back_design_name_part = name_part if name_part in ('first', 'last') else 'last'
 
     password = (request.form.get('password') or '').strip()
     if request.form.get('password_protected') == 'on':

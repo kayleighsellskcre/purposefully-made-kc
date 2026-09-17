@@ -2698,6 +2698,13 @@ def add_collection():
                 if back_type in ('name_number', 'image', 'both')
                 else 'both'
             )
+            if collection.allow_back_design and collection.back_design_type in (
+                'name_number', 'both'
+            ):
+                name_part = (request.form.get('back_design_name_part') or 'last').strip().lower()
+                collection.back_design_name_part = (
+                    name_part if name_part in ('first', 'last') else 'last'
+                )
 
             from utils.group_orders import apply_collection_card, apply_schedule_from_form, set_collection_products_from_form
             apply_collection_card(collection)

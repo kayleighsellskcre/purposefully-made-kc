@@ -175,7 +175,7 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    transition: all 0.3s ease;
+    transition: transform 0.3s ease;
     pointer-events: none;
     display: flex;
     align-items: center;
@@ -2215,7 +2215,7 @@
                             <div class="logo-gallery-item{% if preset_design and preset_design.id == d.id %} selected{% endif %}"
                                  data-design-id="{{ d.id }}" data-design-url="{{ d.url }}" data-design-title="{{ d.title }}"
                                  role="button" tabindex="0" title="{{ d.title }}">
-                                <img src="{{ d.url }}" alt="{{ d.title }}" loading="lazy" decoding="async" draggable="false">
+                                <img src="{{ d.url }}" alt="{{ d.title }}" loading="eager" fetchpriority="high" decoding="async" draggable="false">
                             </div>
                             {% endfor %}
                         </div>
@@ -2428,10 +2428,26 @@
                         {% endif %}
                         
                         <div id="backDesignNameNumber" class="back-design-mode">
+                            {% if in_group_order and back_design_type in ('name_number', 'both') %}
+                            <p class="form-hint" style="margin-bottom: 1rem;">
+                                {% if back_design_name_part == 'first' %}
+                                Enter the player's <strong>first name</strong>{% if back_design_type != 'image' %} and optional number{% endif %}. Your organizer asked for first names on these jerseys.
+                                {% else %}
+                                Enter the player's <strong>last name</strong>{% if back_design_type != 'image' %} and optional number{% endif %}. Your organizer asked for last names on these jerseys.
+                                {% endif %}
+                                A name or number is $3. Both are $6.
+                            </p>
+                            {% else %}
                             <p class="form-hint" style="margin-bottom: 1rem;">Perfect for jerseys. Enter a name, number, or both to preview the back. A name or number is $3. Both are $6.</p>
+                            {% endif %}
                             <div class="form-group" style="margin-bottom: 0.75rem;">
+                                {% if in_group_order and back_design_type in ('name_number', 'both') %}
+                                <label for="backDesignNameInput">{% if back_design_name_part == 'first' %}Player's first name{% else %}Player's last name{% endif %}</label>
+                                <input type="text" id="backDesignNameInput" class="form-control" placeholder="{% if back_design_name_part == 'first' %}e.g. JORDAN{% else %}e.g. SMITH{% endif %}" maxlength="20" style="text-transform: uppercase;">
+                                {% else %}
                                 <label for="backDesignNameInput">Name</label>
                                 <input type="text" id="backDesignNameInput" class="form-control" placeholder="e.g. SMITH" maxlength="20" style="text-transform: uppercase;">
+                                {% endif %}
                             </div>
                             <div class="form-group" style="margin-bottom: 0.75rem;">
                                 <label for="backDesignNumberInput">Number</label>
@@ -2644,6 +2660,8 @@
         designDragOffset: { center_chest: { x: 0, y: 0 }, left_chest: { x: 0, y: 0 }, right_chest: { x: 0, y: 0 }, center_back: { x: 0, y: 0 } },
         presetDesignId: {{ preset_design.id if preset_design else 'null' }},
         allowedPlacements: {{ (allowed_placements | tojson) if allowed_placements else 'null' }},
+        artworkFitDesignId: null,
+        artworkFitRatio: null,
         lastFrontGarmentWidthPx: null
     };
     const TRANSFER_SIZING = {{ transfer_sizing | default({}) | tojson }};
@@ -2718,14 +2736,14 @@
         const chooserGrid = document.getElementById('logoColorChooserGrid');
         const chooserTitle = document.getElementById('logoColorChooserTitle');
 
-        function applyFromVariant(v, title) {
-            applyPresetDesign({ id: v.id, url: v.url, title: title || v.label || 'Design' });
+        function applyFromVariant(v, title, cachedImg) {
+            applyPresetDesign({ id: v.id, url: v.url, title: title || v.label || 'Design' }, cachedImg);
             document.querySelectorAll('.logo-gallery-item').forEach(el => el.classList.remove('selected'));
         }
 
         function showColorChooser(card, variants) {
             if (!chooser || !chooserGrid) {
-                applyFromVariant(variants[0], card.dataset.designTitle);
+                applyFromVariant(variants[0], card.dataset.designTitle, card.querySelector('img'));
                 return;
             }
             chooserTitle.textContent = card.dataset.designTitle || 'this design';
@@ -2741,13 +2759,13 @@
                         b.classList.remove('selected');
                     });
                     btn.classList.add('selected');
-                    applyFromVariant(v, card.dataset.designTitle);
+                    applyFromVariant(v, card.dataset.designTitle, btn.querySelector('img') || card.querySelector('img'));
                     card.classList.add('selected');
                 });
                 chooserGrid.appendChild(btn);
             });
             chooser.hidden = false;
-            applyFromVariant(variants[0], card.dataset.designTitle);
+            applyFromVariant(variants[0], card.dataset.designTitle, card.querySelector('img'));
             card.classList.add('selected');
             chooser.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
@@ -2771,7 +2789,7 @@
                         url: (variants[0] && variants[0].url) || card.dataset.designUrl,
                         title: card.dataset.designTitle
                     };
-                    applyPresetDesign(design);
+                    applyPresetDesign(design, card.querySelector('img'));
                     document.querySelectorAll('.logo-gallery-item').forEach(el => el.classList.remove('selected'));
                     card.classList.add('selected');
                 }
@@ -2800,7 +2818,7 @@
             e.stopPropagation();
             const design = { id: card.dataset.designId, url: card.dataset.designUrl, title: card.dataset.designTitle };
             try {
-                applyPresetDesign(design);
+                applyPresetDesign(design, card.querySelector('img'));
                 document.querySelectorAll('.logo-gallery-item').forEach(el => el.classList.remove('selected'));
                 card.classList.add('selected');
             } catch (err) {
@@ -3632,9 +3650,14 @@
             state.lastFrontGarmentWidthPx = box.widthPx;
         }
         const garmentWidth = (box && box.measured && box.widthPx)
-            || state.lastFrontGarmentWidthPx;
+            || state.lastFrontGarmentWidthPx
+            || (box && box.widthPx);
         if (!garmentWidth) return;
-        const visibleWidthRatio = visibleArtworkWidthRatio(designImage);
+        const visibleWidthRatio = (
+            state.artworkFitDesignId != null
+            && String(state.artworkFitDesignId) === String(state.presetDesignId)
+            && state.artworkFitRatio
+        ) ? state.artworkFitRatio : visibleArtworkWidthRatio(designImage);
         const targetRatio = isSideChest ? 0.17 : 0.38;
         let layerWidthPx = garmentWidth * targetRatio / visibleWidthRatio;
         const maxH = isSideChest ? 20 : 60;
@@ -4098,7 +4121,7 @@
         refreshAddToCartButton();
     }
     
-    function applyPresetDesign(preset) {
+    function applyPresetDesign(preset, cachedImg) {
         if (!preset || !preset.url) return;
         const designImage = document.getElementById('designImage');
         const designPreviewImage = document.getElementById('designPreviewImage');
@@ -4110,37 +4133,73 @@
         state.designUrl = preset.url;
         state.designFile = null;
         state.presetDesignId = preset.id || null;
+        state.artworkFitDesignId = null;
+        state.artworkFitRatio = null;
         const allowed = state.allowedPlacements;
         state.selectedPlacement = (allowed && allowed.length) ? allowed[0] : 'center_chest';
-        
-        designImage.onload = function() {
-            state.designWidth = this.naturalWidth;
-            state.designHeight = this.naturalHeight;
+
+        function paintOnShirt() {
+            state.designWidth = designImage.naturalWidth
+                || (cachedImg && cachedImg.naturalWidth)
+                || state.designWidth;
+            state.designHeight = designImage.naturalHeight
+                || (cachedImg && cachedImg.naturalHeight)
+                || state.designHeight;
             applyDesignFit();
             applyDesignPosition();
-        };
+        }
+
+        designImage.decoding = 'async';
+        designImage.fetchPriority = 'high';
+        designImage.onload = paintOnShirt;
+
+        // Show the already-cached gallery/CDN file immediately. The same-origin
+        // preview stream is only for measuring transparent padding and must
+        // never delay the first paint.
+        let instantSrc = preset.url;
+        if (cachedImg && (cachedImg.currentSrc || cachedImg.src)) {
+            instantSrc = cachedImg.currentSrc || cachedImg.src;
+        } else {
+            const cards = document.querySelectorAll('.logo-gallery-item img');
+            cards.forEach(function(img) {
+                const card = img.closest('.logo-gallery-item');
+                if (!card) return;
+                const sameId = preset.id && String(card.dataset.designId) === String(preset.id);
+                const sameUrl = card.dataset.designUrl === preset.url;
+                if ((sameId || sameUrl) && (img.currentSrc || img.src)) {
+                    instantSrc = img.currentSrc || img.src;
+                }
+            });
+        }
+        designImage.src = instantSrc;
+        if (designImage.complete && designImage.naturalWidth > 0) {
+            paintOnShirt();
+        } else if (cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0) {
+            paintOnShirt();
+        }
+
         const previewTemplate = {{ url_for('design.preview_artwork', design_id=0) | tojson }};
-        const previewSource = preset.preview_url || (
-            preset.id ? previewTemplate.replace(/0$/, String(preset.id)) : preset.url
-        );
-        designImage.onerror = function() {
-            // Preserve the mockup if cloud previewing is temporarily
-            // unavailable; the original artwork URL remains the order file.
-            if (this.src !== preset.url) {
-                this.onerror = null;
-                this.src = preset.url;
-            }
-        };
-        designImage.src = previewSource;
-        designPreviewImage.src = preset.url;
+        if (preset.id) {
+            const measureImg = new Image();
+            measureImg.onload = function() {
+                if (String(state.presetDesignId) !== String(preset.id)) return;
+                state.artworkFitDesignId = preset.id;
+                state.artworkFitRatio = visibleArtworkWidthRatio(measureImg);
+                applyDesignFit();
+                applyDesignPosition();
+            };
+            measureImg.src = previewTemplate.replace(/0$/, String(preset.id));
+        }
+
+        if (designPreviewImage) designPreviewImage.src = preset.url;
         if (typeof resetArtworkInspector === 'function') resetArtworkInspector();
         state.lastUploadedFile = null;
-        designPreview.classList.add('active');
+        if (designPreview) designPreview.classList.add('active');
         designLayer.classList.add('visible');
         designLayer.classList.add('draggable');
         designLayer.style.display = 'flex';
         designLayer.setAttribute('data-placement', state.selectedPlacement);
-        placementSection.style.display = 'block';
+        if (placementSection) placementSection.style.display = 'block';
         const backSection = document.getElementById('backDesignSection');
         if (backSection) backSection.style.display = 'block';
         

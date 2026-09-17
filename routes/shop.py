@@ -323,6 +323,13 @@ def create_group_order():
                 if back_type in ('name_number', 'image', 'both')
                 else 'both'
             )
+            if collection.allow_back_design and collection.back_design_type in (
+                'name_number', 'both'
+            ):
+                name_part = (request.form.get('back_design_name_part') or 'last').strip().lower()
+                collection.back_design_name_part = (
+                    name_part if name_part in ('first', 'last') else 'last'
+                )
 
             from utils.group_orders import apply_collection_card, apply_schedule_from_form, set_collection_products_from_form
             apply_collection_card(collection)
@@ -585,6 +592,7 @@ def customize(product_id):
     allowed_design_ids = None
     back_design_type = 'both'   # 'none' | 'name_number' | 'image' | 'both'
     allow_back_design = True
+    back_design_name_part = 'last'
     catalog_section = None
     uniform_kit = None
     uniform_locked_color = None
@@ -637,6 +645,8 @@ def customize(product_id):
         back_design_type = getattr(coll, 'back_design_type', 'both') or 'both'
         _allow = getattr(coll, 'allow_back_design', None)
         allow_back_design = bool(_allow) if _allow is not None else True
+        name_part = (getattr(coll, 'back_design_name_part', None) or 'last').strip().lower()
+        back_design_name_part = name_part if name_part in ('first', 'last') else 'last'
         if has_colors:
             allowed = allowed_colors_for_product(product, coll)
             if allowed is not None:
@@ -726,6 +736,7 @@ def customize(product_id):
                          customize_back_fonts=CUSTOMIZE_BACK_FONTS,
                          current_user=current_user,
                          collection_restricted=collection_restricted,
+                         in_group_order=bool(coll),
                          allow_custom_upload=allow_custom_upload,
                          allowed_placements=allowed_placements,
                          back_design_font=back_design_font,
@@ -735,6 +746,7 @@ def customize(product_id):
                          lock_back_design_style=lock_back_design_style,
                          back_design_type=back_design_type,
                          allow_back_design=allow_back_design,
+                         back_design_name_part=back_design_name_part,
                          allowed_design_ids=allowed_design_ids,
                          is_adult=is_adult,
                          transfer_sizing=transfer_sizing,

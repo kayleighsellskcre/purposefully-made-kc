@@ -178,6 +178,8 @@ class Collection(db.Model):
     allow_back_design = db.Column(db.Boolean, default=True)
     # back_design_type: 'name_number' | 'image' | 'both'  (ignored when allow_back_design=False)
     back_design_type = db.Column(db.String(20), default='both')
+    # Jersey name line: 'first' or 'last' so parents know what to type.
+    back_design_name_part = db.Column(db.String(20), default='last')
 
     # Optional two-lane team store. JSON keeps the uniform product + fixed
     # Home/Away colors separate from the existing fan-wear product/color rules.

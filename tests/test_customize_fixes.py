@@ -103,6 +103,8 @@ def test_group_order_customize_shows_logo_thumbnails_not_a_dropdown(client, app,
     assert 'logoGalleryGrid' in html
     assert 'id="galleryDesignSelect"' not in html
     assert 'Group logos' in html
+    assert 'loading="eager"' in html
+    assert 'fetchpriority="high"' in html
 
 
 def test_header_shop_link_leaves_the_group_order(client, seed):
@@ -173,6 +175,11 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert 'box.widthPx * 0.22' not in html
     assert 'const orderedW = logoWidthForSize(size)' not in html
     assert '/design/preview/0' in html
+    assert 'designImage.src = instantSrc' in html
+    assert 'never delay the first paint' in html
+    assert '|| (box && box.widthPx)' in html
+    assert "designImage.src = previewSource" not in html
+    assert 'transition: transform 0.3s ease' in html
     # Production is still generated from state.selectedSize via the default
     # size-aware helpers, then measured before the values are submitted.
     assert "formData.append('size', state.selectedSize)" in html
@@ -265,3 +272,35 @@ def test_same_origin_design_preview_streams_cloud_artwork(
 def test_group_order_create_form_offers_varsity_regular(customer_client):
     html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
     assert 'Varsity Regular' in html
+
+
+def test_group_customize_tells_parents_to_enter_first_name(client, app, seed):
+    with app.app_context():
+        from models import Collection
+        coll = db.session.get(Collection, seed['collection_id'])
+        coll.back_design_name_part = 'first'
+        coll.allow_back_design = True
+        coll.back_design_type = 'name_number'
+        db.session.commit()
+    with client.session_transaction() as sess:
+        sess['collection_id'] = seed['collection_id']
+    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    assert "Player's first name" in html
+    assert 'e.g. JORDAN' in html
+    assert 'first names on these jerseys' in html
+    assert "Player's last name" not in html
+
+
+def test_group_customize_defaults_to_last_name_on_jerseys(client, app, seed):
+    with app.app_context():
+        from models import Collection
+        coll = db.session.get(Collection, seed['collection_id'])
+        coll.allow_back_design = True
+        coll.back_design_type = 'name_number'
+        db.session.commit()
+    with client.session_transaction() as sess:
+        sess['collection_id'] = seed['collection_id']
+    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    assert "Player's last name" in html
+    assert 'e.g. SMITH' in html
+    assert 'last names on these jerseys' in html

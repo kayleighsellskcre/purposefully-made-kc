@@ -221,6 +221,19 @@
                     </div>
 
                     <div id="back-font-section" style="display:none">
+                        <p class="form-hint" style="margin-top:1rem">What name should parents put on the jersey?</p>
+                        <div class="placement-checkboxes" style="margin-bottom:0.75rem">
+                            <label class="placement-checkbox">
+                                <input type="radio" name="back_design_name_part" value="last" checked>
+                                <span>Last name</span>
+                                <small>Parents type SMITH</small>
+                            </label>
+                            <label class="placement-checkbox">
+                                <input type="radio" name="back_design_name_part" value="first">
+                                <span>First name</span>
+                                <small>Parents type JORDAN</small>
+                            </label>
+                        </div>
                         <p class="form-hint" style="margin-top:1rem">Choose the font for name &amp; number on the back:</p>
                         <div class="font-choice-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.75rem;margin-top:0.5rem">
                             {% for font_value, font_label in back_design_fonts %}

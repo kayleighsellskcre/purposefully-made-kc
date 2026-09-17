@@ -212,6 +212,27 @@ def test_the_create_page_renders_for_a_signed_in_customer(customer_client):
     assert 'Create Group Order' in resp.get_data(as_text=True)
 
 
+def test_create_form_asks_whether_jersey_uses_first_or_last_name(customer_client):
+    html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
+    assert 'name="back_design_name_part"' in html
+    assert 'value="first"' in html
+    assert 'value="last"' in html
+    assert 'What name should parents put on the jersey?' in html
+
+
+def test_organizer_can_require_first_names_on_jerseys(customer_client, seed, app):
+    form = _base_form(seed)
+    form['back_design_type'] = 'name_number'
+    form['back_design_name_part'] = 'first'
+    form['back_design_font'] = 'Sports Jersey'
+    resp = _post(customer_client, form)
+    assert resp.status_code == 200
+    with app.app_context():
+        saved = Collection.query.filter_by(name=form['name']).one()
+        assert saved.back_design_name_part == 'first'
+        assert saved.back_design_type == 'name_number'
+
+
 def test_group_order_setup_does_not_offer_the_general_design_library(customer_client):
     html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
     assert 'Or pick from existing designs' not in html
