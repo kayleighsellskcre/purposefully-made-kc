@@ -153,6 +153,19 @@ def test_customize_offers_bright_pink_and_yellow_text_swatches(client, app, seed
     assert 'Varsity Regular Solid' in html
 
 
+def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
+    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    assert 'function previewReferenceSize()' in html
+    assert 'const size = previewReferenceSize();' in html
+    assert 'bodyLengthIn(previewReferenceSize())' in html
+    assert 'nameHeightIn(previewSize)' in html
+    # Production is still generated from state.selectedSize via the default
+    # size-aware helpers, then measured before the values are submitted.
+    generated = html.index('await generateBackDesignNameNumberImage()')
+    measured = html.index("formData.append('name_width_in'", generated)
+    assert measured > generated
+
+
 def test_group_order_create_form_offers_varsity_regular(customer_client):
     html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
     assert 'Varsity Regular' in html

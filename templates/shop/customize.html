@@ -2936,6 +2936,14 @@
         if (TRANSFER_SIZING && TRANSFER_SIZING.age_group) return TRANSFER_SIZING.age_group;
         return state.isAdult ? 'adult' : 'youth';
     }
+    function previewReferenceSize() {
+        // Visual-only reference. Customer size changes inventory, pricing, and
+        // production dimensions, but never makes the on-screen art jump.
+        const category = productCategory();
+        if (category === 'baby') return '12M';
+        if (category === 'toddler') return '4T';
+        return 'M';
+    }
     function chartWidthForSize(size) {
         const age = sizingAge();
         const key = String(size || '').toUpperCase();
@@ -2977,9 +2985,11 @@
         const aliases = { NEWBORN: 'NB', XXL: '2XL', XXXL: '3XL', '2X': '2XL', '3X': '3XL', '4X': '4XL' };
         return aliases[s] || s;
     }
-    function backLayout() {
+    function backLayout(sizeOverride) {
         const category = productCategory();
-        const key = normBackSize(state.selectedSize);
+        const key = normBackSize(
+            sizeOverride !== undefined ? sizeOverride : state.selectedSize
+        );
         const chart = (TRANSFER_SIZING && TRANSFER_SIZING.back_chart) || [];
         const pick = (label) => chart.find(b => b.label === label) || null;
         const month = (() => {
@@ -3007,17 +3017,20 @@
         if (['3XL', '4XL', '5XL', '6XL', 'XXXL'].includes(key)) return pick('Adult 3XL–4XL');
         return pick('Adult S–2XL') || { name: 2, gap: 3, number: 7, total: 12 };
     }
-    function nameHeightIn() {
-        return (backLayout() || {}).name || 2;
+    function nameHeightIn(sizeOverride) {
+        return (backLayout(sizeOverride) || {}).name || 2;
     }
-    function numberHeightIn() {
-        return (backLayout() || {}).number || 7;
+    function numberHeightIn(sizeOverride) {
+        return (backLayout(sizeOverride) || {}).number || 7;
     }
-    function gapHeightIn() {
-        return (backLayout() || {}).gap || 3;
+    function gapHeightIn(sizeOverride) {
+        return (backLayout(sizeOverride) || {}).gap || 3;
     }
-    function safeWidthIn() {
-        return chartWidthForSize(state.selectedSize || (sizingAge() === 'youth' ? 'M' : 'M'));
+    function safeWidthIn(sizeOverride) {
+        const size = sizeOverride !== undefined
+            ? sizeOverride
+            : (state.selectedSize || 'M');
+        return chartWidthForSize(size);
     }
 
     /* ── Preview scale: measured off the garment, never the preview card ────
@@ -3029,13 +3042,15 @@
     // this much of the frame. Same inch math, coarser garment box.
     const GARMENT_FALLBACK = { top: 0.12, height: 0.70, center: 0.5 };
 
-    function bodyLengthIn() {
+    function bodyLengthIn(sizeOverride) {
         const table = (TRANSFER_SIZING && TRANSFER_SIZING.body_lengths) || {};
         const defaults = (TRANSFER_SIZING && TRANSFER_SIZING.body_length_defaults) || {};
         const category = productCategory();
         const sizes = table[category] || {};
         const fallback = defaults[category] || 29;
-        const key = normBackSize(state.selectedSize);
+        const key = normBackSize(
+            sizeOverride !== undefined ? sizeOverride : state.selectedSize
+        );
         if (sizes[key] != null) return sizes[key];
         const month = key.match(/^(\d+)(?:TO\d+)?M$/);
         if (month || ['NB', 'N', 'PREMIE'].includes(key)) {
@@ -3053,9 +3068,9 @@
         return fallback;
     }
 
-    function backCollarDropIn() {
+    function backCollarDropIn(sizeOverride) {
         const ratio = (TRANSFER_SIZING && TRANSFER_SIZING.collar_drop_ratio) || 0.12;
-        return bodyLengthIn() * ratio;
+        return bodyLengthIn(sizeOverride) * ratio;
     }
 
     // Where the mockup photo actually lands inside the preview canvas
@@ -3104,7 +3119,7 @@
         if (!rect) return null;
         const s = garmentSilhouette() || GARMENT_FALLBACK;
         const heightPx = rect.height * s.height;
-        const bodyIn = bodyLengthIn();
+        const bodyIn = bodyLengthIn(previewReferenceSize());
         if (!heightPx || !bodyIn) return null;
         return {
             topPx: rect.top + rect.height * s.top,
@@ -3301,7 +3316,7 @@
         // Production print_width / print_height are NEVER derived from these %.
         const refPct = (TRANSFER_SIZING && TRANSFER_SIZING.preview_ref_pct) || 38;
         const refW = (TRANSFER_SIZING && TRANSFER_SIZING.preview_ref_width) || 10;
-        const size = state.selectedSize || 'M';
+        const size = previewReferenceSize();
         const orderedW = logoWidthForSize(size) || refW;
         let pct = refPct * (orderedW / refW);
         let maxH;
@@ -3336,7 +3351,9 @@
         if (box && box.pxPerInch) {
             // Hang the layout from a natural drop below the shoulder seam of
             // the shirt in the photo, centered on the garment body.
-            backDesignLayer.style.top = (box.topPx + backCollarDropIn() * box.pxPerInch) + 'px';
+            backDesignLayer.style.top = (
+                box.topPx + backCollarDropIn(previewReferenceSize()) * box.pxPerInch
+            ) + 'px';
             backDesignLayer.style.left = box.centerPx + 'px';
             backDesignLayer.style.transform = `translate(-50%, 0) translate(0, ${offset.y}px)`;
         } else {
@@ -3448,10 +3465,11 @@
             requestBackFont(numberFont);
             const box = garmentBox();
             const pxPerInch = box ? box.pxPerInch : 0;
-            const nameH = nameHeightIn();
-            const gapH = gapHeightIn();
-            const numH = numberHeightIn();
-            const safeIn = safeWidthIn();
+            const previewSize = previewReferenceSize();
+            const nameH = nameHeightIn(previewSize);
+            const gapH = gapHeightIn(previewSize);
+            const numH = numberHeightIn(previewSize);
+            const safeIn = safeWidthIn(previewSize);
             const nameInk = inkMetrics(nameFont, INK_REF_NAME);
             // Size from the actual digit(s) so a lone "4" isn't scaled from an "8".
             const numberInkRef = (number && number.length === 1) ? number : INK_REF_NUMBER;
@@ -4556,12 +4574,8 @@
             const numInkPx = numH * dpi;
             const gapPx = gapH * dpi;
             const cfg = BACK_FONT_CONFIG[font] || BACK_FONT_CONFIG['Bebas Neue'];
-            const spacingEm = (state.nameLetterSpacingEm != null)
-                ? state.nameLetterSpacingEm
-                : parseFloat(cfg.nameSpacing) || 0.05;
-            const numberSpacingEm = (state.numberLetterSpacingEm != null)
-                ? state.numberLetterSpacingEm
-                : parseFloat(cfg.numberSpacing) || 0.02;
+            let spacingEm = parseFloat(cfg.nameSpacing) || 0.05;
+            const numberSpacingEm = parseFloat(cfg.numberSpacing) || 0.02;
 
             try {
                 if (document.fonts) {
@@ -4591,14 +4605,10 @@
             const numberInk = inkMetrics(numberFont, numberInkRef);
             const namePx = nameInkPx / nameInk.ink;
             const numPx = numInkPx / numberInk.ink;
-            const nameSpacing = namePx * spacingEm;
+            let nameSpacing = namePx * spacingEm;
             const safePx = safeWidthIn() * dpi;
             const numberFit = numberGroupFit(number, numberFont, numPx, numberSpacingEm, safePx);
-            // Print what the customer approved: reuse the tracking and squeeze
-            // the preview resolved, and only fall back if it never ran.
-            const numberTrackEm = (state.numberTrackingEm != null)
-                ? state.numberTrackingEm
-                : numberFit.spacingEm;
+            const numberTrackEm = numberFit.spacingEm;
             const numberSpacing = numPx * numberTrackEm;
 
             const textColor = state.backDesignTextColor
@@ -4621,12 +4631,28 @@
                 return ctx.measureText(text).width;
             }
 
-            const naturalNamePx = measureSpaced(name, nameFont, namePx, nameSpacing);
+            let naturalNamePx = measureSpaced(name, nameFont, namePx, nameSpacing);
+            while (name && naturalNamePx > safePx && spacingEm > -0.059) {
+                spacingEm = Math.max(-0.06, spacingEm - 0.01);
+                nameSpacing = namePx * spacingEm;
+                naturalNamePx = measureSpaced(name, nameFont, namePx, nameSpacing);
+            }
             const condense = (name && naturalNamePx > safePx) ? (safePx / naturalNamePx) : 1;
-            const numberCondense = (state.numberCondense != null) ? state.numberCondense : numberFit.scale;
+            const numberCondense = numberFit.scale;
             const nameWpx = naturalNamePx * condense;
             const numberWpx = measureSpaced(number, numberFont, numPx, numberSpacing) * numberCondense;
             const contentW = Math.max(nameWpx, numberWpx, 1);
+            // These production measurements belong to the selected garment
+            // size. The on-screen preview intentionally uses a fixed reference.
+            state.naturalNameWidthIn = naturalNamePx / dpi;
+            state.naturalNumberWidthIn = numberFit.naturalPx / dpi;
+            state.measuredNameWidthIn = nameWpx / dpi;
+            state.measuredNumberWidthIn = numberWpx / dpi;
+            state.nameCondense = condense;
+            state.numberCondense = numberCondense;
+            state.nameLetterSpacingEm = spacingEm;
+            state.numberLetterSpacingEm = numberSpacingEm;
+            state.numberTrackingEm = numberTrackEm;
             // Ink to ink, so the PNG measures what the transfer sheet says.
             const contentH = (name ? nameInkPx : 0) + (name && number ? gapPx : 0) + (number ? numInkPx : 0);
             // Only enough margin for the outline stroke to land inside the file.
@@ -4838,11 +4864,6 @@
                 formData.append('unit_price', unitPrice);
                 if (state.designWidth) formData.append('design_width', state.designWidth);
                 if (state.designHeight) formData.append('design_height', state.designHeight);
-                // Natural glyph widths — the server applies the squeeze rules.
-                const naturalNameW = state.naturalNameWidthIn || state.measuredNameWidthIn;
-                const naturalNumberW = state.naturalNumberWidthIn || state.measuredNumberWidthIn;
-                if (naturalNameW) formData.append('name_width_in', naturalNameW);
-                if (naturalNumberW) formData.append('number_width_in', naturalNumberW);
                 
                 if (state.designUrl) {
                     formData.append('design_url', state.designUrl);
@@ -4862,6 +4883,13 @@
                             return;
                         }
                         formData.append('back_design', backFile);
+                        // Generated at the selected size, independently from
+                        // the fixed visual preview. Admin production keeps the
+                        // exact size-chart measurements.
+                        const naturalNameW = state.naturalNameWidthIn || state.measuredNameWidthIn;
+                        const naturalNumberW = state.naturalNumberWidthIn || state.measuredNumberWidthIn;
+                        if (naturalNameW) formData.append('name_width_in', naturalNameW);
+                        if (naturalNumberW) formData.append('number_width_in', naturalNumberW);
                         // Carry the readable details through to the order record
                         formData.append('back_design_name', state.backDesignName || '');
                         formData.append('back_design_number', state.backDesignNumber || '');
