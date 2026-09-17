@@ -1714,26 +1714,16 @@
     white-space: nowrap;
 }
 .preview-note {
-    position: absolute;
-    top: auto;
-    right: 0.65rem;
-    bottom: 0.65rem;
-    z-index: 20;
-    pointer-events: none;
-    max-width: min(64%, 310px);
+    position: static;
+    max-width: 100%;
     margin: 0;
-    padding: 0.38rem 0.6rem;
-    border: 1px solid rgba(139, 111, 94, 0.16);
-    border-radius: 999px;
-    background: rgba(255, 253, 250, 0.88);
-    box-shadow: 0 3px 12px rgba(58, 42, 34, 0.055);
-    backdrop-filter: blur(8px);
+    padding: 0.15rem 0.4rem 0;
     color: #78675d;
     font-family: 'Playfair Display', Georgia, serif;
-    font-size: 0.65rem;
+    font-size: 0.66rem;
     font-style: italic;
     letter-spacing: 0.01em;
-    line-height: 1.25;
+    line-height: 1.3;
     text-align: center;
 }
 .preview-info {
@@ -1791,7 +1781,7 @@
         padding: 0.75rem;
         display: grid;
         grid-template-columns: 116px minmax(0, 1fr);
-        grid-template-rows: minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr) auto;
         gap: 0.55rem 0.7rem;
         overflow: hidden;
     }
@@ -1801,6 +1791,10 @@
         width: 100%;
         min-height: 0;
         aspect-ratio: auto;
+    }
+    .preview-note {
+        grid-column: 2;
+        grid-row: 2;
     }
     .mockup-image {
         object-fit: contain;
@@ -1904,12 +1898,9 @@
         border-radius: 9px;
     }
     .preview-note {
-        top: auto;
-        right: 0.45rem;
-        bottom: 0.45rem;
-        max-width: 60%;
-        padding: 0.35rem 0.45rem;
-        font-size: 0.61rem;
+        margin-top: 0.35rem;
+        padding: 0 0.35rem;
+        font-size: 0.63rem;
     }
     .preview-color-badge {
         left: 0.45rem;
@@ -1952,10 +1943,11 @@
                         <span>Color</span>
                         <strong id="selectedColorName">Loading...</strong>
                     </div>
-                    <p class="preview-note">
-                        Mockup preview only. Final logo sizing will be adjusted proportionally for your shirt.
-                    </p>
                 </div>
+
+                <p class="preview-note">
+                    Mockup preview only. Final logo sizing will be adjusted proportionally for your shirt.
+                </p>
                 
                 <div class="preview-controls">
                     <button class="btn btn-outline btn-sm active" id="viewFront">Front View</button>

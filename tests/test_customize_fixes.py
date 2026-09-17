@@ -193,6 +193,8 @@ def test_mockup_viewport_keeps_whole_shirt_and_view_buttons_visible(client, seed
     assert canvas_start < color_badge < visual_note < controls
     assert html.count('id="selectedColorName"') == 1
     assert 'Mockup preview only. Final logo sizing will be adjusted proportionally for your shirt.' in html
+    assert 'grid-template-rows: minmax(0, 1fr) auto' in html
+    assert 'position: static' in html
     assert 'grid-template-columns: repeat(2, minmax(0, 1fr))' in html
     assert 'id="colorPickerDisclosure"' in html
     assert 'id="colorDisclosureName"' in html
