@@ -3299,6 +3299,50 @@
         }
         return { naturalPx, widthPx, spacingEm, scale, digits: number.length };
     }
+    const artworkVisibleWidthCache = new Map();
+    function visibleArtworkWidthRatio(image) {
+        // Visual-only correction for transparent padding around uploaded art.
+        // Production dimensions continue to use the original file aspect and
+        // the customer's selected garment size.
+        const key = image.currentSrc || image.src || '';
+        if (key && artworkVisibleWidthCache.has(key)) {
+            return artworkVisibleWidthCache.get(key);
+        }
+        let ratio = 1;
+        try {
+            const naturalW = image.naturalWidth || 0;
+            const naturalH = image.naturalHeight || 0;
+            if (!naturalW || !naturalH) return ratio;
+            const sampleW = Math.min(256, naturalW);
+            const sampleH = Math.max(1, Math.round(naturalH * sampleW / naturalW));
+            const canvas = document.createElement('canvas');
+            canvas.width = sampleW;
+            canvas.height = sampleH;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(image, 0, 0, sampleW, sampleH);
+            const pixels = ctx.getImageData(0, 0, sampleW, sampleH).data;
+            let minX = sampleW;
+            let maxX = -1;
+            for (let y = 0; y < sampleH; y += 1) {
+                for (let x = 0; x < sampleW; x += 1) {
+                    if (pixels[(y * sampleW + x) * 4 + 3] > 20) {
+                        if (x < minX) minX = x;
+                        if (x > maxX) maxX = x;
+                    }
+                }
+            }
+            if (maxX >= minX) {
+                ratio = Math.min(1, Math.max(0.2, (maxX - minX + 1) / sampleW));
+            }
+        } catch (error) {
+            // A remote image without canvas CORS remains safe at the standard
+            // width; same-origin artwork receives the transparent-edge fix.
+            ratio = 1;
+        }
+        if (key) artworkVisibleWidthCache.set(key, ratio);
+        return ratio;
+    }
+
     function applyDesignFit() {
         const designLayer = document.getElementById('designLayer');
         const designImage = document.getElementById('designImage');
@@ -3308,32 +3352,24 @@
         designLayer.style.maxWidth = '';
         designLayer.style.maxHeight = '';
         const isSideChest = placement === 'left_chest' || placement === 'right_chest';
-        const w = designImage.naturalWidth || state.designWidth || 1;
-        const h = designImage.naturalHeight || state.designHeight || 1;
-        const tall = h / w;
-
-        // Preview-only: map ordered print inches → % of the mockup garment.
-        // Production print_width / print_height are NEVER derived from these %.
+        // Preview-only: every center logo has the same visible width on every
+        // mockup. Transparent file padding is ignored, and youth/adult/hoodie
+        // production charts do not alter what the customer sees here.
+        // Production print_width / print_height remain size-chart driven.
         const refPct = (TRANSFER_SIZING && TRANSFER_SIZING.preview_ref_pct) || 38;
-        const refW = (TRANSFER_SIZING && TRANSFER_SIZING.preview_ref_width) || 10;
-        const size = previewReferenceSize();
-        const orderedW = logoWidthForSize(size) || refW;
-        let pct = refPct * (orderedW / refW);
+        const visibleWidthRatio = visibleArtworkWidthRatio(designImage);
+        let pct = refPct / visibleWidthRatio;
         let maxH;
 
         if (isSideChest) {
-            // Left/right chest ≈ 40% of center transfer width
-            pct *= 0.42;
+            // Left/right chest stays intentionally small, but consistent.
+            pct = 14 / visibleWidthRatio;
             maxH = 20;
-            pct = Math.min(Math.max(pct, 10), 16);
+            pct = Math.min(Math.max(pct, 10), 32);
             maxH = Math.min(maxH, 22);
         } else {
-            // Mild trim for very tall stacks only — do not crush wordmarks
-            if (tall > 1.4) pct *= 0.88;
-            else if (tall > 1.2) pct *= 0.94;
-            maxH = 46;
-            pct = Math.min(Math.max(pct, 26), 44);
-            maxH = Math.min(maxH, 50);
+            maxH = 60;
+            pct = Math.min(Math.max(pct, refPct), 82);
         }
 
         // % of garment only — no px maxWidth (that crushed large mockup canvases)
@@ -3800,7 +3836,19 @@
             applyDesignFit();
             applyDesignPosition();
         };
-        designImage.src = preset.url;
+        const previewTemplate = {{ url_for('design.preview_artwork', design_id=0) | tojson }};
+        const previewSource = preset.preview_url || (
+            preset.id ? previewTemplate.replace(/0$/, String(preset.id)) : preset.url
+        );
+        designImage.onerror = function() {
+            // Preserve the mockup if cloud previewing is temporarily
+            // unavailable; the original artwork URL remains the order file.
+            if (this.src !== preset.url) {
+                this.onerror = null;
+                this.src = preset.url;
+            }
+        };
+        designImage.src = previewSource;
         designPreviewImage.src = preset.url;
         if (typeof resetArtworkInspector === 'function') resetArtworkInspector();
         state.lastUploadedFile = null;

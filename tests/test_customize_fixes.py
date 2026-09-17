@@ -156,14 +156,65 @@ def test_customize_offers_bright_pink_and_yellow_text_swatches(client, app, seed
 def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
     assert 'function previewReferenceSize()' in html
-    assert 'const size = previewReferenceSize();' in html
     assert 'bodyLengthIn(previewReferenceSize())' in html
     assert 'nameHeightIn(previewSize)' in html
+    # Front logos use one visual target across youth/adult garments and correct
+    # transparent padding without changing production dimensions.
+    assert 'function visibleArtworkWidthRatio(image)' in html
+    assert 'let pct = refPct / visibleWidthRatio;' in html
+    assert 'const orderedW = logoWidthForSize(size)' not in html
+    assert '/design/preview/0' in html
     # Production is still generated from state.selectedSize via the default
     # size-aware helpers, then measured before the values are submitted.
+    assert "formData.append('size', state.selectedSize)" in html
     generated = html.index('await generateBackDesignNameNumberImage()')
     measured = html.index("formData.append('name_width_in'", generated)
     assert measured > generated
+
+
+def test_visual_normalization_does_not_change_adult_or_youth_print_widths():
+    from types import SimpleNamespace
+    from utils.print_sizes import front_transfer_size
+
+    adult = SimpleNamespace(age_group='adult', category='tee', name='Adult Tee')
+    youth = SimpleNamespace(age_group='youth', category='tee', name='Youth Tee')
+    assert front_transfer_size('M', adult)['width'] == 10.0
+    assert front_transfer_size('M', youth)['width'] == 8.0
+
+
+def test_same_origin_design_preview_streams_cloud_artwork(
+    client, seed, app, monkeypatch
+):
+    import base64
+    from models import Design
+
+    png = base64.b64decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ'
+        'AAAADUlEQVR42mNk+M/wHwAF/gL+X8WqWQAAAABJRU5ErkJggg=='
+    )
+
+    class FakeResponse:
+        headers = {'Content-Type': 'image/png'}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self, _limit):
+            return png
+
+    with app.app_context():
+        design = db.session.get(Design, seed['free_design_id'])
+        design.file_path = 'https://public-example.r2.dev/design.png'
+        db.session.commit()
+
+    monkeypatch.setattr('routes.design.urlopen', lambda *_args, **_kwargs: FakeResponse())
+    response = client.get(f'/design/preview/{seed["free_design_id"]}')
+    assert response.status_code == 200
+    assert response.mimetype == 'image/png'
+    assert response.data == png
 
 
 def test_group_order_create_form_offers_varsity_regular(customer_client):

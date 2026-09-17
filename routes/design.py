@@ -1,11 +1,13 @@
 """
 Design upload routes - simple, reliable upload for product customizer.
 """
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, abort, send_file
 from flask_login import current_user
 from werkzeug.exceptions import HTTPException
 from werkzeug.utils import secure_filename
 from pathlib import Path
+from io import BytesIO
+from urllib.request import Request, urlopen
 import os
 import time
 import secrets
@@ -13,6 +15,7 @@ import secrets
 design_bp = Blueprint('design', __name__, url_prefix='/design')
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif', 'heic', 'heif'}
+MAX_PREVIEW_BYTES = 25 * 1024 * 1024
 
 
 def _allowed_file(filename):
@@ -266,6 +269,56 @@ def upload():
         # str(e) used to go straight to the browser, which leaks internals.
         current_app.logger.exception('Design upload failed')
         return jsonify({'error': 'Upload failed. Please try again.'}), 500
+
+
+@design_bp.route('/preview/<int:design_id>')
+def preview_artwork(design_id):
+    """Same-origin artwork stream used only for accurate mockup fitting.
+
+    R2's public host allows images but not browser canvas inspection. Streaming
+    the approved design through this endpoint lets the customizer measure its
+    visible (non-transparent) width without changing the original production
+    file or dimensions.
+    """
+    from models import Design
+    from utils.group_orders import get_active_collection
+    from utils.order_artwork import local_file_for_url, remote_url_allowed
+    from utils.privacy import user_can_use_design
+
+    design = Design.query.get_or_404(design_id)
+    collection = get_active_collection()
+    if not user_can_use_design(design, collection=collection):
+        abort(403)
+
+    source = design.file_path or ''
+    local = local_file_for_url(current_app, source)
+    if local:
+        return send_file(
+            local,
+            mimetype='image/png' if local.suffix.lower() == '.png' else None,
+            max_age=86400 if design.is_gallery else 300,
+        )
+
+    if not remote_url_allowed(current_app, source, request.host_url):
+        abort(404)
+    try:
+        req = Request(source, headers={'User-Agent': 'PMKC-Preview/1.0'})
+        with urlopen(req, timeout=20) as response:
+            data = response.read(MAX_PREVIEW_BYTES + 1)
+            mimetype = (response.headers.get('Content-Type') or 'image/png').split(';', 1)[0]
+        if len(data) > MAX_PREVIEW_BYTES:
+            abort(413)
+        return send_file(
+            BytesIO(data),
+            mimetype=mimetype,
+            download_name=design.filename or f'design-{design.id}.png',
+            max_age=86400 if design.is_gallery else 300,
+        )
+    except HTTPException:
+        raise
+    except Exception:
+        current_app.logger.exception('Could not stream design preview %s', design_id)
+        abort(502)
 
 
 @design_bp.route('/<int:design_id>/delete', methods=['POST'])
