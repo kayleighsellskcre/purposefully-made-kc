@@ -22,12 +22,14 @@
         <div class="dg-discovery" aria-label="Find a design">
             <div class="dg-toolbar">
                 <label class="dg-search" for="dgSearch">
-                    <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
-                    <span class="sr-only">Search designs</span>
-                    <input type="search" id="dgSearch" placeholder="Search designs, teams, occasions..." autocomplete="off">
+                    <span class="dg-control-label">Search designs</span>
+                    <span class="dg-search-field">
+                        <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+                        <input type="search" id="dgSearch" placeholder="Search designs, teams, occasions..." autocomplete="off">
+                    </span>
                 </label>
                 <label class="dg-sort-wrap">
-                    <span>Sort</span>
+                    <span class="dg-control-label">Sort</span>
                     <select id="dgSort" aria-label="Sort designs">
                         <option value="recommended">Recommended</option>
                         <option value="newest">Newest</option>
@@ -152,14 +154,26 @@
     display: grid;
     grid-template-columns: minmax(260px, 1fr) auto;
     gap: 0.85rem;
-    align-items: center;
+    align-items: end;
     margin-bottom: 1rem;
 }
 .dg-search {
+    display: block;
+}
+.dg-control-label {
+    display: block;
+    margin: 0 0 0.35rem;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+.dg-search-field {
     position: relative;
     display: block;
 }
-.dg-search svg {
+.dg-search-field svg {
     position: absolute;
     left: 1rem;
     top: 50%;
@@ -190,12 +204,7 @@
     outline: 3px solid rgba(184, 124, 111, 0.14);
 }
 .dg-sort-wrap {
-    display: flex;
-    align-items: center;
-    gap: 0.55rem;
-    color: var(--text-secondary);
-    font-size: 0.82rem;
-    font-weight: 700;
+    display: block;
 }
 .dg-sort-wrap select {
     min-width: 165px;
@@ -622,11 +631,10 @@
         gap: 0.65rem;
     }
     .dg-sort-wrap {
-        justify-content: space-between;
+        display: block;
     }
     .dg-sort-wrap select {
-        width: auto;
-        flex: 1;
+        width: 100%;
     }
     .gallery-meta {
         align-items: flex-start;
