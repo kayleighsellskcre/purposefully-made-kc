@@ -10,6 +10,7 @@ def _base_form(seed, **over):
         'name': 'Riverview Spirit Wear 2026',
         'products': [str(seed['tee_id'])],
         'allowed_placements': ['center_chest', 'left_chest'],
+        'group_kind': 'other',
     }
     form.update(over)
     return form
@@ -89,6 +90,7 @@ def test_a_signed_in_customer_can_create_a_group_order(customer_client, seed, ap
         collection = Collection.query.filter_by(slug='riverview-spirit-wear-2026').one()
         assert collection.is_active is True
         assert collection.created_by_user_id == seed['customer_id']
+        assert collection.group_kind == 'other'
         assert [p.id for p in collection.products] == [seed['tee_id']]
 
 
@@ -110,6 +112,7 @@ def test_uniform_and_fan_wear_are_saved_as_separate_lanes(customer_client, seed,
         assert config['uniform'] == {
             'enabled': True,
             'product_id': seed['tee_id'],
+            'product_ids': [seed['tee_id']],
             'home_color': 'Black',
             'away_color': 'White',
         }
@@ -677,3 +680,95 @@ def test_uniform_color_is_locked_in_customizer_and_cart(client, seed, app):
     })
     assert response.status_code == 400
     assert 'must be Black' in response.get_json()['error']
+
+
+def test_create_form_asks_school_team_or_other(customer_client):
+    html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
+    assert 'name="group_kind"' in html
+    assert 'value="school"' in html
+    assert 'value="team"' in html
+    assert 'value="other"' in html
+    assert 'Youth uniform style' in html
+
+
+def test_create_requires_a_group_kind(customer_client, seed, app):
+    form = _base_form(seed)
+    form.pop('group_kind')
+    resp = _post(customer_client, form)
+    assert 'please choose whether this group order is for a school' in resp.get_data(as_text=True).lower()
+    with app.app_context():
+        assert Collection.query.filter_by(name=form['name']).count() == 0
+
+
+def test_youth_and_adult_uniforms_can_be_offered_together(customer_client, seed, app):
+    form = _base_form(
+        seed,
+        group_kind='team',
+        team_store_present='1',
+        uniform_enabled='on',
+        uniform_product_id=str(seed['tee_id']),
+        uniform_youth_product_id=str(seed['youth_id']),
+        uniform_home_color='Black',
+        uniform_away_color='',
+        products=[str(seed['hoodie_id'])],
+    )
+    resp = _post(customer_client, form)
+    assert resp.status_code == 200
+    with app.app_context():
+        collection = Collection.query.filter_by(name=form['name']).one()
+        config = json.loads(collection.team_store_config)
+        assert config['uniform']['product_id'] == seed['tee_id']
+        assert config['uniform']['product_ids'] == [seed['tee_id'], seed['youth_id']]
+        assert {p.id for p in collection.products} == {
+            seed['tee_id'], seed['youth_id'], seed['hoodie_id'],
+        }
+    html = customer_client.get(
+        f'/c/{collection_slug_for(form["name"], app)}'
+    ).get_data(as_text=True)
+    assert f'/shop/customize/{seed["tee_id"]}' in html
+    assert f'/shop/customize/{seed["youth_id"]}' in html
+
+
+def collection_slug_for(name, app):
+    with app.app_context():
+        return Collection.query.filter_by(name=name).one().slug
+
+
+def _checkout_html_for_kind(client, seed, app, kind):
+    from models import Collection
+    with app.app_context():
+        collection = db.session.get(Collection, seed['collection_id'])
+        collection.group_kind = kind
+        db.session.commit()
+    with client.session_transaction() as sess:
+        sess['collection_id'] = seed['collection_id']
+    resp = client.post('/cart/add', data={
+        'product_id': seed['tee_id'], 'size': 'M', 'color': 'Black',
+        'quantity': 1, 'placement': 'center_chest',
+        'design_id': seed['free_design_id'],
+    })
+    assert resp.status_code == 200
+    return client.get('/checkout/').get_data(as_text=True)
+
+
+def test_school_checkout_asks_for_grade(client, seed, app):
+    html = _checkout_html_for_kind(client, seed, app, 'school')
+    assert 'Send Home With Child' in html
+    assert 'sent home from school' in html
+    assert 'id="child_grade"' in html
+    assert 'Teacher name' in html
+
+
+def test_team_checkout_offers_send_home_without_grade(client, seed, app):
+    html = _checkout_html_for_kind(client, seed, app, 'team')
+    assert 'Send Home With Child' in html
+    assert 'sent home from school' not in html
+    assert 'id="child_grade"' not in html
+    assert 'Coach name' in html
+
+
+def test_other_checkout_hides_send_home(client, seed, app):
+    html = _checkout_html_for_kind(client, seed, app, 'other')
+    assert 'Send Home With Child' not in html
+    assert 'id="send_home_with_child"' not in html
+

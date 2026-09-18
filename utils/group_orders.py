@@ -9,6 +9,39 @@ from utils.json_fields import parse_json_list, parse_json_object
 CHICAGO = ZoneInfo('America/Chicago')
 UTC = ZoneInfo('UTC')
 
+GROUP_KINDS = ('school', 'team', 'other')
+
+
+def normalize_group_kind(value):
+    kind = (value or '').strip().lower()
+    return kind if kind in GROUP_KINDS else ''
+
+
+def apply_group_kind(collection, *, required=False):
+    """Save school / team / other from the current form."""
+    from flask import request
+
+    kind = normalize_group_kind(request.form.get('group_kind'))
+    if kind:
+        collection.group_kind = kind
+        return True, None
+    if required:
+        return False, 'Please choose whether this group order is for a school, a team, or something else.'
+    return True, None
+
+
+def collection_allows_send_home(collection):
+    kind = normalize_group_kind(getattr(collection, 'group_kind', None))
+    if not kind:
+        # Older group orders had no type. Treat them like a team so checkout
+        # still offers send-home, but without school-only grade.
+        return True
+    return kind in ('school', 'team')
+
+
+def collection_asks_grade(collection):
+    return normalize_group_kind(getattr(collection, 'group_kind', None)) == 'school'
+
 # Brand-scoped color picks: form value "Port & Company||Navy" → JSON {"Port & Company": ["Navy"]}
 ALLOWED_COLOR_SEP = '||'
 
@@ -184,13 +217,23 @@ def team_store_config(collection):
         if pid and pid not in cleaned_fan:
             cleaned_fan.append(pid)
     uniform_pid = _pid(uniform.get('product_id'))
-    enabled = bool(uniform.get('enabled') and uniform_pid)
+    product_ids = []
+    raw_ids = uniform.get('product_ids')
+    if isinstance(raw_ids, list):
+        for value in raw_ids:
+            pid = _pid(value)
+            if pid and pid not in product_ids:
+                product_ids.append(pid)
+    if uniform_pid and uniform_pid not in product_ids:
+        product_ids.insert(0, uniform_pid)
+    enabled = bool(uniform.get('enabled') and product_ids)
     return {
         'version': 1,
         'configured': bool(parsed),
         'uniform': {
             'enabled': enabled,
-            'product_id': uniform_pid if enabled else None,
+            'product_id': product_ids[0] if enabled else None,
+            'product_ids': product_ids if enabled else [],
             'home_color': (uniform.get('home_color') or '').strip(),
             'away_color': (uniform.get('away_color') or '').strip(),
         },
@@ -214,14 +257,17 @@ def team_store_choice(collection, product_id, section=None, kit=None):
 
     if not config['configured']:
         return 'fan', None, None, None
+    uniform_ids = set(uniform.get('product_ids') or [])
+    if uniform.get('product_id'):
+        uniform_ids.add(uniform['product_id'])
     if not section:
         section = (
             'uniform'
-            if uniform['enabled'] and product_id == uniform['product_id']
+            if uniform['enabled'] and product_id in uniform_ids
             else 'fan'
         )
     if section == 'uniform':
-        if not uniform['enabled'] or product_id != uniform['product_id']:
+        if not uniform['enabled'] or product_id not in uniform_ids:
             return None, None, None, 'That item is not offered as a player uniform.'
         if kit not in ('home', 'away'):
             return None, None, None, 'Choose the Home or Away uniform.'
@@ -350,39 +396,63 @@ def set_collection_products_from_form(collection):
 
     configured = request.form.get('team_store_present') == '1'
     uniform_enabled = configured and request.form.get('uniform_enabled') == 'on'
-    uniform_id = None
+    uniform_ids = []
     home_color = ''
     away_color = ''
     if uniform_enabled:
+        seen_uniform = set()
+        for raw in request.form.getlist('uniform_product_ids'):
+            try:
+                pid = int(raw)
+            except (TypeError, ValueError):
+                continue
+            if pid and pid not in seen_uniform:
+                seen_uniform.add(pid)
+                uniform_ids.append(pid)
+        if not uniform_ids:
+            try:
+                main_id = int(request.form.get('uniform_product_id') or '')
+            except (TypeError, ValueError):
+                main_id = None
+            if main_id:
+                uniform_ids.append(main_id)
         try:
-            uniform_id = int(request.form.get('uniform_product_id') or '')
+            youth_id = int(request.form.get('uniform_youth_product_id') or '')
         except (TypeError, ValueError):
-            return [], 'Choose one apparel style for the player uniform.'
+            youth_id = None
+        if youth_id and youth_id not in uniform_ids:
+            uniform_ids.append(youth_id)
+        if not uniform_ids:
+            return [], 'Choose at least one apparel style for the player uniform.'
         home_color = (request.form.get('uniform_home_color') or '').strip()
         away_color = (request.form.get('uniform_away_color') or '').strip()
         if not home_color:
             return [], 'Choose a Home color for the player uniform.'
         if away_color and away_color == home_color:
             return [], 'Choose a different Away color, or leave Away blank.'
-        valid_colors = {
-            row[0] for row in db.session.query(ProductColorVariant.color_name)
-            .filter(
-                ProductColorVariant.product_id == uniform_id,
-                ProductColorVariant.color_name.isnot(None),
-            )
-            .all()
-            if row[0]
-        }
-        if home_color not in valid_colors:
-            return [], 'The selected Home color is not available for that uniform.'
-        if away_color and away_color not in valid_colors:
-            return [], 'The selected Away color is not available for that uniform.'
-        # One style has one purpose inside a configured store.
-        fan_ids = [pid for pid in fan_ids if pid != uniform_id]
+        color_rows = db.session.query(
+            ProductColorVariant.product_id, ProductColorVariant.color_name
+        ).filter(
+            ProductColorVariant.product_id.in_(uniform_ids),
+            ProductColorVariant.color_name.isnot(None),
+        ).all()
+        colors_by_product = {}
+        for pid, color in color_rows:
+            if not color:
+                continue
+            colors_by_product.setdefault(pid, set()).add(color)
+        for pid in uniform_ids:
+            valid_colors = colors_by_product.get(pid) or set()
+            if home_color not in valid_colors:
+                return [], 'The selected Home color is not available for every uniform style. Pick a color both youth and adult come in, or choose one style.'
+            if away_color and away_color not in valid_colors:
+                return [], 'The selected Away color is not available for every uniform style. Pick a color both youth and adult come in, or leave Away blank.'
+        fan_ids = [pid for pid in fan_ids if pid not in seen_uniform and pid not in uniform_ids]
 
     ids = list(fan_ids)
-    if uniform_id and uniform_id not in ids:
-        ids.insert(0, uniform_id)
+    for pid in reversed(uniform_ids):
+        if pid not in ids:
+            ids.insert(0, pid)
     if not ids:
         collection.products = []
         if configured:
@@ -397,15 +467,18 @@ def set_collection_products_from_form(collection):
     found = Product.query.filter(Product.id.in_(ids), Product.is_active == True).all()
     by_id = {p.id: p for p in found}
     selected = [by_id[i] for i in ids if i in by_id]
-    if uniform_id and uniform_id not in by_id:
+    missing_uniform = [pid for pid in uniform_ids if pid not in by_id]
+    if missing_uniform:
         return [], 'The selected uniform style is not currently available.'
     collection.products = selected
     if configured:
+        primary = uniform_ids[0] if uniform_ids else None
         collection.team_store_config = json.dumps({
             'version': 1,
             'uniform': {
-                'enabled': bool(uniform_id),
-                'product_id': uniform_id,
+                'enabled': bool(primary),
+                'product_id': primary,
+                'product_ids': uniform_ids,
                 'home_color': home_color,
                 'away_color': away_color,
             },
@@ -644,6 +717,9 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
             collection.slug = new_slug
 
     collection.description = request.form.get('description')
+    ok, kind_error = apply_group_kind(collection, required=False)
+    if not ok:
+        return False, kind_error, 0
     apply_collection_card(collection)
     collection.pickup_address = request.form.get('pickup_address')
     collection.pickup_instructions = request.form.get('pickup_instructions')

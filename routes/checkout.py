@@ -801,6 +801,9 @@ def index():
         addresses = current_user.addresses.all()
     
     is_group_order = bool(collection)
+    from utils.group_orders import collection_allows_send_home, collection_asks_grade
+    show_send_home = is_group_order and collection_allows_send_home(collection)
+    send_home_asks_grade = show_send_home and collection_asks_grade(collection)
     allow_cash_payment = bool(
         collection and getattr(collection, 'allow_cash_pickup', False)
     ) or family_promo_active
@@ -812,6 +815,8 @@ def index():
                          addresses=addresses,
                          is_group_order=is_group_order,
                          group_collection=collection,
+                         show_send_home=show_send_home,
+                         send_home_asks_grade=send_home_asks_grade,
                          allow_cash_payment=allow_cash_payment,
                          family_promo_active=family_promo_active,
                          family_promo_code=get_session_family_promo() or '',
@@ -1042,7 +1047,10 @@ def complete():
         if not cart:
             return _json_error('Your cart is empty.', 'CART_EMPTY', 400, request_id=rid)
 
-        from utils.group_orders import get_active_collection, ordering_blocked
+        from utils.group_orders import (
+            get_active_collection, ordering_blocked,
+            collection_allows_send_home, collection_asks_grade,
+        )
         collection = get_active_collection(cart)
         if collection:
             blocked = ordering_blocked(collection)
@@ -1149,13 +1157,21 @@ def complete():
             if collection and not collection.shipping_enabled:
                 return _json_error('This group order is pickup only.', 'SHIPPING_NOT_ALLOWED', 400, request_id=rid)
 
-        send_home = bool(data.get('send_home_with_child')) and bool(collection)
+        send_home = (
+            bool(data.get('send_home_with_child'))
+            and bool(collection)
+            and collection_allows_send_home(collection)
+        )
         teacher_name = _clip(data.get('teacher_name'), 120) if send_home else None
-        child_grade = _clip(data.get('child_grade'), 40) if send_home else None
+        asks_grade = send_home and collection_asks_grade(collection)
+        child_grade = _clip(data.get('child_grade'), 40) if asks_grade else None
         child_name = _clip(data.get('child_name'), 120) if send_home else None
-        if send_home and (not teacher_name or not child_grade or not child_name):
+        if send_home and (not teacher_name or not child_name or (asks_grade and not child_grade)):
+            missing = 'coach name and child\'s name'
+            if asks_grade:
+                missing = 'teacher name, grade, and child\'s name'
             return _json_error(
-                'Please enter the coach/teacher name, grade, and child\'s name so we can send this home with them.',
+                f'Please enter the {missing} so we can send this home with them.',
                 'SEND_HOME_DETAILS_REQUIRED',
                 400,
                 request_id=rid,

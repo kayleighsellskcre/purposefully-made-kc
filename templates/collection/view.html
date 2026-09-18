@@ -426,7 +426,7 @@
 
 <section class="design-board">
     <div class="container">
-        {% if team_store.uniform.enabled and uniform_product %}
+        {% if team_store.uniform.enabled and uniform_products %}
         <div class="shopper-path" id="shopperPath">
             <h2>What are you shopping for?</h2>
             <p>We’ll show only the part of the store you need.</p>
@@ -445,22 +445,25 @@
         <section class="uniform-section" id="uniformSection" hidden>
             <div class="store-lane-heading">
                 <h2>Player Uniform</h2>
-                <p>Choose Home, Away, or add both uniforms one at a time.</p>
+                <p>Choose Home, Away, youth, or adult. Add more than one if you need them.</p>
             </div>
-            {% if uniform_kits %}
+            {% set any_uniform_kits = uniform_products | selectattr('kits') | list %}
+            {% if any_uniform_kits %}
             <div class="uniform-kit-grid">
-                {% for kit in uniform_kits %}
+                {% for item in uniform_products %}
+                {% for kit in item.kits %}
                 <a class="uniform-kit-card"
-                   href="{{ url_for('shop.customize', product_id=uniform_product.id, catalog_section='uniform', uniform_kit=kit.key) }}">
+                   href="{{ url_for('shop.customize', product_id=item.product.id, catalog_section='uniform', uniform_kit=kit.key) }}">
                     <img src="{{ kit.variant.front_image_url }}"
-                         alt="{{ kit.label }} {{ uniform_product.name }} in {{ kit.color }}"
+                         alt="{{ kit.label }} {{ item.product.name }} in {{ kit.color }}"
                          loading="eager">
                     <span>
                         <strong>{{ kit.label }} Uniform</strong>
-                        <span class="uniform-color">{{ kit.color }} · {{ uniform_product.name }}</span>
+                        <span class="uniform-color">{% if item.product.display_age or item.product.age_group %}{{ item.product.display_age or item.product.age_group }} · {% endif %}{{ kit.color }} · {{ item.product.name }}</span>
                         <span class="uniform-cta">Choose size &amp; player details →</span>
                     </span>
                 </a>
+                {% endfor %}
                 {% endfor %}
             </div>
             {% else %}
@@ -470,7 +473,7 @@
         {% endif %}
 
         <div class="fan-wear-section" id="fanWearSection"
-             {% if team_store.uniform.enabled and uniform_product %}hidden{% endif %}>
+             {% if team_store.uniform.enabled and uniform_products %}hidden{% endif %}>
         <div class="design-board-intro">
             <h2>{% if team_store.uniform.enabled %}Family &amp; Fan Wear{% else %}Your Design Board{% endif %}</h2>
             {% if team_store.uniform.enabled %}

@@ -3,7 +3,7 @@
     <input type="hidden" name="team_store_present" value="1">
     <span class="team-store-eyebrow">Optional</span>
     <h2>Player Uniforms</h2>
-    <p class="form-hint">Add one official jersey style. Choose a Home color and, if needed, a different Away color.</p>
+    <p class="form-hint">Add the official jersey styles. If younger and older players both order, pick a youth style and an adult style.</p>
 
     <label class="team-store-toggle">
         <input type="checkbox" id="uniform_enabled" name="uniform_enabled" value="on"
@@ -18,13 +18,25 @@
         <legend class="visually-hidden">Player uniform style and colors</legend>
         <div class="team-store-grid">
             <div class="form-group">
-                <label for="uniform_product_id">Uniform style</label>
+                <label for="uniform_product_id">Main uniform style</label>
                 <select id="uniform_product_id" name="uniform_product_id" class="form-control">
                     <option value="">Choose one jersey or apparel style</option>
                     {% for product in products %}
                     <option value="{{ product.id }}"
                             {% if _uniform.get('product_id') == product.id %}selected{% endif %}>
-                        {{ product.name }} - {{ product.style_number }}
+                        {{ product.display_age or product.age_group or '' }} {{ product.name }} - {{ product.style_number }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="uniform_youth_product_id">Youth uniform style <span class="text-muted">(optional)</span></label>
+                <select id="uniform_youth_product_id" name="uniform_youth_product_id" class="form-control">
+                    <option value="">Same as main style, or skip</option>
+                    {% for product in products %}
+                    <option value="{{ product.id }}"
+                            {% if product.id in (_uniform.get('product_ids') or []) and product.id != _uniform.get('product_id') %}selected{% endif %}>
+                        {{ product.display_age or product.age_group or '' }} {{ product.name }} - {{ product.style_number }}
                     </option>
                     {% endfor %}
                 </select>
@@ -77,7 +89,7 @@
 .team-store-fields[hidden] { display:none; }
 .product-checkbox.is-uniform-style { opacity:.5; cursor:not-allowed; }
 .team-store-grid {
-    display:grid; grid-template-columns:minmax(240px,1.5fr) 1fr 1fr; gap:1rem;
+    display:grid; grid-template-columns:1fr 1fr; gap:1rem;
 }
 .visually-hidden {
     position:absolute!important; width:1px!important; height:1px!important;
@@ -92,6 +104,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const enabled = document.getElementById('uniform_enabled');
     const fields = document.getElementById('uniformFields');
     const product = document.getElementById('uniform_product_id');
+    const youth = document.getElementById('uniform_youth_product_id');
     const home = document.getElementById('uniform_home_color');
     const away = document.getElementById('uniform_away_color');
     const fanPersonalization = document.getElementById('fan_personalization_enabled');
@@ -115,9 +128,28 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function selectedUniformIds() {
+        const ids = [];
+        if (product.value) ids.push(product.value);
+        if (youth && youth.value && youth.value !== product.value) ids.push(youth.value);
+        return ids;
+    }
+
+    function sharedColors() {
+        const ids = selectedUniformIds();
+        if (!ids.length) return [];
+        let list = (colors[String(ids[0])] || []).slice();
+        ids.slice(1).forEach(function(id) {
+            const next = colors[String(id)] || [];
+            list = list.filter(function(color) { return next.indexOf(color) !== -1; });
+        });
+        return list;
+    }
+
     function syncFanProduct() {
+        const uniformIds = selectedUniformIds();
         document.querySelectorAll('input[name="products"]').forEach(function(box) {
-            const isUniform = enabled.checked && box.value === product.value;
+            const isUniform = enabled.checked && uniformIds.indexOf(box.value) !== -1;
             if (isUniform) box.checked = false;
             box.disabled = isUniform;
             const card = box.closest('.product-checkbox');
@@ -130,19 +162,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function syncUniform(initial) {
         fields.hidden = !enabled.checked;
-        [product, home, away, fanPersonalization].forEach(function(el) {
+        [product, youth, home, away, fanPersonalization].forEach(function(el) {
             if (el) el.disabled = !enabled.checked;
         });
         product.required = enabled.checked;
         home.required = enabled.checked;
-        const list = colors[String(product.value)] || [];
-        fillColorSelect(home, list, product.value ? 'Choose Home color' : 'Choose the uniform style first', initial ? initialHome : home.value);
+        const list = sharedColors();
+        const hasStyle = !!product.value;
+        fillColorSelect(home, list, hasStyle ? 'Choose Home color' : 'Choose the uniform style first', initial ? initialHome : home.value);
         fillColorSelect(away, list, 'No Away uniform', initial ? initialAway : away.value);
         syncFanProduct();
     }
 
     enabled.addEventListener('change', function() { syncUniform(false); });
     product.addEventListener('change', function() { syncUniform(false); });
+    if (youth) youth.addEventListener('change', function() { syncUniform(false); });
     syncUniform(true);
 });
 </script>

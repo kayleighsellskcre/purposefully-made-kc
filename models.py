@@ -186,6 +186,9 @@ class Collection(db.Model):
     # Null means a legacy fan-wear-only group order.
     team_store_config = db.Column(db.Text)
 
+    # school | team | other. Controls send-home-with-child and whether grade is asked.
+    group_kind = db.Column(db.String(20))
+
     # Public directory — admin toggles this to list the collection on /group-orders
     show_in_directory = db.Column(db.Boolean, default=False)
     # Optional cover photo + short title for the public directory card

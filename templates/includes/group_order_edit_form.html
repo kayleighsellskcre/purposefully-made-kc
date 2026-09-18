@@ -40,13 +40,14 @@
                 </div>
 
                 {% include 'includes/group_order_card_fields.html' %}
+                {% include 'includes/group_order_kind_fields.html' %}
             </div>
 
             {% include 'includes/group_order_team_store.html' %}
 
             <div class="form-section">
                 <h2>Family &amp; Fan Wear</h2>
-                <p class="form-hint">Choose apparel for family and friends separately from the player uniform. Leave this empty for a uniform-only store.</p>
+                <p class="form-hint">Choose apparel for family and friends separately from the player uniform. Check both youth and adult if players of both ages will order. Leave this empty for a uniform-only store.</p>
                 {% if products %}
                 {% include 'includes/catalog_filter.html' %}
                 <div class="product-checkboxes">

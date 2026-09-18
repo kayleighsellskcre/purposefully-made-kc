@@ -92,11 +92,15 @@ def view(slug):
     store_config = team_store_config(collection)
     fan_ids = set(store_config['fan_product_ids'])
     uniform = store_config['uniform']
+    uniform_ids = set(uniform.get('product_ids') or [])
+    if uniform.get('product_id'):
+        uniform_ids.add(uniform['product_id'])
     uniform_product = None
+    uniform_products = []
     uniform_kits = []
     products = []
     for product in all_products:
-        if uniform['enabled'] and product.id == uniform['product_id']:
+        if uniform['enabled'] and product.id in uniform_ids:
             kit_colors = [
                 (key, uniform[f'{key}_color'])
                 for key in ('home', 'away')
@@ -114,13 +118,16 @@ def view(slug):
             product.available_sizes_list = sort_sizes(
                 parse_json_list(product.available_sizes)
             )
-            uniform_product = product
-            uniform_kits = [
+            kits = [
                 {'key': key, 'label': key.title(), 'color': color,
                  'variant': by_color.get(color)}
                 for key, color in kit_colors
                 if by_color.get(color)
             ]
+            if not uniform_product:
+                uniform_product = product
+                uniform_kits = kits
+            uniform_products.append({'product': product, 'kits': kits})
             continue
         if store_config['configured'] and product.id not in fan_ids:
             continue
@@ -142,6 +149,7 @@ def view(slug):
                          products=products,
                          team_store=store_config,
                          uniform_product=uniform_product,
+                         uniform_products=uniform_products,
                          uniform_kits=uniform_kits,
                          showcase_designs=showcase_designs,
                          catalog_filter_opts=catalog_filter_options(products))

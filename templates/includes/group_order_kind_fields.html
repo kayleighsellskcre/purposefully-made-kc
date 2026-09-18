@@ -1,0 +1,40 @@
+{% set _kind = (collection.group_kind if collection is defined and collection else none) or '' %}
+<div class="form-group">
+    <span class="form-label-text">What kind of group is this?</span>
+    <p class="form-hint" style="margin:0 0 0.65rem">This controls whether shoppers can send an order home with a child, and whether we ask for a grade.</p>
+    <div class="group-kind-choices">
+        <label class="group-kind-choice">
+            <input type="radio" name="group_kind" value="school" {% if _kind == 'school' %}checked{% endif %} required>
+            <span>
+                <strong>School</strong>
+                <small>Send-home with child, including grade and teacher</small>
+            </span>
+        </label>
+        <label class="group-kind-choice">
+            <input type="radio" name="group_kind" value="team" {% if _kind == 'team' %}checked{% endif %} required>
+            <span>
+                <strong>Team / sports</strong>
+                <small>Send-home with child for a coach. No grade.</small>
+            </span>
+        </label>
+        <label class="group-kind-choice">
+            <input type="radio" name="group_kind" value="other" {% if _kind == 'other' %}checked{% endif %} required>
+            <span>
+                <strong>Other</strong>
+                <small>Church, event, or anything else. No send-home option.</small>
+            </span>
+        </label>
+    </div>
+</div>
+<style>
+.group-kind-choices { display:grid; gap:.65rem; }
+.group-kind-choice {
+    display:flex; align-items:flex-start; gap:.7rem; margin:0; padding:.85rem 1rem;
+    border:1px solid var(--border-color,#e6ddd0); border-radius:10px; background:#fff; cursor:pointer;
+}
+.group-kind-choice:has(input:checked) { border-color:var(--terra-cotta,#b87c6f); background:rgba(184,124,111,.08); }
+.group-kind-choice input { margin-top:.2rem; accent-color:var(--terra-cotta,#b87c6f); }
+.group-kind-choice span, .group-kind-choice small { display:block; }
+.group-kind-choice small { color:var(--text-secondary); margin-top:.2rem; }
+.form-label-text { display:block; font-weight:700; margin-bottom:.35rem; }
+</style>

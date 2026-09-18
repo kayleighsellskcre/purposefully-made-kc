@@ -2743,8 +2743,12 @@ def add_collection():
                     name_part if name_part in ('first', 'last') else 'last'
                 )
 
-            from utils.group_orders import apply_collection_card, apply_schedule_from_form, set_collection_products_from_form
+            from utils.group_orders import apply_collection_card, apply_schedule_from_form, apply_group_kind, set_collection_products_from_form
             apply_collection_card(collection)
+            ok, kind_error = apply_group_kind(collection, required=True)
+            if not ok:
+                flash(kind_error, 'error')
+                return redirect(url_for('admin.add_collection'))
 
             password = request.form.get('password')
             if password:
