@@ -1,5 +1,5 @@
 {# Shared admin top nav — desktop hover menus, phone accordion #}
-{% set daily_eps = ['admin.orders','admin.completed_orders','admin.order_detail','admin.production_workflow','admin.production_master','admin.transfer_production','admin.order_transfer_summary','admin.print_labels','admin.dtf_batch_sheets','admin.logo_chart','admin.production_bulk_sheet','admin.blank_apparel_list','admin.custom_design_requests','admin.custom_design_request_detail','admin.production'] %}
+{% set daily_eps = ['admin.orders','admin.completed_orders','admin.order_detail','admin.production_workflow','admin.production_master','admin.transfer_production','admin.order_transfer_summary','admin.print_labels','admin.dtf_batch_sheets','admin.logo_chart','admin.production_bulk_sheet','admin.blank_apparel_list','admin.custom_design_requests','admin.custom_design_request_detail','admin.production','admin.notifications','admin.notifications_open'] %}
 {% set store_eps = ['admin.products','admin.add_product','admin.edit_product','admin.collections','admin.add_collection','admin.edit_collection','admin.design_gallery','admin.gallery_queue','admin.designs','admin.affirmations'] %}
 {% set biz_eps = ['admin.inventory','admin.save_inventory_costs','admin.operations_inventory','admin.vendors','admin.financial','admin.growth','admin.customers','admin.packaging_sop'] %}
 
@@ -47,6 +47,11 @@
                 <a href="{{ url_for('admin.custom_design_requests') }}" class="ops-drop-item {% if request.endpoint in ['admin.custom_design_requests','admin.custom_design_request_detail'] %}ops-drop-active{% endif %}" role="menuitem">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                     Recreate Requests
+                </a>
+                <a href="{{ url_for('admin.notifications') }}" class="ops-drop-item {% if request.endpoint in ['admin.notifications','admin.notifications_open'] %}ops-drop-active{% endif %}" role="menuitem">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+                    Notifications
+                    {% if admin_unread_notifications %}<span class="ops-drop-badge">{{ admin_unread_notifications }}</span>{% endif %}
                 </a>
             </div>
         </div>

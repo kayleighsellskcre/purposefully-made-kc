@@ -96,15 +96,15 @@
 
                 <form id="galleryUploadForm" class="gallery-upload-form">
 
-                    {# ── Categories (replaces Folder dropdown) ── #}
+                    {# ── Folder (required for new main designs) ── #}
                     <div class="form-group upload-cats-group">
-                        <label class="form-label">Categories <small style="font-weight:400;color:var(--text-secondary);">— check every tab this design should appear in</small></label>
+                        <label class="form-label">Folder <small style="font-weight:400;color:var(--text-secondary);">— pick where this design lives. Extra folders only if it truly belongs in more than one.</small></label>
                         <div class="upload-cat-chips">
                             {% for key, label in gallery_folder_options %}
                             <label class="cat-chip"><input type="checkbox" name="upload_cats" value="{{ key }}"> {{ label }}</label>
                             {% endfor %}
                         </div>
-                        <small style="color:#bbb;font-size:0.75rem;margin-top:0.35rem;display:block;">At least one category required.</small>
+                        <small style="color:#bbb;font-size:0.75rem;margin-top:0.35rem;display:block;">Required for new designs. Color variants inherit the parent folder.</small>
                     </div>
 
                     {# ── Multi-file drop zone ── #}
@@ -200,8 +200,8 @@
             </p>
             <div class="admin-gallery-tools">
                 <input type="search" id="adminGallerySearch" class="form-control" placeholder="Search gallery designs or SKUs..." autocomplete="off">
-                <select id="adminGalleryCategory" class="form-control" aria-label="Filter gallery designs by category">
-                    <option value="">All categories</option>
+                <select id="adminGalleryCategory" class="form-control" aria-label="Filter gallery designs by folder">
+                    <option value="">All folders</option>
                     {% for key, label in gallery_folder_options %}
                     <option value="{{ key }}">{{ label }}</option>
                     {% endfor %}
@@ -707,13 +707,13 @@
                     <input type="text" id="editTitle" name="title" class="form-control" maxlength="200" required>
                 </div>
                 <div class="form-group" style="margin-bottom:1rem;">
-                    <label class="form-label" style="margin-bottom:0.5rem;">Show in categories <small style="font-weight:400;color:#aaa;">— check every tab this design should appear in</small></label>
+                    <label class="form-label" style="margin-bottom:0.5rem;">Folder <small style="font-weight:400;color:#aaa;">— most designs need only one. Check extras only if it belongs in more than one folder.</small></label>
                     <div id="editExtraCategories" style="display:flex;flex-wrap:wrap;gap:0.4rem;">
                         {% for key, label in gallery_folder_options %}
                         <label class="cat-chip"><input type="checkbox" name="extra_categories" value="{{ key }}"> {{ label }}</label>
                         {% endfor %}
                     </div>
-                    <small style="color:#bbb;font-size:0.75rem;margin-top:0.35rem;display:block;">Check all tabs where this design should appear. At least one is required.</small>
+                    <small style="color:#bbb;font-size:0.75rem;margin-top:0.35rem;display:block;">At least one folder is required.</small>
                 </div>
                 <div class="form-group" style="margin-bottom:1rem;">
                     <label for="editSku" class="form-label">SKU</label>
@@ -1143,6 +1143,13 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
         }
     }
 
+    function selectedFolders() {
+        return Array.from(document.querySelectorAll('#galleryUploadForm input[name="upload_cats"]:checked'));
+    }
+    function hasParentDesign() {
+        var sel = document.getElementById('parent_design_id');
+        return sel && sel.value;
+    }
     function updateBtn() {
         var btn = document.getElementById('uploadBtn');
         var pending = Object.values(_queue).filter(function(i) { return i.status === 'pending'; });
@@ -1150,6 +1157,9 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
         if (!pending.length) {
             btn.disabled = true;
             btn.textContent = done.length ? 'All uploaded ✓' : 'Select files above to upload';
+        } else if (!selectedFolders().length && !hasParentDesign()) {
+            btn.disabled = true;
+            btn.textContent = 'Choose a folder first';
         } else {
             btn.disabled = false;
             btn.textContent = 'Upload ' + pending.length + ' Design' + (pending.length === 1 ? '' : 's') + ' →';
@@ -1173,8 +1183,8 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
         });
         var pending = Object.values(_queue).filter(function(i) { return i.status === 'pending'; });
         if (!pending.length) return;
-        var cats = Array.from(document.querySelectorAll('#galleryUploadForm input[name="upload_cats"]:checked')).map(function(cb) { return cb.value; });
-        if (!cats.length) { showGalleryToast('Please check at least one category first.'); return; }
+        var cats = selectedFolders().map(function(cb) { return cb.value; });
+        if (!cats.length && !hasParentDesign()) { showGalleryToast('Please choose a folder first.'); return; }
         _busy = true;
         _groupParentId = null;
         var prog = document.getElementById('uploadProgress');
@@ -1257,6 +1267,11 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
         e.preventDefault(); zone.classList.remove('drag-over');
         if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
     });
+    document.querySelectorAll('#galleryUploadForm input[name="upload_cats"]').forEach(function(cb) {
+        cb.addEventListener('change', updateBtn);
+    });
+    var parentSelect = document.getElementById('parent_design_id');
+    if (parentSelect) parentSelect.addEventListener('change', updateBtn);
 })();
 
 // Keep a large admin gallery quick to scan without loading another page.

@@ -268,6 +268,14 @@ def _handle_submit_post():
         )
         db.session.add(req)
         db.session.commit()
+        try:
+            from utils.admin_notifications import notify_design_request
+            notify_design_request(req, current_user.full_name)
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.exception(
+                'Design-request inbox failed for request %s: %s', req.id, e,
+            )
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception(

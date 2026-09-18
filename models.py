@@ -794,3 +794,26 @@ class SiteError(db.Model):
 
     def __repr__(self):
         return f'<SiteError {self.error_id} {self.path}>'
+
+
+class AdminNotification(db.Model):
+    """Inbound inbox for contact-form messages and design requests.
+
+    Orders stay on the dashboard workflow and are never written here.
+    """
+    __tablename__ = 'admin_notification'
+
+    id = db.Column(db.Integer, primary_key=True)
+    kind = db.Column(db.String(40), nullable=False, index=True)
+    title = db.Column(db.String(200), nullable=False)
+    preview = db.Column(db.String(300))
+    body = db.Column(db.Text)
+    from_name = db.Column(db.String(200))
+    from_email = db.Column(db.String(120))
+    url = db.Column(db.String(300))
+    related_id = db.Column(db.Integer, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    read_at = db.Column(db.DateTime)
+
+    def __repr__(self):
+        return f'<AdminNotification {self.kind} {self.id}>'

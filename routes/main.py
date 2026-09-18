@@ -76,6 +76,18 @@ def contact():
         subject = request.form.get('subject', '').strip()
         message = request.form.get('message', '').strip()
 
+        if name or email or message:
+            try:
+                from utils.admin_notifications import notify_contact_message
+                notify_contact_message(name, email, subject, message)
+            except Exception as e:
+                try:
+                    from models import db as _db
+                    _db.session.rollback()
+                except Exception:
+                    pass
+                current_app.logger.exception('Contact inbox error: %s', e)
+
         # Send email to admin if mail is configured — after the thank-you redirect.
         try:
             from flask_mail import Message as MailMessage

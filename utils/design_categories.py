@@ -15,19 +15,19 @@ class GalleryCategory:
 
 GALLERY_CATEGORIES = (
     GalleryCategory(
-        'favorites', 'Fan Favorites', 'evergreen',
-        ('custom_orders', 'favorites', 'fan_favorites'),
-    ),
-    GalleryCategory('sports', 'Sports', 'sports'),
-    GalleryCategory('school', 'School', 'school'),
-    GalleryCategory('family', 'Couples & Family', 'couples', ('family',)),
-    GalleryCategory('holiday', 'Holiday', 'holiday', ('seasonal',)),
-    GalleryCategory('kc', 'Kansas City', 'kc'),
-    GalleryCategory(
         'faith', 'Faith & Inspiration', 'faith',
         ('bible', 'inspirational'),
     ),
+    GalleryCategory('sports', 'Sports', 'sports'),
+    GalleryCategory('school', 'School', 'school'),
+    GalleryCategory('kc', 'Kansas City', 'kc'),
+    GalleryCategory('holiday', 'Holiday', 'holiday', ('seasonal',)),
+    GalleryCategory('family', 'Couples & Family', 'couples', ('family',)),
     GalleryCategory('funny', 'Funny', 'funny'),
+    GalleryCategory(
+        'favorites', 'Fan Favorites', 'evergreen',
+        ('custom_orders', 'favorites', 'fan_favorites'),
+    ),
     GalleryCategory(
         'luxury', 'Luxury Basics', 'luxury_basics', ('luxury',),
     ),
@@ -58,6 +58,35 @@ def normalize_category(value: str | None) -> str:
     cleaned = (value or '').strip().lower()
     category = _CATEGORY_BY_ALIAS.get(cleaned)
     return category.key if category else ''
+
+
+def storage_key_for(value: str | None) -> str:
+    """Return the stored folder key for a public, alias, or storage value."""
+    cleaned = (value or '').strip().lower()
+    category = _CATEGORY_BY_ALIAS.get(cleaned)
+    return category.storage_key if category else ''
+
+
+def assigned_gallery_folders(form) -> list[str]:
+    """Unique storage folder keys from an upload or edit form, in given order."""
+    values = []
+    getter = getattr(form, 'getlist', None)
+    for field in ('extra_categories', 'upload_cats'):
+        if callable(getter):
+            values.extend(getter(field) or [])
+        else:
+            raw = form.get(field)
+            if raw:
+                values.extend(str(raw).split(','))
+    folder = (form.get('folder') or '').strip()
+    if folder:
+        values.append(folder)
+    keys = []
+    for value in values:
+        storage = storage_key_for(value)
+        if storage and storage not in keys:
+            keys.append(storage)
+    return keys
 
 
 def design_category_keys(

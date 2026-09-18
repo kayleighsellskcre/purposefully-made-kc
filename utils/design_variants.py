@@ -1,13 +1,18 @@
 """Group gallery designs so one card can offer multiple color variants."""
 from __future__ import annotations
 
+import re
+
 from sqlalchemy import or_
 
 from utils.design_categories import (
+    GALLERY_CATEGORIES,
     GALLERY_CATEGORY_LABELS,
     design_category_keys,
     gallery_group_for_title,
 )
+
+FOLDER_COVER_LIMIT = 6
 
 
 def _resolve_url(file_path):
@@ -127,6 +132,63 @@ def gallery_cards_for_public(Design, resolve_url=None, limit=None):
         )
         for design in mains
     ]
+
+
+def _search_blob(card):
+    bits = [
+        card.get('title') or '',
+        card.get('group') or '',
+        ' '.join(card.get('category_keys') or []),
+        ' '.join(card.get('category_labels') or []),
+    ]
+    for variant in card.get('variants') or []:
+        bits.append(variant.get('label') or '')
+    return re.sub(r'[^a-z0-9]+', ' ', ' '.join(bits).lower())
+
+
+def filter_gallery_cards(cards, *, category=None, query=None):
+    """Keep main gallery cards that match a public folder and/or search words."""
+    words = [
+        word
+        for word in re.sub(r'[^a-z0-9]+', ' ', (query or '').lower()).split()
+        if word
+    ]
+    matches = []
+    for card in cards:
+        if category and category not in (card.get('category_keys') or []):
+            continue
+        if words:
+            blob = _search_blob(card)
+            if not all(word in blob for word in words):
+                continue
+        matches.append(card)
+    return matches
+
+
+def gallery_folder_cards(cards):
+    """Landing cards: one folder per public category that has designs."""
+    folders = []
+    for category in GALLERY_CATEGORIES:
+        members = [
+            card for card in cards
+            if category.key in (card.get('category_keys') or [])
+        ]
+        if not members:
+            continue
+        folders.append({
+            'key': category.key,
+            'label': category.label,
+            'count': len(members),
+            'covers': [
+                {
+                    'id': card['id'],
+                    'url': card['url'],
+                    'title': card['title'],
+                }
+                for card in members[:FOLDER_COVER_LIMIT]
+            ],
+        })
+    return folders
 
 
 def ensure_not_nested_parent(parent):

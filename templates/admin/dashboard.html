@@ -13,11 +13,13 @@
             <p class="dash-date">{{ now.strftime('%A, %B %d, %Y') }}</p>
         </div>
         <div class="dash-topbar-right" style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
-            <form method="post" action="{{ url_for('admin.test_email') }}" style="margin:0;">
-                <button type="submit" class="dash-store-link" style="background:none;border:1px solid var(--border-color);cursor:pointer;font:inherit;" title="Send a test email to verify Railway mail config">
-                    📧 Test Email
-                </button>
-            </form>
+            <a href="{{ url_for('admin.notifications') }}" class="dash-store-link" title="Contact messages and design requests">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+                Notifications
+                {% if admin_unread_notifications %}
+                <span class="dash-notify-badge">{{ admin_unread_notifications }}</span>
+                {% endif %}
+            </a>
             <a href="{{ url_for('shop.index') }}" class="dash-store-link" target="_blank">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                 View Store
@@ -408,6 +410,21 @@
 .dash-store-link:hover {
     background: rgba(184,124,111,0.07);
     border-color: var(--terra-cotta);
+}
+.dash-notify-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    background: var(--terra-cotta, #b87c6f);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    line-height: 1;
 }
 
 /* ── Alerts ── */

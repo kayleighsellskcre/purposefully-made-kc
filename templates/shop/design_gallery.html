@@ -1,33 +1,117 @@
 {% extends "base.html" %}
 {% block title %}Design Gallery - Purposefully Made KC{% endblock %}
-{% block meta_description %}Browse ready-to-print designs you can put on any garment we stock. Pick one, choose your shirt and colour, and order.{% endblock %}
+{% block meta_description %}Browse ready-to-print designs by folder — Faith, Sports, School, Kansas City, Holiday, Family, Funny, Fan Favorites, and Luxury. Pick one, choose your shirt, and order.{% endblock %}
 
 {% block content %}
+
+{% set folders_url = url_for('shop.design_gallery', product_id=product_id) %}
 
 <!-- Page Header -->
 <div class="page-header">
     <div class="container">
+        {% if gallery_view == 'folder' %}
+        <a class="dg-back" href="{{ folders_url }}">All folders</a>
+        {% elif gallery_view == 'search' %}
+        <a class="dg-back" href="{% if active_folder %}{{ url_for('shop.design_gallery', category=active_folder.key, product_id=product_id) }}{% else %}{{ folders_url }}{% endif %}">{% if active_folder %}{{ active_folder.label }}{% else %}All folders{% endif %}</a>
+        {% endif %}
+        {% if gallery_view == 'folder' and active_folder %}
+        <span class="eyebrow">Design Gallery</span>
+        <h1>{{ active_folder.label }}</h1>
+        <p class="lead">Choose a design you love. If it comes in more than one color, you will pick the color next.</p>
+        {% elif gallery_view == 'search' %}
+        <span class="eyebrow">Design Gallery</span>
+        <h1>Search results</h1>
+        <p class="lead">{% if search_query %}Designs matching “{{ search_query }}”{% if active_folder %} in {{ active_folder.label }}{% endif %}.{% else %}Matching designs.{% endif %}</p>
+        {% else %}
         <span class="eyebrow">Curated Collection</span>
         <h1>Design Gallery</h1>
-        <p class="lead">Choose a design you love. If it comes in more than one color, you will pick the color next.</p>
+        <p class="lead">Open a folder to browse. Each design lives in one place — no scrolling through everything at once.</p>
+        {% endif %}
     </div>
 </div>
 
-<!-- Gallery Section -->
 <section class="gallery-section">
     <div class="container">
 
-        {% if designs %}
+        {% if gallery_view == 'empty' %}
 
-        <div class="dg-discovery" aria-label="Find a design">
-            <div class="dg-toolbar">
+        <div class="gallery-empty">
+            <div class="gallery-empty-ornament">
+                <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.25">
+                    <rect x="3" y="3" width="18" height="18" rx="3"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                </svg>
+            </div>
+            <span class="gallery-empty-eyebrow">Coming Soon</span>
+            <h2 class="gallery-empty-title">The Gallery is Being Curated</h2>
+            <p class="gallery-empty-text">We are adding our best designs here. Check back soon, or upload your own when customizing a product.</p>
+            <a href="{{ url_for('shop.index') }}" class="btn btn-primary">Browse Products</a>
+        </div>
+
+        {% elif gallery_view == 'folders' %}
+
+        <form class="dg-discovery" method="get" action="{{ url_for('shop.design_gallery') }}" role="search">
+            {% if product_id %}<input type="hidden" name="product_id" value="{{ product_id }}">{% endif %}
+            <div class="dg-toolbar dg-toolbar-search-only">
                 <label class="dg-search" for="dgSearch">
                     <span class="dg-control-label">Search designs</span>
                     <span class="dg-search-field">
                         <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
-                        <input type="search" id="dgSearch" placeholder="Search designs, teams, occasions..." autocomplete="off">
+                        <input type="search" id="dgSearch" name="q" placeholder="Search designs, teams, occasions..." autocomplete="off" value="{{ search_query }}">
                     </span>
                 </label>
+            </div>
+        </form>
+
+        <div class="dg-folders" aria-label="Design folders">
+            {% for folder in folders %}
+            <article class="dg-folder">
+                <a class="dg-folder-hit" href="{{ url_for('shop.design_gallery', category=folder.key, product_id=product_id) }}" aria-labelledby="dg-folder-{{ folder.key }}">
+                    <div class="dg-folder-stage" data-folder-carousel data-covers='{{ folder.covers | tojson }}'>
+                        <img src="{{ folder.covers[0].url }}"
+                             alt="{{ folder.covers[0].title }}"
+                             class="dg-folder-image"
+                             loading="{{ 'eager' if loop.first else 'lazy' }}">
+                    </div>
+                    <div class="dg-folder-meta">
+                        <h2 id="dg-folder-{{ folder.key }}" class="dg-folder-title">{{ folder.label }}</h2>
+                        <p class="dg-folder-count">{{ folder.count }} design{{ 's' if folder.count != 1 else '' }}</p>
+                    </div>
+                </a>
+                {% if folder.covers|length > 1 %}
+                <button type="button" class="dg-folder-nav prev" data-folder-nav="-1" aria-label="Previous {{ folder.label }} design">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <button type="button" class="dg-folder-nav next" data-folder-nav="1" aria-label="Next {{ folder.label }} design">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </button>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+
+        <div class="gallery-footer">
+            <a href="{{ url_for('shop.index') }}" class="btn btn-outline">Browse All Products</a>
+        </div>
+
+        {% else %}
+
+        <div class="dg-discovery" aria-label="Find a design">
+            <div class="dg-toolbar">
+                <form class="dg-search-form" method="get" action="{{ url_for('shop.design_gallery') }}" role="search">
+                    {% if product_id %}<input type="hidden" name="product_id" value="{{ product_id }}">{% endif %}
+                    {% if gallery_view == 'folder' and active_folder %}
+                    <input type="hidden" name="category" value="{{ active_folder.key }}">
+                    {% endif %}
+                    <label class="dg-search" for="dgSearch">
+                        <span class="dg-control-label">Search designs</span>
+                        <span class="dg-search-field">
+                            <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+                            <input type="search" id="dgSearch" name="q" placeholder="Search designs, teams, occasions..." autocomplete="off" value="{{ search_query }}">
+                        </span>
+                    </label>
+                </form>
                 <label class="dg-sort-wrap">
                     <span class="dg-control-label">Sort</span>
                     <select id="dgSort" aria-label="Sort designs">
@@ -37,25 +121,16 @@
                     </select>
                 </label>
             </div>
-
-            <div class="dg-filter-bar" id="dgFilterBar" role="tablist" aria-label="Design categories">
-                <button class="dg-tab active" data-tab="all" role="tab" aria-selected="true">All <span class="dg-tab-count">{{ designs|length }}</span></button>
-                {% for category in gallery_categories %}
-                {% if category_counts.get(category.key, 0) %}
-                <button class="dg-tab" data-tab="{{ category.key }}" role="tab" aria-selected="false">
-                    {{ category.label }} <span class="dg-tab-count">{{ category_counts[category.key] }}</span>
-                </button>
-                {% endif %}
-                {% endfor %}
-            </div>
         </div>
 
         <div class="gallery-meta">
             <p class="gallery-count" id="dgCount" aria-live="polite">{{ designs|length }} design{{ 's' if designs|length != 1 else '' }} available</p>
-            <button type="button" class="dg-clear" id="dgClear" hidden>Clear filters</button>
+            <button type="button" class="dg-clear" id="dgClear" hidden>Clear search</button>
         </div>
 
-        <div class="gallery-grid" id="dgGrid">
+        <div class="gallery-grid" id="dgGrid"
+             data-gallery-view="{{ gallery_view }}"
+             data-category="{{ active_folder.key if active_folder else '' }}">
             {% for design in designs %}
             <div class="gallery-card"
                  data-design-id="{{ design.id }}"
@@ -88,6 +163,9 @@
                 </div>
                 <div class="gallery-card-body">
                     <h2 class="gallery-card-title">{{ design.title }}</h2>
+                    {% if gallery_view == 'search' and design.category_labels %}
+                    <p class="gallery-card-folder">{{ design.category_labels[0] }}</p>
+                    {% endif %}
                     <button type="button" class="gallery-card-link gallery-open-colors">
                         {% if design.has_colors %}View colors &amp; continue &rarr;{% else %}{% if product_id %}Use this design &rarr;{% else %}Choose a product &rarr;{% endif %}{% endif %}
                     </button>
@@ -98,7 +176,7 @@
 
         <div class="dg-empty-state" id="dgEmptyState">
             <p>No designs match those filters.</p>
-            <button type="button" class="btn btn-outline" id="dgEmptyClear">Clear filters</button>
+            <button type="button" class="btn btn-outline" id="dgEmptyClear">Clear search</button>
         </div>
 
         <div class="dg-load-more-wrap" id="dgLoadMoreWrap" hidden>
@@ -106,29 +184,14 @@
         </div>
 
         <div class="gallery-footer">
-            <a href="{{ url_for('shop.index') }}" class="btn btn-outline">Browse All Products</a>
-        </div>
-
-        {% else %}
-
-        <div class="gallery-empty">
-            <div class="gallery-empty-ornament">
-                <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.25">
-                    <rect x="3" y="3" width="18" height="18" rx="3"/>
-                    <circle cx="8.5" cy="8.5" r="1.5"/>
-                    <polyline points="21 15 16 10 5 21"/>
-                </svg>
-            </div>
-            <span class="gallery-empty-eyebrow">Coming Soon</span>
-            <h2 class="gallery-empty-title">The Gallery is Being Curated</h2>
-            <p class="gallery-empty-text">We are adding our best designs here. Check back soon, or upload your own when customizing a product.</p>
-            <a href="{{ url_for('shop.index') }}" class="btn btn-primary">Browse Products</a>
+            <a href="{{ folders_url }}" class="btn btn-outline">All folders</a>
         </div>
 
         {% endif %}
     </div>
 </section>
 
+{% if gallery_view in ('folder', 'search') %}
 {# Color picker — one main design, then instant color choices #}
 <div id="galleryColorModal" class="gcolor-modal" hidden role="dialog" aria-modal="true" aria-labelledby="gcolorTitle">
     <div class="gcolor-backdrop" data-close="1"></div>
@@ -144,11 +207,31 @@
         <button type="button" id="gcolorContinue" class="btn btn-primary gcolor-continue">Continue</button>
     </div>
 </div>
+{% endif %}
 
 <style>
 /* ── Gallery discovery controls ── */
 .dg-discovery {
     margin-bottom: 1rem;
+}
+.dg-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0 0 0.85rem;
+    color: var(--terra-cotta, #b87c6f);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+}
+.dg-back::before {
+    content: '←';
+    font-size: 1rem;
+    line-height: 1;
+}
+.dg-back:hover {
+    text-decoration: underline;
 }
 .dg-toolbar {
     display: grid;
@@ -156,6 +239,13 @@
     gap: 0.85rem;
     align-items: end;
     margin-bottom: 1rem;
+}
+.dg-toolbar-search-only {
+    grid-template-columns: 1fr;
+    max-width: 520px;
+}
+.dg-search-form {
+    min-width: 0;
 }
 .dg-search {
     display: block;
@@ -210,40 +300,6 @@
     min-width: 165px;
     padding: 0.65rem 2rem 0.65rem 0.8rem;
 }
-.dg-filter-bar {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 0.4rem;
-    margin-bottom: 0.5rem;
-    padding: 0.1rem 0 0.45rem;
-    overflow-x: auto;
-    scrollbar-width: thin;
-    overscroll-behavior-inline: contain;
-}
-.dg-tab {
-    padding: 0.4rem 1rem;
-    border-radius: 999px;
-    border: 1.5px solid var(--border-color, #e0d8cc);
-    background: transparent;
-    font-size: 0.82rem;
-    font-family: inherit;
-    cursor: pointer;
-    color: var(--text-secondary);
-    transition: border-color 0.15s, background 0.15s, color 0.15s;
-    white-space: nowrap;
-}
-.dg-tab:hover,
-.dg-tab.active {
-    border-color: var(--terra-cotta, #b87c6f);
-    background: rgba(184,124,111,0.1);
-    color: var(--terra-cotta, #b87c6f);
-    font-weight: 600;
-}
-.dg-tab-count {
-    font-weight: 400;
-    opacity: 0.75;
-    margin-left: 0.15rem;
-}
 .dg-empty-state {
     text-align: center;
     padding: 3rem 1rem;
@@ -281,6 +337,102 @@
 .dg-group-header:first-child {
     margin-top: 0;
 }
+
+/* ── Folder landing ── */
+.dg-folders {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.5rem;
+}
+.dg-folder {
+    position: relative;
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 16px rgba(58, 61, 72, 0.07);
+    border: 1px solid rgba(232, 208, 177, 0.5);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.dg-folder:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 36px rgba(58, 61, 72, 0.12);
+}
+.dg-folder-hit {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+}
+.dg-folder-stage {
+    aspect-ratio: 4 / 5;
+    background: linear-gradient(135deg, var(--ivory-silk, #f7f3ec) 0%, #f0ebe0 100%);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem 4.25rem;
+}
+.dg-folder-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    transition: opacity 0.9s ease, transform 0.4s ease;
+}
+.dg-folder:hover .dg-folder-image {
+    transform: scale(1.03);
+}
+.dg-folder-meta {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 2.4rem 1.2rem 1.1rem;
+    background: linear-gradient(transparent, rgba(32, 28, 24, 0.82) 55%);
+    color: #fff;
+    pointer-events: none;
+    z-index: 2;
+}
+.dg-folder-title {
+    font-family: var(--font-heading);
+    font-size: 1.28rem;
+    font-weight: 600;
+    margin: 0 0 0.2rem;
+    color: #fff;
+}
+.dg-folder-count {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.82;
+}
+.dg-folder-nav {
+    position: absolute;
+    top: 42%;
+    transform: translateY(-50%);
+    z-index: 4;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.96);
+    color: var(--text-primary);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.dg-folder-nav:hover,
+.dg-folder-nav:focus-visible {
+    background: var(--terra-cotta, #b87c6f);
+    color: #fff;
+    outline: none;
+}
+.dg-folder-nav.prev { left: 0.65rem; }
+.dg-folder-nav.next { right: 0.65rem; }
 
 /* ── Gallery Section ── */
 .gallery-section {
@@ -444,6 +596,14 @@
     font-weight: 600;
     color: var(--text-primary);
     margin: 0 0 0.5rem;
+}
+.gallery-card-folder {
+    margin: -0.2rem 0 0.45rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--terra-cotta, #b87c6f);
 }
 
 .gallery-card-link {
@@ -625,6 +785,12 @@
     cursor: pointer;
     border: none;
 }
+@media (max-width: 900px) {
+    .dg-folders {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.15rem;
+    }
+}
 @media (max-width: 540px) {
     .dg-toolbar {
         grid-template-columns: 1fr;
@@ -636,11 +802,15 @@
     .dg-sort-wrap select {
         width: 100%;
     }
+    .dg-folders {
+        grid-template-columns: 1fr;
+    }
     .gallery-meta {
         align-items: flex-start;
         margin-bottom: 1.5rem;
     }
-    .gallery-carousel-btn {
+    .gallery-carousel-btn,
+    .dg-folder-nav {
         width: 42px;
         height: 42px;
         opacity: 1;
@@ -657,8 +827,67 @@
         gap: 0.5rem;
     }
 }
+@media (prefers-reduced-motion: reduce) {
+    .dg-folder-image,
+    .gallery-card,
+    .dg-folder {
+        transition: none;
+    }
+}
 </style>
 
+<script>
+(function() {
+    var INTERVAL = 4800;
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.querySelectorAll('[data-folder-carousel]').forEach(function(stage) {
+        var covers = [];
+        try { covers = JSON.parse(stage.getAttribute('data-covers') || '[]'); } catch (e) { covers = []; }
+        if (covers.length < 2) return;
+        var img = stage.querySelector('.dg-folder-image');
+        if (!img) return;
+        var folder = stage.closest('.dg-folder');
+        var index = 0;
+        var timer = null;
+
+        function show(next) {
+            index = (next + covers.length) % covers.length;
+            img.style.opacity = '0';
+            window.setTimeout(function() {
+                img.src = covers[index].url || '';
+                img.alt = covers[index].title || '';
+                img.style.opacity = '1';
+            }, 280);
+        }
+        function start() {
+            if (reduceMotion) return;
+            stop();
+            timer = window.setInterval(function() { show(index + 1); }, INTERVAL);
+        }
+        function stop() {
+            if (timer) window.clearInterval(timer);
+            timer = null;
+        }
+
+        if (folder) {
+            folder.querySelectorAll('[data-folder-nav]').forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    stop();
+                    show(index + Number(btn.getAttribute('data-folder-nav') || 1));
+                    start();
+                });
+            });
+            folder.addEventListener('mouseenter', stop);
+            folder.addEventListener('mouseleave', start);
+        }
+        start();
+    });
+})();
+</script>
+
+{% if gallery_view in ('folder', 'search') %}
 <script>
 (function() {
     const productId = {{ product_id|tojson }};
@@ -776,7 +1005,6 @@
             showCardVariant(carouselIndex + 1);
         });
 
-        /* Swipe colors on touch devices, matching the shop product carousel. */
         const imageWrap = card.querySelector('.gallery-design-carousel');
         let touchStartX = null;
         if (imageWrap && variants.length > 1) {
@@ -816,7 +1044,6 @@
     });
 })();
 
-// ── Search, categories, sorting, shareable URLs, and progressive reveal ──
 (function() {
     var grid = document.getElementById('dgGrid');
     if (!grid) return;
@@ -829,12 +1056,13 @@
     var emptyClear = document.getElementById('dgEmptyClear');
     var loadWrap = document.getElementById('dgLoadMoreWrap');
     var loadMore = document.getElementById('dgLoadMore');
-    var tabs = Array.from(document.querySelectorAll('.dg-tab'));
     var cards = Array.from(grid.querySelectorAll('.gallery-card'));
     var pageSize = 24;
     var shown = pageSize;
     var params = new URLSearchParams(window.location.search);
-    var activeCategory = params.get('category') || 'all';
+    var galleryView = grid.getAttribute('data-gallery-view') || 'folder';
+    var activeCategory = grid.getAttribute('data-category') || '';
+    var foldersUrl = {{ folders_url|tojson }};
 
     function normalized(value) {
         return (value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
@@ -856,46 +1084,35 @@
         ].join(' '));
     });
 
-    if (!tabs.some(function(tab) { return tab.dataset.tab === activeCategory; })) {
-        activeCategory = 'all';
-    }
-    search.value = params.get('q') || '';
-    sort.value = ['recommended', 'newest', 'az'].indexOf(params.get('sort')) !== -1
-        ? params.get('sort')
-        : 'recommended';
-
-    function updateTabs() {
-        tabs.forEach(function(tab) {
-            var selected = tab.dataset.tab === activeCategory;
-            tab.classList.toggle('active', selected);
-            tab.setAttribute('aria-selected', selected ? 'true' : 'false');
-        });
+    if (search) search.value = params.get('q') || search.value || '';
+    if (sort) {
+        sort.value = ['recommended', 'newest', 'az'].indexOf(params.get('sort')) !== -1
+            ? params.get('sort')
+            : 'recommended';
     }
 
     function updateUrl() {
         var next = new URLSearchParams(window.location.search);
-        var query = search.value.trim();
+        var query = search ? search.value.trim() : '';
         if (query) next.set('q', query); else next.delete('q');
-        if (activeCategory !== 'all') next.set('category', activeCategory); else next.delete('category');
-        if (sort.value !== 'recommended') next.set('sort', sort.value); else next.delete('sort');
+        if (activeCategory) next.set('category', activeCategory);
+        else next.delete('category');
+        if (sort && sort.value !== 'recommended') next.set('sort', sort.value); else next.delete('sort');
         var queryString = next.toString();
         window.history.replaceState(null, '', window.location.pathname + (queryString ? '?' + queryString : '') + window.location.hash);
     }
 
     function matchingCards() {
-        var words = normalized(search.value).split(' ').filter(Boolean);
+        var words = normalized(search ? search.value : '').split(' ').filter(Boolean);
         var matches = cards.filter(function(card) {
-            var categories = (card.getAttribute('data-categories') || '').split('|');
-            var categoryMatch = activeCategory === 'all' || categories.indexOf(activeCategory) !== -1;
-            var searchMatch = words.every(function(word) { return card._searchText.indexOf(word) !== -1; });
-            return categoryMatch && searchMatch;
+            return words.every(function(word) { return card._searchText.indexOf(word) !== -1; });
         });
 
         matches.sort(function(a, b) {
-            if (sort.value === 'az') {
+            if (sort && sort.value === 'az') {
                 return (a.dataset.title || '').localeCompare(b.dataset.title || '');
             }
-            if (sort.value === 'newest') {
+            if (sort && sort.value === 'newest') {
                 return (b.dataset.uploaded || '').localeCompare(a.dataset.uploaded || '');
             }
             return Number(a.dataset.originalOrder) - Number(b.dataset.originalOrder);
@@ -909,9 +1126,9 @@
 
         var matches = matchingCards();
         var visible = matches.slice(0, shown);
-        var shouldGroup = activeCategory !== 'all'
-            && !search.value.trim()
-            && sort.value === 'recommended';
+        var shouldGroup = galleryView === 'folder'
+            && !(search && search.value.trim())
+            && (!sort || sort.value === 'recommended');
         if (shouldGroup) {
             var groups = {};
             var ungrouped = [];
@@ -954,52 +1171,62 @@
         }
 
         var visibleCount = visible.length;
-        count.textContent = matches.length
-            ? 'Showing ' + visibleCount + ' of ' + matches.length + ' design' + (matches.length === 1 ? '' : 's')
-            : '0 designs found';
-        empty.style.display = matches.length ? 'none' : 'block';
-        loadWrap.hidden = visibleCount >= matches.length;
-        clear.hidden = !(search.value.trim() || activeCategory !== 'all' || sort.value !== 'recommended');
-        updateTabs();
+        if (count) {
+            count.textContent = matches.length
+                ? 'Showing ' + visibleCount + ' of ' + matches.length + ' design' + (matches.length === 1 ? '' : 's')
+                : '0 designs found';
+        }
+        if (empty) empty.style.display = matches.length ? 'none' : 'block';
+        if (loadWrap) loadWrap.hidden = visibleCount >= matches.length;
+        if (clear) {
+            clear.hidden = !((search && search.value.trim()) || (sort && sort.value !== 'recommended'));
+        }
         updateUrl();
     }
 
     function resetFilters() {
-        search.value = '';
-        sort.value = 'recommended';
-        activeCategory = 'all';
+        if (galleryView === 'search' && !(search && search.value.trim())) {
+            window.location.assign(foldersUrl);
+            return;
+        }
+        if (galleryView === 'search') {
+            window.location.assign(foldersUrl);
+            return;
+        }
+        if (search) search.value = '';
+        if (sort) sort.value = 'recommended';
         shown = pageSize;
         render();
-        search.focus();
+        if (search) search.focus();
     }
 
     var searchTimer;
-    search.addEventListener('input', function() {
-        window.clearTimeout(searchTimer);
-        searchTimer = window.setTimeout(function() {
-            shown = pageSize;
-            render();
-        }, 120);
-    });
-    sort.addEventListener('change', function() {
-        shown = pageSize;
-        render();
-    });
-    tabs.forEach(function(tab) {
-        tab.addEventListener('click', function() {
-            activeCategory = tab.dataset.tab;
+    if (search) {
+        search.addEventListener('input', function() {
+            window.clearTimeout(searchTimer);
+            searchTimer = window.setTimeout(function() {
+                shown = pageSize;
+                render();
+            }, 120);
+        });
+    }
+    if (sort) {
+        sort.addEventListener('change', function() {
             shown = pageSize;
             render();
         });
-    });
-    loadMore.addEventListener('click', function() {
-        shown += pageSize;
-        render();
-    });
-    clear.addEventListener('click', resetFilters);
-    emptyClear.addEventListener('click', resetFilters);
+    }
+    if (loadMore) {
+        loadMore.addEventListener('click', function() {
+            shown += pageSize;
+            render();
+        });
+    }
+    if (clear) clear.addEventListener('click', resetFilters);
+    if (emptyClear) emptyClear.addEventListener('click', resetFilters);
 
     render();
 })();
 </script>
+{% endif %}
 {% endblock %}

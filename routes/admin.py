@@ -4,7 +4,7 @@ from flask_login import login_required, current_user
 from functools import wraps
 from models import (db, Product, Collection, Order, OrderItem, Design, User, ProductColorVariant,
                     Vendor, ApparelInventory, TransferInventory, Supply, GrowthMetric, FinancialEntry,
-                    CustomDesignRequest, SiteError)
+                    CustomDesignRequest, SiteError, AdminNotification)
 from werkzeug.utils import secure_filename
 from datetime import datetime
 import json
@@ -400,6 +400,15 @@ def index():
         greeting = 'Good evening'
 
     admin_name = (current_user.first_name or '').strip() or None
+
+    try:
+        from utils.admin_notifications import backfill_pending_design_requests
+        backfill_pending_design_requests()
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
 
     return render_template('admin/dashboard.html',
                          total_orders=total_orders,
@@ -3626,6 +3635,22 @@ def design_gallery_upload():
         return _err('Unsupported format. Use PNG, JPG, WEBP, or HEIC.')
 
     try:
+        # ── Folder assignment ──
+        # Checkboxes send extra_categories (JS) or upload_cats (form). Color
+        # variants inherit their parent's folder. New mains cannot skip this.
+        from utils.design_categories import assigned_gallery_folders
+        from utils.design_variants import ensure_not_nested_parent
+
+        all_cats = assigned_gallery_folders(request.form)
+        parent_id = request.form.get('parent_design_id', type=int)
+        parent = None
+        if parent_id:
+            parent = ensure_not_nested_parent(Design.query.get(parent_id))
+            if not (parent and parent.is_gallery and parent.id):
+                parent = None
+        if not all_cats and parent is None:
+            return _err('Choose a folder before uploading.')
+
         # Grab bytes now for color detection (stream is consumed by _save_uploaded_design)
         try:
             file.stream.seek(0)
@@ -3671,30 +3696,6 @@ def design_gallery_upload():
         if sku:
             design.sku = sku
 
-        # ── Categories — checkboxes send 'extra_categories' (same as edit handler)
-        # The JS batch uploader uses the name 'extra_categories'; legacy form
-        # used 'folder'.  Support both so the old form still works if needed.
-        from utils.design_categories import GALLERY_FOLDER_KEYS
-        GALLERY_FOLDERS = GALLERY_FOLDER_KEYS
-        # New checkbox name used by the batch uploader
-        all_cats = [c for c in request.form.getlist('extra_categories') if c in GALLERY_FOLDERS]
-        if not all_cats:
-            # Fallback: legacy single 'folder' field
-            legacy = (request.form.get('folder') or 'custom_orders').strip()
-            all_cats = [legacy] if legacy in GALLERY_FOLDERS else ['custom_orders']
-        folder = all_cats[0]
-        extra_cats = ','.join(all_cats[1:]) if len(all_cats) > 1 else ''
-        design.folder = folder
-        design.extra_categories = extra_cats or None
-
-        # Auto-assign SKU if none supplied
-        if not sku:
-            design.sku = _next_sku(folder)
-
-        # ── Optional color variant ──
-        from utils.design_variants import ensure_not_nested_parent
-        parent_id = request.form.get('parent_design_id', type=int)
-
         # Vision sees multicolor palettes; pixel detection is the no-key fallback.
         if not variant_label and _color_bytes:
             variant_label = (
@@ -3702,24 +3703,29 @@ def design_gallery_upload():
                 or _detect_image_color(_color_bytes)
             )
 
-        if parent_id:
-            parent = Design.query.get(parent_id)
-            parent = ensure_not_nested_parent(parent)
-            if parent and parent.is_gallery and parent.id != design.id:
-                design.parent_design_id = parent.id
-                design.variant_label = unique_variant_label(
-                    parent, variant_label or 'Color'
-                )
-                if not (parent.variant_label or '').strip():
-                    parent.variant_label = 'Default'
-                # Every color in one family uses the same customer-facing name.
-                design.title = parent.title or parent.original_filename or design.title
-                if not sku and parent.sku:
-                    design.sku = parent.sku
-                design.folder = parent.folder or design.folder
-                design.is_gallery = True
+        if parent and parent.id != design.id:
+            design.parent_design_id = parent.id
+            design.variant_label = unique_variant_label(
+                parent, variant_label or 'Color'
+            )
+            if not (parent.variant_label or '').strip():
+                parent.variant_label = 'Default'
+            # Every color in one family uses the same customer-facing name.
+            design.title = parent.title or parent.original_filename or design.title
+            design.folder = parent.folder or (all_cats[0] if all_cats else 'evergreen')
+            design.extra_categories = parent.extra_categories
+            design.is_gallery = True
+            if not sku and parent.sku:
+                design.sku = parent.sku
+            elif not sku:
+                design.sku = _next_sku(design.folder)
         else:
-            # Standalone upload — still store the detected/provided color label
+            folder = all_cats[0]
+            extra_cats = ','.join(all_cats[1:]) if len(all_cats) > 1 else ''
+            design.folder = folder
+            design.extra_categories = extra_cats or None
+            if not sku:
+                design.sku = _next_sku(folder)
             if variant_label:
                 design.variant_label = unique_variant_label(None, variant_label)
 
@@ -4185,8 +4191,9 @@ def gallery_request_changes(design_id):
 
 @admin_bp.context_processor
 def _inject_gallery_pending_count():
-    """Expose the pending-review count to admin templates (nav badge)."""
+    """Expose pending-review and unread-inbox counts to admin templates."""
     count = 0
+    unread = 0
     try:
         count = (Design.query
                  .filter(Design.gallery_status.in_(['pending', 'changes_requested']))
@@ -4197,7 +4204,64 @@ def _inject_gallery_pending_count():
         except Exception:
             pass
         count = 0
-    return {'gallery_pending_count': count}
+    try:
+        from utils.admin_notifications import unread_count
+        unread = unread_count()
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        unread = 0
+    return {
+        'gallery_pending_count': count,
+        'admin_unread_notifications': unread,
+    }
+
+
+@admin_bp.route('/notifications')
+@admin_required
+def notifications():
+    """Inbox for contact-form messages and design requests — not orders."""
+    from utils.admin_notifications import backfill_pending_design_requests
+    try:
+        backfill_pending_design_requests()
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+    notes = (
+        AdminNotification.query
+        .order_by(AdminNotification.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    return render_template(
+        'admin/notifications.html',
+        notifications=notes,
+    )
+
+
+@admin_bp.route('/notifications/mark-all-read', methods=['POST'])
+@admin_required
+def notifications_mark_all_read():
+    from utils.admin_notifications import mark_all_read
+    mark_all_read()
+    return redirect(url_for('admin.notifications'))
+
+
+@admin_bp.route('/notifications/<int:note_id>/open', methods=['GET', 'POST'])
+@admin_required
+def notifications_open(note_id):
+    """Mark one notification read, then go to the design request (or stay here)."""
+    from utils.admin_notifications import mark_read
+    note = AdminNotification.query.get_or_404(note_id)
+    mark_read(note)
+    db.session.commit()
+    if note.url:
+        return redirect(note.url)
+    return redirect(url_for('admin.notifications'))
 
 
 # ===== RECREATE REQUESTS (Have Us Recreate) =====

@@ -113,11 +113,18 @@ def test_public_design_gallery_page_groups_variants(client, app, seed):
         db.session.commit()
         main_id = main.id
 
-    html = client.get('/shop/designs').get_data(as_text=True)
+    landing = client.get('/shop/designs').get_data(as_text=True)
+    assert 'Fan Favorites' in landing
+    assert 'dg-folder' in landing
+    assert 'Grouped Logo' in landing
+    assert 'id="dgSearch"' in landing
+    assert 'View colors &amp; continue' not in landing
+    assert 'gallery-card-overlay' not in landing
+
+    html = client.get('/shop/designs?category=favorites').get_data(as_text=True)
     assert 'Grouped Logo' in html
     assert '2 colors' in html
     assert 'View colors &amp; continue' in html
-    assert 'gallery-card-overlay' not in html
     assert 'gallery-carousel-prev' in html
     assert 'gallery-carousel-next' in html
     assert 'gallery-carousel-color' in html
@@ -125,6 +132,70 @@ def test_public_design_gallery_page_groups_variants(client, app, seed):
     assert 'id="dgSort"' in html
     assert 'id="dgLoadMore"' in html
     assert html.count('data-design-id="%s"' % main_id) >= 1
+
+
+def test_gallery_folder_interior_only_shows_that_folder(client, app, seed):
+    with app.app_context():
+        _gallery_design(title='School Crest', folder='school')
+        _gallery_design(title='Chiefs Helmet', folder='sports')
+        db.session.commit()
+
+    sports = client.get('/shop/designs?category=sports').get_data(as_text=True)
+    assert 'Chiefs Helmet' in sports
+    assert 'School Crest' not in sports
+    assert 'All folders' in sports
+
+    landing = client.get('/shop/designs').get_data(as_text=True)
+    assert 'Sports' in landing
+    assert 'School' in landing
+    assert 'View colors &amp; continue' not in landing
+
+    results = client.get('/shop/designs?q=chiefs').get_data(as_text=True)
+    assert 'Search results' in results
+    assert 'Chiefs Helmet' in results
+    assert 'School Crest' not in results
+
+
+def test_gallery_folder_cards_use_mains_as_covers():
+    from utils.design_variants import filter_gallery_cards, gallery_folder_cards
+
+    cards = [
+        {
+            'id': 1, 'url': '/a.png', 'title': 'Prayer',
+            'category_keys': ['faith'], 'category_labels': ['Faith & Inspiration'],
+            'group': '', 'variants': [{'label': 'Navy'}],
+        },
+        {
+            'id': 2, 'url': '/b.png', 'title': 'Chiefs Helmet',
+            'category_keys': ['sports', 'kc'], 'category_labels': ['Sports', 'Kansas City'],
+            'group': 'Kansas City Chiefs', 'variants': [{'label': 'Red'}],
+        },
+    ]
+    folders = gallery_folder_cards(cards)
+    assert [folder['key'] for folder in folders] == ['faith', 'sports', 'kc']
+    assert folders[0]['covers'][0]['title'] == 'Prayer'
+    chiefs = filter_gallery_cards(cards, query='chiefs')
+    assert [card['id'] for card in chiefs] == [2]
+
+
+def test_gallery_category_taxonomy_handles_existing_aliases():
+    from utils.design_categories import assigned_gallery_folders, storage_key_for
+    from werkzeug.datastructures import MultiDict
+
+    assert design_category_keys('custom_orders') == ['favorites']
+    assert design_category_keys('sports', 'kc,school,sports') == [
+        'sports', 'kc', 'school',
+    ]
+    assert gallery_group_for_title('Best Dad — Kansas City Chiefs') == (
+        'Kansas City Chiefs'
+    )
+    assert storage_key_for('favorites') == 'evergreen'
+    assert storage_key_for('custom_orders') == 'evergreen'
+    assert assigned_gallery_folders(MultiDict([
+        ('upload_cats', 'sports'),
+        ('upload_cats', 'kc'),
+        ('folder', 'custom_orders'),
+    ])) == ['sports', 'kc', 'evergreen']
 
 
 def test_variant_labels_are_unique_within_family(app, seed):
@@ -153,12 +224,3 @@ def test_generic_camera_filename_is_not_used_as_customer_title():
     assert is_generic_title('IMG 5902') is True
     assert is_generic_title('Best Dad by Par') is False
 
-
-def test_gallery_category_taxonomy_handles_existing_aliases():
-    assert design_category_keys('custom_orders') == ['favorites']
-    assert design_category_keys('sports', 'kc,school,sports') == [
-        'sports', 'kc', 'school',
-    ]
-    assert gallery_group_for_title('Best Dad — Kansas City Chiefs') == (
-        'Kansas City Chiefs'
-    )

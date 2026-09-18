@@ -520,26 +520,66 @@ def edit_group_order(slug):
 
 @shop_bp.route('/designs')
 def design_gallery():
-    """Browse designs available for custom apparel (grouped color variants)."""
-    from collections import Counter
-    from utils.design_categories import GALLERY_CATEGORIES
-    from utils.design_variants import gallery_cards_for_public
-    try:
-        designs = gallery_cards_for_public(Design, resolve_url=_resolve_image_url)
-    except Exception:
-        designs = []
-    category_counts = Counter(
-        key
-        for design in designs
-        for key in design.get('category_keys', [])
+    """Browse designs by folder, then pick a design (grouped color variants)."""
+    from utils.design_categories import GALLERY_CATEGORY_LABELS, normalize_category
+    from utils.design_variants import (
+        filter_gallery_cards,
+        gallery_cards_for_public,
+        gallery_folder_cards,
     )
+    try:
+        all_cards = gallery_cards_for_public(Design, resolve_url=_resolve_image_url)
+    except Exception:
+        all_cards = []
+
     product_id = request.args.get('product_id', type=int)
+    search_query = (request.args.get('q') or '').strip()
+    category = normalize_category(request.args.get('category'))
+    folders = gallery_folder_cards(all_cards)
+
+    active_folder = None
+    if not all_cards:
+        gallery_view = 'empty'
+        designs = []
+    elif search_query:
+        gallery_view = 'search'
+        designs = filter_gallery_cards(
+            all_cards, category=category or None, query=search_query,
+        )
+        if category:
+            active_folder = next(
+                (folder for folder in folders if folder['key'] == category),
+                {
+                    'key': category,
+                    'label': GALLERY_CATEGORY_LABELS.get(category, category),
+                    'count': 0,
+                    'covers': [],
+                },
+            )
+    elif category:
+        gallery_view = 'folder'
+        designs = filter_gallery_cards(all_cards, category=category)
+        active_folder = next(
+            (folder for folder in folders if folder['key'] == category),
+            {
+                'key': category,
+                'label': GALLERY_CATEGORY_LABELS.get(category, category),
+                'count': 0,
+                'covers': [],
+            },
+        )
+    else:
+        gallery_view = 'folders'
+        designs = []
+
     return render_template(
         'shop/design_gallery.html',
         designs=designs,
+        folders=folders,
+        gallery_view=gallery_view,
+        active_folder=active_folder,
+        search_query=search_query,
         product_id=product_id,
-        gallery_categories=GALLERY_CATEGORIES,
-        category_counts=category_counts,
     )
 
 
