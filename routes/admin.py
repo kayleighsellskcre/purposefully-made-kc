@@ -3939,6 +3939,41 @@ def design_gallery_edit(design_id):
     return redirect(url_for('admin.designs', tab='gallery'))
 
 
+@admin_bp.route('/design-gallery/<int:design_id>/make-main', methods=['POST'])
+@admin_required
+def design_gallery_make_main(design_id):
+    """Use this color as the gallery-card cover for its family."""
+    from utils.design_variants import promote_gallery_main
+
+    design = Design.query.get_or_404(design_id)
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    name = design.variant_label or design.title or design.original_filename or 'This color'
+
+    def _err(msg, status=400):
+        if is_ajax:
+            return jsonify({'ok': False, 'error': msg}), status
+        flash(msg, 'error')
+        return redirect(url_for('admin.designs', tab='gallery'))
+
+    if not design.is_gallery:
+        return _err('That color is not in the gallery.')
+
+    try:
+        new_main = promote_gallery_main(design)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Failed to set gallery cover for design %s: %s', design_id, e)
+        return _err('Could not change the cover color. Please try again.', 500)
+
+    label = (new_main.variant_label if new_main else '') or name
+    message = f'"{label}" is now the cover color customers see first.'
+    if is_ajax:
+        return jsonify({'ok': True, 'message': message, 'main_id': new_main.id if new_main else design.id})
+    flash(message, 'success')
+    return redirect(url_for('admin.designs', tab='gallery'))
+
+
 def _unpublish_design_and_variants(design):
     """Unpublish a gallery design and any color variants attached to it."""
     from utils.design_variants import unpublish_color_variants

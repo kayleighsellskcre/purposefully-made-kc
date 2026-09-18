@@ -105,7 +105,7 @@
                         </a>
                     </div>
                     <div class="dtf-info">
-                        <p class="style-num">{{ row.name or '—' }}{% if row.number %} #{{ row.number }}{% endif %}</p>
+                        <p class="style-num">{{ row.name or '-' }}{% if row.number %} #{{ row.number }}{% endif %}</p>
                         <p class="style-name">{{ row.order_number }}</p>
                         {% if row.name %}
                         <p class="dtf-size">Name height <strong>{{ row.name_height_display }}″</strong> <span>({{ row.name_width_display }}″ wide)</span></p>

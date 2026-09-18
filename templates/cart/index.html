@@ -467,7 +467,7 @@ document.querySelectorAll('.quantity-input').forEach(input => {
     });
 });
 
-// Remove item — inline confirm (no browser dialog)
+// Remove item - inline confirm (no browser dialog)
 document.querySelectorAll('.btn-remove').forEach(button => {
     button.addEventListener('click', async function() {
         const index = this.dataset.index;
@@ -489,7 +489,7 @@ document.querySelectorAll('.btn-remove').forEach(button => {
             return;
         }
 
-        // First click — ask for confirmation inline
+        // First click - ask for confirmation inline
         this.dataset.confirming = 'true';
         this.textContent = 'Tap again to remove';
         this.style.color = 'var(--terra-cotta)';

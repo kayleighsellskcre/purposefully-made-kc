@@ -120,7 +120,7 @@
                         </div>
                         {% endif %}
                         <div class="design-master-info">
-                            <p><strong>{{ row.name or '—' }}{% if row.number %} #{{ row.number }}{% endif %}</strong></p>
+                            <p><strong>{{ row.name or '-' }}{% if row.number %} #{{ row.number }}{% endif %}</strong></p>
                             <p>{{ (row.age_group or '')|title }} {{ row.size }}</p>
                             <p>Name {{ row.name_width_display }}″ × {{ row.name_height_display }}″</p>
                             <p>Number {{ row.number_width_display }}″ × {{ row.number_height_display }}″</p>

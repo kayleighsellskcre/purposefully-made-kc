@@ -148,9 +148,9 @@
                     <td class="prod-name-cell">
                         {{ product.name }}
                         <span class="prod-fav-flag" data-fav-flag {% if not product.is_customer_favorite %}hidden{% endif %}>Favorite</span>
-                        {% if not product.thumb_url %}<span class="prod-badge prod-badge--inactive" style="font-size:0.65rem;margin-left:0.4rem;" title="No mockup images — edit this product to upload photos">📷 No image</span>{% endif %}
+                        {% if not product.thumb_url %}<span class="prod-badge prod-badge--inactive" style="font-size:0.65rem;margin-left:0.4rem;" title="No mockup images - edit this product to upload photos">📷 No image</span>{% endif %}
                     </td>
-                    <td>{{ product.category or '—' }}</td>
+                    <td>{{ product.category or '-' }}</td>
                     <td>${{ "%.2f"|format(product.base_price) }}</td>
                     <td>{{ product.size_count }}</td>
                     <td>{{ product.color_count }}</td>
@@ -224,7 +224,7 @@
                 <div class="prod-card-details">
                     <div class="prod-card-detail">
                         <span class="prod-card-detail-label">Category</span>
-                        <span>{{ product.category or '—' }}</span>
+                        <span>{{ product.category or '-' }}</span>
                     </div>
                     <div class="prod-card-detail">
                         <span class="prod-card-detail-label">Price</span>
@@ -347,7 +347,7 @@
                     Pulls front/back images and color hex codes
                 </div>
             </div>
-            <p class="prod-modal-note">Runs in the background — you can leave this page. Check back in a few minutes. Requires SanMar FTP credentials in Railway.</p>
+            <p class="prod-modal-note">Runs in the background - you can leave this page. Check back in a few minutes. Requires SanMar FTP credentials in Railway.</p>
             <form action="{{ url_for('admin.sync_sanmar_dip') }}" method="POST">
                 <div class="prod-modal-actions">
                     <button type="button" class="btn btn-outline" onclick="closeModal('sanmarSyncModal')">Cancel</button>
@@ -946,7 +946,7 @@ details[open] .prod-tools-chevron { transform: rotate(180deg); }
 .prod-no-results svg { margin-bottom: 1rem; color: var(--text-light); }
 .prod-no-results p { font-size: 0.92rem; margin-bottom: 1rem; }
 
-/* Mobile card list — hidden on desktop */
+/* Mobile card list - hidden on desktop */
 .prod-card-list { display: none; }
 
 /* Mobile cards */
@@ -1228,7 +1228,7 @@ details[open] .prod-tools-chevron { transform: rotate(180deg); }
 </style>
 
 <script>
-/* Thumbnail cascade — if the primary src 404s, try each fallback URL in order.
+/* Thumbnail cascade - if the primary src 404s, try each fallback URL in order.
    When all fail, fall back to the empty-placeholder styling. */
 function nextThumb(img) {
     try {

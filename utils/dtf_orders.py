@@ -8,7 +8,7 @@ from utils.print_sizes import inches, production_from_order_item
 
 
 def _label(value):
-    return (value or '').replace('_', ' ').strip() or '—'
+    return (value or '').replace('_', ' ').strip() or '-'
 
 
 def _copy_logo(name, placement, width, qty, code=None):
@@ -126,12 +126,12 @@ def build_dtf_shopping_list(orders):
     logo_copy = '\n'.join(row['copy_text'] for row in logo_list)
     personal_copy = '\n\n'.join(row['copy_text'] for row in personal)
     if logo_list:
-        copy_parts.append('LOGOS — on the DTF site, set WIDTH, then quantity')
+        copy_parts.append('LOGOS - on the DTF site, set WIDTH, then quantity')
         copy_parts.append(logo_copy)
     if personal:
         if copy_parts:
             copy_parts.append('')
-        copy_parts.append('NAMES & NUMBERS — on the DTF site, set HEIGHT, then quantity')
+        copy_parts.append('NAMES & NUMBERS - on the DTF site, set HEIGHT, then quantity')
         copy_parts.append(personal_copy)
 
     csv_rows = []

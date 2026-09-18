@@ -444,7 +444,7 @@ def ai_design_save():
 
     job = _read_job(job_id)
     if not job or job.get('status') != 'done' or not job.get('image_url'):
-        return jsonify({'ok': False, 'error': 'Design expired — please generate again.'})
+        return jsonify({'ok': False, 'error': 'Design expired - please generate again.'})
 
     try:
         raw_b64 = job['image_url']

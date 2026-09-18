@@ -103,6 +103,44 @@ def test_color_options_for_orders_main_then_children(app, seed):
         assert [o.id for o in opts] == [main.id, a.id, b.id]
 
 
+def test_promote_gallery_main_makes_the_chosen_color_the_cover(app, seed):
+    from utils.design_variants import promote_gallery_main
+
+    with app.app_context():
+        main = _gallery_design(
+            title='Falcons', filename='falcons-navy.png',
+            variant_label='Navy', folder='sports', sku='SPT-009',
+        )
+        white = _gallery_design(
+            title='Falcons', filename='falcons-white.png',
+            file_path='uploads/falcons-white.png',
+            parent_design_id=main.id, variant_label='White',
+        )
+        gold = _gallery_design(
+            title='Falcons', filename='falcons-gold.png',
+            file_path='uploads/falcons-gold.png',
+            parent_design_id=main.id, variant_label='Gold',
+        )
+        db.session.commit()
+
+        promote_gallery_main(white)
+        db.session.commit()
+
+        white = Design.query.get(white.id)
+        main = Design.query.get(main.id)
+        gold = Design.query.get(gold.id)
+        assert white.parent_design_id is None
+        assert main.parent_design_id == white.id
+        assert gold.parent_design_id == white.id
+        assert white.title == 'Falcons'
+        assert white.folder == 'sports'
+        assert white.sku == 'SPT-009'
+        mains = gallery_mains_query(Design).all()
+        assert white in mains
+        assert main not in mains
+        assert gold not in mains
+
+
 def test_public_design_gallery_page_groups_variants(client, app, seed):
     with app.app_context():
         main = _gallery_design(title='Grouped Logo', filename='g1.png', variant_label='Red')
@@ -114,6 +152,12 @@ def test_public_design_gallery_page_groups_variants(client, app, seed):
         main_id = main.id
 
     landing = client.get('/shop/designs').get_data(as_text=True)
+    assert 'This platform is for custom apparel' in landing
+    assert 'legal to print' in landing
+    assert 'changed a little' in landing
+    assert 'Open a folder to browse' not in landing
+    assert 'Curated Collection' not in landing
+    assert '\u2014' not in landing
     assert 'Fan Favorites' in landing
     assert 'dg-folder' in landing
     assert 'Grouped Logo' in landing

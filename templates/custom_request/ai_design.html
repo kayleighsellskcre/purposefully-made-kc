@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}AI Design Studio - Purposefully Made KC{% endblock %}
-{% block meta_description %}Describe the design you want and our AI will create it instantly — ready to print on any shirt we carry.{% endblock %}
+{% block meta_description %}Describe the design you want and our AI will create it instantly - ready to print on any shirt we carry.{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -86,7 +86,7 @@
                         <button type="button" class="btn btn-outline" onclick="aiGenerate()">Generate Another</button>
                         <button type="button" class="btn btn-outline" onclick="aiBack()">Change Description</button>
                     </div>
-                    {# Tweak panel — hidden until user clicks "Tweak Your Design" #}
+                    {# Tweak panel - hidden until user clicks "Tweak Your Design" #}
                     <div class="ai-tweak-panel" id="aiTweakPanel" style="display:none;">
                         <p class="ai-label" style="margin-top:0.75rem;">What would you like to change?</p>
                         <textarea id="aiTweakInput" class="ai-textarea" rows="2"
@@ -94,7 +94,7 @@
                             maxlength="400"></textarea>
                         <button type="button" class="btn btn-primary ai-tweak-apply-btn" onclick="aiApplyTweak()">Apply Tweak →</button>
                     </div>
-                    {# Saved confirmation — shown after successful save #}
+                    {# Saved confirmation - shown after successful save #}
                     <div class="ai-saved-panel" id="aiSavedPanel" style="display:none;">
                         <p class="ai-saved-title">✅ Saved to My Designs!</p>
                         <p class="ai-saved-text">Find it in <a href="{{ url_for('account.my_designs') }}">My Designs</a>, or browse shirts to put it on one.</p>
@@ -109,7 +109,7 @@
                         <p class="ai-revised-text" id="aiRevisedText"></p>
                     </div>
                     <div class="ai-tip">
-                        <strong>Tip:</strong> Use "Tweak Your Design" to make small adjustments — the AI will use your current design as a starting point so changes stay close to what you've got.
+                        <strong>Tip:</strong> Use "Tweak Your Design" to make small adjustments - the AI will use your current design as a starting point so changes stay close to what you've got.
                     </div>
                 </div>
             </div>
@@ -460,7 +460,7 @@
     window.aiGenerate = function() {
         var prompt = (document.getElementById('aiPromptInput').value || '').trim();
         if (!prompt) { document.getElementById('aiPromptInput').focus(); return; }
-        var fullPrompt = _selectedStyle ? prompt + ' — style: ' + _selectedStyle : prompt;
+        var fullPrompt = _selectedStyle ? prompt + ' - style: ' + _selectedStyle : prompt;
         _originalBasePrompt = prompt;
         _currentJobId = '';
 

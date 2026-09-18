@@ -241,7 +241,7 @@
                                              data-color="{{ variant.color_name }}">
                                             {# Inactive slides are hidden with opacity, not display:none, so
                                                the browser used to fetch every colour of every product at full
-                                               priority — around 1350 images on the full catalogue. Only the
+                                               priority - around 1350 images on the full catalogue. Only the
                                                first row of cards is on screen at load, so everything else is
                                                deferred. The carousel reveals a slide by adding .active, which
                                                is when the browser fetches it. #}
@@ -1169,7 +1169,7 @@ async function toggleFavorite(event, productId, colorName) {
     }
 }
 
-// Load favorite states on page load — single batch request
+// Load favorite states on page load - single batch request
 document.addEventListener('DOMContentLoaded', async () => {
     const favBtns = document.querySelectorAll('.btn-favorite');
     if (!favBtns.length) return;

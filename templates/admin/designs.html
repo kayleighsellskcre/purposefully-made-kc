@@ -98,7 +98,7 @@
 
                     {# ── Folder (required for new main designs) ── #}
                     <div class="form-group upload-cats-group">
-                        <label class="form-label">Folder <small style="font-weight:400;color:var(--text-secondary);">— pick where this design lives. Extra folders only if it truly belongs in more than one.</small></label>
+                        <label class="form-label">Folder <small style="font-weight:400;color:var(--text-secondary);">- pick where this design lives. Extra folders only if it truly belongs in more than one.</small></label>
                         <div class="upload-cat-chips">
                             {% for key, label in gallery_folder_options %}
                             <label class="cat-chip"><input type="checkbox" name="upload_cats" value="{{ key }}"> {{ label }}</label>
@@ -109,7 +109,7 @@
 
                     {# ── Multi-file drop zone ── #}
                     <div class="form-group gallery-file-group">
-                        <label class="form-label">Design Files <small style="font-weight:400;color:var(--text-secondary);">— select as many as you want at once</small></label>
+                        <label class="form-label">Design Files <small style="font-weight:400;color:var(--text-secondary);">- select as many as you want at once</small></label>
                         <div class="gallery-file-zone" id="fileZone">
                             <input type="file" id="designFile" accept=".png,.jpg,.jpeg,.webp,.heic,.heif" multiple class="gallery-file-input">
                             <div class="gallery-file-placeholder" id="fileZonePlaceholder">
@@ -119,20 +119,20 @@
                                     <line x1="12" y1="3" x2="12" y2="15"></line>
                                 </svg>
                                 <span class="gallery-file-text">Choose files or drag &amp; drop here</span>
-                                <span class="gallery-file-hint">PNG, JPG, WEBP, HEIC — select multiple at once</span>
+                                <span class="gallery-file-hint">PNG, JPG, WEBP, HEIC - select multiple at once</span>
                             </div>
                         </div>
                     </div>
 
-                    {# ── Upload queue — rendered by JS ── #}
+                    {# ── Upload queue - rendered by JS ── #}
                     <div id="uploadQueue" style="display:none;margin-bottom:1.5rem;">
                         <p class="form-label" style="margin-bottom:0.5rem;">Name &amp; artwork colors are identified automatically when uploaded. You can edit either field before or after uploading. SKU is auto-assigned.</p>
                         <div id="queueList" class="upload-queue"></div>
-                        {# Group-as-variants toggle — only shown when queue has 2+ files #}
+                        {# Group-as-variants toggle - only shown when queue has 2+ files #}
                         <div id="groupVariantsWrap" style="display:none;margin-top:0.75rem;padding:0.65rem 0.85rem;background:rgba(184,124,111,0.07);border:1px solid rgba(184,124,111,0.25);border-radius:8px;">
                             <label style="display:flex;align-items:flex-start;gap:0.6rem;cursor:pointer;font-size:0.88rem;line-height:1.4;">
                                 <input type="checkbox" id="groupVariantsToggle" style="margin-top:0.15rem;accent-color:var(--terra-cotta);flex-shrink:0;">
-                                <span><strong>Group as one design with multiple colors</strong> — the first file becomes the main design and the rest are added as color variants. Use this when the same artwork comes in different color versions.</span>
+                                <span><strong>Group as one design with multiple colors</strong> - the first file becomes the main design and the rest are added as color variants. Use this when the same artwork comes in different color versions.</span>
                             </label>
                         </div>
                         <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.5rem;" onclick="clearDoneItems()">Clear completed</button>
@@ -142,7 +142,7 @@
                     <div class="form-group" style="margin-bottom:1.5rem;max-width:480px;">
                         <label for="parent_design_id" class="form-label">Color of existing design <span style="font-weight:400;color:var(--text-secondary);">(optional)</span></label>
                         <select id="parent_design_id" name="parent_design_id" class="form-control">
-                            <option value="">— New main design —</option>
+                            <option value="">- New main design -</option>
                             {% for d in gallery_designs %}
                             <option value="{{ d.id }}">{{ d.title or d.original_filename or ('Design #' ~ d.id) }}</option>
                             {% endfor %}
@@ -197,6 +197,7 @@
             <p style="color:var(--text-secondary);margin:-0.5rem 0 1.25rem;font-size:0.9rem;">
                 To offer the same artwork in multiple colors without crowding the public gallery, upload extra files and choose
                 <strong>Color of existing design</strong> above. Customers see one card, then pick a color.
+                The <strong>cover</strong> color is the one shown first - use <strong>Set cover</strong> to change it.
             </p>
             <div class="admin-gallery-tools">
                 <input type="search" id="adminGallerySearch" class="form-control" placeholder="Search gallery designs or SKUs..." autocomplete="off">
@@ -225,20 +226,27 @@
                         <strong class="design-card-name">{{ design.title or design.original_filename }}</strong>
                         <p class="design-card-meta">{{ design.folder or 'No folder' }}{% if design.extra_categories %} <span style="color:var(--terra-cotta,#b87c6f);">+{{ design.extra_categories.split(',')|length }}</span>{% endif %} &middot; {{ design.sku or 'No SKU' }}{% if variants %} &middot; {{ variants|length + 1 }} colors{% endif %}</p>
                         {% if variants %}
-                        <div class="gallery-variant-thumbs" style="display:flex;flex-wrap:wrap;gap:0.35rem;margin:0.5rem 0 0.75rem;">
-                            <button type="button"
-                                    title="Edit {{ design.variant_label or 'Default' }}"
-                                    onclick="openGalleryEdit({{ design.id }})"
-                                    style="width:40px;height:40px;padding:2px;border-radius:6px;overflow:hidden;border:1px solid var(--border-color);background:#fff;display:inline-flex;cursor:pointer;">
-                                <img src="{{ design.file_path | image_url }}" alt="" style="width:100%;height:100%;object-fit:contain;">
-                            </button>
+                        <div class="gallery-variant-thumbs">
+                            <div class="gallery-variant-thumb is-cover">
+                                <button type="button"
+                                        title="Edit {{ design.variant_label or 'Default' }}"
+                                        onclick="openGalleryEdit({{ design.id }})">
+                                    <img src="{{ design.file_path | image_url }}" alt="{{ design.variant_label or 'Cover' }}">
+                                </button>
+                                <span class="gallery-cover-badge">Cover</span>
+                            </div>
                             {% for v in variants %}
-                            <button type="button"
-                                    title="Edit {{ v.variant_label or 'Color' }}"
-                                    onclick='openGalleryVariantEdit({{ v.id }}, {{ (design.title or design.original_filename or "Design")|tojson }}, {{ (v.sku or design.sku or "")|tojson }}, {{ (v.variant_label or "")|tojson }}, {{ (design.folder or "custom_orders")|tojson }}, {{ (design.extra_categories or "")|tojson }}, {{ url_for("admin.design_gallery_edit", design_id=v.id)|tojson }})'
-                                    style="width:40px;height:40px;padding:2px;border-radius:6px;overflow:hidden;border:1px solid var(--border-color);background:#fff;display:inline-flex;cursor:pointer;">
-                                <img src="{{ v.file_path | image_url }}" alt="{{ v.variant_label or '' }}" style="width:100%;height:100%;object-fit:contain;">
-                            </button>
+                            <div class="gallery-variant-thumb">
+                                <button type="button"
+                                        title="Edit {{ v.variant_label or 'Color' }}"
+                                        onclick='openGalleryVariantEdit({{ v.id }}, {{ (design.title or design.original_filename or "Design")|tojson }}, {{ (v.sku or design.sku or "")|tojson }}, {{ (v.variant_label or "")|tojson }}, {{ (design.folder or "custom_orders")|tojson }}, {{ (design.extra_categories or "")|tojson }}, {{ url_for("admin.design_gallery_edit", design_id=v.id)|tojson }})'>
+                                    <img src="{{ v.file_path | image_url }}" alt="{{ v.variant_label or '' }}">
+                                </button>
+                                <form method="post" action="{{ url_for('admin.design_gallery_make_main', design_id=v.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="gallery-set-cover" title="Show this color first on the gallery card">Set cover</button>
+                                </form>
+                            </div>
                             {% endfor %}
                         </div>
                         {% endif %}
@@ -574,6 +582,63 @@
     max-height: 100%;
     object-fit: contain;
 }
+.gallery-variant-thumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin: 0.5rem 0 0.85rem;
+}
+.gallery-variant-thumb {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    width: 52px;
+}
+.gallery-variant-thumb button {
+    width: 44px;
+    height: 44px;
+    padding: 2px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    background: #fff;
+    display: inline-flex;
+    cursor: pointer;
+}
+.gallery-variant-thumb button img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+.gallery-variant-thumb.is-cover button {
+    border-color: var(--terra-cotta, #b87c6f);
+    box-shadow: 0 0 0 1px var(--terra-cotta, #b87c6f);
+}
+.gallery-cover-badge,
+.gallery-set-cover {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    font: inherit;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+.gallery-cover-badge {
+    color: var(--terra-cotta, #b87c6f);
+}
+.gallery-set-cover {
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+.gallery-set-cover:hover {
+    color: var(--terra-cotta, #b87c6f);
+    text-decoration: underline;
+}
 .design-card-body { padding: 1.25rem; }
 .design-card-name { display: block; margin-bottom: 0.25rem; }
 .design-card-meta {
@@ -619,7 +684,7 @@
 }
 .gallery-back-link { margin-top: 2.5rem; }
 
-/* Upload form — categories + queue */
+/* Upload form - categories + queue */
 .upload-cats-group { margin-bottom: 1.5rem; }
 .upload-cat-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem; }
 
@@ -707,7 +772,7 @@
                     <input type="text" id="editTitle" name="title" class="form-control" maxlength="200" required>
                 </div>
                 <div class="form-group" style="margin-bottom:1rem;">
-                    <label class="form-label" style="margin-bottom:0.5rem;">Folder <small style="font-weight:400;color:#aaa;">— most designs need only one. Check extras only if it belongs in more than one folder.</small></label>
+                    <label class="form-label" style="margin-bottom:0.5rem;">Folder <small style="font-weight:400;color:#aaa;">- most designs need only one. Check extras only if it belongs in more than one folder.</small></label>
                     <div id="editExtraCategories" style="display:flex;flex-wrap:wrap;gap:0.4rem;">
                         {% for key, label in gallery_folder_options %}
                         <label class="cat-chip"><input type="checkbox" name="extra_categories" value="{{ key }}"> {{ label }}</label>
@@ -1121,7 +1186,7 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
                   (err  ? '<span class="queue-status err" title="' + esc(item.error) + '">✗</span>' : '') +
                   (!busy && !done && !err ? '<button type="button" class="queue-remove" data-id="' + item.id + '" title="Remove">×</button>' : '') +
                 '</div>' +
-                '<div class="queue-filename">' + badge + esc(item.file.name) + (err ? ' — <span style="color:#c0392b">' + esc(item.error) + '</span>' : '') + (done && item.assignedSku ? ' <span style="color:#2d7a4f;font-weight:600;">' + esc(item.assignedSku) + '</span>' : '') + '</div>';
+                '<div class="queue-filename">' + badge + esc(item.file.name) + (err ? ' - <span style="color:#c0392b">' + esc(item.error) + '</span>' : '') + (done && item.assignedSku ? ' <span style="color:#2d7a4f;font-weight:600;">' + esc(item.assignedSku) + '</span>' : '') + '</div>';
             list.appendChild(row);
             (function(id, file) {
                 var reader = new FileReader();
@@ -1197,7 +1262,7 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
             _busy = false; _groupParentId = null; prog.style.display = 'none'; updateBtn(); renderQueue(); return;
         }
         var item = pending[idx];
-        prog.textContent = 'Uploading ' + (idx + 1) + ' of ' + pending.length + ' — ' + item.file.name;
+        prog.textContent = 'Uploading ' + (idx + 1) + ' of ' + pending.length + ' - ' + item.file.name;
         item.status = 'uploading'; renderQueue();
 
         var groupMode = (function() {
@@ -1208,7 +1273,7 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
         var fd = new FormData();
         fd.append('file', item.file);
         fd.append('title', item.title);
-        // SKU intentionally left blank — server auto-assigns via _next_sku()
+        // SKU intentionally left blank - server auto-assigns via _next_sku()
         fd.append('variant_label', item.color);
 
         // Parent design: group mode takes priority over manual dropdown

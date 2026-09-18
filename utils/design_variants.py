@@ -206,6 +206,85 @@ def ensure_not_nested_parent(parent):
     return root or parent
 
 
+def _replace_id_in_json_list(raw, old_id, new_id):
+    import json
+    try:
+        ids = json.loads(raw)
+    except Exception:
+        return raw, False
+    if not isinstance(ids, list):
+        return raw, False
+    next_ids = []
+    changed = False
+    for item in ids:
+        try:
+            value = int(item)
+        except (TypeError, ValueError):
+            next_ids.append(item)
+            continue
+        if value == old_id:
+            next_ids.append(new_id)
+            changed = True
+        else:
+            next_ids.append(value)
+    if not changed:
+        return raw, False
+    return json.dumps(next_ids), True
+
+
+def _rewrite_collection_design_ids(old_id, new_id):
+    """Keep group-order logo lists pointed at the family cover after a swap."""
+    if not old_id or not new_id or old_id == new_id:
+        return
+    from models import Collection
+    collections = Collection.query.filter(
+        or_(
+            Collection.allowed_design_ids.isnot(None),
+            Collection.showcase_design_ids.isnot(None),
+        )
+    ).all()
+    for collection in collections:
+        for field in ('allowed_design_ids', 'showcase_design_ids'):
+            raw = getattr(collection, field)
+            if not raw:
+                continue
+            updated, changed = _replace_id_in_json_list(raw, old_id, new_id)
+            if changed:
+                setattr(collection, field, updated)
+
+
+def promote_gallery_main(chosen):
+    """Make this color variant the public gallery cover for its family."""
+    if chosen is None:
+        return None
+    from models import db
+    root = ensure_not_nested_parent(chosen) or chosen
+    if root.id == chosen.id:
+        return chosen
+
+    siblings = [
+        child for child in root.color_variants.all()
+        if child.id != chosen.id
+    ]
+    chosen.parent_design_id = None
+    db.session.flush()
+    for sibling in siblings:
+        sibling.parent_design_id = chosen.id
+    root.parent_design_id = chosen.id
+
+    chosen.title = root.title or chosen.title
+    chosen.folder = root.folder or chosen.folder
+    chosen.extra_categories = root.extra_categories
+    if root.sku and not chosen.sku:
+        chosen.sku = root.sku
+    chosen.is_gallery = True
+    if not (root.variant_label or '').strip():
+        root.variant_label = 'Default'
+
+    _rewrite_collection_design_ids(root.id, chosen.id)
+    return chosen
+
+
 def unpublish_color_variants(design):
     """Take color children off the public gallery with their main design."""
     if design is None:

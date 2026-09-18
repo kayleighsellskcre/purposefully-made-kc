@@ -57,7 +57,7 @@
                         <!-- Reference image -->
                         <div class="rq-image">
                             <img src="{{ r.reference_file_path | image_url }}" alt="Reference">
-                            <!-- Delete button — reveals on hover -->
+                            <!-- Delete button - reveals on hover -->
                             <button type="button"
                                     class="rq-delete-btn"
                                     onclick="confirmRqDelete({{ r.id }}, '{{ r.description[:40]|replace("'","\\'")|replace('"','\\"') }}…')"
@@ -154,7 +154,7 @@
 }
 .rq-card:hover .rq-image img { transform: scale(1.05); }
 
-/* Delete button — overlay top-right of image */
+/* Delete button - overlay top-right of image */
 .rq-delete-btn {
     position: absolute;
     top: 5px;

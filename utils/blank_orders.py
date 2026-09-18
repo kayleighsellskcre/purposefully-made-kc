@@ -36,7 +36,7 @@ def blank_vendor(brand, style_number):
 
 
 def _copy_block(style_number, color, sizes):
-    lines = [f'{style_number} — {color}']
+    lines = [f'{style_number} - {color}']
     for row in sizes:
         lines.append(f"  {row['size']} × {row['qty']}")
     return '\n'.join(lines)
@@ -61,8 +61,8 @@ def build_blank_shopping_list(orders):
             brand = infer_brand(product or item) or ''
             style = item.style_number or (getattr(product, 'style_number', None) if product else '') or ''
             name = item.product_name or (getattr(product, 'name', None) if product else '') or ''
-            color = item.color or '—'
-            size = item.size or '—'
+            color = item.color or '-'
+            size = item.size or '-'
             vendor = blank_vendor(brand, style)
             key = (vendor, brand, style, name, color)
             buckets[key][size] += int(item.quantity or 0)

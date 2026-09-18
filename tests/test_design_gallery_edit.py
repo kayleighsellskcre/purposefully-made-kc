@@ -146,6 +146,60 @@ def test_gallery_color_upload_inherits_parent_folder(admin_client, app, seed, mo
         assert child.extra_categories == 'kc'
 
 
+def test_admin_gallery_offers_set_cover_for_color_variants(admin_client, app, seed):
+    with app.app_context():
+        main = Design.query.filter_by(is_gallery=True).first()
+        child = Design(
+            filename='cover-white.png',
+            original_filename='cover-white.png',
+            file_path='uploads/designs/cover-white.png',
+            title=main.title,
+            is_gallery=True,
+            parent_design_id=main.id,
+            variant_label='White',
+            uploaded_by_user_id=main.uploaded_by_user_id,
+        )
+        db.session.add(child)
+        db.session.commit()
+        child_id = child.id
+
+    html = admin_client.get('/admin/designs?tab=gallery').get_data(as_text=True)
+    assert 'Set cover' in html
+    assert f'/design-gallery/{child_id}/make-main' in html
+
+
+def test_admin_can_set_a_color_variant_as_the_gallery_cover(admin_client, app, seed):
+    with app.app_context():
+        main = Design.query.filter_by(is_gallery=True, parent_design_id=None).first()
+        main.variant_label = 'Navy'
+        child = Design(
+            filename='cover-gold.png',
+            original_filename='cover-gold.png',
+            file_path='uploads/designs/cover-gold.png',
+            title=main.title,
+            is_gallery=True,
+            parent_design_id=main.id,
+            variant_label='Gold',
+            uploaded_by_user_id=main.uploaded_by_user_id,
+        )
+        db.session.add(child)
+        db.session.commit()
+        old_main_id = main.id
+        child_id = child.id
+
+    resp = admin_client.post(
+        f'/admin/design-gallery/{child_id}/make-main',
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+
+    with app.app_context():
+        new_main = Design.query.get(child_id)
+        old_main = Design.query.get(old_main_id)
+        assert new_main.parent_design_id is None
+        assert old_main.parent_design_id == child_id
+
+
 def test_customer_cannot_edit_gallery_design(client, seed, login, app):
     login(client, CUSTOMER_EMAIL)
     with app.app_context():

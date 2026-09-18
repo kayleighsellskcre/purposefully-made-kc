@@ -203,7 +203,7 @@
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 
-/* Placement-specific sizing — preview only (print inches are unchanged).
+/* Placement-specific sizing - preview only (print inches are unchanged).
    Width is driven by applyDesignFit from ordered print inches → mockup %.
    These CSS defaults are the adult-M center fallback before JS runs. */
 .design-layer[data-placement="center_chest"] {
@@ -2134,7 +2134,7 @@
                     {# available_sizes comes back empty for a style that was imported
                        without its size list. The grid then renders nothing at all,
                        while the hint still told the customer to pick a color first
-                       and Add to Cart sat greyed out with no reason given — which
+                       and Add to Cart sat greyed out with no reason given - which
                        reads as a broken page rather than an unavailable garment. #}
                     <p class="step-hint">
                         {%- if available_sizes %}Select your size. Pick a color first to see availability.
@@ -2207,7 +2207,7 @@
                     {% if collection_restricted %}
                     {# Group orders: show every approved logo as thumbnails.
                        There are usually only a few, and organizers expect the
-                       team to see them all at once — not hide them in a menu. #}
+                       team to see them all at once - not hide them in a menu. #}
                     <div class="logo-gallery-inline" id="logoGalleryInline">
                         <p class="logo-gallery-label">Group logos: tap one to use</p>
                         <div class="logo-gallery-grid gallery-image-grid" id="logoGalleryGrid">
@@ -2265,7 +2265,7 @@
                                     onclick="clearDesignSearch()" aria-label="Clear search">✕</button>
                         </div>
 
-                        {# ── Design grid — all tiles, JS shows/hides ── #}
+                        {# ── Design grid - all tiles, JS shows/hides ── #}
                         <div class="logo-gallery-grid gallery-image-grid" id="logoGalleryGrid">
                             {%- for d in gallery_designs -%}
                             {%- set _primary_cat = _dcat(d) -%}
@@ -2386,7 +2386,7 @@
                 {% if not collection_restricted or allow_back_design %}
                 <div class="panel-section" id="backDesignSection" style="display: block;">
                     {% if collection_restricted and allow_back_design %}
-                    {# Group order: organizer allows back design — show simplified header without price toggle #}
+                    {# Group order: organizer allows back design - show simplified header without price toggle #}
                     <div style="padding: 1.25rem; background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.05)); border-radius: 12px; border: 2px solid #e8e8e8; margin-bottom: 1rem;">
                         <strong style="font-size: 1.1rem; color: #333;">
                             {% if catalog_section == 'uniform' and back_design_type == 'name_number' %}Add Your Name &amp; Number{% elif back_design_type == 'image' %}Add Back Design{% else %}Optional Name &amp; Number{% endif %}
@@ -2732,9 +2732,9 @@
         }
 
         // Color pre-select happens in setupColorSelection() via selectColor(firstColor)
-        // — do not delay-click here (that raced with the customer's first tap).
+        // - do not delay-click here (that raced with the customer's first tap).
 
-        // Group order: back design enabled by organizer — show fee row and sync UI
+        // Group order: back design enabled by organizer - show fee row and sync UI
         if (state.backDesignEnabled) {
             const feeRow = document.getElementById('backDesignFeeRow');
             if (feeRow) feeRow.style.display = 'flex';
@@ -2921,7 +2921,7 @@
         // Update size inventory for this color
         updateSizeInventory(inventory);
 
-        // Swap mockup immediately — no delayed click / opacity race
+        // Swap mockup immediately - no delayed click / opacity race
         updateMockupImage();
 
         if (closePicker) {
@@ -3174,7 +3174,7 @@
             mockupImg.onload = function() { finish(true); };
             mockupImg.onerror = function() { finish(false); };
 
-            // Same URL already loaded (common on re-select / cached) — onload
+            // Same URL already loaded (common on re-select / cached) - onload
             // may not fire, which previously left opacity stuck at 0.
             if (mockupImg.getAttribute('src') === imageUrl && mockupImg.complete && mockupImg.naturalWidth > 0) {
                 finish(true);
@@ -3460,7 +3460,7 @@
        Every font leaves room above the capitals and below the baseline, so
        font-size 2" would draw a name well under 2" tall. Measure the real
        ink box of a reference glyph and scale from that, which also keeps
-       COLE and SMITHVILLE — and 8 and 23 — the same height. */
+       COLE and SMITHVILLE - and 8 and 23 - the same height. */
     // Browsers report ink bounds in whole pixels, so probe large: at 200px a
     // one-pixel rounding is half a percent of the letter height.
     const INK_PROBE = 1000;
@@ -3660,7 +3660,7 @@
             if (maxX >= minX) {
                 ratio = Math.min(1, Math.max(0.2, (maxX - minX + 1) / sampleW));
             } else {
-                // No ink found — usually a tainted CDN canvas, not empty art.
+                // No ink found - usually a tainted CDN canvas, not empty art.
                 return 1;
             }
         } catch (error) {
@@ -3678,7 +3678,7 @@
         if (!designLayer || !designImage) return;
         // Front artwork is sized from the FRONT mockup. Add to Cart photographs
         // the back first, and a pending silhouette fallback is ~72% of the
-        // photo — wide enough to swallow a youth shirt. Keep the last good
+        // photo - wide enough to swallow a youth shirt. Keep the last good
         // front size until the front garment is measured again.
         if (state.currentView === 'back') return;
         const placement = state.selectedPlacement || 'center_chest';
@@ -4512,7 +4512,7 @@
                 if (uploadAreaMain) uploadAreaMain.innerHTML = '<p style="margin:1rem 0;color:#dc3545;"><strong>Unsupported file</strong></p><p class="text-muted" style="font-size:0.85rem;">Please choose a PNG, JPG, HEIC, or WEBP image.</p><p class="text-muted" style="font-size:0.8rem;">Click to try again</p>';
                 return;
             }
-            // Group-order logos are already edited — skip background removal entirely.
+            // Group-order logos are already edited - skip background removal entirely.
             frontUpload(file, {% if collection_restricted %}'none'{% else %}'auto'{% endif %});
         }
 
@@ -4681,7 +4681,7 @@
             try {
                 const formData = new FormData();
                 formData.append('file', file);
-                // Group-order back designs are pre-edited — skip background removal.
+                // Group-order back designs are pre-edited - skip background removal.
                 formData.append('bg_removal', {% if collection_restricted %}'none'{% else %}'auto'{% endif %});
                 const bkCtrl = new AbortController();
                 const bkTimeout = setTimeout(() => bkCtrl.abort(), 45000);
@@ -5206,7 +5206,7 @@
                         if (disp && mockup.naturalWidth) {
                             try {
                                 ctx.drawImage(mockup, disp.left, disp.top, disp.width, disp.height);
-                            } catch (e) { /* tainted canvas from CDN — skip */ }
+                            } catch (e) { /* tainted canvas from CDN - skip */ }
                         }
 
                         function drawEl(el) {
@@ -5217,7 +5217,7 @@
                             if (el.tagName === 'IMG' && el.naturalWidth) {
                                 try {
                                     ctx.drawImage(el, x, y, r.width, r.height);
-                                } catch (e) { /* tainted canvas from CDN — skip */ }
+                                } catch (e) { /* tainted canvas from CDN - skip */ }
                             }
                         }
 
@@ -5233,7 +5233,7 @@
                                 if (backImg && backImg.style.display !== 'none') {
                                     drawEl(backImg);
                                 } else {
-                                    // Name/number are text nodes — rasterize the layer via SVG foreignObject fallback: skip
+                                    // Name/number are text nodes - rasterize the layer via SVG foreignObject fallback: skip
                                     // Admin will size the back overlay from print geometry instead.
                                 }
                             }
@@ -5298,7 +5298,7 @@
 
     function setupAddToCart() {
         document.getElementById('addToCart').addEventListener('click', async function() {
-            // Validation — toast + scroll-to missing section
+            // Validation - toast + scroll-to missing section
             if (!state.selectedColor) {
                 PMKC.showFlash('Please select a color to continue', 'error');
                 document.querySelector('.color-grid-professional, .color-section, [data-section="color"], .color-grid, .color-cards')
@@ -5418,7 +5418,7 @@
                     }
                 }
 
-                // Snapshot what the customer sees — used on admin order pages
+                // Snapshot what the customer sees - used on admin order pages
                 try {
                     const frontProof = await capturePreviewProofBlob('front');
                     if (frontProof) formData.append('proof_front', frontProof, 'proof_front.png');
@@ -5497,7 +5497,7 @@
         var showMoreBtn = document.getElementById('designShowMore');
         if (!grid) return;
 
-        // Nothing selected yet — keep everything hidden
+        // Nothing selected yet - keep everything hidden
         if (_activeTab === null) {
             _tiles().forEach(function(t) { t.style.display = 'none'; });
             if (counter)     counter.textContent = '';

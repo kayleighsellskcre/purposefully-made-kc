@@ -614,7 +614,7 @@ def continue_handoff(token):
     except Exception:
         db.session.rollback()
 
-    flash('Cart restored — you can pay with Venmo here in Safari.', 'success')
+    flash('Cart restored - you can pay with Venmo here in Safari.', 'success')
     return redirect(url_for('checkout.index'))
 
 
@@ -1426,7 +1426,7 @@ def complete():
                 })
         current_app.logger.exception('checkout.complete integrity error rid=%s: %s', rid, e)
         return _json_error(
-            'This order could not be saved. Your cart is still here — please try again.',
+            'This order could not be saved. Your cart is still here - please try again.',
             'DB_CONSTRAINT',
             500,
             request_id=rid,
@@ -1438,7 +1438,7 @@ def complete():
             pass
         current_app.logger.exception('checkout.complete DB error rid=%s: %s', rid, e)
         return _json_error(
-            'We could not save this order. Your cart is still here — please try again.',
+            'We could not save this order. Your cart is still here - please try again.',
             'DB_ERROR',
             500,
             request_id=rid,

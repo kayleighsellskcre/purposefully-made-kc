@@ -2,7 +2,7 @@
 
 {% block title %}{{ product.name }} - Purposefully Made KC{% endblock %}
 
-{% block meta_description %}{% if product.description %}{{ product.description|striptags|truncate(155, true, '…') }}{% else %}Customise a {{ product.name }}{% if product.brand %} by {{ product.brand }}{% endif %} with your own design. Choose your colour, size and placement — printed to order by Purposefully Made KC.{% endif %}{% endblock %}
+{% block meta_description %}{% if product.description %}{{ product.description|striptags|truncate(155, true, '…') }}{% else %}Customise a {{ product.name }}{% if product.brand %} by {{ product.brand }}{% endif %} with your own design. Choose your colour, size and placement - printed to order by Purposefully Made KC.{% endif %}{% endblock %}
 
 {% block og_type %}product{% endblock %}
 
@@ -123,7 +123,7 @@
                 
                 {% if product.size_chart %}
                 <div class="size-chart-link">
-                    {# A button, not an anchor with javascript:void(0) — it performs
+                    {# A button, not an anchor with javascript:void(0) - it performs
                        an action on this page rather than going anywhere. #}
                     <button type="button" onclick="toggleSizeChart()" class="size-chart-btn">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-1px" aria-hidden="true"><path d="M3 3h18v5H3z"/><path d="M3 10h18v5H3z"/><path d="M3 17h18v4H3z"/></svg>
@@ -159,7 +159,7 @@
                 {% endif %}
                 
                 {# These are button groups, not single inputs, so the caption is a
-                   labelled group rather than a <label> — a <label> with no `for`
+                   labelled group rather than a <label> - a <label> with no `for`
                    names nothing. #}
                 {% if available_sizes %}
                 <div class="product-option">
@@ -172,11 +172,11 @@
                 </div>
                 {% else %}
                 {# With no sizes recorded the block above renders nothing, and
-                   addToCart() still answers with "Please select a size" — pointing
+                   addToCart() still answers with "Please select a size" - pointing
                    the customer at a control that isn't on the page. #}
                 <p class="size-unavailable-note">
                     This one can't be ordered just yet. <a href="{{ url_for('shop.index') }}">Browse other styles</a>
-                    or <a href="{{ url_for('main.contact') }}">ask us about it</a> — we're happy to help.
+                    or <a href="{{ url_for('main.contact') }}">ask us about it</a> - we're happy to help.
                 </p>
                 {% endif %}
                 <div class="product-option">
@@ -294,7 +294,7 @@ document.querySelectorAll('.color-option').forEach(btn => {
         const front = btn.dataset.frontImage || '';
         if (mainImg && front) {
             mainImg.src = front;
-            mainImg.alt = ({{ product.name | tojson }}) + ' — ' + selectedColor;
+            mainImg.alt = ({{ product.name | tojson }}) + ' - ' + selectedColor;
             // Keep front thumbnail active when color changes
             document.querySelectorAll('.thumbnail').forEach((t, i) => {
                 t.classList.toggle('active', i === 0);

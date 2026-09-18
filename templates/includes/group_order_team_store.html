@@ -24,7 +24,7 @@
                     {% for product in products %}
                     <option value="{{ product.id }}"
                             {% if _uniform.get('product_id') == product.id %}selected{% endif %}>
-                        {{ product.name }} — {{ product.style_number }}
+                        {{ product.name }} - {{ product.style_number }}
                     </option>
                     {% endfor %}
                 </select>

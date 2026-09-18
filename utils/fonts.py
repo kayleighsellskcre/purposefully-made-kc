@@ -18,14 +18,14 @@ CUSTOMIZE_BACK_FONTS = [
 # Organizer-facing list. Preview-only webfonts (Freshman, etc.) still fall back
 # to Bebas Neue on the production PNG if they have no file in FONT_FILES.
 GROUP_ORDER_FONTS = [
-    ('Freshman', 'Freshman — Classic college jersey'),
-    ('Black Ops One', 'Black Ops One — Bold varsity block'),
-    ('Graduate', 'Graduate — Collegiate style'),
-    ('Squada One', 'Squada One — Modern athletic numbers'),
-    ('Bebas Neue', 'Bebas Neue — Clean jersey'),
-    ('Oswald', 'Oswald — Bold athletic'),
-    ('Anton', 'Anton — Strong block'),
-    ('Teko', 'Teko — College jersey'),
-    ('Sports Jersey', 'Sports Jersey — Classic athletic block'),
-    ('Varsity Regular', 'Varsity Regular — Cricut-style classic varsity'),
+    ('Freshman', 'Freshman (Classic college jersey)'),
+    ('Black Ops One', 'Black Ops One (Bold varsity block)'),
+    ('Graduate', 'Graduate (Collegiate style)'),
+    ('Squada One', 'Squada One (Modern athletic numbers)'),
+    ('Bebas Neue', 'Bebas Neue (Clean jersey)'),
+    ('Oswald', 'Oswald (Bold athletic)'),
+    ('Anton', 'Anton (Strong block)'),
+    ('Teko', 'Teko (College jersey)'),
+    ('Sports Jersey', 'Sports Jersey (Classic athletic block)'),
+    ('Varsity Regular', 'Varsity Regular (Cricut-style classic varsity)'),
 ]

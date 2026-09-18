@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Design Gallery - Purposefully Made KC{% endblock %}
-{% block meta_description %}Browse ready-to-print designs by folder — Faith, Sports, School, Kansas City, Holiday, Family, Funny, Fan Favorites, and Luxury. Pick one, choose your shirt, and order.{% endblock %}
+{% block meta_description %}This platform is for custom apparel. Browse designs I have created and use one, or reach out if you like a design but want it changed a little.{% endblock %}
 
 {% block content %}
 
@@ -23,9 +23,9 @@
         <h1>Search results</h1>
         <p class="lead">{% if search_query %}Designs matching “{{ search_query }}”{% if active_folder %} in {{ active_folder.label }}{% endif %}.{% else %}Matching designs.{% endif %}</p>
         {% else %}
-        <span class="eyebrow">Curated Collection</span>
+        <span class="eyebrow">Custom Apparel</span>
         <h1>Design Gallery</h1>
-        <p class="lead">Open a folder to browse. Each design lives in one place — no scrolling through everything at once.</p>
+        <p class="lead">This platform is for custom apparel, so I can make almost anything you want as long as it is legal to print. Feel free to browse designs I have created and use one, or <a href="{{ url_for('main.contact') }}">reach out</a> if you like a design but want it changed a little.</p>
         {% endif %}
     </div>
 </div>
@@ -192,7 +192,7 @@
 </section>
 
 {% if gallery_view in ('folder', 'search') %}
-{# Color picker — one main design, then instant color choices #}
+{# Color picker - one main design, then instant color choices #}
 <div id="galleryColorModal" class="gcolor-modal" hidden role="dialog" aria-modal="true" aria-labelledby="gcolorTitle">
     <div class="gcolor-backdrop" data-close="1"></div>
     <div class="gcolor-card">
@@ -210,6 +210,15 @@
 {% endif %}
 
 <style>
+.page-header .lead {
+    max-width: 42rem;
+}
+.page-header .lead a {
+    color: var(--terra-cotta, #b87c6f);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+}
 /* ── Gallery discovery controls ── */
 .dg-discovery {
     margin-bottom: 1rem;
@@ -917,7 +926,7 @@
     function selectVariant(v) {
         selected = v;
         preview.src = v.url || '';
-        preview.alt = (designTitle + ' — ' + (v.label || 'Color'));
+        preview.alt = (designTitle + ' - ' + (v.label || 'Color'));
         labelEl.textContent = v.label || 'Selected';
         swatches.querySelectorAll('.gcolor-swatch').forEach(function(btn) {
             btn.classList.toggle('is-selected', String(btn.dataset.id) === String(v.id));
@@ -986,7 +995,7 @@
             carouselIndex = (index + variants.length) % variants.length;
             const variant = variants[carouselIndex];
             cardImage.src = variant.url || '';
-            cardImage.alt = (card.getAttribute('data-title') || 'Design') + ' — ' + (variant.label || ('Color ' + (carouselIndex + 1)));
+            cardImage.alt = (card.getAttribute('data-title') || 'Design') + ' - ' + (variant.label || ('Color ' + (carouselIndex + 1)));
             if (cardColor) cardColor.textContent = variant.label || ('Color ' + (carouselIndex + 1));
             if (cardCount) cardCount.textContent = (carouselIndex + 1) + ' / ' + variants.length;
             card.setAttribute('data-carousel-index', String(carouselIndex));

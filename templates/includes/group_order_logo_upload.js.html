@@ -61,7 +61,7 @@
             }).then(function(data) {
                 if (!data.success || !data.design_id) {
                     div.innerHTML = '<span style="color:#dc3545;font-size:0.75rem">' +
-                        (data.error || 'Failed — try again') + '</span>';
+                        (data.error || 'Failed - try again') + '</span>';
                     return;
                 }
                 var hidden = document.createElement('input');
@@ -80,7 +80,7 @@
                 div.appendChild(span);
             }).catch(function() {
                 div.innerHTML = '<span style="color:#dc3545;font-size:0.75rem">' +
-                    'Timed out — try a smaller file</span>';
+                    'Timed out - try a smaller file</span>';
             }).finally(function() {
                 clearTimeout(timer);
             });
@@ -91,7 +91,7 @@
         var usable = files.filter(function(f) { return ACCEPTED.test(f.name); });
         files.filter(function(f) { return !ACCEPTED.test(f.name); })
              .forEach(function(f) {
-                 note(f.name + ' — needs to be PNG, JPG, or WEBP', '#dc3545');
+                 note(f.name + ' - needs to be PNG, JPG, or WEBP', '#dc3545');
              });
         if (!usable.length) return;
 

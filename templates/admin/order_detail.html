@@ -471,7 +471,7 @@
                 <section class="od-xfer-card">
                     <h3>FRONT TRANSFER</h3>
                     <dl>
-                        <div><dt>Design</dt><dd>{{ prod.front.design_name or (item.design.title if item.design else item.design_file_name) or '—' }}{% if item.design and item.design.sku %} <span style="opacity:.65;font-size:.85em;">({{ item.design.sku }})</span>{% endif %}</dd></div>
+                        <div><dt>Design</dt><dd>{{ prod.front.design_name or (item.design.title if item.design else item.design_file_name) or '-' }}{% if item.design and item.design.sku %} <span style="opacity:.65;font-size:.85em;">({{ item.design.sku }})</span>{% endif %}</dd></div>
                         {% if item.design and item.design.variant_label %}<div><dt>Design Color</dt><dd><span class="od-design-color-badge">{{ item.design.variant_label }}</span></dd></div>{% endif %}
                         <div><dt>Garment</dt><dd>{{ prod.front.garment_style or item.product_name }}</dd></div>
                         <div><dt>Size</dt><dd>{{ prod.front.age_group|title }} {{ prod.front.size }}</dd></div>
@@ -493,9 +493,9 @@
                     </a>
                     {% endif %}
                     <dl>
-                        <div><dt>Name</dt><dd>{{ prod.back.name or '—' }}</dd></div>
+                        <div><dt>Name</dt><dd>{{ prod.back.name or '-' }}</dd></div>
                         <div><dt>Font</dt><dd>{{ prod.back.font }}</dd></div>
-                        <div><dt>Text color</dt><dd>{{ prod.back.text_color or '—' }}</dd></div>
+                        <div><dt>Text color</dt><dd>{{ prod.back.text_color or '-' }}</dd></div>
                         <div><dt>Name transfer</dt><dd>{{ prod.back.name_width_display }}″ W × {{ prod.back.name_height_display }}″ H</dd></div>
                         <div><dt>Order by</dt><dd>HEIGHT</dd></div>
                         <div><dt>Horizontal adjustment</dt><dd>{% if prod.back.condense_percent %}{{ prod.back.condense_percent }}% condensed{% else %}none{% endif %}</dd></div>
@@ -511,10 +511,10 @@
                     </a>
                     {% endif %}
                     <dl>
-                        <div><dt>Number</dt><dd>{{ prod.back.number or '—' }}</dd></div>
+                        <div><dt>Number</dt><dd>{{ prod.back.number or '-' }}</dd></div>
                         <div><dt>Number transfer</dt><dd>{{ prod.back.number_width_display }}″ W × {{ prod.back.number_height_display }}″ H</dd></div>
-                        <div><dt>Digits</dt><dd>{{ prod.back.number_digits or '—' }}</dd></div>
-                        <div><dt>Horizontal scale</dt><dd>{% if prod.back.number_scale_percent %}{{ prod.back.number_scale_percent }}% narrower ({{ '%.3f'|format(prod.back.number_scale or 0) }}× of {{ prod.back.number_width_natural_display or '—' }}″){% else %}none{% endif %}</dd></div>
+                        <div><dt>Digits</dt><dd>{{ prod.back.number_digits or '-' }}</dd></div>
+                        <div><dt>Horizontal scale</dt><dd>{% if prod.back.number_scale_percent %}{{ prod.back.number_scale_percent }}% narrower ({{ '%.3f'|format(prod.back.number_scale or 0) }}× of {{ prod.back.number_width_natural_display or '-' }}″){% else %}none{% endif %}</dd></div>
                         <div><dt>Order by</dt><dd>HEIGHT</dd></div>
                     </dl>
                     <a class="od-btn od-btn-save" href="{{ url_for('admin.photos_item_artwork', order_id=order.id, item_id=item.id, side='back-number') }}">Save number PNG</a>

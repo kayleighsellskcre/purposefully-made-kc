@@ -22,7 +22,7 @@
     <meta property="og:type" content="{% block og_type %}website{% endblock %}">
     <meta property="og:url" content="{% block og_url %}{{ canonical_url }}{% endblock %}">
     {# logo.png, because that is what exists. A purpose-made 1200x630 card would
-       preview better on Facebook and iMessage — noted as an open item. #}
+       preview better on Facebook and iMessage - noted as an open item. #}
     <meta property="og:image" content="{% block og_image %}{{ site_origin }}/static/img/logo.png{% endblock %}">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{{ self.og_title() }}">
@@ -37,7 +37,7 @@
        Three other templates in this project already do this; this link is on
        every page, so it was the one actually costing render time. The URL
        already carries display=swap, so text has always appeared in the fallback
-       font first and swapped on arrival — that behaviour is unchanged. #}
+       font first and swapped on arrival - that behaviour is unchanged. #}
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,300;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap">
     <noscript>
@@ -95,7 +95,7 @@
                     <a href="{{ site_href('main.about') }}" class="nav-link">About</a>
                     <a href="{{ site_href('main.contact') }}" class="nav-link">Contact</a>
 
-                    {# Desktop account links — inline in nav, hidden on mobile (hamburger has them) #}
+                    {# Desktop account links - inline in nav, hidden on mobile (hamburger has them) #}
                     {% if current_user.is_authenticated %}
                     <span class="nav-separator desktop-only" aria-hidden="true"></span>
                     <a href="{{ site_href('account.index') }}" class="nav-user-link desktop-only">My Account</a>
@@ -112,7 +112,7 @@
                     <a href="{{ site_href('auth.register') }}" class="nav-user-link desktop-only">Register</a>
                     {% endif %}
 
-                    {# Hamburger-only items — hidden on desktop #}
+                    {# Hamburger-only items - hidden on desktop #}
                     {% if current_user.is_authenticated %}
                     <div class="nav-link-divider mobile-only"></div>
                     <a href="{{ site_href('account.index') }}" class="nav-link mobile-only">My Account</a>
@@ -180,7 +180,7 @@
     {# Flash messages.
 
        The container is always rendered, and is a live region, because
-       PMKC.showFlash() injects into it after page load — for "Added to cart",
+       PMKC.showFlash() injects into it after page load - for "Added to cart",
        upload errors, and checkout validation. A screen reader only announces
        inserted content if the region existed beforehand, so rendering the
        wrapper conditionally meant those messages were silent. #}
@@ -285,7 +285,7 @@
                         && document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         if (!csrfToken) return;
 
-        /* 1 — Inject hidden input into every form that will POST */
+        /* 1 - Inject hidden input into every form that will POST */
         document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('form[method="post"], form[method="POST"]').forEach(function (form) {
                 if (!form.querySelector('input[name="csrf_token"]')) {
@@ -298,7 +298,7 @@
             });
         });
 
-        /* 2 — Patch fetch() to include X-CSRFToken on same-origin requests */
+        /* 2 - Patch fetch() to include X-CSRFToken on same-origin requests */
         var _fetch = window.fetch;
         window.fetch = function (url, opts) {
             opts = opts || {};
@@ -315,8 +315,8 @@
             return _fetch.call(this, url, opts);
         };
 
-        /* 3 — Instant feedback on every form submit so clicks never feel stuck.
-            Multipart uploads: do not disable the button during this event —
+        /* 3 - Instant feedback on every form submit so clicks never feel stuck.
+            Multipart uploads: do not disable the button during this event -
             some browsers then cancel the file POST. */
         document.addEventListener('submit', function (e) {
             var form = e.target;

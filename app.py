@@ -65,6 +65,21 @@ def create_app(config_class=Config):
     app.request_class = SiteRequest
     app.config.from_object(config_class)
 
+    from markupsafe import Markup
+
+    def _without_em_dashes(value):
+        """Keep em dashes off rendered pages. None still prints as empty."""
+        if value is None:
+            return ''
+        if isinstance(value, str):
+            if '\u2014' not in value:
+                return value
+            replaced = value.replace('\u2014', '-')
+            return Markup(replaced) if isinstance(value, Markup) else replaced
+        return value
+
+    app.jinja_env.finalize = _without_em_dashes
+
     # Ensure all externally generated URLs use https in production.
     # This fixes OG tags, share links, and email links that were http://.
     if os.environ.get('PREFERRED_URL_SCHEME', 'https') == 'https':
@@ -745,7 +760,7 @@ def create_app(config_class=Config):
         else:
             message = (
                 'That form had too many options selected at once for us to '
-                'process. Please choose fewer colours or styles and try again — '
+                'process. Please choose fewer colours or styles and try again, '
                 'and let us know, because this is our bug, not yours.'
             )
             app.logger.error(
@@ -796,7 +811,7 @@ def create_app(config_class=Config):
             from flask import jsonify as _jsonify
             return _jsonify({
                 'success': False,
-                'error': 'Something went wrong. Your cart is still saved — please try again.',
+                'error': 'Something went wrong. Your cart is still saved - please try again.',
                 'error_code': 'SERVER_ERROR',
                 'error_id': error_id,
             }), 500

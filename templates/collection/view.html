@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ collection.card_title or collection.name }} - Purposefully Made KC{% endblock %}
 
-{% block meta_description %}{% if collection.description %}{{ collection.description|striptags|truncate(155, true, '…') }}{% else %}Order your {{ collection.name }} apparel. Pick your size and pay for your own items — we print and sort the whole group order.{% endif %}{% endblock %}
+{% block meta_description %}{% if collection.description %}{{ collection.description|striptags|truncate(155, true, '…') }}{% else %}Order your {{ collection.name }} apparel. Pick your size and pay for your own items - we print and sort the whole group order.{% endif %}{% endblock %}
 
 {# A link-only or password-protected group order is private, so keep it out of
    search results even though the URL itself is reachable. This matches which
@@ -403,7 +403,7 @@
         </p>
         {% elif collection.not_yet_open %}
         <p class="collection-header-subtitle" style="margin-top:0.5rem; color:#b87c6f; font-weight:600; font-style:italic; letter-spacing:0.01em;">
-            ✨ Orders open {{ collection.order_opens_at|kc_date('%A, %B %-d') }} and will stay open throughout the school year — so no rush, just excitement! Feel free to look around now.
+            ✨ Orders open {{ collection.order_opens_at|kc_date('%A, %B %-d') }} and will stay open throughout the school year - so no rush, just excitement! Feel free to look around now.
         </p>
         {% else %}
             {% if collection.order_opens_at %}
@@ -493,7 +493,7 @@
         {% elif collection.not_yet_open %}
         <div style="max-width:700px;margin:0 auto 2rem;padding:1.25rem 1.5rem;background:linear-gradient(135deg,rgba(184,124,111,0.08),rgba(184,124,111,0.04));border:1px solid rgba(184,124,111,0.3);border-radius:12px;color:var(--text-primary);text-align:center;">
             <p style="font-size:1.15rem;font-weight:700;margin:0 0 0.4rem;color:#8a5a50;letter-spacing:0.01em;">🎉 Orders Open {{ collection.order_opens_at|kc_date('%A, %B %-d') }}!</p>
-            <p style="margin:0;font-size:0.95rem;color:var(--text-secondary);line-height:1.6;">This store will be open <em>throughout the entire school year</em> — so there's no pressure, just Falcon pride. Browse the styles now and come back to order whenever you're ready!</p>
+            <p style="margin:0;font-size:0.95rem;color:var(--text-secondary);line-height:1.6;">This store will be open <em>throughout the entire school year</em> - so there's no pressure, just Falcon pride. Browse the styles now and come back to order whenever you're ready!</p>
         </div>
         {% endif %}
 

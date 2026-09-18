@@ -336,8 +336,8 @@ def _build_group_order_xlsx(collection):
     ws_sum.merge_cells('A2:F2')
 
     from utils.group_orders import format_schedule_date
-    opens_label = format_schedule_date(collection.order_opens_at) or '—'
-    deadline_label = format_schedule_date(collection.order_deadline) or '—'
+    opens_label = format_schedule_date(collection.order_opens_at) or '-'
+    deadline_label = format_schedule_date(collection.order_deadline) or '-'
     ws_sum['A3'] = f'Opens: {opens_label}   Deadline: {deadline_label}'
     ws_sum.merge_cells('A3:F3')
 

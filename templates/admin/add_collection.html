@@ -86,7 +86,7 @@
                 {% endif %}
             </div>
             
-            {# Always restrict options — hidden field so form handler still receives it #}
+            {# Always restrict options - hidden field so form handler still receives it #}
             <input type="hidden" name="restrict_options" value="on">
 
             <div class="form-section">
@@ -147,7 +147,7 @@
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
                         </svg>
                         <p><strong>Click to upload</strong> or drag &amp; drop</p>
-                        <p class="text-muted">PNG, JPG, WEBP — large photos are shrunk automatically</p>
+                        <p class="text-muted">PNG, JPG, WEBP - large photos are shrunk automatically</p>
                     </div>
                     {# No data-shrink here: these files are uploaded by
                        group_order_logo_upload.js.html, which shrinks them
@@ -201,22 +201,22 @@
                     <div class="placement-checkboxes">
                         <label class="placement-checkbox">
                             <input type="radio" name="back_design_type" value="none" checked>
-                            <span>No — front only</span>
+                            <span>No - front only</span>
                             <small>Nothing printed on the back</small>
                         </label>
                         <label class="placement-checkbox">
                             <input type="radio" name="back_design_type" value="name_number">
-                            <span>Yes — name &amp; number</span>
+                            <span>Yes - name &amp; number</span>
                             <small>Team types their own name/number</small>
                         </label>
                         <label class="placement-checkbox">
                             <input type="radio" name="back_design_type" value="image">
-                            <span>Yes — your uploaded image</span>
+                            <span>Yes - your uploaded image</span>
                             <small>A design you upload goes on the back</small>
                         </label>
                         <label class="placement-checkbox">
                             <input type="radio" name="back_design_type" value="both">
-                            <span>Yes — either option</span>
+                            <span>Yes - either option</span>
                             <small>Team picks: name/number or your image</small>
                         </label>
                     </div>
@@ -332,7 +332,7 @@
                 <div class="form-check">
                     <input type="checkbox" id="allow_cash_pickup" name="allow_cash_pickup">
                     <label for="allow_cash_pickup">Allow cash / pay at pickup</label>
-                    <p class="form-hint" style="margin:0.25rem 0 0 1.5rem;">Optional for group orders only — shoppers can pay cash when picking up.</p>
+                    <p class="form-hint" style="margin:0.25rem 0 0 1.5rem;">Optional for group orders only - shoppers can pay cash when picking up.</p>
                 </div>
                 
                 <div class="form-check">
@@ -367,7 +367,7 @@ document.querySelector('.collection-form')?.addEventListener('submit', function(
     }
 });
 
-// Colors by brand — show only brands with checked products
+// Colors by brand - show only brands with checked products
 function syncBrandColors() {
     var checked = document.querySelectorAll('input[name="products"]:checked');
     var activeBrands = new Set();

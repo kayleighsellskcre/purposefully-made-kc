@@ -80,7 +80,7 @@
                 {% endif %}
             </div>
 
-            {# Always restrict options — hidden field so the form handler still receives it #}
+            {# Always restrict options - hidden field so the form handler still receives it #}
             <input type="hidden" name="restrict_options" value="on">
 
             <div class="form-section">
@@ -142,7 +142,7 @@
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
                         </svg>
                         <p><strong>Click to upload</strong> or drag &amp; drop</p>
-                        <p class="text-muted">PNG, JPG, WEBP — large photos are shrunk automatically</p>
+                        <p class="text-muted">PNG, JPG, WEBP - large photos are shrunk automatically</p>
                     </div>
                     {# No data-shrink here: these files are uploaded by
                        group_order_logo_upload.js.html, which shrinks them
@@ -169,7 +169,7 @@
                             {# Button only. Its form is emitted after the collection
                                form closes, and is targeted here by id. A <form>
                                at this point sits inside the collection form, and
-                               the HTML parser discards nested forms — which turned
+                               the HTML parser discards nested forms - which turned
                                this button into a submit for the collection itself,
                                so clicking it saved the group order, skipped the
                                confirmation, and left the design in place. #}
@@ -231,22 +231,22 @@
                     <div class="placement-checkboxes">
                         <label class="placement-checkbox">
                             <input type="radio" name="back_design_type" value="none" {% if bdt == 'none' %}checked{% endif %}>
-                            <span>No — front only</span>
+                            <span>No - front only</span>
                             <small>Nothing printed on the back</small>
                         </label>
                         <label class="placement-checkbox">
                             <input type="radio" name="back_design_type" value="name_number" {% if bdt == 'name_number' %}checked{% endif %}>
-                            <span>Yes — name &amp; number</span>
+                            <span>Yes - name &amp; number</span>
                             <small>Team types their own name/number</small>
                         </label>
                         <label class="placement-checkbox">
                             <input type="radio" name="back_design_type" value="image" {% if bdt == 'image' %}checked{% endif %}>
-                            <span>Yes — your uploaded image</span>
+                            <span>Yes - your uploaded image</span>
                             <small>A design you upload goes on the back</small>
                         </label>
                         <label class="placement-checkbox">
                             <input type="radio" name="back_design_type" value="both" {% if bdt == 'both' %}checked{% endif %}>
-                            <span>Yes — either option</span>
+                            <span>Yes - either option</span>
                             <small>Team picks: name/number or your image</small>
                         </label>
                     </div>
@@ -440,7 +440,7 @@
 </div>
 
 <script>
-// Colors by brand — show only brands with checked products
+// Colors by brand - show only brands with checked products
 function syncBrandColors() {
     var checked = document.querySelectorAll('input[name="products"]:checked');
     var activeBrands = new Set();
@@ -451,7 +451,7 @@ function syncBrandColors() {
     document.querySelectorAll('.brand-color-group[data-brand]').forEach(function(grp) {
         var show = activeBrands.size === 0 || activeBrands.has(grp.dataset.brand);
         grp.style.display = show ? '' : 'none';
-        // Hidden brand colors must not submit — otherwise Navy under Brand A
+        // Hidden brand colors must not submit - otherwise Navy under Brand A
         // would also restrict Brand B when that brand was deselected.
         if (!show) {
             grp.querySelectorAll('input[name="allowed_colors"]').forEach(function(cb) {
@@ -465,7 +465,7 @@ document.querySelectorAll('input[name="products"]').forEach(function(cb) {
 });
 syncBrandColors(); // run on load
 
-// Back design type — show/hide font section
+// Back design type - show/hide font section
 document.querySelectorAll('input[name="back_design_type"]').forEach(function(radio) {
     radio.addEventListener('change', function() {
         var showFont = (this.value === 'name_number' || this.value === 'both');
