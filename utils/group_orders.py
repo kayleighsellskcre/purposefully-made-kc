@@ -187,6 +187,13 @@ def allowed_color_form_keys(collection_or_raw):
     return keys
 
 
+def _as_int(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def team_store_config(collection):
     """Normalized two-lane config; legacy collections are fan-wear only."""
     import json
@@ -205,23 +212,17 @@ def team_store_config(collection):
         if collection is not None:
             fan_ids = [p.id for p in getattr(collection, 'products', [])]
 
-    def _pid(value):
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            return None
-
     cleaned_fan = []
     for value in fan_ids:
-        pid = _pid(value)
+        pid = _as_int(value)
         if pid and pid not in cleaned_fan:
             cleaned_fan.append(pid)
-    uniform_pid = _pid(uniform.get('product_id'))
+    uniform_pid = _as_int(uniform.get('product_id'))
     product_ids = []
     raw_ids = uniform.get('product_ids')
     if isinstance(raw_ids, list):
         for value in raw_ids:
-            pid = _pid(value)
+            pid = _as_int(value)
             if pid and pid not in product_ids:
                 product_ids.append(pid)
     if uniform_pid and uniform_pid not in product_ids:
@@ -236,11 +237,51 @@ def team_store_config(collection):
             'product_ids': product_ids if enabled else [],
             'home_color': (uniform.get('home_color') or '').strip(),
             'away_color': (uniform.get('away_color') or '').strip(),
+            'home_design_id': _as_int(uniform.get('home_design_id')),
+            'away_design_id': _as_int(uniform.get('away_design_id')),
         },
         'fan_product_ids': cleaned_fan,
         'fan_personalization_enabled': bool(
             parsed.get('fan_personalization_enabled', False)
         ),
+    }
+
+
+def resolve_uniform_design_id(collection, kit='home'):
+    """Jersey logo locked onto Home or Away, falling back to the first allowed design."""
+    allowed = allowed_design_ids(collection)
+    if not allowed:
+        return None
+    allowed_set = set(allowed)
+    uniform = team_store_config(collection)['uniform']
+
+    def _valid(raw):
+        did = _as_int(raw)
+        return did if did in allowed_set else None
+
+    kit = (kit or 'home').strip().lower()
+    if kit == 'away':
+        return (
+            _valid(uniform.get('away_design_id'))
+            or _valid(uniform.get('home_design_id'))
+            or allowed[0]
+        )
+    return _valid(uniform.get('home_design_id')) or allowed[0]
+
+
+def load_design_dict(design_id):
+    """Small {id, url, title} payload for a design, or None."""
+    did = _as_int(design_id)
+    if not did:
+        return None
+    design = Design.query.get(did)
+    if not design:
+        return None
+    from utils.cloud_storage import image_url as resolve_image_url
+    return {
+        'id': design.id,
+        'url': resolve_image_url(design.file_path),
+        'title': (design.title or design.original_filename or 'Design'),
     }
 
 
@@ -385,11 +426,8 @@ def set_collection_products_from_form(collection):
     fan_ids = []
     seen = set()
     for raw in request.form.getlist('products'):
-        try:
-            pid = int(raw)
-        except (TypeError, ValueError):
-            continue
-        if pid in seen:
+        pid = _as_int(raw)
+        if not pid or pid in seen:
             continue
         seen.add(pid)
         fan_ids.append(pid)
@@ -399,27 +437,20 @@ def set_collection_products_from_form(collection):
     uniform_ids = []
     home_color = ''
     away_color = ''
+    home_design_id = None
+    away_design_id = None
     if uniform_enabled:
         seen_uniform = set()
         for raw in request.form.getlist('uniform_product_ids'):
-            try:
-                pid = int(raw)
-            except (TypeError, ValueError):
-                continue
+            pid = _as_int(raw)
             if pid and pid not in seen_uniform:
                 seen_uniform.add(pid)
                 uniform_ids.append(pid)
         if not uniform_ids:
-            try:
-                main_id = int(request.form.get('uniform_product_id') or '')
-            except (TypeError, ValueError):
-                main_id = None
+            main_id = _as_int(request.form.get('uniform_product_id'))
             if main_id:
                 uniform_ids.append(main_id)
-        try:
-            youth_id = int(request.form.get('uniform_youth_product_id') or '')
-        except (TypeError, ValueError):
-            youth_id = None
+        youth_id = _as_int(request.form.get('uniform_youth_product_id'))
         if youth_id and youth_id not in uniform_ids:
             uniform_ids.append(youth_id)
         if not uniform_ids:
@@ -448,6 +479,19 @@ def set_collection_products_from_form(collection):
             if away_color and away_color not in valid_colors:
                 return [], 'The selected Away color is not available for every uniform style. Pick a color both youth and adult come in, or leave Away blank.'
         fan_ids = [pid for pid in fan_ids if pid not in seen_uniform and pid not in uniform_ids]
+        allowed_logo_ids = set(allowed_design_ids(collection))
+        for raw in request.form.getlist('allowed_designs'):
+            did = _as_int(raw)
+            if did:
+                allowed_logo_ids.add(did)
+        home_design_id = _as_int(request.form.get('uniform_home_design_id'))
+        away_design_id = _as_int(request.form.get('uniform_away_design_id'))
+        if home_design_id not in allowed_logo_ids:
+            home_design_id = None
+        if away_design_id not in allowed_logo_ids:
+            away_design_id = None
+        if away_design_id and away_design_id == home_design_id:
+            away_design_id = None
 
     ids = list(fan_ids)
     for pid in reversed(uniform_ids):
@@ -481,6 +525,8 @@ def set_collection_products_from_form(collection):
                 'product_ids': uniform_ids,
                 'home_color': home_color,
                 'away_color': away_color,
+                'home_design_id': home_design_id,
+                'away_design_id': away_design_id,
             },
             'fan_product_ids': [pid for pid in fan_ids if pid in by_id],
             'fan_personalization_enabled': (

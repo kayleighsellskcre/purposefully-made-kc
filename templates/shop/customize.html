@@ -685,6 +685,12 @@
     font-size: 0.85rem;
     color: var(--text-primary);
 }
+.jersey-logo-locked {
+    display:flex; align-items:center; gap:.85rem;
+    padding:.75rem; border:1px solid var(--border-color); border-radius:12px; background:#fff;
+}
+.jersey-logo-locked img { width:72px; height:72px; object-fit:contain; }
+.jersey-logo-locked p { margin:0; font-weight:600; }
 
 .cust-group-header {
     grid-column: 1 / -1;
@@ -1995,9 +2001,10 @@
                 <div class="collection-restricted-banner">
                     {% if catalog_section == 'uniform' %}
                     <strong>{{ uniform_kit|title }} player uniform · {{ uniform_locked_color }}</strong>
-                    Your organizer selected this uniform color. Choose the player’s size, logo, and back details.
+                    {% if uniform_logo_locked %}Your organizer selected this uniform color and jersey logo. Choose the player's size and back details.
+                    {% else %}Your organizer selected this uniform color. Choose the player's size, logo, and back details.{% endif %}
                     {% else %}
-                    <strong>Family &amp; Fan Wear</strong> Your organizer has chosen the available colors and designs for this group order.
+                    <strong>Family &amp; Fan Wear</strong> Pick the jersey look, or another matching design. You do not have to use the same image as the player uniform.
                     {% endif %}
                 </div>
                 {% endif %}
@@ -2160,8 +2167,16 @@
                 <!-- Step 3: Logo / Design -->
                 <div class="panel-section step-section">
                     <div class="step-badge">3</div>
+                    {% if uniform_logo_locked and preset_design %}
+                    <h3>Jersey Logo</h3>
+                    <p class="step-hint">This logo is already applied to the {{ uniform_kit|title }} uniform.</p>
+                    <div class="jersey-logo-locked">
+                        <img src="{{ preset_design.url }}" alt="{{ preset_design.title }}">
+                        <p>{{ preset_design.title }}</p>
+                    </div>
+                    {% else %}
                     <h3>Choose Logo or Design</h3>
-                    <p class="step-hint">{% if collection_restricted %}Pick the group logo below{% else %}Upload your own or pick from the gallery{% endif %}</p>
+                    <p class="step-hint">{% if catalog_section == 'fan' %}Pick the jersey look or a matching design.{% elif collection_restricted %}Pick the group logo below{% else %}Upload your own or pick from the gallery{% endif %}</p>
                     {% if not collection_restricted %}
                     <div style="margin-bottom:1rem;text-align:center;">
                         <a href="{{ url_for('custom_request.index') }}" style="display:inline-flex;align-items:center;gap:0.5rem;font-size:0.95rem;color:#fff;text-decoration:none;font-weight:700;padding:0.6rem 1.25rem;border-radius:24px;background:var(--terra-cotta);box-shadow:0 2px 8px rgba(184,124,111,0.35);letter-spacing:0.01em;transition:background 0.2s,box-shadow 0.2s;" onmouseover="this.style.background='#a05a4a';this.style.boxShadow='0 4px 14px rgba(184,124,111,0.45)'" onmouseout="this.style.background='var(--terra-cotta)';this.style.boxShadow='0 2px 8px rgba(184,124,111,0.35)'">
@@ -2355,6 +2370,7 @@
 
                     {% if not collection_restricted %}
                     <a href="{{ url_for('shop.design_gallery', product_id=product.id) }}" class="btn btn-outline btn-sm" style="margin-top: 0.75rem; display: inline-block;">Browse full design gallery</a>
+                    {% endif %}
                     {% endif %}
                 </div>
                 

@@ -57,6 +57,25 @@
             </div>
         </div>
         <p class="form-hint">Shoppers ordering for a player can choose Home, Away, or both. Family and friends can skip directly to fan wear.</p>
+
+        <div class="uniform-logo-pickers" id="uniformLogoPickers">
+            <div class="form-group">
+                <label>Home jersey logo</label>
+                <p class="form-hint">Applied automatically. Players only pick size and name/number.</p>
+                <div id="homeLogoOptions" class="jersey-logo-options"></div>
+                <p class="form-hint uniform-logo-empty" id="homeLogoEmpty">Upload logos in the design section below, then pick the Home jersey image here.</p>
+                <input type="hidden" name="uniform_home_design_id" id="uniform_home_design_id"
+                       value="{{ _uniform.get('home_design_id') or '' }}">
+            </div>
+            <div class="form-group" id="awayLogoPickerWrap" {% if not _uniform.get('away_color') %}hidden{% endif %}>
+                <label>Away jersey logo</label>
+                <p class="form-hint">Use a second file if the Away color needs a different logo (for example a light logo on a dark jersey).</p>
+                <div id="awayLogoOptions" class="jersey-logo-options"></div>
+                <input type="hidden" name="uniform_away_design_id" id="uniform_away_design_id"
+                       value="{{ _uniform.get('away_design_id') or '' }}">
+            </div>
+        </div>
+
         <label class="team-store-toggle" style="margin-top:.75rem;">
             <input type="checkbox" id="fan_personalization_enabled"
                    name="fan_personalization_enabled" value="on"
@@ -91,6 +110,18 @@
 .team-store-grid {
     display:grid; grid-template-columns:1fr 1fr; gap:1rem;
 }
+.jersey-logo-options {
+    display:flex; flex-wrap:wrap; gap:.6rem; margin-top:.35rem;
+}
+.jersey-logo-option {
+    width:76px; border:2px solid var(--border-color); border-radius:10px;
+    background:#fff; padding:.35rem; cursor:pointer; text-align:center;
+}
+.jersey-logo-option img { width:64px; height:64px; object-fit:contain; display:block; margin:0 auto .2rem; }
+.jersey-logo-option span { display:block; font-size:.65rem; color:var(--text-secondary); line-height:1.2; }
+.jersey-logo-option.is-selected { border-color:var(--terra-cotta, #b87c6f); background:rgba(184,124,111,.1); }
+.uniform-logo-empty { margin-top:.4rem; }
+.uniform-logo-empty[hidden] { display:none; }
 .visually-hidden {
     position:absolute!important; width:1px!important; height:1px!important;
     padding:0!important; margin:-1px!important; overflow:hidden!important;
@@ -108,6 +139,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const home = document.getElementById('uniform_home_color');
     const away = document.getElementById('uniform_away_color');
     const fanPersonalization = document.getElementById('fan_personalization_enabled');
+    const homeLogoInput = document.getElementById('uniform_home_design_id');
+    const awayLogoInput = document.getElementById('uniform_away_design_id');
+    const homeLogoOptions = document.getElementById('homeLogoOptions');
+    const awayLogoOptions = document.getElementById('awayLogoOptions');
+    const awayLogoWrap = document.getElementById('awayLogoPickerWrap');
+    const homeLogoEmpty = document.getElementById('homeLogoEmpty');
     if (!enabled || !fields || !product || !home || !away) return;
     const colors = {{ (uniform_colors_by_product or {})|tojson }};
     const initialHome = home.dataset.selected || '';
@@ -146,6 +183,85 @@ document.addEventListener('DOMContentLoaded', function() {
         return list;
     }
 
+    function collectDesigns() {
+        const seen = {};
+        const items = [];
+        function add(id, url, title) {
+            if (!id || seen[String(id)]) return;
+            seen[String(id)] = true;
+            items.push({
+                id: String(id),
+                url: url || '',
+                title: title || 'Logo'
+            });
+        }
+        Array.from(document.getElementsByName('allowed_designs')).forEach(function(input) {
+            if (input.type !== 'hidden' && !input.checked) return;
+            const wrap = input.closest('.design-choice-wrapper, .design-choice-card, .upload-preview-item');
+            const img = wrap ? wrap.querySelector('img') : null;
+            const titleEl = wrap ? wrap.querySelector('span') : null;
+            add(input.value, img && img.src, titleEl && titleEl.textContent);
+        });
+        document.querySelectorAll('#uploadPreview .upload-preview-item[data-design-id]').forEach(function(item) {
+            const img = item.querySelector('img');
+            const titleEl = item.querySelector('span');
+            add(item.dataset.designId, img && img.src, titleEl && titleEl.textContent);
+        });
+        return items;
+    }
+
+    function renderLogoChoices(container, hidden, selected, includeSameAsHome) {
+        if (!container || !hidden) return;
+        const designs = collectDesigns();
+        container.innerHTML = '';
+        if (includeSameAsHome) {
+            const same = document.createElement('button');
+            same.type = 'button';
+            same.className = 'jersey-logo-option' + (!selected ? ' is-selected' : '');
+            same.dataset.designId = '';
+            const sameLabel = document.createElement('span');
+            sameLabel.textContent = 'Same as Home';
+            same.appendChild(sameLabel);
+            container.appendChild(same);
+        }
+        designs.forEach(function(design) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'jersey-logo-option' + (String(selected) === design.id ? ' is-selected' : '');
+            btn.dataset.designId = design.id;
+            if (design.url) {
+                const img = document.createElement('img');
+                img.src = design.url;
+                img.alt = '';
+                btn.appendChild(img);
+            }
+            const label = document.createElement('span');
+            label.textContent = design.title;
+            btn.appendChild(label);
+            container.appendChild(btn);
+        });
+        container.querySelectorAll('.jersey-logo-option').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                hidden.value = btn.dataset.designId || '';
+                renderUniformLogos();
+            });
+        });
+    }
+
+    function renderUniformLogos() {
+        const designs = collectDesigns();
+        if (homeLogoEmpty) homeLogoEmpty.hidden = designs.length > 0;
+        if (homeLogoInput && !homeLogoInput.value && designs.length) {
+            homeLogoInput.value = designs[0].id;
+        }
+        const homeVal = homeLogoInput ? homeLogoInput.value : '';
+        const awayVal = awayLogoInput ? awayLogoInput.value : '';
+        renderLogoChoices(homeLogoOptions, homeLogoInput, homeVal, false);
+        renderLogoChoices(awayLogoOptions, awayLogoInput, awayVal, true);
+        if (awayLogoWrap) awayLogoWrap.hidden = !away.value;
+    }
+    window.PMKCRefreshUniformLogos = renderUniformLogos;
+
     function syncFanProduct() {
         const uniformIds = selectedUniformIds();
         document.querySelectorAll('input[name="products"]').forEach(function(box) {
@@ -171,12 +287,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const hasStyle = !!product.value;
         fillColorSelect(home, list, hasStyle ? 'Choose Home color' : 'Choose the uniform style first', initial ? initialHome : home.value);
         fillColorSelect(away, list, 'No Away uniform', initial ? initialAway : away.value);
+        if (awayLogoWrap) awayLogoWrap.hidden = !away.value;
         syncFanProduct();
+        renderUniformLogos();
     }
 
     enabled.addEventListener('change', function() { syncUniform(false); });
     product.addEventListener('change', function() { syncUniform(false); });
     if (youth) youth.addEventListener('change', function() { syncUniform(false); });
+    away.addEventListener('change', function() {
+        if (awayLogoWrap) awayLogoWrap.hidden = !away.value;
+    });
+    document.addEventListener('change', function(event) {
+        if (event.target && event.target.name === 'allowed_designs') renderUniformLogos();
+    });
     syncUniform(true);
 });
 </script>

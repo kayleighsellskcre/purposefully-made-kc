@@ -71,6 +71,7 @@
                 form.appendChild(hidden);
 
                 div.innerHTML = '';
+                div.dataset.designId = String(data.design_id);
                 var img = document.createElement('img');
                 img.src = data.url;
                 img.alt = original.name;
@@ -78,6 +79,9 @@
                 var span = document.createElement('span');
                 span.textContent = original.name;
                 div.appendChild(span);
+                if (typeof window.PMKCRefreshUniformLogos === 'function') {
+                    window.PMKCRefreshUniformLogos();
+                }
             }).catch(function() {
                 div.innerHTML = '<span style="color:#dc3545;font-size:0.75rem">' +
                     'Timed out - try a smaller file</span>';

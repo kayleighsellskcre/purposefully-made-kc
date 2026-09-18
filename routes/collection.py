@@ -77,7 +77,9 @@ def view(slug):
         attach_collection,
         is_deadline_passed,
         is_not_yet_open,
+        load_design_dict,
         load_showcase_designs,
+        resolve_uniform_design_id,
         team_store_config,
     )
     collection.deadline_passed = is_deadline_passed(collection)
@@ -99,6 +101,12 @@ def view(slug):
     uniform_products = []
     uniform_kits = []
     products = []
+    kit_designs = {}
+    if uniform['enabled']:
+        kit_designs = {
+            'home': load_design_dict(resolve_uniform_design_id(collection, 'home')),
+            'away': load_design_dict(resolve_uniform_design_id(collection, 'away')),
+        }
     for product in all_products:
         if uniform['enabled'] and product.id in uniform_ids:
             kit_colors = [
@@ -120,7 +128,8 @@ def view(slug):
             )
             kits = [
                 {'key': key, 'label': key.title(), 'color': color,
-                 'variant': by_color.get(color)}
+                 'variant': by_color.get(color),
+                 'design': kit_designs.get(key)}
                 for key, color in kit_colors
                 if by_color.get(color)
             ]

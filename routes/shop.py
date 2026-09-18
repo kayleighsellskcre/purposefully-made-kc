@@ -613,7 +613,9 @@ def customize(product_id):
         collection_has_color_restrictions,
         get_active_collection,
         load_collection_designs,
+        load_design_dict,
         ordering_blocked,
+        resolve_uniform_design_id,
         team_store_config,
         team_store_choice,
     )
@@ -640,6 +642,7 @@ def customize(product_id):
     catalog_section = None
     uniform_kit = None
     uniform_locked_color = None
+    uniform_logo_locked = False
     coll = get_active_collection()
     if coll:
         from utils.group_orders import is_not_yet_open
@@ -717,7 +720,13 @@ def customize(product_id):
     # Check for pre-selected design from gallery
     design_id = request.args.get('design_id', type=int)
     preset_design = None
-    if design_id:
+    if coll and catalog_section == 'uniform':
+        locked_logo = load_design_dict(resolve_uniform_design_id(coll, uniform_kit))
+        if locked_logo:
+            preset_design = locked_logo
+            uniform_logo_locked = True
+            allow_custom_upload = False
+    if design_id and not uniform_logo_locked:
         from utils.privacy import user_can_use_design
         from utils.group_orders import design_allowed_for_collection
         d = Design.query.get(design_id)
@@ -738,9 +747,12 @@ def customize(product_id):
         if coll:
             # Group orders only offer artwork uploaded/approved for that
             # specific store. Never fall back to the general design gallery.
-            gallery_designs = (
-                load_collection_designs(coll) if allowed_design_ids else []
-            )
+            if uniform_logo_locked:
+                gallery_designs = []
+            else:
+                gallery_designs = (
+                    load_collection_designs(coll) if allowed_design_ids else []
+                )
         else:
             from utils.design_variants import gallery_cards_for_public
             gallery_designs = gallery_cards_for_public(
@@ -798,4 +810,5 @@ def customize(product_id):
                          collection_opens_label=collection_opens_label,
                          catalog_section=catalog_section,
                          uniform_kit=uniform_kit,
-                         uniform_locked_color=uniform_locked_color)
+                         uniform_locked_color=uniform_locked_color,
+                         uniform_logo_locked=uniform_logo_locked)

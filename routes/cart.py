@@ -240,6 +240,13 @@ def add():
             design_id = None
     elif data.get('design_url'):
         design_url = data.get('design_url')
+
+    if collection and catalog_section == 'uniform':
+        from utils.group_orders import load_design_dict, resolve_uniform_design_id
+        locked_logo = load_design_dict(resolve_uniform_design_id(collection, uniform_kit))
+        if locked_logo:
+            design_id = locked_logo['id']
+            design_url = locked_logo['url']
     
     # Handle back design: uploaded file or URL (from prior upload)
     import time as _t

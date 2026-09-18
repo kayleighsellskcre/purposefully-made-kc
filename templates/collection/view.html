@@ -364,6 +364,12 @@
 }
 .uniform-kit-card:hover { transform:translateY(-2px); box-shadow:var(--box-shadow-hover); }
 .uniform-kit-card img { width:110px; height:110px; object-fit:contain; }
+.uniform-kit-photo { position:relative; width:110px; height:110px; }
+.uniform-kit-photo img { width:110px; height:110px; object-fit:contain; }
+.uniform-kit-logo {
+    position:absolute; left:50%; top:38%; width:42%; height:42%;
+    object-fit:contain; transform:translate(-50%, -50%); pointer-events:none;
+}
 .uniform-kit-card strong, .uniform-kit-card span { display:block; }
 .uniform-kit-card strong { font-family:var(--font-heading); font-size:1.2rem; }
 .uniform-kit-card .uniform-color { color:var(--text-secondary); margin:.2rem 0 .65rem; }
@@ -374,7 +380,7 @@
     .design-board-grid { gap: 1.5rem; }
     .shopper-path-options { grid-template-columns:1fr; }
     .uniform-kit-card { grid-template-columns:90px 1fr; }
-    .uniform-kit-card img { width:90px; height:90px; }
+    .uniform-kit-card img, .uniform-kit-photo, .uniform-kit-photo img { width:90px; height:90px; }
 }
 
 .design-card.deadline-passed {
@@ -445,7 +451,7 @@
         <section class="uniform-section" id="uniformSection" hidden>
             <div class="store-lane-heading">
                 <h2>Player Uniform</h2>
-                <p>Choose Home, Away, youth, or adult. Add more than one if you need them.</p>
+                <p>Choose Home, Away, youth, or adult. The jersey logo is already on the shirt. Add more than one if you need them.</p>
             </div>
             {% set any_uniform_kits = uniform_products | selectattr('kits') | list %}
             {% if any_uniform_kits %}
@@ -454,9 +460,14 @@
                 {% for kit in item.kits %}
                 <a class="uniform-kit-card"
                    href="{{ url_for('shop.customize', product_id=item.product.id, catalog_section='uniform', uniform_kit=kit.key) }}">
-                    <img src="{{ kit.variant.front_image_url }}"
-                         alt="{{ kit.label }} {{ item.product.name }} in {{ kit.color }}"
-                         loading="eager">
+                    <div class="uniform-kit-photo">
+                        <img src="{{ kit.variant.front_image_url }}"
+                             alt="{{ kit.label }} {{ item.product.name }} in {{ kit.color }}"
+                             loading="eager">
+                        {% if kit.design %}
+                        <img class="uniform-kit-logo" src="{{ kit.design.url }}" alt="" aria-hidden="true">
+                        {% endif %}
+                    </div>
                     <span>
                         <strong>{{ kit.label }} Uniform</strong>
                         <span class="uniform-color">{% if item.product.display_age or item.product.age_group %}{{ item.product.display_age or item.product.age_group }} · {% endif %}{{ kit.color }} · {{ item.product.name }}</span>
@@ -477,7 +488,7 @@
         <div class="design-board-intro">
             <h2>{% if team_store.uniform.enabled %}Family &amp; Fan Wear{% else %}Your Design Board{% endif %}</h2>
             {% if team_store.uniform.enabled %}
-            <p>Optional apparel for players, family, and friends to represent the team.</p>
+            <p>Optional apparel for players, family, and friends. Pick a style, then choose the jersey logo or a matching cute design. You do not have to use the same image as the uniform.</p>
             {% elif collection.restrict_options %}
             <p>Your organizer has chosen the options for this order. Pick your size and add to cart. Everyone stays matching!</p>
             {% else %}

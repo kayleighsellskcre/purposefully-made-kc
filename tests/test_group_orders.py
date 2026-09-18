@@ -115,6 +115,8 @@ def test_uniform_and_fan_wear_are_saved_as_separate_lanes(customer_client, seed,
             'product_ids': [seed['tee_id']],
             'home_color': 'Black',
             'away_color': 'White',
+            'home_design_id': None,
+            'away_design_id': None,
         }
         assert config['fan_product_ids'] == [seed['hoodie_id']]
         assert {p.id for p in collection.products} == {
@@ -689,6 +691,9 @@ def test_create_form_asks_school_team_or_other(customer_client):
     assert 'value="team"' in html
     assert 'value="other"' in html
     assert 'Youth uniform style' in html
+    assert 'Home jersey logo' in html
+    assert 'Away jersey logo' in html
+    assert 'extra matching designs' in html.lower()
 
 
 def test_create_requires_a_group_kind(customer_client, seed, app):
@@ -727,6 +732,127 @@ def test_youth_and_adult_uniforms_can_be_offered_together(customer_client, seed,
     ).get_data(as_text=True)
     assert f'/shop/customize/{seed["tee_id"]}' in html
     assert f'/shop/customize/{seed["youth_id"]}' in html
+
+
+def _uniform_collection(app, seed, **uniform_extra):
+    from models import Collection
+    with app.app_context():
+        collection = db.session.get(Collection, seed['collection_id'])
+        collection.products.append(db.session.get(Product, seed['hoodie_id']))
+        collection.allowed_design_ids = json.dumps([
+            seed['free_design_id'], seed['fee_4_design_id'],
+        ])
+        uniform = {
+            'enabled': True,
+            'product_id': seed['tee_id'],
+            'home_color': 'Black',
+            'away_color': 'White',
+            'home_design_id': seed['free_design_id'],
+            'away_design_id': seed['fee_4_design_id'],
+        }
+        uniform.update(uniform_extra)
+        collection.team_store_config = json.dumps({
+            'version': 1,
+            'uniform': uniform,
+            'fan_product_ids': [seed['hoodie_id']],
+        })
+        db.session.commit()
+
+
+def test_create_saves_home_and_away_jersey_logos(customer_client, seed, app):
+    form = _base_form(
+        seed,
+        team_store_present='1',
+        uniform_enabled='on',
+        uniform_product_id=str(seed['tee_id']),
+        uniform_home_color='Black',
+        uniform_away_color='White',
+        products=[str(seed['hoodie_id'])],
+        allowed_designs=[str(seed['free_design_id']), str(seed['fee_4_design_id'])],
+        uniform_home_design_id=str(seed['free_design_id']),
+        uniform_away_design_id=str(seed['fee_4_design_id']),
+    )
+    resp = _post(customer_client, form)
+    assert resp.status_code == 200
+    with app.app_context():
+        collection = Collection.query.filter_by(name=form['name']).one()
+        config = json.loads(collection.team_store_config)
+        assert config['uniform']['home_design_id'] == seed['free_design_id']
+        assert config['uniform']['away_design_id'] == seed['fee_4_design_id']
+
+
+def test_uniform_customize_applies_the_jersey_logo_automatically(client, app, seed):
+    _uniform_collection(app, seed)
+    client.get(f'/c/{seed["collection_slug"]}')
+    html = client.get(
+        f'/shop/customize/{seed["tee_id"]}?catalog_section=uniform&uniform_kit=home'
+    ).get_data(as_text=True)
+    assert 'Jersey Logo' in html
+    assert 'already applied' in html
+    assert 'Pick the group logo below' not in html
+    assert f'presetDesignId: {seed["free_design_id"]}' in html
+    assert 'Group logos: tap one to use' not in html
+
+    away = client.get(
+        f'/shop/customize/{seed["tee_id"]}?catalog_section=uniform&uniform_kit=away'
+    ).get_data(as_text=True)
+    assert f'presetDesignId: {seed["fee_4_design_id"]}' in away
+
+
+def test_fan_wear_still_offers_every_matching_design(client, app, seed):
+    _uniform_collection(app, seed)
+    client.get(f'/c/{seed["collection_slug"]}')
+    html = client.get(
+        f'/shop/customize/{seed["hoodie_id"]}?catalog_section=fan'
+    ).get_data(as_text=True)
+    assert 'Pick the jersey look or a matching design.' in html
+    assert 'Group logos: tap one to use' in html
+    assert 'Jersey Logo' not in html
+    assert str(seed['free_design_id']) in html
+    assert str(seed['fee_4_design_id']) in html
+
+
+def test_uniform_cart_uses_the_locked_jersey_logo(client, app, seed):
+    _uniform_collection(app, seed)
+    client.get(f'/c/{seed["collection_slug"]}')
+    response = client.post('/cart/add', data={
+        'product_id': str(seed['tee_id']),
+        'color': 'Black',
+        'size': 'M',
+        'quantity': '1',
+        'catalog_section': 'uniform',
+        'uniform_kit': 'home',
+        'design_id': str(seed['fee_4_design_id']),
+    })
+    assert response.status_code == 200
+    with client.session_transaction() as sess:
+        item = sess['cart'][0]
+    assert int(item['design_id']) == seed['free_design_id']
+
+
+def test_jersey_logo_falls_back_to_the_first_allowed_design(app, seed):
+    from models import Collection
+    from utils.group_orders import resolve_uniform_design_id
+
+    with app.app_context():
+        collection = db.session.get(Collection, seed['collection_id'])
+        collection.allowed_design_ids = json.dumps([
+            seed['fee_4_design_id'], seed['free_design_id'],
+        ])
+        collection.team_store_config = json.dumps({
+            'version': 1,
+            'uniform': {
+                'enabled': True,
+                'product_id': seed['tee_id'],
+                'home_color': 'Black',
+                'away_color': 'White',
+            },
+            'fan_product_ids': [],
+        })
+        db.session.commit()
+        collection = db.session.get(Collection, seed['collection_id'])
+        assert resolve_uniform_design_id(collection, 'home') == seed['fee_4_design_id']
+        assert resolve_uniform_design_id(collection, 'away') == seed['fee_4_design_id']
 
 
 def collection_slug_for(name, app):
