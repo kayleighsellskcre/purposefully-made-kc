@@ -509,6 +509,8 @@ def set_collection_products_from_form(collection):
         return [], None
 
     found = Product.query.filter(Product.id.in_(ids), Product.is_active == True).all()
+    from utils.mockups import product_has_shop_image
+    found = [p for p in found if product_has_shop_image(p)]
     by_id = {p.id: p for p in found}
     selected = [by_id[i] for i in ids if i in by_id]
     missing_uniform = [pid for pid in uniform_ids if pid not in by_id]

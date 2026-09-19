@@ -364,6 +364,8 @@ def load_group_order_form_catalog():
         scan_folders=False,
     )
     attach_group_order_preview_images(products)
+    from utils.mockups import _usable_image_url
+    products = [p for p in products if _usable_image_url(getattr(p, 'preview_image_url', None))]
     ids = [p.id for p in products]
     all_colors = []
     colors_by_brand = {}   # {brand: [sorted color names]}

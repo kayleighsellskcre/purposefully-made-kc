@@ -1,7 +1,12 @@
 from flask import Blueprint, render_template, request, jsonify, url_for, session, redirect, flash, current_app
 from models import db, Product, Design, Collection
 from flask_login import login_required, current_user
-from utils.mockups import get_carousel_colors_for_product, get_color_variants_data_for_product, get_first_shop_image_url
+from utils.mockups import (
+    get_carousel_colors_for_product,
+    get_color_variants_data_for_product,
+    get_first_shop_image_url,
+    product_has_shop_image,
+)
 from utils.cloud_storage import image_url as _resolve_image_url
 from utils.json_fields import parse_json_list, parse_json_object
 from utils.product_filters import (
@@ -92,6 +97,15 @@ def index():
             product.display_category = infer_category(product)
             product.display_age = infer_age(product)
             product.display_fit = infer_fit(product)
+
+        products = [
+            p for p in products
+            if product_has_shop_image(
+                p, current_app,
+                carousel=p.carousel_colors,
+                image_url=p.fallback_image_url,
+            )
+        ]
 
         # Adult → Youth → Toddler → Baby, then garment type within each age
         products = sort_catalog(products)
@@ -587,10 +601,21 @@ def design_gallery():
     )
 
 
+def _require_sellable_product(product):
+    """Products without a photo stay in the catalog but cannot be sold."""
+    if product and product.is_active and product_has_shop_image(product, current_app):
+        return None
+    flash('This product is not available to order yet.', 'error')
+    return redirect(url_for('shop.index'))
+
+
 @shop_bp.route('/product/<int:product_id>')
 def product_detail(product_id):
     """Product detail page with customizer"""
     product = Product.query.get_or_404(product_id)
+    blocked = _require_sellable_product(product)
+    if blocked:
+        return blocked
     available_sizes = shop_sizes_for_product(product)
     available_colors = parse_json_list(product.available_colors)
     print_area_config = parse_json_object(product.print_area_config)
@@ -621,6 +646,9 @@ def customize(product_id):
     )
 
     product = Product.query.get_or_404(product_id)
+    blocked = _require_sellable_product(product)
+    if blocked:
+        return blocked
     available_sizes = shop_sizes_for_product(product)
     available_colors = parse_json_list(product.available_colors)
     print_area_config = parse_json_object(product.print_area_config)

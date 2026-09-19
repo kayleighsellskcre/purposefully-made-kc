@@ -117,6 +117,10 @@ def add():
     product = Product.query.get(product_id)
     if not product:
         return jsonify({'error': 'Product not found'}), 404
+    from flask import current_app
+    from utils.mockups import product_has_shop_image
+    if not product.is_active or not product_has_shop_image(product, current_app):
+        return jsonify({'error': 'This product is not available to order yet.'}), 400
     
     if not size or not color:
         return jsonify({'error': 'Size and color are required'}), 400

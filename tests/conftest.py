@@ -129,18 +129,22 @@ def seed(app, _clean_db):
         db.session.add_all([
             ProductColorVariant(
                 product_id=tee.id, color_name='Black', color_hex='#000000',
+                front_image_url='/static/img/logo.png',
                 size_inventory=json.dumps(stocked),
             ),
             ProductColorVariant(
                 product_id=tee.id, color_name='White', color_hex='#ffffff',
+                front_image_url='/static/img/logo.png',
                 size_inventory=json.dumps(stocked),
             ),
             ProductColorVariant(
                 product_id=hoodie.id, color_name='Black', color_hex='#000000',
+                front_image_url='/static/img/logo.png',
                 size_inventory=json.dumps(stocked),
             ),
             ProductColorVariant(
                 product_id=youth.id, color_name='Black', color_hex='#000000',
+                front_image_url='/static/img/logo.png',
                 size_inventory=json.dumps({'YS': 10, 'YM': 10, 'YL': 10, 'XL': 10, '2XL': 10}),
             ),
         ])

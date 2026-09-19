@@ -2370,7 +2370,7 @@ def add_product():
             description=request.form.get('description'),
             base_price=base_price,
             wholesale_cost=_form_money('wholesale_cost', 0.0),
-            is_active=request.form.get('is_active') == 'on',
+            is_active=False,
             is_customer_favorite=request.form.get('is_customer_favorite') == 'on',
             available_sizes=store_json_list(request.form.get('available_sizes')),
             available_colors=store_json_list(request.form.get('available_colors')),
@@ -2379,8 +2379,11 @@ def add_product():
         
         db.session.add(product)
         db.session.commit()
-        
-        flash('Product added successfully', 'success')
+
+        if request.form.get('is_active') == 'on':
+            flash('Product added. Add a product photo before making this active.', 'error')
+        else:
+            flash('Product added successfully', 'success')
         return redirect(url_for('admin.products'))
     
     return render_template('admin/add_product.html')
@@ -2414,7 +2417,7 @@ def edit_product(product_id):
         product.description = request.form.get('description')
         product.base_price = base_price
         product.wholesale_cost = _form_money('wholesale_cost', 0.0)
-        product.is_active = request.form.get('is_active') == 'on'
+        want_active = request.form.get('is_active') == 'on'
         product.is_customer_favorite = request.form.get('is_customer_favorite') == 'on'
         from utils.json_fields import store_json_list
         product.available_sizes = store_json_list(request.form.get('available_sizes'))
@@ -2444,6 +2447,13 @@ def edit_product(product_id):
                 os.makedirs(os.path.dirname(upload_path), exist_ok=True)
                 back_file.save(upload_path)
                 product.back_mockup_template = f"uploads/products/{filename}"
+
+        from utils.mockups import product_has_shop_image
+        if want_active and not product_has_shop_image(product):
+            product.is_active = False
+            flash('Add a product photo before making this active.', 'error')
+        else:
+            product.is_active = want_active
         
         db.session.commit()
         flash('Product updated successfully', 'success')
@@ -2513,6 +2523,20 @@ def toggle_product_active(product_id):
     """Toggle a product's is_active flag and return the new state as JSON."""
     from flask import request as flask_request, jsonify
     product = Product.query.get_or_404(product_id)
+    turning_on = not product.is_active
+    if turning_on:
+        from utils.mockups import product_has_shop_image
+        if not product_has_shop_image(product):
+            message = 'Add a product photo before making this active.'
+            if flask_request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({
+                    'ok': False,
+                    'is_active': product.is_active,
+                    'label': 'Inactive',
+                    'message': message,
+                }), 400
+            flash(message, 'error')
+            return redirect(url_for('admin.products'))
     product.is_active = not product.is_active
     db.session.commit()
 

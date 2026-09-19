@@ -34,7 +34,11 @@ def serve_mockup(path):
 def index():
     """Homepage"""
     try:
-        featured_products = Product.query.filter_by(is_active=True).order_by(Product.style_number).limit(8).all()
+        from utils.mockups import product_has_shop_image
+        featured_products = [
+            p for p in Product.query.filter_by(is_active=True).order_by(Product.style_number).all()
+            if product_has_shop_image(p)
+        ][:8]
         now = datetime.now(timezone.utc).replace(tzinfo=None)
         # Only admin-created, non-password stores. Customer group orders stay
         # off the homepage and are reached only via the organizer's share link.
@@ -180,8 +184,11 @@ def sitemap_xml():
     add('main.terms', 'yearly', '0.3')
 
     try:
+        from utils.mockups import product_has_shop_image
         products = Product.query.filter_by(is_active=True).all()
         for product in products:
+            if not product_has_shop_image(product):
+                continue
             lastmod = product.updated_at or product.created_at
             add(
                 'shop.product_detail', 'weekly', '0.8',

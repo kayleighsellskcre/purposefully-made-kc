@@ -656,6 +656,16 @@ def sorted_front_mockup_urls(variants):
     return [url for _, url in scored]
 
 
+def product_has_shop_image(product, app=None, carousel=None, image_url=None):
+    """True when a product has a real mockup customers can see (not a placeholder)."""
+    if image_url is not None:
+        return _usable_image_url(image_url) is not None
+    if app is None:
+        from flask import current_app
+        app = current_app
+    return _usable_image_url(get_first_shop_image_url(product, app, carousel=carousel)) is not None
+
+
 def get_first_shop_image_url(product, app, carousel=None):
     """
     Get a single image URL for shop display when carousel is empty.
