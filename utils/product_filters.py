@@ -175,6 +175,7 @@ _AGE_LABELS = (
     ('toddler', 'Toddler'),
     ('baby', 'Baby'),
 )
+KIDS_AGES = frozenset({'baby', 'toddler', 'youth'})
 _CATEGORY_ORDER = {key: i for i, (key, _label) in enumerate(SHOP_CATEGORIES)}
 
 
@@ -350,6 +351,9 @@ def catalog_filter_options(products):
         for key, label in (('adult', 'Adult'), ('youth', 'Youth'), ('toddler', 'Toddler'), ('baby', 'Baby'))
         if key in present_ages
     ]
+    if present_ages & KIDS_AGES:
+        insert_at = 1 if ages and ages[0]['key'] == 'adult' else 0
+        ages.insert(insert_at, {'key': 'kids', 'label': 'Baby & Kids'})
     categories, brands = [], []
     seen_cat, seen_brand = set(), set()
     for product in items:
@@ -452,8 +456,19 @@ def load_group_order_form_catalog():
     }
 
 
+def requested_ages(age_group):
+    """None means every age. 'kids' is baby, toddler, and youth together."""
+    raw = str(age_group or '').strip().lower()
+    if not raw:
+        return None
+    if raw in ('kids', 'kid', 'baby & kids', 'baby and kids'):
+        return set(KIDS_AGES)
+    return {raw}
+
+
 def matches_filters(item, *, age_group=None, category=None, fit_type=None):
-    if age_group and infer_age(item) != age_group:
+    wanted_ages = requested_ages(age_group)
+    if wanted_ages and infer_age(item) not in wanted_ages:
         return False
     if category and infer_category(item) != category:
         return False

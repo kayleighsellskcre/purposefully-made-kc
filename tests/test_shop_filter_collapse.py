@@ -194,3 +194,34 @@ def test_color_filter_normalizes_names_and_drops_test_values(client, app, seed):
     assert 'Dtg Black' not in options
     assert 'TestColor' not in options
     assert 'athleticheather' not in options
+
+
+def test_kids_age_filter_includes_baby_toddler_and_youth():
+    from types import SimpleNamespace
+
+    from utils.product_filters import matches_filters
+
+    baby = SimpleNamespace(
+        age_group='baby', name='Infant Tee', category='Tee', style_number='BC3001B',
+    )
+    youth = SimpleNamespace(
+        age_group='youth', name='Youth Tee', category='Tee', style_number='BC3001Y',
+    )
+    toddler = SimpleNamespace(
+        age_group='toddler', name='Toddler Tee', category='Tee', style_number='BC3001T',
+    )
+    adult = SimpleNamespace(
+        age_group='adult', name='Adult Tee', category='Tee', style_number='BC3001',
+    )
+    assert matches_filters(baby, age_group='kids')
+    assert matches_filters(youth, age_group='kids')
+    assert matches_filters(toddler, age_group='kids')
+    assert not matches_filters(adult, age_group='kids')
+    assert matches_filters(baby, age_group='baby')
+    assert not matches_filters(youth, age_group='baby')
+
+
+def test_footer_baby_and_kids_link_uses_the_combined_filter(client, seed):
+    html = html_of(client, '/')
+    assert 'age_group=kids' in html
+    assert "age_group=Baby'" not in html
