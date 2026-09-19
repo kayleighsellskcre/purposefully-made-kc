@@ -634,22 +634,10 @@ def create_app(config_class=Config):
                     except Exception:
                         pass
 
-    # Template filter: color name to hex (fallback when color_hex not in DB)
-    COMMON_COLOR_HEX = {
-        'navy': '#1e3a5f', 'black': '#000000', 'white': '#ffffff', 'red': '#c41e3a',
-        'royal': '#4169e1', 'true royal': '#4169e1', 'royal blue': '#4169e1',
-        'team purple': '#4b0082', 'purple': '#800080', 'heather gray': '#9e9e9e',
-        'grey': '#808080', 'gray': '#808080', 'ash': '#b2beb5', 'charcoal': '#36454f',
-        'terracotta': '#e2725b', 'toast': '#c4a484', 'forest': '#228b22', 'kelly': '#4cbb17',
-        'aqua': '#00ffff', 'teal': '#008080', 'maroon': '#800000', 'burgundy': '#800020',
-        'gold': '#ffd700', 'yellow': '#ffff00', 'orange': '#ff8c00', 'pink': '#ffc0cb',
-        'lime': '#32cd32', 'mint': '#98ff98', 'sky': '#87ceeb', 'baby blue': '#89cff0',
-    }
     @app.template_filter('color_hex_fallback')
     def color_hex_fallback(color_name):
-        if not color_name: return None
-        key = str(color_name).lower().strip()
-        return COMMON_COLOR_HEX.get(key) or COMMON_COLOR_HEX.get(key.replace(' ', ''))
+        from utils.color_names import swatch_hex
+        return swatch_hex(color_name)
     
     # Context processors
     @app.context_processor

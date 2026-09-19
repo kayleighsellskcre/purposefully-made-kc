@@ -54,6 +54,48 @@ def color_match_key(raw):
     return _compact(label) if label else None
 
 
+_SWATCH_HEX = {
+    'navy': '#1e3a5f', 'black': '#000000', 'white': '#ffffff', 'red': '#c41e3a',
+    'royal': '#4169e1', 'true royal': '#4169e1', 'royal blue': '#4169e1',
+    'team purple': '#4b0082', 'purple': '#800080', 'heather': '#9e9e9e',
+    'heather gray': '#9e9e9e', 'heather grey': '#9e9e9e',
+    'grey': '#808080', 'gray': '#808080', 'ash': '#b2beb5', 'charcoal': '#36454f',
+    'terracotta': '#e2725b', 'toast': '#c4a484', 'forest': '#228b22', 'kelly': '#4cbb17',
+    'aqua': '#00ffff', 'teal': '#008080', 'maroon': '#800000', 'burgundy': '#800020',
+    'gold': '#ffd700', 'yellow': '#ffff00', 'orange': '#ff8c00', 'pink': '#ffc0cb',
+    'lime': '#32cd32', 'mint': '#98ff98', 'sky': '#87ceeb', 'baby blue': '#89cff0',
+    'berry': '#8e3a59', 'asphalt': '#3d3d3d', 'athletic heather': '#b8b8b8',
+    'natural': '#f3ead3', 'sand': '#c2b280', 'olive': '#556b2f', 'military': '#4b5320',
+    'cardinal': '#8c1515', 'carolina': '#4b9cd3', 'indigo': '#3f00ff',
+    'cream': '#fffdd0', 'ivory': '#fffff0', 'rust': '#b7410e', 'wine': '#722f37',
+    'coral': '#ff7f50', 'lilac': '#c8a2c8', 'lavender': '#e6e6fa', 'mustard': '#ffdb58',
+    'peach': '#ffcba4', 'rose': '#ff66cc', 'tan': '#d2b48c', 'khaki': '#c3b091',
+    'storm': '#4f5b66', 'slate': '#708090', 'silver': '#c0c0c0', 'brown': '#6f4e37',
+    'green': '#228b22', 'blue': '#2a52be', 'camo': '#5c6b4f',
+}
+
+
+def swatch_hex(name, supplied=None):
+    """Supplier hex if present, otherwise a name lookup. Never writes to the DB."""
+    raw = (supplied or '').strip()
+    if raw:
+        if not raw.startswith('#'):
+            raw = '#' + raw
+        if re.fullmatch(r'#[0-9a-fA-F]{3,8}', raw):
+            return raw
+    label = display_color_name(name) or (name or '')
+    key = label.lower().strip()
+    if key in _SWATCH_HEX:
+        return _SWATCH_HEX[key]
+    compact = key.replace(' ', '')
+    if compact in _SWATCH_HEX:
+        return _SWATCH_HEX[compact]
+    for part in reversed(key.split()):
+        if part in _SWATCH_HEX:
+            return _SWATCH_HEX[part]
+    return None
+
+
 def unique_display_colors(raw_names):
     """Deduplicated, sorted display names. Test and empty values are dropped."""
     best = {}

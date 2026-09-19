@@ -1,4 +1,4 @@
-from utils.color_names import color_match_key, display_color_name, unique_display_colors
+from utils.color_names import color_match_key, display_color_name, swatch_hex, unique_display_colors
 
 
 def test_display_color_name_merges_case_and_strips_dtg():
@@ -20,6 +20,13 @@ def test_test_colors_are_dropped():
     assert display_color_name('TestColor') is None
     assert display_color_name('test') is None
     assert 'TestColor' not in unique_display_colors(['Black', 'TestColor', 'black'])
+
+
+def test_swatch_hex_prefers_supplier_value_then_lookup():
+    assert swatch_hex('Berry', '#8e3a59') == '#8e3a59'
+    assert swatch_hex('Black') == '#000000'
+    assert swatch_hex('Athletic Heather') == '#b8b8b8'
+    assert swatch_hex('Heather Navy') == '#1e3a5f'
 
 
 def test_unique_display_colors_dedupes_and_sorts():

@@ -21,6 +21,10 @@ def test_product_detail_color_swatches_carry_images(client, seed):
     html = client.get(f'/shop/product/{seed["tee_id"]}').get_data(as_text=True)
     assert 'data-front-image=' in html
     assert 'color-option' in html
+    assert 'color-swatch' in html
+    assert 'color-swatch-name' in html
+    assert 'Black' in html
+    assert 'White' in html
 
 
 def test_customize_does_not_render_empty_design_overlays(client, seed):

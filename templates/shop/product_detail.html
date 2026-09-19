@@ -202,14 +202,11 @@
                                 title="{{ variant.color_name }}"
                                 aria-label="{{ variant.color_name }}"
                                 aria-pressed="false">
-                            {% set swatch = variant.color_swatch_url if variant.color_swatch_url is defined else '' %}
-                            {% if swatch %}
-                            <img src="{{ swatch }}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:3px;">
-                            {% elif variant.color_hex %}
-                            <span style="background:{{ variant.color_hex }};display:block;width:100%;height:100%;border-radius:3px;"></span>
-                            {% else %}
-                            <span>{{ variant.color_name }}</span>
-                            {% endif %}
+                            {% set swatch_hex = variant.color_hex or (variant.color_name|color_hex_fallback) %}
+                            <span class="color-swatch{% if not swatch_hex %} color-swatch-empty{% endif %}"
+                                  {% if swatch_hex %}style="background:{{ swatch_hex }}"{% endif %}
+                                  aria-hidden="true"></span>
+                            <span class="color-swatch-name">{{ variant.color_name }}</span>
                         </button>
                         {% endfor %}
                     </div>
@@ -677,8 +674,7 @@ function toggleSizeChart() {
     margin-bottom: 1rem;
 }
 
-.size-selector,
-.color-selector {
+.size-selector {
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
@@ -710,13 +706,36 @@ function toggleSizeChart() {
     color: var(--text-secondary);
 }
 
+.color-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
 .color-option {
-    padding: 0.75rem 1.25rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.4rem 0.75rem 0.4rem 0.55rem;
     border: 2px solid var(--border-color);
-    border-radius: var(--border-radius);
+    border-radius: 999px;
     background: #fff;
     cursor: pointer;
     transition: var(--transition);
+}
+.color-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.18);
+    flex-shrink: 0;
+    background: #ddd;
+}
+.color-swatch-empty {
+    background: linear-gradient(135deg, #ddd, #bbb);
+}
+.color-swatch-name {
+    font-size: 0.88rem;
+    line-height: 1.2;
 }
 
 .color-option:hover,
