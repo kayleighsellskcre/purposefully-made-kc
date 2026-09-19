@@ -118,10 +118,9 @@
                     <div class="select-wrap">
                         <select id="ageGroupFilter" class="filter-dropdown" onchange="updateFitLabels(); applyFilters()">
                             <option value="">All Ages</option>
-                            <option value="adult" {% if selected_age_group == 'adult' %}selected{% endif %}>Adult</option>
-                            <option value="youth" {% if selected_age_group == 'youth' %}selected{% endif %}>Youth</option>
-                            <option value="toddler" {% if selected_age_group == 'toddler' %}selected{% endif %}>Toddler</option>
-                            <option value="baby" {% if selected_age_group == 'baby' %}selected{% endif %}>Baby</option>
+                            {% for age in filter_ages or [] %}
+                            <option value="{{ age.key }}" {% if selected_age_group == age.key %}selected{% endif %}>{{ age.label }}</option>
+                            {% endfor %}
                         </select>
                         <svg class="select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </div>
@@ -134,16 +133,9 @@
                     <div class="select-wrap">
                         <select id="categoryFilter" class="filter-dropdown" onchange="applyFilters()">
                             <option value="">All Styles</option>
-                            <option value="Baseball Tee" {% if selected_category == 'Baseball Tee' %}selected{% endif %}>Baseball Tee</option>
-                            <option value="Hoodie" {% if selected_category == 'Hoodie' %}selected{% endif %}>Hoodie</option>
-                            <option value="Long Sleeve" {% if selected_category == 'Long Sleeve' %}selected{% endif %}>Long Sleeve T-Shirt</option>
-                            <option value="Pants" {% if selected_category == 'Pants' %}selected{% endif %}>Pants</option>
-                            <option value="Shorts" {% if selected_category == 'Shorts' %}selected{% endif %}>Shorts</option>
-                            <option value="Sweatshirt" {% if selected_category == 'Sweatshirt' %}selected{% endif %}>Sweatshirt</option>
-                            <option value="Tee" {% if selected_category == 'Tee' %}selected{% endif %}>T-Shirt</option>
-                            <option value="Tank" {% if selected_category == 'Tank' %}selected{% endif %}>Tank Top</option>
-                            <option value="V-Neck" {% if selected_category == 'V-Neck' %}selected{% endif %}>V-Neck T-Shirt</option>
-                            <option value="Onesie" {% if selected_category == 'Onesie' %}selected{% endif %}>Onesie</option>
+                            {% for cat in filter_categories or [] %}
+                            <option value="{{ cat.key }}" {% if selected_category == cat.key %}selected{% endif %}>{{ cat.label }}</option>
+                            {% endfor %}
                         </select>
                         <svg class="select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </div>
@@ -156,8 +148,9 @@
                     <div class="select-wrap">
                         <select id="fitTypeFilter" class="filter-dropdown" onchange="applyFilters()">
                             <option value="">All</option>
-                            <option value="Unisex" {% if selected_fit_type == 'Unisex' %}selected{% endif %} class="fit-unisex-label">Men's (Unisex)</option>
-                            <option value="Women's" {% if selected_fit_type == "Women's" %}selected{% endif %} class="fit-womens-label">Women's</option>
+                            {% for fit in filter_fits or [] %}
+                            <option value="{{ fit }}" {% if selected_fit_type == fit %}selected{% endif %} class="{{ 'fit-unisex-label' if fit == 'Unisex' else 'fit-womens-label' }}">{% if fit == 'Unisex' %}Men's (Unisex){% else %}{{ fit }}{% endif %}</option>
+                            {% endfor %}
                         </select>
                         <svg class="select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </div>

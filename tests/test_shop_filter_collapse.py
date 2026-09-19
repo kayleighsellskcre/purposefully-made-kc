@@ -126,3 +126,36 @@ def test_search_stays_outside_the_collapsed_panel(client):
 def test_products_still_render(client):
     """Guards against the markup edits breaking the catalogue loop."""
     assert 'product-card' in html_of(client)
+
+
+def _select_options(html, select_id):
+    block = re.search(
+        rf'<select[^>]*id="{select_id}"[^>]*>(.*?)</select>',
+        html,
+        flags=re.DOTALL,
+    )
+    assert block, f'{select_id} is missing'
+    return re.findall(r'<option value="([^"]*)"', block.group(1))
+
+
+def test_category_filter_omits_empty_styles(client):
+    options = _select_options(html_of(client), 'categoryFilter')
+    assert 'Tee' in options
+    assert 'Hoodie' in options
+    for empty in ('Pants', 'Shorts', 'Baseball Tee'):
+        assert empty not in options, empty
+
+
+def test_brand_filter_omits_unsold_brands(client):
+    options = _select_options(html_of(client), 'brandFilter')
+    assert 'Bella+Canvas' in options or options == ['']
+    for empty in ('Gildan', 'Sport-Tek', 'Stanley/Stella', 'C2 Sport'):
+        assert empty not in options, empty
+
+
+def test_age_filter_omits_empty_age_groups(client):
+    options = _select_options(html_of(client), 'ageGroupFilter')
+    assert 'adult' in options
+    assert 'youth' in options
+    assert 'toddler' not in options
+    assert 'baby' not in options

@@ -14,10 +14,12 @@ from utils.product_filters import (
     catalog_filter_options,
     group_catalog_by_age,
     infer_age,
+    infer_brand,
     infer_category,
     infer_fit,
     matches_filters,
     prepare_catalog,
+    shop_filter_options,
     sort_catalog,
 )
 from utils.sizes import shop_sizes_for_product
@@ -39,56 +41,18 @@ def index():
         brand = (request.args.get('brand') or '').strip() or None
         search_q = (request.args.get('q') or '').strip()
 
-        query = Product.query.filter_by(is_active=True)
+        from models import ProductColorVariant
 
-        if search_q:
-            _kw = f'%{search_q}%'
-            query = query.filter(
-                db.or_(
-                    Product.name.ilike(_kw),
-                    Product.style_number.ilike(_kw),
-                    Product.description.ilike(_kw),
-                    Product.category.ilike(_kw),
-                    Product.brand.ilike(_kw),
-                )
-            )
-        
-        products = query.all()
-        products = [
-            p for p in products
-            if matches_filters(p, age_group=age_group, category=category, fit_type=fit_type)
-        ]
-        if brand:
-            wanted = ''.join(ch for ch in brand.lower() if ch.isalnum())
-            products = [
-                p for p in products
-                if wanted and wanted in ''.join(ch for ch in (p.brand or '').lower() if ch.isalnum())
-            ]
-
-        if color:
-            from models import ProductColorVariant
-            wanted = color.strip().lower()
-            product_ids = [
-                pid for (pid,) in db.session.query(ProductColorVariant.product_id).filter(
-                    db.func.lower(ProductColorVariant.color_name) == wanted
-                ).distinct().all()
-            ]
-            products = [p for p in products if p.id in product_ids]
-
-        # Every product's carousel walks its colour variants, and
-        # Product.color_variants is a dynamic relationship, so reading it costs
-        # one SELECT per product on a page that renders the whole catalogue.
-        # Fetched in one query here and handed to each product. Eager loading is
-        # not an option: SQLAlchemy rejects it on a dynamic relationship.
+        catalog = Product.query.filter_by(is_active=True).all()
         variants_by_product = {}
-        if products:
-            from models import ProductColorVariant
+        if catalog:
             for variant in ProductColorVariant.query.filter(
-                ProductColorVariant.product_id.in_([p.id for p in products])
+                ProductColorVariant.product_id.in_([p.id for p in catalog])
             ).all():
                 variants_by_product.setdefault(variant.product_id, []).append(variant)
 
-        for product in products:
+        sellable = []
+        for product in catalog:
             product.carousel_colors = get_carousel_colors_for_product(
                 product, current_app,
                 variants=variants_by_product.get(product.id, []))
@@ -97,46 +61,66 @@ def index():
             product.display_category = infer_category(product)
             product.display_age = infer_age(product)
             product.display_fit = infer_fit(product)
+            product.display_brand = infer_brand(product)
+            if product_has_shop_image(
+                product, current_app,
+                carousel=product.carousel_colors,
+                image_url=product.fallback_image_url,
+            ):
+                sellable.append(product)
 
+        filter_opts = shop_filter_options(sellable)
+        colors = []
+        seen_colors = set()
+        for pid in {p.id for p in sellable}:
+            for variant in variants_by_product.get(pid, []):
+                name = (variant.color_name or '').strip()
+                key = name.lower()
+                if not name or key in seen_colors:
+                    continue
+                seen_colors.add(key)
+                colors.append(name)
+        colors.sort(key=str.lower)
+
+        products = sellable
+        if search_q:
+            needle = search_q.lower()
+            products = [
+                p for p in products
+                if needle in (p.name or '').lower()
+                or needle in (p.style_number or '').lower()
+                or needle in (p.description or '').lower()
+                or needle in (p.category or '').lower()
+                or needle in (p.brand or '').lower()
+            ]
         products = [
             p for p in products
-            if product_has_shop_image(
-                p, current_app,
-                carousel=p.carousel_colors,
-                image_url=p.fallback_image_url,
-            )
+            if matches_filters(p, age_group=age_group, category=category, fit_type=fit_type)
         ]
+        if brand:
+            wanted = ''.join(ch for ch in brand.lower() if ch.isalnum())
+            products = [
+                p for p in products
+                if wanted and wanted in ''.join(
+                    ch for ch in (p.display_brand or infer_brand(p) or '').lower() if ch.isalnum()
+                )
+            ]
+        if color:
+            wanted = color.strip().lower()
+            matching_ids = {
+                pid for pid, variants in variants_by_product.items()
+                if any((v.color_name or '').strip().lower() == wanted for v in variants)
+            }
+            products = [p for p in products if p.id in matching_ids]
 
         # Adult → Youth → Toddler → Baby, then garment type within each age
         products = sort_catalog(products)
         product_sections = group_catalog_by_age(products)
-        
-        categories = db.session.query(Product.category).filter(
-            Product.is_active == True
-        ).distinct().order_by(Product.category).all()
-        categories = [c[0] for c in categories if c[0]]
-        
-        fit_types = db.session.query(Product.fit_type).filter(
-            Product.is_active == True, Product.fit_type != None
-        ).distinct().order_by(Product.fit_type).all()
-        fit_types = [f[0] for f in fit_types if f[0]]
-        
-        neck_styles = db.session.query(Product.neck_style).filter(
-            Product.is_active == True, Product.neck_style != None
-        ).distinct().order_by(Product.neck_style).all()
-        neck_styles = [n[0] for n in neck_styles if n[0]]
-        
-        sleeve_lengths = db.session.query(Product.sleeve_length).filter(
-            Product.is_active == True, Product.sleeve_length != None
-        ).distinct().order_by(Product.sleeve_length).all()
-        sleeve_lengths = [s[0] for s in sleeve_lengths if s[0]]
-        
-        from models import ProductColorVariant
-        colors = db.session.query(ProductColorVariant.color_name).distinct().order_by(ProductColorVariant.color_name).all()
-        colors = [c[0] for c in colors if c[0]]
-        # Deduplicate case-insensitively (e.g. "DTG Black" and "Dtg Black" → one entry)
-        _seen = set()
-        colors = [c for c in colors if not (c.lower() in _seen or _seen.add(c.lower()))]
+        categories = [row['key'] for row in filter_opts['categories']]
+        fit_types = filter_opts['fits']
+        neck_styles = []
+        sleeve_lengths = []
+        shop_brands = filter_opts['brands']
         
         design_id = request.args.get('design_id', type=int)
 
@@ -173,18 +157,6 @@ def index():
         except Exception:
             pass
 
-        from services.sanmar_catalog import shop_brand_names
-        shop_brands = shop_brand_names()
-        db_brands = [
-            row[0] for row in db.session.query(Product.brand)
-            .filter(Product.is_active == True, Product.brand.isnot(None))
-            .distinct().all()
-            if row[0]
-        ]
-        for extra in db_brands:
-            if extra not in shop_brands:
-                shop_brands.append(extra)
-
         return render_template('shop/index.html', 
                              products=products,
                              product_sections=product_sections,
@@ -194,6 +166,9 @@ def index():
                              sleeve_lengths=sleeve_lengths,
                              colors=colors,
                              shop_brands=shop_brands,
+                             filter_ages=filter_opts['ages'],
+                             filter_categories=filter_opts['categories'],
+                             filter_fits=filter_opts['fits'],
                              selected_brand=brand,
                              selected_category=category,
                              selected_age_group=age_group,
@@ -218,6 +193,9 @@ def index():
                              sleeve_lengths=[],
                              colors=[],
                              shop_brands=[],
+                             filter_ages=[],
+                             filter_categories=[],
+                             filter_fits=[],
                              selected_brand=None,
                              selected_category=None,
                              selected_age_group=None,

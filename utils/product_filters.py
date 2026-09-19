@@ -310,6 +310,31 @@ def attach_group_order_preview_images(products):
     return items
 
 
+def shop_filter_options(products):
+    """Filter dropdowns for /shop/, built only from products that are actually listed."""
+    base = catalog_filter_options(products)
+    label_map = dict(SHOP_CATEGORIES)
+    categories = [
+        {'key': key, 'label': label_map.get(key, key)}
+        for key in base['categories']
+    ]
+    categories.sort(key=lambda row: _CATEGORY_ORDER.get(row['key'], 99))
+    fits = []
+    seen_fit = set()
+    for product in products or []:
+        fit = infer_fit(product)
+        if fit and fit not in seen_fit:
+            seen_fit.add(fit)
+            fits.append(fit)
+    fits.sort(key=lambda value: (0 if value == 'Unisex' else 1, value))
+    return {
+        'ages': base['ages'],
+        'categories': categories,
+        'brands': base['brands'],
+        'fits': fits,
+    }
+
+
 def catalog_filter_options(products):
     """Unique Who / Type / Brand values present in this list."""
     try:
