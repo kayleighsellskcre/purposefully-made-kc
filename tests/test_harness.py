@@ -44,6 +44,38 @@ def test_home_page_renders(client):
     assert b'Purposefully Made KC' in resp.data
 
 
+def test_homepage_says_open_now_after_the_open_date(client, app):
+    from datetime import datetime, timedelta
+    from models import Collection, db
+
+    past = datetime.utcnow() - timedelta(days=2)
+    future = datetime.utcnow() + timedelta(days=10)
+    with app.app_context():
+        db.session.add_all([
+            Collection(
+                name='Already Open Falcons',
+                slug='already-open-falcons',
+                is_active=True,
+                show_in_directory=True,
+                order_opens_at=past,
+            ),
+            Collection(
+                name='Future Open Falcons',
+                slug='future-open-falcons',
+                is_active=True,
+                show_in_directory=True,
+                order_opens_at=future,
+            ),
+        ])
+        db.session.commit()
+
+    html = client.get('/').get_data(as_text=True)
+    assert 'Already Open Falcons' in html
+    assert 'Open now' in html
+    assert 'Future Open Falcons' in html
+    assert 'Opens' in html
+
+
 def test_customer_can_log_in(customer_client):
     # /account/ intentionally redirects to /account/orders, so hit the real page.
     resp = customer_client.get('/account/orders')

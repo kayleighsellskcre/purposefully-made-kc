@@ -259,8 +259,10 @@
                     {% if collection.description %}
                     <p class="collection-description">{{ collection.description }}</p>
                     {% endif %}
-                    {% if collection.order_opens_at %}
+                    {% if collection.not_yet_open and collection.order_opens_at %}
                     <p class="collection-deadline">Opens {{ collection.order_opens_at|kc_date }}</p>
+                    {% elif collection.order_opens_at %}
+                    <p class="collection-deadline">Open now</p>
                     {% endif %}
                     {% if collection.order_deadline %}
                     <p class="collection-deadline">Order by {{ collection.order_deadline|kc_date }}</p>

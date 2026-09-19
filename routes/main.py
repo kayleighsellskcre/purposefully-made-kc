@@ -40,16 +40,18 @@ def index():
             if product_has_shop_image(p)
         ][:8]
         now = datetime.now(timezone.utc).replace(tzinfo=None)
-        # Only admin-created, non-password stores. Customer group orders stay
-        # off the homepage and are reached only via the organizer's share link.
+        from utils.group_orders import is_not_yet_open
+        # Public, non-password stores. Link-only and customer stores stay
+        # off the homepage and are reached only via the share link.
         active_collections = Collection.query.filter(
             Collection.is_active == True,
             Collection.show_in_directory == True,
             Collection.is_password_protected == False,
             Collection.created_by_user_id.is_(None),
             (Collection.order_deadline == None) | (Collection.order_deadline >= now),
-            (Collection.order_opens_at == None) | (Collection.order_opens_at <= now),
         ).order_by(Collection.created_at.desc()).limit(6).all()
+        for collection in active_collections:
+            collection.not_yet_open = is_not_yet_open(collection)
         return render_template('index.html', 
                              featured_products=featured_products,
                              active_collections=active_collections)
