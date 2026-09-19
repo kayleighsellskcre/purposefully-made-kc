@@ -159,3 +159,38 @@ def test_age_filter_omits_empty_age_groups(client):
     assert 'youth' in options
     assert 'toddler' not in options
     assert 'baby' not in options
+
+
+def test_color_filter_normalizes_names_and_drops_test_values(client, app, seed):
+    import json
+    from models import ProductColorVariant, db
+
+    stocked = json.dumps({'S': 5, 'M': 5, 'L': 5})
+    with app.app_context():
+        db.session.add_all([
+            ProductColorVariant(
+                product_id=seed['tee_id'], color_name='Dtg Black',
+                size_inventory=stocked,
+            ),
+            ProductColorVariant(
+                product_id=seed['tee_id'], color_name='athleticheather',
+                size_inventory=stocked,
+            ),
+            ProductColorVariant(
+                product_id=seed['tee_id'], color_name='TestColor',
+                size_inventory=stocked,
+            ),
+            ProductColorVariant(
+                product_id=seed['tee_id'], color_name='White_Black',
+                size_inventory=stocked,
+            ),
+        ])
+        db.session.commit()
+
+    options = _select_options(html_of(client), 'colorFilter')
+    assert 'Black' in options
+    assert 'Athletic Heather' in options
+    assert 'White Black' in options
+    assert 'Dtg Black' not in options
+    assert 'TestColor' not in options
+    assert 'athleticheather' not in options

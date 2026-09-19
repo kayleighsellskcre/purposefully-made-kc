@@ -23,6 +23,7 @@ from utils.product_filters import (
     sort_catalog,
 )
 from utils.sizes import shop_sizes_for_product
+from utils.color_names import color_match_key, unique_display_colors
 from utils.fonts import CUSTOMIZE_BACK_FONTS, GROUP_ORDER_FONTS
 import json
 
@@ -70,17 +71,11 @@ def index():
                 sellable.append(product)
 
         filter_opts = shop_filter_options(sellable)
-        colors = []
-        seen_colors = set()
-        for pid in {p.id for p in sellable}:
-            for variant in variants_by_product.get(pid, []):
-                name = (variant.color_name or '').strip()
-                key = name.lower()
-                if not name or key in seen_colors:
-                    continue
-                seen_colors.add(key)
-                colors.append(name)
-        colors.sort(key=str.lower)
+        colors = unique_display_colors(
+            (variant.color_name or '').strip()
+            for pid in {p.id for p in sellable}
+            for variant in variants_by_product.get(pid, [])
+        )
 
         products = sellable
         if search_q:
@@ -106,10 +101,10 @@ def index():
                 )
             ]
         if color:
-            wanted = color.strip().lower()
+            wanted = color_match_key(color)
             matching_ids = {
                 pid for pid, variants in variants_by_product.items()
-                if any((v.color_name or '').strip().lower() == wanted for v in variants)
+                if wanted and any(color_match_key(v.color_name) == wanted for v in variants)
             }
             products = [p for p in products if p.id in matching_ids]
 
