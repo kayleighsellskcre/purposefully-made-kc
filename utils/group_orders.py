@@ -268,6 +268,41 @@ def team_store_config(collection):
     }
 
 
+def visible_store_products(collection):
+    """Products the group store actually offers, not every attached catalog row."""
+    config = team_store_config(collection)
+    attached = [p for p in (collection.products or []) if getattr(p, 'is_active', True)]
+    by_id = {p.id: p for p in attached}
+    if not config['configured']:
+        return attached
+    ids = []
+    if config['uniform']['enabled']:
+        ids.extend(config['uniform'].get('product_ids') or [])
+        if config['uniform'].get('product_id'):
+            ids.insert(0, config['uniform']['product_id'])
+    ids.extend(config['fan_product_ids'] or [])
+    seen = set()
+    products = []
+    for pid in ids:
+        product = by_id.get(pid)
+        if not product or pid in seen:
+            continue
+        seen.add(pid)
+        products.append(product)
+    return products
+
+
+def visible_store_product_count(collection):
+    from flask import has_app_context
+    from utils.mockups import product_has_shop_image
+
+    products = visible_store_products(collection)
+    if has_app_context():
+        from flask import current_app
+        products = [p for p in products if product_has_shop_image(p, current_app)]
+    return len(products)
+
+
 def resolve_uniform_design_id(collection, kit='home'):
     """Jersey logo locked onto Home or Away, falling back to the first allowed design."""
     allowed = allowed_design_ids(collection)

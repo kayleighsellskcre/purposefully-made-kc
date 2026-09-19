@@ -381,6 +381,28 @@ def test_the_organizer_can_open_their_own_edit_page(customer_client, seed):
     assert resp.status_code == 200
 
 
+def test_directory_style_count_matches_what_the_store_shows(client, seed, app):
+    with app.app_context():
+        collection = db.session.get(Collection, seed['collection_id'])
+        collection.show_in_directory = True
+        tee = Product.query.get(seed['tee_id'])
+        hoodie = Product.query.get(seed['hoodie_id'])
+        youth = Product.query.get(seed['youth_id'])
+        collection.products = [tee, hoodie, youth]
+        collection.team_store_config = json.dumps({
+            'version': 1,
+            'uniform': {'enabled': False},
+            'fan_product_ids': [seed['hoodie_id']],
+        })
+        db.session.commit()
+
+    directory = client.get('/shop/group-orders').get_data(as_text=True)
+    assert '1 style' in directory
+    assert '3 styles' not in directory
+    store = client.get(f'/c/{seed["collection_slug"]}').get_data(as_text=True)
+    assert 'Heavy Blend Hooded Sweatshirt' in store
+
+
 def test_the_group_orders_directory_loads(client):
     resp = client.get('/shop/group-orders')
     assert resp.status_code == 200

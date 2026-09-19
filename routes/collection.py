@@ -81,6 +81,7 @@ def view(slug):
         load_showcase_designs,
         resolve_uniform_design_id,
         team_store_config,
+        visible_store_products,
     )
     collection.deadline_passed = is_deadline_passed(collection)
     collection.not_yet_open = is_not_yet_open(collection)
@@ -90,7 +91,7 @@ def view(slug):
     attach_collection(collection)
 
     # Get products in this collection with carousel colors (DB + mockup folder)
-    all_products = collection.products
+    all_products = visible_store_products(collection)
     store_config = team_store_config(collection)
     fan_ids = set(store_config['fan_product_ids'])
     uniform = store_config['uniform']

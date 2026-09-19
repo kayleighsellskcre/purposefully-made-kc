@@ -206,7 +206,12 @@ def group_orders():
     """Group order landing page + public directory of open collections"""
     from flask_login import current_user
     from models import Collection
-    from utils.group_orders import is_deadline_passed, is_not_yet_open, publicly_listed_collections
+    from utils.group_orders import (
+        is_deadline_passed,
+        is_not_yet_open,
+        publicly_listed_collections,
+        visible_store_product_count,
+    )
 
     directory = (
         publicly_listed_collections()
@@ -217,10 +222,9 @@ def group_orders():
     for c in directory:
         if is_deadline_passed(c):
             continue
-        products = list(c.products or [])
         open_collections.append({
             'collection': c,
-            'product_count': len(products),
+            'product_count': visible_store_product_count(c),
             'not_yet_open': is_not_yet_open(c),
         })
 
