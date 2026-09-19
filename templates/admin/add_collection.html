@@ -64,7 +64,7 @@
                         <div class="product-checkbox-mockup">
                             {% if mockup_url %}
                             <img src="{{ mockup_url }}"
-                                 alt="{{ product.name }}"
+                                 alt="{{ product|display_name }}"
                                  loading="lazy"
                                  decoding="async"
                                  referrerpolicy="no-referrer"
@@ -76,7 +76,7 @@
                             {% endif %}
                         </div>
                         <div class="product-checkbox-info">
-                            <span class="product-checkbox-name">{{ product.name }}</span>
+                            <span class="product-checkbox-name">{{ product|display_name }}</span>
                             <small>{{ product.display_brand or '' }} · {{ product.display_category or '' }} · {{ product.style_number }} · ${{ "%.2f"|format(product.base_price or 0) }}</small>
                         </div>
                     </label>

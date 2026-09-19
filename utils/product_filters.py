@@ -5,6 +5,8 @@ S&S / CSV imports store values like ``T-Shirts ;Women's`` or
 """
 import re
 
+from utils.product_names import display_product_name
+
 SHOP_CATEGORIES = [
     ('Tee', 'T-Shirt'),
     ('Baseball Tee', 'Baseball Tee'),
@@ -229,6 +231,7 @@ def prepare_catalog(products, *, scan_folders=True):
         product.display_age = infer_age(product) or ''
         product.display_category = infer_category(product) or ''
         product.display_fit = infer_fit(product) or ''
+        product.display_name = display_product_name(product)
         if getattr(product, 'base_price', None) is None:
             product.base_price = 0
         preview = (getattr(product, 'front_mockup_template', None) or '').strip()

@@ -24,7 +24,7 @@
                     {% for product in products %}
                     <option value="{{ product.id }}"
                             {% if _uniform.get('product_id') == product.id %}selected{% endif %}>
-                        {{ product.display_age or product.age_group or '' }} {{ product.name }} - {{ product.style_number }}
+                        {{ product.display_age or product.age_group or '' }} {{ product|display_name }} - {{ product.style_number }}
                     </option>
                     {% endfor %}
                 </select>
@@ -36,7 +36,7 @@
                     {% for product in products %}
                     <option value="{{ product.id }}"
                             {% if product.id in (_uniform.get('product_ids') or []) and product.id != _uniform.get('product_id') %}selected{% endif %}>
-                        {{ product.display_age or product.age_group or '' }} {{ product.name }} - {{ product.style_number }}
+                        {{ product.display_age or product.age_group or '' }} {{ product|display_name }} - {{ product.style_number }}
                     </option>
                     {% endfor %}
                 </select>

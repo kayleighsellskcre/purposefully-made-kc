@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 
-{% block title %}{{ product.name }} - Purposefully Made KC{% endblock %}
+{% block title %}{{ product|display_name }} - Purposefully Made KC{% endblock %}
 
-{% block meta_description %}{% if product.description %}{{ product.description|striptags|truncate(155, true, '…') }}{% else %}Customise a {{ product.name }}{% if product.brand %} by {{ product.brand }}{% endif %} with your own design. Choose your colour, size and placement - printed to order by Purposefully Made KC.{% endif %}{% endblock %}
+{% block meta_description %}{% if product.description %}{{ product.description|striptags|truncate(155, true, '…') }}{% else %}Customise a {{ product|display_name }}{% if product.brand %} by {{ product.brand }}{% endif %} with your own design. Choose your colour, size and placement - printed to order by Purposefully Made KC.{% endif %}{% endblock %}
 
 {% block og_type %}product{% endblock %}
 
@@ -74,7 +74,7 @@
                     Customer Favorite
                 </span>
                 {% endif %}
-                <h1>{{ product.name }}</h1>
+                <h1>{{ product|display_name }}</h1>
                 
                 {% if product.brand %}
                 <p class="product-brand">{{ product.brand }}</p>
@@ -303,7 +303,7 @@ document.querySelectorAll('.color-option').forEach(btn => {
         const mainImg = document.getElementById('main-image');
         const front = btn.dataset.frontImage || '';
         const back = btn.dataset.backImage || '';
-        const productName = {{ product.name | tojson }};
+        const productName = {{ product|display_name | tojson }};
         if (mainImg && front) {
             mainImg.src = front;
             mainImg.alt = productName + ' in ' + selectedColor;

@@ -546,6 +546,12 @@ def create_app(config_class=Config):
         from flask import url_for
         return url_for('static', filename=path_or_url)
 
+    @app.template_filter('display_name')
+    def display_name_filter(product_or_name, style_number=None):
+        """Customer-facing product title without the registered mark or style code."""
+        from utils.product_names import display_product_name
+        return display_product_name(product_or_name, style_number)
+
     @app.template_filter('spec_sheet_url')
     def spec_sheet_url_filter(product):
         """External Spec Sheet URL when available (never broken SanMar CDN links)."""

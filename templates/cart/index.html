@@ -35,7 +35,7 @@
                         {# h2, not h3: the cart h1 is followed by these line items
                            and then an "Order Summary" h2, so an h3 here made the
                            outline jump a level and then go backwards. #}
-                        <h2>{{ item.product.name }}</h2>
+                        <h2>{{ item.product|display_name }}</h2>
                         {% if item.get('catalog_section') == 'uniform' %}
                         <p class="item-transfer"><strong>{{ (item.get('uniform_kit') or 'player')|title }} Player Uniform</strong></p>
                         {% elif item.get('catalog_section') == 'fan' %}

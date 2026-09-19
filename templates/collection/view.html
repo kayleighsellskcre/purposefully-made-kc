@@ -465,7 +465,7 @@
                    href="{{ url_for('shop.customize', product_id=item.product.id, catalog_section='uniform', uniform_kit=kit.key) }}">
                     <div class="uniform-kit-photo">
                         <img src="{{ kit.variant.front_image_url }}"
-                             alt="{{ kit.label }} {{ item.product.name }} in {{ kit.color }}"
+                             alt="{{ kit.label }} {{ item.product|display_name }} in {{ kit.color }}"
                              loading="eager">
                         {% if kit.design %}
                         <img class="uniform-kit-logo" src="{{ kit.design.url }}" alt="" aria-hidden="true">
@@ -473,7 +473,7 @@
                     </div>
                     <span>
                         <strong>{{ kit.label }} Uniform</strong>
-                        <span class="uniform-color">{% if item.product.display_age or item.product.age_group %}{{ item.product.display_age or item.product.age_group }} · {% endif %}{{ kit.color }} · {{ item.product.name }}</span>
+                        <span class="uniform-color">{% if item.product.display_age or item.product.age_group %}{{ item.product.display_age or item.product.age_group }} · {% endif %}{{ kit.color }} · {{ item.product|display_name }}</span>
                         <span class="uniform-cta">Choose size &amp; player details →</span>
                     </span>
                 </a>
@@ -537,7 +537,7 @@
                                        without this the browser fetched every colour of every product
                                        at full priority. #}
                                     <img src="{{ variant.front_image_url }}"
-                                         alt="{{ product.name }} – {{ variant.color_name }}"
+                                         alt="{{ product|display_name }} – {{ variant.color_name }}"
                                          {% if loop.first and product_loop.index0 < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
                                          referrerpolicy="no-referrer"
                                          onerror="this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'">
@@ -565,7 +565,7 @@
                         <div style="position:relative;width:100%;height:100%;">
                             {% if product.fallback_image_url %}
                             <img src="{{ product.fallback_image_url }}"
-                                 alt="{{ product.name }}"
+                                 alt="{{ product|display_name }}"
                                  style="width:100%;height:100%;object-fit:contain;padding:1rem;"
                                  {% if product_loop.index0 < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
                                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
@@ -579,7 +579,7 @@
                         {% endif %}
                     </div>
                     <div class="design-card-content">
-                        <h3>{{ product.name }}</h3>
+                        <h3>{{ product|display_name }}</h3>
                         {% if product.display_age %}
                         <span class="age-badge {% if 'outh' in (product.display_age or '') %}age-badge--youth{% else %}age-badge--adult{% endif %}">{{ product.display_age }}</span>
                         {% endif %}

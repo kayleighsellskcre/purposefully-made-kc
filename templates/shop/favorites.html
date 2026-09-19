@@ -45,7 +45,7 @@
 
                 <div class="product-info">
                     {# h2: each card is a section under the page h1. #}
-                    <h2>{{ fav.product.name }}</h2>
+                    <h2>{{ fav.product|display_name }}</h2>
                     <p class="product-category">{{ fav.product.category or 'Apparel' }}</p>
                     {% if fav.color_name %}
                     <p class="favorite-color">Color: {{ fav.color_name }}</p>

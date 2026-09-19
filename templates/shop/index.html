@@ -211,7 +211,7 @@
                                 data-color-name=""
                                 onclick="toggleFavorite(event, {{ product.id }}, '')"
                                 title="Add to favorites"
-                                aria-label="Add {{ product.name }} to favorites">
+                                aria-label="Add {{ product|display_name }} to favorites">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                             </svg>
@@ -239,7 +239,7 @@
                                                deferred. The carousel reveals a slide by adding .active, which
                                                is when the browser fetches it. #}
                                             <img src="{{ variant.front_image_url }}"
-                                                 alt="{{ product.name }} - {{ variant.color_name }}"
+                                                 alt="{{ product|display_name }} - {{ variant.color_name }}"
                                                  {% if loop.first and card_index < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
                                                  referrerpolicy="no-referrer"
                                                  onerror="{% if loop.first %}this.style.display='none';this.parentElement.querySelector('.no-mockup-msg').style.display='flex'{% else %}this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'{% endif %}">
@@ -275,7 +275,7 @@
                                 {% else %}
                                 <div class="product-image" style="position:relative">
                                     <img src="{{ product.fallback_image_url or url_for('static', filename='img/products/' + product.style_number + '.jpg') }}"
-                                         alt="{{ product.name }}"
+                                         alt="{{ product|display_name }}"
                                          {% if card_index < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
                                          onerror="this.style.display='none';this.parentElement.querySelector('.no-mockup-msg').style.display='flex'">
                                     <div class="no-mockup-msg" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;background:linear-gradient(135deg,#fdf8f4 0%,#f5ede4 100%);">
@@ -289,7 +289,7 @@
                             
                             <div class="product-info">
                                 {# h3 under the age-group h2 so heading order stays sensible. #}
-                                <h3 class="product-name">{{ product.name }}</h3>
+                                <h3 class="product-name">{{ product|display_name }}</h3>
                                 <p class="product-style">{% if product.brand %}{{ product.brand }} · {% endif %}Style {{ product.style_number }}</p>
                                 {% if product.display_category or product.category %}
                                 <p class="product-category">{{ product.display_category or product.category }}</p>
