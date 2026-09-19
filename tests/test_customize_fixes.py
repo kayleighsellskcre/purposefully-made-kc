@@ -107,15 +107,16 @@ def test_group_order_customize_shows_logo_thumbnails_not_a_dropdown(client, app,
     assert 'fetchpriority="high"' in html
 
 
-def test_header_shop_link_leaves_the_group_order(client, seed):
+def test_group_store_keeps_normal_nav_and_offers_back_to_main_site(client, seed):
     with client.session_transaction() as sess:
         sess['collection_id'] = seed['collection_id']
     html = client.get(f'/c/{seed["collection_slug"]}').get_data(as_text=True)
-    assert '/c/leave?next=' in html
-    assert '/shop/' in html
-    resp = client.get('/c/leave?next=/shop/', follow_redirects=False)
+    assert 'href="/shop/"' in html or "href='/shop/'" in html
+    assert 'Back to main site' in html
+    assert html.count('/c/leave') == 1
+    resp = client.get('/c/leave?next=/', follow_redirects=False)
     assert resp.status_code == 302
-    assert resp.headers['Location'].endswith('/shop/')
+    assert resp.headers['Location'].endswith('/')
     with client.session_transaction() as sess:
         assert 'collection_id' not in sess
 
