@@ -206,11 +206,10 @@ def group_orders():
     """Group order landing page + public directory of open collections"""
     from flask_login import current_user
     from models import Collection
-    from utils.group_orders import is_deadline_passed, is_not_yet_open
+    from utils.group_orders import is_deadline_passed, is_not_yet_open, publicly_listed_collections
 
     directory = (
-        Collection.query
-        .filter_by(is_active=True)
+        publicly_listed_collections()
         .order_by(Collection.created_at.desc())
         .all()
     )
@@ -275,6 +274,8 @@ def create_group_order():
                 allow_cash_pickup=request.form.get('allow_cash_pickup') == 'on',
                 tax_rate=float(current_app.config['KS_SALES_TAX_PERCENT']),
             )
+            from utils.group_orders import apply_collection_visibility
+            apply_collection_visibility(collection)
             collection.restrict_options = request.form.get('restrict_options') == 'on'
             collection.allow_custom_upload = True
             from utils.group_orders import serialize_allowed_colors_from_form

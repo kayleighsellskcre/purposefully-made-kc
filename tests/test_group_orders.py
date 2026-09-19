@@ -386,6 +386,36 @@ def test_the_group_orders_directory_loads(client):
     assert resp.status_code == 200
 
 
+def test_link_only_stores_are_left_off_public_listings(client, seed, app):
+    with app.app_context():
+        public = db.session.get(Collection, seed['collection_id'])
+        public.show_in_directory = True
+        hidden = Collection(
+            name='Rainbow Cheetahs Link Only',
+            slug='rainbow-cheetahs-link-only',
+            is_active=True,
+            show_in_directory=False,
+        )
+        db.session.add(hidden)
+        db.session.commit()
+
+    directory = client.get('/shop/group-orders').get_data(as_text=True)
+    home = client.get('/').get_data(as_text=True)
+    assert 'Test Elementary Spirit Wear' in directory
+    assert 'Rainbow Cheetahs Link Only' not in directory
+    assert 'Rainbow Cheetahs Link Only' not in home
+    assert 'Link only' not in directory
+
+
+def test_admin_edit_form_has_a_visibility_toggle(admin_client, seed):
+    html = admin_client.get(
+        f'/admin/collections/{seed["collection_id"]}/edit'
+    ).get_data(as_text=True)
+    assert 'name="visibility"' in html
+    assert 'value="link_only"' in html
+    assert 'value="public"' in html
+
+
 def test_admin_group_order_cards_have_polished_dashboard_structure(
     admin_client
 ):

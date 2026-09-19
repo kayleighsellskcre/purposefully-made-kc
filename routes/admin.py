@@ -2725,6 +2725,8 @@ def add_collection():
                 allow_cash_pickup=request.form.get('allow_cash_pickup') == 'on',
                 tax_rate=float(current_app.config['KS_SALES_TAX_PERCENT']),
             )
+            from utils.group_orders import apply_collection_visibility
+            apply_collection_visibility(collection)
 
             collection.restrict_options = request.form.get('restrict_options') == 'on'
             collection.allow_custom_upload = True

@@ -17,6 +17,27 @@ def normalize_group_kind(value):
     return kind if kind in GROUP_KINDS else ''
 
 
+def apply_collection_visibility(collection, form=None):
+    """Public vs link-only. Link only is the default for new and existing stores."""
+    from flask import request
+
+    form = request.form if form is None else form
+    vis = (form.get('visibility') or '').strip().lower().replace('-', '_')
+    if vis == 'public':
+        collection.show_in_directory = True
+    elif vis in ('link_only', 'private'):
+        collection.show_in_directory = False
+    elif 'show_in_directory' in form:
+        collection.show_in_directory = form.get('show_in_directory') == 'on'
+    elif getattr(collection, 'show_in_directory', None) is None:
+        collection.show_in_directory = False
+
+
+def publicly_listed_collections():
+    """Active stores the owner chose to show on public listings."""
+    return Collection.query.filter_by(is_active=True, show_in_directory=True)
+
+
 def apply_group_kind(collection, *, required=False):
     """Save school / team / other from the current form."""
     from flask import request
@@ -773,7 +794,7 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
     collection.pickup_instructions = request.form.get('pickup_instructions')
     collection.shipping_enabled = request.form.get('shipping_enabled') == 'on'
     collection.allow_cash_pickup = request.form.get('allow_cash_pickup') == 'on'
-    collection.show_in_directory = request.form.get('show_in_directory') == 'on'
+    apply_collection_visibility(collection)
     # Tax is fixed at KS 9.5% — ignore any form value so it cannot be adjusted.
     collection.tax_rate = float(current_app.config['KS_SALES_TAX_PERCENT'])
 

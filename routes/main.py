@@ -44,6 +44,7 @@ def index():
         # off the homepage and are reached only via the organizer's share link.
         active_collections = Collection.query.filter(
             Collection.is_active == True,
+            Collection.show_in_directory == True,
             Collection.is_password_protected == False,
             Collection.created_by_user_id.is_(None),
             (Collection.order_deadline == None) | (Collection.order_deadline >= now),
