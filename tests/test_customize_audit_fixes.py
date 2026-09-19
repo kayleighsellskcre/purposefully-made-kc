@@ -37,6 +37,12 @@ def test_customize_does_not_render_empty_design_overlays(client, seed):
     assert 'src="" alt="Back Design"' not in html
 
 
+def test_product_detail_main_photo_shows_the_whole_garment(client, seed):
+    html = client.get(f'/shop/product/{seed["tee_id"]}').get_data(as_text=True)
+    assert '.product-image img' in html
+    assert 'object-fit: contain' in html
+
+
 def test_product_detail_thumbnails_use_the_selected_color(client, seed):
     html = client.get(f'/shop/product/{seed["tee_id"]}').get_data(as_text=True)
     assert 'id="thumbFront"' in html
