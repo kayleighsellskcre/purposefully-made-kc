@@ -196,6 +196,11 @@
     transition: none !important;
 }
 
+.design-image:not([src]),
+.design-image[src=""],
+.design-image[hidden] {
+    display: none !important;
+}
 .design-image {
     width: 100%;
     height: 100%;
@@ -1924,8 +1929,8 @@
             <!-- Preview Section -->
             <div class="preview-section" data-product-style="{{ product.style_number }}">
                 <div class="preview-canvas" id="previewCanvas">
-                    <img src=""
-                         alt="Product Mockup"
+                    <img
+                         alt="{{ product.name }} mockup"
                          class="mockup-image"
                          id="mockupImage"
                          style="opacity: 0;">
@@ -1936,14 +1941,14 @@
                     </div>
                     
                     <div class="design-layer" id="designLayer" style="display: none;">
-                        <img src="" alt="Design" class="design-image" id="designImage">
+                        <img alt="" class="design-image" id="designImage" hidden>
                     </div>
                     <div class="design-layer design-layer-back" id="backDesignLayer" style="display: none;" data-placement="center_back">
                         <div id="backDesignTextContainer" class="back-design-text-container">
                             <span id="backDesignName" class="back-design-name"></span>
                             <span id="backDesignNumber" class="back-design-number"></span>
                         </div>
-                        <img src="" alt="Back Design" class="design-image" id="backDesignImage" style="display: none;">
+                        <img alt="" class="design-image" id="backDesignImage" hidden>
                     </div>
                     <div class="preview-color-badge">
                         <span>Color</span>
@@ -2103,7 +2108,7 @@
                                  onclick="selectColor(this, true)">
                                 <div class="color-image-wrapper">
                                     {% if variant.front_image %}
-                                    <img src="{{ variant.front_image }}" alt="{{ variant.color_name }}" class="color-preview-img" loading="eager" decoding="async" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <img src="{{ variant.front_image }}" alt="{{ product.name }} in {{ variant.color_name }}" class="color-preview-img" loading="eager" decoding="async" onerror="this.onerror=null; this.removeAttribute('src'); this.style.display='none'; this.nextElementSibling.style.display='block';">
                                     <div class="color-placeholder color-fallback" style="display: none; {% if variant.color_hex %}background-color: {{ variant.color_hex }};{% elif variant.color_name|color_hex_fallback %}background-color: {{ variant.color_name|color_hex_fallback }};{% else %}background: linear-gradient(135deg, #ddd, #bbb);{% endif %}"></div>
                                     {% else %}
                                     <div class="color-placeholder" style="{% if variant.color_hex %}background-color: {{ variant.color_hex }};{% elif variant.color_name|color_hex_fallback %}background-color: {{ variant.color_name|color_hex_fallback }};{% else %}background: linear-gradient(135deg, #ddd, #bbb);{% endif %}"></div>
@@ -3156,8 +3161,11 @@
         }
 
         const imageUrl = state.currentView === 'front'
-            ? state.selectedColor.frontImage
-            : state.selectedColor.backImage;
+            ? (state.selectedColor.frontImage || state.selectedColor.backImage)
+            : (state.selectedColor.backImage || state.selectedColor.frontImage);
+
+        mockupImg.alt = {{ product.name|tojson }} + ' in ' + (state.selectedColor.name || '') +
+            (state.currentView === 'back' ? ', back view' : ', front view');
 
         const gen = ++state._mockupGen;
 
@@ -3938,6 +3946,9 @@
         } else if (state.backDesignUrl) {
             textContainer.style.display = 'none';
             backDesignImage.style.display = 'block';
+            backDesignImage.hidden = false;
+            backDesignImage.removeAttribute('hidden');
+            backDesignImage.alt = 'Your back design on the shirt';
             backDesignImage.src = state.backDesignUrl;
             backDesignLayer.style.width = '';
             backDesignLayer.style.maxWidth = '';
@@ -4230,6 +4241,9 @@
             });
         }
         designImage.src = instantSrc;
+        designImage.hidden = false;
+        designImage.removeAttribute('hidden');
+        designImage.alt = 'Your design on the shirt';
         if (designImage.complete && designImage.naturalWidth > 0) {
             paintOnShirt();
         } else if (cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0) {
@@ -4476,6 +4490,9 @@
                         applyDesignPosition();
                     };
                     designImage.src = data.url;
+                    designImage.hidden = false;
+                    designImage.removeAttribute('hidden');
+                    designImage.alt = 'Your design on the shirt';
                     if (designPreviewImage) {
                         designPreviewImage.onerror = function() { console.error('Design preview failed to load:', data.url); };
                         designPreviewImage.src = data.url;
@@ -4558,6 +4575,12 @@
                 if (dragHint) dragHint.style.display = 'none';
                 if (resetBtn) resetBtn.style.display = 'none';
                 if (frontControls) frontControls.style.display = 'none';
+                const designImage = document.getElementById('designImage');
+                if (designImage) {
+                    designImage.removeAttribute('src');
+                    designImage.hidden = true;
+                    designImage.alt = '';
+                }
                 if (uploadAreaMain) {
                     uploadAreaMain.innerHTML = UPLOAD_PROMPT;
                 }

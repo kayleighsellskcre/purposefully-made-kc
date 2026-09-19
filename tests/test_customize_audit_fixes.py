@@ -23,6 +23,24 @@ def test_product_detail_color_swatches_carry_images(client, seed):
     assert 'color-option' in html
 
 
+def test_customize_does_not_render_empty_design_overlays(client, seed):
+    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    assert 'alt="Design"' not in html
+    assert 'alt="Back Design"' not in html
+    assert 'id="designImage" hidden' in html
+    assert 'id="backDesignImage" hidden' in html
+    assert 'src="" alt="Design"' not in html
+    assert 'src="" alt="Back Design"' not in html
+
+
+def test_product_detail_thumbnails_use_the_selected_color(client, seed):
+    html = client.get(f'/shop/product/{seed["tee_id"]}').get_data(as_text=True)
+    assert 'id="thumbFront"' in html
+    assert 'alt="Front of' in html
+    assert 'thumbFront.src = front' in html
+    assert 'thumbBackBtn.hidden' in html
+
+
 def test_upload_message_no_longer_mentions_reprocess():
     from services.image_processing import issue_messages
     msgs = issue_messages({'issues': ['background_may_remain']})

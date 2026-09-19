@@ -16,32 +16,44 @@
         <div class="product-detail-grid">
             <!-- Product Image -->
             <div class="product-gallery">
-                {% if product.front_mockup_template %}
+                {% set first_variant = (color_variants or [none])|first %}
+                {% set initial_front = (first_variant.front_image if first_variant and first_variant.front_image else product.front_mockup_template) %}
+                {% set initial_back = (first_variant.back_image if first_variant and first_variant.back_image else product.back_mockup_template) %}
+                {% set initial_color = (first_variant.color_name if first_variant else '') %}
+                {% if initial_front %}
                 <div class="product-image">
-                    <img src="{{ product.front_mockup_template if product.front_mockup_template.startswith('http') else url_for('static', filename=product.front_mockup_template) }}"
-                         alt="{{ product.name }}"
-                         id="main-image">
+                    <img src="{{ initial_front if initial_front.startswith('http') or initial_front.startswith('/') else url_for('static', filename=initial_front) }}"
+                         alt="{{ product.name }}{% if initial_color %} in {{ initial_color }}{% endif %}"
+                         id="main-image"
+                         onerror="this.onerror=null; this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}';">
                 </div>
-                {% if product.back_mockup_template %}
                 <div class="image-thumbnails">
-                    {% set front_url = product.front_mockup_template if product.front_mockup_template.startswith('http') else url_for('static', filename=product.front_mockup_template) %}
-                    {% set back_url  = product.back_mockup_template  if product.back_mockup_template.startswith('http')  else url_for('static', filename=product.back_mockup_template) %}
-                    {# Buttons, not bare images with onclick: an <img> cannot be
-                       reached by Tab or activated with Enter. #}
+                    {% set front_url = initial_front if initial_front.startswith('http') or initial_front.startswith('/') else url_for('static', filename=initial_front) %}
+                    {% set back_url = initial_back if initial_back and (initial_back.startswith('http') or initial_back.startswith('/')) else (url_for('static', filename=initial_back) if initial_back else '') %}
                     <button type="button"
                             class="thumbnail active"
+                            id="thumbFrontBtn"
                             aria-label="Show front view"
-                            onclick="changeImage('{{ front_url }}', this, 'front')">
-                        <img src="{{ front_url }}" alt="">
+                            onclick="changeImage(this.dataset.src, this, 'front')"
+                            data-src="{{ front_url }}">
+                        <img id="thumbFront"
+                             src="{{ front_url }}"
+                             alt="Front of {{ product.name }}{% if initial_color %} in {{ initial_color }}{% endif %}"
+                             onerror="this.style.display='none'">
                     </button>
                     <button type="button"
                             class="thumbnail"
+                            id="thumbBackBtn"
                             aria-label="Show back view"
-                            onclick="changeImage('{{ back_url }}', this, 'back')">
-                        <img src="{{ back_url }}" alt="">
+                            onclick="changeImage(this.dataset.src, this, 'back')"
+                            data-src="{{ back_url or front_url }}"
+                            {% if not back_url %}hidden{% endif %}>
+                        <img id="thumbBack"
+                             src="{{ back_url or front_url }}"
+                             alt="Back of {{ product.name }}{% if initial_color %} in {{ initial_color }}{% endif %}"
+                             onerror="this.closest('button').hidden = true">
                     </button>
                 </div>
-                {% endif %}
                 {% else %}
                 <div class="product-image placeholder">
                     <svg width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
@@ -292,14 +304,40 @@ document.querySelectorAll('.color-option').forEach(btn => {
         // Swap the main product image to this color immediately
         const mainImg = document.getElementById('main-image');
         const front = btn.dataset.frontImage || '';
+        const back = btn.dataset.backImage || '';
+        const productName = {{ product.name | tojson }};
         if (mainImg && front) {
             mainImg.src = front;
-            mainImg.alt = ({{ product.name | tojson }}) + ' - ' + selectedColor;
-            // Keep front thumbnail active when color changes
-            document.querySelectorAll('.thumbnail').forEach((t, i) => {
-                t.classList.toggle('active', i === 0);
-            });
+            mainImg.alt = productName + ' in ' + selectedColor;
+            mainImg.onerror = function() {
+                this.onerror = null;
+                this.src = {{ url_for('static', filename='img/placeholder-product.svg') | tojson }};
+            };
         }
+        const thumbFront = document.getElementById('thumbFront');
+        const thumbFrontBtn = document.getElementById('thumbFrontBtn');
+        const thumbBack = document.getElementById('thumbBack');
+        const thumbBackBtn = document.getElementById('thumbBackBtn');
+        if (thumbFront && front) {
+            thumbFront.style.display = '';
+            thumbFront.src = front;
+            thumbFront.alt = 'Front of ' + productName + ' in ' + selectedColor;
+            if (thumbFrontBtn) thumbFrontBtn.dataset.src = front;
+        }
+        if (thumbBack && thumbBackBtn) {
+            if (back && back !== front) {
+                thumbBackBtn.hidden = false;
+                thumbBack.style.display = '';
+                thumbBack.src = back;
+                thumbBack.alt = 'Back of ' + productName + ' in ' + selectedColor;
+                thumbBackBtn.dataset.src = back;
+            } else {
+                thumbBackBtn.hidden = true;
+            }
+        }
+        document.querySelectorAll('.thumbnail').forEach((t, i) => {
+            t.classList.toggle('active', i === 0);
+        });
     });
 });
 

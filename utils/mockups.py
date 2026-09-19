@@ -170,6 +170,16 @@ def _color_key(color_name):
     return (color_name or '').strip().lower().replace(' ', '_')
 
 
+def _filename_matches_color(url_or_name, color_name):
+    """True when a mockup path actually belongs to this color."""
+    key = re.sub(r'[^a-z0-9]+', '', _color_key(color_name))
+    if not key:
+        return False
+    name = (url_or_name or '').rsplit('/', 1)[-1].lower()
+    compact = re.sub(r'[^a-z0-9]+', '', name)
+    return key in compact
+
+
 def _build_style_index(app, style_number, now):
     dir_entries = _style_dir_entries(app, style_number)
     style_dirs = [path for path, _ in dir_entries]
@@ -300,8 +310,9 @@ def get_mockup_url_for_variant(product, variant, view, app):
     Return the best available mockup URL for a product color variant and view (front/back).
     Prefers local flat folders so customer-uploaded images always show for design preview.
     """
-    url = _find_mockup_file(app, product.style_number, getattr(variant, 'color_name', None), view)
-    if url:
+    color_name = getattr(variant, 'color_name', None)
+    url = _find_mockup_file(app, product.style_number, color_name, view)
+    if url and _filename_matches_color(url, color_name):
         return url
     if view == 'front':
         return _usable_image_url(getattr(variant, 'front_image_url', None))

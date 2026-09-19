@@ -324,3 +324,24 @@ def test_discovery_lists_every_colour_once(mockup_app):
 def test_discovery_on_an_empty_folder_returns_nothing(mockup_app):
     style_dir(mockup_app, '3001')
     assert mockups.discover_colors_from_mockup_folder(mockup_app, '3001') == []
+
+
+def test_filename_match_rejects_the_wrong_colour():
+    assert mockups._filename_matches_color('/static/3001_Black_front.jpg', 'Berry') is False
+    assert mockups._filename_matches_color('/static/3001_Berry_front.jpg', 'Berry') is True
+    assert mockups._filename_matches_color('/static/3001_Sport_Grey_front.jpg', 'Sport Grey') is True
+
+
+def test_berry_uses_the_cdn_when_only_black_is_on_disk(mockup_app):
+    from types import SimpleNamespace
+
+    directory = style_dir(mockup_app, '3001')
+    write(directory, '3001_Black_front.jpg')
+    product = SimpleNamespace(style_number='3001')
+    variant = SimpleNamespace(
+        color_name='Berry',
+        front_image_url='https://cdn.example/berry-front.jpg',
+        back_image_url=None,
+    )
+    url = mockups.get_mockup_url_for_variant(product, variant, 'front', mockup_app)
+    assert url == 'https://cdn.example/berry-front.jpg'
