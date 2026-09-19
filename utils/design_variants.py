@@ -73,6 +73,7 @@ def gallery_card_dict(design, resolve_url=None, options=None):
             'id': opt.id,
             'url': resolve(opt.file_path),
             'label': _label_for(opt, 'Default' if i == 0 else f'Color {i + 1}'),
+            '_path': (opt.file_path or '').strip().lower(),
         })
     title = design.title or design.original_filename or 'Design'
     category_keys = design_category_keys(
@@ -124,7 +125,7 @@ def gallery_cards_for_public(Design, resolve_url=None, limit=None):
     for family in children_by_parent.values():
         family.sort(key=lambda d: ((d.variant_label or 'zzz').lower(), d.id))
 
-    return [
+    cards = [
         gallery_card_dict(
             design,
             resolve_url=resolve_url,
@@ -132,6 +133,89 @@ def gallery_cards_for_public(Design, resolve_url=None, limit=None):
         )
         for design in mains
     ]
+    return dedupe_gallery_cards(cards)
+
+
+def _gallery_title_key(title):
+    return re.sub(r'[^a-z0-9]+', ' ', (title or '').lower()).strip()
+
+
+def _gallery_title_display(title):
+    text = re.sub(r'\s+', ' ', (title or '').strip())
+    return text.title() if text else 'Design'
+
+
+def _public_variant(variant, fallback_url=''):
+    return {
+        'id': variant.get('id'),
+        'url': (variant.get('url') or fallback_url or '').strip(),
+        'label': variant.get('label') or 'Default',
+    }
+
+
+def _variant_marker(variant, card):
+    """Prefer the stored file path so placeholder/CDN fallbacks do not collapse real colors."""
+    path = (variant.get('_path') or '').strip().lower()
+    if path:
+        return path
+    url = (variant.get('url') or card.get('url') or '').strip()
+    if url and not url.startswith('data:'):
+        return url.lower()
+    return f"id:{variant.get('id') or card.get('id')}"
+
+
+def dedupe_gallery_cards(cards):
+    """One public card per design name, merging duplicate images and stray copies."""
+    buckets = {}
+    order = []
+    for card in cards or []:
+        key = _gallery_title_key(card.get('title')) or f"id:{card.get('id')}"
+        if key not in buckets:
+            buckets[key] = []
+            order.append(key)
+        buckets[key].append(card)
+
+    result = []
+    for key in order:
+        family = buckets[key]
+        cover = family[0]
+        if len(family) == 1:
+            variants = [
+                _public_variant(variant, cover.get('url'))
+                for variant in (cover.get('variants') or [])
+            ]
+            result.append({
+                **cover,
+                'title': _gallery_title_display(cover.get('title')),
+                'variants': variants,
+                'has_colors': len(variants) > 1,
+                'color_count': max(len(variants), 1),
+            })
+            continue
+        seen = set()
+        variants = []
+        for card in family:
+            options = card.get('variants') or [{
+                'id': card.get('id'),
+                'url': card.get('url'),
+                'label': 'Default',
+                '_path': '',
+            }]
+            for variant in options:
+                marker = _variant_marker(variant, card)
+                if marker in seen:
+                    continue
+                seen.add(marker)
+                variants.append(_public_variant(variant, card.get('url')))
+        result.append({
+            **cover,
+            'title': _gallery_title_display(cover.get('title')),
+            'url': (variants[0]['url'] if variants else cover.get('url')),
+            'variants': variants,
+            'has_colors': len(variants) > 1,
+            'color_count': max(len(variants), 1),
+        })
+    return result
 
 
 def _search_blob(card):

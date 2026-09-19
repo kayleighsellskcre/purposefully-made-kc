@@ -60,6 +60,18 @@ def test_public_gallery_shows_one_card_for_color_family(app, seed):
         assert child.id in ids
 
 
+def test_public_gallery_dedupes_same_name_and_normalizes_title(app, seed):
+    with app.app_context():
+        _gallery_design(title='best dad by par', filename='dad-1.png', file_path='uploads/dad-1.png')
+        _gallery_design(title='Best Dad By Par', filename='dad-1b.png', file_path='uploads/dad-1.png')
+        _gallery_design(title='BEST DAD BY PAR', filename='dad-2.png', file_path='uploads/dad-2.png')
+        db.session.commit()
+        cards = [c for c in gallery_cards_for_public(Design) if c['title'] == 'Best Dad By Par']
+        assert len(cards) == 1
+        assert cards[0]['color_count'] == 2
+        assert cards[0]['has_colors'] is True
+
+
 def test_ensure_not_nested_parent_walks_to_root(app, seed):
     with app.app_context():
         root = _gallery_design(title='Root', filename='root.png')
@@ -162,13 +174,13 @@ def test_public_design_gallery_page_groups_variants(client, app, seed):
     assert 'dg-folder' in landing
     assert 'Grouped Logo' in landing
     assert 'id="dgSearch"' in landing
-    assert 'View colors &amp; continue' not in landing
+    assert 'Continue with this design' not in landing
     assert 'gallery-card-overlay' not in landing
 
     html = client.get('/shop/designs?category=favorites').get_data(as_text=True)
     assert 'Grouped Logo' in html
     assert '2 colors' in html
-    assert 'View colors &amp; continue' in html
+    assert 'Continue with this design' in html
     assert 'gallery-carousel-prev' in html
     assert 'gallery-carousel-next' in html
     assert 'gallery-carousel-color' in html
@@ -192,7 +204,7 @@ def test_gallery_folder_interior_only_shows_that_folder(client, app, seed):
     landing = client.get('/shop/designs').get_data(as_text=True)
     assert 'Sports' in landing
     assert 'School' in landing
-    assert 'View colors &amp; continue' not in landing
+    assert 'Continue with this design' not in landing
 
     results = client.get('/shop/designs?q=chiefs').get_data(as_text=True)
     assert 'Search results' in results

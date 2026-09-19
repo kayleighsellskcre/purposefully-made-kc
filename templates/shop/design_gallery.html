@@ -147,8 +147,8 @@
                          class="gallery-carousel-image"
                          alt="{{ design.title }}"
                          loading="lazy">
-                    {% if design.has_colors %}
-                    <span class="gallery-color-badge">{{ design.color_count }} colors</span>
+                    <span class="gallery-color-badge">{{ design.color_count }} color{% if design.color_count != 1 %}s{% endif %}</span>
+                    {% if design.has_colors and design.color_count > 1 %}
                     <button type="button" class="gallery-carousel-btn gallery-carousel-prev" aria-label="Previous design color">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
                     </button>
@@ -167,7 +167,7 @@
                     <p class="gallery-card-folder">{{ design.category_labels[0] }}</p>
                     {% endif %}
                     <button type="button" class="gallery-card-link gallery-open-colors">
-                        {% if design.has_colors %}View colors &amp; continue &rarr;{% else %}{% if product_id %}Use this design &rarr;{% else %}Choose a product &rarr;{% endif %}{% endif %}
+                        Continue with this design
                     </button>
                 </div>
             </div>
