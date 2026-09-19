@@ -417,15 +417,21 @@ def load_group_order_form_catalog():
             for product_id, brand, color in rows:
                 if not color:
                     continue
-                uniform_colors_by_product.setdefault(str(product_id), [])
-                if color not in uniform_colors_by_product[str(product_id)]:
-                    uniform_colors_by_product[str(product_id)].append(color)
+                uniform_colors_by_product.setdefault(str(product_id), []).append(color)
                 brand_key = brand or 'Other'
-                colors_by_brand.setdefault(brand_key, [])
-                if color not in colors_by_brand[brand_key]:
-                    colors_by_brand[brand_key].append(color)
+                colors_by_brand.setdefault(brand_key, []).append(color)
                 seen_colors.add(color)
-            all_colors = sorted(seen_colors)
+            from utils.color_names import unique_display_colors
+            all_colors = unique_display_colors(seen_colors)
+            colors_by_brand = {
+                brand: unique_display_colors(colors)
+                for brand, colors in colors_by_brand.items()
+            }
+            colors_by_brand = {brand: colors for brand, colors in colors_by_brand.items() if colors}
+            uniform_colors_by_product = {
+                pid: unique_display_colors(colors)
+                for pid, colors in uniform_colors_by_product.items()
+            }
     except Exception:
         all_colors = []
         colors_by_brand = {}

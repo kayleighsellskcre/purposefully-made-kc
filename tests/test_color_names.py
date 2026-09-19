@@ -1,4 +1,10 @@
-from utils.color_names import color_match_key, display_color_name, swatch_hex, unique_display_colors
+from utils.color_names import (
+    color_in_allowed_set,
+    color_match_key,
+    display_color_name,
+    swatch_hex,
+    unique_display_colors,
+)
 
 
 def test_display_color_name_merges_case_and_strips_dtg():
@@ -27,6 +33,12 @@ def test_swatch_hex_prefers_supplier_value_then_lookup():
     assert swatch_hex('Black') == '#000000'
     assert swatch_hex('Athletic Heather') == '#b8b8b8'
     assert swatch_hex('Heather Navy') == '#1e3a5f'
+
+
+def test_cleaned_allowed_color_matches_supplier_name():
+    assert color_in_allowed_set('Dtg Black', {'Black'})
+    assert color_in_allowed_set('athleticheather', {'Athletic Heather'})
+    assert not color_in_allowed_set('Red', {'Black'})
 
 
 def test_unique_display_colors_dedupes_and_sorts():

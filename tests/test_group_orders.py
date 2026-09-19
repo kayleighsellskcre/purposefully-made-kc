@@ -282,6 +282,32 @@ def test_group_order_setup_does_not_offer_the_general_design_library(customer_cl
     assert 'Gallery Logo' not in html
 
 
+def test_group_order_create_form_uses_cleaned_color_names(customer_client, seed, app):
+    from models import ProductColorVariant
+
+    with app.app_context():
+        db.session.add_all([
+            ProductColorVariant(
+                product_id=seed['tee_id'],
+                color_name='DTG White',
+                front_image_url='/static/img/logo.png',
+                size_inventory=json.dumps({'M': 5}),
+            ),
+            ProductColorVariant(
+                product_id=seed['tee_id'],
+                color_name='TestColor',
+                front_image_url='/static/img/logo.png',
+                size_inventory=json.dumps({'M': 5}),
+            ),
+        ])
+        db.session.commit()
+
+    html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
+    assert 'DTG White' not in html
+    assert 'TestColor' not in html
+    assert 'value="White"' in html or 'White</span>' in html
+
+
 def test_group_order_edit_does_not_offer_unassigned_gallery_art(
     admin_client, seed
 ):

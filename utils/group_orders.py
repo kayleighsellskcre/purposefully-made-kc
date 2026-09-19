@@ -196,14 +196,20 @@ def allowed_color_form_keys(collection_or_raw):
     if collection_or_raw is not None and hasattr(collection_or_raw, 'allowed_colors'):
         raw = collection_or_raw.allowed_colors
     by_brand = parse_allowed_colors_by_brand(raw)
+    from utils.color_names import display_color_name
+
     keys = set()
     for brand, colors in by_brand.items():
+        names = list(colors)
+        for color in colors:
+            label = display_color_name(color)
+            if label and label not in names:
+                names.append(label)
         if brand is None:
-            keys.update(colors)
+            keys.update(names)
         else:
-            for color in colors:
+            for color in names:
                 keys.add(f'{brand}{ALLOWED_COLOR_SEP}{color}')
-                # Keep bare color so older templates still highlight something.
                 keys.add(color)
     return keys
 

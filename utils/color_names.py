@@ -96,6 +96,20 @@ def swatch_hex(name, supplied=None):
     return None
 
 
+def color_in_allowed_set(name, allowed):
+    """True when a stored color matches an allowed display or supplier name."""
+    if allowed is None:
+        return True
+    name_key = color_match_key(name)
+    raw = (name or '').strip().lower()
+    for item in allowed:
+        if color_match_key(item) and color_match_key(item) == name_key:
+            return True
+        if (item or '').strip().lower() == raw:
+            return True
+    return False
+
+
 def unique_display_colors(raw_names):
     """Deduplicated, sorted display names. Test and empty values are dropped."""
     best = {}
