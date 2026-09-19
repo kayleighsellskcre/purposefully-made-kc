@@ -112,6 +112,9 @@ class Config:
     # Shipping
     SHIPPING_FLAT_RATE = float(os.environ.get('SHIPPING_FLAT_RATE', 11.00))
 
+    # Hide until the Instagram, Facebook, and TikTok accounts are live.
+    SHOW_SOCIAL_LINKS = os.environ.get('SHOW_SOCIAL_LINKS', 'false').lower() in ('1', 'true', 'yes')
+
     # Kansas sales tax — fixed site-wide; not adjustable via forms or env
     KS_SALES_TAX_PERCENT = 9.5
     KS_SALES_TAX_RATE = 0.095

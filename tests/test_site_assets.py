@@ -32,6 +32,13 @@ def test_pages_link_the_icons(client):
     assert 'apple-touch-icon' in html
 
 
+def test_social_links_are_hidden_until_accounts_exist(client):
+    html = client.get('/').get_data(as_text=True)
+    assert 'instagram.com/purposefullymadekc' not in html
+    assert 'facebook.com/purposefullymadekc' not in html
+    assert 'tiktok.com/@purposefullymadekc' not in html
+
+
 # ── robots.txt ───────────────────────────────────────────────────────────────
 
 def test_robots_txt_is_served(client):
