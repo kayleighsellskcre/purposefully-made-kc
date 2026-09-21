@@ -234,6 +234,61 @@ def test_gallery_folder_cards_use_mains_as_covers():
     assert [card['id'] for card in chiefs] == [2]
 
 
+def test_gallery_folder_covers_do_not_repeat_the_same_image_across_folders():
+    """Round 2 audit item 11: the overview showed "Kansas City Football"
+    twice with the same image, because a design in two folders was picked
+    as a cover thumbnail independently by each. Both folders still count
+    it as a member; only the preview thumbnail is de-duplicated.
+    """
+    from utils.design_variants import gallery_folder_cards
+
+    cards = [
+        {
+            'id': 1, 'url': '/kc-football.png', 'title': 'Kansas City Football',
+            'category_keys': ['sports', 'kc'], 'category_labels': ['Sports', 'Kansas City'],
+            'group': '', 'variants': [],
+        },
+        {
+            'id': 2, 'url': '/school-crest.png', 'title': 'School Crest',
+            'category_keys': ['kc'], 'category_labels': ['Kansas City'],
+            'group': '', 'variants': [],
+        },
+    ]
+    folders = gallery_folder_cards(cards)
+    sports = next(f for f in folders if f['key'] == 'sports')
+    kc = next(f for f in folders if f['key'] == 'kc')
+
+    assert sports['count'] == 1
+    assert kc['count'] == 2
+    assert [c['url'] for c in sports['covers']] == ['/kc-football.png']
+    # kc still has the Kansas City Football design as a member (count == 2),
+    # but its cover thumbnails show the other design instead of repeating
+    # the image Sports already used as its cover.
+    kc_cover_urls = [c['url'] for c in kc['covers']]
+    assert '/kc-football.png' not in kc_cover_urls
+    assert '/school-crest.png' in kc_cover_urls
+
+
+def test_gallery_folder_reuses_an_image_rather_than_showing_no_cover():
+    """If every one of a folder's designs was already claimed as another
+    folder's cover, showing that image again beats an empty folder tile.
+    """
+    from utils.design_variants import gallery_folder_cards
+
+    cards = [
+        {
+            'id': 1, 'url': '/kc-football.png', 'title': 'Kansas City Football',
+            'category_keys': ['sports', 'kc'], 'category_labels': ['Sports', 'Kansas City'],
+            'group': '', 'variants': [],
+        },
+    ]
+    folders = gallery_folder_cards(cards)
+    kc = next(f for f in folders if f['key'] == 'kc')
+    assert kc['count'] == 1
+    assert len(kc['covers']) == 1
+    assert kc['covers'][0]['url'] == '/kc-football.png'
+
+
 def test_gallery_category_taxonomy_handles_existing_aliases():
     from utils.design_categories import assigned_gallery_folders, storage_key_for
     from werkzeug.datastructures import MultiDict

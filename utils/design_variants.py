@@ -250,8 +250,18 @@ def filter_gallery_cards(cards, *, category=None, query=None):
 
 
 def gallery_folder_cards(cards):
-    """Landing cards: one folder per public category that has designs."""
+    """Landing cards: one folder per public category that has designs.
+
+    A design tagged with more than one category (e.g. "Kansas City Football"
+    filed under both Sports and Kansas City) genuinely belongs in both
+    folders, so it still counts toward both. But picking cover thumbnails
+    independently per folder meant the same image could appear twice in the
+    previews visible on the overview page at once. Covers are now unique
+    across folders - each design's image previews as a cover for the first
+    folder that claims it, and later folders pick a different design.
+    """
     folders = []
+    used_cover_urls = set()
     for category in GALLERY_CATEGORIES:
         members = [
             card for card in cards
@@ -259,18 +269,34 @@ def gallery_folder_cards(cards):
         ]
         if not members:
             continue
+        covers = []
+        for card in members:
+            if len(covers) >= FOLDER_COVER_LIMIT:
+                break
+            marker = (card.get('url') or '').strip().lower()
+            if marker and marker in used_cover_urls:
+                continue
+            if marker:
+                used_cover_urls.add(marker)
+            covers.append({
+                'id': card['id'],
+                'url': card['url'],
+                'title': card['title'],
+            })
+        if not covers:
+            # Every candidate image was already claimed by an earlier
+            # folder. A repeated image beats an empty folder tile.
+            first = members[0]
+            covers.append({
+                'id': first['id'],
+                'url': first['url'],
+                'title': first['title'],
+            })
         folders.append({
             'key': category.key,
             'label': category.label,
             'count': len(members),
-            'covers': [
-                {
-                    'id': card['id'],
-                    'url': card['url'],
-                    'title': card['title'],
-                }
-                for card in members[:FOLDER_COVER_LIMIT]
-            ],
+            'covers': covers,
         })
     return folders
 
