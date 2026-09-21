@@ -19,8 +19,9 @@
             </div>
         </div>
         <div class="od-header-right">
-            {% set stage_labels = {'order_received':'Order Received','waiting_supplies':'Waiting on Supplies','ready_to_press':'Ready to Press','pressed':'Pressed','packaged_ready':'Packaged & Ready'} %}
-            <span class="od-status-badge od-status-{{ order.production_stage or order.status }}">{{ stage_labels.get(order.production_stage, order.status.replace('_',' ').title()) }}</span>
+            {% set stage_labels = {'order_received':'Order Received','waiting_supplies':'Waiting on Supplies','ready_to_press':'Ready to Press','pressed':'Pressed','packaged_ready':'Packaged & Ready','completed':'All Completed'} %}
+            {% set is_done = order.status in ['completed', 'shipped', 'picked_up'] or order.production_stage == 'completed' %}
+            <span class="od-status-badge od-status-{{ order.production_stage or order.status }}">{% if is_done %}{{ order.status.replace('_', ' ').title() }}{% else %}{{ stage_labels.get(order.production_stage, order.status.replace('_',' ').title()) }}{% endif %}</span>
             <span class="od-status-badge od-payment-{{ order.payment_status }}">{{ order.payment_status.title() }}</span>
             {% if order.payment_method == 'cash' and (order.payment_status or '') == 'pending' %}
             <span class="od-status-badge od-cash-due">Cash Due</span>
@@ -58,7 +59,8 @@
                             <option value="waiting_supplies" {% if order.production_stage == 'waiting_supplies' %}selected{% endif %}>Waiting on Supplies</option>
                             <option value="ready_to_press"   {% if order.production_stage == 'ready_to_press'   %}selected{% endif %}>Ready to Press</option>
                             <option value="pressed"          {% if order.production_stage == 'pressed'          %}selected{% endif %}>Pressed</option>
-                            <option value="packaged_ready"   {% if order.production_stage == 'packaged_ready'   %}selected{% endif %}>Packaged &amp; Ready</option>
+                            <option value="packaged_ready"   {% if order.production_stage == 'packaged_ready' and order.status not in ['completed', 'shipped', 'picked_up'] %}selected{% endif %}>Packaged &amp; Ready</option>
+                            <option value="completed"        {% if order.status in ['completed', 'shipped', 'picked_up'] or order.production_stage == 'completed' %}selected{% endif %}>All Completed</option>
                         </select>
                         <svg class="od-select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                     </div>

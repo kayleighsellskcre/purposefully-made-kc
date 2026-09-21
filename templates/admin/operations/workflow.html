@@ -43,6 +43,7 @@
             {% for sid, sname, _ in stages %}
             <option value="{{ sid }}">{{ sname }}</option>
             {% endfor %}
+            <option value="completed">All Completed</option>
         </select>
         <button type="button" class="btn btn-primary wf-bulk-move" id="wfBulkMove" disabled>Move selected</button>
     </div>
@@ -53,7 +54,8 @@
 ══════════════════════════════════════ -->
 <div class="wf-board-scroll">
     <div class="wf-board" id="wfBoard"
-         data-bulk-url="{{ url_for('admin.bulk_update_order_stage') }}">
+         data-bulk-url="{{ url_for('admin.bulk_update_order_stage') }}"
+         data-completed-url="{{ url_for('admin.orders_completed') }}">
         {% for stage_id, stage_name, stage_desc in stages %}
         {% set stage_orders = orders_by_stage.get(stage_id, []) %}
         <div class="wf-col" data-stage="{{ stage_id }}">
@@ -108,11 +110,19 @@
                         <span class="wf-meta-sep">&bull;</span>
                         <span>{{ order.created_at.strftime('%b %d') }}</span>
                     </div>
-                    {% if stage_id != 'packaged_ready' %}
+                    {% if stage_id == 'packaged_ready' %}
+                    <form method="POST" action="{{ url_for('admin.update_order_stage', order_id=order.id) }}" class="wf-move-form wf-complete-form" onclick="event.stopPropagation()">
+                        <input type="hidden" name="stage" value="completed">
+                        <button type="submit" class="wf-complete-btn">Move to All Completed</button>
+                    </form>
+                    {% endif %}
                     <form method="POST" action="{{ url_for('admin.update_order_stage', order_id=order.id) }}" class="wf-move-form" onclick="event.stopPropagation()">
                         <div class="wf-select-wrap">
                             <select name="stage" class="wf-select" onchange="this.form.submit()">
                                 <option value="" disabled selected>Move to stage…</option>
+                                {% if stage_id != 'packaged_ready' %}
+                                <option value="completed">→ All Completed</option>
+                                {% endif %}
                                 {% for sid, sname, _ in stages %}{% if sid != stage_id %}
                                 <option value="{{ sid }}">→ {{ sname }}</option>
                                 {% endif %}{% endfor %}
@@ -120,12 +130,6 @@
                             <svg class="wf-select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
                         </div>
                     </form>
-                    {% else %}
-                    <div class="wf-packaged-label">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        Packaged &amp; Ready
-                    </div>
-                    {% endif %}
                 </div>
                 {% endfor %}
                 <div class="wf-empty" {% if stage_orders %}hidden{% endif %}>
@@ -186,11 +190,19 @@
                     <span class="wf-meta-sep">&bull;</span>
                     <span>{{ order.created_at.strftime('%b %d') }}</span>
                 </div>
-                {% if stage_id != 'packaged_ready' %}
+                {% if stage_id == 'packaged_ready' %}
+                <form method="POST" action="{{ url_for('admin.update_order_stage', order_id=order.id) }}" class="wf-move-form wf-complete-form">
+                    <input type="hidden" name="stage" value="completed">
+                    <button type="submit" class="wf-complete-btn">Move to All Completed</button>
+                </form>
+                {% endif %}
                 <form method="POST" action="{{ url_for('admin.update_order_stage', order_id=order.id) }}" class="wf-move-form">
                     <div class="wf-select-wrap">
                         <select name="stage" class="wf-select" onchange="this.form.submit()">
                             <option value="" disabled selected>Move to stage…</option>
+                            {% if stage_id != 'packaged_ready' %}
+                            <option value="completed">→ All Completed</option>
+                            {% endif %}
                             {% for sid, sname, _ in stages %}{% if sid != stage_id %}
                             <option value="{{ sid }}">→ {{ sname }}</option>
                             {% endif %}{% endfor %}
@@ -198,12 +210,6 @@
                         <svg class="wf-select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
                     </div>
                 </form>
-                {% else %}
-                <div class="wf-packaged-label">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Packaged &amp; Ready
-                </div>
-                {% endif %}
             </div>
             {% else %}
             <div class="wf-empty">
@@ -635,6 +641,29 @@
     margin-top: 0.1rem;
 }
 
+.wf-complete-form {
+    margin: 0.15rem 0 0.35rem;
+}
+
+.wf-complete-btn {
+    width: 100%;
+    border: 0;
+    border-radius: 8px;
+    background: #059669;
+    color: #fff;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    padding: 0.55rem 0.7rem;
+    min-height: 44px;
+    cursor: pointer;
+}
+
+.wf-complete-btn:hover {
+    background: #047857;
+}
+
 /* Empty column */
 .wf-empty {
     display: flex;
@@ -807,6 +836,7 @@ function toggleStage(stageId) {
 (function () {
     var board = document.getElementById('wfBoard');
     var bulkUrl = board && board.getAttribute('data-bulk-url');
+    var completedUrl = board && board.getAttribute('data-completed-url');
     var bar = document.getElementById('wfBulkBar');
     var countEl = document.getElementById('wfBulkCount');
     var stageSel = document.getElementById('wfBulkStage');
@@ -925,6 +955,10 @@ function toggleStage(stageId) {
             moveBtn.disabled = true;
             moveBtn.textContent = 'Moving…';
             postStage(ids, stage).then(function () {
+                if (stage === 'completed' && completedUrl) {
+                    window.location.href = completedUrl;
+                    return;
+                }
                 window.location.reload();
             }).catch(function (err) {
                 alert(err.message || 'Could not move orders');

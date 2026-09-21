@@ -960,18 +960,18 @@ def update_order_status(order_id):
     stage = request.form.get('status')  # form field named 'status' but now holds stage value
     admin_notes = request.form.get('admin_notes')
 
-    from utils.production_stages import apply_stage
-    apply_stage(order, stage)
+    from utils.production_stages import MOVE_LABELS, apply_stage
+    if not apply_stage(order, stage):
+        flash('Could not update that stage', 'error')
+        return redirect(url_for('admin.order_detail', order_id=order_id))
 
     if admin_notes:
         order.admin_notes = admin_notes
 
     db.session.commit()
-    stage_labels = {
-        'order_received': 'Order Received', 'waiting_supplies': 'Waiting on Supplies',
-        'ready_to_press': 'Ready to Press', 'pressed': 'Pressed', 'packaged_ready': 'Packaged & Ready'
-    }
-    flash(f'Order moved to: {stage_labels.get(stage, stage)}', 'success')
+    flash(f'Order moved to: {MOVE_LABELS.get(stage, stage)}', 'success')
+    if stage in ('completed', 'shipped', 'picked_up'):
+        return redirect(url_for('admin.orders_completed'))
     return redirect(url_for('admin.order_detail', order_id=order_id))
 
 
@@ -4786,11 +4786,16 @@ def production_workflow():
 @admin_bp.route('/orders/<int:order_id>/update-stage', methods=['POST'])
 @admin_required
 def update_order_stage(order_id):
-    from utils.production_stages import apply_stage
+    from utils.production_stages import FINISH_LABELS, apply_stage
     order = Order.query.get_or_404(order_id)
     stage = request.form.get('stage')
-    apply_stage(order, stage)
+    if not apply_stage(order, stage):
+        flash('Could not update that stage', 'error')
+        return redirect(request.referrer or url_for('admin.production_workflow'))
     db.session.commit()
+    if stage in FINISH_LABELS:
+        flash('Moved to All Completed', 'success')
+        return redirect(url_for('admin.orders_completed'))
     flash('Stage updated', 'success')
     return redirect(request.referrer or url_for('admin.production_workflow'))
 
@@ -4799,7 +4804,7 @@ def update_order_stage(order_id):
 @admin_required
 def bulk_update_order_stage():
     """Move one or many orders to a production stage (form or JSON)."""
-    from utils.production_stages import STAGE_LABELS, apply_stage
+    from utils.production_stages import MOVE_LABELS, apply_stage
 
     payload = request.get_json(silent=True) or {}
     stage = (request.form.get('stage') or payload.get('stage') or '').strip()
@@ -4825,7 +4830,7 @@ def bulk_update_order_stage():
         or 'application/json' in (request.headers.get('Accept') or '')
     )
 
-    if stage not in STAGE_LABELS:
+    if stage not in MOVE_LABELS:
         if wants_json:
             return jsonify({'ok': False, 'error': 'Invalid stage'}), 400
         flash('Invalid stage', 'error')
@@ -4848,12 +4853,14 @@ def bulk_update_order_stage():
             'ok': True,
             'updated': updated,
             'stage': stage,
-            'stage_label': STAGE_LABELS[stage],
+            'stage_label': MOVE_LABELS[stage],
             'order_ids': order_ids,
         })
 
-    label = STAGE_LABELS[stage]
+    label = MOVE_LABELS[stage]
     flash(f'Moved {updated} order{"s" if updated != 1 else ""} to {label}', 'success')
+    if stage in ('completed', 'shipped', 'picked_up'):
+        return redirect(url_for('admin.orders_completed'))
     return redirect(request.referrer or url_for('admin.orders'))
 
 

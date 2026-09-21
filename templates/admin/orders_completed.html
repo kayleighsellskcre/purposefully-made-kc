@@ -8,7 +8,7 @@
         <div class="admin-header">
             <span class="adm-eyebrow">Admin / Orders</span>
             <h1>All Completed</h1>
-            <p class="page-subtitle">Shipped and completed orders. Removed from production workflow and organized by month and year.</p>
+            <p class="page-subtitle">Shipped, picked up, and finished orders, organized by month and year. Move them here from Packaged &amp; Ready on the workflow board.</p>
             <div class="admin-stats">
                 <a href="{{ url_for('admin.orders') }}" class="btn btn-outline">← Back to Orders</a>
                 <a href="{{ url_for('admin.production_workflow') }}" class="btn btn-outline">Production Workflow</a>
@@ -55,7 +55,7 @@
         {% endfor %}
         {% else %}
         <div class="empty-state">
-            <p>No completed or shipped orders yet.</p>
+            <p>No completed orders yet. When a packaged order is picked up or shipped, move it to All Completed from the production workflow or the order page.</p>
         </div>
         {% endif %}
     </div>

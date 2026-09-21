@@ -1,4 +1,6 @@
 """One production-stage list for workflow, orders, and labels."""
+from datetime import datetime
+
 from sqlalchemy import or_
 
 from models import Order
@@ -13,6 +15,15 @@ STAGES = [
 
 STAGE_LABELS = {sid: name for sid, name, _desc in STAGES}
 
+# Finished orders leave the workflow board and land on All Completed.
+FINISH_STAGE = 'completed'
+FINISH_LABELS = {
+    'completed': 'All Completed',
+    'shipped': 'Shipped',
+    'picked_up': 'Picked Up',
+}
+MOVE_LABELS = {**STAGE_LABELS, **FINISH_LABELS}
+
 # production_stage → (order.status, production_stage)
 STAGE_MAP = {
     'order_received': ('new', 'order_received'),
@@ -26,7 +37,22 @@ OPEN_STATUSES = ('new', 'paid', 'in_production', 'ready')
 DONE_STATUSES = ('completed', 'shipped', 'picked_up', 'cancelled')
 
 
+def complete_status_for(order):
+    """Pickup orders become picked up; shipped orders become shipped."""
+    method = (getattr(order, 'fulfillment_method', None) or '').strip().lower()
+    if method == 'shipping':
+        return 'shipped'
+    if method == 'pickup':
+        return 'picked_up'
+    return 'completed'
+
+
 def apply_stage(order, stage):
+    if stage in FINISH_LABELS:
+        order.status = stage if stage in ('shipped', 'picked_up') else complete_status_for(order)
+        order.production_stage = FINISH_STAGE
+        order.updated_at = datetime.utcnow()
+        return True
     if stage not in STAGE_MAP:
         return False
     order.status, order.production_stage = STAGE_MAP[stage]
