@@ -9,6 +9,7 @@ from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
 from config import Config
 from models import db, User, Address, Collection, Product, Design, Order, OrderItem, Favorite, CartHandoff
+from utils.admin_gate import require_admin_or_404
 import stripe
 import paypalrestsdk
 
@@ -518,8 +519,10 @@ def create_app(config_class=Config):
             return '', 404
 
     # Diagnostic endpoint — tells us which git commit Railway is running.
-    # Check at /version to verify deployments landed.
+    # Check at /version to verify deployments landed. Admin-only: anonymous
+    # visitors get a 404 so the route doesn't advertise itself.
     @app.route('/version')
+    @require_admin_or_404
     def _version():
         import subprocess, datetime
         try:

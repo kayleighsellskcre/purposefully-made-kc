@@ -1,6 +1,7 @@
 from flask import Blueprint, Response, render_template, session, current_app, send_file, send_from_directory, request, flash, redirect, url_for
 from models import Product, Collection
 from utils.rate_limit import post_only
+from utils.admin_gate import require_admin_or_404
 from datetime import datetime, timezone
 import os
 
@@ -148,8 +149,6 @@ def robots_txt():
         'Disallow: /design/',
         'Disallow: /custom-design/submit',
         'Disallow: /custom-design/my-requests',
-        'Disallow: /status',
-        'Disallow: /version',
         '',
         f'Sitemap: {url_for("main.sitemap_xml", _external=True)}',
         '',
@@ -240,8 +239,9 @@ def terms():
     return render_template('terms.html')
 
 @main_bp.route('/status')
+@require_admin_or_404
 def status():
-    """Diagnostics: what's configured (no secrets shown). Visit /status to see why things might not connect."""
+    """Admin-only diagnostics: what's configured (no secrets, keys or emails shown)."""
     from models import db, User, Product
     import os
 
@@ -262,7 +262,6 @@ def status():
 
     return render_template('status.html',
         admin_email_set=bool(admin_email),
-        admin_email_value=admin_email,
         admin_user_exists=admin_user is not None,
         admin_user_is_admin=admin_user.is_admin if admin_user else False,
         ss_key_set=bool(ss_key and ss_key.strip() and 'your_' not in ss_key.lower() and 'paste' not in ss_key.lower()),

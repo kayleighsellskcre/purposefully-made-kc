@@ -23,6 +23,7 @@ instance/
 node_modules/
 .idea/
 .vscode/
+.claude/
 *.swp
 *.swo
 *~
