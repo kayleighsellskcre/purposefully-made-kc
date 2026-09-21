@@ -235,7 +235,8 @@ def sitemap_xml():
 @main_bp.route('/privacy')
 def privacy():
     """Privacy Policy page"""
-    return render_template('privacy.html')
+    # Fixed to the day this text was last published, not the current date.
+    return render_template('privacy.html', privacy_last_updated='September 21, 2026')
 
 @main_bp.route('/terms')
 def terms():
