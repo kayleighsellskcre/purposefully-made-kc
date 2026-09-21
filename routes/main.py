@@ -2,7 +2,6 @@ from flask import Blueprint, Response, render_template, session, current_app, se
 from models import Product, Collection
 from utils.rate_limit import post_only
 from utils.admin_gate import require_admin_or_404
-from datetime import datetime, timezone
 import os
 
 main_bp = Blueprint('main', __name__)
@@ -40,17 +39,22 @@ def index():
             p for p in Product.query.filter_by(is_active=True).order_by(Product.style_number).all()
             if product_has_shop_image(p)
         ][:8]
-        now = datetime.now(timezone.utc).replace(tzinfo=None)
-        from utils.group_orders import is_not_yet_open
-        # Public, non-password stores. Link-only and customer stores stay
-        # off the homepage and are reached only via the share link.
-        active_collections = Collection.query.filter(
-            Collection.is_active == True,
-            Collection.show_in_directory == True,
-            Collection.is_password_protected == False,
-            Collection.created_by_user_id.is_(None),
-            (Collection.order_deadline == None) | (Collection.order_deadline >= now),
-        ).order_by(Collection.created_at.desc()).limit(6).all()
+        from utils.group_orders import is_not_yet_open, is_deadline_passed, publicly_listed_collections
+        # Same "public store" definition as the Group Orders directory, minus
+        # password-protected stores (those need the password to shop) and
+        # ones past their deadline. Used to also require created_by_user_id
+        # to be empty, which was meant to hide customer self-service stores
+        # but ended up hiding every store an admin created too, since any
+        # store made through the normal create flow gets a creator recorded.
+        active_collections = [
+            c for c in (
+                publicly_listed_collections()
+                .filter(Collection.is_password_protected == False)
+                .order_by(Collection.created_at.desc())
+                .all()
+            )
+            if not is_deadline_passed(c)
+        ][:6]
         for collection in active_collections:
             collection.not_yet_open = is_not_yet_open(collection)
         return render_template('index.html', 
