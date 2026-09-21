@@ -83,10 +83,21 @@ def about():
 def contact():
     """Contact page"""
     if request.method == 'POST':
+        # Honeypot: real visitors never see or fill this field. A bot that
+        # fills every input trips it, and we pretend to succeed so it doesn't
+        # learn to look for a different tell.
+        if request.form.get('website', '').strip():
+            flash('Thank you for reaching out! We will get back to you within 1 to 2 business days.', 'success')
+            return redirect(url_for('main.contact'))
+
         name = request.form.get('name', '').strip()
         email = request.form.get('email', '').strip()
         subject = request.form.get('subject', '').strip()
         message = request.form.get('message', '').strip()
+
+        if len(name) > 100 or len(email) > 254 or len(subject) > 150 or len(message) > 3000:
+            flash('One of those fields is longer than we can take. Please shorten it and try again.', 'error')
+            return redirect(url_for('main.contact'))
 
         if name or email or message:
             try:
@@ -134,7 +145,10 @@ def contact():
 
         flash('Thank you for reaching out! We will get back to you within 1 to 2 business days.', 'success')
         return redirect(url_for('main.contact'))
-    return render_template('contact.html')
+
+    digits = ''.join(c for c in str(current_app.config.get('ADMIN_PHONE', '')) if c.isdigit())
+    contact_phone_display = f'({digits[0:3]}) {digits[3:6]}-{digits[6:10]}' if len(digits) == 10 else None
+    return render_template('contact.html', contact_phone_display=contact_phone_display, contact_phone_digits=digits)
 
 
 @main_bp.route('/robots.txt')

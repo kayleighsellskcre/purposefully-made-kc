@@ -51,6 +51,20 @@
                         </div>
                     </div>
 
+                    {% if contact_phone_display %}
+                    <div class="contact-method">
+                        <div class="contact-method-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                            </svg>
+                        </div>
+                        <div class="contact-method-text">
+                            <span class="contact-method-label">Phone</span>
+                            <a href="tel:+1{{ contact_phone_digits }}" class="contact-method-value">{{ contact_phone_display }}</a>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     <div class="contact-method">
                         <div class="contact-method-icon">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
@@ -95,25 +109,36 @@
                     </div>
 
                     <form class="contact-form" method="POST" action="{{ url_for('main.contact') }}">
+                        <div class="cf-hp" aria-hidden="true">
+                            <label for="website">Leave this field blank</label>
+                            <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+                        </div>
+
                         <div class="cf-row">
                             <div class="cf-group">
                                 <label for="name">Your Name</label>
-                                <input type="text" id="name" name="name" placeholder="Jane Smith" required>
+                                <input type="text" id="name" name="name" placeholder="Jane Smith" maxlength="100" autocomplete="name" required>
                             </div>
                             <div class="cf-group">
                                 <label for="email">Email Address</label>
-                                <input type="email" id="email" name="email" placeholder="jane@example.com" required>
+                                <input type="email" id="email" name="email" placeholder="jane@example.com" maxlength="254" autocomplete="email" required>
                             </div>
                         </div>
 
                         <div class="cf-group">
                             <label for="subject">What Is This About?</label>
-                            <input type="text" id="subject" name="subject" placeholder="e.g. Wedding party shirts, group order question..." required>
+                            <select id="subject" name="subject" required>
+                                <option value="" disabled selected>Choose one</option>
+                                <option value="Order question">Order question</option>
+                                <option value="Group order">Group order</option>
+                                <option value="Custom design">Custom design</option>
+                                <option value="Something else">Something else</option>
+                            </select>
                         </div>
 
                         <div class="cf-group">
                             <label for="message">Your Message</label>
-                            <textarea id="message" name="message" rows="5" placeholder="Tell us what you are thinking. The more detail the better!" required></textarea>
+                            <textarea id="message" name="message" rows="5" maxlength="3000" placeholder="Tell us what you are thinking. The more detail the better!" required></textarea>
                         </div>
 
                         <button type="submit" class="contact-submit">
@@ -308,6 +333,7 @@ a.contact-method-value:hover { color: var(--accent-color); }
 }
 
 .cf-group input,
+.cf-group select,
 .cf-group textarea {
     font-family: var(--font-primary);
     font-size: 0.93rem;
@@ -328,6 +354,7 @@ a.contact-method-value:hover { color: var(--accent-color); }
 }
 
 .cf-group input:focus,
+.cf-group select:focus,
 .cf-group textarea:focus {
     outline: none;
     background: #fff;
@@ -336,8 +363,20 @@ a.contact-method-value:hover { color: var(--accent-color); }
 }
 /* Stronger ring for keyboard focus only; mouse focus keeps the subtle look. */
 .cf-group input:focus-visible,
+.cf-group select:focus-visible,
 .cf-group textarea:focus-visible {
     box-shadow: 0 0 0 3px rgba(184, 124, 111, 0.5);
+}
+
+/* Honeypot: off-screen rather than display:none, since some spam bots skip
+   fields hidden that way but still fill anything positioned off-canvas. */
+.cf-hp {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
 }
 
 .contact-submit {
@@ -382,6 +421,12 @@ a.contact-method-value:hover { color: var(--accent-color); }
     background: rgba(147, 159, 128, 0.12);
     color: #3a5a2a;
     border: 1px solid rgba(147, 159, 128, 0.35);
+}
+
+.contact-flash-error {
+    background: rgba(184, 90, 90, 0.1);
+    color: #8a3a3a;
+    border: 1px solid rgba(184, 90, 90, 0.3);
 }
 
 /* Bottom Strip */
