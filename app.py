@@ -682,7 +682,15 @@ def create_app(config_class=Config):
         active_group_order = None
         try:
             from utils.group_orders import get_active_collection
-            active_group_order = get_active_collection(cart)
+            # The "You're ordering for X" banner used to render on every page
+            # once a visitor merely opened a group store, since
+            # collection_id_from_cart() falls back to a session flag that
+            # only clears on "Back to main site". It now only shows on the
+            # store's own pages and the customize/product pages reached
+            # from it - not on unrelated pages like the shop or gallery.
+            _banner_endpoints = {'shop.customize', 'shop.product_detail'}
+            if request.blueprint == 'collection' or request.endpoint in _banner_endpoints:
+                active_group_order = get_active_collection(cart)
         except Exception:
             active_group_order = None
         # Canonical URL and origin for <link rel="canonical"> and Open Graph.
