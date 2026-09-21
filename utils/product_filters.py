@@ -168,6 +168,22 @@ _BRAND_PREFIXES = (
     ('BC', 'Bella+Canvas'),
 )
 
+# Canonical display casing, keyed by lowercase. Supplier feeds (S&S,
+# SanMar) send brand names in inconsistent casing (e.g. "BELLA+CANVAS"),
+# which showed up as-is on product cards while the filter dropdown, built
+# from the same style-prefix fallback list, showed "Bella+Canvas".
+_BRAND_DISPLAY_NAMES = {
+    'bella+canvas': 'Bella+Canvas',
+    'bella + canvas': 'Bella+Canvas',
+    'gildan': 'Gildan',
+    'comfort colors': 'Comfort Colors',
+    'sport-tek': 'Sport-Tek',
+    'port & company': 'Port & Company',
+    'district': 'District',
+    'rabbit skins': 'Rabbit Skins',
+    'stanley/stella': 'Stanley/Stella',
+}
+
 _AGE_ORDER = {'adult': 0, 'youth': 1, 'toddler': 2, 'baby': 3}
 _AGE_LABELS = (
     ('adult', 'Adult'),
@@ -182,7 +198,7 @@ _CATEGORY_ORDER = {key: i for i, (key, _label) in enumerate(SHOP_CATEGORIES)}
 def infer_brand(item):
     stored = str(_val(item, 'brand')).strip()
     if stored:
-        return stored
+        return _BRAND_DISPLAY_NAMES.get(stored.lower(), stored)
     style = re.sub(r'[^A-Z0-9]', '', str(_val(item, 'style_number')).upper())
     for prefix, brand in _BRAND_PREFIXES:
         if style.startswith(prefix):

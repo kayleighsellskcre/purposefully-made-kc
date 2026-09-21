@@ -149,7 +149,7 @@
                         <select id="fitTypeFilter" class="filter-dropdown" onchange="applyFilters()">
                             <option value="">All</option>
                             {% for fit in filter_fits or [] %}
-                            <option value="{{ fit }}" {% if selected_fit_type == fit %}selected{% endif %} class="{{ 'fit-unisex-label' if fit == 'Unisex' else 'fit-womens-label' }}">{% if fit == 'Unisex' %}Men's (Unisex){% else %}{{ fit }}{% endif %}</option>
+                            <option value="{{ fit }}" {% if selected_fit_type == fit %}selected{% endif %} class="{{ 'fit-unisex-label' if fit == 'Unisex' else 'fit-womens-label' }}">{{ fit }}</option>
                             {% endfor %}
                         </select>
                         <svg class="select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
@@ -163,8 +163,12 @@
                     <div class="select-wrap">
                         <select id="colorFilter" class="filter-dropdown" onchange="applyFilters()">
                             <option value="">All Colors</option>
-                            {% for color in colors %}
-                            <option value="{{ color }}" {% if selected_color == color %}selected{% endif %}>{{ color }}</option>
+                            {% for family, family_colors in grouped_colors %}
+                            <optgroup label="{{ family }}">
+                                {% for color in family_colors %}
+                                <option value="{{ color }}" {% if selected_color == color %}selected{% endif %}>{{ color }}</option>
+                                {% endfor %}
+                            </optgroup>
                             {% endfor %}
                         </select>
                         <svg class="select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
@@ -290,7 +294,7 @@
                             <div class="product-info">
                                 {# h3 under the age-group h2 so heading order stays sensible. #}
                                 <h3 class="product-name">{{ product|display_name }}</h3>
-                                <p class="product-style">{% if product.brand %}{{ product.brand }} · {% endif %}Style {{ product.style_number }}</p>
+                                <p class="product-style">{% if product.display_brand %}{{ product.display_brand }} · {% endif %}Style {{ product.style_number }}</p>
                                 {% if product.display_category or product.category %}
                                 <p class="product-category">{{ product.display_category or product.category }}</p>
                                 {% endif %}
@@ -1194,15 +1198,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-// Update Fit labels based on age group
+// Update the Women's/Girls fit label based on age group. The Unisex option
+// is a plain, static label now; it used to be gendered and age-dependent,
+// which was confusing since the underlying value never changed.
 function updateFitLabels() {
     const ageGroup = document.getElementById('ageGroupFilter').value;
     const fitSelect = document.getElementById('fitTypeFilter');
-    const unisexOpt = fitSelect.querySelector('.fit-unisex-label');
     const womensOpt = fitSelect.querySelector('.fit-womens-label');
     const isKids = ageGroup === 'youth' || ageGroup === 'toddler' || ageGroup === 'baby';
 
-    if (unisexOpt) unisexOpt.textContent = isKids ? "Boys (Unisex)" : "Men's (Unisex)";
     if (womensOpt) womensOpt.textContent = isKids ? "Girls" : "Women's";
 }
 

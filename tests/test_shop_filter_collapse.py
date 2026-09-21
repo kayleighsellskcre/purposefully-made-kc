@@ -196,6 +196,47 @@ def test_color_filter_normalizes_names_and_drops_test_values(client, app, seed):
     assert 'athleticheather' not in options
 
 
+# ── Round 2 audit item 8: color dropdown grouped by family ─────────────────
+
+def test_color_dropdown_is_grouped_into_family_optgroups(client, app, seed):
+    import json
+    from models import ProductColorVariant, db
+
+    stocked = json.dumps({'S': 5, 'M': 5, 'L': 5})
+    with app.app_context():
+        db.session.add_all([
+            ProductColorVariant(product_id=seed['tee_id'], color_name='Navy', size_inventory=stocked),
+            ProductColorVariant(product_id=seed['tee_id'], color_name='Forest Green', size_inventory=stocked),
+        ])
+        db.session.commit()
+
+    html = html_of(client)
+    select_html = re.search(r'<select id="colorFilter".*?</select>', html, re.S).group(0)
+    assert '<optgroup label="Blues">' in select_html
+    assert '<optgroup label="Greens">' in select_html
+    # Values are unchanged by grouping, so existing filter links still work.
+    assert '<option value="Navy"' in select_html
+    assert '<option value="Forest Green"' in select_html
+
+
+def test_filtering_by_a_grouped_color_value_still_works(client, app, seed):
+    import json
+    from models import ProductColorVariant, db
+
+    stocked = json.dumps({'S': 5, 'M': 5, 'L': 5})
+    with app.app_context():
+        db.session.add(ProductColorVariant(
+            product_id=seed['hoodie_id'], color_name='Forest Green', size_inventory=stocked,
+        ))
+        db.session.commit()
+
+    resp = client.get('/shop/?color=Forest+Green')
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert 'Heavy Blend Hooded Sweatshirt' in body
+    assert 'Unisex Jersey Short Sleeve Tee' not in body
+
+
 def test_kids_age_filter_includes_baby_toddler_and_youth():
     from types import SimpleNamespace
 

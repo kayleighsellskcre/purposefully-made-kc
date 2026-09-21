@@ -2,7 +2,7 @@
 
 {% block title %}{{ product|display_name }} - Purposefully Made KC{% endblock %}
 
-{% block meta_description %}{% if product.description %}{{ product.description|striptags|truncate(155, true, '…') }}{% else %}Customise a {{ product|display_name }}{% if product.brand %} by {{ product.brand }}{% endif %} with your own design. Choose your colour, size and placement - printed to order by Purposefully Made KC.{% endif %}{% endblock %}
+{% block meta_description %}{% if product.description %}{{ product.description|striptags|truncate(155, true, '…') }}{% else %}Customise a {{ product|display_name }}{% if product.display_brand %} by {{ product.display_brand }}{% endif %} with your own design. Choose your colour, size and placement - printed to order by Purposefully Made KC.{% endif %}{% endblock %}
 
 {% block og_type %}product{% endblock %}
 
@@ -76,8 +76,8 @@
                 {% endif %}
                 <h1>{{ product|display_name }}</h1>
                 
-                {% if product.brand %}
-                <p class="product-brand">{{ product.brand }}</p>
+                {% if product.display_brand %}
+                <p class="product-brand">{{ product.display_brand }}</p>
                 {% endif %}
                 
                 <p class="product-style">
@@ -234,7 +234,7 @@
                 <div class="product-features">
                     <h3>Features</h3>
                     <ul>
-                        <li>High-quality {{ product.brand or 'apparel' }}</li>
+                        <li>High-quality {{ product.display_brand or 'apparel' }}</li>
                         <li>Custom design printing available</li>
                         <li>Multiple placement options</li>
                         <li>Professional DTF transfer printing</li>

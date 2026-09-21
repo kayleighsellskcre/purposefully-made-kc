@@ -23,7 +23,7 @@ from utils.product_filters import (
     sort_catalog,
 )
 from utils.sizes import shop_sizes_for_product
-from utils.color_names import color_match_key, unique_display_colors
+from utils.color_names import color_match_key, unique_display_colors, grouped_colors_by_family
 from utils.fonts import CUSTOMIZE_BACK_FONTS, GROUP_ORDER_FONTS
 import json
 
@@ -160,6 +160,7 @@ def index():
                              neck_styles=neck_styles,
                              sleeve_lengths=sleeve_lengths,
                              colors=colors,
+                             grouped_colors=grouped_colors_by_family(colors),
                              shop_brands=shop_brands,
                              filter_ages=filter_opts['ages'],
                              filter_categories=filter_opts['categories'],
@@ -187,6 +188,7 @@ def index():
                              neck_styles=[],
                              sleeve_lengths=[],
                              colors=[],
+                             grouped_colors=[],
                              shop_brands=[],
                              filter_ages=[],
                              filter_categories=[],
@@ -594,6 +596,7 @@ def product_detail(product_id):
     blocked = _require_sellable_product(product)
     if blocked:
         return blocked
+    product.display_brand = infer_brand(product)
     available_sizes = shop_sizes_for_product(product)
     available_colors = parse_json_list(product.available_colors)
     print_area_config = parse_json_object(product.print_area_config)
@@ -627,6 +630,7 @@ def customize(product_id):
     blocked = _require_sellable_product(product)
     if blocked:
         return blocked
+    product.display_brand = infer_brand(product)
     available_sizes = shop_sizes_for_product(product)
     available_colors = parse_json_list(product.available_colors)
     print_area_config = parse_json_object(product.print_area_config)

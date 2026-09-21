@@ -2,7 +2,7 @@
 
 {% block title %}Customize {{ product|display_name }} - Purposefully Made KC{% endblock %}
 
-{% block meta_description %}Design your own {{ product|display_name }}{% if product.brand %} by {{ product.brand }}{% endif %}. Pick a colour and size, upload your artwork or choose from our gallery, and see it previewed before you order.{% endblock %}
+{% block meta_description %}Design your own {{ product|display_name }}{% if product.display_brand %} by {{ product.display_brand }}{% endif %}. Pick a colour and size, upload your artwork or choose from our gallery, and see it previewed before you order.{% endblock %}
 
 {% block extra_css %}
 <link href="https://fonts.googleapis.com/css2?family=Freshman&family=Black+Ops+One&family=Graduate&family=Squada+One&family=Bebas+Neue:wght@400&family=Oswald:wght@400;700&family=Anton&family=Teko:wght@400;700&display=swap" rel="stylesheet">

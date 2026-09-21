@@ -122,3 +122,138 @@ def unique_display_colors(raw_names):
         if previous is None or label.count(' ') > previous.count(' '):
             best[key] = label
     return [best[key] for key in sorted(best, key=lambda item: best[item].lower())]
+
+
+# ── Color family grouping (round 2 audit item 8) ────────────────────────────
+# 458+ colors in one flat <select> was unusable. These keyword sets bucket
+# each display name into one of the audit's named families so the dropdown
+# can use <optgroup>. This is a display grouping only - the underlying
+# option value (and therefore every existing filter link) is unchanged.
+
+FAMILY_ORDER = [
+    'Blacks and Grays', 'Whites and Creams', 'Blues', 'Greens',
+    'Reds and Pinks', 'Purples', 'Yellows and Oranges', 'Browns and Neutrals',
+    'Patterns and Camo', 'Other Colors',
+]
+
+# Any of these appearing anywhere in the name wins outright: a patterned or
+# camo print is not usefully described by its dominant hue.
+_PATTERN_WORDS = {
+    'camo', 'camouflage', 'tie', 'dye', 'tiedye', 'marble', 'leopard',
+    'reptile', 'stripe', 'striped', 'plaid', 'rainbow', 'spiral',
+    'colorburst', 'houndstooth', 'tweed', 'acid', 'galaxy', 'multi',
+}
+
+# Words that modify a color but never identify one on their own - skipped
+# during matching so e.g. "Royal Purple" is read as Purple, not stopped at
+# "Royal" (itself handled below as ambiguous, not a modifier).
+_MODIFIER_WORDS = {
+    'heathered', 'triblend', 'blend', 'vintage', 'solid',
+    'athletic', 'true', 'classic', 'dark', 'light', 'bright', 'neon',
+    'safety', 'team', 'pro', 'fleck', 'slub', 'prism', 'blackout', 'soft',
+    'dusty', 'hot', 'bubble', 'candy', 'cotton', 'fan', 'dyed', 'new',
+    'old', 'mid', 'sun', 'desert', 'coyote', 'duck', 'deep', 'g', 'french',
+    'national', 'heathers',
+}
+
+# Color-ish words that are too ambiguous to trust as a first match (they
+# usually modify a real color word elsewhere in the same name), used only
+# when nothing stronger is found anywhere in the name. Bare "Heather" is
+# here rather than in the modifier list: on its own (no other color word in
+# the name) it means heather grey in apparel catalogs far more often than
+# not, so it is a fallback guess rather than a true no-op.
+_LOW_PRIORITY_FAMILY = {
+    'storm': 'Blacks and Grays', 'frost': 'Blues', 'ice': 'Blues',
+    'mist': 'Blues', 'royal': 'Blues', 'stone': 'Browns and Neutrals',
+    'heather': 'Blacks and Grays',
+}
+
+_FAMILY_WORDS = {
+    'Blacks and Grays': {
+        'black', 'gray', 'grey', 'charcoal', 'ash', 'slate', 'smoke',
+        'graphite', 'asphalt', 'carbon', 'anthracite', 'gunmetal', 'nickel',
+        'titanium', 'pepper', 'iron', 'coal', 'cement', 'granite',
+        'concrete', 'shadow', 'silver', 'steel', 'midnight',
+    },
+    'Whites and Creams': {
+        'white', 'cream', 'creme', 'ivory', 'natural', 'bone', 'oatmeal',
+        'vanilla', 'porcelain', 'snow', 'gardenia',
+    },
+    'Blues': {
+        'blue', 'navy', 'sky', 'teal', 'aqua', 'aquatic', 'cyan', 'indigo',
+        'denim', 'cobalt', 'powder', 'carolina', 'columbia', 'turquoise',
+        'sapphire', 'cool', 'chambray', 'atlantic', 'pacific', 'caribbean',
+        'lagoon', 'lapis', 'tropic', 'tropical', 'topaz', 'oxford', 'metro',
+        'neptune', 'tidal', 'tundra', 'marine',
+    },
+    'Greens': {
+        'green', 'forest', 'olive', 'kelly', 'mint', 'sage', 'hunter',
+        'military', 'lime', 'army', 'basil', 'moss', 'evergreen', 'jade',
+        'emerald', 'pistachio', 'eucalyptus', 'thyme', 'leaf', 'apple',
+        'laurel', 'alpine', 'aloe', 'turf', 'spruce', 'glazed', 'honeydew',
+        'lemongrass', 'pine', 'seafoam', 'celadon', 'mosstone',
+        'greenstone',
+    },
+    'Reds and Pinks': {
+        'red', 'pink', 'maroon', 'burgundy', 'wine', 'cardinal', 'coral',
+        'rose', 'cherry', 'crimson', 'salmon', 'fuchsia', 'magenta',
+        'raspberry', 'blush', 'garnet', 'ruby', 'scarlet', 'sangria',
+        'watermelon', 'poppy', 'azalea', 'mauve', 'brick', 'rouge',
+        'passionfruit', 'pomegranate', 'berry',
+    },
+    'Purples': {
+        'purple', 'lavender', 'lilac', 'violet', 'plum', 'orchid', 'grape',
+        'iris', 'wisteria', 'tanzanite',
+    },
+    'Yellows and Oranges': {
+        'yellow', 'orange', 'gold', 'mustard', 'peach', 'amber',
+        'tangerine', 'banana', 'butter', 'citron', 'maize', 'ochre',
+        'papaya', 'sunset', 'sunkissed', 'marmalade', 'autumn', 'lemon',
+        'cantaloupe', 'peachy',
+    },
+    'Browns and Neutrals': {
+        'brown', 'tan', 'khaki', 'beige', 'taupe', 'camel', 'chocolate',
+        'coffee', 'mocha', 'sand', 'clay', 'terracotta', 'nude', 'chestnut',
+        'cinnamon', 'espresso', 'russet', 'saddle', 'toast', 'rust',
+        'latte', 'yam', 'woodland', 'heritage', 'vegas', 'cocoa',
+        'sandstone',
+    },
+}
+
+
+def color_family(display_name):
+    """Which optgroup a display color name belongs under.
+
+    Scans right to left so a qualifier-plus-hue name like "Slate Blue" or
+    "Royal Purple" resolves to the trailing, more specific color word
+    rather than the first word encountered.
+    """
+    text = (display_name or '').lower()
+    words = re.findall(r"[a-z]+", text)
+    if not words:
+        return 'Other Colors'
+
+    joined = ' '.join(words)
+    if any(w in _PATTERN_WORDS for w in words) or 'tie dye' in joined:
+        return 'Patterns and Camo'
+
+    for word in reversed(words):
+        if word in _MODIFIER_WORDS:
+            continue
+        for family, keywords in _FAMILY_WORDS.items():
+            if word in keywords:
+                return family
+
+    for word in reversed(words):
+        if word in _LOW_PRIORITY_FAMILY:
+            return _LOW_PRIORITY_FAMILY[word]
+
+    return 'Other Colors'
+
+
+def grouped_colors_by_family(display_names):
+    """[(family, [colors]), ...] in FAMILY_ORDER, skipping empty families."""
+    buckets = {family: [] for family in FAMILY_ORDER}
+    for name in display_names or []:
+        buckets[color_family(name)].append(name)
+    return [(family, buckets[family]) for family in FAMILY_ORDER if buckets[family]]
