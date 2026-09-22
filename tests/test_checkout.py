@@ -284,6 +284,99 @@ def test_unknown_payment_method_is_refused(client, seed):
     assert resp.get_json()['error_code'] == 'PAYMENT_METHOD_INVALID'
 
 
+# ── PayPal orders ────────────────────────────────────────────────────────────
+# Round 3 audit: the PayPal path used to check only that a payment id had been
+# captured, never that the captured AMOUNT matched the order total - so a cart
+# grown after capture but before /complete would still be marked paid in full.
+
+def _paypal_capture_response(amount, status='COMPLETED', order_id='EC-TEST-1'):
+    return {
+        'id': order_id,
+        'status': status,
+        'purchase_units': [{
+            'payments': {'captures': [{'amount': {'currency_code': 'USD', 'value': f'{amount:.2f}'}}]},
+        }],
+    }
+
+
+def test_paypal_capture_stores_the_actual_captured_amount(client, seed, app):
+    _fill_cart(client, seed)
+    with patch('routes.checkout._get_paypal_access_token', return_value='tok'), \
+         patch('requests.post') as mock_post:
+        mock_post.return_value = SimpleNamespace(
+            status_code=200,
+            json=lambda: _paypal_capture_response(32.85, order_id='EC-CAP-1'),
+        )
+        resp = client.post('/checkout/paypal/capture-order', json={'order_id': 'EC-CAP-1'})
+    assert resp.get_json()['success'] is True
+    with client.session_transaction() as sess:
+        assert sess['paypal_captured_amounts']['EC-CAP-1'] == 32.85
+
+
+def test_paypal_capture_fails_cleanly_when_amount_is_unreadable(client, seed, app):
+    """A malformed PayPal response must not silently record an unverifiable capture."""
+    _fill_cart(client, seed)
+    with patch('routes.checkout._get_paypal_access_token', return_value='tok'), \
+         patch('requests.post') as mock_post:
+        mock_post.return_value = SimpleNamespace(
+            status_code=200,
+            json=lambda: {'id': 'EC-BAD', 'status': 'COMPLETED', 'purchase_units': []},
+        )
+        resp = client.post('/checkout/paypal/capture-order', json={'order_id': 'EC-BAD'})
+    assert resp.get_json()['success'] is False
+    with client.session_transaction() as sess:
+        assert 'paypal_captured_amounts' not in sess or 'EC-BAD' not in sess['paypal_captured_amounts']
+
+
+def test_paypal_order_is_marked_paid_when_amount_matches(client, seed, app):
+    _fill_cart(client, seed)
+    expected = round(30.00 + round(30.00 * TAX_RATE, 2), 2)
+    with client.session_transaction() as sess:
+        sess['paypal_captured_amounts'] = {'EC-GOOD': expected}
+    resp = client.post('/checkout/complete', json=_cash_payload(
+        payment_method='paypal', payment_id='EC-GOOD',
+    ))
+    body = resp.get_json()
+    assert body['success'] is True
+    with app.app_context():
+        order = Order.query.filter_by(order_number=body['order_number']).one()
+        assert order.payment_status == 'paid'
+
+
+def test_paypal_order_rejected_when_cart_grew_after_capture(client, seed, app):
+    """The exact scenario from the audit: capture a small cart, then add more
+    before completing - the order must not be marked paid at the new total."""
+    _fill_cart(client, seed, qty=1)
+    with client.session_transaction() as sess:
+        # Captured while the cart only held 1 item.
+        sess['paypal_captured_amounts'] = {'EC-STALE': round(30.00 + round(30.00 * TAX_RATE, 2), 2)}
+    # Cart grows before /complete is called.
+    _fill_cart(client, seed, qty=1)
+
+    resp = client.post('/checkout/complete', json=_cash_payload(
+        payment_method='paypal', payment_id='EC-STALE',
+    ))
+    assert resp.get_json()['error_code'] == 'PAYMENT_AMOUNT_MISMATCH'
+    with app.app_context():
+        assert Order.query.count() == 0
+
+
+def test_paypal_order_rejected_when_never_captured(client, seed):
+    _fill_cart(client, seed)
+    resp = client.post('/checkout/complete', json=_cash_payload(
+        payment_method='paypal', payment_id='EC-NEVER-CAPTURED',
+    ))
+    assert resp.get_json()['error_code'] == 'PAYPAL_NOT_CAPTURED'
+
+
+def test_paypal_method_without_payment_id_is_refused(client, seed):
+    _fill_cart(client, seed)
+    resp = client.post('/checkout/complete', json=_cash_payload(
+        payment_method='paypal', payment_id=None,
+    ))
+    assert resp.get_json()['error_code'] == 'PAYMENT_ID_REQUIRED'
+
+
 # ── Duplicate submits ─────────────────────────────────────────────────────────
 
 def test_repeat_submit_returns_the_same_order(client, seed, app):

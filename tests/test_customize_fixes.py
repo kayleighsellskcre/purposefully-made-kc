@@ -31,6 +31,22 @@ def test_customize_still_renders_size_cards_when_the_product_lists_none(client, 
     assert "aren't listed yet" not in html
 
 
+def test_color_size_placement_and_upload_controls_are_keyboard_operable(client, seed):
+    """Round 3 audit: color, size, placement, and upload controls were only
+    wired with onclick, so a keyboard-only shopper tabbing to a swatch or
+    size card could not select it. Checks the delegated Enter/Space handler
+    is wired up and the controls carry the role/tabindex a screen reader or
+    keyboard user relies on.
+    """
+    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    assert 'setupKeyboardActivation();' in html
+    assert 'function setupKeyboardActivation()' in html
+    assert "activateOnEnterOrSpace(document.getElementById('colorGrid'), '.color-card')" in html
+    assert "activateOnEnterOrSpace(document.getElementById('sizeGrid'), '.size-card')" in html
+    assert "activateOnEnterOrSpace(document.getElementById('placementGrid'), '.placement-option')" in html
+    assert "getElementById('uploadAreaMain')" in html
+
+
 def test_a_colour_without_a_warehouse_row_is_not_treated_as_out_of_stock(app, seed):
     with app.app_context():
         product = Product.query.get(seed['tee_id'])
@@ -181,14 +197,21 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert '/design/preview/0' in html
     assert 'designImage.src = instantSrc' in html
     assert 'never delay the first paint' in html
-    assert 'Apply it as soon as the' in html
-    assert 'so the first look matches' in html
-    assert 'if (state.presetDesignId && !hasCachedFit)' in html
-    assert 'CSS 38% is of the whole mockup' in html
-    assert 'Math.max(minVsGarment, Math.min(maxVsGarment, maxVsCanvas))' in html
+    assert '/api/artwork-fits?ids=' in html
+    assert '/api/garment-metrics?src=' in html
+    assert 'function ensureGarmentMetrics(src)' in html
+    assert 'function prefetchArtworkFits(extraIds)' in html
+    assert 'function fetchArtworkFitNow(id)' in html
+    assert 'function prefetchAllGarmentMetrics()' in html
+    assert 'Other colors wait so a logo click' in html
+    assert 'const GARMENT_SILHOUETTES = Object.assign' in html
+    assert 'visible.length ? visible : cards' not in html
+    assert 'if (state.presetDesignId && !hasCachedFit) return;' in html
+    assert 'state.lastFrontGarmentSrc' in html
     assert 'design-layer.is-fitting' in html
     assert "designLayer.classList.add('is-fitting')" in html
-    assert '|| (box && box.widthPx)' in html
+    assert 'state.lastFrontGarmentSrc === src ? state.lastFrontGarmentWidthPx' in html
+    assert '|| (box && box.widthPx)' not in html
     assert "designImage.src = previewSource" not in html
     assert 'transition: transform 0.3s ease' in html
     # Production is still generated from state.selectedSize via the default

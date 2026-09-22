@@ -693,11 +693,26 @@ def paypal_capture_order():
         if resp.status_code in (200, 201):
             result = resp.json()
             if result.get('status') == 'COMPLETED':
-                # Store captured ID in session so /complete can verify without re-hitting PayPal
-                captured = session.get('paypal_captured_ids', [])
-                if order_id not in captured:
-                    captured.append(order_id)
-                session['paypal_captured_ids'] = captured
+                # Store the captured amount (not just the order id) so /complete
+                # can verify it against the order total, the same way the Stripe
+                # branch checks intent.amount. Without this, a customer could
+                # capture a PayPal payment for a small cart, then add more items
+                # before calling /complete - the order would be marked paid at
+                # the new, higher total while PayPal only captured the original
+                # smaller amount.
+                try:
+                    captured_amount = float(
+                        result['purchase_units'][0]['payments']['captures'][0]['amount']['value']
+                    )
+                except (KeyError, IndexError, TypeError, ValueError):
+                    current_app.logger.error(
+                        'PayPal capture %s: COMPLETED but no readable captured amount: %s',
+                        order_id, resp.text[:300],
+                    )
+                    return jsonify({'success': False, 'error': 'PayPal capture failed.'}), 500
+                captured = session.get('paypal_captured_amounts', {})
+                captured[order_id] = captured_amount
+                session['paypal_captured_amounts'] = captured
                 session.modified = True
                 return jsonify({'success': True})
             return jsonify({'success': False, 'error': f'PayPal status: {result.get("status")}'}), 400
@@ -1177,11 +1192,23 @@ def complete():
                 request_id=rid,
             )
         if payment_method == 'paypal' and payment_id:
-            captured_ids = session.get('paypal_captured_ids', [])
-            if payment_id not in captured_ids:
+            captured_amounts = session.get('paypal_captured_amounts', {})
+            if payment_id not in captured_amounts:
                 return _json_error(
                     'PayPal payment was not captured. Please complete the PayPal flow before placing your order.',
                     'PAYPAL_NOT_CAPTURED',
+                    400,
+                    request_id=rid,
+                )
+            # Compare in cents, same as the Stripe check below, so the cart
+            # cannot grow between the PayPal capture and this order being
+            # marked paid without the payment amount being re-verified.
+            expected_cents = int(round(totals['total'] * 100))
+            captured_cents = int(round(captured_amounts[payment_id] * 100))
+            if captured_cents != expected_cents:
+                return _json_error(
+                    'The PayPal total does not match this order. Please wait a moment and try checkout again.',
+                    'PAYMENT_AMOUNT_MISMATCH',
                     400,
                     request_id=rid,
                 )

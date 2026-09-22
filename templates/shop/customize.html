@@ -2217,7 +2217,7 @@
                     <div class="logo-gallery-inline" id="myDesignsInline">
                         <div class="logo-gallery-grid" id="myDesignsGrid">
                             {% for d in my_designs %}
-                            <div class="logo-gallery-item" data-design-id="{{ d.id }}" data-design-url="{{ d.url }}" data-design-title="{{ d.title }}" role="button" tabindex="0" title="{{ d.title }}">
+                            <div class="logo-gallery-item" data-design-id="{{ d.id }}" data-design-url="{{ d.url }}" data-design-title="{{ d.title }}" data-artwork-fit="{{ d.artwork_fit if d.artwork_fit is not none else '' }}" role="button" tabindex="0" title="{{ d.title }}">
                                 <img src="{{ d.url }}" alt="{{ d.title }}" draggable="false">
                             </div>
                             {% endfor %}
@@ -2237,6 +2237,7 @@
                             {% for d in gallery_designs %}
                             <div class="logo-gallery-item{% if preset_design and preset_design.id == d.id %} selected{% endif %}"
                                  data-design-id="{{ d.id }}" data-design-url="{{ d.url }}" data-design-title="{{ d.title }}"
+                                 data-artwork-fit="{{ d.artwork_fit if d.artwork_fit is not none else '' }}"
                                  role="button" tabindex="0" title="{{ d.title }}">
                                 <img src="{{ d.url }}" alt="{{ d.title }}" loading="eager" fetchpriority="high" decoding="async" draggable="false">
                             </div>
@@ -2298,6 +2299,7 @@
                                  data-design-id="{{ d.id }}"
                                  data-design-url="{{ d.url }}"
                                  data-design-title="{{ d.title }}"
+                                 data-artwork-fit="{{ d.artwork_fit if d.artwork_fit is not none else '' }}"
                                  data-category="{{ _primary_cat }}"
                                  data-categories="{{ _extra_ns.cats }}"
                                  data-group="{{ _autogroup(d.title) }}"
@@ -2701,60 +2703,111 @@
         artworkFitDesignId: null,
         artworkFitRatio: null,
         lastFrontGarmentWidthPx: null,
-        lastFrontGarmentHeightPx: null
+        lastFrontGarmentHeightPx: null,
+        lastFrontGarmentSrc: null
     };
     const requireBackName = {{ 'true' if catalog_section == 'uniform' else 'false' }};
     const TRANSFER_SIZING = {{ transfer_sizing | default({}) | tojson }};
     const artworkPreviewTemplate = {{ url_for('design.preview_artwork', design_id=0) | tojson }};
     const artworkFitByDesignId = {};
 
-    function cacheArtworkFit(id, image) {
-        if (id == null || !image) return;
-        const ratio = visibleArtworkWidthRatio(image);
-        artworkFitByDesignId[String(id)] = ratio;
-        // First click used to keep the thumbnail's "whole file including
-        // empty padding" size. Switching away and back then looked correct
-        // because this cache was finally in place. Apply it as soon as the
-        // same-origin preview is measured, so the first look matches.
-        if (String(state.presetDesignId) === String(id)) {
+    function cacheArtworkFit(id, ratio) {
+        if (id == null || ratio == null) return;
+        const key = String(id);
+        const value = Number(ratio);
+        if (!(value > 0)) return;
+        // First measured number wins so a late fallback cannot resize a
+        // logo the customer already saw.
+        if (artworkFitByDesignId[key] == null) {
+            artworkFitByDesignId[key] = value;
+        }
+        if (String(state.presetDesignId) === key) {
             state.artworkFitDesignId = id;
-            state.artworkFitRatio = ratio;
+            state.artworkFitRatio = artworkFitByDesignId[key];
             applyDesignFit();
             applyDesignPosition();
-            const layer = document.getElementById('designLayer');
-            if (layer) layer.classList.remove('is-fitting');
         }
     }
 
-    function prefetchGroupArtworkFits() {
-        const cards = Array.from(document.querySelectorAll('#logoGalleryGrid .logo-gallery-item[data-design-id]'));
-        if (!cards.length) return;
-        const visible = cards.filter(function(card) {
-            return card.style.display !== 'none' && card.offsetParent !== null;
+    function seedArtworkFitsFromDom() {
+        document.querySelectorAll('.logo-gallery-item[data-design-id]').forEach(function(card) {
+            if (card.dataset.artworkFit) cacheArtworkFit(card.dataset.designId, card.dataset.artworkFit);
+            try {
+                JSON.parse(card.dataset.variants || '[]').forEach(function(v) {
+                    if (v && v.id && v.artwork_fit) cacheArtworkFit(v.id, v.artwork_fit);
+                });
+            } catch (err) {}
         });
-        const queue = visible.length ? visible : cards;
+    }
+
+    function collectArtworkFitIds(cards, extraIds) {
         const ids = [];
-        queue.forEach(function(card) {
+        (cards || []).forEach(function(card) {
             if (card.dataset.designId) ids.push(String(card.dataset.designId));
             try {
-                const variants = JSON.parse(card.dataset.variants || '[]');
-                variants.forEach(function(v) {
+                JSON.parse(card.dataset.variants || '[]').forEach(function(v) {
                     if (v && v.id) ids.push(String(v.id));
                 });
             } catch (err) {}
         });
+        (extraIds || []).forEach(function(id) {
+            if (id) ids.push(String(id));
+        });
+        const missing = [];
         const seen = {};
-        let loaded = 0;
         ids.forEach(function(id) {
-            if (!id || seen[id] || artworkFitByDesignId[id] || loaded >= 40) return;
+            if (!id || seen[id] || artworkFitByDesignId[id] != null) return;
             seen[id] = true;
-            loaded += 1;
-            const img = new Image();
-            img.onload = function() { cacheArtworkFit(id, img); };
-            img.src = artworkPreviewTemplate.replace(/0$/, id);
+            missing.push(id);
+        });
+        return missing;
+    }
+
+    function applyArtworkFitPayload(data, requestedIds) {
+        const fits = (data && data.fits) || {};
+        Object.keys(fits).forEach(function(id) {
+            cacheArtworkFit(id, fits[id]);
+        });
+        (requestedIds || []).forEach(function(id) {
+            if (artworkFitByDesignId[id] == null) cacheArtworkFit(id, 1);
         });
     }
-    window.prefetchGroupArtworkFits = prefetchGroupArtworkFits;
+
+    // Only the tiles the customer can already see. Prefetching every hidden
+    // card used to lock the server on 40 PNG measures, so the clicked logo
+    // never appeared.
+    function prefetchArtworkFits(extraIds) {
+        const cards = Array.from(document.querySelectorAll('#logoGalleryGrid .logo-gallery-item[data-design-id]'));
+        const visible = cards.filter(function(card) {
+            return card.style.display !== 'none' && card.offsetParent !== null;
+        });
+        const missing = collectArtworkFitIds(visible, extraIds);
+        if (!missing.length) return;
+        const batch = missing.slice(0, 8);
+        fetch('/api/artwork-fits?ids=' + batch.join(','))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                applyArtworkFitPayload(data, batch);
+                prefetchArtworkFits();
+            })
+            .catch(function() {
+                batch.forEach(function(id) {
+                    if (artworkFitByDesignId[id] == null) cacheArtworkFit(id, 1);
+                });
+                prefetchArtworkFits();
+            });
+    }
+
+    function fetchArtworkFitNow(id) {
+        if (!id || artworkFitByDesignId[String(id)] != null) return;
+        fetch('/api/artwork-fits?ids=' + encodeURIComponent(String(id)))
+            .then(function(r) { return r.json(); })
+            .then(function(data) { applyArtworkFitPayload(data, [String(id)]); })
+            .catch(function() {
+                if (artworkFitByDesignId[String(id)] == null) cacheArtworkFit(id, 1);
+            });
+    }
+    window.prefetchGroupArtworkFits = prefetchArtworkFits;
     
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
@@ -2771,8 +2824,11 @@
         setupAddToCart();
         setupLogoGalleryClicks();
         setupMyDesignsClicks();
+        setupKeyboardActivation();
         refreshAddToCartButton();
-        prefetchGroupArtworkFits();
+        seedArtworkFitsFromDom();
+        prefetchAllGarmentMetrics();
+        prefetchArtworkFits();
         window.addEventListener('resize', function() {
             applyDesignFit();
             updateBackDesignPreview();
@@ -2819,7 +2875,37 @@
             if (first) first.classList.add('selected');
         }
     }
-    
+
+    // Color, size, and placement cards are role="button" tabindex="0" so they're
+    // focusable, but only ever wired an onclick - a keyboard user tabbing to one
+    // and pressing Enter or Space could not select a color, a size, or a
+    // placement. Same delegated Enter/Space -> click() pattern already used
+    // below for the logo gallery and My Designs grids.
+    function setupKeyboardActivation() {
+        function activateOnEnterOrSpace(container, itemSelector) {
+            if (!container) return;
+            container.addEventListener('keydown', function(e) {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                const item = e.target.closest(itemSelector);
+                if (!item) return;
+                e.preventDefault();
+                item.click();
+            });
+        }
+        activateOnEnterOrSpace(document.getElementById('colorGrid'), '.color-card');
+        activateOnEnterOrSpace(document.getElementById('sizeGrid'), '.size-card');
+        activateOnEnterOrSpace(document.getElementById('placementGrid'), '.placement-option');
+
+        const uploadArea = document.getElementById('uploadAreaMain');
+        if (uploadArea) {
+            uploadArea.addEventListener('keydown', function(e) {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                uploadArea.click();
+            });
+        }
+    }
+
     function setupLogoGalleryClicks() {
         const grid = document.getElementById('logoGalleryGrid');
         if (!grid) return;
@@ -2828,7 +2914,12 @@
         const chooserTitle = document.getElementById('logoColorChooserTitle');
 
         function applyFromVariant(v, title, cachedImg) {
-            applyPresetDesign({ id: v.id, url: v.url, title: title || v.label || 'Design' }, cachedImg);
+            applyPresetDesign({
+                id: v.id,
+                url: v.url,
+                title: title || v.label || 'Design',
+                artwork_fit: v.artwork_fit
+            }, cachedImg);
             document.querySelectorAll('.logo-gallery-item').forEach(el => el.classList.remove('selected'));
         }
 
@@ -2878,7 +2969,8 @@
                     const design = {
                         id: (variants[0] && variants[0].id) || card.dataset.designId,
                         url: (variants[0] && variants[0].url) || card.dataset.designUrl,
-                        title: card.dataset.designTitle
+                        title: card.dataset.designTitle,
+                        artwork_fit: (variants[0] && variants[0].artwork_fit) || card.dataset.artworkFit
                     };
                     applyPresetDesign(design, card.querySelector('img'));
                     document.querySelectorAll('.logo-gallery-item').forEach(el => el.classList.remove('selected'));
@@ -2907,7 +2999,7 @@
             if (!card || !card.dataset.designUrl) return;
             e.preventDefault();
             e.stopPropagation();
-            const design = { id: card.dataset.designId, url: card.dataset.designUrl, title: card.dataset.designTitle };
+            const design = { id: card.dataset.designId, url: card.dataset.designUrl, title: card.dataset.designTitle, artwork_fit: card.dataset.artworkFit };
             try {
                 applyPresetDesign(design, card.querySelector('img'));
                 document.querySelectorAll('.logo-gallery-item').forEach(el => el.classList.remove('selected'));
@@ -2976,6 +3068,7 @@
         updateSizeInventory(inventory);
 
         // Swap mockup immediately - no delayed click / opacity race
+        if (frontImage) ensureGarmentMetrics(frontImage);
         updateMockupImage();
 
         if (closePicker) {
@@ -3196,6 +3289,14 @@
         const imageUrl = state.currentView === 'front'
             ? (state.selectedColor.frontImage || state.selectedColor.backImage)
             : (state.selectedColor.backImage || state.selectedColor.frontImage);
+        if (imageUrl) ensureGarmentMetrics(imageUrl);
+        const knownShirt = imageUrl && GARMENT_SILHOUETTES[imageUrl]
+            && GARMENT_SILHOUETTES[imageUrl] !== 'pending'
+            && GARMENT_SILHOUETTES[imageUrl] !== 'failed';
+        if (state.presetDesignId && imageUrl && !knownShirt) {
+            const waitingLayer = document.getElementById('designLayer');
+            if (waitingLayer) waitingLayer.classList.add('is-fitting');
+        }
 
         mockupImg.alt = {{ product|display_name|tojson }} + ' in ' + (state.selectedColor.name || '') +
             (state.currentView === 'back' ? ', back view' : ', front view');
@@ -3208,9 +3309,7 @@
             if (previewCanvas) previewCanvas.classList.remove('loading');
             if (ok) {
                 mockupImg.style.opacity = '1';
-                // A front/back swap changes the image geometry. Refit only
-                // after the replacement mockup has loaded so proof capture
-                // cannot leave the customer-facing logo at a stale, huge size.
+                ensureGarmentMetrics(mockupImg.getAttribute('src') || imageUrl);
                 applyDesignFit();
                 applyDesignPosition();
                 updateBackDesignPreview();
@@ -3413,7 +3512,7 @@
        The server finds the shirt inside the mockup photo. Dividing the
        shirt's height by the body length of the selected size gives pixels
        per inch, so a 2" name is drawn 2" tall against that shirt. */
-    const GARMENT_SILHOUETTES = {};
+    const GARMENT_SILHOUETTES = Object.assign({}, {{ garment_metrics_seed | default({}) | tojson }});
     // Stand-in until the real silhouette arrives: a ghost mockup fills about
     // this much of the frame. Same inch math, coarser garment box.
     const GARMENT_FALLBACK = { top: 0.12, height: 0.70, center: 0.5 };
@@ -3469,27 +3568,66 @@
         return { left: left, top: top, width: w, height: h };
     }
 
+    function ensureGarmentMetrics(src) {
+        src = src || '';
+        if (!src || GARMENT_SILHOUETTES[src] !== undefined) return;
+        GARMENT_SILHOUETTES[src] = 'pending';
+        fetch('/api/garment-metrics?src=' + encodeURIComponent(src))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                GARMENT_SILHOUETTES[src] = (data && data.ok)
+                    ? data
+                    : Object.assign({}, GARMENT_FALLBACK, { width: 0.50, source: 'measured' });
+                const current = document.getElementById('mockupImage');
+                if (!current || current.getAttribute('src') !== src) return;
+                applyDesignFit();
+                applyDesignPosition();
+                updateBackDesignPreview();
+                applyBackDesignPosition();
+            })
+            .catch(function() {
+                GARMENT_SILHOUETTES[src] = Object.assign({}, GARMENT_FALLBACK, { width: 0.50, source: 'measured' });
+                applyDesignFit();
+            });
+    }
+
+    function prefetchAllGarmentMetrics() {
+        const first = [];
+        const rest = [];
+        const seen = {};
+        function queue(src, urgent) {
+            if (!src || seen[src] || GARMENT_SILHOUETTES[src] !== undefined) return;
+            seen[src] = true;
+            (urgent ? first : rest).push(src);
+        }
+        if (state.selectedColor) {
+            queue(state.selectedColor.frontImage, true);
+            queue(state.selectedColor.backImage, true);
+        }
+        document.querySelectorAll('.color-card').forEach(function(card) {
+            queue(card.dataset.frontImage, false);
+            queue(card.dataset.backImage, false);
+        });
+        first.forEach(ensureGarmentMetrics);
+        // Other colors wait so a logo click is not stuck behind 50 mockup downloads.
+        let index = 0;
+        function pump() {
+            rest.slice(index, index + 2).forEach(ensureGarmentMetrics);
+            index += 2;
+            if (index < rest.length) window.setTimeout(pump, 350);
+        }
+        if (rest.length) window.setTimeout(pump, 600);
+    }
+
     function garmentSilhouette() {
         const img = document.getElementById('mockupImage');
         const src = img ? (img.getAttribute('src') || '') : '';
         if (!src) return null;
-        const cached = GARMENT_SILHOUETTES[src];
-        if (cached === undefined) {
-            GARMENT_SILHOUETTES[src] = 'pending';
-            fetch('/api/garment-metrics?src=' + encodeURIComponent(src))
-                .then(r => r.json())
-                .then(function (data) {
-                    GARMENT_SILHOUETTES[src] = (data && data.ok) ? data : 'failed';
-                    const current = document.getElementById('mockupImage');
-                    if (!current || current.getAttribute('src') !== src) return;
-                    applyDesignFit();
-                    applyDesignPosition();
-                    updateBackDesignPreview();
-                    applyBackDesignPosition();
-                })
-                .catch(function () { GARMENT_SILHOUETTES[src] = 'failed'; });
+        if (GARMENT_SILHOUETTES[src] === undefined) {
+            ensureGarmentMetrics(src);
             return null;
         }
+        const cached = GARMENT_SILHOUETTES[src];
         if (cached === 'pending' || cached === 'failed') return null;
         return cached;
     }
@@ -3743,13 +3881,14 @@
         const previewCanvas = document.getElementById('previewCanvas');
         const canvasWidth = (previewCanvas && previewCanvas.clientWidth) || 400;
         const box = garmentBox();
+        const src = (document.getElementById('mockupImage') && document.getElementById('mockupImage').getAttribute('src')) || '';
         if (box && box.measured && box.widthPx) {
             state.lastFrontGarmentWidthPx = box.widthPx;
             state.lastFrontGarmentHeightPx = box.heightPx;
+            state.lastFrontGarmentSrc = src;
         }
         const garmentWidth = (box && box.measured && box.widthPx)
-            || state.lastFrontGarmentWidthPx
-            || (box && box.widthPx);
+            || (state.lastFrontGarmentSrc === src ? state.lastFrontGarmentWidthPx : null);
         if (!garmentWidth) return;
         const hasCachedFit = (
             state.artworkFitDesignId != null
@@ -3760,19 +3899,11 @@
         const maxVsGarment = garmentWidth * (isSideChest ? 0.22 : 0.50);
         const maxVsCanvas = canvasWidth * (isSideChest ? 0.22 : 0.42);
         const minVsGarment = garmentWidth * (isSideChest ? 0.10 : 0.22);
-        // Gallery thumbs report visible ratio ~1 (padding / tainted CDN),
-        // which paints the logo too small. CSS 38% is of the whole mockup
-        // photo, which paints it too big, then it snaps down. Until the
-        // same-origin preview is measured, use the garment cap most padded
-        // gallery art already lands on so the first click matches the
-        // settled size.
-        if (state.presetDesignId && !hasCachedFit) {
-            const waitingPx = Math.max(minVsGarment, Math.min(maxVsGarment, maxVsCanvas));
-            designLayer.style.width = waitingPx.toFixed(1) + 'px';
-            designLayer.style.maxWidth = 'none';
-            designLayer.style.maxHeight = maxH.toFixed(1) + '%';
-            return;
-        }
+        // Gallery logos wait for the measured shirt AND the measured ink
+        // width. Painting earlier used 72% of the photo (too big) or the
+        // thumbnail padding (too small), then snapped. Stay hidden until
+        // both numbers are the final ones.
+        if (state.presetDesignId && !hasCachedFit) return;
         const visibleWidthRatio = hasCachedFit
             ? state.artworkFitRatio
             : visibleArtworkWidthRatio(designImage);
@@ -4253,15 +4384,17 @@
         state.designUrl = preset.url;
         state.designFile = null;
         state.presetDesignId = preset.id || null;
+        if (preset.id && preset.artwork_fit) cacheArtworkFit(preset.id, preset.artwork_fit);
         const cachedFit = preset.id ? artworkFitByDesignId[String(preset.id)] : null;
         state.artworkFitDesignId = cachedFit ? preset.id : null;
         state.artworkFitRatio = cachedFit || null;
         const allowed = state.allowedPlacements;
         state.selectedPlacement = (allowed && allowed.length) ? allowed[0] : 'center_chest';
-        // Hide before the first paint when the measured ratio is not ready,
-        // otherwise the waiting size (or CSS 38% of the photo) flashes huge.
+        // Hide only when this shirt or this logo has not been measured yet.
+        // Once both numbers are cached, the first paint is the final size.
         if (preset.id && !cachedFit) {
             designLayer.classList.add('is-fitting');
+            fetchArtworkFitNow(preset.id);
         } else {
             designLayer.classList.remove('is-fitting');
         }
@@ -4309,28 +4442,6 @@
             paintOnShirt();
         }
 
-        if (preset.id && !artworkFitByDesignId[String(preset.id)]) {
-            const measureImg = new Image();
-            const measureId = preset.id;
-            measureImg.onload = function() {
-                cacheArtworkFit(measureId, measureImg);
-            };
-            measureImg.onerror = function() {
-                artworkFitByDesignId[String(measureId)] = 1;
-                if (String(state.presetDesignId) !== String(measureId)) return;
-                state.artworkFitDesignId = measureId;
-                state.artworkFitRatio = 1;
-                applyDesignFit();
-                applyDesignPosition();
-            };
-            measureImg.src = artworkPreviewTemplate.replace(/0$/, String(measureId));
-            window.setTimeout(function() {
-                if (String(state.presetDesignId) !== String(measureId)) return;
-                const layer = document.getElementById('designLayer');
-                if (layer) layer.classList.remove('is-fitting');
-            }, 1500);
-        }
-
         if (designPreviewImage) designPreviewImage.src = preset.url;
         if (typeof resetArtworkInspector === 'function') resetArtworkInspector();
         state.lastUploadedFile = null;
@@ -4347,11 +4458,6 @@
         const selectedOpt = document.querySelector(`[data-placement="${state.selectedPlacement}"]`);
         if (selectedOpt) selectedOpt.classList.add('selected');
         
-        if (preset.id && !artworkFitByDesignId[String(preset.id)]) {
-            designLayer.classList.add('is-fitting');
-        } else {
-            designLayer.classList.remove('is-fitting');
-        }
         applyDesignPosition();
         applyDesignFit();
         updateDesignLayerVisibility();

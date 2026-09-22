@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_user, logout_user, login_required, current_user
 from models import db, User
 from urllib.parse import urlparse
+import hmac
 import os
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -9,7 +10,32 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 # Counting POSTs only. These routes answer GET and POST from one view, so the
 # previous bare limit meant simply loading the sign-in page ten times in a
 # minute locked a customer out of a form they had not yet submitted.
-from utils.rate_limit import post_only as _rate_limit
+from utils.rate_limit import post_only as _rate_limit, rate_limit as _rate_limit_every_hit
+
+
+def _token_matches(request_args):
+    """Constant-time comparison against ADMIN_PROMOTE_TOKEN.
+
+    Round 3 audit: the previous `token != expected` leaked a timing
+    side-channel, and neither the compare nor the outcome was logged, so an
+    attacker got unlimited silent guesses. This is paired with a rate limit
+    on both routes that use it.
+    """
+    expected = os.environ.get('ADMIN_PROMOTE_TOKEN')
+    if not expected:
+        return False
+    token = request_args.get('token') or ''
+    if not isinstance(token, str):
+        return False
+    # compare_digest raises ValueError when lengths differ, which would 500
+    # and also leak the expected length. Same-length dummy compare, then False.
+    try:
+        if len(token) != len(expected):
+            hmac.compare_digest(expected, expected)
+            return False
+        return hmac.compare_digest(token, expected)
+    except (TypeError, ValueError):
+        return False
 
 
 def _clean_email(raw):
@@ -44,16 +70,23 @@ def _clean_email(raw):
 
 
 @auth_bp.route('/emergency-unlock')
+@_rate_limit_every_hit("10 per hour")
 def emergency_unlock():
     """Emergency: unlock the admin account lockout and optionally reset password.
-    Protected by ADMIN_PROMOTE_TOKEN. Pass ?pw=newpassword to also reset password."""
-    token = request.args.get('token')
-    expected = os.environ.get('ADMIN_PROMOTE_TOKEN')
-    if not expected or token != expected:
+    Protected by ADMIN_PROMOTE_TOKEN. Pass ?pw=newpassword to also reset password.
+
+    The ?pw= GET password reset is left as-is for now (round 3 audit flagged
+    it - a plaintext password on a GET request lands in server/proxy logs and
+    browser history - but changing the interaction needs Kayleigh's input on
+    how she wants the recovery flow to work, so only the token check, rate
+    limit, and logging were hardened here)."""
+    if not _token_matches(request.args):
+        current_app.logger.warning('emergency-unlock: rejected token from %s', request.remote_addr)
         return 'Unauthorized', 403
     admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').strip().lower()
     user = User.query.filter(db.func.lower(User.email) == admin_email).first()
     if not user:
+        current_app.logger.warning('emergency-unlock: no user for %s from %s', admin_email, request.remote_addr)
         return f'No user found with email {admin_email}', 404
     user.failed_logins = 0
     user.locked_until = None
@@ -63,15 +96,16 @@ def emergency_unlock():
         user.set_password(new_pw)
         msg += f' Password reset to provided value.'
     db.session.commit()
+    current_app.logger.warning('emergency-unlock: %s unlocked from %s', admin_email, request.remote_addr)
     return msg + ' You can now log in.', 200
 
 
 @auth_bp.route('/promote-admin')
+@_rate_limit_every_hit("10 per hour")
 def promote_admin():
     """One-time: promote purposefullymadekc@gmail.com to admin. Requires ADMIN_PROMOTE_TOKEN in env. No other account can be promoted."""
-    token = request.args.get('token')
-    expected = os.environ.get('ADMIN_PROMOTE_TOKEN')
-    if not expected or token != expected:
+    if not _token_matches(request.args):
+        current_app.logger.warning('promote-admin: rejected token from %s', request.remote_addr)
         flash('Invalid or missing token.', 'error')
         return redirect(url_for('main.index'))
     admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').strip().lower()
@@ -85,6 +119,7 @@ def promote_admin():
     user.failed_logins = 0
     user.locked_until = None
     db.session.commit()
+    current_app.logger.warning('promote-admin: %s promoted from %s', admin_email, request.remote_addr)
     flash(f'{admin_email} is now an admin and any lockout has been cleared. Log in now.', 'success')
     return redirect(url_for('auth.login'))
 
