@@ -221,9 +221,18 @@ def profile():
 def my_group_orders():
     """View group orders created by this user"""
     from utils.group_orders import is_deadline_passed, is_not_yet_open
+    owned = Collection.created_by_user_id == current_user.id
+    if getattr(current_user, 'is_admin', False):
+        # Stores made from Admin -> Collections never recorded a creator
+        # before this fix, so they belonged to no one's "My Group Orders" -
+        # not even the admin who runs the shop. Since there is only ever
+        # one admin account, any creator-less store is effectively hers.
+        # (`.in_([current_user.id, None])` was tried first, but SQL's IN
+        # never matches NULL even when None is literally in the list.)
+        owned = owned | Collection.created_by_user_id.is_(None)
     collections = (
         Collection.query
-        .filter_by(created_by_user_id=current_user.id)
+        .filter(owned)
         .order_by(Collection.created_at.desc())
         .all()
     )

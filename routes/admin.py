@@ -2724,6 +2724,10 @@ def add_collection():
                 shipping_enabled=request.form.get('shipping_enabled') == 'on',
                 allow_cash_pickup=request.form.get('allow_cash_pickup') == 'on',
                 tax_rate=float(current_app.config['KS_SALES_TAX_PERCENT']),
+                # Without this, a store made here never showed up under My
+                # Group Orders for the admin who made it - only the
+                # customer-facing create flow was setting it.
+                created_by_user_id=current_user.id,
             )
             from utils.group_orders import apply_collection_visibility
             apply_collection_visibility(collection)
