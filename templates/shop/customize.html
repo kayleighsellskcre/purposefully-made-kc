@@ -2709,6 +2709,7 @@
         lockedFitMeasured: false
     };
     const requireBackName = {{ 'true' if catalog_section == 'uniform' else 'false' }};
+    const isUniformKit = {{ 'true' if catalog_section == 'uniform' else 'false' }};
     const TRANSFER_SIZING = {{ transfer_sizing | default({}) | tojson }};
     const artworkPreviewTemplate = {{ url_for('design.preview_artwork', design_id=0) | tojson }};
     const artworkFitByDesignId = {};
@@ -3885,6 +3886,14 @@
         const box = garmentBox();
         const src = (document.getElementById('mockupImage') && document.getElementById('mockupImage').getAttribute('src')) || '';
         const lockKey = String(state.presetDesignId || state.designUrl || '') + '|' + src + '|' + placement;
+        const shirtMeasured = !!(box && box.measured && box.widthPx);
+        // Jerseys only: do not paint or lock until this shirt is measured.
+        // A first paint from the 50% stand-in was locking the logo too small
+        // until someone tapped Center Chest.
+        if (isUniformKit && !shirtMeasured) {
+            designLayer.classList.add('is-fitting');
+            return;
+        }
         // Keep the size the customer already saw, but only after we used the
         // measured ink width. A first paint at ratio 1 (padded PNG) would
         // otherwise lock a circular logo too small on the chest.
@@ -3930,7 +3939,8 @@
         designLayer.style.maxWidth = 'none';
         designLayer.style.maxHeight = maxH.toFixed(1) + '%';
         designLayer.classList.remove('is-fitting');
-        if (designLayer.classList.contains('visible') && hasCachedFit) {
+        if (designLayer.classList.contains('visible') && hasCachedFit
+            && (!isUniformKit || shirtMeasured)) {
             state.lockedFitKey = lockKey;
             state.lockedFitMeasured = true;
         }
@@ -4410,7 +4420,14 @@
         state.selectedPlacement = (allowed && allowed.length) ? allowed[0] : 'center_chest';
         state.lockedFitKey = null;
         state.lockedFitMeasured = false;
-        designLayer.classList.remove('is-fitting');
+        // Shop logos still paint on the click. Jerseys stay hidden until
+        // applyDesignFit has a measured shirt, so the 50% stand-in cannot
+        // flash or lock the locked logo too small.
+        if (isUniformKit) {
+            designLayer.classList.add('is-fitting');
+        } else {
+            designLayer.classList.remove('is-fitting');
+        }
         if (preset.id && !cachedFit) fetchArtworkFitNow(preset.id);
 
         function paintOnShirt() {

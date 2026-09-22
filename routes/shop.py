@@ -51,6 +51,27 @@ def _peek_garment_metrics(color_variants):
     return seed
 
 
+def _measure_garment_metrics(color_variants, app=None):
+    """Measure jersey mockups now so a locked logo paints at the final size."""
+    try:
+        from services.garment_metrics import measure
+    except Exception:
+        return _peek_garment_metrics(color_variants)
+    seed = {}
+    for variant in color_variants or []:
+        for key in ('front_image', 'back_image'):
+            src = (variant.get(key) or '').strip()
+            if not src or src in seed:
+                continue
+            try:
+                result = measure(src, app)
+            except Exception:
+                result = None
+            if result and result.get('ok'):
+                seed[src] = result
+    return seed
+
+
 def _stamp_artwork_fits(cards):
     """Attach cached visible-width ratios so the first click can paint at final size."""
     if not cards:
@@ -896,7 +917,10 @@ def customize(product_id):
     from utils.group_orders import is_not_yet_open as _is_not_yet_open, format_schedule_date
     ordering_not_yet_open = bool(coll and _is_not_yet_open(coll))
     collection_opens_label = format_schedule_date(coll.order_opens_at, '%B %-d') if (ordering_not_yet_open and coll) else ''
-    garment_metrics_seed = _peek_garment_metrics(color_variants_data)
+    if catalog_section == 'uniform':
+        garment_metrics_seed = _measure_garment_metrics(color_variants_data, current_app)
+    else:
+        garment_metrics_seed = _peek_garment_metrics(color_variants_data)
     _stamp_artwork_fits(gallery_designs)
     _stamp_artwork_fits(my_designs)
     if preset_design:

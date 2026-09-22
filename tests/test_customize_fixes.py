@@ -210,6 +210,11 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert 'if (state.presetDesignId && !hasCachedFit) return;' not in html
     assert 'state.lockedFitKey' in html
     assert 'state.lockedFitMeasured' in html
+    assert 'const isUniformKit = false' in html
+    assert 'if (isUniformKit && !shirtMeasured)' in html
+    assert "if (isUniformKit) {" in html
+    assert "designLayer.classList.add('is-fitting');" in html
+    assert 'Jerseys stay hidden until' in html
     assert 'padded PNG' in html
     assert 'Paint on the click' in html
     assert 'state.lastFrontGarmentSrc' in html
@@ -367,6 +372,8 @@ def test_group_customize_defaults_to_last_name_on_jerseys(client, app, seed):
     assert "Player's last name" in html
     assert 'e.g. SMITH' in html
     assert 'last names on these jerseys' in html
+    assert 'const isUniformKit = true' in html
+    assert 'if (isUniformKit && !shirtMeasured)' in html
 
 
 def test_fan_wear_customize_does_not_require_a_name_or_number(client, app, seed):
@@ -394,8 +401,35 @@ def test_fan_wear_customize_does_not_require_a_name_or_number(client, app, seed)
         f'/shop/customize/{seed["tee_id"]}?catalog_section=fan'
     ).get_data(as_text=True)
     assert 'const requireBackName = false' in html
+    assert 'const isUniformKit = false' in html
     assert 'Optional. Leave this blank if you do not want a name or number' in html
     assert 'Last name (optional)' in html
     assert "Player's last name" not in html
     assert 'A name or number on the back is optional' not in html
     assert 'if (requireBackName)' in html
+
+
+def test_measure_garment_metrics_keeps_only_ok_boxes():
+    from routes.shop import _measure_garment_metrics
+
+    variants = [
+        {'front_image': '/static/front.png', 'back_image': '/static/back.png'},
+        {'front_image': '/static/front.png', 'back_image': ''},
+    ]
+    calls = []
+
+    def fake_measure(src, app=None, timeout=6.0):
+        calls.append(src)
+        if src.endswith('front.png'):
+            return {'ok': True, 'width': 0.41, 'source': 'measured'}
+        return {'ok': False, 'reason': 'not_found'}
+
+    import services.garment_metrics as garment_metrics
+    original = garment_metrics.measure
+    garment_metrics.measure = fake_measure
+    try:
+        seed = _measure_garment_metrics(variants)
+    finally:
+        garment_metrics.measure = original
+    assert seed == {'/static/front.png': {'ok': True, 'width': 0.41, 'source': 'measured'}}
+    assert calls == ['/static/front.png', '/static/back.png']
