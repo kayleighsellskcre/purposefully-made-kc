@@ -591,6 +591,7 @@ def create_app(config_class=Config):
         """Return the correct src for a stored image — Cloudinary URL or local static path."""
         if not path_or_url:
             return ''
+        path_or_url = path_or_url.replace('{quality}', '80').replace('%7Bquality%7D', '80')
         if path_or_url.startswith('http'):
             return path_or_url
         from flask import url_for

@@ -588,7 +588,7 @@ def _artwork_piece(side):
 def preview_item_artwork(order_id, item_id, side):
     """Low-DPI preview for one render mode. Never builds a 300 DPI file."""
     from utils.name_number_art import generate_personalized_png
-    from utils.order_artwork import piece_print_url
+    from utils.order_artwork import local_file_for_url, piece_print_url
     from utils.personalization_layout import PREVIEW_DPI
     if side not in ('back', 'back-name', 'back-number'):
         return ('', 404)
@@ -596,8 +596,9 @@ def preview_item_artwork(order_id, item_id, side):
     item = OrderItem.query.filter_by(id=item_id, order_id=order.id).first_or_404()
     piece = _artwork_piece(side)
     stored = piece_print_url(item, piece)
-    if stored:
-        return redirect(stored)
+    local = local_file_for_url(current_app, stored) if stored else None
+    if local:
+        return send_file(local, mimetype='image/png', max_age=60)
     try:
         data, _snapshot = generate_personalized_png(
             current_app, item, piece, customer_name=order.full_name, dpi=PREVIEW_DPI,

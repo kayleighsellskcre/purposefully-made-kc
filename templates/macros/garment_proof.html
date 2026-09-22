@@ -2,13 +2,13 @@
 <div class="pm-proof">
     {% if label %}<span class="pm-proof-label">{{ label }}</span>{% endif %}
     {% if mockup_url %}
-    <img class="pm-proof-base" src="{{ mockup_url }}" alt="{{ label or 'Garment' }}"
+    <img class="pm-proof-base" src="{{ mockup_url | image_url }}" alt="{{ label or 'Garment' }}"
          onerror="this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'">
     {% else %}
     <img class="pm-proof-base" src="{{ url_for('static', filename='img/placeholder-product.svg') }}" alt="">
     {% endif %}
     {% if overlay_url %}
-    <img class="pm-proof-overlay {{ placement or 'center_chest' }}" src="{{ overlay_url }}" alt=""
+    <img class="pm-proof-overlay {{ placement or 'center_chest' }}" src="{{ overlay_url | image_url }}" alt=""
          {% if overlay_style %}style="{{ overlay_style }}"{% endif %}
          onerror="this.style.display='none'">
     {% endif %}

@@ -110,10 +110,9 @@
                     {% for row in personal_list %}
                     <div class="design-master-card">
                         {% if row.print_url %}
-                        <a href="{{ row.print_url }}" target="_blank" rel="noopener" class="design-master-preview design-master-preview-link" title="Open full size">
+                        <div class="design-master-preview">
                             <img src="{{ row.print_url }}" alt="{{ row.name or 'Back' }} {{ row.number or '' }}">
-                            <span class="design-click-hint">Click to open</span>
-                        </a>
+                        </div>
                         {% else %}
                         <div class="design-master-preview">
                             <div class="no-design">No image</div>
@@ -126,7 +125,7 @@
                             <p>Number {{ row.number_width_display }}″ × {{ row.number_height_display }}″</p>
                             <p class="qty-badge">Qty: {{ row.quantity }}</p>
                             {% if row.order_id and row.item_id %}
-                            <a class="btn btn-primary btn-sm" href="{{ url_for('admin.photos_item_artwork', order_id=row.order_id, item_id=row.item_id, side='back') }}" style="margin-top:0.65rem;">Save back PNG</a>
+                            <a class="btn btn-primary btn-sm od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=row.order_id, item_id=row.item_id, side='back') }}" style="margin-top:0.65rem;">Download back PNG</a>
                             {% endif %}
                         </div>
                     </div>

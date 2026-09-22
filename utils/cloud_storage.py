@@ -119,7 +119,7 @@ def image_url(path_or_url):
         return ('data:image/svg+xml;charset=utf-8,'
                 '%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20'
                 'width%3D%221%22%20height%3D%221%22%2F%3E')
-    path_or_url = path_or_url.strip()
+    path_or_url = path_or_url.strip().replace('{quality}', '80').replace('%7Bquality%7D', '80')
     if path_or_url.startswith('http') or path_or_url.startswith('data:'):
         return path_or_url
     from flask import url_for

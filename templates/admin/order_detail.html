@@ -369,9 +369,9 @@
                     <div class="od-print-grid">
                         {% if kit.has_front_print %}
                         <div class="pm-print-file">
-                            <a class="pm-print-preview" href="{{ kit.front_print_url }}" target="_blank" rel="noopener" title="Open full size">
+                            <div class="pm-print-preview">
                                 <img src="{{ kit.front_print_url }}" alt="Front print file">
-                            </a>
+                            </div>
                             <div class="pm-print-meta">
                                 <h3>Front transfer</h3>
                                 <p>
@@ -384,7 +384,8 @@
                                     Size in transfer details below
                                     {% endif %}
                                 </p>
-                                <a class="od-btn od-btn-save" href="{{ url_for('admin.photos_item_artwork', order_id=order.id, item_id=item.id, side='front') }}">Save front PNG</a>
+                                <a class="od-btn od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='front') }}">Download front PNG</a>
+                                <p class="od-field-hint od-save-hint">Press and hold the picture, then tap Add to Photos.</p>
                             </div>
                         </div>
                         {% endif %}
@@ -392,13 +393,13 @@
                         {% if kit.has_back_print %}
                         <div class="pm-print-file{% if layout and layout.needs_review %} od-print-review{% endif %}">
                             {% if kit.is_personalized_back %}
-                            <a class="pm-print-preview" href="{{ url_for('admin.preview_item_artwork', order_id=order.id, item_id=item.id, side='back') }}" target="_blank" rel="noopener" title="Combined back layout">
+                            <div class="pm-print-preview">
                                 <img src="{{ url_for('admin.preview_item_artwork', order_id=order.id, item_id=item.id, side='back') }}" alt="Combined back layout">
-                            </a>
+                            </div>
                             {% elif kit.back_print_url %}
-                            <a class="pm-print-preview" href="{{ kit.back_print_url }}" target="_blank" rel="noopener" title="Open stored preview">
+                            <div class="pm-print-preview">
                                 <img src="{{ kit.back_print_url }}" alt="Back print file">
-                            </a>
+                            </div>
                             {% endif %}
                             <div class="pm-print-meta">
                                 <h3>Back transfer</h3>
@@ -436,9 +437,11 @@
                                     <button type="submit" class="od-btn od-btn-outline">Approve reconstructed layout</button>
                                 </form>
                                 {% elif kit.is_personalized_back %}
-                                <a class="od-btn od-btn-save" href="{{ url_for('admin.photos_item_artwork', order_id=order.id, item_id=item.id, side='back') }}">Save back PNG</a>
+                                <a class="od-btn od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back') }}">Download back PNG</a>
+                                <p class="od-field-hint od-save-hint">Press and hold the picture, then tap Add to Photos.</p>
                                 {% elif kit.back_print_url %}
-                                <a class="od-btn od-btn-save" href="{{ url_for('admin.photos_item_artwork', order_id=order.id, item_id=item.id, side='back') }}">Save back PNG</a>
+                                <a class="od-btn od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back') }}">Download back PNG</a>
+                                <p class="od-field-hint od-save-hint">Press and hold the picture, then tap Add to Photos.</p>
                                 {% endif %}
                             </div>
                         </div>
@@ -490,9 +493,9 @@
                 <section class="od-xfer-card">
                     <h3>BACK NAME</h3>
                     {% if prod.back.name %}
-                    <a class="pm-print-preview od-piece-preview" href="{{ url_for('admin.preview_item_artwork', order_id=order.id, item_id=item.id, side='back-name') }}" title="Name only">
+                    <div class="pm-print-preview od-piece-preview">
                         <img src="{{ url_for('admin.preview_item_artwork', order_id=order.id, item_id=item.id, side='back-name') }}" alt="{{ prod.back.name }}">
-                    </a>
+                    </div>
                     {% endif %}
                     <dl>
                         <div><dt>Name</dt><dd>{{ prod.back.name or '-' }}</dd></div>
@@ -502,15 +505,15 @@
                         <div><dt>Order by</dt><dd>HEIGHT</dd></div>
                         <div><dt>Horizontal adjustment</dt><dd>{% if prod.back.condense_percent %}{{ prod.back.condense_percent }}% condensed{% else %}none{% endif %}</dd></div>
                     </dl>
-                    <a class="od-btn od-btn-save" href="{{ url_for('admin.photos_item_artwork', order_id=order.id, item_id=item.id, side='back-name') }}">Save name PNG</a>
-                    <p class="od-field-hint od-save-hint">On your phone: tap Save, then tap and hold the picture → Add to Photos.</p>
+                    <a class="od-btn od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back-name') }}">Download name PNG</a>
+                    <p class="od-field-hint od-save-hint">Press and hold the picture, then tap Add to Photos.</p>
                 </section>
                 <section class="od-xfer-card">
                     <h3>BACK NUMBER</h3>
                     {% if prod.back.number %}
-                    <a class="pm-print-preview od-piece-preview" href="{{ url_for('admin.preview_item_artwork', order_id=order.id, item_id=item.id, side='back-number') }}" title="Number only">
+                    <div class="pm-print-preview od-piece-preview">
                         <img src="{{ url_for('admin.preview_item_artwork', order_id=order.id, item_id=item.id, side='back-number') }}" alt="{{ prod.back.number }}">
-                    </a>
+                    </div>
                     {% endif %}
                     <dl>
                         <div><dt>Number</dt><dd>{{ prod.back.number or '-' }}</dd></div>
@@ -519,14 +522,14 @@
                         <div><dt>Horizontal scale</dt><dd>{% if prod.back.number_scale_percent %}{{ prod.back.number_scale_percent }}% narrower ({{ '%.3f'|format(prod.back.number_scale or 0) }}× of {{ prod.back.number_width_natural_display or '-' }}″){% else %}none{% endif %}</dd></div>
                         <div><dt>Order by</dt><dd>HEIGHT</dd></div>
                     </dl>
-                    <a class="od-btn od-btn-save" href="{{ url_for('admin.photos_item_artwork', order_id=order.id, item_id=item.id, side='back-number') }}">Save number PNG</a>
-                    <p class="od-field-hint od-save-hint">On your phone: tap Save, then tap and hold the picture → Add to Photos.</p>
+                    <a class="od-btn od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back-number') }}">Download number PNG</a>
+                    <p class="od-field-hint od-save-hint">Press and hold the picture, then tap Add to Photos.</p>
                 </section>
                 <section class="od-xfer-card">
                     <h3>COMBINED BACK LAYOUT</h3>
-                    <a class="pm-print-preview od-piece-preview" href="{{ url_for('admin.preview_item_artwork', order_id=order.id, item_id=item.id, side='back') }}" title="Combined name and number">
+                    <div class="pm-print-preview od-piece-preview">
                         <img src="{{ url_for('admin.preview_item_artwork', order_id=order.id, item_id=item.id, side='back') }}" alt="{{ prod.back.name }} {{ prod.back.number }}">
-                    </a>
+                    </div>
                     <dl>
                         <div><dt>Garment</dt><dd>{{ prod.back.garment_style or item.product_name }}</dd></div>
                         <div><dt>Category / size</dt><dd>{{ (prod.back.category or prod.back.age_group)|title }} {{ prod.back.size }}{% if prod.back.layout_label %} ({{ prod.back.layout_label }}){% endif %}</dd></div>
@@ -537,8 +540,8 @@
                         <div><dt>Quantity</dt><dd>{{ prod.back.quantity }}</dd></div>
                     </dl>
                     {% if prod.back.exceeds_safe_area %}<p class="od-xfer-warn">Exceeds safe printable area for this size.</p>{% endif %}
-                    <a class="od-btn od-btn-save" href="{{ url_for('admin.photos_item_artwork', order_id=order.id, item_id=item.id, side='back') }}">Save combined PNG</a>
-                    <p class="od-field-hint od-save-hint">On your phone: tap Save, then tap and hold the picture → Add to Photos.</p>
+                    <a class="od-btn od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='back') }}">Download combined PNG</a>
+                    <p class="od-field-hint od-save-hint">Press and hold the picture, then tap Add to Photos.</p>
                 </section>
                 {% endif %}
             </div>
@@ -1317,6 +1320,7 @@ a.od-btn-outline { color: var(--text-primary); }
 }
 
 @media (max-width: 768px) {
+    .od-btn-save { display: none !important; }
     .od-save-hint { display: block; margin-top: 0.4rem; }
     .od-title { font-size: 1.5rem; }
     .od-header { flex-direction: column; }

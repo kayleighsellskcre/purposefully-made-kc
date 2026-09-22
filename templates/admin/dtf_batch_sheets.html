@@ -54,9 +54,7 @@
                 <article class="dtf-card">
                     <div class="dtf-preview">
                         {% if row.preview_url %}
-                        <a href="{{ row.preview_url | image_url }}" target="_blank" rel="noopener" title="Open full size">
-                            <img src="{{ row.preview_url | image_url }}" alt="{{ row.design_name }}">
-                        </a>
+                        <img src="{{ row.preview_url | image_url }}" alt="{{ row.design_name }}">
                         {% else %}
                         <div class="no-art">No file</div>
                         {% endif %}
@@ -70,9 +68,9 @@
                         <p class="dtf-size">Enter width <strong>{{ row.width_display }}″</strong></p>
                         <p class="style-name">File is {{ row.width_display }}″ W × {{ row.height_display }}″ H</p>
                         <p class="qty-line">Qty <strong>{{ row.quantity }}</strong></p>
+                        <p class="dtf-hold-hint">On your phone, press and hold the picture, then tap Add to Photos.</p>
                         <div class="dtf-btns no-print">
                             <a class="btn btn-primary btn-sm" href="{{ url_for('admin.save_item_artwork', order_id=row.order_id, item_id=row.item_id, side='front') }}">Download PNG</a>
-                            <a class="btn btn-outline btn-sm" href="{{ url_for('admin.photos_item_artwork', order_id=row.order_id, item_id=row.item_id, side='front') }}">Save to phone</a>
                             <textarea id="copy-logo-{{ loop.index }}" class="copy-src" hidden readonly>{{ row.copy_text }}</textarea>
                             <button type="button" class="btn btn-outline btn-sm" data-copy-target="copy-logo-{{ loop.index }}">Copy</button>
                         </div>
@@ -100,9 +98,7 @@
                 {% for row in personal %}
                 <article class="dtf-card">
                     <div class="dtf-preview">
-                        <a href="{{ url_for('admin.preview_item_artwork', order_id=row.order_id, item_id=row.item_id, side='back') }}" target="_blank" rel="noopener" title="Open full size">
-                            <img src="{{ url_for('admin.preview_item_artwork', order_id=row.order_id, item_id=row.item_id, side='back') }}" alt="{{ row.name }} {{ row.number }}">
-                        </a>
+                        <img src="{{ url_for('admin.preview_item_artwork', order_id=row.order_id, item_id=row.item_id, side='back') }}" alt="{{ row.name }} {{ row.number }}">
                     </div>
                     <div class="dtf-info">
                         <p class="style-num">{{ row.name or '-' }}{% if row.number %} #{{ row.number }}{% endif %}</p>
@@ -114,6 +110,7 @@
                         <p class="dtf-size">Number height <strong>{{ row.number_height_display }}″</strong> <span>({{ row.number_width_display }}″ wide)</span></p>
                         {% endif %}
                         <p class="qty-line">Qty <strong>{{ row.quantity }}</strong></p>
+                        <p class="dtf-hold-hint">On your phone, press and hold the picture, then tap Add to Photos.</p>
                         <div class="dtf-btns no-print">
                             {% if row.name %}
                             <a class="btn btn-primary btn-sm" href="{{ url_for('admin.save_item_artwork', order_id=row.order_id, item_id=row.item_id, side='back-name') }}">Download name</a>
@@ -121,7 +118,6 @@
                             {% if row.number %}
                             <a class="btn btn-primary btn-sm" href="{{ url_for('admin.save_item_artwork', order_id=row.order_id, item_id=row.item_id, side='back-number') }}">Download number</a>
                             {% endif %}
-                            <a class="btn btn-outline btn-sm" href="{{ url_for('admin.photos_item_artwork', order_id=row.order_id, item_id=row.item_id, side='back') }}">Save to phone</a>
                             <textarea id="copy-personal-{{ loop.index }}" class="copy-src" hidden readonly>{{ row.copy_text }}</textarea>
                             <button type="button" class="btn btn-outline btn-sm" data-copy-target="copy-personal-{{ loop.index }}">Copy</button>
                         </div>
@@ -165,9 +161,16 @@
     linear-gradient(45deg, transparent 75%, #eee 75%),
     linear-gradient(-45deg, transparent 75%, #eee 75%);
     background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0; background-color: #f7f7f7;
-    display: flex; align-items: center; justify-content: center; }
-.dtf-preview a { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; padding: 0.75rem; }
-.dtf-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    display: flex; align-items: center; justify-content: center; padding: 0.75rem; }
+.dtf-preview img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    -webkit-touch-callout: default;
+    -webkit-user-select: none;
+    user-select: none;
+}
+.dtf-hold-hint { display: none; }
 .no-art { color: var(--text-secondary); }
 .dtf-info { padding: 0.9rem 1rem 1rem; }
 .style-num { font-weight: 800; color: var(--aged-bronze, #8a6a4a); margin: 0; font-size: 1.2rem; line-height: 1.25; }
@@ -314,7 +317,7 @@
         flex-shrink: 0 !important;
     }
 
-    .dtf-preview a {
+    .dtf-preview {
         padding: 0.14in !important;
     }
 
@@ -387,6 +390,13 @@
         width: 100%;
         justify-content: center;
         min-height: 48px;
+    }
+    .dtf-hold-hint {
+        display: block;
+        margin: 0.55rem 0 0;
+        color: var(--text-secondary);
+        font-size: 0.92rem;
+        line-height: 1.35;
     }
 }
 </style>
