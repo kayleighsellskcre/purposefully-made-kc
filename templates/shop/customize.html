@@ -182,6 +182,9 @@
     justify-content: center;
     z-index: 10;
 }
+.design-layer.is-fitting {
+    opacity: 0;
+}
 
 .design-layer.visible {
     /* visibility is controlled in JS so Center Back can hide the front overlay */
@@ -2718,6 +2721,8 @@
             state.artworkFitRatio = ratio;
             applyDesignFit();
             applyDesignPosition();
+            const layer = document.getElementById('designLayer');
+            if (layer) layer.classList.remove('is-fitting');
         }
     }
 
@@ -2728,14 +2733,26 @@
             return card.style.display !== 'none' && card.offsetParent !== null;
         });
         const queue = visible.length ? visible : cards;
-        const limit = Math.min(queue.length, 40);
-        for (let i = 0; i < limit; i++) {
-            const id = queue[i].dataset.designId;
-            if (!id || artworkFitByDesignId[String(id)]) continue;
+        const ids = [];
+        queue.forEach(function(card) {
+            if (card.dataset.designId) ids.push(String(card.dataset.designId));
+            try {
+                const variants = JSON.parse(card.dataset.variants || '[]');
+                variants.forEach(function(v) {
+                    if (v && v.id) ids.push(String(v.id));
+                });
+            } catch (err) {}
+        });
+        const seen = {};
+        let loaded = 0;
+        ids.forEach(function(id) {
+            if (!id || seen[id] || artworkFitByDesignId[id] || loaded >= 40) return;
+            seen[id] = true;
+            loaded += 1;
             const img = new Image();
             img.onload = function() { cacheArtworkFit(id, img); };
-            img.src = artworkPreviewTemplate.replace(/0$/, String(id));
-        }
+            img.src = artworkPreviewTemplate.replace(/0$/, id);
+        });
     }
     window.prefetchGroupArtworkFits = prefetchGroupArtworkFits;
     
@@ -3739,24 +3756,35 @@
             && String(state.artworkFitDesignId) === String(state.presetDesignId)
             && state.artworkFitRatio
         );
-        // Gallery thumbs report visible ratio ~1 (transparent padding or a
-        // tainted CDN canvas). That paints the logo too small until the
-        // same-origin preview is measured. Keep the CSS default until then
-        // so a first click matches clicking away and back.
-        if (state.presetDesignId && !hasCachedFit) return;
+        const maxH = isSideChest ? 20 : 60;
+        const maxVsGarment = garmentWidth * (isSideChest ? 0.22 : 0.50);
+        const maxVsCanvas = canvasWidth * (isSideChest ? 0.22 : 0.42);
+        const minVsGarment = garmentWidth * (isSideChest ? 0.10 : 0.22);
+        // Gallery thumbs report visible ratio ~1 (padding / tainted CDN),
+        // which paints the logo too small. CSS 38% is of the whole mockup
+        // photo, which paints it too big, then it snaps down. Until the
+        // same-origin preview is measured, use the garment cap most padded
+        // gallery art already lands on so the first click matches the
+        // settled size.
+        if (state.presetDesignId && !hasCachedFit) {
+            const waitingPx = Math.max(minVsGarment, Math.min(maxVsGarment, maxVsCanvas));
+            designLayer.style.width = waitingPx.toFixed(1) + 'px';
+            designLayer.style.maxWidth = 'none';
+            designLayer.style.maxHeight = maxH.toFixed(1) + '%';
+            return;
+        }
         const visibleWidthRatio = hasCachedFit
             ? state.artworkFitRatio
             : visibleArtworkWidthRatio(designImage);
         const targetRatio = isSideChest ? 0.17 : 0.38;
         let layerWidthPx = garmentWidth * targetRatio / visibleWidthRatio;
-        const maxH = isSideChest ? 20 : 60;
-        const maxVsGarment = garmentWidth * (isSideChest ? 0.22 : 0.50);
-        layerWidthPx = Math.min(layerWidthPx, maxVsGarment, canvasWidth * (isSideChest ? 0.22 : 0.42));
-        layerWidthPx = Math.max(layerWidthPx, garmentWidth * (isSideChest ? 0.10 : 0.22));
+        layerWidthPx = Math.min(layerWidthPx, maxVsGarment, maxVsCanvas);
+        layerWidthPx = Math.max(layerWidthPx, minVsGarment);
 
         designLayer.style.width = layerWidthPx.toFixed(1) + 'px';
         designLayer.style.maxWidth = 'none';
         designLayer.style.maxHeight = maxH.toFixed(1) + '%';
+        designLayer.classList.remove('is-fitting');
     }
     
     function applyBackDesignPosition() {
@@ -4230,6 +4258,13 @@
         state.artworkFitRatio = cachedFit || null;
         const allowed = state.allowedPlacements;
         state.selectedPlacement = (allowed && allowed.length) ? allowed[0] : 'center_chest';
+        // Hide before the first paint when the measured ratio is not ready,
+        // otherwise the waiting size (or CSS 38% of the photo) flashes huge.
+        if (preset.id && !cachedFit) {
+            designLayer.classList.add('is-fitting');
+        } else {
+            designLayer.classList.remove('is-fitting');
+        }
 
         function paintOnShirt() {
             state.designWidth = designImage.naturalWidth
@@ -4276,10 +4311,24 @@
 
         if (preset.id && !artworkFitByDesignId[String(preset.id)]) {
             const measureImg = new Image();
+            const measureId = preset.id;
             measureImg.onload = function() {
-                cacheArtworkFit(preset.id, measureImg);
+                cacheArtworkFit(measureId, measureImg);
             };
-            measureImg.src = artworkPreviewTemplate.replace(/0$/, String(preset.id));
+            measureImg.onerror = function() {
+                artworkFitByDesignId[String(measureId)] = 1;
+                if (String(state.presetDesignId) !== String(measureId)) return;
+                state.artworkFitDesignId = measureId;
+                state.artworkFitRatio = 1;
+                applyDesignFit();
+                applyDesignPosition();
+            };
+            measureImg.src = artworkPreviewTemplate.replace(/0$/, String(measureId));
+            window.setTimeout(function() {
+                if (String(state.presetDesignId) !== String(measureId)) return;
+                const layer = document.getElementById('designLayer');
+                if (layer) layer.classList.remove('is-fitting');
+            }, 1500);
         }
 
         if (designPreviewImage) designPreviewImage.src = preset.url;
@@ -4298,10 +4347,10 @@
         const selectedOpt = document.querySelector(`[data-placement="${state.selectedPlacement}"]`);
         if (selectedOpt) selectedOpt.classList.add('selected');
         
-        if (!cachedFit) {
-            designLayer.style.width = '';
-            designLayer.style.maxWidth = '';
-            designLayer.style.maxHeight = '';
+        if (preset.id && !artworkFitByDesignId[String(preset.id)]) {
+            designLayer.classList.add('is-fitting');
+        } else {
+            designLayer.classList.remove('is-fitting');
         }
         applyDesignPosition();
         applyDesignFit();

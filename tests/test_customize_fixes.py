@@ -183,7 +183,11 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert 'never delay the first paint' in html
     assert 'Apply it as soon as the' in html
     assert 'so the first look matches' in html
-    assert 'if (state.presetDesignId && !hasCachedFit) return;' in html
+    assert 'if (state.presetDesignId && !hasCachedFit)' in html
+    assert 'CSS 38% is of the whole mockup' in html
+    assert 'Math.max(minVsGarment, Math.min(maxVsGarment, maxVsCanvas))' in html
+    assert 'design-layer.is-fitting' in html
+    assert "designLayer.classList.add('is-fitting')" in html
     assert '|| (box && box.widthPx)' in html
     assert "designImage.src = previewSource" not in html
     assert 'transition: transform 0.3s ease' in html
