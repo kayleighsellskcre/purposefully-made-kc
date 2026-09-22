@@ -199,6 +199,26 @@
 {% endblock %}
 
 {% block content %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": ["Organization", "LocalBusiness"],
+    "name": "Purposefully Made KC",
+    "url": {{ site_origin|tojson }},
+    "logo": {{ (site_origin + url_for('static', filename='img/logo.png'))|tojson }},
+    "image": {{ (site_origin + url_for('static', filename='img/logo.png'))|tojson }},
+    "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Kansas City",
+        "addressCountry": "US"
+    },
+    "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer service",
+        "url": {{ (site_origin + url_for('main.contact'))|tojson }}
+    }
+}
+</script>
 <!-- Hero Section -->
 <section class="hero">
     <div class="container">

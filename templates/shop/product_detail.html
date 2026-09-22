@@ -11,6 +11,25 @@
 {% block og_image %}{% if product.front_mockup_template %}{% if product.front_mockup_template.startswith('http') %}{{ product.front_mockup_template }}{% else %}{{ site_origin }}{{ url_for('static', filename=product.front_mockup_template) }}{% endif %}{% else %}{{ site_origin }}/static/img/logo.png{% endif %}{% endblock %}
 
 {% block content %}
+{# No ratings/reviews here - the audit that asked for this was explicit
+   that fabricating them is not an option, and the site collects none. #}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": {{ (product|display_name)|tojson }},
+    "image": {{ self.og_image()|tojson }},
+    "description": {{ self.meta_description()|tojson }},
+    {% if product.display_brand %}"brand": {"@type": "Brand", "name": {{ product.display_brand|tojson }}},{% endif %}
+    "offers": {
+        "@type": "Offer",
+        "url": {{ canonical_url|tojson }},
+        "priceCurrency": "USD",
+        "price": {{ '%.2f'|format(product.base_price or 0)|tojson }},
+        "availability": "https://schema.org/InStock"
+    }
+}
+</script>
 <div class="product-detail-page">
     <div class="container">
         <div class="product-detail-grid">
