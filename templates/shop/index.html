@@ -231,27 +231,30 @@
                                 {% endif %}
                                 <!-- Color Preview Carousel -->
                                 {% if product.carousel_colors and product.carousel_colors|length > 0 %}
-                                <div class="color-carousel" data-product-id="{{ product.id }}">
+                                <div class="color-carousel" data-product-id="{{ product.id }}" data-product-name="{{ product|display_name }}">
                                     <div class="carousel-images">
                                         {% for variant in product.carousel_colors %}
                                         <div class="carousel-slide {% if loop.first %}active{% endif %}"
-                                             data-color="{{ variant.color_name }}">
-                                            {# Inactive slides are hidden with opacity, not display:none, so
-                                               the browser used to fetch every colour of every product at full
-                                               priority - around 1350 images on the full catalogue. Only the
-                                               first row of cards is on screen at load, so everything else is
-                                               deferred. The carousel reveals a slide by adding .active, which
-                                               is when the browser fetches it. #}
+                                             data-color="{{ variant.color_name }}"
+                                             {% if not loop.first %}data-src="{{ variant.front_image_url }}"{% endif %}>
+                                            {% if loop.first %}
+                                            {# Only the shown color ships a real <img> tag. The catalog's other
+                                               colors carry their URL in data-src instead: with ~1,400 color
+                                               variants across the catalog, rendering an <img> for every one
+                                               inflated the page to ~1.5 MB of HTML. The carousel script below
+                                               creates the <img> the first time a card is hovered or its arrows
+                                               are used, not before. #}
                                             <img src="{{ variant.front_image_url }}"
                                                  alt="{{ product|display_name }} - {{ variant.color_name }}"
-                                                 {% if loop.first and card_index < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
+                                                 {% if card_index < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
                                                  referrerpolicy="no-referrer"
-                                                 onerror="{% if loop.first %}this.style.display='none';this.parentElement.querySelector('.no-mockup-msg').style.display='flex'{% else %}this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'{% endif %}">
-                                            {% if loop.first %}<div class="no-mockup-msg" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;background:linear-gradient(135deg,#fdf8f4 0%,#f5ede4 100%);">
+                                                 onerror="this.style.display='none';this.parentElement.querySelector('.no-mockup-msg').style.display='flex'">
+                                            <div class="no-mockup-msg" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;background:linear-gradient(135deg,#fdf8f4 0%,#f5ede4 100%);">
                                                 <div style="font-size:2.5rem;margin-bottom:0.5rem">📸</div>
                                                 <p style="font-family:'Playfair Display',serif;font-size:1rem;color:#8b6f5e;font-weight:600;margin:0 0 0.4rem">This mockup skipped picture day!</p>
                                                 <p style="font-size:0.8rem;color:#b09080;margin:0;line-height:1.5">No worries, you can still order.<br>Just choose your favorite design! ♡</p>
-                                            </div>{% endif %}
+                                            </div>
+                                            {% endif %}
                                         </div>
                                         {% endfor %}
                                     </div>
@@ -812,6 +815,7 @@
 .product-image img {
     width: 100%;
     height: 100%;
+    aspect-ratio: 1 / 1;
     object-fit: contain;
     padding: 0.5rem;
     transition: var(--transition);
@@ -855,6 +859,7 @@
 .carousel-slide img {
     width: 100%;
     height: 100%;
+    aspect-ratio: 1 / 1;
     object-fit: contain;
     padding: 0.5rem;
     transition: transform 0.3s ease;
@@ -1076,49 +1081,79 @@ document.addEventListener('DOMContentLoaded', function() {
         const prevBtn = carousel.querySelector('.carousel-prev');
         const nextBtn = carousel.querySelector('.carousel-next');
         const colorIndicator = carousel.querySelector('.current-color');
+        const productName = carousel.getAttribute('data-product-name') || '';
         let currentIndex = 0;
-        
+        let hydrated = false;
+
+        // The card's other colors only carry a data-src (see the template
+        // comment above the carousel markup). Build their real <img> the
+        // first time this card is actually used, not before.
+        function hydrateSlideImages() {
+            if (hydrated) return;
+            hydrated = true;
+            slides.forEach(slide => {
+                const src = slide.getAttribute('data-src');
+                if (!src || slide.querySelector('img')) return;
+                const img = document.createElement('img');
+                img.loading = 'lazy';
+                img.decoding = 'async';
+                img.referrerPolicy = 'no-referrer';
+                img.alt = productName + ' - ' + (slide.getAttribute('data-color') || '');
+                img.onerror = function () {
+                    this.src = '{{ url_for("static", filename="img/placeholder-product.svg") }}';
+                };
+                img.src = src;
+                slide.appendChild(img);
+            });
+        }
+
         if (slides.length <= 1) return; // Skip if only one color
-        
+
         function showSlide(index) {
+            hydrateSlideImages();
+
             // Remove active class from all slides
             slides.forEach(slide => slide.classList.remove('active'));
-            
+
             // Add active class to current slide
             slides[index].classList.add('active');
-            
+
             // Update color indicator
             if (colorIndicator) {
                 const colorName = slides[index].getAttribute('data-color');
                 colorIndicator.textContent = colorName;
             }
-            
+
             currentIndex = index;
         }
-        
+
         function nextSlide(e) {
             e.preventDefault();
             e.stopPropagation();
             const nextIndex = (currentIndex + 1) % slides.length;
             showSlide(nextIndex);
         }
-        
+
         function prevSlide(e) {
             e.preventDefault();
             e.stopPropagation();
             const prevIndex = (currentIndex - 1 + slides.length) % slides.length;
             showSlide(prevIndex);
         }
-        
+
         // Add event listeners
         if (nextBtn) {
             nextBtn.addEventListener('click', nextSlide);
         }
-        
+
         if (prevBtn) {
             prevBtn.addEventListener('click', prevSlide);
         }
-        
+
+        // Hovering the card is also "using" it - load the other colors so
+        // the arrows feel instant once clicked.
+        carousel.addEventListener('mouseenter', hydrateSlideImages);
+
         // Optional: Auto-rotate on hover (uncomment if desired)
         /*
         let autoRotateInterval;
