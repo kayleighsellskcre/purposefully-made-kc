@@ -29,6 +29,77 @@ import json
 
 shop_bp = Blueprint('shop', __name__, url_prefix='/shop')
 
+
+def _peek_garment_metrics(color_variants):
+    """Already-measured shirt boxes for this product's mockups, keyed by image URL."""
+    try:
+        from services.garment_metrics import peek_cached
+    except Exception:
+        return {}
+    seed = {}
+    for variant in color_variants or []:
+        for key in ('front_image', 'back_image'):
+            src = (variant.get(key) or '').strip()
+            if not src or src in seed:
+                continue
+            try:
+                cached = peek_cached(src)
+            except Exception:
+                cached = None
+            if cached and cached.get('ok'):
+                seed[src] = cached
+    return seed
+
+
+def _stamp_artwork_fits(cards):
+    """Attach cached visible-width ratios so the first click can paint at final size."""
+    if not cards:
+        return cards
+    try:
+        from services.artwork_metrics import peek_cached
+    except Exception:
+        return cards
+    ids = []
+    for card in cards:
+        if not isinstance(card, dict):
+            continue
+        if card.get('id') is not None:
+            ids.append(card['id'])
+        for variant in card.get('variants') or []:
+            if variant.get('id') is not None:
+                ids.append(variant['id'])
+    if not ids:
+        return cards
+    try:
+        clean_ids = []
+        for value in ids:
+            clean_ids.append(int(value))
+    except (TypeError, ValueError):
+        return cards
+    designs = Design.query.filter(Design.id.in_(clean_ids)).all()
+    by_id = {design.id: design for design in designs}
+
+    def _fit(design_id):
+        design = by_id.get(int(design_id)) if design_id is not None else None
+        if design is None:
+            return None
+        try:
+            return peek_cached(design)
+        except Exception:
+            return None
+
+    for card in cards:
+        if not isinstance(card, dict):
+            continue
+        fit = _fit(card.get('id'))
+        if fit is not None:
+            card['artwork_fit'] = fit
+        for variant in card.get('variants') or []:
+            variant_fit = _fit(variant.get('id'))
+            if variant_fit is not None:
+                variant['artwork_fit'] = variant_fit
+    return cards
+
 @shop_bp.route('/')
 def index():
     """Shop page - browse all products. Products come from S&S Activewear sync (Admin → Products)."""
@@ -790,6 +861,11 @@ def customize(product_id):
     from utils.group_orders import is_not_yet_open as _is_not_yet_open, format_schedule_date
     ordering_not_yet_open = bool(coll and _is_not_yet_open(coll))
     collection_opens_label = format_schedule_date(coll.order_opens_at, '%B %-d') if (ordering_not_yet_open and coll) else ''
+    garment_metrics_seed = _peek_garment_metrics(color_variants_data)
+    _stamp_artwork_fits(gallery_designs)
+    _stamp_artwork_fits(my_designs)
+    if preset_design:
+        _stamp_artwork_fits([preset_design])
     return render_template('shop/customize.html',
                          product=product,
                          available_sizes=available_sizes,
@@ -821,4 +897,5 @@ def customize(product_id):
                          catalog_section=catalog_section,
                          uniform_kit=uniform_kit,
                          uniform_locked_color=uniform_locked_color,
-                         uniform_logo_locked=uniform_logo_locked)
+                         uniform_logo_locked=uniform_logo_locked,
+                         garment_metrics_seed=garment_metrics_seed)

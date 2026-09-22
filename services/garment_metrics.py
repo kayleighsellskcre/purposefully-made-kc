@@ -50,6 +50,15 @@ _MAX_HEIGHT_FRAC = 0.999
 _MIN_WIDTH_FRAC = 0.15
 
 
+def peek_cached(src):
+    """In-memory silhouette if this mockup was already measured. None otherwise."""
+    src = (src or '').strip()
+    if not src:
+        return None
+    with _CACHE_LOCK:
+        return _CACHE.get(src)
+
+
 def measure(src, app=None, timeout=6.0):
     """Garment silhouette for a mockup path or URL, as image fractions."""
     src = (src or '').strip()

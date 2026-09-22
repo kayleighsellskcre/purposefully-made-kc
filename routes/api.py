@@ -370,6 +370,50 @@ def garment_metrics():
     return response
 
 
+@api_bp.route('/artwork-fits')
+def artwork_fits():
+    """Visible-width ratios for gallery logos, keyed by design id.
+
+    The customizer needs these before the first paint so logos do not start
+    huge (photo-relative CSS) or tiny (thumbnail padding) and then snap.
+    """
+    from models import Design
+    from services.artwork_metrics import measure_designs
+    from utils.group_orders import get_active_collection
+    from utils.privacy import user_can_use_design
+
+    raw_ids = (request.args.get('ids') or '').strip()
+    if not raw_ids:
+        return jsonify({'ok': True, 'fits': {}})
+
+    ids = []
+    for part in raw_ids.split(','):
+        part = part.strip()
+        if not part.isdigit():
+            continue
+        ids.append(int(part))
+        # Small batches only. A 40-id request used to hold the server while
+        # every PNG was measured, so the clicked logo stayed hidden.
+        if len(ids) >= 8:
+            break
+    if not ids:
+        return jsonify({'ok': True, 'fits': {}})
+
+    collection = get_active_collection()
+    designs = Design.query.filter(Design.id.in_(ids)).all()
+    allowed = [
+        design for design in designs
+        if user_can_use_design(design, collection=collection)
+    ]
+    fits = measure_designs(allowed, current_app)
+
+    response = jsonify({'ok': True, 'fits': fits})
+    # Private: some ids belong to one shopper. A shared public cache would
+    # replay those ratios (and the fact the id exists) to someone else.
+    response.headers['Cache-Control'] = 'private, max-age=86400'
+    return response
+
+
 @api_bp.route('/validate-design', methods=['POST'])
 def validate_design():
     """Validate design specifications"""

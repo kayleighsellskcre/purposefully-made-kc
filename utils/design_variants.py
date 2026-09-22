@@ -67,20 +67,37 @@ def gallery_card_dict(design, resolve_url=None, options=None):
         if options is not None
         else color_options_for(design, include_self=True)
     )
+    try:
+        from services.artwork_metrics import peek_cached
+    except Exception:
+        peek_cached = None
+
+    def _artwork_fit(opt):
+        if peek_cached is None or opt is None:
+            return None
+        try:
+            return peek_cached(opt)
+        except Exception:
+            return None
+
     variants = []
     for i, opt in enumerate(options):
-        variants.append({
+        variant = {
             'id': opt.id,
             'url': resolve(opt.file_path),
             'label': _label_for(opt, 'Default' if i == 0 else f'Color {i + 1}'),
             '_path': (opt.file_path or '').strip().lower(),
-        })
+        }
+        fit = _artwork_fit(opt)
+        if fit is not None:
+            variant['artwork_fit'] = fit
+        variants.append(variant)
     title = design.title or design.original_filename or 'Design'
     category_keys = design_category_keys(
         design.folder,
         design.extra_categories,
     )
-    return {
+    card = {
         'id': design.id,
         'url': resolve(design.file_path),
         'title': title,
@@ -96,6 +113,10 @@ def gallery_card_dict(design, resolve_url=None, options=None):
         'group': gallery_group_for_title(title),
         'uploaded_at': design.uploaded_at.isoformat() if design.uploaded_at else '',
     }
+    fit = _artwork_fit(design)
+    if fit is not None:
+        card['artwork_fit'] = fit
+    return card
 
 
 def gallery_cards_for_public(Design, resolve_url=None, limit=None):
@@ -146,11 +167,14 @@ def _gallery_title_display(title):
 
 
 def _public_variant(variant, fallback_url=''):
-    return {
+    public = {
         'id': variant.get('id'),
         'url': (variant.get('url') or fallback_url or '').strip(),
         'label': variant.get('label') or 'Default',
     }
+    if variant.get('artwork_fit') is not None:
+        public['artwork_fit'] = variant['artwork_fit']
+    return public
 
 
 def _variant_marker(variant, card):
