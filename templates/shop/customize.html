@@ -2705,7 +2705,8 @@
         lastFrontGarmentWidthPx: null,
         lastFrontGarmentHeightPx: null,
         lastFrontGarmentSrc: null,
-        lockedFitKey: null
+        lockedFitKey: null,
+        lockedFitMeasured: false
     };
     const requireBackName = {{ 'true' if catalog_section == 'uniform' else 'false' }};
     const TRANSFER_SIZING = {{ transfer_sizing | default({}) | tojson }};
@@ -3884,9 +3885,11 @@
         const box = garmentBox();
         const src = (document.getElementById('mockupImage') && document.getElementById('mockupImage').getAttribute('src')) || '';
         const lockKey = String(state.presetDesignId || state.designUrl || '') + '|' + src;
-        // First visible size for this logo on this shirt wins. A late
-        // measurement must not grow or shrink what the customer already saw.
-        if (state.lockedFitKey === lockKey && designLayer.style.width
+        // Keep the size the customer already saw, but only after we used the
+        // measured ink width. A first paint at ratio 1 (padded PNG) would
+        // otherwise lock a circular logo too small on the chest.
+        if (state.lockedFitKey === lockKey && state.lockedFitMeasured
+            && designLayer.style.width
             && !designLayer.classList.contains('is-fitting')) {
             return;
         }
@@ -3925,8 +3928,9 @@
         designLayer.style.maxWidth = 'none';
         designLayer.style.maxHeight = maxH.toFixed(1) + '%';
         designLayer.classList.remove('is-fitting');
-        if (designLayer.classList.contains('visible')) {
+        if (designLayer.classList.contains('visible') && hasCachedFit) {
             state.lockedFitKey = lockKey;
+            state.lockedFitMeasured = true;
         }
     }
     
@@ -4403,6 +4407,7 @@
         const allowed = state.allowedPlacements;
         state.selectedPlacement = (allowed && allowed.length) ? allowed[0] : 'center_chest';
         state.lockedFitKey = null;
+        state.lockedFitMeasured = false;
         designLayer.classList.remove('is-fitting');
         if (preset.id && !cachedFit) fetchArtworkFitNow(preset.id);
 

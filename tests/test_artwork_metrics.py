@@ -43,6 +43,14 @@ def test_artwork_fits_api_hides_someone_elses_design(client, seed):
     assert resp.get_json()['fits'] == {}
 
 
+def test_measure_artwork_fits_stamps_a_preset_card(app, seed):
+    from routes.shop import _measure_artwork_fits
+    with app.app_context():
+        cards = [{'id': seed['free_design_id'], 'url': '/x', 'title': 'Logo'}]
+        _measure_artwork_fits(cards, app)
+        assert 0.2 <= cards[0]['artwork_fit'] <= 1.0
+
+
 def test_measure_design_is_cached(app, seed):
     from models import Design
     with app.app_context():

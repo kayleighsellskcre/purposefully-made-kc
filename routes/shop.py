@@ -100,6 +100,41 @@ def _stamp_artwork_fits(cards):
                 variant['artwork_fit'] = variant_fit
     return cards
 
+
+def _measure_artwork_fits(cards, app=None):
+    """Measure artwork now so a locked uniform logo paints at the final size."""
+    if not cards:
+        return cards
+    try:
+        from services.artwork_metrics import measure_design
+    except Exception:
+        return cards
+    ids = []
+    for card in cards:
+        if not isinstance(card, dict):
+            continue
+        if card.get('id') is not None:
+            ids.append(card['id'])
+    if not ids:
+        return cards
+    try:
+        clean_ids = [int(value) for value in ids]
+    except (TypeError, ValueError):
+        return cards
+    designs = Design.query.filter(Design.id.in_(clean_ids)).all()
+    by_id = {design.id: design for design in designs}
+    for card in cards:
+        if not isinstance(card, dict) or card.get('id') is None:
+            continue
+        design = by_id.get(int(card['id']))
+        if design is None:
+            continue
+        try:
+            card['artwork_fit'] = measure_design(design, app)
+        except Exception:
+            continue
+    return cards
+
 @shop_bp.route('/')
 def index():
     """Shop page - browse all products. Products come from S&S Activewear sync (Admin → Products)."""
@@ -865,7 +900,7 @@ def customize(product_id):
     _stamp_artwork_fits(gallery_designs)
     _stamp_artwork_fits(my_designs)
     if preset_design:
-        _stamp_artwork_fits([preset_design])
+        _measure_artwork_fits([preset_design], current_app)
     return render_template('shop/customize.html',
                          product=product,
                          available_sizes=available_sizes,

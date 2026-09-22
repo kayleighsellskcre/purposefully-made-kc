@@ -208,6 +208,8 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert 'visible.length ? visible : cards' not in html
     assert 'if (state.presetDesignId && !hasCachedFit) return;' not in html
     assert 'state.lockedFitKey' in html
+    assert 'state.lockedFitMeasured' in html
+    assert 'padded PNG' in html
     assert 'Paint on the click' in html
     assert 'state.lastFrontGarmentSrc' in html
     assert 'design-layer.is-fitting' in html
