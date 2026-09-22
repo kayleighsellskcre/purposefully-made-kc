@@ -180,7 +180,7 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     # Front logos use one visual target across youth/adult garments and correct
     # transparent padding without changing production dimensions.
     assert 'function visibleArtworkWidthRatio(image)' in html
-    assert 'const garmentWidth = (box && box.measured && box.widthPx)' in html
+    assert 'let garmentWidth = (box && box.measured && box.widthPx)' in html
     assert 'garmentWidth * targetRatio / visibleWidthRatio' in html
     assert 'const targetRatio = isSideChest ? 0.17 : 0.38' in html
     assert 'ctx.drawImage(mockup, disp.left, disp.top, disp.width, disp.height)' in html
@@ -206,10 +206,11 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert 'Other colors wait so a logo click' in html
     assert 'const GARMENT_SILHOUETTES = Object.assign' in html
     assert 'visible.length ? visible : cards' not in html
-    assert 'if (state.presetDesignId && !hasCachedFit) return;' in html
+    assert 'if (state.presetDesignId && !hasCachedFit) return;' not in html
+    assert 'state.lockedFitKey' in html
+    assert 'Paint on the click' in html
     assert 'state.lastFrontGarmentSrc' in html
     assert 'design-layer.is-fitting' in html
-    assert "designLayer.classList.add('is-fitting')" in html
     assert 'state.lastFrontGarmentSrc === src ? state.lastFrontGarmentWidthPx' in html
     assert '|| (box && box.widthPx)' not in html
     assert "designImage.src = previewSource" not in html

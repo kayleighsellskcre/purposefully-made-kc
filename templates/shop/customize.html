@@ -2704,7 +2704,8 @@
         artworkFitRatio: null,
         lastFrontGarmentWidthPx: null,
         lastFrontGarmentHeightPx: null,
-        lastFrontGarmentSrc: null
+        lastFrontGarmentSrc: null,
+        lockedFitKey: null
     };
     const requireBackName = {{ 'true' if catalog_section == 'uniform' else 'false' }};
     const TRANSFER_SIZING = {{ transfer_sizing | default({}) | tojson }};
@@ -3882,13 +3883,24 @@
         const canvasWidth = (previewCanvas && previewCanvas.clientWidth) || 400;
         const box = garmentBox();
         const src = (document.getElementById('mockupImage') && document.getElementById('mockupImage').getAttribute('src')) || '';
+        const lockKey = String(state.presetDesignId || state.designUrl || '') + '|' + src;
+        // First visible size for this logo on this shirt wins. A late
+        // measurement must not grow or shrink what the customer already saw.
+        if (state.lockedFitKey === lockKey && designLayer.style.width
+            && !designLayer.classList.contains('is-fitting')) {
+            return;
+        }
         if (box && box.measured && box.widthPx) {
             state.lastFrontGarmentWidthPx = box.widthPx;
             state.lastFrontGarmentHeightPx = box.heightPx;
             state.lastFrontGarmentSrc = src;
         }
-        const garmentWidth = (box && box.measured && box.widthPx)
+        let garmentWidth = (box && box.measured && box.widthPx)
             || (state.lastFrontGarmentSrc === src ? state.lastFrontGarmentWidthPx : null);
+        if (!garmentWidth) {
+            const rect = mockupDisplayRect();
+            if (rect && rect.width) garmentWidth = rect.width * 0.50;
+        }
         if (!garmentWidth) return;
         const hasCachedFit = (
             state.artworkFitDesignId != null
@@ -3899,14 +3911,11 @@
         const maxVsGarment = garmentWidth * (isSideChest ? 0.22 : 0.50);
         const maxVsCanvas = canvasWidth * (isSideChest ? 0.22 : 0.42);
         const minVsGarment = garmentWidth * (isSideChest ? 0.10 : 0.22);
-        // Gallery logos wait for the measured shirt AND the measured ink
-        // width. Painting earlier used 72% of the photo (too big) or the
-        // thumbnail padding (too small), then snapped. Stay hidden until
-        // both numbers are the final ones.
-        if (state.presetDesignId && !hasCachedFit) return;
+        // Paint on the click. Waiting for the artwork-fit request left group
+        // logos invisible while the server measured files.
         const visibleWidthRatio = hasCachedFit
             ? state.artworkFitRatio
-            : visibleArtworkWidthRatio(designImage);
+            : 1;
         const targetRatio = isSideChest ? 0.17 : 0.38;
         let layerWidthPx = garmentWidth * targetRatio / visibleWidthRatio;
         layerWidthPx = Math.min(layerWidthPx, maxVsGarment, maxVsCanvas);
@@ -3916,6 +3925,9 @@
         designLayer.style.maxWidth = 'none';
         designLayer.style.maxHeight = maxH.toFixed(1) + '%';
         designLayer.classList.remove('is-fitting');
+        if (designLayer.classList.contains('visible')) {
+            state.lockedFitKey = lockKey;
+        }
     }
     
     function applyBackDesignPosition() {
@@ -4390,14 +4402,9 @@
         state.artworkFitRatio = cachedFit || null;
         const allowed = state.allowedPlacements;
         state.selectedPlacement = (allowed && allowed.length) ? allowed[0] : 'center_chest';
-        // Hide only when this shirt or this logo has not been measured yet.
-        // Once both numbers are cached, the first paint is the final size.
-        if (preset.id && !cachedFit) {
-            designLayer.classList.add('is-fitting');
-            fetchArtworkFitNow(preset.id);
-        } else {
-            designLayer.classList.remove('is-fitting');
-        }
+        state.lockedFitKey = null;
+        designLayer.classList.remove('is-fitting');
+        if (preset.id && !cachedFit) fetchArtworkFitNow(preset.id);
 
         function paintOnShirt() {
             state.designWidth = designImage.naturalWidth
