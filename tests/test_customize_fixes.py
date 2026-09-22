@@ -181,7 +181,9 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert '/design/preview/0' in html
     assert 'designImage.src = instantSrc' in html
     assert 'never delay the first paint' in html
-    assert 'Keep the size the customer already saw' in html
+    assert 'Apply it as soon as the' in html
+    assert 'so the first look matches' in html
+    assert 'if (state.presetDesignId && !hasCachedFit) return;' in html
     assert '|| (box && box.widthPx)' in html
     assert "designImage.src = previewSource" not in html
     assert 'transition: transform 0.3s ease' in html

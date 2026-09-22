@@ -2707,20 +2707,37 @@
 
     function cacheArtworkFit(id, image) {
         if (id == null || !image) return;
-        artworkFitByDesignId[String(id)] = visibleArtworkWidthRatio(image);
+        const ratio = visibleArtworkWidthRatio(image);
+        artworkFitByDesignId[String(id)] = ratio;
+        // First click used to keep the thumbnail's "whole file including
+        // empty padding" size. Switching away and back then looked correct
+        // because this cache was finally in place. Apply it as soon as the
+        // same-origin preview is measured, so the first look matches.
+        if (String(state.presetDesignId) === String(id)) {
+            state.artworkFitDesignId = id;
+            state.artworkFitRatio = ratio;
+            applyDesignFit();
+            applyDesignPosition();
+        }
     }
 
     function prefetchGroupArtworkFits() {
-        const cards = document.querySelectorAll('#logoGalleryGrid .logo-gallery-item[data-design-id]');
-        if (!cards.length || cards.length > 40) return;
-        cards.forEach(function(card) {
-            const id = card.dataset.designId;
-            if (!id || artworkFitByDesignId[String(id)]) return;
+        const cards = Array.from(document.querySelectorAll('#logoGalleryGrid .logo-gallery-item[data-design-id]'));
+        if (!cards.length) return;
+        const visible = cards.filter(function(card) {
+            return card.style.display !== 'none' && card.offsetParent !== null;
+        });
+        const queue = visible.length ? visible : cards;
+        const limit = Math.min(queue.length, 40);
+        for (let i = 0; i < limit; i++) {
+            const id = queue[i].dataset.designId;
+            if (!id || artworkFitByDesignId[String(id)]) continue;
             const img = new Image();
             img.onload = function() { cacheArtworkFit(id, img); };
             img.src = artworkPreviewTemplate.replace(/0$/, String(id));
-        });
+        }
     }
+    window.prefetchGroupArtworkFits = prefetchGroupArtworkFits;
     
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
@@ -2738,9 +2755,7 @@
         setupLogoGalleryClicks();
         setupMyDesignsClicks();
         refreshAddToCartButton();
-        {% if collection_restricted %}
         prefetchGroupArtworkFits();
-        {% endif %}
         window.addEventListener('resize', function() {
             applyDesignFit();
             updateBackDesignPreview();
@@ -3719,11 +3734,19 @@
             || state.lastFrontGarmentWidthPx
             || (box && box.widthPx);
         if (!garmentWidth) return;
-        const visibleWidthRatio = (
+        const hasCachedFit = (
             state.artworkFitDesignId != null
             && String(state.artworkFitDesignId) === String(state.presetDesignId)
             && state.artworkFitRatio
-        ) ? state.artworkFitRatio : visibleArtworkWidthRatio(designImage);
+        );
+        // Gallery thumbs report visible ratio ~1 (transparent padding or a
+        // tainted CDN canvas). That paints the logo too small until the
+        // same-origin preview is measured. Keep the CSS default until then
+        // so a first click matches clicking away and back.
+        if (state.presetDesignId && !hasCachedFit) return;
+        const visibleWidthRatio = hasCachedFit
+            ? state.artworkFitRatio
+            : visibleArtworkWidthRatio(designImage);
         const targetRatio = isSideChest ? 0.17 : 0.38;
         let layerWidthPx = garmentWidth * targetRatio / visibleWidthRatio;
         const maxH = isSideChest ? 20 : 60;
@@ -4255,8 +4278,6 @@
             const measureImg = new Image();
             measureImg.onload = function() {
                 cacheArtworkFit(preset.id, measureImg);
-                // Keep the size the customer already saw. A later refit is
-                // what made logos pop bigger after they appeared.
             };
             measureImg.src = artworkPreviewTemplate.replace(/0$/, String(preset.id));
         }
@@ -4277,6 +4298,11 @@
         const selectedOpt = document.querySelector(`[data-placement="${state.selectedPlacement}"]`);
         if (selectedOpt) selectedOpt.classList.add('selected');
         
+        if (!cachedFit) {
+            designLayer.style.width = '';
+            designLayer.style.maxWidth = '';
+            designLayer.style.maxHeight = '';
+        }
         applyDesignPosition();
         applyDesignFit();
         updateDesignLayerVisibility();
@@ -5600,6 +5626,9 @@
         }
         if (emptyState)  emptyState.style.display  = total === 0 ? 'block' : 'none';
         if (showMoreBtn) showMoreBtn.style.display  = toShow < total ? 'block' : 'none';
+        if (typeof window.prefetchGroupArtworkFits === 'function') {
+            window.prefetchGroupArtworkFits();
+        }
     }
 
     window.filterDesignTab = function(btn) {
