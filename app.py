@@ -486,8 +486,55 @@ def create_app(config_class=Config):
             "base-uri 'self';"
         )
         response.headers['Content-Security-Policy'] = csp
+
+        # Report-only preview of a stricter policy (no unsafe-inline, no
+        # unsafe-eval). This is step one of tightening the CSP: it never
+        # blocks anything, but real page loads report back every inline
+        # script/style and eval call that would break if the policy above
+        # were switched to this one. Removing unsafe-inline outright first
+        # was ruled out — a codebase search found 44 inline <script> blocks,
+        # 164 inline event-handler attributes (onclick=, etc., which a nonce
+        # cannot cover), and 670 style="..." attributes across the templates,
+        # concentrated most heavily in checkout and the customize tool. That
+        # is too much to migrate and verify safely in one pass on a site
+        # that processes real payments. /csp-report logs what actually
+        # trips the strict policy in production so the real migration can be
+        # scoped from data instead of a static-search estimate.
+        report_only_csp = (
+            "default-src 'self'; "
+            "script-src 'self' "
+                "js.stripe.com www.paypal.com www.paypalobjects.com "
+                "cdnjs.cloudflare.com cdn.jsdelivr.net; "
+            "style-src 'self' "
+                "fonts.googleapis.com cdnjs.cloudflare.com cdn.jsdelivr.net fonts.cdnfonts.com; "
+            "font-src 'self' fonts.gstatic.com data: fonts.cdnfonts.com; "
+            "img-src 'self' data: blob: https:; "
+            "connect-src 'self' api.stripe.com api.ssactivewear.com; "
+            "frame-src js.stripe.com www.paypal.com; "
+            "object-src 'none'; "
+            "base-uri 'self'; "
+            "report-uri /csp-report;"
+        )
+        response.headers['Content-Security-Policy-Report-Only'] = report_only_csp
         return response
-    
+
+    @app.route('/csp-report', methods=['POST'])
+    @csrf.exempt
+    def csp_report():
+        """Browser-sent violation reports for the report-only CSP above.
+
+        Logged, not stored — this is a temporary diagnostic while the
+        real CSP tightening is scoped and staged. No response body a
+        browser would ever look at.
+        """
+        try:
+            payload = request.get_json(silent=True, force=True) or {}
+            report = payload.get('csp-report', payload)
+            app.logger.warning('CSP report-only violation: %s', report)
+        except Exception:
+            pass
+        return '', 204
+
     # Do NOT preload rembg here. create_app() runs in every gunicorn worker;
     # downloading isnet/u2net at boot OOMs Railway and the deploy never goes live.
     # The model loads on the first upload instead.
