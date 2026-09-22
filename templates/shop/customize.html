@@ -3884,7 +3884,7 @@
         const canvasWidth = (previewCanvas && previewCanvas.clientWidth) || 400;
         const box = garmentBox();
         const src = (document.getElementById('mockupImage') && document.getElementById('mockupImage').getAttribute('src')) || '';
-        const lockKey = String(state.presetDesignId || state.designUrl || '') + '|' + src;
+        const lockKey = String(state.presetDesignId || state.designUrl || '') + '|' + src + '|' + placement;
         // Keep the size the customer already saw, but only after we used the
         // measured ink width. A first paint at ratio 1 (padded PNG) would
         // otherwise lock a circular logo too small on the chest.
@@ -3910,16 +3910,18 @@
             && String(state.artworkFitDesignId) === String(state.presetDesignId)
             && state.artworkFitRatio
         );
-        const maxH = isSideChest ? 20 : 60;
-        const maxVsGarment = garmentWidth * (isSideChest ? 0.22 : 0.50);
-        const maxVsCanvas = canvasWidth * (isSideChest ? 0.22 : 0.42);
-        const minVsGarment = garmentWidth * (isSideChest ? 0.10 : 0.22);
+        const maxH = isSideChest ? 18 : 60;
+        // Pocket logos must stay pocket-sized even when the PNG has padding
+        // (dividing by a small ink ratio would otherwise blow them up).
+        const maxVsGarment = garmentWidth * (isSideChest ? 0.16 : 0.50);
+        const maxVsCanvas = canvasWidth * (isSideChest ? 0.12 : 0.42);
+        const minVsGarment = garmentWidth * (isSideChest ? 0.09 : 0.28);
         // Paint on the click. Waiting for the artwork-fit request left group
         // logos invisible while the server measured files.
         const visibleWidthRatio = hasCachedFit
             ? state.artworkFitRatio
             : 1;
-        const targetRatio = isSideChest ? 0.17 : 0.38;
+        const targetRatio = isSideChest ? 0.14 : 0.38;
         let layerWidthPx = garmentWidth * targetRatio / visibleWidthRatio;
         layerWidthPx = Math.min(layerWidthPx, maxVsGarment, maxVsCanvas);
         layerWidthPx = Math.max(layerWidthPx, minVsGarment);
@@ -5015,6 +5017,8 @@
                 
                 const placement = this.dataset.placement;
                 state.selectedPlacement = placement;
+                state.lockedFitKey = null;
+                state.lockedFitMeasured = false;
                 
                 designLayer.setAttribute('data-placement', placement);
                 applyDesignFit();

@@ -182,7 +182,8 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert 'function visibleArtworkWidthRatio(image)' in html
     assert 'let garmentWidth = (box && box.measured && box.widthPx)' in html
     assert 'garmentWidth * targetRatio / visibleWidthRatio' in html
-    assert 'const targetRatio = isSideChest ? 0.17 : 0.38' in html
+    assert 'const targetRatio = isSideChest ? 0.14 : 0.38' in html
+    assert "String(state.presetDesignId || state.designUrl || '') + '|' + src + '|' + placement" in html
     assert 'ctx.drawImage(mockup, disp.left, disp.top, disp.width, disp.height)' in html
     assert 'No ink found' in html
     assert 'object-position: center 18%' not in html
