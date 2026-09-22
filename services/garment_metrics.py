@@ -37,6 +37,8 @@ _ALLOWED_HOSTS = frozenset((
     'www.apparel4print.com',
     'apparel4print.com',
     'cdn.shopify.com',
+    'embed.widencdn.net',
+    'widencdn.net',
 ))
 
 _WORK_SIZE = 320          # silhouette detection resolution
@@ -100,6 +102,7 @@ def _load_bytes(src, app, timeout):
         if not _remote_allowed(parsed.netloc, app):
             return None
         import requests
+        src = src.replace('{quality}', '80').replace('%7Bquality%7D', '80')
         resp = requests.get(src, timeout=timeout, stream=True)
         resp.raise_for_status()
         ctype = (resp.headers.get('Content-Type') or '').lower()

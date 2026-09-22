@@ -3580,7 +3580,7 @@
             .then(function(data) {
                 GARMENT_SILHOUETTES[src] = (data && data.ok)
                     ? data
-                    : Object.assign({}, GARMENT_FALLBACK, { width: 0.50, source: 'measured' });
+                    : Object.assign({}, GARMENT_FALLBACK, { width: 0.50, source: 'fallback' });
                 const current = document.getElementById('mockupImage');
                 if (!current || current.getAttribute('src') !== src) return;
                 applyDesignFit();
@@ -3589,7 +3589,7 @@
                 applyBackDesignPosition();
             })
             .catch(function() {
-                GARMENT_SILHOUETTES[src] = Object.assign({}, GARMENT_FALLBACK, { width: 0.50, source: 'measured' });
+                GARMENT_SILHOUETTES[src] = Object.assign({}, GARMENT_FALLBACK, { width: 0.50, source: 'fallback' });
                 applyDesignFit();
             });
     }
@@ -3940,7 +3940,7 @@
         designLayer.style.maxHeight = maxH.toFixed(1) + '%';
         designLayer.classList.remove('is-fitting');
         if (designLayer.classList.contains('visible') && hasCachedFit
-            && (!isUniformKit || shirtMeasured)) {
+            && shirtMeasured) {
             state.lockedFitKey = lockKey;
             state.lockedFitMeasured = true;
         }

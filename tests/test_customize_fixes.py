@@ -215,6 +215,10 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert "if (isUniformKit) {" in html
     assert "designLayer.classList.add('is-fitting');" in html
     assert 'Jerseys stay hidden until' in html
+    assert "&& shirtMeasured)" in html
+    assert '(!isUniformKit || shirtMeasured)' not in html
+    assert "source: 'fallback'" in html
+    assert "source: 'measured' });" not in html
     assert 'padded PNG' in html
     assert 'Paint on the click' in html
     assert 'state.lastFrontGarmentSrc' in html
@@ -433,3 +437,14 @@ def test_measure_garment_metrics_keeps_only_ok_boxes():
         garment_metrics.measure = original
     assert seed == {'/static/front.png': {'ok': True, 'width': 0.41, 'source': 'measured'}}
     assert calls == ['/static/front.png', '/static/back.png']
+
+
+def test_widen_mockup_hosts_are_allowed():
+    import inspect
+
+    from services import garment_metrics
+
+    assert garment_metrics._remote_allowed('embed.widencdn.net', None) is True
+    assert garment_metrics._remote_allowed('assets.widencdn.net', None) is True
+    assert garment_metrics._remote_allowed('evil.example.com', None) is False
+    assert "replace('{quality}', '80')" in inspect.getsource(garment_metrics._load_bytes)

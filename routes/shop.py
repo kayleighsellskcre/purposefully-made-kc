@@ -921,6 +921,19 @@ def customize(product_id):
         garment_metrics_seed = _measure_garment_metrics(color_variants_data, current_app)
     else:
         garment_metrics_seed = _peek_garment_metrics(color_variants_data)
+        first = next(
+            (variant for variant in color_variants_data if (variant.get('front_image') or '').strip()),
+            None,
+        )
+        # Widen flats were blocked from silhouette measurement, so those
+        # styles locked a 50% stand-in and stayed tiny. Measure the first
+        # color here so the logo paints at shirt size on the first click.
+        if (
+            first
+            and first['front_image'] not in garment_metrics_seed
+            and 'widencdn' in first['front_image']
+        ):
+            garment_metrics_seed.update(_measure_garment_metrics([first], current_app))
     _stamp_artwork_fits(gallery_designs)
     _stamp_artwork_fits(my_designs)
     if preset_design:
