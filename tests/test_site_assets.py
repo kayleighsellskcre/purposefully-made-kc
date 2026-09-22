@@ -117,6 +117,62 @@ def test_sitemap_omits_password_protected_collections(client, seed, app):
     assert 'locked-store' not in body
 
 
+# ── Round 2 audit item 15: lastmod on every entry ───────────────────────────
+
+def test_every_sitemap_entry_has_a_lastmod(client, seed):
+    """The audit found 11 entries with no lastmod: the 9 static pages plus
+    the (then two) public group stores. Products already had one."""
+    from xml.etree import ElementTree
+    body = client.get('/sitemap.xml').get_data(as_text=True)
+    root = ElementTree.fromstring(body)
+    ns = {'s': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
+    missing = []
+    for url in root.findall('s:url', ns):
+        loc = url.find('s:loc', ns).text
+        lastmod = url.find('s:lastmod', ns)
+        if lastmod is None or not lastmod.text:
+            missing.append(loc)
+    assert not missing, f'entries with no lastmod: {missing}'
+
+
+def test_a_collections_lastmod_is_its_updated_at(client, seed, app):
+    from xml.etree import ElementTree
+    from models import db, Collection
+    from datetime import datetime
+    with app.app_context():
+        c = db.session.get(Collection, seed['collection_id'])
+        c.updated_at = datetime(2026, 3, 5)
+        db.session.commit()
+
+    body = client.get('/sitemap.xml').get_data(as_text=True)
+    root = ElementTree.fromstring(body)
+    ns = {'s': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
+    for url in root.findall('s:url', ns):
+        loc = url.find('s:loc', ns).text
+        if loc.endswith(f'/c/{seed["collection_slug"]}'):
+            lastmod = url.find('s:lastmod', ns)
+            assert lastmod is not None and lastmod.text == '2026-03-05'
+            break
+    else:
+        raise AssertionError('collection not found in sitemap')
+
+
+def test_product_lastmod_still_works(client, seed):
+    """Regression guard: products already had lastmod before this item."""
+    from xml.etree import ElementTree
+    body = client.get('/sitemap.xml').get_data(as_text=True)
+    root = ElementTree.fromstring(body)
+    ns = {'s': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
+    for url in root.findall('s:url', ns):
+        loc = url.find('s:loc', ns).text
+        if loc.endswith(f'/shop/product/{seed["tee_id"]}'):
+            lastmod = url.find('s:lastmod', ns)
+            assert lastmod is not None and lastmod.text
+            break
+    else:
+        raise AssertionError('product not found in sitemap')
+
+
 # ── 404 page ─────────────────────────────────────────────────────────────────
 
 def test_unknown_url_returns_a_helpful_404(client):

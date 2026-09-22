@@ -2,6 +2,7 @@ from flask import Blueprint, Response, render_template, session, current_app, se
 from models import Product, Collection
 from utils.rate_limit import post_only
 from utils.admin_gate import require_admin_or_404
+from datetime import datetime
 import os
 
 main_bp = Blueprint('main', __name__)
@@ -174,6 +175,24 @@ def robots_txt():
     return Response('\n'.join(lines), mimetype='text/plain')
 
 
+def _template_lastmod(template_name):
+    """The template file's own modified date, as a sitemap lastmod value.
+
+    These are static informational pages with no database row to carry an
+    updated_at, so the template file on disk is the closest honest signal
+    for "when did this page last change."
+    """
+    try:
+        _source, filename, _uptodate = current_app.jinja_loader.get_source(
+            current_app.jinja_env, template_name,
+        )
+        if filename:
+            return datetime.fromtimestamp(os.path.getmtime(filename)).date().isoformat()
+    except Exception:
+        pass
+    return None
+
+
 @main_bp.route('/sitemap.xml')
 def sitemap_xml():
     """Generated sitemap of the public pages and every active product."""
@@ -193,15 +212,15 @@ def sitemap_xml():
             'lastmod': lastmod,
         })
 
-    add('main.index', 'weekly', '1.0')
-    add('shop.index', 'daily', '0.9')
-    add('shop.design_gallery', 'weekly', '0.8')
-    add('shop.group_orders', 'weekly', '0.7')
-    add('custom_request.index', 'monthly', '0.7')
-    add('main.about', 'yearly', '0.5')
-    add('main.contact', 'yearly', '0.5')
-    add('main.privacy', 'yearly', '0.3')
-    add('main.terms', 'yearly', '0.3')
+    add('main.index', 'weekly', '1.0', lastmod=_template_lastmod('index.html'))
+    add('shop.index', 'daily', '0.9', lastmod=_template_lastmod('shop/index.html'))
+    add('shop.design_gallery', 'weekly', '0.8', lastmod=_template_lastmod('shop/design_gallery.html'))
+    add('shop.group_orders', 'weekly', '0.7', lastmod=_template_lastmod('shop/group_orders.html'))
+    add('custom_request.index', 'monthly', '0.7', lastmod=_template_lastmod('custom_request/index.html'))
+    add('main.about', 'yearly', '0.5', lastmod=_template_lastmod('about.html'))
+    add('main.contact', 'yearly', '0.5', lastmod=_template_lastmod('contact.html'))
+    add('main.privacy', 'yearly', '0.3', lastmod=_template_lastmod('privacy.html'))
+    add('main.terms', 'yearly', '0.3', lastmod=_template_lastmod('terms.html'))
 
     try:
         from utils.mockups import product_has_shop_image
@@ -227,7 +246,12 @@ def sitemap_xml():
             Collection.is_password_protected == False,
         ).all()
         for collection in collections:
-            add('collection.view', 'weekly', '0.6', slug=collection.slug)
+            lastmod = collection.updated_at or collection.created_at
+            add(
+                'collection.view', 'weekly', '0.6',
+                lastmod=lastmod.date().isoformat() if lastmod else None,
+                slug=collection.slug,
+            )
     except Exception:
         current_app.logger.exception('sitemap collection listing failed')
 
