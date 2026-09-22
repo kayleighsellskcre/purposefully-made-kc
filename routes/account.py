@@ -166,17 +166,30 @@ def delete_address(address_id):
 @login_required
 def my_designs():
     """My Designs - designs created for this customer (from custom requests) + their uploads"""
+    search_query = (request.args.get('q') or '').strip()
+    page = request.args.get('page', 1, type=int)
     try:
-        designs = Design.query.filter(
+        query = Design.query.filter(
             Design.uploaded_by_user_id == current_user.id,
             Design.is_gallery == False
-        ).order_by(Design.uploaded_at.desc()).all()
-        return render_template('account/my_designs.html', designs=designs)
+        )
+        if search_query:
+            # title is the friendly name when set; original_filename covers
+            # designs that never got one (the template falls back to a
+            # cleaned-up version of it too, so search matches what's shown).
+            needle = f'%{search_query}%'
+            query = query.filter(
+                db.or_(Design.title.ilike(needle), Design.original_filename.ilike(needle))
+            )
+        designs = query.order_by(Design.uploaded_at.desc()).paginate(
+            page=page, per_page=24, error_out=False
+        )
+        return render_template('account/my_designs.html', designs=designs, search_query=search_query)
     except Exception as e:
         # Defensive: a transient DB error should never look like an upload
         # failure. Log full detail for troubleshooting and render an empty list.
         current_app.logger.exception('Error loading My Designs for user %s: %s', current_user.id, e)
-        return render_template('account/my_designs.html', designs=[])
+        return render_template('account/my_designs.html', designs=None, search_query=search_query)
 
 
 @account_bp.route('/profile', methods=['GET', 'POST'])
