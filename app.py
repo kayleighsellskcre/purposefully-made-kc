@@ -733,10 +733,12 @@ def create_app(config_class=Config):
             # once a visitor merely opened a group store, since
             # collection_id_from_cart() falls back to a session flag that
             # only clears on "Back to main site". It now only shows on the
-            # store's own pages and the customize/product pages reached
-            # from it - not on unrelated pages like the shop or gallery.
+            # store's own pages, the customize/product pages reached from
+            # it, and cart/checkout (so Continue Shopping still returns to
+            # that store) - not on unrelated pages like the shop or gallery.
+            _banner_blueprints = {'collection', 'cart', 'checkout'}
             _banner_endpoints = {'shop.customize', 'shop.product_detail'}
-            if request.blueprint == 'collection' or request.endpoint in _banner_endpoints:
+            if request.blueprint in _banner_blueprints or request.endpoint in _banner_endpoints:
                 active_group_order = get_active_collection(cart)
         except Exception:
             active_group_order = None

@@ -44,6 +44,13 @@ def test_banner_does_not_leak_onto_the_homepage(client, seed):
     assert BANNER_TEXT not in html
 
 
+def test_banner_still_shows_on_cart_so_continue_shopping_returns_to_the_store(client, seed):
+    client.get(f'/c/{seed["collection_slug"]}')
+    html = client.get('/cart/').get_data(as_text=True)
+    assert BANNER_TEXT in html
+    assert f'/c/{seed["collection_slug"]}' in html
+
+
 def test_back_to_main_site_still_clears_the_customize_page_too(client, seed):
     client.get(f'/c/{seed["collection_slug"]}')
     client.get('/c/leave?next=/', follow_redirects=False)
