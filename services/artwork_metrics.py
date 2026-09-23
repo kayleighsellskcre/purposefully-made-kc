@@ -86,8 +86,20 @@ def measure_design(design, app=None):
     return ratio
 
 
+def _unwrap_app(app):
+    """Flask's current_app proxy cannot be used from worker threads."""
+    getter = getattr(app, '_get_current_object', None)
+    if callable(getter):
+        try:
+            return getter()
+        except RuntimeError:
+            return None
+    return app
+
+
 def measure_designs(designs, app=None, max_workers=4):
     """Measure several designs, using threads so one slow file cannot stall the rest."""
+    app = _unwrap_app(app)
     rows = [design for design in (designs or []) if design is not None]
     if not rows:
         return {}

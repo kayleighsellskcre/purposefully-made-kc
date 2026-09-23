@@ -1,9 +1,10 @@
-{% macro garment_proof(mockup_url, overlay_url, placement, label, overlay_style='') %}
+{% macro garment_proof(mockup_url, overlay_url, placement, label, overlay_style='', fallback_url='') %}
 <div class="pm-proof">
     {% if label %}<span class="pm-proof-label">{{ label }}</span>{% endif %}
     {% if mockup_url %}
     <img class="pm-proof-base" src="{{ mockup_url | image_url }}" alt="{{ label or 'Garment' }}"
-         onerror="this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'">
+         {% if fallback_url %}data-fallback="{{ fallback_url | image_url }}"{% endif %}
+         onerror="if (this.dataset.fallback) { this.src = this.dataset.fallback; delete this.dataset.fallback; } else { this.src = '{{ url_for('static', filename='img/placeholder-product.svg') }}'; }">
     {% else %}
     <img class="pm-proof-base" src="{{ url_for('static', filename='img/placeholder-product.svg') }}" alt="">
     {% endif %}

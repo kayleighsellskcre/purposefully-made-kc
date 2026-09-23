@@ -588,14 +588,9 @@ def create_app(config_class=Config):
     # Add custom template filters
     @app.template_filter('image_url')
     def image_url_filter(path_or_url):
-        """Return the correct src for a stored image — Cloudinary URL or local static path."""
-        if not path_or_url:
-            return ''
-        path_or_url = path_or_url.replace('{quality}', '80').replace('%7Bquality%7D', '80')
-        if path_or_url.startswith('http'):
-            return path_or_url
-        from flask import url_for
-        return url_for('static', filename=path_or_url)
+        """Return the correct src for a stored image — CDN URL or local static path."""
+        from utils.cloud_storage import image_url as resolve_image_url
+        return resolve_image_url(path_or_url)
 
     @app.template_filter('display_name')
     def display_name_filter(product_or_name, style_number=None):

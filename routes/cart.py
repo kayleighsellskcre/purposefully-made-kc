@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash
 from flask_login import current_user
 from models import Product, Design
-from utils.order_artwork import FRONT_PLACEMENTS, mockup_urls
+from utils.order_artwork import FRONT_PLACEMENTS, existing_image_url, mockup_urls
 from utils.cart_store import get_cart, save_cart, clear_cart, cart_count, cart_fingerprint
 from werkzeug.utils import secure_filename
 from utils.cloud_storage import image_url as _resolve_image_url
@@ -60,9 +60,11 @@ def index():
             item_total = qty * unit_price
             front_image, back_image = mockup_urls(product, item.get('color'))
             placement = item.get('placement') or 'center_chest'
-            # Prefer the exact composite the customer approved in the customizer
-            proof_front = item.get('proof_front_url') or item.get('proof_image')
-            proof_back = item.get('proof_back_url') or item.get('proof_back_image')
+            # Prefer the exact composite the customer approved — only if the
+            # file is still on disk. A missing Railway proof used to hide the
+            # real shirt and show "No image".
+            proof_front = existing_image_url(item.get('proof_front_url') or item.get('proof_image'))
+            proof_back = existing_image_url(item.get('proof_back_url') or item.get('proof_back_image'))
             front_design = None
             if proof_front:
                 display_front = proof_front
@@ -80,6 +82,8 @@ def index():
                 'front_image': display_front,
                 'back_image': back_display,
                 'display_image': display_front,
+                'display_fallback': front_image if proof_front and front_image and proof_front != front_image else None,
+                'back_fallback': back_image if proof_back and back_image and proof_back != back_image else None,
                 'design_overlay': front_design,
                 'back_overlay': back_overlay,
                 'back_overlay_class': _back_overlay_class(item.get('back_design_meta')),

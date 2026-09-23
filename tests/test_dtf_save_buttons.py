@@ -34,3 +34,30 @@ def test_image_url_rewrites_widen_quality_placeholder():
     )
     assert '{quality}' not in url
     assert 'q=80' in url
+
+
+def test_image_url_keeps_absolute_static_paths():
+    """Cart proofs are stored as /static/uploads/proofs/... — wrapping those
+    in url_for('static') produced /static/static/... and blank shirt photos."""
+    from utils.cloud_storage import image_url
+    assert image_url('/static/uploads/proofs/proof_front_1.png') == (
+        '/static/uploads/proofs/proof_front_1.png'
+    )
+    assert image_url('static/uploads/proofs/proof_front_1.png') == (
+        '/static/uploads/proofs/proof_front_1.png'
+    )
+
+
+def test_image_url_still_prefixes_relative_upload_paths(app):
+    from utils.cloud_storage import image_url
+    with app.test_request_context():
+        assert image_url('uploads/designs/logo.png') == '/static/uploads/designs/logo.png'
+
+
+def test_existing_image_url_skips_missing_local_files(app):
+    from utils.order_artwork import existing_image_url
+    with app.app_context():
+        assert existing_image_url('/static/uploads/proofs/missing-proof.png') is None
+        assert existing_image_url('https://cdn.example/shirt.jpg') == (
+            'https://cdn.example/shirt.jpg'
+        )

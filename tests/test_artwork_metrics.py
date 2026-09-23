@@ -51,6 +51,34 @@ def test_measure_artwork_fits_stamps_a_preset_card(app, seed):
         assert 0.2 <= cards[0]['artwork_fit'] <= 1.0
 
 
+def test_measure_designs_accepts_the_current_app_proxy(app, seed):
+    """Passing Flask's current_app into a threaded batch used to 500 the
+    customizer with 'Working outside of application context'."""
+    from flask import current_app
+    from models import Design
+    from services.artwork_metrics import clear_cache, measure_designs
+
+    with app.app_context():
+        designs = [
+            Design.query.get(seed['free_design_id']),
+            Design.query.get(seed['fee_4_design_id']),
+        ]
+        clear_cache()
+        fits = measure_designs(designs, current_app)
+        assert str(seed['free_design_id']) in fits
+        assert str(seed['fee_4_design_id']) in fits
+
+
+def test_artwork_fits_api_measures_a_batch(client, seed):
+    ids = f"{seed['free_design_id']},{seed['fee_4_design_id']}"
+    resp = client.get(f'/api/artwork-fits?ids={ids}')
+    assert resp.status_code == 200
+    payload = resp.get_json()
+    assert payload['ok'] is True
+    assert str(seed['free_design_id']) in payload['fits']
+    assert str(seed['fee_4_design_id']) not in payload['fits']
+
+
 def test_measure_design_is_cached(app, seed):
     from models import Design
     with app.app_context():

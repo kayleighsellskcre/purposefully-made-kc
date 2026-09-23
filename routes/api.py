@@ -405,7 +405,7 @@ def artwork_fits():
         design for design in designs
         if user_can_use_design(design, collection=collection)
     ]
-    fits = measure_designs(allowed, current_app)
+    fits = measure_designs(allowed, current_app._get_current_object())
 
     response = jsonify({'ok': True, 'fits': fits})
     # Private: some ids belong to one shopper. A shared public cache would

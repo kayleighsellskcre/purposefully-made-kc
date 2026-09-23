@@ -290,3 +290,35 @@ def test_checkout_with_an_empty_cart_sends_you_back(client):
 def test_checkout_opens_with_something_in_the_cart(client, seed):
     add_to_cart(client, seed)
     assert client.get('/checkout/').status_code == 200
+
+
+# ── Shirt photos ─────────────────────────────────────────────────────────────
+
+def test_the_cart_shows_the_shirt_photo(client, seed):
+    add_to_cart(client, seed)
+    body = client.get('/cart/').get_data(as_text=True)
+    assert 'pm-proof-base' in body
+    assert '/static/static/' not in body
+
+
+def _set_cart_proof(client, proof_url):
+    with client.session_transaction() as sess:
+        cart = list(sess.get('cart') or [])
+        cart[0] = {**cart[0], 'proof_front_url': proof_url}
+        sess['cart'] = cart
+
+
+def test_a_missing_saved_proof_does_not_hide_the_shirt(client, seed):
+    add_to_cart(client, seed)
+    _set_cart_proof(client, '/static/uploads/proofs/does_not_exist.png')
+    body = client.get('/cart/').get_data(as_text=True)
+    assert '/static/uploads/proofs/does_not_exist.png' not in body
+    assert 'pm-proof-base' in body
+
+
+def test_a_proof_on_disk_is_used_without_doubling_static(client, seed):
+    add_to_cart(client, seed)
+    _set_cart_proof(client, '/static/img/homepage-mockup-flatlay.jpg')
+    body = client.get('/cart/').get_data(as_text=True)
+    assert 'src="/static/img/homepage-mockup-flatlay.jpg"' in body
+    assert '/static/static/' not in body

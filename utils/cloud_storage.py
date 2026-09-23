@@ -108,6 +108,8 @@ def image_url(path_or_url):
 
     Handles:
       - Full https:// R2 (or any CDN) URLs  → returned as-is
+      - Site-absolute paths like '/static/uploads/proofs/foo.png' → as-is
+        (wrapping those in url_for('static') produced /static/static/... 404s)
       - Legacy relative paths like 'uploads/designs/foo.png' → /static/uploads/...
       - Missing/blank values → a tiny transparent placeholder so a single bad
         record never raises a BuildError and crashes the whole page.
@@ -120,8 +122,12 @@ def image_url(path_or_url):
                 '%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20'
                 'width%3D%221%22%20height%3D%221%22%2F%3E')
     path_or_url = path_or_url.strip().replace('{quality}', '80').replace('%7Bquality%7D', '80')
-    if path_or_url.startswith('http') or path_or_url.startswith('data:'):
+    if path_or_url.startswith(('http://', 'https://', 'data:')):
         return path_or_url
+    if path_or_url.startswith('/'):
+        return path_or_url
+    if path_or_url.startswith('static/'):
+        return '/' + path_or_url
     from flask import url_for
     try:
         return url_for('static', filename=path_or_url)

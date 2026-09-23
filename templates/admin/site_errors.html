@@ -10,8 +10,16 @@
             <p class="adm-page-lead">
                 Each customer-facing 500 shows a reference ID. Match that ID here.
                 Sensitive query values are redacted. Full stacks stay in email/logs only.
+                Dismiss a row after you have checked it, or clear the whole list.
             </p>
         </div>
+        {% if errors %}
+        <form method="post" action="{{ url_for('admin.site_errors_clear') }}"
+              onsubmit="return confirm('Clear every site error on this list?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline btn-sm">Clear all</button>
+        </form>
+        {% endif %}
     </div>
 
     {% if errors %}
@@ -25,6 +33,7 @@
                     <th>Request</th>
                     <th>Error</th>
                     <th>Notified</th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -38,6 +47,12 @@
                     </td>
                     <td class="err-msg">{{ err.message_safe }}</td>
                     <td>{{ 'Yes' if err.notified else 'No' }}</td>
+                    <td>
+                        <form method="post" action="{{ url_for('admin.site_error_delete', error_id=err.error_id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-outline btn-sm err-dismiss-btn">Dismiss</button>
+                        </form>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -56,6 +71,10 @@
             <p class="err-req"><strong>{{ err.method }}</strong> {{ err.path }}{% if err.query_safe %}?{{ err.query_safe }}{% endif %}</p>
             {% if err.referrer_safe %}<p class="err-from">from {{ err.referrer_safe }}</p>{% endif %}
             <p class="err-msg">{{ err.message_safe }}</p>
+            <form method="post" action="{{ url_for('admin.site_error_delete', error_id=err.error_id) }}" class="err-card-dismiss">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-outline btn-sm err-dismiss-btn">Dismiss</button>
+            </form>
         </article>
         {% endfor %}
     </div>
@@ -68,7 +87,22 @@
 
 <style>
 .err-page { padding: 0 0 1rem; }
-.err-header { margin-bottom: 1.5rem; }
+.err-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+.err-card-dismiss { margin-top: 0.75rem; }
+.err-table-only td:last-child,
+.err-table-only th:last-child {
+    white-space: nowrap;
+    width: 1%;
+}
+.err-table-only td:last-child form { margin: 0; }
+.err-dismiss-btn { white-space: nowrap; }
 .err-when { white-space: nowrap; font-size: 0.85rem; color: var(--text-secondary); }
 .err-id {
     font-family: 'Courier New', monospace;

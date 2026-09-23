@@ -285,9 +285,9 @@
                     <div class="summary-item">
                         {% if item.front_image %}
                         <div class="summary-item-proofs{% if item.back_overlay %} summary-item-proofs-pair{% endif %}">
-                            {{ garment_proof(item.front_image, item.design_overlay, item.placement or 'center_chest', none) }}
+                            {{ garment_proof(item.front_image, item.design_overlay, item.placement or 'center_chest', none, fallback_url=item.front_fallback) }}
                             {% if item.back_overlay %}
-                            {{ garment_proof(item.back_image, item.back_overlay, item.back_overlay_class or 'center_back', none) }}
+                            {{ garment_proof(item.back_image, item.back_overlay, item.back_overlay_class or 'center_back', none, fallback_url=item.back_fallback) }}
                             {% endif %}
                         </div>
                         {% elif item.design_thumb %}

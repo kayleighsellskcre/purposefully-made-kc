@@ -455,6 +455,27 @@ def site_errors():
     return render_template('admin/site_errors.html', errors=errors)
 
 
+@admin_bp.route('/site-errors/<error_id>/delete', methods=['POST'])
+@admin_required
+def site_error_delete(error_id):
+    """Dismiss one recorded 500 after you have checked it."""
+    row = SiteError.query.filter_by(error_id=error_id).first_or_404()
+    db.session.delete(row)
+    db.session.commit()
+    flash('That error is off the list.', 'success')
+    return redirect(url_for('admin.site_errors'))
+
+
+@admin_bp.route('/site-errors/clear', methods=['POST'])
+@admin_required
+def site_errors_clear():
+    """Clear the whole error list once the underlying issues are handled."""
+    SiteError.query.delete()
+    db.session.commit()
+    flash('All site errors are cleared.', 'success')
+    return redirect(url_for('admin.site_errors'))
+
+
 # ===== ORDERS =====
 
 @admin_bp.route('/orders')

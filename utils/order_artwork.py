@@ -21,6 +21,25 @@ def _as_url(value):
     return f'/static/{value.lstrip("/")}'
 
 
+def existing_image_url(url):
+    """Return a stored image URL only when the browser can actually load it.
+
+    Remote and data URLs pass through. Local /static paths must exist on disk
+    so a missing saved proof does not hide the catalog shirt photo.
+    """
+    url = _as_url(url)
+    if not url:
+        return None
+    if url.startswith(('http://', 'https://', 'data:')):
+        return url
+    from flask import current_app, has_app_context
+    if has_app_context() and local_file_for_url(current_app, url):
+        return url
+    if not has_app_context() and url.startswith('/'):
+        return url
+    return None
+
+
 def mockup_urls(product, color):
     """Front and back garment photos for a product/color.
 
