@@ -448,3 +448,19 @@ def test_widen_mockup_hosts_are_allowed():
     assert garment_metrics._remote_allowed('assets.widencdn.net', None) is True
     assert garment_metrics._remote_allowed('evil.example.com', None) is False
     assert "replace('{quality}', '80')" in inspect.getsource(garment_metrics._load_bytes)
+
+
+def test_uploaded_back_art_uses_center_front_fit_not_name_number_width(client, seed):
+    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    assert 'function applyBackUploadFit()' in html
+    assert 'Same visual target as center-front' in html
+    assert 'const targetRatio = 0.38;' in html
+    assert "if (state.backDesignMode !== 'upload' || !state.backDesignUrl) return;" in html
+    assert "if (state.currentView !== 'back') return;" in html
+    assert "backDesignLayer.classList.add('is-upload');" in html
+    assert "backDesignLayer.classList.remove('is-upload');" in html
+    assert '.design-layer-back.is-upload' in html
+    # Name/number still sizes from the inch chart, not the logo fit.
+    assert "backDesignLayer.style.width = (safeIn * pxPerInch) + 'px';" in html
+    upload_branch = html.index('} else if (state.backDesignUrl)')
+    assert 'applyBackUploadFit();' in html[upload_branch:upload_branch + 900]
