@@ -464,3 +464,12 @@ def test_uploaded_back_art_uses_center_front_fit_not_name_number_width(client, s
     assert "backDesignLayer.style.width = (safeIn * pxPerInch) + 'px';" in html
     upload_branch = html.index('} else if (state.backDesignUrl)')
     assert 'applyBackUploadFit();' in html[upload_branch:upload_branch + 900]
+
+
+def test_choosing_another_logo_keeps_the_checked_placement(client, seed):
+    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    assert 'function placementToKeep()' in html
+    assert 'Keep the placement the customer already checked' in html
+    assert 'state.selectedPlacement = placementToKeep();' in html
+    assert "state.selectedPlacement = (allowed && allowed.length) ? allowed[0] : 'center_chest';" not in html
+    assert "state.selectedPlacement = (state.allowedPlacements && state.allowedPlacements[0]) || 'center_chest';" not in html

@@ -2893,6 +2893,17 @@
         }
     }
 
+    function placementToKeep() {
+        // Keep the placement the customer already checked when they pick
+        // another logo. Only fall back if that spot is not offered here.
+        const allowed = state.allowedPlacements;
+        const current = state.selectedPlacement;
+        if (current && (!allowed || !allowed.length || allowed.includes(current))) {
+            return current;
+        }
+        return (allowed && allowed.length) ? allowed[0] : 'center_chest';
+    }
+
     // Color, size, and placement cards are role="button" tabindex="0" so they're
     // focusable, but only ever wired an onclick - a keyboard user tabbing to one
     // and pressing Enter or Space could not select a color, a size, or a
@@ -4483,8 +4494,7 @@
         const cachedFit = preset.id ? artworkFitByDesignId[String(preset.id)] : null;
         state.artworkFitDesignId = cachedFit ? preset.id : null;
         state.artworkFitRatio = cachedFit || null;
-        const allowed = state.allowedPlacements;
-        state.selectedPlacement = (allowed && allowed.length) ? allowed[0] : 'center_chest';
+        state.selectedPlacement = placementToKeep();
         state.lockedFitKey = null;
         state.lockedFitMeasured = false;
         // Shop logos still paint on the click. Jerseys stay hidden until
@@ -4781,11 +4791,11 @@
                     designLayer.classList.add('visible');
                     designLayer.classList.add('draggable');
                     designLayer.style.display = 'flex';
-                    designLayer.setAttribute('data-placement', (state.allowedPlacements && state.allowedPlacements[0]) || 'center_chest');
+                    state.selectedPlacement = placementToKeep();
+                    designLayer.setAttribute('data-placement', state.selectedPlacement);
                     if (placementSection) placementSection.style.display = 'block';
                     const backSection = document.getElementById('backDesignSection');
                     if (backSection) backSection.style.display = 'block';
-                    state.selectedPlacement = (state.allowedPlacements && state.allowedPlacements[0]) || 'center_chest';
                     document.querySelectorAll('.placement-option').forEach(o => o.classList.remove('selected'));
                     const selectedOpt = document.querySelector(`[data-placement="${state.selectedPlacement}"]`);
                     if (selectedOpt) selectedOpt.classList.add('selected');
