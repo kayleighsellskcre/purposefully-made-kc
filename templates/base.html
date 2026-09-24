@@ -46,7 +46,7 @@
     </noscript>
     
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=49">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=50">
     {% block extra_css %}{% endblock %}
     
     <!-- Favicon -->
@@ -198,10 +198,10 @@
             <!-- Logo + tagline centered -->
             <div class="footer-brand">
                 <a href="{{ url_for('main.index') }}" class="footer-logo-link">
-                    {# Wordmark first; monogram if it fails to paint; text if both fail.
-                       A fixed 420px height used to leave a huge blank gap when the
-                       image came back with 0 naturalWidth. #}
-                    <img src="{{ url_for('static', filename='img/logo.png') }}"
+                    {# Cropped wordmark first so the empty canvas in logo.png
+                       cannot open a tall sand gap. Monogram if it fails to
+                       paint; text if both fail. #}
+                    <img src="{{ url_for('static', filename='img/logo-wordmark.png') }}"
                          alt="Purposefully Made KC"
                          class="footer-logo-img"
                          loading="lazy"
