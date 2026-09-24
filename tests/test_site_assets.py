@@ -38,7 +38,7 @@ def test_footer_logo_is_capped_and_falls_back(client):
 
     css = (Path(__file__).resolve().parents[1] / 'static' / 'css' / 'main.css').read_text(encoding='utf-8')
     assert 'height: 420px' not in css
-    assert 'max-height: 140px' in css
+    assert 'max-height: 360px' in css
     html = client.get('/').get_data(as_text=True)
     assert 'footer-logo-img' in html
     assert 'img/logo-monogram.png' in html
