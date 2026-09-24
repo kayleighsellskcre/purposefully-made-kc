@@ -1090,12 +1090,23 @@ a.btn-customize:hover {
 
 .footer-logo-link { display: inline-block; }
 .footer-logo-img {
-    height: 420px;
+    height: auto;
+    max-height: 140px;
+    max-width: min(280px, 72vw);
     width: auto;
     display: block;
     margin: 0 auto 0.5rem;
     filter: brightness(0.18) sepia(1) hue-rotate(5deg) saturate(0.5);
     opacity: 0.92;
+}
+.footer-logo-img[hidden] { display: none; }
+.footer-logo-text {
+    display: block;
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.25rem;
+    letter-spacing: 0.08em;
+    color: rgba(44, 32, 22, 0.78);
+    margin: 0 auto 0.5rem;
 }
 
 .footer-brand-desc {
@@ -1197,12 +1208,11 @@ a.btn-customize:hover {
 
 @media (max-width: 768px) {
     .footer-nav { gap: 2.5rem; flex-wrap: wrap; }
-    .footer-logo-img { height: 260px; }
+    .footer-logo-img { max-height: 110px; }
 }
 
 @media (max-width: 480px) {
     .footer-nav { flex-direction: column; align-items: center; gap: 2rem; }
-    .footer-logo-img { height: 220px; }
 }
 
 /* Forms */

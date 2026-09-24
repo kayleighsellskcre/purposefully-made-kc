@@ -32,6 +32,20 @@ def test_pages_link_the_icons(client):
     assert 'apple-touch-icon' in html
 
 
+def test_footer_logo_is_capped_and_falls_back(client):
+    """A 420px footer height left a huge blank gap when logo.png failed to paint."""
+    from pathlib import Path
+
+    css = (Path(__file__).resolve().parents[1] / 'static' / 'css' / 'main.css').read_text(encoding='utf-8')
+    assert 'height: 420px' not in css
+    assert 'max-height: 140px' in css
+    html = client.get('/').get_data(as_text=True)
+    assert 'footer-logo-img' in html
+    assert 'img/logo-monogram.png' in html
+    assert 'footer-logo-text' in html
+    assert 'data-fallback' in html
+
+
 def test_social_links_are_hidden_until_accounts_exist(client):
     html = client.get('/').get_data(as_text=True)
     assert 'instagram.com/purposefullymadekc' not in html

@@ -46,7 +46,7 @@
     </noscript>
     
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=47">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=48">
     {% block extra_css %}{% endblock %}
     
     <!-- Favicon -->
@@ -198,8 +198,17 @@
             <!-- Logo + tagline centered -->
             <div class="footer-brand">
                 <a href="{{ url_for('main.index') }}" class="footer-logo-link">
-                    {# The footer is below the fold on every page. #}
-                    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Purposefully Made KC" class="footer-logo-img" loading="lazy" decoding="async">
+                    {# Wordmark first; monogram if it fails to paint; text if both fail.
+                       A fixed 420px height used to leave a huge blank gap when the
+                       image came back with 0 naturalWidth. #}
+                    <img src="{{ url_for('static', filename='img/logo.png') }}"
+                         alt="Purposefully Made KC"
+                         class="footer-logo-img"
+                         loading="lazy"
+                         decoding="async"
+                         data-fallback="{{ url_for('static', filename='img/logo-monogram.png') }}"
+                         onerror="if (this.dataset.fallback) { this.src = this.dataset.fallback; this.removeAttribute('data-fallback'); } else { this.hidden = true; var t = this.nextElementSibling; if (t) t.hidden = false; }">
+                    <span class="footer-logo-text" hidden>Purposefully Made KC</span>
                 </a>
                 <p class="footer-brand-desc">Custom apparel, made with intention, for every occasion that deserves something special.</p>
                 {% if config.SHOW_SOCIAL_LINKS %}
