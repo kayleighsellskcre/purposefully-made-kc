@@ -2,9 +2,13 @@ from utils.color_names import (
     color_family,
     color_in_allowed_set,
     color_match_key,
+    color_matches_any_filter,
     color_matches_filter,
     display_color_name,
+    filter_carousel_to_color_filters,
     grouped_colors_by_family,
+    parse_color_filters,
+    selected_color_families,
     selected_color_family,
     swatch_hex,
     unique_display_colors,
@@ -115,3 +119,32 @@ def test_selected_color_family_maps_a_shade_back_to_its_family():
     assert selected_color_family('Blues') == 'Blues'
     assert selected_color_family('Heather Navy') == 'Blues'
     assert selected_color_family('') == ''
+
+
+def test_color_matches_any_filter_accepts_one_or_more_families():
+    assert color_matches_any_filter('Forest Green', ['Greens'])
+    assert color_matches_any_filter('Hot Pink', ['Greens', 'Reds and Pinks'])
+    assert not color_matches_any_filter('Navy', ['Greens', 'Reds and Pinks'])
+    assert color_matches_any_filter('Navy', [])
+
+
+def test_parse_color_filters_drops_blanks_and_duplicates():
+    assert parse_color_filters([' Greens ', '', 'Greens', 'Reds and Pinks']) == [
+        'Greens', 'Reds and Pinks',
+    ]
+
+
+def test_selected_color_families_keeps_each_picked_family():
+    assert selected_color_families(['Greens', 'Navy']) == ['Greens', 'Blues']
+
+
+def test_filter_carousel_to_color_filters_keeps_matching_slides():
+    slides = [
+        {'color_name': 'Navy', 'front_image_url': '/navy.png'},
+        {'color_name': 'Forest Green', 'front_image_url': '/green.png'},
+        {'color_name': 'Hot Pink', 'front_image_url': '/pink.png'},
+    ]
+    greens = filter_carousel_to_color_filters(slides, ['Greens'])
+    assert [s['color_name'] for s in greens] == ['Forest Green']
+    mixed = filter_carousel_to_color_filters(slides, ['Greens', 'Reds and Pinks'])
+    assert [s['color_name'] for s in mixed] == ['Forest Green', 'Hot Pink']

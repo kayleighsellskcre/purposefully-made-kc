@@ -239,6 +239,19 @@ def test_filtering_by_a_grouped_color_value_still_works(client, app, seed):
     assert 'Unisex Jersey Short Sleeve Tee' not in body
 
 
+def _carousel_colors_for(body, product_id):
+    start = body.index(f'<div class="color-carousel" data-product-id="{product_id}"')
+    depth = 0
+    pos = start
+    tag_re = re.compile(r'<div\b|</div>')
+    for match in tag_re.finditer(body, start):
+        depth += -1 if match.group(0).startswith('</div') else 1
+        pos = match.end()
+        if depth == 0:
+            break
+    return re.findall(r'data-color="([^"]*)"', body[start:pos])
+
+
 def test_filtering_by_a_color_family_includes_every_shade_in_it(client, app, seed):
     import json
     from models import ProductColorVariant, db
@@ -255,6 +268,66 @@ def test_filtering_by_a_color_family_includes_every_shade_in_it(client, app, see
     body = resp.get_data(as_text=True)
     assert 'Heavy Blend Hooded Sweatshirt' in body
     assert 'Unisex Jersey Short Sleeve Tee' not in body
+
+
+def test_selected_color_swatches_mark_aria_pressed(client, seed):
+    html = html_of(client, '/shop/?color=Blacks+and+Grays&color=Whites+and+Creams')
+    blacks = re.search(r'<button[^>]*data-family="Blacks and Grays"[^>]*>', html).group(0)
+    whites = re.search(r'<button[^>]*data-family="Whites and Creams"[^>]*>', html).group(0)
+    assert 'aria-pressed="true"' in blacks
+    assert 'aria-pressed="true"' in whites
+    assert 'is-selected' in blacks
+    assert 'is-selected' in whites
+
+
+def test_color_filter_limits_each_card_carousel_to_that_family(client, seed):
+    body = html_of(client, '/shop/?color=Blacks+and+Grays')
+    colors = _carousel_colors_for(body, seed['tee_id'])
+    assert colors
+    assert 'Black' in colors
+    assert 'White' not in colors
+
+
+def test_two_color_families_keep_both_in_the_carousel(client, app, seed):
+    import json
+    from models import ProductColorVariant, db
+
+    stocked = json.dumps({'S': 5, 'M': 5, 'L': 5})
+    with app.app_context():
+        db.session.add(ProductColorVariant(
+            product_id=seed['tee_id'], color_name='Forest Green',
+            front_image_url='/static/img/logo.png',
+            size_inventory=stocked,
+        ))
+        db.session.commit()
+
+    body = html_of(client, '/shop/?color=Greens&color=Whites+and+Creams')
+    colors = _carousel_colors_for(body, seed['tee_id'])
+    assert 'Forest Green' in colors
+    assert 'White' in colors
+    assert 'Black' not in colors
+    assert 'data-family="Greens"' in body
+    assert 'data-family="Whites and Creams"' in body
+
+
+def test_two_color_families_keep_products_from_either(client, app, seed):
+    import json
+    from models import ProductColorVariant, db
+
+    stocked = json.dumps({'S': 5, 'M': 5, 'L': 5})
+    with app.app_context():
+        db.session.add(ProductColorVariant(
+            product_id=seed['hoodie_id'], color_name='Forest Green',
+            front_image_url='/static/img/logo.png',
+            size_inventory=stocked,
+        ))
+        db.session.commit()
+
+    body = html_of(client, '/shop/?color=Greens&color=Whites+and+Creams')
+    assert 'Heavy Blend Hooded Sweatshirt' in body
+    assert 'Unisex Jersey Short Sleeve Tee' in body
+    hoodie_colors = _carousel_colors_for(body, seed['hoodie_id'])
+    assert hoodie_colors == ['Forest Green']
 
 
 def test_kids_age_filter_includes_baby_toddler_and_youth():

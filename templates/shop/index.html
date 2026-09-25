@@ -52,7 +52,7 @@
         {# Also decides whether the collapsed panel starts open, so someone
            arriving on a filtered link can see which filters are cutting the
            results down rather than wondering where the products went. #}
-        {% set filters_active = selected_brand or selected_category or selected_age_group or selected_color or selected_fit_type or selected_neck_style or selected_sleeve_length or request.args.get('q') %}
+        {% set filters_active = selected_brand or selected_category or selected_age_group or selected_colors or selected_color or selected_fit_type or selected_neck_style or selected_sleeve_length or request.args.get('q') %}
         <div class="filter-bar">
             <div class="filter-bar-header">
                 <span class="filter-bar-title">Refine Your Selection</span>
@@ -71,7 +71,13 @@
                     <input type="hidden" name="fit_type" id="searchFitType" value="{{ request.args.get('fit_type', '') }}">
                     <input type="hidden" name="neck_style" id="searchNeckStyle" value="{{ request.args.get('neck_style', '') }}">
                     <input type="hidden" name="sleeve_length" id="searchSleeveLength" value="{{ request.args.get('sleeve_length', '') }}">
-                    <input type="hidden" name="color" id="searchColor" value="{{ request.args.get('color', '') }}">
+                    {% if selected_colors %}
+                    {% for color in selected_colors %}
+                    <input type="hidden" name="color" class="search-color-param" value="{{ color }}">
+                    {% endfor %}
+                    {% else %}
+                    <input type="hidden" name="color" id="searchColor" class="search-color-param" value="">
+                    {% endif %}
                     <input type="hidden" name="brand" id="searchBrand" value="{{ request.args.get('brand', '') }}">
                     <div class="shop-search-field">
                         {# The placeholder is not a label: it disappears as soon as
@@ -160,22 +166,23 @@
 
                 <div class="filter-group filter-group-color">
                     <label id="colorFilterLabel">Color</label>
-                    <div class="color-family-swatches" role="group" aria-labelledby="colorFilterLabel">
+                    <p class="color-filter-hint" id="colorFilterHint">Pick one or a few. Each style then shows only those colors.</p>
+                    <div class="color-family-swatches" role="group" aria-labelledby="colorFilterLabel" aria-describedby="colorFilterHint">
                         <button type="button"
-                                class="color-family-swatch {% if not selected_color %}is-selected{% endif %}"
+                                class="color-family-swatch {% if not selected_colors %}is-selected{% endif %}"
                                 data-family=""
                                 title="All Colors"
-                                aria-pressed="{{ 'true' if not selected_color else 'false' }}"
+                                aria-pressed="{% if not selected_colors %}true{% else %}false{% endif %}"
                                 onclick="selectColorFamily('')">
                             <span class="color-family-swatch-dot color-family-swatch-all" aria-hidden="true"></span>
                             <span class="color-family-swatch-name">All</span>
                         </button>
                         {% for family in color_families or [] %}
                         <button type="button"
-                                class="color-family-swatch {% if selected_color_family == family.name %}is-selected{% endif %}"
+                                class="color-family-swatch {% if family.name in selected_color_families %}is-selected{% endif %}"
                                 data-family="{{ family.name }}"
                                 title="{{ family.name }}"
-                                aria-pressed="{{ 'true' if selected_color_family == family.name else 'false' }}"
+                                aria-pressed="{% if family.name in selected_color_families %}true{% else %}false{% endif %}"
                                 onclick="selectColorFamily('{{ family.name }}')">
                             <span class="color-family-swatch-dot{% if family.name == 'Whites and Creams' %} is-light{% endif %}{% if family.name == 'Patterns and Camo' %} is-pattern{% endif %}"
                                   style="background: {{ family.swatch }};"
@@ -184,14 +191,15 @@
                         </button>
                         {% endfor %}
                     </div>
-                    <select id="colorFilter" class="visually-hidden" onchange="applyFilters()" aria-hidden="true" tabindex="-1">
-                        <option value="">All Colors</option>
+                    <select id="colorFilter" class="visually-hidden" multiple onchange="applyFilters()" aria-hidden="true" tabindex="-1">
                         {% for family in color_families or [] %}
-                        <option value="{{ family.name }}" {% if selected_color == family.name %}selected{% endif %}>{{ family.name }}</option>
+                        <option value="{{ family.name }}" {% if family.name in selected_colors %}selected{% endif %}>{{ family.name }}</option>
                         {% endfor %}
-                        {% if selected_color and selected_color != selected_color_family %}
-                        <option value="{{ selected_color }}" selected>{{ selected_color }}</option>
+                        {% for color in selected_colors or [] %}
+                        {% if color not in (selected_color_families or []) %}
+                        <option value="{{ color }}" selected>{{ color }}</option>
                         {% endif %}
+                        {% endfor %}
                     </select>
                 </div>
             </div>
@@ -341,7 +349,7 @@
                         <path d="m21 21-4.35-4.35"></path>
                     </svg>
                     <h2>No products found</h2>
-                    {% if selected_brand or selected_category or selected_age_group or selected_color or selected_fit_type or selected_neck_style or selected_sleeve_length or request.args.get('q') %}
+                    {% if selected_brand or selected_category or selected_age_group or selected_colors or selected_color or selected_fit_type or selected_neck_style or selected_sleeve_length or request.args.get('q') %}
                     {% if request.args.get('q') %}
                     <p>No results for "<strong>{{ request.args.get('q') }}</strong>". Try a different keyword or clear your search.</p>
                     {% else %}
@@ -596,6 +604,13 @@
 .filter-group-color {
     flex: 1 1 100%;
     min-width: 0;
+}
+
+.color-filter-hint {
+    margin: 0 0 0.45rem;
+    color: var(--text-muted, #8b7355);
+    font-size: 0.75rem;
+    line-height: 1.35;
 }
 
 .color-family-swatches {
@@ -1344,9 +1359,30 @@ function updateFitLabels() {
 // Run on page load to reflect any pre-selected age group
 document.addEventListener('DOMContentLoaded', updateFitLabels);
 
+function selectedColorValues() {
+    const select = document.getElementById('colorFilter');
+    if (!select) return [];
+    return Array.from(select.selectedOptions)
+        .map((option) => option.value)
+        .filter(Boolean);
+}
+
 function selectColorFamily(family) {
     const select = document.getElementById('colorFilter');
-    if (select) select.value = family || '';
+    if (!select) return;
+    if (!family) {
+        Array.from(select.options).forEach((option) => { option.selected = false; });
+    } else {
+        const option = Array.from(select.options).find((row) => row.value === family);
+        if (option) {
+            option.selected = !option.selected;
+        } else {
+            const extra = document.createElement('option');
+            extra.value = family;
+            extra.selected = true;
+            select.appendChild(extra);
+        }
+    }
     applyFilters();
 }
 
@@ -1356,7 +1392,7 @@ function applyFilters() {
     const ageGroup = document.getElementById('ageGroupFilter').value;
     const category = document.getElementById('categoryFilter').value;
     const fitType = document.getElementById('fitTypeFilter').value;
-    const color = document.getElementById('colorFilter').value;
+    const colors = selectedColorValues();
     const designId = new URLSearchParams(window.location.search).get('design_id');
     const searchQ = (document.getElementById('shopSearchInput') || {}).value || '';
 
@@ -1365,7 +1401,7 @@ function applyFilters() {
     if (ageGroup) params.append('age_group', ageGroup);
     if (category) params.append('category', category);
     if (fitType) params.append('fit_type', fitType);
-    if (color) params.append('color', color);
+    colors.forEach((color) => params.append('color', color));
     if (designId) params.append('design_id', designId);
     if (searchQ.trim()) params.append('q', searchQ.trim());
 
@@ -1394,8 +1430,27 @@ document.addEventListener('DOMContentLoaded', () => {
         set('searchCategory', (document.getElementById('categoryFilter') || {}).value || '');
         set('searchAgeGroup', (document.getElementById('ageGroupFilter') || {}).value || '');
         set('searchFitType', (document.getElementById('fitTypeFilter') || {}).value || '');
-        set('searchColor', (document.getElementById('colorFilter') || {}).value || '');
         set('searchBrand', (document.getElementById('brandFilter') || {}).value || '');
+        const form = document.getElementById('shopSearchForm');
+        if (form) {
+            form.querySelectorAll('input[name="color"]').forEach((el) => el.remove());
+            const colors = selectedColorValues();
+            if (!colors.length) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'color';
+                input.id = 'searchColor';
+                form.appendChild(input);
+            } else {
+                colors.forEach((color) => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'color';
+                    input.value = color;
+                    form.appendChild(input);
+                });
+            }
+        }
     };
     ['categoryFilter','ageGroupFilter','fitTypeFilter','colorFilter','brandFilter'].forEach(id => {
         const el = document.getElementById(id);

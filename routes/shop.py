@@ -24,11 +24,13 @@ from utils.product_filters import (
 )
 from utils.sizes import shop_sizes_for_product
 from utils.color_names import (
-    color_matches_filter,
+    color_matches_any_filter,
     family_short_label,
     family_swatch_hex,
+    filter_carousel_to_color_filters,
     grouped_colors_by_family,
-    selected_color_family,
+    parse_color_filters,
+    selected_color_families,
     unique_display_colors,
 )
 from utils.fonts import CUSTOMIZE_BACK_FONTS, GROUP_ORDER_FONTS
@@ -172,7 +174,8 @@ def index():
         fit_type = request.args.get('fit_type')
         neck_style = request.args.get('neck_style')
         sleeve_length = request.args.get('sleeve_length')
-        color = request.args.get('color')
+        color_filters = parse_color_filters(request.args.getlist('color'))
+        color = color_filters[0] if color_filters else None
         brand = (request.args.get('brand') or '').strip() or None
         search_q = (request.args.get('q') or '').strip()
 
@@ -234,12 +237,19 @@ def index():
                     ch for ch in (p.display_brand or infer_brand(p) or '').lower() if ch.isalnum()
                 )
             ]
-        if color:
+        if color_filters:
             matching_ids = {
                 pid for pid, variants in variants_by_product.items()
-                if any(color_matches_filter(v.color_name, color) for v in variants)
+                if any(color_matches_any_filter(v.color_name, color_filters) for v in variants)
             }
             products = [p for p in products if p.id in matching_ids]
+            for product in products:
+                product.carousel_colors = filter_carousel_to_color_filters(
+                    product.carousel_colors, color_filters)
+                if product.carousel_colors:
+                    first_url = product.carousel_colors[0].get('front_image_url')
+                    if first_url:
+                        product.fallback_image_url = first_url
 
         # Adult → Youth → Toddler → Baby, then garment type within each age
         products = sort_catalog(products)
@@ -259,6 +269,7 @@ def index():
             }
             for family, _ in grouped_colors
         ]
+        highlighted_families = selected_color_families(color_filters)
         design_id = request.args.get('design_id', type=int)
 
         # Daily affirmation: same message for every visitor on the same calendar date
@@ -304,7 +315,9 @@ def index():
                              colors=colors,
                              grouped_colors=grouped_colors,
                              color_families=color_families,
-                             selected_color_family=selected_color_family(color),
+                             selected_colors=color_filters,
+                             selected_color_families=highlighted_families,
+                             selected_color_family=(highlighted_families[0] if highlighted_families else ''),
                              shop_brands=shop_brands,
                              filter_ages=filter_opts['ages'],
                              filter_categories=filter_opts['categories'],
@@ -334,6 +347,8 @@ def index():
                              colors=[],
                              grouped_colors=[],
                              color_families=[],
+                             selected_colors=[],
+                             selected_color_families=[],
                              selected_color_family='',
                              shop_brands=[],
                              filter_ages=[],

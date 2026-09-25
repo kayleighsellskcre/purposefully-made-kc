@@ -305,6 +305,29 @@ def selected_color_family(selected):
     return color_family(label)
 
 
+def parse_color_filters(raw_values):
+    """Unique, non-empty color query values, first-seen order."""
+    seen = set()
+    out = []
+    for value in raw_values or []:
+        cleaned = (value or '').strip()
+        if not cleaned or cleaned in seen:
+            continue
+        seen.add(cleaned)
+        out.append(cleaned)
+    return out
+
+
+def selected_color_families(filter_values):
+    """Families to highlight for one or more ?color= values."""
+    families = []
+    for value in filter_values or []:
+        family = selected_color_family(value)
+        if family and family not in families:
+            families.append(family)
+    return families
+
+
 def color_matches_filter(raw_name, filter_value):
     """True when a stored variant belongs to a family or exact color filter."""
     if not filter_value:
@@ -314,3 +337,20 @@ def color_matches_filter(raw_name, filter_value):
         return color_family(label) == filter_value
     wanted = color_match_key(filter_value)
     return bool(wanted) and color_match_key(raw_name) == wanted
+
+
+def color_matches_any_filter(raw_name, filter_values):
+    """True when a stored variant belongs to any selected family or shade."""
+    if not filter_values:
+        return True
+    return any(color_matches_filter(raw_name, value) for value in filter_values)
+
+
+def filter_carousel_to_color_filters(carousel, filter_values):
+    """Keep only carousel slides that match the selected color filters."""
+    if not filter_values:
+        return list(carousel or [])
+    return [
+        item for item in (carousel or [])
+        if color_matches_any_filter(item.get('color_name'), filter_values)
+    ]
