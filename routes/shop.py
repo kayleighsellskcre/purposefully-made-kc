@@ -23,7 +23,14 @@ from utils.product_filters import (
     sort_catalog,
 )
 from utils.sizes import shop_sizes_for_product
-from utils.color_names import color_match_key, unique_display_colors, grouped_colors_by_family
+from utils.color_names import (
+    color_matches_filter,
+    family_short_label,
+    family_swatch_hex,
+    grouped_colors_by_family,
+    selected_color_family,
+    unique_display_colors,
+)
 from utils.fonts import CUSTOMIZE_BACK_FONTS, GROUP_ORDER_FONTS
 import json
 
@@ -228,10 +235,9 @@ def index():
                 )
             ]
         if color:
-            wanted = color_match_key(color)
             matching_ids = {
                 pid for pid, variants in variants_by_product.items()
-                if wanted and any(color_match_key(v.color_name) == wanted for v in variants)
+                if any(color_matches_filter(v.color_name, color) for v in variants)
             }
             products = [p for p in products if p.id in matching_ids]
 
@@ -244,6 +250,15 @@ def index():
         sleeve_lengths = []
         shop_brands = filter_opts['brands']
         
+        grouped_colors = grouped_colors_by_family(colors)
+        color_families = [
+            {
+                'name': family,
+                'short': family_short_label(family),
+                'swatch': family_swatch_hex(family),
+            }
+            for family, _ in grouped_colors
+        ]
         design_id = request.args.get('design_id', type=int)
 
         # Daily affirmation: same message for every visitor on the same calendar date
@@ -287,7 +302,9 @@ def index():
                              neck_styles=neck_styles,
                              sleeve_lengths=sleeve_lengths,
                              colors=colors,
-                             grouped_colors=grouped_colors_by_family(colors),
+                             grouped_colors=grouped_colors,
+                             color_families=color_families,
+                             selected_color_family=selected_color_family(color),
                              shop_brands=shop_brands,
                              filter_ages=filter_opts['ages'],
                              filter_categories=filter_opts['categories'],
@@ -316,6 +333,8 @@ def index():
                              sleeve_lengths=[],
                              colors=[],
                              grouped_colors=[],
+                             color_families=[],
+                             selected_color_family='',
                              shop_brands=[],
                              filter_ages=[],
                              filter_categories=[],

@@ -2,8 +2,10 @@ from utils.color_names import (
     color_family,
     color_in_allowed_set,
     color_match_key,
+    color_matches_filter,
     display_color_name,
     grouped_colors_by_family,
+    selected_color_family,
     swatch_hex,
     unique_display_colors,
 )
@@ -100,3 +102,16 @@ def test_grouped_colors_by_family_keeps_every_color_and_skips_empty_families():
 def test_grouped_colors_by_family_preserves_incoming_order_within_a_family():
     groups = dict(grouped_colors_by_family(['White', 'Black', 'Navy', 'Charcoal']))
     assert groups['Blacks and Grays'] == ['Black', 'Charcoal']
+
+
+def test_color_matches_filter_accepts_a_family_or_an_exact_shade():
+    assert color_matches_filter('Heather Navy', 'Blues')
+    assert color_matches_filter('Navy', 'Navy')
+    assert not color_matches_filter('Forest Green', 'Blues')
+    assert not color_matches_filter('Navy', 'Forest Green')
+
+
+def test_selected_color_family_maps_a_shade_back_to_its_family():
+    assert selected_color_family('Blues') == 'Blues'
+    assert selected_color_family('Heather Navy') == 'Blues'
+    assert selected_color_family('') == ''

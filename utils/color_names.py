@@ -77,6 +77,8 @@ _SWATCH_HEX = {
 
 def swatch_hex(name, supplied=None):
     """Supplier hex if present, otherwise a name lookup. Never writes to the DB."""
+    if name in FAMILY_SWATCHES:
+        return FAMILY_SWATCHES[name]
     raw = (supplied or '').strip()
     if raw:
         if not raw.startswith('#'):
@@ -124,17 +126,43 @@ def unique_display_colors(raw_names):
     return [best[key] for key in sorted(best, key=lambda item: best[item].lower())]
 
 
-# ── Color family grouping (round 2 audit item 8) ────────────────────────────
+# ── Color family grouping (round 2 audit item 8, tightened later) ──────────
 # 458+ colors in one flat <select> was unusable. These keyword sets bucket
-# each display name into one of the audit's named families so the dropdown
-# can use <optgroup>. This is a display grouping only - the underlying
-# option value (and therefore every existing filter link) is unchanged.
+# each display name into a family. The shop filter now offers the families
+# (with swatches) instead of every shade. Exact-color query values such as
+# ?color=Navy still match one shade so older links keep working.
 
 FAMILY_ORDER = [
     'Blacks and Grays', 'Whites and Creams', 'Blues', 'Greens',
     'Reds and Pinks', 'Purples', 'Yellows and Oranges', 'Browns and Neutrals',
     'Patterns and Camo', 'Other Colors',
 ]
+
+FAMILY_SHORT = {
+    'Blacks and Grays': 'Black',
+    'Whites and Creams': 'White',
+    'Blues': 'Blue',
+    'Greens': 'Green',
+    'Reds and Pinks': 'Red',
+    'Purples': 'Purple',
+    'Yellows and Oranges': 'Gold',
+    'Browns and Neutrals': 'Neutral',
+    'Patterns and Camo': 'Pattern',
+    'Other Colors': 'Other',
+}
+
+FAMILY_SWATCHES = {
+    'Blacks and Grays': '#36454f',
+    'Whites and Creams': '#f5f0e1',
+    'Blues': '#1e3a5f',
+    'Greens': '#556b2f',
+    'Reds and Pinks': '#c41e3a',
+    'Purples': '#6b3fa0',
+    'Yellows and Oranges': '#e67e22',
+    'Browns and Neutrals': '#8b6914',
+    'Patterns and Camo': '#5c6b4f',
+    'Other Colors': '#7f6c50',
+}
 
 # Any of these appearing anywhere in the name wins outright: a patterned or
 # camo print is not usefully described by its dominant hue.
@@ -257,3 +285,32 @@ def grouped_colors_by_family(display_names):
     for name in display_names or []:
         buckets[color_family(name)].append(name)
     return [(family, buckets[family]) for family in FAMILY_ORDER if buckets[family]]
+
+
+def family_short_label(family):
+    return FAMILY_SHORT.get(family, family)
+
+
+def family_swatch_hex(family):
+    return FAMILY_SWATCHES.get(family, '#7f6c50')
+
+
+def selected_color_family(selected):
+    """Family to highlight in the shop filter for a ?color= value."""
+    if not selected:
+        return ''
+    if selected in FAMILY_ORDER:
+        return selected
+    label = display_color_name(selected) or selected
+    return color_family(label)
+
+
+def color_matches_filter(raw_name, filter_value):
+    """True when a stored variant belongs to a family or exact color filter."""
+    if not filter_value:
+        return True
+    if filter_value in FAMILY_ORDER:
+        label = display_color_name(raw_name) or (raw_name or '')
+        return color_family(label) == filter_value
+    wanted = color_match_key(filter_value)
+    return bool(wanted) and color_match_key(raw_name) == wanted

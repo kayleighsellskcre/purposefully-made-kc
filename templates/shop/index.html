@@ -158,21 +158,41 @@
 
                 <div class="filter-divider"></div>
 
-                <div class="filter-group">
-                    <label for="colorFilter">Color</label>
-                    <div class="select-wrap">
-                        <select id="colorFilter" class="filter-dropdown" onchange="applyFilters()">
-                            <option value="">All Colors</option>
-                            {% for family, family_colors in grouped_colors %}
-                            <optgroup label="{{ family }}">
-                                {% for color in family_colors %}
-                                <option value="{{ color }}" {% if selected_color == color %}selected{% endif %}>{{ color }}</option>
-                                {% endfor %}
-                            </optgroup>
-                            {% endfor %}
-                        </select>
-                        <svg class="select-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <div class="filter-group filter-group-color">
+                    <label id="colorFilterLabel">Color</label>
+                    <div class="color-family-swatches" role="group" aria-labelledby="colorFilterLabel">
+                        <button type="button"
+                                class="color-family-swatch {% if not selected_color %}is-selected{% endif %}"
+                                data-family=""
+                                title="All Colors"
+                                aria-pressed="{{ 'true' if not selected_color else 'false' }}"
+                                onclick="selectColorFamily('')">
+                            <span class="color-family-swatch-dot color-family-swatch-all" aria-hidden="true"></span>
+                            <span class="color-family-swatch-name">All</span>
+                        </button>
+                        {% for family in color_families or [] %}
+                        <button type="button"
+                                class="color-family-swatch {% if selected_color_family == family.name %}is-selected{% endif %}"
+                                data-family="{{ family.name }}"
+                                title="{{ family.name }}"
+                                aria-pressed="{{ 'true' if selected_color_family == family.name else 'false' }}"
+                                onclick="selectColorFamily('{{ family.name }}')">
+                            <span class="color-family-swatch-dot{% if family.name == 'Whites and Creams' %} is-light{% endif %}{% if family.name == 'Patterns and Camo' %} is-pattern{% endif %}"
+                                  style="background: {{ family.swatch }};"
+                                  aria-hidden="true"></span>
+                            <span class="color-family-swatch-name">{{ family.short }}</span>
+                        </button>
+                        {% endfor %}
                     </div>
+                    <select id="colorFilter" class="visually-hidden" onchange="applyFilters()" aria-hidden="true" tabindex="-1">
+                        <option value="">All Colors</option>
+                        {% for family in color_families or [] %}
+                        <option value="{{ family.name }}" {% if selected_color == family.name %}selected{% endif %}>{{ family.name }}</option>
+                        {% endfor %}
+                        {% if selected_color and selected_color != selected_color_family %}
+                        <option value="{{ selected_color }}" selected>{{ selected_color }}</option>
+                        {% endif %}
+                    </select>
                 </div>
             </div>
         </div>
@@ -571,6 +591,82 @@
     font-family: var(--font-primary);
     color: var(--text-primary);
     background: #fff;
+}
+
+.filter-group-color {
+    flex: 1 1 100%;
+    min-width: 0;
+}
+
+.color-family-swatches {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.4rem;
+}
+
+.color-family-swatch {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0.2rem 0.5rem 0.2rem 0.2rem;
+    border: 1px solid rgba(127, 108, 80, 0.22);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-primary);
+    font-family: var(--font-primary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    line-height: 1.2;
+}
+
+.color-family-swatch:hover,
+.color-family-swatch:focus-visible {
+    border-color: var(--accent-color);
+    outline: none;
+}
+
+.color-family-swatch.is-selected {
+    border-color: var(--accent-color);
+    background: rgba(184, 124, 111, 0.08);
+}
+
+.color-family-swatch-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid rgba(44, 32, 22, 0.18);
+    flex-shrink: 0;
+}
+
+.color-family-swatch-dot.is-light {
+    border-color: rgba(44, 32, 22, 0.28);
+}
+
+.color-family-swatch-dot.is-pattern {
+    background:
+        repeating-linear-gradient(
+            45deg,
+            #5c6b4f 0 3px,
+            #8a9a73 3px 6px
+        ) !important;
+}
+
+.color-family-swatch-all {
+    background:
+        conic-gradient(
+            #36454f 0 90deg,
+            #1e3a5f 90deg 180deg,
+            #c41e3a 180deg 270deg,
+            #f5f0e1 270deg 360deg
+        );
+}
+
+.color-family-swatch-name {
+    white-space: nowrap;
 }
 
 .clear-filters-btn {
@@ -1247,6 +1343,12 @@ function updateFitLabels() {
 
 // Run on page load to reflect any pre-selected age group
 document.addEventListener('DOMContentLoaded', updateFitLabels);
+
+function selectColorFamily(family) {
+    const select = document.getElementById('colorFilter');
+    if (select) select.value = family || '';
+    applyFilters();
+}
 
 // Filter functions
 function applyFilters() {
