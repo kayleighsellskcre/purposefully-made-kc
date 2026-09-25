@@ -88,9 +88,6 @@
                     {% if current_user.is_authenticated %}
                     <span class="nav-separator desktop-only" aria-hidden="true"></span>
                     <a href="{{ url_for('account.index') }}" class="nav-user-link desktop-only">My Account</a>
-                    {% if is_site_admin %}
-                    <a href="{{ url_for('admin.index') }}" class="nav-user-link admin-link desktop-only">Admin</a>
-                    {% endif %}
                     <form method="post" action="{{ url_for('auth.logout') }}" class="desktop-only" style="margin:0;display:flex;align-items:center;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="nav-user-link nav-logout-link">Log Out</button>
@@ -105,9 +102,6 @@
                     {% if current_user.is_authenticated %}
                     <div class="nav-link-divider mobile-only"></div>
                     <a href="{{ url_for('account.index') }}" class="nav-link mobile-only">My Account</a>
-                    {% if is_site_admin %}
-                    <a href="{{ url_for('admin.index') }}" class="nav-link admin-link mobile-only">Admin</a>
-                    {% endif %}
                     <form method="post" action="{{ url_for('auth.logout') }}" class="mobile-only">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="nav-link" style="background:none;border:none;width:100%;text-align:left;cursor:pointer;font:inherit;padding:0.5rem 0.65rem;color:var(--terra-cotta);font-weight:600;">Log Out</button>

@@ -31,6 +31,7 @@
                     <a href="{{ url_for('account.my_group_orders') }}" class="account-nav-link">My Group Orders</a>
                     <a href="{{ url_for('account.addresses') }}" class="account-nav-link">Addresses</a>
                     <a href="{{ url_for('account.profile') }}" class="account-nav-link">Profile</a>
+                    {% include 'includes/account_admin_link.html' %}
                     <a href="{{ url_for('auth.logout') }}" class="account-nav-link logout">Log Out</a>
                 </nav>
             </aside>
