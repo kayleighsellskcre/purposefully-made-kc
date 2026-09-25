@@ -1,0 +1,7 @@
+<nav class="crumbs" aria-label="Breadcrumb">
+    <ol class="crumbs-list">
+        <li><a href="{{ url_for('main.index') }}">Home</a></li>
+        <li><a href="{{ url_for('shop.index') }}">Shop</a></li>
+        <li aria-current="page">{{ product|display_name }}</li>
+    </ol>
+</nav>
