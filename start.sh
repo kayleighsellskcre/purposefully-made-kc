@@ -17,5 +17,9 @@ fi
 echo "Starting application..."
 # 1 worker: rembg/onnx cannot fit 4 copies in a typical Railway memory limit.
 # A 4-worker boot downloads a 170MB model 4 times, OOMs, and the deploy never finishes.
+# Use the module-level app. 'app:create_app()' imported app.py (which already
+# calls create_app()) and then called it again, so every boot ran migrations
+# and started the scheduler twice. That spike is enough to OOM Railway after
+# the healthcheck has already passed.
 WORKERS="${WEB_CONCURRENCY:-1}"
-exec gunicorn -w "$WORKERS" -b 0.0.0.0:$PORT --timeout 180 --graceful-timeout 30 'app:create_app()'
+exec gunicorn -w "$WORKERS" -b 0.0.0.0:$PORT --timeout 180 --graceful-timeout 30 'app:app'
