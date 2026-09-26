@@ -87,6 +87,7 @@
         </div>
 
         {# ── Gallery (curated public) ── #}
+        {% set music_genre_options = music_genre_options|default([]) %}
         <div class="designs-panel design-gallery-admin" id="panel-gallery" role="tabpanel" aria-labelledby="tab-gallery" {% if active_tab != 'gallery' %}hidden{% endif %}>
             <p class="designs-panel-lead">Upload designs for customers to use on their custom apparel</p>
 
@@ -105,6 +106,15 @@
                             {% endfor %}
                         </div>
                         <small style="color:#bbb;font-size:0.75rem;margin-top:0.35rem;display:block;">Required for new designs. Color variants inherit the parent folder.</small>
+                    </div>
+
+                    <div class="form-group upload-cats-group">
+                        <label class="form-label">Music genre <small style="font-weight:400;color:var(--text-secondary);">- optional, admin only. Customers do not see these yet.</small></label>
+                        <div class="upload-cat-chips">
+                            {% for key, label in music_genre_options %}
+                            <label class="cat-chip"><input type="checkbox" name="music_genres" value="{{ key }}"> {{ label }}</label>
+                            {% endfor %}
+                        </div>
                     </div>
 
                     {# ── Multi-file drop zone ── #}
@@ -224,7 +234,18 @@
                     </div>
                     <div class="design-card-body">
                         <strong class="design-card-name">{{ design.title or design.original_filename }}</strong>
-                        <p class="design-card-meta">{{ design.folder or 'No folder' }}{% if design.extra_categories %} <span style="color:var(--terra-cotta,#b87c6f);">+{{ design.extra_categories.split(',')|length }}</span>{% endif %} &middot; {{ design.sku or 'No SKU' }}{% if variants %} &middot; {{ variants|length + 1 }} colors{% endif %}</p>
+                        {% set _extra_keys = (design.extra_categories or '').split(',') | map('trim') | reject('equalto', '') | list %}
+                        {% set _genre_count = namespace(n=0) %}
+                        {% for key, label in music_genre_options %}
+                            {% if key in _extra_keys %}{% set _genre_count.n = _genre_count.n + 1 %}{% endif %}
+                        {% endfor %}
+                        {% set _public_extra_count = _extra_keys|length - _genre_count.n %}
+                        <p class="design-card-meta">{{ design.folder or 'No folder' }}{% if _public_extra_count %} <span style="color:var(--terra-cotta,#b87c6f);">+{{ _public_extra_count }}</span>{% endif %} &middot; {{ design.sku or 'No SKU' }}{% if variants %} &middot; {{ variants|length + 1 }} colors{% endif %}</p>
+                        {% for key, label in music_genre_options %}
+                            {% if key in _extra_keys %}
+                            <span class="admin-genre-tag">{{ label }}</span>
+                            {% endif %}
+                        {% endfor %}
                         {% if variants %}
                         <div class="gallery-variant-thumbs">
                             <div class="gallery-variant-thumb is-cover">
@@ -444,6 +465,8 @@
 .cat-chip:hover { border-color:var(--terra-cotta,#b87c6f); }
 .cat-chip input[type="checkbox"] { width:0.82rem; height:0.82rem; accent-color:var(--terra-cotta,#b87c6f); margin:0; flex-shrink:0; }
 .cat-chip:has(input:checked) { border-color:var(--terra-cotta,#b87c6f); background:rgba(184,124,111,0.12); color:var(--terra-cotta,#b87c6f); font-weight:600; }
+.admin-genre-tag { display:inline-block; margin:0.15rem 0.25rem 0.35rem 0; padding:0.12rem 0.5rem; border-radius:999px; background:rgba(184,124,111,0.1); color:var(--terra-cotta,#b87c6f); font-size:0.7rem; font-weight:600; }
+.admin-genre-tag { display:inline-block; margin:0.15rem 0.25rem 0.35rem 0; padding:0.12rem 0.5rem; border-radius:999px; background:rgba(184,124,111,0.1); color:var(--terra-cotta,#b87c6f); font-size:0.7rem; font-weight:600; }
 
 .pending-designs-section { margin-bottom: 3rem; padding: 1.5rem; background: rgba(212,175,55,0.07); border: 1px dashed var(--aged-bronze, #b8956f); border-radius: 12px; }
 
@@ -780,6 +803,15 @@
                     </div>
                     <small style="color:#bbb;font-size:0.75rem;margin-top:0.35rem;display:block;">At least one folder is required.</small>
                 </div>
+                <input type="hidden" name="music_genres_present" value="1">
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <label class="form-label" style="margin-bottom:0.5rem;">Music genre <small style="font-weight:400;color:#aaa;">- optional, admin only. Customers do not see these yet.</small></label>
+                    <div id="editMusicGenres" style="display:flex;flex-wrap:wrap;gap:0.4rem;">
+                        {% for key, label in music_genre_options %}
+                        <label class="cat-chip"><input type="checkbox" name="music_genres" value="{{ key }}"> {{ label }}</label>
+                        {% endfor %}
+                    </div>
+                </div>
                 <div class="form-group" style="margin-bottom:1rem;">
                     <label for="editSku" class="form-label">SKU</label>
                     <input type="text" id="editSku" name="sku" class="form-control" maxlength="50" placeholder="e.g. DSG-001">
@@ -935,6 +967,9 @@ function openGalleryEdit(id) {
     document.querySelectorAll('#editExtraCategories input[type="checkbox"]').forEach(function(cb) {
         cb.checked = allCats.indexOf(cb.value) !== -1;
     });
+    document.querySelectorAll('#editMusicGenres input[type="checkbox"]').forEach(function(cb) {
+        cb.checked = extras.indexOf(cb.value) !== -1;
+    });
     document.getElementById('galleryEditModal').classList.add('is-open');
     document.body.style.overflow = 'hidden';
     setTimeout(function() { document.getElementById('editTitle').focus(); }, 50);
@@ -948,10 +983,14 @@ function openGalleryVariantEdit(id, title, sku, variantLabel, folder, extras, ed
     document.getElementById('editSku').value = sku || '';
     document.getElementById('editVariantLabel').value = variantLabel || '';
     document.getElementById('editFile').value = '';
-    const allCats = folder ? [folder].concat((extras || '').split(',').map(s => s.trim()).filter(Boolean)) : [];
+    const extraList = (extras || '').split(',').map(s => s.trim()).filter(Boolean);
+    const allCats = folder ? [folder].concat(extraList) : [];
     if (allCats.indexOf('custom_orders') !== -1) allCats.push('evergreen');
     document.querySelectorAll('#editExtraCategories input[type="checkbox"]').forEach(function(cb) {
         cb.checked = allCats.indexOf(cb.value) !== -1;
+    });
+    document.querySelectorAll('#editMusicGenres input[type="checkbox"]').forEach(function(cb) {
+        cb.checked = extraList.indexOf(cb.value) !== -1;
     });
     document.getElementById('galleryEditTitle').textContent = 'Edit Design Color';
     document.getElementById('galleryEditModal').classList.add('is-open');
@@ -1285,6 +1324,10 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
         }
 
         cats.forEach(function(c) { fd.append('extra_categories', c); });
+        document.querySelectorAll('#galleryUploadForm input[name="music_genres"]:checked').forEach(function(cb) {
+            fd.append('music_genres', cb.value);
+        });
+        fd.append('music_genres_present', '1');
         fd.append('csrf_token', '{{ csrf_token() if csrf_token is defined else "" }}');
 
         fetch('{{ url_for("admin.design_gallery_upload") }}', {

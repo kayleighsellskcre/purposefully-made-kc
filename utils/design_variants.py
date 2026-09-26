@@ -6,6 +6,7 @@ import re
 from sqlalchemy import or_
 
 from utils.design_categories import (
+    ALWAYS_VISIBLE_GALLERY_CATEGORIES,
     GALLERY_CATEGORIES,
     GALLERY_CATEGORY_LABELS,
     design_category_keys,
@@ -291,7 +292,7 @@ def gallery_folder_cards(cards):
             card for card in cards
             if category.key in (card.get('category_keys') or [])
         ]
-        if not members:
+        if not members and category.key not in ALWAYS_VISIBLE_GALLERY_CATEGORIES:
             continue
         covers = []
         for card in members:
@@ -307,7 +308,7 @@ def gallery_folder_cards(cards):
                 'url': card['url'],
                 'title': card['title'],
             })
-        if not covers:
+        if not covers and members:
             # Every candidate image was already claimed by an earlier
             # folder. A repeated image beats an empty folder tile.
             first = members[0]

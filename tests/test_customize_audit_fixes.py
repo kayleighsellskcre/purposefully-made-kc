@@ -1,6 +1,16 @@
 """Regression coverage for customize color selection + upload UX audit fixes."""
 
 
+def test_customize_design_picker_includes_music_without_genre_menus(client, seed):
+    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    assert 'data-tab="Music"' in html
+    assert 'Faith &amp; Inspiration' in html
+    assert 'Kansas City' in html
+    assert 'Country &amp; Western' not in html
+    assert 'Rock &amp; Roll' not in html
+    assert 'Soul/Blues/Jazz' not in html
+
+
 def test_customize_has_no_reprocess_stronger_cut(client, seed):
     html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
     assert 'reprocessDesign' not in html

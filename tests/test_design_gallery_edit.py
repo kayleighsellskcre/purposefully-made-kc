@@ -14,6 +14,10 @@ def test_admin_gallery_page_has_edit_controls(admin_client, seed):
     assert 'Delete' in html
     assert 'Design Library' in html
     assert 'Gallery' in html
+    assert 'Music' in html
+    assert 'Country &amp; Western' in html
+    assert 'Rock &amp; Roll' in html
+    assert 'name="music_genres"' in html
 
 
 def test_old_design_gallery_url_redirects(admin_client, seed):
@@ -214,3 +218,113 @@ def test_customer_cannot_edit_gallery_design(client, seed, login, app):
     with app.app_context():
         design = Design.query.get(design_id)
         assert design.title != 'Hacked'
+
+
+def test_gallery_upload_stores_music_folder_and_admin_genres(admin_client, app, monkeypatch):
+    import routes.admin as admin_routes
+
+    def fake_save(file, user_id, **kwargs):
+        design = Design(
+            filename='guitar.png',
+            original_filename=file.filename,
+            file_path='uploads/designs/guitar.png',
+            is_gallery=True,
+            uploaded_by_user_id=user_id,
+        )
+        db.session.add(design)
+        db.session.flush()
+        return design
+
+    monkeypatch.setattr(admin_routes, '_save_uploaded_design', fake_save)
+    resp = admin_client.post(
+        '/admin/design-gallery/upload',
+        data={
+            'file': (io.BytesIO(b'\x89PNG\r\n\x1a\n' + b'0' * 40), 'guitar.png'),
+            'title': 'Guitar Sketch',
+            'extra_categories': ['music', 'faith'],
+            'music_genres': ['country', 'gospel'],
+        },
+        content_type='multipart/form-data',
+        headers={'X-Requested-With': 'XMLHttpRequest'},
+    )
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body['ok'] is True
+    with app.app_context():
+        design = Design.query.get(body['design_id'])
+        assert design.folder == 'music'
+        extras = (design.extra_categories or '').split(',')
+        assert 'faith' in extras
+        assert 'country' in extras
+        assert 'gospel' in extras
+        from utils.design_categories import design_category_keys
+        assert design_category_keys(design.folder, design.extra_categories) == [
+            'music', 'faith',
+        ]
+
+
+def test_admin_edit_can_set_and_clear_music_genres(admin_client, app, seed):
+    with app.app_context():
+        design = Design.query.filter_by(is_gallery=True).first()
+        design.folder = 'music'
+        design.extra_categories = 'country'
+        db.session.commit()
+        design_id = design.id
+
+    resp = admin_client.post(
+        f'/admin/design-gallery/{design_id}/edit',
+        data={
+            'title': 'Sunday Hymn',
+            'categories_present': '1',
+            'extra_categories': ['music', 'faith'],
+            'music_genres_present': '1',
+            'music_genres': ['gospel'],
+        },
+        headers={'X-Requested-With': 'XMLHttpRequest'},
+    )
+    assert resp.status_code == 200
+    with app.app_context():
+        design = Design.query.get(design_id)
+        assert design.folder == 'music'
+        extras = (design.extra_categories or '').split(',')
+        assert extras == ['faith', 'gospel']
+
+    cleared = admin_client.post(
+        f'/admin/design-gallery/{design_id}/edit',
+        data={
+            'title': 'Sunday Hymn',
+            'categories_present': '1',
+            'extra_categories': 'music',
+            'music_genres_present': '1',
+        },
+        headers={'X-Requested-With': 'XMLHttpRequest'},
+    )
+    assert cleared.status_code == 200
+    with app.app_context():
+        design = Design.query.get(design_id)
+        assert design.folder == 'music'
+        assert design.extra_categories is None
+
+
+def test_admin_edit_without_genre_fields_keeps_existing_genres(admin_client, app, seed):
+    with app.app_context():
+        design = Design.query.filter_by(is_gallery=True).first()
+        design.folder = 'music'
+        design.extra_categories = 'kc,country'
+        db.session.commit()
+        design_id = design.id
+
+    resp = admin_client.post(
+        f'/admin/design-gallery/{design_id}/edit',
+        data={
+            'title': 'Still Country',
+            'folder': 'music',
+        },
+        headers={'X-Requested-With': 'XMLHttpRequest'},
+    )
+    assert resp.status_code == 200
+    with app.app_context():
+        design = Design.query.get(design_id)
+        extras = (design.extra_categories or '').split(',')
+        assert 'country' in extras
+        assert 'kc' in extras

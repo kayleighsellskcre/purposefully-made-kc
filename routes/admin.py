@@ -71,6 +71,7 @@ _SKU_PREFIXES = {
     'evergreen':      'FAV',
     'funny':          'FUN',
     'luxury_basics':  'LUX',
+    'music':          'MUS',
     'custom_orders':  'DSG',
 }
 
@@ -3506,7 +3507,7 @@ def _admin_designs_url(tab='gallery'):
 @admin_required
 def designs():
     """Combined Design Library (customer uploads) + Gallery (curated public designs)."""
-    from utils.design_categories import GALLERY_FOLDER_OPTIONS
+    from utils.design_categories import GALLERY_FOLDER_OPTIONS, MUSIC_GENRES
 
     tab = (request.args.get('tab') or 'library').strip().lower()
     if tab not in ('library', 'gallery'):
@@ -3554,6 +3555,7 @@ def designs():
         gallery_designs=gallery_designs,
         pending_designs=pending_designs,
         gallery_folder_options=GALLERY_FOLDER_OPTIONS,
+        music_genre_options=MUSIC_GENRES,
     )
 
 
@@ -3694,10 +3696,15 @@ def design_gallery_upload():
         # ── Folder assignment ──
         # Checkboxes send extra_categories (JS) or upload_cats (form). Color
         # variants inherit their parent's folder. New mains cannot skip this.
-        from utils.design_categories import assigned_gallery_folders
+        from utils.design_categories import (
+            assigned_gallery_folders,
+            assigned_music_genres,
+            compose_extra_categories,
+        )
         from utils.design_variants import ensure_not_nested_parent
 
         all_cats = assigned_gallery_folders(request.form)
+        genres = assigned_music_genres(request.form)
         parent_id = request.form.get('parent_design_id', type=int)
         parent = None
         if parent_id:
@@ -3777,7 +3784,7 @@ def design_gallery_upload():
                 design.sku = _next_sku(design.folder)
         else:
             folder = all_cats[0]
-            extra_cats = ','.join(all_cats[1:]) if len(all_cats) > 1 else ''
+            extra_cats = compose_extra_categories(all_cats[1:], genres) or ''
             design.folder = folder
             design.extra_categories = extra_cats or None
             if not sku:
@@ -3859,7 +3866,13 @@ def design_gallery_edit(design_id):
 
     design = Design.query.get_or_404(design_id)
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-    from utils.design_categories import GALLERY_FOLDER_KEYS
+    from utils.design_categories import (
+        GALLERY_FOLDER_KEYS,
+        assigned_music_genres,
+        compose_extra_categories,
+        public_extra_storage_keys,
+        stored_music_genres,
+    )
     GALLERY_FOLDERS = GALLERY_FOLDER_KEYS
 
     title = (request.form.get('title') or '').strip()
@@ -3872,6 +3885,10 @@ def design_gallery_edit(design_id):
         c for c in request.form.getlist('extra_categories')
         if c in GALLERY_FOLDERS
     ]
+    if request.form.get('music_genres_present') == '1':
+        genres = assigned_music_genres(request.form)
+    else:
+        genres = stored_music_genres(design.extra_categories)
     if request.form.get('categories_present') == '1':
         if not all_cats_raw:
             msg = 'Choose at least one gallery category.'
@@ -3880,13 +3897,23 @@ def design_gallery_edit(design_id):
             flash(msg, 'error')
             return redirect(url_for('admin.designs', tab='gallery'))
         folder = all_cats_raw[0]
-        extra_cats = ','.join(all_cats_raw[1:])
+        extra_cats = compose_extra_categories(all_cats_raw[1:], genres)
     elif (request.form.get('folder') or '').strip() in GALLERY_FOLDERS:
         folder = request.form.get('folder').strip()
         extra_cats = design.extra_categories or ''
+        if request.form.get('music_genres_present') == '1':
+            extra_cats = compose_extra_categories(
+                public_extra_storage_keys(extra_cats),
+                genres,
+            )
     else:
         folder = design.folder or 'custom_orders'
         extra_cats = design.extra_categories or ''
+        if request.form.get('music_genres_present') == '1':
+            extra_cats = compose_extra_categories(
+                public_extra_storage_keys(extra_cats),
+                genres,
+            )
 
     try:
         if title:

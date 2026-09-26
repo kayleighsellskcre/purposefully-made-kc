@@ -204,7 +204,14 @@ def test_gallery_folder_interior_only_shows_that_folder(client, app, seed):
     landing = client.get('/shop/designs').get_data(as_text=True)
     assert 'Sports' in landing
     assert 'School' in landing
+    assert 'Music' in landing
+    assert 'Country &amp; Western' not in landing
     assert 'Continue with this design' not in landing
+
+    music = client.get('/shop/designs?category=music').get_data(as_text=True)
+    assert 'No designs in this folder yet.' in music
+    assert 'Chiefs Helmet' not in music
+    assert 'School Crest' not in music
 
     results = client.get('/shop/designs?q=chiefs').get_data(as_text=True)
     assert 'Search results' in results
@@ -228,8 +235,12 @@ def test_gallery_folder_cards_use_mains_as_covers():
         },
     ]
     folders = gallery_folder_cards(cards)
-    assert [folder['key'] for folder in folders] == ['faith', 'sports', 'kc']
+    assert [folder['key'] for folder in folders] == ['faith', 'sports', 'kc', 'music']
     assert folders[0]['covers'][0]['title'] == 'Prayer'
+    music = next(folder for folder in folders if folder['key'] == 'music')
+    assert music['label'] == 'Music'
+    assert music['count'] == 0
+    assert music['covers'] == []
     chiefs = filter_gallery_cards(cards, query='chiefs')
     assert [card['id'] for card in chiefs] == [2]
 
@@ -290,7 +301,14 @@ def test_gallery_folder_reuses_an_image_rather_than_showing_no_cover():
 
 
 def test_gallery_category_taxonomy_handles_existing_aliases():
-    from utils.design_categories import assigned_gallery_folders, storage_key_for
+    from utils.design_categories import (
+        assigned_gallery_folders,
+        assigned_music_genres,
+        compose_extra_categories,
+        public_extra_storage_keys,
+        storage_key_for,
+        stored_music_genres,
+    )
     from werkzeug.datastructures import MultiDict
 
     assert design_category_keys('custom_orders') == ['favorites']
@@ -307,6 +325,15 @@ def test_gallery_category_taxonomy_handles_existing_aliases():
         ('upload_cats', 'kc'),
         ('folder', 'custom_orders'),
     ])) == ['sports', 'kc', 'evergreen']
+    assert design_category_keys('music', 'country,rock,kc') == ['music', 'kc']
+    assert stored_music_genres('kc,country,rock') == ['country', 'rock']
+    assert compose_extra_categories(['kc'], ['gospel', 'country']) == 'kc,gospel,country'
+    assert public_extra_storage_keys('kc,country,rock') == ['kc']
+    assert assigned_music_genres(MultiDict([
+        ('music_genres', 'country'),
+        ('music_genres', 'not-a-genre'),
+        ('music_genres', 'gospel'),
+    ])) == ['country', 'gospel']
 
 
 def test_variant_labels_are_unique_within_family(app, seed):

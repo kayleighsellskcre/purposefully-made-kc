@@ -21,6 +21,7 @@ GALLERY_CATEGORIES = (
     GalleryCategory('sports', 'Sports', 'sports'),
     GalleryCategory('school', 'School', 'school'),
     GalleryCategory('kc', 'Kansas City', 'kc'),
+    GalleryCategory('music', 'Music', 'music'),
     GalleryCategory('holiday', 'Holiday', 'holiday', ('seasonal',)),
     GalleryCategory('family', 'Couples & Family', 'couples', ('family',)),
     GalleryCategory('funny', 'Funny', 'funny'),
@@ -42,6 +43,25 @@ GALLERY_FOLDER_KEYS = frozenset(
 GALLERY_CATEGORY_LABELS = {
     category.key: category.label for category in GALLERY_CATEGORIES
 }
+
+# Always list these folders on the public gallery, even before any designs
+# are filed there. Other empty folders stay hidden so the landing page
+# does not grow a row of blank tiles.
+ALWAYS_VISIBLE_GALLERY_CATEGORIES = frozenset({'music'})
+
+# Internal Music labels. Stored on extra_categories next to extra folders.
+# They never become customer-facing category buttons.
+MUSIC_GENRES = (
+    ('country', 'Country & Western'),
+    ('rock', 'Rock & Roll'),
+    ('pop', 'Pop'),
+    ('soul', 'Soul/Blues/Jazz'),
+    ('reggae', 'Reggae'),
+    ('gospel', 'Gospel'),
+    ('vintage', 'Vintage Music'),
+)
+MUSIC_GENRE_KEYS = frozenset(key for key, _label in MUSIC_GENRES)
+MUSIC_GENRE_LABELS = {key: label for key, label in MUSIC_GENRES}
 
 _CATEGORY_BY_ALIAS = {}
 for _category in GALLERY_CATEGORIES:
@@ -87,6 +107,65 @@ def assigned_gallery_folders(form) -> list[str]:
         if storage and storage not in keys:
             keys.append(storage)
     return keys
+
+
+def assigned_music_genres(form) -> list[str]:
+    """Unique internal Music genre keys from an upload or edit form."""
+    values = []
+    getter = getattr(form, 'getlist', None)
+    for field in ('music_genres',):
+        if callable(getter):
+            values.extend(getter(field) or [])
+        else:
+            raw = form.get(field)
+            if raw:
+                values.extend(str(raw).split(','))
+    keys = []
+    for value in values:
+        cleaned = (value or '').strip().lower()
+        if cleaned in MUSIC_GENRE_KEYS and cleaned not in keys:
+            keys.append(cleaned)
+    return keys
+
+
+def stored_music_genres(extra_categories: str | None) -> list[str]:
+    """Genre keys already saved on a design, in stored order."""
+    keys = []
+    for value in (extra_categories or '').split(','):
+        cleaned = value.strip().lower()
+        if cleaned in MUSIC_GENRE_KEYS and cleaned not in keys:
+            keys.append(cleaned)
+    return keys
+
+
+def music_genre_labels(extra_categories: str | None) -> list[str]:
+    return [MUSIC_GENRE_LABELS[key] for key in stored_music_genres(extra_categories)]
+
+
+def public_extra_storage_keys(extra_categories: str | None) -> list[str]:
+    """Extra folder keys only. Internal Music genres are left out."""
+    keys = []
+    for value in (extra_categories or '').split(','):
+        cleaned = value.strip()
+        if not cleaned or cleaned.lower() in MUSIC_GENRE_KEYS:
+            continue
+        if cleaned not in keys:
+            keys.append(cleaned)
+    return keys
+
+
+def compose_extra_categories(
+    public_extras: list[str],
+    genres: list[str],
+) -> str | None:
+    """Join extra public folders and internal Music genres for storage."""
+    keys = []
+    for value in public_extras + genres:
+        cleaned = (value or '').strip()
+        if not cleaned or cleaned in keys:
+            continue
+        keys.append(cleaned)
+    return ','.join(keys) if keys else None
 
 
 def design_category_keys(

@@ -66,13 +66,15 @@
 
         <div class="dg-folders" aria-label="Design folders">
             {% for folder in folders %}
-            <article class="dg-folder">
+            <article class="dg-folder{% if not folder.covers %} dg-folder--empty{% endif %}">
                 <a class="dg-folder-hit" href="{{ url_for('shop.design_gallery', category=folder.key, product_id=product_id) }}" aria-labelledby="dg-folder-{{ folder.key }}">
                     <div class="dg-folder-stage" data-folder-carousel data-covers='{{ folder.covers | tojson }}'>
+                        {% if folder.covers %}
                         <img src="{{ folder.covers[0].url }}"
                              alt="{{ folder.covers[0].title }}"
                              class="dg-folder-image"
                              loading="{{ 'eager' if loop.first else 'lazy' }}">
+                        {% endif %}
                     </div>
                     <div class="dg-folder-meta">
                         <h2 id="dg-folder-{{ folder.key }}" class="dg-folder-title">{{ folder.label }}</h2>
@@ -175,8 +177,13 @@
         </div>
 
         <div class="dg-empty-state" id="dgEmptyState">
+            {% if gallery_view == 'folder' and not search_query %}
+            <p>No designs in this folder yet.</p>
+            <a href="{{ folders_url }}" class="btn btn-outline">All folders</a>
+            {% else %}
             <p>No designs match those filters.</p>
             <button type="button" class="btn btn-outline" id="dgEmptyClear">Clear search</button>
+            {% endif %}
         </div>
 
         <div class="dg-load-more-wrap" id="dgLoadMoreWrap" hidden>
@@ -415,6 +422,9 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     opacity: 0.82;
+}
+.dg-folder--empty .dg-folder-stage {
+    background: linear-gradient(160deg, #f4efe6 0%, #e8dfd0 100%);
 }
 .dg-folder-nav {
     position: absolute;
