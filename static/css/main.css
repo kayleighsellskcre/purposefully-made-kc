@@ -369,6 +369,14 @@ a:hover {
     z-index: 1200;
 }
 
+.nav-account-menu[hidden] {
+    display: none;
+}
+
+.nav-account-sub {
+    padding-left: 1.15rem;
+}
+
 .nav-account-menu a,
 .nav-account-menu button {
     display: block;

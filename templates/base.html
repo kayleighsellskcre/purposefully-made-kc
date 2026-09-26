@@ -46,7 +46,7 @@
     </noscript>
     
     <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=51">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v=52">
     {% block extra_css %}{% endblock %}
     
     <!-- Favicon -->
@@ -84,27 +84,41 @@
                     <a href="{{ url_for('main.about') }}" class="nav-link">About</a>
                     <a href="{{ url_for('main.contact') }}" class="nav-link">Contact</a>
 
-                    {# Desktop account links - inline in nav, hidden on mobile (hamburger has them) #}
+                    {# Desktop: one My Account control. Admin and Log Out live in the menu. #}
                     {% if current_user.is_authenticated %}
                     <span class="nav-separator desktop-only" aria-hidden="true"></span>
-                    <a href="{{ url_for('account.index') }}" class="nav-user-link desktop-only">My Account</a>
-                    <form method="post" action="{{ url_for('auth.logout') }}" class="desktop-only" style="margin:0;display:flex;align-items:center;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="nav-user-link nav-logout-link">Log Out</button>
-                    </form>
+                    <div class="nav-account desktop-only">
+                        <button type="button" class="nav-account-btn" id="navAccountBtn" aria-expanded="false" aria-controls="navAccountMenu" aria-haspopup="true">
+                            My Account
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
+                        <div class="nav-account-menu" id="navAccountMenu" hidden>
+                            <a href="{{ url_for('account.index') }}">Account</a>
+                            {% if is_site_admin %}
+                            <a href="{{ url_for('admin.index') }}" class="admin-link">Admin Dashboard</a>
+                            {% endif %}
+                            <form method="post" action="{{ url_for('auth.logout') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit">Log Out</button>
+                            </form>
+                        </div>
+                    </div>
                     {% else %}
                     <span class="nav-separator desktop-only" aria-hidden="true"></span>
                     <a href="{{ url_for('auth.login') }}" class="nav-user-link desktop-only">Login</a>
                     <a href="{{ url_for('auth.register') }}" class="nav-user-link desktop-only">Register</a>
                     {% endif %}
 
-                    {# Hamburger-only items - hidden on desktop #}
+                    {# Hamburger: same account items, nested under My Account. #}
                     {% if current_user.is_authenticated %}
                     <div class="nav-link-divider mobile-only"></div>
                     <a href="{{ url_for('account.index') }}" class="nav-link mobile-only">My Account</a>
+                    {% if is_site_admin %}
+                    <a href="{{ url_for('admin.index') }}" class="nav-link mobile-only nav-account-sub">Admin Dashboard</a>
+                    {% endif %}
                     <form method="post" action="{{ url_for('auth.logout') }}" class="mobile-only">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="nav-link" style="background:none;border:none;width:100%;text-align:left;cursor:pointer;font:inherit;padding:0.5rem 0.65rem;color:var(--terra-cotta);font-weight:600;">Log Out</button>
+                        <button type="submit" class="nav-link nav-account-sub" style="background:none;border:none;width:100%;text-align:left;cursor:pointer;font:inherit;padding:0.5rem 0.65rem;color:var(--terra-cotta);font-weight:600;">Log Out</button>
                     </form>
                     {% else %}
                     <div class="nav-link-divider mobile-only"></div>
@@ -263,7 +277,7 @@
     </footer>
     
     <!-- Scripts -->
-    <script src="{{ url_for('static', filename='js/main.js') }}?v=3"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=4"></script>
     <script src="{{ url_for('static', filename='js/a11y.js') }}?v=1"></script>
     {% block extra_js %}{% endblock %}
 
