@@ -377,10 +377,23 @@ def init_scheduler(app):
             replace_existing=True
         )
 
-        # Do not kick off inventory or image syncs on boot. Those jobs pull
-        # the full catalog and have OOMed Railway a few seconds after a
-        # deploy was marked healthy, which takes the public site to a 502.
-        # Nightly cron below still keeps stock and images current.
+        # Also run S&S image sync once on startup (after a short delay)
+        from apscheduler.triggers.date import DateTrigger
+        from datetime import datetime, timedelta
+        scheduler.add_job(
+            func=lambda: sync_ss_images_job(app),
+            trigger=DateTrigger(run_date=datetime.now() + timedelta(seconds=30)),
+            id='startup_ss_images',
+            name='Startup S&S Image Sync (one-time)',
+            replace_existing=True
+        )
+        scheduler.add_job(
+            func=lambda: sync_live_inventory_job(app),
+            trigger=DateTrigger(run_date=datetime.now() + timedelta(seconds=20)),
+            id='startup_live_inventory',
+            name='Startup Live Inventory Sync (one-time)',
+            replace_existing=True
+        )
 
         scheduler.start()
 
@@ -389,6 +402,8 @@ def init_scheduler(app):
         print("  - Nightly catalog sync (SanMar): 1:00 AM America/Chicago", file=sys.stderr, flush=True)
         print("  - Nightly S&S image sync: 2:00 AM America/Chicago", file=sys.stderr, flush=True)
         print("  - Nightly live inventory (SanMar + S&S): 3:00 AM America/Chicago", file=sys.stderr, flush=True)
+        print("  - S&S image sync running in 30 seconds (startup)", file=sys.stderr, flush=True)
+        print("  - Live inventory sync running in 20 seconds (startup)", file=sys.stderr, flush=True)
         print("=" * 80, file=sys.stderr, flush=True)
 
         import atexit

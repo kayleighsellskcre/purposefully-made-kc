@@ -78,12 +78,6 @@ if (navAccountBtn && navAccountMenu) {
             navAccountMenu.hidden = true;
         }
     });
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            navAccountBtn.setAttribute('aria-expanded', 'false');
-            navAccountMenu.hidden = true;
-        }
-    });
 }
 
 // Smooth scroll for anchor links
