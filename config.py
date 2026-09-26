@@ -28,9 +28,15 @@ class Config:
     WTF_CSRF_TIME_LIMIT = 3600  # token valid for 1 hour
     _db_url = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + os.path.join(basedir, 'apparel.db')
-    # Railway/Heroku use postgres:// but SQLAlchemy 1.4+ needs postgresql://
+    # Railway/Heroku use postgres://. SQLAlchemy 2.1+ treats postgresql:// as
+    # psycopg3 (import psycopg). We ship psycopg2-binary, so pin that driver.
+    # Without this, every Railway boot dies with ModuleNotFoundError: psycopg.
     if _db_url.startswith('postgres://'):
-        _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
+        _db_url = 'postgresql+psycopg2://' + _db_url[len('postgres://'):]
+    elif _db_url.startswith('postgresql+psycopg://'):
+        _db_url = 'postgresql+psycopg2://' + _db_url[len('postgresql+psycopg://'):]
+    elif _db_url.startswith('postgresql://'):
+        _db_url = 'postgresql+psycopg2://' + _db_url[len('postgresql://'):]
     SQLALCHEMY_DATABASE_URI = _db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     # Connection pool tuning — Railway PostgreSQL has limited connections.
