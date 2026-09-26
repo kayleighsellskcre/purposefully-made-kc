@@ -21,5 +21,12 @@ echo "Starting application..."
 # calls create_app()) and then called it again, so every boot ran migrations
 # and started the scheduler twice. That spike is enough to OOM Railway after
 # the healthcheck has already passed.
+#
+# Skip boot migrations and the scheduler. Two deploys in a row came up,
+# then died ~19 seconds later while create_app() ran ALTER TABLE, loaded
+# every product to rewrite spec URLs, and started APScheduler. The
+# schema is already applied; nightly jobs can wait until the site is up.
+export SCHEDULER_ENABLED=false
+export SKIP_BOOTSTRAP=1
 WORKERS="${WEB_CONCURRENCY:-1}"
 exec gunicorn -w "$WORKERS" -b 0.0.0.0:$PORT --timeout 180 --graceful-timeout 30 'app:app'

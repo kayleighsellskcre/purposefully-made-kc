@@ -94,7 +94,12 @@ def create_app(config_class=Config):
     limiter.init_app(app)
     
     # Create tables if they don't exist (needed for fresh Railway/PostgreSQL deploys)
-    with app.app_context():
+    _skip_bootstrap = os.environ.get('SKIP_BOOTSTRAP', '').lower() in ('1', 'true', 'yes')
+    if _skip_bootstrap:
+        import sys as _sys
+        print("SKIP_BOOTSTRAP=1 — skipping boot migrations so the site can stay up.", file=_sys.stderr, flush=True)
+    if not _skip_bootstrap:
+     with app.app_context():
         db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
         if 'sqlite' in db_url.lower():
             import sys
