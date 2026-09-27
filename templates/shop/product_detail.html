@@ -8,7 +8,10 @@
 
 {# The product's own mockup, so a shared link previews the garment rather than
    the shop logo. #}
-{% block og_image %}{% if product.front_mockup_template %}{% if product.front_mockup_template.startswith('http') %}{{ product.front_mockup_template }}{% else %}{{ site_origin }}{{ url_for('static', filename=product.front_mockup_template) }}{% endif %}{% else %}{{ site_origin }}/static/img/logo.png{% endif %}{% endblock %}
+{% block og_image %}{% if product.front_mockup_template %}{% if product.front_mockup_template.startswith('http') %}{{ product.front_mockup_template }}{% else %}{{ site_origin }}{{ url_for('static', filename=product.front_mockup_template) }}{% endif %}{% else %}{{ site_origin }}/static/img/og-card.jpg{% endif %}{% endblock %}
+{% block og_image_type %}{% endblock %}
+{% block og_image_width %}{% endblock %}
+{% block og_image_height %}{% endblock %}
 
 {% block content %}
 {# No ratings/reviews here - the audit that asked for this was explicit

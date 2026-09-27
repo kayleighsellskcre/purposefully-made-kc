@@ -21,13 +21,19 @@
     <meta property="og:description" content="{% block og_description %}{{ self.meta_description() }}{% endblock %}">
     <meta property="og:type" content="{% block og_type %}website{% endblock %}">
     <meta property="og:url" content="{% block og_url %}{{ canonical_url }}{% endblock %}">
-    {# logo.png, because that is what exists. A purpose-made 1200x630 card would
-       preview better on Facebook and iMessage - noted as an open item. #}
-    <meta property="og:image" content="{% block og_image %}{{ site_origin }}/static/img/logo.png{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}{{ site_origin }}/static/img/og-card.jpg{% endblock %}">
+    {% set _og_type %}{% block og_image_type %}image/jpeg{% endblock %}{% endset %}
+    {% set _og_width %}{% block og_image_width %}1200{% endblock %}{% endset %}
+    {% set _og_height %}{% block og_image_height %}630{% endblock %}{% endset %}
+    {% if _og_type|trim %}<meta property="og:image:type" content="{{ _og_type|trim }}">{% endif %}
+    {% if _og_width|trim %}<meta property="og:image:width" content="{{ _og_width|trim }}">{% endif %}
+    {% if _og_height|trim %}<meta property="og:image:height" content="{{ _og_height|trim }}">{% endif %}
+    <meta property="og:image:alt" content="{% block og_image_alt %}Custom sweatshirts and hoodies printed by Purposefully Made KC{% endblock %}">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{{ self.og_title() }}">
     <meta name="twitter:description" content="{{ self.og_description() }}">
     <meta name="twitter:image" content="{{ self.og_image() }}">
+    <meta name="twitter:image:alt" content="{{ self.og_image_alt() }}">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

@@ -25,6 +25,8 @@ def test_homepage_has_organization_and_local_business(client):
     assert org['name'] == 'Purposefully Made KC'
     assert org['url'].startswith('http')
     assert org['logo'].startswith('http')
+    assert org['logo'].endswith('/static/img/logo.png')
+    assert org['image'].endswith('/static/img/homepage-mockup-flatlay.jpg')
     assert org['address']['addressLocality'] == 'Kansas City'
     assert '/contact' in org['contactPoint']['url']
 

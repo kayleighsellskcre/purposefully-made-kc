@@ -234,6 +234,24 @@ def test_og_image_file_exists(client):
     assert client.get(path).status_code == 200, path
 
 
+def test_default_og_image_is_the_product_card_not_the_logo(client):
+    """A square logo on white looks tiny in iMessage and Facebook previews."""
+    html = _get(client, '/')
+    image = _og(html, 'og:image')
+    assert image.endswith('/static/img/og-card.jpg'), image
+    assert 'logo.png' not in image
+    assert _og(html, 'og:image:width') == '1200'
+    assert _og(html, 'og:image:height') == '630'
+    assert 'twitter:image' in html
+    assert '/static/img/og-card.jpg' in html
+
+
+def test_og_card_is_the_landscape_size_social_apps_expect():
+    from PIL import Image
+    card = Image.open('static/img/og-card.jpg')
+    assert card.size == (1200, 630)
+
+
 def test_og_title_follows_the_page_title(client):
     html = _get(client, '/about')
     assert _og(html, 'og:title') == _title(html)
