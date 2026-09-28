@@ -2430,13 +2430,13 @@
                     {# Group order: organizer allows back design - show simplified header without price toggle #}
                     <div style="padding: 1.25rem; background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.05)); border-radius: 12px; border: 2px solid #e8e8e8; margin-bottom: 1rem;">
                         <strong style="font-size: 1.1rem; color: #333;">
-                            {% if catalog_section == 'uniform' and back_design_type == 'name_number' %}Add Your Name &amp; Number{% elif back_design_type == 'image' %}Add Back Design{% else %}Optional Name &amp; Number{% endif %}
+                            {% if catalog_section == 'uniform' and back_design_type == 'name_number' %}Add Your Name &amp; Number{% elif back_design_type == 'image' %}Back Design{% else %}Optional Name &amp; Number{% endif %}
                         </strong>
                         <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #666;">
                             {% if catalog_section == 'uniform' and back_design_type in ('name_number', 'both') %}
                             Set by your group organizer. A name or number is $3. Both are $6.
                             {% elif back_design_type == 'image' %}
-                            Upload an image that only prints on the back. It cannot be moved to the front.
+                            The back design is already set by your organizer. Switch to Back View to see it on the shirt.
                             {% elif back_design_type in ('name_number', 'both') %}
                             Skip this if you do not want a name or number. A name or number is $3. Both are $6.
                             {% else %}
@@ -2573,13 +2573,23 @@
                         </div>
                         {% endif %}
                         
-                        {% if not collection_restricted or back_design_type in ('image', 'both') %}
-                        <div id="backDesignUpload" class="back-design-mode" style="display: {% if collection_restricted and back_design_type == 'image' %}block{% else %}none{% endif %};">
+                        {% if collection_restricted and back_design_type == 'image' %}
+                        <div id="backDesignUpload" class="back-design-mode" style="display: block;">
                             {% if preset_back_design %}
-                            <p class="form-hint" style="margin-bottom: 0.75rem;">Your organizer set this back-only image. It prints on the back of the shirt, not the front. Upload a different file if you need to replace it.</p>
+                            <p class="form-hint" style="margin-bottom: 0.75rem;">Already on the back of this shirt. It cannot be moved to the front.</p>
+                            <div class="design-preview active" id="designPreviewBack" style="display: block;">
+                                <img src="{{ preset_back_design.url }}" alt="Back design" id="designPreviewImageBack">
+                            </div>
                             {% else %}
-                            <p class="form-hint" style="margin-bottom: 0.75rem;">This image only prints on the back. It cannot be placed on the front of the shirt.</p>
+                            <p class="form-hint">Your organizer chose a back image for this order.</p>
+                            <div class="design-preview" id="designPreviewBack" style="display: none;">
+                                <img src="" alt="Back Design Preview" id="designPreviewImageBack">
+                            </div>
                             {% endif %}
+                        </div>
+                        {% elif not collection_restricted or back_design_type == 'both' %}
+                        <div id="backDesignUpload" class="back-design-mode" style="display: none;">
+                            <p class="form-hint" style="margin-bottom: 0.75rem;">This image only prints on the back. It cannot be placed on the front of the shirt.</p>
                             <div class="upload-area" id="uploadAreaBack">
                                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 1rem;">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -2592,12 +2602,15 @@
                             </div>
                             <input type="file" id="designFileBack" accept="image/*,.heic,.heif,.png,.jpg,.jpeg,.webp" style="display: none;">
                         </div>
-                        {% endif %}
-                        
                         <div class="design-preview" id="designPreviewBack" style="display: none;">
                             <img src="" alt="Back Design Preview" id="designPreviewImageBack">
                             <button class="btn btn-outline btn-sm" id="removeDesignBack">Remove Back Design</button>
                         </div>
+                        {% else %}
+                        <div class="design-preview" id="designPreviewBack" style="display: none;">
+                            <img src="" alt="Back Design Preview" id="designPreviewImageBack">
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
                 {% endif %}{# end allow_back_design #}
@@ -2714,6 +2727,7 @@
         lockBackDesignStyle: {% if collection_restricted and lock_back_design_style %}true{% else %}false{% endif %},
         backDesignFile: null,
         backDesignUrl: {{ (preset_back_design.url if preset_back_design else none) | tojson }},
+        lockBackImage: {% if collection_restricted and back_design_type == 'image' %}true{% else %}false{% endif %},
         backDesignPlacement: 'center_back',
         backDesignFee: 6.00,
         backDesignDefaultUpOffset: 0,
@@ -2881,6 +2895,16 @@
         }
     });
     
+    function singleAllowedPlacement() {
+        return Array.isArray(state.allowedPlacements) && state.allowedPlacements.length === 1;
+    }
+
+    function revealPlacementSection() {
+        const el = document.getElementById('placementSection');
+        if (!el) return;
+        el.style.display = singleAllowedPlacement() ? 'none' : 'block';
+    }
+
     function filterPlacementOptions() {
         const allowed = state.allowedPlacements;
         if (!allowed || !Array.isArray(allowed) || allowed.length === 0) return;
@@ -2902,6 +2926,14 @@
             document.querySelectorAll('.placement-option').forEach(o => o.classList.remove('selected'));
             const first = document.querySelector(`.placement-option[data-placement="${allowed[0]}"]`);
             if (first) first.classList.add('selected');
+        }
+        const layer = document.getElementById('designLayer');
+        if (layer && state.selectedPlacement) {
+            layer.setAttribute('data-placement', state.selectedPlacement);
+        }
+        if (singleAllowedPlacement()) {
+            const el = document.getElementById('placementSection');
+            if (el) el.style.display = 'none';
         }
     }
 
@@ -4602,7 +4634,7 @@
         designLayer.classList.add('draggable');
         designLayer.style.display = 'flex';
         designLayer.setAttribute('data-placement', state.selectedPlacement);
-        if (placementSection) placementSection.style.display = 'block';
+        if (placementSection) revealPlacementSection();
         const backSection = document.getElementById('backDesignSection');
         if (backSection) backSection.style.display = 'block';
         
@@ -4837,7 +4869,7 @@
                     designLayer.style.display = 'flex';
                     state.selectedPlacement = placementToKeep();
                     designLayer.setAttribute('data-placement', state.selectedPlacement);
-                    if (placementSection) placementSection.style.display = 'block';
+                    if (placementSection) revealPlacementSection();
                     const backSection = document.getElementById('backDesignSection');
                     if (backSection) backSection.style.display = 'block';
                     document.querySelectorAll('.placement-option').forEach(o => o.classList.remove('selected'));
@@ -5154,8 +5186,12 @@
             }
             designLayer.style.left = visualCenter.toFixed(1) + 'px';
             if (isSideChest && box.pxPerInch) {
-                const pocketDropIn = isTank ? 3.15 : 3.55;
-                designLayer.style.top = (box.topPx + pocketDropIn * box.pxPerInch) + 'px';
+                // Tanks include straps in the silhouette, so a tee-like 3.5"
+                // drop lands on the neckline. Sit the pocket on the upper pec.
+                const pocketDropIn = isTank ? 6.1 : 3.55;
+                let dropPx = pocketDropIn * box.pxPerInch;
+                if (isTank) dropPx = Math.max(dropPx, box.heightPx * 0.20);
+                designLayer.style.top = (box.topPx + dropPx) + 'px';
             } else {
                 designLayer.style.top = '';
             }

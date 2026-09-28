@@ -195,9 +195,9 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert 'const chestShift = isTank ? 0.12 : 0.16;' in html
     assert 'if (placement === \'left_chest\') visualCenter += box.widthPx * chestShift;' in html
     assert 'if (placement === \'right_chest\') visualCenter -= box.widthPx * chestShift;' in html
-    assert 'const pocketDropIn = isTank ? 3.15 : 3.55;' in html
-    assert 'const pocketOffsetIn = isTank ? 2.75 : 3.25;' in html
-    assert "designLayer.style.top = (box.topPx + pocketDropIn * box.pxPerInch) + 'px';" in html
+    assert 'const pocketDropIn = isTank ? 6.1 : 3.55;' in html
+    assert 'if (isTank) dropPx = Math.max(dropPx, box.heightPx * 0.20);' in html
+    assert "designLayer.style.top = (box.topPx + dropPx) + 'px';" in html
     assert 'box.widthPx * 0.22' not in html
     assert 'const orderedW = logoWidthForSize(size)' not in html
     assert '/design/preview/0' in html
@@ -480,7 +480,7 @@ def test_choosing_another_logo_keeps_the_checked_placement(client, seed):
     assert "state.selectedPlacement = (state.allowedPlacements && state.allowedPlacements[0]) || 'center_chest';" not in html
 
 
-def test_group_image_back_hides_name_number_and_shows_back_upload(client, app, seed):
+def test_group_image_back_hides_name_number_and_shopper_upload(client, app, seed):
     with app.app_context():
         coll = db.session.get(Collection, seed['collection_id'])
         coll.allow_back_design = True
@@ -493,11 +493,15 @@ def test_group_image_back_hides_name_number_and_shows_back_upload(client, app, s
     html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     assert 'id="backDesignNameInput"' not in html
     assert 'e.g. SMITH' not in html
-    assert 'Upload back design' in html
-    assert 'id="designFileBack"' in html
+    assert 'Upload back design' not in html
+    assert 'id="designFileBack"' not in html
+    assert 'id="uploadAreaBack"' not in html
+    assert 'id="removeDesignBack"' not in html
     assert "backDesignMode: 'upload'" in html
-    assert 'This image only prints on the back' in html
-    assert 'cannot be placed on the front' in html
+    assert 'lockBackImage: true' in html
+    assert 'already set by your organizer' in html
+    assert 'function singleAllowedPlacement()' in html
+    assert "el.style.display = singleAllowedPlacement() ? 'none' : 'block';" in html
 
 
 def test_group_image_back_applies_organizer_artwork(client, app, seed):
@@ -512,7 +516,25 @@ def test_group_image_back_applies_organizer_artwork(client, app, seed):
         sess['collection_id'] = seed['collection_id']
     html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     assert 'id="backDesignNameInput"' not in html
-    assert 'Your organizer set this back-only image' in html
+    assert 'Already on the back of this shirt' in html
+    assert 'Upload back design' not in html
+    assert 'id="removeDesignBack"' not in html
     assert "backDesignMode: 'upload'" in html
     assert 'uploads/designs/gallery-logo.png' in html
+
+
+def test_group_single_front_logo_is_auto_applied(client, app, seed):
+    with app.app_context():
+        coll = db.session.get(Collection, seed['collection_id'])
+        coll.allowed_design_ids = json.dumps([seed['free_design_id']])
+        coll.allowed_placements = json.dumps(['left_chest'])
+        coll.restrict_options = True
+        db.session.commit()
+    with client.session_transaction() as sess:
+        sess['collection_id'] = seed['collection_id']
+    html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
+    assert 'const presetDesign = null' not in html
+    assert 'logo-gallery-item selected' in html
+    assert 'applyPresetDesign(presetDesign)' in html
+    assert f'"id": {seed["free_design_id"]}' in html or f'"id":{seed["free_design_id"]}' in html
 

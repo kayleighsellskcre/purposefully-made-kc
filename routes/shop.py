@@ -1005,6 +1005,8 @@ def customize(product_slug):
             garment_metrics_seed.update(_measure_garment_metrics([first], current_app))
     _stamp_artwork_fits(gallery_designs)
     _stamp_artwork_fits(my_designs)
+    if coll and not preset_design and len(gallery_designs) == 1 and gallery_designs[0].get('url'):
+        preset_design = gallery_designs[0]
     if preset_design:
         _measure_artwork_fits([preset_design], current_app)
     if preset_back_design:
