@@ -83,6 +83,7 @@ def view(slug):
         team_store_config,
         visible_store_products,
     )
+    from utils.pricing import group_order_listed_price
     collection.deadline_passed = is_deadline_passed(collection)
     collection.not_yet_open = is_not_yet_open(collection)
     collection.cannot_order = collection.deadline_passed or collection.not_yet_open
@@ -95,6 +96,11 @@ def view(slug):
     store_config = team_store_config(collection)
     fan_ids = set(store_config['fan_product_ids'])
     uniform = store_config['uniform']
+    fan_back = not (
+        store_config['configured']
+        and uniform['enabled']
+        and not store_config.get('fan_personalization_enabled')
+    )
     uniform_ids = set(uniform.get('product_ids') or [])
     if uniform.get('product_id'):
         uniform_ids.add(uniform['product_id'])
@@ -162,6 +168,9 @@ def view(slug):
             image_url=product.fallback_image_url,
         ):
             continue
+        product.listed_price = group_order_listed_price(
+            product, collection, include_back=fan_back
+        )
         products.append(product)
 
     products = prepare_catalog(products)

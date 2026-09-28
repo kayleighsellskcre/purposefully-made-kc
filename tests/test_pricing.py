@@ -288,3 +288,50 @@ def test_uploaded_back_artwork_remains_six_dollars(client, seed):
         assert item['back_design_kind'] == 'image'
     finally:
         Path(item['back_design_url'].lstrip('/')).unlink(missing_ok=True)
+
+
+def test_group_order_card_bakes_locked_small_logo_and_back_image(app, seed):
+    from models import Collection
+    from utils.pricing import group_order_listed_price
+
+    with app.app_context():
+        tee = Product.query.get(seed['tee_id'])
+        coll = db.session.get(Collection, seed['collection_id'])
+        coll.allowed_placements = json.dumps(['left_chest'])
+        coll.allow_back_design = True
+        coll.back_design_type = 'image'
+        coll.back_design_id = seed['free_design_id']
+        db.session.commit()
+        # $30 base, -$2 left chest, +$6 organizer back image.
+        assert group_order_listed_price(tee, coll) == 34.00
+
+
+def test_group_order_card_does_not_guess_optional_name_number(app, seed):
+    from models import Collection
+    from utils.pricing import group_order_listed_price
+
+    with app.app_context():
+        tee = Product.query.get(seed['tee_id'])
+        coll = db.session.get(Collection, seed['collection_id'])
+        coll.allowed_placements = json.dumps(['center_chest'])
+        coll.allow_back_design = True
+        coll.back_design_type = 'name_number'
+        coll.back_design_id = None
+        db.session.commit()
+        assert group_order_listed_price(tee, coll) == 30.00
+
+
+def test_group_store_card_shows_listed_price(client, app, seed):
+    from models import Collection
+
+    with app.app_context():
+        coll = db.session.get(Collection, seed['collection_id'])
+        coll.allowed_placements = json.dumps(['left_chest'])
+        coll.allow_back_design = True
+        coll.back_design_type = 'image'
+        coll.back_design_id = seed['free_design_id']
+        db.session.commit()
+    html = client.get(f'/c/{seed["collection_slug"]}').get_data(as_text=True)
+    assert '$34.00' in html
+    assert '$30.00' not in html
+

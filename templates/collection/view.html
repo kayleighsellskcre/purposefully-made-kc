@@ -598,7 +598,7 @@
                         </div>
                         {% endif %}
                         <div class="price-row">
-                            <span class="price">${{ "%.2f"|format(product.base_price) }}</span>
+                            <span class="price">${{ "%.2f"|format(product.listed_price if product.listed_price is defined else product.base_price) }}</span>
                             {% if collection.deadline_passed %}
                             <span class="cta" style="background:var(--text-secondary);box-shadow:none;cursor:not-allowed;opacity:0.6;">Closed</span>
                             {% elif collection.not_yet_open %}

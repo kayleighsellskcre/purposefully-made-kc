@@ -81,6 +81,41 @@ def calculate_unit_price(
     return round(max(0.0, price), 2)
 
 
+def group_order_listed_price(product, collection, *, include_back=True):
+    """Starting price on a group-order card.
+
+    Bake in fees and discounts the organizer already locked in: a small-logo
+    placement when that is the only option, and an organizer back image when
+    every shirt gets one. Skip optional extras (name/number, size upcharge)
+    so the card does not guess.
+    """
+    from utils.json_fields import parse_json_list
+
+    placements = [
+        (p or '').strip().lower()
+        for p in parse_json_list(getattr(collection, 'allowed_placements', None) or '')
+        if (p or '').strip()
+    ]
+    placement = None
+    if placements and all(p in SMALL_LOGO_PLACEMENTS for p in placements):
+        placement = placements[0]
+
+    has_back = False
+    if (
+        include_back
+        and getattr(collection, 'allow_back_design', True)
+        and (getattr(collection, 'back_design_type', None) or 'both') == 'image'
+        and getattr(collection, 'back_design_id', None)
+    ):
+        has_back = True
+
+    return calculate_unit_price(
+        product,
+        placement=placement,
+        has_back_design=has_back,
+    )
+
+
 def price_cart_item(item, product, design=None):
     """Recompute a stored cart item's unit price from the database.
 
