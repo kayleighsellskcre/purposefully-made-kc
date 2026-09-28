@@ -34,6 +34,7 @@ os.environ['SCHEDULER_ENABLED'] = '0'
 FOLDER = '9360'
 STYLE_TRIES = ('CC9360', '9360', 'C9360')
 TIMEOUT = 40
+SS_COLOR_CDN = 'https://cdn.ssactivewear.com/Images/Color/{id}_{side}_fm.jpg'
 
 
 def _safe_color(name: str) -> str:
@@ -53,6 +54,14 @@ def _dest_dir() -> str:
     path = os.path.join(ROOT, 'static', 'sanmar', FOLDER)
     os.makedirs(path, exist_ok=True)
     return path
+
+
+def _ss_source_url(variant, side: str) -> str:
+    color_id = str(getattr(variant, 'ss_color_id', None) or '').strip()
+    if not color_id:
+        return ''
+    token = 'f' if side == 'front' else 'b'
+    return SS_COLOR_CDN.format(id=color_id, side=token)
 
 
 def _load_image(url: str) -> Image.Image | None:
@@ -90,7 +99,7 @@ def frame_and_save(img: Image.Image, dest_path: str) -> None:
     framed.save(dest_path, format='JPEG', quality=92, optimize=True)
 
 
-def run(db, Product, ProductColorVariant, dry_run: bool = False, files_only: bool = False) -> dict:
+def run(db, Product, ProductColorVariant, dry_run: bool = False, files_only: bool = False, force: bool = False) -> dict:
     product = None
     for style in STYLE_TRIES:
         product = Product.query.filter_by(style_number=style).first()
@@ -123,7 +132,7 @@ def run(db, Product, ProductColorVariant, dry_run: bool = False, files_only: boo
             public = _public_url(filename)
             try:
                 dest_ready = os.path.isfile(dest_path)
-                if dest_ready and not dry_run:
+                if dest_ready and not dry_run and not force:
                     if side == 'front' and not first_front:
                         first_front = public
                     if side == 'back' and not first_back:
@@ -136,7 +145,8 @@ def run(db, Product, ProductColorVariant, dry_run: bool = False, files_only: boo
                     saved += 1
                     print(f'  skip {color} {side} (already framed)')
                     continue
-                img = _load_image(src or '')
+                source = _ss_source_url(variant, side) if force else ''
+                img = _load_image(source or src or '')
                 if img is None:
                     raise RuntimeError(f'no source image ({src!r})')
                 if dry_run:
@@ -182,9 +192,15 @@ def main():
         '--files-only', action='store_true',
         help='Write framed JPEGs without changing database URLs',
     )
+    parser.add_argument(
+        '--force', action='store_true',
+        help='Re-download S&S ghosts and re-frame even if local files exist',
+    )
     args = parser.parse_args()
 
     mode = 'DRY RUN — ' if args.dry_run else ('FILES ONLY — ' if args.files_only else '')
+    if args.force and not args.dry_run:
+        mode = ('FORCE ' + mode) if mode else 'FORCE — '
     print(f"\n{mode}Frame Comfort Colors 9360 tank\n")
 
     from app import create_app
@@ -194,7 +210,7 @@ def main():
     with app.app_context():
         result = run(
             db, Product, ProductColorVariant,
-            dry_run=args.dry_run, files_only=args.files_only,
+            dry_run=args.dry_run, files_only=args.files_only, force=args.force,
         )
         print(f"\nDone. saved={result['saved']}  failed={len(result['failed'])}")
         if result['failed']:

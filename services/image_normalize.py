@@ -51,14 +51,14 @@ TARGET_BOTTOM = 0.912
 TARGET_LEFT   = 0.07
 TARGET_RIGHT  = 0.93
 
-# Comfort Colors Widen flats are 2:3 with the garment around 12–74% of the
-# frame. S&S 9360 ghost crops are 4:5 and fill ~91% of the height, so the
-# tank looks oversized next to 1717 / 1566 / 1466 on /shop/. Frame tanks onto
-# the same 2:3 card with the same occupancy so logos land on the chest.
+# Comfort Colors Widen tees sit around 12–74% of a 2:3 card. Tanks have no
+# sleeves, so that same height makes the body look undersized next to 1717 /
+# 1566. Aim a touch taller (~10–80%) so the tank reads as the same visual
+# weight without returning to the old full-bleed S&S crop (~91%).
 TANK_CANVAS_W = 1000
 TANK_CANVAS_H = 1500
-TANK_TARGET_TOP = 0.12
-TANK_TARGET_BOTTOM = 0.74
+TANK_TARGET_TOP = 0.10
+TANK_TARGET_BOTTOM = 0.80
 
 # Background fill color (white — same as supplier ghost images)
 BG_COLOR = (255, 255, 255)

@@ -53,9 +53,10 @@ def test_tank_frame_matches_comfort_colors_widen_card():
     assert abs(top_frac - TANK_TARGET_TOP) < 0.04
     assert abs(height_frac - (TANK_TARGET_BOTTOM - TANK_TARGET_TOP)) < 0.06
     assert abs(center - 0.5) < 0.04
-    # Must not fill the shop card the way the raw S&S crop does (~0.91).
-    assert height_frac < 0.78
-    assert (right - left) / width < 0.55
+    # Larger than the 1717 Widen occupancy (~0.62) but not the raw S&S crop (~0.91).
+    assert height_frac < 0.82
+    assert height_frac > 0.64
+    assert (right - left) / width < 0.60
 
 
 def test_tank_frame_fallback_when_silhouette_is_missing():
@@ -67,7 +68,7 @@ def test_tank_frame_fallback_when_silhouette_is_missing():
     assert box is not None
     top, left, bottom, right = box
     assert abs(((left + right) / 2.0) / framed.width - 0.5) < 0.05
-    assert (bottom - top) / framed.height < 0.80
+    assert (bottom - top) / framed.height < 0.84
 
 
 def test_tank_flag_follows_category_and_sleeve():
