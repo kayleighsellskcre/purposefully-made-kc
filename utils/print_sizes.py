@@ -341,6 +341,17 @@ def is_hoodie(product=None):
     return infer_category(product) == 'Hoodie'
 
 
+def is_tank(product=None):
+    """True for tank tops. Silhouette width is the body, not body plus sleeves."""
+    if product is None:
+        return False
+    from utils.product_filters import infer_category
+    if infer_category(product) == 'Tank':
+        return True
+    sleeve = (getattr(product, 'sleeve_length', None) or '').strip().lower()
+    return sleeve in ('sleeveless', 'tank')
+
+
 def chart_width_for_size(size, product=None):
     """Approved youth/adult center-chest width. No hoodie pocket adjustment."""
     if not size:
@@ -601,6 +612,7 @@ def client_config(product=None):
         'age_group': age,
         'category': category,
         'is_hoodie': is_hoodie(product),
+        'is_tank': is_tank(product),
         'hoodie_width_reduction': HOODIE_PRINT_WIDTH_REDUCTION_IN,
         'hoodie_width_min': HOODIE_PRINT_WIDTH_MIN_IN,
         'widths_adult': SIZE_PRINT_WIDTH_ADULT,

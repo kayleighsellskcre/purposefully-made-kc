@@ -182,7 +182,8 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert 'function visibleArtworkWidthRatio(image)' in html
     assert 'let garmentWidth = (box && box.measured && box.widthPx)' in html
     assert 'garmentWidth * targetRatio / visibleWidthRatio' in html
-    assert 'const targetRatio = isSideChest ? 0.14 : 0.38' in html
+    assert 'const targetRatio = isSideChest ? 0.14 : (isTank ? 0.58 : 0.38)' in html
+    assert 'TRANSFER_SIZING.is_tank' in html
     assert "String(state.presetDesignId || state.designUrl || '') + '|' + src + '|' + placement" in html
     assert 'ctx.drawImage(mockup, disp.left, disp.top, disp.width, disp.height)' in html
     assert 'No ink found' in html
@@ -191,8 +192,9 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert 'state.lastFrontGarmentWidthPx' in html
     assert 'canvasWidth * 0.62' not in html
     assert "if (side === 'front') applyDesignFit();" in html
-    assert "if (placement === 'left_chest') visualCenter += box.widthPx * 0.16" in html
-    assert "if (placement === 'right_chest') visualCenter -= box.widthPx * 0.16" in html
+    assert 'const chestShift = (TRANSFER_SIZING && TRANSFER_SIZING.is_tank) ? 0.12 : 0.16;' in html
+    assert 'if (placement === \'left_chest\') visualCenter += box.widthPx * chestShift;' in html
+    assert 'if (placement === \'right_chest\') visualCenter -= box.widthPx * chestShift;' in html
     assert 'box.widthPx * 0.22' not in html
     assert 'const orderedW = logoWidthForSize(size)' not in html
     assert '/design/preview/0' in html
@@ -454,7 +456,7 @@ def test_uploaded_back_art_uses_center_front_fit_not_name_number_width(client, s
     html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     assert 'function applyBackUploadFit()' in html
     assert 'Same visual target as center-front' in html
-    assert 'const targetRatio = 0.38;' in html
+    assert 'const targetRatio = isTank ? 0.58 : 0.38;' in html
     assert "if (state.backDesignMode !== 'upload' || !state.backDesignUrl) return;" in html
     assert "if (state.currentView !== 'back') return;" in html
     assert "backDesignLayer.classList.add('is-upload');" in html

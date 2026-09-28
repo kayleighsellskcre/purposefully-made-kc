@@ -1666,8 +1666,13 @@ def fetch_ss_images():
                     continue
                 folder_name = style_folder.name
                 bc_style    = 'BC' + folder_name
+                cc_style    = 'CC' + folder_name
                 product = Product.query.filter(
-                    db.or_(Product.style_number == bc_style, Product.style_number == folder_name)
+                    db.or_(
+                        Product.style_number == bc_style,
+                        Product.style_number == cc_style,
+                        Product.style_number == folder_name,
+                    )
                 ).first()
                 if not product:
                     continue
@@ -1837,10 +1842,12 @@ def link_local_images():
 
         folder_name = style_folder.name          # e.g. "3001"
         bc_style = 'BC' + folder_name            # e.g. "BC3001"
+        cc_style = 'CC' + folder_name            # e.g. "CC9360"
 
         product = Product.query.filter(
             db.or_(
                 Product.style_number == bc_style,
+                Product.style_number == cc_style,
                 Product.style_number == folder_name,
             )
         ).first()

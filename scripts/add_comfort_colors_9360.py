@@ -341,6 +341,11 @@ def main():
             return
         db.session.commit()
         print(f'\nDone. Product {action} as {CANONICAL_STYLE}.')
+        print('Framing tank mockups onto the Comfort Colors shop card...')
+        from scripts.frame_cc9360_mockups import run as frame_run
+        framed = frame_run(db, Product, ProductColorVariant, dry_run=False)
+        print(f"  framed {framed['saved']} images"
+              f"  failed={len(framed['failed'])}")
 
 
 if __name__ == '__main__':

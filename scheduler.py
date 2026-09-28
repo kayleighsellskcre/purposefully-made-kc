@@ -267,7 +267,11 @@ def sync_ss_images_job(app):
                         if not style_folder.is_dir(): continue
                         folder_name = style_folder.name
                         product = Product.query.filter(
-                            db.or_(Product.style_number == 'BC' + folder_name, Product.style_number == folder_name)
+                            db.or_(
+                                Product.style_number == 'BC' + folder_name,
+                                Product.style_number == 'CC' + folder_name,
+                                Product.style_number == folder_name,
+                            )
                         ).first()
                         if not product: continue
 

@@ -51,6 +51,15 @@ TARGET_BOTTOM = 0.912
 TARGET_LEFT   = 0.07
 TARGET_RIGHT  = 0.93
 
+# Comfort Colors Widen flats are 2:3 with the garment around 12–74% of the
+# frame. S&S 9360 ghost crops are 4:5 and fill ~91% of the height, so the
+# tank looks oversized next to 1717 / 1566 / 1466 on /shop/. Frame tanks onto
+# the same 2:3 card with the same occupancy so logos land on the chest.
+TANK_CANVAS_W = 1000
+TANK_CANVAS_H = 1500
+TANK_TARGET_TOP = 0.12
+TANK_TARGET_BOTTOM = 0.74
+
 # Background fill color (white — same as supplier ghost images)
 BG_COLOR = (255, 255, 255)
 
@@ -128,9 +137,20 @@ def detect_shirt_box(img: Image.Image):
 
 # ── Core normalizer ────────────────────────────────────────────────────────────
 
-def normalize_image(img: Image.Image) -> Image.Image:
+def normalize_image(
+    img: Image.Image,
+    *,
+    canvas_w: int = CANVAS_W,
+    canvas_h: int = CANVAS_H,
+    target_top: float = TARGET_TOP,
+    target_bottom: float = TARGET_BOTTOM,
+    target_left: float = TARGET_LEFT,
+    target_right: float = TARGET_RIGHT,
+    center_horizontally: bool = False,
+    tight_crop_fallback: bool = False,
+) -> Image.Image:
     """
-    Return a new 1000×1250 image with the shirt padded to the target region.
+    Return a new canvas with the shirt padded to the target region.
     Falls back gracefully if silhouette detection fails.
     """
     try:
@@ -139,54 +159,79 @@ def normalize_image(img: Image.Image) -> Image.Image:
         pass
 
     box = detect_shirt_box(img)
+    if box is None and tight_crop_fallback:
+        # Ghost flats that fill the frame (black tank on white, garment at the
+        # edges) have no usable backdrop. Treat the photo as the garment.
+        box = (0, 0, img.height, img.width)
 
     if box is None:
         # Detection failed — just resize to canvas and center it
-        result = Image.new('RGB', (CANVAS_W, CANVAS_H), BG_COLOR)
+        result = Image.new('RGB', (canvas_w, canvas_h), BG_COLOR)
         thumb = img.convert('RGB').copy()
-        thumb.thumbnail((CANVAS_W, CANVAS_H), Image.LANCZOS)
-        paste_x = (CANVAS_W - thumb.width)  // 2
-        paste_y = (CANVAS_H - thumb.height) // 2
+        thumb.thumbnail((canvas_w, canvas_h), Image.LANCZOS)
+        paste_x = (canvas_w - thumb.width)  // 2
+        paste_y = (canvas_h - thumb.height) // 2
         result.paste(thumb, (paste_x, paste_y))
         return result
 
     shirt_top, shirt_left, shirt_bottom, shirt_right = box
-    shirt_h = shirt_bottom - shirt_top
-    shirt_w = shirt_right  - shirt_left
+    shirt_h = max(1, shirt_bottom - shirt_top)
+    shirt_w = max(1, shirt_right  - shirt_left)
 
     # How many canvas pixels are allocated for the shirt
-    target_h_px = int((TARGET_BOTTOM - TARGET_TOP)  * CANVAS_H)   # ~1005
-    target_w_px = int((TARGET_RIGHT  - TARGET_LEFT) * CANVAS_W)   # ~860
+    target_h_px = int((target_bottom - target_top)  * canvas_h)
+    target_w_px = int((target_right  - target_left) * canvas_w)
 
     # Scale so the shirt fits within both target dims (letterbox)
     scale = min(target_w_px / shirt_w, target_h_px / shirt_h)
 
-    new_w = int(img.width  * scale)
-    new_h = int(img.height * scale)
+    new_w = max(1, int(img.width  * scale))
+    new_h = max(1, int(img.height * scale))
     scaled = img.convert('RGB').resize((new_w, new_h), Image.LANCZOS)
 
     # After scaling, where does the shirt land?
     scaled_shirt_top  = int(shirt_top  * scale)
     scaled_shirt_left = int(shirt_left * scale)
+    scaled_shirt_w    = max(1, int(shirt_w * scale))
 
     # Where we want the shirt top-left to end up on the canvas
-    canvas_shirt_top  = int(TARGET_TOP  * CANVAS_H)
-    canvas_shirt_left = int(TARGET_LEFT * CANVAS_W)
+    canvas_shirt_top  = int(target_top  * canvas_h)
+    if center_horizontally or scaled_shirt_w < target_w_px * 0.90:
+        canvas_shirt_left = (canvas_w - scaled_shirt_w) // 2
+    else:
+        canvas_shirt_left = int(target_left * canvas_w)
 
     # Offset of the full scaled image on the canvas
     offset_y = canvas_shirt_top  - scaled_shirt_top
     offset_x = canvas_shirt_left - scaled_shirt_left
 
-    result = Image.new('RGB', (CANVAS_W, CANVAS_H), BG_COLOR)
+    result = Image.new('RGB', (canvas_w, canvas_h), BG_COLOR)
     result.paste(scaled, (offset_x, offset_y))
     return result
 
 
-def normalize_bytes(data: bytes, fmt: str = 'JPEG') -> bytes:
+def frame_tank_image(img: Image.Image) -> Image.Image:
+    """Pad a tight tank crop onto the Comfort Colors Widen 2:3 card."""
+    return normalize_image(
+        img,
+        canvas_w=TANK_CANVAS_W,
+        canvas_h=TANK_CANVAS_H,
+        target_top=TANK_TARGET_TOP,
+        target_bottom=TANK_TARGET_BOTTOM,
+        center_horizontally=True,
+        tight_crop_fallback=True,
+    )
+
+
+def normalize_bytes(data: bytes, fmt: str = 'JPEG', **kwargs) -> bytes:
     """Normalize image from raw bytes, return normalized bytes."""
     img = Image.open(io.BytesIO(data))
     img.load()
-    normalized = normalize_image(img)
+    if kwargs.get('tank'):
+        kwargs.pop('tank')
+        normalized = frame_tank_image(img)
+    else:
+        normalized = normalize_image(img, **kwargs)
     buf = io.BytesIO()
     normalized.save(buf, format=fmt, quality=92, optimize=True)
     return buf.getvalue()
