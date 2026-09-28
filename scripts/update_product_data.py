@@ -262,6 +262,15 @@ PRODUCTS = {
         "Unisex relaxed fit; runs slightly large. Size down for a more fitted look.",
         'https://cdnm.sanmar.com/SpecSheetMeasurements/CC1466.pdf',
     ),
+    'CC9360': (
+        6.68, 26.00,
+        '100% ring-spun cotton; 6.1 oz; garment-dyed',
+        "The Comfort Colors 9360 Heavyweight Ring Spun Tank Top. Same garment-dyed "
+        "6.1 oz ring-spun cotton as the 1717 tee, cut as a relaxed tank with bound "
+        "neck and armholes. Lived-in color and a broken-in feel right out of the bag.",
+        "Unisex relaxed fit; runs slightly large. Size down for a more fitted look.",
+        'https://www.ssactivewear.com/ShopNow/ItemSpecSheet.aspx?ID=2437&LanguageCode=en',
+    ),
 
     # ── PORT & COMPANY ────────────────────────────────────────────────────────
     'PC54': (

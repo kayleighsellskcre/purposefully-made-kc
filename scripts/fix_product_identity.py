@@ -46,6 +46,24 @@ IDENTITY_FIXES = {
         'softness_rating': 3,
     },
     '1566': None,  # alias → CC1566 handled via candidates
+    'CC9360': {
+        'name': 'Comfort Colors Heavyweight Ring Spun Tank Top',
+        'category': 'Tank',
+        'age_group': 'adult',
+        'fit_type': 'Unisex',
+        'neck_style': 'Tank',
+        'sleeve_length': 'Sleeveless',
+        'description': (
+            'Comfort Colors heavyweight ring-spun tank. 6.1 oz 100% ring-spun '
+            'cotton, garment-dyed, with bound self-fabric neck and armholes '
+            'and a relaxed lived-in feel.'
+        ),
+        'fabric_details': '6.1 oz / 100% ring-spun cotton, garment-dyed',
+        'fabric_summary': '100% ring-spun cotton, garment-dyed heavyweight tank',
+        'softness_rating': 3,
+    },
+    '9360': None,
+    'C9360': None,
     'CC1466': {
         'name': 'Comfort Colors Unisex Garment-Dyed Lightweight Crewneck Sweatshirt',
         'category': 'Sweatshirt',

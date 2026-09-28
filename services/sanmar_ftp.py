@@ -323,6 +323,33 @@ def _brand_display_name(style_key: str, dip_brand: str) -> str:
     return dip_brand or 'SanMar'
 
 
+def _existing_product_for_style(Product, style: str):
+    """Match a DIP style to a catalog row stored with or without CC/C prefixes."""
+    product = Product.query.filter_by(style_number=style).first()
+    if product:
+        return product
+    from services.sanmar_api import normalize_style_key
+    key = normalize_style_key(style)
+    if not key:
+        return None
+    candidates = [key]
+    if key.startswith('CC') and key[2:]:
+        candidates.extend([key[2:], f'C{key[2:]}'])
+    elif key.startswith('C') and key[1:].isdigit():
+        candidates.extend([key[1:], f'CC{key[1:]}'])
+    elif key.isdigit():
+        candidates.extend([f'CC{key}', f'C{key}'])
+    seen = {style.upper()}
+    for candidate in candidates:
+        if not candidate or candidate.upper() in seen:
+            continue
+        seen.add(candidate.upper())
+        product = Product.query.filter_by(style_number=candidate).first()
+        if product:
+            return product
+    return None
+
+
 # ---------------------------------------------------------------------------
 # DB upsert
 # ---------------------------------------------------------------------------
@@ -388,7 +415,7 @@ def upsert_from_dip(entries: list[dict], app=None) -> tuple[int, int, int]:
                 from services.sanmar_catalog import style_default_is_active
                 default_active = style_default_is_active(style)
 
-                product = Product.query.filter_by(style_number=style).first()
+                product = _existing_product_for_style(Product, style)
 
                 if product is None:
                     product = Product(

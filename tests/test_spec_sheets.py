@@ -85,6 +85,12 @@ def test_comfort_colors_uses_ss_style_page():
     assert target['url'] == url
 
 
+def test_comfort_colors_9360_tank_uses_ss_spec_sheet():
+    for style in ('CC9360', '9360', 'C9360'):
+        product = _ProductStub(style_number=style, brand='Comfort Colors')
+        assert resolve_spec_sheet_url(product) == _SS_SPEC.format(2437)
+
+
 def test_gildan_uses_ss_style_page():
     product = _ProductStub(style_number='G64000', brand='Gildan')
     assert resolve_spec_sheet_url(product) == _SS_SPEC.format(32)

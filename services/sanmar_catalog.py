@@ -48,6 +48,7 @@ CURATED_BRANDS = [
             '1566',                     # Garment-dyed crewneck sweatshirt
             '1466',                     # Garment-dyed lightweight crewneck
             '6030',                     # Garment-dyed crew (legacy catalog note)
+            '9360', 'C9360', 'CC9360',  # Heavyweight ring-spun tank
         ],
     },
     {

@@ -417,13 +417,14 @@ def _parse_list_response(row: ET.Element) -> dict:
         'title':       _ns_find(row, 'productTitle') or _ns_find(row, 'title'),
         'description': _ns_find(row, 'productDescription') or _ns_find(row, 'description'),
         'material':    _ns_find(row, 'material') or _ns_find(row, 'fabric'),
-        'front_image': (_ns_find(row, 'colorProductImage')
-                        or _ns_find(row, 'frontFlat')
+        # Prefer garment-only flats over on-model lifestyle shots.
+        'front_image': (_ns_find(row, 'frontFlat')
                         or _ns_find(row, 'FRONT_FLAT')
+                        or _ns_find(row, 'colorProductImage')
                         or _ns_find(row, 'frontModel')),
-        'back_image':  (_ns_find(row, 'colorProductImageBack')
-                        or _ns_find(row, 'backFlat')
+        'back_image':  (_ns_find(row, 'backFlat')
                         or _ns_find(row, 'BACK_FLAT')
+                        or _ns_find(row, 'colorProductImageBack')
                         or _ns_find(row, 'backModel')),
         'color_swatch':_ns_find(row, 'colorSquareImage') or _ns_find(row, 'colorSwatchImage'),
         'color_hex':   _ns_find(row, 'colorHex') or '',
@@ -449,7 +450,13 @@ def style_is_allowed(style: str, allowed: list[str]) -> bool:
         return True
     if f'RS{key}' in allowed_keys:
         return True
+    if key.startswith('CC') and key[2:] in allowed_keys:
+        return True
+    if f'CC{key}' in allowed_keys:
+        return True
     if key.startswith('C') and key[1:] in allowed_keys:
+        return True
+    if f'C{key}' in allowed_keys:
         return True
     return False
 

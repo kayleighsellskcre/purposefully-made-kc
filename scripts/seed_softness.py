@@ -106,6 +106,7 @@ SOFTNESS_BY_STYLE = {
     '5600': (1, "100% polyester moisture-wicking performance, women's"),
     # COMFORT COLORS — soft broken-in cotton / soft fleece
     'CC1717': (3, '100% ring-spun cotton, garment-dyed heavyweight'),
+    'CC9360': (3, '100% ring-spun cotton, garment-dyed heavyweight tank'),
     'CC1566': (3, '80% cotton / 20% polyester fleece, garment-dyed crew'),
     'CC1466': (3, '80% cotton / 20% polyester, garment-dyed light crew'),
     # DISTRICT

@@ -39,6 +39,10 @@ def test_other_confirmed_supplier_identities_are_canonical():
     assert resolve_fix('3501T')['category'] == 'Long Sleeve'
     assert resolve_fix('ST254')['neck_style'] == 'Quarter-Zip'
     assert TARGET_STYLES['RS3401']['ss_style_id'] == 517
+    tank = resolve_fix('CC9360')
+    assert tank['category'] == 'Tank'
+    assert tank['sleeve_length'] == 'Sleeveless'
+    assert resolve_fix('9360')['category'] == 'Tank'
 
 
 def test_independent_fleece_cannot_regress_to_short_sleeve():
@@ -46,3 +50,13 @@ def test_independent_fleece_cannot_regress_to_short_sleeve():
         fix = IDENTITY_FIXES[style]
         assert fix['sleeve_length'] == 'Long Sleeve'
         assert fix['fabric_details']
+
+
+def test_comfort_colors_9360_is_in_the_sanmar_curated_list():
+    from services.sanmar_api import style_is_allowed
+    from services.sanmar_catalog import CURATED_BRANDS
+
+    cc = next(b for b in CURATED_BRANDS if b['name'] == 'Comfort Colors')
+    assert style_is_allowed('9360', cc['styles'])
+    assert style_is_allowed('CC9360', cc['styles'])
+    assert style_is_allowed('C9360', cc['styles'])

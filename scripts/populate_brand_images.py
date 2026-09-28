@@ -59,7 +59,7 @@ BRAND_STYLES = {
         'BC8800',
     ],
     # Comfort Colors
-    'CC': ['CC1717', 'CC1566', 'CC1466'],
+    'CC': ['CC1717', 'CC1566', 'CC1466', 'CC9360'],
     # Port & Company
     'PC': ['PC54', 'PC78H', 'LPC54', 'PC147', 'PC147Y', 'LPC147V', 'PC147LS', 'PC147YLS', 'PC146', 'PC146Y', 'PC145', 'PC144'],
     # Sport-Tek
@@ -85,6 +85,7 @@ STYLE_SEARCH_MAP = {
     'CC1717': ('1717', '1717'),
     'CC1566': ('1566', '1566'),
     'CC1466': ('1466', '1466'),
+    'CC9360': ('9360', '9360'),
     # Gildan (strip "G" prefix for Widen search — G64000 → "64000", etc.)
     'G64000': ('64000', '64000'),
     'G64500': ('64500', '64500'),

@@ -1522,6 +1522,21 @@ def sync_sanmar():
                         existing = Product.query.filter_by(style_number=style_num[2:]).first()
                     if not existing and not upper.startswith('BC'):
                         existing = Product.query.filter_by(style_number=f'BC{style_num}').first()
+                    if not existing and upper.startswith('CC'):
+                        existing = (
+                            Product.query.filter_by(style_number=upper[2:]).first()
+                            or Product.query.filter_by(style_number=f'C{upper[2:]}').first()
+                        )
+                    if not existing and upper.startswith('C') and not upper.startswith('CC') and upper[1:].isdigit():
+                        existing = (
+                            Product.query.filter_by(style_number=upper[1:]).first()
+                            or Product.query.filter_by(style_number=f'CC{upper[1:]}').first()
+                        )
+                    if not existing and upper.isdigit():
+                        existing = (
+                            Product.query.filter_by(style_number=f'CC{upper}').first()
+                            or Product.query.filter_by(style_number=f'C{upper}').first()
+                        )
                     if existing:
                         for key, value in product_data.items():
                             # Preserve existing retail price — never let SanMar's
