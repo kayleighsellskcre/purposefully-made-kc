@@ -486,6 +486,8 @@ def create_group_order():
                 collection.back_design_name_part = (
                     name_part if name_part in ('first', 'last') else 'last'
                 )
+            from utils.group_orders import apply_locked_back_design
+            apply_locked_back_design(collection, current_user)
 
             from utils.group_orders import apply_collection_card, apply_schedule_from_form, apply_group_kind, set_collection_products_from_form
             apply_collection_card(collection)
@@ -840,6 +842,7 @@ def customize(product_slug):
     back_design_type = 'both'   # 'none' | 'name_number' | 'image' | 'both'
     allow_back_design = True
     back_design_name_part = 'last'
+    preset_back_design = None
     catalog_section = None
     uniform_kit = None
     uniform_locked_color = None
@@ -917,6 +920,8 @@ def customize(product_slug):
         ):
             allow_back_design = False
             back_design_type = 'none'
+        if allow_back_design and back_design_type in ('image', 'both'):
+            preset_back_design = load_design_dict(getattr(coll, 'back_design_id', None))
     
     # Check for pre-selected design from gallery
     design_id = request.args.get('design_id', type=int)
@@ -1002,6 +1007,8 @@ def customize(product_slug):
     _stamp_artwork_fits(my_designs)
     if preset_design:
         _measure_artwork_fits([preset_design], current_app)
+    if preset_back_design:
+        _measure_artwork_fits([preset_back_design], current_app)
     return render_template('shop/customize.html',
                          product=product,
                          available_sizes=available_sizes,
@@ -1034,4 +1041,5 @@ def customize(product_slug):
                          uniform_kit=uniform_kit,
                          uniform_locked_color=uniform_locked_color,
                          uniform_logo_locked=uniform_logo_locked,
-                         garment_metrics_seed=garment_metrics_seed)
+                         garment_metrics_seed=garment_metrics_seed,
+                         preset_back_design=preset_back_design)

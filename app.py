@@ -212,6 +212,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS allow_back_design BOOLEAN DEFAULT TRUE",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS back_design_type VARCHAR(20) DEFAULT 'both'",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS back_design_name_part VARCHAR(20) DEFAULT 'last'",
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS back_design_id INTEGER REFERENCES design(id)",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS show_in_directory BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS cover_image VARCHAR(500)",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS card_title VARCHAR(200)",

@@ -257,7 +257,7 @@ def preview_overlay_style(item, placement='center_chest'):
         max_h = 20.0
         pct = min(max(pct, 10.0), 16.0)
         max_h = min(max_h, 22.0)
-        top, left = 32, 62 if placement == 'left_chest' else 38
+        top, left = 26, 61 if placement == 'left_chest' else 39
     else:
         if tall > 1.4:
             pct *= 0.88

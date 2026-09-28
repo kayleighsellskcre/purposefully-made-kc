@@ -803,6 +803,52 @@ def user_can_manage_collection(collection, user=None):
     return collection.created_by_user_id == user.id
 
 
+def apply_locked_back_design(collection, user=None):
+    """Store organizer artwork that prints only on the back.
+
+    The id is kept off allowed_design_ids so shoppers cannot place it on the
+    front. Instant /design/upload posts set a hidden back_design_id; a file
+    input is the fallback when JavaScript does not run.
+    """
+    import json
+    from flask import request
+
+    if request.form.get('clear_back_design') == 'on':
+        collection.back_design_id = None
+        return None
+
+    raw = (request.form.get('back_design_id') or '').strip()
+    if raw:
+        try:
+            did = int(raw)
+        except (TypeError, ValueError):
+            did = None
+        if did:
+            design = Design.query.get(did)
+            if design:
+                collection.back_design_id = did
+
+    f = request.files.get('back_design_upload') if request.files else None
+    if f and getattr(f, 'filename', None):
+        from routes.admin import _save_collection_design
+        uid = getattr(user, 'id', None)
+        try:
+            design = _save_collection_design(f, uid)
+        except Exception:
+            design = None
+        if design:
+            collection.back_design_id = design.id
+
+    locked_id = getattr(collection, 'back_design_id', None)
+    if not locked_id:
+        return None
+    ids = allowed_design_ids(collection)
+    if locked_id in ids:
+        ids = [i for i in ids if i != locked_id]
+        collection.allowed_design_ids = json.dumps(ids) if ids else None
+    return locked_id
+
+
 def apply_collection_form(collection, user, *, allow_slug=False, require_products=True):
     """Save create/edit group-order fields from the current request.
 
@@ -906,6 +952,8 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
         collection.back_design_type  = bdt if bdt in ('name_number', 'image', 'both') else 'both'
         name_part = (request.form.get('back_design_name_part') or 'last').strip().lower()
         collection.back_design_name_part = name_part if name_part in ('first', 'last') else 'last'
+
+    apply_locked_back_design(collection, user)
 
     password = (request.form.get('password') or '').strip()
     if request.form.get('password_protected') == 'on':

@@ -2817,6 +2817,8 @@ def add_collection():
                 collection.back_design_name_part = (
                     name_part if name_part in ('first', 'last') else 'last'
                 )
+            from utils.group_orders import apply_locked_back_design
+            apply_locked_back_design(collection, current_user)
 
             from utils.group_orders import apply_collection_card, apply_schedule_from_form, apply_group_kind, set_collection_products_from_form
             apply_collection_card(collection)
@@ -3018,6 +3020,8 @@ def collection_design_remove(collection_id, design_id):
     ids = _json.loads(collection.allowed_design_ids) if collection.allowed_design_ids else []
     ids = [i for i in ids if i != design_id]
     collection.allowed_design_ids = _json.dumps(ids) if ids else None
+    if getattr(collection, 'back_design_id', None) == design_id:
+        collection.back_design_id = None
 
     # Delete the design record and its file
     try:

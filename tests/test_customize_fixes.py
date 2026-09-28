@@ -1,7 +1,7 @@
 """Customizer bugs: missing sizes, cart add on mockup-only colours, fonts, gallery."""
 import json
 
-from models import db, Product, ProductColorVariant
+from models import db, Product, ProductColorVariant, Collection
 from utils.fonts import CUSTOMIZE_BACK_FONTS, GROUP_ORDER_FONTS
 from utils.mockups import get_carousel_colors_for_product
 from utils.personalization_layout import font_path
@@ -192,9 +192,12 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert 'state.lastFrontGarmentWidthPx' in html
     assert 'canvasWidth * 0.62' not in html
     assert "if (side === 'front') applyDesignFit();" in html
-    assert 'const chestShift = (TRANSFER_SIZING && TRANSFER_SIZING.is_tank) ? 0.12 : 0.16;' in html
+    assert 'const chestShift = isTank ? 0.12 : 0.16;' in html
     assert 'if (placement === \'left_chest\') visualCenter += box.widthPx * chestShift;' in html
     assert 'if (placement === \'right_chest\') visualCenter -= box.widthPx * chestShift;' in html
+    assert 'const pocketDropIn = isTank ? 3.15 : 3.55;' in html
+    assert 'const pocketOffsetIn = isTank ? 2.75 : 3.25;' in html
+    assert "designLayer.style.top = (box.topPx + pocketDropIn * box.pxPerInch) + 'px';" in html
     assert 'box.widthPx * 0.22' not in html
     assert 'const orderedW = logoWidthForSize(size)' not in html
     assert '/design/preview/0' in html
@@ -475,3 +478,41 @@ def test_choosing_another_logo_keeps_the_checked_placement(client, seed):
     assert 'state.selectedPlacement = placementToKeep();' in html
     assert "state.selectedPlacement = (allowed && allowed.length) ? allowed[0] : 'center_chest';" not in html
     assert "state.selectedPlacement = (state.allowedPlacements && state.allowedPlacements[0]) || 'center_chest';" not in html
+
+
+def test_group_image_back_hides_name_number_and_shows_back_upload(client, app, seed):
+    with app.app_context():
+        coll = db.session.get(Collection, seed['collection_id'])
+        coll.allow_back_design = True
+        coll.back_design_type = 'image'
+        coll.restrict_options = True
+        coll.allowed_placements = json.dumps(['left_chest'])
+        db.session.commit()
+    with client.session_transaction() as sess:
+        sess['collection_id'] = seed['collection_id']
+    html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
+    assert 'id="backDesignNameInput"' not in html
+    assert 'e.g. SMITH' not in html
+    assert 'Upload back design' in html
+    assert 'id="designFileBack"' in html
+    assert "backDesignMode: 'upload'" in html
+    assert 'This image only prints on the back' in html
+    assert 'cannot be placed on the front' in html
+
+
+def test_group_image_back_applies_organizer_artwork(client, app, seed):
+    with app.app_context():
+        coll = db.session.get(Collection, seed['collection_id'])
+        coll.allow_back_design = True
+        coll.back_design_type = 'image'
+        coll.restrict_options = True
+        coll.back_design_id = seed['free_design_id']
+        db.session.commit()
+    with client.session_transaction() as sess:
+        sess['collection_id'] = seed['collection_id']
+    html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
+    assert 'id="backDesignNameInput"' not in html
+    assert 'Your organizer set this back-only image' in html
+    assert "backDesignMode: 'upload'" in html
+    assert 'uploads/designs/gallery-logo.png' in html
+

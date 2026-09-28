@@ -180,6 +180,9 @@ class Collection(db.Model):
     back_design_type = db.Column(db.String(20), default='both')
     # Jersey name line: 'first' or 'last' so parents know what to type.
     back_design_name_part = db.Column(db.String(20), default='last')
+    # Organizer artwork that prints only on the back. Kept off allowed_design_ids
+    # so it never appears as a front-placement choice.
+    back_design_id = db.Column(db.Integer, db.ForeignKey('design.id'), nullable=True)
 
     # Optional two-lane team store. JSON keeps the uniform product + fixed
     # Home/Away colors separate from the existing fan-wear product/color rules.
@@ -205,6 +208,9 @@ class Collection(db.Model):
     products = db.relationship('Product', secondary='collection_products', backref='collections')
     orders = db.relationship('Order', backref='collection', lazy='dynamic')
     created_by = db.relationship('User', foreign_keys=[created_by_user_id], backref='created_collections')
+    locked_back_design = db.relationship(
+        'Design', foreign_keys=[back_design_id], post_update=True
+    )
     
     def __init__(self, **kwargs):
         super(Collection, self).__init__(**kwargs)

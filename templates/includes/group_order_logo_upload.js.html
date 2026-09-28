@@ -133,4 +133,106 @@
         });
     }
 })();
+
+(function() {
+    var input = document.getElementById('back_design_upload');
+    var preview = document.getElementById('backUploadPreview');
+    var uploadArea = document.getElementById('backUploadArea');
+    var hidden = document.getElementById('back_design_id');
+    var form = document.querySelector('.collection-form');
+    if (!input || !preview || !form || !hidden) return;
+
+    var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    var ACCEPTED = /\.(png|jpe?g|webp)$/i;
+
+    function busy(state) {
+        if (!uploadArea) return;
+        uploadArea.style.pointerEvents = state ? 'none' : '';
+        uploadArea.style.opacity = state ? '0.6' : '';
+    }
+
+    function uploadOne(original) {
+        if (!ACCEPTED.test(original.name)) {
+            preview.innerHTML = '<div class="upload-preview-item"><span style="color:#dc3545;font-size:0.75rem">' +
+                original.name + ' - needs to be PNG, JPG, or WEBP</span></div>';
+            preview.style.display = 'flex';
+            return Promise.resolve();
+        }
+        preview.innerHTML = '<div class="upload-preview-item"><span style="font-size:0.75rem;color:var(--text-secondary)">Uploading back image…</span></div>';
+        preview.style.display = 'flex';
+        busy(true);
+
+        var ready = (window.PMKC && window.PMKC.shrinkImage)
+            ? window.PMKC.shrinkImage(original)
+            : Promise.resolve(original);
+
+        return ready.then(function(file) {
+            var fd = new FormData();
+            fd.append('file', file);
+            fd.append('bg_removal', 'none');
+            var ctrl = new AbortController();
+            var timer = setTimeout(function() { ctrl.abort(); }, 20000);
+            return fetch('/design/upload', {
+                method: 'POST',
+                body: fd,
+                headers: csrfToken ? { 'X-CSRFToken': csrfToken } : {},
+                signal: ctrl.signal
+            }).then(function(res) {
+                return res.json().catch(function() { return {}; });
+            }).then(function(data) {
+                if (!data.success || !data.design_id) {
+                    preview.innerHTML = '<div class="upload-preview-item"><span style="color:#dc3545;font-size:0.75rem">' +
+                        (data.error || 'Failed - try again') + '</span></div>';
+                    return;
+                }
+                hidden.value = String(data.design_id);
+                var clearBox = form.querySelector('input[name="clear_back_design"]');
+                if (clearBox) clearBox.checked = false;
+                preview.innerHTML = '';
+                var div = document.createElement('div');
+                div.className = 'upload-preview-item';
+                var img = document.createElement('img');
+                img.src = data.url;
+                img.alt = original.name;
+                div.appendChild(img);
+                var span = document.createElement('span');
+                span.textContent = original.name + ' (back only)';
+                div.appendChild(span);
+                preview.appendChild(div);
+            }).catch(function() {
+                preview.innerHTML = '<div class="upload-preview-item"><span style="color:#dc3545;font-size:0.75rem">' +
+                    'Timed out - try a smaller file</span></div>';
+            }).finally(function() {
+                clearTimeout(timer);
+                busy(false);
+            });
+        });
+    }
+
+    input.addEventListener('change', function() {
+        var file = (this.files && this.files[0]) || null;
+        this.value = '';
+        if (file) uploadOne(file);
+    });
+
+    if (uploadArea) {
+        ['dragenter', 'dragover'].forEach(function(name) {
+            uploadArea.addEventListener(name, function(e) {
+                e.preventDefault();
+                uploadArea.classList.add('is-dragover');
+            });
+        });
+        ['dragleave', 'dragend'].forEach(function(name) {
+            uploadArea.addEventListener(name, function() {
+                uploadArea.classList.remove('is-dragover');
+            });
+        });
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('is-dragover');
+            var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+            if (file) uploadOne(file);
+        });
+    }
+})();
 </script>

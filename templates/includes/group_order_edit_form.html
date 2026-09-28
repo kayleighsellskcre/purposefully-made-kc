@@ -252,6 +252,36 @@
                         </label>
                     </div>
 
+                    <div id="back-image-upload-section" {% if bdt not in ('image', 'both') %}style="display:none"{% endif %}>
+                        <p class="form-hint" style="margin-top:1rem"><strong>Back-only image.</strong> This prints on the back of every shirt and will not show as a front logo option.</p>
+                        {% if collection.locked_back_design %}
+                        <div style="display:flex;align-items:center;gap:0.75rem;margin:0.75rem 0;">
+                            <img src="{{ collection.locked_back_design.file_path | image_url }}" alt="Back design" style="width:72px;height:72px;object-fit:contain;background:#f7f3ea;border-radius:8px;">
+                            <div>
+                                <p style="margin:0;font-size:0.9rem;">{{ collection.locked_back_design.title or collection.locked_back_design.original_filename or 'Back design' }}</p>
+                                <label style="display:flex;gap:0.4rem;align-items:center;margin-top:0.35rem;font-size:0.8rem;cursor:pointer;">
+                                    <input type="checkbox" name="clear_back_design" value="on">
+                                    Remove this back image
+                                </label>
+                            </div>
+                        </div>
+                        <input type="hidden" id="back_design_id" name="back_design_id" value="{{ collection.back_design_id }}">
+                        {% else %}
+                        <input type="hidden" id="back_design_id" name="back_design_id" value="">
+                        {% endif %}
+                        <div class="collection-upload-area" id="backUploadArea" role="button" tabindex="0"
+                             aria-controls="back_design_upload"
+                             onclick="document.getElementById('back_design_upload').click()">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom:0.4rem" aria-hidden="true">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            <p><strong>Upload a back image</strong></p>
+                            <p class="text-muted">PNG, JPG, WEBP. This stays on the back only.</p>
+                        </div>
+                        <input type="file" id="back_design_upload" name="back_design_upload" accept=".png,.jpg,.jpeg,.webp" style="display:none">
+                        <div id="backUploadPreview" class="upload-preview-list" style="display:none"></div>
+                    </div>
+
                     <div id="back-font-section" {% if bdt == 'none' or bdt == 'image' %}style="display:none"{% endif %}>
                         {% set name_part = collection.back_design_name_part or 'last' %}
                         <p class="form-hint" style="margin-top:1rem">What name should parents put on the jersey?</p>
@@ -481,6 +511,8 @@ document.querySelectorAll('input[name="back_design_type"]').forEach(function(rad
         var showFont = (this.value === 'name_number' || this.value === 'both');
         var section = document.getElementById('back-font-section');
         if (section) section.style.display = showFont ? '' : 'none';
+        var backImage = document.getElementById('back-image-upload-section');
+        if (backImage) backImage.style.display = (this.value === 'image' || this.value === 'both') ? '' : 'none';
     });
 });
 

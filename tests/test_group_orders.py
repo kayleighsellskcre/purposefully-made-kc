@@ -275,6 +275,30 @@ def test_organizer_can_require_first_names_on_jerseys(customer_client, seed, app
         assert saved.back_design_type == 'name_number'
 
 
+def test_create_form_offers_a_back_only_image_upload(customer_client):
+    html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
+    assert 'id="back-image-upload-section"' in html
+    assert 'name="back_design_upload"' in html
+    assert 'name="back_design_id"' in html
+    assert 'Back-only image' in html
+    assert 'This stays on the back only' in html
+
+
+def test_organizer_can_lock_a_back_only_design(customer_client, seed, app):
+    form = _base_form(seed)
+    form['back_design_type'] = 'image'
+    form['back_design_id'] = str(seed['free_design_id'])
+    form['allowed_designs'] = [str(seed['free_design_id'])]
+    resp = _post(customer_client, form)
+    assert resp.status_code == 200
+    with app.app_context():
+        saved = Collection.query.filter_by(name=form['name']).one()
+        assert saved.back_design_type == 'image'
+        assert saved.allow_back_design is True
+        assert saved.back_design_id == seed['free_design_id']
+        assert seed['free_design_id'] not in json.loads(saved.allowed_design_ids or '[]')
+
+
 def test_group_order_setup_does_not_offer_the_general_design_library(customer_client):
     html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
     assert 'Or pick from existing designs' not in html
