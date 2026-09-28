@@ -462,7 +462,7 @@
                 {% for item in uniform_products %}
                 {% for kit in item.kits %}
                 <a class="uniform-kit-card"
-                   href="{{ url_for('shop.customize', product_id=item.product.id, catalog_section='uniform', uniform_kit=kit.key) }}">
+                   href="{{ url_for('shop.customize', product_slug=item.product.slug, catalog_section='uniform', uniform_kit=kit.key) }}">
                     <div class="uniform-kit-photo">
                         <img src="{{ kit.variant.front_image_url }}"
                              alt="{{ kit.label }} {{ item.product|display_name }} in {{ kit.color }}"
@@ -525,7 +525,7 @@
                 {% if collection.deadline_passed %}
                 <div>
                 {% else %}
-                <a href="{{ url_for('shop.customize', product_id=product.id, catalog_section='fan' if team_store.configured else none) }}">
+                <a href="{{ url_for('shop.customize', product_slug=product.slug, catalog_section='fan' if team_store.configured else none) }}">
                 {% endif %}
                     <div class="design-card-image">
                         {% if product.carousel_colors and product.carousel_colors|length > 0 %}

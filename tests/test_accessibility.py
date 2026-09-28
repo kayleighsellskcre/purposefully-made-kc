@@ -209,7 +209,7 @@ def test_shop_search_field_is_labelled(client):
 
 
 def test_customize_quantity_is_labelled(client, seed):
-    page = parse(client, f'/shop/customize/{seed["tee_id"]}')
+    page = parse(client, f'/shop/customize/{seed["tee_slug"]}')
     assert 'quantity' in page.label_targets
 
 
@@ -230,7 +230,7 @@ def test_cart_quantity_inputs_are_labelled(customer_client, seed):
 def test_customizer_choices_are_keyboard_reachable(client, seed):
     """Colour, size and placement were <div onclick>: not focusable, and not
     activated by Enter. Without these a keyboard user cannot place an order."""
-    page = parse(client, f'/shop/customize/{seed["tee_id"]}')
+    page = parse(client, f'/shop/customize/{seed["tee_slug"]}')
     for class_name in ('color-card', 'size-card', 'placement-option'):
         elements = [
             a for _, a in page.tags
@@ -244,7 +244,7 @@ def test_customizer_choices_are_keyboard_reachable(client, seed):
 
 def test_product_thumbnails_are_buttons(client, seed):
     """They used to be <img onclick>, which Tab cannot reach."""
-    page = parse(client, f'/shop/product/{seed["tee_id"]}')
+    page = parse(client, f'/shop/product/{seed["tee_slug"]}')
     thumbnail_images = [
         a for _, a in page.all_of('img')
         if 'thumbnail' in a.get('class', '').split()
@@ -279,7 +279,7 @@ def test_size_chart_dialog_is_marked_up_as_one(client, app, seed):
         product.size_chart = json.dumps({'M': {'chest': 20, 'length': 28}})
         db.session.commit()
 
-    page = parse(client, f'/shop/product/{seed["tee_id"]}')
+    page = parse(client, f'/shop/product/{seed["tee_slug"]}')
     modal = page.find('div', id='sizeChartModal')
     assert modal, 'no size chart modal'
     assert modal[0].get('role') == 'dialog'
@@ -325,7 +325,7 @@ def test_heading_levels_do_not_skip(client, path):
 
 def test_customize_page_has_an_h1(client, seed):
     """It used to open with an h2 and have no h1 at all."""
-    page = parse(client, f'/shop/customize/{seed["tee_id"]}')
+    page = parse(client, f'/shop/customize/{seed["tee_slug"]}')
     assert page.headings.count('h1') == 1
 
 

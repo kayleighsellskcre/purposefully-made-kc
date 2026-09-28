@@ -323,7 +323,7 @@ def test_group_order_shopper_does_not_get_the_general_design_gallery(
 ):
     client.get(f'/c/{seed["collection_slug"]}')
     html = client.get(
-        f'/shop/customize/{seed["tee_id"]}?catalog_section=fan'
+        f'/shop/customize/{seed["tee_slug"]}?catalog_section=fan'
     ).get_data(as_text=True)
     assert 'Gallery Logo' not in html
 
@@ -742,7 +742,7 @@ def test_uniform_color_is_locked_in_customizer_and_cart(client, seed, app):
 
     client.get(f'/c/{seed["collection_slug"]}')
     html = client.get(
-        f'/shop/customize/{seed["tee_id"]}'
+        f'/shop/customize/{seed["tee_slug"]}'
         '?catalog_section=uniform&uniform_kit=home'
     ).get_data(as_text=True)
     assert 'Home player uniform' in html
@@ -808,8 +808,8 @@ def test_youth_and_adult_uniforms_can_be_offered_together(customer_client, seed,
     html = customer_client.get(
         f'/c/{collection_slug_for(form["name"], app)}'
     ).get_data(as_text=True)
-    assert f'/shop/customize/{seed["tee_id"]}' in html
-    assert f'/shop/customize/{seed["youth_id"]}' in html
+    assert f'/shop/customize/{seed["tee_slug"]}' in html
+    assert f'/shop/customize/{seed["youth_slug"]}' in html
 
 
 def _uniform_collection(app, seed, **uniform_extra):
@@ -863,7 +863,7 @@ def test_uniform_customize_applies_the_jersey_logo_automatically(client, app, se
     _uniform_collection(app, seed)
     client.get(f'/c/{seed["collection_slug"]}')
     html = client.get(
-        f'/shop/customize/{seed["tee_id"]}?catalog_section=uniform&uniform_kit=home'
+        f'/shop/customize/{seed["tee_slug"]}?catalog_section=uniform&uniform_kit=home'
     ).get_data(as_text=True)
     assert 'Jersey Logo' in html
     assert 'already applied' in html
@@ -872,7 +872,7 @@ def test_uniform_customize_applies_the_jersey_logo_automatically(client, app, se
     assert 'Group logos: tap one to use' not in html
 
     away = client.get(
-        f'/shop/customize/{seed["tee_id"]}?catalog_section=uniform&uniform_kit=away'
+        f'/shop/customize/{seed["tee_slug"]}?catalog_section=uniform&uniform_kit=away'
     ).get_data(as_text=True)
     assert f'presetDesignId: {seed["fee_4_design_id"]}' in away
 
@@ -881,7 +881,7 @@ def test_fan_wear_still_offers_every_matching_design(client, app, seed):
     _uniform_collection(app, seed)
     client.get(f'/c/{seed["collection_slug"]}')
     html = client.get(
-        f'/shop/customize/{seed["hoodie_id"]}?catalog_section=fan'
+        f'/shop/customize/{seed["hoodie_slug"]}?catalog_section=fan'
     ).get_data(as_text=True)
     assert 'Pick the jersey look or a matching design.' in html
     assert 'Group logos: tap one to use' in html

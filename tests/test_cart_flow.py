@@ -255,7 +255,7 @@ def test_the_cart_survives_moving_between_pages(client, seed):
     add_to_cart(client, seed)
     client.get('/')
     client.get('/shop/')
-    client.get(f'/shop/product/{seed["tee_id"]}')
+    client.get(f'/shop/product/{seed["tee_slug"]}')
     assert len(cart_items(client)) == 1
 
 

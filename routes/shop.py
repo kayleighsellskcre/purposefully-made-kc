@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, url_for, session, redirect, flash, current_app
+from flask import Blueprint, render_template, request, jsonify, url_for, session, redirect, flash, current_app, abort
 from models import db, Product, Design, Collection
 from flask_login import login_required, current_user
 from utils.mockups import (
@@ -23,6 +23,7 @@ from utils.product_filters import (
     sort_catalog,
 )
 from utils.sizes import shop_sizes_for_product
+from utils.product_slugs import assign_product_slug
 from utils.color_names import (
     color_matches_any_filter,
     family_short_label,
@@ -692,6 +693,7 @@ def design_gallery():
         all_cards = []
 
     product_id = request.args.get('product_id', type=int)
+    gallery_product = Product.query.get(product_id) if product_id else None
     search_query = (request.args.get('q') or '').strip()
     category = normalize_category(request.args.get('category'))
     folders = gallery_folder_cards(all_cards)
@@ -739,6 +741,7 @@ def design_gallery():
         active_folder=active_folder,
         search_query=search_query,
         product_id=product_id,
+        product_slug=gallery_product.slug if gallery_product else None,
     )
 
 
@@ -750,13 +753,38 @@ def _require_sellable_product(product):
     return redirect(url_for('shop.index'))
 
 
-@shop_bp.route('/product/<int:product_id>')
-def product_detail(product_id):
+def _canonical_product_redirect(product, endpoint):
+    """Send leftover numeric URLs to the slug URL Google should index."""
+    if not product.slug:
+        assign_product_slug(product)
+        db.session.commit()
+    target = url_for(endpoint, product_slug=product.slug)
+    if request.query_string:
+        target = f'{target}?{request.query_string.decode()}'
+    return redirect(target, code=301)
+
+
+def _product_from_url(product_slug):
+    """Resolve /shop/product/<slug> (or a leftover numeric id) to a Product."""
+    product = Product.query.filter_by(slug=product_slug).first()
+    if product:
+        return product, None
+    if str(product_slug).isdigit():
+        product = Product.query.get(int(product_slug))
+        if product:
+            return product, True
+    abort(404)
+
+
+@shop_bp.route('/product/<product_slug>')
+def product_detail(product_slug):
     """Product detail page with customizer"""
-    product = Product.query.get_or_404(product_id)
+    product, stale_numeric = _product_from_url(product_slug)
     blocked = _require_sellable_product(product)
     if blocked:
         return blocked
+    if stale_numeric:
+        return _canonical_product_redirect(product, 'shop.product_detail')
     product.display_brand = infer_brand(product)
     available_sizes = shop_sizes_for_product(product)
     available_colors = parse_json_list(product.available_colors)
@@ -770,8 +798,8 @@ def product_detail(product_id):
                          print_area_config=print_area_config)
 
 
-@shop_bp.route('/customize/<int:product_id>')
-def customize(product_id):
+@shop_bp.route('/customize/<product_slug>')
+def customize(product_slug):
     """Product customizer interface"""
     from flask_login import current_user
     from utils.group_orders import (
@@ -787,10 +815,12 @@ def customize(product_id):
         team_store_choice,
     )
 
-    product = Product.query.get_or_404(product_id)
+    product, stale_numeric = _product_from_url(product_slug)
     blocked = _require_sellable_product(product)
     if blocked:
         return blocked
+    if stale_numeric:
+        return _canonical_product_redirect(product, 'shop.customize')
     product.display_brand = infer_brand(product)
     available_sizes = shop_sizes_for_product(product)
     available_colors = parse_json_list(product.available_colors)

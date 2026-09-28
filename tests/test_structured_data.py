@@ -39,7 +39,7 @@ def test_homepage_structured_data_has_no_fake_ratings(client):
 
 
 def test_product_page_has_product_schema(client, seed):
-    body = client.get(f'/shop/product/{seed["tee_id"]}').get_data(as_text=True)
+    body = client.get(f'/shop/product/{seed["tee_slug"]}').get_data(as_text=True)
     blocks = _ld_json_blocks(body)
     assert blocks, 'no JSON-LD block found on the product page'
     product = next(b for b in blocks if b.get('@type') == 'Product')
@@ -54,7 +54,7 @@ def test_product_page_has_product_schema(client, seed):
 
 
 def test_product_page_structured_data_has_no_fake_ratings(client, seed):
-    body = client.get(f'/shop/product/{seed["tee_id"]}').get_data(as_text=True)
+    body = client.get(f'/shop/product/{seed["tee_slug"]}').get_data(as_text=True)
     product = next(b for b in _ld_json_blocks(body) if b.get('@type') == 'Product')
     assert 'aggregateRating' not in product
     assert 'review' not in product

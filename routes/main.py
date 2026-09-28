@@ -229,10 +229,12 @@ def sitemap_xml():
             if not product_has_shop_image(product):
                 continue
             lastmod = product.updated_at or product.created_at
+            if not product.slug:
+                continue
             add(
                 'shop.product_detail', 'weekly', '0.8',
                 lastmod=lastmod.date().isoformat() if lastmod else None,
-                product_id=product.id,
+                product_slug=product.slug,
             )
     except Exception:
         current_app.logger.exception('sitemap product listing failed')

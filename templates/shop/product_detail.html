@@ -245,7 +245,7 @@
                 </div>
                 
                 <div class="product-actions">
-                    <a href="{{ url_for('shop.customize', product_id=product.id) }}" class="btn btn-customize btn-block">
+                    <a href="{{ url_for('shop.customize', product_slug=product.slug) }}" class="btn btn-customize btn-block">
                         Customize &amp; Add Design
                     </a>
                     <button onclick="addToCart()" class="btn btn-outline btn-block">

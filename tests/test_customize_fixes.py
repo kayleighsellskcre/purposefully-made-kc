@@ -25,7 +25,7 @@ def test_customize_still_renders_size_cards_when_the_product_lists_none(client, 
         product = Product.query.get(seed['tee_id'])
         product.available_sizes = '[]'
         db.session.commit()
-    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     assert 'size-card' in html
     assert 'data-size="M"' in html
     assert "aren't listed yet" not in html
@@ -38,7 +38,7 @@ def test_color_size_placement_and_upload_controls_are_keyboard_operable(client, 
     is wired up and the controls carry the role/tabindex a screen reader or
     keyboard user relies on.
     """
-    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     assert 'setupKeyboardActivation();' in html
     assert 'function setupKeyboardActivation()' in html
     assert "activateOnEnterOrSpace(document.getElementById('colorGrid'), '.color-card')" in html
@@ -96,7 +96,7 @@ def test_shop_card_counts_colours_that_have_no_photo(app, seed):
 
 
 def test_customize_page_includes_varsity_regular_and_a_gallery_dropdown(client, seed):
-    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     assert 'Varsity Regular' in html
     assert 'logoGalleryGrid' in html or 'gallery-design-picker' in html
     assert 'html2canvas' not in html
@@ -115,7 +115,7 @@ def test_group_order_customize_shows_logo_thumbnails_not_a_dropdown(client, app,
         db.session.commit()
     with client.session_transaction() as sess:
         sess['collection_id'] = seed['collection_id']
-    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     assert 'logoGalleryGrid' in html
     assert 'id="galleryDesignSelect"' not in html
     assert 'Group logos' in html
@@ -164,7 +164,7 @@ def test_group_order_font_list_includes_varsity_regular():
 
 
 def test_customize_offers_bright_pink_and_yellow_text_swatches(client, app, seed):
-    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     assert 'data-color="#ff2eb6"' in html
     assert 'data-color="#ffd400"' in html
     assert 'Bright pink' in html
@@ -173,7 +173,7 @@ def test_customize_offers_bright_pink_and_yellow_text_swatches(client, app, seed
 
 
 def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
-    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     assert 'function previewReferenceSize()' in html
     assert 'bodyLengthIn(previewReferenceSize())' in html
     assert 'nameHeightIn(previewSize)' in html
@@ -236,7 +236,7 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
 
 
 def test_mockup_viewport_keeps_whole_shirt_and_view_buttons_visible(client, seed):
-    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     assert 'height: calc(100dvh - 160px)' in html
     assert 'height: min(48dvh, 420px)' in html
     assert 'object-fit: contain' in html
@@ -260,7 +260,7 @@ def test_mockup_viewport_keeps_whole_shirt_and_view_buttons_visible(client, seed
 
 
 def test_add_to_cart_refits_mockup_and_prices_partial_back_personalization(client, seed):
-    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     loaded = html.index("mockupImg.style.opacity = '1'")
     assert html.index('applyDesignFit();', loaded) < html.index(
         'updateBackDesignPreview();', loaded
@@ -342,7 +342,7 @@ def test_group_customize_tells_parents_to_enter_first_name(client, app, seed):
     with client.session_transaction() as sess:
         sess['collection_id'] = seed['collection_id']
     html = client.get(
-        f'/shop/customize/{seed["tee_id"]}?catalog_section=uniform&uniform_kit=home'
+        f'/shop/customize/{seed["tee_slug"]}?catalog_section=uniform&uniform_kit=home'
     ).get_data(as_text=True)
     assert "Player's first name" in html
     assert 'e.g. JORDAN' in html
@@ -371,7 +371,7 @@ def test_group_customize_defaults_to_last_name_on_jerseys(client, app, seed):
     with client.session_transaction() as sess:
         sess['collection_id'] = seed['collection_id']
     html = client.get(
-        f'/shop/customize/{seed["tee_id"]}?catalog_section=uniform&uniform_kit=home'
+        f'/shop/customize/{seed["tee_slug"]}?catalog_section=uniform&uniform_kit=home'
     ).get_data(as_text=True)
     assert "Player's last name" in html
     assert 'e.g. SMITH' in html
@@ -402,7 +402,7 @@ def test_fan_wear_customize_does_not_require_a_name_or_number(client, app, seed)
     with client.session_transaction() as sess:
         sess['collection_id'] = seed['collection_id']
     html = client.get(
-        f'/shop/customize/{seed["tee_id"]}?catalog_section=fan'
+        f'/shop/customize/{seed["tee_slug"]}?catalog_section=fan'
     ).get_data(as_text=True)
     assert 'const requireBackName = false' in html
     assert 'const isUniformKit = false' in html
@@ -451,7 +451,7 @@ def test_widen_mockup_hosts_are_allowed():
 
 
 def test_uploaded_back_art_uses_center_front_fit_not_name_number_width(client, seed):
-    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     assert 'function applyBackUploadFit()' in html
     assert 'Same visual target as center-front' in html
     assert 'const targetRatio = 0.38;' in html
@@ -467,7 +467,7 @@ def test_uploaded_back_art_uses_center_front_fit_not_name_number_width(client, s
 
 
 def test_choosing_another_logo_keeps_the_checked_placement(client, seed):
-    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     assert 'function placementToKeep()' in html
     assert 'Keep the placement the customer already checked' in html
     assert 'state.selectedPlacement = placementToKeep();' in html

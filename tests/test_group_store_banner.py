@@ -15,13 +15,13 @@ def test_banner_shows_on_the_stores_own_page(client, seed):
 
 def test_banner_shows_on_a_customize_page_reached_from_the_store(client, seed):
     client.get(f'/c/{seed["collection_slug"]}')
-    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     assert BANNER_TEXT in html
 
 
 def test_banner_shows_on_a_product_detail_page_reached_from_the_store(client, seed):
     client.get(f'/c/{seed["collection_slug"]}')
-    html = client.get(f'/shop/product/{seed["tee_id"]}').get_data(as_text=True)
+    html = client.get(f'/shop/product/{seed["tee_slug"]}').get_data(as_text=True)
     assert BANNER_TEXT in html
 
 
@@ -54,5 +54,5 @@ def test_banner_still_shows_on_cart_so_continue_shopping_returns_to_the_store(cl
 def test_back_to_main_site_still_clears_the_customize_page_too(client, seed):
     client.get(f'/c/{seed["collection_slug"]}')
     client.get('/c/leave?next=/', follow_redirects=False)
-    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     assert BANNER_TEXT not in html

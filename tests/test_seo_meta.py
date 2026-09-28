@@ -103,7 +103,7 @@ def test_public_titles_are_all_different(client):
 # ── Product pages ────────────────────────────────────────────────────────────
 
 def test_product_page_describes_the_product(client, seed):
-    html = _get(client, f'/shop/product/{seed["tee_id"]}')
+    html = _get(client, f'/shop/product/{seed["tee_slug"]}')
     description = _meta(html, 'description')
     assert description
     assert GENERIC_DESCRIPTION not in description
@@ -111,17 +111,17 @@ def test_product_page_describes_the_product(client, seed):
 
 
 def test_product_page_title_names_the_product(client, seed):
-    html = _get(client, f'/shop/product/{seed["tee_id"]}')
+    html = _get(client, f'/shop/product/{seed["tee_slug"]}')
     assert 'Unisex Jersey Short Sleeve Tee' in _title(html)
 
 
 def test_product_page_is_an_og_product(client, seed):
-    html = _get(client, f'/shop/product/{seed["tee_id"]}')
+    html = _get(client, f'/shop/product/{seed["tee_slug"]}')
     assert _og(html, 'og:type') == 'product'
 
 
 def test_customize_page_describes_the_product(client, seed):
-    html = _get(client, f'/shop/customize/{seed["tee_id"]}')
+    html = _get(client, f'/shop/customize/{seed["tee_slug"]}')
     description = _meta(html, 'description')
     assert description
     assert GENERIC_DESCRIPTION not in description

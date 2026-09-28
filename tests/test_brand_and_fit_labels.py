@@ -43,11 +43,11 @@ def test_product_detail_and_customize_pages_show_normalized_brand(client, app, s
         product.brand = 'BELLA+CANVAS'
         db.session.commit()
 
-    detail = client.get(f'/shop/product/{seed["tee_id"]}').get_data(as_text=True)
+    detail = client.get(f'/shop/product/{seed["tee_slug"]}').get_data(as_text=True)
     assert 'BELLA+CANVAS' not in detail
     assert 'Bella+Canvas' in detail
 
-    customize = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    customize = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     assert 'BELLA+CANVAS' not in customize
 
 

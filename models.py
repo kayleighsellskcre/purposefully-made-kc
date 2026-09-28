@@ -240,6 +240,7 @@ class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     style_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     name = db.Column(db.String(200), nullable=False)
+    slug = db.Column(db.String(200), unique=True, nullable=True, index=True)
     
     # Detailed categorization
     category = db.Column(db.String(50))  # Tee, Hoodie, Sweatshirt, Tank, Long Sleeve, etc.

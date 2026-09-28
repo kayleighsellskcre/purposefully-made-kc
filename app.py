@@ -92,6 +92,8 @@ def create_app(config_class=Config):
     mail.init_app(app)
     csrf.init_app(app)
     limiter.init_app(app)
+    from utils.product_slugs import register_product_slug_listener
+    register_product_slug_listener()
     
     # Create tables if they don't exist (needed for fresh Railway/PostgreSQL deploys)
     with app.app_context():
@@ -220,6 +222,9 @@ def create_app(config_class=Config):
                     # Softness rating + short fabric blurb (seeded by style number)
                     "ALTER TABLE product ADD COLUMN IF NOT EXISTS softness_rating INTEGER",
                     "ALTER TABLE product ADD COLUMN IF NOT EXISTS fabric_summary VARCHAR(80)",
+                    # SEO-friendly product URLs: /shop/product/bella-canvas-cvc-tee
+                    "ALTER TABLE product ADD COLUMN IF NOT EXISTS slug VARCHAR(200)",
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ix_product_slug ON product (slug)",
                     # product_color_variant.color_swatch_url — SanMar CDN swatch image (color_hex is only 7 chars)
                     "ALTER TABLE product_color_variant ADD COLUMN IF NOT EXISTS color_swatch_url VARCHAR(500)",
                     # Soft-hide customer designs from admin library without deleting their My Designs copy
@@ -289,6 +294,12 @@ def create_app(config_class=Config):
                 pass
         except Exception:
             # Migration errors shouldn't crash the app
+            pass
+
+        try:
+            from utils.product_slugs import backfill_product_slugs
+            backfill_product_slugs()
+        except Exception:
             pass
         
         # Ensure the one admin account has is_admin=True; revoke from all others

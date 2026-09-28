@@ -249,7 +249,7 @@
                             </svg>
                         </button>
                         
-                        <a href="{{ url_for('shop.customize', product_id=product.id) }}{% if design_id %}?design_id={{ design_id }}{% endif %}" class="product-link">
+                        <a href="{{ url_for('shop.customize', product_slug=product.slug) }}{% if design_id %}?design_id={{ design_id }}{% endif %}" class="product-link">
                             <div class="product-image-wrapper">
                                 {% if product.is_customer_favorite %}
                                 <span class="fav-badge fav-badge-overlay">

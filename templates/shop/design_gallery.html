@@ -910,6 +910,7 @@
 <script>
 (function() {
     const productId = {{ product_id|tojson }};
+    const productSlug = {{ product_slug|tojson }};
     const modal = document.getElementById('galleryColorModal');
     if (!modal) return;
     const preview = document.getElementById('gcolorPreviewImg');
@@ -922,6 +923,9 @@
 
     function continueUrl(designId) {
         const id = encodeURIComponent(String(designId));
+        if (productSlug) {
+            return '/shop/customize/' + encodeURIComponent(productSlug) + '?design_id=' + id;
+        }
         if (productId) {
             return '/shop/customize/' + productId + '?design_id=' + id;
         }

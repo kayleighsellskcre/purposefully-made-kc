@@ -11,10 +11,10 @@ def _assert_home_shop_product_trail(html):
 
 
 def test_customize_has_a_home_shop_product_trail(client, seed):
-    html = client.get(f'/shop/customize/{seed["tee_id"]}').get_data(as_text=True)
+    html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     _assert_home_shop_product_trail(html)
 
 
 def test_product_detail_has_a_home_shop_product_trail(client, seed):
-    html = client.get(f'/shop/product/{seed["tee_id"]}').get_data(as_text=True)
+    html = client.get(f'/shop/product/{seed["tee_slug"]}').get_data(as_text=True)
     _assert_home_shop_product_trail(html)
