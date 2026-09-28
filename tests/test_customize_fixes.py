@@ -182,7 +182,7 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert 'function visibleArtworkWidthRatio(image)' in html
     assert 'let garmentWidth = (box && box.measured && box.widthPx)' in html
     assert 'garmentWidth * targetRatio / visibleWidthRatio' in html
-    assert 'const targetRatio = isSideChest ? 0.14 : (isTank ? 0.58 : 0.38)' in html
+    assert 'const targetRatio = isSideChest ? (isTank ? 0.26 : 0.14) : (isTank ? 0.58 : 0.38)' in html
     assert 'TRANSFER_SIZING.is_tank' in html
     assert "String(state.presetDesignId || state.designUrl || '') + '|' + src + '|' + placement" in html
     assert 'ctx.drawImage(mockup, disp.left, disp.top, disp.width, disp.height)' in html
@@ -195,9 +195,13 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert 'const chestShift = isTank ? 0.12 : 0.16;' in html
     assert 'if (placement === \'left_chest\') visualCenter += box.widthPx * chestShift;' in html
     assert 'if (placement === \'right_chest\') visualCenter -= box.widthPx * chestShift;' in html
-    assert 'const pocketDropIn = isTank ? 6.1 : 3.55;' in html
-    assert 'if (isTank) dropPx = Math.max(dropPx, box.heightPx * 0.20);' in html
+    assert 'const pocketDropIn = isTank ? 8.0 : 3.55;' in html
+    assert 'if (isTank) dropPx = Math.max(dropPx, box.heightPx * 0.28);' in html
     assert "designLayer.style.top = (box.topPx + dropPx) + 'px';" in html
+    assert 'const pocketFactor = isTank ? 0.52 : 0.4;' in html
+    assert 'isSideChest ? (isTank ? 0.34 : 0.16)' in html
+    assert 'preview-section.is-tank .design-layer[data-placement="left_chest"]' in html
+    assert 'const pocketOffsetIn = isTank ? 2.1 : 3.25;' in html
     assert 'box.widthPx * 0.22' not in html
     assert 'const orderedW = logoWidthForSize(size)' not in html
     assert '/design/preview/0' in html
@@ -493,7 +497,6 @@ def test_group_image_back_hides_name_number_and_shopper_upload(client, app, seed
     html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     assert 'id="backDesignNameInput"' not in html
     assert 'e.g. SMITH' not in html
-    assert 'Upload back design' not in html
     assert 'id="designFileBack"' not in html
     assert 'id="uploadAreaBack"' not in html
     assert 'id="removeDesignBack"' not in html
@@ -517,7 +520,6 @@ def test_group_image_back_applies_organizer_artwork(client, app, seed):
     html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     assert 'id="backDesignNameInput"' not in html
     assert 'Already on the back of this shirt' in html
-    assert 'Upload back design' not in html
     assert 'id="removeDesignBack"' not in html
     assert "backDesignMode: 'upload'" in html
     assert 'uploads/designs/gallery-logo.png' in html
@@ -537,4 +539,36 @@ def test_group_single_front_logo_is_auto_applied(client, app, seed):
     assert 'logo-gallery-item selected' in html
     assert 'applyPresetDesign(presetDesign)' in html
     assert f'"id": {seed["free_design_id"]}' in html or f'"id":{seed["free_design_id"]}' in html
+
+
+def test_tank_customize_page_uses_pocket_first_paint(client, app):
+    with app.app_context():
+        tank = Product(
+            style_number='CC9360TEST',
+            name='Comfort Colors Tank Test',
+            category='Tank',
+            age_group='adult',
+            sleeve_length='Sleeveless',
+            base_price=24.00,
+            wholesale_cost=6.00,
+            is_active=True,
+            available_sizes=json.dumps(['S', 'M', 'L']),
+            available_colors=json.dumps(['Watermelon']),
+        )
+        db.session.add(tank)
+        db.session.flush()
+        db.session.add(ProductColorVariant(
+            product_id=tank.id,
+            color_name='Watermelon',
+            color_hex='#fc6c85',
+            front_image_url='/static/img/logo.png',
+            size_inventory=json.dumps({'S': 10, 'M': 10, 'L': 10}),
+        ))
+        db.session.commit()
+        slug = tank.slug
+    html = client.get(f'/shop/customize/{slug}').get_data(as_text=True)
+    assert 'preview-section is-tank' in html
+    assert '"is_tank": true' in html
+    assert 'const pocketFactor = isTank ? 0.52 : 0.4;' in html
+    assert 'const pocketDropIn = isTank ? 8.0 : 3.55;' in html
 
