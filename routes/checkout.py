@@ -289,6 +289,15 @@ def _send_order_confirmation_email(order):
 
     order_items = order.items.all() if hasattr(order.items, 'all') else list(order.items or [])
     items_text = '\n'.join(_item_lines(item) for item in order_items)
+    from utils.group_orders import (
+        group_pickup_details,
+        group_pickup_heading,
+        group_pickup_next_step,
+    )
+    pickup_coll = getattr(order, 'collection', None)
+    pickup_heading = group_pickup_heading(pickup_coll)
+    pickup_details = group_pickup_details(pickup_coll)
+    pickup_next_step = group_pickup_next_step(pickup_coll)
     if order.fulfillment_method == 'shipping':
         addr_parts = list(filter(None, [
             order.shipping_recipient or order.full_name,
@@ -299,7 +308,7 @@ def _send_order_confirmation_email(order):
         ]))
         delivery_text = '\n'.join(addr_parts)
     else:
-        delivery_text = "Local Pickup — we'll reach out when ready!"
+        delivery_text = '\n'.join([pickup_heading] + list(pickup_details))
 
     email_sent = False
     recipients = _receipt_recipients(order)
@@ -338,6 +347,9 @@ def _send_order_confirmation_email(order):
             'email/order_confirmation.html',
             order=order,
             account_order_url=account_order_url,
+            pickup_heading=pickup_heading,
+            pickup_details=pickup_details,
+            pickup_next_step=pickup_next_step,
         )
 
         from utils.mailer import send as _send_mail
@@ -821,9 +833,22 @@ def index():
         addresses = current_user.addresses.all()
     
     is_group_order = bool(collection)
-    from utils.group_orders import collection_allows_send_home, collection_asks_grade
+    from utils.group_orders import (
+        collection_allows_send_home,
+        collection_asks_grade,
+        group_pickup_details,
+        group_pickup_heading,
+        group_shipping_offered,
+    )
     show_send_home = is_group_order and collection_allows_send_home(collection)
     send_home_asks_grade = show_send_home and collection_asks_grade(collection)
+    shipping_offered = group_shipping_offered(collection, family_promo_active)
+    pickup_heading = group_pickup_heading(collection)
+    pickup_details = group_pickup_details(collection)
+    fulfillment_section_title = (
+        "How you'll get your order" if is_group_order and not shipping_offered
+        else 'Fulfillment Method'
+    )
     allow_cash_payment = bool(
         collection and getattr(collection, 'allow_cash_pickup', False)
     ) or family_promo_active
@@ -837,6 +862,10 @@ def index():
                          group_collection=collection,
                          show_send_home=show_send_home,
                          send_home_asks_grade=send_home_asks_grade,
+                         shipping_offered=shipping_offered,
+                         pickup_heading=pickup_heading,
+                         pickup_details=pickup_details,
+                         fulfillment_section_title=fulfillment_section_title,
                          allow_cash_payment=allow_cash_payment,
                          family_promo_active=family_promo_active,
                          family_promo_code=get_session_family_promo() or '',
@@ -1611,7 +1640,15 @@ def confirmation(order_number):
         abort(404)
 
     email_sent = bool(getattr(order, 'confirmation_email_sent_at', None))
-    return render_template('checkout/confirmation.html', order=order, email_sent=email_sent)
+    from utils.group_orders import group_pickup_details, group_pickup_heading
+    coll = getattr(order, 'collection', None)
+    return render_template(
+        'checkout/confirmation.html',
+        order=order,
+        email_sent=email_sent,
+        pickup_heading=group_pickup_heading(coll),
+        pickup_details=group_pickup_details(coll),
+    )
 
 
 @checkout_bp.route('/confirmation/<order_number>/send-email', methods=['POST'])

@@ -118,8 +118,10 @@
                     </div>
                     {% endif %}
                     {% else %}
-                    <p style="font-size:0.8rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary);margin-bottom:0.5rem;">Local Pickup</p>
-                    <p style="font-size:0.9rem;color:var(--text-primary);">{{ order.collection.pickup_address if order.collection else 'Pickup location will be provided' }}</p>
+                    <p style="font-size:0.8rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-secondary);margin-bottom:0.5rem;">{{ pickup_heading }}</p>
+                    {% for line in pickup_details %}
+                    <p style="font-size:0.9rem;color:var(--text-primary);{% if not loop.last %}margin-bottom:0.35rem;{% endif %}">{{ line }}</p>
+                    {% endfor %}
                     {% endif %}
                     {% if order.send_home_with_child %}
                     <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(232,208,177,0.4);">

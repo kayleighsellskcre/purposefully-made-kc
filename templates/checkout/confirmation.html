@@ -60,8 +60,10 @@
                 <p>You'll receive a shipping notification with tracking information once your order ships.</p>
                 <p>Please allow <strong>2 to 3 weeks</strong> for your order. Most orders are finished within about a week and a half.</p>
                 {% else %}
-                <p><strong>Pickup Instructions:</strong></p>
-                <p>Your order will be ready for pickup soon. We'll email you when it's ready!</p>
+                <p><strong>{{ pickup_heading }}:</strong></p>
+                {% for line in pickup_details %}
+                <p>{{ line }}</p>
+                {% endfor %}
                 <p>Please allow <strong>2 to 3 weeks</strong> for your order. Most orders are finished within about a week and a half.</p>
                 {% endif %}
                 {% if order.send_home_with_child %}

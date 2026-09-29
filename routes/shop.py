@@ -792,12 +792,14 @@ def product_detail(product_slug):
     available_colors = parse_json_list(product.available_colors)
     print_area_config = parse_json_object(product.print_area_config)
     color_variants_data = get_color_variants_data_for_product(product, current_app)
+    from utils.group_orders import get_active_collection, group_fulfillment_customer_note
     return render_template('shop/product_detail.html',
                          product=product,
                          available_sizes=available_sizes,
                          available_colors=available_colors,
                          color_variants=color_variants_data,
-                         print_area_config=print_area_config)
+                         print_area_config=print_area_config,
+                         fulfillment_note=group_fulfillment_customer_note(get_active_collection()))
 
 
 @shop_bp.route('/customize/<product_slug>')
@@ -809,6 +811,7 @@ def customize(product_slug):
         allowed_design_ids as collection_design_id_list,
         collection_has_color_restrictions,
         get_active_collection,
+        group_fulfillment_customer_note,
         load_collection_designs,
         load_design_dict,
         ordering_blocked,
@@ -1044,4 +1047,5 @@ def customize(product_slug):
                          uniform_locked_color=uniform_locked_color,
                          uniform_logo_locked=uniform_logo_locked,
                          garment_metrics_seed=garment_metrics_seed,
-                         preset_back_design=preset_back_design)
+                         preset_back_design=preset_back_design,
+                         fulfillment_note=group_fulfillment_customer_note(coll))

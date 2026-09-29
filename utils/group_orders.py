@@ -63,6 +63,93 @@ def collection_allows_send_home(collection):
 def collection_asks_grade(collection):
     return normalize_group_kind(getattr(collection, 'group_kind', None)) == 'school'
 
+
+def _pickup_text(collection):
+    if not collection:
+        return '', ''
+    instructions = (getattr(collection, 'pickup_instructions', None) or '').strip()
+    address = (getattr(collection, 'pickup_address', None) or '').strip()
+    return instructions, address
+
+
+def group_has_custom_pickup(collection):
+    instructions, address = _pickup_text(collection)
+    return bool(instructions or address)
+
+
+def group_uses_organizer_fulfillment(collection):
+    """True when this store is not promising PMKC shop pickup."""
+    if not collection:
+        return False
+    if group_has_custom_pickup(collection):
+        return True
+    return not bool(getattr(collection, 'shipping_enabled', True))
+
+
+def _as_sentence(text):
+    text = (text or '').strip()
+    if text and text[-1] not in '.!?':
+        text += '.'
+    return text
+
+
+def group_fulfillment_customer_note(collection=None):
+    """Line under Add to Cart / product price. Always includes the 2-3 week wait."""
+    wait = 'Please allow 2 to 3 weeks.'
+    if not collection:
+        return f'Shipping is $11. Pickup is available at checkout. {wait}'
+    shipping = bool(getattr(collection, 'shipping_enabled', True))
+    instructions, address = _pickup_text(collection)
+    bits = []
+    if shipping:
+        bits.append('Shipping is $11.')
+    if instructions:
+        bits.append(_as_sentence(instructions))
+    elif address:
+        bits.append(_as_sentence(f'Pickup is at {address}'))
+    elif shipping:
+        bits.append('Pickup is available at checkout.')
+    else:
+        bits.append('Your organizer will have this order.')
+    bits.append(wait)
+    return ' '.join(bits)
+
+
+def group_pickup_heading(collection=None):
+    if group_uses_organizer_fulfillment(collection):
+        return "We'll get this to your group"
+    return 'Local Pickup'
+
+
+def group_pickup_details(collection=None):
+    """Body lines under the checkout pickup option."""
+    instructions, address = _pickup_text(collection)
+    lines = []
+    if address:
+        lines.append(address)
+    if instructions:
+        lines.append(instructions)
+    if lines:
+        return lines
+    if group_uses_organizer_fulfillment(collection):
+        return ['Your organizer will have this order.']
+    return ['Free - Pick up at our location']
+
+
+def group_pickup_next_step(collection=None):
+    if group_uses_organizer_fulfillment(collection):
+        return "We'll get this to your group when it's ready."
+    return "We'll contact you when it's ready for pickup!"
+
+
+def group_shipping_offered(collection=None, family_promo_active=False):
+    if family_promo_active:
+        return False
+    if collection and not getattr(collection, 'shipping_enabled', True):
+        return False
+    return True
+
+
 # Brand-scoped color picks: form value "Port & Company||Navy" → JSON {"Port & Company": ["Navy"]}
 ALLOWED_COLOR_SEP = '||'
 

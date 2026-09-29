@@ -165,8 +165,13 @@
                           </p>
                           <p style="margin:8px 0 0;font-size:12px;color:#555;font-family:Arial,sans-serif;line-height:1.5;">Please allow <strong>2 to 3 weeks</strong> for your order. Most orders are finished within about a week and a half.</p>
                         {% else %}
-                          <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#3a3d48;font-family:'Georgia',serif;">Local Pickup</p>
-                          <p style="margin:0;font-size:12px;color:#888;font-family:Arial,sans-serif;">We'll reach out when your order is ready!</p>
+                          {% set heading = pickup_heading|default('Local Pickup') %}
+                          {% set details = pickup_details if pickup_details is defined else ["We'll reach out when your order is ready!"] %}
+                          {% set next_step = pickup_next_step|default("We'll contact you when it's ready for pickup!") %}
+                          <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#3a3d48;font-family:'Georgia',serif;">{{ heading }}</p>
+                          {% for line in details %}
+                          <p style="margin:0{% if not loop.last %} 0 4px{% endif %};font-size:12px;color:#888;font-family:Arial,sans-serif;line-height:1.5;">{{ line }}</p>
+                          {% endfor %}
                           <p style="margin:8px 0 0;font-size:12px;color:#555;font-family:Arial,sans-serif;line-height:1.5;">Please allow <strong>2 to 3 weeks</strong> for your order. Most orders are finished within about a week and a half.</p>
                         {% endif %}
                         {% if order.send_home_with_child %}
@@ -212,7 +217,7 @@
                         <span style="display:inline-block;width:22px;height:22px;border-radius:50%;background:#b87c6f;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:22px;font-family:Arial,sans-serif;margin-right:10px;">3</span>
                       </td>
                       <td style="padding:5px 0;font-size:13px;color:#555;font-family:Arial,sans-serif;line-height:1.55;vertical-align:top;">
-                        {% if order.fulfillment_method == 'shipping' %}We ship it to you and send tracking info.{% else %}We'll contact you when it's ready for pickup!{% endif %}
+                        {% if order.fulfillment_method == 'shipping' %}We ship it to you and send tracking info.{% else %}{{ pickup_next_step|default("We'll contact you when it's ready for pickup!") }}{% endif %}
                       </td>
                     </tr>
                   </table>

@@ -31,7 +31,14 @@ def order_detail(order_number):
         order_number=order_number,
         user_id=current_user.id
     ).first_or_404()
-    return render_template('account/order_detail.html', order=order)
+    from utils.group_orders import group_pickup_details, group_pickup_heading
+    coll = getattr(order, 'collection', None)
+    return render_template(
+        'account/order_detail.html',
+        order=order,
+        pickup_heading=group_pickup_heading(coll),
+        pickup_details=group_pickup_details(coll),
+    )
 
 
 @account_bp.route('/reorder/<order_number>', methods=['POST'])

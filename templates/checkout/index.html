@@ -58,24 +58,18 @@
                 
                 <!-- Fulfillment Method -->
                 <div class="checkout-section"{% if family_promo_active %} id="fulfillment-section"{% endif %}>
-                    <h2>Fulfillment Method</h2>
+                    <h2>{{ fulfillment_section_title }}</h2>
                     <div class="fulfillment-options">
+                        {% if shipping_offered %}
                         <label class="fulfillment-option active">
                             <input type="radio" name="fulfillment" value="pickup" checked>
                             <div>
-                                <strong>Local Pickup</strong>
-                                {% if is_group_order and group_collection and group_collection.pickup_address %}
-                                <p>{{ group_collection.pickup_address }}</p>
-                                {% if group_collection.pickup_instructions %}
-                                <p>{{ group_collection.pickup_instructions }}</p>
-                                {% endif %}
-                                {% else %}
-                                <p>Free - Pick up at our location</p>
-                                {% endif %}
+                                <strong>{{ pickup_heading }}</strong>
+                                {% for line in pickup_details %}
+                                <p>{{ line }}</p>
+                                {% endfor %}
                             </div>
                         </label>
-                        
-                        {% if not family_promo_active and (not is_group_order or not group_collection or group_collection.shipping_enabled) %}
                         <label class="fulfillment-option">
                             <input type="radio" name="fulfillment" value="shipping">
                             <div>
@@ -83,6 +77,16 @@
                                 <p>+$11.00 flat rate</p>
                             </div>
                         </label>
+                        {% else %}
+                        <div class="fulfillment-option fulfillment-option--static active">
+                            <input type="hidden" name="fulfillment" value="pickup">
+                            <div>
+                                <strong>{{ pickup_heading }}</strong>
+                                {% for line in pickup_details %}
+                                <p>{{ line }}</p>
+                                {% endfor %}
+                            </div>
+                        </div>
                         {% endif %}
                     </div>
                 </div>
@@ -1225,6 +1229,10 @@ async function completeOrder(paymentId, paymentMethodOverride) {
 .fulfillment-option.active {
     border-color: var(--accent-color);
     background: rgba(0,0,0,0.02);
+}
+
+.fulfillment-option--static {
+    cursor: default;
 }
 
 .fulfillment-option input[type="radio"] {

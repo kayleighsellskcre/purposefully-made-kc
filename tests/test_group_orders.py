@@ -1000,3 +1000,67 @@ def test_other_checkout_hides_send_home(client, seed, app):
     assert 'Send Home With Child' not in html
     assert 'id="send_home_with_child"' not in html
 
+
+def test_group_fulfillment_note_follows_shipping_and_abby_instructions():
+    from types import SimpleNamespace
+    from utils.group_orders import (
+        group_fulfillment_customer_note,
+        group_pickup_details,
+        group_pickup_heading,
+        group_shipping_offered,
+    )
+
+    retail = group_fulfillment_customer_note(None)
+    assert 'Shipping is $11' in retail
+    assert 'Pickup is available at checkout' in retail
+
+    abby = SimpleNamespace(
+        shipping_enabled=False,
+        pickup_instructions='Abby will have the shirts for everyone!',
+        pickup_address='',
+    )
+    note = group_fulfillment_customer_note(abby)
+    assert 'Shipping is $11' not in note
+    assert 'Pickup is available at checkout' not in note
+    assert 'Abby will have the shirts for everyone!' in note
+    assert 'Please allow 2 to 3 weeks' in note
+    assert group_shipping_offered(abby) is False
+    assert group_pickup_heading(abby) == "We'll get this to your group"
+    assert 'Abby will have the shirts for everyone!' in group_pickup_details(abby)
+
+
+def test_group_customize_does_not_promise_eleven_dollar_shipping(client, app, seed):
+    with app.app_context():
+        collection = db.session.get(Collection, seed['collection_id'])
+        collection.shipping_enabled = False
+        collection.pickup_instructions = 'Abby will have the shirts for everyone!'
+        collection.pickup_address = ''
+        db.session.commit()
+    with client.session_transaction() as sess:
+        sess['collection_id'] = seed['collection_id']
+    html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
+    assert 'Shipping is $11' not in html
+    assert 'Pickup is available at checkout' not in html
+    assert 'Abby will have the shirts for everyone!' in html
+    assert 'Please allow 2 to 3 weeks' in html
+
+
+def test_group_checkout_shows_organizer_instructions_not_store_pickup(client, seed, app):
+    with app.app_context():
+        collection = db.session.get(Collection, seed['collection_id'])
+        collection.group_kind = 'other'
+        collection.shipping_enabled = False
+        collection.pickup_instructions = 'Abby will have the shirts for everyone!'
+        collection.pickup_address = ''
+        db.session.commit()
+    html = _checkout_html_for_kind(client, seed, app, 'other')
+    assert 'Shipping is $11' not in html
+    assert '+$11.00 flat rate' not in html
+    assert 'value="shipping"' not in html
+    assert 'Pick up at our location' not in html
+    assert 'Local Pickup' not in html
+    assert 'Abby will have the shirts for everyone!' in html
+    assert 'get this to your group' in html
+    assert 'How you' in html and 'get your order' in html
+    assert 'name="fulfillment" value="pickup"' in html or 'value="pickup"' in html
+
