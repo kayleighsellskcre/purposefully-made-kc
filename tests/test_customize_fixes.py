@@ -202,6 +202,8 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert 'isSideChest ? (isTank ? 0.22 : 0.16)' in html
     assert 'preview-section.is-tank .design-layer[data-placement="left_chest"]' in html
     assert 'const pocketOffsetIn = isTank ? 2.7 : 3.25;' in html
+    assert "unitPrice.textContent = '$' + state.basePrice.toFixed(2);" in html
+    assert 'state.basePrice - smallLogoDiscount).toFixed(2)' not in html
     assert 'box.widthPx * 0.22' not in html
     assert 'const orderedW = logoWidthForSize(size)' not in html
     assert '/design/preview/0' in html

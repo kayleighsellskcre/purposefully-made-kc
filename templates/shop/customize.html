@@ -4526,7 +4526,7 @@
             backDesignFeeRow.style.display = backFee > 0 ? 'flex' : 'none';
         }
         
-        if (unitPrice) unitPrice.textContent = '$' + (state.basePrice - smallLogoDiscount).toFixed(2);
+        if (unitPrice) unitPrice.textContent = '$' + state.basePrice.toFixed(2);
         const total = itemPrice * state.quantity;
         totalPrice.textContent = '$' + total.toFixed(2);
     }
