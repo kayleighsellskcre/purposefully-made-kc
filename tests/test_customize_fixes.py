@@ -182,7 +182,7 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert 'function visibleArtworkWidthRatio(image)' in html
     assert 'let garmentWidth = (box && box.measured && box.widthPx)' in html
     assert 'garmentWidth * targetRatio / visibleWidthRatio' in html
-    assert 'const targetRatio = isSideChest ? (isTank ? 0.26 : 0.14) : (isTank ? 0.58 : 0.38)' in html
+    assert 'const targetRatio = isSideChest ? (isTank ? 0.18 : 0.14) : (isTank ? 0.58 : 0.38)' in html
     assert 'TRANSFER_SIZING.is_tank' in html
     assert "String(state.presetDesignId || state.designUrl || '') + '|' + src + '|' + placement" in html
     assert 'ctx.drawImage(mockup, disp.left, disp.top, disp.width, disp.height)' in html
@@ -198,8 +198,8 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert 'const pocketDropIn = isTank ? 8.0 : 3.55;' in html
     assert 'if (isTank) dropPx = Math.max(dropPx, box.heightPx * 0.28);' in html
     assert "designLayer.style.top = (box.topPx + dropPx) + 'px';" in html
-    assert 'const pocketFactor = isTank ? 0.52 : 0.4;' in html
-    assert 'isSideChest ? (isTank ? 0.34 : 0.16)' in html
+    assert 'const pocketFactor = isTank ? 0.42 : 0.4;' in html
+    assert 'isSideChest ? (isTank ? 0.22 : 0.16)' in html
     assert 'preview-section.is-tank .design-layer[data-placement="left_chest"]' in html
     assert 'const pocketOffsetIn = isTank ? 2.1 : 3.25;' in html
     assert 'box.widthPx * 0.22' not in html
@@ -569,6 +569,6 @@ def test_tank_customize_page_uses_pocket_first_paint(client, app):
     html = client.get(f'/shop/customize/{slug}').get_data(as_text=True)
     assert 'preview-section is-tank' in html
     assert '"is_tank": true' in html
-    assert 'const pocketFactor = isTank ? 0.52 : 0.4;' in html
+    assert 'const pocketFactor = isTank ? 0.42 : 0.4;' in html
     assert 'const pocketDropIn = isTank ? 8.0 : 3.55;' in html
 

@@ -248,15 +248,15 @@
 /* Tanks have no sleeves, so the tee card-% looks like a neckline stamp.
    These are the first-paint fallback; JS still sizes from the garment. */
 .preview-section.is-tank .design-layer[data-placement="left_chest"] {
-    width: 18%;
-    max-height: 26%;
-    top: 34%;
+    width: 12%;
+    max-height: 16%;
+    top: 32%;
     left: 59%;
 }
 .preview-section.is-tank .design-layer[data-placement="right_chest"] {
-    width: 18%;
-    max-height: 26%;
-    top: 34%;
+    width: 12%;
+    max-height: 16%;
+    top: 32%;
     left: 41%;
 }
 
@@ -4005,29 +4005,29 @@
             && state.artworkFitRatio
         );
         const isTank = !!(TRANSFER_SIZING && TRANSFER_SIZING.is_tank);
-        const maxH = isSideChest ? (isTank ? 30 : 18) : 60;
+        const maxH = isSideChest ? (isTank ? 16 : 18) : 60;
         // Tanks have no sleeves, so 38% of the silhouette is a small chest
         // print. Size those from the inch chart against the measured body.
         // Pocket logos must stay pocket-sized even when the PNG has padding
         // (dividing by a small ink ratio would otherwise blow them up).
-        // A tank body is narrower than a sleeved tee, so the same 16% cap
-        // shrinks a left-chest logo to a stamp. Let tanks use more of the body.
-        const maxVsGarment = garmentWidth * (isSideChest ? (isTank ? 0.34 : 0.16) : (isTank ? 0.70 : 0.50));
-        const maxVsCanvas = canvasWidth * (isSideChest ? (isTank ? 0.20 : 0.12) : 0.42);
-        const minVsGarment = garmentWidth * (isSideChest ? (isTank ? 0.22 : 0.09) : (isTank ? 0.42 : 0.28));
+        // A tank body is narrower than a sleeved tee. Give left chest a little
+        // more of the body than a tee, but keep it a pocket, not a medium print.
+        const maxVsGarment = garmentWidth * (isSideChest ? (isTank ? 0.22 : 0.16) : (isTank ? 0.70 : 0.50));
+        const maxVsCanvas = canvasWidth * (isSideChest ? (isTank ? 0.13 : 0.12) : 0.42);
+        const minVsGarment = garmentWidth * (isSideChest ? (isTank ? 0.13 : 0.09) : (isTank ? 0.42 : 0.28));
         // Paint on the click. Waiting for the artwork-fit request left group
         // logos invisible while the server measured files.
         const visibleWidthRatio = hasCachedFit
             ? state.artworkFitRatio
             : 1;
-        const targetRatio = isSideChest ? (isTank ? 0.26 : 0.14) : (isTank ? 0.58 : 0.38);
+        const targetRatio = isSideChest ? (isTank ? 0.18 : 0.14) : (isTank ? 0.58 : 0.38);
         let layerWidthPx;
         if (isSideChest && box && box.pxPerInch) {
-            // Pocket logos: ~4" on tees, a touch larger on tanks so they read
-            // on a sleeveless body.
+            // Pocket logos: ~4" on tees and tanks. Stacked art still has to
+            // fit that same pocket, not grow into a center-chest print.
             const chartW = chartWidthForSize(previewReferenceSize())
                 || ((TRANSFER_SIZING && TRANSFER_SIZING.preview_ref_width) || 10);
-            const pocketFactor = isTank ? 0.52 : 0.4;
+            const pocketFactor = isTank ? 0.42 : 0.4;
             layerWidthPx = (chartW * pocketFactor) * box.pxPerInch / visibleWidthRatio;
         } else if (isTank && !isSideChest && box && box.pxPerInch) {
             const widthIn = chartWidthForSize(state.selectedSize)
