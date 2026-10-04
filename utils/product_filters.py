@@ -418,6 +418,7 @@ def load_group_order_form_catalog():
     all_colors = []
     colors_by_brand = {}   # {brand: [sorted color names]}
     uniform_colors_by_product = {}  # {product_id: [sorted color names]}
+    color_swatches = {}  # {"Brand||Display": hex, "Display": hex}
     try:
         if ids:
             rows = (
@@ -425,6 +426,7 @@ def load_group_order_form_catalog():
                     Product.id,
                     Product.brand,
                     ProductColorVariant.color_name,
+                    ProductColorVariant.color_hex,
                 )
                 .join(ProductColorVariant, ProductColorVariant.product_id == Product.id)
                 .filter(
@@ -436,15 +438,20 @@ def load_group_order_form_catalog():
                 .order_by(Product.brand, ProductColorVariant.color_name)
                 .all()
             )
+            from utils.color_names import display_color_name, swatch_hex, unique_display_colors
             seen_colors: set[str] = set()
-            for product_id, brand, color in rows:
+            for product_id, brand, color, color_hex in rows:
                 if not color:
                     continue
                 uniform_colors_by_product.setdefault(str(product_id), []).append(color)
                 brand_key = brand or 'Other'
                 colors_by_brand.setdefault(brand_key, []).append(color)
                 seen_colors.add(color)
-            from utils.color_names import unique_display_colors
+                label = display_color_name(color)
+                hex_value = swatch_hex(color, color_hex) if label else None
+                if hex_value:
+                    color_swatches.setdefault(f'{brand_key}||{label}', hex_value)
+                    color_swatches.setdefault(label, hex_value)
             all_colors = unique_display_colors(seen_colors)
             colors_by_brand = {
                 brand: unique_display_colors(colors)
@@ -459,11 +466,13 @@ def load_group_order_form_catalog():
         all_colors = []
         colors_by_brand = {}
         uniform_colors_by_product = {}
+        color_swatches = {}
     return {
         'products': products,
         'all_colors': all_colors,
         'colors_by_brand': colors_by_brand,
         'uniform_colors_by_product': uniform_colors_by_product,
+        'color_swatches': color_swatches,
         # Group-order organizers upload the artwork for that specific store.
         # The general design gallery is intentionally not offered here.
         'gallery_designs': [],

@@ -254,6 +254,33 @@ def test_group_order_catalog_prefers_the_lightest_variant_photo(app, seed):
         assert previews[seed['tee_id']] == 'https://cdn.example.test/white.jpg'
 
 
+def test_group_order_catalog_carries_color_swatches(app, seed):
+    from models import ProductColorVariant
+    from utils.product_filters import load_group_order_form_catalog
+
+    with app.app_context():
+        ProductColorVariant.query.filter_by(
+            product_id=seed['tee_id'], color_name='White'
+        ).one().color_hex = 'F4F1EA'
+        db.session.commit()
+        swatches = load_group_order_form_catalog()['color_swatches']
+    assert swatches['Black'] == '#000000'
+    assert swatches['White'] == '#F4F1EA'
+
+
+def test_create_form_shows_a_swatch_beside_each_fan_color(customer_client, seed):
+    html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
+    assert 'class="color-swatch-dot" style="background:#000000"' in html
+    assert 'class="color-swatch-dot" style="background:#ffffff"' in html
+
+
+def test_edit_form_shows_color_swatches_too(admin_client, seed):
+    html = admin_client.get(
+        f'/admin/collections/{seed["collection_id"]}/edit'
+    ).get_data(as_text=True)
+    assert 'class="color-swatch-dot" style="background:#000000"' in html
+
+
 def test_create_form_asks_whether_jersey_uses_first_or_last_name(customer_client):
     html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
     assert 'name="back_design_name_part"' in html
