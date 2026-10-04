@@ -200,6 +200,8 @@ class Collection(db.Model):
 
     # Creator tracking — set when a logged-in user creates via /shop/group-orders/create
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    # Email waiting to claim this store if the organizer does not have an account yet
+    pending_organizer_email = db.Column(db.String(120))
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

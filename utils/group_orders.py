@@ -890,6 +890,109 @@ def user_can_manage_collection(collection, user=None):
     return collection.created_by_user_id == user.id
 
 
+def _normalize_person_name(value):
+    return ' '.join((value or '').split()).lower()
+
+
+def find_organizer_account(raw):
+    """Match an account by email or full name.
+
+    Returns (user, pending_email, error). An email with no account becomes a
+    pending claim so they get the store when they register or sign in. A
+    first name alone is refused: it could hand the store, and its order list,
+    to the wrong customer.
+    """
+    from models import User
+
+    text = ' '.join((raw or '').split())
+    if not text:
+        return None, None, None
+
+    if '@' in text:
+        email = text.lower()
+        user = User.query.filter(db.func.lower(User.email) == email).first()
+        if user:
+            return user, None, None
+        return None, email, None
+
+    needle = _normalize_person_name(text)
+    if ' ' not in needle:
+        return None, None, (
+            f'Please use their full name or email so we pass {text} the right store.'
+        )
+    users = User.query.filter(
+        User.first_name.isnot(None), User.last_name.isnot(None)
+    ).all()
+    matches = [
+        u for u in users
+        if _normalize_person_name(f'{u.first_name} {u.last_name}') == needle
+    ]
+    if len(matches) == 1:
+        return matches[0], None, None
+    if len(matches) > 1:
+        return None, None, 'More than one account matches that name. Use their email instead.'
+    return None, None, (
+        f'We could not find an account for {text}. '
+        'Use their email instead, and the store will be waiting when they register.'
+    )
+
+
+def assign_collection_organizer(collection, raw):
+    """Move this store to an organizer account, or hold it for their email."""
+    user, pending, error = find_organizer_account(raw)
+    if error:
+        return False, error, None
+    if user:
+        if collection.created_by_user_id == user.id and not collection.pending_organizer_email:
+            return True, None, None
+        collection.created_by_user_id = user.id
+        collection.pending_organizer_email = None
+        name = f'{user.first_name or ""} {user.last_name or ""}'.strip()
+        label = f'{name} ({user.email})' if name else user.email
+        return True, None, (
+            f'This store now belongs to {label}. '
+            'They can finish it from My Group Orders.'
+        )
+    if pending:
+        if collection.pending_organizer_email == pending:
+            return True, None, None
+        collection.pending_organizer_email = pending
+        return True, None, (
+            f'We will move this store to {pending} when they sign in or create an account.'
+        )
+    return True, None, None
+
+
+def apply_organizer_from_form(collection, user=None):
+    """Admin-only organizer field. Empty leaves the current owner in place."""
+    from flask import request
+    from flask_login import current_user
+
+    user = current_user if user is None else user
+    if not getattr(user, 'is_admin', False):
+        return True, None, None
+    if 'organizer' not in request.form:
+        return True, None, None
+    raw = (request.form.get('organizer') or '').strip()
+    if not raw:
+        return True, None, None
+    return assign_collection_organizer(collection, raw)
+
+
+def claim_pending_group_orders(user):
+    """Give this user any stores waiting on their email. Does not commit."""
+    email = (getattr(user, 'email', None) or '').strip().lower()
+    if not email:
+        return []
+    rows = Collection.query.filter(
+        db.func.lower(Collection.pending_organizer_email) == email
+    ).all()
+    for collection in rows:
+        collection.created_by_user_id = user.id
+        collection.pending_organizer_email = None
+    return rows
+
+
 def apply_locked_back_design(collection, user=None):
     """Store organizer artwork that prints only on the back.
 
@@ -1059,6 +1162,13 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
         return False, product_error, 0
     if require_products and not selected_products:
         return False, 'Please choose a uniform or at least one shirt style for fan wear.', 0
+
+    ok, organizer_error, organizer_notice = apply_organizer_from_form(collection, user)
+    if not ok:
+        return False, organizer_error, 0
+    if organizer_notice:
+        from flask import flash
+        flash(organizer_notice, 'success')
 
     return True, None, upload_count
 

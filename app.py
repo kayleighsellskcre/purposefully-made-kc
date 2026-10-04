@@ -208,6 +208,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS cart_updated_at TIMESTAMP",
                     # collection.created_by_user_id — tracks who created a group order (for delete-design permission)
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER REFERENCES \"user\"(id)",
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS pending_organizer_email VARCHAR(120)",
                     # Group-order organizer options + public directory listing
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS allow_back_design BOOLEAN DEFAULT TRUE",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS back_design_type VARCHAR(20) DEFAULT 'both'",

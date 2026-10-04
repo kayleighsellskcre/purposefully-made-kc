@@ -2774,8 +2774,12 @@ def add_collection():
                 # customer-facing create flow was setting it.
                 created_by_user_id=current_user.id,
             )
-            from utils.group_orders import apply_collection_visibility
+            from utils.group_orders import apply_collection_visibility, apply_organizer_from_form
             apply_collection_visibility(collection)
+            ok, organizer_error, organizer_notice = apply_organizer_from_form(collection)
+            if not ok:
+                flash(organizer_error, 'error')
+                organizer_notice = None
 
             collection.restrict_options = request.form.get('restrict_options') == 'on'
             collection.allow_custom_upload = True
@@ -2882,6 +2886,8 @@ def add_collection():
             if upload_count:
                 msg += f' with {upload_count} design(s) uploaded'
             flash(msg + '.', 'success')
+            if organizer_notice:
+                flash(organizer_notice, 'success')
             return redirect(url_for('admin.collections'))
 
         except IntegrityError as e:

@@ -192,12 +192,21 @@ def login():
         login_user(user, remember=remember)
         from utils.cart_store import adopt_guest_cart_on_login
         adopt_guest_cart_on_login(user, session.pop('_pending_guest_cart', None))
+        from utils.group_orders import claim_pending_group_orders
+        claimed = claim_pending_group_orders(user)
+        if claimed:
+            db.session.commit()
 
         next_page = request.args.get('next')
         if not next_page or urlparse(next_page).netloc != '':
-            next_page = url_for('main.index')
+            next_page = url_for('account.my_group_orders') if claimed else url_for('main.index')
 
         flash(f'Welcome back, {user.first_name or user.email}!', 'success')
+        if claimed:
+            flash(
+                'A group order is ready for you to finish. You can edit it from My Group Orders.',
+                'success',
+            )
         return redirect(next_page)
 
     return render_template('auth/login.html')
@@ -256,7 +265,17 @@ def register():
         login_user(user)
         from utils.cart_store import adopt_guest_cart_on_login
         adopt_guest_cart_on_login(user, session.pop('_pending_guest_cart', None))
+        from utils.group_orders import claim_pending_group_orders
+        claimed = claim_pending_group_orders(user)
+        if claimed:
+            db.session.commit()
         flash('Account created successfully!', 'success')
+        if claimed:
+            flash(
+                'A group order is ready for you to finish. You can edit it from My Group Orders.',
+                'success',
+            )
+            return redirect(url_for('account.my_group_orders'))
         return redirect(url_for('main.index'))
     
     return render_template('auth/register.html')

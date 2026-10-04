@@ -1,0 +1,18 @@
+{% if current_user.is_authenticated and current_user.is_admin %}
+{% set _coll = collection if collection is defined else none %}
+{% set _pending = (_coll.pending_organizer_email or '')|trim if _coll else '' %}
+{% set _owner = _coll.created_by if _coll else none %}
+{% set _org_value = _pending or (_owner.email if _owner else '') %}
+<div class="form-group">
+    <label for="organizer">Organizer</label>
+    <input type="text" id="organizer" name="organizer" class="form-control"
+           value="{{ _org_value }}"
+           placeholder="Abby Hayes or their email">
+    {% if _pending %}
+    <small style="display:block;">Waiting for {{ _pending }} to sign in or create an account.</small>
+    {% elif _owner and (_owner.first_name or _owner.last_name) %}
+    <small style="display:block;">Right now this store belongs to {{ _owner.full_name }}.</small>
+    {% endif %}
+    <small style="display:block;">Pass this store to their account so they can finish setup under My Group Orders. Use their full name if they already have an account, or their email if they still need to register. You can still edit it as admin.</small>
+</div>
+{% endif %}

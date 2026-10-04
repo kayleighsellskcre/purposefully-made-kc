@@ -35,6 +35,15 @@
                         <div class="collection-title-wrap">
                             <h3>{{ collection.name }}</h3>
                             <span class="collection-slug">/{{ collection.slug }}</span>
+                            <span class="collection-organizer">
+                                {% if collection.pending_organizer_email %}
+                                Waiting for {{ collection.pending_organizer_email }}
+                                {% elif collection.created_by %}
+                                Organizer: {{ collection.created_by.full_name }}
+                                {% else %}
+                                Organizer: Unassigned
+                                {% endif %}
+                            </span>
                         </div>
                     </div>
                     <div class="collection-badges">
@@ -218,6 +227,7 @@ function copyLink(url, btn) {
 .collection-title-wrap { min-width: 0; }
 .collection-header h3 { margin: 0; font-family: var(--font-heading); font-size: 1.2rem; line-height: 1.2; overflow-wrap: anywhere; }
 .collection-slug { display: block; margin-top: 0.25rem; color: var(--text-secondary); font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.collection-organizer { display: block; margin-top: 0.2rem; color: var(--text-secondary); font-size: 0.8rem; }
 .badge { border-radius: 999px; padding: 0.28rem 0.65rem; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.01em; }
 .badge-active { background: #e8f7ef; color: #16734a; }
 .badge-inactive { background: rgba(156, 163, 175, 0.1); color: var(--text-secondary); }

@@ -506,6 +506,11 @@ def create_group_order():
 
             # Track who created this group order (for permission checks)
             collection.created_by_user_id = current_user.id
+            from utils.group_orders import apply_organizer_from_form
+            ok, organizer_error, organizer_notice = apply_organizer_from_form(collection)
+            if not ok:
+                flash(organizer_error, 'error')
+                organizer_notice = None
 
             db.session.add(collection)
             db.session.flush()
@@ -561,6 +566,8 @@ def create_group_order():
             if upload_count:
                 msg += f' with {upload_count} design(s) uploaded'
             flash(msg + '. Share your link below!', 'success')
+            if organizer_notice:
+                flash(organizer_notice, 'success')
             return redirect(url_for('collection.share', slug=collection.slug))
 
         except IntegrityError as e:
