@@ -620,9 +620,11 @@ def test_admin_group_order_cards_have_polished_dashboard_structure(
     assert 'class="collection-card-accent"' in html
     assert 'class="collection-avatar"' in html
     assert 'class="collection-order-count"' in html
-    assert 'class="collection-share-label"' in html
-    assert 'Share with your group' in html
-    assert 'Export Orders' in html
+    assert 'class="go-share"' in html
+    assert 'Share link &amp; QR' in html
+    assert '/c/test-elementary/qr.png' in html
+    assert 'Download QR' in html
+    assert 'Export orders' in html
 
 
 def test_uploaded_group_visual_is_contained_and_keeps_group_name_attached(
