@@ -24,6 +24,8 @@
         </div>
         
         <form method="POST" class="collection-form" enctype="multipart/form-data">
+            {% include 'includes/group_order_template_picker.html' %}
+
             <div class="form-section">
                 <h2>Basic Information</h2>
                 
@@ -52,7 +54,7 @@
 
             {% include 'includes/group_order_team_store.html' %}
 
-            <div class="form-section">
+            <div class="form-section" id="fanWearSection">
                 <h2>Family &amp; Fan Wear</h2>
                 <p class="form-hint">Offer extra styles besides the jersey, like tees, hoodies, and cute matching looks for family and friends. Check both youth and adult if both ages will order. Leave this empty for a uniform-only store.</p>
                 {% if products %}

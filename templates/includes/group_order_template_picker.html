@@ -1,0 +1,183 @@
+{% if group_templates %}
+{% set _icons = {
+    'family_vacation': '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
+    'school_spirit': '<path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/><path d="M22 10v6"/>',
+    'sports_team': '<path d="M8 21h8M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4"/>',
+    'business': '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2M2 13h20"/>',
+    'organization_club': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+    'event': '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/>',
+    'kids_only': '<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/>',
+    'adults_only': '<path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/>',
+    'mixed_ages': '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7z"/>',
+} %}
+<div class="form-section group-template-section" id="groupTemplatePicker" data-selected="{{ selected_group_template or '' }}">
+    <h2>What are you planning?</h2>
+    <p class="form-hint">Pick your group type and we'll start you with styles and settings that work well for groups like yours. You can change anything after.</p>
+    <div class="group-template-grid" role="radiogroup" aria-label="Group type">
+        {% for t in group_templates %}
+        <label class="group-template-card">
+            <input type="radio" name="group_template" value="{{ t.key }}">
+            <span class="group-template-icon" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">{{ _icons.get(t.key, '')|safe }}</svg>
+            </span>
+            <span class="group-template-text">
+                <strong>{{ t.label }}</strong>
+                <small>{{ t.blurb }}</small>
+            </span>
+        </label>
+        {% endfor %}
+    </div>
+    <p class="form-hint group-template-skip">Rather start from scratch? Skip this and pick everything below.</p>
+
+    <div class="group-template-tips" id="groupTemplateTips" hidden aria-live="polite">
+        <p class="group-template-tips-lead" id="groupTemplateLead"></p>
+        <ul id="groupTemplateTipList"></ul>
+        <p class="group-template-watch" id="groupTemplateWatch"></p>
+        <a href="#fanWearSection" class="group-template-jump">See the styles we picked</a>
+    </div>
+    <script type="application/json" id="groupTemplateData">{{ group_templates|tojson }}</script>
+</div>
+
+<script>
+function initGroupTemplatePicker() {
+    var root = document.getElementById('groupTemplatePicker');
+    var dataEl = document.getElementById('groupTemplateData');
+    if (!root || !dataEl) return;
+    var templates = {};
+    try {
+        JSON.parse(dataEl.textContent).forEach(function (t) { templates[t.key] = t; });
+    } catch (e) { return; }
+
+    var tips = document.getElementById('groupTemplateTips');
+    var lead = document.getElementById('groupTemplateLead');
+    var tipList = document.getElementById('groupTemplateTipList');
+    var watch = document.getElementById('groupTemplateWatch');
+    var nameInput = document.getElementById('name');
+    var description = document.getElementById('description');
+    var defaultPlaceholder = nameInput ? nameInput.placeholder : '';
+    var applied = null;
+
+    function productBoxes() {
+        return Array.prototype.slice.call(document.querySelectorAll('input[name="products"]'));
+    }
+
+    function setChecked(box, on) {
+        if (box.checked === on) return;
+        box.checked = on;
+        box.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function pickRadio(name, value) {
+        var radio = document.querySelector('input[name="' + name + '"][value="' + value + '"]');
+        if (radio && !radio.checked) {
+            radio.checked = true;
+            radio.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+
+    function handPicked() {
+        var mine = applied ? applied.product_ids : [];
+        return productBoxes().some(function (box) {
+            return box.checked && mine.indexOf(box.value) === -1;
+        });
+    }
+
+    function apply(template, radio) {
+        if (handPicked() && !window.confirm('Swap the styles you already checked for our ' + template.label + ' picks?')) {
+            if (radio) radio.checked = false;
+            if (applied) {
+                var prev = root.querySelector('input[name="group_template"][value="' + applied.key + '"]');
+                if (prev) prev.checked = true;
+            }
+            return;
+        }
+        var wanted = template.product_ids || [];
+        productBoxes().forEach(function (box) { setChecked(box, wanted.indexOf(box.value) !== -1); });
+        document.dispatchEvent(new CustomEvent('catf:quick', { detail: {} }));
+
+        pickRadio('group_kind', template.kind);
+        pickRadio('back_design_type', template.back);
+
+        if (nameInput) nameInput.placeholder = template.name_placeholder || defaultPlaceholder;
+        if (description) {
+            var current = description.value.trim();
+            if (!current || (applied && current === applied.description)) {
+                description.value = template.description || '';
+            }
+        }
+
+        var count = wanted.length;
+        lead.textContent = count
+            ? 'Great choice! We checked ' + count + ' style' + (count === 1 ? '' : 's') + ' to get you started. Add or remove anything you like.'
+            : 'Great choice! Pick the styles you want below.';
+        tipList.innerHTML = '';
+        (template.tips || []).forEach(function (text) {
+            var li = document.createElement('li');
+            li.textContent = text;
+            tipList.appendChild(li);
+        });
+        watch.textContent = template.watch ? 'Good to know: ' + template.watch : '';
+        watch.hidden = !template.watch;
+        tips.hidden = false;
+        applied = template;
+    }
+
+    root.querySelectorAll('input[name="group_template"]').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            if (radio.checked && templates[radio.value]) apply(templates[radio.value], radio);
+        });
+    });
+
+    var preset = root.getAttribute('data-selected');
+    if (preset && templates[preset]) {
+        var radio = root.querySelector('input[name="group_template"][value="' + preset + '"]');
+        if (radio) {
+            radio.checked = true;
+            apply(templates[preset], null);
+        }
+    }
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGroupTemplatePicker);
+} else {
+    initGroupTemplatePicker();
+}
+</script>
+<style>
+.group-template-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:.65rem; }
+.group-template-card {
+    position:relative; display:flex; align-items:flex-start; gap:.7rem; margin:0; padding:.85rem .9rem;
+    border:1px solid var(--border-color,#e6ddd0); border-radius:10px; background:#fff; cursor:pointer;
+    transition:border-color .15s, background .15s, box-shadow .15s;
+}
+.group-template-card:hover { border-color:var(--terra-cotta,#b87c6f); }
+.group-template-card input { position:absolute; opacity:0; pointer-events:none; }
+.group-template-card:has(input:focus-visible) { outline:2px solid var(--terra-cotta,#b87c6f); outline-offset:2px; }
+.group-template-card:has(input:checked) {
+    border-color:var(--terra-cotta,#b87c6f); background:rgba(184,124,111,.08);
+    box-shadow:0 0 0 1px var(--terra-cotta,#b87c6f) inset;
+}
+.group-template-icon {
+    flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center;
+    width:40px; height:40px; border-radius:50%; background:rgba(184,124,111,.12); color:var(--terra-cotta,#b87c6f);
+}
+.group-template-card:has(input:checked) .group-template-icon { background:var(--terra-cotta,#b87c6f); color:#fff; }
+.group-template-text strong, .group-template-text small { display:block; }
+.group-template-text strong { font-size:.95rem; line-height:1.25; }
+.group-template-text small { color:var(--text-secondary); margin-top:.2rem; line-height:1.35; }
+.group-template-skip { margin:.85rem 0 0; }
+.group-template-tips {
+    margin-top:1rem; padding:1rem 1.1rem; border-radius:10px;
+    background:rgba(184,124,111,.07); border:1px solid rgba(184,124,111,.35);
+}
+.group-template-tips[hidden] { display:none; }
+.group-template-tips-lead { font-weight:700; margin:0 0 .5rem; }
+.group-template-tips ul { margin:0 0 .5rem; padding-left:1.15rem; }
+.group-template-tips li { margin:.2rem 0; }
+.group-template-watch { margin:0 0 .5rem; color:var(--text-secondary); font-size:.92rem; }
+.group-template-jump { font-weight:600; }
+@media (max-width: 520px) {
+    .group-template-grid { grid-template-columns:1fr; }
+}
+</style>
+{% endif %}

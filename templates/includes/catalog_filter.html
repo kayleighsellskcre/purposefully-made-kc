@@ -249,7 +249,10 @@
             selectBtn.addEventListener('click', function () {
                 visibleItems().forEach(function (el) {
                     const box = el.querySelector('input[name="products"]');
-                    if (box) box.checked = true;
+                    if (box && !box.checked) {
+                        box.checked = true;
+                        box.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
                 });
             });
         }

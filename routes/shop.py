@@ -589,8 +589,12 @@ def create_group_order():
             return redirect(url_for('shop.create_group_order'))
     
     from utils.product_filters import load_group_order_form_catalog
+    from utils.group_order_templates import TEMPLATE_KEYS, group_order_templates
     catalog = load_group_order_form_catalog()
+    selected_template = request.args.get('type')
     return render_template('admin/add_collection.html',
+                         group_templates=group_order_templates(catalog['products']),
+                         selected_group_template=selected_template if selected_template in TEMPLATE_KEYS else '',
                          products=catalog['products'],
                          gallery_designs=catalog['gallery_designs'],
                          fan_color_picker=catalog['fan_color_picker'],
