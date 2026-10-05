@@ -119,3 +119,14 @@ def test_organizer_export_leaves_out_admin_only_columns(client, seed, app, login
     assert 'Admin Notes' not in [c.value for c in wb['All Orders'][1]]
     assert 'Profit' not in [c.value for c in wb['Orders'][1]]
     assert 'Called about sizing' not in str(list(wb['All Orders'].values))
+
+
+def test_spreadsheet_downloads_are_never_cached(client, seed, app, login):
+    """Cloudflare caches .xlsx by default and served a stale order sheet."""
+    login(client, ADMIN_EMAIL)
+    resp = client.get('/c/test-elementary/export.xlsx')
+    assert 'no-store' in resp.headers['Cache-Control']
+    assert 'private' in resp.headers['Cache-Control']
+    assert resp.headers['Cloudflare-CDN-Cache-Control'] == 'no-store'
+    html = client.get('/admin/collections').get_data(as_text=True)
+    assert '/c/test-elementary/export.xlsx?v=' in html

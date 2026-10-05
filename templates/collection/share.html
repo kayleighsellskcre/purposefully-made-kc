@@ -40,7 +40,7 @@
 
             {% if can_manage and not organizer_pays %}
             <div class="export-bar">
-                <a href="{{ url_for('collection.export_xlsx', slug=collection.slug) }}"
+                <a href="{{ url_for('collection.export_xlsx', slug=collection.slug, v=download_stamp()) }}"
                    class="btn btn-export" title="Download Excel spreadsheet of all orders for this group">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                          fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -113,7 +113,7 @@
 
             <div class="roster-actions">
                 {% if roster.entries %}
-                <a href="{{ url_for('collection.roster_xlsx', slug=collection.slug) }}" class="btn btn-outline">Download spreadsheet</a>
+                <a href="{{ url_for('collection.roster_xlsx', slug=collection.slug, v=download_stamp()) }}" class="btn btn-outline">Download spreadsheet</a>
                 {% endif %}
                 {% if roster.closed %}
                 <p class="roster-paid">The order for this group has been placed. Thank you!</p>

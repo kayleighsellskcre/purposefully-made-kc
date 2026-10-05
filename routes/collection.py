@@ -12,6 +12,30 @@ import io
 collection_bp = Blueprint('collection', __name__, url_prefix='/c')
 
 
+@collection_bp.app_template_global()
+def download_stamp():
+    """Changes every second, so a spreadsheet link is never served from a cache."""
+    import time
+    return int(time.time())
+
+
+def _private_download_headers(filename):
+    """Headers for private spreadsheet downloads.
+
+    Cloudflare caches .xlsx URLs by default, which served an old copy of
+    the order spreadsheet (and could hand it to someone else). no-store
+    tells the browser and every CDN in between never to keep a copy.
+    """
+    return {
+        'Content-Disposition': f'attachment; filename="{filename}"',
+        'Cache-Control': 'private, no-store, no-cache, max-age=0, must-revalidate',
+        'CDN-Cache-Control': 'no-store',
+        'Cloudflare-CDN-Cache-Control': 'no-store',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+    }
+
+
 @collection_bp.route('/<slug>/qr.png')
 def qr_code(slug):
     """Return a QR code PNG for this collection's share URL."""
@@ -301,7 +325,7 @@ def roster_xlsx(slug):
     return Response(
         build_xlsx(collection),
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        headers={'Content-Disposition': f'attachment; filename="roster_{safe_name}.xlsx"'},
+        headers=_private_download_headers(f'roster_{safe_name}.xlsx'),
     )
 
 
@@ -495,7 +519,7 @@ def export_xlsx(slug):
     return Response(
         xlsx_bytes,
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+        headers=_private_download_headers(filename),
     )
 
 
