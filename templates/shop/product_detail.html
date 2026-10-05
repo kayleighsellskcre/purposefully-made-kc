@@ -225,9 +225,9 @@
                                 title="{{ variant.color_name }}"
                                 aria-label="{{ variant.color_name }}"
                                 aria-pressed="false">
-                            {% set swatch_hex = variant.color_hex or (variant.color_name|color_hex_fallback) %}
-                            <span class="color-swatch{% if not swatch_hex %} color-swatch-empty{% endif %}"
-                                  {% if swatch_hex %}style="background:{{ swatch_hex }}"{% endif %}
+                            {% set swatch_css = swatch_background(variant.color_hex or (variant.color_name|color_hex_fallback), variant.swatch_url) %}
+                            <span class="color-swatch{% if not swatch_css %} color-swatch-empty{% endif %}"
+                                  {% if swatch_css %}style="{{ swatch_css }}"{% endif %}
                                   aria-hidden="true"></span>
                             <span class="color-swatch-name">{{ variant.color_name }}</span>
                         </button>

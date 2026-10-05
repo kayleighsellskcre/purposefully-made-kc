@@ -441,6 +441,7 @@ def get_color_variants_data_for_product(product, app):
         color_variants_data.append({
             'color_name': variant.color_name,
             'color_hex': variant.color_hex,
+            'swatch_url': getattr(variant, 'color_swatch_url', None),
             'front_image': front_image,
             'back_image': back_image,
             'inventory': inventory
@@ -550,7 +551,12 @@ def get_carousel_colors_for_product(product, app, allowed_colors=None, variants=
             url = _usable_image_url(v.front_image_url)
         if url:
             seen.add(v.color_name)
-            result.append({'color_name': v.color_name, 'front_image_url': url})
+            result.append({
+                'color_name': v.color_name,
+                'front_image_url': url,
+                'color_hex': getattr(v, 'color_hex', None),
+                'swatch_url': getattr(v, 'color_swatch_url', None),
+            })
         else:
             pending_names.append(v.color_name)
 

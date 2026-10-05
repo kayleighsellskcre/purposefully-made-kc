@@ -703,6 +703,11 @@ def create_app(config_class=Config):
     def color_hex_fallback(color_name):
         from utils.color_names import swatch_hex
         return swatch_hex(color_name)
+
+    @app.template_global('swatch_background')
+    def swatch_background_global(hex_value, swatch_url=None):
+        from utils.swatches import swatch_background
+        return swatch_background(hex_value, swatch_url)
     
     # Context processors
     @app.context_processor

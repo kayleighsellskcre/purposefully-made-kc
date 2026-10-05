@@ -384,6 +384,51 @@ def catalog_filter_options(products):
     return {'ages': ages, 'categories': sorted(categories), 'brands': sorted(brands)}
 
 
+_AGE_LETTERS = {'youth': 'Y', 'toddler': 'T', 'baby': 'B'}
+
+
+def _bare_style(style_number):
+    raw = re.sub(r'[^A-Z0-9]', '', (style_number or '').upper())
+    return re.sub(r'^BC', '', raw)
+
+
+def same_style_other_age(kid_style, adult_style, kid_age):
+    """True when a kids style is the adult style plus its age letter.
+
+    3001Y / 3001, BC3001YCVC / BC3001CVC, PC54Y / PC54, YST350 / ST350.
+    """
+    kid = _bare_style(kid_style)
+    adult = _bare_style(adult_style)
+    letter = _AGE_LETTERS.get(kid_age)
+    if not kid or not adult or not letter or len(kid) != len(adult) + 1:
+        return False
+    return any(
+        ch == letter and kid[:i] + kid[i + 1:] == adult
+        for i, ch in enumerate(kid)
+    )
+
+
+def matching_age_styles(products):
+    """{product id: [[other id, 'Adult'|'Youth'|...], ...]} for one style in two ages."""
+    labels = dict(_AGE_LABELS)
+    items = []
+    for product in products or []:
+        age = getattr(product, 'display_age', None) or infer_age(product) or 'adult'
+        brand = (getattr(product, 'display_brand', None) or infer_brand(product) or '').lower()
+        items.append((product, age, brand))
+    twins = {}
+    for kid, kid_age, kid_brand in items:
+        if kid_age == 'adult':
+            continue
+        for adult, adult_age, adult_brand in items:
+            if adult_age != 'adult' or adult_brand != kid_brand:
+                continue
+            if same_style_other_age(kid.style_number, adult.style_number, kid_age):
+                twins.setdefault(str(kid.id), []).append([str(adult.id), labels['adult']])
+                twins.setdefault(str(adult.id), []).append([str(kid.id), labels.get(kid_age, kid_age.title())])
+    return twins
+
+
 def load_group_order_form_catalog():
     """Products and colors for create/edit group-order forms.
 
@@ -419,7 +464,7 @@ def load_group_order_form_catalog():
     colors_by_brand = {}   # {brand: [sorted color names]}
     uniform_colors_by_product = {}  # {product_id: [sorted color names]}
     color_swatches = {}  # {"Brand||Display": hex, "Display": hex}
-    fan_color_picker = {'palette': [], 'products': {}}
+    fan_color_picker = {'palette': [], 'products': {}, 'twins': {}}
     try:
         if ids:
             rows = (
@@ -428,6 +473,7 @@ def load_group_order_form_catalog():
                     Product.brand,
                     ProductColorVariant.color_name,
                     ProductColorVariant.color_hex,
+                    ProductColorVariant.color_swatch_url,
                 )
                 .join(ProductColorVariant, ProductColorVariant.product_id == Product.id)
                 .filter(
@@ -440,9 +486,11 @@ def load_group_order_form_catalog():
                 .all()
             )
             from utils.color_names import display_color_name, swatch_hex, unique_display_colors
+            from utils.swatches import usable_swatch_url
             seen_colors: set[str] = set()
             product_hex = {}  # {product_id: {display label: hex}}
-            for product_id, brand, color, color_hex in rows:
+            product_swatch = {}  # {product_id: {display label: manufacturer swatch image}}
+            for product_id, brand, color, color_hex, swatch_url in rows:
                 if not color:
                     continue
                 uniform_colors_by_product.setdefault(str(product_id), []).append(color)
@@ -455,6 +503,9 @@ def load_group_order_form_catalog():
                     color_swatches.setdefault(f'{brand_key}||{label}', hex_value)
                     color_swatches.setdefault(label, hex_value)
                     product_hex.setdefault(str(product_id), {}).setdefault(label, hex_value)
+                swatch_img = usable_swatch_url(swatch_url) if label else None
+                if swatch_img:
+                    product_swatch.setdefault(str(product_id), {}).setdefault(label, swatch_img)
             all_colors = unique_display_colors(seen_colors)
             colors_by_brand = {
                 brand: unique_display_colors(colors)
@@ -465,26 +516,28 @@ def load_group_order_form_catalog():
                 pid: unique_display_colors(colors)
                 for pid, colors in uniform_colors_by_product.items()
             }
-            # Shared [label, hex] palette so the inline JSON stays small even
-            # when dozens of shirts carry the same colors.
+            # Shared [label, hex, swatch image] palette so the inline JSON
+            # stays small even when dozens of shirts carry the same colors.
             palette_index = {}
             for pid, labels in uniform_colors_by_product.items():
                 indexes = []
                 for label in labels:
                     hex_value = product_hex.get(pid, {}).get(label) or ''
-                    entry = (label, hex_value)
+                    swatch_img = product_swatch.get(pid, {}).get(label) or ''
+                    entry = (label, hex_value, swatch_img)
                     if entry not in palette_index:
                         palette_index[entry] = len(fan_color_picker['palette'])
-                        fan_color_picker['palette'].append([label, hex_value])
+                        fan_color_picker['palette'].append(list(entry))
                     indexes.append(palette_index[entry])
                 if indexes:
                     fan_color_picker['products'][pid] = indexes
+            fan_color_picker['twins'] = matching_age_styles(products)
     except Exception:
         all_colors = []
         colors_by_brand = {}
         uniform_colors_by_product = {}
         color_swatches = {}
-        fan_color_picker = {'palette': [], 'products': {}}
+        fan_color_picker = {'palette': [], 'products': {}, 'twins': {}}
     return {
         'products': products,
         'all_colors': all_colors,

@@ -288,9 +288,9 @@ def test_create_form_lists_each_shirts_own_colors_with_swatches(customer_client,
     html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
     assert 'id="fanColorPicker"' in html
     data = _fan_color_data(html)
-    assert _shirt_colors(data, seed['tee_id']) == [['Black', '#000000'], ['White', '#ffffff']]
+    assert _shirt_colors(data, seed['tee_id']) == [['Black', '#000000', ''], ['White', '#ffffff', '']]
     # The hoodie only comes in Black, so White must not show under it.
-    assert _shirt_colors(data, seed['hoodie_id']) == [['Black', '#000000']]
+    assert _shirt_colors(data, seed['hoodie_id']) == [['Black', '#000000', '']]
     assert data['checked'] == []
 
 
@@ -307,7 +307,7 @@ def test_edit_form_prechecks_colors_saved_per_shirt(admin_client, seed, app):
     ).get_data(as_text=True)
     data = _fan_color_data(html)
     assert data['checked'] == [f'p:{seed["tee_id"]}||White']
-    assert ['Black', '#000000'] in _shirt_colors(data, seed['tee_id'])
+    assert ['Black', '#000000', ''] in _shirt_colors(data, seed['tee_id'])
 
 
 def test_saving_colors_per_shirt_leaves_other_shirts_open(admin_client, seed, app):
@@ -354,6 +354,28 @@ def test_per_shirt_colors_win_over_brand_colors():
     assert allowed_colors_for_product(SimpleNamespace(id=7, brand='Gildan'), payload) == {'Navy', 'Black'}
     assert allowed_colors_for_product(SimpleNamespace(id=9, brand='Gildan'), payload) == {'White'}
     assert allowed_colors_for_product(SimpleNamespace(id=8, brand='Gildan'), payload) is None
+
+
+def test_youth_and_adult_of_one_style_are_paired_for_same_as(customer_client, seed):
+    html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
+    twins = _fan_color_data(html)['picker']['twins']
+    assert twins[str(seed['youth_id'])] == [[str(seed['tee_id']), 'Adult']]
+    assert twins[str(seed['tee_id'])] == [[str(seed['youth_id']), 'Youth']]
+    assert str(seed['hoodie_id']) not in twins
+    assert 'Same as ' in html
+
+
+def test_same_style_other_age_matches_supplier_style_numbers():
+    from utils.product_filters import same_style_other_age
+
+    assert same_style_other_age('BC3001YCVC', 'BC3001CVC', 'youth')
+    assert same_style_other_age('3001Y', '3001', 'youth')
+    assert same_style_other_age('3001T', '3001', 'toddler')
+    assert same_style_other_age('PC54Y', 'PC54', 'youth')
+    assert same_style_other_age('YST350', 'ST350', 'youth')
+    assert not same_style_other_age('3001Y', '3001CVC', 'youth')
+    assert not same_style_other_age('3001T', '3001', 'youth')
+    assert not same_style_other_age('18500B', '18500', 'youth')
 
 
 def test_create_form_asks_whether_jersey_uses_first_or_last_name(customer_client):
@@ -431,7 +453,7 @@ def test_group_order_create_form_uses_cleaned_color_names(customer_client, seed,
     html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
     assert 'DTG White' not in html
     assert 'TestColor' not in html
-    names = [label for label, _hex in _shirt_colors(_fan_color_data(html), seed['tee_id'])]
+    names = [entry[0] for entry in _shirt_colors(_fan_color_data(html), seed['tee_id'])]
     assert names == ['Black', 'White']
 
 

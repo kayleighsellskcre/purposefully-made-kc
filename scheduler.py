@@ -123,6 +123,14 @@ def sync_full_catalog_job(app):
             print(f"  Total products in DB:   {Product.query.count()}", file=sys.stderr, flush=True)
             print("=" * 80, file=sys.stderr, flush=True)
 
+            try:
+                from utils.swatches import fill_missing_color_hex
+                filled, missing = fill_missing_color_hex(db, ProductColorVariant, Product)
+                print(f"  True swatch colors set: {filled} of {missing}", file=sys.stderr, flush=True)
+            except Exception as e:
+                db.session.rollback()
+                print(f"  Swatch color fill skipped: {e}", file=sys.stderr, flush=True)
+
         except Exception as e:
             print(f"NIGHTLY SYNC FAILED: {e}", file=sys.stderr, flush=True)
             import traceback
