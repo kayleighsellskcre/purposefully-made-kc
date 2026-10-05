@@ -33,27 +33,31 @@
 
             <div class="form-section" id="basicInfoSection">
                 <h2>Basic Information</h2>
-                
-                <div class="form-group">
-                    <label for="name">Group Order Name</label>
-                    <input type="text" id="name" name="name" class="form-control" required placeholder="e.g., Silver Lake Spirit Wear 2026">
-                </div>
-                
-                {% if not is_user_create %}
-                <div class="form-group">
-                    <label for="slug">URL Slug</label>
-                    <input type="text" id="slug" name="slug" class="form-control" placeholder="auto-generated">
-                    <small>Leave blank to auto-generate from name</small>
-                </div>
-                {% endif %}
-                
-                <div class="form-group">
-                    <label for="description">Description</label>
-                    <textarea id="description" name="description" class="form-control" rows="4"></textarea>
-                </div>
+                <div class="form-split">
+                    <div>
+                        <div class="form-group">
+                            <label for="name">Group Order Name</label>
+                            <input type="text" id="name" name="name" class="form-control" required placeholder="e.g., Silver Lake Spirit Wear 2026">
+                        </div>
 
-                {% include 'includes/group_order_organizer_field.html' %}
-                {% include 'includes/group_order_card_fields.html' %}
+                        {% if not is_user_create %}
+                        <div class="form-group">
+                            <label for="slug">URL Slug</label>
+                            <input type="text" id="slug" name="slug" class="form-control" placeholder="auto-generated">
+                            <small>Leave blank to auto-generate from name</small>
+                        </div>
+                        {% endif %}
+
+                        <div class="form-group">
+                            <label for="description">Description</label>
+                            <textarea id="description" name="description" class="form-control" rows="4"></textarea>
+                        </div>
+                    </div>
+                    <div>
+                        {% include 'includes/group_order_organizer_field.html' %}
+                        {% include 'includes/group_order_card_fields.html' %}
+                    </div>
+                </div>
                 {% include 'includes/group_order_kind_fields.html' %}
             </div>
 
@@ -115,6 +119,7 @@
                     {% include 'includes/group_order_color_picker.html' %}
                 </div>
 
+                <div class="organizer-pair">
                 {# ── 2. Front design ────────────────────────────────────── #}
                 <div class="organizer-block">
                     <div class="organizer-block-label">
@@ -172,6 +177,7 @@
                             <span>Center Back</span><small>Medium, centered</small>
                         </label>
                     </div>
+                </div>
                 </div>
 
                 {# ── 4. Back design ─────────────────────────────────────── #}
@@ -248,6 +254,8 @@
                         </div>
 
                         <!-- Back-design color & outline -->
+                        <div class="back-style-row">
+                        <div class="back-style-controls">
                         <div class="form-group" style="margin-top:1rem">
                             <label>Text Color</label>
                             <div class="coll-color-row">
@@ -287,9 +295,11 @@
                             <input type="checkbox" id="lock_back_design_style" name="lock_back_design_style">
                             <label for="lock_back_design_style"><strong>Lock font &amp; colors:</strong> participants cannot change the font, text color, or outline</label>
                         </div>
+                        </div>
                         <div class="coll-back-preview" id="collBackPreview">
                             <span class="coll-back-preview-name" id="collPreviewName">SMITH</span>
                             <span class="coll-back-preview-number" id="collPreviewNumber">12</span>
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -297,7 +307,8 @@
             
             <div class="form-section" id="settingsSection">
                 <h2>Pickup &amp; Sharing</h2>
-                
+                <div class="form-split">
+                <div>
                 <div class="form-group">
                     <label for="order_opens_at">Orders open (optional)</label>
                     <input type="date" id="order_opens_at" name="order_opens_at" class="form-control">
@@ -319,7 +330,8 @@
                     <label for="pickup_instructions">Pickup Instructions</label>
                     <textarea id="pickup_instructions" name="pickup_instructions" class="form-control" rows="2" placeholder="e.g. See front office, ask for Coach Smith"></textarea>
                 </div>
-
+                </div>
+                <div>
                 <div class="form-group">
                     <label>Sales tax</label>
                     <p class="form-control-plaintext" style="margin:0;">Tax is calculated automatically at checkout</p>
@@ -365,6 +377,8 @@
                     <label for="is_active">Active</label>
                 </div>
                 {% endif %}
+                </div>
+                </div>
             </div>
 
             <div class="form-section wizard-review" id="wizardReview" hidden>
@@ -1057,5 +1071,6 @@ if (document.readyState === 'loading') {
     .product-checkbox-info { padding: 0.5rem 0.6rem 0.6rem; }
 }
 </style>
+{% include 'includes/group_order_wide_layout.html' %}
 {% include 'includes/group_order_logo_upload.js.html' %}
 {% endblock content %}
