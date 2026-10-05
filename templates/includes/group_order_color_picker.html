@@ -1,0 +1,228 @@
+{# Fan-wear colors, one card per checked shirt. Expects fan_color_picker
+   ({palette: [[label, hex]], products: {id: [palette index]}}) and
+   fan_color_checked (["p:<id>||Color", ...]). #}
+<div class="fan-color-picker" id="fanColorPicker">
+    <p class="fan-color-empty" id="fanColorEmpty">Check a shirt above and its colors will show up here.</p>
+    <div class="fan-color-cards" id="fanColorCards"></div>
+</div>
+<script type="application/json" id="fanColorData">{{ {'picker': fan_color_picker or {'palette': [], 'products': {}}, 'checked': fan_color_checked or []} | tojson }}</script>
+
+<style>
+.fan-color-picker { margin-top: 0.25rem; }
+.fan-color-empty { color: var(--text-secondary); font-size: 0.9rem; margin: 0.25rem 0 0; }
+.fan-color-cards { display: flex; flex-direction: column; gap: 0.65rem; }
+.fan-color-card { border: 1px solid var(--border-color); border-radius: 12px; background: #fff; overflow: hidden; }
+.fan-color-card[open] { border-color: rgba(184, 124, 111, 0.55); }
+.fan-color-card-head { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.85rem; cursor: pointer; list-style: none; }
+.fan-color-card-head::-webkit-details-marker { display: none; }
+.fan-color-card-head::after { content: ''; flex-shrink: 0; width: 0.5rem; height: 0.5rem; border-right: 2px solid var(--text-secondary); border-bottom: 2px solid var(--text-secondary); transform: rotate(45deg); margin: 0 0.25rem 0.2rem 0; transition: transform 0.18s; }
+.fan-color-card[open] .fan-color-card-head::after { transform: rotate(-135deg); margin-bottom: -0.2rem; }
+.fan-color-thumb { flex-shrink: 0; width: 44px; height: 44px; object-fit: contain; border-radius: 8px; background: #f5f3f0; }
+.fan-color-title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fan-color-title strong { font-size: 0.9rem; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fan-color-title small { color: var(--text-secondary); font-size: 0.78rem; }
+.fan-color-count { flex-shrink: 0; font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); background: var(--secondary-color); border-radius: 999px; padding: 0.2rem 0.6rem; }
+.fan-color-card.has-picks .fan-color-count { color: #fff; background: var(--accent-color, #b87c6f); }
+.fan-color-body { padding: 0 0.85rem 0.85rem; border-top: 1px solid var(--border-light, #eee); }
+.fan-color-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0.7rem 0 0.35rem; }
+.fan-color-tools input[type="search"] { flex: 1 1 160px; min-width: 0; padding: 0.4rem 0.65rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.85rem; }
+.fan-color-tools button { background: none; border: none; padding: 0.3rem 0.2rem; color: var(--accent-color, #b87c6f); font-size: 0.82rem; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.fan-color-chips { max-height: 260px; overflow-y: auto; }
+.fan-color-chips .choice-checkbox { font-size: 0.85rem; }
+.fan-color-chips .choice-checkbox:has(input:checked) { box-shadow: inset 0 0 0 2px var(--accent-color, #b87c6f); }
+.choice-checkboxes { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem; margin-bottom: 0.5rem; }
+.choice-checkbox { display: flex; align-items: center; padding: 0.35rem 0.75rem; background: var(--secondary-color); border-radius: 8px; cursor: pointer; }
+.choice-checkbox input { margin-right: 0.5rem; }
+.color-swatch-dot { flex-shrink: 0; width: 1.05rem; height: 1.05rem; margin-right: 0.45rem; border-radius: 50%; border: 1px solid rgba(58, 61, 72, 0.25); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35); }
+.color-swatch-dot--unknown { background: repeating-linear-gradient(45deg, #f1ece4, #f1ece4 3px, #ddd3c4 3px, #ddd3c4 6px); }
+</style>
+
+<script>
+(function() {
+    var SEP = '||';
+    var FILTER_AT = 24;
+
+    function init() {
+        var dataEl = document.getElementById('fanColorData');
+        var cardsEl = document.getElementById('fanColorCards');
+        var emptyEl = document.getElementById('fanColorEmpty');
+        if (!dataEl || !cardsEl) return;
+        var data;
+        try { data = JSON.parse(dataEl.textContent || '{}'); } catch (e) { return; }
+        var palette = (data.picker && data.picker.palette) || [];
+        var byProduct = (data.picker && data.picker.products) || {};
+        var checked = new Set(data.checked || []);
+        var cards = {};
+        var firstSync = true;
+
+        function productInputs() {
+            return Array.prototype.slice.call(document.querySelectorAll('input[name="products"]'));
+        }
+
+        function updateCount(card) {
+            var boxes = card.querySelectorAll('input[name="allowed_colors"]');
+            var picked = card.querySelectorAll('input[name="allowed_colors"]:checked').length;
+            var total = boxes.length;
+            var countEl = card.querySelector('.fan-color-count');
+            countEl.textContent = picked
+                ? picked + ' of ' + total + ' colors'
+                : (total === 1 ? '1 color' : 'All ' + total + ' colors');
+            card.classList.toggle('has-picks', picked > 0);
+        }
+
+        function buildCard(productInput) {
+            var pid = productInput.value;
+            var indexes = byProduct[pid];
+            if (!indexes || !indexes.length) return null;
+            var label = productInput.closest('label');
+            var nameEl = label && label.querySelector('.product-checkbox-name');
+            var imgEl = label && label.querySelector('.product-checkbox-mockup img');
+            var style = label ? (label.dataset.style || '') : '';
+            var name = nameEl ? nameEl.textContent.trim() : 'Shirt';
+
+            var card = document.createElement('details');
+            card.className = 'fan-color-card';
+            card.dataset.productId = pid;
+
+            var head = document.createElement('summary');
+            head.className = 'fan-color-card-head';
+            if (imgEl && imgEl.getAttribute('src')) {
+                var thumb = document.createElement('img');
+                thumb.className = 'fan-color-thumb';
+                thumb.src = imgEl.getAttribute('src');
+                thumb.alt = '';
+                thumb.loading = 'lazy';
+                thumb.referrerPolicy = 'no-referrer';
+                thumb.onerror = function() { thumb.remove(); };
+                head.appendChild(thumb);
+            }
+            var title = document.createElement('span');
+            title.className = 'fan-color-title';
+            var strong = document.createElement('strong');
+            strong.textContent = name;
+            title.appendChild(strong);
+            if (style) {
+                var small = document.createElement('small');
+                small.textContent = 'Style ' + style;
+                title.appendChild(small);
+            }
+            head.appendChild(title);
+            var count = document.createElement('span');
+            count.className = 'fan-color-count';
+            head.appendChild(count);
+            card.appendChild(head);
+
+            var body = document.createElement('div');
+            body.className = 'fan-color-body';
+            var tools = document.createElement('div');
+            tools.className = 'fan-color-tools';
+            var chips = document.createElement('div');
+            chips.className = 'choice-checkboxes fan-color-chips';
+
+            if (indexes.length > FILTER_AT) {
+                var search = document.createElement('input');
+                search.type = 'search';
+                search.placeholder = 'Find a color';
+                search.setAttribute('aria-label', 'Find a color for ' + name);
+                search.addEventListener('input', function() {
+                    var q = search.value.trim().toLowerCase();
+                    chips.querySelectorAll('.choice-checkbox').forEach(function(chip) {
+                        chip.hidden = q && chip.dataset.color.toLowerCase().indexOf(q) === -1;
+                    });
+                });
+                search.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') e.preventDefault();
+                });
+                tools.appendChild(search);
+            }
+            function setVisible(on) {
+                chips.querySelectorAll('.choice-checkbox').forEach(function(chip) {
+                    if (!chip.hidden) chip.querySelector('input').checked = on;
+                });
+                updateCount(card);
+            }
+            var all = document.createElement('button');
+            all.type = 'button';
+            all.textContent = 'Select all';
+            all.addEventListener('click', function() { setVisible(true); });
+            var none = document.createElement('button');
+            none.type = 'button';
+            none.textContent = 'Clear';
+            none.addEventListener('click', function() { setVisible(false); });
+            tools.appendChild(all);
+            tools.appendChild(none);
+
+            indexes.forEach(function(i) {
+                var entry = palette[i];
+                if (!entry) return;
+                var colorName = entry[0];
+                var hex = entry[1];
+                var value = 'p:' + pid + SEP + colorName;
+                var chip = document.createElement('label');
+                chip.className = 'choice-checkbox';
+                chip.dataset.color = colorName;
+                var box = document.createElement('input');
+                box.type = 'checkbox';
+                box.name = 'allowed_colors';
+                box.value = value;
+                box.checked = checked.has(value);
+                box.addEventListener('change', function() { updateCount(card); });
+                var dot = document.createElement('span');
+                dot.className = 'color-swatch-dot' + (hex ? '' : ' color-swatch-dot--unknown');
+                if (hex) dot.style.background = hex;
+                dot.setAttribute('aria-hidden', 'true');
+                var text = document.createElement('span');
+                text.textContent = colorName;
+                chip.appendChild(box);
+                chip.appendChild(dot);
+                chip.appendChild(text);
+                chips.appendChild(chip);
+            });
+
+            body.appendChild(tools);
+            body.appendChild(chips);
+            card.appendChild(body);
+            updateCount(card);
+            return card;
+        }
+
+        function sync() {
+            var active = productInputs().filter(function(cb) { return cb.checked; });
+            var openOnLoad = active.length <= 2;
+            productInputs().forEach(function(cb) {
+                var card = cards[cb.value];
+                if (cb.checked && !card) {
+                    card = buildCard(cb);
+                    if (!card) return;
+                    cards[cb.value] = card;
+                    card.open = firstSync ? openOnLoad : true;
+                }
+                if (!card) return;
+                // Unchecked shirts keep their picks in case they come back,
+                // but disabled boxes are not submitted with the form.
+                card.hidden = !cb.checked;
+                card.querySelectorAll('input[name="allowed_colors"]').forEach(function(box) {
+                    box.disabled = !cb.checked;
+                });
+            });
+            productInputs().forEach(function(cb) {
+                if (cards[cb.value]) cardsEl.appendChild(cards[cb.value]);
+            });
+            var shown = Object.keys(cards).some(function(pid) { return !cards[pid].hidden; });
+            if (emptyEl) emptyEl.hidden = shown;
+            firstSync = false;
+        }
+
+        productInputs().forEach(function(cb) {
+            cb.addEventListener('change', sync);
+        });
+        sync();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>

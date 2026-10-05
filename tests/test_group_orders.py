@@ -268,17 +268,92 @@ def test_group_order_catalog_carries_color_swatches(app, seed):
     assert swatches['White'] == '#F4F1EA'
 
 
-def test_create_form_shows_a_swatch_beside_each_fan_color(customer_client, seed):
+def _fan_color_data(html):
+    import json
+    import re
+
+    match = re.search(
+        r'<script type="application/json" id="fanColorData">(.*?)</script>', html, re.S
+    )
+    assert match, 'color picker data missing'
+    return json.loads(match.group(1))
+
+
+def _shirt_colors(data, product_id):
+    palette = data['picker']['palette']
+    return [palette[i] for i in data['picker']['products'][str(product_id)]]
+
+
+def test_create_form_lists_each_shirts_own_colors_with_swatches(customer_client, seed):
     html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
-    assert 'class="color-swatch-dot" style="background:#000000"' in html
-    assert 'class="color-swatch-dot" style="background:#ffffff"' in html
+    assert 'id="fanColorPicker"' in html
+    data = _fan_color_data(html)
+    assert _shirt_colors(data, seed['tee_id']) == [['Black', '#000000'], ['White', '#ffffff']]
+    # The hoodie only comes in Black, so White must not show under it.
+    assert _shirt_colors(data, seed['hoodie_id']) == [['Black', '#000000']]
+    assert data['checked'] == []
 
 
-def test_edit_form_shows_color_swatches_too(admin_client, seed):
+def test_edit_form_prechecks_colors_saved_per_shirt(admin_client, seed, app):
+    from models import Collection
+
+    with app.app_context():
+        db.session.get(Collection, seed['collection_id']).allowed_colors = (
+            '{"p:%d":["White"]}' % seed['tee_id']
+        )
+        db.session.commit()
     html = admin_client.get(
         f'/admin/collections/{seed["collection_id"]}/edit'
     ).get_data(as_text=True)
-    assert 'class="color-swatch-dot" style="background:#000000"' in html
+    data = _fan_color_data(html)
+    assert data['checked'] == [f'p:{seed["tee_id"]}||White']
+    assert ['Black', '#000000'] in _shirt_colors(data, seed['tee_id'])
+
+
+def test_saving_colors_per_shirt_leaves_other_shirts_open(admin_client, seed, app):
+    from models import Collection, Product
+    from utils.group_orders import allowed_colors_for_product
+
+    cid = seed['collection_id']
+    admin_client.post(
+        f'/admin/collections/{cid}/edit',
+        data={
+            'name': 'Test Elementary Spirit Wear',
+            'products': [str(seed['tee_id']), str(seed['hoodie_id'])],
+            'is_active': 'on',
+            'allowed_colors': [f'p:{seed["tee_id"]}||White'],
+        },
+        follow_redirects=False,
+    )
+    with app.app_context():
+        collection = db.session.get(Collection, cid)
+        tee = db.session.get(Product, seed['tee_id'])
+        hoodie = db.session.get(Product, seed['hoodie_id'])
+        # Same brand, but only the tee was limited.
+        assert allowed_colors_for_product(tee, collection) == {'White'}
+        assert allowed_colors_for_product(hoodie, collection) is None
+
+
+def test_store_saved_by_brand_opens_with_its_colors_picked_per_shirt():
+    import json
+    from types import SimpleNamespace
+    from utils.group_orders import fan_color_checked_keys
+
+    store = SimpleNamespace(allowed_colors=json.dumps({'Bella+Canvas': ['Black']}))
+    bella = SimpleNamespace(id=1, brand='Bella+Canvas')
+    port = SimpleNamespace(id=2, brand='Port & Company')
+    colors = {'1': ['Black', 'White'], '2': ['Black', 'Navy']}
+    assert fan_color_checked_keys(store, [bella, port], colors) == ['p:1||Black']
+
+
+def test_per_shirt_colors_win_over_brand_colors():
+    from types import SimpleNamespace
+    from utils.group_orders import allowed_colors_for_product, serialize_allowed_colors_from_form
+
+    payload = serialize_allowed_colors_from_form(['p:7||Navy', 'p:7||Black', 'p:9||White'])
+    assert allowed_colors_for_product(SimpleNamespace(id=7, brand='Gildan'), payload) == {'Navy', 'Black'}
+    assert allowed_colors_for_product(SimpleNamespace(id=9, brand='Gildan'), payload) == {'White'}
+    assert allowed_colors_for_product(SimpleNamespace(id=8, brand='Gildan'), payload) is None
 
 
 def test_create_form_asks_whether_jersey_uses_first_or_last_name(customer_client):
@@ -356,7 +431,8 @@ def test_group_order_create_form_uses_cleaned_color_names(customer_client, seed,
     html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
     assert 'DTG White' not in html
     assert 'TestColor' not in html
-    assert 'value="White"' in html or 'White</span>' in html
+    names = [label for label, _hex in _shirt_colors(_fan_color_data(html), seed['tee_id'])]
+    assert names == ['Black', 'White']
 
 
 def test_group_order_edit_does_not_offer_unassigned_gallery_art(
@@ -540,6 +616,23 @@ def test_uploaded_group_visual_is_contained_and_keeps_group_name_attached(
     assert 'class="dir-card-art-frame"' in html
     assert 'class="dir-card-cover-title">Test Elementary Spirit Wear<' in html
     assert 'object-fit: contain' in html
+
+
+def test_cover_photo_shows_at_the_top_of_the_store_page(client, seed, app):
+    cover = 'https://cdn.example.test/group-covers/cover_team.png'
+    with app.app_context():
+        db.session.get(Collection, seed['collection_id']).cover_image = cover
+        db.session.commit()
+
+    html = client.get(f'/c/{seed["collection_slug"]}').get_data(as_text=True)
+    assert 'class="group-order-cover"' in html
+    assert f'src="{cover}"' in html
+    assert html.index('class="group-order-cover"') < html.index('<h1>Test Elementary Spirit Wear</h1>')
+
+
+def test_store_page_has_no_cover_block_without_a_photo(client, seed):
+    html = client.get(f'/c/{seed["collection_slug"]}').get_data(as_text=True)
+    assert 'class="group-order-cover"' not in html
 
 
 # ── Admin edit / Save Changes ────────────────────────────────────────────────

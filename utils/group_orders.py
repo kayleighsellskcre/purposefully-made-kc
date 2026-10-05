@@ -150,15 +150,22 @@ def group_shipping_offered(collection=None, family_promo_active=False):
     return True
 
 
-# Brand-scoped color picks: form value "Port & Company||Navy" → JSON {"Port & Company": ["Navy"]}
+# Color picks are scoped per shirt: form value "p:12||Navy" → JSON {"p:12": ["Navy"]}.
+# Older stores were scoped per brand: "Port & Company||Navy" → {"Port & Company": ["Navy"]}.
 ALLOWED_COLOR_SEP = '||'
+PRODUCT_COLOR_PREFIX = 'p:'
+
+
+def product_color_key(product_id):
+    return f'{PRODUCT_COLOR_PREFIX}{product_id}'
 
 
 def serialize_allowed_colors_from_form(raw_values):
     """Turn checkbox values into JSON for Collection.allowed_colors.
 
-    Accepts brand-scoped "Brand||Color" values (preferred) or legacy bare color
-    names. Returns None when nothing was selected.
+    Accepts per-shirt "p:<id>||Color" values (what the form sends now),
+    brand-scoped "Brand||Color" values, or legacy bare color names. Returns
+    None when nothing was selected.
     """
     import json
     from collections import defaultdict
@@ -270,6 +277,12 @@ def allowed_colors_for_product(product, collection_or_raw):
     if None in by_brand and len(by_brand) == 1:
         colors = by_brand[None]
         return set(colors) if colors else None
+    product_key = product_color_key(getattr(product, 'id', None))
+    if product_key in by_brand:
+        return set(by_brand[product_key]) or None
+    if any(str(key).startswith(PRODUCT_COLOR_PREFIX) for key in by_brand):
+        # Picks were saved per shirt and this shirt was left alone → all its colors.
+        return None
     brand = (getattr(product, 'brand', None) or 'Other').strip() or 'Other'
     if brand not in by_brand:
         # Other brands were restricted; this brand was left alone → all its colors.
@@ -299,6 +312,28 @@ def allowed_color_form_keys(collection_or_raw):
                 keys.add(f'{brand}{ALLOWED_COLOR_SEP}{color}')
                 keys.add(color)
     return keys
+
+
+def fan_color_checked_keys(collection, products, colors_by_product):
+    """'p:<id>||Color' values to pre-check in the per-shirt color picker.
+
+    Works for stores saved per shirt, per brand, or as a flat list, so an older
+    store opens with the same colors picked and saves per shirt from then on.
+    """
+    if collection is None or not collection_has_color_restrictions(collection):
+        return []
+    from utils.color_names import color_in_allowed_set
+
+    checked = []
+    for product in products or []:
+        allowed = allowed_colors_for_product(product, collection)
+        if allowed is None:
+            continue
+        key = product_color_key(product.id)
+        for label in colors_by_product.get(str(product.id)) or []:
+            if color_in_allowed_set(label, allowed):
+                checked.append(f'{key}{ALLOWED_COLOR_SEP}{label}')
+    return checked
 
 
 def _as_int(value):

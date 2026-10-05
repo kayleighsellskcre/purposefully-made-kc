@@ -95,41 +95,10 @@
                         <span class="organizer-step">1</span>
                         <div>
                             <strong>What colors can shoppers choose for fan wear?</strong>
-                            <p class="form-hint" style="margin:0">These are separate from Home and Away uniform colors. Leave all unchecked to allow every fan-wear color.</p>
+                            <p class="form-hint" style="margin:0">These are separate from Home and Away uniform colors. Each shirt you checked shows its own colors. Leave a shirt with nothing picked to offer every color it comes in.</p>
                         </div>
                     </div>
-                    {% if collection_colors %}
-                      {% if collection_colors is mapping %}
-                        {% for brand, colors in collection_colors.items() %}
-                        <div class="brand-color-group" data-brand="{{ brand }}">
-                            <p class="brand-color-heading">{{ brand }}</p>
-                            <div class="choice-checkboxes">
-                                {% for color in colors %}
-                                {% set _hex = (color_swatches or {}).get(brand ~ '||' ~ color) or (color_swatches or {}).get(color) %}
-                                <label class="choice-checkbox">
-                                    <input type="checkbox" name="allowed_colors" value="{{ brand }}||{{ color }}" {% if (brand ~ '||' ~ color) in (allowed_color_keys or []) or color in (allowed_color_keys or []) %}checked{% endif %}>
-                                    <span class="color-swatch-dot{% if not _hex %} color-swatch-dot--unknown{% endif %}"{% if _hex %} style="background:{{ _hex }}"{% endif %} aria-hidden="true"></span>
-                                    <span>{{ color }}</span>
-                                </label>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        {% endfor %}
-                      {% else %}
-                        <div class="choice-checkboxes">
-                            {% for color in collection_colors %}
-                            {% set _hex = (color_swatches or {}).get(color) %}
-                            <label class="choice-checkbox">
-                                <input type="checkbox" name="allowed_colors" value="{{ color }}" {% if color in allowed_colors_list %}checked{% endif %}>
-                                <span class="color-swatch-dot{% if not _hex %} color-swatch-dot--unknown{% endif %}"{% if _hex %} style="background:{{ _hex }}"{% endif %} aria-hidden="true"></span>
-                                <span>{{ color }}</span>
-                            </label>
-                            {% endfor %}
-                        </div>
-                      {% endif %}
-                    {% else %}
-                    <p class="text-muted" style="margin-top:0.5rem">Select products above first to see color options.</p>
-                    {% endif %}
+                    {% include 'includes/group_order_color_picker.html' %}
                 </div>
 
                 {# ── 2. Front design ────────────────────────────────────── #}
@@ -485,31 +454,6 @@
 </div>
 
 <script>
-// Colors by brand - show only brands with checked products
-function syncBrandColors() {
-    var checked = document.querySelectorAll('input[name="products"]:checked');
-    var activeBrands = new Set();
-    checked.forEach(function(cb) {
-        var label = cb.closest('[data-brand-raw]');
-        if (label) activeBrands.add(label.dataset.brandRaw);
-    });
-    document.querySelectorAll('.brand-color-group[data-brand]').forEach(function(grp) {
-        var show = activeBrands.size === 0 || activeBrands.has(grp.dataset.brand);
-        grp.style.display = show ? '' : 'none';
-        // Hidden brand colors must not submit - otherwise Navy under Brand A
-        // would also restrict Brand B when that brand was deselected.
-        if (!show) {
-            grp.querySelectorAll('input[name="allowed_colors"]').forEach(function(cb) {
-                cb.checked = false;
-            });
-        }
-    });
-}
-document.querySelectorAll('input[name="products"]').forEach(function(cb) {
-    cb.addEventListener('change', syncBrandColors);
-});
-syncBrandColors(); // run on load
-
 // Back design type - show/hide font section
 document.querySelectorAll('input[name="back_design_type"]').forEach(function(radio) {
     radio.addEventListener('change', function() {
@@ -623,13 +567,6 @@ function confirmDelete(btn) {
 .font-choice-card:hover { border-color: var(--accent-color); }
 .font-choice-card:has(input:checked) { border-color: var(--accent-color); background: rgba(184, 124, 111, 0.08); }
 .font-choice-card input { display: none; }
-.brand-color-heading { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin: 0.75rem 0 0.25rem; }
-.brand-color-heading:first-of-type { margin-top: 0.25rem; }
-.choice-checkboxes { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem; margin-bottom: 0.5rem; }
-.choice-checkbox { display: flex; align-items: center; padding: 0.35rem 0.75rem; background: var(--secondary-color); border-radius: 8px; cursor: pointer; }
-.choice-checkbox input { margin-right: 0.5rem; }
-.color-swatch-dot { flex-shrink: 0; width: 1.05rem; height: 1.05rem; margin-right: 0.45rem; border-radius: 50%; border: 1px solid rgba(58, 61, 72, 0.25); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35); }
-.color-swatch-dot--unknown { background: repeating-linear-gradient(45deg, #f1ece4, #f1ece4 3px, #ddd3c4 3px, #ddd3c4 6px); }
 .design-choice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.75rem; margin-top: 0.5rem; }
 .design-choice-card { cursor: pointer; border: 2px solid var(--border-color); border-radius: 8px; overflow: hidden; text-align: center; transition: var(--transition); }
 .design-choice-card:hover { border-color: var(--accent-color); }

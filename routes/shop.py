@@ -593,8 +593,8 @@ def create_group_order():
     return render_template('admin/add_collection.html',
                          products=catalog['products'],
                          gallery_designs=catalog['gallery_designs'],
-                         all_colors=catalog.get('colors_by_brand') or catalog['all_colors'],
-                         color_swatches=catalog.get('color_swatches') or {},
+                         fan_color_picker=catalog['fan_color_picker'],
+                         fan_color_checked=[],
                          uniform_colors_by_product=catalog['uniform_colors_by_product'],
                          team_store={'configured': True, 'uniform': {'enabled': False}, 'fan_product_ids': []},
                          back_design_fonts=GROUP_ORDER_FONTS,
@@ -657,13 +657,10 @@ def edit_group_order(slug):
             return redirect(url_for('shop.edit_group_order', slug=slug))
 
     catalog = load_group_order_form_catalog()
-    from utils.group_orders import allowed_color_form_keys, team_store_config
-    allowed_color_keys = allowed_color_form_keys(collection)
-    try:
-        _raw_colors = json.loads(collection.allowed_colors) if collection.allowed_colors else []
-        allowed_colors_list = _raw_colors if isinstance(_raw_colors, list) else []
-    except (TypeError, ValueError, json.JSONDecodeError):
-        allowed_colors_list = []
+    from utils.group_orders import fan_color_checked_keys, team_store_config
+    fan_color_checked = fan_color_checked_keys(
+        collection, collection.products, catalog['uniform_colors_by_product']
+    )
     allowed_design_ids_list = json.loads(collection.allowed_design_ids) if collection.allowed_design_ids else []
     showcase_design_ids_list = json.loads(collection.showcase_design_ids) if getattr(collection, 'showcase_design_ids', None) else []
     allowed_placements_list = json.loads(collection.allowed_placements) if collection.allowed_placements else ['center_chest', 'left_chest', 'right_chest', 'center_back']
@@ -672,12 +669,10 @@ def edit_group_order(slug):
         collection=collection,
         products=catalog['products'],
         gallery_designs=designs_for_group_order_form(collection),
-        collection_colors=catalog.get('colors_by_brand') or catalog['all_colors'],
-        color_swatches=catalog.get('color_swatches') or {},
+        fan_color_picker=catalog['fan_color_picker'],
+        fan_color_checked=fan_color_checked,
         uniform_colors_by_product=catalog['uniform_colors_by_product'],
         team_store=team_store_config(collection),
-        allowed_colors_list=allowed_colors_list,
-        allowed_color_keys=allowed_color_keys,
         allowed_design_ids_list=allowed_design_ids_list,
         showcase_design_ids_list=showcase_design_ids_list,
         allowed_placements_list=allowed_placements_list,

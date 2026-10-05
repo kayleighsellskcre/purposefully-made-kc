@@ -19,6 +19,19 @@
     color: var(--accent-color);
 }
 
+.group-order-cover {
+    max-width: 640px;
+    margin: 0 auto 1.5rem;
+}
+
+.group-order-cover img {
+    display: block;
+    width: 100%;
+    max-height: 320px;
+    object-fit: contain;
+    border-radius: 14px;
+}
+
 .group-order-showcase {
     display: flex;
     flex-wrap: wrap;
@@ -401,6 +414,14 @@
 {% block content %}
 <div class="page-header">
     <div class="container">
+        {% if collection.cover_image %}
+        <div class="group-order-cover">
+            <img src="{{ collection.cover_image | image_url }}"
+                 alt="{{ collection.card_title or collection.name }}"
+                 loading="eager" decoding="async"
+                 onerror="this.parentElement.hidden = true">
+        </div>
+        {% endif %}
         <span class="eyebrow">Group Order</span>
         <h1>{{ collection.name }}</h1>
         {% if collection.description %}

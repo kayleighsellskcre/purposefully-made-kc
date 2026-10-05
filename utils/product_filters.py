@@ -419,6 +419,7 @@ def load_group_order_form_catalog():
     colors_by_brand = {}   # {brand: [sorted color names]}
     uniform_colors_by_product = {}  # {product_id: [sorted color names]}
     color_swatches = {}  # {"Brand||Display": hex, "Display": hex}
+    fan_color_picker = {'palette': [], 'products': {}}
     try:
         if ids:
             rows = (
@@ -440,6 +441,7 @@ def load_group_order_form_catalog():
             )
             from utils.color_names import display_color_name, swatch_hex, unique_display_colors
             seen_colors: set[str] = set()
+            product_hex = {}  # {product_id: {display label: hex}}
             for product_id, brand, color, color_hex in rows:
                 if not color:
                     continue
@@ -452,6 +454,7 @@ def load_group_order_form_catalog():
                 if hex_value:
                     color_swatches.setdefault(f'{brand_key}||{label}', hex_value)
                     color_swatches.setdefault(label, hex_value)
+                    product_hex.setdefault(str(product_id), {}).setdefault(label, hex_value)
             all_colors = unique_display_colors(seen_colors)
             colors_by_brand = {
                 brand: unique_display_colors(colors)
@@ -462,17 +465,33 @@ def load_group_order_form_catalog():
                 pid: unique_display_colors(colors)
                 for pid, colors in uniform_colors_by_product.items()
             }
+            # Shared [label, hex] palette so the inline JSON stays small even
+            # when dozens of shirts carry the same colors.
+            palette_index = {}
+            for pid, labels in uniform_colors_by_product.items():
+                indexes = []
+                for label in labels:
+                    hex_value = product_hex.get(pid, {}).get(label) or ''
+                    entry = (label, hex_value)
+                    if entry not in palette_index:
+                        palette_index[entry] = len(fan_color_picker['palette'])
+                        fan_color_picker['palette'].append([label, hex_value])
+                    indexes.append(palette_index[entry])
+                if indexes:
+                    fan_color_picker['products'][pid] = indexes
     except Exception:
         all_colors = []
         colors_by_brand = {}
         uniform_colors_by_product = {}
         color_swatches = {}
+        fan_color_picker = {'palette': [], 'products': {}}
     return {
         'products': products,
         'all_colors': all_colors,
         'colors_by_brand': colors_by_brand,
         'uniform_colors_by_product': uniform_colors_by_product,
         'color_swatches': color_swatches,
+        'fan_color_picker': fan_color_picker,
         # Group-order organizers upload the artwork for that specific store.
         # The general design gallery is intentionally not offered here.
         'gallery_designs': [],
