@@ -1,0 +1,57 @@
+{% set _pm = (collection.payment_mode if collection is defined and collection else none) or 'each_pays' %}
+{% set _expected = (collection.expected_count if collection is defined and collection else none) %}
+<div class="form-group payment-mode-field" id="paymentModeField">
+    <span class="form-label-text">How will this order be paid for?</span>
+    <div class="payment-mode-choices">
+        <label class="payment-mode-choice">
+            <input type="radio" name="payment_mode" value="each_pays" {% if _pm != 'organizer_pays' %}checked{% endif %}>
+            <span>
+                <strong>Everyone pays their own way</strong>
+                <small>Each person picks their size and checks out on their own.</small>
+            </span>
+        </label>
+        <label class="payment-mode-choice">
+            <input type="radio" name="payment_mode" value="organizer_pays" {% if _pm == 'organizer_pays' %}checked{% endif %}>
+            <span>
+                <strong>I'm paying for the whole group</strong>
+                <small>Your link just collects each person's name and size. You pay once for everyone.</small>
+            </span>
+        </label>
+    </div>
+    <div class="payment-mode-details" id="paymentModeDetails" {% if _pm != 'organizer_pays' %}hidden{% endif %}>
+        <label for="expected_count">About how many people will fill it out? <span class="optional-tag">Optional</span></label>
+        <input type="number" id="expected_count" name="expected_count" class="form-control" min="1" max="5000" inputmode="numeric"
+               value="{{ _expected or '' }}" placeholder="e.g., 20">
+        <p class="form-hint">Lets us show you "14 of 20 responded." When you pick the shirt below, choose one style, one color and one logo. That is what everyone gets.</p>
+    </div>
+</div>
+<style>
+.payment-mode-field { margin-bottom: 1.5rem; }
+.payment-mode-choices { display:grid; gap:.65rem; }
+.payment-mode-choice {
+    display:flex; align-items:flex-start; gap:.7rem; margin:0; padding:.85rem 1rem;
+    border:1px solid var(--border-color,#e6ddd0); border-radius:10px; background:#fff; cursor:pointer;
+}
+.payment-mode-choice:has(input:checked) { border-color:var(--terra-cotta,#b87c6f); background:rgba(184,124,111,.08); }
+.payment-mode-choice input { margin-top:.2rem; accent-color:var(--terra-cotta,#b87c6f); }
+.payment-mode-choice span, .payment-mode-choice small { display:block; }
+.payment-mode-choice small { color:var(--text-secondary); margin-top:.2rem; }
+.payment-mode-details { margin-top:.85rem; max-width:420px; }
+.payment-mode-details[hidden] { display:none; }
+.payment-mode-details label { font-weight:600; display:block; margin-bottom:.35rem; }
+.payment-mode-details .optional-tag { font-weight:400; color:var(--text-secondary); font-size:.85em; }
+.form-label-text { display:block; font-weight:700; margin-bottom:.35rem; }
+</style>
+<script>
+(function () {
+    var field = document.getElementById('paymentModeField');
+    if (!field) return;
+    var details = document.getElementById('paymentModeDetails');
+    function sync() {
+        var picked = field.querySelector('input[name="payment_mode"]:checked');
+        details.hidden = !(picked && picked.value === 'organizer_pays');
+    }
+    field.addEventListener('change', sync);
+    sync();
+})();
+</script>

@@ -21,6 +21,7 @@
         <form method="POST" id="collection-form" class="collection-form{% if team_store and team_store.uniform.enabled %} has-uniforms{% endif %}" enctype="multipart/form-data">
             <div class="form-section">
                 <h2>Basic Information</h2>
+                {% include 'includes/group_order_payment_mode_fields.html' %}
                 <div class="form-split">
                     <div>
                         <div class="form-group">

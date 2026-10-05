@@ -192,6 +192,13 @@ class Collection(db.Model):
     # school | team | other. Controls send-home-with-child and whether grade is asked.
     group_kind = db.Column(db.String(20))
 
+    # How the group order is paid for:
+    #   'each_pays'      - every shopper checks out and pays for their own item (default)
+    #   'organizer_pays' - the link only collects name + size; the organizer pays once
+    payment_mode = db.Column(db.String(20), default='each_pays')
+    # Organizer-pays only: how many people the organizer expects to respond
+    expected_count = db.Column(db.Integer)
+
     # Public directory — admin toggles this to list the collection on /group-orders
     show_in_directory = db.Column(db.Boolean, default=False)
     # Optional cover photo + short title for the public directory card
@@ -212,6 +219,10 @@ class Collection(db.Model):
     created_by = db.relationship('User', foreign_keys=[created_by_user_id], backref='created_collections')
     locked_back_design = db.relationship(
         'Design', foreign_keys=[back_design_id], post_update=True
+    )
+    roster_entries = db.relationship(
+        'GroupRosterEntry', backref='collection', lazy='dynamic',
+        cascade='all, delete-orphan', order_by='GroupRosterEntry.id',
     )
     
     def __init__(self, **kwargs):
@@ -234,6 +245,26 @@ class Collection(db.Model):
     
     def __repr__(self):
         return f'<Collection {self.name}>'
+
+
+class GroupRosterEntry(db.Model):
+    """One person's size for an organizer-pays group order (name + size only)."""
+    __tablename__ = 'group_roster_entry'
+    id = db.Column(db.Integer, primary_key=True)
+    collection_id = db.Column(
+        db.Integer, db.ForeignKey('collection.id'), nullable=False, index=True
+    )
+    first_name = db.Column(db.String(80), nullable=False)
+    last_name = db.Column(db.String(80), nullable=False)
+    size = db.Column(db.String(20), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def full_name(self):
+        return f'{self.first_name} {self.last_name}'.strip()
+
+    def __repr__(self):
+        return f'<GroupRosterEntry {self.full_name} {self.size}>'
 
 
 # Association table for Collection-Product many-to-many

@@ -52,6 +52,9 @@ def apply_group_kind(collection, *, required=False):
 
 
 def collection_allows_send_home(collection):
+    if getattr(collection, 'payment_mode', None) == 'organizer_pays':
+        # One bulk order placed by the organizer; nothing goes home per child.
+        return False
     kind = normalize_group_kind(getattr(collection, 'group_kind', None))
     if not kind:
         # Older group orders had no type. Treat them like a team so checkout
@@ -1185,6 +1188,10 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
     ok, kind_error = apply_group_kind(collection, required=False)
     if not ok:
         return False, kind_error, 0
+    from utils.group_roster import apply_payment_mode_from_form, roster_item_error
+    ok, payment_error = apply_payment_mode_from_form(collection)
+    if not ok:
+        return False, payment_error, 0
     apply_collection_card(collection)
     collection.pickup_address = request.form.get('pickup_address')
     collection.pickup_instructions = request.form.get('pickup_instructions')
@@ -1281,6 +1288,9 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
         return False, product_error, 0
     if require_products and not selected_products:
         return False, 'Please choose a uniform or at least one shirt style for fan wear.', 0
+    roster_error = roster_item_error(collection)
+    if roster_error:
+        return False, roster_error, 0
 
     ok, organizer_error, organizer_notice = apply_organizer_from_form(collection, user)
     if not ok:
@@ -1316,6 +1326,15 @@ def ordering_blocked(collection, product_id=None):
         return None
     if not collection.is_active:
         return 'This group order is no longer active.'
+    from utils.group_roster import is_organizer_pays
+    if is_organizer_pays(collection):
+        # The link only collects sizes. Only the organizer (or admin) checks
+        # out, once, for the whole roster, and that can happen after the
+        # deadline closes the size form.
+        if not user_can_manage_collection(collection):
+            return ('This group order is paid for by the organizer. '
+                    'Use the group link to send your size instead.')
+        return None
     if is_deadline_passed(collection):
         deadline = collection.order_deadline
         label = format_schedule_date(deadline) if deadline else 'the deadline'

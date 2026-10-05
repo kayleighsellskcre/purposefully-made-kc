@@ -219,6 +219,9 @@ def create_app(config_class=Config):
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS card_title VARCHAR(200)",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS team_store_config TEXT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS group_kind VARCHAR(20)",
+                    # Organizer-pays group orders: payment mode + expected headcount
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(20) DEFAULT 'each_pays'",
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS expected_count INTEGER",
                     # product.spec_sheet_url — SanMar CDN PDF link added during Bella+Canvas CSV import
                     "ALTER TABLE product ADD COLUMN IF NOT EXISTS spec_sheet_url VARCHAR(500)",
                     # Softness rating + short fabric blurb (seeded by style number)

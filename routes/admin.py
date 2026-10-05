@@ -2830,6 +2830,11 @@ def add_collection():
             if not ok:
                 flash(kind_error, 'error')
                 return redirect(url_for('admin.add_collection'))
+            from utils.group_roster import apply_payment_mode_from_form
+            ok, payment_error = apply_payment_mode_from_form(collection)
+            if not ok:
+                flash(payment_error, 'error')
+                return redirect(url_for('admin.add_collection'))
 
             password = request.form.get('password')
             if password:
@@ -2850,6 +2855,12 @@ def add_collection():
             if not selected_products:
                 db.session.rollback()
                 flash('Please choose a uniform or at least one shirt style for fan wear.', 'error')
+                return redirect(url_for('admin.add_collection'))
+            from utils.group_roster import roster_item_error
+            roster_error = roster_item_error(collection)
+            if roster_error:
+                db.session.rollback()
+                flash(roster_error, 'error')
                 return redirect(url_for('admin.add_collection'))
 
             db.session.commit()
