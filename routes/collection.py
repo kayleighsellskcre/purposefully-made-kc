@@ -484,7 +484,7 @@ def export_xlsx(slug):
         return redirect(url_for('collection.share', slug=slug))
 
     try:
-        xlsx_bytes = _build_group_order_xlsx(collection)
+        xlsx_bytes = _build_group_order_xlsx(collection, include_internal=is_admin)
     except Exception as e:
         current_app.logger.exception('Excel export failed for collection %s: %s', slug, e)
         flash('Could not generate the Excel file. Please try again.', 'error')
@@ -499,8 +499,14 @@ def export_xlsx(slug):
     )
 
 
-def _build_group_order_xlsx(collection):
-    """Build and return raw .xlsx bytes for the given collection."""
+def _build_group_order_xlsx(collection, include_internal=False):
+    """Build and return raw .xlsx bytes for the given collection.
+
+    The first sheet, "All Orders", has one row per shirt with every detail
+    of the order it belongs to, so nothing needs to be cross-referenced.
+    include_internal adds admin-only columns (admin notes, cost, profit);
+    organizers who download their own store never see those.
+    """
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
@@ -560,7 +566,8 @@ def _build_group_order_xlsx(collection):
     ws_sum.merge_cells('A1:F1')
     ws_sum['A1'].alignment = CENTER
 
-    ws_sum['A2'] = f'Exported: {datetime.utcnow().strftime("%B %d, %Y %H:%M UTC")}'
+    from utils.local_time import format_central
+    ws_sum['A2'] = f'Exported: {format_central(datetime.utcnow())} (Central)'
     ws_sum['A2'].font = Font(italic=True, color='888888', size=9)
     ws_sum.merge_cells('A2:F2')
 
@@ -579,8 +586,20 @@ def _build_group_order_xlsx(collection):
     ws_sum['A7'] = 'Total Revenue'; ws_sum['B7'] = total_revenue; ws_sum['B7'].number_format = MONEY_FMT
     ws_sum['A8'] = 'Total Items';   ws_sum['B8'] = total_items
 
-    for row in range(5, 9):
+    pending_orders = [o for o in orders if o.payment_status != 'paid']
+    ws_sum['A9'] = 'Unpaid / Cash Due'; ws_sum['B9'] = len(pending_orders)
+    ws_sum['A10'] = 'Send Home Orders'; ws_sum['B10'] = sum(1 for o in orders if o.send_home_with_child)
+    ws_sum['A11'] = 'Shipping Orders';  ws_sum['B11'] = sum(1 for o in orders if (o.fulfillment_method or '') == 'shipping')
+
+    for row in range(5, 12):
         ws_sum.cell(row=row, column=1).font = Font(bold=True)
+
+    ws_sum['A13'] = ('Every order, with every detail, is on the "All Orders" tab (one row per shirt). '
+                     '"Orders" has one row per order, "Line Items" lists each shirt, and '
+                     '"Size Breakdown" totals sizes for printing.')
+    ws_sum['A13'].alignment = Alignment(wrap_text=True, vertical='top')
+    ws_sum['A13'].font = Font(italic=True, color='666666')
+    ws_sum.merge_cells('A13:F15')
 
     ws_sum.row_dimensions[1].height = 28
     ws_sum.column_dimensions['A'].width = 20
@@ -595,7 +614,11 @@ def _build_group_order_xlsx(collection):
         'Fulfillment', 'Send Home', 'Child', 'Coach/Teacher', 'Grade',
         'Payment', 'Status',
         'Items', 'Subtotal', 'Shipping', 'Tax', 'Total', 'Notes',
+        'Paid With', 'Amount Paid', 'Paid On', 'Promo Code',
+        'Production Stage', 'Ship To', 'Tracking',
     ]
+    if include_internal:
+        ord_headers += ['Admin Notes', 'Cost of Goods', 'Profit']
     ws_ord.append(ord_headers)
     style_header_row(ws_ord, 1, len(ord_headers))
     ws_ord.row_dimensions[1].height = 22
@@ -604,7 +627,7 @@ def _build_group_order_xlsx(collection):
         items_count = sum(i.quantity for i in order.items)
         ws_ord.append([
             order.order_number,
-            order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '',
+            format_central(order.created_at, '%Y-%m-%d %I:%M %p') if order.created_at else '',
             order.full_name,
             order.email or '',
             order.phone or '',
@@ -621,12 +644,27 @@ def _build_group_order_xlsx(collection):
             order.tax or 0,
             order.total,
             order.customer_notes or '',
-        ])
+            _payment_label(order),
+            order.amount_paid if order.amount_paid is not None else '',
+            format_central(order.paid_at, '%Y-%m-%d %I:%M %p') if order.paid_at else '',
+            order.promo_code or '',
+            _stage_label(order.production_stage),
+            _ship_to(order),
+            ' '.join(x for x in (order.carrier or '', order.tracking_number or '') if x),
+        ] + ([
+            order.admin_notes or '',
+            order.cost_of_goods if order.cost_of_goods is not None else '',
+            order.profit if order.profit is not None else '',
+        ] if include_internal else []))
         style_data_row(ws_ord, idx, len(ord_headers), alt=(idx % 2 == 0))
-        for col in (14, 15, 16, 17):
+        money_cols = [14, 15, 16, 17, 20] + ([27, 28] if include_internal else [])
+        for col in money_cols:
             ws_ord.cell(row=idx, column=col).number_format = MONEY_FMT
 
-    set_col_widths(ws_ord, [18, 16, 22, 28, 14, 12, 12, 18, 18, 10, 10, 14, 7, 10, 10, 8, 10, 30])
+    set_col_widths(ws_ord, [18, 18, 22, 28, 14, 12, 12, 18, 18, 10, 10, 14, 7, 10, 10, 8, 10, 30,
+                            12, 12, 18, 12, 18, 36, 22] + ([30, 12, 10] if include_internal else []))
+    ws_ord.freeze_panes = 'B2'
+    ws_ord.auto_filter.ref = ws_ord.dimensions
 
     # ════════════════════════════════════════════════════════════════════════
     # Sheet 3 — Line Items
@@ -685,6 +723,135 @@ def _build_group_order_xlsx(collection):
             row_idx += 1
 
     set_col_widths(ws_items, [18, 22, 18, 18, 10, 28, 10, 18, 13, 18, 7, 5, 14, 26, 22, 10, 10])
+
+    # ════════════════════════════════════════════════════════════════════════
+    # All Orders — one row per shirt with every detail of its order.
+    # Shown first so the full picture is the first thing that opens.
+    # ════════════════════════════════════════════════════════════════════════
+    ws_all = wb.create_sheet('All Orders', 0)
+    all_headers = [
+        'Order #', 'Order Date', 'Customer', 'Email', 'Phone',
+        'Child', 'Coach/Teacher', 'Grade', 'Send Home',
+        'Fulfillment', 'Ship To',
+        'Product', 'Style #', 'Section', 'Color', 'Size', 'Qty',
+        'Front Design', 'Placement', 'Print Size (in)',
+        'Back Name', 'Back Number', 'Back Font', 'Back Colors', 'Back Image',
+        'Item Notes', 'Unit Price', 'Line Total',
+        'Order Subtotal', 'Shipping', 'Tax', 'Order Total',
+        'Paid With', 'Payment Status', 'Amount Paid', 'Promo Code',
+        'Order Status', 'Production Stage', 'Tracking', 'Customer Notes',
+    ]
+    if include_internal:
+        all_headers += ['Admin Notes']
+    ws_all.append(all_headers)
+    style_header_row(ws_all, 1, len(all_headers))
+    ws_all.row_dimensions[1].height = 30
+    money_idx = [all_headers.index(h) + 1 for h in (
+        'Unit Price', 'Line Total', 'Order Subtotal', 'Shipping', 'Tax', 'Order Total', 'Amount Paid')]
+
+    row_idx = 2
+    for n, order in enumerate(orders):
+        items = list(order.items) or [None]
+        for i, item in enumerate(items):
+            first = i == 0
+            meta = (item.back_design_details or {}) if item else {}
+            colors = ', '.join(
+                x for x in (
+                    meta.get('text_color') or '',
+                    ('outline ' + meta['outline_color']) if meta.get('outline') and meta.get('outline_color') else '',
+                ) if x
+            )
+            print_size = ''
+            if item and item.print_width and item.print_height:
+                print_size = f'{item.print_width:g} x {item.print_height:g}'
+            section = ''
+            if item:
+                section = (
+                    f'{(item.uniform_kit or "Player").title()} Uniform'
+                    if item.catalog_section == 'uniform' else 'Family & Fan Wear'
+                )
+            ws_all.append([
+                order.order_number,
+                format_central(order.created_at, '%Y-%m-%d %I:%M %p') if order.created_at else '',
+                order.full_name,
+                order.email or '',
+                order.phone or '',
+                order.child_name or '',
+                order.teacher_name or '',
+                order.child_grade or '',
+                'Yes' if order.send_home_with_child else '',
+                (order.fulfillment_method or '').title(),
+                _ship_to(order),
+                (item.product_name or '') if item else '',
+                (item.style_number or '') if item else '',
+                section,
+                (item.color or '') if item else '',
+                (item.size or '') if item else '',
+                item.quantity if item else '',
+                (item.design_file_name or '') if item else '',
+                _placement_label(item.placement) if item else '',
+                print_size,
+                meta.get('name') or '',
+                meta.get('number') or '',
+                meta.get('font') or '',
+                colors,
+                (item.back_design_file_name or '') if item and not (meta.get('name') or meta.get('number')) else '',
+                (item.notes or '') if item else '',
+                item.unit_price if item else '',
+                item.subtotal if item else '',
+                # Order money only on the order's first row so column sums stay right.
+                order.subtotal if first else '',
+                (order.shipping_cost or 0) if first else '',
+                (order.tax or 0) if first else '',
+                order.total if first else '',
+                _payment_label(order),
+                (order.payment_status or '').title(),
+                (order.amount_paid if order.amount_paid is not None else '') if first else '',
+                order.promo_code or '',
+                (order.status or '').replace('_', ' ').title(),
+                _stage_label(order.production_stage),
+                ' '.join(x for x in (order.carrier or '', order.tracking_number or '') if x),
+                order.customer_notes or '',
+            ] + ([order.admin_notes or ''] if include_internal else []))
+            # Alternate shading by order, not by row, so one order's shirts read as a block.
+            style_data_row(ws_all, row_idx, len(all_headers), alt=(n % 2 == 1))
+            for col in money_idx:
+                ws_all.cell(row=row_idx, column=col).number_format = MONEY_FMT
+            row_idx += 1
+
+    if row_idx == 2:
+        ws_all.append(['No orders yet.'])
+
+    set_col_widths(ws_all, [
+        18, 18, 22, 28, 14,
+        18, 18, 9, 10,
+        11, 36,
+        28, 10, 17, 16, 7, 5,
+        26, 13, 13,
+        16, 11, 14, 18, 24,
+        26, 10, 10,
+        12, 10, 9, 11,
+        11, 13, 11, 12,
+        13, 17, 22, 30,
+    ] + ([30] if include_internal else []))
+    ws_all.freeze_panes = 'D2'
+    ws_all.auto_filter.ref = ws_all.dimensions
+    wb.active = 0
+
+    # Organizer-pays stores: the name + size list parents sent in.
+    from utils.group_roster import is_organizer_pays, roster_entries
+    if is_organizer_pays(collection):
+        ws_roster = wb.create_sheet('Roster', 1)
+        ws_roster.append(['#', 'First Name', 'Last Name', 'Size', 'Submitted'])
+        style_header_row(ws_roster, 1, 5)
+        for n, e in enumerate(roster_entries(collection), start=1):
+            ws_roster.append([
+                n, e.first_name, e.last_name, e.size,
+                format_central(e.created_at, '%Y-%m-%d %I:%M %p') if e.created_at else '',
+            ])
+            style_data_row(ws_roster, n + 1, 5, alt=(n % 2 == 0))
+        set_col_widths(ws_roster, [5, 18, 18, 8, 20])
+        ws_roster.freeze_panes = 'A2'
 
     # ════════════════════════════════════════════════════════════════════════
     # Sheet 4 — Size Breakdown (production tally)
@@ -754,3 +921,49 @@ def _build_group_order_xlsx(collection):
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
+
+
+def _payment_label(order):
+    method = (getattr(order, 'payment_method', None) or '').lower()
+    return {
+        'stripe': 'Card',
+        'paypal': 'PayPal / Venmo',
+        'cash': 'Cash',
+    }.get(method, method.title())
+
+
+def _stage_label(stage):
+    return (stage or '').replace('_', ' ').title()
+
+
+_PLACEMENT_LABELS = {
+    'center_chest': 'Center chest',
+    'left_chest': 'Left chest',
+    'right_chest': 'Right chest',
+    'center_back': 'Center back',
+    'full_front': 'Full front',
+    'full_back': 'Full back',
+}
+
+
+def _placement_label(placement):
+    if not placement:
+        return ''
+    return _PLACEMENT_LABELS.get(placement, placement.replace('_', ' ').capitalize())
+
+
+def _ship_to(order):
+    if (getattr(order, 'fulfillment_method', None) or '') != 'shipping':
+        return ''
+    city_line = ' '.join(x for x in (
+        ((order.shipping_city or '') + ',') if order.shipping_city else '',
+        order.shipping_state or '',
+        order.shipping_zip or '',
+    ) if x)
+    parts = [
+        order.shipping_recipient or '',
+        order.shipping_street or '',
+        order.shipping_street_2 or '',
+        city_line,
+    ]
+    return ', '.join(x for x in parts if x)
