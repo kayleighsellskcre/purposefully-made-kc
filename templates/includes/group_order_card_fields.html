@@ -1,11 +1,5 @@
-{# Optional cover photo + short title for the public Group Orders card. #}
-<div class="form-group">
-    <label for="card_title">Name on the card</label>
-    <input type="text" id="card_title" name="card_title" class="form-control" maxlength="80"
-           value="{{ collection.card_title if collection is defined and collection.card_title else '' }}"
-           placeholder="Leave blank to use the group order name">
-    <small>This is the pretty title people see on the Group Orders page. You can keep it short, like “Riverview Spirit Wear”.</small>
-</div>
+{# Optional cover photo for the store header and public Group Orders card.
+   The card title lives in group_order_card_title_field.html, next to visibility. #}
 <div class="form-group">
     <label for="cover_image">Cover photo (optional)</label>
     {% if collection is defined and collection.cover_image %}

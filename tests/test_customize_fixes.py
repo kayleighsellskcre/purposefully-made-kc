@@ -128,7 +128,7 @@ def test_group_store_keeps_normal_nav_and_offers_back_to_main_site(client, seed)
         sess['collection_id'] = seed['collection_id']
     html = client.get(f'/c/{seed["collection_slug"]}').get_data(as_text=True)
     assert 'href="/shop/"' in html or "href='/shop/'" in html
-    assert 'Back to main site' in html
+    assert 'Exit group store' in html
     assert html.count('/c/leave') == 1
     resp = client.get('/c/leave?next=/', follow_redirects=False)
     assert resp.status_code == 302

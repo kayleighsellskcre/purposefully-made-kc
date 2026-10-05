@@ -18,7 +18,7 @@
             {% endif %}
         </div>
 
-        <form method="POST" id="collection-form" class="collection-form" enctype="multipart/form-data">
+        <form method="POST" id="collection-form" class="collection-form{% if team_store and team_store.uniform.enabled %} has-uniforms{% endif %}" enctype="multipart/form-data">
             <div class="form-section">
                 <h2>Basic Information</h2>
 
@@ -47,8 +47,9 @@
             {% include 'includes/group_order_team_store.html' %}
 
             <div class="form-section">
-                <h2>Family &amp; Fan Wear</h2>
-                <p class="form-hint">Offer extra styles besides the jersey, like tees, hoodies, and cute matching looks for family and friends. Check both youth and adult if both ages will order. Leave this empty for a uniform-only store.</p>
+                <h2><span data-copy="team">Family &amp; Fan Wear</span><span data-copy="general">Styles to Offer</span></h2>
+                <p class="form-hint" data-copy="team">Offer extra styles besides the jersey, like tees, hoodies, and cute matching looks for family and friends. Check both youth and adult if both ages will order. Leave this empty for a uniform-only store.</p>
+                <p class="form-hint" data-copy="general">Check the styles your group can order. If kids and grown-ups are both ordering, check the youth and adult versions so everyone can match.</p>
                 {% if products %}
                 {% include 'includes/catalog_filter.html' %}
                 <div class="product-checkboxes">
@@ -94,8 +95,8 @@
                     <div class="organizer-block-label">
                         <span class="organizer-step">1</span>
                         <div>
-                            <strong>What colors can shoppers choose for fan wear?</strong>
-                            <p class="form-hint" style="margin:0">These are separate from Home and Away uniform colors. Each shirt you checked shows its own colors. Leave a shirt with nothing picked to offer every color it comes in.</p>
+                            <strong>What colors can shoppers choose<span data-copy="team"> for fan wear</span>?</strong>
+                            <p class="form-hint" style="margin:0"><span data-copy="team">These are separate from Home and Away uniform colors. </span>Each shirt you checked shows its own colors. Leave a shirt with nothing picked to offer every color it comes in.</p>
                         </div>
                     </div>
                     {% include 'includes/group_order_color_picker.html' %}
@@ -107,7 +108,8 @@
                         <span class="organizer-step">2</span>
                         <div>
                             <strong>What design goes on the front?</strong>
-                            <p class="form-hint" style="margin:0">Upload the jersey logo. If Home and Away need different files, upload both, then mark them in Player Uniforms above. Add extra matching designs so family and fans can represent without wearing the exact jersey graphic.</p>
+                            <p class="form-hint" style="margin:0" data-copy="team">Upload the jersey logo. If Home and Away need different files, upload both, then mark them in Player Uniforms above. Add extra matching designs so family and fans can represent without wearing the exact jersey graphic.</p>
+                            <p class="form-hint" style="margin:0" data-copy="general">Upload your logo or design. You can add a few if you'd like to give people options.</p>
                         </div>
                     </div>
                     <div class="collection-upload-area" id="uploadArea" role="button" tabindex="0"
@@ -200,7 +202,7 @@
                         <span class="organizer-step">4</span>
                         <div>
                             <strong>Do you want anything on the back?</strong>
-                            <p class="form-hint" style="margin:0">Choose what (if anything) team members can add to the back of the shirt.</p>
+                            <p class="form-hint" style="margin:0">Choose what (if anything) people can add to the back of the shirt.</p>
                         </div>
                     </div>
                     <div class="placement-checkboxes">
@@ -414,6 +416,7 @@
                         <label for="visibility_public">Public. Show it on the homepage and the Group Orders page.</label>
                     </div>
                 </fieldset>
+                {% include 'includes/group_order_card_title_field.html' %}
 
                 <div class="form-group" id="password-field" style="{% if not collection.is_password_protected %}display: none;{% endif %}">
                     <label for="password">Access Password</label>
@@ -612,7 +615,8 @@ function confirmDelete(btn) {
     .admin-header .btn { width: 100%; justify-content: center; min-height: 48px; }
     .collection-form { max-width: none; }
     .form-section { padding: 1.15rem; }
-    .product-checkboxes { grid-template-columns: 1fr; }
+    .product-checkboxes { grid-template-columns: 1fr 1fr; gap: 0.65rem; }
+    .product-checkbox-info { padding: 0.5rem 0.6rem 0.6rem; }
     .form-actions { flex-direction: column; }
     .form-actions .btn { width: 100%; justify-content: center; min-height: 48px; }
     .placement-checkboxes { grid-template-columns: 1fr 1fr; }

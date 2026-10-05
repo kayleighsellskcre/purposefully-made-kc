@@ -23,10 +23,15 @@
             {% endif %}
         </div>
         
-        <form method="POST" class="collection-form" enctype="multipart/form-data">
+        <form method="POST" class="collection-form" id="createGroupOrderForm" enctype="multipart/form-data">
+            <nav class="wizard-steps" id="wizardSteps" aria-label="Setup steps" hidden>
+                <p class="wizard-progress" id="wizardProgress" aria-live="polite"></p>
+                <ol id="wizardStepList"></ol>
+            </nav>
+
             {% include 'includes/group_order_template_picker.html' %}
 
-            <div class="form-section">
+            <div class="form-section" id="basicInfoSection">
                 <h2>Basic Information</h2>
                 
                 <div class="form-group">
@@ -55,8 +60,10 @@
             {% include 'includes/group_order_team_store.html' %}
 
             <div class="form-section" id="fanWearSection">
-                <h2>Family &amp; Fan Wear</h2>
-                <p class="form-hint">Offer extra styles besides the jersey, like tees, hoodies, and cute matching looks for family and friends. Check both youth and adult if both ages will order. Leave this empty for a uniform-only store.</p>
+                <h2><span data-copy="team">Family &amp; Fan Wear</span><span data-copy="general">Styles to Offer</span></h2>
+                <p class="form-hint" data-copy="team">Offer extra styles besides the jersey, like tees, hoodies, and cute matching looks for family and friends. Check both youth and adult if both ages will order. Leave this empty for a uniform-only store.</p>
+                <p class="form-hint" data-copy="general">Check the styles your group can order. If kids and grown-ups are both ordering, check the youth and adult versions so everyone can match.</p>
+                <p class="wizard-inline-error" id="stylesError" role="alert" hidden>Pick at least one style to continue.</p>
                 {% if products %}
                 {% include 'includes/catalog_filter.html' %}
                 <div class="product-checkboxes">
@@ -93,7 +100,7 @@
             {# Always restrict options - hidden field so form handler still receives it #}
             <input type="hidden" name="restrict_options" value="on">
 
-            <div class="form-section">
+            <div class="form-section" id="choicesSection">
                 <h2>Your Choices for This Group Order</h2>
                 <p class="form-hint">Set up colors, designs, placements, and back options. Your team will only see what you allow.</p>
 
@@ -101,8 +108,8 @@
                     <div class="organizer-block-label">
                         <span class="organizer-step">1</span>
                         <div>
-                            <strong>What colors can shoppers choose for fan wear?</strong>
-                            <p class="form-hint" style="margin:0">These are separate from the Home and Away uniform colors. Each shirt you checked shows its own colors. Leave a shirt with nothing picked to offer every color it comes in.</p>
+                            <strong>What colors can shoppers choose<span data-copy="team"> for fan wear</span>?</strong>
+                            <p class="form-hint" style="margin:0"><span data-copy="team">These are separate from the Home and Away uniform colors. </span>Each shirt you checked shows its own colors. Leave a shirt with nothing picked to offer every color it comes in.</p>
                         </div>
                     </div>
                     {% include 'includes/group_order_color_picker.html' %}
@@ -114,7 +121,8 @@
                         <span class="organizer-step">2</span>
                         <div>
                             <strong>What design goes on the front?</strong>
-                            <p class="form-hint" style="margin:0">Upload the jersey logo. If Home and Away need different files, upload both, then mark them in Player Uniforms above. Add extra matching designs so family and fans can represent without wearing the exact jersey graphic.</p>
+                            <p class="form-hint" style="margin:0" data-copy="team">Upload the jersey logo. The first one you upload goes on the Home jersey. If Away needs a different file, upload both, then go back to Styles to pick which goes on each jersey. Add extra matching designs so family and fans can represent without wearing the exact jersey graphic.</p>
+                            <p class="form-hint" style="margin:0" data-copy="general">Upload your logo or design. You can add a few if you'd like to give people options.</p>
                         </div>
                     </div>
                     <div class="collection-upload-area" id="uploadArea" role="button" tabindex="0"
@@ -172,7 +180,7 @@
                         <span class="organizer-step">4</span>
                         <div>
                             <strong>Do you want anything on the back?</strong>
-                            <p class="form-hint" style="margin:0">Choose what (if anything) team members can add to the back of the shirt.</p>
+                            <p class="form-hint" style="margin:0">Choose what (if anything) people can add to the back of the shirt.</p>
                         </div>
                     </div>
                     <div class="placement-checkboxes">
@@ -287,8 +295,8 @@
                 </div>
             </div>
             
-            <div class="form-section">
-                <h2>Settings</h2>
+            <div class="form-section" id="settingsSection">
+                <h2>Pickup &amp; Sharing</h2>
                 
                 <div class="form-group">
                     <label for="order_opens_at">Orders open (optional)</label>
@@ -339,6 +347,7 @@
                         <label for="visibility_public">Public. Show it on the homepage and the Group Orders page.</label>
                     </div>
                 </fieldset>
+                {% include 'includes/group_order_card_title_field.html' %}
 
                 <div class="form-check">
                     <input type="checkbox" id="password_protected" name="password_protected">
@@ -357,8 +366,18 @@
                 </div>
                 {% endif %}
             </div>
-            
-            <button type="submit" class="btn btn-primary btn-lg" id="createGroupOrderBtn">Create Group Order</button>
+
+            <div class="form-section wizard-review" id="wizardReview" hidden>
+                <h2>Quick check</h2>
+                <p class="form-hint">Here's your group order at a glance. Tap Edit to change anything.</p>
+                <dl class="wizard-review-list" id="wizardReviewList"></dl>
+            </div>
+
+            <div class="wizard-nav" id="wizardNav">
+                <button type="button" class="btn btn-outline" id="wizardBack" hidden>Back</button>
+                <button type="button" class="btn btn-primary btn-lg" id="wizardNext" hidden>Next</button>
+                <button type="submit" class="btn btn-primary btn-lg" id="createGroupOrderBtn">Create Group Order</button>
+            </div>
         </form>
     </div>
 </div>
@@ -457,6 +476,268 @@ document.querySelectorAll('input[name="back_design_font"]').forEach(function(r) 
 });
 
 updateBackPreview(); // initial render
+</script>
+
+<script>
+function initGroupOrderWizard() {
+    var form = document.getElementById('createGroupOrderForm');
+    if (!form || form.dataset.wizard === 'on') return;
+    form.dataset.wizard = 'on';
+
+    var STEP_DEFS = [
+        { key: 'type', label: 'Group type', ids: ['groupTemplatePicker'] },
+        { key: 'details', label: 'Name & details', ids: ['basicInfoSection'] },
+        { key: 'styles', label: 'Styles', ids: ['playerUniformsSection', 'fanWearSection'] },
+        { key: 'design', label: 'Colors & logo', ids: ['choicesSection'] },
+        { key: 'sharing', label: 'Pickup & sharing', ids: ['settingsSection', 'wizardReview'] },
+    ];
+    var steps = STEP_DEFS.map(function (def) {
+        return {
+            key: def.key,
+            label: def.label,
+            els: def.ids.map(function (id) { return document.getElementById(id); }).filter(Boolean),
+        };
+    }).filter(function (step) { return step.els.length; });
+    if (steps.length < 2) return;
+
+    var nav = document.getElementById('wizardSteps');
+    var list = document.getElementById('wizardStepList');
+    var progress = document.getElementById('wizardProgress');
+    var backBtn = document.getElementById('wizardBack');
+    var nextBtn = document.getElementById('wizardNext');
+    var submitBtn = document.getElementById('createGroupOrderBtn');
+    var review = document.getElementById('wizardReview');
+    var reviewList = document.getElementById('wizardReviewList');
+    var stylesError = document.getElementById('stylesError');
+    var kindField = document.getElementById('groupKindField');
+    var uniformSection = document.getElementById('playerUniformsSection');
+    var uniformToggle = document.getElementById('uniform_enabled');
+    var current = 0;
+    var furthest = 0;
+
+    form.classList.add('is-wizard');
+    nav.hidden = false;
+    if (review) review.hidden = false;
+
+    steps.forEach(function (step, i) {
+        var li = document.createElement('li');
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'wizard-step';
+        var num = document.createElement('span');
+        num.className = 'wizard-step-num';
+        num.textContent = String(i + 1);
+        var label = document.createElement('span');
+        label.className = 'wizard-step-label';
+        label.textContent = step.label;
+        btn.appendChild(num);
+        btn.appendChild(label);
+        btn.addEventListener('click', function () {
+            if (i <= current) { show(i); return; }
+            if (i <= furthest && validate(current)) show(i);
+        });
+        li.appendChild(btn);
+        list.appendChild(li);
+        step.button = btn;
+    });
+
+    function stepOf(el) {
+        for (var i = 0; i < steps.length; i++) {
+            if (steps[i].els.some(function (section) { return section.contains(el); })) return i;
+        }
+        return -1;
+    }
+
+    function isShown(el) {
+        return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+    }
+
+    function validate(i) {
+        var step = steps[i];
+        var fields = [];
+        step.els.forEach(function (section) {
+            fields = fields.concat(Array.prototype.slice.call(section.querySelectorAll('input, select, textarea')));
+        });
+        for (var f = 0; f < fields.length; f++) {
+            var field = fields[f];
+            if (field.disabled || !isShown(field)) continue;
+            if (!field.checkValidity()) {
+                field.reportValidity();
+                return false;
+            }
+        }
+        if (step.key === 'styles') {
+            var picked = form.querySelectorAll('input[name="products"]:checked').length;
+            var uniforms = uniformToggle && uniformToggle.checked;
+            if (!picked && !uniforms) {
+                if (stylesError) {
+                    stylesError.hidden = false;
+                    stylesError.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                }
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function scrollToForm() {
+        var top = form.getBoundingClientRect().top + window.scrollY - 100;
+        window.scrollTo({ top: Math.max(top, 0), behavior: 'instant' });
+    }
+
+    function show(i, opts) {
+        current = Math.max(0, Math.min(i, steps.length - 1));
+        furthest = Math.max(furthest, current);
+        steps.forEach(function (step, n) {
+            step.els.forEach(function (section) { section.classList.toggle('wizard-off', n !== current); });
+            step.button.classList.toggle('is-current', n === current);
+            step.button.classList.toggle('is-done', n < current || (n <= furthest && n !== current));
+            step.button.disabled = n > furthest;
+            if (n === current) step.button.setAttribute('aria-current', 'step');
+            else step.button.removeAttribute('aria-current');
+        });
+        var last = current === steps.length - 1;
+        progress.textContent = 'Step ' + (current + 1) + ' of ' + steps.length + ': ' + steps[current].label;
+        backBtn.hidden = current === 0;
+        nextBtn.hidden = last;
+        if (!last) nextBtn.textContent = 'Next: ' + steps[current + 1].label;
+        submitBtn.hidden = !last;
+        if (last) buildReview();
+        if (!opts || opts.scroll !== false) scrollToForm();
+    }
+
+    function next() {
+        if (!validate(current)) return;
+        show(current + 1);
+    }
+
+    nextBtn.addEventListener('click', next);
+    backBtn.addEventListener('click', function () { show(current - 1); });
+    form.addEventListener('click', function (event) {
+        var skip = event.target.closest('[data-wizard-next]');
+        if (skip) { event.preventDefault(); next(); return; }
+        var link = event.target.closest('a[href^="#"]');
+        if (!link) return;
+        var target = document.getElementById(link.getAttribute('href').slice(1));
+        var n = target ? stepOf(target) : -1;
+        if (n === -1) return;
+        event.preventDefault();
+        show(n, { scroll: false });
+        target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
+
+    form.addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter' || current === steps.length - 1) return;
+        var el = event.target;
+        if (el.tagName === 'TEXTAREA' || el.tagName === 'BUTTON' || el.tagName === 'A') return;
+        if (el.tagName === 'INPUT' && /^(checkbox|radio|file)$/.test(el.type)) {
+            event.preventDefault();
+            return;
+        }
+        if (el.tagName === 'INPUT' || el.tagName === 'SELECT') {
+            event.preventDefault();
+            next();
+        }
+    });
+
+    submitBtn.addEventListener('click', function (event) {
+        if (form.checkValidity()) return;
+        var invalid = form.querySelector(':invalid:not(fieldset)');
+        if (!invalid) return;
+        event.preventDefault();
+        var n = stepOf(invalid);
+        if (n !== -1) show(n, { scroll: false });
+        invalid.reportValidity();
+    });
+
+    document.addEventListener('change', function (event) {
+        if (stylesError && event.target && (event.target.name === 'products' || event.target.id === 'uniform_enabled')) {
+            stylesError.hidden = true;
+        }
+    });
+
+    var templateData = {};
+    try {
+        JSON.parse((document.getElementById('groupTemplateData') || {}).textContent || '[]')
+            .forEach(function (t) { templateData[t.key] = t; });
+    } catch (e) { templateData = {}; }
+
+    function applyTemplateLayout(template) {
+        if (kindField) kindField.classList.toggle('is-not-needed', !!template);
+        var wantsUniforms = !template || !!template.uniforms;
+        if (uniformSection) uniformSection.classList.toggle('is-not-needed', !wantsUniforms);
+        if (!wantsUniforms && uniformToggle && uniformToggle.checked) {
+            uniformToggle.checked = false;
+            uniformToggle.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+
+    document.addEventListener('grouptemplate:applied', function (event) {
+        applyTemplateLayout(event.detail);
+    });
+    var preset = form.querySelector('input[name="group_template"]:checked');
+    applyTemplateLayout(preset ? templateData[preset.value] : null);
+
+    function labelFor(input) {
+        if (!input) return '';
+        var label = input.closest('label');
+        var text = label && (label.querySelector('strong') || label.querySelector('span:not([aria-hidden])'));
+        return (text ? text.textContent : (label ? label.textContent : input.value)).trim();
+    }
+
+    function buildReview() {
+        if (!reviewList) return;
+        var rows = [];
+        var template = form.querySelector('input[name="group_template"]:checked');
+        var kind = form.querySelector('input[name="group_kind"]:checked');
+        rows.push(['Group type', template ? labelFor(template) : (kind ? labelFor(kind) : 'Not picked yet'), 'type']);
+        var name = (document.getElementById('name') || {}).value || '';
+        rows.push(['Name', name.trim() || 'Not added yet', 'details']);
+        var picked = form.querySelectorAll('input[name="products"]:checked').length;
+        var styles = picked + ' style' + (picked === 1 ? '' : 's');
+        if (uniformToggle && uniformToggle.checked) styles = 'Player uniforms + ' + styles;
+        rows.push(['Styles', styles, 'styles']);
+        var colors = form.querySelectorAll('input[name="allowed_colors"]:checked').length;
+        rows.push(['Colors', colors ? colors + ' color' + (colors === 1 ? '' : 's') + ' picked' : 'Every color each style comes in', 'design']);
+        var logos = form.querySelectorAll('#uploadPreview .upload-preview-item').length
+            + form.querySelectorAll('input[name=allowed_designs]:checked').length;
+        rows.push(['Logos', logos ? logos + ' added' : 'None yet. Shoppers can upload their own.', 'design']);
+        var back = form.querySelector('input[name="back_design_type"]:checked');
+        rows.push(['Back of shirt', back ? labelFor(back) : 'Front only', 'design']);
+
+        reviewList.innerHTML = '';
+        rows.forEach(function (row) {
+            var wrap = document.createElement('div');
+            wrap.className = 'wizard-review-row';
+            var dt = document.createElement('dt');
+            dt.textContent = row[0];
+            var dd = document.createElement('dd');
+            var value = document.createElement('span');
+            value.textContent = row[1];
+            dd.appendChild(value);
+            var n = steps.findIndex(function (s) { return s.key === row[2]; });
+            if (n !== -1) {
+                var edit = document.createElement('button');
+                edit.type = 'button';
+                edit.className = 'wizard-review-edit';
+                edit.textContent = 'Edit';
+                edit.setAttribute('aria-label', 'Edit ' + row[0].toLowerCase());
+                edit.addEventListener('click', function () { show(n); });
+                dd.appendChild(edit);
+            }
+            wrap.appendChild(dt);
+            wrap.appendChild(dd);
+            reviewList.appendChild(wrap);
+        });
+    }
+
+    show(0, { scroll: false });
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGroupOrderWizard);
+} else {
+    initGroupOrderWizard();
+}
 </script>
 
 <style>
@@ -699,6 +980,62 @@ updateBackPreview(); // initial render
 .coll-back-preview-name  { font-size: 1.5rem; font-weight: 700; letter-spacing: 0.06em; line-height: 1.1; }
 .coll-back-preview-number { font-size: 3rem; font-weight: 700; line-height: 1; }
 
+/* Step-by-step setup */
+.wizard-off, .is-not-needed { display: none !important; }
+.wizard-steps { margin-bottom: 1.5rem; }
+.wizard-steps[hidden] { display: none; }
+.wizard-progress {
+    margin: 0 0 0.6rem; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--terra-cotta, #b87c6f);
+}
+.wizard-steps ol {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 0.4rem;
+    list-style: none; margin: 0; padding: 0;
+}
+.wizard-step {
+    width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem;
+    padding: 0.55rem 0 0; border: 0; border-top: 4px solid var(--border-color, #e6ddd0);
+    background: none; color: var(--text-secondary); font: inherit; font-size: 0.8rem;
+    text-align: left; cursor: pointer;
+}
+.wizard-step:disabled { cursor: default; opacity: 0.6; }
+.wizard-step.is-done { border-top-color: rgba(184, 124, 111, 0.55); color: var(--text-primary); }
+.wizard-step.is-current { border-top-color: var(--terra-cotta, #b87c6f); color: var(--text-primary); font-weight: 700; }
+.wizard-step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%; font-size: 0.72rem; font-weight: 700;
+    background: var(--secondary-color, #f4efe9); color: var(--text-secondary);
+}
+.wizard-step.is-done .wizard-step-num,
+.wizard-step.is-current .wizard-step-num { background: var(--terra-cotta, #b87c6f); color: #fff; }
+.wizard-nav { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.collection-form.is-wizard .wizard-nav {
+    position: sticky; bottom: 0; z-index: 5;
+    margin: 0 -0.5rem; padding: 0.85rem 0.5rem;
+    background: linear-gradient(to top, var(--background-color, #fdfbf8) 75%, rgba(253, 251, 248, 0));
+}
+.wizard-nav [hidden] { display: none !important; }
+.wizard-nav #wizardNext, .wizard-nav #createGroupOrderBtn { margin-left: auto; }
+.wizard-inline-error {
+    margin: 0 0 1rem; padding: 0.7rem 0.9rem; border-radius: 8px;
+    background: rgba(192, 57, 43, 0.08); border: 1px solid rgba(192, 57, 43, 0.3);
+    color: var(--text-primary); font-size: 0.9rem;
+}
+.wizard-inline-error[hidden] { display: none; }
+.wizard-review[hidden] { display: none; }
+.wizard-review-list { margin: 0; }
+.wizard-review-row {
+    display: grid; grid-template-columns: 8.5rem 1fr; gap: 0.75rem;
+    padding: 0.65rem 0; border-top: 1px solid var(--border-color, #e6ddd0);
+}
+.wizard-review-row:first-child { border-top: 0; }
+.wizard-review-row dt { font-weight: 700; font-size: 0.9rem; }
+.wizard-review-row dd { margin: 0; display: flex; justify-content: space-between; gap: 0.75rem; font-size: 0.9rem; color: var(--text-secondary); }
+.wizard-review-edit {
+    flex-shrink: 0; border: 0; background: none; padding: 0; font: inherit; font-weight: 600;
+    color: var(--terra-cotta, #b87c6f); text-decoration: underline; cursor: pointer;
+}
+
 @media (max-width: 768px) {
     .admin-page { padding: 1rem 0 2.5rem; }
     .admin-header {
@@ -714,8 +1051,10 @@ updateBackPreview(); // initial render
     .form-actions .btn { width: 100%; }
     .form-actions .btn { justify-content: center; min-height: 48px; }
 }
-@media (max-width: 480px) {
-    .product-checkboxes { grid-template-columns: 1fr; }
+@media (max-width: 600px) {
+    .wizard-step-label { display: none; }
+    .wizard-review-row { grid-template-columns: 1fr; gap: 0.2rem; }
+    .product-checkbox-info { padding: 0.5rem 0.6rem 0.6rem; }
 }
 </style>
 {% include 'includes/group_order_logo_upload.js.html' %}

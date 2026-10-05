@@ -71,6 +71,7 @@ GROUP_TEMPLATES = [
         'blurb': 'Fan gear for players, parents, siblings, and coaches.',
         'kind': 'team',
         'back': 'name_number',
+        'uniforms': True,
         'name_placeholder': 'e.g., KC Thunder 10U Fan Gear',
         'description': (
             'Gear up for the season! Grab fan wear for players, parents, siblings, and grandparents. '
@@ -78,7 +79,7 @@ GROUP_TEMPLATES = [
         ),
         'tips': [
             'We turned on names and numbers for the back. You can change that in the back design step.',
-            'Need jerseys too? Turn on Player Uniforms in the section just below.',
+            'Need jerseys too? Turn on Player Uniforms in the Styles step.',
             'Matching hoodies keep the whole family warm at early games.',
         ],
         'watch': 'Set your deadline early so gear arrives before the first game.',

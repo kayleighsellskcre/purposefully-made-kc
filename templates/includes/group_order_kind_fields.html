@@ -1,5 +1,5 @@
 {% set _kind = (collection.group_kind if collection is defined and collection else none) or '' %}
-<div class="form-group">
+<div class="form-group group-kind-field" id="groupKindField">
     <span class="form-label-text">What kind of group is this?</span>
     <p class="form-hint" style="margin:0 0 0.65rem">This controls whether shoppers can send an order home with a child, and whether we ask for a grade.</p>
     <div class="group-kind-choices">

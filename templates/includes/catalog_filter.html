@@ -196,9 +196,14 @@
             const shown = visibleItems().length;
             const total = items.length;
             if (countEl) {
-                countEl.textContent = shown === total
+                let text = shown === total
                     ? total + ' item' + (total === 1 ? '' : 's')
                     : shown + ' of ' + total;
+                if (selectBtn) {
+                    const picked = document.querySelectorAll('input[name="products"]:checked').length;
+                    text += ' · ' + picked + ' picked';
+                }
+                countEl.textContent = text;
             }
             if (emptyEl) emptyEl.hidden = shown !== 0 || total === 0;
             if (btn) btn.classList.toggle('has-filters', selectedCount() > 0);
@@ -258,6 +263,12 @@
         }
 
         apply();
+
+        if (selectBtn) {
+            document.addEventListener('change', function (event) {
+                if (event.target && event.target.name === 'products') apply();
+            });
+        }
 
         document.addEventListener('catf:quick', function(e) {
             var d = e.detail || {};

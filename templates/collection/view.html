@@ -541,14 +541,17 @@
             <p>Optional apparel for players, family, and friends. Pick a style, then choose the jersey logo or a matching cute design. You do not have to use the same image as the uniform.</p>
             {% elif collection.restrict_options %}
             <p>Your organizer has chosen the options for this order. Pick your size and add to cart. Everyone stays matching!</p>
-            {% else %}
+            {% elif products|length > 6 %}
             <p>Choose your shirt. Filter by who it’s for, type, or brand, then tap to customize.</p>
+            {% else %}
+            <p>Choose your shirt, then tap to customize.</p>
             {% endif %}
         </div>
         {% if age_matching_note %}
         <p class="age-matching-note">{{ age_matching_note }}</p>
         {% endif %}
-        {% if products %}
+        {# Filters only help once there are more styles than fit on a screen or two. #}
+        {% if products|length > 6 %}
         <div id="quickFilterRow" style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;margin-bottom:1.25rem;"></div>
         {% include 'includes/catalog_filter.html' %}
         {% endif %}
@@ -559,7 +562,7 @@
         </div>
         {% elif collection.order_deadline %}
         <div style="max-width:700px;margin:0 auto 2rem;padding:0.65rem 1.25rem;background:rgba(184,124,111,0.08);border:1px solid rgba(184,124,111,0.25);border-radius:8px;color:var(--text-primary);text-align:center;font-size:0.92rem;">
-            🗓 <strong>Order deadline: {{ collection.order_deadline|kc_date }}</strong> — place your order before this date to be included.
+            🗓 <strong>Order deadline: {{ collection.order_deadline|kc_date }}</strong>. Place your order by then to be included.
         </div>
         {% elif collection.not_yet_open %}
         <div style="max-width:700px;margin:0 auto 2rem;padding:1.25rem 1.5rem;background:linear-gradient(135deg,rgba(184,124,111,0.08),rgba(184,124,111,0.04));border:1px solid rgba(184,124,111,0.3);border-radius:12px;color:var(--text-primary);text-align:center;">

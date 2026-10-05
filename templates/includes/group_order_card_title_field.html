@@ -1,0 +1,22 @@
+{# Short title for the public Group Orders card. Only matters for public stores. #}
+<div class="form-group" id="cardTitleField">
+    <label for="card_title">Name on the card</label>
+    <input type="text" id="card_title" name="card_title" class="form-control" maxlength="80"
+           value="{{ collection.card_title if collection is defined and collection.card_title else '' }}"
+           placeholder="Leave blank to use the group order name">
+    <small>This is the pretty title people see on the Group Orders page. You can keep it short, like “Riverview Spirit Wear”.</small>
+</div>
+<script>
+(function () {
+    var field = document.getElementById('cardTitleField');
+    var radios = document.querySelectorAll('input[name="visibility"]');
+    if (!field || !radios.length) return;
+    function sync() {
+        var picked = document.querySelector('input[name="visibility"]:checked');
+        field.hidden = !(picked && picked.value === 'public');
+    }
+    radios.forEach(function (radio) { radio.addEventListener('change', sync); });
+    sync();
+})();
+</script>
+<style>#cardTitleField[hidden] { display: none; }</style>

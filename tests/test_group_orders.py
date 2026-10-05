@@ -2,7 +2,7 @@
 import io
 import json
 
-from models import db, Collection, Product
+from models import db, Collection, Product, ProductColorVariant
 
 
 def _base_form(seed, **over):
@@ -859,7 +859,30 @@ def test_showcase_ignores_designs_not_in_allowed(admin_client, seed, app):
         assert json.loads(saved.showcase_design_ids or '[]') == []
 
 
-def test_group_order_filter_panel_starts_closed(client, seed):
+def test_small_group_store_skips_the_filters(client, seed):
+    html = client.get(f'/c/{seed["collection_slug"]}').get_data(as_text=True)
+    assert 'id="catalogFilter"' not in html
+    assert 'id="quickFilterRow"' not in html
+
+
+def test_group_order_filter_panel_starts_closed(client, seed, app):
+    with app.app_context():
+        collection = db.session.get(Collection, seed['collection_id'])
+        for n in range(7):
+            product = Product(
+                style_number=f'F{n}', name=f'Filler Tee {n}', category='Tee',
+                age_group='adult', base_price=30.0, is_active=True,
+                available_sizes=json.dumps(['M']), available_colors=json.dumps(['Black']),
+            )
+            db.session.add(product)
+            db.session.flush()
+            db.session.add(ProductColorVariant(
+                product_id=product.id, color_name='Black', color_hex='#000000',
+                front_image_url='/static/img/logo.png',
+                size_inventory=json.dumps({'M': 10}),
+            ))
+            collection.products.append(product)
+        db.session.commit()
     html = client.get(f'/c/{seed["collection_slug"]}').get_data(as_text=True)
     assert 'id="catalogFilterPanel" hidden' in html
     assert 'aria-expanded="false"' in html

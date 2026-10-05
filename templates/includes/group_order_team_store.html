@@ -1,5 +1,5 @@
 {% set _uniform = (team_store or {}).get('uniform', {}) %}
-<div class="form-section team-store-setup">
+<div class="form-section team-store-setup" id="playerUniformsSection">
     <input type="hidden" name="team_store_present" value="1">
     <span class="team-store-eyebrow">Optional</span>
     <h2>Player Uniforms</h2>
@@ -63,7 +63,7 @@
                 <label>Home jersey logo</label>
                 <p class="form-hint">Applied automatically. Players only pick size and name/number.</p>
                 <div id="homeLogoOptions" class="jersey-logo-options"></div>
-                <p class="form-hint uniform-logo-empty" id="homeLogoEmpty">Upload logos in the design section below, then pick the Home jersey image here.</p>
+                <p class="form-hint uniform-logo-empty" id="homeLogoEmpty">Upload logos in the design step. The first one goes on the Home jersey, and you can change it here.</p>
                 <input type="hidden" name="uniform_home_design_id" id="uniform_home_design_id"
                        value="{{ _uniform.get('home_design_id') or '' }}">
             </div>
@@ -90,6 +90,8 @@
 
 <style>
 .team-store-setup { border: 2px solid rgba(184,124,111,.28); }
+.collection-form:not(.has-uniforms) [data-copy="team"],
+.collection-form.has-uniforms [data-copy="general"] { display:none !important; }
 .team-store-eyebrow {
     color: var(--terra-cotta, #b87c6f); font-size:.72rem; font-weight:800;
     letter-spacing:.12em; text-transform:uppercase;
@@ -278,6 +280,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function syncUniform(initial) {
         fields.hidden = !enabled.checked;
+        const form = enabled.closest('form');
+        if (form) form.classList.toggle('has-uniforms', enabled.checked);
         [product, youth, home, away, fanPersonalization].forEach(function(el) {
             if (el) el.disabled = !enabled.checked;
         });
