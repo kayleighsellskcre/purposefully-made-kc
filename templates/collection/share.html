@@ -13,7 +13,11 @@
                 <button type="button" class="btn btn-primary" onclick="copyLink(this)">Copy Link</button>
             </div>
 
+            {% if organizer_pays %}
+            <p class="share-hint">Anyone with this link can send in their name and size. Nobody is asked to pay. You pay once for the whole group when you're ready.</p>
+            {% else %}
             <p class="share-hint">Anyone with this link can view and order from this group order.</p>
+            {% endif %}
 
             {# QR Code #}
             <div class="qr-section">
@@ -34,7 +38,7 @@
             <a href="{{ url_for('shop.edit_group_order', slug=collection.slug) }}" class="btn btn-outline" style="margin-left:0.5rem;">Edit store</a>
             {% endif %}
 
-            {% if can_manage %}
+            {% if can_manage and not organizer_pays %}
             <div class="export-bar">
                 <a href="{{ url_for('collection.export_xlsx', slug=collection.slug) }}"
                    class="btn btn-export" title="Download Excel spreadsheet of all orders for this group">
@@ -51,6 +55,80 @@
             </div>
             {% endif %}
         </div>
+
+        {% if roster %}
+        <div class="roster-card" id="roster">
+            <h2>Sizes so far</h2>
+            <p class="roster-count">
+                {% if roster.expected %}<strong>{{ roster.count }} of {{ roster.expected }}</strong> responded
+                {% else %}<strong>{{ roster.count }}</strong> {{ 'person has' if roster.count == 1 else 'people have' }} responded{% endif %}
+            </p>
+            {% if roster.expected %}
+            <div class="roster-bar" aria-hidden="true"><span style="width: {{ [100, (roster.count * 100 / roster.expected)|round|int]|min }}%"></span></div>
+            {% endif %}
+
+            {% if roster_problem %}
+            <p class="roster-warning">{{ roster_problem }} <a href="{{ url_for('shop.edit_group_order', slug=collection.slug) }}">Edit the group order</a></p>
+            {% elif roster_item %}
+            <p class="roster-item">Everyone gets the <strong>{{ roster_item.product|display_name }}</strong> in <strong>{{ roster_item.color }}</strong>{% if roster_item.design %} with <strong>{{ roster_item.design.title }}</strong>{% endif %}.</p>
+            {% if extra_logos %}
+            <p class="roster-note">This group order has more than one logo. Only {{ roster_item.design.title }} will be printed. <a href="{{ url_for('shop.edit_group_order', slug=collection.slug) }}">Edit</a> to change it.</p>
+            {% endif %}
+            {% endif %}
+
+            {% if roster.size_counts %}
+            <ul class="roster-sizes" aria-label="Count by size">
+                {% for size, n in roster.size_counts.items() %}
+                <li><span>{{ size }}</span> {{ n }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+
+            {% if roster.entries %}
+            <div class="roster-table-wrap">
+                <table class="roster-table">
+                    <thead><tr><th>#</th><th>Name</th><th>Size</th>{% if not roster.closed %}<th><span class="sr-only">Remove</span></th>{% endif %}</tr></thead>
+                    <tbody>
+                    {% for e in roster.entries %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ e.full_name }}</td>
+                        <td>{{ e.size }}</td>
+                        {% if not roster.closed %}
+                        <td class="roster-remove">
+                            <form method="POST" action="{{ url_for('collection.roster_remove', slug=collection.slug, entry_id=e.id) }}" onsubmit='return confirm({{ ("Remove " ~ e.full_name ~ " from the list?")|tojson }})'>
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="roster-remove-btn" aria-label="Remove {{ e.full_name }}">Remove</button>
+                            </form>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="share-hint">No sizes yet. Share the link above and they will show up here as people respond.</p>
+            {% endif %}
+
+            <div class="roster-actions">
+                {% if roster.entries %}
+                <a href="{{ url_for('collection.roster_xlsx', slug=collection.slug) }}" class="btn btn-outline">Download spreadsheet</a>
+                {% endif %}
+                {% if roster.closed %}
+                <p class="roster-paid">The order for this group has been placed. Thank you!</p>
+                {% elif roster.entries and roster_item %}
+                <form method="POST" action="{{ url_for('collection.roster_pay', slug=collection.slug) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-primary">Pay for the group ({{ roster.count }} {{ 'shirt' if roster.count == 1 else 'shirts' }})</button>
+                </form>
+                {% endif %}
+            </div>
+            {% if not roster.closed and roster.entries %}
+            <p class="roster-note">When you pay, the link stops taking new sizes.</p>
+            {% endif %}
+        </div>
+        {% endif %}
 
         {% if can_manage and designs %}
         <div class="manage-designs-card">
@@ -107,6 +185,33 @@
 .qr-actions { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
 .btn-sm { padding: 0.45rem 1rem; font-size: 0.85rem; }
 .qr-hint { font-size: 0.8rem; color: var(--text-secondary); margin: 0; }
+.roster-card { max-width: 560px; margin: 2rem auto 0; background: #fff; padding: 2rem 2.5rem 2.25rem; border-radius: var(--border-radius); box-shadow: var(--box-shadow); }
+.roster-card h2 { font-family: var(--font-heading); font-size: 1.25rem; margin-bottom: 0.4rem; }
+.roster-count { font-size: 1.05rem; margin: 0 0 0.6rem; }
+.roster-bar { height: 8px; background: var(--secondary-color, #f1ebe3); border-radius: 999px; overflow: hidden; margin-bottom: 1rem; }
+.roster-bar span { display: block; height: 100%; background: var(--terra-cotta, #b87c6f); }
+.roster-item { font-size: 0.92rem; margin: 0 0 0.75rem; }
+.roster-note { font-size: 0.82rem; color: var(--text-secondary); margin: 0.5rem 0 0; }
+.roster-warning { font-size: 0.9rem; background: rgba(192,57,43,0.08); color: #a5281b; padding: 0.7rem 0.9rem; border-radius: 8px; }
+.roster-sizes { list-style: none; padding: 0; margin: 0 0 1rem; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.roster-sizes li { font-size: 0.85rem; background: var(--secondary-color, #faf7f4); border: 1px solid var(--border-color); border-radius: 999px; padding: 0.2rem 0.65rem; }
+.roster-sizes li span { font-weight: 700; margin-right: 0.15rem; }
+.roster-table-wrap { max-height: 420px; overflow: auto; border: 1px solid var(--border-color); border-radius: 8px; }
+.roster-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.roster-table th, .roster-table td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+.roster-table th { position: sticky; top: 0; background: #fff; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); }
+.roster-table tr:last-child td { border-bottom: none; }
+.roster-table td:first-child { color: var(--text-secondary); width: 2.5rem; }
+.roster-remove { text-align: right; }
+.roster-remove-btn { background: none; border: none; color: #c0392b; font-size: 0.8rem; cursor: pointer; padding: 0.2rem 0.4rem; border-radius: 4px; }
+.roster-remove-btn:hover { background: rgba(192,57,43,0.08); }
+.roster-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin-top: 1.25rem; }
+.roster-actions form { margin: 0; }
+.roster-paid { margin: 0; font-weight: 600; color: #1e8449; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+@media (max-width: 600px) {
+    .roster-card, .share-card, .manage-designs-card { padding: 1.5rem 1.1rem; }
+}
 .export-bar { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); }
 .btn-export { display: inline-flex; align-items: center; background: #1D6F42; color: #fff; border: none; padding: 0.65rem 1.4rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; text-decoration: none; transition: background 0.2s; }
 .btn-export:hover { background: #155734; color: #fff; }

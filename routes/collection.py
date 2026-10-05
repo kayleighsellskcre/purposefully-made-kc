@@ -71,6 +71,10 @@ def view(slug):
         if not session.get(f'collection_{collection.id}_access'):
             return redirect(url_for('collection.password', slug=slug))
     
+    from utils.group_roster import is_organizer_pays
+    if is_organizer_pays(collection):
+        return _roster_form(collection)
+
     # Check if deadline has passed — show warning but still allow viewing
     from utils.group_orders import (
         allowed_colors_for_product,
@@ -190,6 +194,172 @@ def view(slug):
                          catalog_filter_opts=filter_opts)
 
 
+# ── Organizer pays: the link collects name + size only ──────────────────────
+
+def _roster_form(collection, error=None, form=None, status=200):
+    """One-screen size form for an organizer-pays group order."""
+    from utils.group_orders import is_deadline_passed, is_not_yet_open, user_can_manage_collection
+    from utils.group_roster import roster_closed, roster_item
+
+    # Parents never shop here, so never pin this store to their session.
+    session.pop('collection_id', None)
+    item = roster_item(collection)
+    thanks = session.pop(f'roster_thanks_{collection.id}', None)
+    closed_reason = None
+    if roster_closed(collection):
+        closed_reason = 'This order is closed. Sizes have already been sent in.'
+    elif is_deadline_passed(collection):
+        closed_reason = 'This order is closed. The deadline to send in sizes has passed.'
+    elif is_not_yet_open(collection):
+        from utils.group_orders import format_schedule_date
+        closed_reason = (
+            'This order opens on '
+            f'{format_schedule_date(collection.order_opens_at)}. Check back then to send in your size.'
+        )
+    elif item is None:
+        closed_reason = 'This order is not quite ready yet. Please check back soon.'
+    return render_template(
+        'collection/roster_form.html',
+        collection=collection,
+        item=item,
+        thanks=thanks,
+        closed_reason=closed_reason,
+        error=error,
+        form=form or {},
+        can_manage=user_can_manage_collection(collection),
+    ), status
+
+
+def _rate_limit_roster(view):
+    from utils.rate_limit import rate_limit
+    return rate_limit("60 per hour")(view)
+
+
+@collection_bp.route('/<slug>/roster', methods=['POST'])
+@_rate_limit_roster
+def roster_submit(slug):
+    """Save one person's name + size. No account, no cart, no payment."""
+    from models import GroupRosterEntry
+    from utils.group_orders import is_deadline_passed, is_not_yet_open
+    from utils.group_roster import is_organizer_pays, roster_closed, roster_item, validate_submission
+
+    collection = Collection.query.filter_by(slug=slug, is_active=True).first_or_404()
+    if not is_organizer_pays(collection):
+        return redirect(url_for('collection.view', slug=slug))
+    if collection.is_password_protected and not session.get(f'collection_{collection.id}_access'):
+        return redirect(url_for('collection.password', slug=slug))
+
+    # Honeypot: real people never see this field.
+    if (request.form.get('website') or '').strip():
+        return redirect(url_for('collection.view', slug=slug))
+
+    item = roster_item(collection)
+    if (
+        item is None
+        or roster_closed(collection)
+        or is_deadline_passed(collection)
+        or is_not_yet_open(collection)
+    ):
+        return redirect(url_for('collection.view', slug=slug))
+
+    cleaned, error = validate_submission(request.form, item)
+    if error:
+        return _roster_form(collection, error=error, form=request.form, status=400)
+    first, last, size = cleaned
+    entry = GroupRosterEntry(
+        collection_id=collection.id, first_name=first, last_name=last, size=size,
+    )
+    db.session.add(entry)
+    db.session.commit()
+    session[f'roster_thanks_{collection.id}'] = {
+        'name': entry.full_name, 'size': entry.size,
+    }
+    return redirect(url_for('collection.view', slug=slug) + '#roster-thanks')
+
+
+def _managed_roster_collection(slug):
+    """Organizer-pays store the current user may manage, or None."""
+    from utils.group_orders import user_can_manage_collection
+    from utils.group_roster import is_organizer_pays
+
+    collection = Collection.query.filter_by(slug=slug).first_or_404()
+    if not is_organizer_pays(collection) or not user_can_manage_collection(collection):
+        return None
+    return collection
+
+
+@collection_bp.route('/<slug>/roster.xlsx')
+@login_required
+def roster_xlsx(slug):
+    from utils.group_roster import roster_xlsx as build_xlsx
+
+    collection = _managed_roster_collection(slug)
+    if not collection:
+        from flask import abort
+        abort(404)
+    safe_name = slug.replace('/', '_').replace(' ', '_')
+    return Response(
+        build_xlsx(collection),
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': f'attachment; filename="roster_{safe_name}.xlsx"'},
+    )
+
+
+@collection_bp.route('/<slug>/roster/<int:entry_id>/remove', methods=['POST'])
+@login_required
+def roster_remove(slug, entry_id):
+    """Let the organizer remove a duplicate or mistaken line before paying."""
+    from models import GroupRosterEntry
+    from utils.group_roster import roster_closed
+
+    collection = _managed_roster_collection(slug)
+    if not collection:
+        from flask import abort
+        abort(404)
+    if roster_closed(collection):
+        flash('This order has already been placed, so the list can no longer change.', 'error')
+        return redirect(url_for('collection.share', slug=slug))
+    entry = GroupRosterEntry.query.filter_by(id=entry_id, collection_id=collection.id).first_or_404()
+    name = entry.full_name
+    db.session.delete(entry)
+    db.session.commit()
+    flash(f'Removed {name} from the list.', 'success')
+    return redirect(url_for('collection.share', slug=slug) + '#roster')
+
+
+@collection_bp.route('/<slug>/roster/pay', methods=['POST'])
+@login_required
+def roster_pay(slug):
+    """Put the whole roster in the organizer's cart and send them to checkout."""
+    from utils.cart_store import save_cart
+    from utils.group_roster import build_roster_cart, roster_closed, roster_entries, roster_item
+
+    collection = _managed_roster_collection(slug)
+    if not collection:
+        from flask import abort
+        abort(404)
+    if not collection.is_active:
+        flash('This group order is turned off. Turn it back on to place the order.', 'error')
+        return redirect(url_for('collection.share', slug=slug))
+    if roster_closed(collection):
+        flash('The order for this group has already been placed.', 'info')
+        return redirect(url_for('collection.share', slug=slug))
+    item = roster_item(collection)
+    if item is None:
+        flash('Pick one shirt and one color for this group order before paying.', 'error')
+        return redirect(url_for('shop.edit_group_order', slug=slug))
+    entries = roster_entries(collection)
+    if not entries:
+        flash('No sizes have come in yet.', 'error')
+        return redirect(url_for('collection.share', slug=slug))
+
+    # Replace whatever was in the cart so the group order checks out on its own.
+    save_cart(build_roster_cart(collection, item, entries))
+    session['collection_id'] = collection.id
+    session.modified = True
+    return redirect(url_for('checkout.index'))
+
+
 @collection_bp.route('/<slug>/password', methods=['GET', 'POST'])
 def password(slug):
     """Password protection for collection"""
@@ -243,8 +413,24 @@ def share(slug):
         )
     )
 
+    roster = None
+    roster_item_info = None
+    roster_problem = None
+    extra_logos = 0
+    from utils.group_roster import (
+        extra_logo_count, is_organizer_pays, roster_item, roster_item_error, roster_summary,
+    )
+    if can_manage and is_organizer_pays(collection):
+        roster = roster_summary(collection)
+        roster_problem = roster_item_error(collection)
+        roster_item_info = None if roster_problem else roster_item(collection)
+        extra_logos = extra_logo_count(collection)
+
     return render_template('collection/share.html', collection=collection,
-                           designs=designs, can_manage=can_manage)
+                           designs=designs, can_manage=can_manage,
+                           organizer_pays=is_organizer_pays(collection),
+                           roster=roster, roster_item=roster_item_info,
+                           roster_problem=roster_problem, extra_logos=extra_logos)
 
 
 @collection_bp.route('/<slug>/design/<int:design_id>/delete', methods=['POST'])
