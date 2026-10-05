@@ -1022,7 +1022,25 @@ def customize(product_slug):
         _measure_artwork_fits([preset_design], current_app)
     if preset_back_design:
         _measure_artwork_fits([preset_back_design], current_app)
+    age_switch = []
+    if coll and catalog_section != 'uniform':
+        from utils.group_orders import store_age_family
+        from utils.product_filters import age_label
+        try:
+            age_switch = [
+                {
+                    'label': age_label(member),
+                    'url': url_for('shop.customize', product_slug=member.slug, catalog_section=catalog_section),
+                    'active': member.id == product.id,
+                }
+                for member in store_age_family(coll, product)
+            ]
+        except Exception:
+            current_app.logger.exception('Could not build age switch for product %s', product.id)
+            age_switch = []
     return render_template('shop/customize.html',
+                         age_switch=age_switch,
+                         group_color_key=f'pmkc-group-color-{coll.id}' if coll else '',
                          product=product,
                          available_sizes=available_sizes,
                          available_colors=available_colors,

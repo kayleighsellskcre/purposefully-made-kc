@@ -4,6 +4,11 @@
    (["p:<id>||Color", ...]). #}
 <div class="fan-color-picker" id="fanColorPicker">
     <p class="fan-color-empty" id="fanColorEmpty">Check a shirt above and its colors will show up here.</p>
+    <div class="fan-color-shades" id="fanColorShades" hidden aria-live="polite">
+        <strong>Check these colors side by side</strong>
+        <p>Brands name and dye their colors differently, so the same name can be a different shade.</p>
+        <ul id="fanColorShadeList"></ul>
+    </div>
     <div class="fan-color-cards" id="fanColorCards"></div>
 </div>
 <script type="application/json" id="fanColorData">{{ {'picker': fan_color_picker or {'palette': [], 'products': {}}, 'checked': fan_color_checked or []} | tojson }}</script>
@@ -39,6 +44,13 @@
 .choice-checkbox { display: flex; align-items: center; padding: 0.35rem 0.75rem; background: var(--secondary-color); border-radius: 8px; cursor: pointer; }
 .choice-checkbox input { margin-right: 0.5rem; }
 .color-swatch-dot { flex-shrink: 0; width: 1.05rem; height: 1.05rem; background-size: cover; background-position: center; margin-right: 0.45rem; border-radius: 50%; border: 1px solid rgba(58, 61, 72, 0.25); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35); }
+.fan-color-shades { margin: 0 0 0.75rem; padding: 0.8rem 1rem; border-radius: 10px; background: #fff8ec; border: 1px solid #ecd3a5; }
+.fan-color-shades[hidden] { display: none; }
+.fan-color-shades strong { display: block; margin-bottom: 0.2rem; }
+.fan-color-shades p { margin: 0 0 0.45rem; font-size: 0.82rem; color: var(--text-secondary); }
+.fan-color-shades ul { margin: 0; padding: 0; list-style: none; }
+.fan-color-shades li { display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem; margin: 0.3rem 0; font-size: 0.85rem; }
+.fan-color-shades .color-swatch-dot { margin-right: 0; }
 .color-swatch-dot--unknown { background: repeating-linear-gradient(45deg, #f1ece4, #f1ece4 3px, #ddd3c4 3px, #ddd3c4 6px); }
 </style>
 
@@ -74,6 +86,138 @@
                 ? picked + ' of ' + total + ' colors'
                 : (total === 1 ? '1 color' : 'All ' + total + ' colors');
             card.classList.toggle('has-picks', picked > 0);
+            checkShades();
+        }
+
+        // Shade differences (CIE76 delta E) big enough to notice side by side,
+        // and small enough to call two names the same shade.
+        var SAME_NAME_APART = 10;
+        var NEAR_SAME = 5;
+        var MAX_SHADE_NOTES = 8;
+
+        function hexToLab(hex) {
+            var m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+            if (!m) return null;
+            var n = parseInt(m[1], 16);
+            var rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(function(v) {
+                v /= 255;
+                return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+            });
+            function f(t) { return t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116; }
+            var x = f((rgb[0] * 0.4124 + rgb[1] * 0.3576 + rgb[2] * 0.1805) / 0.95047);
+            var y = f(rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722);
+            var z = f((rgb[0] * 0.0193 + rgb[1] * 0.1192 + rgb[2] * 0.9505) / 1.08883);
+            return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+        }
+
+        function deltaE(a, b) {
+            var dl = a[0] - b[0], da = a[1] - b[1], db = a[2] - b[2];
+            return Math.sqrt(dl * dl + da * da + db * db);
+        }
+
+        function cardColors(card) {
+            return Array.prototype.map.call(card.querySelectorAll('.choice-checkbox'), function(chip) {
+                return {
+                    name: chip.dataset.color,
+                    key: chip.dataset.color.toLowerCase(),
+                    hex: chip.dataset.hex || '',
+                    swatch: chip.dataset.swatch || '',
+                    picked: chip.querySelector('input').checked,
+                };
+            });
+        }
+
+        function shadeDot(color) {
+            var dot = document.createElement('span');
+            dot.className = 'color-swatch-dot';
+            dot.setAttribute('aria-hidden', 'true');
+            if (color.hex) dot.style.backgroundColor = color.hex;
+            if (color.swatch) dot.style.backgroundImage = 'url("' + color.swatch.replace(/["\\]/g, '') + '")';
+            return dot;
+        }
+
+        function checkShades() {
+            var box = document.getElementById('fanColorShades');
+            var listEl = document.getElementById('fanColorShadeList');
+            if (!box || !listEl) return;
+            var active = Object.keys(cards).map(function(pid) { return cards[pid]; })
+                .filter(function(card) { return !card.hidden && card.dataset.brand; });
+            var notes = [];
+            var seen = {};
+            active.forEach(function(a) {
+                var aPicked = cardColors(a).filter(function(c) { return c.picked; });
+                if (!aPicked.length) return;
+                active.forEach(function(b) {
+                    if (b.dataset.brand.toLowerCase() === a.dataset.brand.toLowerCase()) return;
+                    var bColors = cardColors(b);
+                    var bPicked = bColors.filter(function(c) { return c.picked; });
+                    var bByKey = {};
+                    bColors.forEach(function(c) { bByKey[c.key] = c; });
+                    aPicked.forEach(function(ca) {
+                        var labA = hexToLab(ca.hex);
+                        if (!labA) return;
+                        var same = bByKey[ca.key];
+                        if (same) {
+                            if (bPicked.length && !same.picked) return;
+                            var labSame = hexToLab(same.hex);
+                            if (!labSame) return;
+                            var sameD = deltaE(labA, labSame);
+                            if (sameD <= SAME_NAME_APART) return;
+                            var sameKey = 'same|' + [a.dataset.brand, b.dataset.brand].sort().join('|') + '|' + ca.key;
+                            if (!seen[sameKey]) {
+                                seen[sameKey] = true;
+                                var closer = null;
+                                var closerD = Math.min(SAME_NAME_APART, sameD / 2);
+                                bColors.forEach(function(cb) {
+                                    var lab = hexToLab(cb.hex);
+                                    if (!lab || cb.key === ca.key) return;
+                                    var d = deltaE(labA, lab);
+                                    if (d < closerD) { closerD = d; closer = cb; }
+                                });
+                                notes.push({ kind: 'same', a: ca, b: same, closer: closer, brandA: a.dataset.brand, brandB: b.dataset.brand });
+                            }
+                            return;
+                        }
+                        var best = null;
+                        var bestD = Infinity;
+                        bPicked.forEach(function(cb) {
+                            var lab = hexToLab(cb.hex);
+                            if (!lab) return;
+                            var d = deltaE(labA, lab);
+                            if (d < bestD) { bestD = d; best = cb; }
+                        });
+                        if (!best || bestD >= NEAR_SAME) return;
+                        var aliasKey = 'alias|' + [a.dataset.brand + ':' + ca.key, b.dataset.brand + ':' + best.key].sort().join('|');
+                        if (!seen[aliasKey]) {
+                            seen[aliasKey] = true;
+                            notes.push({ kind: 'alias', a: ca, b: best, brandA: a.dataset.brand, brandB: b.dataset.brand });
+                        }
+                    });
+                });
+            });
+            listEl.innerHTML = '';
+            notes.slice(0, MAX_SHADE_NOTES).forEach(function(note) {
+                var li = document.createElement('li');
+                li.appendChild(shadeDot(note.a));
+                li.appendChild(document.createTextNode(note.a.name + ' (' + note.brandA + ') and '));
+                li.appendChild(shadeDot(note.b));
+                li.appendChild(document.createTextNode(
+                    note.b.name + ' (' + note.brandB + ') ' +
+                    (note.kind === 'same' ? 'share a name but are different shades.' : 'are the same shade with different names.')
+                ));
+                if (note.closer) {
+                    li.appendChild(document.createTextNode(' Closer match: '));
+                    li.appendChild(shadeDot(note.closer));
+                    li.appendChild(document.createTextNode(note.closer.name + ' (' + note.brandB + ').'));
+                }
+                listEl.appendChild(li);
+            });
+            if (notes.length > MAX_SHADE_NOTES) {
+                var more = document.createElement('li');
+                more.textContent = 'And ' + (notes.length - MAX_SHADE_NOTES) + ' more.';
+                listEl.appendChild(more);
+            }
+            box.hidden = notes.length === 0;
         }
 
         function buildCard(productInput) {
@@ -89,6 +233,7 @@
             var card = document.createElement('details');
             card.className = 'fan-color-card';
             card.dataset.productId = pid;
+            card.dataset.brand = label ? (label.dataset.brand || label.dataset.brandRaw || '') : '';
 
             var head = document.createElement('summary');
             head.className = 'fan-color-card-head';
@@ -207,6 +352,8 @@
                 var chip = document.createElement('label');
                 chip.className = 'choice-checkbox';
                 chip.dataset.color = colorName;
+                chip.dataset.hex = hex || '';
+                chip.dataset.swatch = swatchImg || '';
                 var box = document.createElement('input');
                 box.type = 'checkbox';
                 box.name = 'allowed_colors';
@@ -263,6 +410,7 @@
             });
             var shown = Object.keys(cards).some(function(pid) { return !cards[pid].hidden; });
             if (emptyEl) emptyEl.hidden = shown;
+            checkShades();
             firstSync = false;
         }
 

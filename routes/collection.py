@@ -174,16 +174,20 @@ def view(slug):
         products.append(product)
 
     products = prepare_catalog(products)
+    filter_opts = catalog_filter_options(products)
+    from utils.group_orders import build_store_cards
+    products, age_matching_note = build_store_cards(products)
     showcase_designs = load_showcase_designs(collection)
     return render_template('collection/view.html',
                          collection=collection,
                          products=products,
+                         age_matching_note=age_matching_note,
                          team_store=store_config,
                          uniform_product=uniform_product,
                          uniform_products=uniform_products,
                          uniform_kits=uniform_kits,
                          showcase_designs=showcase_designs,
-                         catalog_filter_opts=catalog_filter_options(products))
+                         catalog_filter_opts=filter_opts)
 
 
 @collection_bp.route('/<slug>/password', methods=['GET', 'POST'])

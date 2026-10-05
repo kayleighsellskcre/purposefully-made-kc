@@ -429,6 +429,45 @@ def matching_age_styles(products):
     return twins
 
 
+def _age_of(product):
+    return getattr(product, 'display_age', None) or infer_age(product) or 'adult'
+
+
+def age_families(products):
+    """[[adult, youth, toddler, ...], [solo], ...] for one style offered in several ages.
+
+    Families keep the store order of their adult style. Kids styles without a
+    matching adult style stay on their own.
+    """
+    products = list(products or [])
+    twins = matching_age_styles(products)
+    by_id = {str(p.id): p for p in products}
+    parent = {}
+    for product in products:
+        if _age_of(product) == 'adult':
+            continue
+        for other_id, _label in twins.get(str(product.id), []):
+            if other_id in by_id:
+                parent[str(product.id)] = other_id
+                break
+    children = {}
+    for kid_id, adult_id in parent.items():
+        children.setdefault(adult_id, []).append(by_id[kid_id])
+    families = []
+    for product in products:
+        pid = str(product.id)
+        if pid in parent:
+            continue
+        members = [product] + children.get(pid, [])
+        members.sort(key=lambda m: _AGE_ORDER.get(_age_of(m), 9))
+        families.append(members)
+    return families
+
+
+def age_label(product):
+    return dict(_AGE_LABELS).get(_age_of(product), _age_of(product).title())
+
+
 def load_group_order_form_catalog():
     """Products and colors for create/edit group-order forms.
 

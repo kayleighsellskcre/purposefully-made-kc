@@ -420,6 +420,90 @@ def visible_store_products(collection):
     return products
 
 
+def _size_span(sizes):
+    sizes = [s for s in sizes or [] if s]
+    if len(sizes) > 2:
+        return f'{sizes[0]}\u2013{sizes[-1]}'
+    return ', '.join(sizes)
+
+
+def _carousel_color_set(product):
+    return {
+        (v.get('color_name') or '').strip().lower()
+        for v in getattr(product, 'carousel_colors', None) or []
+        if (v.get('color_name') or '').strip()
+    }
+
+
+def describe_age_family(members):
+    """Card facts for one style shown in several ages (members[0] leads)."""
+    from utils.product_filters import _age_of, age_label
+
+    lead = members[0]
+    lead_colors = _carousel_color_set(lead)
+    member_colors = [_carousel_color_set(m) for m in members]
+    shared = set.intersection(*member_colors) if member_colors else set()
+    prices = [
+        getattr(m, 'listed_price', None) if getattr(m, 'listed_price', None) is not None
+        else (m.base_price or 0)
+        for m in members
+    ]
+    return {
+        'labels': ' + '.join(age_label(m) for m in members),
+        'ages': ' '.join(_age_of(m) for m in members),
+        'sizes': ' \u00b7 '.join(
+            span for span in (_size_span(getattr(m, 'available_sizes_list', None)) for m in members) if span
+        ),
+        'price_from': min(prices) if prices else 0,
+        'price_varies': len({round(p, 2) for p in prices}) > 1,
+        'colors_match': bool(lead_colors) and all(lead_colors <= colors for colors in member_colors[1:]),
+        'shared_colors': len(shared),
+    }
+
+
+def build_store_cards(products):
+    """Fold youth/toddler/baby versions into their adult card.
+
+    Returns (cards, matching_note). matching_note is None when the store has
+    no style offered in more than one age.
+    """
+    from utils.product_filters import age_families
+
+    cards = []
+    families = []
+    for members in age_families(products):
+        lead = members[0]
+        lead.age_family = None
+        if len(members) > 1:
+            lead.age_family = describe_age_family(members)
+            families.append(lead.age_family)
+        cards.append(lead)
+    if not families:
+        return cards, None
+    if all(f['colors_match'] for f in families):
+        note = 'All sizes come in the same colors, so kids and adults will match!'
+    else:
+        note = 'Kid and adult sizes are shown together. Each style lists how many colors come in every size.'
+    return cards, note
+
+
+def store_age_family(collection, product):
+    """Other ages of this style offered in the store's fan wear, adult first."""
+    from utils.product_filters import age_families
+
+    config = team_store_config(collection)
+    products = visible_store_products(collection)
+    if config['configured']:
+        fan_ids = set(config['fan_product_ids'] or [])
+        products = [p for p in products if p.id in fan_ids]
+    if product.id not in {p.id for p in products}:
+        return []
+    for members in age_families(products):
+        if any(m.id == product.id for m in members):
+            return members if len(members) > 1 else []
+    return []
+
+
 def visible_store_product_count(collection):
     from flask import has_app_context
     from utils.mockups import product_has_shop_image

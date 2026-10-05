@@ -2095,11 +2095,36 @@
                 </div>
                 {% endif %}
                 
+                {% if age_switch %}
+                <div class="age-switch" role="group" aria-label="Who is this for?">
+                    <span class="age-switch-label">Who is this for?</span>
+                    <div class="age-switch-options">
+                        {% for option in age_switch %}
+                        <a href="{{ option.url }}" class="age-switch-option{% if option.active %} is-active{% endif %}"
+                           {% if option.active %}aria-current="true"{% endif %} data-age-switch>{{ option.label }}</a>
+                        {% endfor %}
+                    </div>
+                    <small>Same style in every size, so the whole crew can match.</small>
+                </div>
+                {% endif %}
+                <style>
+                .age-switch { margin: 0 0 1rem; padding: 0.85rem 1rem; border: 1px solid var(--border-color, #e6ddd0); border-radius: 12px; background: #fff; }
+                .age-switch-label { display: block; font-weight: 700; margin-bottom: 0.5rem; }
+                .age-switch-options { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.45rem; }
+                .age-switch-option { padding: 0.45rem 1.1rem; border: 1px solid var(--border-color, #e6ddd0); border-radius: 999px; font-weight: 600; font-size: 0.9rem; color: var(--text-primary); text-decoration: none; background: #fff; }
+                .age-switch-option:hover { border-color: var(--terra-cotta, #b87c6f); }
+                .age-switch-option.is-active { background: var(--terra-cotta, #b87c6f); border-color: var(--terra-cotta, #b87c6f); color: #fff; }
+                .age-switch small { color: var(--text-secondary); }
+                .color-carry-note { margin: -0.25rem 0 0.65rem; padding: 0.45rem 0.7rem; border-radius: 8px; background: rgba(184, 124, 111, 0.08); color: #8a5a50; font-size: 0.85rem; font-weight: 600; }
+                .color-carry-note[hidden] { display: none; }
+                </style>
+
                 <!-- Step 1: Color Selection -->
                 <div class="panel-section step-section">
                     <div class="step-badge">1</div>
                     <h3>Choose Color</h3>
                     <p class="step-hint">Select your color. {{ color_variants|length if color_variants else available_colors|length }} available.</p>
+                    <p class="color-carry-note" id="colorCarryNote" hidden></p>
 
                     <details class="color-picker-disclosure" id="colorPickerDisclosure">
                         <summary>
@@ -2720,6 +2745,35 @@
 <script>
 // Professional Product Customizer
 (function() {
+    const GROUP_COLOR_KEY = {{ group_color_key|tojson }};
+    const CURRENT_PRODUCT_ID = {{ product.id|tojson }};
+
+    // Group shoppers keep their color when they move to another style
+    // (adult to youth, tee to hoodie) so families end up matching.
+    function rememberGroupColor(name, chosenByShopper) {
+        document.querySelectorAll('[data-age-switch]').forEach(function(link) {
+            const url = new URL(link.href, window.location.href);
+            url.searchParams.set('color', name);
+            link.href = url.pathname + url.search;
+        });
+        if (!GROUP_COLOR_KEY || !chosenByShopper) return;
+        try {
+            window.sessionStorage.setItem(GROUP_COLOR_KEY, JSON.stringify({ color: name, product: CURRENT_PRODUCT_ID }));
+        } catch (e) {}
+    }
+
+    function carriedGroupColor() {
+        const fromUrl = new URLSearchParams(window.location.search).get('color');
+        if (fromUrl) return { color: fromUrl, product: null };
+        if (!GROUP_COLOR_KEY) return null;
+        try {
+            const saved = JSON.parse(window.sessionStorage.getItem(GROUP_COLOR_KEY) || 'null');
+            return saved && saved.color ? saved : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
     const state = {
         selectedColor: null,
         _mockupGen: 0,
@@ -3150,6 +3204,7 @@
         }
         const disclosureName = document.getElementById('colorDisclosureName');
         if (disclosureName) disclosureName.textContent = colorName;
+        rememberGroupColor(colorName, closePicker === true);
 
         // Update size inventory for this color
         updateSizeInventory(inventory);
@@ -3175,7 +3230,22 @@
 
         // Pre-select first visible color synchronously. A delayed .click() used
         // to overwrite the customer's first tap if they chose a color quickly.
-        const firstColor = document.querySelector('.color-card:not(.hidden)');
+        let firstColor = null;
+        const carried = carriedGroupColor();
+        if (carried) {
+            const want = String(carried.color).trim().toLowerCase();
+            firstColor = Array.from(document.querySelectorAll('.color-card')).find(function(card) {
+                return (card.dataset.color || '').trim().toLowerCase() === want;
+            }) || null;
+            const note = document.getElementById('colorCarryNote');
+            if (note && GROUP_COLOR_KEY && carried.product !== CURRENT_PRODUCT_ID) {
+                note.textContent = firstColor
+                    ? 'We kept ' + firstColor.dataset.color + ' so everyone matches.'
+                    : carried.color + " isn't made in this style, so pick the closest color below.";
+                note.hidden = false;
+            }
+        }
+        if (!firstColor) firstColor = document.querySelector('.color-card:not(.hidden)');
         if (firstColor && !state.selectedColor) {
             selectColor(firstColor);
         }

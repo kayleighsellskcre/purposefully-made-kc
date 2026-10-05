@@ -226,6 +226,32 @@
     background: #e8f4fd;
     color: #2471a3;
 }
+.age-badge--family {
+    background: #f3ece2;
+    color: #8a5a50;
+}
+.family-match-label {
+    margin: 0.15rem 0 0.35rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #8a5a50;
+}
+.price small {
+    font-size: 0.7em;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+.age-matching-note {
+    max-width: 640px;
+    margin: -0.5rem auto 1.25rem;
+    padding: 0.7rem 1rem;
+    text-align: center;
+    font-weight: 600;
+    color: #8a5a50;
+    background: rgba(184, 124, 111, 0.08);
+    border: 1px solid rgba(184, 124, 111, 0.28);
+    border-radius: 10px;
+}
 
 .qf-pill {
     padding: 0.45rem 1rem;
@@ -519,6 +545,9 @@
             <p>Choose your shirt. Filter by who it’s for, type, or brand, then tap to customize.</p>
             {% endif %}
         </div>
+        {% if age_matching_note %}
+        <p class="age-matching-note">{{ age_matching_note }}</p>
+        {% endif %}
         {% if products %}
         <div id="quickFilterRow" style="display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;margin-bottom:1.25rem;"></div>
         {% include 'includes/catalog_filter.html' %}
@@ -542,7 +571,8 @@
                this one. Aliased so the image tags can tell which cards are in the
                first row and should not be lazy-loaded. #}
             {% set product_loop = loop %}
-            <article class="design-card {% if collection.deadline_passed %}deadline-passed{% endif %}" data-catalog-item data-age="{{ product.display_age or '' }}" data-age-raw="{{ product.age_group or '' }}" data-category="{{ product.display_category or '' }}" data-category-raw="{{ product.category or '' }}" data-brand="{{ product.display_brand or '' }}" data-brand-raw="{{ product.brand or '' }}" data-style="{{ product.style_number or '' }}">
+            {% set family = product.age_family if product.age_family is defined else none %}
+            <article class="design-card {% if collection.deadline_passed %}deadline-passed{% endif %}{% if family %} design-card--family{% endif %}" data-catalog-item data-age="{{ family.ages if family else (product.display_age or '') }}" data-age-raw="{{ product.age_group or '' }}" data-category="{{ product.display_category or '' }}" data-category-raw="{{ product.category or '' }}" data-brand="{{ product.display_brand or '' }}" data-brand-raw="{{ product.brand or '' }}" data-style="{{ product.style_number or '' }}">
                 {% if collection.deadline_passed %}
                 <div>
                 {% else %}
@@ -601,11 +631,20 @@
                     </div>
                     <div class="design-card-content">
                         <h3>{{ product|display_name }}</h3>
-                        {% if product.display_age %}
+                        {% if family %}
+                        <span class="age-badge age-badge--family">{{ family.labels }}</span>
+                        {% elif product.display_age %}
                         <span class="age-badge {% if 'outh' in (product.display_age or '') %}age-badge--youth{% else %}age-badge--adult{% endif %}">{{ product.display_age }}</span>
                         {% endif %}
                         <p class="style-label">{{ product.display_brand }}{% if product.display_category %} · {{ product.display_category }}{% endif %} · {{ product.style_number }}</p>
-                        {% if product.available_sizes_list %}
+                        {% if family %}
+                        <p class="sizes-label">Sizes: {{ family.sizes }}</p>
+                        <p class="family-match-label">
+                            {%- if family.colors_match %}Same colors in every size
+                            {%- elif family.shared_colors %}{{ family.shared_colors }} color{{ 's' if family.shared_colors != 1 }} come{{ 's' if family.shared_colors == 1 }} in every size
+                            {%- else %}Pick kid or adult sizes on the next page{% endif -%}
+                        </p>
+                        {% elif product.available_sizes_list %}
                         <p class="sizes-label">Sizes: {{ product.available_sizes_list | sort_sizes | join(', ') }}</p>
                         {% endif %}
                         {% if product.carousel_colors %}
@@ -620,7 +659,11 @@
                         </div>
                         {% endif %}
                         <div class="price-row">
+                            {% if family and family.price_varies %}
+                            <span class="price"><small>From</small> ${{ "%.2f"|format(family.price_from) }}</span>
+                            {% else %}
                             <span class="price">${{ "%.2f"|format(product.listed_price if product.listed_price is defined else product.base_price) }}</span>
+                            {% endif %}
                             {% if collection.deadline_passed %}
                             <span class="cta" style="background:var(--text-secondary);box-shadow:none;cursor:not-allowed;opacity:0.6;">Closed</span>
                             {% elif collection.not_yet_open %}
@@ -715,11 +758,13 @@ document.querySelectorAll('.color-carousel').forEach(carousel => {
     var seen = {};
     var combos = [];
     items.forEach(function(el) {
-        var age = el.getAttribute('data-age') || '';
+        var ages = (el.getAttribute('data-age') || '').split(/\s+/).filter(Boolean);
         var cat = el.getAttribute('data-category') || '';
-        if (!age && !cat) return;
-        var key = (age + '|' + cat).toLowerCase();
-        if (!seen[key]) { seen[key] = true; combos.push({age: age, cat: cat}); }
+        if (!ages.length && !cat) return;
+        (ages.length ? ages : ['']).forEach(function(age) {
+            var key = (age + '|' + cat).toLowerCase();
+            if (!seen[key]) { seen[key] = true; combos.push({age: age, cat: cat}); }
+        });
     });
 
     combos.sort(function(a, b) {
