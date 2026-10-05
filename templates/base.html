@@ -165,8 +165,8 @@
         <div class="container group-order-banner-inner">
             <p>You're ordering for <strong>{{ active_group_order.name }}</strong>.</p>
             <div class="group-order-banner-actions">
-                <a href="{{ url_for('collection.view', slug=active_group_order.slug) }}">Group store</a>
-                <a href="{{ url_for('collection.leave', next=url_for('main.index')) }}">Back to main site</a>
+                <a href="{{ url_for('collection.view', slug=active_group_order.slug) }}">← Back to {{ active_group_order.name }}</a>
+                <a href="{{ url_for('collection.leave', next=url_for('main.index')) }}">Exit group store</a>
             </div>
         </div>
     </div>

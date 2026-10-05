@@ -557,6 +557,10 @@
         <div class="alert alert-warning" style="max-width:700px;margin:0 auto 2rem;padding:1rem 1.25rem;background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.3);border-radius:8px;color:var(--text-primary);text-align:center;">
             <strong>Ordering is closed.</strong> The deadline for this group order has passed. Contact the organizer if you have questions.
         </div>
+        {% elif collection.order_deadline %}
+        <div style="max-width:700px;margin:0 auto 2rem;padding:0.65rem 1.25rem;background:rgba(184,124,111,0.08);border:1px solid rgba(184,124,111,0.25);border-radius:8px;color:var(--text-primary);text-align:center;font-size:0.92rem;">
+            🗓 <strong>Order deadline: {{ collection.order_deadline|kc_date }}</strong> — place your order before this date to be included.
+        </div>
         {% elif collection.not_yet_open %}
         <div style="max-width:700px;margin:0 auto 2rem;padding:1.25rem 1.5rem;background:linear-gradient(135deg,rgba(184,124,111,0.08),rgba(184,124,111,0.04));border:1px solid rgba(184,124,111,0.3);border-radius:12px;color:var(--text-primary);text-align:center;">
             <p style="font-size:1.15rem;font-weight:700;margin:0 0 0.4rem;color:#8a5a50;letter-spacing:0.01em;">🎉 Orders Open {{ collection.order_opens_at|kc_date('%A, %B %-d') }}!</p>
@@ -798,7 +802,8 @@ document.querySelectorAll('.color-carousel').forEach(carousel => {
     combos.forEach(function(c) {
         var pill = document.createElement('button');
         pill.type = 'button';
-        pill.textContent = [c.age, c.cat].filter(Boolean).join(' ');
+        var capitalize = function(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; };
+        pill.textContent = [capitalize(c.age), capitalize(c.cat)].filter(Boolean).join(' ');
         pill.dataset.age = c.age;
         pill.dataset.cat = c.cat;
         pill.className = 'qf-pill';
