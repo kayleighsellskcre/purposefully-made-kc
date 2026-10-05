@@ -960,10 +960,18 @@ def create_payment_intent():
         intent = stripe.PaymentIntent.create(
             amount=int(round(totals['total'] * 100)),
             currency='usd',
-            # Card only. Apple Pay / Google Pay attach as wallets on 'card'.
-            # Never use automatic_payment_methods — Dashboard methods like
-            # Klarna / bank would otherwise appear in Stripe Elements UIs.
-            payment_method_types=['card'],
+            # Stripe no longer accepts payment_method_types on newer API
+            # versions ("Payment methods are now managed from your Dashboard").
+            # automatic_payment_methods is the supported replacement. Card-only
+            # is still enforced on our side: the page mounts a plain Card
+            # Element, and the Express Checkout button allows only Apple Pay
+            # and Google Pay. allow_redirects='never' keeps redirect-based
+            # methods (Klarna, bank redirects, etc.) out even if they are
+            # switched on in the Dashboard.
+            automatic_payment_methods={
+                'enabled': True,
+                'allow_redirects': 'never',
+            },
             payment_method_options={
                 'card': {
                     'request_three_d_secure': 'automatic',
