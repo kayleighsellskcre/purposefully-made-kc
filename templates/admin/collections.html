@@ -47,6 +47,11 @@
                         </div>
                     </div>
                     <div class="collection-badges">
+                        {% if collection.payment_mode == 'organizer_pays' %}
+                        <span class="badge badge-pay-organizer" title="The link only collects sizes. The organizer pays once for everyone.">Organizer pays</span>
+                        {% else %}
+                        <span class="badge badge-pay-each" title="Each person checks out and pays for their own item.">Each person pays</span>
+                        {% endif %}
                         {% if collection.restrict_options %}
                         <span class="badge badge-restricted" title="Organizer chose specific options">✦ Curated</span>
                         {% endif %}
@@ -88,6 +93,9 @@
                 <div class="collection-actions">
                     <a href="{{ url_for('admin.edit_collection', collection_id=collection.id) }}" class="btn btn-outline btn-sm">✎ Edit</a>
                     <a href="{{ url_for('collection.view', slug=collection.slug) }}" class="btn btn-outline btn-sm" target="_blank">View Store ↗</a>
+                    {% if collection.payment_mode == 'organizer_pays' %}
+                    <a href="{{ url_for('collection.share', slug=collection.slug) }}#roster" class="btn btn-outline btn-sm">Sizes ({{ collection.roster_entries.count() }})</a>
+                    {% endif %}
                     <a href="{{ url_for('admin.logo_chart', collection=collection.id) }}" class="btn btn-outline btn-sm">Logo chart</a>
                     <a href="{{ url_for('collection.export_xlsx', slug=collection.slug) }}"
                        class="btn btn-export-sm btn-sm"
@@ -167,6 +175,8 @@ function copyLink(url, btn) {
 </script>
 
 <style>
+.badge-pay-organizer { background: rgba(184,124,111,0.16); color: #8a5a50; }
+.badge-pay-each { background: rgba(58,61,72,0.07); color: #555; }
 .admin-page { padding: 4rem 0; }
 .admin-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
 .go-filter-tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }

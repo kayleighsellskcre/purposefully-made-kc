@@ -42,7 +42,7 @@
                     {% set is_upcoming = c.not_yet_open %}
                     <div style="background:#fff;border:1px solid var(--border-light);border-radius:var(--border-radius);padding:1.25rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
                         <div>
-                            <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.3rem;">
+                            <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.3rem;flex-wrap:wrap;">
                                 <h3 style="font-family:var(--font-heading);font-size:1.1rem;margin:0;">{{ c.name }}</h3>
                                 {% if not c.is_active %}
                                 <span style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:#e0e0e0;color:#666;padding:0.2rem 0.55rem;border-radius:20px;">Inactive</span>
@@ -53,9 +53,19 @@
                                 {% else %}
                                 <span style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:rgba(39,174,96,0.12);color:#1e8449;padding:0.2rem 0.55rem;border-radius:20px;">Active</span>
                                 {% endif %}
+                                {% if c.payment_mode == 'organizer_pays' %}
+                                <span style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:rgba(184,124,111,0.15);color:#8a5a50;padding:0.2rem 0.55rem;border-radius:20px;" title="The link only collects sizes. You pay once for everyone.">You pay for the group</span>
+                                {% else %}
+                                <span style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:rgba(58,61,72,0.07);color:#555;padding:0.2rem 0.55rem;border-radius:20px;" title="Each person checks out and pays for their own item.">Each person pays</span>
+                                {% endif %}
                             </div>
                             <p style="font-size:0.85rem;color:var(--text-secondary);margin:0;">
+                                {% if c.payment_mode == 'organizer_pays' %}
+                                {% set roster_count = c.roster_entries.count() %}
+                                {{ roster_count }}{% if c.expected_count %} of {{ c.expected_count }}{% endif %} responded
+                                {% else %}
                                 {{ order_count }} order{{ 's' if order_count != 1 }}
+                                {% endif %}
                                 {% if c.order_opens_at %}
                                 · Opens: {{ c.order_opens_at|kc_date('%b %d, %Y') }}
                                 {% endif %}
