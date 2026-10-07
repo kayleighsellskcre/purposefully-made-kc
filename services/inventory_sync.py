@@ -170,6 +170,10 @@ def apply_inventory_to_product(product, warehouse_map) -> int:
     now = datetime.utcnow()
 
     for variant in variants:
+        # Skip variants where an admin has manually locked the inventory.
+        # This prevents nightly / startup syncs from overwriting a hand-corrected qty.
+        if getattr(variant, 'sync_locked', False):
+            continue
         sizes = by_color.get(color_key(variant.color_name))
         if sizes is None:
             # Confirmed fetch for this style, but this color was not returned → OOS.

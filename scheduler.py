@@ -399,13 +399,8 @@ def init_scheduler(app):
             name='Startup S&S Image Sync (one-time)',
             replace_existing=True
         )
-        scheduler.add_job(
-            func=lambda: sync_live_inventory_job(app),
-            trigger=DateTrigger(run_date=datetime.now() + timedelta(seconds=20)),
-            id='startup_live_inventory',
-            name='Startup Live Inventory Sync (one-time)',
-            replace_existing=True
-        )
+        # Startup live inventory sync removed — the nightly 3 AM job handles this.
+        # Running it on every deploy was overwriting manually-locked inventory values.
 
         scheduler.start()
 
@@ -415,7 +410,7 @@ def init_scheduler(app):
         print("  - Nightly S&S image sync: 2:00 AM America/Chicago", file=sys.stderr, flush=True)
         print("  - Nightly live inventory (SanMar + S&S): 3:00 AM America/Chicago", file=sys.stderr, flush=True)
         print("  - S&S image sync running in 30 seconds (startup)", file=sys.stderr, flush=True)
-        print("  - Live inventory sync running in 20 seconds (startup)", file=sys.stderr, flush=True)
+        print("  - Live inventory sync: nightly only (3:00 AM Chicago)", file=sys.stderr, flush=True)
         print("=" * 80, file=sys.stderr, flush=True)
 
         import atexit
