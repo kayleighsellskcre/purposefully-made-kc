@@ -1149,6 +1149,25 @@
     color: #fff;
 }
 
+.size-upcharge-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--terra-cotta, #b56c4c);
+    margin-top: 0.15rem;
+    margin-bottom: 0.15rem;
+    letter-spacing: 0.01em;
+}
+
+.size-card.selected .size-upcharge-badge {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+@media (max-width: 480px) {
+    .size-upcharge-badge {
+        font-size: 0.6rem;
+    }
+}
+
 .placement-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -2213,10 +2232,13 @@
                         {%- else %}Sizes for this style aren't listed yet.{% endif %}
                     </p>
                     <div class="size-grid-professional" id="sizeGrid">
+                        {% set _size_upcharges = {'2XL': 2, '2X': 2, 'XXL': 2, '3XL': 3, '3X': 3, 'XXXL': 3, '4XL': 4, '4X': 4} %}
                         {% for size in available_sizes|sort_sizes %}
+                        {% set _up = _size_upcharges.get(size|upper, 0) if is_adult else 0 %}
                         <div class="size-card" role="button" tabindex="0" aria-pressed="false"
                              data-size="{{ size }}" onclick="selectSize(this)">
                             <div class="size-label">{{ size }}</div>
+                            {% if _up %}<div class="size-upcharge-badge">+${{ _up }}</div>{% endif %}
                             <div class="stock-badge"></div>
                         </div>
                         {% endfor %}
