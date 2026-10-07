@@ -2117,26 +2117,7 @@
                 </div>
                 {% endif %}
                 
-                {% if age_switch %}
-                <div class="age-switch" role="group" aria-label="Who is this for?">
-                    <span class="age-switch-label">Who is this for?</span>
-                    <div class="age-switch-options">
-                        {% for option in age_switch %}
-                        <a href="{{ option.url }}" class="age-switch-option{% if option.active %} is-active{% endif %}"
-                           {% if option.active %}aria-current="true"{% endif %} data-age-switch>{{ option.label }}</a>
-                        {% endfor %}
-                    </div>
-                    <small>Same style in every size, so the whole crew can match.</small>
-                </div>
-                {% endif %}
                 <style>
-                .age-switch { margin: 0 0 1rem; padding: 0.85rem 1rem; border: 1px solid var(--border-color, #e6ddd0); border-radius: 12px; background: #fff; }
-                .age-switch-label { display: block; font-weight: 700; margin-bottom: 0.5rem; }
-                .age-switch-options { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.45rem; }
-                .age-switch-option { padding: 0.45rem 1.1rem; border: 1px solid var(--border-color, #e6ddd0); border-radius: 999px; font-weight: 600; font-size: 0.9rem; color: var(--text-primary); text-decoration: none; background: #fff; }
-                .age-switch-option:hover { border-color: var(--terra-cotta, #b87c6f); }
-                .age-switch-option.is-active { background: var(--terra-cotta, #b87c6f); border-color: var(--terra-cotta, #b87c6f); color: #fff; }
-                .age-switch small { color: var(--text-secondary); }
                 .color-carry-note { margin: -0.25rem 0 0.65rem; padding: 0.45rem 0.7rem; border-radius: 8px; background: rgba(184, 124, 111, 0.08); color: #8a5a50; font-size: 0.85rem; font-weight: 600; }
                 .color-carry-note[hidden] { display: none; }
                 </style>

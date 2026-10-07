@@ -324,7 +324,11 @@ def _brand_display_name(style_key: str, dip_brand: str) -> str:
 
 
 def _existing_product_for_style(Product, style: str):
-    """Match a DIP style to a catalog row stored with or without CC/C prefixes."""
+    """Match a DIP style to a catalog row stored with or without brand prefixes.
+
+    Handles CC/C (Port & Company) and BC (BELLA+CANVAS post-acquisition) prefixes
+    so that a DIP row for '3001YCVC' matches our DB row 'BC3001YCVC', and vice-versa.
+    """
     product = Product.query.filter_by(style_number=style).first()
     if product:
         return product
@@ -333,12 +337,18 @@ def _existing_product_for_style(Product, style: str):
     if not key:
         return None
     candidates = [key]
+    # CC/C prefix (Port & Company, etc.)
     if key.startswith('CC') and key[2:]:
         candidates.extend([key[2:], f'C{key[2:]}'])
     elif key.startswith('C') and key[1:].isdigit():
         candidates.extend([key[1:], f'CC{key[1:]}'])
     elif key.isdigit():
         candidates.extend([f'CC{key}', f'C{key}'])
+    # BC prefix (BELLA+CANVAS — SanMar acquired June 2026; DIP may use either form)
+    if key.startswith('BC') and key[2:]:
+        candidates.append(key[2:])          # BC3001YCVC → 3001YCVC
+    elif not key.startswith('BC'):
+        candidates.append(f'BC{key}')       # 3001YCVC → BC3001YCVC
     seen = {style.upper()}
     for candidate in candidates:
         if not candidate or candidate.upper() in seen:
