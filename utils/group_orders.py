@@ -465,29 +465,15 @@ def describe_age_family(members):
 
 
 def build_store_cards(products):
-    """Fold youth/toddler/baby versions into their adult card.
+    """Return each product as its own card — adult and youth are shown separately
+    so shoppers can clearly see and choose what they are ordering.
 
-    Returns (cards, matching_note). matching_note is None when the store has
-    no style offered in more than one age.
+    Returns (cards, matching_note). matching_note is always None here since we
+    no longer fold age groups together.
     """
-    from utils.product_filters import age_families
-
-    cards = []
-    families = []
-    for members in age_families(products):
-        lead = members[0]
-        lead.age_family = None
-        if len(members) > 1:
-            lead.age_family = describe_age_family(members)
-            families.append(lead.age_family)
-        cards.append(lead)
-    if not families:
-        return cards, None
-    if all(f['colors_match'] for f in families):
-        note = 'All sizes come in the same colors, so kids and adults will match!'
-    else:
-        note = 'Kid and adult sizes are shown together. Each style lists how many colors come in every size.'
-    return cards, note
+    for product in products:
+        product.age_family = None
+    return products, None
 
 
 def store_age_family(collection, product):

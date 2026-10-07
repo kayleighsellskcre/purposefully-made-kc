@@ -651,8 +651,13 @@
                             {%- elif family.shared_colors %}{{ family.shared_colors }} color{{ 's' if family.shared_colors != 1 }} come{{ 's' if family.shared_colors == 1 }} in every size
                             {%- else %}Pick kid or adult sizes on the next page{% endif -%}
                         </p>
-                        {% elif product.available_sizes_list %}
+                        {% else %}
+                        {% if product.available_sizes_list %}
                         <p class="sizes-label">Sizes: {{ product.available_sizes_list | sort_sizes | join(', ') }}</p>
+                        {% endif %}
+                        {% if product.display_age and 'outh' in product.display_age %}
+                        <p class="family-match-label" style="color:var(--terra-cotta,#b56c4c);">Same colors as the adult styles ♡</p>
+                        {% endif %}
                         {% endif %}
                         {% if product.carousel_colors %}
                         <div class="color-swatches">
