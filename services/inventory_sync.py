@@ -257,15 +257,35 @@ def sync_all_inventory(active_only=True, timeout=30) -> dict:
 
 
 def start_inventory_sync_thread(app):
-    """Run sync_all_inventory in a daemon thread so HTTP requests can return."""
+    """Run sync_all_inventory in a daemon thread so HTTP requests can return.
+
+    Uses a lock file (/tmp/inventory_sync.lock) so that only one Gunicorn worker
+    runs the sync at a time — prevents all workers hammering the SanMar API
+    simultaneously and getting rate-limited.
+    """
     import threading
 
     def _run():
-        with app.app_context():
-            try:
+        import fcntl
+        lock_path = '/tmp/inventory_sync.lock'
+        try:
+            lock_file = open(lock_path, 'w')
+            fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except (IOError, OSError):
+            # Another worker already holds the lock — skip this run
+            print('[inventory] sync already running in another worker, skipping', file=sys.stderr, flush=True)
+            return
+        try:
+            with app.app_context():
                 sync_all_inventory()
-            except Exception as exc:
-                print(f'[inventory] background sync failed: {exc}', file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f'[inventory] background sync failed: {exc}', file=sys.stderr, flush=True)
+        finally:
+            try:
+                fcntl.flock(lock_file, fcntl.LOCK_UN)
+                lock_file.close()
+            except Exception:
+                pass
 
     thread = threading.Thread(target=_run, daemon=True, name='inventory-sync')
     thread.start()

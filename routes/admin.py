@@ -1931,6 +1931,57 @@ def sync_sanmar_inventory():
     return redirect(url_for('admin.products'))
 
 
+@admin_bp.route('/products/<int:product_id>/set-variant-inventory', methods=['POST'])
+@admin_required
+def set_variant_inventory(product_id):
+    """Manually override size_inventory for a specific color variant.
+
+    Accepts form fields:
+      color_name     — the color variant to update (matched by color_key)
+      size_inventory — JSON string, e.g. {"S": 3594, "M": 4080, "L": 3583, "XL": 1282}
+    """
+    import json as _json
+    from models import ProductColorVariant
+    from utils.stock import color_key
+    from datetime import datetime as _dt
+
+    product = Product.query.get_or_404(product_id)
+    color_name = (request.form.get('color_name') or '').strip()
+    inventory_raw = (request.form.get('size_inventory') or '').strip()
+
+    if not color_name or not inventory_raw:
+        flash('Color name and inventory JSON are required.', 'error')
+        return redirect(url_for('admin.edit_product', product_id=product_id))
+
+    try:
+        inventory_data = _json.loads(inventory_raw)
+        if not isinstance(inventory_data, dict):
+            raise ValueError('Must be a JSON object')
+    except (ValueError, TypeError) as exc:
+        flash(f'Invalid inventory JSON: {exc}', 'error')
+        return redirect(url_for('admin.edit_product', product_id=product_id))
+
+    want_ck = color_key(color_name)
+    variant = None
+    for v in ProductColorVariant.query.filter_by(product_id=product_id).all():
+        if color_key(v.color_name) == want_ck:
+            variant = v
+            break
+
+    if variant is None:
+        flash(f'Color "{color_name}" not found for {product.style_number}.', 'error')
+        return redirect(url_for('admin.edit_product', product_id=product_id))
+
+    variant.size_inventory = _json.dumps(inventory_data)
+    variant.last_synced = _dt.utcnow()
+    db.session.commit()
+    flash(
+        f'Inventory updated for {product.style_number} / {variant.color_name}: {inventory_raw}',
+        'success',
+    )
+    return redirect(url_for('admin.edit_product', product_id=product_id))
+
+
 @admin_bp.route('/products/sync-sanmar-dip', methods=['POST'])
 @admin_required
 def sync_sanmar_dip():
