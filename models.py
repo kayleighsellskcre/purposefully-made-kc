@@ -381,10 +381,6 @@ class ProductColorVariant(db.Model):
 
     last_synced = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # When True, automated inventory syncs (startup + nightly) will skip this
-    # variant so a manually-set quantity is never overwritten by stale API data.
-    sync_locked = db.Column(db.Boolean, default=False, server_default='false')
-    
     # Unique constraint: one record per product+color
     __table_args__ = (db.UniqueConstraint('product_id', 'color_name', name='_product_color_uc'),)
     

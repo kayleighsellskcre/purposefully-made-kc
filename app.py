@@ -555,20 +555,6 @@ def create_app(config_class=Config):
     # downloading isnet/u2net at boot OOMs Railway and the deploy never goes live.
     # The model loads on the first upload instead.
 
-    # Auto-migrate: add new columns that don't require a full migration script.
-    # Safe to run on every startup — IF NOT EXISTS means it's a no-op once the column exists.
-    try:
-        from sqlalchemy import text as _sql_text
-        with app.app_context():
-            db.session.execute(_sql_text(
-                "ALTER TABLE product_color_variant "
-                "ADD COLUMN IF NOT EXISTS sync_locked BOOLEAN DEFAULT FALSE"
-            ))
-            db.session.commit()
-    except Exception as _mig_err:
-        import sys as sys_module
-        print(f"[migration] sync_locked column: {_mig_err}", file=sys_module.stderr)
-
     # Initialize background scheduler and run startup seed (optional - won't crash app if fails)
     try:
         import sys as sys_module

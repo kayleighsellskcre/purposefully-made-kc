@@ -342,6 +342,34 @@ def sync_live_inventory_job(app):
             traceback.print_exc(file=sys.stderr)
 
 
+def sync_dip_inventory_job(app):
+    """
+    Nightly DIP file sync from SanMar SFTP (4:00 AM CT).
+
+    Downloads sanmar_dip.txt from SanMar's FTP server — this file is SanMar's
+    authoritative inventory source and includes BELLA+CANVAS styles that the
+    SOAP getInventoryQty API may not report correctly (post-June 2026 acquisition).
+    Runs after the 3 AM SOAP+S&S sync so it can correct any wrong zeros left over.
+    """
+    with app.app_context():
+        try:
+            import os
+            host = os.getenv('SANMAR_FTP_HOST', '').strip()
+            if not host:
+                print("[DIP sync] SANMAR_FTP_HOST not set — skipping", file=sys.stderr, flush=True)
+                return
+            from services.sanmar_ftp import run_dip_sync
+            print("=" * 80, file=sys.stderr, flush=True)
+            print(f"DIP INVENTORY JOB STARTED - {datetime.now()}", file=sys.stderr, flush=True)
+            result = run_dip_sync(styles_only=True, app=app)
+            print(f"DIP INVENTORY JOB COMPLETE - {result}", file=sys.stderr, flush=True)
+            print("=" * 80, file=sys.stderr, flush=True)
+        except Exception as e:
+            print(f"DIP INVENTORY JOB FAILED: {e}", file=sys.stderr, flush=True)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+
+
 def init_scheduler(app):
     """
     Initialize the background scheduler.
@@ -389,6 +417,16 @@ def init_scheduler(app):
             replace_existing=True
         )
 
+        # DIP file sync at 4:00 AM Chicago — authoritative SanMar inventory via SFTP.
+        # Corrects any wrong zeros left by the SOAP API (needed post BELLA+CANVAS acquisition).
+        scheduler.add_job(
+            func=lambda: sync_dip_inventory_job(app),
+            trigger=CronTrigger(hour=4, minute=0, timezone=CHICAGO),
+            id='nightly_dip_inventory',
+            name='Nightly DIP File Inventory Sync (SanMar SFTP)',
+            replace_existing=True
+        )
+
         # Also run S&S image sync once on startup (after a short delay)
         from apscheduler.triggers.date import DateTrigger
         from datetime import datetime, timedelta
@@ -409,8 +447,8 @@ def init_scheduler(app):
         print("  - Nightly catalog sync (SanMar): 1:00 AM America/Chicago", file=sys.stderr, flush=True)
         print("  - Nightly S&S image sync: 2:00 AM America/Chicago", file=sys.stderr, flush=True)
         print("  - Nightly live inventory (SanMar + S&S): 3:00 AM America/Chicago", file=sys.stderr, flush=True)
+        print("  - Nightly DIP file inventory (SanMar SFTP): 4:00 AM America/Chicago", file=sys.stderr, flush=True)
         print("  - S&S image sync running in 30 seconds (startup)", file=sys.stderr, flush=True)
-        print("  - Live inventory sync: nightly only (3:00 AM Chicago)", file=sys.stderr, flush=True)
         print("=" * 80, file=sys.stderr, flush=True)
 
         import atexit

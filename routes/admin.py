@@ -1974,11 +1974,9 @@ def set_variant_inventory(product_id):
 
     variant.size_inventory = _json.dumps(inventory_data)
     variant.last_synced = _dt.utcnow()
-    variant.sync_locked = True  # Prevent nightly/startup syncs from overwriting this
     db.session.commit()
     flash(
-        f'Inventory updated for {product.style_number} / {variant.color_name}: {inventory_raw} '
-        f'(locked — auto-sync will not overwrite)',
+        f'Inventory updated for {product.style_number} / {variant.color_name}: {inventory_raw}',
         'success',
     )
     return redirect(url_for('admin.edit_product', product_id=product_id))
