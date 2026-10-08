@@ -51,7 +51,7 @@
                     <span class="org-section-icon">{{ section.icon }}</span>
                     <div class="org-section-info">
                         <strong>{{ section.label }}</strong>
-                        <span>→ <a href="{{ url_for('collection.view_collection', slug=section.collection.slug) }}" target="_blank">{{ section.collection.name }}</a></span>
+                        <span>→ <a href="{{ url_for('collection.view', slug=section.collection.slug) }}" target="_blank">{{ section.collection.name }}</a></span>
                     </div>
                     <form method="post" class="org-delete-form" onsubmit="return confirm('Remove this section?')">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
