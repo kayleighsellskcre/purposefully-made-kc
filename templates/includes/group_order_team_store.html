@@ -1,6 +1,29 @@
 {% set _uniform = (team_store or {}).get('uniform', {}) %}
 <div class="form-section team-store-setup" id="playerUniformsSection">
     <input type="hidden" name="team_store_present" value="1">
+
+    {# ── Multi-team style notice — first thing on Styles step so organizer sees it before choosing products ── #}
+    <div id="orgStyleNotice" style="display:none;margin-bottom:1.5rem;">
+        <div style="background:#fdf6f3;border:1.5px solid #e8d5cb;border-radius:12px;padding:1rem 1.25rem;">
+            <p style="font-size:0.88rem;font-weight:700;color:var(--terra-cotta,#b56c4c);margin:0 0 0.5rem;text-transform:uppercase;letter-spacing:0.05em;">Multiple teams detected</p>
+            <p id="orgTeamNamesLine" style="font-size:0.85rem;color:#777;margin:0 0 0.75rem;font-style:italic;"></p>
+            <p style="font-size:0.9rem;margin:0 0 0.85rem;color:var(--text-primary,#333);">Do all your teams wear the same style, or does each team have their own?</p>
+            <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+                <label class="org-style-choice" id="orgStyleSame" style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border:1.5px solid #ddd;border-radius:8px;cursor:pointer;font-size:0.88rem;font-weight:500;background:#fff;color:#555;transition:all 0.15s;">
+                    <input type="radio" name="org_style_mode" value="same" checked style="display:none;">
+                    👕 Every team wears the same style
+                </label>
+                <label class="org-style-choice" id="orgStyleDiff" style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border:1.5px solid #ddd;border-radius:8px;cursor:pointer;font-size:0.88rem;font-weight:500;background:#fff;color:#555;transition:all 0.15s;">
+                    <input type="radio" name="org_style_mode" value="different" style="display:none;">
+                    🎽 Each team has their own style
+                </label>
+            </div>
+            <p id="orgStyleHint" style="font-size:0.82rem;color:#888;margin:0.65rem 0 0;display:none;">
+                You're setting up the styles for your first team right now. When you create the other teams' stores, you'll pick their styles there too.
+            </p>
+        </div>
+    </div>
+
     <span class="team-store-eyebrow">Optional</span>
     <h2>Player Uniforms</h2>
     <p class="form-hint">Add the official jersey styles. If younger and older players both order, pick a youth style and an adult style.</p>
