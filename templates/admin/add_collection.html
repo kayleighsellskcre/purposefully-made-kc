@@ -56,7 +56,7 @@
                         <div id="orgExpandSection" style="display:none;margin-top:0.65rem;padding:1rem 1.1rem;background:#fdf6f3;border:1.5px solid #e8d5cb;border-radius:10px;">
                             <input type="hidden" name="org_action" value="new" id="orgActionHidden" disabled>
                             <label style="font-size:0.85rem;font-weight:600;color:var(--text-primary,#333);display:block;margin-bottom:0.5rem;">Team / Group names</label>
-                            <small style="display:block;margin-bottom:0.65rem;color:#888;">Enter each team or sport — these become the tiles on the shared org page. You'll link each one to its own store after creating.</small>
+                            <small style="display:block;margin-bottom:0.65rem;color:#888;">Enter each team or sport — each one gets its own store, all created automatically when you submit this wizard.</small>
                             <div id="orgTeamList" style="display:flex;flex-direction:column;gap:0.5rem;">
                                 <div class="org-team-row" style="display:flex;gap:0.5rem;align-items:center;">
                                     <input type="text" name="org_team_names[]" class="form-control" placeholder="e.g. Basketball" disabled style="flex:1;">
@@ -90,8 +90,9 @@
 
             <div class="form-section" id="fanWearSection">
                 <h2><span data-copy="team">Family &amp; Fan Wear</span><span data-copy="general">Styles to Offer</span></h2>
-                <p class="form-hint" data-copy="team">Offer extra styles besides the jersey, like tees, hoodies, and cute matching looks for family and friends. Check both youth and adult if both ages will order. Leave this empty for a uniform-only store.</p>
+                <p class="form-hint" data-copy="team">Offer extra styles besides the jersey — tees, hoodies, and matching looks for family and friends. Check both youth and adult if both ages will order. Leave empty for a uniform-only store.</p>
                 <p class="form-hint" data-copy="general">Check the styles your group can order. If kids and grown-ups are both ordering, check the youth and adult versions so everyone can match.</p>
+                <p id="orgFanWearNote" class="form-hint" style="display:none;background:#fdf6f3;border:1.5px solid #e8d5cb;border-radius:8px;padding:0.6rem 0.85rem;color:var(--text-primary,#333);font-size:0.85rem;">🏷️ <strong>Multi-team store:</strong> These fan wear styles are available across all team stores you're creating.</p>
                 <p class="wizard-inline-error" id="stylesError" role="alert" hidden>Pick at least one style to continue.</p>
                 {% if products %}
                 {% include 'includes/catalog_filter.html' %}
@@ -135,8 +136,8 @@
 
                 {# Multi-team logo notice — only shown when org checkbox checked #}
                 <div id="orgLogoNotice" style="display:none;margin-bottom:1.25rem;padding:0.85rem 1rem;background:#fdf6f3;border:1.5px solid #e8d5cb;border-radius:10px;">
-                    <p style="margin:0;font-size:0.88rem;color:var(--terra-cotta,#b56c4c);font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.3rem;">Setting up: <span id="orgFirstTeamName">Team 1</span></p>
-                    <p style="margin:0 0 0.4rem;font-size:0.88rem;color:var(--text-primary,#333);">Upload this team's logo and choose their colors here.</p>
+                    <p style="margin:0;font-size:0.88rem;color:var(--terra-cotta,#b56c4c);font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.3rem;">Multi-team setup</p>
+                    <p style="margin:0 0 0.4rem;font-size:0.88rem;color:var(--text-primary,#333);">The logo and colors you set here apply to <strong><span id="orgFirstTeamName">Team 1</span>'s</strong> store. All team stores are created automatically when you submit.</p>
                     <p id="orgLogoRemaining" style="margin:0;font-size:0.82rem;color:#888;display:none;"></p>
                 </div>
 
@@ -145,10 +146,28 @@
                         <span class="organizer-step">1</span>
                         <div>
                             <strong>What colors can shoppers choose<span data-copy="team"> for fan wear</span>?</strong>
-                            <p class="form-hint" style="margin:0"><span data-copy="team">These are separate from the Home and Away uniform colors. </span>Each shirt you checked shows its own colors. Leave a shirt with nothing picked to offer every color it comes in.</p>
+                            <p class="form-hint" style="margin:0;"><span data-copy="team">These are separate from the Home and Away jersey colors. </span>Most stores offer all colors — restrict only if you want to keep it on-brand.</p>
                         </div>
                     </div>
+
+                    {# ── Color restriction mode ── #}
+                    <div style="margin-bottom:0.85rem;">
+                        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.5rem;">
+                            <label class="org-style-choice" id="colorModeAllLabel" style="display:flex;align-items:center;gap:0.5rem;padding:0.55rem 1rem;border:1.5px solid var(--terra-cotta,#b56c4c);border-radius:8px;cursor:pointer;font-size:0.88rem;font-weight:600;background:#fdf6f3;color:var(--terra-cotta,#b56c4c);transition:all 0.15s;">
+                                <input type="radio" name="color_restriction_mode" value="all" checked style="display:none;">
+                                🌈 All available colors <em style="font-weight:400;font-style:normal;opacity:0.8;">(recommended)</em>
+                            </label>
+                            <label class="org-style-choice" id="colorModeRestrictLabel" style="display:flex;align-items:center;gap:0.5rem;padding:0.55rem 1rem;border:1.5px solid #ddd;border-radius:8px;cursor:pointer;font-size:0.88rem;font-weight:500;background:#fff;color:#555;transition:all 0.15s;">
+                                <input type="radio" name="color_restriction_mode" value="restrict" style="display:none;">
+                                🎨 Restrict to specific colors
+                            </label>
+                        </div>
+                        <p id="colorModeHint" style="font-size:0.83rem;color:#888;margin:0;">Every color each shirt comes in will be available to shoppers. Great for most group orders!</p>
+                    </div>
+
+                    <div id="fanColorPickerWrap">
                     {% include 'includes/group_order_color_picker.html' %}
+                    </div>
                 </div>
 
                 <div class="organizer-pair">
@@ -158,7 +177,7 @@
                         <span class="organizer-step">2</span>
                         <div>
                             <strong>What design goes on the front?</strong>
-                            <p class="form-hint" style="margin:0" data-copy="team">Upload the jersey logo. The first one you upload goes on the Home jersey. If Away needs a different file, upload both, then go back to Styles to pick which goes on each jersey. Add extra matching designs so family and fans can represent without wearing the exact jersey graphic.</p>
+                            <p class="form-hint" style="margin:0" data-copy="team">Upload your logo(s) here. After uploading, the <strong>Jersey logos</strong> section below will let you assign which goes on the Home jersey, Away jersey, and each team. You can also add extra designs for fan wear.</p>
                             <p class="form-hint" style="margin:0" data-copy="general">Upload your logo or design. You can add a few if you'd like to give people options.</p>
                         </div>
                     </div>
@@ -560,6 +579,10 @@
     }
 
     cb.addEventListener('change', updateOrgNotices);
+    cb.addEventListener('change', function() {
+        var fanWareNote = document.getElementById('orgFanWearNote');
+        if (fanWareNote) fanWareNote.style.display = cb.checked ? '' : 'none';
+    });
 
     // Keep all labels live as the user types
     if (teamList) {
@@ -1201,12 +1224,20 @@ function initGroupOrderWizard() {
         rows.push(['Group type', template ? labelFor(template) : (kind ? labelFor(kind) : 'Not picked yet'), 'type']);
         var name = (document.getElementById('name') || {}).value || '';
         rows.push(['Name', name.trim() || 'Not added yet', 'details']);
+        // Teams (org mode)
+        var orgCb = document.getElementById('hasOrgCheckbox');
+        if (orgCb && orgCb.checked) {
+            var teamInputs = document.querySelectorAll('input[name="org_team_names[]"]');
+            var teamNames = Array.from(teamInputs).map(function(i) { return i.value.trim(); }).filter(Boolean);
+            rows.push(['Teams', teamNames.length ? teamNames.join(', ') : 'Add team names above', 'details']);
+        }
         var picked = form.querySelectorAll('input[name="products"]:checked').length;
         var styles = picked + ' style' + (picked === 1 ? '' : 's');
         if (uniformToggle && uniformToggle.checked) styles = 'Player uniforms + ' + styles;
         rows.push(['Styles', styles, 'styles']);
+        var colorModeAll = form.querySelector('input[name="color_restriction_mode"][value="all"]:checked');
         var colors = form.querySelectorAll('input[name="allowed_colors"]:checked').length;
-        rows.push(['Colors', colors ? colors + ' color' + (colors === 1 ? '' : 's') + ' picked' : 'Every color each style comes in', 'design']);
+        rows.push(['Colors', colorModeAll ? 'All available colors' : (colors ? colors + ' specific color' + (colors === 1 ? '' : 's') : 'Every color each style comes in'), 'design']);
         var logos = form.querySelectorAll('#uploadPreview .upload-preview-item').length
             + form.querySelectorAll('input[name=allowed_designs]:checked').length;
         rows.push(['Logos', logos ? logos + ' added' : 'None yet. Shoppers can upload their own.', 'design']);
@@ -1246,6 +1277,61 @@ if (document.readyState === 'loading') {
 } else {
     initGroupOrderWizard();
 }
+
+// ── Color restriction mode toggle ──────────────────────────────────────────
+(function() {
+    var allLabel = document.getElementById('colorModeAllLabel');
+    var restrictLabel = document.getElementById('colorModeRestrictLabel');
+    var pickerWrap = document.getElementById('fanColorPickerWrap');
+    var hint = document.getElementById('colorModeHint');
+    if (!allLabel || !restrictLabel || !pickerWrap) return;
+
+    function syncColorMode() {
+        var allChecked = allLabel.querySelector('input[type="radio"]').checked;
+        // Toggle label styles
+        allLabel.style.borderColor = allChecked ? 'var(--terra-cotta,#b56c4c)' : '#ddd';
+        allLabel.style.background = allChecked ? '#fdf6f3' : '#fff';
+        allLabel.style.color = allChecked ? 'var(--terra-cotta,#b56c4c)' : '#555';
+        allLabel.style.fontWeight = allChecked ? '600' : '500';
+        restrictLabel.style.borderColor = !allChecked ? 'var(--terra-cotta,#b56c4c)' : '#ddd';
+        restrictLabel.style.background = !allChecked ? '#fdf6f3' : '#fff';
+        restrictLabel.style.color = !allChecked ? 'var(--terra-cotta,#b56c4c)' : '#555';
+        restrictLabel.style.fontWeight = !allChecked ? '600' : '500';
+        // Show/hide picker and update hint
+        pickerWrap.style.display = allChecked ? 'none' : '';
+        if (hint) hint.textContent = allChecked
+            ? 'Every color each shirt comes in will be available to shoppers. Great for most group orders!'
+            : 'Pick the specific colors shoppers can choose from. Expand each shirt below to select.';
+        // Disable all color checkboxes when "all" mode so they don't submit
+        pickerWrap.querySelectorAll('input[name="allowed_colors"]').forEach(function(box) {
+            box.disabled = allChecked;
+        });
+    }
+
+    allLabel.addEventListener('click', function() {
+        allLabel.querySelector('input').checked = true;
+        syncColorMode();
+    });
+    restrictLabel.addEventListener('click', function() {
+        restrictLabel.querySelector('input').checked = true;
+        syncColorMode();
+        // Auto-expand color cards when restrict mode is selected
+        setTimeout(function() {
+            pickerWrap.querySelectorAll('details.fan-color-card:not([hidden])').forEach(function(d) {
+                d.open = true;
+            });
+        }, 50);
+    });
+
+    // Also re-disable when new color checkboxes are built (e.g. product changes)
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.name === 'products') {
+            setTimeout(syncColorMode, 100);
+        }
+    });
+
+    syncColorMode(); // init state
+})();
 </script>
 
 <style>
