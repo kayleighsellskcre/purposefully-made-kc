@@ -2940,6 +2940,53 @@ def add_collection():
 
             db.session.commit()
 
+            # ── Org linking (optional) ──────────────────────────────────────
+            org_action = request.form.get('org_action', '')
+            if org_action == 'existing':
+                from models import Organization, OrgSection
+                org_id = request.form.get('org_existing_id', '').strip()
+                org = Organization.query.get(int(org_id)) if org_id.isdigit() else None
+                if org:
+                    already = OrgSection.query.filter_by(org_id=org.id, collection_id=collection.id).first()
+                    if not already:
+                        section = OrgSection(
+                            org_id=org.id,
+                            collection_id=collection.id,
+                            label=request.form.get('org_section_label', collection.name).strip() or collection.name,
+                            icon=request.form.get('org_section_icon', '🏷️').strip() or '🏷️',
+                            sort_order=OrgSection.query.filter_by(org_id=org.id).count(),
+                        )
+                        db.session.add(section)
+                        db.session.commit()
+                    flash(f'Added to {org.name} organization page.', 'success')
+            elif org_action == 'new':
+                from models import Organization, OrgSection
+                from slugify import slugify as _slugify
+                org_name = request.form.get('org_new_name', '').strip()
+                if org_name:
+                    org_slug = _slugify(org_name)
+                    base = org_slug
+                    i = 1
+                    while Organization.query.filter_by(slug=org_slug).first():
+                        org_slug = f'{base}-{i}'; i += 1
+                    org = Organization(name=org_name, slug=org_slug)
+                    org_password = request.form.get('org_new_password', '').strip()
+                    if org_password:
+                        org.set_password(org_password)
+                    db.session.add(org)
+                    db.session.flush()
+                    section = OrgSection(
+                        org_id=org.id,
+                        collection_id=collection.id,
+                        label=request.form.get('org_section_label', collection.name).strip() or collection.name,
+                        icon=request.form.get('org_section_icon', '🏷️').strip() or '🏷️',
+                        sort_order=0,
+                    )
+                    db.session.add(section)
+                    db.session.commit()
+                    flash(f'Organization page "{org_name}" created — share purposefullymadekc.com/org/{org_slug} with your organizer.', 'success')
+            # ───────────────────────────────────────────────────────────────
+
             upload_count = 0
             new_upload_ids = []
             if pending_uploads:
@@ -2995,8 +3042,10 @@ def add_collection():
     from utils.product_filters import load_group_order_form_catalog
     from utils.fonts import GROUP_ORDER_FONTS
     from utils.group_order_templates import TEMPLATE_KEYS, group_order_templates
+    from models import Organization
     catalog = load_group_order_form_catalog()
     selected_template = request.args.get('type')
+    existing_orgs = Organization.query.order_by(Organization.name).all()
     return render_template(
         'admin/add_collection.html',
         group_templates=group_order_templates(catalog['products']),
@@ -3010,6 +3059,7 @@ def add_collection():
         back_design_fonts=GROUP_ORDER_FONTS,
         catalog_filter_opts=catalog['catalog_filter_opts'],
         catalog_filter_picker=True,
+        existing_orgs=existing_orgs,
     )
 
 

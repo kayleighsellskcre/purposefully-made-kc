@@ -450,11 +450,17 @@ def share(slug):
         roster_item_info = None if roster_problem else roster_item(collection)
         extra_logos = extra_logo_count(collection)
 
+    # Check if this collection belongs to an org so we can link the organizer there
+    from models import OrgSection
+    org_section = OrgSection.query.filter_by(collection_id=collection.id).first()
+    org_slug = org_section.org.slug if org_section else None
+
     return render_template('collection/share.html', collection=collection,
                            designs=designs, can_manage=can_manage,
                            organizer_pays=is_organizer_pays(collection),
                            roster=roster, roster_item=roster_item_info,
-                           roster_problem=roster_problem, extra_logos=extra_logos)
+                           roster_problem=roster_problem, extra_logos=extra_logos,
+                           org_slug=org_slug)
 
 
 @collection_bp.route('/<slug>/design/<int:design_id>/delete', methods=['POST'])
