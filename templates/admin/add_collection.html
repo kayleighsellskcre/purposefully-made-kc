@@ -658,6 +658,14 @@
             awayGrid.appendChild(fieldGroup('Away color', awayColor));
             awaySection.appendChild(awayGrid);
 
+            // Youth away jersey style
+            var youthAwayStyle = makeStyleSelect('org_team_away_youth_product_id[]', templateSelect);
+            if (youthAwayStyle.options.length) youthAwayStyle.options[0].textContent = 'Same as away jersey, or pick youth cut';
+            var youthAwayRow = document.createElement('div');
+            youthAwayRow.style.cssText = 'margin-top:0.75rem;';
+            youthAwayRow.appendChild(fieldGroup('Youth away jersey style', youthAwayStyle, true));
+            awaySection.appendChild(youthAwayRow);
+
             awayToggle.addEventListener('click', function() {
                 var open = awaySection.style.display !== 'none';
                 awaySection.style.display = open ? 'none' : '';
