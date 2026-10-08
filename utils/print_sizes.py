@@ -670,6 +670,7 @@ def build_item_production(
     back_text_color=None,
     back_outline=None,
     back_outline_color=None,
+    back_image_url=None,
     customer_name=None,
     measured_name_width=None,
     measured_number_width=None,
@@ -783,6 +784,19 @@ def build_item_production(
         }
         from utils.personalization_layout import enrich_back_snapshot
         payload['back'] = enrich_back_snapshot(payload['back'])
+    elif back_image_url:
+        payload['back'] = {
+            'kind': 'image',
+            'back_image_url': back_image_url,
+            'garment_style': style,
+            'age_group': age,
+            'size': size,
+            'color': color,
+            'placement': 'center_back',
+            'placement_label': 'Center Back',
+            'order_by': 'WIDTH',
+            'quantity': qty,
+        }
     return payload
 
 
@@ -816,7 +830,20 @@ def production_from_order_item(item, customer_name=None):
             except Exception:
                 stored = None
     if stored:
-        return production_from_stored(stored, quantity=getattr(item, 'quantity', None))
+        stored_data = production_from_stored(stored, quantity=getattr(item, 'quantity', None))
+        # If the stored snapshot has no back but the item actually has a back design,
+        # the snapshot was saved before image-back support was added — recompute it.
+        if stored_data.get('back') is None:
+            _bd = getattr(item, 'back_design_details', None) or {}
+            _has_back = bool(
+                _bd.get('name') or _bd.get('number')
+                or getattr(item, 'back_design_file_name', None)
+            )
+            if not _has_back:
+                return stored_data
+            # fall through to recompute
+        else:
+            return stored_data
 
     product = getattr(item, 'product', None)
     design = getattr(item, 'design', None)
@@ -835,6 +862,11 @@ def production_from_order_item(item, customer_name=None):
         # Extra back name/number with a front design still counts as front+back.
         has_front = bool(design or getattr(item, 'design_id', None))
 
+    # Image-type back design: stored in back_design_file_name when no name/number present.
+    back_image_url = None
+    if not (back.get('name') or back.get('number')):
+        back_image_url = getattr(item, 'back_design_file_name', None) or None
+
     return build_item_production(
         product=product,
         size=getattr(item, 'size', None),
@@ -852,6 +884,7 @@ def production_from_order_item(item, customer_name=None):
         back_text_color=back.get('text_color'),
         back_outline=back.get('outline'),
         back_outline_color=back.get('outline_color'),
+        back_image_url=back_image_url,
         customer_name=customer_name or back.get('customer_name'),
         # Natural widths, so the squeeze is applied once and not compounded.
         measured_name_width=back.get('name_width_natural') or back.get('name_width'),

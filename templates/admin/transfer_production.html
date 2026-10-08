@@ -88,8 +88,12 @@
                         {% endif %}
                         {% if back %}
                         <div class="xfer-onshirt" style="color: {{ back.text_color or '#ffffff' }}">
+                            {% if back.kind == 'image' %}
+                            <span class="xfer-onshirt-img-label">Back Image</span>
+                            {% else %}
                             {% if back.name %}<span class="xfer-onshirt-name">{{ back.name }}</span>{% endif %}
                             {% if back.number %}<span class="xfer-onshirt-num">{{ back.number }}</span>{% endif %}
+                            {% endif %}
                         </div>
                         {% endif %}
                     </div>
@@ -103,7 +107,9 @@
                 {% endif %}
                 <p class="xfer-design">
                     {% if shirt.logo_code %}<span class="xfer-logo-code">{{ shirt.logo_code }}</span>{% endif %}
-                    {% if back and (back.name or back.number) %}
+                    {% if back and back.kind == 'image' %}
+                    Back Image + {{ front.design_name or 'Front' }}
+                    {% elif back and (back.name or back.number) %}
                     {{ back.name or '' }}{% if back.number %} #{{ back.number }}{% endif %}
                     {% elif front %}
                     {{ front.design_name or 'Front only' }}
@@ -123,9 +129,13 @@
                 {% if back %}
                 <p>
                     <span class="xfer-tag">BACK</span>
+                    {% if back.kind == 'image' %}
+                    Center Back · <em class="xfer-back-filename">{{ (back.back_image_url or '').split('/')[-1] or 'Image design' }}</em>
+                    {% else %}
                     Name <strong>{{ back.name_width_display }}″ × {{ back.name_height_display }}″</strong>
                     · # <strong>{{ back.number_width_display }}″ × {{ back.number_height_display }}″</strong>
                     · Gap <strong>{{ back.gap_display }}″</strong>
+                    {% endif %}
                 </p>
                 {% endif %}
                 {% if shirt.exceeds_safe_area %}<p class="xfer-warn">OVERSIZE: check before pressing</p>{% endif %}
@@ -194,6 +204,24 @@
     position: absolute;
     object-fit: contain;
     pointer-events: none;
+}
+.xfer-onshirt-img-label {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.55rem;
+    font-weight: 700;
+    color: #444;
+    background: rgba(255,255,255,0.85);
+    padding: 0.15rem 0.4rem;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+.xfer-back-filename {
+    font-style: normal;
+    font-size: 0.78rem;
+    color: #555;
+    word-break: break-all;
 }
 .xfer-logo.center_chest, .xfer-logo.center_back {
     width: 32%; max-height: 36%; top: 38%; left: 50%; transform: translate(-50%, -50%);
