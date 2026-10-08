@@ -2962,33 +2962,114 @@ def add_collection():
             elif org_action == 'new':
                 from models import Organization, OrgSection
                 from slugify import slugify as _slugify
-                # Use the group order name as the org name
+                import json as _json
+
                 org_name = collection.name.strip()
                 team_names = [n.strip() for n in request.form.getlist('org_team_names[]') if n.strip()]
+                org_style_mode = request.form.get('org_style_mode', 'same')
+
                 if org_name and team_names:
+                    # Create the org
                     org_slug = _slugify(org_name)
-                    base = org_slug
-                    i = 1
+                    base_slug = org_slug; i = 1
                     while Organization.query.filter_by(slug=org_slug).first():
-                        org_slug = f'{base}-{i}'; i += 1
+                        org_slug = f'{base_slug}-{i}'; i += 1
                     org = Organization(name=org_name, slug=org_slug)
                     db.session.add(org)
                     db.session.flush()
-                    # Only create the first section now (links to this store)
-                    # User adds the remaining teams from the org manage page
-                    first_label = team_names[0]
-                    section = OrgSection(
-                        org_id=org.id,
-                        collection_id=collection.id,
-                        label=first_label,
-                        icon='🏷️',
-                        sort_order=0,
-                    )
-                    db.session.add(section)
+
+                    all_collections = [collection]
+
+                    # ── Per-team style mode: create a store for each team ────
+                    if org_style_mode == 'different' and len(team_names) > 1:
+                        team_product_ids = request.form.getlist('org_team_uniform_product_id[]')
+                        team_home_colors  = request.form.getlist('org_team_home_color[]')
+
+                        # Apply team 0 jersey config to the first (already-created) collection
+                        def _apply_jersey(coll, pid, home_color):
+                            if not pid:
+                                return
+                            try:
+                                ts = _json.loads(coll.team_store or '{}')
+                            except Exception:
+                                ts = {}
+                            ts.setdefault('uniform', {})
+                            ts['uniform']['enabled'] = True
+                            ts['uniform']['product_id'] = int(pid)
+                            if home_color:
+                                ts['uniform']['home_color'] = home_color
+                            coll.team_store = _json.dumps(ts)
+
+                        _apply_jersey(
+                            collection,
+                            team_product_ids[0] if team_product_ids else None,
+                            team_home_colors[0]  if team_home_colors  else None,
+                        )
+
+                        # Create a store for each additional team
+                        for idx, tname in enumerate(team_names[1:], 1):
+                            t_slug = _slugify(f'{org_name}-{tname}')
+                            t_base = t_slug; j = 1
+                            while Collection.query.filter_by(slug=t_slug).first():
+                                t_slug = f'{t_base}-{j}'; j += 1
+
+                            t_coll = Collection(
+                                name=f'{tname}',
+                                slug=t_slug,
+                                is_active=collection.is_active,
+                                shipping_enabled=collection.shipping_enabled,
+                                allow_cash_pickup=collection.allow_cash_pickup,
+                                tax_rate=collection.tax_rate,
+                                created_by_user_id=collection.created_by_user_id,
+                                organizer_user_id=collection.organizer_user_id,
+                                group_kind=collection.group_kind,
+                                payment_mode=collection.payment_mode,
+                                visibility=collection.visibility,
+                                restrict_options=collection.restrict_options,
+                                allowed_colors=collection.allowed_colors,
+                                allowed_placements=collection.allowed_placements,
+                            )
+                            db.session.add(t_coll)
+                            db.session.flush()
+
+                            # Copy same products
+                            t_coll.products = list(collection.products)
+                            db.session.flush()
+
+                            # Apply this team's jersey config
+                            _apply_jersey(
+                                t_coll,
+                                team_product_ids[idx] if idx < len(team_product_ids) else None,
+                                team_home_colors[idx]  if idx < len(team_home_colors)  else None,
+                            )
+                            db.session.flush()
+                            all_collections.append(t_coll)
+
+                    # Create OrgSections for every collection
+                    for sort_idx, (tname, coll) in enumerate(zip(team_names, all_collections)):
+                        section = OrgSection(
+                            org_id=org.id,
+                            collection_id=coll.id,
+                            label=tname,
+                            icon='🏷️',
+                            sort_order=sort_idx,
+                        )
+                        db.session.add(section)
+
                     db.session.commit()
-                    remaining = team_names[1:]
-                    extra = f' Add stores for: {", ".join(remaining)}.' if remaining else ''
-                    flash(f'Organization page created! Share purposefullymadekc.com/org/{org_slug} with your organizer.{extra}', 'success')
+
+                    if len(all_collections) > 1:
+                        flash(
+                            f'Created {len(all_collections)} stores for {org_name}! '
+                            f'Share the org page: purposefullymadekc.com/org/{org_slug}',
+                            'success'
+                        )
+                    else:
+                        flash(
+                            f'Organization page created! '
+                            f'Share purposefullymadekc.com/org/{org_slug} with your organizer.',
+                            'success'
+                        )
             # ───────────────────────────────────────────────────────────────
 
             upload_count = 0

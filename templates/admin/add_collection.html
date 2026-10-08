@@ -528,6 +528,101 @@
         teamList.addEventListener('input', updateOrgNotices);
     }
 
+    // ── Per-team jersey cards ─────────────────────────────────────────
+    var perTeamCards = document.getElementById('perTeamStyleCards');
+
+    function getAllTeamNamesForStyle() {
+        var inputs = teamList ? teamList.querySelectorAll('input[name="org_team_names[]"]') : [];
+        var names = [];
+        inputs.forEach(function(inp) { if (inp.value.trim()) names.push(inp.value.trim()); });
+        return names;
+    }
+
+    function buildPerTeamCards() {
+        if (!perTeamCards) return;
+        var names = getAllTeamNamesForStyle();
+        var colors = window._uniformColors || {};
+        var templateSelect = document.getElementById('uniform_product_id');
+
+        perTeamCards.innerHTML = '';
+        names.forEach(function(name, idx) {
+            var card = document.createElement('div');
+            card.style.cssText = 'padding:1rem 1.1rem;border:1.5px solid #e8d5cb;border-radius:10px;background:#fff;';
+
+            var heading = document.createElement('p');
+            heading.style.cssText = 'font-weight:700;font-size:0.92rem;margin:0 0 0.75rem;color:var(--terra-cotta,#b56c4c);';
+            heading.textContent = name;
+            card.appendChild(heading);
+
+            var grid = document.createElement('div');
+            grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;';
+
+            // Jersey style select
+            var styleWrap = document.createElement('div');
+            var styleLabel = document.createElement('label');
+            styleLabel.style.cssText = 'font-size:0.82rem;font-weight:600;display:block;margin-bottom:0.25rem;';
+            styleLabel.textContent = 'Jersey style';
+            var styleSelect = document.createElement('select');
+            styleSelect.name = 'org_team_uniform_product_id[]';
+            styleSelect.className = 'form-control';
+            if (templateSelect) {
+                Array.from(templateSelect.options).forEach(function(opt) {
+                    styleSelect.appendChild(opt.cloneNode(true));
+                });
+            } else {
+                var blank = document.createElement('option');
+                blank.value = ''; blank.textContent = 'No styles available';
+                styleSelect.appendChild(blank);
+            }
+            styleWrap.appendChild(styleLabel);
+            styleWrap.appendChild(styleSelect);
+
+            // Color select
+            var colorWrap = document.createElement('div');
+            var colorLabel = document.createElement('label');
+            colorLabel.style.cssText = 'font-size:0.82rem;font-weight:600;display:block;margin-bottom:0.25rem;';
+            colorLabel.textContent = 'Home color';
+            var colorSelect = document.createElement('select');
+            colorSelect.name = 'org_team_home_color[]';
+            colorSelect.className = 'form-control';
+            var blankOpt = document.createElement('option');
+            blankOpt.value = ''; blankOpt.textContent = 'Choose jersey style first';
+            colorSelect.appendChild(blankOpt);
+            colorWrap.appendChild(colorLabel);
+            colorWrap.appendChild(colorSelect);
+
+            grid.appendChild(styleWrap);
+            grid.appendChild(colorWrap);
+            card.appendChild(grid);
+            perTeamCards.appendChild(card);
+
+            // Wire style → color population
+            styleSelect.addEventListener('change', function() {
+                var pid = styleSelect.value;
+                var list = colors[pid] || [];
+                colorSelect.innerHTML = '';
+                var firstOpt = document.createElement('option');
+                firstOpt.value = '';
+                firstOpt.textContent = list.length ? 'Choose Home color' : 'No colors for this style';
+                colorSelect.appendChild(firstOpt);
+                list.forEach(function(c) {
+                    var opt = document.createElement('option');
+                    opt.value = c; opt.textContent = c;
+                    colorSelect.appendChild(opt);
+                });
+            });
+        });
+    }
+
+    function updateStyleMode() {
+        var diffChecked = document.querySelector('input[name="org_style_mode"][value="different"]')?.checked;
+        if (perTeamCards) {
+            perTeamCards.style.display = diffChecked ? 'flex' : 'none';
+            perTeamCards.style.flexDirection = 'column';
+        }
+        if (diffChecked) buildPerTeamCards();
+    }
+
     styleChoices.forEach(function(label) {
         label.addEventListener('click', function() {
             var r = label.querySelector('input[type="radio"]');
@@ -539,9 +634,17 @@
                 l.style.color = active ? 'var(--terra-cotta,#b56c4c)' : '#555';
                 l.style.fontWeight = active ? '600' : '500';
             });
-            if (styleHint) styleHint.style.display = (r && r.value === 'different') ? '' : 'none';
+            updateStyleMode();
         });
     });
+
+    // Rebuild cards live as team names are typed
+    if (teamList) {
+        teamList.addEventListener('input', function() {
+            var diffChecked = document.querySelector('input[name="org_style_mode"][value="different"]')?.checked;
+            if (diffChecked) buildPerTeamCards();
+        });
+    }
 })();
 
 document.querySelector('.collection-form')?.addEventListener('submit', function() {

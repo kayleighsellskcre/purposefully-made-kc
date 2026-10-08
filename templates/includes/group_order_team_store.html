@@ -18,9 +18,8 @@
                     🎽 Each team has their own style
                 </label>
             </div>
-            <p id="orgStyleHint" style="font-size:0.82rem;color:#888;margin:0.65rem 0 0;display:none;">
-                You're setting up the styles for your first team right now. When you create the other teams' stores, you'll pick their styles there too.
-            </p>
+            {# Per-team jersey cards — built by JS when "Each team has their own style" is selected #}
+            <div id="perTeamStyleCards" style="display:none;margin-top:1rem;flex-direction:column;gap:0.75rem;"></div>
         </div>
     </div>
 
@@ -172,6 +171,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const homeLogoEmpty = document.getElementById('homeLogoEmpty');
     if (!enabled || !fields || !product || !home || !away) return;
     const colors = {{ (uniform_colors_by_product or {})|tojson }};
+    window._uniformColors = colors;  // expose for per-team style cards
     const initialHome = home.dataset.selected || '';
     const initialAway = away.dataset.selected || '';
 
