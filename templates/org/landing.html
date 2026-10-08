@@ -4,6 +4,17 @@
 {% block robots %}noindex, nofollow{% endblock %}
 
 {% block content %}
+{% set ns = namespace(fan_sections=[], team_sections=[]) %}
+{% for section in sections %}
+    {% if 'fan' in section.label | lower %}
+        {% set ns.fan_sections = ns.fan_sections + [section] %}
+    {% else %}
+        {% set ns.team_sections = ns.team_sections + [section] %}
+    {% endif %}
+{% endfor %}
+{% set fan_sections = ns.fan_sections %}
+{% set team_sections = ns.team_sections %}
+
 <div class="org-landing">
 
     {# ── Header ── #}
@@ -15,26 +26,57 @@
         {% if org.description %}
         <p class="org-desc">{{ org.description }}</p>
         {% endif %}
-        <p class="org-prompt">Choose your team or category below to get started.</p>
     </div>
 
-    {# ── Sport / category tiles ── #}
     {% if sections %}
-    <div class="org-tiles">
-        {% for section in sections %}
+
+    {# ── Team / sport buttons ── #}
+    {% if team_sections %}
+    <div class="org-section-group">
+        <p class="org-section-label">Choose your team</p>
+        <div class="org-team-grid">
+            {% for section in team_sections %}
+            <a href="{{ url_for('collection.view', slug=section.collection.slug) }}"
+               class="org-team-btn">
+                <span class="org-team-icon">{{ section.icon }}</span>
+                <span class="org-team-name">{{ section.label }}</span>
+                <small class="org-team-sub">Jerseys &amp; uniforms</small>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {# ── Fan Wear button ── #}
+    {% if fan_sections %}
+    <div class="org-fanwear-wrap">
+        <p class="org-fanwear-divider">— or —</p>
+        {% for section in fan_sections %}
         <a href="{{ url_for('collection.view', slug=section.collection.slug) }}"
-           class="org-tile">
-            <span class="org-tile-icon" aria-hidden="true">{{ section.icon }}</span>
-            <span class="org-tile-label">{{ section.label }}</span>
-            <span class="org-tile-arrow" aria-hidden="true">→</span>
+           class="org-fanwear-btn">
+            <span>{{ section.icon or '👕' }}</span>
+            <span>{{ section.label }}</span>
+            <small>Tees, hoodies &amp; matching looks for the whole family</small>
         </a>
         {% endfor %}
     </div>
-    {% else %}
-    <p class="org-empty">This group store is being set up. Check back soon!</p>
+    {% elif sections and not team_sections %}
+    {# All sections, no fan-wear label — show standard tiles #}
+    <div class="org-team-grid">
+        {% for section in sections %}
+        <a href="{{ url_for('collection.view', slug=section.collection.slug) }}"
+           class="org-team-btn">
+            <span class="org-team-icon">{{ section.icon }}</span>
+            <span class="org-team-name">{{ section.label }}</span>
+        </a>
+        {% endfor %}
+    </div>
     {% endif %}
 
-    {# ── Footer note ── #}
+    {% else %}
+    <p class="org-empty">This group store is being set up — check back soon!</p>
+    {% endif %}
+
     <p class="org-footer-note">
         Questions? <a href="{{ url_for('main.contact') }}">Contact us</a> anytime.
     </p>
@@ -43,100 +85,140 @@
 
 <style>
 .org-landing {
-    max-width: 680px;
+    max-width: 780px;
     margin: 0 auto;
-    padding: 3rem 1.25rem 5rem;
+    padding: 3.5rem 1.25rem 5rem;
     text-align: center;
 }
 
-.org-header {
-    margin-bottom: 2.5rem;
-}
+/* Header */
+.org-header { margin-bottom: 2.75rem; }
 
 .org-logo {
-    max-height: 100px;
-    max-width: 260px;
+    max-height: 110px;
+    max-width: 280px;
     object-fit: contain;
     margin: 0 auto 1.25rem;
     display: block;
 }
 
 .org-name {
-    font-size: clamp(1.75rem, 5vw, 2.5rem);
+    font-size: clamp(2rem, 5vw, 2.75rem);
     font-weight: 800;
     color: var(--text-primary, #1a1a1a);
-    margin-bottom: 0.5rem;
+    margin: 0 0 0.5rem;
     letter-spacing: -0.02em;
 }
 
 .org-desc {
     color: var(--text-secondary, #666);
     font-size: 1rem;
-    max-width: 480px;
-    margin: 0 auto 0.75rem;
-    line-height: 1.55;
+    max-width: 500px;
+    margin: 0 auto;
+    line-height: 1.6;
 }
 
-.org-prompt {
-    color: var(--text-secondary, #888);
-    font-size: 0.9rem;
-    margin: 0;
+/* Section label */
+.org-section-group { margin-bottom: 1.5rem; }
+
+.org-section-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary, #999);
+    margin: 0 0 1.1rem;
 }
 
-/* ── Tile grid ── */
-.org-tiles {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+/* Team buttons grid */
+.org-team-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 1rem;
-    margin-bottom: 2.5rem;
+    margin-bottom: 0.5rem;
 }
 
-.org-tile {
+.org-team-btn {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 2rem 1rem;
+    gap: 0.35rem;
+    padding: 1.75rem 2rem;
+    min-width: 160px;
     background: #fff;
     border: 2px solid #ede8e5;
-    border-radius: 16px;
+    border-radius: 18px;
     text-decoration: none;
     color: var(--text-primary, #1a1a1a);
     transition: border-color 0.18s, box-shadow 0.18s, transform 0.15s;
     cursor: pointer;
-    position: relative;
 }
 
-.org-tile:hover {
+.org-team-btn:hover {
     border-color: var(--terra-cotta, #b56c4c);
-    box-shadow: 0 6px 24px rgba(181, 108, 76, 0.14);
-    transform: translateY(-2px);
-    color: var(--terra-cotta, #b56c4c);
+    box-shadow: 0 8px 28px rgba(181, 108, 76, 0.15);
+    transform: translateY(-3px);
 }
 
-.org-tile-icon {
-    font-size: 2.5rem;
+.org-team-icon {
+    font-size: 2.75rem;
     line-height: 1;
     display: block;
 }
 
-.org-tile-label {
-    font-size: 1.05rem;
+.org-team-name {
+    font-size: 1.1rem;
     font-weight: 700;
     letter-spacing: 0.01em;
 }
 
-.org-tile-arrow {
-    font-size: 1rem;
-    opacity: 0;
-    transition: opacity 0.15s, transform 0.15s;
-    transform: translateX(-4px);
+.org-team-sub {
+    font-size: 0.75rem;
+    color: var(--text-secondary, #999);
+    font-style: normal;
+    margin-top: 0.1rem;
 }
 
-.org-tile:hover .org-tile-arrow {
-    opacity: 1;
-    transform: translateX(0);
+/* Fan wear */
+.org-fanwear-wrap {
+    margin-top: 0.5rem;
+}
+
+.org-fanwear-divider {
+    font-size: 0.85rem;
+    color: #bbb;
+    margin: 0 0 1.25rem;
+    letter-spacing: 0.05em;
+}
+
+.org-fanwear-btn {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 1.25rem 3rem;
+    background: var(--terra-cotta, #b56c4c);
+    color: #fff;
+    border-radius: 14px;
+    text-decoration: none;
+    font-size: 1.05rem;
+    font-weight: 700;
+    transition: background 0.18s, transform 0.15s, box-shadow 0.18s;
+    min-width: 220px;
+}
+
+.org-fanwear-btn:hover {
+    background: #9e5c3e;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(181, 108, 76, 0.3);
+    color: #fff;
+}
+
+.org-fanwear-btn small {
+    font-size: 0.78rem;
+    font-weight: 400;
+    opacity: 0.88;
 }
 
 .org-empty {
@@ -147,8 +229,8 @@
 
 .org-footer-note {
     font-size: 0.85rem;
-    color: var(--text-secondary, #aaa);
-    margin-top: 1rem;
+    color: #bbb;
+    margin-top: 2.5rem;
 }
 
 .org-footer-note a {
@@ -156,16 +238,11 @@
     text-decoration: underline;
 }
 
-@media (max-width: 480px) {
-    .org-tiles {
-        grid-template-columns: 1fr 1fr;
-        gap: 0.75rem;
-    }
-    .org-tile {
-        padding: 1.5rem 0.75rem;
-    }
-    .org-tile-icon { font-size: 2rem; }
-    .org-tile-label { font-size: 0.92rem; }
+@media (max-width: 520px) {
+    .org-team-btn { min-width: 130px; padding: 1.4rem 1rem; }
+    .org-team-icon { font-size: 2.2rem; }
+    .org-team-name { font-size: 0.95rem; }
+    .org-fanwear-btn { padding: 1.1rem 2rem; min-width: 0; width: 100%; max-width: 320px; }
 }
 </style>
 {% endblock %}
