@@ -19,7 +19,10 @@
             {% if is_user_create %}
             <a href="{{ url_for('shop.group_orders') }}" class="btn btn-outline">Back to Group Orders</a>
             {% else %}
-            <a href="{{ url_for('admin.collections') }}" class="btn btn-outline">Back to Group Orders</a>
+            <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+                <a href="{{ url_for('admin.collections') }}" class="btn btn-outline">Back to Group Orders</a>
+                <a href="{{ url_for('admin.organizations') }}" class="btn btn-outline">🏫 Organizations</a>
+            </div>
             {% endif %}
         </div>
         

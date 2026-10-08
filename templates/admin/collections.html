@@ -8,7 +8,10 @@
         <div class="admin-header">
             <span class="adm-eyebrow">Admin / Group Orders</span>
             <h1>Group Orders</h1>
-            <a href="{{ url_for('admin.add_collection') }}" class="btn btn-primary">Create Group Order</a>
+            <div style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:center;">
+                <a href="{{ url_for('admin.add_collection') }}" class="btn btn-primary">Create Group Order</a>
+                <a href="{{ url_for('admin.organizations') }}" class="btn btn-outline">🏫 Organizations</a>
+            </div>
         </div>
 
         {% if collections %}
