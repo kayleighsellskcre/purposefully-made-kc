@@ -86,30 +86,29 @@
                 {% include 'includes/group_order_kind_fields.html' %}
             </div>
 
-            {# ── Multi-team style notice (only visible when org checkbox is checked) ── #}
-            <div id="orgStyleNotice" style="display:none;margin-bottom:1rem;">
-                <div style="background:#fdf6f3;border:1.5px solid #e8d5cb;border-radius:12px;padding:1rem 1.25rem;">
-                    <p style="font-size:0.88rem;font-weight:700;color:var(--terra-cotta,#b56c4c);margin:0 0 0.6rem;text-transform:uppercase;letter-spacing:0.05em;">Multiple teams detected</p>
-                    <p style="font-size:0.9rem;margin:0 0 0.85rem;color:var(--text-primary,#333);">Do all your teams wear the same style, or does each team have their own?</p>
-                    <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
-                        <label class="org-style-choice" id="orgStyleSame" style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border:1.5px solid #ddd;border-radius:8px;cursor:pointer;font-size:0.88rem;font-weight:500;background:#fff;color:#555;transition:all 0.15s;">
-                            <input type="radio" name="org_style_mode" value="same" checked style="display:none;">
-                            👕 Every team wears the same style
-                        </label>
-                        <label class="org-style-choice" id="orgStyleDiff" style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border:1.5px solid #ddd;border-radius:8px;cursor:pointer;font-size:0.88rem;font-weight:500;background:#fff;color:#555;transition:all 0.15s;">
-                            <input type="radio" name="org_style_mode" value="different" style="display:none;">
-                            🎽 Each team has their own style
-                        </label>
-                    </div>
-                    <p id="orgStyleHint" style="font-size:0.82rem;color:#888;margin:0.65rem 0 0;display:none;">
-                        You're setting up the styles for your first team right now. When you create the other teams' stores, you'll pick their styles there too.
-                    </p>
-                </div>
-            </div>
-
             {% include 'includes/group_order_team_store.html' %}
 
             <div class="form-section" id="fanWearSection">
+                {# ── Multi-team style notice — inside fanWearSection so wizard step logic hides it correctly ── #}
+                <div id="orgStyleNotice" style="display:none;margin-bottom:1.25rem;margin-top:-0.25rem;">
+                    <div style="background:#fdf6f3;border:1.5px solid #e8d5cb;border-radius:12px;padding:1rem 1.25rem;">
+                        <p style="font-size:0.88rem;font-weight:700;color:var(--terra-cotta,#b56c4c);margin:0 0 0.6rem;text-transform:uppercase;letter-spacing:0.05em;">Multiple teams detected</p>
+                        <p style="font-size:0.9rem;margin:0 0 0.85rem;color:var(--text-primary,#333);">Do all your teams wear the same style, or does each team have their own?</p>
+                        <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+                            <label class="org-style-choice" id="orgStyleSame" style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border:1.5px solid #ddd;border-radius:8px;cursor:pointer;font-size:0.88rem;font-weight:500;background:#fff;color:#555;transition:all 0.15s;">
+                                <input type="radio" name="org_style_mode" value="same" checked style="display:none;">
+                                👕 Every team wears the same style
+                            </label>
+                            <label class="org-style-choice" id="orgStyleDiff" style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border:1.5px solid #ddd;border-radius:8px;cursor:pointer;font-size:0.88rem;font-weight:500;background:#fff;color:#555;transition:all 0.15s;">
+                                <input type="radio" name="org_style_mode" value="different" style="display:none;">
+                                🎽 Each team has their own style
+                            </label>
+                        </div>
+                        <p id="orgStyleHint" style="font-size:0.82rem;color:#888;margin:0.65rem 0 0;display:none;">
+                            You're setting up the styles for your first team right now. When you create the other teams' stores, you'll pick their styles there too.
+                        </p>
+                    </div>
+                </div>
                 <h2><span data-copy="team">Family &amp; Fan Wear</span><span data-copy="general">Styles to Offer</span></h2>
                 <p class="form-hint" data-copy="team">Offer extra styles besides the jersey, like tees, hoodies, and cute matching looks for family and friends. Check both youth and adult if both ages will order. Leave this empty for a uniform-only store.</p>
                 <p class="form-hint" data-copy="general">Check the styles your group can order. If kids and grown-ups are both ordering, check the youth and adult versions so everyone can match.</p>
@@ -153,6 +152,12 @@
             <div class="form-section" id="choicesSection">
                 <h2>Your Choices for This Group Order</h2>
                 <p class="form-hint">Set up colors, designs, placements, and back options. Your team will only see what you allow.</p>
+
+                {# Multi-team logo notice — only shown when org checkbox checked #}
+                <div id="orgLogoNotice" style="display:none;margin-bottom:1.25rem;padding:0.85rem 1rem;background:#fdf6f3;border:1.5px solid #e8d5cb;border-radius:10px;">
+                    <p style="margin:0;font-size:0.88rem;color:var(--terra-cotta,#b56c4c);font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.3rem;">Setting up: <span id="orgFirstTeamName">Team 1</span></p>
+                    <p style="margin:0;font-size:0.88rem;color:var(--text-primary,#333);">Upload this team's logo and choose their colors here. You'll do the same for your other teams when you create each of their stores.</p>
+                </div>
 
                 <div class="organizer-block">
                     <div class="organizer-block-label">
@@ -486,14 +491,35 @@
 
     if (addBtn) addBtn.addEventListener('click', addTeamRow);
 
-    // Show/hide the style notice on the next step
+    // Show/hide the style + logo notices, and keep team name label in sync
     var styleNotice = document.getElementById('orgStyleNotice');
+    var logoNotice = document.getElementById('orgLogoNotice');
+    var firstTeamLabel = document.getElementById('orgFirstTeamName');
     var styleChoices = document.querySelectorAll('.org-style-choice');
     var styleHint = document.getElementById('orgStyleHint');
 
-    function updateStyleNotice() {
-        if (styleNotice) styleNotice.style.display = cb.checked ? '' : 'none';
+    function getFirstTeamName() {
+        var first = teamList ? teamList.querySelector('input[name="org_team_names[]"]') : null;
+        return (first && first.value.trim()) ? first.value.trim() : 'Team 1';
     }
+
+    function updateOrgNotices() {
+        var checked = cb.checked;
+        if (styleNotice) styleNotice.style.display = checked ? '' : 'none';
+        if (logoNotice) logoNotice.style.display = checked ? '' : 'none';
+        if (firstTeamLabel) firstTeamLabel.textContent = getFirstTeamName();
+    }
+
+    cb.addEventListener('change', updateOrgNotices);
+
+    // Keep the team name label live as the user types
+    if (teamList) {
+        teamList.addEventListener('input', function() {
+            if (firstTeamLabel) firstTeamLabel.textContent = getFirstTeamName();
+        });
+    }
+
+    function updateStyleNotice() {}  // replaced by updateOrgNotices
     cb.addEventListener('change', updateStyleNotice);
 
     styleChoices.forEach(function(label) {
