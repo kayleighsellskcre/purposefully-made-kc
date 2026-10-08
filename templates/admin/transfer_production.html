@@ -86,14 +86,12 @@
                         {% else %}
                         <svg class="xfer-shirt" viewBox="0 0 64 72" aria-hidden="true"><path d="M16 14 L4 22 L10 30 L16 26 V64 H48 V26 L54 30 L60 22 L48 14 L40 18 H24 Z" fill="none" stroke="#222" stroke-width="1.6"/></svg>
                         {% endif %}
-                        {% if back %}
+                        {% if back and back.kind == 'image' and shirt.back_overlay_url %}
+                        <img class="xfer-logo center_back" src="{{ shirt.back_overlay_url }}" alt="Back design" onerror="this.style.display='none'">
+                        {% elif back and back.kind != 'image' %}
                         <div class="xfer-onshirt" style="color: {{ back.text_color or '#ffffff' }}">
-                            {% if back.kind == 'image' %}
-                            <span class="xfer-onshirt-img-label">Back Image</span>
-                            {% else %}
                             {% if back.name %}<span class="xfer-onshirt-name">{{ back.name }}</span>{% endif %}
                             {% if back.number %}<span class="xfer-onshirt-num">{{ back.number }}</span>{% endif %}
-                            {% endif %}
                         </div>
                         {% endif %}
                     </div>
@@ -204,18 +202,6 @@
     position: absolute;
     object-fit: contain;
     pointer-events: none;
-}
-.xfer-onshirt-img-label {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 0.55rem;
-    font-weight: 700;
-    color: #444;
-    background: rgba(255,255,255,0.85);
-    padding: 0.15rem 0.4rem;
-    border-radius: 3px;
-    white-space: nowrap;
 }
 .xfer-back-filename {
     font-style: normal;

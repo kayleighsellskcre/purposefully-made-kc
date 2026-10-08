@@ -804,7 +804,7 @@ def repair_personalization():
 def _collect_press_shirts(orders):
     """One card per physical shirt: front and back stay together."""
     from utils.print_sizes import production_from_order_item
-    from utils.order_artwork import front_print_url, mockup_urls
+    from utils.order_artwork import front_print_url, mockup_urls, back_print_url
     from utils.ops_flow import packing_sort_key
     shirts = []
     for order in orders:
@@ -846,6 +846,7 @@ def _collect_press_shirts(orders):
                     'front_mockup_url': front_m,
                     'back_mockup_url': back_m or front_m,
                     'front_overlay_url': front_print_url(item) if front else None,
+                    'back_overlay_url': back_print_url(item) if (back and back.get('kind') == 'image') else None,
                     'front_placement': getattr(item, 'placement', None) or (front or {}).get('placement') or 'center_chest',
                     'design_id': getattr(item, 'design_id', None),
                     'collection_id': getattr(order, 'collection_id', None),
