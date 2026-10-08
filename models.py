@@ -267,6 +267,79 @@ class GroupRosterEntry(db.Model):
         return f'<GroupRosterEntry {self.full_name} {self.size}>'
 
 
+class Organization(db.Model):
+    """An umbrella group (school, club, business) that owns multiple Collections.
+
+    e.g. "Rainbow Cheetahs" owns Basketball, Soccer, Volleyball, and Fan Wear
+    collections. Shoppers land at /org/<slug> and pick their sport; organizers
+    manage everything from /org/<slug>/manage.
+    """
+    __tablename__ = 'organization'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    slug = db.Column(db.String(200), unique=True, nullable=False, index=True)
+    description = db.Column(db.Text)
+    logo_url = db.Column(db.String(500))
+    cover_image = db.Column(db.String(500))
+    is_active = db.Column(db.Boolean, default=True)
+
+    # Organizer dashboard access
+    password_hash = db.Column(db.String(256))
+
+    # Creator tracking
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    pending_organizer_email = db.Column(db.String(120))
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    sections = db.relationship(
+        'OrgSection', backref='organization', lazy='dynamic',
+        order_by='OrgSection.sort_order',
+        cascade='all, delete-orphan',
+    )
+    created_by = db.relationship('User', backref='created_organizations')
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        if not self.password_hash:
+            return True
+        return check_password_hash(self.password_hash, password)
+
+    @property
+    def share_url(self):
+        return f'/org/{self.slug}'
+
+    def __repr__(self):
+        return f'<Organization {self.name}>'
+
+
+class OrgSection(db.Model):
+    """One tile on the Organization landing page — links to a Collection.
+
+    e.g. label='Basketball', icon='🏀', collection=<basketball Collection>
+    """
+    __tablename__ = 'org_section'
+    id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(
+        db.Integer, db.ForeignKey('organization.id'), nullable=False, index=True
+    )
+    collection_id = db.Column(
+        db.Integer, db.ForeignKey('collection.id'), nullable=False
+    )
+    label = db.Column(db.String(100), nullable=False)   # "Basketball"
+    icon = db.Column(db.String(10), default='🏷️')      # emoji
+    sort_order = db.Column(db.Integer, default=0)
+
+    collection = db.relationship('Collection', backref='org_sections')
+
+    def __repr__(self):
+        return f'<OrgSection {self.label}>'
+
+
 # Association table for Collection-Product many-to-many
 collection_products = db.Table('collection_products',
     db.Column('collection_id', db.Integer, db.ForeignKey('collection.id'), primary_key=True),

@@ -2773,6 +2773,29 @@ def import_widen_images():
     return (jsonify(result), 200, cors_headers)
 
 
+# ===== ORGANIZATIONS =====
+
+@admin_bp.route('/organizations')
+@admin_required
+def organizations():
+    """List all organizations."""
+    from models import Organization
+    orgs = Organization.query.order_by(Organization.created_at.desc()).all()
+    return render_template('admin/organizations.html', orgs=orgs)
+
+
+@admin_bp.route('/organizations/<int:org_id>/toggle', methods=['POST'])
+@admin_required
+def toggle_organization(org_id):
+    from models import Organization
+    org = Organization.query.get_or_404(org_id)
+    org.is_active = not org.is_active
+    db.session.commit()
+    status = 'activated' if org.is_active else 'deactivated'
+    flash(f'"{org.name}" {status}.', 'success')
+    return redirect(url_for('admin.organizations'))
+
+
 # ===== COLLECTIONS =====
 
 @admin_bp.route('/collections')

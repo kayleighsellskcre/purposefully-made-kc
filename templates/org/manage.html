@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+{% block title %}Manage {{ org.name }} — Purposefully Made KC{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="org-manage">
+
+    <div class="org-manage-header">
+        <span class="org-eyebrow">Organizer Dashboard</span>
+        <h1>{{ org.name }}</h1>
+        <div class="org-manage-links">
+            <a href="{{ url_for('org.landing', slug=org.slug) }}" class="btn btn-outline btn-sm" target="_blank">
+                View live page →
+            </a>
+            <a href="{{ url_for('org.org_logout', slug=org.slug) }}" class="btn-text-muted">Sign out</a>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }}">{{ msg }}</div>
+    {% endfor %}
+    {% endwith %}
+
+    {# ── Share link ── #}
+    <div class="org-share-box">
+        <span class="org-share-label">Your shareable link</span>
+        <div class="org-share-row">
+            <input type="text" readonly class="org-share-input"
+                   value="{{ request.host_url.rstrip('/') }}{{ url_for('org.landing', slug=org.slug) }}"
+                   id="orgShareUrl">
+            <button type="button" class="btn btn-sm btn-outline" onclick="copyShareUrl()">Copy</button>
+        </div>
+        <small>Share this one link — parents click their sport and go straight to that store.</small>
+    </div>
+
+    {# ── Current sections ── #}
+    <section class="org-section-list-wrap">
+        <h2>Sections <span class="org-section-count">{{ sections|length }}</span></h2>
+        <p class="org-section-hint">These are the tiles shoppers see on your landing page. Drag to reorder.</p>
+
+        {% if sections %}
+        <form method="post" id="reorderForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="reorder">
+            <ul class="org-section-list" id="sectionList">
+                {% for section in sections %}
+                <li class="org-section-row" data-id="{{ section.id }}">
+                    <input type="hidden" name="section_order[]" value="{{ section.id }}">
+                    <span class="org-drag-handle" title="Drag to reorder">⠿</span>
+                    <span class="org-section-icon">{{ section.icon }}</span>
+                    <div class="org-section-info">
+                        <strong>{{ section.label }}</strong>
+                        <span>→ <a href="{{ url_for('collection.view_collection', slug=section.collection.slug) }}" target="_blank">{{ section.collection.name }}</a></span>
+                    </div>
+                    <form method="post" class="org-delete-form" onsubmit="return confirm('Remove this section?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="delete_section">
+                        <input type="hidden" name="section_id" value="{{ section.id }}">
+                        <button type="submit" class="btn-icon-danger" title="Remove section">✕</button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+        </form>
+        {% else %}
+        <p class="org-no-sections">No sections yet — add your first one below.</p>
+        {% endif %}
+    </section>
+
+    {# ── Add a section ── #}
+    <section class="org-add-section">
+        <h2>Add a section</h2>
+        <p>Each section is a tile on your landing page that links to one of your group order stores.</p>
+        <form method="post" class="org-add-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="add_section">
+
+            <div class="org-add-row">
+                <div class="form-group">
+                    <label for="icon">Icon</label>
+                    <input type="text" id="icon" name="icon" class="form-control org-icon-input"
+                           value="🏷️" maxlength="4" placeholder="🏀">
+                    <small>Any emoji</small>
+                </div>
+                <div class="form-group org-add-label-group">
+                    <label for="label">Section name <span class="req">*</span></label>
+                    <input type="text" id="label" name="label" class="form-control"
+                           placeholder="e.g. Basketball, Fan Wear, Volleyball" maxlength="100" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="collection_id">Group order store <span class="req">*</span></label>
+                <select id="collection_id" name="collection_id" class="form-control" required>
+                    <option value="">— Select a group order store —</option>
+                    {% for c in available_collections %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+                <small>Don't see it? <a href="{{ url_for('shop.edit_group_order') }}" target="_blank">Create a new group order store first →</a></small>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Add section</button>
+        </form>
+    </section>
+
+    {# ── Settings ── #}
+    <section class="org-settings">
+        <h2>Settings</h2>
+        <form method="post" class="org-settings-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="save_settings">
+
+            <div class="form-group">
+                <label for="s_name">Organization name</label>
+                <input type="text" id="s_name" name="name" class="form-control"
+                       value="{{ org.name }}" maxlength="200" required>
+            </div>
+
+            <div class="form-group">
+                <label for="s_description">Description <span class="opt">(optional)</span></label>
+                <textarea id="s_description" name="description" class="form-control" rows="2">{{ org.description or '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="s_logo_url">Logo URL <span class="opt">(optional)</span></label>
+                <input type="url" id="s_logo_url" name="logo_url" class="form-control"
+                       value="{{ org.logo_url or '' }}" placeholder="https://...">
+            </div>
+
+            <div class="form-group">
+                <label for="s_password">New organizer password <span class="opt">(leave blank to keep current)</span></label>
+                <input type="password" id="s_password" name="new_password" class="form-control"
+                       placeholder="New password">
+            </div>
+
+            <button type="submit" class="btn btn-outline">Save settings</button>
+        </form>
+    </section>
+
+</div>
+
+<script>
+function copyShareUrl() {
+    const input = document.getElementById('orgShareUrl');
+    input.select();
+    navigator.clipboard.writeText(input.value).then(() => {
+        const btn = event.target;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 2000);
+    }).catch(() => {
+        document.execCommand('copy');
+    });
+}
+
+// Simple drag-to-reorder
+(function () {
+    const list = document.getElementById('sectionList');
+    if (!list) return;
+    let dragging = null;
+
+    list.querySelectorAll('.org-section-row').forEach(row => {
+        row.draggable = true;
+        row.addEventListener('dragstart', () => { dragging = row; row.classList.add('dragging'); });
+        row.addEventListener('dragend', () => {
+            row.classList.remove('dragging');
+            dragging = null;
+            syncHiddenInputs();
+            document.getElementById('reorderForm').submit();
+        });
+        row.addEventListener('dragover', e => {
+            e.preventDefault();
+            if (dragging && dragging !== row) {
+                const rect = row.getBoundingClientRect();
+                const mid = rect.top + rect.height / 2;
+                if (e.clientY < mid) {
+                    list.insertBefore(dragging, row);
+                } else {
+                    list.insertBefore(dragging, row.nextSibling);
+                }
+            }
+        });
+    });
+
+    function syncHiddenInputs() {
+        list.querySelectorAll('.org-section-row').forEach((row, idx) => {
+            const input = row.querySelector('input[name="section_order[]"]');
+            if (input) input.value = row.dataset.id;
+        });
+    }
+})();
+</script>
+
+<style>
+.org-manage {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 3rem 1.25rem 5rem;
+}
+.org-eyebrow {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--terra-cotta, #b56c4c);
+    margin-bottom: 0.3rem;
+}
+.org-manage-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1.75rem;
+}
+.org-manage-header h1 {
+    font-size: 1.85rem;
+    font-weight: 800;
+    margin: 0;
+    flex: 1 1 100%;
+}
+.org-manage-links { display: flex; align-items: center; gap: 1rem; }
+.btn-text-muted { font-size: 0.82rem; color: var(--text-secondary, #aaa); text-decoration: none; }
+.btn-text-muted:hover { color: var(--text-primary, #333); }
+
+/* Share box */
+.org-share-box {
+    background: #fdf6f3;
+    border: 1.5px solid #e8d5cb;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 2rem;
+}
+.org-share-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--terra-cotta, #b56c4c);
+    margin-bottom: 0.5rem;
+}
+.org-share-row { display: flex; gap: 0.5rem; margin-bottom: 0.35rem; }
+.org-share-input {
+    flex: 1;
+    font-family: monospace;
+    font-size: 0.82rem;
+    padding: 0.45rem 0.7rem;
+    border: 1.5px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    color: #333;
+}
+.org-share-box small { font-size: 0.78rem; color: var(--text-secondary, #888); }
+
+/* Sections */
+.org-section-list-wrap, .org-add-section, .org-settings {
+    margin-bottom: 2.5rem;
+    padding-bottom: 2.5rem;
+    border-bottom: 1.5px solid #f0ebe8;
+}
+.org-section-list-wrap h2, .org-add-section h2, .org-settings h2 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+}
+.org-section-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--terra-cotta, #b56c4c);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    border-radius: 20px;
+    padding: 0.1rem 0.45rem;
+    margin-left: 0.35rem;
+    vertical-align: middle;
+}
+.org-section-hint { font-size: 0.82rem; color: var(--text-secondary, #888); margin-bottom: 0.85rem; }
+
+.org-section-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0;
+    margin: 0;
+}
+.org-section-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: #fff;
+    border: 1.5px solid #e8e0db;
+    border-radius: 10px;
+    padding: 0.65rem 0.85rem;
+    cursor: grab;
+    transition: box-shadow 0.15s;
+}
+.org-section-row.dragging { opacity: 0.5; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+.org-drag-handle { font-size: 1.1rem; color: #ccc; cursor: grab; flex-shrink: 0; }
+.org-section-icon { font-size: 1.4rem; flex-shrink: 0; }
+.org-section-info { flex: 1; min-width: 0; }
+.org-section-info strong { display: block; font-size: 0.9rem; }
+.org-section-info span { font-size: 0.78rem; color: var(--text-secondary, #888); }
+.org-section-info a { color: var(--terra-cotta, #b56c4c); }
+.org-delete-form { margin: 0; }
+.btn-icon-danger {
+    background: none;
+    border: none;
+    color: #ccc;
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 0.2rem 0.35rem;
+    border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
+}
+.btn-icon-danger:hover { color: #c0392b; background: #fff0f0; }
+.org-no-sections { color: var(--text-secondary, #aaa); font-size: 0.9rem; padding: 1rem 0; }
+
+/* Add section form */
+.org-add-section p, .org-settings p { font-size: 0.85rem; color: var(--text-secondary, #777); margin-bottom: 1rem; }
+.org-add-form { display: flex; flex-direction: column; gap: 1rem; }
+.org-add-row { display: flex; gap: 0.75rem; align-items: flex-start; }
+.org-icon-input { width: 70px; text-align: center; font-size: 1.25rem; }
+.org-add-label-group { flex: 1; }
+.form-group { display: flex; flex-direction: column; gap: 0.3rem; }
+.form-group label { font-size: 0.85rem; font-weight: 600; color: var(--text-primary, #333); }
+.form-group small { font-size: 0.78rem; color: var(--text-secondary, #888); }
+.form-group small a { color: var(--terra-cotta, #b56c4c); }
+.req { color: #c0392b; }
+.opt { color: var(--text-secondary, #aaa); font-weight: 400; font-size: 0.8rem; }
+
+/* Settings form */
+.org-settings-form { display: flex; flex-direction: column; gap: 1rem; }
+
+@media (max-width: 480px) {
+    .org-add-row { flex-direction: column; }
+    .org-icon-input { width: 100%; }
+}
+</style>
+{% endblock %}

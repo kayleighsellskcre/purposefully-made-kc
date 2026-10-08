@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Create a Group Store — Purposefully Made KC{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="org-create-wrap">
+    <div class="org-create-header">
+        <span class="org-eyebrow">Group Stores</span>
+        <h1>Create your group store</h1>
+        <p>One link, every team. Set up your org once and parents can find exactly what they need.</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }}">{{ msg }}</div>
+    {% endfor %}
+    {% endwith %}
+
+    <form method="post" class="org-create-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="form-group">
+            <label for="name">Organization name <span class="req">*</span></label>
+            <input type="text" id="name" name="name" required class="form-control"
+                   placeholder="e.g. Rainbow Cheetahs, Jefferson Middle School"
+                   maxlength="200">
+            <small>This is what shoppers see at the top of your landing page.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Short description <span class="opt">(optional)</span></label>
+            <textarea id="description" name="description" class="form-control" rows="2"
+                      placeholder="e.g. Order your Rainbow Cheetahs gear for the 2026 season!"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="logo_url">Logo image URL <span class="opt">(optional)</span></label>
+            <input type="url" id="logo_url" name="logo_url" class="form-control"
+                   placeholder="https://...">
+            <small>Paste a link to your logo image. Accepted: JPG, PNG, SVG.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="organizer_email">Your email <span class="opt">(optional)</span></label>
+            <input type="email" id="organizer_email" name="organizer_email" class="form-control"
+                   placeholder="you@example.com">
+            <small>Used to claim this store if you don't have an account yet.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="password">Organizer password <span class="opt">(optional)</span></label>
+            <input type="password" id="password" name="password" class="form-control"
+                   placeholder="Leave blank for no password">
+            <small>Protects your manage dashboard. Shoppers on the landing page don't need this.</small>
+        </div>
+
+        <div class="org-create-actions">
+            <button type="submit" class="btn btn-primary btn-lg">Create store →</button>
+        </div>
+    </form>
+</div>
+
+<style>
+.org-create-wrap {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 3rem 1.25rem 5rem;
+}
+.org-eyebrow {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--terra-cotta, #b56c4c);
+    margin-bottom: 0.4rem;
+}
+.org-create-header { margin-bottom: 2rem; }
+.org-create-header h1 { font-size: 1.9rem; font-weight: 800; margin-bottom: 0.4rem; }
+.org-create-header p { color: var(--text-secondary, #777); font-size: 0.95rem; }
+.org-create-form { display: flex; flex-direction: column; gap: 1.25rem; }
+.form-group { display: flex; flex-direction: column; gap: 0.3rem; }
+.form-group label { font-size: 0.88rem; font-weight: 600; color: var(--text-primary, #333); }
+.form-group small { font-size: 0.78rem; color: var(--text-secondary, #888); }
+.req { color: #c0392b; }
+.opt { color: var(--text-secondary, #aaa); font-weight: 400; font-size: 0.8rem; }
+.org-create-actions { margin-top: 0.5rem; }
+</style>
+{% endblock %}

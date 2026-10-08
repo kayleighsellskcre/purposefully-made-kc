@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Organizer Login — {{ org.name }}{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="org-login-wrap">
+    <h1>{{ org.name }}</h1>
+    <p class="org-login-sub">Enter your organizer password to manage this group store.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+    <div class="alert alert-{{ cat }}">{{ msg }}</div>
+    {% endfor %}
+    {% endwith %}
+
+    <form method="post" class="org-login-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autofocus
+               placeholder="Organizer password" class="form-control">
+        <button type="submit" class="btn btn-primary">Sign in</button>
+    </form>
+
+    <p class="org-login-back">
+        <a href="{{ url_for('org.landing', slug=org.slug) }}">← Back to {{ org.name }}</a>
+    </p>
+</div>
+
+<style>
+.org-login-wrap {
+    max-width: 400px;
+    margin: 4rem auto;
+    padding: 0 1.25rem;
+    text-align: center;
+}
+.org-login-wrap h1 { font-size: 1.75rem; margin-bottom: 0.4rem; }
+.org-login-sub { color: var(--text-secondary, #777); margin-bottom: 1.5rem; font-size: 0.92rem; }
+.org-login-form { display: flex; flex-direction: column; gap: 0.75rem; text-align: left; }
+.org-login-form label { font-size: 0.85rem; font-weight: 600; color: var(--text-secondary, #555); }
+.org-login-back { margin-top: 1.5rem; font-size: 0.85rem; }
+.org-login-back a { color: var(--terra-cotta, #b56c4c); }
+</style>
+{% endblock %}

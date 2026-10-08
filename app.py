@@ -237,6 +237,32 @@ def create_app(config_class=Config):
                     # Gallery color variants — children point at a main design
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS parent_design_id INTEGER REFERENCES design(id)",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS variant_label VARCHAR(80)",
+                    # Organization umbrella — links multiple collections under one landing page
+                    """CREATE TABLE IF NOT EXISTS organization (
+                        id SERIAL PRIMARY KEY,
+                        name VARCHAR(200) NOT NULL,
+                        slug VARCHAR(200) UNIQUE NOT NULL,
+                        description TEXT,
+                        logo_url VARCHAR(500),
+                        cover_image VARCHAR(500),
+                        is_active BOOLEAN DEFAULT TRUE,
+                        password_hash VARCHAR(256),
+                        created_by_user_id INTEGER REFERENCES \"user\"(id),
+                        pending_organizer_email VARCHAR(120),
+                        created_at TIMESTAMP DEFAULT NOW(),
+                        updated_at TIMESTAMP DEFAULT NOW()
+                    )""",
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ix_organization_slug ON organization (slug)",
+                    """CREATE TABLE IF NOT EXISTS org_section (
+                        id SERIAL PRIMARY KEY,
+                        organization_id INTEGER NOT NULL REFERENCES organization(id) ON DELETE CASCADE,
+                        collection_id INTEGER NOT NULL REFERENCES collection(id),
+                        label VARCHAR(100) NOT NULL,
+                        icon VARCHAR(10) DEFAULT '🏷️',
+                        sort_order INTEGER DEFAULT 0
+                    )""",
+                    "CREATE INDEX IF NOT EXISTS ix_org_section_org ON org_section (organization_id)",
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS organization_id INTEGER REFERENCES organization(id)",
                 ]
                 for migration in all_migrations:
                     try:
@@ -395,6 +421,7 @@ def create_app(config_class=Config):
     from routes.design import design_bp
     from routes.custom_request import custom_request_bp
     from routes.favorites import favorites_bp
+    from routes.org import org_bp
     
     # Serve uploads (mockups, designs) - register FIRST so /uploads/mockups/... works
     @app.route('/uploads/<path:path>')
@@ -425,6 +452,7 @@ def create_app(config_class=Config):
     app.register_blueprint(collection_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(favorites_bp)
+    app.register_blueprint(org_bp)
 
     # ── CSRF exemptions ──────────────────────────────────────────────────────
     # Stripe / PayPal webhooks POST with their own signatures, not our CSRF token.
