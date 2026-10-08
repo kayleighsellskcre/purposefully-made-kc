@@ -38,6 +38,23 @@
             <a href="{{ url_for('shop.edit_group_order', slug=collection.slug) }}" class="btn btn-outline" style="margin-left:0.5rem;">Edit store</a>
             {% endif %}
 
+            {% if can_manage %}
+            <div style="margin-top:2rem;padding:1.25rem 1.5rem;background:#fdf6f3;border:1.5px solid #e8d5cb;border-radius:14px;text-align:left;">
+                <p style="margin:0 0 0.3rem;font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--terra-cotta,#b56c4c);">Want to customize your store?</p>
+                <p style="margin:0 0 1rem;font-size:0.9rem;color:#555;">You can add a logo, set your team colors, add a pickup location, or set an order deadline — whenever you're ready. No rush.</p>
+                <div style="display:flex;gap:0.65rem;flex-wrap:wrap;">
+                    <a href="{{ url_for('shop.edit_group_order', slug=collection.slug) }}"
+                       style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.55rem 1rem;border:1.5px solid var(--terra-cotta,#b56c4c);border-radius:8px;font-size:0.88rem;font-weight:600;color:var(--terra-cotta,#b56c4c);text-decoration:none;background:#fff;">
+                        ✏️ I'll set it up myself
+                    </a>
+                    <a href="mailto:kayleighsellskcre@gmail.com?subject=Help%20with%20my%20group%20order%20%E2%80%94%20{{ collection.name | urlencode }}&body=Hi%20Kayleigh%2C%0A%0AI%20just%20created%20my%20group%20order%20%22{{ collection.name | urlencode }}%22%20and%20could%20use%20some%20help%20finishing%20the%20setup%20(logo%2C%20colors%2C%20etc.)%0A%0AThanks!"
+                       style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.55rem 1rem;border:1.5px solid #ddd;border-radius:8px;font-size:0.88rem;font-weight:600;color:#555;text-decoration:none;background:#fff;">
+                        💬 I need Kayleigh's help
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
             {% if can_manage and not organizer_pays %}
             <div class="export-bar">
                 <a href="{{ url_for('collection.export_xlsx', slug=collection.slug, v=download_stamp()) }}"
