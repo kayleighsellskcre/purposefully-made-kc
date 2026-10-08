@@ -82,24 +82,6 @@
         </div>
         <p class="form-hint">Shoppers ordering for a player can choose Home, Away, or both. Family and friends can skip directly to fan wear.</p>
 
-        <div class="uniform-logo-pickers" id="uniformLogoPickers">
-            <div class="form-group">
-                <label>Home jersey logo</label>
-                <p class="form-hint">Applied automatically. Players only pick size and name/number.</p>
-                <div id="homeLogoOptions" class="jersey-logo-options"></div>
-                <p class="form-hint uniform-logo-empty" id="homeLogoEmpty">Upload logos in the design step. The first one goes on the Home jersey, and you can change it here.</p>
-                <input type="hidden" name="uniform_home_design_id" id="uniform_home_design_id"
-                       value="{{ _uniform.get('home_design_id') or '' }}">
-            </div>
-            <div class="form-group" id="awayLogoPickerWrap" {% if not _uniform.get('away_color') %}hidden{% endif %}>
-                <label>Away jersey logo</label>
-                <p class="form-hint">Use a second file if the Away color needs a different logo (for example a light logo on a dark jersey).</p>
-                <div id="awayLogoOptions" class="jersey-logo-options"></div>
-                <input type="hidden" name="uniform_away_design_id" id="uniform_away_design_id"
-                       value="{{ _uniform.get('away_design_id') or '' }}">
-            </div>
-        </div>
-
         <label class="team-store-toggle" style="margin-top:.75rem;">
             <input type="checkbox" id="fan_personalization_enabled"
                    name="fan_personalization_enabled" value="on"

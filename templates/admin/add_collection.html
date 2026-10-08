@@ -182,6 +182,41 @@
                     </label>
                 </div>
 
+                {# ── 2b. Jersey logo assignment — shown when uniforms are enabled ── #}
+                <div id="jerseyLogosBlock" class="organizer-block" style="display:none;">
+                    <div class="organizer-block-label">
+                        <span class="organizer-step" style="background:var(--terra-cotta,#b56c4c);">🎽</span>
+                        <div>
+                            <strong>Which logo goes on the jerseys?</strong>
+                            <p class="form-hint" style="margin:0;" id="jerseyLogoHint">After uploading above, select which design goes on the Home jersey. If the Away jersey uses a different graphic, upload it too and assign it here.</p>
+                        </div>
+                    </div>
+
+                    {# Single-team / "same style" logo pickers #}
+                    <div id="jerseyLogoSingleWrap">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:0.5rem;" class="jersey-logo-grid">
+                            <div>
+                                <p style="font-size:0.82rem;font-weight:600;margin:0 0 0.35rem;">Home jersey logo</p>
+                                <p class="form-hint" style="font-size:0.78rem;margin:0 0 0.4rem;">Applied automatically — players just pick size &amp; name/number.</p>
+                                <div id="homeLogoOptions" class="jersey-logo-options"></div>
+                                <p class="form-hint uniform-logo-empty" id="homeLogoEmpty" style="margin-top:0.4rem;">Upload a logo above and it will appear here.</p>
+                                <input type="hidden" name="uniform_home_design_id" id="uniform_home_design_id"
+                                       value="{{ (_team_store or {}).get('uniform', {}).get('home_design_id') or '' }}">
+                            </div>
+                            <div id="awayLogoPickerWrap" style="display:none;">
+                                <p style="font-size:0.82rem;font-weight:600;margin:0 0 0.35rem;">Away jersey logo <span style="font-weight:400;color:#999;">(optional)</span></p>
+                                <p class="form-hint" style="font-size:0.78rem;margin:0 0 0.4rem;">Only needed if the Away jersey uses a different graphic than Home.</p>
+                                <div id="awayLogoOptions" class="jersey-logo-options"></div>
+                                <input type="hidden" name="uniform_away_design_id" id="uniform_away_design_id"
+                                       value="{{ (_team_store or {}).get('uniform', {}).get('away_design_id') or '' }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    {# Per-team logo pickers — built by JS when "Each team has their own style" is active #}
+                    <div id="jerseyLogoPerTeamWrap" style="display:none;margin-top:0.75rem;"></div>
+                </div>
+
                 {# ── 3. Placement ───────────────────────────────────────── #}
                 <div class="organizer-block">
                     <div class="organizer-block-label">
@@ -709,6 +744,127 @@
                 uniformFields.hidden = !uniformEnabled.checked;
             }
         }
+        syncJerseyLogoBlock();
+    }
+
+    // ── Jersey logo block (Colors & logo step) ────────────────────────────
+    function syncJerseyLogoBlock() {
+        var uniformEnabled = document.getElementById('uniform_enabled');
+        var jerseyBlock = document.getElementById('jerseyLogosBlock');
+        if (!jerseyBlock) return;
+        var hasUniforms = uniformEnabled && uniformEnabled.checked;
+        jerseyBlock.style.display = hasUniforms ? '' : 'none';
+
+        var diffChecked = document.querySelector('input[name="org_style_mode"][value="different"]')?.checked;
+        var singleWrap = document.getElementById('jerseyLogoSingleWrap');
+        var perTeamWrap = document.getElementById('jerseyLogoPerTeamWrap');
+
+        if (hasUniforms && diffChecked) {
+            if (singleWrap) singleWrap.style.display = 'none';
+            if (perTeamWrap) { perTeamWrap.style.display = ''; buildPerTeamLogoCards(); }
+        } else {
+            if (singleWrap) singleWrap.style.display = '';
+            if (perTeamWrap) perTeamWrap.style.display = 'none';
+        }
+        if (window.PMKCRefreshUniformLogos) window.PMKCRefreshUniformLogos();
+    }
+
+    function buildPerTeamLogoCards() {
+        var wrap = document.getElementById('jerseyLogoPerTeamWrap');
+        if (!wrap) return;
+        var names = getAllTeamNamesForStyle();
+        if (!names.length) return;
+        wrap.innerHTML = '';
+        var uploadedDesigns = collectUploadedDesigns();
+        names.forEach(function(name, idx) {
+            var card = document.createElement('div');
+            card.style.cssText = 'padding:0.9rem 1rem;border:1.5px solid #e8d5cb;border-radius:10px;background:#fff;margin-bottom:0.6rem;';
+            var label = document.createElement('p');
+            label.style.cssText = 'font-weight:700;font-size:0.88rem;color:var(--terra-cotta,#b56c4c);margin:0 0 0.6rem;';
+            label.textContent = name + ' — jersey logo';
+            card.appendChild(label);
+            if (!uploadedDesigns.length) {
+                var hint = document.createElement('p');
+                hint.style.cssText = 'font-size:0.8rem;color:#999;margin:0;';
+                hint.textContent = 'Upload a logo above and it will appear here.';
+                card.appendChild(hint);
+            } else {
+                var hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'org_team_jersey_logo_id[]';
+                hidden.value = uploadedDesigns[0].id;
+                card.appendChild(hidden);
+                var grid = document.createElement('div');
+                grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:0.5rem;';
+                uploadedDesigns.forEach(function(design) {
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'jersey-logo-option' + (design.id === uploadedDesigns[0].id ? ' is-selected' : '');
+                    btn.dataset.designId = design.id;
+                    if (design.url) {
+                        var img = document.createElement('img');
+                        img.src = design.url; img.alt = '';
+                        btn.appendChild(img);
+                    }
+                    var sp = document.createElement('span');
+                    sp.textContent = design.title || 'Logo';
+                    btn.appendChild(sp);
+                    btn.addEventListener('click', function() {
+                        hidden.value = btn.dataset.designId;
+                        grid.querySelectorAll('.jersey-logo-option').forEach(function(b) { b.classList.remove('is-selected'); });
+                        btn.classList.add('is-selected');
+                    });
+                    grid.appendChild(btn);
+                });
+                card.appendChild(grid);
+            }
+            wrap.appendChild(card);
+        });
+    }
+
+    function collectUploadedDesigns() {
+        var seen = {}, items = [];
+        function add(id, url, title) {
+            if (!id || seen[id]) return;
+            seen[id] = true;
+            items.push({ id: String(id), url: url || '', title: title || 'Logo' });
+        }
+        document.querySelectorAll('#uploadPreview .upload-preview-item[data-design-id]').forEach(function(item) {
+            var img = item.querySelector('img'), t = item.querySelector('span');
+            add(item.dataset.designId, img && img.src, t && t.textContent);
+        });
+        document.querySelectorAll('input[name="allowed_designs"]:checked').forEach(function(input) {
+            var wrap = input.closest('.design-choice-wrapper, .design-choice-card');
+            var img = wrap && wrap.querySelector('img'), t = wrap && wrap.querySelector('span');
+            add(input.value, img && img.src, t && t.textContent);
+        });
+        return items;
+    }
+
+    // Refresh jersey logo block whenever designs change
+    document.addEventListener('change', function(e) {
+        if (e.target && (e.target.name === 'allowed_designs' || e.target.closest('#uploadPreview'))) {
+            syncJerseyLogoBlock();
+        }
+    });
+
+    // Hook upload preview mutations so logo cards update automatically
+    var uploadPreview = document.getElementById('uploadPreview');
+    if (uploadPreview && window.MutationObserver) {
+        new MutationObserver(function() { syncJerseyLogoBlock(); })
+            .observe(uploadPreview, { childList: true, subtree: true });
+    }
+
+    // Also sync when uniform_enabled changes
+    var uniformEnabledEl = document.getElementById('uniform_enabled');
+    if (uniformEnabledEl) uniformEnabledEl.addEventListener('change', syncJerseyLogoBlock);
+
+    // Rebuild per-team logo cards when team names change
+    if (teamList) {
+        teamList.addEventListener('input', function() {
+            var diffChecked = document.querySelector('input[name="org_style_mode"][value="different"]')?.checked;
+            if (diffChecked) buildPerTeamLogoCards();
+        });
     }
 
     styleChoices.forEach(function(label) {
