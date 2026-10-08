@@ -2962,29 +2962,33 @@ def add_collection():
             elif org_action == 'new':
                 from models import Organization, OrgSection
                 from slugify import slugify as _slugify
-                org_name = request.form.get('org_new_name', '').strip()
-                if org_name:
+                # Use the group order name as the org name
+                org_name = collection.name.strip()
+                team_names = [n.strip() for n in request.form.getlist('org_team_names[]') if n.strip()]
+                if org_name and team_names:
                     org_slug = _slugify(org_name)
                     base = org_slug
                     i = 1
                     while Organization.query.filter_by(slug=org_slug).first():
                         org_slug = f'{base}-{i}'; i += 1
                     org = Organization(name=org_name, slug=org_slug)
-                    org_password = request.form.get('org_new_password', '').strip()
-                    if org_password:
-                        org.set_password(org_password)
                     db.session.add(org)
                     db.session.flush()
+                    # Only create the first section now (links to this store)
+                    # User adds the remaining teams from the org manage page
+                    first_label = team_names[0]
                     section = OrgSection(
                         org_id=org.id,
                         collection_id=collection.id,
-                        label=request.form.get('org_section_label', collection.name).strip() or collection.name,
-                        icon=request.form.get('org_section_icon', '🏷️').strip() or '🏷️',
+                        label=first_label,
+                        icon='🏷️',
                         sort_order=0,
                     )
                     db.session.add(section)
                     db.session.commit()
-                    flash(f'Organization page "{org_name}" created — share purposefullymadekc.com/org/{org_slug} with your organizer.', 'success')
+                    remaining = team_names[1:]
+                    extra = f' Add stores for: {", ".join(remaining)}.' if remaining else ''
+                    flash(f'Organization page created! Share purposefullymadekc.com/org/{org_slug} with your organizer.{extra}', 'success')
             # ───────────────────────────────────────────────────────────────
 
             upload_count = 0

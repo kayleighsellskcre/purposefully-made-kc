@@ -55,16 +55,14 @@
 
                         <div id="orgExpandSection" style="display:none;margin-top:0.65rem;padding:1rem 1.1rem;background:#fdf6f3;border:1.5px solid #e8d5cb;border-radius:10px;">
                             <input type="hidden" name="org_action" value="new" id="orgActionHidden" disabled>
-                            <div class="form-group">
-                                <label for="org_new_name" style="font-weight:600;">Organization name</label>
-                                <input type="text" id="org_new_name" name="org_new_name" class="form-control" placeholder="e.g. Rainbow Cheetahs" disabled>
-                                <small>After creating this store, you'll be able to add more teams to the same organization page — one link to share with everyone.</small>
+                            <label style="font-size:0.85rem;font-weight:600;color:var(--text-primary,#333);display:block;margin-bottom:0.5rem;">Team / Group names</label>
+                            <small style="display:block;margin-bottom:0.65rem;color:#888;">Enter each team or sport — these become the tiles on the shared org page. You'll link each one to its own store after creating.</small>
+                            <div id="orgTeamList" style="display:flex;flex-direction:column;gap:0.5rem;">
+                                <div class="org-team-row" style="display:flex;gap:0.5rem;align-items:center;">
+                                    <input type="text" name="org_team_names[]" class="form-control" placeholder="e.g. Basketball" disabled style="flex:1;">
+                                </div>
                             </div>
-                            <div class="form-group" style="margin-top:0.75rem;">
-                                <label for="org_new_password" style="font-weight:600;">Organization password</label>
-                                <input type="text" id="org_new_password" name="org_new_password" class="form-control" placeholder="Something simple the organizer will remember" disabled>
-                                <small>The organizer uses this to log in and manage the page.</small>
-                            </div>
+                            <button type="button" id="orgAddTeam" disabled style="margin-top:0.6rem;background:none;border:none;color:var(--terra-cotta,#b56c4c);font-size:0.85rem;font-weight:600;cursor:pointer;padding:0;">+ Add another team</button>
                         </div>
 
                         {% if not is_user_create %}
@@ -429,12 +427,43 @@
 (function() {
     var cb = document.getElementById('hasOrgCheckbox');
     var section = document.getElementById('orgExpandSection');
-    var actionHidden = document.getElementById('orgActionHidden');
+    var addBtn = document.getElementById('orgAddTeam');
+    var teamList = document.getElementById('orgTeamList');
     if (!cb || !section) return;
+
+    function setOrgDisabled(disabled) {
+        section.querySelectorAll('input, button').forEach(function(el) {
+            el.disabled = disabled;
+        });
+    }
+
+    function addTeamRow() {
+        var row = document.createElement('div');
+        row.className = 'org-team-row';
+        row.style.cssText = 'display:flex;gap:0.5rem;align-items:center;';
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.name = 'org_team_names[]';
+        input.className = 'form-control';
+        input.placeholder = 'e.g. Soccer';
+        input.style.flex = '1';
+        var removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.innerHTML = '✕';
+        removeBtn.style.cssText = 'background:none;border:none;color:#aaa;font-size:1rem;cursor:pointer;padding:0 0.25rem;flex-shrink:0;';
+        removeBtn.addEventListener('click', function() { teamList.removeChild(row); });
+        row.appendChild(input);
+        row.appendChild(removeBtn);
+        teamList.appendChild(row);
+        input.focus();
+    }
+
     cb.addEventListener('change', function() {
         section.style.display = cb.checked ? '' : 'none';
-        section.querySelectorAll('input').forEach(function(el) { el.disabled = !cb.checked; });
+        setOrgDisabled(!cb.checked);
     });
+
+    if (addBtn) addBtn.addEventListener('click', addTeamRow);
 })();
 
 document.querySelector('.collection-form')?.addEventListener('submit', function() {
