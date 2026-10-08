@@ -914,7 +914,14 @@ if (document.readyState === 'loading') {
 }
 
 .collection-form {
-    max-width: 700px;
+    max-width: none;
+}
+
+@media (min-width: 900px) {
+    .collection-form .form-section { padding: 1.75rem 2rem; }
+    .form-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 2.5rem; align-items: start; }
+    .collection-form .product-checkboxes { grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 0.85rem; }
+    .group-template-grid, .group-kind-choices { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 .org-check-label {
