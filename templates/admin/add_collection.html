@@ -86,6 +86,27 @@
                 {% include 'includes/group_order_kind_fields.html' %}
             </div>
 
+            {# ── Multi-team style notice (only visible when org checkbox is checked) ── #}
+            <div id="orgStyleNotice" style="display:none;margin-bottom:1rem;">
+                <div style="background:#fdf6f3;border:1.5px solid #e8d5cb;border-radius:12px;padding:1rem 1.25rem;">
+                    <p style="font-size:0.88rem;font-weight:700;color:var(--terra-cotta,#b56c4c);margin:0 0 0.6rem;text-transform:uppercase;letter-spacing:0.05em;">Multiple teams detected</p>
+                    <p style="font-size:0.9rem;margin:0 0 0.85rem;color:var(--text-primary,#333);">Do all your teams wear the same style, or does each team have their own?</p>
+                    <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+                        <label class="org-style-choice" id="orgStyleSame" style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border:1.5px solid #ddd;border-radius:8px;cursor:pointer;font-size:0.88rem;font-weight:500;background:#fff;color:#555;transition:all 0.15s;">
+                            <input type="radio" name="org_style_mode" value="same" checked style="display:none;">
+                            👕 Every team wears the same style
+                        </label>
+                        <label class="org-style-choice" id="orgStyleDiff" style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border:1.5px solid #ddd;border-radius:8px;cursor:pointer;font-size:0.88rem;font-weight:500;background:#fff;color:#555;transition:all 0.15s;">
+                            <input type="radio" name="org_style_mode" value="different" style="display:none;">
+                            🎽 Each team has their own style
+                        </label>
+                    </div>
+                    <p id="orgStyleHint" style="font-size:0.82rem;color:#888;margin:0.65rem 0 0;display:none;">
+                        You're setting up the styles for your first team right now. When you create the other teams' stores, you'll pick their styles there too.
+                    </p>
+                </div>
+            </div>
+
             {% include 'includes/group_order_team_store.html' %}
 
             <div class="form-section" id="fanWearSection">
@@ -464,6 +485,31 @@
     });
 
     if (addBtn) addBtn.addEventListener('click', addTeamRow);
+
+    // Show/hide the style notice on the next step
+    var styleNotice = document.getElementById('orgStyleNotice');
+    var styleChoices = document.querySelectorAll('.org-style-choice');
+    var styleHint = document.getElementById('orgStyleHint');
+
+    function updateStyleNotice() {
+        if (styleNotice) styleNotice.style.display = cb.checked ? '' : 'none';
+    }
+    cb.addEventListener('change', updateStyleNotice);
+
+    styleChoices.forEach(function(label) {
+        label.addEventListener('click', function() {
+            var r = label.querySelector('input[type="radio"]');
+            if (r) r.checked = true;
+            styleChoices.forEach(function(l) {
+                var active = l.querySelector('input[type="radio"]')?.checked;
+                l.style.borderColor = active ? 'var(--terra-cotta,#b56c4c)' : '#ddd';
+                l.style.background = active ? '#fdf6f3' : '#fff';
+                l.style.color = active ? 'var(--terra-cotta,#b56c4c)' : '#555';
+                l.style.fontWeight = active ? '600' : '500';
+            });
+            if (styleHint) styleHint.style.display = (r && r.value === 'different') ? '' : 'none';
+        });
+    });
 })();
 
 document.querySelector('.collection-form')?.addEventListener('submit', function() {
