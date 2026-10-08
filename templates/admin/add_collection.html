@@ -616,11 +616,32 @@
 
     function updateStyleMode() {
         var diffChecked = document.querySelector('input[name="org_style_mode"][value="different"]')?.checked;
+
+        // Per-team cards visibility
         if (perTeamCards) {
             perTeamCards.style.display = diffChecked ? 'flex' : 'none';
             perTeamCards.style.flexDirection = 'column';
         }
-        if (diffChecked) buildPerTeamCards();
+
+        // In "different" mode, per-team cards replace the standard uniform fields
+        var uniformToggle = document.querySelector('#playerUniformsSection .team-store-toggle');
+        var uniformFields = document.getElementById('uniformFields');
+        var uniformEnabled = document.getElementById('uniform_enabled');
+
+        if (diffChecked) {
+            // Hide generic uniform setup — per-team cards handle it
+            if (uniformToggle) uniformToggle.style.display = 'none';
+            if (uniformFields) uniformFields.hidden = true;
+            // Auto-check "includes player uniforms" so form submits correctly
+            if (uniformEnabled) uniformEnabled.checked = true;
+            buildPerTeamCards();
+        } else {
+            // Restore standard uniform setup
+            if (uniformToggle) uniformToggle.style.display = '';
+            if (uniformEnabled && uniformFields) {
+                uniformFields.hidden = !uniformEnabled.checked;
+            }
+        }
     }
 
     styleChoices.forEach(function(label) {
