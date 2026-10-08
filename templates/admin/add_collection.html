@@ -497,6 +497,9 @@
         var checked = cb.checked;
         if (styleNotice) styleNotice.style.display = checked ? '' : 'none';
         if (logoNotice) logoNotice.style.display = checked ? '' : 'none';
+        // Hide the generic "Player Uniforms" heading when org mode is on — per-team cards replace it
+        var uniformsHeader = document.getElementById('uniformsSectionHeader');
+        if (uniformsHeader) uniformsHeader.style.display = checked ? 'none' : '';
 
         var names = getAllTeamNames();
         var first = names.length ? names[0] : 'Team 1';
