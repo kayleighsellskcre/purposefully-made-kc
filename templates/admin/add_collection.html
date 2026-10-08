@@ -35,47 +35,55 @@
             {% include 'includes/group_order_template_picker.html' %}
 
             <div class="form-section" id="basicInfoSection">
-                <h2>Name your group order</h2>
-                <p class="form-hint">This is what your team will see when they open their store. Keep it simple — you can always edit it later.</p>
+                <h2>Basic Information</h2>
+                {% include 'includes/group_order_payment_mode_fields.html' %}
+                <div class="form-split">
+                    <div>
+                        <div class="form-group">
+                            <label for="name">Group Order Name</label>
+                            <input type="text" id="name" name="name" class="form-control" required placeholder="e.g., Silver Lake Spirit Wear 2026">
+                        </div>
 
-                <div class="form-group" style="max-width:480px;">
-                    <label for="name">Store name</label>
-                    <input type="text" id="name" name="name" class="form-control" required placeholder="e.g., Silver Lake Spirit Wear 2026" style="font-size:1.05rem;">
-                </div>
+                        {# ── Multi-team org checkbox ── #}
+                        <div class="form-group" style="margin-top:0.25rem;">
+                            <label class="org-check-label" for="hasOrgCheckbox">
+                                <input type="checkbox" id="hasOrgCheckbox" style="width:16px;height:16px;flex-shrink:0;accent-color:var(--terra-cotta,#b56c4c);cursor:pointer;">
+                                <span>This group has more than one team or sport that each need their own store</span>
+                            </label>
+                            <small style="color:#999;margin-left:24px;display:block;margin-top:0.2rem;">e.g. Rainbow Cheetahs with Basketball, Soccer &amp; Volleyball stores</small>
+                        </div>
 
-                {# ── Multi-team org checkbox ── #}
-                <div class="form-group" style="margin-top:0.5rem;">
-                    <label class="org-check-label" for="hasOrgCheckbox">
-                        <input type="checkbox" id="hasOrgCheckbox" style="width:16px;height:16px;flex-shrink:0;accent-color:var(--terra-cotta,#b56c4c);cursor:pointer;">
-                        <span>This group has more than one team or sport that each need their own store</span>
-                    </label>
-                    <small style="color:#999;margin-left:24px;display:block;margin-top:0.2rem;">e.g. Rainbow Cheetahs with Basketball, Soccer &amp; Volleyball stores</small>
-                </div>
+                        <div id="orgExpandSection" style="display:none;margin-top:0.65rem;padding:1rem 1.1rem;background:#fdf6f3;border:1.5px solid #e8d5cb;border-radius:10px;">
+                            <input type="hidden" name="org_action" value="new" id="orgActionHidden" disabled>
+                            <label style="font-size:0.85rem;font-weight:600;color:var(--text-primary,#333);display:block;margin-bottom:0.5rem;">Team / Group names</label>
+                            <small style="display:block;margin-bottom:0.65rem;color:#888;">Enter each team or sport — these become the tiles on the shared org page. You'll link each one to its own store after creating.</small>
+                            <div id="orgTeamList" style="display:flex;flex-direction:column;gap:0.5rem;">
+                                <div class="org-team-row" style="display:flex;gap:0.5rem;align-items:center;">
+                                    <input type="text" name="org_team_names[]" class="form-control" placeholder="e.g. Basketball" disabled style="flex:1;">
+                                </div>
+                            </div>
+                            <button type="button" id="orgAddTeam" disabled style="margin-top:0.6rem;background:none;border:none;color:var(--terra-cotta,#b56c4c);font-size:0.85rem;font-weight:600;cursor:pointer;padding:0;">+ Add another team</button>
+                        </div>
 
-                <div id="orgExpandSection" style="display:none;margin-top:0.65rem;padding:1rem 1.1rem;background:#fdf6f3;border:1.5px solid #e8d5cb;border-radius:10px;max-width:480px;">
-                    <input type="hidden" name="org_action" value="new" id="orgActionHidden" disabled>
-                    <label style="font-size:0.85rem;font-weight:600;color:var(--text-primary,#333);display:block;margin-bottom:0.5rem;">Team / Group names</label>
-                    <small style="display:block;margin-bottom:0.65rem;color:#888;">Enter each team or sport — these become the tiles on the shared org page.</small>
-                    <div id="orgTeamList" style="display:flex;flex-direction:column;gap:0.5rem;">
-                        <div class="org-team-row" style="display:flex;gap:0.5rem;align-items:center;">
-                            <input type="text" name="org_team_names[]" class="form-control" placeholder="e.g. Basketball" disabled style="flex:1;">
+                        {% if not is_user_create %}
+                        <div class="form-group">
+                            <label for="slug">URL Slug</label>
+                            <input type="text" id="slug" name="slug" class="form-control" placeholder="auto-generated">
+                            <small>Leave blank to auto-generate from name</small>
+                        </div>
+                        {% endif %}
+
+                        <div class="form-group">
+                            <label for="description">Description</label>
+                            <textarea id="description" name="description" class="form-control" rows="4"></textarea>
                         </div>
                     </div>
-                    <button type="button" id="orgAddTeam" disabled style="margin-top:0.6rem;background:none;border:none;color:var(--terra-cotta,#b56c4c);font-size:0.85rem;font-weight:600;cursor:pointer;padding:0;">+ Add another team</button>
+                    <div>
+                        {% include 'includes/group_order_organizer_field.html' %}
+                        {% include 'includes/group_order_card_fields.html' %}
+                    </div>
                 </div>
-
-                {# Everything below is hidden from the wizard but stays in the form so defaults submit correctly.
-                   Organizers can fill these in from Edit store after creation. #}
-                <div style="display:none;" aria-hidden="true">
-                    {% include 'includes/group_order_payment_mode_fields.html' %}
-                    {% if not is_user_create %}
-                    <input type="text" id="slug" name="slug" placeholder="auto-generated">
-                    {% endif %}
-                    <textarea id="description" name="description"></textarea>
-                    {% include 'includes/group_order_organizer_field.html' %}
-                    {% include 'includes/group_order_card_fields.html' %}
-                    {% include 'includes/group_order_kind_fields.html' %}
-                </div>
+                {% include 'includes/group_order_kind_fields.html' %}
             </div>
 
             {% include 'includes/group_order_team_store.html' %}
@@ -415,7 +423,7 @@
             <div class="wizard-nav" id="wizardNav">
                 <button type="button" class="btn btn-outline" id="wizardBack" hidden>Back</button>
                 <button type="button" class="btn btn-primary btn-lg" id="wizardNext" hidden>Next</button>
-                <button type="submit" class="btn btn-primary btn-lg" id="createGroupOrderBtn">Create my store →</button>
+                <button type="submit" class="btn btn-primary btn-lg" id="createGroupOrderBtn">Create Group Order</button>
             </div>
         </form>
     </div>
@@ -639,11 +647,10 @@ function initGroupOrderWizard() {
 
     var STEP_DEFS = [
         { key: 'type', label: 'Group type', ids: ['groupTemplatePicker'] },
-        { key: 'details', label: 'Name it', ids: ['basicInfoSection'] },
-        { key: 'styles', label: 'Pick styles', ids: ['playerUniformsSection', 'fanWearSection'] },
-        // Colors & logo and Pickup & sharing are hidden from the wizard but stay in the form
-        // so their default values (link-only visibility, shipping enabled, etc.) submit correctly.
-        // Organizers can customize those from the Edit store page after creation.
+        { key: 'details', label: 'Name & details', ids: ['basicInfoSection'] },
+        { key: 'styles', label: 'Styles', ids: ['playerUniformsSection', 'fanWearSection'] },
+        { key: 'design', label: 'Colors & logo', ids: ['choicesSection'] },
+        { key: 'sharing', label: 'Pickup & sharing', ids: ['settingsSection', 'wizardReview'] },
     ];
     var steps = STEP_DEFS.map(function (def) {
         return {
@@ -1222,6 +1229,5 @@ if (document.readyState === 'loading') {
     .product-checkbox-info { padding: 0.5rem 0.6rem 0.6rem; }
 }
 </style>
-{% include 'includes/group_order_wide_layout.html' %}
 {% include 'includes/group_order_logo_upload.js.html' %}
 {% endblock content %}
