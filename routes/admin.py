@@ -3032,11 +3032,33 @@ def add_collection():
                             db.session.add(t_coll)
                             db.session.flush()
 
-                            # Copy same products
-                            t_coll.products = list(collection.products)
+                            # Build product list: fan products + THIS team's own jersey
+                            # (not team 0's jersey which is what collection.products contains)
+                            first_pid = int(team_product_ids[0]) if team_product_ids and team_product_ids[0] else None
+                            this_pid  = int(team_product_ids[idx]) if idx < len(team_product_ids) and team_product_ids[idx] else None
+
+                            fan_products = [p for p in collection.products if (first_pid is None or p.id != first_pid)]
+
+                            if this_pid:
+                                this_jersey = Product.query.filter_by(id=this_pid, is_active=True).first()
+                                if this_jersey:
+                                    t_coll.products = [this_jersey] + fan_products
+                                else:
+                                    t_coll.products = fan_products
+                            else:
+                                t_coll.products = fan_products
+
+                            # Also add youth jersey if specified for this team
+                            team_youth_ids = request.form.getlist('org_team_youth_product_id[]')
+                            this_youth_pid = int(team_youth_ids[idx]) if idx < len(team_youth_ids) and team_youth_ids[idx] else None
+                            if this_youth_pid and this_youth_pid != this_pid:
+                                youth_jersey = Product.query.filter_by(id=this_youth_pid, is_active=True).first()
+                                if youth_jersey and youth_jersey not in t_coll.products:
+                                    t_coll.products = t_coll.products + [youth_jersey]
+
                             db.session.flush()
 
-                            # Apply this team's jersey config
+                            # Apply this team's jersey config to team_store JSON
                             _apply_jersey(
                                 t_coll,
                                 team_product_ids[idx] if idx < len(team_product_ids) else None,

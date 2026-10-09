@@ -755,11 +755,19 @@ def set_collection_products_from_form(collection):
     # Only the first team's jersey is added to this (main) collection; sub-collections get
     # their own jersey assigned by _apply_jersey in admin.py.
     elif configured and request.form.get('org_style_mode') == 'different':
-        for raw in request.form.getlist('org_team_uniform_product_id[]'):
-            pid = _as_int(raw)
+        # Primary jersey for team 0
+        team_pids = request.form.getlist('org_team_uniform_product_id[]')
+        if team_pids:
+            pid = _as_int(team_pids[0])
             if pid and pid not in uniform_ids:
                 uniform_ids.append(pid)
-                break  # Only first team's jersey belongs to the main collection
+        # Youth jersey for team 0 (optional)
+        team_youth_pids = request.form.getlist('org_team_youth_product_id[]')
+        if team_youth_pids:
+            ypid = _as_int(team_youth_pids[0])
+            if ypid and ypid not in uniform_ids:
+                uniform_ids.append(ypid)
+        # Colors for team_store_config (team 0)
         if uniform_ids:
             team_home_colors = request.form.getlist('org_team_home_color[]')
             team_away_colors = request.form.getlist('org_team_away_color[]')
