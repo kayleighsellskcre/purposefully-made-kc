@@ -417,6 +417,55 @@
 .uniform-kit-card .uniform-color { color:var(--text-secondary); margin:.2rem 0 .65rem; }
 .uniform-kit-card .uniform-cta { color:var(--terra-cotta); font-weight:700; font-size:.85rem; }
 .fan-wear-section[hidden], .uniform-section[hidden] { display:none!important; }
+
+/* ── Org store navigation bar ─────────────────────────────────────── */
+.org-store-nav {
+    background: #fff;
+    border-bottom: 1px solid var(--border-color, #ede8e5);
+    padding: 1.5rem 1.25rem 1.75rem;
+    text-align: center;
+}
+.org-store-nav-inner { max-width: 860px; margin: 0 auto; }
+.org-store-nav-label {
+    font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--text-secondary, #999); margin: 0 0 1rem;
+}
+.org-store-team-row {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem; margin-bottom: 0.5rem;
+}
+.org-store-team-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
+    padding: 1.1rem 1.5rem; min-width: 130px;
+    background: #fff; border: 2px solid #ede8e5; border-radius: 14px;
+    text-decoration: none; color: var(--text-primary, #1a1a1a);
+    transition: border-color 0.18s, box-shadow 0.18s, transform 0.15s;
+}
+.org-store-team-btn:hover, .org-store-team-btn.is-current {
+    border-color: var(--terra-cotta, #b56c4c);
+    box-shadow: 0 4px 18px rgba(181,108,76,0.15);
+}
+.org-store-team-btn.is-current { background: rgba(181,108,76,0.06); }
+.osn-icon  { font-size: 2rem; line-height: 1; display: block; }
+.osn-name  { font-size: 0.95rem; font-weight: 700; }
+.osn-sub   { font-size: 0.7rem; color: var(--text-secondary, #999); }
+.org-store-fanwear-row {
+    margin-top: 1rem; display: flex; justify-content: center;
+}
+.org-store-fan-btn {
+    display: inline-flex; flex-direction: column; align-items: center; gap: 0.25rem;
+    padding: 0.85rem 2.5rem;
+    background: var(--terra-cotta, #b56c4c); color: #fff;
+    border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 0.95rem;
+    transition: background 0.18s, transform 0.15s, box-shadow 0.18s;
+    border: 2px solid transparent;
+}
+.org-store-fan-btn:hover { background: #9e5c3e; transform: translateY(-2px); color: #fff; }
+.org-store-fan-btn.is-current {
+    background: #fff; color: var(--terra-cotta, #b56c4c);
+    border-color: var(--terra-cotta, #b56c4c);
+}
+.org-store-fan-btn small { font-size: 0.72rem; font-weight: 400; opacity: 0.85; }
+
 @media (max-width: 768px) {
     .design-board { padding: 2rem 0 4rem; }
     .design-board-grid { gap: 1.5rem; }
@@ -479,6 +528,47 @@
         {% endif %}
     </div>
 </div>
+
+{% if org_nav %}
+{# ── Org navigation bar: team buttons + fan wear ───────────────────── #}
+{% set ns = namespace(team_sections=[], fan_sections=[]) %}
+{% for sec in org_nav.sections %}
+    {% if 'fan' in sec.label | lower %}
+        {% set ns.fan_sections = ns.fan_sections + [sec] %}
+    {% else %}
+        {% set ns.team_sections = ns.team_sections + [sec] %}
+    {% endif %}
+{% endfor %}
+<div class="org-store-nav">
+    <div class="org-store-nav-inner">
+        {% if ns.team_sections %}
+        <p class="org-store-nav-label">Choose your team</p>
+        <div class="org-store-team-row">
+            {% for sec in ns.team_sections %}
+            <a href="{{ url_for('collection.view', slug=sec.collection.slug) }}"
+               class="org-store-team-btn{% if sec.collection_id == collection.id %} is-current{% endif %}">
+                <span class="osn-icon">{{ sec.icon }}</span>
+                <span class="osn-name">{{ sec.label }}</span>
+                <small class="osn-sub">Jerseys &amp; uniforms</small>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if ns.fan_sections %}
+        <div class="org-store-fanwear-row">
+            {% for sec in ns.fan_sections %}
+            <a href="{{ url_for('collection.view', slug=sec.collection.slug) }}"
+               class="org-store-fan-btn{% if sec.collection_id == collection.id %} is-current{% endif %}">
+                <span>{{ sec.icon or '👕' }}</span>
+                <span>{{ sec.label }}</span>
+                <small>Tees, hoodies &amp; fan apparel</small>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 
 <section class="design-board">
     <div class="container">

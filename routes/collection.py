@@ -206,6 +206,21 @@ def view(slug):
     from utils.group_orders import build_store_cards
     products, age_matching_note = build_store_cards(products)
     showcase_designs = load_showcase_designs(collection)
+
+    # ── Org navigation: if this collection belongs to an org, pass sibling sections
+    from models import OrgSection, Organization
+    org_nav = None
+    org_section = OrgSection.query.filter_by(collection_id=collection.id).first()
+    if org_section:
+        org = Organization.query.get(org_section.organization_id)
+        if org:
+            all_sections = list(org.sections)
+            org_nav = {
+                'org': org,
+                'current_section': org_section,
+                'sections': all_sections,
+            }
+
     return render_template('collection/view.html',
                          collection=collection,
                          products=products,
@@ -215,7 +230,8 @@ def view(slug):
                          uniform_products=uniform_products,
                          uniform_kits=uniform_kits,
                          showcase_designs=showcase_designs,
-                         catalog_filter_opts=filter_opts)
+                         catalog_filter_opts=filter_opts,
+                         org_nav=org_nav)
 
 
 # ── Organizer pays: the link collects name + size only ──────────────────────
