@@ -2129,13 +2129,13 @@
                     <p class="step-hint">Select your color. {{ color_variants|length if color_variants else available_colors|length }} available.</p>
                     <p class="color-carry-note" id="colorCarryNote" hidden></p>
 
-                    <details class="color-picker-disclosure" id="colorPickerDisclosure">
+                    <details class="color-picker-disclosure" id="colorPickerDisclosure" open>
                         <summary>
                             <span class="color-picker-summary-value">
                                 <small>Selected color</small>
-                                <strong id="colorDisclosureName">Loading...</strong>
+                                <strong id="colorDisclosureName">Choose below ↓</strong>
                             </span>
-                            <span class="color-picker-summary-action">View colors <span aria-hidden="true">⌄</span></span>
+                            <span class="color-picker-summary-action" id="colorPickerToggleLabel">Hide colors <span aria-hidden="true">⌃</span></span>
                         </summary>
                         <div class="color-picker-dropdown">
                     <div class="color-search-box" style="margin-bottom: 0.75rem;">
@@ -3225,10 +3225,25 @@
                 window.setTimeout(function() {
                     disclosure.open = false;
                     disclosure.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    // Update toggle label to show "View colors" when collapsed after pick
+                    const toggleLabel = document.getElementById('colorPickerToggleLabel');
+                    if (toggleLabel) toggleLabel.innerHTML = 'View colors <span aria-hidden="true">⌄</span>';
                 }, 160);
             }
         }
     };
+
+    // Keep toggle label in sync whenever the details element is opened/closed manually
+    (function() {
+        const disclosure = document.getElementById('colorPickerDisclosure');
+        const toggleLabel = document.getElementById('colorPickerToggleLabel');
+        if (!disclosure || !toggleLabel) return;
+        disclosure.addEventListener('toggle', function() {
+            toggleLabel.innerHTML = disclosure.open
+                ? 'Hide colors <span aria-hidden="true">⌃</span>'
+                : 'View colors <span aria-hidden="true">⌄</span>';
+        });
+    })();
 
     function setupColorSelection() {
         // Initialize color filtering
