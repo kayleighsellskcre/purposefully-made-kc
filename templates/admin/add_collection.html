@@ -389,8 +389,31 @@
                         </div>
                     </div>
                 </div>
+
+                {# ── 4b. Per-team back design (org multi-team only) ── #}
+                <div id="perTeamBackSection" class="organizer-block" style="display:none;">
+                    <div class="organizer-block-label">
+                        <span class="organizer-step" style="background:var(--terra-cotta,#b56c4c);color:#fff;font-size:1rem;">🎽</span>
+                        <div>
+                            <strong>Does each team need a different back option?</strong>
+                            <p class="form-hint" style="margin:0;">All teams use the same back option by default. Toggle this if a team needs something different.</p>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.5rem;">
+                        <label class="org-style-choice" id="backSameLabel" style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border:1.5px solid #ddd;border-radius:8px;cursor:pointer;font-size:0.88rem;font-weight:500;background:#fff;color:#555;transition:all 0.15s;">
+                            <input type="radio" name="back_design_per_team" value="same" checked style="display:none;">
+                            ✅ Same back for all teams
+                        </label>
+                        <label class="org-style-choice" id="backDiffLabel" style="display:flex;align-items:center;gap:0.5rem;padding:0.6rem 1rem;border:1.5px solid #ddd;border-radius:8px;cursor:pointer;font-size:0.88rem;font-weight:500;background:#fff;color:#555;transition:all 0.15s;">
+                            <input type="radio" name="back_design_per_team" value="different" style="display:none;">
+                            🎽 Different back per team
+                        </label>
+                    </div>
+                    <div id="perTeamBackCards" style="display:none;margin-top:0.75rem;"></div>
+                </div>
+
             </div>
-            
+
             <div class="form-section" id="settingsSection">
                 <h2>Pickup &amp; Sharing</h2>
                 <div class="form-split">
@@ -753,22 +776,111 @@
         var uniformFields = document.getElementById('uniformFields');
         var uniformEnabled = document.getElementById('uniform_enabled');
 
+        var perTeamBackSection = document.getElementById('perTeamBackSection');
+
         if (diffChecked) {
             // Hide generic uniform setup — per-team cards handle it
             if (uniformToggle) uniformToggle.style.display = 'none';
             if (uniformFields) uniformFields.hidden = true;
-            // Auto-check "includes player uniforms" so form submits correctly
-            if (uniformEnabled) uniformEnabled.checked = true;
+            // Do NOT auto-check uniform_enabled — backend reads org_team_uniform_product_id[] for per-team mode
             buildPerTeamCards();
+            // Show per-team back design section
+            if (perTeamBackSection) perTeamBackSection.style.display = '';
+            syncPerTeamBack();
         } else {
             // Restore standard uniform setup
             if (uniformToggle) uniformToggle.style.display = '';
             if (uniformEnabled && uniformFields) {
                 uniformFields.hidden = !uniformEnabled.checked;
             }
+            // Hide per-team back design section
+            if (perTeamBackSection) perTeamBackSection.style.display = 'none';
         }
         syncJerseyLogoBlock();
     }
+
+    // ── Per-team back design ───────────────────────────────────────────────
+    function buildPerTeamBackCards() {
+        var wrap = document.getElementById('perTeamBackCards');
+        if (!wrap) return;
+        var names = getAllTeamNamesForStyle();
+        wrap.innerHTML = '';
+        names.forEach(function(name) {
+            var card = document.createElement('div');
+            card.style.cssText = 'padding:0.9rem 1rem;border:1.5px solid #e8d5cb;border-radius:10px;background:#fff;margin-bottom:0.6rem;';
+            var lbl = document.createElement('p');
+            lbl.style.cssText = 'font-weight:700;font-size:0.88rem;color:var(--terra-cotta,#b56c4c);margin:0 0 0.65rem;';
+            lbl.textContent = name + ' — back option';
+            card.appendChild(lbl);
+            var opts = [
+                { value: 'none',        label: 'No — front only',        desc: 'Nothing on the back' },
+                { value: 'name_number', label: 'Name & number',           desc: 'Team types their own' },
+                { value: 'image',       label: 'Uploaded image',          desc: 'Your logo on the back' },
+                { value: 'both',        label: 'Either option',           desc: 'Team picks: name/# or image' },
+            ];
+            var row = document.createElement('div');
+            row.style.cssText = 'display:flex;flex-wrap:wrap;gap:0.5rem;';
+            // Default to the current global back_design_type
+            var globalType = (document.querySelector('input[name="back_design_type"]:checked') || {}).value || 'none';
+            opts.forEach(function(opt, i) {
+                var lbEl = document.createElement('label');
+                lbEl.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:0.2rem;padding:0.55rem 0.75rem;border:1.5px solid #ddd;border-radius:8px;cursor:pointer;font-size:0.8rem;font-weight:600;background:#fff;color:#555;transition:all 0.15s;min-width:90px;text-align:center;';
+                var inp = document.createElement('input');
+                inp.type = 'radio';
+                inp.name = 'org_team_back_design_type[]';
+                inp.value = opt.value;
+                inp.style.display = 'none';
+                if (opt.value === globalType) {
+                    inp.checked = true;
+                    lbEl.style.borderColor = 'var(--terra-cotta,#b56c4c)';
+                    lbEl.style.background = 'rgba(181,108,76,0.08)';
+                    lbEl.style.color = 'var(--terra-cotta,#b56c4c)';
+                }
+                inp.addEventListener('change', function() {
+                    row.querySelectorAll('label').forEach(function(ll) {
+                        ll.style.borderColor = '#ddd';
+                        ll.style.background = '#fff';
+                        ll.style.color = '#555';
+                    });
+                    lbEl.style.borderColor = 'var(--terra-cotta,#b56c4c)';
+                    lbEl.style.background = 'rgba(181,108,76,0.08)';
+                    lbEl.style.color = 'var(--terra-cotta,#b56c4c)';
+                });
+                lbEl.appendChild(inp);
+                lbEl.appendChild(document.createTextNode(opt.label));
+                var sm = document.createElement('small');
+                sm.style.cssText = 'font-weight:400;color:#888;font-size:0.73rem;';
+                sm.textContent = opt.desc;
+                lbEl.appendChild(sm);
+                row.appendChild(lbEl);
+            });
+            card.appendChild(row);
+            wrap.appendChild(card);
+        });
+    }
+
+    function syncPerTeamBack() {
+        var diffBack = document.querySelector('input[name="back_design_per_team"][value="different"]')?.checked;
+        var wrap = document.getElementById('perTeamBackCards');
+        var backSameLabel = document.getElementById('backSameLabel');
+        var backDiffLabel = document.getElementById('backDiffLabel');
+        if (wrap) wrap.style.display = diffBack ? 'block' : 'none';
+        if (backSameLabel) {
+            backSameLabel.style.borderColor = diffBack ? '#ddd' : 'var(--terra-cotta,#b56c4c)';
+            backSameLabel.style.background = diffBack ? '#fff' : 'rgba(181,108,76,0.08)';
+            backSameLabel.style.color = diffBack ? '#555' : 'var(--terra-cotta,#b56c4c)';
+        }
+        if (backDiffLabel) {
+            backDiffLabel.style.borderColor = diffBack ? 'var(--terra-cotta,#b56c4c)' : '#ddd';
+            backDiffLabel.style.background = diffBack ? 'rgba(181,108,76,0.08)' : '#fff';
+            backDiffLabel.style.color = diffBack ? 'var(--terra-cotta,#b56c4c)' : '#555';
+        }
+        if (diffBack) buildPerTeamBackCards();
+    }
+
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.name === 'back_design_per_team') syncPerTeamBack();
+    });
 
     // ── Jersey logo block (Colors & logo step) ────────────────────────────
     function syncJerseyLogoBlock() {
@@ -797,11 +909,21 @@
         if (!wrap) return;
         var names = getAllTeamNamesForStyle();
         if (!names.length) return;
+
+        // Save existing selections by team name before rebuilding
+        var savedSelections = {};
+        wrap.querySelectorAll('[data-team-logo-name]').forEach(function(card) {
+            var teamName = card.dataset.teamLogoName;
+            var hidden = card.querySelector('input[name="org_team_jersey_logo_id[]"]');
+            if (hidden && hidden.value) savedSelections[teamName] = hidden.value;
+        });
+
         wrap.innerHTML = '';
         var uploadedDesigns = collectUploadedDesigns();
         names.forEach(function(name, idx) {
             var card = document.createElement('div');
             card.style.cssText = 'padding:0.9rem 1rem;border:1.5px solid #e8d5cb;border-radius:10px;background:#fff;margin-bottom:0.6rem;';
+            card.dataset.teamLogoName = name;
             var label = document.createElement('p');
             label.style.cssText = 'font-weight:700;font-size:0.88rem;color:var(--terra-cotta,#b56c4c);margin:0 0 0.6rem;';
             label.textContent = name + ' — jersey logo';
@@ -812,17 +934,18 @@
                 hint.textContent = 'Upload a logo above and it will appear here.';
                 card.appendChild(hint);
             } else {
+                var restoredId = savedSelections[name] || uploadedDesigns[0].id;
                 var hidden = document.createElement('input');
                 hidden.type = 'hidden';
                 hidden.name = 'org_team_jersey_logo_id[]';
-                hidden.value = uploadedDesigns[0].id;
+                hidden.value = restoredId;
                 card.appendChild(hidden);
                 var grid = document.createElement('div');
                 grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:0.5rem;';
                 uploadedDesigns.forEach(function(design) {
                     var btn = document.createElement('button');
                     btn.type = 'button';
-                    btn.className = 'jersey-logo-option' + (design.id === uploadedDesigns[0].id ? ' is-selected' : '');
+                    btn.className = 'jersey-logo-option' + (design.id === restoredId ? ' is-selected' : '');
                     btn.dataset.designId = design.id;
                     if (design.url) {
                         var img = document.createElement('img');

@@ -3042,8 +3042,29 @@ def add_collection():
                                 team_product_ids[idx] if idx < len(team_product_ids) else None,
                                 team_home_colors[idx]  if idx < len(team_home_colors)  else None,
                             )
+
+                            # Copy back design settings from main collection
+                            t_coll.allow_back_design = collection.allow_back_design
+                            t_coll.back_design_type = collection.back_design_type
+                            t_coll.back_design_name_part = collection.back_design_name_part
+                            t_coll.back_design_font = collection.back_design_font
+                            t_coll.back_design_text_color = collection.back_design_text_color
+                            t_coll.back_design_outline = collection.back_design_outline
+                            t_coll.back_design_outline_color = collection.back_design_outline_color
+                            t_coll.lock_back_design_style = collection.lock_back_design_style
+
                             db.session.flush()
                             all_collections.append(t_coll)
+
+                    # Per-team back design: override each team's back_design_type if different
+                    if org_style_mode == 'different' and request.form.get('back_design_per_team') == 'different':
+                        team_back_types = request.form.getlist('org_team_back_design_type[]')
+                        for idx, coll in enumerate(all_collections):
+                            if idx < len(team_back_types):
+                                bt = team_back_types[idx]
+                                coll.allow_back_design = bt != 'none'
+                                coll.back_design_type = bt if bt in ('name_number', 'image', 'both') else 'both'
+                            db.session.flush()
 
                     # Create OrgSections for every collection
                     for sort_idx, (tname, coll) in enumerate(zip(team_names, all_collections)):

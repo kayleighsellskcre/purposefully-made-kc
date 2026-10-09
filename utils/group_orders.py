@@ -750,6 +750,22 @@ def set_collection_products_from_form(collection):
         if away_design_id and away_design_id == home_design_id:
             away_design_id = None
 
+    # Per-team org mode: each team picks its own jersey — jersey products come from
+    # org_team_uniform_product_id[] (set in per-team cards), not the standard uniform fields.
+    # Only the first team's jersey is added to this (main) collection; sub-collections get
+    # their own jersey assigned by _apply_jersey in admin.py.
+    elif configured and request.form.get('org_style_mode') == 'different':
+        for raw in request.form.getlist('org_team_uniform_product_id[]'):
+            pid = _as_int(raw)
+            if pid and pid not in uniform_ids:
+                uniform_ids.append(pid)
+                break  # Only first team's jersey belongs to the main collection
+        if uniform_ids:
+            team_home_colors = request.form.getlist('org_team_home_color[]')
+            team_away_colors = request.form.getlist('org_team_away_color[]')
+            home_color = team_home_colors[0].strip() if team_home_colors else ''
+            away_color = team_away_colors[0].strip() if team_away_colors else ''
+
     ids = list(fan_ids)
     for pid in reversed(uniform_ids):
         if pid not in ids:
