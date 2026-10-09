@@ -225,6 +225,90 @@ def sort_catalog(products):
     return items
 
 
+_AGE_ORDER_LIST = ['adult', 'youth', 'toddler', 'baby']
+
+
+def infer_family_key(item):
+    """Auto-detect a family key from style number, grouping age variants together.
+
+    Examples:
+        BC3001, BC3001Y, BC3001T, BC3001B  →  'BC3001'   (classic tee family)
+        BC3001CVC, BC3001YCVC              →  'BC3001CVC' (CVC tee family)
+        PC54, PC54Y                         →  'PC54'
+        CC1717                              →  'CC1717'
+
+    The rule: strip leading age-indicator character (Y / T / B) from the
+    letter tail that follows the numeric part of the style number.
+    """
+    style = re.sub(r'[^A-Z0-9]', '', (_val(item, 'style_number') or '').upper())
+    m = re.match(r'^([A-Z]*?)(\d+)([A-Z]*)$', style)
+    if not m:
+        return style or str(getattr(item, 'id', id(item)))
+    brand_prefix, digits, tail = m.groups()
+    # Strip leading Y / T / B (age indicator); keep fabric / cut suffix (e.g. CVC, LS)
+    tail_clean = re.sub(r'^[YTB]', '', tail)
+    return brand_prefix + digits + tail_clean
+
+
+def group_products_by_family(products):
+    """Group a sorted product list into style families.
+
+    Returns a list of dicts::
+
+        {
+            'key':       str,       # family key, e.g. 'BC3001'
+            'primary':   Product,   # adult member (first if no adult present)
+            'members':   [Product], # all members sorted adult→youth→toddler→baby
+            'ages':      [str],     # age-group labels present in this family
+            'is_family': bool,      # True when 2+ age groups are represented
+        }
+
+    Products without a matching sibling still appear — as single-member families
+    — so the full catalog is always rendered.
+    """
+    from collections import OrderedDict
+
+    buckets = OrderedDict()
+    for product in (products or []):
+        key = infer_family_key(product)
+        if key not in buckets:
+            buckets[key] = []
+        buckets[key].append(product)
+
+    result = []
+    for key, members in buckets.items():
+        def _age_rank(p):
+            age = getattr(p, 'display_age', None) or infer_age(p) or 'adult'
+            try:
+                return _AGE_ORDER_LIST.index(age)
+            except ValueError:
+                return 99
+
+        members.sort(key=_age_rank)
+
+        seen_ages = []
+        for p in members:
+            age = getattr(p, 'display_age', None) or infer_age(p) or 'adult'
+            if age not in seen_ages:
+                seen_ages.append(age)
+
+        primary = next(
+            (p for p in members
+             if (getattr(p, 'display_age', None) or infer_age(p) or 'adult') == 'adult'),
+            members[0],
+        )
+
+        result.append({
+            'key': key,
+            'primary': primary,
+            'members': members,
+            'ages': seen_ages,
+            'is_family': len(seen_ages) > 1,
+        })
+
+    return result
+
+
 def group_catalog_by_age(products):
     """Split a sorted catalog into Adult / Youth / Toddler / Baby sections."""
     buckets = {key: [] for key, _label in _AGE_LABELS}

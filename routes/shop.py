@@ -13,6 +13,7 @@ from utils.product_filters import (
     canonical_category_param,
     catalog_filter_options,
     group_catalog_by_age,
+    group_products_by_family,
     infer_age,
     infer_brand,
     infer_category,
@@ -255,6 +256,7 @@ def index():
         # Adult → Youth → Toddler → Baby, then garment type within each age
         products = sort_catalog(products)
         product_sections = group_catalog_by_age(products)
+        product_families = group_products_by_family(products)
         categories = [row['key'] for row in filter_opts['categories']]
         fit_types = filter_opts['fits']
         neck_styles = []
@@ -306,9 +308,10 @@ def index():
         except Exception:
             pass
 
-        return render_template('shop/index.html', 
+        return render_template('shop/index.html',
                              products=products,
                              product_sections=product_sections,
+                             product_families=product_families,
                              categories=categories,
                              fit_types=fit_types,
                              neck_styles=neck_styles,
@@ -338,9 +341,10 @@ def index():
         print(f"ERROR in shop index: {e}", file=sys.stderr)
         import traceback
         traceback.print_exc()
-        return render_template('shop/index.html', 
+        return render_template('shop/index.html',
                              products=[],
                              product_sections=[],
+                             product_families=[],
                              categories=[],
                              fit_types=[],
                              neck_styles=[],

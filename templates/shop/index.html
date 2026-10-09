@@ -210,138 +210,157 @@
             <div class="shop-content">
                 {% if products %}
                 <div class="shop-header">
-                    <p class="product-count">{{ products|length }} products</p>
-                    {% if product_sections|length > 1 %}
-                    <nav class="shop-age-jump" aria-label="Jump to age group">
-                        {% for section in product_sections %}
-                        <a href="#shop-{{ section.key }}">{{ section.label }}</a>{% if not loop.last %}<span aria-hidden="true">·</span>{% endif %}
-                        {% endfor %}
-                    </nav>
-                    {% endif %}
+                    <p class="product-count">
+                        {{ product_families|length }} style{% if product_families|length != 1 %}s{% endif %}
+                        {% set fam_count = product_families|selectattr('is_family')|list|length %}
+                        {% if fam_count %}<span class="shop-family-note"> · {{ fam_count }} available in multiple age groups</span>{% endif %}
+                    </p>
                 </div>
 
                 {% set ns = namespace(card_index=0) %}
-                {% for section in product_sections %}
-                <section class="shop-age-section" id="shop-{{ section.key }}" aria-labelledby="shop-heading-{{ section.key }}">
-                    <div class="shop-age-heading-row">
-                        <h2 class="shop-age-heading" id="shop-heading-{{ section.key }}">{{ section.label }}</h2>
-                        <span class="shop-age-count">{{ section.products|length }} style{% if section.products|length != 1 %}s{% endif %}</span>
-                    </div>
-                    <div class="products-grid">
-                    {% for product in section.products %}
-                    {# The colour carousel below is a nested loop, whose own `loop`
-                       shadows this one. Aliased so the image tags can tell which
-                       cards are in the first row and should not be lazy-loaded. #}
-                    {% set product_loop = loop %}
-                    {% set card_index = ns.card_index %}
-                    <div class="product-card">
-                        <!-- Favorite Button -->
-                        {# Every card's button announced the same "Add to favorites",
-                           so a screen reader user could not tell them apart. #}
-                        <button type="button" class="btn-favorite" 
-                                data-product-id="{{ product.id }}"
-                                data-color-name=""
-                                onclick="toggleFavorite(event, {{ product.id }}, '')"
-                                title="Add to favorites"
-                                aria-label="Add {{ product|display_name }} to favorites">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                            </svg>
-                        </button>
-                        
-                        <a href="{{ url_for('shop.customize', product_slug=product.slug) }}{% if design_id %}?design_id={{ design_id }}{% endif %}" class="product-link">
-                            <div class="product-image-wrapper">
-                                {% if product.is_customer_favorite %}
-                                <span class="fav-badge fav-badge-overlay">
-                                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 7.1-1.01L12 2z"/></svg>
-                                    Customer Favorite
-                                </span>
-                                {% endif %}
-                                <!-- Color Preview Carousel -->
-                                {% if product.carousel_colors and product.carousel_colors|length > 0 %}
-                                <div class="color-carousel" data-product-id="{{ product.id }}" data-product-name="{{ product|display_name }}">
-                                    <div class="carousel-images">
-                                        {% for variant in product.carousel_colors %}
-                                        <div class="carousel-slide {% if loop.first %}active{% endif %}"
-                                             data-color="{{ variant.color_name }}"
-                                             {% if not loop.first %}data-src="{{ variant.front_image_url }}"{% endif %}>
-                                            {% if loop.first %}
-                                            {# Only the shown color ships a real <img> tag. The catalog's other
-                                               colors carry their URL in data-src instead: with ~1,400 color
-                                               variants across the catalog, rendering an <img> for every one
-                                               inflated the page to ~1.5 MB of HTML. The carousel script below
-                                               creates the <img> the first time a card is hovered or its arrows
-                                               are used, not before. #}
-                                            <img src="{{ variant.front_image_url }}"
-                                                 alt="{{ product|display_name }} - {{ variant.color_name }}"
-                                                 {% if card_index < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
-                                                 referrerpolicy="no-referrer"
-                                                 onerror="this.style.display='none';this.parentElement.querySelector('.no-mockup-msg').style.display='flex'">
-                                            <div class="no-mockup-msg" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;background:linear-gradient(135deg,#fdf8f4 0%,#f5ede4 100%);">
-                                                <div style="font-size:2.5rem;margin-bottom:0.5rem">📸</div>
-                                                <p style="font-family:'Playfair Display',serif;font-size:1rem;color:#8b6f5e;font-weight:600;margin:0 0 0.4rem">This mockup skipped picture day!</p>
-                                                <p style="font-size:0.8rem;color:#b09080;margin:0;line-height:1.5">No worries, you can still order.<br>Just choose your favorite design! ♡</p>
-                                            </div>
-                                            {% endif %}
+                <div class="products-grid">
+                {% for family in product_families %}
+                {% set product = family.primary %}
+                {% set card_index = ns.card_index %}
+                <div class="product-card{% if family.is_family %} family-card{% endif %}"{% if family.is_family %} data-family-key="{{ family.key }}"{% endif %}>
+                    <!-- Favorite Button -->
+                    <button type="button" class="btn-favorite"
+                            data-product-id="{{ product.id }}"
+                            data-color-name=""
+                            onclick="toggleFavorite(event, {{ product.id }}, '')"
+                            title="Add to favorites"
+                            aria-label="Add {{ product|display_name }} to favorites">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                        </svg>
+                    </button>
+
+                    <a href="{{ url_for('shop.customize', product_slug=product.slug) }}{% if design_id %}?design_id={{ design_id }}{% endif %}"
+                       class="product-link{% if family.is_family %} family-link{% endif %}"
+                       {% if family.is_family %}aria-haspopup="dialog"{% endif %}>
+                        <div class="product-image-wrapper">
+                            {% if product.is_customer_favorite %}
+                            <span class="fav-badge fav-badge-overlay">
+                                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 7.1-1.01L12 2z"/></svg>
+                                Customer Favorite
+                            </span>
+                            {% endif %}
+
+                            {# Age-group strip — only on family cards #}
+                            {% if family.is_family %}
+                            <div class="family-age-strip">
+                                {% for age in family.ages %}
+                                <span class="family-age-chip family-age-chip--{{ age }}">{{ age|capitalize }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
+                            <!-- Color Preview Carousel -->
+                            {% if product.carousel_colors and product.carousel_colors|length > 0 %}
+                            <div class="color-carousel" data-product-id="{{ product.id }}" data-product-name="{{ product|display_name }}">
+                                <div class="carousel-images">
+                                    {% for variant in product.carousel_colors %}
+                                    <div class="carousel-slide {% if loop.first %}active{% endif %}"
+                                         data-color="{{ variant.color_name }}"
+                                         {% if not loop.first %}data-src="{{ variant.front_image_url }}"{% endif %}>
+                                        {% if loop.first %}
+                                        {# Only the shown color ships a real <img> tag. #}
+                                        <img src="{{ variant.front_image_url }}"
+                                             alt="{{ product|display_name }} - {{ variant.color_name }}"
+                                             {% if card_index < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
+                                             referrerpolicy="no-referrer"
+                                             onerror="this.style.display='none';this.parentElement.querySelector('.no-mockup-msg').style.display='flex'">
+                                        <div class="no-mockup-msg" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;background:linear-gradient(135deg,#fdf8f4 0%,#f5ede4 100%);">
+                                            <div style="font-size:2.5rem;margin-bottom:0.5rem">📸</div>
+                                            <p style="font-family:'Playfair Display',serif;font-size:1rem;color:#8b6f5e;font-weight:600;margin:0 0 0.4rem">This mockup skipped picture day!</p>
+                                            <p style="font-size:0.8rem;color:#b09080;margin:0;line-height:1.5">No worries, you can still order.<br>Just choose your favorite design! ♡</p>
                                         </div>
-                                        {% endfor %}
+                                        {% endif %}
                                     </div>
-                                    
-                                    <!-- Navigation Arrows (only show if more than 1 color) -->
-                                    {% if product.carousel_colors|length > 1 %}
-                                    <button class="carousel-btn carousel-prev" type="button" aria-label="Previous color">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                            <polyline points="15 18 9 12 15 6"></polyline>
-                                        </svg>
-                                    </button>
-                                    <button class="carousel-btn carousel-next" type="button" aria-label="Next color">
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                            <polyline points="9 18 15 12 9 6"></polyline>
-                                        </svg>
-                                    </button>
-                                    
-                                    <!-- Color Indicator -->
-                                    <div class="color-indicator">
-                                        <span class="current-color">{{ product.carousel_colors[0].color_name }}</span>
-                                        <span class="color-count">{{ product.carousel_colors|length }} colors</span>
-                                    </div>
-                                    {% endif %}
+                                    {% endfor %}
                                 </div>
-                                {% else %}
-                                <div class="product-image" style="position:relative">
-                                    <img src="{{ product.fallback_image_url or url_for('static', filename='img/products/' + product.style_number + '.jpg') }}"
-                                         alt="{{ product|display_name }}"
-                                         {% if card_index < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
-                                         onerror="this.style.display='none';this.parentElement.querySelector('.no-mockup-msg').style.display='flex'">
-                                    <div class="no-mockup-msg" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;background:linear-gradient(135deg,#fdf8f4 0%,#f5ede4 100%);">
-                                        <div style="font-size:2.5rem;margin-bottom:0.5rem">📸</div>
-                                        <p style="font-family:'Playfair Display',serif;font-size:1rem;color:#8b6f5e;font-weight:600;margin:0 0 0.4rem">This mockup skipped picture day!</p>
-                                        <p style="font-size:0.8rem;color:#b09080;margin:0;line-height:1.5">No worries, you can still order.<br>Just choose your favorite design! ♡</p>
-                                    </div>
+
+                                {% if product.carousel_colors|length > 1 %}
+                                <button class="carousel-btn carousel-prev" type="button" aria-label="Previous color">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                                </button>
+                                <button class="carousel-btn carousel-next" type="button" aria-label="Next color">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                </button>
+                                <div class="color-indicator">
+                                    <span class="current-color">{{ product.carousel_colors[0].color_name }}</span>
+                                    <span class="color-count">{{ product.carousel_colors|length }} colors</span>
                                 </div>
                                 {% endif %}
                             </div>
-                            
-                            <div class="product-info">
-                                {# h3 under the age-group h2 so heading order stays sensible. #}
-                                <h3 class="product-name">{{ product|display_name }}</h3>
-                                <p class="product-style">{% if product.display_brand %}{{ product.display_brand }} · {% endif %}Style {{ product.style_number }}</p>
-                                {% if product.display_category or product.category %}
-                                <p class="product-category">{{ product.display_category or product.category }}</p>
-                                {% endif %}
-                                {% if product.softness_label %}
-                                <p class="product-softness">{{ product.softness_label }}</p>
-                                {% endif %}
-                                <p class="product-price">${{ "%.2f"|format(product.base_price) }}</p>
-                                <span class="btn btn-customize btn-sm">Customize</span>
+                            {% else %}
+                            <div class="product-image" style="position:relative">
+                                <img src="{{ product.fallback_image_url or url_for('static', filename='img/products/' + product.style_number + '.jpg') }}"
+                                     alt="{{ product|display_name }}"
+                                     {% if card_index < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
+                                     onerror="this.style.display='none';this.parentElement.querySelector('.no-mockup-msg').style.display='flex'">
+                                <div class="no-mockup-msg" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;background:linear-gradient(135deg,#fdf8f4 0%,#f5ede4 100%);">
+                                    <div style="font-size:2.5rem;margin-bottom:0.5rem">📸</div>
+                                    <p style="font-family:'Playfair Display',serif;font-size:1rem;color:#8b6f5e;font-weight:600;margin:0 0 0.4rem">This mockup skipped picture day!</p>
+                                    <p style="font-size:0.8rem;color:#b09080;margin:0;line-height:1.5">No worries, you can still order.<br>Just choose your favorite design! ♡</p>
+                                </div>
                             </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="product-info">
+                            <h3 class="product-name">{{ product|display_name }}</h3>
+                            <p class="product-style">{% if product.display_brand %}{{ product.display_brand }} · {% endif %}Style {{ product.style_number }}</p>
+                            {% if product.display_category or product.category %}
+                            <p class="product-category">{{ product.display_category or product.category }}</p>
+                            {% endif %}
+                            {% if product.softness_label %}
+                            <p class="product-softness">{{ product.softness_label }}</p>
+                            {% endif %}
+                            <p class="product-price">${{ "%.2f"|format(product.base_price) }}</p>
+                            {% if family.is_family %}
+                            <span class="btn btn-customize btn-sm">Choose Age Group →</span>
+                            {% else %}
+                            <span class="btn btn-customize btn-sm">Customize</span>
+                            {% endif %}
+                        </div>
+                    </a>
+
+                    {# Server-rendered member list — JS clones this into the modal #}
+                    {% if family.is_family %}
+                    <template class="family-members-tpl">
+                        <p class="fam-modal-subtitle">{{ product.display_brand or product.brand }} · {{ product.display_category or product.category }} · {{ product.display_name or (product|display_name) }}</p>
+                        <div class="fam-modal-age-grid">
+                        {% for member in family.members %}
+                        <a href="{{ url_for('shop.customize', product_slug=member.slug) }}{% if design_id %}?design_id={{ design_id }}{% endif %}"
+                           class="fam-mac">
+                            <span class="fam-mac-age">{{ member.display_age|capitalize }}</span>
+                            <span class="fam-mac-colors">{{ member.carousel_colors|length if member.carousel_colors else 0 }} colors</span>
+                            <span class="fam-mac-price">${{ "%.2f"|format(member.base_price) }}</span>
+                            <svg class="fam-mac-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                         </a>
-                    </div>
-                    {% set ns.card_index = ns.card_index + 1 %}
-                    {% endfor %}
-                    </div>
-                </section>
+                        {% endfor %}
+                        </div>
+                    </template>
+                    {% endif %}
+                </div>
+                {% set ns.card_index = ns.card_index + 1 %}
                 {% endfor %}
+                </div>
+
+                {# ── Family Age-Group Modal ── #}
+                <div id="familyModal" class="family-modal" hidden role="dialog" aria-modal="true" aria-labelledby="familyModalTitle">
+                    <div class="family-modal-backdrop"></div>
+                    <div class="family-modal-panel">
+                        <div class="family-modal-header">
+                            <h2 id="familyModalTitle" class="family-modal-title">Choose your age group</h2>
+                            <button class="family-modal-close" type="button" aria-label="Close">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                        </div>
+                        <div class="family-modal-body" id="familyModalBody"></div>
+                    </div>
+                </div>
                 {% else %}
                 <div class="empty-state">
                     <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -367,6 +386,177 @@
 </section>
 
 <style>
+/* ── Product Family Cards ── */
+.shop-family-note {
+    font-size: 0.82em;
+    color: var(--terra-cotta, #b56c4c);
+    font-weight: 500;
+}
+
+/* Age-group strip overlaid at the bottom of the product image */
+.family-age-strip {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    padding: 6px 8px;
+    background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 100%);
+    z-index: 2;
+    pointer-events: none;
+}
+.family-age-chip {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #fff;
+    border: 1.5px solid rgba(255,255,255,0.5);
+}
+.family-age-chip--adult   { background: var(--terra-cotta, #b56c4c); }
+.family-age-chip--youth   { background: #7a9e7e; }
+.family-age-chip--toddler { background: #8a7ab0; }
+.family-age-chip--baby    { background: #7ab0b0; }
+
+/* Family card: subtle ring so it's visually distinct */
+.family-card .product-link { position: relative; }
+.family-card { border: 2px solid transparent; transition: border-color .2s; }
+.family-card:hover { border-color: var(--terra-cotta, #b56c4c); }
+
+/* ── Family Age-Group Modal ── */
+.family-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    display: flex;
+    align-items: flex-end;   /* sheet rises from bottom on mobile */
+    justify-content: center;
+}
+.family-modal[hidden] { display: none; }
+.family-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(2px);
+    cursor: pointer;
+}
+.family-modal-panel {
+    position: relative;
+    z-index: 1;
+    background: #fff;
+    border-radius: 20px 20px 0 0;
+    padding: 0 0 env(safe-area-inset-bottom, 0);
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 -8px 40px rgba(0,0,0,0.18);
+    animation: famModalSlideUp .25s cubic-bezier(.25,.8,.25,1);
+}
+@keyframes famModalSlideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+@media (min-width: 600px) {
+    .family-modal { align-items: center; }
+    .family-modal-panel {
+        border-radius: 20px;
+        margin: 1rem;
+        animation: famModalFadeIn .2s ease;
+    }
+    @keyframes famModalFadeIn {
+        from { transform: scale(.95); opacity: 0; }
+        to   { transform: scale(1);   opacity: 1; }
+    }
+}
+.family-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem 0.75rem;
+    border-bottom: 1px solid #f0e8e2;
+}
+.family-modal-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #3a3d48;
+    margin: 0;
+}
+.family-modal-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #9a8880;
+    padding: 4px;
+    border-radius: 8px;
+    display: flex;
+    transition: background .15s, color .15s;
+}
+.family-modal-close:hover { background: #f5ede4; color: #b56c4c; }
+.family-modal-body { padding: 1rem 1.5rem 1.5rem; }
+.fam-modal-subtitle {
+    font-size: 0.82rem;
+    color: #9a8880;
+    margin: 0 0 1rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    font-weight: 600;
+}
+.fam-modal-age-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+/* Age option cards inside the modal */
+.fam-mac {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 1rem 1rem 0.9rem;
+    border: 2px solid #f0e8e2;
+    border-radius: 14px;
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+    transition: border-color .15s, background .15s, transform .15s;
+}
+.fam-mac:hover {
+    border-color: var(--terra-cotta, #b56c4c);
+    background: #fdf7f4;
+    transform: translateY(-2px);
+}
+.fam-mac-age {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #3a3d48;
+}
+.fam-mac-colors {
+    font-size: 0.78rem;
+    color: #9a8880;
+}
+.fam-mac-price {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--terra-cotta, #b56c4c);
+    margin-top: 4px;
+}
+.fam-mac-arrow {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    color: #c8b4a8;
+    transition: color .15s, transform .15s;
+}
+.fam-mac:hover .fam-mac-arrow { color: var(--terra-cotta, #b56c4c); transform: translateX(2px); }
+
 /* ── Daily Affirmation ── */
 .daily-affirmation-wrap {
     background: linear-gradient(180deg, var(--ivory-silk, #faf7f2) 0%, #fff 100%);
@@ -1458,6 +1648,49 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     syncHidden();
 });
+
+// ── Family Age-Group Modal ────────────────────────────────────────────────
+(function () {
+    const modal    = document.getElementById('familyModal');
+    const body     = document.getElementById('familyModalBody');
+    const title    = document.getElementById('familyModalTitle');
+    const closeBtn = modal && modal.querySelector('.family-modal-close');
+    const backdrop = modal && modal.querySelector('.family-modal-backdrop');
+    if (!modal) return;
+
+    function openModal(card) {
+        const tpl  = card.querySelector('.family-members-tpl');
+        if (!tpl) return;
+        const name = card.querySelector('.product-name');
+        title.textContent = name ? name.textContent.trim() : 'Choose your age group';
+        body.innerHTML = '';
+        body.appendChild(tpl.content.cloneNode(true));
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+        // Focus first age card for keyboard users
+        const first = body.querySelector('.fam-mac');
+        if (first) first.focus();
+    }
+
+    function closeModal() {
+        modal.hidden = true;
+        document.body.style.overflow = '';
+    }
+
+    // Wire up each family card's link
+    document.querySelectorAll('.family-link').forEach(link => {
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
+            openModal(this.closest('.family-card'));
+        });
+    });
+
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (backdrop) backdrop.addEventListener('click', closeModal);
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && !modal.hidden) closeModal();
+    });
+}());
 
 </script>
 {% endblock %}
