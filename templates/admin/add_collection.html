@@ -800,36 +800,87 @@
     }
 
     // ── Per-team back design ───────────────────────────────────────────────
+    // Expose font list from Jinja2 for use in JS-built cards
+    var _backFonts = {{ back_design_fonts | tojson }};
+    var _backSwatchColors = [
+        {hex:'#ffffff',label:'White'},{hex:'#111111',label:'Black'},{hex:'#1a2a52',label:'Navy'},
+        {hex:'#b00020',label:'Red'},{hex:'#d4af37',label:'Gold'},{hex:'#1b6e3c',label:'Green'},
+        {hex:'#2155cd',label:'Royal'},{hex:'#ff2eb6',label:'Pink'},{hex:'#ffd400',label:'Yellow'}
+    ];
+
+    function makeBackColorRow(nameAttr, defaultHex) {
+        var wrap = document.createElement('div');
+        wrap.style.cssText = 'display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-top:0.4rem;';
+        var colorInput = document.createElement('input');
+        colorInput.type = 'color'; colorInput.name = nameAttr; colorInput.value = defaultHex;
+        colorInput.style.cssText = 'width:32px;height:32px;border:none;padding:0;background:none;cursor:pointer;border-radius:4px;';
+        wrap.appendChild(colorInput);
+        var swatchRow = document.createElement('div');
+        swatchRow.style.cssText = 'display:flex;gap:0.3rem;flex-wrap:wrap;';
+        _backSwatchColors.forEach(function(s) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.title = s.label;
+            btn.style.cssText = 'width:22px;height:22px;border-radius:50%;border:2px solid '+(s.hex===defaultHex?'#555':'#ddd')+';background:'+s.hex+';cursor:pointer;';
+            btn.addEventListener('click', function() {
+                colorInput.value = s.hex;
+                swatchRow.querySelectorAll('button').forEach(function(b){ b.style.borderColor='#ddd'; });
+                btn.style.borderColor = '#555';
+            });
+            swatchRow.appendChild(btn);
+        });
+        wrap.appendChild(swatchRow);
+        return wrap;
+    }
+
     function buildPerTeamBackCards() {
         var wrap = document.getElementById('perTeamBackCards');
         if (!wrap) return;
         var names = getAllTeamNamesForStyle();
         wrap.innerHTML = '';
+        var globalType = (document.querySelector('input[name="back_design_type"]:checked') || {}).value || 'none';
+
+        var OPTS = [
+            { value: 'none',        label: 'No — front only',   desc: 'Nothing on the back' },
+            { value: 'name_number', label: 'Name & number',      desc: 'Team types their own' },
+            { value: 'image',       label: 'Uploaded image',     desc: 'Your logo on the back' },
+            { value: 'both',        label: 'Either option',      desc: 'Team picks: name/# or image' },
+        ];
+
         names.forEach(function(name) {
             var card = document.createElement('div');
             card.style.cssText = 'padding:0.9rem 1rem;border:1.5px solid #e8d5cb;border-radius:10px;background:#fff;margin-bottom:0.6rem;';
-            var lbl = document.createElement('p');
-            lbl.style.cssText = 'font-weight:700;font-size:0.88rem;color:var(--terra-cotta,#b56c4c);margin:0 0 0.65rem;';
-            lbl.textContent = name + ' — back option';
-            card.appendChild(lbl);
-            var opts = [
-                { value: 'none',        label: 'No — front only',        desc: 'Nothing on the back' },
-                { value: 'name_number', label: 'Name & number',           desc: 'Team types their own' },
-                { value: 'image',       label: 'Uploaded image',          desc: 'Your logo on the back' },
-                { value: 'both',        label: 'Either option',           desc: 'Team picks: name/# or image' },
-            ];
+
+            var cardLbl = document.createElement('p');
+            cardLbl.style.cssText = 'font-weight:700;font-size:0.88rem;color:var(--terra-cotta,#b56c4c);margin:0 0 0.65rem;';
+            cardLbl.textContent = name + ' — back option';
+            card.appendChild(cardLbl);
+
+            // ── 4 type radio options ──────────────────────────────────
             var row = document.createElement('div');
             row.style.cssText = 'display:flex;flex-wrap:wrap;gap:0.5rem;';
-            // Default to the current global back_design_type
-            var globalType = (document.querySelector('input[name="back_design_type"]:checked') || {}).value || 'none';
-            opts.forEach(function(opt, i) {
+
+            // Sub-options panels (shown/hidden by radio selection)
+            var nnPanel = document.createElement('div');  // name & number options
+            nnPanel.style.cssText = 'margin-top:0.85rem;padding:0.8rem;background:#fdf6f3;border-radius:8px;border:1px solid #e8d5cb;display:none;';
+
+            var imgPanel = document.createElement('div');  // image note
+            imgPanel.style.cssText = 'margin-top:0.85rem;padding:0.7rem 0.9rem;background:#fdf6f3;border-radius:8px;border:1px solid #e8d5cb;display:none;font-size:0.82rem;color:#555;';
+            imgPanel.innerHTML = '<strong>ℹ️ Image:</strong> The back image you uploaded in this wizard will be used for this team.';
+
+            function syncPanels(val) {
+                var showNN = val === 'name_number' || val === 'both';
+                var showImg = val === 'image' || val === 'both';
+                nnPanel.style.display = showNN ? '' : 'none';
+                imgPanel.style.display = showImg ? '' : 'none';
+            }
+
+            OPTS.forEach(function(opt) {
                 var lbEl = document.createElement('label');
                 lbEl.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:0.2rem;padding:0.55rem 0.75rem;border:1.5px solid #ddd;border-radius:8px;cursor:pointer;font-size:0.8rem;font-weight:600;background:#fff;color:#555;transition:all 0.15s;min-width:90px;text-align:center;';
                 var inp = document.createElement('input');
-                inp.type = 'radio';
-                inp.name = 'org_team_back_design_type[]';
-                inp.value = opt.value;
-                inp.style.display = 'none';
+                inp.type = 'radio'; inp.name = 'org_team_back_design_type[]';
+                inp.value = opt.value; inp.style.display = 'none';
                 if (opt.value === globalType) {
                     inp.checked = true;
                     lbEl.style.borderColor = 'var(--terra-cotta,#b56c4c)';
@@ -838,13 +889,12 @@
                 }
                 inp.addEventListener('change', function() {
                     row.querySelectorAll('label').forEach(function(ll) {
-                        ll.style.borderColor = '#ddd';
-                        ll.style.background = '#fff';
-                        ll.style.color = '#555';
+                        ll.style.borderColor='#ddd'; ll.style.background='#fff'; ll.style.color='#555';
                     });
-                    lbEl.style.borderColor = 'var(--terra-cotta,#b56c4c)';
-                    lbEl.style.background = 'rgba(181,108,76,0.08)';
-                    lbEl.style.color = 'var(--terra-cotta,#b56c4c)';
+                    lbEl.style.borderColor='var(--terra-cotta,#b56c4c)';
+                    lbEl.style.background='rgba(181,108,76,0.08)';
+                    lbEl.style.color='var(--terra-cotta,#b56c4c)';
+                    syncPanels(opt.value);
                 });
                 lbEl.appendChild(inp);
                 lbEl.appendChild(document.createTextNode(opt.label));
@@ -854,7 +904,94 @@
                 lbEl.appendChild(sm);
                 row.appendChild(lbEl);
             });
+
             card.appendChild(row);
+
+            // ── Name & number sub-options ─────────────────────────────
+            // Name part
+            var npLbl = document.createElement('p');
+            npLbl.style.cssText = 'font-size:0.8rem;font-weight:600;margin:0 0 0.4rem;';
+            npLbl.textContent = 'Display name:';
+            nnPanel.appendChild(npLbl);
+            var npRow = document.createElement('div');
+            npRow.style.cssText = 'display:flex;gap:0.5rem;margin-bottom:0.75rem;';
+            ['last','first'].forEach(function(v) {
+                var lb = document.createElement('label');
+                lb.style.cssText = 'display:flex;align-items:center;gap:0.3rem;font-size:0.82rem;cursor:pointer;';
+                var rIn = document.createElement('input');
+                rIn.type='radio'; rIn.name='org_team_back_name_part[]'; rIn.value=v;
+                if (v==='last') rIn.checked=true;
+                lb.appendChild(rIn);
+                lb.appendChild(document.createTextNode(v==='last'?'Last name (SMITH)':'First name (JORDAN)'));
+                npRow.appendChild(lb);
+            });
+            nnPanel.appendChild(npRow);
+
+            // Font picker
+            var fontLbl = document.createElement('p');
+            fontLbl.style.cssText = 'font-size:0.8rem;font-weight:600;margin:0 0 0.4rem;';
+            fontLbl.textContent = 'Font:';
+            nnPanel.appendChild(fontLbl);
+            var fontGrid = document.createElement('div');
+            fontGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:0.5rem;margin-bottom:0.75rem;';
+            var firstFont = _backFonts.length ? _backFonts[0][0] : '';
+            _backFonts.forEach(function(pair, fi) {
+                var fv = pair[0], fl = pair[1];
+                var flb = document.createElement('label');
+                flb.style.cssText = 'display:flex;flex-direction:column;align-items:center;padding:0.4rem 0.5rem;border:1.5px solid '+(fi===0?'var(--terra-cotta,#b56c4c)':'#ddd')+';border-radius:8px;cursor:pointer;background:'+(fi===0?'rgba(181,108,76,0.08)':'#fff')+';transition:all 0.15s;';
+                var fin = document.createElement('input');
+                fin.type='radio'; fin.name='org_team_back_font[]'; fin.value=fv; fin.style.display='none';
+                if (fi===0) fin.checked=true;
+                fin.addEventListener('change', function() {
+                    fontGrid.querySelectorAll('label').forEach(function(ll){ll.style.borderColor='#ddd';ll.style.background='#fff';});
+                    flb.style.borderColor='var(--terra-cotta,#b56c4c)'; flb.style.background='rgba(181,108,76,0.08)';
+                });
+                flb.appendChild(fin);
+                var fdemo = document.createElement('span');
+                fdemo.style.cssText = 'font-family:"'+fv+'",sans-serif;font-size:1.1rem;font-weight:700;color:#333;';
+                fdemo.textContent = 'NAME 12';
+                flb.appendChild(fdemo);
+                var fsm = document.createElement('small');
+                fsm.style.cssText = 'font-size:0.68rem;color:#888;margin-top:0.2rem;';
+                fsm.textContent = fl;
+                flb.appendChild(fsm);
+                fontGrid.appendChild(flb);
+            });
+            nnPanel.appendChild(fontGrid);
+
+            // Text color
+            var tcLbl = document.createElement('p');
+            tcLbl.style.cssText = 'font-size:0.8rem;font-weight:600;margin:0 0 0.3rem;';
+            tcLbl.textContent = 'Text color:';
+            nnPanel.appendChild(tcLbl);
+            nnPanel.appendChild(makeBackColorRow('org_team_back_text_color[]', '#ffffff'));
+
+            // Outline toggle
+            var outRow = document.createElement('div');
+            outRow.style.cssText = 'display:flex;align-items:center;gap:0.4rem;margin-top:0.65rem;';
+            var outCb = document.createElement('input');
+            outCb.type='checkbox'; outCb.name='org_team_back_outline[]'; outCb.value='on'; outCb.checked=true;
+            var outLb = document.createElement('label');
+            outLb.style.cssText = 'font-size:0.82rem;cursor:pointer;';
+            outLb.textContent = 'Add outline around name & number';
+            outRow.appendChild(outCb); outRow.appendChild(outLb);
+            nnPanel.appendChild(outRow);
+
+            var ocWrap = document.createElement('div');
+            ocWrap.style.cssText = 'margin-top:0.5rem;';
+            var ocLbl = document.createElement('p');
+            ocLbl.style.cssText = 'font-size:0.8rem;font-weight:600;margin:0 0 0.3rem;';
+            ocLbl.textContent = 'Outline color:';
+            ocWrap.appendChild(ocLbl);
+            ocWrap.appendChild(makeBackColorRow('org_team_back_outline_color[]', '#000000'));
+            nnPanel.appendChild(ocWrap);
+
+            outCb.addEventListener('change', function() { ocWrap.style.display = outCb.checked ? '' : 'none'; });
+
+            card.appendChild(nnPanel);
+            card.appendChild(imgPanel);
+
+            syncPanels(globalType);
             wrap.appendChild(card);
         });
     }

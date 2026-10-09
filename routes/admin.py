@@ -2990,7 +2990,7 @@ def add_collection():
                             if not pid:
                                 return
                             try:
-                                ts = _json.loads(coll.team_store or '{}')
+                                ts = _json.loads(coll.team_store_config or '{}')
                             except Exception:
                                 ts = {}
                             ts.setdefault('uniform', {})
@@ -2998,7 +2998,7 @@ def add_collection():
                             ts['uniform']['product_id'] = int(pid)
                             if home_color:
                                 ts['uniform']['home_color'] = home_color
-                            coll.team_store = _json.dumps(ts)
+                            coll.team_store_config = _json.dumps(ts)
 
                         _apply_jersey(
                             collection,
@@ -3078,14 +3078,31 @@ def add_collection():
                             db.session.flush()
                             all_collections.append(t_coll)
 
-                    # Per-team back design: override each team's back_design_type if different
+                    # Per-team back design: override each team's settings if "different" mode
                     if org_style_mode == 'different' and request.form.get('back_design_per_team') == 'different':
-                        team_back_types = request.form.getlist('org_team_back_design_type[]')
+                        team_back_types       = request.form.getlist('org_team_back_design_type[]')
+                        team_back_name_parts  = request.form.getlist('org_team_back_name_part[]')
+                        team_back_fonts       = request.form.getlist('org_team_back_font[]')
+                        team_back_text_colors = request.form.getlist('org_team_back_text_color[]')
+                        team_back_outlines    = request.form.getlist('org_team_back_outline[]')
+                        team_back_out_colors  = request.form.getlist('org_team_back_outline_color[]')
+
                         for idx, coll in enumerate(all_collections):
                             if idx < len(team_back_types):
                                 bt = team_back_types[idx]
                                 coll.allow_back_design = bt != 'none'
                                 coll.back_design_type = bt if bt in ('name_number', 'image', 'both') else 'both'
+                            if idx < len(team_back_name_parts):
+                                np = team_back_name_parts[idx].strip().lower()
+                                coll.back_design_name_part = np if np in ('last', 'first') else 'last'
+                            if idx < len(team_back_fonts):
+                                coll.back_design_font = team_back_fonts[idx] or None
+                            if idx < len(team_back_text_colors):
+                                coll.back_design_text_color = team_back_text_colors[idx] or None
+                            outline_on = (team_back_outlines[idx] == 'on') if idx < len(team_back_outlines) else True
+                            coll.back_design_outline = outline_on
+                            if idx < len(team_back_out_colors):
+                                coll.back_design_outline_color = team_back_out_colors[idx] or None
                             db.session.flush()
 
                     # Create OrgSections for every collection
