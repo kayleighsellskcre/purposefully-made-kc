@@ -260,11 +260,12 @@
                             {% endif %}
                         </div>
                         <div class="od-field">
-                            <label>Profit Override</label>
+                            <label>True Profit</label>
                             <div class="od-prefix-wrap">
                                 <span class="od-prefix">$</span>
-                                <input type="number" name="profit" class="od-input od-input-prefixed" step="0.01" value="{{ order.profit or '' }}" placeholder="Auto from COGS">
+                                <input type="number" class="od-input od-input-prefixed" step="0.01" value="{{ '%.2f'|format(order.profit) if order.profit is not none else '' }}" placeholder="Auto" readonly aria-readonly="true">
                             </div>
+                            <p class="od-field-hint">Figured for you: customer paid minus sales tax, {{ profit_summary.processor if profit_summary else 'processing' }} fee, and cost of goods.</p>
                         </div>
                     </div>
                     <div class="od-refund-row">
@@ -282,7 +283,7 @@
                         <button type="submit" class="od-btn">Save Changes</button>
                         {% if order.profit is not none %}
                         <div class="od-profit-stat">
-                            <span class="od-profit-label">Net Profit</span>
+                            <span class="od-profit-label">True Profit</span>
                             <span class="od-profit-value {% if order.profit >= 0 %}od-profit-pos{% else %}od-profit-neg{% endif %}">${{ "%.2f"|format(order.profit) }}</span>
                         </div>
                         {% endif %}
@@ -558,25 +559,33 @@
         {% endif %}
         {% endfor %}
 
-        {% if cost_breakdown %}
-        <div class="od-cost-summary" aria-label="Order cost totals">
-            <h3 class="od-cost-summary-title">Order Totals (Cost)</h3>
-            <div class="od-cost-summary-grid">
-                <div class="od-cost-cell">
-                    <span class="od-cost-label">Total cost of goods</span>
-                    <span class="od-cost-val">${{ "%.2f"|format(cost_breakdown.total_cogs) }}</span>
+        {% if cost_breakdown and profit_summary %}
+        {% set ps = profit_summary %}
+        <div class="od-cost-summary" aria-label="Where this order's money went">
+            <h3 class="od-cost-summary-title">Where the Money Went</h3>
+            <div class="od-money-rows">
+                <div class="od-money-row">
+                    <span>Customer paid</span>
+                    <span class="od-money-val">${{ "%.2f"|format(ps.paid) }}</span>
                 </div>
-                <div class="od-cost-cell">
-                    <span class="od-cost-label">Total customer paid</span>
-                    <span class="od-cost-val">${{ "%.2f"|format(cost_breakdown.total_customer_paid) }}</span>
+                <div class="od-money-row od-money-out">
+                    <span>Sales tax <em>owed to the state</em></span>
+                    <span class="od-money-val">&minus;${{ "%.2f"|format(ps.tax) }}</span>
                 </div>
-                <div class="od-cost-cell od-cost-profit od-margin-{{ cost_breakdown.overall_margin_band }}">
-                    <span class="od-cost-label">Total profit</span>
-                    <span class="od-cost-val">${{ "%.2f"|format(cost_breakdown.total_profit) }}</span>
-                    <span class="od-cost-note">{% if cost_breakdown.overall_margin_pct is not none %}{{ "%.1f"|format(cost_breakdown.overall_margin_pct) }}% overall margin{% else %}n/a{% endif %}</span>
+                <div class="od-money-row od-money-out">
+                    <span>{{ ps.processor }} fee <em>{% if ps.fee_is_actual %}actual{% else %}estimate, updates once {{ ps.processor }} reports it{% endif %}</em></span>
+                    <span class="od-money-val">&minus;${{ "%.2f"|format(ps.fee) }}</span>
+                </div>
+                <div class="od-money-row od-money-out">
+                    <span>Cost of goods <em>{% if ps.cogs_is_actual %}actual{% else %}estimate{% endif %}</em></span>
+                    <span class="od-money-val">&minus;${{ "%.2f"|format(ps.cogs) }}</span>
+                </div>
+                <div class="od-money-row od-money-total {% if ps.profit is not none and ps.profit < 0 %}od-money-neg{% endif %}">
+                    <span>True profit{% if ps.margin_pct is not none %} <em>{{ "%.1f"|format(ps.margin_pct) }}% of sales</em>{% endif %}</span>
+                    <span class="od-money-val">{% if ps.profit is not none %}${{ "%.2f"|format(ps.profit) }}{% else %}n/a{% endif %}</span>
                 </div>
             </div>
-            <p class="od-cost-summary-hint">COGS and profit on this order were auto-updated from blank wholesale + DTF (${{ "%.2f"|format(cost_breakdown.dtf_rate) }}/sq in).</p>
+            <p class="od-cost-summary-hint">Margin is figured on sales before tax. Estimated cost of goods uses blank wholesale + DTF (${{ "%.2f"|format(cost_breakdown.dtf_rate) }}/sq in).</p>
         </div>
         {% endif %}
 
@@ -1288,6 +1297,27 @@ a.od-btn-outline { color: var(--text-primary); }
     border: 1px solid rgba(232, 208, 177, 0.65);
     border-radius: 14px;
 }
+.od-money-rows { display: flex; flex-direction: column; }
+.od-money-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(232, 208, 177, 0.45);
+    font-size: 0.9rem;
+}
+.od-money-row em {
+    display: block;
+    font-style: normal;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+}
+.od-money-out .od-money-val { color: var(--text-secondary); }
+.od-money-val { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.od-money-total { border-bottom: none; padding-top: 0.7rem; font-size: 1rem; font-weight: 700; }
+.od-money-total .od-money-val { color: #059669; font-size: 1.1rem; }
+.od-money-total.od-money-neg .od-money-val { color: #b91c1c; }
 .od-cost-summary-title {
     margin: 0 0 0.85rem;
     font-size: 0.95rem;

@@ -3,16 +3,31 @@
 {% block ops_content %}
         <span class="adm-eyebrow">Admin / Business</span>
         <h1 class="ops-title">Financial Buckets</h1>
-<p class="ops-subtitle">Revenue, COGS, profit, and expense tracking.</p>
+<p class="ops-subtitle">Paid orders, minus sales tax, processing fees and cost of goods. Refunded orders are left out.</p>
 
-<div class="ops-grid">
+<div class="ops-grid fin-grid">
     <div class="ops-card ops-stat">
-        <h3>Total Revenue</h3>
+        <h3>Customers Paid</h3>
         <p class="stat-number">${{ "%.2f"|format(total_revenue) }}</p>
     </div>
     <div class="ops-card ops-stat">
-        <h3>Total Profit</h3>
+        <h3>Sales Tax Collected</h3>
+        <p class="stat-number fin-out">${{ "%.2f"|format(total_tax) }}</p>
+        <p class="fin-note">Owed to the state, not income</p>
+    </div>
+    <div class="ops-card ops-stat">
+        <h3>Stripe &amp; PayPal Fees</h3>
+        <p class="stat-number fin-out">${{ "%.2f"|format(total_fees) }}</p>
+        <p class="fin-note">{% if fees_estimated %}{{ fees_estimated }} order{{ 's' if fees_estimated != 1 }} still estimated{% else %}All actual{% endif %}</p>
+    </div>
+    <div class="ops-card ops-stat">
+        <h3>Cost of Goods</h3>
+        <p class="stat-number fin-out">${{ "%.2f"|format(total_cogs) }}</p>
+    </div>
+    <div class="ops-card ops-stat">
+        <h3>True Profit</h3>
         <p class="stat-number profit">${{ "%.2f"|format(total_profit) }}</p>
+        <p class="fin-note">After tax, fees and cost of goods</p>
     </div>
 </div>
 
@@ -48,6 +63,9 @@
 </div>
 <style>
 .ops-stat{text-align:center}
+.fin-grid{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.fin-out{color:var(--text-secondary)}
+.fin-note{margin:.25rem 0 0;font-size:.78rem;color:var(--text-secondary)}
 .stat-number{font-size:2rem;font-weight:700}
 .profit{color:var(--success-color)}
 .positive{color:var(--success-color)}

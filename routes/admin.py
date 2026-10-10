@@ -579,16 +579,42 @@ def order_detail(order_id):
             }
         item_productions.append((item, prod, kit, layout))
 
+    # Stripe / PayPal fee: fetched once from the processor, estimated until then.
+    from utils.payment_fees import refresh_processing_fee, true_profit, profit_margin_pct, processor_label
+    try:
+        if refresh_processing_fee(order):
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+
     # Admin-only cost breakdown (blank + DTF) — never exposed publicly
     cost_breakdown = order_cost_breakdown(order, item_productions=item_productions)
     # Keep the estimate current until real supplier costs are entered; after
-    # that, leave the admin's actual numbers alone.
-    if not getattr(order, 'cogs_is_actual', False):
-        try:
-            if apply_calculated_cogs(order, cost_breakdown):
-                db.session.commit()
-        except Exception:
-            db.session.rollback()
+    # that, leave the admin's actual numbers alone (profit still follows the fee).
+    try:
+        if not getattr(order, 'cogs_is_actual', False):
+            changed = apply_calculated_cogs(order, cost_breakdown)
+        else:
+            new_profit = true_profit(order)
+            changed = new_profit is not None and order.profit != new_profit
+            if changed:
+                order.profit = new_profit
+        if changed:
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+    profit_summary = {
+        'paid': float(order.total or 0),
+        'tax': float(order.tax or 0),
+        'fee': float(order.processing_fee or 0),
+        'fee_is_actual': bool(order.processing_fee_is_actual),
+        'processor': processor_label(order),
+        'cogs': float(order.cost_of_goods or 0),
+        'cogs_is_actual': bool(order.cogs_is_actual),
+        'profit': true_profit(order),
+        'margin_pct': profit_margin_pct(order),
+    }
 
     return render_template(
         'admin/order_detail.html',
@@ -597,6 +623,7 @@ def order_detail(order_id):
         get_display_print_width=get_display_print_width,
         item_productions=item_productions,
         cost_breakdown=cost_breakdown,
+        profit_summary=profit_summary,
     )
 
 
@@ -1119,7 +1146,8 @@ def update_order_details(order_id):
             order.cogs_is_actual = True
         order.cost_of_goods = submitted_cogs
         if order.total:
-            order.profit = round(float(order.total) - submitted_cogs, 2)
+            from utils.payment_fees import true_profit
+            order.profit = true_profit(order)
         else:
             order.profit = _form_money('profit', None)
     order.is_refunded = request.form.get('is_refunded') == 'on'
@@ -5251,12 +5279,41 @@ def bulk_update_order_stage():
 @admin_bp.route('/operations/financial')
 @admin_required
 def financial():
+    from utils.payment_fees import refresh_processing_fee, true_profit
     orders = Order.query.filter(Order.payment_status == 'paid').all()
-    total_revenue = sum(o.total for o in orders if not getattr(o, 'is_refunded', False))
-    total_profit = sum(o.profit or 0 for o in orders if o.profit)
+    # Pull any fees not yet confirmed by Stripe/PayPal (a few per visit keeps the
+    # page quick), and keep each order's stored profit on the true-profit basis.
+    lookups = 0
+    changed = False
+    for o in orders:
+        allow = not o.processing_fee_is_actual and lookups < 15
+        if allow and (o.payment_method or '').lower() in ('stripe', 'paypal'):
+            lookups += 1
+        try:
+            changed |= refresh_processing_fee(o, allow_network=allow)
+        except Exception:
+            pass
+        new_profit = true_profit(o)
+        if new_profit is not None and o.profit != new_profit:
+            o.profit = new_profit
+            changed = True
+    if changed:
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+    counted = [o for o in orders if not getattr(o, 'is_refunded', False)]
+    total_revenue = sum(o.total or 0 for o in counted)
+    total_tax = sum(o.tax or 0 for o in counted)
+    total_fees = sum(o.processing_fee or 0 for o in counted)
+    total_cogs = sum(o.cost_of_goods or 0 for o in counted)
+    total_profit = sum(o.profit or 0 for o in counted if o.profit is not None)
+    fees_estimated = sum(1 for o in counted if not o.processing_fee_is_actual)
     entries = FinancialEntry.query.order_by(FinancialEntry.entry_date.desc()).limit(100).all()
     return render_template('admin/operations/financial.html',
                          total_revenue=total_revenue, total_profit=total_profit,
+                         total_tax=total_tax, total_fees=total_fees, total_cogs=total_cogs,
+                         fees_estimated=fees_estimated,
                          entries=entries)
 
 

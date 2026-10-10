@@ -627,6 +627,10 @@ class Order(db.Model):
     # True once real supplier costs have been entered; stops the order page from
     # overwriting cost_of_goods/profit with the calculated estimate.
     cogs_is_actual = db.Column(db.Boolean, default=False)
+    # Stripe / PayPal cut. Pulled from the processor once (actual); a standard-rate
+    # estimate fills in until then. Profit = total - tax - fee - cost_of_goods.
+    processing_fee = db.Column(db.Float)
+    processing_fee_is_actual = db.Column(db.Boolean, default=False)
     # Unique so two concurrent submits of the same checkout cannot both create
     # an order. NULL is allowed many times over (admin-created orders have no
     # token), which both Postgres and SQLite permit under a unique constraint.

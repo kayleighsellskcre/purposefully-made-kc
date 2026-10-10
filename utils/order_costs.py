@@ -127,7 +127,8 @@ def apply_order_defaults(order):
         if cogs is not None:
             order.cost_of_goods = round(float(cogs), 2)
             if order.total is not None:
-                order.profit = round(float(order.total) - order.cost_of_goods, 2)
+                from utils.payment_fees import true_profit
+                order.profit = true_profit(order)
             changed = True
     return changed
 
@@ -259,10 +260,15 @@ def order_cost_breakdown(order, item_productions=None):
         order_paid = round(total_paid, 2)
     else:
         order_paid = round(order_paid, 2)
-    total_profit = round(order_paid - total_cogs, 2)
+    # True profit: sales tax goes to the state and Stripe/PayPal keep a fee.
+    from utils.payment_fees import processing_fee_for
+    tax = round(_safe_float(getattr(order, 'tax', None), 0.0) or 0.0, 2)
+    fee = round(processing_fee_for(order), 2) if getattr(order, 'payment_method', None) else 0.0
+    total_profit = round(order_paid - tax - fee - total_cogs, 2)
+    earned = round(order_paid - tax, 2)
     overall_margin = None
-    if order_paid > 0:
-        overall_margin = round((total_profit / order_paid) * 100.0, 1)
+    if earned > 0:
+        overall_margin = round((total_profit / earned) * 100.0, 1)
 
     return {
         'lines': lines,
@@ -271,6 +277,8 @@ def order_cost_breakdown(order, item_productions=None):
         'total_customer_paid': order_paid,
         'total_items_paid': round(total_paid, 2),
         'total_profit': total_profit,
+        'tax': tax,
+        'processing_fee': fee,
         'overall_margin_pct': overall_margin,
         'overall_margin_band': margin_band(overall_margin),
         'dtf_rate': dtf_rate,
@@ -283,8 +291,7 @@ def apply_calculated_cogs(order, breakdown=None):
         breakdown = order_cost_breakdown(order)
     cogs = breakdown['total_cogs']
     # Profit vs order total (what customer paid for the whole order)
-    paid = breakdown['total_customer_paid']
-    profit = round(paid - cogs, 2)
+    profit = breakdown['total_profit']
     changed = False
     if order.cost_of_goods != cogs:
         order.cost_of_goods = cogs

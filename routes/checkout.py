@@ -1474,6 +1474,10 @@ def complete():
                 (item, production_from_order_item(item, customer_name=order.full_name))
                 for item in order.items
             ]
+            from utils.payment_fees import refresh_processing_fee
+            # Estimate the Stripe/PayPal fee now; the admin order page swaps in
+            # the actual fee from the processor later.
+            refresh_processing_fee(order, allow_network=False)
             breakdown = order_cost_breakdown(order, item_productions=item_productions)
             apply_calculated_cogs(order, breakdown)
         except Exception as cogs_err:
