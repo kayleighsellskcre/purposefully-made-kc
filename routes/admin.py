@@ -2855,22 +2855,37 @@ def toggle_organization(org_id):
 def collections():
     """Manage collections — grouped under their org when applicable."""
     from utils.group_orders import is_deadline_passed
-    from models import Organization, OrgSection
+    from models import Organization, OrgSection, Order
+    from sqlalchemy import func
 
     all_collections = Collection.query.order_by(Collection.created_at.desc()).all()
     for c in all_collections:
         c.list_active = bool(c.is_active) and not is_deadline_passed(c)
 
-    # Build org groupings so team stores appear nested under their org.
-    # sections is lazy='dynamic', so we call .all() instead of joinedload.
+    # Pre-compute order counts in ONE query instead of one .count() per card.
+    order_counts = dict(
+        db.session.query(Order.collection_id, func.count(Order.id))
+        .filter(Order.collection_id.isnot(None))
+        .group_by(Order.collection_id)
+        .all()
+    )
+    for c in all_collections:
+        c.cached_order_count = order_counts.get(c.id, 0)
+
+    # Pre-load ALL org sections in one query — avoids N+1 from org.sections.all()
+    all_sections = OrgSection.query.order_by(OrgSection.sort_order).all()
+    sections_by_org = {}
+    for sec in all_sections:
+        sections_by_org.setdefault(sec.organization_id, []).append(sec)
+
     orgs = Organization.query.order_by(Organization.created_at.desc()).all()
     coll_by_id = {c.id: c for c in all_collections}
     org_collection_ids = set()
     for org in orgs:
-        sections = org.sections.all()
+        sections = sections_by_org.get(org.id, [])
         org.grouped_collections = [
             {'section': sec, 'collection': coll_by_id[sec.collection_id]}
-            for sec in sorted(sections, key=lambda s: s.sort_order)
+            for sec in sections
             if sec.collection_id in coll_by_id
         ]
         org_collection_ids.update(sec.collection_id for sec in sections)

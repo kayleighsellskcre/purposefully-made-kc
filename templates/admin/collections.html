@@ -14,7 +14,7 @@
         </div>
 
         {%- macro coll_card(collection) %}
-        {% set order_count = collection.orders.count() %}
+        {% set order_count = collection.cached_order_count if collection.cached_order_count is defined else 0 %}
         <div class="collection-card" data-active="{{ 'true' if collection.list_active else 'false' }}">
             <div class="collection-card-accent" aria-hidden="true"></div>
             <div class="collection-header">
