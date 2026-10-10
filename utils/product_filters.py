@@ -248,8 +248,14 @@ def infer_family_key(item):
     the same style is entered with and without the brand letters (e.g. the
     toddler is stored as "3001T" while the adult is "BC3001").
     """
-    # Prefer the admin-set manual override when present
-    manual = str(_val(item, 'family_key') or '').strip()
+    # Prefer the admin-set manual override when present.
+    # Guard with try/except: if family_key column isn't in DB yet (migration pending)
+    # accessing a deferred SQLAlchemy attribute triggers a lazy-load that raises
+    # OperationalError.  Fall through silently to style-number detection in that case.
+    try:
+        manual = str(_val(item, 'family_key') or '').strip()
+    except Exception:
+        manual = ''
     if manual:
         return manual
 
@@ -589,6 +595,7 @@ def load_group_order_form_catalog():
                 Product.base_price,
                 Product.front_mockup_template,
                 Product.is_active,
+                Product.family_key,   # needed by infer_family_key — must not be deferred
             )
         ).all(),
         scan_folders=False,
