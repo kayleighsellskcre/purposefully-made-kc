@@ -55,6 +55,29 @@ def upload_image(file_storage, app, subfolder='uploads', public_id_prefix='img',
     return _save_locally(file_storage, app, subfolder, public_id_prefix)
 
 
+def store_upload(file_storage, subfolder, prefix):
+    """Save a customer or admin upload where it survives site updates.
+
+    Returns a URL ready for <img src>: the cloud (R2) URL when configured,
+    otherwise /static/uploads/... for local development. Files saved on the
+    web server's own disk are erased on every deploy, so production uploads
+    must go to R2.
+    """
+    from flask import current_app
+    app = current_app._get_current_object()
+    try:
+        stored = upload_image(file_storage, app, subfolder=subfolder,
+                              public_id_prefix=prefix, process_artwork=False)
+    except Exception:
+        app.logger.exception('cloud upload failed for %s; saving locally', subfolder)
+        try:
+            file_storage.stream.seek(0)
+        except Exception:
+            pass
+        stored = _save_locally(file_storage, app, subfolder, prefix)
+    return image_url(stored)
+
+
 def upload_bytes(data, app, filename, subfolder='designs', public_id_prefix='layout'):
     """Store raw bytes (used to repair production PNGs). Never runs background-cut."""
     from io import BytesIO
@@ -146,7 +169,8 @@ def _make_key(file_storage, subfolder, public_id_prefix):
     filename = secure_filename(file_storage.filename or 'upload')
     name_base = filename.rsplit('.', 1)[0][:50]
     ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else 'jpg'
-    unique_name = f"{public_id_prefix}_{int(time.time())}_{name_base}.{ext}"
+    import secrets as _secrets
+    unique_name = f"{public_id_prefix}_{int(time.time())}_{_secrets.token_hex(4)}_{name_base}.{ext}"
     return f"{subfolder}/{unique_name}"
 
 

@@ -2583,21 +2583,17 @@ def edit_product(product_id):
         if 'front_image' in request.files:
             front_file = request.files['front_image']
             if front_file and front_file.filename:
-                filename = secure_filename(f"{product.style_number}_front_{front_file.filename}")
-                upload_path = os.path.join('static/uploads/products', filename)
-                os.makedirs(os.path.dirname(upload_path), exist_ok=True)
-                front_file.save(upload_path)
-                product.front_mockup_template = f"uploads/products/{filename}"
+                from utils.cloud_storage import store_upload
+                product.front_mockup_template = store_upload(
+                    front_file, 'products', secure_filename(f"{product.style_number}_front"))
         
         # Handle back image upload
         if 'back_image' in request.files:
             back_file = request.files['back_image']
             if back_file and back_file.filename:
-                filename = secure_filename(f"{product.style_number}_back_{back_file.filename}")
-                upload_path = os.path.join('static/uploads/products', filename)
-                os.makedirs(os.path.dirname(upload_path), exist_ok=True)
-                back_file.save(upload_path)
-                product.back_mockup_template = f"uploads/products/{filename}"
+                from utils.cloud_storage import store_upload
+                product.back_mockup_template = store_upload(
+                    back_file, 'products', secure_filename(f"{product.style_number}_back"))
 
         from utils.mockups import product_has_shop_image
         if want_active and not product_has_shop_image(product):

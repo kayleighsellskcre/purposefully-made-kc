@@ -212,22 +212,11 @@ def add():
     if 'design' in request.files:
         design_file = request.files['design']
         if design_file and design_file.filename:
-            # Save uploaded design
-            filename = secure_filename(design_file.filename)
-            upload_dir = Path('static/uploads/designs')
-            upload_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Add timestamp to avoid conflicts
-            import time
-            timestamp = int(time.time())
-            name, ext = os.path.splitext(filename)
-            unique_filename = f"{name}_{timestamp}{ext}"
-            
-            filepath = upload_dir / unique_filename
-            design_file.save(str(filepath))
             # Artwork is already cut on /design/upload. Re-running rembg here
             # blocked Add to Cart (and every other click) on the one worker.
-            design_url = f"/static/uploads/designs/{unique_filename}"
+            # Stored in the cloud: the web server's disk is wiped on every deploy.
+            from utils.cloud_storage import store_upload
+            design_url = store_upload(design_file, 'designs', 'cart_design')
     elif design_id:
         # Gallery, this group order's logos, or the shopper's own uploads only.
         # Design is imported at module scope — do not re-import it here. A local
@@ -262,15 +251,8 @@ def add():
     if 'back_design' in request.files:
         back_file = request.files['back_design']
         if back_file and back_file.filename:
-            filename = secure_filename(back_file.filename)
-            upload_dir = Path('static/uploads/designs')
-            upload_dir.mkdir(parents=True, exist_ok=True)
-            timestamp = int(_t.time())
-            name, ext = os.path.splitext(filename)
-            unique_filename = f"back_{name}_{timestamp}{ext}"
-            filepath = upload_dir / unique_filename
-            back_file.save(str(filepath))
-            back_design_url = f"/static/uploads/designs/{unique_filename}"
+            from utils.cloud_storage import store_upload
+            back_design_url = store_upload(back_file, 'designs', 'cart_back')
     elif data.get('back_design_url'):
         back_design_url = data.get('back_design_url')
 
@@ -310,21 +292,13 @@ def add():
     if 'proof_front' in request.files:
         pf = request.files['proof_front']
         if pf and pf.filename:
-            upload_dir = Path('static/uploads/proofs')
-            upload_dir.mkdir(parents=True, exist_ok=True)
-            timestamp = int(_t.time())
-            pf_name = f"proof_front_{timestamp}.png"
-            pf.save(str(upload_dir / pf_name))
-            proof_front_url = f"/static/uploads/proofs/{pf_name}"
+            from utils.cloud_storage import store_upload
+            proof_front_url = store_upload(pf, 'proofs', 'proof_front')
     if 'proof_back' in request.files:
         pb = request.files['proof_back']
         if pb and pb.filename:
-            upload_dir = Path('static/uploads/proofs')
-            upload_dir.mkdir(parents=True, exist_ok=True)
-            timestamp = int(_t.time())
-            pb_name = f"proof_back_{timestamp}.png"
-            pb.save(str(upload_dir / pb_name))
-            proof_back_url = f"/static/uploads/proofs/{pb_name}"
+            from utils.cloud_storage import store_upload
+            proof_back_url = store_upload(pb, 'proofs', 'proof_back')
     
     has_back = bool(
         back_design_url
