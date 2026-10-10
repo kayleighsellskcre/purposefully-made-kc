@@ -161,3 +161,25 @@ def test_admin_can_look_up_a_payment_and_create_the_order(admin_client, app, see
         assert order.full_name == 'Meghan Bogert'
         assert order.items.count() == 1
         assert PaymentCapture.query.filter_by(provider_ref='EC-LOST').one().order_id == order.id
+
+
+def test_page_shows_cart_previews_saved_before_a_guest_payment(admin_client, app):
+    import os, time
+    from pathlib import Path
+    with app.app_context():
+        cap = PaymentCapture(provider='paypal', provider_ref='EC-GUEST', amount=ONE_ITEM,
+                             payer_name='Guest Buyer', created_at=datetime.utcnow())
+        db.session.add(cap)
+        db.session.commit()
+        proofs = Path(app.root_path) / 'static' / 'uploads' / 'proofs'
+    proofs.mkdir(parents=True, exist_ok=True)
+    name = f'proof_front_{int(time.time()) - 600}.png'
+    path = proofs / name
+    path.write_bytes(b'\x89PNG\r\n')
+    os.utime(path, (time.time() - 600, time.time() - 600))
+    try:
+        page = admin_client.get('/admin/orders/unsaved-payments').get_data(as_text=True)
+        assert 'Shopping activity in the 2 hours before this payment' in page
+        assert name in page
+    finally:
+        path.unlink()

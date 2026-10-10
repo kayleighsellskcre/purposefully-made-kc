@@ -56,6 +56,47 @@
             <p class="up-hint">Nothing on file yet. Add what they ordered below (ask them if you're not sure).</p>
             {% endif %}
 
+            {% set c = row.clues %}
+            {% if c and (c.proofs or c.uploads or c.carts or c.handoffs or c.designs or c.errors) %}
+            <h3 class="up-h3">Shopping activity in the 2 hours before this payment</h3>
+            {% if c.proofs %}
+            <p class="up-hint">Shirt previews saved when someone added a customized item to their cart:</p>
+            <div class="up-proofs">
+                {% for f in c.proofs %}
+                <a href="{{ f.url }}" target="_blank" rel="noopener" class="up-proof">
+                    <img src="{{ f.url }}" alt="Cart preview" loading="lazy">
+                    <span>{{ f.at|central('%I:%M:%S %p') }}</span>
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if c.uploads %}
+            <p class="up-hint">Artwork uploaded:</p>
+            <div class="up-proofs">
+                {% for f in c.uploads %}
+                <a href="{{ f.url }}" target="_blank" rel="noopener" class="up-proof">
+                    <img src="{{ f.url }}" alt="Uploaded artwork" loading="lazy">
+                    <span>{{ f.at|central('%I:%M:%S %p') }}</span>
+                </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% for cart in c.carts %}
+            <p class="up-hint">Signed-in cart updated {{ cart.at|central('%I:%M %p') }} ({{ cart.email }}):<br>{{ cart.lines|replace('\n', '<br>')|safe }}</p>
+            {% endfor %}
+            {% for h in c.handoffs %}
+            <p class="up-hint">Cart sent to Safari for Venmo at {{ h.at|central('%I:%M %p') }}:<br>{{ h.lines|replace('\n', '<br>')|safe }}</p>
+            {% endfor %}
+            {% for d in c.designs %}
+            <p class="up-hint">Design saved {{ d.at|central('%I:%M %p') }}: {{ d.title }} (ID {{ d.id }})</p>
+            {% endfor %}
+            {% for e in c.errors %}
+            <p class="up-reason">Site error {{ e.at|central('%I:%M %p') }} on {{ e.path }}: {{ e.message }}</p>
+            {% endfor %}
+            {% elif not row.lines %}
+            <p class="up-hint">No other shopping activity was saved on the site around this payment.</p>
+            {% endif %}
+
             <details class="up-add" {% if not row.lines %}open{% endif %}>
                 <summary>Add an item</summary>
                 <form method="POST" action="{{ url_for('admin.unsaved_payment_add_item', cap_id=cap.id) }}" class="up-grid">
@@ -114,6 +155,9 @@
 .up-lines li { display:flex; justify-content:space-between; gap:1rem; padding:.45rem 0; border-bottom:1px solid rgba(232,208,177,.45); font-size:.9rem; }
 .up-link { background:none; border:none; color:#b91c1c; cursor:pointer; font-size:.8rem; padding:0; }
 .up-add summary { cursor:pointer; font-size:.85rem; margin:.8rem 0 .2rem; }
+.up-proofs { display:flex; flex-wrap:wrap; gap:.6rem; margin:.3rem 0 .8rem; }
+.up-proof { display:flex; flex-direction:column; align-items:center; gap:.2rem; font-size:.72rem; color:var(--text-secondary); text-decoration:none; }
+.up-proof img { width:140px; height:140px; object-fit:contain; background:#faf6ee; border:1px solid rgba(232,208,177,.65); border-radius:10px; }
 .up-create { margin-top:1rem; padding-top:.8rem; border-top:1px solid rgba(232,208,177,.45); }
 </style>
 {% endblock %}

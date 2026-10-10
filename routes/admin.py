@@ -5709,7 +5709,17 @@ def _capture_view(cap):
         'shipping_info': customer.get('shipping_info') or {},
         'cart': cart,
         'lines': [l[2:] for l in cart_lines_text(cart).splitlines() if l.startswith('- ')],
+        'clues': _safe_clues(cap) if not cart else {},
     }
+
+
+def _safe_clues(cap):
+    from utils.payment_safety import activity_near
+    try:
+        return activity_near(cap.created_at)
+    except Exception:
+        current_app.logger.exception('could not gather clues for capture %s', cap.id)
+        return {}
 
 
 @admin_bp.route('/orders/unsaved-payments')

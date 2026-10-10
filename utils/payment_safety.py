@@ -333,3 +333,85 @@ def sweep_unsaved_payments(min_age_minutes=10):
         ):
             sent += 1
     return sent
+
+
+# ── Clues for recovering what a guest bought ──────────────────────────────────
+
+def activity_near(when, minutes_before=120, minutes_after=10):
+    """Shopping activity around a payment, for working out what a guest bought.
+
+    Guest carts live only in the shopper's browser, but adding a customized
+    item saves a preview picture (named by the second it was added), uploaded
+    artwork is saved too, and signed-in shoppers keep their cart on file.
+    """
+    import os
+    import time as _time
+    from pathlib import Path
+    from models import User, Design, CartHandoff, SiteError
+
+    if when is None:
+        return {}
+    start = when - timedelta(minutes=minutes_before)
+    end = when + timedelta(minutes=minutes_after)
+    start_ts = int((start - datetime(1970, 1, 1)).total_seconds())
+    end_ts = int((end - datetime(1970, 1, 1)).total_seconds())
+
+    def _files(folder, prefixes):
+        found = []
+        base = Path(current_app.root_path) / 'static' / 'uploads' / folder
+        if not base.is_dir():
+            return found
+        for entry in os.scandir(base):
+            if not entry.is_file() or not entry.name.startswith(prefixes):
+                continue
+            try:
+                mtime = int(entry.stat().st_mtime)
+            except OSError:
+                continue
+            if start_ts <= mtime <= end_ts:
+                found.append({
+                    'url': f'/static/uploads/{folder}/{entry.name}',
+                    'name': entry.name,
+                    'at': datetime.utcfromtimestamp(mtime),
+                })
+        return sorted(found, key=lambda f: f['at'])
+
+    clues = {
+        'proofs': _files('proofs', ('proof_front_', 'proof_back_')),
+        'uploads': _files('designs', ('',)),
+        'carts': [],
+        'designs': [],
+        'handoffs': [],
+        'errors': [],
+    }
+    try:
+        for user in (User.query.filter(User.cart_updated_at >= start, User.cart_updated_at <= end).all()):
+            try:
+                cart = json.loads(user.cart_json or '[]') or []
+            except ValueError:
+                cart = []
+            clues['carts'].append({'email': user.email, 'at': user.cart_updated_at,
+                                   'cart': cart, 'lines': cart_lines_text(cart)})
+    except Exception:
+        pass
+    try:
+        for d in Design.query.filter(Design.uploaded_at >= start, Design.uploaded_at <= end).all():
+            clues['designs'].append({'id': d.id, 'title': d.title or d.original_filename or d.filename,
+                                     'at': d.uploaded_at, 'path': d.file_path})
+    except Exception:
+        pass
+    try:
+        for h in CartHandoff.query.filter(CartHandoff.created_at >= start, CartHandoff.created_at <= end).all():
+            try:
+                cart = json.loads(h.cart_json or '[]') or []
+            except ValueError:
+                cart = []
+            clues['handoffs'].append({'at': h.created_at, 'cart': cart, 'lines': cart_lines_text(cart)})
+    except Exception:
+        pass
+    try:
+        for e in SiteError.query.filter(SiteError.created_at >= start, SiteError.created_at <= end).all():
+            clues['errors'].append({'at': e.created_at, 'path': e.path, 'message': (e.message or '')[:200]})
+    except Exception:
+        pass
+    return clues
