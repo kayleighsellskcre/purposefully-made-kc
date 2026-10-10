@@ -772,12 +772,6 @@ def paypal_capture_order():
                     if cap is not None and data.get('email') and data.get('first_name'):
                         order, _reason = create_order_from_capture(cap)
                         if order is not None:
-                            if abs(float(captured_amount) - float(order.total or 0)) >= 0.01:
-                                from utils.payment_safety import alert_order_saved_with_issues
-                                alert_order_saved_with_issues(order, [
-                                    f'PayPal collected ${captured_amount:.2f} but the cart totals '
-                                    f'${float(order.total or 0):.2f}. Check the items before making it.'
-                                ])
                             from utils.cart_store import clear_cart as _clear_cart
                             _clear_cart()
                             session['checkout_success_order'] = order.order_number
@@ -1079,7 +1073,9 @@ def prepare():
     session.modified = True
     # Save the checkout to the database before the card is charged, so the
     # order can always be created even if the phone never comes back.
-    intent_id = session.get('stripe_intent_id') or (data.get('payment_intent_id') or '').strip() or None
+    # The page says which payment it is about to charge; fall back to the
+    # session only if it didn't (two open tabs can each have their own).
+    intent_id = (data.get('payment_intent_id') or '').strip() or session.get('stripe_intent_id') or None
     if intent_id:
         try:
             from utils.payment_safety import record_pending_card_payment
@@ -1294,7 +1290,34 @@ def _existing_order_for_payment(provider, ref):
     return Order.query.filter_by(paypal_order_id=ref).first()
 
 
-def create_order_from_capture(cap, *, overrides=None, send_email=True):
+def create_order_from_capture(cap, *, overrides=None, send_email=True, claim_token=None):
+    """Create the order for a paid checkout, holding the claim on that payment
+    so no other part of the site can build the same order at the same time.
+
+    Pass claim_token when the caller already holds the claim (the sweep).
+    Returns (order, None) or (None, reason).
+    """
+    from utils.payment_safety import _claim, release_claim, link_capture_to_order
+    existing = _existing_order_for_payment(cap.provider, cap.provider_ref)
+    if existing:
+        link_capture_to_order(cap.provider_ref, existing)
+        return existing, None
+    token, took_it = claim_token, False
+    if token is None:
+        token = _claim(cap)
+        if token is None:
+            done = _wait_for_order(cap.provider, cap.provider_ref)
+            if done:
+                return done, None
+            return None, 'Another part of the site is saving this order right now.'
+        took_it = True
+    order, reason = _build_order_from_capture(cap, overrides=overrides, send_email=send_email)
+    if order is None and took_it:
+        release_claim(cap, token)
+    return order, reason
+
+
+def _build_order_from_capture(cap, *, overrides=None, send_email=True):
     """Create the order for a paid checkout straight from its saved record.
 
     Used when the customer's phone never finished checkout (page closed, phone
@@ -1335,6 +1358,41 @@ def create_order_from_capture(cap, *, overrides=None, send_email=True):
 
     totals = calculate_totals(cart, fulfillment)
     is_stripe = cap.provider == 'stripe'
+
+    # Same checks the normal save step makes. The money is already taken, so
+    # problems are flagged for the admin rather than losing the order.
+    issues = []
+    underpaid = cap.amount is not None and float(cap.amount) + 0.005 < float(totals['total'])
+    if cap.amount is not None and abs(float(cap.amount) - float(totals['total'])) >= 0.01:
+        if underpaid:
+            issues.append(
+                f'UNDERPAID: the customer paid ${float(cap.amount):.2f} but the items total '
+                f'${float(totals["total"]):.2f}. Marked Underpaid and no receipt was sent. '
+                'Do not make it until this is sorted out.'
+            )
+        else:
+            issues.append(
+                f'The customer paid ${float(cap.amount):.2f} but the items total '
+                f'${float(totals["total"]):.2f}. Check the items.'
+            )
+    if fulfillment == 'shipping':
+        missing = [k for k in ('street', 'city', 'state', 'zip') if not (ship.get(k) or '').strip()]
+        if missing:
+            issues.append('Shipping was chosen but the address is incomplete '
+                          f'(missing {", ".join(missing)}). Get the address before shipping.')
+    if cap.collection_id:
+        try:
+            from models import Collection
+            from utils.group_orders import ordering_blocked
+            collection = db.session.get(Collection, cap.collection_id)
+            if collection is not None:
+                if fulfillment == 'shipping' and not collection.shipping_enabled:
+                    issues.append('Shipping was chosen, but this group order is pickup only.')
+                blocked = ordering_blocked(collection)
+                if blocked:
+                    issues.append(f'Paid after the group order closed: {blocked}')
+        except Exception:
+            current_app.logger.exception('group checks skipped for recovered order')
     token = _clip(customer.get('checkout_token'), 64)
     if token and Order.query.filter_by(checkout_token=token).first():
         token = None  # that token already made a different order; don't collide
@@ -1350,12 +1408,12 @@ def create_order_from_capture(cap, *, overrides=None, send_email=True):
         tax=totals['tax'],
         total=totals['total'],
         payment_method='stripe' if is_stripe else 'paypal',
-        payment_status='paid',
+        payment_status='underpaid' if underpaid else 'paid',
         payment_intent_id=cap.provider_ref if is_stripe else None,
         paypal_order_id=None if is_stripe else cap.provider_ref,
         paid_at=cap.created_at or datetime.utcnow(),
         amount_paid=float(cap.amount if cap.amount is not None else totals['total']),
-        status='paid',
+        status='new' if underpaid else 'paid',
         production_stage='order_received',
         due_date=default_due_date(),
         checkout_token=token,
@@ -1409,28 +1467,78 @@ def create_order_from_capture(cap, *, overrides=None, send_email=True):
         return None, f'The order could not be saved: {exc}'
 
     link_capture_to_order(cap.provider_ref, order)
-    if send_email and order.email:
+    if send_email and order.email and not underpaid:
         queue_order_confirmation_email(order.id)
+    if issues:
+        try:
+            from utils.payment_safety import alert_order_saved_with_issues
+            alert_order_saved_with_issues(order, issues)
+        except Exception:
+            current_app.logger.exception('could not send order issue alert')
     return order, None
 
 
-def _claim_or_wait_for_order(provider, ref):
-    """Claim a paid checkout for this save request, so the background sweep or
-    Stripe webhook can't build the same order at the same moment.
-
-    Returns an order another process just finished, or None to carry on.
-    """
+def _wait_for_order(provider, ref, seconds=6):
     import time as _time
-    from utils.payment_safety import claim_for_checkout
-    if claim_for_checkout(ref):
-        return None
-    for _ in range(12):
+    for _ in range(int(seconds * 2)):
         _time.sleep(0.5)
         db.session.expire_all()
         done = _existing_order_for_payment(provider, ref)
         if done:
             return done
     return None
+
+
+def _claim_or_wait_for_order(provider, ref):
+    """Claim a paid checkout for this save request, so the background sweep or
+    Stripe webhook can't build the same order at the same moment.
+
+    Returns an order another process just finished, or None to carry on. The
+    claim (if taken) is kept on flask.g so only this request gives it back.
+    The database also refuses a second order for one payment, so carrying on
+    after the wait can never double up.
+    """
+    from flask import g
+    from utils.payment_safety import claim_for_checkout
+    allowed, token = claim_for_checkout(ref)
+    if allowed:
+        g.payment_claim = (ref, token)
+        return None
+    return _wait_for_order(provider, ref)
+
+
+def _owns_payment(provider, ref, data, order=None):
+    """Is this browser the one that paid? Needed before showing a receipt."""
+    token = (data or {}).get('checkout_token')
+    if order is not None and token and order.checkout_token and token == order.checkout_token:
+        return True
+    if provider == 'paypal':
+        return ref in (session.get('paypal_captured_amounts') or {})
+    if provider == 'stripe':
+        return session.get('stripe_intent_id') == ref
+    return False
+
+
+def _hand_receipt_to_payer(order, data, provider, ref, rid=None):
+    """Success response for an order that already exists, plus receipt access
+    when this browser proves it made the payment."""
+    from utils.cart_store import clear_cart as _clear_cart
+    if _owns_payment(provider, ref, data, order):
+        session['checkout_success_order'] = order.order_number
+        if (data or {}).get('checkout_token'):
+            session['checkout_success_token'] = _clip(data.get('checkout_token'), 64)
+        _clear_cart()
+        session.pop('collection_id', None)
+        session.modified = True
+    payload = {
+        'success': True,
+        'order_number': order.order_number,
+        'redirect_url': url_for('checkout.confirmation', order_number=order.order_number),
+        'replayed': True,
+    }
+    if rid:
+        payload['request_id'] = rid
+    return jsonify(payload)
 
 
 @checkout_bp.route('/complete', methods=['POST'])
@@ -1452,26 +1560,32 @@ def complete():
     if method in ('paypal', 'stripe') and isinstance(pid, str) and pid.strip():
         pid = pid.strip()
         try:
-            from utils.payment_safety import get_capture, recover_paid_checkout, alert_unsaved_payment, release_claim
+            from flask import g
+            from utils.payment_safety import (
+                get_capture, recover_paid_checkout, alert_unsaved_payment, release_claim,
+                claimed_by_someone_else,
+            )
             reason = f"Checkout said: {body.get('error')} ({body.get('error_code')})"
-            held = get_capture(pid)
-            if held is not None and held.order_id is None:
-                release_claim(held)  # this request's claim; let recovery take it
+            mine = getattr(g, 'payment_claim', None)
+            if mine and mine[0] == pid:
+                release_claim(get_capture(pid), mine[1])  # only the claim this request took
+            existing = _existing_order_for_payment(method, pid)
+            if existing is None and claimed_by_someone_else(pid):
+                existing = _wait_for_order(method, pid, seconds=8)
             # The customer may already have paid. Save the order from the
             # details stored at payment instead of turning them away.
-            order = recover_paid_checkout(method, pid, reason)
+            order = existing or recover_paid_checkout(method, pid, reason)
             if order is not None:
-                from utils.cart_store import clear_cart as _clear_cart
-                _clear_cart()
-                session['checkout_success_order'] = order.order_number
-                session.pop('collection_id', None)
-                session.modified = True
-                return jsonify({
-                    'success': True,
-                    'order_number': order.order_number,
-                    'redirect_url': url_for('checkout.confirmation', order_number=order.order_number),
-                    'recovered': True,
-                })
+                resp = _hand_receipt_to_payer(order, data, method, pid)
+                body_ok = resp.get_json()
+                body_ok['recovered'] = True
+                return jsonify(body_ok)
+            if claimed_by_someone_else(pid):
+                # Another part of the site is saving it right now; don't alarm anyone.
+                body['payment_received'] = True
+                body['error'] = ('Your payment went through and your order is being saved. '
+                                 'Your confirmation email is on its way. Please do not pay again.')
+                return jsonify(body), status
             cap = get_capture(pid)
             paid = (cap is not None and cap.amount is not None) or (
                 method == 'paypal' and pid in (session.get('paypal_captured_amounts') or {}))
@@ -1504,36 +1618,19 @@ def _complete_order():
         # flagged for the admin instead of throwing the paid order away.
         paypal_paid = None
         prepaid_issues = []
+        underpaid = False
         req_pid = data.get('payment_id') if isinstance(data.get('payment_id'), str) else None
         if (data.get('payment_method') or '').strip() == 'stripe' and req_pid:
             already = Order.query.filter_by(payment_intent_id=req_pid).first() \
                 or _claim_or_wait_for_order('stripe', req_pid)
             if already:
-                from utils.cart_store import clear_cart as _clear_cart
-                _clear_cart()
-                session.modified = True
-                return jsonify({
-                    'success': True,
-                    'order_number': already.order_number,
-                    'redirect_url': url_for('checkout.confirmation', order_number=already.order_number),
-                    'replayed': True,
-                    'request_id': rid,
-                })
+                return _hand_receipt_to_payer(already, data, 'stripe', req_pid, rid)
         if (data.get('payment_method') or '').strip() == 'paypal' and req_pid:
             from utils.payment_safety import verified_paypal_amount, get_capture
             already = Order.query.filter_by(paypal_order_id=req_pid).first() \
                 or _claim_or_wait_for_order('paypal', req_pid)
             if already:
-                from utils.cart_store import clear_cart as _clear_cart
-                _clear_cart()
-                session.modified = True
-                return jsonify({
-                    'success': True,
-                    'order_number': already.order_number,
-                    'redirect_url': url_for('checkout.confirmation', order_number=already.order_number),
-                    'replayed': True,
-                    'request_id': rid,
-                })
+                return _hand_receipt_to_payer(already, data, 'paypal', req_pid, rid)
             paypal_paid = verified_paypal_amount(req_pid)
             if not cart and paypal_paid is not None:
                 cap = get_capture(req_pid)
@@ -1690,10 +1787,34 @@ def _complete_order():
             expected_cents = int(round(totals['total'] * 100))
             captured_cents = int(round(paypal_paid * 100))
             if captured_cents != expected_cents:
-                prepaid_issues.append(
-                    f'PayPal collected ${paypal_paid:.2f} but the cart totals ${totals["total"]:.2f}. '
-                    'Check the items before making it.'
-                )
+                # Prefer the cart PayPal actually priced (saved when PayPal opened).
+                from utils.payment_safety import get_capture as _get_capture
+                saved_cap = _get_capture(payment_id)
+                saved_cart = []
+                if saved_cap is not None and saved_cap.cart_json:
+                    try:
+                        saved_cart = json.loads(saved_cap.cart_json) or []
+                    except ValueError:
+                        saved_cart = []
+                saved_totals = calculate_totals(saved_cart, shipping_method) if saved_cart else None
+                if saved_totals and int(round(saved_totals['total'] * 100)) == captured_cents:
+                    cart, totals = saved_cart, saved_totals
+                    prepaid_issues.append(
+                        'The customer changed their cart after paying. This order has exactly '
+                        'what PayPal charged for; anything added afterward was not paid for.'
+                    )
+                elif captured_cents < expected_cents:
+                    underpaid = True
+                    prepaid_issues.append(
+                        f'UNDERPAID: PayPal collected ${paypal_paid:.2f} but the cart totals '
+                        f'${totals["total"]:.2f}. Marked Underpaid and no receipt was sent. '
+                        'Do not make it until this is sorted out.'
+                    )
+                else:
+                    prepaid_issues.append(
+                        f'PayPal collected ${paypal_paid:.2f} but the cart totals ${totals["total"]:.2f}. '
+                        'Check the items before making it.'
+                    )
         if payment_method == 'stripe' and payment_id:
             try:
                 intent = stripe.PaymentIntent.retrieve(payment_id)
@@ -1757,13 +1878,13 @@ def _complete_order():
             tax=totals['tax'],
             total=totals['total'],
             payment_method=payment_method,
-            payment_status='pending' if is_cash else 'paid',
+            payment_status='pending' if is_cash else ('underpaid' if underpaid else 'paid'),
             payment_intent_id=payment_id if payment_method == 'stripe' and payment_id else None,
             paypal_order_id=payment_id if payment_method == 'paypal' and payment_id else None,
             paid_at=None if is_cash else datetime.utcnow(),
             amount_paid=0.0 if is_cash else (float(paypal_paid) if paypal_paid is not None else float(totals['total'])),
             promo_code=family_code if family_promo_active else None,
-            status='new' if is_cash else 'paid',
+            status='new' if (is_cash or underpaid) else 'paid',
             production_stage='order_received',
             due_date=default_due_date(),
             checkout_token=checkout_token,
@@ -1839,6 +1960,13 @@ def _complete_order():
         # A unique-token collision means a concurrent request already saved this
         # exact checkout. That is a duplicate submit, not a failure: hand the
         # customer the order that won the race instead of an error.
+        try:
+            if payment_method in ('paypal', 'stripe') and payment_id:
+                winner = _existing_order_for_payment(payment_method, payment_id)
+                if winner:
+                    return _hand_receipt_to_payer(winner, data, payment_method, payment_id, rid)
+        except Exception:
+            pass
         if checkout_token:
             winner = Order.query.filter_by(checkout_token=checkout_token).first()
             if winner:
@@ -1902,7 +2030,8 @@ def _complete_order():
     session.pop('collection_id', None)
     session.modified = True
 
-    queue_order_confirmation_email(order.id)
+    if not underpaid:
+        queue_order_confirmation_email(order.id)
 
     if payment_method in ('paypal', 'stripe') and payment_id:
         try:

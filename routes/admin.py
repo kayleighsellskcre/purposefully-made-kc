@@ -520,7 +520,7 @@ def orders():
         unsaved_payment_count = (
             PaymentCapture.query
             .filter(PaymentCapture.order_id.is_(None), PaymentCapture.resolved_at.is_(None),
-                    PaymentCapture.amount.isnot(None))
+                    db.or_(PaymentCapture.amount.isnot(None), PaymentCapture.awaiting_collection.is_(True)))
             .count()
         )
     except Exception:
@@ -5289,16 +5289,13 @@ def bulk_update_order_stage():
 def financial():
     from utils.payment_fees import refresh_processing_fee, true_profit
     orders = Order.query.filter(Order.payment_status == 'paid').all()
-    # Pull any fees not yet confirmed by Stripe/PayPal (a few per visit keeps the
-    # page quick), and keep each order's stored profit on the true-profit basis.
-    lookups = 0
+    # Keep each order's stored profit on the true-profit basis. Fees are fetched
+    # from Stripe/PayPal in the background (every 30 minutes), so this page
+    # never waits on them.
     changed = False
     for o in orders:
-        allow = not o.processing_fee_is_actual and lookups < 15
-        if allow and (o.payment_method or '').lower() in ('stripe', 'paypal'):
-            lookups += 1
         try:
-            changed |= refresh_processing_fee(o, allow_network=allow)
+            changed |= refresh_processing_fee(o, allow_network=False)
         except Exception:
             pass
         new_profit = true_profit(o)
@@ -5727,7 +5724,7 @@ def unsaved_payments():
         PaymentCapture.query
         .filter(PaymentCapture.order_id.is_(None))
         .filter(PaymentCapture.resolved_at.is_(None))
-        .filter(PaymentCapture.amount.isnot(None))
+        .filter(db.or_(PaymentCapture.amount.isnot(None), PaymentCapture.awaiting_collection.is_(True)))
         .order_by(PaymentCapture.created_at.desc())
         .all()
     )
@@ -5886,6 +5883,9 @@ def unsaved_payment_create_order(cap_id):
     cap = PaymentCapture.query.get_or_404(cap_id)
     if cap.order_id:
         return redirect(url_for('admin.order_detail', order_id=cap.order_id))
+    if cap.amount is None:
+        flash('This payment has not been collected yet.', 'error')
+        return redirect(url_for('admin.unsaved_payments'))
     try:
         has_cart = bool(json.loads(cap.cart_json or '[]'))
     except ValueError:
@@ -5968,3 +5968,27 @@ def unsaved_payment_copy_items(cap_id):
     _save_capture_cart(cap, cart)
     flash(f'Copied {len(items)} item(s) from {source.order_number}.', 'success')
     return redirect(url_for('admin.unsaved_payments'))
+
+
+@admin_bp.route('/orders/unsaved-payments/<int:cap_id>/collect', methods=['POST'])
+@admin_required
+def unsaved_payment_collect(cap_id):
+    """Collect a PayPal payment the customer approved but whose phone never finished."""
+    from models import PaymentCapture
+    from routes.checkout import create_order_from_capture
+    from utils.payment_safety import collect_approved_paypal
+    cap = PaymentCapture.query.get_or_404(cap_id)
+    if cap.provider != 'paypal' or cap.amount is not None or not cap.awaiting_collection:
+        flash('That payment is not waiting to be collected.', 'info')
+        return redirect(url_for('admin.unsaved_payments'))
+    amount = collect_approved_paypal(cap)
+    if amount is None:
+        flash('PayPal would not collect it. The approval may have expired (about 3 hours); '
+              'the customer would need to pay again.', 'error')
+        return redirect(url_for('admin.unsaved_payments'))
+    order, failure = create_order_from_capture(cap)
+    if order is None:
+        flash(f'Collected ${amount:.2f}, but the order needs your help: {failure}', 'error')
+        return redirect(url_for('admin.unsaved_payments'))
+    flash(f'Collected ${amount:.2f} and created order {order.order_number}.', 'success')
+    return redirect(url_for('admin.order_detail', order_id=order.id))

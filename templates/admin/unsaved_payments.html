@@ -29,7 +29,7 @@
         <div class="up-card">
             <div class="up-head">
                 <div>
-                    <h2 class="up-h2">{{ row.name }} &middot; ${{ "%.2f"|format(cap.amount or 0) }}</h2>
+                    <h2 class="up-h2">{{ row.name }}{% if cap.amount is not none %} &middot; ${{ "%.2f"|format(cap.amount) }}{% endif %}</h2>
                     <p class="up-meta">{{ row.email or 'no email' }}{% if row.phone %} &middot; {{ row.phone }}{% endif %} &middot; paid {{ cap.created_at|central('%b %d, %I:%M %p') }} &middot; PayPal {{ cap.provider_ref }}</p>
                     {% if cap.failure_reason %}<p class="up-reason">{{ cap.failure_reason }}</p>{% endif %}
                 </div>
@@ -38,6 +38,17 @@
                     <button type="submit" class="btn btn-outline btn-sm">Handled it another way</button>
                 </form>
             </div>
+
+            {% if cap.awaiting_collection and cap.amount is none %}
+            <div class="up-collect">
+                <strong>Approved in PayPal, but the money was NOT collected.</strong>
+                <span>Their phone never came back to finish. Before collecting, make sure they didn't pay again with a second order. PayPal allows about 3 hours.</span>
+                <form method="POST" action="{{ url_for('admin.unsaved_payment_collect', cap_id=cap.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-primary">Collect payment and create order</button>
+                </form>
+            </div>
+            {% endif %}
 
             <h3 class="up-h3">What they bought</h3>
             {% if row.lines %}
@@ -82,10 +93,10 @@
             </div>
             {% endif %}
             {% for cart in c.carts %}
-            <p class="up-hint">Signed-in cart updated {{ cart.at|central('%I:%M %p') }} ({{ cart.email }}):<br>{{ cart.lines|replace('\n', '<br>')|safe }}</p>
+            <p class="up-hint">Signed-in cart updated {{ cart.at|central('%I:%M %p') }} ({{ cart.email }}):<br>{% for line in cart.lines.split('\n') %}{{ line }}<br>{% endfor %}</p>
             {% endfor %}
             {% for h in c.handoffs %}
-            <p class="up-hint">Cart sent to Safari for Venmo at {{ h.at|central('%I:%M %p') }}:<br>{{ h.lines|replace('\n', '<br>')|safe }}</p>
+            <p class="up-hint">Cart sent to Safari for Venmo at {{ h.at|central('%I:%M %p') }}:<br>{% for line in h.lines.split('\n') %}{{ line }}<br>{% endfor %}</p>
             {% endfor %}
             {% for d in c.designs %}
             <p class="up-hint">Design saved {{ d.at|central('%I:%M %p') }}: {{ d.title }} (ID {{ d.id }})</p>
@@ -120,7 +131,7 @@
                 </form>
             </details>
 
-            {% if row.lines %}
+            {% if row.lines and cap.amount is not none %}
             <form method="POST" action="{{ url_for('admin.unsaved_payment_create_order', cap_id=cap.id) }}" class="up-create">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="up-grid">
@@ -165,6 +176,7 @@
 .up-proofs { display:flex; flex-wrap:wrap; gap:.6rem; margin:.3rem 0 .8rem; }
 .up-proof { display:flex; flex-direction:column; align-items:center; gap:.2rem; font-size:.72rem; color:var(--text-secondary); text-decoration:none; }
 .up-proof img { width:140px; height:140px; object-fit:contain; background:#faf6ee; border:1px solid rgba(232,208,177,.65); border-radius:10px; }
+.up-collect { display:flex; flex-direction:column; gap:.45rem; padding:.85rem 1rem; margin:.6rem 0; border:1px solid #f0c48a; background:#fffbeb; border-radius:10px; color:#92400e; font-size:.88rem; }
 .up-create { margin-top:1rem; padding-top:.8rem; border-top:1px solid rgba(232,208,177,.45); }
 </style>
 {% endblock %}

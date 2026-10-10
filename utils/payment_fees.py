@@ -127,7 +127,17 @@ def refresh_processing_fee(order, allow_network=True):
         order.processing_fee = 0.0
         order.processing_fee_is_actual = True
         return changed
-    if allow_network:
+    from datetime import datetime, timedelta
+    checked = False
+    last = getattr(order, 'fee_checked_at', None)
+    # Ask the processor at most every 6 hours per order, so an order whose fee
+    # can't be fetched never slows a page down on every view.
+    if allow_network and (last is None or last < datetime.utcnow() - timedelta(hours=6)):
+        try:
+            order.fee_checked_at = datetime.utcnow()
+            checked = True
+        except Exception:
+            pass
         actual = fetch_actual_fee(order)
         if actual is not None:
             order.processing_fee = actual
@@ -137,7 +147,7 @@ def refresh_processing_fee(order, allow_network=True):
     if getattr(order, 'processing_fee', None) != estimate:
         order.processing_fee = estimate
         return True
-    return False
+    return checked
 
 
 def processing_fee_for(order):

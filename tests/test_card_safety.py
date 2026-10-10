@@ -129,7 +129,7 @@ def test_sweep_skips_a_payment_the_phone_is_saving(client, seed, app):
     _start_card_checkout(client, intent_id='pi_busy')
     _age(app)
     with app.app_context():
-        assert claim_for_checkout('pi_busy') is True  # the phone's save is in progress
+        assert claim_for_checkout('pi_busy')[0] is True  # the phone's save is in progress
         with patch('stripe.PaymentIntent.retrieve', return_value=_intent(intent_id='pi_busy')):
             sweep_unsaved_payments()
         assert Order.query.count() == 0

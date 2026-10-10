@@ -120,8 +120,10 @@ def record_paypal_capture(paypal_order_id, amount, order_json=None, cart=None,
         cap.payer_name = payer_name or cap.payer_name
         cap.payer_email = payer_email or cap.payer_email
         if customer:
-            cap.customer_json = json.dumps(customer)
-        if cart:
+            cap.customer_json = json.dumps(merge_customer(cap.customer_json, customer))
+        # Keep the cart saved when PayPal priced the order: it matches what the
+        # customer paid, even if the browser's cart changed since.
+        if cart and not cap.cart_json:
             cap.cart_json = json.dumps(cart)
         cap.collection_id = collection_id or cap.collection_id
         cap.user_id = user_id or cap.user_id
@@ -131,6 +133,20 @@ def record_paypal_capture(paypal_order_id, amount, order_json=None, cart=None,
         db.session.rollback()
         current_app.logger.exception('could not record PayPal capture %s', paypal_order_id)
         return None
+
+
+def merge_customer(existing_json, new):
+    """Fill in checkout details without wiping anything already saved."""
+    try:
+        merged = json.loads(existing_json or '{}') or {}
+    except ValueError:
+        merged = {}
+    for key, value in (new or {}).items():
+        if value in (None, '', {}, []):
+            continue
+        if merged.get(key) in (None, '', {}, []):
+            merged[key] = value
+    return merged
 
 
 def get_capture(paypal_order_id):
@@ -334,7 +350,7 @@ def record_pending_payment(provider, ref, cart=None, customer=None, collection_i
         if cart:
             cap.cart_json = json.dumps(cart)
         if customer:
-            cap.customer_json = json.dumps(customer)
+            cap.customer_json = json.dumps(merge_customer(None, customer))
             cap.payer_email = customer.get('email') or cap.payer_email
             name = ' '.join(p for p in (customer.get('first_name'), customer.get('last_name')) if p)
             cap.payer_name = name or cap.payer_name
@@ -364,10 +380,15 @@ def _stripe_paid_amount(intent_id, intent_obj=None):
     return round(int(received) / 100.0, 2) if received is not None else None
 
 
-def release_claim(cap):
-    from models import db
+def release_claim(cap, token):
+    """Give back a claim, but only the one this caller took."""
+    from models import db, PaymentCapture
+    if cap is None or token is None:
+        return
     try:
-        cap.processing_at = None
+        (PaymentCapture.query
+         .filter(PaymentCapture.id == cap.id, PaymentCapture.processing_at == token)
+         .update({'processing_at': None}, synchronize_session=False))
         db.session.commit()
     except Exception:
         db.session.rollback()
@@ -376,12 +397,176 @@ def release_claim(cap):
 def claim_for_checkout(ref):
     """The phone's own save step claims the payment so the sweep can't also build it.
 
-    Returns True when this request may create the order.
+    Returns (allowed, token). allowed is True when this request may create the
+    order; token is the claim to give back if it fails (None if nothing to claim).
     """
     cap = get_capture(ref)
     if cap is None:
-        return True
-    return _claim(cap)
+        return True, None
+    token = _claim(cap)
+    return token is not None, token
+
+
+def claimed_by_someone_else(ref):
+    cap = get_capture(ref)
+    if cap is None or cap.processing_at is None:
+        return False
+    return cap.processing_at > datetime.utcnow() - timedelta(minutes=5)
+
+
+def _paypal_status(cap):
+    """What PayPal says about a checkout the site never saw paid.
+
+    Returns (amount collected or None, PayPal order status). The site never
+    collects an approved payment on its own: the customer may have paid again
+    on a second try, so an approved-but-uncollected payment goes to the admin.
+    """
+    order_json = fetch_paypal_order(cap.provider_ref)
+    if not order_json:
+        return None, ''
+    status = (order_json.get('status') or '').upper()
+    amount = completed_capture_total(order_json)
+    if amount is not None:
+        payer_name, payer_email = payer_from_order_json(order_json)
+        cap.payer_name = cap.payer_name or payer_name
+        cap.payer_email = cap.payer_email or payer_email
+        paid_at = _capture_time(order_json)
+        if paid_at:
+            cap.created_at = paid_at
+    elif status == 'APPROVED':
+        payer_name, payer_email = payer_from_order_json(order_json)
+        cap.payer_name = cap.payer_name or payer_name
+        cap.payer_email = cap.payer_email or payer_email
+    return amount, status
+
+
+def _possible_repeat_payment(cap):
+    """Did this customer pay again (a second checkout) around the same time?"""
+    from models import Order, PaymentCapture
+    try:
+        customer = json.loads(cap.customer_json or '{}') or {}
+    except ValueError:
+        customer = {}
+    emails = {e.lower() for e in (customer.get('email'), cap.payer_email) if e}
+    if not emails:
+        return None
+    since = (cap.created_at or datetime.utcnow()) - timedelta(hours=1)
+    for order in Order.query.filter(Order.created_at >= since).all():
+        if (order.email or '').lower() in emails and order.paypal_order_id != cap.provider_ref:
+            return order
+    return None
+
+
+def alert_uncollected_paypal(cap):
+    """Customer approved in PayPal but the payment was never collected."""
+    from models import db, PaymentCapture
+    from utils.mailer import admin_base_url
+    try:
+        claimed = (
+            PaymentCapture.query
+            .filter(PaymentCapture.id == cap.id, PaymentCapture.alert_sent_at.is_(None))
+            .update({'alert_sent_at': datetime.utcnow(), 'awaiting_collection': True,
+                     'failure_reason': 'Approved in PayPal, but the payment was never collected.'},
+                    synchronize_session=False)
+        )
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        claimed = 0
+    if not claimed:
+        return False
+    db.session.refresh(cap)
+    try:
+        customer = json.loads(cap.customer_json or '{}') or {}
+        cart = json.loads(cap.cart_json or '[]') or []
+    except ValueError:
+        customer, cart = {}, []
+    name = ' '.join(p for p in (customer.get('first_name'), customer.get('last_name')) if p) \
+        or cap.payer_name or 'A customer'
+    repeat = _possible_repeat_payment(cap)
+    repeat_line = (
+        f'\nHeads up: {name} already has order {repeat.order_number} from around the same time, '
+        f'so they may have paid again. Check before collecting.\n' if repeat else ''
+    )
+    link = f'{admin_base_url(current_app)}/admin/orders/unsaved-payments'
+    body = (
+        f'{name} approved a PayPal payment, but their phone never came back to finish, '
+        f'so the money was NOT collected and no order exists.\n{repeat_line}\n'
+        f'Email: {customer.get("email") or cap.payer_email or "unknown"}\n'
+        f'PayPal order ID: {cap.provider_ref}\n\n'
+        f'What they were buying:\n{cart_lines_text(cart)}\n\n'
+        f'To collect it and create the order, open: {link}\n'
+        f'PayPal only lets an approved payment be collected for about 3 hours.\n'
+    )
+    _email_admin(f'PayPal payment approved but not collected: {name}', body)
+    _notify(f'PayPal payment not collected: {name}',
+            'Approved in PayPal, but the payment was never collected.', body, url=link)
+    return True
+
+
+def collect_approved_paypal(cap):
+    """Admin chose to collect an approved PayPal payment. Returns amount or None."""
+    import requests
+    from models import db
+    from routes.checkout import _get_paypal_access_token, _paypal_base_url
+    app = current_app._get_current_object()
+    token = _get_paypal_access_token(app)
+    if not token:
+        return None
+    resp = requests.post(
+        f'{_paypal_base_url(app)}/v2/checkout/orders/{cap.provider_ref}/capture',
+        headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json',
+                 'PayPal-Request-Id': f'pmkc-collect-{cap.provider_ref}'},
+        timeout=15,
+    )
+    if resp.status_code not in (200, 201):
+        current_app.logger.error('admin PayPal collect %s -> %s: %s',
+                                 cap.provider_ref, resp.status_code, resp.text[:200])
+        return None
+    order_json = resp.json()
+    amount = completed_capture_total(order_json)
+    if amount is not None:
+        cap.amount = amount
+        cap.awaiting_collection = False
+        paid_at = _capture_time(order_json)
+        if paid_at:
+            cap.created_at = paid_at
+        db.session.commit()
+    return amount
+
+
+def release_claim(cap, token):
+    """Give back a claim, but only the one this caller took."""
+    from models import db, PaymentCapture
+    if cap is None or token is None:
+        return
+    try:
+        (PaymentCapture.query
+         .filter(PaymentCapture.id == cap.id, PaymentCapture.processing_at == token)
+         .update({'processing_at': None}, synchronize_session=False))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
+def claim_for_checkout(ref):
+    """The phone's own save step claims the payment so the sweep can't also build it.
+
+    Returns (allowed, token). allowed is True when this request may create the
+    order; token is the claim to give back if it fails (None if nothing to claim).
+    """
+    cap = get_capture(ref)
+    if cap is None:
+        return True, None
+    token = _claim(cap)
+    return token is not None, token
+
+
+def claimed_by_someone_else(ref):
+    cap = get_capture(ref)
+    if cap is None or cap.processing_at is None:
+        return False
+    return cap.processing_at > datetime.utcnow() - timedelta(minutes=5)
 
 
 def _collect_paypal(cap):
@@ -429,21 +614,25 @@ def _collect_paypal(cap):
 
 
 def _claim(cap):
-    """Atomically claim a capture for order creation (no double orders)."""
+    """Atomically claim a capture for order creation (no double orders).
+
+    Returns the claim token (a timestamp) or None if someone else holds it.
+    """
     from models import db, PaymentCapture
-    stale = datetime.utcnow() - timedelta(minutes=5)
+    now = datetime.utcnow()
+    stale = now - timedelta(minutes=5)
     try:
         claimed = (
             PaymentCapture.query
             .filter(PaymentCapture.id == cap.id, PaymentCapture.order_id.is_(None))
             .filter(db.or_(PaymentCapture.processing_at.is_(None), PaymentCapture.processing_at < stale))
-            .update({'processing_at': datetime.utcnow()}, synchronize_session=False)
+            .update({'processing_at': now}, synchronize_session=False)
         )
         db.session.commit()
-        return bool(claimed)
+        return now if claimed else None
     except Exception:
         db.session.rollback()
-        return False
+        return None
 
 
 def auto_create_order(cap, reason='The customer paid but their phone never finished checkout.'):
@@ -455,22 +644,19 @@ def auto_create_order(cap, reason='The customer paid but their phone never finis
     from routes.checkout import create_order_from_capture
     if cap.order_id:
         return Order.query.get(cap.order_id)
-    if not _claim(cap):
+    token = _claim(cap)
+    if token is None:
         return None
-    order, failure = create_order_from_capture(cap)
+    order, failure = create_order_from_capture(cap, claim_token=token)
     if order is not None:
         _notify(
             f'Order {order.order_number} saved automatically',
-            f'{order.full_name} paid but their phone never finished checkout. The order was created and emailed for you.',
-            f'{reason}\n\nThe order was created from the details saved at payment and the usual emails went out.',
+            f'{order.full_name} paid but their phone never finished checkout. The order was created for you.',
+            f'{reason}\n\nThe order was created from the details saved at payment.',
             url=f'/admin/orders/{order.id}', related_id=order.id,
         )
-        expected = float(order.total or 0)
-        if cap.amount is not None and abs(float(cap.amount) - expected) >= 0.01:
-            alert_order_saved_with_issues(order, [
-                f'The customer paid ${cap.amount:.2f} but the saved cart totals ${expected:.2f}. Check the items.'
-            ])
         return order
+    release_claim(cap, token)
     alert_unsaved_payment(cap.provider_ref, f'{reason} Automatic save failed: {failure}')
     return None
 
@@ -552,16 +738,22 @@ def sweep_unsaved_payments(min_age_minutes=GRACE_MINUTES):
             if cap.checked_at and now - cap.checked_at < wait:
                 continue
             try:
-                amount, dead = _collect_paypal(cap)
+                amount, status = _paypal_status(cap)
             except Exception:
                 current_app.logger.exception('PayPal check failed for %s', cap.provider_ref)
                 continue
             cap.checked_at = now
             if amount is None:
-                if dead or (cap.created_at and cap.created_at < now - timedelta(days=2)):
+                db.session.commit()
+                if status == 'APPROVED':
+                    alert_uncollected_paypal(cap)
+                elif status == 'VOIDED' or (
+                        status in ('CREATED', 'SAVED', 'PAYER_ACTION_REQUIRED', '')
+                        and cap.created_at and cap.created_at < now - timedelta(days=2)):
                     cap.resolved_at = now
                     cap.failure_reason = 'PayPal payment was never approved (checkout abandoned).'
-                db.session.commit()
+                    db.session.commit()
+                # COMPLETED with a pending capture (PayPal review): keep checking.
                 continue
             cap.amount = amount
             db.session.commit()

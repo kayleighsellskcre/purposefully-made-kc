@@ -24,7 +24,7 @@
         <article class="inbox-card{% if not note.read_at %} is-unread{% endif %}">
             <div class="inbox-card-top">
                 <span class="inbox-kind inbox-kind-{{ note.kind }}">
-                    {% if note.kind == 'contact' %}Contact{% elif note.kind == 'payment' %}Payment alert{% else %}Design request{% endif %}
+                    {% if note.kind == 'contact' %}Contact{% elif note.kind == 'payment' %}Payment alert{% elif note.kind == 'system' %}Site alert{% else %}Design request{% endif %}
                 </span>
                 {% if not note.read_at %}<span class="inbox-dot" aria-label="Unread"></span>{% endif %}
                 <time class="inbox-time" datetime="{{ note.created_at.isoformat() if note.created_at else '' }}">

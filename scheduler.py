@@ -14,16 +14,83 @@ import sys
 CHICAGO = ZoneInfo('America/Chicago')
 
 
+from contextlib import contextmanager
+
+
+@contextmanager
+def _one_worker_at_a_time(lock_id):
+    """The site runs several copies (workers); let only one run a job at once.
+
+    Uses a Postgres advisory lock. Elsewhere (local SQLite) it just runs.
+    """
+    from models import db
+    from sqlalchemy import text
+    if db.engine.dialect.name != 'postgresql':
+        yield True
+        return
+    conn = db.engine.connect()
+    got = False
+    try:
+        got = bool(conn.execute(text('SELECT pg_try_advisory_lock(:k)'), {'k': lock_id}).scalar())
+        yield got
+    finally:
+        try:
+            if got:
+                conn.execute(text('SELECT pg_advisory_unlock(:k)'), {'k': lock_id})
+            conn.close()
+        except Exception:
+            # Never return a connection that might still hold the lock to the pool.
+            try:
+                conn.invalidate()
+            except Exception:
+                pass
+
+
 def unsaved_payments_job(app):
     """Create any paid order the customer's phone never finished; alert if that fails."""
     with app.app_context():
         try:
-            from utils.payment_safety import sweep_unsaved_payments
-            sent = sweep_unsaved_payments()
-            if sent:
-                print(f"UNSAVED PAYMENT ALERTS SENT: {sent}", file=sys.stderr, flush=True)
+            with _one_worker_at_a_time(731001) as mine:
+                if not mine:
+                    return
+                from utils.payment_safety import sweep_unsaved_payments
+                handled = sweep_unsaved_payments()
+                if handled:
+                    print(f"UNSAVED PAYMENTS HANDLED: {handled}", file=sys.stderr, flush=True)
         except Exception as exc:
             print(f"unsaved payments sweep failed: {exc}", file=sys.stderr, flush=True)
+
+
+def refresh_fees_job(app):
+    """Fetch actual Stripe/PayPal fees for recent orders (keeps admin pages fast)."""
+    with app.app_context():
+        try:
+            with _one_worker_at_a_time(731002) as mine:
+                if not mine:
+                    return
+                from models import db, Order
+                from utils.payment_fees import refresh_processing_fee, true_profit
+                orders = (
+                    Order.query
+                    .filter(Order.payment_status == 'paid')
+                    .filter(Order.payment_method.in_(['stripe', 'paypal']))
+                    .filter(db.or_(Order.processing_fee_is_actual.is_(False),
+                                   Order.processing_fee_is_actual.is_(None)))
+                    .order_by(Order.created_at.desc())
+                    .limit(20)
+                    .all()
+                )
+                for o in orders:
+                    try:
+                        if refresh_processing_fee(o, allow_network=True):
+                            p = true_profit(o)
+                            if p is not None:
+                                o.profit = p
+                            db.session.commit()
+                    except Exception:
+                        db.session.rollback()
+        except Exception as exc:
+            print(f"fee refresh failed: {exc}", file=sys.stderr, flush=True)
 
 
 def sync_full_catalog_job(app):
@@ -446,6 +513,15 @@ def init_scheduler(app):
             trigger=IntervalTrigger(minutes=3),
             id='unsaved_payments_sweep',
             name='Alert on paid checkouts with no order',
+            replace_existing=True
+        )
+
+        # Every 30 minutes: fetch actual Stripe/PayPal fees in the background
+        scheduler.add_job(
+            func=lambda: refresh_fees_job(app),
+            trigger=IntervalTrigger(minutes=30),
+            id='refresh_processing_fees',
+            name='Fetch actual payment processing fees',
             replace_existing=True
         )
 

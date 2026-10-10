@@ -416,7 +416,9 @@ async function stashCheckoutForWallets() {
         await fetch('/checkout/prepare', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(buildOrderPayload(null, 'stripe'))
+            body: JSON.stringify(Object.assign({}, buildOrderPayload(null, 'stripe'), {
+                payment_intent_id: (clientSecretCache || '').split('_secret_')[0] || null
+            }))
         });
     } catch (e) {
         // Non-fatal for on-page card; wallets need this for return_url flow.

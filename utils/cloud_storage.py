@@ -55,6 +55,31 @@ def upload_image(file_storage, app, subfolder='uploads', public_id_prefix='img',
     return _save_locally(file_storage, app, subfolder, public_id_prefix)
 
 
+def _warn_admin_cloud_down(subfolder):
+    """At most one admin notice per hour: files are landing on the temporary disk."""
+    try:
+        from datetime import datetime, timedelta
+        from models import db, AdminNotification
+        from utils.admin_notifications import create_notification
+        recent = (AdminNotification.query
+                  .filter(AdminNotification.kind == 'system',
+                          AdminNotification.created_at >= datetime.utcnow() - timedelta(hours=1))
+                  .first())
+        if recent is None:
+            create_notification(
+                kind='system',
+                title='Cloud storage upload failed',
+                preview=f'A {subfolder} upload was saved to the server temporarily and will be '
+                        'lost at the next site update. Check the R2 settings.',
+            )
+    except Exception:
+        try:
+            from models import db
+            db.session.rollback()
+        except Exception:
+            pass
+
+
 def store_upload(file_storage, subfolder, prefix):
     """Save a customer or admin upload where it survives site updates.
 
@@ -70,6 +95,7 @@ def store_upload(file_storage, subfolder, prefix):
                               public_id_prefix=prefix, process_artwork=False)
     except Exception:
         app.logger.exception('cloud upload failed for %s; saving locally', subfolder)
+        _warn_admin_cloud_down(subfolder)
         try:
             file_storage.stream.seek(0)
         except Exception:

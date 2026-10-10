@@ -258,8 +258,11 @@ def test_paypal_checkout_is_saved_before_the_customer_approves(client, seed, app
         assert 'buyer@example.com' in cap.customer_json
 
 
-def test_approved_but_uncollected_paypal_payment_is_collected_and_saved(client, seed, app, outbox):
-    """Customer tapped Pay Now in PayPal, then their phone never came back."""
+def test_approved_but_uncollected_paypal_payment_is_never_collected_automatically(
+        client, admin_client, seed, app, outbox):
+    """The customer tapped Pay Now, then their phone never came back. They may have
+    paid again on a second try, so the site must NOT collect it on its own: it
+    alerts the admin, who can collect it with one click."""
     from utils.payment_safety import sweep_unsaved_payments
     _fill_cart(client, seed)
     _create_paypal_order(client)
@@ -267,18 +270,33 @@ def test_approved_but_uncollected_paypal_payment_is_collected_and_saved(client, 
         cap = PaymentCapture.query.one()
         cap.created_at = datetime.utcnow() - timedelta(minutes=5)
         db.session.commit()
-        approved = dict(_order_json(ONE_ITEM, 'EC-APPR'), status='APPROVED')
-        approved['purchase_units'][0]['payments'] = {}
-        with patch('routes.checkout._get_paypal_access_token', return_value='tok'), \
-             patch('requests.get', return_value=SimpleNamespace(status_code=200, json=lambda: approved)), \
-             patch('requests.post', return_value=SimpleNamespace(
-                 status_code=201, json=lambda: _order_json(ONE_ITEM, 'EC-APPR'))) as post:
-            sweep_unsaved_payments()
-        assert any('/capture' in str(c.args[0]) for c in post.call_args_list)
+        cap_id = cap.id
+    approved = dict(_order_json(ONE_ITEM, 'EC-APPR'), status='APPROVED')
+    approved['purchase_units'][0]['payments'] = {}
+    with app.app_context(), \
+         patch('routes.checkout._get_paypal_access_token', return_value='tok'), \
+         patch('requests.get', return_value=SimpleNamespace(status_code=200, json=lambda: approved)), \
+         patch('requests.post') as post:
+        sweep_unsaved_payments()
+        sweep_unsaved_payments()
+        assert not post.called  # no money collected by the site
+        assert Order.query.count() == 0
+        cap = db.session.get(PaymentCapture, cap_id)
+        assert cap.awaiting_collection is True
+        assert AdminNotification.query.filter(AdminNotification.title.like('%not collected%')).count() == 1
+    assert any('approved but not collected' in m.subject for m in outbox)
+    page = admin_client.get('/admin/orders/unsaved-payments').get_data(as_text=True)
+    assert 'Collect payment and create order' in page
+
+    with patch('routes.checkout._get_paypal_access_token', return_value='tok'), \
+         patch('requests.post', return_value=SimpleNamespace(
+             status_code=201, json=lambda: _order_json(ONE_ITEM, 'EC-APPR'))) as post:
+        admin_client.post(f'/admin/orders/unsaved-payments/{cap_id}/collect')
+    assert post.call_args.kwargs['headers']['PayPal-Request-Id'] == 'pmkc-collect-EC-APPR'
+    with app.app_context():
         order = Order.query.filter_by(paypal_order_id='EC-APPR').one()
         assert order.payment_status == 'paid'
         assert order.email == 'buyer@example.com'
-    assert any(m.subject.startswith('New Order') for m in outbox)
 
 
 def test_never_approved_paypal_checkout_is_left_alone(client, seed, app):
@@ -298,3 +316,81 @@ def test_never_approved_paypal_checkout_is_left_alone(client, seed, app):
         assert not post.called
         assert Order.query.count() == 0
         assert AdminNotification.query.filter_by(kind='payment').count() == 0
+
+
+# ── Audit fixes ──────────────────────────────────────────────────────────────
+
+def test_database_refuses_two_orders_for_one_payment(app, seed):
+    import pytest
+    from sqlalchemy.exc import IntegrityError
+    with app.app_context():
+        for _ in range(2):
+            db.session.add(Order(user_id=seed['customer_id'], first_name='A', last_name='B',
+                                 email='a@example.com', subtotal=1, total=1,
+                                 payment_method='paypal', paypal_order_id='EC-DUP'))
+        with pytest.raises(IntegrityError):
+            db.session.commit()
+        db.session.rollback()
+
+
+def test_guest_who_paid_still_sees_their_receipt_on_a_retry(client, seed, app):
+    """A lost response + retry (or the phone resuming after the sweep built the
+    order) must land on the receipt, not a 404."""
+    _fill_cart(client, seed)
+    body = _capture(client).get_json()
+    with client.session_transaction() as sess:
+        sess.pop('checkout_success_order', None)
+        sess.pop('checkout_success_token', None)
+    again = client.post('/checkout/complete', json=_cash_payload(
+        payment_method='paypal', payment_id='EC-1')).get_json()
+    assert again['order_number'] == body['order_number']
+    assert client.get(again['redirect_url']).status_code == 200
+
+
+def test_someone_else_cannot_open_a_receipt_with_just_the_payment_id(client, seed, app):
+    _fill_cart(client, seed)
+    body = _capture(client).get_json()
+    other = app.test_client()
+    resp = other.post('/checkout/complete', json=_cash_payload(
+        payment_method='paypal', payment_id='EC-1', checkout_token='not-theirs')).get_json()
+    assert resp['order_number'] == body['order_number']
+    assert other.get(resp['redirect_url']).status_code == 404
+
+
+def test_paypal_order_uses_the_cart_paypal_priced_if_the_cart_grew(client, seed, app):
+    _fill_cart(client, seed)
+    _create_paypal_order(client, 'EC-PRICED')          # PayPal priced one item
+    _fill_cart(client, seed)                           # another item added after
+    resp = _capture(client, order_id='EC-PRICED').get_json()
+    assert resp['success'] is True
+    with app.app_context():
+        order = Order.query.filter_by(paypal_order_id='EC-PRICED').one()
+        assert order.payment_status == 'paid'
+        assert abs(order.total - ONE_ITEM) < 0.01
+
+
+def test_admin_lookup_never_wipes_saved_checkout_details(admin_client, client, seed, app):
+    from utils.payment_safety import record_paypal_capture
+    _fill_cart(client, seed)
+    _create_paypal_order(client, 'EC-KEEP')
+    with app.app_context():
+        record_paypal_capture('EC-KEEP', ONE_ITEM, order_json=_order_json(ONE_ITEM, 'EC-KEEP'),
+                              customer={'first_name': 'Meghan', 'email': 'other@example.com',
+                                        'shipping_method': 'pickup'})
+        cap = PaymentCapture.query.filter_by(provider_ref='EC-KEEP').one()
+        assert '816-555-0100' in cap.customer_json        # phone typed at checkout kept
+        assert 'buyer@example.com' in cap.customer_json  # original email kept
+
+
+def test_admin_page_escapes_shopper_text(admin_client, app, seed):
+    from models import User
+    with app.app_context():
+        user = db.session.get(User, seed['customer_id'])
+        user.cart_json = '[{"product_id": 1, "color": "<img src=x onerror=alert(1)>", "size": "M", "quantity": 1}]'
+        user.cart_updated_at = datetime.utcnow() - timedelta(minutes=5)
+        db.session.add(PaymentCapture(provider='paypal', provider_ref='EC-XSS', amount=ONE_ITEM,
+                                      payer_name='X Y', created_at=datetime.utcnow()))
+        db.session.commit()
+    page = admin_client.get('/admin/orders/unsaved-payments').get_data(as_text=True)
+    assert '<img src=x onerror' not in page
+    assert '&lt;img src=x onerror' in page

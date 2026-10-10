@@ -159,6 +159,8 @@ def create_app(config_class=Config):
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS processing_fee DOUBLE PRECISION",
                     "ALTER TABLE payment_capture ADD COLUMN IF NOT EXISTS processing_at TIMESTAMP",
                     "ALTER TABLE payment_capture ADD COLUMN IF NOT EXISTS checked_at TIMESTAMP",
+                    "ALTER TABLE payment_capture ADD COLUMN IF NOT EXISTS awaiting_collection BOOLEAN DEFAULT FALSE",
+                    "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS fee_checked_at TIMESTAMP",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS processing_fee_is_actual BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS is_refunded BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS refund_notes TEXT",
@@ -283,17 +285,24 @@ def create_app(config_class=Config):
                 # two simultaneous submits cannot both pass the application's
                 # duplicate check and create a double order. Partial index keeps
                 # the many NULL tokens (admin-created orders) legal.
-                try:
-                    conn.execute(text(
-                        'CREATE UNIQUE INDEX IF NOT EXISTS uq_order_checkout_token '
-                        'ON "order" (checkout_token) WHERE checkout_token IS NOT NULL'
-                    ))
-                    conn.commit()
-                except Exception:
+                for index_sql in (
+                    'CREATE UNIQUE INDEX IF NOT EXISTS uq_order_checkout_token '
+                    'ON "order" (checkout_token) WHERE checkout_token IS NOT NULL',
+                    # One order per PayPal payment and per card charge.
+                    'CREATE UNIQUE INDEX IF NOT EXISTS uq_order_paypal_order_id '
+                    'ON "order" (paypal_order_id) WHERE paypal_order_id IS NOT NULL',
+                    'CREATE UNIQUE INDEX IF NOT EXISTS uq_order_payment_intent_id '
+                    'ON "order" (payment_intent_id) WHERE payment_intent_id IS NOT NULL',
+                ):
                     try:
-                        conn.rollback()
-                    except Exception:
-                        pass
+                        conn.execute(text(index_sql))
+                        conn.commit()
+                    except Exception as index_err:
+                        print(f"INDEX NOT CREATED: {index_sql[:60]}... ({index_err})", file=__import__('sys').stderr)
+                        try:
+                            conn.rollback()
+                        except Exception:
+                            pass
 
             # Create favorites table if it doesn't exist
             from models import Favorite

@@ -567,6 +567,16 @@ class CustomDesignRequest(db.Model):
 
 class Order(db.Model):
     """Customer order"""
+    # One order per payment, enforced by the database: no path can ever make
+    # two orders for the same PayPal payment or card charge.
+    __table_args__ = (
+        db.Index('uq_order_paypal_order_id', 'paypal_order_id', unique=True,
+                 postgresql_where=db.text('paypal_order_id IS NOT NULL'),
+                 sqlite_where=db.text('paypal_order_id IS NOT NULL')),
+        db.Index('uq_order_payment_intent_id', 'payment_intent_id', unique=True,
+                 postgresql_where=db.text('payment_intent_id IS NOT NULL'),
+                 sqlite_where=db.text('payment_intent_id IS NOT NULL')),
+    )
     id = db.Column(db.Integer, primary_key=True)
     order_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
     
@@ -631,6 +641,7 @@ class Order(db.Model):
     # estimate fills in until then. Profit = total - tax - fee - cost_of_goods.
     processing_fee = db.Column(db.Float)
     processing_fee_is_actual = db.Column(db.Boolean, default=False)
+    fee_checked_at = db.Column(db.DateTime)  # last time the processor was asked for the fee
     # Unique so two concurrent submits of the same checkout cannot both create
     # an order. NULL is allowed many times over (admin-created orders have no
     # token), which both Postgres and SQLite permit under a unique constraint.
@@ -964,6 +975,7 @@ class PaymentCapture(db.Model):
     alert_sent_at = db.Column(db.DateTime)
     resolved_at = db.Column(db.DateTime)  # admin handled it outside the site
     processing_at = db.Column(db.DateTime)  # claim while an order is being created from it
+    awaiting_collection = db.Column(db.Boolean, default=False)  # approved in PayPal, money not collected
     checked_at = db.Column(db.DateTime)     # last time a card payment's status was checked
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 

@@ -365,6 +365,9 @@ def test_paypal_order_saved_and_flagged_when_cart_grew_after_capture(client, see
         order = Order.query.filter_by(order_number=body['order_number']).one()
         assert order.amount_paid == captured
         assert order.amount_paid < order.total
+        # Never marked paid in full: it's held as Underpaid for the admin to sort out.
+        assert order.payment_status == 'underpaid'
+        assert order.confirmation_email_sent_at is None
         note = AdminNotification.query.filter_by(kind='payment').one()
         assert order.order_number in note.title
 
