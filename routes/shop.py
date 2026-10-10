@@ -1020,22 +1020,24 @@ def customize(product_slug):
             if uniform_logo_locked:
                 gallery_designs = []
             elif catalog_section == 'fan':
-                # Fan wear: show the full public design gallery so fans aren't
-                # limited to just the sport jersey logo. Then optionally prepend
-                # the jersey logo(s) for this store if the organizer wants them
-                # available as a fan wear option (fan_show_jersey_logo, default True).
-                from utils.design_variants import gallery_cards_for_public
-                gallery_designs = gallery_cards_for_public(
-                    Design, resolve_url=_resolve_image_url, limit=200
-                )
+                # Fan wear: show only the designs the organizer uploaded for this
+                # group (allowed_design_ids). The jersey logo toggle controls whether
+                # the jersey-locked design is included or excluded from that set.
                 fan_show_jersey = lane_config.get('fan_show_jersey_logo', True)
-                if fan_show_jersey and allowed_design_ids:
-                    jersey_designs = load_collection_designs(coll)
-                    gallery_ids = {d['id'] for d in gallery_designs}
-                    # Prepend any jersey-specific designs not already in the public gallery
-                    for d in reversed(jersey_designs):
-                        if d['id'] not in gallery_ids:
-                            gallery_designs.insert(0, d)
+                if allowed_design_ids:
+                    all_coll_designs = load_collection_designs(coll)
+                    if not fan_show_jersey:
+                        # Exclude the jersey logo design(s) when the organizer has
+                        # opted to hide them from fan wear.
+                        jersey_id = lane_config.get('uniform', {}).get('home_design_id')
+                        away_id   = lane_config.get('uniform', {}).get('away_design_id')
+                        excluded  = {int(x) for x in [jersey_id, away_id] if x}
+                        gallery_designs = [d for d in all_coll_designs
+                                           if d['id'] not in excluded]
+                    else:
+                        gallery_designs = all_coll_designs
+                else:
+                    gallery_designs = []
             else:
                 # Uniform and general group-order section: only organizer-approved artwork.
                 gallery_designs = (
