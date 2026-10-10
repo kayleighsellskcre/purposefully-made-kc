@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, session, redirec
 from flask_login import current_user, login_required
 from flask_mail import Message
 from models import db, Product, Order, OrderItem, Design, Address, User
-from datetime import datetime
+from datetime import datetime, timedelta
 from threading import Thread
 import math
 import secrets
@@ -675,7 +675,21 @@ def paypal_create_order():
             timeout=15,
         )
         if resp.status_code in (200, 201):
-            return jsonify({'id': resp.json()['id']})
+            paypal_id = resp.json()['id']
+            # Save the checkout now, before the customer approves in PayPal, so
+            # an approved payment can still be collected and turned into an
+            # order if the phone never comes back to this page.
+            try:
+                from utils.payment_safety import record_pending_payment
+                record_pending_payment(
+                    'paypal', paypal_id, cart=cart,
+                    customer={k: data.get(k) for k in PENDING_CHECKOUT_FIELDS if data.get(k) not in (None, '')},
+                    collection_id=collection.id if collection else None,
+                    user_id=current_user.id if current_user.is_authenticated else None,
+                )
+            except Exception:
+                current_app.logger.exception('could not save pending PayPal checkout %s', paypal_id)
+            return jsonify({'id': paypal_id})
         current_app.logger.error('PayPal create-order %s: %s', resp.status_code, resp.text[:300])
         return jsonify({'error': 'Could not start PayPal checkout.'}), 500
     except Exception:
@@ -750,6 +764,34 @@ def paypal_capture_order():
                     )
                 except Exception:
                     current_app.logger.exception('PayPal capture %s: could not save safety record', order_id)
+                # Create the order now, in the same request that took the money,
+                # so nothing depends on the phone sending a second request.
+                try:
+                    from utils.payment_safety import get_capture
+                    cap = get_capture(order_id)
+                    if cap is not None and data.get('email') and data.get('first_name'):
+                        order, _reason = create_order_from_capture(cap)
+                        if order is not None:
+                            if abs(float(captured_amount) - float(order.total or 0)) >= 0.01:
+                                from utils.payment_safety import alert_order_saved_with_issues
+                                alert_order_saved_with_issues(order, [
+                                    f'PayPal collected ${captured_amount:.2f} but the cart totals '
+                                    f'${float(order.total or 0):.2f}. Check the items before making it.'
+                                ])
+                            from utils.cart_store import clear_cart as _clear_cart
+                            _clear_cart()
+                            session['checkout_success_order'] = order.order_number
+                            if data.get('checkout_token'):
+                                session['checkout_success_token'] = _clip(data.get('checkout_token'), 64)
+                            session.pop('collection_id', None)
+                            session.modified = True
+                            return jsonify({
+                                'success': True,
+                                'order_number': order.order_number,
+                                'redirect_url': url_for('checkout.confirmation', order_number=order.order_number),
+                            })
+                except Exception:
+                    current_app.logger.exception('PayPal capture %s: immediate order creation failed', order_id)
                 return jsonify({'success': True})
             return jsonify({'success': False, 'error': f'PayPal status: {result.get("status")}'}), 400
         current_app.logger.error('PayPal capture %s %s: %s', order_id, resp.status_code, resp.text[:300])
@@ -1007,6 +1049,8 @@ def create_payment_intent():
             },
         )
 
+        session['stripe_intent_id'] = intent.id
+        session.modified = True
         return jsonify({
             'clientSecret': intent.client_secret
         })
@@ -1033,6 +1077,22 @@ def prepare():
     data = request.get_json(silent=True) or {}
     session['pending_checkout'] = {k: data.get(k) for k in PENDING_CHECKOUT_FIELDS}
     session.modified = True
+    # Save the checkout to the database before the card is charged, so the
+    # order can always be created even if the phone never comes back.
+    intent_id = session.get('stripe_intent_id') or (data.get('payment_intent_id') or '').strip() or None
+    if intent_id:
+        try:
+            from utils.payment_safety import record_pending_card_payment
+            cart = get_cart()
+            record_pending_card_payment(
+                intent_id,
+                cart=cart,
+                customer={k: data.get(k) for k in PENDING_CHECKOUT_FIELDS if data.get(k) not in (None, '')},
+                collection_id=next((i.get('collection_id') for i in cart if isinstance(i, dict) and i.get('collection_id')), None),
+                user_id=current_user.id if current_user.is_authenticated else None,
+            )
+        except Exception:
+            current_app.logger.exception('could not save pending card checkout %s', intent_id)
     return jsonify({'success': True})
 
 
@@ -1226,6 +1286,153 @@ def build_order_items(order, cart, rid='-'):
     return saved_items
 
 
+def _existing_order_for_payment(provider, ref):
+    if not ref:
+        return None
+    if provider == 'stripe':
+        return Order.query.filter_by(payment_intent_id=ref).first()
+    return Order.query.filter_by(paypal_order_id=ref).first()
+
+
+def create_order_from_capture(cap, *, overrides=None, send_email=True):
+    """Create the order for a paid checkout straight from its saved record.
+
+    Used when the customer's phone never finished checkout (page closed, phone
+    locked, app switch), by the background sweep, the Stripe webhook, the
+    PayPal capture itself, and the admin's recover page. It never needs the
+    customer's browser session. Returns (order, None) or (None, reason).
+    """
+    from sqlalchemy.exc import IntegrityError
+    from utils.payment_safety import link_capture_to_order
+    overrides = {k: v for k, v in (overrides or {}).items() if v}
+
+    existing = _existing_order_for_payment(cap.provider, cap.provider_ref)
+    if existing:
+        link_capture_to_order(cap.provider_ref, existing)
+        return existing, None
+
+    try:
+        cart = json.loads(cap.cart_json or '[]') or []
+    except ValueError:
+        cart = []
+    if not cart:
+        return None, 'No cart was saved with this payment.'
+    try:
+        customer = json.loads(cap.customer_json or '{}') or {}
+    except ValueError:
+        customer = {}
+
+    first = (overrides.get('first_name') or customer.get('first_name') or '').strip()
+    last = (overrides.get('last_name') or customer.get('last_name') or '').strip()
+    if not first and cap.payer_name:
+        first, _, rest = cap.payer_name.partition(' ')
+        last = last or rest
+    email = (overrides.get('email') or customer.get('email') or cap.payer_email or '').strip()
+    if not email or not first:
+        return None, 'The customer name or email was not saved with this payment.'
+    fulfillment = overrides.get('fulfillment') or customer.get('shipping_method') or 'pickup'
+    ship = customer.get('shipping_info') or customer.get('paypal_shipping_info') or {}
+
+    totals = calculate_totals(cart, fulfillment)
+    is_stripe = cap.provider == 'stripe'
+    token = _clip(customer.get('checkout_token'), 64)
+    if token and Order.query.filter_by(checkout_token=token).first():
+        token = None  # that token already made a different order; don't collide
+    order = Order(
+        user_id=cap.user_id,
+        email=_clip(email, 120),
+        first_name=_clip(first, 100),
+        last_name=_clip(last, 100) or 'Customer',
+        phone=_clip(customer.get('phone'), 20),
+        fulfillment_method=fulfillment,
+        subtotal=totals['subtotal'],
+        shipping_cost=totals['shipping_cost'],
+        tax=totals['tax'],
+        total=totals['total'],
+        payment_method='stripe' if is_stripe else 'paypal',
+        payment_status='paid',
+        payment_intent_id=cap.provider_ref if is_stripe else None,
+        paypal_order_id=None if is_stripe else cap.provider_ref,
+        paid_at=cap.created_at or datetime.utcnow(),
+        amount_paid=float(cap.amount if cap.amount is not None else totals['total']),
+        status='paid',
+        production_stage='order_received',
+        due_date=default_due_date(),
+        checkout_token=token,
+        collection_id=cap.collection_id,
+        send_home_with_child=bool(customer.get('send_home_with_child')),
+        teacher_name=_clip(customer.get('teacher_name'), 120),
+        child_grade=_clip(customer.get('child_grade'), 40),
+        child_name=_clip(customer.get('child_name'), 120),
+    )
+    if fulfillment == 'shipping' and ship:
+        order.shipping_recipient = _clip(ship.get('recipient') or f'{first} {last}'.strip(), 200)
+        order.shipping_street = _clip(ship.get('street'), 200)
+        order.shipping_street_2 = _clip(ship.get('street_2'), 200)
+        order.shipping_city = _clip(ship.get('city'), 100)
+        order.shipping_state = _clip(ship.get('state'), 50)
+        order.shipping_zip = _clip(ship.get('zip'), 20)
+        order.shipping_country = _clip(ship.get('country'), 50) or 'USA'
+    try:
+        db.session.add(order)
+        db.session.flush()
+        try:
+            from utils.stock import reserve_cart_inventory
+            reserve_cart_inventory(cart)  # paid already: never block on stock
+        except Exception:
+            current_app.logger.exception('stock reserve skipped for recovered order')
+        saved = build_order_items(order, cart, rid=f'capture-{cap.id}')
+        if not saved:
+            db.session.rollback()
+            return None, 'None of the items in the saved cart could be matched to products.'
+        try:
+            from utils.order_costs import order_cost_breakdown, apply_calculated_cogs
+            from utils.payment_fees import refresh_processing_fee
+            refresh_processing_fee(order, allow_network=False)
+            apply_calculated_cogs(order, order_cost_breakdown(order))
+        except Exception:
+            current_app.logger.exception('order cost calc skipped for recovered order')
+        db.session.commit()
+    except OrderItemError as exc:
+        db.session.rollback()
+        return None, f'One item could not be saved: {exc}'
+    except IntegrityError:
+        db.session.rollback()
+        winner = _existing_order_for_payment(cap.provider, cap.provider_ref)
+        if winner:
+            link_capture_to_order(cap.provider_ref, winner)
+            return winner, None
+        return None, 'The order could not be saved (database conflict).'
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.exception('create_order_from_capture failed for %s', cap.provider_ref)
+        return None, f'The order could not be saved: {exc}'
+
+    link_capture_to_order(cap.provider_ref, order)
+    if send_email and order.email:
+        queue_order_confirmation_email(order.id)
+    return order, None
+
+
+def _claim_or_wait_for_order(provider, ref):
+    """Claim a paid checkout for this save request, so the background sweep or
+    Stripe webhook can't build the same order at the same moment.
+
+    Returns an order another process just finished, or None to carry on.
+    """
+    import time as _time
+    from utils.payment_safety import claim_for_checkout
+    if claim_for_checkout(ref):
+        return None
+    for _ in range(12):
+        _time.sleep(0.5)
+        db.session.expire_all()
+        done = _existing_order_for_payment(provider, ref)
+        if done:
+            return done
+    return None
+
+
 @checkout_bp.route('/complete', methods=['POST'])
 def complete():
     """Complete order after payment. A captured PayPal payment is never dropped
@@ -1242,21 +1449,42 @@ def complete():
         return result
     method = (data.get('payment_method') or '').strip()
     pid = data.get('payment_id')
-    if method == 'paypal' and isinstance(pid, str) and pid.strip():
+    if method in ('paypal', 'stripe') and isinstance(pid, str) and pid.strip():
         pid = pid.strip()
         try:
-            from utils.payment_safety import get_capture, alert_unsaved_payment
-            paid = get_capture(pid) is not None or pid in (session.get('paypal_captured_amounts') or {})
+            from utils.payment_safety import get_capture, recover_paid_checkout, alert_unsaved_payment, release_claim
+            reason = f"Checkout said: {body.get('error')} ({body.get('error_code')})"
+            held = get_capture(pid)
+            if held is not None and held.order_id is None:
+                release_claim(held)  # this request's claim; let recovery take it
+            # The customer may already have paid. Save the order from the
+            # details stored at payment instead of turning them away.
+            order = recover_paid_checkout(method, pid, reason)
+            if order is not None:
+                from utils.cart_store import clear_cart as _clear_cart
+                _clear_cart()
+                session['checkout_success_order'] = order.order_number
+                session.pop('collection_id', None)
+                session.modified = True
+                return jsonify({
+                    'success': True,
+                    'order_number': order.order_number,
+                    'redirect_url': url_for('checkout.confirmation', order_number=order.order_number),
+                    'recovered': True,
+                })
+            cap = get_capture(pid)
+            paid = (cap is not None and cap.amount is not None) or (
+                method == 'paypal' and pid in (session.get('paypal_captured_amounts') or {}))
             if paid:
-                alert_unsaved_payment(pid, f"{body.get('error')} ({body.get('error_code')})")
+                alert_unsaved_payment(pid, reason)
                 body['payment_received'] = True
                 body['error'] = (
-                    'Your PayPal payment went through, but we hit a snag saving your order. '
+                    'Your payment went through, but we hit a snag saving your order. '
                     'Kayleigh has been notified and will reach out to you. Please do not pay again.'
                 )
                 return jsonify(body), status
         except Exception:
-            current_app.logger.exception('could not alert on unsaved PayPal payment %s', pid)
+            current_app.logger.exception('could not recover or alert on paid checkout %s', pid)
     return result
 
 
@@ -1277,9 +1505,24 @@ def _complete_order():
         paypal_paid = None
         prepaid_issues = []
         req_pid = data.get('payment_id') if isinstance(data.get('payment_id'), str) else None
+        if (data.get('payment_method') or '').strip() == 'stripe' and req_pid:
+            already = Order.query.filter_by(payment_intent_id=req_pid).first() \
+                or _claim_or_wait_for_order('stripe', req_pid)
+            if already:
+                from utils.cart_store import clear_cart as _clear_cart
+                _clear_cart()
+                session.modified = True
+                return jsonify({
+                    'success': True,
+                    'order_number': already.order_number,
+                    'redirect_url': url_for('checkout.confirmation', order_number=already.order_number),
+                    'replayed': True,
+                    'request_id': rid,
+                })
         if (data.get('payment_method') or '').strip() == 'paypal' and req_pid:
             from utils.payment_safety import verified_paypal_amount, get_capture
-            already = Order.query.filter_by(paypal_order_id=req_pid).first()
+            already = Order.query.filter_by(paypal_order_id=req_pid).first() \
+                or _claim_or_wait_for_order('paypal', req_pid)
             if already:
                 from utils.cart_store import clear_cart as _clear_cart
                 _clear_cart()
@@ -1661,14 +1904,14 @@ def _complete_order():
 
     queue_order_confirmation_email(order.id)
 
-    if payment_method == 'paypal' and payment_id:
+    if payment_method in ('paypal', 'stripe') and payment_id:
         try:
             from utils.payment_safety import link_capture_to_order, alert_order_saved_with_issues
             link_capture_to_order(payment_id, order)
             if prepaid_issues:
                 alert_order_saved_with_issues(order, prepaid_issues)
         except Exception:
-            current_app.logger.exception('checkout rid=%s post-save PayPal bookkeeping failed', rid)
+            current_app.logger.exception('checkout rid=%s post-save payment bookkeeping failed', rid)
 
     return jsonify({
         'success': True,
@@ -1713,7 +1956,21 @@ def stripe_webhook():
     if event_type == 'payment_intent.succeeded' and intent_id:
         order = Order.query.filter_by(payment_intent_id=intent_id).first()
         if order is None:
-            # Paid, but no order row. Alert rather than guess at a cart.
+            # Paid, but no order row. Build it from the checkout saved just
+            # before the card was charged.
+            try:
+                from utils.payment_safety import recover_card_payment, get_capture, GRACE_MINUTES
+                recovered = recover_card_payment(intent_id, intent_obj=obj)
+                if recovered is not None:
+                    return jsonify({'received': True, 'order_number': recovered.order_number, 'recovered': True})
+                cap = get_capture(intent_id)
+                if cap is not None and cap.created_at and \
+                        cap.created_at > datetime.utcnow() - timedelta(minutes=GRACE_MINUTES):
+                    # The phone is most likely saving it right now; the sweep
+                    # creates it in a few minutes if not.
+                    return jsonify({'received': True, 'pending': True})
+            except Exception:
+                current_app.logger.exception('webhook recovery failed for %s', intent_id)
             current_app.logger.error(
                 'ORPHANED PAYMENT: stripe intent %s succeeded for %s cents with no matching order',
                 intent_id, obj.get('amount'),

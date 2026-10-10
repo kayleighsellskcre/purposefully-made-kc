@@ -15,7 +15,7 @@ CHICAGO = ZoneInfo('America/Chicago')
 
 
 def unsaved_payments_job(app):
-    """Email the admin about any captured PayPal payment with no order."""
+    """Create any paid order the customer's phone never finished; alert if that fails."""
     with app.app_context():
         try:
             from utils.payment_safety import sweep_unsaved_payments
@@ -439,11 +439,11 @@ def init_scheduler(app):
             replace_existing=True
         )
 
-        # Every 10 minutes: alert on any PayPal payment that never became an order
+        # Every 3 minutes: any paid checkout (card or PayPal) without an order gets one
         from apscheduler.triggers.interval import IntervalTrigger
         scheduler.add_job(
             func=lambda: unsaved_payments_job(app),
-            trigger=IntervalTrigger(minutes=10),
+            trigger=IntervalTrigger(minutes=3),
             id='unsaved_payments_sweep',
             name='Alert on paid checkouts with no order',
             replace_existing=True

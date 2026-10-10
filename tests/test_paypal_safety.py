@@ -94,36 +94,62 @@ def test_order_saves_from_the_saved_cart_if_the_browser_cart_is_gone(client, see
     assert body['success'] is True
 
 
-def test_paid_but_unsaved_order_alerts_admin_and_tells_customer(client, seed, app, outbox):
+def test_paypal_payment_creates_the_order_in_the_same_step(client, seed, app, outbox):
+    """Meghan's case: the phone stops right after paying. The order must exist anyway."""
     _fill_cart(client, seed)
-    _capture(client)
-    body = client.post('/checkout/complete', json=_cash_payload(
-        payment_method='paypal', payment_id='EC-1', first_name='')).get_json()
-    assert body['success'] is False
-    assert body['payment_received'] is True
-    assert 'Please do not pay again' in body['error']
+    body = _capture(client).get_json()
+    assert body['success'] is True and body['order_number']
     with app.app_context():
-        note = AdminNotification.query.filter_by(kind='payment').one()
-        assert 'did not save' in note.title
-        assert PaymentCapture.query.one().alert_sent_at is not None
-    assert any('Paid order needs attention' in m.subject for m in outbox)
-    # A retry that fails again does not send a second alert.
-    client.post('/checkout/complete', json=_cash_payload(
-        payment_method='paypal', payment_id='EC-1', first_name=''))
+        order = Order.query.filter_by(paypal_order_id='EC-1').one()
+        assert order.payment_status == 'paid'
+        assert order.email == 'buyer@example.com'
+        assert order.items.count() == 1
+    # Receipt to the customer and the New Order email to the shop.
+    subjects = [m.subject for m in outbox]
+    assert any('receipt' in s.lower() for s in subjects)
+    assert any(s.startswith('New Order') for s in subjects)
+    # The phone's own save request (if it ever arrives) just returns the same order.
+    again = client.post('/checkout/complete', json=_cash_payload(
+        payment_method='paypal', payment_id='EC-1')).get_json()
+    assert again['order_number'] == body['order_number']
     with app.app_context():
-        assert AdminNotification.query.filter_by(kind='payment').count() == 1
+        assert Order.query.count() == 1
 
 
-def test_sweep_alerts_on_payments_left_without_an_order(client, seed, app):
+def test_sweep_creates_the_order_from_paypal_payer_details(client, seed, app, outbox):
+    """Even if the capture arrived with no checkout form details at all."""
     from utils.payment_safety import sweep_unsaved_payments
     _fill_cart(client, seed)
-    _capture(client)
+    with patch('routes.checkout._get_paypal_access_token', return_value='tok'), \
+         patch('requests.post') as post:
+        post.return_value = SimpleNamespace(status_code=200, json=lambda: _order_json(ONE_ITEM, 'EC-BARE'))
+        assert client.post('/checkout/paypal/capture-order', json={'order_id': 'EC-BARE'}).get_json()['success']
     with app.app_context():
+        assert Order.query.count() == 0
         cap = PaymentCapture.query.one()
-        cap.created_at = datetime.utcnow() - timedelta(minutes=30)
+        cap.created_at = datetime.utcnow() - timedelta(minutes=5)
         db.session.commit()
-        assert sweep_unsaved_payments() == 1
+        sweep_unsaved_payments()
+        order = Order.query.filter_by(paypal_order_id='EC-BARE').one()
+        assert order.full_name == 'Meghan Bogert'
+        assert order.email == 'megs@example.com'
+        assert AdminNotification.query.filter(AdminNotification.title.like('%saved automatically%')).count() == 1
         assert sweep_unsaved_payments() == 0
+
+
+def test_admin_is_alerted_only_when_an_order_cannot_be_built(client, seed, app, outbox):
+    from utils.payment_safety import sweep_unsaved_payments
+    with app.app_context():
+        cap = PaymentCapture(provider='paypal', provider_ref='EC-NOCART', amount=ONE_ITEM,
+                             payer_name='Pat Payer', payer_email='pat@example.com',
+                             created_at=datetime.utcnow() - timedelta(minutes=5))
+        db.session.add(cap)
+        db.session.commit()
+        sweep_unsaved_payments()
+        note = AdminNotification.query.filter_by(kind='payment').one()
+        assert 'did not save' in note.title
+        assert sweep_unsaved_payments() == 0
+    assert any('Paid order needs attention' in m.subject for m in outbox)
 
 
 def test_admin_can_look_up_a_payment_and_create_the_order(admin_client, app, seed):
@@ -213,3 +239,62 @@ def test_admin_can_copy_a_sibling_order_to_rebuild_a_lost_cart(admin_client, cli
         assert (item.product_id, item.size, item.color, item.design_id, item.placement) == \
                (src_item.product_id, src_item.size, src_item.color, src_item.design_id, src_item.placement)
         assert order.total == src.total
+
+
+def _create_paypal_order(client, order_id='EC-APPR'):
+    body = _cash_payload(payment_method='paypal', payment_id=None)
+    with patch('routes.checkout._get_paypal_access_token', return_value='tok'), \
+         patch('requests.post') as post:
+        post.return_value = SimpleNamespace(status_code=201, json=lambda: {'id': order_id})
+        assert client.post('/checkout/paypal/create-order', json=body).get_json()['id'] == order_id
+
+
+def test_paypal_checkout_is_saved_before_the_customer_approves(client, seed, app):
+    _fill_cart(client, seed)
+    _create_paypal_order(client)
+    with app.app_context():
+        cap = PaymentCapture.query.filter_by(provider_ref='EC-APPR').one()
+        assert cap.amount is None
+        assert 'buyer@example.com' in cap.customer_json
+
+
+def test_approved_but_uncollected_paypal_payment_is_collected_and_saved(client, seed, app, outbox):
+    """Customer tapped Pay Now in PayPal, then their phone never came back."""
+    from utils.payment_safety import sweep_unsaved_payments
+    _fill_cart(client, seed)
+    _create_paypal_order(client)
+    with app.app_context():
+        cap = PaymentCapture.query.one()
+        cap.created_at = datetime.utcnow() - timedelta(minutes=5)
+        db.session.commit()
+        approved = dict(_order_json(ONE_ITEM, 'EC-APPR'), status='APPROVED')
+        approved['purchase_units'][0]['payments'] = {}
+        with patch('routes.checkout._get_paypal_access_token', return_value='tok'), \
+             patch('requests.get', return_value=SimpleNamespace(status_code=200, json=lambda: approved)), \
+             patch('requests.post', return_value=SimpleNamespace(
+                 status_code=201, json=lambda: _order_json(ONE_ITEM, 'EC-APPR'))) as post:
+            sweep_unsaved_payments()
+        assert any('/capture' in str(c.args[0]) for c in post.call_args_list)
+        order = Order.query.filter_by(paypal_order_id='EC-APPR').one()
+        assert order.payment_status == 'paid'
+        assert order.email == 'buyer@example.com'
+    assert any(m.subject.startswith('New Order') for m in outbox)
+
+
+def test_never_approved_paypal_checkout_is_left_alone(client, seed, app):
+    from utils.payment_safety import sweep_unsaved_payments
+    _fill_cart(client, seed)
+    _create_paypal_order(client, 'EC-QUIT')
+    with app.app_context():
+        cap = PaymentCapture.query.one()
+        cap.created_at = datetime.utcnow() - timedelta(minutes=5)
+        db.session.commit()
+        created = dict(_order_json(ONE_ITEM, 'EC-QUIT'), status='CREATED')
+        created['purchase_units'][0]['payments'] = {}
+        with patch('routes.checkout._get_paypal_access_token', return_value='tok'), \
+             patch('requests.get', return_value=SimpleNamespace(status_code=200, json=lambda: created)), \
+             patch('requests.post') as post:
+            sweep_unsaved_payments()
+        assert not post.called
+        assert Order.query.count() == 0
+        assert AdminNotification.query.filter_by(kind='payment').count() == 0

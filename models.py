@@ -963,6 +963,8 @@ class PaymentCapture(db.Model):
     failure_reason = db.Column(db.Text)
     alert_sent_at = db.Column(db.DateTime)
     resolved_at = db.Column(db.DateTime)  # admin handled it outside the site
+    processing_at = db.Column(db.DateTime)  # claim while an order is being created from it
+    checked_at = db.Column(db.DateTime)     # last time a card payment's status was checked
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
     order = db.relationship('Order', foreign_keys=[order_id])

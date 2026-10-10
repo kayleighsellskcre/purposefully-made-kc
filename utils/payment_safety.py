@@ -277,12 +277,13 @@ def alert_unsaved_payment(paypal_order_id, reason):
     email = customer.get('email') or (cap.payer_email if cap else None) or 'unknown'
     amount = f'${cap.amount:.2f}' if cap is not None and cap.amount is not None else 'unknown amount'
     link = f'{admin_base_url(current_app)}/admin/orders/unsaved-payments'
+    method = 'card' if (cap is not None and cap.provider == 'stripe') else 'PayPal'
     body = (
-        f'{name} paid {amount} by PayPal, but the order did not save.\n\n'
+        f'{name} paid {amount} by {method}, but the order did not save on its own.\n\n'
         f'Customer email: {email}\n'
         f'Phone: {customer.get("phone") or "not given"}\n'
         f'Pickup or shipping: {customer.get("shipping_method") or "unknown"}\n'
-        f'PayPal order ID: {paypal_order_id}\n'
+        f'{"Stripe payment" if method == "card" else "PayPal order"} ID: {paypal_order_id}\n'
         f'What went wrong: {reason}\n\n'
         f'What they were buying:\n{cart_lines_text(cart)}\n\n'
         f'Create the order with one click here: {link}\n'
@@ -309,30 +310,284 @@ def alert_order_saved_with_issues(order, issues):
 
 # ── Background sweep ──────────────────────────────────────────────────────────
 
-def sweep_unsaved_payments(min_age_minutes=10):
-    """Alert on captures that never became an order (customer left the page)."""
-    from models import PaymentCapture
-    cutoff = datetime.utcnow() - timedelta(minutes=min_age_minutes)
+def record_pending_card_payment(intent_id, cart=None, customer=None, collection_id=None, user_id=None):
+    """Save a card / Apple Pay / Google Pay checkout just before it is charged."""
+    return record_pending_payment('stripe', intent_id, cart=cart, customer=customer,
+                                  collection_id=collection_id, user_id=user_id)
+
+
+def record_pending_payment(provider, ref, cart=None, customer=None, collection_id=None, user_id=None):
+    """Save a checkout before the customer pays (card or PayPal).
+
+    amount stays empty until the payment is confirmed, so unpaid attempts
+    never show up as paid orders anywhere.
+    """
+    from models import db, PaymentCapture
+    intent_id = ref
+    try:
+        cap = PaymentCapture.query.filter_by(provider_ref=intent_id).first()
+        if cap is None:
+            cap = PaymentCapture(provider=provider, provider_ref=intent_id)
+            db.session.add(cap)
+        elif cap.amount is not None:
+            return cap  # already paid; never overwrite the paid record
+        if cart:
+            cap.cart_json = json.dumps(cart)
+        if customer:
+            cap.customer_json = json.dumps(customer)
+            cap.payer_email = customer.get('email') or cap.payer_email
+            name = ' '.join(p for p in (customer.get('first_name'), customer.get('last_name')) if p)
+            cap.payer_name = name or cap.payer_name
+        cap.collection_id = collection_id or cap.collection_id
+        cap.user_id = user_id or cap.user_id
+        cap.created_at = datetime.utcnow()
+        db.session.commit()
+        return cap
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('could not record pending %s payment %s', provider, intent_id)
+        return None
+
+
+def _stripe_paid_amount(intent_id, intent_obj=None):
+    """Dollars Stripe actually collected for this intent, or None if not paid."""
+    intent = intent_obj
+    if intent is None:
+        if not current_app.config.get('STRIPE_SECRET_KEY'):
+            return None
+        import stripe
+        intent = stripe.PaymentIntent.retrieve(intent_id)
+    get = intent.get if hasattr(intent, 'get') else (lambda k, d=None: getattr(intent, k, d))
+    if get('status') != 'succeeded':
+        return None
+    received = get('amount_received') or get('amount')
+    return round(int(received) / 100.0, 2) if received is not None else None
+
+
+def release_claim(cap):
+    from models import db
+    try:
+        cap.processing_at = None
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
+def claim_for_checkout(ref):
+    """The phone's own save step claims the payment so the sweep can't also build it.
+
+    Returns True when this request may create the order.
+    """
+    cap = get_capture(ref)
+    if cap is None:
+        return True
+    return _claim(cap)
+
+
+def _collect_paypal(cap):
+    """For a PayPal checkout with no recorded payment: what did PayPal collect?
+
+    COMPLETED: already collected. APPROVED: the customer approved in PayPal
+    but their phone never asked us to collect it, so collect it now (they
+    tapped Pay Now). Returns (amount or None, finished_without_payment).
+    """
+    order_json = fetch_paypal_order(cap.provider_ref)
+    if not order_json:
+        return None, False
+    status = (order_json.get('status') or '').upper()
+    if status == 'APPROVED':
+        try:
+            import requests
+            from routes.checkout import _get_paypal_access_token, _paypal_base_url
+            app = current_app._get_current_object()
+            token = _get_paypal_access_token(app)
+            if token:
+                resp = requests.post(
+                    f'{_paypal_base_url(app)}/v2/checkout/orders/{cap.provider_ref}/capture',
+                    headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'},
+                    timeout=15,
+                )
+                if resp.status_code in (200, 201):
+                    order_json = resp.json()
+                    status = (order_json.get('status') or '').upper()
+                else:
+                    current_app.logger.error('sweep PayPal capture %s -> %s: %s',
+                                             cap.provider_ref, resp.status_code, resp.text[:200])
+        except Exception:
+            current_app.logger.exception('sweep could not collect approved PayPal order %s', cap.provider_ref)
+    if status == 'COMPLETED':
+        amount = completed_capture_total(order_json)
+        if amount is not None:
+            payer_name, payer_email = payer_from_order_json(order_json)
+            cap.payer_name = cap.payer_name or payer_name
+            cap.payer_email = cap.payer_email or payer_email
+            paid_at = _capture_time(order_json)
+            if paid_at:
+                cap.created_at = paid_at
+        return amount, False
+    return None, status in ('VOIDED',)
+
+
+def _claim(cap):
+    """Atomically claim a capture for order creation (no double orders)."""
+    from models import db, PaymentCapture
+    stale = datetime.utcnow() - timedelta(minutes=5)
+    try:
+        claimed = (
+            PaymentCapture.query
+            .filter(PaymentCapture.id == cap.id, PaymentCapture.order_id.is_(None))
+            .filter(db.or_(PaymentCapture.processing_at.is_(None), PaymentCapture.processing_at < stale))
+            .update({'processing_at': datetime.utcnow()}, synchronize_session=False)
+        )
+        db.session.commit()
+        return bool(claimed)
+    except Exception:
+        db.session.rollback()
+        return False
+
+
+def auto_create_order(cap, reason='The customer paid but their phone never finished checkout.'):
+    """Create the order for a paid checkout on its own; alert only if that fails.
+
+    Returns the order, or None when the admin had to be alerted instead.
+    """
+    from models import Order
+    from routes.checkout import create_order_from_capture
+    if cap.order_id:
+        return Order.query.get(cap.order_id)
+    if not _claim(cap):
+        return None
+    order, failure = create_order_from_capture(cap)
+    if order is not None:
+        _notify(
+            f'Order {order.order_number} saved automatically',
+            f'{order.full_name} paid but their phone never finished checkout. The order was created and emailed for you.',
+            f'{reason}\n\nThe order was created from the details saved at payment and the usual emails went out.',
+            url=f'/admin/orders/{order.id}', related_id=order.id,
+        )
+        expected = float(order.total or 0)
+        if cap.amount is not None and abs(float(cap.amount) - expected) >= 0.01:
+            alert_order_saved_with_issues(order, [
+                f'The customer paid ${cap.amount:.2f} but the saved cart totals ${expected:.2f}. Check the items.'
+            ])
+        return order
+    alert_unsaved_payment(cap.provider_ref, f'{reason} Automatic save failed: {failure}')
+    return None
+
+
+GRACE_MINUTES = 3  # let the customer's own phone finish first; no double orders
+
+
+def recover_card_payment(intent_id, intent_obj=None):
+    """A card payment succeeded with no order: create it from the saved checkout.
+
+    Stripe's notice usually arrives while the customer's phone is still saving
+    the order itself, so a fresh checkout is left alone and the 3-minute sweep
+    picks it up if the phone never finishes.
+    """
+    from models import db
+    cap = get_capture(intent_id)
+    if cap is None:
+        return None
+    if cap.created_at and cap.created_at > datetime.utcnow() - timedelta(minutes=GRACE_MINUTES):
+        return None
+    amount = _stripe_paid_amount(intent_id, intent_obj)
+    if amount is None:
+        return None
+    if cap.amount != amount:
+        cap.amount = amount
+        db.session.commit()
+    return auto_create_order(cap)
+
+
+def recover_paid_checkout(provider, ref, reason):
+    """Called when the normal order step failed after payment."""
+    cap = get_capture(ref)
+    if cap is None:
+        return None
+    if provider == 'stripe':
+        try:
+            amount = _stripe_paid_amount(ref)
+        except Exception:
+            amount = None
+        if amount is None:
+            return None
+        cap.amount = amount
+        from models import db
+        db.session.commit()
+    elif cap.amount is None:
+        return None
+    return auto_create_order(cap, reason=reason)
+
+
+def sweep_unsaved_payments(min_age_minutes=GRACE_MINUTES):
+    """Every few minutes: any paid checkout without an order gets one.
+
+    PayPal captures are always paid. Card checkouts are checked with Stripe;
+    unpaid ones are left alone and retired after two days.
+    """
+    from models import db, PaymentCapture, Order
+    now = datetime.utcnow()
+    cutoff = now - timedelta(minutes=min_age_minutes)
     pending = (
         PaymentCapture.query
         .filter(PaymentCapture.order_id.is_(None))
+        .filter(PaymentCapture.resolved_at.is_(None))
         .filter(PaymentCapture.alert_sent_at.is_(None))
         .filter(PaymentCapture.created_at <= cutoff)
         .all()
     )
-    sent = 0
+    handled = 0
     for cap in pending:
-        from models import Order
-        existing = Order.query.filter_by(paypal_order_id=cap.provider_ref).first()
+        if cap.provider == 'stripe':
+            existing = Order.query.filter_by(payment_intent_id=cap.provider_ref).first()
+        else:
+            existing = Order.query.filter_by(paypal_order_id=cap.provider_ref).first()
         if existing:
             link_capture_to_order(cap.provider_ref, existing)
             continue
-        if alert_unsaved_payment(
-            cap.provider_ref,
-            cap.failure_reason or 'The customer paid but never reached the order step (page closed or connection dropped).',
-        ):
-            sent += 1
-    return sent
+        if cap.provider == 'paypal' and cap.amount is None:
+            age = now - (cap.created_at or now)
+            wait = timedelta(minutes=3) if age < timedelta(minutes=30) else timedelta(minutes=30)
+            if cap.checked_at and now - cap.checked_at < wait:
+                continue
+            try:
+                amount, dead = _collect_paypal(cap)
+            except Exception:
+                current_app.logger.exception('PayPal check failed for %s', cap.provider_ref)
+                continue
+            cap.checked_at = now
+            if amount is None:
+                if dead or (cap.created_at and cap.created_at < now - timedelta(days=2)):
+                    cap.resolved_at = now
+                    cap.failure_reason = 'PayPal payment was never approved (checkout abandoned).'
+                db.session.commit()
+                continue
+            cap.amount = amount
+            db.session.commit()
+        if cap.provider == 'stripe':
+            # Check fresh checkouts every sweep, older abandoned ones every 30 min.
+            age = now - (cap.created_at or now)
+            wait = timedelta(minutes=3) if age < timedelta(minutes=30) else timedelta(minutes=30)
+            if cap.checked_at and now - cap.checked_at < wait:
+                continue
+            try:
+                amount = _stripe_paid_amount(cap.provider_ref)
+            except Exception:
+                current_app.logger.exception('stripe check failed for %s', cap.provider_ref)
+                continue
+            cap.checked_at = now
+            if amount is None:
+                if cap.created_at and cap.created_at < now - timedelta(days=2):
+                    cap.resolved_at = now
+                    cap.failure_reason = 'Card was never charged (checkout abandoned).'
+                db.session.commit()
+                continue
+            cap.amount = amount
+            db.session.commit()
+        if auto_create_order(cap) is not None or cap.alert_sent_at:
+            handled += 1
+    return handled
 
 
 # ── Clues for recovering what a guest bought ──────────────────────────────────

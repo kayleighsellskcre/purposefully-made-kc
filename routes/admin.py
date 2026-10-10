@@ -519,7 +519,8 @@ def orders():
         from models import PaymentCapture
         unsaved_payment_count = (
             PaymentCapture.query
-            .filter(PaymentCapture.order_id.is_(None), PaymentCapture.resolved_at.is_(None))
+            .filter(PaymentCapture.order_id.is_(None), PaymentCapture.resolved_at.is_(None),
+                    PaymentCapture.amount.isnot(None))
             .count()
         )
     except Exception:
@@ -5726,6 +5727,7 @@ def unsaved_payments():
         PaymentCapture.query
         .filter(PaymentCapture.order_id.is_(None))
         .filter(PaymentCapture.resolved_at.is_(None))
+        .filter(PaymentCapture.amount.isnot(None))
         .order_by(PaymentCapture.created_at.desc())
         .all()
     )
@@ -5878,93 +5880,30 @@ def unsaved_payment_resolve(cap_id):
 @admin_bp.route('/orders/unsaved-payments/<int:cap_id>/create', methods=['POST'])
 @admin_required
 def unsaved_payment_create_order(cap_id):
-    """Turn a paid PayPal checkout into a real order, exactly like checkout would."""
+    """Turn a paid checkout into a real order, exactly like checkout would."""
     from models import PaymentCapture
-    from routes.checkout import (
-        build_order_items, OrderItemError, calculate_totals, queue_order_confirmation_email,
-    )
-    from utils.order_costs import default_due_date
-    from utils.payment_safety import link_capture_to_order
+    from routes.checkout import create_order_from_capture
     cap = PaymentCapture.query.get_or_404(cap_id)
     if cap.order_id:
         return redirect(url_for('admin.order_detail', order_id=cap.order_id))
-    existing = Order.query.filter_by(paypal_order_id=cap.provider_ref).first()
-    if existing:
-        link_capture_to_order(cap.provider_ref, existing)
-        return redirect(url_for('admin.order_detail', order_id=existing.id))
-
-    view = _capture_view(cap)
-    cart = view['cart']
-    if not cart:
+    try:
+        has_cart = bool(json.loads(cap.cart_json or '[]'))
+    except ValueError:
+        has_cart = False
+    if not has_cart:
         flash('Add what they ordered first.', 'error')
         return redirect(url_for('admin.unsaved_payments'))
-    first = (request.form.get('first_name') or '').strip()
-    last = (request.form.get('last_name') or '').strip()
-    if not first:
-        first, _, rest = view['name'].partition(' ')
-        last = last or rest
-    email = (request.form.get('email') or view['email'] or '').strip()
-    fulfillment = request.form.get('fulfillment') or view['shipping_method'] or 'pickup'
-    try:
-        customer = json.loads(cap.customer_json or '{}') or {}
-    except ValueError:
-        customer = {}
-    ship = customer.get('shipping_info') or customer.get('paypal_shipping_info') or {}
-
-    totals = calculate_totals(cart, fulfillment)
-    order = Order(
-        email=email,
-        first_name=first or 'PayPal',
-        last_name=last or 'Customer',
-        phone=view['phone'] or None,
-        fulfillment_method=fulfillment,
-        subtotal=totals['subtotal'],
-        shipping_cost=totals['shipping_cost'],
-        tax=totals['tax'],
-        total=totals['total'],
-        payment_method='paypal',
-        payment_status='paid',
-        paypal_order_id=cap.provider_ref,
-        paid_at=cap.created_at or datetime.utcnow(),
-        amount_paid=float(cap.amount or totals['total']),
-        status='paid',
-        production_stage='order_received',
-        due_date=default_due_date(),
-        user_id=cap.user_id,
-        collection_id=cap.collection_id,
-    )
-    if fulfillment == 'shipping' and ship:
-        order.shipping_recipient = ship.get('recipient') or f'{first} {last}'.strip()
-        order.shipping_street = ship.get('street')
-        order.shipping_street_2 = ship.get('street_2')
-        order.shipping_city = ship.get('city')
-        order.shipping_state = ship.get('state')
-        order.shipping_zip = ship.get('zip')
-    db.session.add(order)
-    db.session.flush()
-    try:
-        saved = build_order_items(order, cart, rid=f'recover-{cap.id}')
-    except OrderItemError as exc:
-        db.session.rollback()
-        flash(f'One item could not be saved: {exc}', 'error')
+    order, failure = create_order_from_capture(cap, overrides={
+        'first_name': (request.form.get('first_name') or '').strip(),
+        'last_name': (request.form.get('last_name') or '').strip(),
+        'email': (request.form.get('email') or '').strip(),
+        'fulfillment': request.form.get('fulfillment') or '',
+    }, send_email=request.form.get('send_email') == 'on')
+    if order is None:
+        flash(failure or 'The order could not be created.', 'error')
         return redirect(url_for('admin.unsaved_payments'))
-    if not saved:
-        db.session.rollback()
-        flash('None of the items could be saved. Check the style numbers.', 'error')
-        return redirect(url_for('admin.unsaved_payments'))
-    try:
-        from utils.order_costs import order_cost_breakdown, apply_calculated_cogs
-        from utils.payment_fees import refresh_processing_fee
-        refresh_processing_fee(order, allow_network=False)
-        apply_calculated_cogs(order, order_cost_breakdown(order))
-    except Exception:
-        current_app.logger.exception('recovered order cost calc skipped')
-    db.session.commit()
-    link_capture_to_order(cap.provider_ref, order)
-    if request.form.get('send_email') == 'on' and order.email:
-        queue_order_confirmation_email(order.id)
-    if abs(float(cap.amount or 0) - float(order.total or 0)) >= 0.01:
-        flash(f'Order {order.order_number} created. Note: PayPal collected ${cap.amount:.2f} but these items total ${order.total:.2f}.', 'info')
+    if cap.amount is not None and abs(float(cap.amount) - float(order.total or 0)) >= 0.01:
+        flash(f'Order {order.order_number} created. Note: the customer paid ${cap.amount:.2f} but these items total ${order.total:.2f}.', 'info')
     else:
         flash(f'Order {order.order_number} created.', 'success')
     return redirect(url_for('admin.order_detail', order_id=order.id))

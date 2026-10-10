@@ -881,10 +881,14 @@ function buildPayPalButtonConfig(fundingSource) {
                 PMKC.showFlash(fieldError, 'error');
                 throw new Error(fieldError);
             }
+            let createPayload = {shipping_method: currentFulfillment};
+            try {
+                createPayload = Object.assign({}, buildOrderPayload(null, 'paypal'), {shipping_method: currentFulfillment});
+            } catch (e) { /* the form details are a safety copy only */ }
             const resp = await fetch('/checkout/paypal/create-order', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({shipping_method: currentFulfillment})
+                body: JSON.stringify(createPayload)
             });
             const data = await resp.json();
             if (data.error) { PMKC.showFlash(data.error, 'error'); throw new Error(data.error); }
@@ -908,6 +912,12 @@ function buildPayPalButtonConfig(fundingSource) {
                 const msg = captured.error || 'PayPal capture failed. Please try again.';
                 if (errEl) { errEl.textContent = msg; errEl.style.display = ''; }
                 PMKC.showFlash(msg, 'error');
+                return;
+            }
+            if (captured.redirect_url) {
+                // The order was saved in the same step that took the payment.
+                try { sessionStorage.removeItem('pmkc_checkout_token'); } catch (e) {}
+                window.location.href = captured.redirect_url;
                 return;
             }
             try {
