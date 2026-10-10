@@ -58,6 +58,19 @@ def completed_capture_total(order_json):
     return round(total, 2) if found else None
 
 
+def _capture_time(order_json):
+    """When PayPal says the money was captured (naive UTC), or None."""
+    for unit in (order_json or {}).get('purchase_units') or []:
+        for cap in ((unit.get('payments') or {}).get('captures') or []):
+            stamp = cap.get('create_time')
+            if stamp:
+                try:
+                    return datetime.strptime(stamp.replace('Z', ''), '%Y-%m-%dT%H:%M:%S')
+                except ValueError:
+                    continue
+    return None
+
+
 def payer_from_order_json(order_json):
     payer = (order_json or {}).get('payer') or {}
     name = payer.get('name') or {}
@@ -100,6 +113,9 @@ def record_paypal_capture(paypal_order_id, amount, order_json=None, cart=None,
         if cap is None:
             cap = PaymentCapture(provider='paypal', provider_ref=paypal_order_id)
             db.session.add(cap)
+        paid_at = _capture_time(order_json)
+        if paid_at:
+            cap.created_at = paid_at
         cap.amount = amount
         cap.payer_name = payer_name or cap.payer_name
         cap.payer_email = payer_email or cap.payer_email

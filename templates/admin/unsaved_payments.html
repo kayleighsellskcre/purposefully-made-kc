@@ -30,7 +30,7 @@
             <div class="up-head">
                 <div>
                     <h2 class="up-h2">{{ row.name }} &middot; ${{ "%.2f"|format(cap.amount or 0) }}</h2>
-                    <p class="up-meta">{{ row.email or 'no email' }}{% if row.phone %} &middot; {{ row.phone }}{% endif %} &middot; paid {{ cap.created_at.strftime('%b %d, %I:%M %p') }} UTC &middot; PayPal {{ cap.provider_ref }}</p>
+                    <p class="up-meta">{{ row.email or 'no email' }}{% if row.phone %} &middot; {{ row.phone }}{% endif %} &middot; paid {{ cap.created_at|central('%b %d, %I:%M %p') }} &middot; PayPal {{ cap.provider_ref }}</p>
                     {% if cap.failure_reason %}<p class="up-reason">{{ cap.failure_reason }}</p>{% endif %}
                 </div>
                 <form method="POST" action="{{ url_for('admin.unsaved_payment_resolve', cap_id=cap.id) }}">
