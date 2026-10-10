@@ -525,46 +525,7 @@
     </div>
 </div>
 
-{% if org_nav %}
-{# ── Org navigation bar: team buttons + fan wear ───────────────────── #}
-{% set ns = namespace(team_sections=[], fan_sections=[]) %}
-{% for sec in org_nav.sections %}
-    {% if 'fan' in sec.label | lower %}
-        {% set ns.fan_sections = ns.fan_sections + [sec] %}
-    {% else %}
-        {% set ns.team_sections = ns.team_sections + [sec] %}
-    {% endif %}
-{% endfor %}
-<div class="org-store-nav">
-    <div class="org-store-nav-inner">
-        {% if ns.team_sections %}
-        <p class="org-store-nav-label">Choose your team</p>
-        <div class="org-store-team-row">
-            {% for sec in ns.team_sections %}
-            <a href="{{ url_for('collection.view', slug=sec.collection.slug) }}"
-               class="org-store-team-btn{% if sec.collection_id == collection.id %} is-current{% endif %}">
-                <span class="osn-icon">{{ sec.icon }}</span>
-                <span class="osn-name">{{ sec.label }}</span>
-                <small class="osn-sub">Jerseys &amp; uniforms</small>
-            </a>
-            {% endfor %}
-        </div>
-        {% endif %}
-        {% if ns.fan_sections %}
-        <div class="org-store-fanwear-row">
-            {% for sec in ns.fan_sections %}
-            <a href="{{ url_for('collection.view', slug=sec.collection.slug) }}"
-               class="org-store-fan-btn{% if sec.collection_id == collection.id %} is-current{% endif %}">
-                <span>{{ sec.icon or '👕' }}</span>
-                <span>{{ sec.label }}</span>
-                <small>Tees, hoodies &amp; fan apparel</small>
-            </a>
-            {% endfor %}
-        </div>
-        {% endif %}
-    </div>
-</div>
-{% endif %}
+{# Org team navigation removed — shoppers choose their team on the org landing page #}
 
 <section class="design-board">
     <div class="container">

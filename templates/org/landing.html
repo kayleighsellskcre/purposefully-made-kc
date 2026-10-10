@@ -60,6 +60,16 @@
         </a>
         {% endfor %}
     </div>
+    {% elif team_sections %}
+    {# Always show Fan Wear CTA below team tiles even without a dedicated fan section #}
+    <div class="org-fanwear-wrap">
+        <p class="org-fanwear-divider">— or —</p>
+        <a href="{{ url_for('shop.index') }}" class="org-fanwear-btn">
+            <span>👕</span>
+            <span>Fan Wear</span>
+            <small>Tees, hoodies &amp; matching looks for the whole family</small>
+        </a>
+    </div>
     {% elif sections and not team_sections %}
     {# All sections, no fan-wear label — show standard tiles #}
     <div class="org-team-grid">
