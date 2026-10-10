@@ -1,4 +1,15 @@
 {% set _uniform = (team_store or {}).get('uniform', {}) %}
+{% set _home_ids = _uniform.get('home_product_ids') or [] %}
+{% set _away_ids = _uniform.get('away_product_ids') or [] %}
+{% set _main_id = _home_ids[0] if _home_ids else _uniform.get('product_id') %}
+{% if _home_ids %}
+{% set _youth_id = _home_ids[1] if _home_ids|length > 1 else none %}
+{% else %}
+{% set _youth_ids = (_uniform.get('product_ids') or []) | reject('equalto', _main_id) | list %}
+{% set _youth_id = _youth_ids[0] if _youth_ids else none %}
+{% endif %}
+{% set _away_main_id = _away_ids[0] if _away_ids and _away_ids[0] != _main_id else none %}
+{% set _away_youth_id = _away_ids[1] if _away_ids|length > 1 and _away_ids[1] != _youth_id else none %}
 <div class="form-section team-store-setup" id="playerUniformsSection">
     <input type="hidden" name="team_store_present" value="1">
 
@@ -47,7 +58,7 @@
                     <option value="">Choose one jersey or apparel style</option>
                     {% for product in products %}
                     <option value="{{ product.id }}"
-                            {% if _uniform.get('product_id') == product.id %}selected{% endif %}>
+                            {% if _main_id == product.id %}selected{% endif %}>
                         {{ product.display_age or product.age_group or '' }} {{ product|display_name }} - {{ product.style_number }}
                     </option>
                     {% endfor %}
@@ -59,7 +70,7 @@
                     <option value="">Same as main style, or skip</option>
                     {% for product in products %}
                     <option value="{{ product.id }}"
-                            {% if product.id in (_uniform.get('product_ids') or []) and product.id != _uniform.get('product_id') %}selected{% endif %}>
+                            {% if _youth_id == product.id %}selected{% endif %}>
                         {{ product.display_age or product.age_group or '' }} {{ product|display_name }} - {{ product.style_number }}
                     </option>
                     {% endfor %}
@@ -77,6 +88,28 @@
                 <select id="uniform_away_color" name="uniform_away_color" class="form-control"
                         data-selected="{{ _uniform.get('away_color', '') }}">
                     <option value="">No Away uniform</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="uniform_away_product_id">Away uniform style <span class="text-muted">(optional)</span></label>
+                <select id="uniform_away_product_id" name="uniform_away_product_id" class="form-control">
+                    <option value="">Same style as Home</option>
+                    {% for product in products %}
+                    <option value="{{ product.id }}" {% if _away_main_id == product.id %}selected{% endif %}>
+                        {{ product.display_age or product.age_group or '' }} {{ product|display_name }} - {{ product.style_number }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="uniform_away_youth_product_id">Youth away style <span class="text-muted">(optional)</span></label>
+                <select id="uniform_away_youth_product_id" name="uniform_away_youth_product_id" class="form-control">
+                    <option value="">Same as youth Home style</option>
+                    {% for product in products %}
+                    <option value="{{ product.id }}" {% if _away_youth_id == product.id %}selected{% endif %}>
+                        {{ product.display_age or product.age_group or '' }} {{ product|display_name }} - {{ product.style_number }}
+                    </option>
+                    {% endfor %}
                 </select>
             </div>
         </div>
@@ -146,6 +179,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const youth = document.getElementById('uniform_youth_product_id');
     const home = document.getElementById('uniform_home_color');
     const away = document.getElementById('uniform_away_color');
+    const awayProduct = document.getElementById('uniform_away_product_id');
+    const awayYouth = document.getElementById('uniform_away_youth_product_id');
     const fanPersonalization = document.getElementById('fan_personalization_enabled');
     const homeLogoInput = document.getElementById('uniform_home_design_id');
     const awayLogoInput = document.getElementById('uniform_away_design_id');
@@ -181,8 +216,17 @@ document.addEventListener('DOMContentLoaded', function() {
         return ids;
     }
 
-    function sharedColors() {
-        const ids = selectedUniformIds();
+    function awayUniformIds() {
+        const ids = [];
+        const main = (awayProduct && awayProduct.value) || product.value;
+        const kid = (awayYouth && awayYouth.value) || (youth && youth.value) || '';
+        if (main) ids.push(main);
+        if (kid && kid !== main) ids.push(kid);
+        return ids;
+    }
+
+    function sharedColors(idsOverride) {
+        const ids = idsOverride || selectedUniformIds();
         if (!ids.length) return [];
         let list = (colors[String(ids[0])] || []).slice();
         ids.slice(1).forEach(function(id) {
@@ -272,7 +316,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.PMKCRefreshUniformLogos = renderUniformLogos;
 
     function syncFanProduct() {
-        const uniformIds = selectedUniformIds();
+        const uniformIds = selectedUniformIds().concat(away.value ? awayUniformIds() : []);
         document.querySelectorAll('input[name="products"]').forEach(function(box) {
             const isUniform = enabled.checked && uniformIds.indexOf(box.value) !== -1;
             if (isUniform) box.checked = false;
@@ -289,7 +333,7 @@ document.addEventListener('DOMContentLoaded', function() {
         fields.hidden = !enabled.checked;
         const form = enabled.closest('form');
         if (form) form.classList.toggle('has-uniforms', enabled.checked);
-        [product, youth, home, away, fanPersonalization].forEach(function(el) {
+        [product, youth, home, away, awayProduct, awayYouth, fanPersonalization].forEach(function(el) {
             if (el) el.disabled = !enabled.checked;
         });
         product.required = enabled.checked;
@@ -297,7 +341,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const list = sharedColors();
         const hasStyle = !!product.value;
         fillColorSelect(home, list, hasStyle ? 'Choose Home color' : 'Choose the uniform style first', initial ? initialHome : home.value);
-        fillColorSelect(away, list, 'No Away uniform', initial ? initialAway : away.value);
+        fillColorSelect(away, sharedColors(awayUniformIds()), 'No Away uniform', initial ? initialAway : away.value);
         if (awayLogoWrap) awayLogoWrap.hidden = !away.value;
         syncFanProduct();
         renderUniformLogos();
@@ -306,8 +350,11 @@ document.addEventListener('DOMContentLoaded', function() {
     enabled.addEventListener('change', function() { syncUniform(false); });
     product.addEventListener('change', function() { syncUniform(false); });
     if (youth) youth.addEventListener('change', function() { syncUniform(false); });
+    if (awayProduct) awayProduct.addEventListener('change', function() { syncUniform(false); });
+    if (awayYouth) awayYouth.addEventListener('change', function() { syncUniform(false); });
     away.addEventListener('change', function() {
         if (awayLogoWrap) awayLogoWrap.hidden = !away.value;
+        syncFanProduct();
     });
     document.addEventListener('change', function(event) {
         if (event.target && event.target.name === 'allowed_designs') renderUniformLogos();

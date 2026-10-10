@@ -109,6 +109,7 @@ def view(slug):
         load_showcase_designs,
         resolve_uniform_design_id,
         team_store_config,
+        uniform_kit_offered,
         visible_store_products,
     )
     from utils.pricing import group_order_listed_price
@@ -147,7 +148,7 @@ def view(slug):
             kit_colors = [
                 (key, uniform[f'{key}_color'])
                 for key in ('home', 'away')
-                if uniform.get(f'{key}_color')
+                if uniform_kit_offered(uniform, product.id, key)
             ]
             allowed_uniform_colors = {color for _key, color in kit_colors}
             variants = get_carousel_colors_for_product(
@@ -469,7 +470,7 @@ def share(slug):
     # Check if this collection belongs to an org so we can link the organizer there
     from models import OrgSection
     org_section = OrgSection.query.filter_by(collection_id=collection.id).first()
-    org_slug = org_section.org.slug if org_section else None
+    org_slug = org_section.organization.slug if org_section and org_section.organization else None
 
     return render_template('collection/share.html', collection=collection,
                            designs=designs, can_manage=can_manage,

@@ -117,6 +117,8 @@ def test_uniform_and_fan_wear_are_saved_as_separate_lanes(customer_client, seed,
             'away_color': 'White',
             'home_design_id': None,
             'away_design_id': None,
+            'home_product_ids': [seed['tee_id']],
+            'away_product_ids': [seed['tee_id']],
         }
         assert config['fan_product_ids'] == [seed['hoodie_id']]
         assert {p.id for p in collection.products} == {
@@ -907,8 +909,10 @@ def test_team_store_offers_player_or_fan_paths(client, seed, app):
         db.session.commit()
 
     html = client.get(f'/c/{seed["collection_slug"]}').get_data(as_text=True)
-    assert 'I’m ordering for a player' in html
-    assert 'I only need family &amp; fan wear' in html
+    # Jerseys show first; fan wear sits behind a centered button below them.
+    assert 'I’m ordering for a player' not in html
+    assert 'Shop Family &amp; Fan Wear' in html
+    assert html.index('id="uniformSection"') < html.index('id="fanWearToggle"')
     assert 'Home Uniform' in html
     assert 'Away Uniform' in html
     assert 'catalog_section=uniform' in html

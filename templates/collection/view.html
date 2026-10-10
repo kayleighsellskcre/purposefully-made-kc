@@ -368,23 +368,20 @@
     margin-bottom: 0.5rem;
 }
 
-.shopper-path {
-    max-width:760px; margin:0 auto 2.5rem; padding:1.25rem;
-    border:1px solid var(--border-color); border-radius:14px; background:#fff;
-    text-align:center; box-shadow:var(--box-shadow);
+.fan-wear-cta {
+    text-align:center; margin:-1.5rem auto 3rem; max-width:520px;
 }
-.shopper-path h2 { font-family:var(--font-heading); margin:0 0 .35rem; }
-.shopper-path p { color:var(--text-secondary); margin:0 0 1rem; }
-.shopper-path-options { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
-.shopper-path-btn {
-    min-height:64px; padding:.8rem 1rem; border:1.5px solid var(--border-color);
-    border-radius:10px; background:#fff; color:var(--text-primary); font:inherit;
-    font-weight:700; cursor:pointer;
+.fan-wear-cta-note { margin:0 0 .55rem; color:var(--text-secondary); font-size:.95rem; }
+.fan-wear-cta-btn {
+    display:inline-flex; align-items:center; justify-content:center;
+    min-height:56px; padding:.85rem 2rem; border:2px solid var(--terra-cotta);
+    border-radius:999px; background:#fff; color:var(--terra-cotta);
+    font-weight:700; font-size:1.05rem; text-decoration:none; transition:var(--transition);
 }
-.shopper-path-btn:hover, .shopper-path-btn.is-active {
-    border-color:var(--terra-cotta); background:rgba(184,124,111,.09);
-    color:var(--terra-cotta);
+.fan-wear-cta-btn:hover, .fan-wear-cta-btn.is-active {
+    background:var(--terra-cotta); color:#fff;
 }
+.fan-wear-cta-sub { margin:.5rem 0 0; color:var(--text-secondary); font-size:.85rem; }
 .uniform-section {
     max-width:1000px; margin:0 auto 3.5rem; padding:1.5rem;
     border-radius:16px; background:linear-gradient(135deg,rgba(184,124,111,.10),rgba(232,208,177,.12));
@@ -469,7 +466,6 @@
 @media (max-width: 768px) {
     .design-board { padding: 2rem 0 4rem; }
     .design-board-grid { gap: 1.5rem; }
-    .shopper-path-options { grid-template-columns:1fr; }
     .uniform-kit-card { grid-template-columns:120px 1fr; }
     .uniform-kit-photo, .uniform-kit-photo > img:first-child { width:120px; height:120px; }
 }
@@ -572,23 +568,9 @@
 
 <section class="design-board">
     <div class="container">
-        {% if team_store.uniform.enabled and uniform_products %}
-        <div class="shopper-path" id="shopperPath">
-            <h2>What are you shopping for?</h2>
-            <p>We’ll show only the part of the store you need.</p>
-            <div class="shopper-path-options" role="group" aria-label="Choose how you are ordering">
-                <button type="button" class="shopper-path-btn" data-shopper-path="player">
-                    I’m ordering for a player
-                </button>
-                {% if products %}
-                <button type="button" class="shopper-path-btn" data-shopper-path="fan">
-                    I only need family &amp; fan wear
-                </button>
-                {% endif %}
-            </div>
-        </div>
-
-        <section class="uniform-section" id="uniformSection" hidden>
+        {% set has_uniform_lane = team_store.uniform.enabled and uniform_products %}
+        {% if has_uniform_lane %}
+        <section class="uniform-section" id="uniformSection">
             <div class="store-lane-heading">
                 <h2>Player Uniform</h2>
                 <p>Choose Home, Away, youth, or adult. The jersey logo is already on the shirt. Add more than one if you need them.</p>
@@ -621,10 +603,20 @@
             <p class="text-muted" style="text-align:center;">Uniform colors are being updated. Please contact the organizer.</p>
             {% endif %}
         </section>
+        {% if products %}
+        <div class="fan-wear-cta">
+            <p class="fan-wear-cta-note">Don&rsquo;t need a jersey?</p>
+            <a href="?path=fan#fanWearSection" class="fan-wear-cta-btn" id="fanWearToggle"
+               aria-controls="fanWearSection" aria-expanded="false">
+                Shop Family &amp; Fan Wear
+            </a>
+            <p class="fan-wear-cta-sub">Tees, hoodies &amp; more for family and fans</p>
+        </div>
+        {% endif %}
         {% endif %}
 
         <div class="fan-wear-section" id="fanWearSection"
-             {% if team_store.uniform.enabled and uniform_products %}hidden{% endif %}>
+             {% if has_uniform_lane %}hidden{% endif %}>
         <div class="design-board-intro">
             <h2>{% if team_store.uniform.enabled %}Family &amp; Fan Wear{% else %}Your Design Board{% endif %}</h2>
             {% if team_store.uniform.enabled %}
@@ -795,42 +787,34 @@
 
 <script>
 (function() {
-    const chooser = document.getElementById('shopperPath');
-    const uniform = document.getElementById('uniformSection');
+    // Jerseys always show first. Fan wear opens from the centered button
+    // under them, or directly with ?path=fan (the cart links here).
+    const toggle = document.getElementById('fanWearToggle');
     const fan = document.getElementById('fanWearSection');
-    if (!chooser || !uniform || !fan) return;
-    const buttons = Array.from(chooser.querySelectorAll('[data-shopper-path]'));
-    const key = 'group-shopper-path-{{ collection.slug|e }}';
+    if (!toggle || !fan) return;
+    const key = 'group-fan-open-{{ collection.slug|e }}';
 
-    function choose(path, persist) {
-        const isPlayer = path === 'player';
-        uniform.hidden = !isPlayer;
-        fan.hidden = !(isPlayer || path === 'fan');
-        buttons.forEach(function(button) {
-            const active = button.dataset.shopperPath === path;
-            button.classList.toggle('is-active', active);
-            button.setAttribute('aria-pressed', active ? 'true' : 'false');
-        });
-        if (persist) {
-            try { window.sessionStorage.setItem(key, path); } catch (e) {}
-            const params = new URLSearchParams(window.location.search);
-            params.set('path', path);
-            window.history.replaceState(null, '', window.location.pathname + '?' + params.toString());
-        }
+    function open(scroll) {
+        fan.hidden = false;
+        toggle.setAttribute('aria-expanded', 'true');
+        toggle.classList.add('is-active');
+        try { window.sessionStorage.setItem(key, '1'); } catch (e) {}
+        if (scroll) fan.scrollIntoView({behavior: 'smooth', block: 'start'});
     }
 
-    buttons.forEach(function(button) {
-        button.addEventListener('click', function() {
-            choose(button.dataset.shopperPath, true);
-            (button.dataset.shopperPath === 'player' ? uniform : fan)
-                .scrollIntoView({behavior:'smooth', block:'start'});
-        });
+    toggle.addEventListener('click', function(event) {
+        event.preventDefault();
+        open(true);
+        const params = new URLSearchParams(window.location.search);
+        params.set('path', 'fan');
+        window.history.replaceState(null, '', window.location.pathname + '?' + params.toString());
     });
+
     const urlPath = new URLSearchParams(window.location.search).get('path');
     let saved = '';
     try { saved = window.sessionStorage.getItem(key) || ''; } catch (e) {}
-    if (urlPath === 'player' || urlPath === 'fan') choose(urlPath, false);
-    else if (saved === 'player' || saved === 'fan') choose(saved, false);
+    if (urlPath === 'fan') open(window.location.hash === '#fanWearSection');
+    else if (saved === '1') open(false);
 })();
 
 document.querySelectorAll('.color-carousel').forEach(carousel => {

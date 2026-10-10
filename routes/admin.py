@@ -2989,216 +2989,23 @@ def add_collection():
                 flash(roster_error, 'error')
                 return redirect(url_for('admin.add_collection'))
 
-            db.session.commit()
-
-            # ── Org linking (optional) ──────────────────────────────────────
-            org_action = request.form.get('org_action', '')
-            if org_action == 'existing':
-                from models import Organization, OrgSection
-                org_id = request.form.get('org_existing_id', '').strip()
-                org = Organization.query.get(int(org_id)) if org_id.isdigit() else None
-                if org:
-                    already = OrgSection.query.filter_by(org_id=org.id, collection_id=collection.id).first()
-                    if not already:
-                        section = OrgSection(
-                            org_id=org.id,
-                            collection_id=collection.id,
-                            label=request.form.get('org_section_label', collection.name).strip() or collection.name,
-                            icon=request.form.get('org_section_icon', '🏷️').strip() or '🏷️',
-                            sort_order=OrgSection.query.filter_by(org_id=org.id).count(),
-                        )
-                        db.session.add(section)
-                        db.session.commit()
-                    flash(f'Added to {org.name} organization page.', 'success')
-            elif org_action == 'new':
-                from models import Organization, OrgSection
-                from slugify import slugify as _slugify
-                import json as _json
-
-                org_name = collection.name.strip()
-                team_names = [n.strip() for n in request.form.getlist('org_team_names[]') if n.strip()]
-                org_style_mode = request.form.get('org_style_mode', 'same')
-
-                if org_name and team_names:
-                    # Create the org
-                    org_slug = _slugify(org_name)
-                    base_slug = org_slug; i = 1
-                    while Organization.query.filter_by(slug=org_slug).first():
-                        org_slug = f'{base_slug}-{i}'; i += 1
-                    org = Organization(name=org_name, slug=org_slug)
-                    db.session.add(org)
-                    db.session.flush()
-
-                    all_collections = [collection]
-
-                    # ── Per-team style mode: create a store for each team ────
-                    if org_style_mode == 'different' and len(team_names) > 1:
-                        team_product_ids = request.form.getlist('org_team_uniform_product_id[]')
-                        team_home_colors  = request.form.getlist('org_team_home_color[]')
-
-                        # Apply team 0 jersey config to the first (already-created) collection
-                        def _apply_jersey(coll, pid, home_color):
-                            if not pid:
-                                return
-                            try:
-                                ts = _json.loads(coll.team_store_config or '{}')
-                            except Exception:
-                                ts = {}
-                            ts.setdefault('uniform', {})
-                            ts['uniform']['enabled'] = True
-                            ts['uniform']['product_id'] = int(pid)
-                            if home_color:
-                                ts['uniform']['home_color'] = home_color
-                            coll.team_store_config = _json.dumps(ts)
-
-                        _apply_jersey(
-                            collection,
-                            team_product_ids[0] if team_product_ids else None,
-                            team_home_colors[0]  if team_home_colors  else None,
-                        )
-
-                        # Create a store for each additional team
-                        for idx, tname in enumerate(team_names[1:], 1):
-                            t_slug = _slugify(f'{org_name}-{tname}')
-                            t_base = t_slug; j = 1
-                            while Collection.query.filter_by(slug=t_slug).first():
-                                t_slug = f'{t_base}-{j}'; j += 1
-
-                            t_coll = Collection(
-                                name=f'{tname}',
-                                slug=t_slug,
-                                is_active=collection.is_active,
-                                shipping_enabled=collection.shipping_enabled,
-                                allow_cash_pickup=collection.allow_cash_pickup,
-                                tax_rate=collection.tax_rate,
-                                created_by_user_id=collection.created_by_user_id,
-                                organizer_user_id=collection.organizer_user_id,
-                                group_kind=collection.group_kind,
-                                payment_mode=collection.payment_mode,
-                                visibility=collection.visibility,
-                                restrict_options=collection.restrict_options,
-                                allowed_colors=collection.allowed_colors,
-                                allowed_placements=collection.allowed_placements,
-                            )
-                            db.session.add(t_coll)
-                            db.session.flush()
-
-                            # Build product list: fan products + THIS team's own jersey
-                            # (not team 0's jersey which is what collection.products contains)
-                            first_pid = int(team_product_ids[0]) if team_product_ids and team_product_ids[0] else None
-                            this_pid  = int(team_product_ids[idx]) if idx < len(team_product_ids) and team_product_ids[idx] else None
-
-                            fan_products = [p for p in collection.products if (first_pid is None or p.id != first_pid)]
-
-                            if this_pid:
-                                this_jersey = Product.query.filter_by(id=this_pid, is_active=True).first()
-                                if this_jersey:
-                                    t_coll.products = [this_jersey] + fan_products
-                                else:
-                                    t_coll.products = fan_products
-                            else:
-                                t_coll.products = fan_products
-
-                            # Also add youth jersey if specified for this team
-                            team_youth_ids = request.form.getlist('org_team_youth_product_id[]')
-                            this_youth_pid = int(team_youth_ids[idx]) if idx < len(team_youth_ids) and team_youth_ids[idx] else None
-                            if this_youth_pid and this_youth_pid != this_pid:
-                                youth_jersey = Product.query.filter_by(id=this_youth_pid, is_active=True).first()
-                                if youth_jersey and youth_jersey not in t_coll.products:
-                                    t_coll.products = t_coll.products + [youth_jersey]
-
-                            db.session.flush()
-
-                            # Apply this team's jersey config to team_store JSON
-                            _apply_jersey(
-                                t_coll,
-                                team_product_ids[idx] if idx < len(team_product_ids) else None,
-                                team_home_colors[idx]  if idx < len(team_home_colors)  else None,
-                            )
-
-                            # Copy back design settings from main collection
-                            t_coll.allow_back_design = collection.allow_back_design
-                            t_coll.back_design_type = collection.back_design_type
-                            t_coll.back_design_name_part = collection.back_design_name_part
-                            t_coll.back_design_font = collection.back_design_font
-                            t_coll.back_design_text_color = collection.back_design_text_color
-                            t_coll.back_design_outline = collection.back_design_outline
-                            t_coll.back_design_outline_color = collection.back_design_outline_color
-                            t_coll.lock_back_design_style = collection.lock_back_design_style
-
-                            db.session.flush()
-                            all_collections.append(t_coll)
-
-                    # Per-team back design: override each team's settings if "different" mode
-                    if org_style_mode == 'different' and request.form.get('back_design_per_team') == 'different':
-                        team_back_types       = request.form.getlist('org_team_back_design_type[]')
-                        team_back_name_parts  = request.form.getlist('org_team_back_name_part[]')
-                        team_back_fonts       = request.form.getlist('org_team_back_font[]')
-                        team_back_text_colors = request.form.getlist('org_team_back_text_color[]')
-                        team_back_outlines    = request.form.getlist('org_team_back_outline[]')
-                        team_back_out_colors  = request.form.getlist('org_team_back_outline_color[]')
-
-                        for idx, coll in enumerate(all_collections):
-                            if idx < len(team_back_types):
-                                bt = team_back_types[idx]
-                                coll.allow_back_design = bt != 'none'
-                                coll.back_design_type = bt if bt in ('name_number', 'image', 'both') else 'both'
-                            if idx < len(team_back_name_parts):
-                                np = team_back_name_parts[idx].strip().lower()
-                                coll.back_design_name_part = np if np in ('last', 'first') else 'last'
-                            if idx < len(team_back_fonts):
-                                coll.back_design_font = team_back_fonts[idx] or None
-                            if idx < len(team_back_text_colors):
-                                coll.back_design_text_color = team_back_text_colors[idx] or None
-                            outline_on = (team_back_outlines[idx] == 'on') if idx < len(team_back_outlines) else True
-                            coll.back_design_outline = outline_on
-                            if idx < len(team_back_out_colors):
-                                coll.back_design_outline_color = team_back_out_colors[idx] or None
-                            db.session.flush()
-
-                    # Create OrgSections for every collection
-                    for sort_idx, (tname, coll) in enumerate(zip(team_names, all_collections)):
-                        section = OrgSection(
-                            org_id=org.id,
-                            collection_id=coll.id,
-                            label=tname,
-                            icon='🏷️',
-                            sort_order=sort_idx,
-                        )
-                        db.session.add(section)
-
-                    db.session.commit()
-
-                    if len(all_collections) > 1:
-                        flash(
-                            f'Created {len(all_collections)} stores for {org_name}! '
-                            f'Share the org page: purposefullymadekc.com/org/{org_slug}',
-                            'success'
-                        )
-                    else:
-                        flash(
-                            f'Organization page created! '
-                            f'Share purposefullymadekc.com/org/{org_slug} with your organizer.',
-                            'success'
-                        )
-            # ───────────────────────────────────────────────────────────────
-
+            # Artwork uploaded with the form (no-JavaScript fallback) joins the
+            # store before any team copies are made, so every team gets it.
             upload_count = 0
             new_upload_ids = []
-            if pending_uploads:
-                for f in pending_uploads:
-                    try:
-                        design = _save_collection_design(f, current_user.id)
-                    except Exception as e:
-                        current_app.logger.exception('Collection design upload failed: %s', e)
-                        design = None
-                    if design:
-                        allowed_design_ids.append(design.id)
-                        new_upload_ids.append(design.id)
-                        upload_count += 1
-                if upload_count:
-                    collection.allowed_design_ids = json.dumps(allowed_design_ids)
-                    collection.restrict_options = True
+            for f in pending_uploads:
+                try:
+                    design = _save_collection_design(f, current_user.id)
+                except Exception as e:
+                    current_app.logger.exception('Collection design upload failed: %s', e)
+                    design = None
+                if design:
+                    allowed_design_ids.append(design.id)
+                    new_upload_ids.append(design.id)
+                    upload_count += 1
+            if upload_count:
+                collection.allowed_design_ids = json.dumps(allowed_design_ids)
+                collection.restrict_options = True
 
             from utils.group_orders import resolve_showcase_design_ids
             showcase_ids = resolve_showcase_design_ids(
@@ -3208,13 +3015,43 @@ def add_collection():
                 showcase_new_uploads=request.form.get('showcase_new_uploads') == 'on',
             )
             collection.showcase_design_ids = json.dumps(showcase_ids) if showcase_ids else None
-            if upload_count or showcase_ids:
-                db.session.commit()
+
+            # ── Multi-team organization (optional) ──────────────────────────
+            # Built in the same transaction as the store: either everything
+            # saves (org page, every team store, jerseys, logos) or nothing does.
+            from utils.group_org import OrgSetupError, add_store_to_org, create_org_from_wizard
+            org_action = request.form.get('org_action', '')
+            org_flash = None
+            if org_action == 'existing':
+                org = add_store_to_org(collection, request.form)
+                if org:
+                    org_flash = f'Added to the {org.name} organization page.'
+            elif org_action == 'new':
+                try:
+                    org, stores = create_org_from_wizard(collection, request.form, current_user)
+                except OrgSetupError as e:
+                    db.session.rollback()
+                    flash(str(e), 'error')
+                    return redirect(url_for('admin.add_collection'))
+                if len(stores) > 1:
+                    org_flash = (
+                        f'Created {len(stores)} team stores for {org.name}. '
+                        f'Share the organization page: purposefullymadekc.com/org/{org.slug}'
+                    )
+                else:
+                    org_flash = (
+                        f'Organization page created. Share '
+                        f'purposefullymadekc.com/org/{org.slug} with your organizer.'
+                    )
+
+            db.session.commit()
 
             msg = 'Group order created successfully'
             if upload_count:
                 msg += f' with {upload_count} design(s) uploaded'
             flash(msg + '.', 'success')
+            if org_flash:
+                flash(org_flash, 'success')
             if organizer_notice:
                 flash(organizer_notice, 'success')
             return redirect(url_for('admin.collections'))
@@ -5992,3 +5829,26 @@ def unsaved_payment_collect(cap_id):
         return redirect(url_for('admin.unsaved_payments'))
     flash(f'Collected ${amount:.2f} and created order {order.order_number}.', 'success')
     return redirect(url_for('admin.order_detail', order_id=order.id))
+
+
+@admin_bp.route('/orders/<int:order_id>/mark-paid', methods=['POST'])
+@admin_required
+def mark_order_paid(order_id):
+    """Release an Underpaid order once the balance is settled."""
+    from routes.checkout import send_order_confirmation_email
+    from utils.payment_fees import true_profit
+    order = Order.query.get_or_404(order_id)
+    if order.payment_status != 'underpaid':
+        flash('That order is not marked Underpaid.', 'info')
+        return redirect(url_for('admin.order_detail', order_id=order_id))
+    order.payment_status = 'paid'
+    if order.status == 'new':
+        order.status = 'paid'
+    p = true_profit(order)
+    if p is not None:
+        order.profit = p
+    db.session.commit()
+    if request.form.get('send_receipt') == 'on' and not order.confirmation_email_sent_at:
+        send_order_confirmation_email(order)
+    flash(f'Order {order.order_number} marked paid.', 'success')
+    return redirect(url_for('admin.order_detail', order_id=order_id))
