@@ -564,7 +564,7 @@
             <p class="text-muted" style="text-align:center;">Uniform colors are being updated. Please contact the organizer.</p>
             {% endif %}
         </section>
-        {% if products %}
+        {% if products and request.args.get('path') != 'fan' %}
         <div class="fan-wear-cta">
             <p class="fan-wear-cta-note">Don&rsquo;t need a jersey?</p>
             <a href="?path=fan#fanWearSection" class="fan-wear-cta-btn" id="fanWearToggle"

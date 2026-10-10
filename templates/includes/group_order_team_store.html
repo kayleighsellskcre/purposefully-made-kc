@@ -124,6 +124,16 @@
                 <small>Leave this off to keep player personalization on uniforms only.</small>
             </span>
         </label>
+
+        <label class="team-store-toggle" style="margin-top:.75rem;">
+            <input type="checkbox" id="fan_show_jersey_logo"
+                   name="fan_show_jersey_logo" value="on"
+                   {% if (team_store or {}).get('fan_show_jersey_logo', true) %}checked{% endif %}>
+            <span>
+                <strong>Show jersey logo as a fan wear design option</strong>
+                <small>Uncheck to hide the jersey logo from fan wear — only other uploaded designs will show.</small>
+            </span>
+        </label>
     </fieldset>
 </div>
 

@@ -1017,11 +1017,27 @@ def customize(product_slug):
     gallery_designs = []
     try:
         if coll:
-            # Group orders only offer artwork uploaded/approved for that
-            # specific store. Never fall back to the general design gallery.
             if uniform_logo_locked:
                 gallery_designs = []
+            elif catalog_section == 'fan':
+                # Fan wear: show the full public design gallery so fans aren't
+                # limited to just the sport jersey logo. Then optionally prepend
+                # the jersey logo(s) for this store if the organizer wants them
+                # available as a fan wear option (fan_show_jersey_logo, default True).
+                from utils.design_variants import gallery_cards_for_public
+                gallery_designs = gallery_cards_for_public(
+                    Design, resolve_url=_resolve_image_url, limit=200
+                )
+                fan_show_jersey = lane_config.get('fan_show_jersey_logo', True)
+                if fan_show_jersey and allowed_design_ids:
+                    jersey_designs = load_collection_designs(coll)
+                    gallery_ids = {d['id'] for d in gallery_designs}
+                    # Prepend any jersey-specific designs not already in the public gallery
+                    for d in reversed(jersey_designs):
+                        if d['id'] not in gallery_ids:
+                            gallery_designs.insert(0, d)
             else:
+                # Uniform and general group-order section: only organizer-approved artwork.
                 gallery_designs = (
                     load_collection_designs(coll) if allowed_design_ids else []
                 )

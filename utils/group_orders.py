@@ -411,6 +411,11 @@ def team_store_config(collection):
         'fan_personalization_enabled': bool(
             parsed.get('fan_personalization_enabled', False)
         ),
+        # True = jersey logo appears as an option on fan wear customizer (default).
+        # Set to False in team_store_config JSON to hide the jersey logo from fans.
+        'fan_show_jersey_logo': bool(
+            parsed.get('fan_show_jersey_logo', True)
+        ),
     }
 
 
@@ -851,6 +856,13 @@ def set_collection_products_from_form(collection):
             'fan_product_ids': [pid for pid in fan_ids if pid in by_id],
             'fan_personalization_enabled': (
                 request.form.get('fan_personalization_enabled') == 'on'
+            ),
+            # True = jersey logo appears as a design choice on fan wear (default on).
+            # Coaches can uncheck to hide it so fans see only other uploaded designs.
+            'fan_show_jersey_logo': (
+                request.form.get('fan_show_jersey_logo') == 'on'
+                if 'fan_show_jersey_logo' in request.form
+                else True
             ),
         }, separators=(',', ':'))
     else:
