@@ -117,6 +117,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE product ADD COLUMN IF NOT EXISTS fit_type VARCHAR(30)",
                     "ALTER TABLE product ADD COLUMN IF NOT EXISTS neck_style VARCHAR(30)",
                     "ALTER TABLE product ADD COLUMN IF NOT EXISTS sleeve_length VARCHAR(30)",
+                    "ALTER TABLE product ADD COLUMN IF NOT EXISTS family_key VARCHAR(100)",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS design_fee DOUBLE PRECISION DEFAULT 0",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS original_filename VARCHAR(500)",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS file_size INTEGER",

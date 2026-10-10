@@ -360,6 +360,9 @@ class Product(db.Model):
     fit_type = db.Column(db.String(30))  # 'Unisex', 'Men\'s', 'Women\'s', 'Fitted', etc.
     neck_style = db.Column(db.String(30))  # 'Crew Neck', 'V-Neck', 'Scoop Neck', 'Hooded', etc.
     sleeve_length = db.Column(db.String(30))  # 'Short Sleeve', 'Long Sleeve', 'Sleeveless', '3/4 Sleeve'
+    # Manual family grouping override — lets admin link toddler/baby/youth styles that
+    # don't share a style-number prefix with their adult counterpart (e.g. RS3321T → BC3001)
+    family_key = db.Column(db.String(100), nullable=True, index=True)
     
     description = db.Column(db.Text)
     

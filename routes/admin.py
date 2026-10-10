@@ -2566,6 +2566,7 @@ def edit_product(product_id):
         product.fit_type = request.form.get('fit_type')
         product.neck_style = request.form.get('neck_style')
         product.sleeve_length = request.form.get('sleeve_length')
+        product.family_key = request.form.get('family_key', '').strip() or None
         product.description = request.form.get('description')
         product.base_price = base_price
         product.wholesale_cost = _form_money('wholesale_cost', 0.0)

@@ -231,15 +231,24 @@ _AGE_ORDER_LIST = ['adult', 'youth', 'toddler', 'baby']
 def infer_family_key(item):
     """Auto-detect a family key from style number, grouping age variants together.
 
+    If the product has a non-empty ``family_key`` attribute set by an admin,
+    that value is used directly (allows manually linking toddler/baby styles
+    that don't share a style-number prefix with their adult counterpart).
+
+    Auto-detection rule: strip leading age-indicator character (Y / T / B)
+    from the letter tail that follows the numeric part of the style number.
+
     Examples:
         BC3001, BC3001Y, BC3001T, BC3001B  →  'BC3001'   (classic tee family)
         BC3001CVC, BC3001YCVC              →  'BC3001CVC' (CVC tee family)
         PC54, PC54Y                         →  'PC54'
         CC1717                              →  'CC1717'
-
-    The rule: strip leading age-indicator character (Y / T / B) from the
-    letter tail that follows the numeric part of the style number.
     """
+    # Prefer the admin-set manual override when present
+    manual = str(_val(item, 'family_key') or '').strip()
+    if manual:
+        return manual
+
     style = re.sub(r'[^A-Z0-9]', '', (_val(item, 'style_number') or '').upper())
     m = re.match(r'^([A-Z]*?)(\d+)([A-Z]*)$', style)
     if not m:

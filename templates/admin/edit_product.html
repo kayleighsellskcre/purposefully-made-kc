@@ -101,6 +101,16 @@
                 </div>
 
                 <div class="ep-field">
+                    <label>Family Key <small style="font-weight:400;color:#888;">(optional — links matching styles across ages)</small></label>
+                    <input type="text" name="family_key" value="{{ product.family_key or '' }}"
+                           placeholder="e.g. BC3001 — leave blank to auto-detect from style number"
+                           style="font-family:monospace;">
+                    <p style="margin:.25rem 0 0;font-size:.75rem;color:#888;">
+                        Set the same value on adult, youth, toddler, and baby variants to group them as one family card in the shop &amp; group orders. Only needed when style numbers don't follow the standard Y/T/B suffix convention.
+                    </p>
+                </div>
+
+                <div class="ep-field">
                     <label>Base Price</label>
                     <div class="ep-prefix-wrap">
                         <span class="ep-prefix">$</span>

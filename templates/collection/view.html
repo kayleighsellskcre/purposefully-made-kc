@@ -614,29 +614,48 @@
         </div>
         {% endif %}
 
-        {% if products %}
+        {% set fan_families = product_families if product_families is defined else [] %}
+        {% if fan_families %}
         <div class="design-board-grid">
-            {% for product in products %}
-            {# The colour carousel below is a nested loop whose own `loop` shadows
-               this one. Aliased so the image tags can tell which cards are in the
-               first row and should not be lazy-loaded. #}
+            {% for fam in fan_families %}
+            {% set product = fam.primary %}
             {% set product_loop = loop %}
-            {% set family = product.age_family if product.age_family is defined else none %}
-            <article class="design-card {% if collection.deadline_passed %}deadline-passed{% endif %}{% if family %} design-card--family{% endif %}" data-catalog-item data-age="{{ family.ages if family else (product.display_age or '') }}" data-age-raw="{{ product.age_group or '' }}" data-category="{{ product.display_category or '' }}" data-category-raw="{{ product.category or '' }}" data-brand="{{ product.display_brand or '' }}" data-brand-raw="{{ product.brand or '' }}" data-style="{{ product.style_number or '' }}">
+            {# catalog_section for this collection — 'fan' when a team store has configured fan IDs #}
+            {% set cs = 'fan' if team_store.configured else none %}
+            <article class="design-card {% if collection.deadline_passed %}deadline-passed{% endif %}{% if fam.is_family %} design-card--family{% endif %}"
+                     data-catalog-item
+                     data-age="{{ fam.ages | join(',') if fam.is_family else (product.display_age or '') }}"
+                     data-age-raw="{{ product.age_group or '' }}"
+                     data-category="{{ product.display_category or '' }}"
+                     data-category-raw="{{ product.category or '' }}"
+                     data-brand="{{ product.display_brand or '' }}"
+                     data-brand-raw="{{ product.brand or '' }}"
+                     data-style="{{ product.style_number or '' }}">
+
+                {# Card wrapper: clickable unless deadline passed #}
                 {% if collection.deadline_passed %}
                 <div>
+                {% elif fam.is_family %}
+                <a href="#" class="coll-family-link" aria-haspopup="dialog">
                 {% else %}
-                <a href="{{ url_for('shop.customize', product_slug=product.slug, catalog_section='fan' if team_store.configured else none) }}">
+                <a href="{{ url_for('shop.customize', product_slug=product.slug, catalog_section=cs) }}">
                 {% endif %}
-                    <div class="design-card-image">
+
+                    <div class="design-card-image" style="position:relative;">
+                        {# Age-group strip — only when multiple ages are in this family #}
+                        {% if fam.is_family %}
+                        <div class="family-age-strip">
+                            {% for age in fam.ages %}
+                            <span class="family-age-chip family-age-chip--{{ age }}">{{ age|capitalize }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
                         {% if product.carousel_colors and product.carousel_colors|length > 0 %}
                         <div class="color-carousel" data-product-id="{{ product.id }}">
                             <div class="carousel-images">
                                 {% for variant in product.carousel_colors %}
                                 <div class="carousel-slide {% if loop.first %}active{% endif %}" data-color="{{ variant.color_name }}">
-                                    {# Inactive slides are hidden with opacity rather than display, so
-                                       without this the browser fetched every colour of every product
-                                       at full priority. #}
                                     <img src="{{ variant.front_image_url }}"
                                          alt="{{ product|display_name }} – {{ variant.color_name }}"
                                          {% if loop.first and product_loop.index0 < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
@@ -647,14 +666,10 @@
                             </div>
                             {% if product.carousel_colors|length > 1 %}
                             <button class="carousel-btn carousel-prev" type="button" aria-label="Previous color">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                    <polyline points="15 18 9 12 15 6"></polyline>
-                                </svg>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
                             </button>
                             <button class="carousel-btn carousel-next" type="button" aria-label="Next color">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                    <polyline points="9 18 15 12 9 6"></polyline>
-                                </svg>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
                             </button>
                             <div class="color-indicator">
                                 <span class="current-color">{{ product.carousel_colors[0].color_name }}</span>
@@ -679,28 +694,17 @@
                         </div>
                         {% endif %}
                     </div>
+
                     <div class="design-card-content">
-                        <h3>{{ product|display_name }}</h3>
-                        {% if family %}
-                        <span class="age-badge age-badge--family">{{ family.labels }}</span>
+                        <h3 class="dc-product-name">{{ product|display_name }}</h3>
+                        {% if fam.is_family %}
+                        <span class="age-badge age-badge--family">{{ fam.ages | map('capitalize') | join(' · ') }}</span>
                         {% elif product.display_age %}
-                        <span class="age-badge {% if 'outh' in (product.display_age or '') %}age-badge--youth{% else %}age-badge--adult{% endif %}">{{ product.display_age }}</span>
+                        <span class="age-badge {% if product.display_age == 'youth' %}age-badge--youth{% elif product.display_age == 'toddler' %}age-badge--toddler{% elif product.display_age == 'baby' %}age-badge--baby{% else %}age-badge--adult{% endif %}">{{ product.display_age|capitalize }}</span>
                         {% endif %}
                         <p class="style-label">{{ product.display_brand }}{% if product.display_category %} · {{ product.display_category }}{% endif %} · {{ product.style_number }}</p>
-                        {% if family %}
-                        <p class="sizes-label">Sizes: {{ family.sizes }}</p>
-                        <p class="family-match-label">
-                            {%- if family.colors_match %}Same colors in every size
-                            {%- elif family.shared_colors %}{{ family.shared_colors }} color{{ 's' if family.shared_colors != 1 }} come{{ 's' if family.shared_colors == 1 }} in every size
-                            {%- else %}Pick kid or adult sizes on the next page{% endif -%}
-                        </p>
-                        {% else %}
-                        {% if product.available_sizes_list %}
+                        {% if not fam.is_family and product.available_sizes_list %}
                         <p class="sizes-label">Sizes: {{ product.available_sizes_list | sort_sizes | join(', ') }}</p>
-                        {% endif %}
-                        {% if product.display_age and 'outh' in product.display_age %}
-                        <p class="family-match-label" style="color:var(--terra-cotta,#b56c4c);">Same colors as the adult styles ♡</p>
-                        {% endif %}
                         {% endif %}
                         {% if product.carousel_colors %}
                         <div class="color-swatches">
@@ -714,27 +718,57 @@
                         </div>
                         {% endif %}
                         <div class="price-row">
-                            {% if family and family.price_varies %}
-                            <span class="price"><small>From</small> ${{ "%.2f"|format(family.price_from) }}</span>
-                            {% else %}
                             <span class="price">${{ "%.2f"|format(product.listed_price if product.listed_price is defined else product.base_price) }}</span>
-                            {% endif %}
                             {% if collection.deadline_passed %}
                             <span class="cta" style="background:var(--text-secondary);box-shadow:none;cursor:not-allowed;opacity:0.6;">Closed</span>
                             {% elif collection.not_yet_open %}
                             <span class="cta" style="background:var(--terra-cotta);opacity:0.75;cursor:default;">Opens {{ collection.order_opens_at|kc_date('%b %-d') }}</span>
+                            {% elif fam.is_family %}
+                            <span class="cta">Choose Age →</span>
                             {% else %}
                             <span class="cta">Customize</span>
                             {% endif %}
                         </div>
                     </div>
+
                 {% if collection.deadline_passed %}
                 </div>
+                {% elif fam.is_family %}
+                </a>
+                {# Server-rendered member list — JS clones this into the family modal #}
+                <template class="coll-family-members-tpl">
+                    <p class="fam-modal-subtitle">{{ product.display_brand or product.brand }} · {{ product.display_category or product.category }}</p>
+                    <div class="fam-modal-age-grid">
+                    {% for member in fam.members %}
+                    <a href="{{ url_for('shop.customize', product_slug=member.slug, catalog_section=cs) }}"
+                       class="fam-mac">
+                        <span class="fam-mac-age">{{ (member.display_age or 'adult')|capitalize }}</span>
+                        <span class="fam-mac-colors">{{ member.carousel_colors|length if member.carousel_colors else 0 }} colors</span>
+                        <span class="fam-mac-price">${{ "%.2f"|format(member.listed_price if member.listed_price is defined else member.base_price) }}</span>
+                        <svg class="fam-mac-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </a>
+                    {% endfor %}
+                    </div>
+                </template>
                 {% else %}
                 </a>
                 {% endif %}
             </article>
             {% endfor %}
+        </div>
+
+        {# Family age-group modal (shared by all family cards on this page) #}
+        <div id="collFamilyModal" class="family-modal" hidden role="dialog" aria-modal="true" aria-labelledby="collFamilyModalTitle">
+            <div class="family-modal-backdrop"></div>
+            <div class="family-modal-panel">
+                <div class="family-modal-header">
+                    <h2 id="collFamilyModalTitle" class="family-modal-title">Choose your age group</h2>
+                    <button class="family-modal-close" type="button" aria-label="Close">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <div class="family-modal-body" id="collFamilyModalBody"></div>
+            </div>
         </div>
         {% else %}
         <div class="design-board-empty">
@@ -855,5 +889,145 @@ document.querySelectorAll('.color-carousel').forEach(carousel => {
         pills.push(pill);
     });
 })();
+
+// ── Family Age-Group Modal (group order collection) ──────────────────────────
+(function () {
+    var modal    = document.getElementById('collFamilyModal');
+    var body     = document.getElementById('collFamilyModalBody');
+    var title    = document.getElementById('collFamilyModalTitle');
+    var closeBtn = modal && modal.querySelector('.family-modal-close');
+    var backdrop = modal && modal.querySelector('.family-modal-backdrop');
+    if (!modal) return;
+
+    function openModal(card) {
+        var tpl  = card.querySelector('.coll-family-members-tpl');
+        if (!tpl) return;
+        var nameEl = card.querySelector('.dc-product-name');
+        title.textContent = nameEl ? nameEl.textContent.trim() : 'Choose your age group';
+        body.innerHTML = '';
+        body.appendChild(tpl.content.cloneNode(true));
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+        var first = body.querySelector('.fam-mac');
+        if (first) first.focus();
+    }
+
+    function closeModal() {
+        modal.hidden = true;
+        document.body.style.overflow = '';
+    }
+
+    document.querySelectorAll('.coll-family-link').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            openModal(this.closest('article'));
+        });
+    });
+
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (backdrop) backdrop.addEventListener('click', closeModal);
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !modal.hidden) closeModal();
+    });
+}());
 </script>
+
+<style>
+/* ── Family age chips on collection cards ── */
+.family-age-strip {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    display: flex; gap: 4px; flex-wrap: wrap;
+    padding: 6px 8px;
+    background: linear-gradient(to top, rgba(0,0,0,.55) 0%, transparent 100%);
+    z-index: 2; pointer-events: none;
+}
+.family-age-chip {
+    display: inline-block;
+    padding: 2px 8px; border-radius: 20px;
+    font-size: .7rem; font-weight: 700;
+    letter-spacing: .04em; text-transform: uppercase;
+    color: #fff; border: 1.5px solid rgba(255,255,255,.5);
+}
+.family-age-chip--adult   { background: var(--terra-cotta, #b56c4c); }
+.family-age-chip--youth   { background: #7a9e7e; }
+.family-age-chip--toddler { background: #8a7ab0; }
+.family-age-chip--baby    { background: #7ab0b0; }
+
+/* Family card ring */
+.design-card--family { border: 2px solid transparent; transition: border-color .2s; }
+.design-card--family:hover { border-color: var(--terra-cotta, #b56c4c); }
+.age-badge--toddler { background: #8a7ab0; color: #fff; }
+.age-badge--baby    { background: #7ab0b0; color: #fff; }
+
+/* ── Collection family modal (reuses shop's .family-modal styles) ── */
+.family-modal {
+    position: fixed; inset: 0; z-index: 9000;
+    display: flex; align-items: flex-end; justify-content: center;
+}
+.family-modal[hidden] { display: none; }
+.family-modal-backdrop {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,.45); backdrop-filter: blur(2px); cursor: pointer;
+}
+.family-modal-panel {
+    position: relative; z-index: 1;
+    background: #fff; border-radius: 20px 20px 0 0;
+    padding: 0 0 env(safe-area-inset-bottom, 0);
+    width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 -8px 40px rgba(0,0,0,.18);
+    animation: famModalSlideUp .25s cubic-bezier(.25,.8,.25,1);
+}
+@keyframes famModalSlideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+@media (min-width: 600px) {
+    .family-modal { align-items: center; }
+    .family-modal-panel {
+        border-radius: 20px; margin: 1rem;
+        animation: famModalFadeIn .2s ease;
+    }
+    @keyframes famModalFadeIn {
+        from { transform: scale(.95); opacity: 0; }
+        to   { transform: scale(1);   opacity: 1; }
+    }
+}
+.family-modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.25rem 1.5rem .75rem; border-bottom: 1px solid #f0e8e2;
+}
+.family-modal-title {
+    font-family: 'Playfair Display', serif; font-size: 1.2rem;
+    font-weight: 700; color: #3a3d48; margin: 0;
+}
+.family-modal-close {
+    background: none; border: none; cursor: pointer;
+    color: #9a8880; padding: 4px; border-radius: 8px;
+    display: flex; transition: background .15s, color .15s;
+}
+.family-modal-close:hover { background: #f5ede4; color: #b56c4c; }
+.family-modal-body { padding: 1rem 1.5rem 1.5rem; }
+.fam-modal-subtitle {
+    font-size: .82rem; color: #9a8880; margin: 0 0 1rem;
+    text-transform: uppercase; letter-spacing: .05em; font-weight: 600;
+}
+.fam-modal-age-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fam-mac {
+    display: flex; flex-direction: column; align-items: flex-start;
+    gap: 2px; padding: 1rem 1rem .9rem;
+    border: 2px solid #f0e8e2; border-radius: 14px;
+    text-decoration: none; color: inherit; position: relative;
+    transition: border-color .15s, background .15s, transform .15s;
+}
+.fam-mac:hover { border-color: var(--terra-cotta,#b56c4c); background: #fdf7f4; transform: translateY(-2px); }
+.fam-mac-age {
+    font-family: 'Playfair Display', serif; font-size: 1.05rem;
+    font-weight: 700; color: #3a3d48;
+}
+.fam-mac-colors { font-size: .78rem; color: #9a8880; }
+.fam-mac-price { font-size: .9rem; font-weight: 700; color: var(--terra-cotta,#b56c4c); margin-top: 4px; }
+.fam-mac-arrow { position: absolute; bottom: 10px; right: 10px; color: #c8b4a8; transition: color .15s, transform .15s; }
+.fam-mac:hover .fam-mac-arrow { color: var(--terra-cotta,#b56c4c); transform: translateX(2px); }
+</style>
 {% endblock %}

@@ -204,8 +204,9 @@ def view(slug):
 
     products = prepare_catalog(products)
     filter_opts = catalog_filter_options(products)
-    from utils.group_orders import build_store_cards
-    products, age_matching_note = build_store_cards(products)
+    from utils.product_filters import group_products_by_family
+    product_families = group_products_by_family(products)
+    age_matching_note = None
     showcase_designs = load_showcase_designs(collection)
 
     # ── Org navigation: if this collection belongs to an org, pass sibling sections
@@ -225,6 +226,7 @@ def view(slug):
     return render_template('collection/view.html',
                          collection=collection,
                          products=products,
+                         product_families=product_families,
                          age_matching_note=age_matching_note,
                          team_store=store_config,
                          uniform_product=uniform_product,
