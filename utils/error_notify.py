@@ -117,21 +117,29 @@ def record_and_notify(app, error, error_id=None):
 
     saved = _save_error(app, error_id, ctx, message, stack)
     notified = False
-    if saved:
-        notified = _notify_admin(app, error_id, ctx, message, stack)
-        if notified:
-            try:
-                saved.notified = True
-                from models import db
-                db.session.commit()
-            except Exception:
+    try:
+        if saved:
+            notified = _notify_admin(app, error_id, ctx, message, stack)
+            if notified:
                 try:
+                    saved.notified = True
                     from models import db
-                    db.session.rollback()
+                    db.session.commit()
                 except Exception:
-                    pass
-    else:
-        notified = _notify_admin(app, error_id, ctx, message, stack)
+                    try:
+                        from models import db
+                        db.session.rollback()
+                    except Exception:
+                        pass
+        else:
+            notified = _notify_admin(app, error_id, ctx, message, stack)
+    except BaseException as exc:
+        # Never let notification failures (including SystemExit from Gunicorn SIGABRT)
+        # crash the error handler itself.
+        try:
+            app.logger.warning('Admin notification failed for %s: %s', error_id, exc)
+        except Exception:
+            pass
 
     return error_id, notified
 
@@ -195,7 +203,7 @@ def _email_admin(app, error_id, ctx, message, stack):
         f"{message}\n\n"
         f"{stack}\n"
     )
-    timeout = min(int(app.config.get('MAIL_TIMEOUT') or 20), 12)
+    timeout = min(int(app.config.get('MAIL_TIMEOUT') or 5), 5)
     previous = socket.getdefaulttimeout()
     socket.setdefaulttimeout(timeout)
     try:
@@ -218,5 +226,6 @@ def _sms_admin(app, error_id, ctx, message):
     try:
         from utils.sms import send_server_error_alert
         return bool(send_server_error_alert(app, error_id, ctx['path'], message))
-    except Exception:
+    except BaseException:
+        # Catch SystemExit too — Gunicorn raises it via SIGABRT on worker timeout.
         return False
