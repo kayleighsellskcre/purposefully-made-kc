@@ -624,6 +624,9 @@ class Order(db.Model):
     due_date = db.Column(db.DateTime)
     cost_of_goods = db.Column(db.Float)  # Total COGS for this order
     profit = db.Column(db.Float)  # total - cost_of_goods
+    # True once real supplier costs have been entered; stops the order page from
+    # overwriting cost_of_goods/profit with the calculated estimate.
+    cogs_is_actual = db.Column(db.Boolean, default=False)
     # Unique so two concurrent submits of the same checkout cannot both create
     # an order. NULL is allowed many times over (admin-created orders have no
     # token), which both Postgres and SQLite permit under a unique constraint.

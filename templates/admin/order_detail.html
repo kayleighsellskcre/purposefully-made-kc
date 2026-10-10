@@ -243,12 +243,21 @@
                     </div>
                     <div class="od-form-row">
                         <div class="od-field">
-                            <label>Cost of Goods (COGS)</label>
+                            <label>Cost of Goods (COGS) {% if order.cogs_is_actual %}<span class="od-cogs-tag od-cogs-tag--actual">Actual</span>{% else %}<span class="od-cogs-tag">Estimate</span>{% endif %}</label>
                             <div class="od-prefix-wrap">
                                 <span class="od-prefix">$</span>
                                 <input type="number" name="cost_of_goods" class="od-input od-input-prefixed" step="0.01" min="0" value="{{ '%.2f'|format(order.cost_of_goods) if order.cost_of_goods is not none else '' }}" placeholder="0.00">
                             </div>
-                            <p class="od-field-hint">Auto-filled from blank wholesale + DTF when you open this order. You can still override.</p>
+                            {% if order.cogs_is_actual %}
+                            <p class="od-field-hint">Actual supplier cost, saved by you. Estimate at current prices: ${{ '%.2f'|format(cost_breakdown.total_cogs) if cost_breakdown and cost_breakdown.total_cogs is not none else '0.00' }}.</p>
+                            <label class="od-checkbox-label od-cogs-reset">
+                                <input type="checkbox" name="cogs_reset">
+                                <span class="od-checkbox-custom"></span>
+                                Go back to the estimate
+                            </label>
+                            {% else %}
+                            <p class="od-field-hint">Estimated from blank wholesale + DTF. Type the actual supplier cost and save to lock it in.</p>
+                            {% endif %}
                         </div>
                         <div class="od-field">
                             <label>Profit Override</label>
@@ -763,6 +772,20 @@
     margin-bottom: 1rem;
 }
 
+.od-cogs-tag {
+    display: inline-block;
+    margin-left: 0.4rem;
+    padding: 0.05rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    vertical-align: middle;
+    border: 1px solid currentColor;
+    color: var(--text-secondary);
+}
+.od-cogs-tag--actual { color: #4f7a52; }
+.od-cogs-reset { margin-top: 0.4rem; font-size: 0.8rem; }
 .od-field-hint {
     margin: 0.25rem 0 0;
     font-size: 0.75rem;

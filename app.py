@@ -155,6 +155,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS checkout_token VARCHAR(64)",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS confirmation_email_sent_at TIMESTAMP",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS profit DOUBLE PRECISION",
+                    "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS cogs_is_actual BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS is_refunded BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS refund_notes TEXT",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS tracking_number VARCHAR(200)",

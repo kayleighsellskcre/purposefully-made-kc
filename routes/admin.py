@@ -581,11 +581,14 @@ def order_detail(order_id):
 
     # Admin-only cost breakdown (blank + DTF) — never exposed publicly
     cost_breakdown = order_cost_breakdown(order, item_productions=item_productions)
-    try:
-        if apply_calculated_cogs(order, cost_breakdown):
-            db.session.commit()
-    except Exception:
-        db.session.rollback()
+    # Keep the estimate current until real supplier costs are entered; after
+    # that, leave the admin's actual numbers alone.
+    if not getattr(order, 'cogs_is_actual', False):
+        try:
+            if apply_calculated_cogs(order, cost_breakdown):
+                db.session.commit()
+        except Exception:
+            db.session.rollback()
 
     return render_template(
         'admin/order_detail.html',
@@ -1102,11 +1105,23 @@ def update_order_details(order_id):
         except ValueError:
             pass
     order.order_type = request.form.get('order_type') or 'retail'
-    order.cost_of_goods = _form_money('cost_of_goods', 0.0) or None
-    if order.cost_of_goods is not None and order.total:
-        order.profit = order.total - order.cost_of_goods
+    submitted_cogs = _form_money('cost_of_goods', None)
+    if request.form.get('cogs_reset') == 'on' or submitted_cogs is None:
+        # Back to the calculated estimate; the order page refills it on load.
+        order.cogs_is_actual = False
+        order.cost_of_goods = None
+        order.profit = None
     else:
-        order.profit = _form_money('profit', 0.0) or None
+        submitted_cogs = round(submitted_cogs, 2)
+        # Only lock in as "actual" when the number was actually changed, so
+        # saving a due date or order type doesn't freeze the estimate.
+        if order.cost_of_goods is None or abs(submitted_cogs - float(order.cost_of_goods)) > 0.004:
+            order.cogs_is_actual = True
+        order.cost_of_goods = submitted_cogs
+        if order.total:
+            order.profit = round(float(order.total) - submitted_cogs, 2)
+        else:
+            order.profit = _form_money('profit', None)
     order.is_refunded = request.form.get('is_refunded') == 'on'
     order.refund_notes = request.form.get('refund_notes')
     db.session.commit()
