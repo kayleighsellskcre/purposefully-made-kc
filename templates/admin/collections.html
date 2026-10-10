@@ -13,6 +13,109 @@
             </div>
         </div>
 
+        {%- macro coll_card(collection) %}
+        {% set order_count = collection.orders.count() %}
+        <div class="collection-card" data-active="{{ 'true' if collection.list_active else 'false' }}">
+            <div class="collection-card-accent" aria-hidden="true"></div>
+            <div class="collection-header">
+                <div class="collection-identity">
+                    <div class="collection-avatar">
+                        {% if collection.cover_image %}
+                        <img src="{{ collection.cover_image | image_url }}" alt="" loading="lazy">
+                        {% else %}
+                        <span aria-hidden="true">{{ collection.name[:1] | upper }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="collection-title-wrap">
+                        <h3>{{ collection.name }}</h3>
+                        <span class="collection-slug">/{{ collection.slug }}</span>
+                        <span class="collection-organizer">
+                            {% if collection.pending_organizer_email %}
+                            Waiting for {{ collection.pending_organizer_email }}
+                            {% elif collection.created_by %}
+                            Organizer: {{ collection.created_by.full_name }}
+                            {% else %}
+                            Organizer: Unassigned
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                <div class="collection-badges">
+                    {% if collection.payment_mode == 'organizer_pays' %}
+                    <span class="badge badge-pay-organizer">Organizer pays</span>
+                    {% else %}
+                    <span class="badge badge-pay-each">Each person pays</span>
+                    {% endif %}
+                    {% if collection.restrict_options %}
+                    <span class="badge badge-restricted">✦ Curated</span>
+                    {% endif %}
+                    {% if not collection.is_active %}
+                    <span class="badge badge-inactive">Inactive</span>
+                    {% elif not collection.list_active %}
+                    <span class="badge badge-expired">Expired</span>
+                    {% else %}
+                    <span class="badge badge-active">Active</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="collection-info">
+                <div class="collection-order-count">
+                    <strong>{{ order_count }}</strong>
+                    <span>Order{{ '' if order_count == 1 else 's' }}</span>
+                </div>
+                <div class="collection-dates">
+                    <div>
+                        <span class="date-label">Opens</span>
+                        <strong>{{ collection.order_opens_at|kc_date('%b %d, %Y') if collection.order_opens_at else 'Open now' }}</strong>
+                    </div>
+                    <div>
+                        <span class="date-label">Deadline</span>
+                        <strong>{{ collection.order_deadline|kc_date('%b %d, %Y') if collection.order_deadline else 'No deadline' }}</strong>
+                    </div>
+                </div>
+            </div>
+            {% set share_url = request.url_root.rstrip('/') ~ url_for('collection.view', slug=collection.slug) %}
+            {% set qr_url = url_for('collection.qr_code', slug=collection.slug) %}
+            <div class="go-share">
+                <a class="go-qr" href="{{ qr_url }}" download="{{ collection.slug }}-qr.png">
+                    <img src="{{ qr_url }}" alt="QR code" width="84" height="84" loading="lazy">
+                </a>
+                <div class="go-share-body">
+                    <span class="go-eyebrow">Share link &amp; QR</span>
+                    <span class="go-url">{{ share_url.split('://', 1)[-1] }}</span>
+                    <div class="go-share-actions">
+                        <button type="button" class="go-chip" onclick="copyLink({{ share_url|tojson|forceescape }}, this)">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+                            <span>Copy link</span>
+                        </button>
+                        <a class="go-chip" href="{{ qr_url }}" download="{{ collection.slug }}-qr.png">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
+                            <span>Download QR</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <nav class="go-actions" aria-label="Manage {{ collection.name }}">
+                <a href="{{ url_for('admin.edit_collection', collection_id=collection.id) }}" class="go-action">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13 7 4 4"/></svg>
+                    <span>Edit</span>
+                </a>
+                <a href="{{ url_for('collection.view', slug=collection.slug) }}" class="go-action" target="_blank" rel="noopener">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
+                    <span>View store</span>
+                </a>
+                <a href="{{ url_for('admin.logo_chart', collection=collection.id) }}" class="go-action">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>
+                    <span>Logo chart</span>
+                </a>
+                <a href="{{ url_for('collection.export_xlsx', slug=collection.slug, v=download_stamp()) }}" class="go-action">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 13h6"/><path d="M9 17h6"/></svg>
+                    <span>Export orders</span>
+                </a>
+            </nav>
+        </div>
+        {%- endmacro %}
+
         {% if collections %}
         <div class="filter-tabs go-filter-tabs" role="group" aria-label="Filter group orders">
             <button type="button" class="filter-tab active" data-filter="active" id="goFilterActive">Active</button>
@@ -20,119 +123,39 @@
         </div>
         <p class="go-filter-hint" id="goFilterHint"></p>
 
-        <div class="collections-grid" id="collectionsGrid">
-            {% for collection in collections %}
-            {% set order_count = collection.orders.count() %}
-            <div class="collection-card" data-active="{{ 'true' if collection.list_active else 'false' }}">
-                <div class="collection-card-accent" aria-hidden="true"></div>
-                <div class="collection-header">
-                    <div class="collection-identity">
-                        <div class="collection-avatar">
-                            {% if collection.cover_image %}
-                            <img src="{{ collection.cover_image | image_url }}" alt="" loading="lazy">
-                            {% else %}
-                            <span aria-hidden="true">{{ collection.name[:1] | upper }}</span>
-                            {% endif %}
-                        </div>
-                        <div class="collection-title-wrap">
-                            <h3>{{ collection.name }}</h3>
-                            <span class="collection-slug">/{{ collection.slug }}</span>
-                            <span class="collection-organizer">
-                                {% if collection.pending_organizer_email %}
-                                Waiting for {{ collection.pending_organizer_email }}
-                                {% elif collection.created_by %}
-                                Organizer: {{ collection.created_by.full_name }}
-                                {% else %}
-                                Organizer: Unassigned
-                                {% endif %}
-                            </span>
-                        </div>
-                    </div>
-                    <div class="collection-badges">
-                        {% if collection.payment_mode == 'organizer_pays' %}
-                        <span class="badge badge-pay-organizer" title="The link only collects sizes. The organizer pays once for everyone.">Organizer pays</span>
-                        {% else %}
-                        <span class="badge badge-pay-each" title="Each person checks out and pays for their own item.">Each person pays</span>
-                        {% endif %}
-                        {% if collection.restrict_options %}
-                        <span class="badge badge-restricted" title="Organizer chose specific options">✦ Curated</span>
-                        {% endif %}
-                        {% if not collection.is_active %}
-                        <span class="badge badge-inactive">Inactive</span>
-                        {% elif not collection.list_active %}
-                        <span class="badge badge-expired">Expired</span>
-                        {% else %}
-                        <span class="badge badge-active">Active</span>
-                        {% endif %}
-                    </div>
+        {# ── Org-grouped collections ── #}
+        {% for org in orgs %}{% if org.grouped_collections %}
+        <div class="org-group-wrap" id="orgGroup{{ org.id }}">
+            <div class="org-group-hdr">
+                <div class="org-group-hdr-info">
+                    <span class="org-group-eyebrow">Multi-team org</span>
+                    <h2 class="org-group-name">{{ org.name }}</h2>
+                    <span class="org-group-count">{{ org.grouped_collections|length }} team store{{ '' if org.grouped_collections|length == 1 else 's' }}</span>
                 </div>
-
-                <div class="collection-info">
-                    <div class="collection-order-count">
-                        <strong>{{ order_count }}</strong>
-                        <span>Order{{ '' if order_count == 1 else 's' }}</span>
-                    </div>
-                    <div class="collection-dates">
-                        <div>
-                            <span class="date-label">Opens</span>
-                            <strong>{{ collection.order_opens_at|kc_date('%b %d, %Y') if collection.order_opens_at else 'Open now' }}</strong>
-                        </div>
-                        <div>
-                            <span class="date-label">Deadline</span>
-                            <strong>{{ collection.order_deadline|kc_date('%b %d, %Y') if collection.order_deadline else 'No deadline' }}</strong>
-                        </div>
-                    </div>
+                <div class="org-group-hdr-actions">
+                    <a href="{{ url_for('org.landing', slug=org.slug) }}" class="go-chip" target="_blank">View org page →</a>
+                    <a href="{{ url_for('org.manage', slug=org.slug) }}" class="go-chip">Manage org</a>
                 </div>
-
-                {% set share_url = request.url_root.rstrip('/') ~ url_for('collection.view', slug=collection.slug) %}
-                {% set qr_url = url_for('collection.qr_code', slug=collection.slug) %}
-                <div class="go-share">
-                    <a class="go-qr" href="{{ qr_url }}" download="{{ collection.slug }}-qr.png" title="Download QR code">
-                        <img src="{{ qr_url }}" alt="QR code for {{ collection.name }}" width="84" height="84" loading="lazy">
-                    </a>
-                    <div class="go-share-body">
-                        <span class="go-eyebrow">Share link &amp; QR</span>
-                        <span class="go-url" title="{{ share_url }}">{{ share_url.split('://', 1)[-1] }}</span>
-                        <div class="go-share-actions">
-                            <button type="button" class="go-chip" onclick="copyLink({{ share_url|tojson|forceescape }}, this)">
-                                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
-                                <span>Copy link</span>
-                            </button>
-                            <a class="go-chip" href="{{ qr_url }}" download="{{ collection.slug }}-qr.png">
-                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
-                                <span>Download QR</span>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                <nav class="go-actions" aria-label="Manage {{ collection.name }}">
-                    <a href="{{ url_for('admin.edit_collection', collection_id=collection.id) }}" class="go-action">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13 7 4 4"/></svg>
-                        <span>Edit</span>
-                    </a>
-                    <a href="{{ url_for('collection.view', slug=collection.slug) }}" class="go-action" target="_blank" rel="noopener">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
-                        <span>View store</span>
-                    </a>
-                    {% if collection.payment_mode == 'organizer_pays' %}
-                    <a href="{{ url_for('collection.share', slug=collection.slug) }}#roster" class="go-action">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12"/><path d="M8 12h12"/><path d="M8 18h12"/><circle cx="4" cy="6" r=".6"/><circle cx="4" cy="12" r=".6"/><circle cx="4" cy="18" r=".6"/></svg>
-                        <span>Sizes ({{ collection.roster_entries.count() }})</span>
-                    </a>
-                    {% endif %}
-                    <a href="{{ url_for('admin.logo_chart', collection=collection.id) }}" class="go-action">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>
-                        <span>Logo chart</span>
-                    </a>
-                    <a href="{{ url_for('collection.export_xlsx', slug=collection.slug, v=download_stamp()) }}" class="go-action" title="Download the Excel order sheet">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 13h6"/><path d="M9 17h6"/></svg>
-                        <span>Export orders</span>
-                    </a>
-                </nav>
             </div>
+            <div class="collections-grid org-subgrid" id="collectionsGrid">
+                {% for item in org.grouped_collections %}
+                {{ coll_card(item.collection) }}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}{% endfor %}
+
+        {# ── Standalone collections (not part of any org) ── #}
+        {% if standalone_collections %}
+        {% if orgs|selectattr('grouped_collections')|list %}
+        <h2 class="standalone-heading">Other Group Orders</h2>
+        {% endif %}
+        <div class="collections-grid" id="collectionsGrid">
+            {% for collection in standalone_collections %}
+            {{ coll_card(collection) }}
             {% endfor %}
         </div>
+        {% endif %}
         <div class="empty-state go-filter-empty" id="goFilterEmpty" hidden>
             <h2>No active group orders</h2>
             <p>Inactive and expired orders are hidden. Click <strong>Show All</strong> to see them.</p>
@@ -205,6 +228,22 @@ function copyLink(url, btn) {
 </script>
 
 <style>
+/* ── Org grouping ── */
+.org-group-wrap { margin-bottom: 2.5rem; }
+.org-group-hdr {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+    gap: 0.75rem; padding: 1rem 1.25rem;
+    background: linear-gradient(135deg, rgba(181,108,76,.1), rgba(232,208,177,.15));
+    border: 2px solid rgba(181,108,76,.25); border-radius: 14px; margin-bottom: 0.85rem;
+}
+.org-group-hdr-info { display: flex; flex-direction: column; gap: 0.1rem; }
+.org-group-eyebrow { font-size: .68rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--terra-cotta, #b56c4c); }
+.org-group-name { font-size: 1.25rem; font-weight: 800; margin: 0; color: var(--text-primary, #1a1a1a); }
+.org-group-count { font-size: .8rem; color: var(--text-secondary, #888); }
+.org-group-hdr-actions { display: flex; gap: .6rem; flex-wrap: wrap; }
+.org-subgrid { margin-top: 0; }
+.standalone-heading { font-size: 1rem; font-weight: 700; color: var(--text-secondary, #888); text-transform: uppercase; letter-spacing: .07em; margin: 2rem 0 0.75rem; }
+
 .badge-pay-organizer { background: rgba(184,124,111,0.16); color: #8a5a50; }
 .badge-pay-each { background: rgba(58,61,72,0.07); color: #555; }
 .admin-page { padding: 4rem 0; }

@@ -2852,14 +2852,37 @@ def toggle_organization(org_id):
 @admin_bp.route('/collections')
 @admin_required
 def collections():
-    """Manage collections"""
+    """Manage collections — grouped under their org when applicable."""
     from utils.group_orders import is_deadline_passed
+    from models import Organization, OrgSection
+    from sqlalchemy.orm import joinedload
 
-    collections = Collection.query.order_by(Collection.created_at.desc()).all()
-    for c in collections:
-        # Active = not marked inactive and order window not past deadline
+    all_collections = Collection.query.order_by(Collection.created_at.desc()).all()
+    for c in all_collections:
         c.list_active = bool(c.is_active) and not is_deadline_passed(c)
-    return render_template('admin/collections.html', collections=collections)
+
+    # Build org groupings so team stores appear nested under their org.
+    orgs = (Organization.query
+            .options(joinedload(Organization.sections).joinedload(OrgSection.collection))
+            .order_by(Organization.created_at.desc())
+            .all())
+    org_collection_ids = set()
+    for org in orgs:
+        coll_by_id = {c.id: c for c in all_collections}
+        org.grouped_collections = [
+            {'section': sec, 'collection': coll_by_id[sec.collection_id]}
+            for sec in sorted(org.sections, key=lambda s: s.sort_order)
+            if sec.collection_id in coll_by_id
+        ]
+        org_collection_ids.update(s.collection_id for s in org.sections)
+
+    standalone = [c for c in all_collections if c.id not in org_collection_ids]
+    return render_template(
+        'admin/collections.html',
+        collections=all_collections,
+        orgs=orgs,
+        standalone_collections=standalone,
+    )
 
 
 @admin_bp.route('/collections/add', methods=['GET', 'POST'])
