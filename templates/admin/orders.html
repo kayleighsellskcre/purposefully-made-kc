@@ -8,6 +8,15 @@
 {% set _order_type = request.args.get('order_type') %}
 {% set _collection = request.args.get('collection') %}
 
+{% if unsaved_payment_count %}
+<a href="{{ url_for('admin.unsaved_payments') }}" class="ord-unsaved-alert">
+    <strong>{{ unsaved_payment_count }} paid PayPal checkout{{ 's' if unsaved_payment_count != 1 }} didn't become an order.</strong>
+    <span>Review and create {{ 'them' if unsaved_payment_count != 1 else 'it' }} &rarr;</span>
+</a>
+<style>
+.ord-unsaved-alert { display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; padding:.85rem 1.1rem; margin:0 0 1.1rem; border:1px solid #f0c48a; background:#fffbeb; border-radius:12px; color:#92400e; text-decoration:none; font-size:.9rem; }
+</style>
+{% endif %}
 <!-- Page Header -->
 <div class="ord-page-header">
     <div>
@@ -17,6 +26,7 @@
             {% if orders.total == 1 %}1 order{% else %}{{ orders.total }} orders{% endif %}
             {% if _status and _status != 'all' %}&nbsp;- {{ {'order_received':'Order Received','waiting_supplies':'Waiting on Supplies','ready_to_press':'Ready to Press','pressed':'Pressed','packaged_ready':'Packaged & Ready'}.get(_status, _status.replace('_',' ').title()) }}{% endif %}
         </p>
+        <p class="ord-lead" style="font-size:.8rem;margin-top:.2rem"><a href="{{ url_for('admin.unsaved_payments') }}">Got paid but no order showed up? Find the payment</a></p>
     </div>
     <div class="ord-header-actions">
         <a href="{{ ops_url('admin.production_workflow') }}" class="btn btn-primary ord-action-btn">

@@ -343,22 +343,30 @@ def test_paypal_order_is_marked_paid_when_amount_matches(client, seed, app):
         assert order.payment_status == 'paid'
 
 
-def test_paypal_order_rejected_when_cart_grew_after_capture(client, seed, app):
-    """The exact scenario from the audit: capture a small cart, then add more
-    before completing - the order must not be marked paid at the new total."""
+def test_paypal_order_saved_and_flagged_when_cart_grew_after_capture(client, seed, app):
+    """Capture a small cart, then add more before completing. PayPal already
+    took the money, so the order is saved at what was actually collected (never
+    marked paid in full at the bigger total) and the admin is alerted."""
+    from models import AdminNotification
     _fill_cart(client, seed, qty=1)
+    captured = round(30.00 + round(30.00 * TAX_RATE, 2), 2)
     with client.session_transaction() as sess:
         # Captured while the cart only held 1 item.
-        sess['paypal_captured_amounts'] = {'EC-STALE': round(30.00 + round(30.00 * TAX_RATE, 2), 2)}
+        sess['paypal_captured_amounts'] = {'EC-STALE': captured}
     # Cart grows before /complete is called.
     _fill_cart(client, seed, qty=1)
 
     resp = client.post('/checkout/complete', json=_cash_payload(
         payment_method='paypal', payment_id='EC-STALE',
     ))
-    assert resp.get_json()['error_code'] == 'PAYMENT_AMOUNT_MISMATCH'
+    body = resp.get_json()
+    assert body['success'] is True
     with app.app_context():
-        assert Order.query.count() == 0
+        order = Order.query.filter_by(order_number=body['order_number']).one()
+        assert order.amount_paid == captured
+        assert order.amount_paid < order.total
+        note = AdminNotification.query.filter_by(kind='payment').one()
+        assert order.order_number in note.title
 
 
 def test_paypal_order_rejected_when_never_captured(client, seed):

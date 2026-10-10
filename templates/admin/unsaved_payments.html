@@ -1,0 +1,119 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Paid, Not Saved - Orders - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<div class="admin-page">
+    <div class="container">
+        <div class="admin-header">
+            <span class="adm-eyebrow">Admin / Orders</span>
+            <h1>Paid, Not Saved</h1>
+            <p class="page-subtitle">PayPal payments that went through but never became an order. Check what they bought, then create the order with one click.</p>
+            <div class="admin-stats">
+                <a href="{{ url_for('admin.orders') }}" class="btn btn-outline">&larr; Back to Orders</a>
+            </div>
+        </div>
+
+        <div class="up-card">
+            <h2 class="up-h2">Look up a PayPal payment</h2>
+            <p class="up-hint">Got paid but don't see the order? Paste the Transaction ID from the PayPal email or app.</p>
+            <form method="POST" action="{{ url_for('admin.unsaved_payment_lookup') }}" class="up-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="paypal_ref" placeholder="Transaction ID, e.g. 8EW88985C2180483C" required class="up-input up-grow">
+                <button type="submit" class="btn btn-primary">Find payment</button>
+            </form>
+        </div>
+
+        {% for row in rows %}
+        {% set cap = row.cap %}
+        <div class="up-card">
+            <div class="up-head">
+                <div>
+                    <h2 class="up-h2">{{ row.name }} &middot; ${{ "%.2f"|format(cap.amount or 0) }}</h2>
+                    <p class="up-meta">{{ row.email or 'no email' }}{% if row.phone %} &middot; {{ row.phone }}{% endif %} &middot; paid {{ cap.created_at.strftime('%b %d, %I:%M %p') }} UTC &middot; PayPal {{ cap.provider_ref }}</p>
+                    {% if cap.failure_reason %}<p class="up-reason">{{ cap.failure_reason }}</p>{% endif %}
+                </div>
+                <form method="POST" action="{{ url_for('admin.unsaved_payment_resolve', cap_id=cap.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline btn-sm">Handled it another way</button>
+                </form>
+            </div>
+
+            <h3 class="up-h3">What they bought</h3>
+            {% if row.lines %}
+            <ul class="up-lines">
+                {% for line in row.lines %}
+                <li>
+                    <span>{{ line }}</span>
+                    <form method="POST" action="{{ url_for('admin.unsaved_payment_remove_item', cap_id=cap.id, index=loop.index0) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="up-link">Remove</button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="up-hint">Nothing on file yet. Add what they ordered below (ask them if you're not sure).</p>
+            {% endif %}
+
+            <details class="up-add" {% if not row.lines %}open{% endif %}>
+                <summary>Add an item</summary>
+                <form method="POST" action="{{ url_for('admin.unsaved_payment_add_item', cap_id=cap.id) }}" class="up-grid">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label>Style #<input name="style_number" required class="up-input" placeholder="BC3001YCVC"></label>
+                    <label>Color<input name="color" required class="up-input" placeholder="Solid Black Blend"></label>
+                    <label>Size<input name="size" required class="up-input" placeholder="M"></label>
+                    <label>Qty<input name="quantity" type="number" min="1" value="1" class="up-input"></label>
+                    <label>Price each<input name="unit_price" type="number" step="0.01" class="up-input" placeholder="28.00"></label>
+                    <label>Design SKU or ID<input name="design" class="up-input" placeholder="optional"></label>
+                    <label>Print width (in)<input name="print_width" type="number" step="0.01" class="up-input" placeholder="optional"></label>
+                    <label>Print height (in)<input name="print_height" type="number" step="0.01" class="up-input" placeholder="optional"></label>
+                    <button type="submit" class="btn btn-outline">Add item</button>
+                </form>
+            </details>
+
+            {% if row.lines %}
+            <form method="POST" action="{{ url_for('admin.unsaved_payment_create_order', cap_id=cap.id) }}" class="up-create">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="up-grid">
+                    <label>First name<input name="first_name" class="up-input" value="{{ row.name.split(' ')[0] }}"></label>
+                    <label>Last name<input name="last_name" class="up-input" value="{{ row.name.split(' ', 1)[1] if ' ' in row.name else '' }}"></label>
+                    <label>Email<input name="email" type="email" class="up-input" value="{{ row.email }}"></label>
+                    <label>Pickup or shipping
+                        <select name="fulfillment" class="up-input">
+                            <option value="pickup" {% if row.shipping_method != 'shipping' %}selected{% endif %}>Pickup</option>
+                            <option value="shipping" {% if row.shipping_method == 'shipping' %}selected{% endif %}>Shipping</option>
+                        </select>
+                    </label>
+                </div>
+                <label class="up-check"><input type="checkbox" name="send_email" checked> Email the customer their order confirmation</label>
+                <button type="submit" class="btn btn-primary">Create order</button>
+            </form>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="up-card"><p class="up-hint" style="margin:0">Nothing waiting. Every PayPal payment has an order.</p></div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+.up-card { background:#fff; border:1px solid rgba(232,208,177,.65); border-radius:14px; padding:1.25rem 1.35rem; margin:0 0 1.25rem; }
+.up-head { display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; flex-wrap:wrap; }
+.up-h2 { font-family:var(--font-heading); font-size:1.1rem; margin:0 0 .3rem; }
+.up-h3 { font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; color:var(--text-secondary); margin:1.1rem 0 .5rem; }
+.up-meta, .up-hint { font-size:.85rem; color:var(--text-secondary); margin:0 0 .6rem; }
+.up-reason { font-size:.82rem; color:#b45309; margin:0; }
+.up-inline { display:flex; gap:.6rem; flex-wrap:wrap; }
+.up-grow { flex:1 1 240px; }
+.up-input { width:100%; padding:.55rem .7rem; border:1px solid var(--border-color); border-radius:8px; font:inherit; }
+.up-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.7rem; align-items:end; margin:.6rem 0; }
+.up-grid label, .up-check { display:flex; flex-direction:column; gap:.25rem; font-size:.78rem; color:var(--text-secondary); }
+.up-check { flex-direction:row; align-items:center; gap:.45rem; margin:.4rem 0 .9rem; font-size:.85rem; }
+.up-lines { list-style:none; padding:0; margin:0; }
+.up-lines li { display:flex; justify-content:space-between; gap:1rem; padding:.45rem 0; border-bottom:1px solid rgba(232,208,177,.45); font-size:.9rem; }
+.up-link { background:none; border:none; color:#b91c1c; cursor:pointer; font-size:.8rem; padding:0; }
+.up-add summary { cursor:pointer; font-size:.85rem; margin:.8rem 0 .2rem; }
+.up-create { margin-top:1rem; padding-top:.8rem; border-top:1px solid rgba(232,208,177,.45); }
+</style>
+{% endblock %}

@@ -892,10 +892,13 @@ function buildPayPalButtonConfig(fundingSource) {
         },
         onApprove: async function(data) {
             if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
+            // Send the checkout details with the capture so the shop has them
+            // on file the moment the money is taken.
+            const capturePayload = Object.assign({}, buildOrderPayload(data.orderID, 'paypal'), {order_id: data.orderID});
             const captureResp = await fetch('/checkout/paypal/capture-order', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({order_id: data.orderID})
+                body: JSON.stringify(capturePayload)
             });
             const captured = await captureResp.json();
             if (!captured.success) {

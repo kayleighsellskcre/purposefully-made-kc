@@ -726,6 +726,30 @@ def paypal_capture_order():
                 captured[order_id] = captured_amount
                 session['paypal_captured_amounts'] = captured
                 session.modified = True
+                # Money is taken now. Save it to the database with the cart and
+                # the customer's details so the sale can never be lost, even if
+                # the browser session drops before the order step.
+                try:
+                    from utils.payment_safety import record_paypal_capture
+                    customer = {
+                        k: data.get(k) for k in (
+                            'email', 'first_name', 'last_name', 'phone',
+                            'shipping_method', 'shipping_info', 'checkout_token',
+                            'send_home_with_child', 'teacher_name', 'child_grade', 'child_name',
+                        ) if data.get(k) not in (None, '')
+                    }
+                    cart_now = get_cart()
+                    collection_id = next(
+                        (i.get('collection_id') for i in cart_now if isinstance(i, dict) and i.get('collection_id')),
+                        None,
+                    )
+                    record_paypal_capture(
+                        order_id, captured_amount, order_json=result, cart=cart_now,
+                        customer=customer, collection_id=collection_id,
+                        user_id=current_user.id if current_user.is_authenticated else None,
+                    )
+                except Exception:
+                    current_app.logger.exception('PayPal capture %s: could not save safety record', order_id)
                 return jsonify({'success': True})
             return jsonify({'success': False, 'error': f'PayPal status: {result.get("status")}'}), 400
         current_app.logger.error('PayPal capture %s %s: %s', order_id, resp.status_code, resp.text[:300])
@@ -1090,8 +1114,153 @@ def payment_return():
         return redirect(url_for('checkout.index'))
 
 
+class OrderItemError(Exception):
+    """A cart line could not be turned into an order item."""
+
+
+def build_order_items(order, cart, rid='-'):
+    """Add one OrderItem per cart line to a flushed order. Returns the count saved.
+
+    Shared by checkout and the admin's recover-a-paid-order tool.
+    """
+    saved_items = 0
+    for cart_item in cart:
+        try:
+            product = Product.query.get(_int_or_none(cart_item.get('product_id')))
+            if not product:
+                current_app.logger.error('checkout rid=%s skipped item, product missing: %s', rid, cart_item.get('product_id'))
+                continue
+            design_id = _int_or_none(cart_item.get('design_id'))
+            design = Design.query.get(design_id) if design_id else None
+            back_url = cart_item.get('back_design_url')
+            back_filename = _clip((back_url or '').split('/')[-1] if back_url else None, 500)
+            back_meta = cart_item.get('back_design_meta')
+            if isinstance(back_meta, str):
+                try:
+                    back_meta = json.loads(back_meta)
+                except Exception:
+                    back_meta = None
+            if isinstance(back_meta, dict):
+                back_meta = dict(back_meta)
+            elif back_url:
+                back_meta = {}
+            else:
+                back_meta = None
+            if isinstance(back_meta, dict) and back_url:
+                back_meta['file_url'] = back_url
+            # Personalized-back fields are optional. Keep the file URL so
+            # production can still show and save a back image with no name/number.
+            if isinstance(back_meta, dict) and not (
+                back_meta.get('name') or back_meta.get('number') or back_meta.get('file_url')
+            ):
+                back_meta = None
+            transfer_prod = cart_item.get('transfer_production')
+            if isinstance(transfer_prod, str):
+                try:
+                    transfer_prod = json.loads(transfer_prod)
+                except Exception:
+                    transfer_prod = None
+            if isinstance(transfer_prod, dict):
+                transfer_prod = dict(transfer_prod)
+                back_block = transfer_prod.get('back')
+                if isinstance(back_block, dict) and (back_block.get('name') or back_block.get('number')):
+                    transfer_prod['back'] = dict(back_block)
+                    transfer_prod['back']['customer_name'] = (
+                        transfer_prod['back'].get('customer_name') or order.full_name
+                    )
+                else:
+                    transfer_prod['back'] = None
+            design_filename = _clip(design.filename if design else None, 500)
+            if not design_filename:
+                design_url = cart_item.get('design_url') or ''
+                design_filename = _clip(design_url.split('/')[-1] if design_url else None, 500)
+            qty = max(1, _int_or_none(cart_item.get('quantity')) or 1)
+            unit_price = _float_or_none(cart_item.get('unit_price'))
+            if unit_price is None:
+                raise ValueError('unit_price')
+            proof_image = _clip(
+                cart_item.get('proof_image') or cart_item.get('proof_front_url'),
+                500,
+            )
+            proof_back_image = _clip(cart_item.get('proof_back_url'), 500)
+            order_item = OrderItem(
+                order_id=order.id,
+                product_id=product.id,
+                design_id=design.id if design else None,
+                product_name=_clip(product.name, 200),
+                style_number=_clip(product.style_number, 50),
+                size=_clip(cart_item.get('size'), 20) or 'M',
+                color=_clip(cart_item.get('color'), 100) or 'Unknown',
+                catalog_section=_clip(
+                    cart_item.get('catalog_section'), 20
+                ),
+                uniform_kit=_clip(cart_item.get('uniform_kit'), 20),
+                quantity=qty,
+                unit_price=unit_price,
+                subtotal=qty * unit_price,
+                placement=_clip(cart_item.get('placement'), 50),
+                print_type=_clip(cart_item.get('print_type'), 50) or 'DTF',
+                design_file_name=design_filename,
+                back_design_file_name=back_filename,
+                print_width=_float_or_none(cart_item.get('print_width')),
+                print_height=_float_or_none(cart_item.get('print_height')),
+                position_x=_float_or_none(cart_item.get('position_x')),
+                position_y=_float_or_none(cart_item.get('position_y')),
+                rotation=_float_or_none(cart_item.get('rotation')) or 0,
+                proof_image=proof_image,
+                proof_back_image=proof_back_image,
+            )
+            try:
+                order_item.back_design_meta = _dumps(back_meta)
+            except Exception:
+                pass
+            try:
+                order_item.transfer_production = _dumps(transfer_prod)
+            except Exception:
+                pass
+            db.session.add(order_item)
+            saved_items += 1
+        except Exception as item_err:
+            current_app.logger.exception('checkout rid=%s item failed: %s', rid, item_err)
+            raise OrderItemError(str(item_err)) from item_err
+    return saved_items
+
+
 @checkout_bp.route('/complete', methods=['POST'])
 def complete():
+    """Complete order after payment. A captured PayPal payment is never dropped
+    silently: if the order can't be saved, the admin is alerted and the customer
+    is told their payment went through."""
+    data = request.get_json(silent=True) or {}
+    result = _complete_order()
+    try:
+        resp, status = result if isinstance(result, tuple) else (result, 200)
+        body = resp.get_json(silent=True) or {}
+    except Exception:
+        return result
+    if body.get('success'):
+        return result
+    method = (data.get('payment_method') or '').strip()
+    pid = data.get('payment_id')
+    if method == 'paypal' and isinstance(pid, str) and pid.strip():
+        pid = pid.strip()
+        try:
+            from utils.payment_safety import get_capture, alert_unsaved_payment
+            paid = get_capture(pid) is not None or pid in (session.get('paypal_captured_amounts') or {})
+            if paid:
+                alert_unsaved_payment(pid, f"{body.get('error')} ({body.get('error_code')})")
+                body['payment_received'] = True
+                body['error'] = (
+                    'Your PayPal payment went through, but we hit a snag saving your order. '
+                    'Kayleigh has been notified and will reach out to you. Please do not pay again.'
+                )
+                return jsonify(body), status
+        except Exception:
+            current_app.logger.exception('could not alert on unsaved PayPal payment %s', pid)
+    return result
+
+
+def _complete_order():
     """Complete order after payment."""
     from sqlalchemy.exc import SQLAlchemyError, IntegrityError
     from sqlalchemy import text as _text
@@ -1101,6 +1270,34 @@ def complete():
     try:
         data = request.get_json(silent=True) or {}
         cart = get_cart()
+
+        # PayPal takes the money before this step. Confirm it from the session,
+        # the database, or PayPal itself, and once paid, problems below are
+        # flagged for the admin instead of throwing the paid order away.
+        paypal_paid = None
+        prepaid_issues = []
+        req_pid = data.get('payment_id') if isinstance(data.get('payment_id'), str) else None
+        if (data.get('payment_method') or '').strip() == 'paypal' and req_pid:
+            from utils.payment_safety import verified_paypal_amount, get_capture
+            already = Order.query.filter_by(paypal_order_id=req_pid).first()
+            if already:
+                from utils.cart_store import clear_cart as _clear_cart
+                _clear_cart()
+                session.modified = True
+                return jsonify({
+                    'success': True,
+                    'order_number': already.order_number,
+                    'redirect_url': url_for('checkout.confirmation', order_number=already.order_number),
+                    'replayed': True,
+                    'request_id': rid,
+                })
+            paypal_paid = verified_paypal_amount(req_pid)
+            if not cart and paypal_paid is not None:
+                cap = get_capture(req_pid)
+                try:
+                    cart = json.loads(cap.cart_json) if cap and cap.cart_json else []
+                except ValueError:
+                    cart = []
         if not cart:
             return _json_error('Your cart is empty.', 'CART_EMPTY', 400, request_id=rid)
 
@@ -1112,12 +1309,16 @@ def complete():
         if collection:
             blocked = ordering_blocked(collection)
             if blocked:
-                return _json_error(blocked, 'GROUP_ORDER_CLOSED', 400, request_id=rid)
+                if paypal_paid is None:
+                    return _json_error(blocked, 'GROUP_ORDER_CLOSED', 400, request_id=rid)
+                prepaid_issues.append(f'Paid after the group order closed: {blocked}')
         cart_error = _group_cart_error(cart, collection)
         if cart_error:
-            return _json_error(
-                cart_error, 'GROUP_CART_INVALID', 400, request_id=rid
-            )
+            if paypal_paid is None:
+                return _json_error(
+                    cart_error, 'GROUP_CART_INVALID', 400, request_id=rid
+                )
+            prepaid_issues.append(f'Cart problem at checkout: {cart_error}')
 
         checkout_token = _clip(data.get('checkout_token'), 64)
         if checkout_token and session.get('checkout_success_token') == checkout_token:
@@ -1234,25 +1435,21 @@ def complete():
                 request_id=rid,
             )
         if payment_method == 'paypal' and payment_id:
-            captured_amounts = session.get('paypal_captured_amounts', {})
-            if payment_id not in captured_amounts:
+            if paypal_paid is None:
                 return _json_error(
                     'PayPal payment was not captured. Please complete the PayPal flow before placing your order.',
                     'PAYPAL_NOT_CAPTURED',
                     400,
                     request_id=rid,
                 )
-            # Compare in cents, same as the Stripe check below, so the cart
-            # cannot grow between the PayPal capture and this order being
-            # marked paid without the payment amount being re-verified.
+            # Compare in cents. The money is already taken, so a mismatch is
+            # saved and flagged for the admin rather than losing the order.
             expected_cents = int(round(totals['total'] * 100))
-            captured_cents = int(round(captured_amounts[payment_id] * 100))
+            captured_cents = int(round(paypal_paid * 100))
             if captured_cents != expected_cents:
-                return _json_error(
-                    'The PayPal total does not match this order. Please wait a moment and try checkout again.',
-                    'PAYMENT_AMOUNT_MISMATCH',
-                    400,
-                    request_id=rid,
+                prepaid_issues.append(
+                    f'PayPal collected ${paypal_paid:.2f} but the cart totals ${totals["total"]:.2f}. '
+                    'Check the items before making it.'
                 )
         if payment_method == 'stripe' and payment_id:
             try:
@@ -1299,8 +1496,10 @@ def complete():
         from utils.stock import reserve_cart_inventory
         stock_ok, stock_err = reserve_cart_inventory(cart)
         if not stock_ok:
-            db.session.rollback()
-            return _json_error(stock_err or 'That size just sold out.', 'OUT_OF_STOCK', 400, request_id=rid)
+            if paypal_paid is None:
+                db.session.rollback()
+                return _json_error(stock_err or 'That size just sold out.', 'OUT_OF_STOCK', 400, request_id=rid)
+            prepaid_issues.append(f'Stock check after payment: {stock_err or "a size may be sold out"}')
 
         is_cash = (payment_method == 'cash')
         order = Order(
@@ -1319,7 +1518,7 @@ def complete():
             payment_intent_id=payment_id if payment_method == 'stripe' and payment_id else None,
             paypal_order_id=payment_id if payment_method == 'paypal' and payment_id else None,
             paid_at=None if is_cash else datetime.utcnow(),
-            amount_paid=0.0 if is_cash else float(totals['total']),
+            amount_paid=0.0 if is_cash else (float(paypal_paid) if paypal_paid is not None else float(totals['total'])),
             promo_code=family_code if family_promo_active else None,
             status='new' if is_cash else 'paid',
             production_stage='order_received',
@@ -1349,113 +1548,17 @@ def complete():
         db.session.add(order)
         db.session.flush()
 
-        saved_items = 0
-        for cart_item in cart:
-            try:
-                product = Product.query.get(_int_or_none(cart_item.get('product_id')))
-                if not product:
-                    current_app.logger.error('checkout rid=%s skipped item, product missing: %s', rid, cart_item.get('product_id'))
-                    continue
-                design_id = _int_or_none(cart_item.get('design_id'))
-                design = Design.query.get(design_id) if design_id else None
-                back_url = cart_item.get('back_design_url')
-                back_filename = _clip((back_url or '').split('/')[-1] if back_url else None, 500)
-                back_meta = cart_item.get('back_design_meta')
-                if isinstance(back_meta, str):
-                    try:
-                        back_meta = json.loads(back_meta)
-                    except Exception:
-                        back_meta = None
-                if isinstance(back_meta, dict):
-                    back_meta = dict(back_meta)
-                elif back_url:
-                    back_meta = {}
-                else:
-                    back_meta = None
-                if isinstance(back_meta, dict) and back_url:
-                    back_meta['file_url'] = back_url
-                # Personalized-back fields are optional. Keep the file URL so
-                # production can still show and save a back image with no name/number.
-                if isinstance(back_meta, dict) and not (
-                    back_meta.get('name') or back_meta.get('number') or back_meta.get('file_url')
-                ):
-                    back_meta = None
-                transfer_prod = cart_item.get('transfer_production')
-                if isinstance(transfer_prod, str):
-                    try:
-                        transfer_prod = json.loads(transfer_prod)
-                    except Exception:
-                        transfer_prod = None
-                if isinstance(transfer_prod, dict):
-                    transfer_prod = dict(transfer_prod)
-                    back_block = transfer_prod.get('back')
-                    if isinstance(back_block, dict) and (back_block.get('name') or back_block.get('number')):
-                        transfer_prod['back'] = dict(back_block)
-                        transfer_prod['back']['customer_name'] = (
-                            transfer_prod['back'].get('customer_name') or order.full_name
-                        )
-                    else:
-                        transfer_prod['back'] = None
-                design_filename = _clip(design.filename if design else None, 500)
-                if not design_filename:
-                    design_url = cart_item.get('design_url') or ''
-                    design_filename = _clip(design_url.split('/')[-1] if design_url else None, 500)
-                qty = max(1, _int_or_none(cart_item.get('quantity')) or 1)
-                unit_price = _float_or_none(cart_item.get('unit_price'))
-                if unit_price is None:
-                    raise ValueError('unit_price')
-                proof_image = _clip(
-                    cart_item.get('proof_image') or cart_item.get('proof_front_url'),
-                    500,
-                )
-                proof_back_image = _clip(cart_item.get('proof_back_url'), 500)
-                order_item = OrderItem(
-                    order_id=order.id,
-                    product_id=product.id,
-                    design_id=design.id if design else None,
-                    product_name=_clip(product.name, 200),
-                    style_number=_clip(product.style_number, 50),
-                    size=_clip(cart_item.get('size'), 20) or 'M',
-                    color=_clip(cart_item.get('color'), 100) or 'Unknown',
-                    catalog_section=_clip(
-                        cart_item.get('catalog_section'), 20
-                    ),
-                    uniform_kit=_clip(cart_item.get('uniform_kit'), 20),
-                    quantity=qty,
-                    unit_price=unit_price,
-                    subtotal=qty * unit_price,
-                    placement=_clip(cart_item.get('placement'), 50),
-                    print_type=_clip(cart_item.get('print_type'), 50) or 'DTF',
-                    design_file_name=design_filename,
-                    back_design_file_name=back_filename,
-                    print_width=_float_or_none(cart_item.get('print_width')),
-                    print_height=_float_or_none(cart_item.get('print_height')),
-                    position_x=_float_or_none(cart_item.get('position_x')),
-                    position_y=_float_or_none(cart_item.get('position_y')),
-                    rotation=_float_or_none(cart_item.get('rotation')) or 0,
-                    proof_image=proof_image,
-                    proof_back_image=proof_back_image,
-                )
-                try:
-                    order_item.back_design_meta = _dumps(back_meta)
-                except Exception:
-                    pass
-                try:
-                    order_item.transfer_production = _dumps(transfer_prod)
-                except Exception:
-                    pass
-                db.session.add(order_item)
-                saved_items += 1
-            except Exception as item_err:
-                current_app.logger.exception('checkout rid=%s item failed: %s', rid, item_err)
-                db.session.rollback()
-                return _json_error(
-                    'One item in your cart could not be saved. Check the design, size, and color, then try again.',
-                    'ORDER_ITEM_INVALID',
-                    400,
-                    request_id=rid,
-                    field=str(item_err),
-                )
+        try:
+            saved_items = build_order_items(order, cart, rid)
+        except OrderItemError as item_err:
+            db.session.rollback()
+            return _json_error(
+                'One item in your cart could not be saved. Check the design, size, and color, then try again.',
+                'ORDER_ITEM_INVALID',
+                400,
+                request_id=rid,
+                field=str(item_err),
+            )
 
         if saved_items == 0:
             db.session.rollback()
@@ -1557,6 +1660,15 @@ def complete():
     session.modified = True
 
     queue_order_confirmation_email(order.id)
+
+    if payment_method == 'paypal' and payment_id:
+        try:
+            from utils.payment_safety import link_capture_to_order, alert_order_saved_with_issues
+            link_capture_to_order(payment_id, order)
+            if prepaid_issues:
+                alert_order_saved_with_issues(order, prepaid_issues)
+        except Exception:
+            current_app.logger.exception('checkout rid=%s post-save PayPal bookkeeping failed', rid)
 
     return jsonify({
         'success': True,

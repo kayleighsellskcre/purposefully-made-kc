@@ -14,6 +14,18 @@ import sys
 CHICAGO = ZoneInfo('America/Chicago')
 
 
+def unsaved_payments_job(app):
+    """Email the admin about any captured PayPal payment with no order."""
+    with app.app_context():
+        try:
+            from utils.payment_safety import sweep_unsaved_payments
+            sent = sweep_unsaved_payments()
+            if sent:
+                print(f"UNSAVED PAYMENT ALERTS SENT: {sent}", file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f"unsaved payments sweep failed: {exc}", file=sys.stderr, flush=True)
+
+
 def sync_full_catalog_job(app):
     """
     Nightly job: sync the complete Bella+Canvas catalog from SanMar.
@@ -424,6 +436,16 @@ def init_scheduler(app):
             trigger=CronTrigger(hour=4, minute=0, timezone=CHICAGO),
             id='nightly_dip_inventory',
             name='Nightly DIP File Inventory Sync (SanMar SFTP)',
+            replace_existing=True
+        )
+
+        # Every 10 minutes: alert on any PayPal payment that never became an order
+        from apscheduler.triggers.interval import IntervalTrigger
+        scheduler.add_job(
+            func=lambda: unsaved_payments_job(app),
+            trigger=IntervalTrigger(minutes=10),
+            id='unsaved_payments_sweep',
+            name='Alert on paid checkouts with no order',
             replace_existing=True
         )
 

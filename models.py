@@ -940,3 +940,32 @@ class AdminNotification(db.Model):
 
     def __repr__(self):
         return f'<AdminNotification {self.kind} {self.id}>'
+
+
+class PaymentCapture(db.Model):
+    """Every PayPal payment the site captures, saved the moment money is taken.
+
+    Lives in the database (not the browser session) so a paid checkout can
+    always be matched to an order, recovered, or flagged to the admin.
+    """
+    __tablename__ = 'payment_capture'
+    id = db.Column(db.Integer, primary_key=True)
+    provider = db.Column(db.String(20), nullable=False, default='paypal')
+    provider_ref = db.Column(db.String(200), nullable=False, unique=True, index=True)
+    amount = db.Column(db.Float)
+    payer_name = db.Column(db.String(200))
+    payer_email = db.Column(db.String(200))
+    customer_json = db.Column(db.Text)  # name/email/phone/shipping typed at checkout
+    cart_json = db.Column(db.Text)      # cart at the moment of payment
+    collection_id = db.Column(db.Integer)
+    user_id = db.Column(db.Integer)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=True, index=True)
+    failure_reason = db.Column(db.Text)
+    alert_sent_at = db.Column(db.DateTime)
+    resolved_at = db.Column(db.DateTime)  # admin handled it outside the site
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    order = db.relationship('Order', foreign_keys=[order_id])
+
+    def __repr__(self):
+        return f'<PaymentCapture {self.provider} {self.provider_ref}>'

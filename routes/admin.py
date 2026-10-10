@@ -515,10 +515,21 @@ def orders():
     )
     
     collections = Collection.query.all()
+    try:
+        from models import PaymentCapture
+        unsaved_payment_count = (
+            PaymentCapture.query
+            .filter(PaymentCapture.order_id.is_(None), PaymentCapture.resolved_at.is_(None))
+            .count()
+        )
+    except Exception:
+        db.session.rollback()
+        unsaved_payment_count = 0
     
     return render_template('admin/orders.html', 
                          orders=orders,
                          collections=collections,
+                         unsaved_payment_count=unsaved_payment_count,
                          selected_status=stage,
                          selected_collection=collection_id,
                          selected_order_type=order_type)
@@ -5674,3 +5685,280 @@ def apply_ml_cache():
         'skipped': skipped,
         'styles_processed': len(all_images)
     })
+
+
+# ===== PAID CHECKOUTS THAT DID NOT BECOME ORDERS =====
+
+def _capture_view(cap):
+    from utils.payment_safety import cart_lines_text
+    try:
+        customer = json.loads(cap.customer_json or '{}') or {}
+    except ValueError:
+        customer = {}
+    try:
+        cart = json.loads(cap.cart_json or '[]') or []
+    except ValueError:
+        cart = []
+    name = ' '.join(p for p in (customer.get('first_name'), customer.get('last_name')) if p) or cap.payer_name or 'Unknown'
+    return {
+        'cap': cap,
+        'name': name,
+        'email': customer.get('email') or cap.payer_email or '',
+        'phone': customer.get('phone') or '',
+        'shipping_method': customer.get('shipping_method') or 'pickup',
+        'shipping_info': customer.get('shipping_info') or {},
+        'cart': cart,
+        'lines': [l[2:] for l in cart_lines_text(cart).splitlines() if l.startswith('- ')],
+    }
+
+
+@admin_bp.route('/orders/unsaved-payments')
+@admin_required
+def unsaved_payments():
+    from models import PaymentCapture
+    pending = (
+        PaymentCapture.query
+        .filter(PaymentCapture.order_id.is_(None))
+        .filter(PaymentCapture.resolved_at.is_(None))
+        .order_by(PaymentCapture.created_at.desc())
+        .all()
+    )
+    return render_template('admin/unsaved_payments.html', rows=[_capture_view(c) for c in pending])
+
+
+@admin_bp.route('/orders/unsaved-payments/lookup', methods=['POST'])
+@admin_required
+def unsaved_payment_lookup():
+    """Find a PayPal payment by transaction or order ID and stage it for recovery."""
+    from utils.payment_safety import (
+        resolve_paypal_order_id, fetch_paypal_order, completed_capture_total,
+        payer_from_order_json, record_paypal_capture,
+    )
+    ref = (request.form.get('paypal_ref') or '').strip()
+    paypal_order_id = resolve_paypal_order_id(ref)
+    if not paypal_order_id:
+        flash('PayPal could not find that transaction. Copy the Transaction ID from the PayPal email or app and try again.', 'error')
+        return redirect(url_for('admin.unsaved_payments'))
+    existing = Order.query.filter_by(paypal_order_id=paypal_order_id).first()
+    if existing:
+        flash(f'That payment already has an order: {existing.order_number}.', 'info')
+        return redirect(url_for('admin.order_detail', order_id=existing.id))
+    order_json = fetch_paypal_order(paypal_order_id)
+    amount = completed_capture_total(order_json)
+    if amount is None:
+        flash('PayPal shows no completed payment for that transaction.', 'error')
+        return redirect(url_for('admin.unsaved_payments'))
+    payer_name, payer_email = payer_from_order_json(order_json)
+    first, _, last = (payer_name or '').partition(' ')
+    customer = {'first_name': first, 'last_name': last, 'email': payer_email, 'shipping_method': 'pickup'}
+    shipping = (((order_json or {}).get('purchase_units') or [{}])[0].get('shipping') or {})
+    addr = shipping.get('address') or {}
+    if addr.get('address_line_1'):
+        customer['paypal_shipping_info'] = {
+            'recipient': (shipping.get('name') or {}).get('full_name') or payer_name,
+            'street': addr.get('address_line_1'),
+            'street_2': addr.get('address_line_2') or '',
+            'city': addr.get('admin_area_2'),
+            'state': addr.get('admin_area_1'),
+            'zip': addr.get('postal_code'),
+        }
+    # A customer with an account keeps their cart on file; use it if it's there.
+    cart = []
+    user = None
+    if payer_email:
+        user = User.query.filter(db.func.lower(User.email) == payer_email.lower()).first()
+        if user and getattr(user, 'cart_json', None):
+            try:
+                cart = json.loads(user.cart_json) or []
+            except ValueError:
+                cart = []
+    cap = record_paypal_capture(
+        paypal_order_id, amount, order_json=order_json, cart=cart or None,
+        customer=customer, user_id=user.id if user else None,
+    )
+    if cap is not None and not cap.failure_reason:
+        cap.failure_reason = 'Found by PayPal lookup after the order did not save.'
+        db.session.commit()
+    if cart:
+        flash(f'Found it: ${amount:.2f} from {payer_name}. Their saved cart was loaded below. Check it, then create the order.', 'success')
+    else:
+        flash(f'Found it: ${amount:.2f} from {payer_name}. No saved cart was on file, so add what they ordered below, then create the order.', 'info')
+    return redirect(url_for('admin.unsaved_payments'))
+
+
+def _save_capture_cart(cap, cart):
+    cap.cart_json = json.dumps(cart)
+    db.session.commit()
+
+
+@admin_bp.route('/orders/unsaved-payments/<int:cap_id>/add-item', methods=['POST'])
+@admin_required
+def unsaved_payment_add_item(cap_id):
+    from models import PaymentCapture
+    cap = PaymentCapture.query.get_or_404(cap_id)
+    style = (request.form.get('style_number') or '').strip()
+    product = Product.query.filter(db.func.lower(Product.style_number) == style.lower()).first() if style else None
+    if not product:
+        flash(f'No product with style number "{style}".', 'error')
+        return redirect(url_for('admin.unsaved_payments'))
+    design = None
+    design_ref = (request.form.get('design') or '').strip()
+    if design_ref:
+        design = Design.query.filter(db.func.lower(Design.sku) == design_ref.lower()).first()
+        if not design and design_ref.isdigit():
+            design = Design.query.get(int(design_ref))
+        if not design:
+            flash(f'No design with SKU or ID "{design_ref}".', 'error')
+            return redirect(url_for('admin.unsaved_payments'))
+    try:
+        qty = max(1, int(request.form.get('quantity') or 1))
+        price = float(request.form.get('unit_price') or product.base_price or 0)
+    except ValueError:
+        flash('Quantity and price must be numbers.', 'error')
+        return redirect(url_for('admin.unsaved_payments'))
+    try:
+        width = float(request.form.get('print_width') or 0) or None
+        height = float(request.form.get('print_height') or 0) or None
+    except ValueError:
+        width = height = None
+    try:
+        cart = json.loads(cap.cart_json or '[]') or []
+    except ValueError:
+        cart = []
+    cart.append({
+        'product_id': product.id,
+        'size': (request.form.get('size') or 'M').strip(),
+        'color': (request.form.get('color') or '').strip() or 'Unknown',
+        'quantity': qty,
+        'unit_price': round(price, 2),
+        'design_id': design.id if design else None,
+        'design_url': getattr(design, 'file_url', None) if design else None,
+        'placement': (request.form.get('placement') or 'front').strip(),
+        'print_width': width,
+        'print_height': height,
+        'collection_id': cap.collection_id,
+    })
+    _save_capture_cart(cap, cart)
+    flash('Item added.', 'success')
+    return redirect(url_for('admin.unsaved_payments'))
+
+
+@admin_bp.route('/orders/unsaved-payments/<int:cap_id>/remove-item/<int:index>', methods=['POST'])
+@admin_required
+def unsaved_payment_remove_item(cap_id, index):
+    from models import PaymentCapture
+    cap = PaymentCapture.query.get_or_404(cap_id)
+    try:
+        cart = json.loads(cap.cart_json or '[]') or []
+    except ValueError:
+        cart = []
+    if 0 <= index < len(cart):
+        cart.pop(index)
+        _save_capture_cart(cap, cart)
+    return redirect(url_for('admin.unsaved_payments'))
+
+
+@admin_bp.route('/orders/unsaved-payments/<int:cap_id>/resolve', methods=['POST'])
+@admin_required
+def unsaved_payment_resolve(cap_id):
+    from models import PaymentCapture
+    cap = PaymentCapture.query.get_or_404(cap_id)
+    cap.resolved_at = datetime.utcnow()
+    db.session.commit()
+    flash('Marked as handled.', 'success')
+    return redirect(url_for('admin.unsaved_payments'))
+
+
+@admin_bp.route('/orders/unsaved-payments/<int:cap_id>/create', methods=['POST'])
+@admin_required
+def unsaved_payment_create_order(cap_id):
+    """Turn a paid PayPal checkout into a real order, exactly like checkout would."""
+    from models import PaymentCapture
+    from routes.checkout import (
+        build_order_items, OrderItemError, calculate_totals, queue_order_confirmation_email,
+    )
+    from utils.order_costs import default_due_date
+    from utils.payment_safety import link_capture_to_order
+    cap = PaymentCapture.query.get_or_404(cap_id)
+    if cap.order_id:
+        return redirect(url_for('admin.order_detail', order_id=cap.order_id))
+    existing = Order.query.filter_by(paypal_order_id=cap.provider_ref).first()
+    if existing:
+        link_capture_to_order(cap.provider_ref, existing)
+        return redirect(url_for('admin.order_detail', order_id=existing.id))
+
+    view = _capture_view(cap)
+    cart = view['cart']
+    if not cart:
+        flash('Add what they ordered first.', 'error')
+        return redirect(url_for('admin.unsaved_payments'))
+    first = (request.form.get('first_name') or '').strip()
+    last = (request.form.get('last_name') or '').strip()
+    if not first:
+        first, _, rest = view['name'].partition(' ')
+        last = last or rest
+    email = (request.form.get('email') or view['email'] or '').strip()
+    fulfillment = request.form.get('fulfillment') or view['shipping_method'] or 'pickup'
+    try:
+        customer = json.loads(cap.customer_json or '{}') or {}
+    except ValueError:
+        customer = {}
+    ship = customer.get('shipping_info') or customer.get('paypal_shipping_info') or {}
+
+    totals = calculate_totals(cart, fulfillment)
+    order = Order(
+        email=email,
+        first_name=first or 'PayPal',
+        last_name=last or 'Customer',
+        phone=view['phone'] or None,
+        fulfillment_method=fulfillment,
+        subtotal=totals['subtotal'],
+        shipping_cost=totals['shipping_cost'],
+        tax=totals['tax'],
+        total=totals['total'],
+        payment_method='paypal',
+        payment_status='paid',
+        paypal_order_id=cap.provider_ref,
+        paid_at=cap.created_at or datetime.utcnow(),
+        amount_paid=float(cap.amount or totals['total']),
+        status='paid',
+        production_stage='order_received',
+        due_date=default_due_date(),
+        user_id=cap.user_id,
+        collection_id=cap.collection_id,
+    )
+    if fulfillment == 'shipping' and ship:
+        order.shipping_recipient = ship.get('recipient') or f'{first} {last}'.strip()
+        order.shipping_street = ship.get('street')
+        order.shipping_street_2 = ship.get('street_2')
+        order.shipping_city = ship.get('city')
+        order.shipping_state = ship.get('state')
+        order.shipping_zip = ship.get('zip')
+    db.session.add(order)
+    db.session.flush()
+    try:
+        saved = build_order_items(order, cart, rid=f'recover-{cap.id}')
+    except OrderItemError as exc:
+        db.session.rollback()
+        flash(f'One item could not be saved: {exc}', 'error')
+        return redirect(url_for('admin.unsaved_payments'))
+    if not saved:
+        db.session.rollback()
+        flash('None of the items could be saved. Check the style numbers.', 'error')
+        return redirect(url_for('admin.unsaved_payments'))
+    try:
+        from utils.order_costs import order_cost_breakdown, apply_calculated_cogs
+        from utils.payment_fees import refresh_processing_fee
+        refresh_processing_fee(order, allow_network=False)
+        apply_calculated_cogs(order, order_cost_breakdown(order))
+    except Exception:
+        current_app.logger.exception('recovered order cost calc skipped')
+    db.session.commit()
+    link_capture_to_order(cap.provider_ref, order)
+    if request.form.get('send_email') == 'on' and order.email:
+        queue_order_confirmation_email(order.id)
+    if abs(float(cap.amount or 0) - float(order.total or 0)) >= 0.01:
+        flash(f'Order {order.order_number} created. Note: PayPal collected ${cap.amount:.2f} but these items total ${order.total:.2f}.', 'info')
+    else:
+        flash(f'Order {order.order_number} created.', 'success')
+    return redirect(url_for('admin.order_detail', order_id=order.id))
