@@ -894,7 +894,10 @@ function buildPayPalButtonConfig(fundingSource) {
             if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
             // Send the checkout details with the capture so the shop has them
             // on file the moment the money is taken.
-            const capturePayload = Object.assign({}, buildOrderPayload(data.orderID, 'paypal'), {order_id: data.orderID});
+            let capturePayload = {order_id: data.orderID};
+            try {
+                capturePayload = Object.assign({}, buildOrderPayload(data.orderID, 'paypal'), {order_id: data.orderID});
+            } catch (e) { /* never let a form glitch block the payment record */ }
             const captureResp = await fetch('/checkout/paypal/capture-order', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
