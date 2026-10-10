@@ -266,8 +266,11 @@ def alert_unsaved_payment(paypal_order_id, reason):
         try:
             claimed = (
                 PaymentCapture.query
-                .filter(PaymentCapture.id == cap.id, PaymentCapture.alert_sent_at.is_(None))
-                .update({'alert_sent_at': datetime.utcnow(), 'failure_reason': reason},
+                .filter(PaymentCapture.id == cap.id)
+                .filter(db.or_(PaymentCapture.alert_sent_at.is_(None),
+                               PaymentCapture.awaiting_collection.is_(True)))
+                .update({'alert_sent_at': datetime.utcnow(), 'failure_reason': reason,
+                         'awaiting_collection': False},
                         synchronize_session=False)
             )
             db.session.commit()
@@ -535,84 +538,6 @@ def collect_approved_paypal(cap):
     return amount
 
 
-def release_claim(cap, token):
-    """Give back a claim, but only the one this caller took."""
-    from models import db, PaymentCapture
-    if cap is None or token is None:
-        return
-    try:
-        (PaymentCapture.query
-         .filter(PaymentCapture.id == cap.id, PaymentCapture.processing_at == token)
-         .update({'processing_at': None}, synchronize_session=False))
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-
-
-def claim_for_checkout(ref):
-    """The phone's own save step claims the payment so the sweep can't also build it.
-
-    Returns (allowed, token). allowed is True when this request may create the
-    order; token is the claim to give back if it fails (None if nothing to claim).
-    """
-    cap = get_capture(ref)
-    if cap is None:
-        return True, None
-    token = _claim(cap)
-    return token is not None, token
-
-
-def claimed_by_someone_else(ref):
-    cap = get_capture(ref)
-    if cap is None or cap.processing_at is None:
-        return False
-    return cap.processing_at > datetime.utcnow() - timedelta(minutes=5)
-
-
-def _collect_paypal(cap):
-    """For a PayPal checkout with no recorded payment: what did PayPal collect?
-
-    COMPLETED: already collected. APPROVED: the customer approved in PayPal
-    but their phone never asked us to collect it, so collect it now (they
-    tapped Pay Now). Returns (amount or None, finished_without_payment).
-    """
-    order_json = fetch_paypal_order(cap.provider_ref)
-    if not order_json:
-        return None, False
-    status = (order_json.get('status') or '').upper()
-    if status == 'APPROVED':
-        try:
-            import requests
-            from routes.checkout import _get_paypal_access_token, _paypal_base_url
-            app = current_app._get_current_object()
-            token = _get_paypal_access_token(app)
-            if token:
-                resp = requests.post(
-                    f'{_paypal_base_url(app)}/v2/checkout/orders/{cap.provider_ref}/capture',
-                    headers={'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'},
-                    timeout=15,
-                )
-                if resp.status_code in (200, 201):
-                    order_json = resp.json()
-                    status = (order_json.get('status') or '').upper()
-                else:
-                    current_app.logger.error('sweep PayPal capture %s -> %s: %s',
-                                             cap.provider_ref, resp.status_code, resp.text[:200])
-        except Exception:
-            current_app.logger.exception('sweep could not collect approved PayPal order %s', cap.provider_ref)
-    if status == 'COMPLETED':
-        amount = completed_capture_total(order_json)
-        if amount is not None:
-            payer_name, payer_email = payer_from_order_json(order_json)
-            cap.payer_name = cap.payer_name or payer_name
-            cap.payer_email = cap.payer_email or payer_email
-            paid_at = _capture_time(order_json)
-            if paid_at:
-                cap.created_at = paid_at
-        return amount, False
-    return None, status in ('VOIDED',)
-
-
 def _claim(cap):
     """Atomically claim a capture for order creation (no double orders).
 
@@ -753,7 +678,12 @@ def sweep_unsaved_payments(min_age_minutes=GRACE_MINUTES):
                     cap.resolved_at = now
                     cap.failure_reason = 'PayPal payment was never approved (checkout abandoned).'
                     db.session.commit()
-                # COMPLETED with a pending capture (PayPal review): keep checking.
+                elif status == 'COMPLETED' and cap.created_at and \
+                        cap.created_at < now - timedelta(days=14):
+                    # PayPal still holding it for review after two weeks: hand it to the admin.
+                    alert_unsaved_payment(cap.provider_ref,
+                                          'PayPal still shows this payment as pending review after 14 days.')
+                # Otherwise COMPLETED with a pending capture (PayPal review): keep checking.
                 continue
             cap.amount = amount
             db.session.commit()

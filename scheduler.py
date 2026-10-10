@@ -7,7 +7,7 @@ Nightly (America/Chicago):
 """
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import sys
 
@@ -76,6 +76,8 @@ def refresh_fees_job(app):
                     .filter(Order.payment_method.in_(['stripe', 'paypal']))
                     .filter(db.or_(Order.processing_fee_is_actual.is_(False),
                                    Order.processing_fee_is_actual.is_(None)))
+                    .filter(db.or_(Order.fee_checked_at.is_(None),
+                                   Order.fee_checked_at < datetime.utcnow() - timedelta(hours=6)))
                     .order_by(Order.created_at.desc())
                     .limit(20)
                     .all()

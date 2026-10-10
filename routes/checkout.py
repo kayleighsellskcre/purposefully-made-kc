@@ -199,6 +199,9 @@ def send_order_confirmation_email(order, force=False):
         order_id = getattr(order, 'id', None)
         if not order_id:
             return False
+        if getattr(order, 'payment_status', None) == 'underpaid' and not force:
+            # Held for the admin: no "your order is confirmed" until it's sorted out.
+            return False
 
         if not force:
             # Claim the send slot BEFORE SMTP so a second concurrent call exits
@@ -380,7 +383,10 @@ def _send_order_confirmation_email(order):
             order=order,
             admin_base_url=admin_base_url,
         )
-        payment_note = 'PAID' if order.payment_status == 'paid' else 'CASH — collect on pickup'
+        payment_note = {
+            'paid': 'PAID',
+            'underpaid': 'UNDERPAID — check before making',
+        }.get(order.payment_status, 'CASH — collect on pickup')
         admin_plain = (
             f"NEW ORDER — {order.order_number} · ${order.total:.2f} · {payment_note}\n\n"
             f"Customer : {order.full_name} <{order.email}>"
@@ -1044,6 +1050,8 @@ def create_payment_intent():
         )
 
         session['stripe_intent_id'] = intent.id
+        recent = [i for i in (session.get('stripe_intent_ids') or []) if i != intent.id][-4:]
+        session['stripe_intent_ids'] = recent + [intent.id]
         session.modified = True
         return jsonify({
             'clientSecret': intent.client_secret
@@ -1075,7 +1083,9 @@ def prepare():
     # order can always be created even if the phone never comes back.
     # The page says which payment it is about to charge; fall back to the
     # session only if it didn't (two open tabs can each have their own).
-    intent_id = (data.get('payment_intent_id') or '').strip() or session.get('stripe_intent_id') or None
+    asked = (data.get('payment_intent_id') or '').strip()
+    mine = session.get('stripe_intent_ids') or []
+    intent_id = (asked if asked and asked in mine else None) or session.get('stripe_intent_id') or None
     if intent_id:
         try:
             from utils.payment_safety import record_pending_card_payment

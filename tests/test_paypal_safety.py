@@ -394,3 +394,25 @@ def test_admin_page_escapes_shopper_text(admin_client, app, seed):
     page = admin_client.get('/admin/orders/unsaved-payments').get_data(as_text=True)
     assert '<img src=x onerror' not in page
     assert '&lt;img src=x onerror' in page
+
+
+def test_underpaid_order_never_sends_a_receipt_until_marked_paid(client, admin_client, seed, app, outbox):
+    _fill_cart(client, seed, qty=1)
+    with client.session_transaction() as sess:
+        sess['paypal_captured_amounts'] = {'EC-UNDER': 5.00}
+    body = client.post('/checkout/complete', json=_cash_payload(
+        payment_method='paypal', payment_id='EC-UNDER')).get_json()
+    assert body['success'] is True
+    # The thank-you page asks for the receipt; it must be refused.
+    client.post(f"/checkout/confirmation/{body['order_number']}/send-email")
+    assert not any('receipt' in m.subject.lower() for m in outbox)
+    with app.app_context():
+        order = Order.query.filter_by(paypal_order_id='EC-UNDER').one()
+        assert order.payment_status == 'underpaid'
+        oid = order.id
+    page = admin_client.get(f'/admin/orders/{oid}').get_data(as_text=True)
+    assert 'Mark as paid' in page
+    admin_client.post(f'/admin/orders/{oid}/mark-paid', data={'send_receipt': 'on'})
+    with app.app_context():
+        assert db.session.get(Order, oid).payment_status == 'paid'
+    assert any('receipt' in m.subject.lower() for m in outbox)

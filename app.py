@@ -303,6 +303,22 @@ def create_app(config_class=Config):
                             conn.rollback()
                         except Exception:
                             pass
+                        try:
+                            from datetime import datetime as _dt
+                            conn.execute(text(
+                                "INSERT INTO admin_notification (kind, title, preview, created_at) "
+                                "SELECT 'system', 'Duplicate-order guard not installed', :p, :t "
+                                "WHERE NOT EXISTS (SELECT 1 FROM admin_notification "
+                                "WHERE title = 'Duplicate-order guard not installed' AND read_at IS NULL)"
+                            ), {'p': 'The database could not add a one-order-per-payment guard '
+                                     '(two existing orders share a payment). Ask for a check.'[:300],
+                                't': _dt.utcnow()})
+                            conn.commit()
+                        except Exception:
+                            try:
+                                conn.rollback()
+                            except Exception:
+                                pass
 
             # Create favorites table if it doesn't exist
             from models import Favorite

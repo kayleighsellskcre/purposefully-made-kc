@@ -66,12 +66,14 @@ def _warn_admin_cloud_down(subfolder):
                           AdminNotification.created_at >= datetime.utcnow() - timedelta(hours=1))
                   .first())
         if recent is None:
-            create_notification(
-                kind='system',
-                title='Cloud storage upload failed',
-                preview=f'A {subfolder} upload was saved to the server temporarily and will be '
-                        'lost at the next site update. Check the R2 settings.',
-            )
+            with db.engine.begin() as conn:
+                conn.execute(AdminNotification.__table__.insert().values(
+                    kind='system',
+                    title='Cloud storage upload failed',
+                    preview=(f'A {subfolder} upload was saved to the server temporarily and will be '
+                             'lost at the next site update. Check the R2 settings.'),
+                    created_at=datetime.utcnow(),
+                ))
     except Exception:
         try:
             from models import db

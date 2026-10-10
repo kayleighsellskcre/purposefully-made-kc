@@ -61,7 +61,7 @@ def send_new_order_alert(app, order):
         return False
 
     base_url = app.config.get('ADMIN_BASE_URL', 'https://purposefullymadekc.com')
-    payment_note = 'PAID' if getattr(order, 'payment_status', '') == 'paid' else 'CASH'
+    payment_note = {'paid': 'PAID', 'underpaid': 'UNDERPAID'}.get(getattr(order, 'payment_status', ''), 'CASH')
     fulfillment = 'Pickup' if getattr(order, 'fulfillment_method', '') != 'shipping' else 'Ship'
     total = getattr(order, 'total', 0)
     order_number = getattr(order, 'order_number', '???')

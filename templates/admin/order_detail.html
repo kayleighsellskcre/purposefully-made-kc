@@ -190,6 +190,17 @@
                     <span class="od-info-val">${{ '%.2f'|format(order.amount_paid) }}</span>
                 </div>
                 {% endif %}
+                {% if order.payment_status == 'underpaid' %}
+                <div class="od-underpaid">
+                    <strong>Underpaid: the customer paid ${{ '%.2f'|format(order.amount_paid or 0) }} of ${{ '%.2f'|format(order.total or 0) }}.</strong>
+                    <span>No receipt was sent. Once the balance is settled (or you decide to make it anyway), mark it paid.</span>
+                    <form method="POST" action="{{ url_for('admin.mark_order_paid', order_id=order.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <label class="od-checkbox-label"><input type="checkbox" name="send_receipt" checked><span class="od-checkbox-custom"></span> Email the customer their receipt</label>
+                        <button type="submit" class="od-btn">Mark as paid</button>
+                    </form>
+                </div>
+                {% endif %}
                 {% if order.promo_code %}
                 <div class="od-info-row">
                     <span class="od-info-label">Promo</span>
@@ -795,6 +806,7 @@
 }
 .od-cogs-tag--actual { color: #4f7a52; }
 .od-cogs-reset { margin-top: 0.4rem; font-size: 0.8rem; }
+.od-underpaid { display:flex; flex-direction:column; gap:.45rem; margin:.6rem 0 0; padding:.8rem .95rem; border:1px solid #f0c48a; background:#fffbeb; border-radius:10px; color:#92400e; font-size:.85rem; }
 .od-field-hint {
     margin: 0.25rem 0 0;
     font-size: 0.75rem;
