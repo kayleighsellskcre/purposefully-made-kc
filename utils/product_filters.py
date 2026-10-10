@@ -235,14 +235,18 @@ def infer_family_key(item):
     that value is used directly (allows manually linking toddler/baby styles
     that don't share a style-number prefix with their adult counterpart).
 
-    Auto-detection rule: strip leading age-indicator character (Y / T / B)
-    from the letter tail that follows the numeric part of the style number.
+    Auto-detection rule: strip the brand letter prefix AND the leading
+    age-indicator character (Y / T / B) from the tail.  The key is therefore
+    just the numeric core + any fabric/cut suffix.
 
-    Examples:
-        BC3001, BC3001Y, BC3001T, BC3001B  →  'BC3001'   (classic tee family)
-        BC3001CVC, BC3001YCVC              →  'BC3001CVC' (CVC tee family)
-        PC54, PC54Y                         →  'PC54'
-        CC1717                              →  'CC1717'
+    Examples — all produce the same key so they group together:
+        BC3001, BC3001Y, BC3001T, BC3001B, 3001, 3001T, 3001B  →  '3001'
+        BC3001CVC, BC3001YCVC, 3001CVC                          →  '3001CVC'
+        PC54, PC54Y, 54, 54Y                                    →  '54'
+
+    Dropping the brand prefix is intentional: it makes grouping robust when
+    the same style is entered with and without the brand letters (e.g. the
+    toddler is stored as "3001T" while the adult is "BC3001").
     """
     # Prefer the admin-set manual override when present
     manual = str(_val(item, 'family_key') or '').strip()
@@ -253,10 +257,11 @@ def infer_family_key(item):
     m = re.match(r'^([A-Z]*?)(\d+)([A-Z]*)$', style)
     if not m:
         return style or str(getattr(item, 'id', id(item)))
-    brand_prefix, digits, tail = m.groups()
+    _brand_prefix, digits, tail = m.groups()
     # Strip leading Y / T / B (age indicator); keep fabric / cut suffix (e.g. CVC, LS)
     tail_clean = re.sub(r'^[YTB]', '', tail)
-    return brand_prefix + digits + tail_clean
+    # Key = numeric core + optional suffix (brand prefix intentionally dropped)
+    return digits + tail_clean
 
 
 def group_products_by_family(products):
