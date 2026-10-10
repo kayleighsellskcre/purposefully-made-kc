@@ -97,6 +97,13 @@
             <p class="up-hint">No other shopping activity was saved on the site around this payment.</p>
             {% endif %}
 
+            <form method="POST" action="{{ url_for('admin.unsaved_payment_copy_items', cap_id=cap.id) }}" class="up-inline" style="margin:.6rem 0">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="order_number" required class="up-input up-grow" placeholder="Copy items from order #, e.g. PMKC20261007DAE552ED">
+                <button type="submit" class="btn btn-outline">Copy items</button>
+            </form>
+            <p class="up-hint" style="margin-top:-.2rem">Group-store orders are identical except size. Copy one with the same size and the designs, back print and print sizes come over exactly.</p>
+
             <details class="up-add" {% if not row.lines %}open{% endif %}>
                 <summary>Add an item</summary>
                 <form method="POST" action="{{ url_for('admin.unsaved_payment_add_item', cap_id=cap.id) }}" class="up-grid">

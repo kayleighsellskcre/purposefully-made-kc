@@ -183,3 +183,33 @@ def test_page_shows_cart_previews_saved_before_a_guest_payment(admin_client, app
         assert name in page
     finally:
         path.unlink()
+
+
+def test_admin_can_copy_a_sibling_order_to_rebuild_a_lost_cart(admin_client, client, app, seed):
+    # A normal paid order to copy from.
+    _fill_cart(client, seed)
+    _capture(client, order_id='EC-SIB')
+    sib = client.post('/checkout/complete', json=_cash_payload(
+        payment_method='paypal', payment_id='EC-SIB')).get_json()
+    assert sib['success'] is True
+    with app.app_context():
+        cap = PaymentCapture(provider='paypal', provider_ref='EC-LOST2', amount=ONE_ITEM,
+                             payer_name='Meghan Bogert', payer_email='megs@example.com',
+                             created_at=datetime.utcnow())
+        db.session.add(cap)
+        db.session.commit()
+        cap_id = cap.id
+        src = Order.query.filter_by(order_number=sib['order_number']).one()
+        src_item = src.items.first()
+    admin_client.post(f'/admin/orders/unsaved-payments/{cap_id}/copy-from-order',
+                      data={'order_number': sib['order_number']})
+    admin_client.post(f'/admin/orders/unsaved-payments/{cap_id}/create',
+                      data={'first_name': 'Meghan', 'last_name': 'Bogert',
+                            'email': 'megs@example.com', 'fulfillment': 'pickup'})
+    with app.app_context():
+        order = Order.query.filter_by(paypal_order_id='EC-LOST2').one()
+        item = order.items.first()
+        src_item = db.session.merge(src_item)
+        assert (item.product_id, item.size, item.color, item.design_id, item.placement) == \
+               (src_item.product_id, src_item.size, src_item.color, src_item.design_id, src_item.placement)
+        assert order.total == src.total

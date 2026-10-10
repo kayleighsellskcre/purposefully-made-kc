@@ -5972,3 +5972,64 @@ def unsaved_payment_create_order(cap_id):
     else:
         flash(f'Order {order.order_number} created.', 'success')
     return redirect(url_for('admin.order_detail', order_id=order.id))
+
+
+@admin_bp.route('/orders/unsaved-payments/<int:cap_id>/copy-from-order', methods=['POST'])
+@admin_required
+def unsaved_payment_copy_items(cap_id):
+    """Copy another order's items exactly (designs, back print, print sizes).
+
+    Group-store orders are identical except size, so copying a sibling order
+    that has the right size rebuilds a lost cart precisely.
+    """
+    from models import PaymentCapture
+    cap = PaymentCapture.query.get_or_404(cap_id)
+    number = (request.form.get('order_number') or '').strip()
+    source = Order.query.filter(db.func.upper(Order.order_number) == number.upper()).first() if number else None
+    if not source:
+        flash(f'No order numbered "{number}".', 'error')
+        return redirect(url_for('admin.unsaved_payments'))
+    try:
+        cart = json.loads(cap.cart_json or '[]') or []
+    except ValueError:
+        cart = []
+    items = source.items.all() if hasattr(source.items, 'all') else list(source.items or [])
+    for item in items:
+        def _load(raw):
+            if not raw:
+                return None
+            try:
+                return json.loads(raw)
+            except (TypeError, ValueError):
+                return None
+        meta = _load(item.back_design_meta)
+        back_url = (meta or {}).get('file_url') if isinstance(meta, dict) else None
+        cart.append({
+            'product_id': item.product_id,
+            'size': item.size,
+            'color': item.color,
+            'quantity': item.quantity or 1,
+            'unit_price': item.unit_price,
+            'design_id': item.design_id,
+            'design_url': None if item.design_id else item.design_file_name,
+            'placement': item.placement,
+            'print_type': item.print_type,
+            'back_design_url': back_url or item.back_design_file_name,
+            'back_design_meta': meta,
+            'transfer_production': _load(item.transfer_production),
+            'print_width': item.print_width,
+            'print_height': item.print_height,
+            'position_x': item.position_x,
+            'position_y': item.position_y,
+            'rotation': item.rotation or 0,
+            'proof_image': item.proof_image,
+            'proof_back_url': item.proof_back_image,
+            'catalog_section': item.catalog_section,
+            'uniform_kit': item.uniform_kit,
+            'collection_id': source.collection_id,
+        })
+    if source.collection_id and not cap.collection_id:
+        cap.collection_id = source.collection_id
+    _save_capture_cart(cap, cart)
+    flash(f'Copied {len(items)} item(s) from {source.order_number}.', 'success')
+    return redirect(url_for('admin.unsaved_payments'))
