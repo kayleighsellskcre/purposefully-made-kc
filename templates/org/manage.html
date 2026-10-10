@@ -68,9 +68,52 @@
         {% endif %}
     </section>
 
+    {# ── Create a new team / store ── #}
+    <section class="org-add-section">
+        <h2>Create a team or store</h2>
+        <p>Start a brand-new group order store and place it directly on your org landing page.</p>
+        <form method="post" class="org-add-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="create_store">
+
+            <div class="org-add-row">
+                <div class="form-group">
+                    <label for="create_icon">Icon</label>
+                    <input type="text" id="create_icon" name="icon" class="form-control org-icon-input"
+                           value="🏀" maxlength="4" placeholder="🏀">
+                </div>
+                <div class="form-group org-add-label-group">
+                    <label for="create_label">Section label <span class="req">*</span></label>
+                    <input type="text" id="create_label" name="label" class="form-control"
+                           placeholder="Basketball" maxlength="100" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="store_name">Team / store name <span class="req">*</span></label>
+                <input type="text" id="store_name" name="store_name" class="form-control"
+                       placeholder="Rainbow Cheetahs Basketball" maxlength="200" required>
+            </div>
+
+            <div class="form-group">
+                <label for="store_slug">Custom URL slug <span class="opt">(optional)</span></label>
+                <input type="text" id="store_slug" name="store_slug" class="form-control"
+                       placeholder="rainbow-cheetahs-basketball" maxlength="80">
+            </div>
+
+            <div class="form-group">
+                <label for="store_description">Short description <span class="opt">(optional)</span></label>
+                <textarea id="store_description" name="store_description" class="form-control" rows="2"
+                          placeholder="Basketball spirit wear for the 2026 season."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Create store and add to page</button>
+        </form>
+    </section>
+
     {# ── Add a section ── #}
     <section class="org-add-section">
-        <h2>Add a section</h2>
+        <h2>Add an existing store</h2>
         <p>Each section is a tile on your landing page that links to one of your group order stores.</p>
         <form method="post" class="org-add-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

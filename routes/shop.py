@@ -577,6 +577,46 @@ def create_group_order():
             if not collection.id:
                 raise SQLAlchemyError('Collection was not assigned an ID after commit')
 
+            # ── 8. Multi-team organization (optional) ───────────────────────
+            # Mirrors admin logic: create an org + one store per team in the
+            # same transaction, then commit once so nothing is left half-built.
+            org_flash = None
+            org_action = request.form.get('org_action', '')
+            if org_action == 'new':
+                try:
+                    from utils.group_org import OrgSetupError, create_org_from_wizard
+                    org, stores = create_org_from_wizard(collection, request.form, current_user)
+                    db.session.commit()
+                    if len(stores) > 1:
+                        org_flash = (
+                            f'Created {len(stores)} team stores for {org.name}. '
+                            f'Share this link with your families: '
+                            f'purposefullymadekc.com/org/{org.slug}'
+                        )
+                        return redirect(url_for('org.manage', slug=org.slug))
+                    else:
+                        org_flash = (
+                            f'Organization page created for {org.name}. '
+                            f'Share purposefullymadekc.com/org/{org.slug}'
+                        )
+                        flash(org_flash, 'success')
+                        return redirect(url_for('org.manage', slug=org.slug))
+                except Exception as e:
+                    db.session.rollback()
+                    current_app.logger.exception('Org creation error during user group order: %s', e)
+                    flash('Your group order was saved but we could not set up the multi-team organization. Please contact us.', 'warning')
+                    return redirect(url_for('collection.share', slug=collection.slug))
+            elif org_action == 'existing':
+                try:
+                    from utils.group_org import add_store_to_org
+                    org = add_store_to_org(collection, request.form)
+                    db.session.commit()
+                    if org:
+                        org_flash = f'Added to the {org.name} organization page.'
+                        flash(org_flash, 'success')
+                except Exception as e:
+                    current_app.logger.exception('Add-to-org error during user group order: %s', e)
+
             msg = 'Group order created successfully'
             if upload_count:
                 msg += f' with {upload_count} design(s) uploaded'

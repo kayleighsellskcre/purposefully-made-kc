@@ -43,8 +43,7 @@
                             <input type="text" id="name" name="name" class="form-control" required placeholder="e.g., Silver Lake Spirit Wear 2026">
                         </div>
 
-                        {# ── Multi-team org checkbox (admin only) ── #}
-                        {% if not is_user_create %}
+                        {# ── Multi-team org checkbox (all users) ── #}
                         <div class="form-group" style="margin-top:0.25rem;">
                             <label class="org-check-label" for="hasOrgCheckbox">
                                 <input type="checkbox" id="hasOrgCheckbox" style="width:16px;height:16px;flex-shrink:0;accent-color:var(--terra-cotta,#b56c4c);cursor:pointer;">
@@ -64,8 +63,6 @@
                             </div>
                             <button type="button" id="orgAddTeam" disabled style="margin-top:0.6rem;background:none;border:none;color:var(--terra-cotta,#b56c4c);font-size:0.85rem;font-weight:600;cursor:pointer;padding:0;">+ Add another team</button>
                         </div>
-
-                        {% endif %}
 
                         {% if not is_user_create %}
                         <div class="form-group">
