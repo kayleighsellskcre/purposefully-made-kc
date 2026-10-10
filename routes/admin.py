@@ -2856,26 +2856,24 @@ def collections():
     """Manage collections — grouped under their org when applicable."""
     from utils.group_orders import is_deadline_passed
     from models import Organization, OrgSection
-    from sqlalchemy.orm import joinedload
 
     all_collections = Collection.query.order_by(Collection.created_at.desc()).all()
     for c in all_collections:
         c.list_active = bool(c.is_active) and not is_deadline_passed(c)
 
     # Build org groupings so team stores appear nested under their org.
-    orgs = (Organization.query
-            .options(joinedload(Organization.sections).joinedload(OrgSection.collection))
-            .order_by(Organization.created_at.desc())
-            .all())
+    # sections is lazy='dynamic', so we call .all() instead of joinedload.
+    orgs = Organization.query.order_by(Organization.created_at.desc()).all()
+    coll_by_id = {c.id: c for c in all_collections}
     org_collection_ids = set()
     for org in orgs:
-        coll_by_id = {c.id: c for c in all_collections}
+        sections = org.sections.all()
         org.grouped_collections = [
             {'section': sec, 'collection': coll_by_id[sec.collection_id]}
-            for sec in sorted(org.sections, key=lambda s: s.sort_order)
+            for sec in sorted(sections, key=lambda s: s.sort_order)
             if sec.collection_id in coll_by_id
         ]
-        org_collection_ids.update(s.collection_id for s in org.sections)
+        org_collection_ids.update(sec.collection_id for sec in sections)
 
     standalone = [c for c in all_collections if c.id not in org_collection_ids]
     return render_template(
