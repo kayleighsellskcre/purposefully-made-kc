@@ -1034,8 +1034,14 @@ def update_order_status(order_id):
     if admin_notes:
         order.admin_notes = admin_notes
 
-    db.session.commit()
-    flash(f'Order moved to: {MOVE_LABELS.get(stage, stage)}', 'success')
+    try:
+        db.session.commit()
+        flash(f'Order moved to: {MOVE_LABELS.get(stage, stage)}', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('update_order_status commit failed: %s', e)
+        flash('Could not update the order status. Please try again.', 'error')
+        return redirect(url_for('admin.order_detail', order_id=order_id))
     if stage in ('completed', 'shipped', 'picked_up'):
         return redirect(url_for('admin.orders_completed'))
     return redirect(url_for('admin.order_detail', order_id=order_id))
@@ -2687,7 +2693,15 @@ def toggle_product_active(product_id):
             flash(message, 'error')
             return redirect(url_for('admin.products'))
     product.is_active = not product.is_active
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('toggle_product_active failed: %s', e)
+        if flask_request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'ok': False, 'message': 'Could not update product. Please try again.'}), 500
+        flash('Could not update product. Please try again.', 'error')
+        return redirect(url_for('admin.products'))
 
     label   = 'Active' if product.is_active else 'Inactive'
     message = f'"{product.name}" is now {label.lower()}'
@@ -3213,11 +3227,29 @@ def edit_collection(collection_id):
 @admin_bp.route('/collections/<int:collection_id>/delete', methods=['POST'])
 @admin_required
 def delete_collection(collection_id):
-    """Delete a collection"""
+    """Delete a collection, cleaning up FK references first."""
+    from models import Order, Design, OrgSection
     collection = Collection.query.get_or_404(collection_id)
-    db.session.delete(collection)
-    db.session.commit()
-    flash('Group order deleted', 'success')
+    try:
+        # Detach orders — preserve order records, just remove the link
+        db.session.query(Order).filter(Order.collection_id == collection_id).update(
+            {Order.collection_id: None}, synchronize_session=False
+        )
+        # Remove org section tiles that point to this collection
+        db.session.query(OrgSection).filter(OrgSection.collection_id == collection_id).delete(
+            synchronize_session=False
+        )
+        # Detach any designs that were scoped to this collection
+        db.session.query(Design).filter(Design.collection_id == collection_id).update(
+            {Design.collection_id: None}, synchronize_session=False
+        )
+        db.session.delete(collection)
+        db.session.commit()
+        flash('Group order deleted', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('delete_collection %s failed: %s', collection_id, e)
+        flash('Could not delete the group order. Please try again.', 'error')
     return redirect(url_for('admin.collections'))
 
 
@@ -3416,8 +3448,13 @@ def production_master_move():
         apply_stage(order, 'ready_to_press')
         count += 1
 
-    db.session.commit()
-    flash(f'Moved {count} order(s) to Ready to Press — next up: press sheets.', 'success')
+    try:
+        db.session.commit()
+        flash(f'Moved {count} order(s) to Ready to Press — next up: press sheets.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('production_master_move commit failed: %s', e)
+        flash('Could not move orders. Please try again.', 'error')
     from utils.ops_flow import ops_url
     return redirect(ops_url('admin.transfer_production', stage=['ready_to_press'], collection=collection_id))
 
