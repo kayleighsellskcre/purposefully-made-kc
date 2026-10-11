@@ -3228,16 +3228,13 @@ def edit_collection(collection_id):
 @admin_required
 def delete_collection(collection_id):
     """Delete a collection, cleaning up ALL FK references first via raw SQL."""
-    from models import Order, Design, OrgSection, GroupRosterEntry
+    from models import Order, OrgSection, GroupRosterEntry
     from sqlalchemy import text
     collection = Collection.query.get_or_404(collection_id)
     try:
         # Step 1: nullify FK references that allow NULL
         db.session.query(Order).filter(Order.collection_id == collection_id).update(
             {Order.collection_id: None}, synchronize_session=False
-        )
-        db.session.query(Design).filter(Design.collection_id == collection_id).update(
-            {Design.collection_id: None}, synchronize_session=False
         )
         # Step 2: hard-delete rows where FK is NOT NULL (cannot nullify)
         db.session.query(OrgSection).filter(OrgSection.collection_id == collection_id).delete(
