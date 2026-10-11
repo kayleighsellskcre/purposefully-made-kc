@@ -3227,36 +3227,44 @@ def edit_collection(collection_id):
 @admin_bp.route('/collections/<int:collection_id>/delete', methods=['POST'])
 @admin_required
 def delete_collection(collection_id):
-    """Delete a collection, cleaning up FK references first."""
+    """Delete a collection, cleaning up ALL FK references first via raw SQL."""
     from models import Order, Design, OrgSection, GroupRosterEntry
+    from sqlalchemy import text
     collection = Collection.query.get_or_404(collection_id)
     try:
-        # Detach orders — preserve order records, just remove the link
+        # Step 1: nullify FK references that allow NULL
         db.session.query(Order).filter(Order.collection_id == collection_id).update(
             {Order.collection_id: None}, synchronize_session=False
         )
-        # Remove org section tiles that point to this collection
-        db.session.query(OrgSection).filter(OrgSection.collection_id == collection_id).delete(
-            synchronize_session=False
-        )
-        # Detach any designs that were scoped to this collection
         db.session.query(Design).filter(Design.collection_id == collection_id).update(
             {Design.collection_id: None}, synchronize_session=False
         )
-        # Explicitly delete roster entries — lazy='dynamic' relationships don't
-        # cascade reliably after synchronize_session=False bulk operations.
+        # Step 2: hard-delete rows where FK is NOT NULL (cannot nullify)
+        db.session.query(OrgSection).filter(OrgSection.collection_id == collection_id).delete(
+            synchronize_session=False
+        )
         db.session.query(GroupRosterEntry).filter(
             GroupRosterEntry.collection_id == collection_id
         ).delete(synchronize_session=False)
-        # Flush all cleanup SQL to the DB before deleting the parent row,
-        # so FK constraints fire in the right order.
+        # Step 3: clear the collection_products secondary/association table via
+        # raw SQL — the ORM's automatic secondary-table cleanup can fail after
+        # synchronize_session=False bulk operations leave the identity map stale.
+        db.session.execute(
+            text('DELETE FROM collection_products WHERE collection_id = :cid'),
+            {'cid': collection_id}
+        )
+        # Step 4: flush all FK cleanup to the DB BEFORE touching the parent row
         db.session.flush()
+        # Step 5: now safe to delete the collection row itself
         db.session.delete(collection)
         db.session.commit()
         flash('Group order deleted', 'success')
     except Exception as e:
         db.session.rollback()
-        current_app.logger.exception('delete_collection %s failed: %s', collection_id, e)
+        current_app.logger.exception(
+            'delete_collection %s FAILED — %s: %s',
+            collection_id, type(e).__name__, e
+        )
         flash('Could not delete the group order. Please try again.', 'error')
     return redirect(url_for('admin.collections'))
 
