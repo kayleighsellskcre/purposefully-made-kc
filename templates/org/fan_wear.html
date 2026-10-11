@@ -19,6 +19,9 @@
 .product-checkbox-name { font-size: .9rem; font-weight: 600; line-height: 1.3; }
 .product-checkbox-info small { color: var(--text-secondary); font-size: .78rem; }
 .fw-designs { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: .8rem; margin-top: 1rem; }
+.fw-design-wrap { position: relative; }
+.fw-design-del { position: absolute; top: -8px; right: -8px; width: 26px; height: 26px; border-radius: 50%; border: 2px solid #fff; background: #c0392b; color: #fff; font-size: 16px; line-height: 1; cursor: pointer; padding: 0; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.fw-design-del:hover { background: #a93226; }
 .fw-design { display: flex; flex-direction: column; gap: .4rem; padding: .6rem; border: 1.5px solid var(--border-light); border-radius: 12px; background: #fff; cursor: pointer; }
 .fw-design img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 8px; background: linear-gradient(145deg, var(--ivory-silk), var(--cashmere-sand)); }
 .fw-design span { display: flex; align-items: center; justify-content: center; gap: .35rem; font-size: .84rem; }
@@ -79,15 +82,20 @@
 
         <section class="om-card">
             <div class="fw-step"><span>3</span><h2>Designs</h2></div>
-            <p class="om-sub">Tick the designs fans can put on their shirt. Untick a jersey-only logo to keep it off Fan Wear.</p>
+            <p class="om-sub">Tick the designs fans can put on their shirt. Untick one to hide it for now, or press the red &times; to delete it for good.</p>
             {% if designs %}
             <div class="fw-designs">
                 {% for d in designs %}
-                <label class="fw-design">
-                    <input type="hidden" name="design_ids" value="{{ d.id }}">
-                    <img src="{{ d.file_path | image_url }}" alt="{{ d.title or d.original_filename or 'Design' }}" loading="lazy" decoding="async">
-                    <span><input type="checkbox" name="fan_designs" value="{{ d.id }}" {% if d.id in shown_design_ids %}checked{% endif %}> Show to fans</span>
-                </label>
+                <div class="fw-design-wrap">
+                    <label class="fw-design">
+                        <input type="hidden" name="design_ids" value="{{ d.id }}">
+                        <img src="{{ d.file_path | image_url }}" alt="{{ d.title or d.original_filename or 'Design' }}" loading="lazy" decoding="async">
+                        <span><input type="checkbox" name="fan_designs" value="{{ d.id }}" {% if d.id in shown_design_ids %}checked{% endif %}> Show to fans</span>
+                    </label>
+                    <button type="submit" form="delDesign{{ d.id }}" class="fw-design-del" title="Delete this design"
+                            aria-label="Delete this design"
+                            onclick="return confirm('Delete this design for every team? This cannot be undone. Any other changes on this page that you have not saved will be lost.')">&times;</button>
+                </div>
                 {% endfor %}
             </div>
             {% else %}
@@ -107,6 +115,13 @@
             <button type="submit" class="om-chip om-chip--primary" style="padding:.8rem 2.2rem;font-size:.9rem">Save Fan Wear for all teams</button>
         </div>
     </form>
+
+    {% for d in designs %}
+    <form id="delDesign{{ d.id }}" method="post" style="display:none"
+          action="{{ url_for('org.fan_wear_delete_design', slug=org.slug, design_id=d.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    </form>
+    {% endfor %}
 </div>
 
 <script>

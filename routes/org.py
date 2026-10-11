@@ -505,3 +505,72 @@ def fan_wear(slug):
         teams=[sec for sec in org.sections.order_by(OrgSection.sort_order).all()
                if sec.collection and 'fan' not in (sec.label or '').lower()],
     )
+
+
+@org_bp.route('/org/<slug>/fan-wear/designs/<int:design_id>/delete', methods=['POST'])
+def fan_wear_delete_design(slug, design_id):
+    """Delete one design from every team in the group.
+
+    Refuses while a team's jersey logo or back print uses it. A design that is
+    part of the public Design Gallery is only taken out of this group; its
+    gallery record is kept.
+    """
+    import json
+    from models import Design
+    from utils.group_orders import allowed_design_ids, org_fan_wear_state, showcase_design_ids, team_store_config
+
+    org = _org_or_404(slug)
+    if org.password_hash and not _require_org_auth(org):
+        return redirect(url_for('org.org_login', slug=slug))
+    back = redirect(url_for('org.fan_wear', slug=slug))
+
+    state = org_fan_wear_state(org)
+    if design_id not in state['design_ids']:
+        flash('That design is not part of this group.', 'error')
+        return back
+
+    labels = {sec.collection_id: sec.label for sec in org.sections}
+    for coll in state['team_collections']:
+        uniform = team_store_config(coll)['uniform']
+        if design_id in (uniform.get('home_design_id'), uniform.get('away_design_id')):
+            flash(f'This design is the jersey logo for {labels.get(coll.id, "a team")}. '
+                  'Change that team\'s jersey logo first, then delete it.', 'error')
+            return back
+        if getattr(coll, 'back_design_id', None) == design_id:
+            flash(f'This design is the back print for {labels.get(coll.id, "a team")}. '
+                  'Change it there first, then delete it.', 'error')
+            return back
+
+    for coll in state['team_collections']:
+        ids = [i for i in allowed_design_ids(coll) if i != design_id]
+        coll.allowed_design_ids = json.dumps(ids) if ids else None
+        show = [i for i in showcase_design_ids(coll) if i != design_id]
+        coll.showcase_design_ids = json.dumps(show) if show else None
+        try:
+            cfg = json.loads(coll.team_store_config or '{}')
+        except (TypeError, ValueError):
+            cfg = {}
+        if isinstance(cfg, dict) and design_id in (cfg.get('fanwear_excluded_ids') or []):
+            cfg['fanwear_excluded_ids'] = [i for i in cfg['fanwear_excluded_ids'] if i != design_id]
+            coll.team_store_config = json.dumps(cfg, separators=(',', ':'))
+
+    photos = _photo_cfg(org)
+    photos['hidden'] = [i for i in photos['hidden'] if i != design_id]
+    if photos['hero'] is not None:
+        photos['hero'] = [k for k in photos['hero'] if k != f'fan:{design_id}']
+    _save_photo_cfg(org, photos)
+
+    design = Design.query.get(design_id)
+    deleted = False
+    if design and not design.is_gallery:
+        try:
+            from routes.admin import _delete_design_file
+            _delete_design_file(design)
+        except Exception:
+            pass
+        db.session.delete(design)
+        deleted = True
+    db.session.commit()
+    flash('Design deleted.' if deleted else
+          'Design taken out of this group. It stays in the Design Gallery.', 'success')
+    return back

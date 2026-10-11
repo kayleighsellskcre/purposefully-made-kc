@@ -355,3 +355,53 @@ def test_team_edit_page_points_to_the_shared_fan_wear(admin_client, app, seed):
     html = admin_client.get(f'/admin/collections/{coll_id}/edit').get_data(as_text=True)
     assert 'name="sync_fan_to_org" value="on"' in html
     assert f'/org/{_org_slug(app)}/fan-wear' in html
+
+
+# ── Deleting a design from Fan Wear ──────────────────────────────────────────
+
+def _delete(admin_client, app, design_id):
+    return admin_client.post(f'/org/{_org_slug(app)}/fan-wear/designs/{design_id}/delete',
+                             follow_redirects=True)
+
+
+def test_deleting_a_design_removes_it_everywhere(admin_client, app, seed):
+    from models import Design
+    a, b, c = _build(admin_client, app, seed)
+    resp = _delete(admin_client, app, c)           # c is a shared (non-jersey) design
+    assert 'Design deleted' in resp.get_data(as_text=True)
+    with app.app_context():
+        assert Design.query.get(c) is None
+        for coll in Collection.query.filter(Collection.name.like('%: Rainbow Cheetahs')).all():
+            assert c not in json.loads(coll.allowed_design_ids or '[]')
+    page = admin_client.get(f'/org/{_org_slug(app)}/fan-wear').get_data(as_text=True)
+    assert page.count('name="fan_designs"') == 2
+
+
+def test_a_jersey_logo_cannot_be_deleted(admin_client, app, seed):
+    from models import Design
+    a, b, c = _build(admin_client, app, seed)       # a = Basketball jersey logo
+    resp = _delete(admin_client, app, a)
+    assert 'jersey logo' in resp.get_data(as_text=True)
+    with app.app_context():
+        assert Design.query.get(a) is not None
+
+
+def test_a_gallery_design_is_only_taken_out_of_the_group(admin_client, app, seed):
+    from models import Design
+    a, b, c = _build(admin_client, app, seed)
+    with app.app_context():
+        Design.query.get(c).is_gallery = True
+        db.session.commit()
+    resp = _delete(admin_client, app, c)
+    assert 'stays in the Design Gallery' in resp.get_data(as_text=True)
+    with app.app_context():
+        assert Design.query.get(c) is not None
+        for coll in Collection.query.filter(Collection.name.like('%: Rainbow Cheetahs')).all():
+            assert c not in json.loads(coll.allowed_design_ids or '[]')
+
+
+def test_fan_wear_page_has_a_delete_button_per_design(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    html = admin_client.get(f'/org/{_org_slug(app)}/fan-wear').get_data(as_text=True)
+    assert html.count('class="fw-design-del"') == 3
+    assert html.count('/delete"') >= 3
