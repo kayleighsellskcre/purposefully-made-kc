@@ -210,6 +210,7 @@ def view(slug):
     showcase_designs = load_showcase_designs(collection)
 
     # ── Org navigation: if this collection belongs to an org, pass sibling sections
+    import json as _json_nav
     from models import OrgSection, Organization
     org_nav = None
     org_section = OrgSection.query.filter_by(collection_id=collection.id).first()
@@ -217,10 +218,32 @@ def view(slug):
         org = Organization.query.get(org_section.organization_id)
         if org:
             all_sections = list(org.sections)
+            # Compute the best Fan Wear URL for this org (used in template nav)
+            fan_sections = [s for s in all_sections if 'fan' in (s.label or '').lower()]
+            team_sections = [s for s in all_sections if 'fan' not in (s.label or '').lower()]
+            fan_wear_nav_url = None
+            if fan_sections and fan_sections[0].collection:
+                from flask import url_for as _url_for
+                fan_wear_nav_url = _url_for('collection.view', slug=fan_sections[0].collection.slug)
+            else:
+                for _s in team_sections:
+                    _c = _s.collection
+                    if not _c or not _c.is_active:
+                        continue
+                    try:
+                        _raw = _c.team_store_config or ''
+                        _parsed = _json_nav.loads(_raw) if isinstance(_raw, str) and _raw.strip() else {}
+                        if _parsed.get('fan_product_ids'):
+                            from flask import url_for as _url_for
+                            fan_wear_nav_url = _url_for('collection.view', slug=_c.slug) + '?path=fan'
+                            break
+                    except Exception:
+                        continue
             org_nav = {
                 'org': org,
                 'current_section': org_section,
                 'sections': all_sections,
+                'fan_wear_url': fan_wear_nav_url,
             }
 
     # ── Fan Wear org section: auto-inherit designs from sibling team stores ──

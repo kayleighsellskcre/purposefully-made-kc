@@ -525,7 +525,91 @@
     </div>
 </div>
 
-{# Org team navigation removed — shoppers choose their team on the org landing page #}
+{% if org_nav %}
+{# Org navigation bar: breadcrumb back to org + quick-switch to other teams & Fan Wear #}
+<div class="org-collection-nav">
+    <div class="container">
+        <a href="/org/{{ org_nav.org.slug }}" class="org-nav-back">
+            ← {{ org_nav.org.name }}
+        </a>
+        <div class="org-nav-links">
+            {% for s in org_nav.sections %}
+            {% if 'fan' not in (s.label or '')|lower and s.collection %}
+                {% if s.id == org_nav.current_section.id %}
+                <span class="org-nav-link org-nav-link--active">{{ s.icon or '' }} {{ s.label }}</span>
+                {% else %}
+                <a href="{{ url_for('collection.view', slug=s.collection.slug) }}" class="org-nav-link">{{ s.icon or '' }} {{ s.label }}</a>
+                {% endif %}
+            {% endif %}
+            {% endfor %}
+            {% if org_nav.fan_wear_url %}
+            <a href="{{ org_nav.fan_wear_url }}" class="org-nav-link org-nav-link--fanwear">👕 Fan Wear</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<style>
+.org-collection-nav {
+    background: #fff;
+    border-bottom: 1px solid var(--border-light, #e8e0d8);
+    padding: 0.6rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 90;
+}
+.org-collection-nav .container {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+}
+.org-nav-back {
+    font-size: 0.82rem;
+    color: var(--text-secondary, #888);
+    text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.org-nav-back:hover { color: var(--terra-cotta, #b56c4c); }
+.org-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.org-nav-link {
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
+    border: 1.5px solid #e0d8d0;
+    text-decoration: none;
+    color: var(--text-primary, #1a1a1a);
+    background: #fff;
+    transition: border-color 0.15s, background 0.15s;
+    white-space: nowrap;
+}
+.org-nav-link:hover {
+    border-color: var(--terra-cotta, #b56c4c);
+    background: #fdf6f3;
+    color: var(--terra-cotta, #b56c4c);
+}
+.org-nav-link--active {
+    background: var(--terra-cotta, #b56c4c);
+    border-color: var(--terra-cotta, #b56c4c);
+    color: #fff !important;
+    pointer-events: none;
+}
+.org-nav-link--fanwear {
+    border-color: var(--terra-cotta, #b56c4c);
+    color: var(--terra-cotta, #b56c4c);
+}
+.org-nav-link--fanwear:hover {
+    background: var(--terra-cotta, #b56c4c);
+    color: #fff;
+}
+</style>
+{% endif %}
 
 <section class="design-board">
     <div class="container">
