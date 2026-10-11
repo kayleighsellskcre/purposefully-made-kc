@@ -77,6 +77,9 @@
     margin-bottom: 0.75rem;
 }
 
+.fan-steps { display:flex; flex-wrap:wrap; justify-content:center; gap:.6rem 1.5rem; list-style:none; margin:1rem 0 0; padding:0; }
+.fan-steps li { display:flex; align-items:center; gap:.55rem; color:var(--text-secondary); font-size:.98rem; }
+.fan-steps li span { display:inline-flex; align-items:center; justify-content:center; width:1.8rem; height:1.8rem; border-radius:50%; background:var(--accent-color); color:#fff; font-weight:700; font-size:.85rem; box-shadow:0 2px 6px rgba(184,124,111,.35); }
 .design-board-intro p {
     color: var(--text-secondary);
     margin-bottom: 0;
@@ -673,6 +676,16 @@
 
         <div class="fan-wear-section" id="fanWearSection"
              {% if has_uniform_lane %}hidden{% endif %}>
+        {% if fan_page and org_nav %}
+        <div class="design-board-intro fan-intro">
+            <h2>Choose Your Style</h2>
+            <ol class="fan-steps">
+                <li><span>1</span> Pick a style</li>
+                <li><span>2</span> Pick a color</li>
+                <li><span>3</span> Pick a design</li>
+            </ol>
+        </div>
+        {% else %}
         <div class="design-board-intro">
             <h2>{% if team_store.uniform.enabled %}Family &amp; Fan Wear{% else %}Your Design Board{% endif %}</h2>
             {% if team_store.uniform.enabled %}
@@ -685,6 +698,7 @@
             <p>Choose your shirt, then tap to customize.</p>
             {% endif %}
         </div>
+        {% endif %}
         {% if age_matching_note %}
         <p class="age-matching-note">{{ age_matching_note }}</p>
         {% endif %}
@@ -934,7 +948,7 @@ document.querySelectorAll('.color-carousel').forEach(carousel => {
     var seen = {};
     var combos = [];
     items.forEach(function(el) {
-        var ages = (el.getAttribute('data-age') || '').split(/\s+/).filter(Boolean);
+        var ages = {{ 'false' if fan_page else 'true' }} ? (el.getAttribute('data-age') || '').split(/[\s,]+/).filter(Boolean) : [];
         var cat = el.getAttribute('data-category') || '';
         if (!ages.length && !cat) return;
         (ages.length ? ages : ['']).forEach(function(age) {
