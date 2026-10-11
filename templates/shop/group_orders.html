@@ -371,12 +371,12 @@
                 {% endif %}
             </div>
         </div>
-        {% if open_collections %}
+        {% if open_collections or open_orgs %}
         <div class="directory-section">
             <h2>Open Group Orders</h2>
             <p class="section-sub">Join an existing order: pick your size, pay your own way, and you're done.</p>
 
-            {% if open_collections|length > 3 %}
+            {% if (open_collections|length + open_orgs|length) > 3 %}
             <div class="dir-search-wrap">
                 <label for="dirSearchInput" class="visually-hidden">Search group orders</label>
                 <svg class="dir-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -387,6 +387,44 @@
             {% endif %}
 
             <div class="directory-grid" id="directoryGrid">
+
+                {# ── Organization umbrella cards (one card per org, links to /org/<slug>) ── #}
+                {% for item in open_orgs %}
+                {% set org = item.org %}
+                <div class="dir-card" data-name="{{ org.name | lower }}" data-desc="{{ (org.description or '') | lower }}" data-visibility="public">
+                    {% if org.cover_image %}
+                    <div class="dir-card-img has-cover">
+                        <div class="dir-card-art-frame">
+                            <img src="{{ org.cover_image | image_url }}" alt="{{ org.name }}"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                            <div class="dir-card-lettermark" style="display:none"><span>{{ org.name }}</span></div>
+                        </div>
+                        <div class="dir-card-cover-title">{{ org.name }}</div>
+                    </div>
+                    {% else %}
+                    <div class="dir-card-img">
+                        <div class="dir-card-lettermark"><span>{{ org.name }}</span></div>
+                    </div>
+                    {% endif %}
+                    <div class="dir-card-body">
+                        {% if not org.cover_image %}
+                        <p class="dir-card-name">{{ org.name }}</p>
+                        {% endif %}
+                        {% if org.description %}
+                        <p class="dir-card-desc">{{ org.description[:120] }}{% if org.description|length > 120 %}…{% endif %}</p>
+                        {% endif %}
+                        <div class="dir-card-meta">
+                            <span>{{ item.team_count }} team store{{ 's' if item.team_count != 1 }}</span>
+                            <span class="dir-badge public">🌐 Public</span>
+                        </div>
+                    </div>
+                    <div class="dir-card-footer">
+                        <a href="/org/{{ org.slug }}" class="btn btn-primary">Shop All Teams</a>
+                    </div>
+                </div>
+                {% endfor %}
+
+                {# ── Standalone collection cards ── #}
                 {% for item in open_collections %}
                 {% set c = item.collection %}
                 <div class="dir-card" data-name="{{ (c.card_title or '') | lower }} {{ c.name | lower }}" data-desc="{{ (c.description or '') | lower }}" data-visibility="{% if c.is_password_protected %}code required{% elif c.show_in_directory %}public{% else %}link only private{% endif %}">

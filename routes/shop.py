@@ -373,7 +373,7 @@ def index():
 def group_orders():
     """Group order landing page + public directory of open collections"""
     from flask_login import current_user
-    from models import Collection
+    from models import Collection, OrgSection
     from utils.group_orders import (
         is_deadline_passed,
         is_not_yet_open,
@@ -386,20 +386,40 @@ def group_orders():
         .order_by(Collection.created_at.desc())
         .all()
     )
-    open_collections = []
+
+    # Separate org-grouped collections from standalone ones.
+    # If a collection belongs to an Organization, show the org card once
+    # (linking to /org/<slug>) instead of individual team store cards.
+    org_ids_seen = set()
+    open_orgs = []        # Organization umbrella cards
+    open_collections = [] # Standalone (non-org) collection cards
+
     for c in directory:
         if is_deadline_passed(c):
             continue
-        open_collections.append({
-            'collection': c,
-            'product_count': visible_store_product_count(c),
-            'not_yet_open': is_not_yet_open(c),
-        })
+        section = OrgSection.query.filter_by(collection_id=c.id).first()
+        if section and section.organization and section.organization.is_active:
+            org = section.organization
+            if org.id not in org_ids_seen:
+                org_ids_seen.add(org.id)
+                # Count active team stores in this org
+                team_count = sum(
+                    1 for s in org.sections.all()
+                    if s.collection and s.collection.is_active
+                )
+                open_orgs.append({'org': org, 'team_count': team_count})
+        else:
+            open_collections.append({
+                'collection': c,
+                'product_count': visible_store_product_count(c),
+                'not_yet_open': is_not_yet_open(c),
+            })
 
     return render_template(
         'shop/group_orders.html',
         is_admin=current_user.is_authenticated and getattr(current_user, 'is_admin', False),
         open_collections=open_collections,
+        open_orgs=open_orgs,
     )
 
 
