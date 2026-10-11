@@ -7,6 +7,7 @@ import io
 from datetime import datetime
 from unittest.mock import patch
 
+import json
 import pytest
 
 from models import db, CustomDesignRequest, Order, User
@@ -31,6 +32,7 @@ def _place_cash_order(client, seed, app, token='tok-mail-1', email='buyer@exampl
     with app.app_context():
         c = db.session.get(Collection, seed['collection_id'])
         c.allow_cash_pickup = True
+        c.allowed_design_ids = json.dumps([seed['free_design_id']])   # else the design is dropped
         db.session.commit()
     with client.session_transaction() as sess:
         sess['collection_id'] = seed['collection_id']

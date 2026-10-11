@@ -119,9 +119,9 @@ def test_team_store_shows_jerseys_first_and_a_fan_wear_button(admin_client, clie
     # Fan wear waits behind the button so jerseys are what shoppers see first.
     fan_tag = html[html.index('id="fanWearSection"'):html.index('id="fanWearSection"') + 80]
     assert 'hidden' in fan_tag
-    # Team switcher lists every team.
-    assert 'Choose your team' in html
-    for label in ('Basketball', 'Soccer', 'Volleyball'):
+    # The team bar lists every team plus Fan Wear.
+    assert 'org-collection-nav' in html
+    for label in ('Basketball', 'Soccer', 'Volleyball', 'Fan Wear'):
         assert label in html
 
 

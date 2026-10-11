@@ -79,6 +79,7 @@ def test_customer_still_sees_design_after_admin_remove(client, seed, login, app,
         headers={'X-Requested-With': 'XMLHttpRequest'},
     ).status_code == 200
 
+    client.get('/auth/logout')          # same browser as admin_client
     login(client, CUSTOMER_EMAIL)
     html = client.get('/account/designs').get_data(as_text=True)
     assert 'keep-me' in html

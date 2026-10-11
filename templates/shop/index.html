@@ -191,7 +191,7 @@
                         </button>
                         {% endfor %}
                     </div>
-                    <select id="colorFilter" class="visually-hidden" multiple onchange="applyFilters()" aria-hidden="true" tabindex="-1">
+                    <select id="colorFilter" class="visually-hidden" multiple onchange="applyFilters()" aria-label="Color" aria-hidden="true" tabindex="-1">
                         {% for family in color_families or [] %}
                         <option value="{{ family.name }}" {% if family.name in selected_colors %}selected{% endif %}>{{ family.name }}</option>
                         {% endfor %}
@@ -309,7 +309,7 @@
                         </div>
 
                         <div class="product-info">
-                            <h3 class="product-name">{{ product|display_name }}</h3>
+                            <h2 class="product-name">{{ product|display_name }}</h2>
                             <p class="product-style">{% if product.display_brand %}{{ product.display_brand }} · {% endif %}Style {{ product.style_number }}</p>
                             {% if product.display_category or product.category %}
                             <p class="product-category">{{ product.display_category or product.category }}</p>

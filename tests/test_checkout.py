@@ -117,6 +117,9 @@ def _enable_cash_for_group(client, seed, app):
     with app.app_context():
         collection = db.session.get(Collection, seed['collection_id'])
         collection.allow_cash_pickup = True
+        # Group orders only accept organizer-approved artwork; without this the
+        # design is dropped and the shirt is priced as a blank.
+        collection.allowed_design_ids = json.dumps([seed['free_design_id']])
         db.session.commit()
     with client.session_transaction() as sess:
         sess['collection_id'] = seed['collection_id']

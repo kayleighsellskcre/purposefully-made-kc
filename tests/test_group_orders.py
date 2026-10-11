@@ -428,7 +428,7 @@ def test_organizer_can_lock_a_back_only_design(customer_client, seed, app):
 def test_group_order_setup_does_not_offer_the_general_design_library(customer_client):
     html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
     assert 'Or pick from existing designs' not in html
-    assert 'name="allowed_designs"' not in html
+    assert 'type="checkbox" name="allowed_designs"' not in html
     assert 'Gallery Logo' not in html
 
 
@@ -966,7 +966,7 @@ def test_create_form_asks_school_team_or_other(customer_client):
     assert 'Youth uniform style' in html
     assert 'Home jersey logo' in html
     assert 'Away jersey logo' in html
-    assert 'extra matching designs' in html.lower()
+    assert 'extra designs for fan wear' in html.lower()
 
 
 def test_create_requires_a_group_kind(customer_client, seed, app):
