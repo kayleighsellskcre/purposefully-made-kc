@@ -38,6 +38,16 @@
                 {% include 'includes/group_order_card_fields.html' %}
             </div>
 
+            {% if sync_org %}
+            <div class="form-section">
+                <label class="choice-checkbox" style="display:flex;gap:.6rem;align-items:flex-start;padding:.8rem 1rem;">
+                    <input type="checkbox" name="sync_fan_to_org" value="on" checked style="margin-top:.2rem;">
+                    <span><strong>Use these Fan Wear styles &amp; colors for every team in {{ sync_org.name }}</strong><br>
+                    <small class="text-muted">Keeps the Fan Wear page the same no matter which team a parent starts from. Jerseys stay separate for each team. Untick to change only this team.</small></span>
+                </label>
+            </div>
+            {% endif %}
+
             <div class="form-section">
                 <h2>Items Available to Order</h2>
                 <p class="form-hint">Pick the shirts this group can order. Filter first, then tap Select these.</p>
@@ -47,7 +57,7 @@
                     {% for product in products %}
                     <label class="product-checkbox" data-catalog-item data-age="{{ product.display_age or '' }}" data-age-raw="{{ product.age_group or '' }}" data-category="{{ product.display_category or '' }}" data-category-raw="{{ product.category or '' }}" data-brand="{{ product.display_brand or '' }}" data-brand-raw="{{ product.brand or '' }}" data-style="{{ product.style_number or '' }}">
                         <input type="checkbox" name="products" value="{{ product.id }}" {% if product.id in collection_product_ids %}checked{% endif %}>
-                        <span>{{ product.name }}</span>
+                        <span class="product-checkbox-name">{{ product.name }}</span>
                         <small>{{ product.display_brand or '' }} · {{ product.display_category or '' }} · {{ product.style_number }} · ${{ "%.2f"|format(product.base_price or 0) }}</small>
                     </label>
                     {% endfor %}
@@ -70,37 +80,10 @@
                         <span class="organizer-step">1</span>
                         <div>
                             <strong>What colors can your team choose from?</strong>
-                            <p class="form-hint" style="margin:0">Check only the colors you want available. Leave all unchecked to allow every color.</p>
+                            <p class="form-hint" style="margin:0">Tap a color to pick it on every shirt. Leave a shirt alone to allow all its colors.</p>
                         </div>
                     </div>
-                    {% if collection_colors %}
-                      {% if collection_colors is mapping %}
-                        {% for brand, colors in collection_colors.items() %}
-                        <div class="brand-color-group" data-brand="{{ brand }}">
-                            <p class="brand-color-heading">{{ brand }}</p>
-                            <div class="choice-checkboxes">
-                                {% for color in colors %}
-                                <label class="choice-checkbox">
-                                    <input type="checkbox" name="allowed_colors" value="{{ color }}" {% if color in allowed_colors_list %}checked{% endif %}>
-                                    <span>{{ color }}</span>
-                                </label>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        {% endfor %}
-                      {% else %}
-                        <div class="choice-checkboxes">
-                            {% for color in collection_colors %}
-                            <label class="choice-checkbox">
-                                <input type="checkbox" name="allowed_colors" value="{{ color }}" {% if color in allowed_colors_list %}checked{% endif %}>
-                                <span>{{ color }}</span>
-                            </label>
-                            {% endfor %}
-                        </div>
-                      {% endif %}
-                    {% else %}
-                    <p class="text-muted" style="margin-top:0.5rem">Select products above first to see color options.</p>
-                    {% endif %}
+                    {% include 'includes/group_order_color_picker.html' %}
                 </div>
 
                 {# ── 2. Front design ────────────────────────────────────── #}

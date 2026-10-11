@@ -91,3 +91,55 @@ def test_editing_a_team_store_keeps_its_jerseys(admin_client, app, seed):
     with app.app_context():
         coll = Collection.query.get(coll_id)
         assert json.loads(coll.team_store_config)['fanwear_excluded_ids'] == [a]
+
+
+def _edit(admin_client, app, name, **extra):
+    coll_id, slug, _, _ = _store(app, name)
+    data = {'name': name, 'slug': slug, 'is_active': 'on', 'group_kind': 'team'}
+    data.update(extra)
+    return coll_id, admin_client.post(f'/admin/collections/{coll_id}/edit', data=data, follow_redirects=True)
+
+
+def test_sync_copies_fan_styles_and_colors_but_not_jerseys(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    _, _, soccer_before, _ = _store(app, 'Soccer: Rainbow Cheetahs')
+    color = f"p:{seed['hoodie_id']}||Black"
+    _edit(admin_client, app, 'Basketball: Rainbow Cheetahs',
+          products=[str(seed['hoodie_id'])], allowed_colors=[color],
+          color_picker_present='1', sync_fan_to_org='on')
+    with app.app_context():
+        soccer = Collection.query.filter_by(name='Soccer: Rainbow Cheetahs').one()
+        assert json.loads(soccer.allowed_colors) == json.loads(
+            Collection.query.filter_by(name='Basketball: Rainbow Cheetahs').one().allowed_colors)
+        cfg = json.loads(soccer.team_store_config)
+        assert cfg['fan_product_ids'] == [seed['hoodie_id']]
+        assert cfg['uniform'] == soccer_before['uniform']
+
+
+def test_no_sync_leaves_other_teams_alone(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    color = f"p:{seed['hoodie_id']}||Black"
+    _edit(admin_client, app, 'Basketball: Rainbow Cheetahs',
+          products=[str(seed['hoodie_id'])], allowed_colors=[color], color_picker_present='1')
+    with app.app_context():
+        assert Collection.query.filter_by(name='Soccer: Rainbow Cheetahs').one().allowed_colors in (None, '')
+
+
+def test_edit_without_color_picker_keeps_saved_colors(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    color = f"p:{seed['hoodie_id']}||Black"
+    _edit(admin_client, app, 'Basketball: Rainbow Cheetahs',
+          products=[str(seed['hoodie_id'])], allowed_colors=[color], color_picker_present='1')
+    _edit(admin_client, app, 'Basketball: Rainbow Cheetahs', products=[str(seed['hoodie_id'])])
+    with app.app_context():
+        saved = Collection.query.filter_by(name='Basketball: Rainbow Cheetahs').one().allowed_colors
+        assert saved and 'Black' in saved
+
+
+def test_edit_page_has_the_quick_color_bar_and_sync_box(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    coll_id, _, _, _ = _store(app, 'Basketball: Rainbow Cheetahs')
+    html = admin_client.get(f'/admin/collections/{coll_id}/edit').get_data(as_text=True)
+    assert 'id="fanQuickRow"' in html
+    assert 'name="sync_fan_to_org"' in html
+    assert 'Select products above first' not in html

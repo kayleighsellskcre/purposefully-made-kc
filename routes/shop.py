@@ -736,7 +736,7 @@ def edit_group_order(slug):
             return redirect(url_for('shop.edit_group_order', slug=slug))
 
     catalog = load_group_order_form_catalog()
-    from utils.group_orders import fan_color_checked_keys, fanwear_excluded_ids, team_store_config
+    from utils.group_orders import fan_color_checked_keys, fanwear_excluded_ids, org_sync_info, team_store_config
     fan_color_checked = fan_color_checked_keys(
         collection, collection.products, catalog['uniform_colors_by_product']
     )
@@ -756,6 +756,7 @@ def edit_group_order(slug):
         showcase_design_ids_list=showcase_design_ids_list,
         allowed_placements_list=allowed_placements_list,
         fanwear_excluded_ids_list=fanwear_excluded_ids(collection),
+        sync_org=org_sync_info(collection),
         back_design_fonts=_GROUP_ORDER_FONTS,
         collection_product_ids=[p.id for p in collection.products],
         catalog_filter_opts=catalog['catalog_filter_opts'],

@@ -4,6 +4,11 @@
    (["p:<id>||Color", ...]). #}
 <div class="fan-color-picker" id="fanColorPicker">
     <p class="fan-color-empty" id="fanColorEmpty">Check a shirt above and its colors will show up here.</p>
+    <input type="hidden" name="color_picker_present" value="1">
+    <div class="fan-quick" id="fanQuick" hidden>
+        <strong>Tap a color to pick it on every shirt</strong>
+        <div class="fan-quick-row" id="fanQuickRow"></div>
+    </div>
     <div class="fan-color-shades" id="fanColorShades" hidden aria-live="polite">
         <strong>Check these colors side by side</strong>
         <p>Brands name and dye their colors differently, so the same name can be a different shade.</p>
@@ -11,10 +16,17 @@
     </div>
     <div class="fan-color-cards" id="fanColorCards"></div>
 </div>
-<script type="application/json" id="fanColorData">{{ {'picker': fan_color_picker or {'palette': [], 'products': {}}, 'checked': fan_color_checked or []} | tojson }}</script>
+<script type="application/json" id="fanColorData">{{ {'picker': fan_color_picker or {'palette': [], 'products': {}}, 'checked': fan_color_checked or [], 'skip': ((team_store or {}).get('uniform') or {}).get('product_ids') or []} | tojson }}</script>
 
 <style>
 .fan-color-picker { margin-top: 0.25rem; }
+.fan-quick { margin: 0 0 0.9rem; }
+.fan-quick strong { display: block; margin-bottom: 0.45rem; font-size: 0.9rem; }
+.fan-quick-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.fan-quick-pill { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.4rem 0.9rem 0.4rem 0.6rem; border: 1.5px solid var(--border-color); border-radius: 999px; background: #fff; font-size: 0.88rem; cursor: pointer; }
+.fan-quick-pill .color-swatch-dot { margin-right: 0; width: 1.2rem; height: 1.2rem; }
+.fan-quick-pill:hover { border-color: var(--accent-color, #b87c6f); }
+.fan-quick-pill[aria-pressed="true"] { background: var(--accent-color, #b87c6f); border-color: var(--accent-color, #b87c6f); color: #fff; font-weight: 600; }
 .fan-color-empty { color: var(--text-secondary); font-size: 0.9rem; margin: 0.25rem 0 0; }
 .fan-color-cards { display: flex; flex-direction: column; gap: 0.65rem; }
 .fan-color-card { border: 1px solid var(--border-color); border-radius: 12px; background: #fff; overflow: hidden; }
@@ -77,6 +89,58 @@
             return Array.prototype.slice.call(document.querySelectorAll('input[name="products"]'));
         }
 
+        var skip = new Set((data.skip || []).map(String));
+        var FAMILIES = [
+            ['Black', /\bblack\b/, '#1b1b1b'], ['White', /\bwhite\b/, '#ffffff'],
+            ['Gray', /\b(gray|grey|charcoal)\b/, '#8a8d91'], ['Navy', /\bnavy\b/, '#1f2a44'],
+            ['Blue', /\bblue\b/, '#2f6fbf'], ['Red', /\bred\b/, '#c0392b'],
+            ['Pink', /\bpink\b/, '#f0a6c0'], ['Green', /\bgreen\b/, '#3f8f5a'],
+            ['Purple', /\b(purple|violet)\b/, '#7a4fa3'], ['Orange', /\borange\b/, '#ec8a2a'],
+            ['Yellow', /\b(yellow|gold)\b/, '#f0c63c'], ['Brown', /\b(brown|tan)\b/, '#7b5a3c']
+        ];
+
+        function familyBoxes(fam) {
+            var out = [];
+            Object.keys(cards).forEach(function(pid) {
+                if (cards[pid].hidden) return;
+                cards[pid].querySelectorAll('.choice-checkbox').forEach(function(chip) {
+                    var n = chip.dataset.color.toLowerCase();
+                    if (fam[1].test(n) && !(fam[0] === 'Blue' && /\bnavy\b/.test(n))) {
+                        out.push(chip.querySelector('input'));
+                    }
+                });
+            });
+            return out;
+        }
+
+        function renderQuick() {
+            var wrap = document.getElementById('fanQuick');
+            var row = document.getElementById('fanQuickRow');
+            if (!wrap || !row) return;
+            row.innerHTML = '';
+            FAMILIES.forEach(function(fam) {
+                var boxes = familyBoxes(fam);
+                if (!boxes.length) return;
+                var on = boxes.every(function(b) { return b.checked; });
+                var pill = document.createElement('button');
+                pill.type = 'button';
+                pill.className = 'fan-quick-pill';
+                pill.setAttribute('aria-pressed', on ? 'true' : 'false');
+                var dot = document.createElement('span');
+                dot.className = 'color-swatch-dot';
+                dot.style.backgroundColor = fam[2];
+                dot.setAttribute('aria-hidden', 'true');
+                pill.appendChild(dot);
+                pill.appendChild(document.createTextNode(fam[0]));
+                pill.addEventListener('click', function() {
+                    boxes.forEach(function(b) { b.checked = !on; });
+                    Object.keys(cards).forEach(function(pid) { updateCount(cards[pid]); });
+                });
+                row.appendChild(pill);
+            });
+            wrap.hidden = !row.children.length;
+        }
+
         function updateCount(card) {
             var boxes = card.querySelectorAll('input[name="allowed_colors"]');
             var picked = card.querySelectorAll('input[name="allowed_colors"]:checked').length;
@@ -87,6 +151,7 @@
                 : (total === 1 ? '1 color' : 'All ' + total + ' colors');
             card.classList.toggle('has-picks', picked > 0);
             checkShades();
+            renderQuick();
         }
 
         // Shade differences (CIE76 delta E) big enough to notice side by side,
@@ -384,6 +449,7 @@
             var active = productInputs().filter(function(cb) { return cb.checked; });
             var openOnLoad = active.length <= 2;
             productInputs().forEach(function(cb) {
+                if (skip.has(String(cb.value))) return;
                 var card = cards[cb.value];
                 if (cb.checked && !card) {
                     card = buildCard(cb);
@@ -409,6 +475,7 @@
                 });
             });
             var shown = Object.keys(cards).some(function(pid) { return !cards[pid].hidden; });
+            renderQuick();
             if (emptyEl) emptyEl.hidden = shown;
             checkShades();
             firstSync = false;

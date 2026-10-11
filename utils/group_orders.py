@@ -1053,6 +1053,50 @@ def org_fan_wear_url(org, current=None, stay=False):
     return url_for('collection.view', slug=target.slug) + '?path=fan#fanWearSection'
 
 
+def org_sync_info(collection):
+    """The org when this is one of 2+ team stores (so "apply to all teams" makes sense)."""
+    org, section = org_for_collection(collection)
+    if not org or _is_fan_label(section.label):
+        return None
+    return org if len(_team_sections(org)) > 1 else None
+
+
+def sync_fan_wear_to_org(collection):
+    """Copy this team's Fan Wear styles + colors to the org's other team stores.
+
+    Jerseys, jersey colors, back-print settings and designs stay per team.
+    Adds to the current transaction; the caller commits.
+    """
+    from models import Product
+    org = org_sync_info(collection)
+    if not org:
+        return 0
+    source = team_store_config(collection)
+    fan_ids = source['fan_product_ids']
+    changed = 0
+    for sec in _team_sections(org):
+        sib = sec.collection
+        if sib.id == collection.id:
+            continue
+        try:
+            cfg = json.loads(sib.team_store_config or '{}')
+        except (TypeError, ValueError):
+            cfg = {}
+        if not isinstance(cfg, dict) or not cfg:
+            continue  # legacy store with no jersey/fan setup: leave it alone
+        current = team_store_config(sib)
+        jerseys = current['uniform']['product_ids'] if current['uniform']['enabled'] else []
+        sib_fan = [pid for pid in fan_ids if pid not in jerseys]
+        cfg['fan_product_ids'] = sib_fan
+        sib.team_store_config = json.dumps(cfg, separators=(',', ':'))
+        sib.allowed_colors = collection.allowed_colors
+        wanted = list(dict.fromkeys(jerseys + sib_fan))
+        by_id = {p.id: p for p in Product.query.filter(Product.id.in_(wanted)).all()} if wanted else {}
+        sib.products = [by_id[i] for i in wanted if i in by_id]
+        changed += 1
+    return changed
+
+
 def org_fanwear_design_ids(collection):
     """Designs shoppers can pick on this org's Fan Wear page.
 
@@ -1446,9 +1490,9 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
 
     collection.restrict_options = True  # always restricted — checkbox removed from UI
     collection.allow_custom_upload = True
-    allowed_colors_json = serialize_allowed_colors_from_form(request.form.getlist('allowed_colors'))
-    collection.allowed_colors = allowed_colors_json
-    allowed_colors = bool(allowed_colors_json)
+    if 'color_picker_present' in request.form or 'allowed_colors' in request.form:
+        collection.allowed_colors = serialize_allowed_colors_from_form(request.form.getlist('allowed_colors'))
+    allowed_colors = bool(collection.allowed_colors)
     allowed_placements = request.form.getlist('allowed_placements')
     collection.allowed_placements = json.dumps(allowed_placements) if allowed_placements else None
 
@@ -1532,6 +1576,9 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
     roster_error = roster_item_error(collection)
     if roster_error:
         return False, roster_error, 0
+
+    if request.form.get('sync_fan_to_org') == 'on':
+        sync_fan_wear_to_org(collection)
 
     ok, organizer_error, organizer_notice = apply_organizer_from_form(collection, user)
     if not ok:
