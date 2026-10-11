@@ -916,10 +916,12 @@ def set_collection_products_from_form(collection):
             ),
             # Design IDs the admin wants EXCLUDED from the sibling Fan Wear store.
             # Each checked "Jersey only" box sends this design's ID in the form.
-            'fanwear_excluded_ids': [
-                int(x) for x in request.form.getlist('fanwear_excluded_ids')
-                if str(x).strip().isdigit()
-            ],
+            'fanwear_excluded_ids': (
+                [int(x) for x in request.form.getlist('fanwear_excluded_ids')
+                 if str(x).strip().isdigit()]
+                if 'fan_controls_present' in request.form
+                else fanwear_excluded_ids(collection)
+            ),
         }, separators=(',', ':'))
     else:
         collection.team_store_config = None
