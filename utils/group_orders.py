@@ -1,4 +1,5 @@
 """Shared group-order helpers: deadline, session, product/design rules."""
+import json
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
@@ -701,6 +702,51 @@ def apply_schedule_from_form(collection):
     return True, None
 
 
+def _keep_team_store_on_edit(collection, checked_ids):
+    """Edit-form save for a store that already has a jersey/fan-wear setup.
+
+    The edit form has no jersey controls, so it must not rebuild (and wipe) the
+    team store config. It only refreshes the fan wear style list and the two
+    fan wear design controls ("Jersey only" boxes, jersey-logo toggle).
+    Returns ``(selected_products, error)`` or None when there is nothing to keep.
+    """
+    import json
+    from flask import request
+    from models import Product
+
+    raw = getattr(collection, 'team_store_config', None) or ''
+    try:
+        cfg = json.loads(raw) if isinstance(raw, str) and raw.strip() else None
+    except (TypeError, ValueError):
+        cfg = None
+    if not isinstance(cfg, dict) or not cfg:
+        return None
+
+    current = team_store_config(collection)
+    uniform_ids = list(current['uniform']['product_ids']) if current['uniform']['enabled'] else []
+    fan_ids = [pid for pid in checked_ids if pid not in uniform_ids]
+
+    ids = list(dict.fromkeys(uniform_ids + fan_ids))
+    if not ids:
+        collection.products = []
+        return [], None
+    from utils.mockups import product_has_shop_image
+    found = Product.query.filter(Product.id.in_(ids), Product.is_active == True).all()  # noqa: E712
+    by_id = {p.id: p for p in found if p.id in uniform_ids or product_has_shop_image(p)}
+    selected = [by_id[i] for i in ids if i in by_id]
+    collection.products = selected
+
+    cfg['fan_product_ids'] = [pid for pid in fan_ids if pid in by_id]
+    if 'fan_controls_present' in request.form:
+        cfg['fan_show_jersey_logo'] = request.form.get('fan_show_jersey_logo') == 'on'
+        cfg['fanwear_excluded_ids'] = [
+            int(x) for x in request.form.getlist('fanwear_excluded_ids')
+            if str(x).strip().isdigit()
+        ]
+    collection.team_store_config = json.dumps(cfg, separators=(',', ':'))
+    return selected, None
+
+
 def set_collection_products_from_form(collection):
     """Save fan/uniform configuration and replace the union product relation.
 
@@ -720,6 +766,10 @@ def set_collection_products_from_form(collection):
         fan_ids.append(pid)
 
     configured = request.form.get('team_store_present') == '1'
+    if not configured and 'team_store_present' not in request.form:
+        kept = _keep_team_store_on_edit(collection, fan_ids)
+        if kept is not None:
+            return kept
     # Multi-team wizard with a different jersey per team: the per-team cards
     # carry the jerseys (utils/group_org.py), not the single uniform fields.
     per_team_org = (
@@ -935,45 +985,110 @@ def fanwear_excluded_ids(collection):
     return result
 
 
-def org_fanwear_design_ids(fan_collection):
-    """Return merged allowed_design_ids for a Fan Wear collection in an org.
+def _is_fan_label(label):
+    return 'fan' in (label or '').lower()
 
-    Pulls allowed_design_ids from every non-fan sibling collection in the same
-    org, strips designs the admin flagged jersey-only on that sibling, then
-    appends the Fan Wear collection's own allowed_design_ids at the end.
-    De-duped, preserving order.
-    """
+
+def org_for_collection(collection):
+    """(organization, section) when this store belongs to an active org, else (None, None)."""
     try:
         from models import OrgSection
-        section = OrgSection.query.filter_by(collection_id=fan_collection.id).first()
-        if not section or 'fan' not in (section.label or '').lower():
-            return allowed_design_ids(fan_collection)
-        org = section.organization
+        section = OrgSection.query.filter_by(collection_id=collection.id).first()
+        org = section.organization if section else None
+        if org and org.is_active:
+            return org, section
+    except Exception:
+        pass
+    return None, None
+
+
+def _team_sections(org):
+    """Active, non-fan team stores of an org, in display order."""
+    from models import OrgSection
+    out = []
+    for sec in org.sections.order_by(OrgSection.sort_order).all():
+        coll = sec.collection
+        if coll and coll.is_active and not _is_fan_label(sec.label):
+            out.append(sec)
+    return out
+
+
+def org_fan_hub(org):
+    """The ONE store every Fan Wear button in this org opens.
+
+    A section the admin labelled "Fan ..." wins. Otherwise the first team store
+    that offers fan wear styles. Returns (collection, is_dedicated_fan_section)
+    or (None, False) when the org sells no fan wear.
+    """
+    from models import OrgSection
+    sections = org.sections.order_by(OrgSection.sort_order).all()
+    for sec in sections:
+        if _is_fan_label(sec.label) and sec.collection and sec.collection.is_active:
+            return sec.collection, True
+    for sec in _team_sections(org):
+        if team_store_config(sec.collection)['fan_product_ids']:
+            return sec.collection, False
+    return None, False
+
+
+def org_fan_wear_url(org, current=None, stay=False):
+    """Single Fan Wear link used by the org page, team nav bars and the cart.
+
+    The page content is the same org-wide everywhere (styles, colors, designs).
+    A cart only holds one store at a time, so when the shopper is already in a
+    team store we open Fan Wear inside that store instead of switching stores
+    (``stay=True`` also skips a dedicated Fan section, e.g. from the cart).
+    """
+    from flask import url_for
+    hub, dedicated = org_fan_hub(org)
+    if dedicated and not stay:
+        return url_for('collection.view', slug=hub.slug)
+    target = hub
+    if current is not None and not _is_fan_label(
+        getattr(org_for_collection(current)[1], 'label', '')
+    ) and team_store_config(current)['fan_product_ids']:
+        target = current
+    if not target:
+        return None
+    return url_for('collection.view', slug=target.slug) + '?path=fan#fanWearSection'
+
+
+def org_fanwear_design_ids(collection):
+    """Designs shoppers can pick on this org's Fan Wear page.
+
+    Pulls every team store's uploaded designs, minus anything the admin marked
+    "Jersey only" and minus a team's jersey logo when that team turned off
+    "Show jersey logo as a fan wear design". A dedicated Fan section's own
+    uploads come last. De-duped, order kept. Stores outside an org just get
+    their own designs.
+    """
+    own = allowed_design_ids(collection)
+    try:
+        org, section = org_for_collection(collection)
         if not org:
-            return allowed_design_ids(fan_collection)
-        seen = set()
-        merged = []
-        for sib in org.sections.all():
-            if sib.id == section.id:
-                continue
-            if 'fan' in (sib.label or '').lower():
-                continue
-            sibling_coll = sib.collection
-            if not sibling_coll or not sibling_coll.is_active:
-                continue
-            excluded = set(fanwear_excluded_ids(sibling_coll))
-            for did in allowed_design_ids(sibling_coll):
-                if did not in seen and did not in excluded:
+            return own
+        teams = [sec.collection for sec in _team_sections(org)]
+        # "Jersey only" is about the artwork, so it holds across every team.
+        skip = set()
+        for sib in teams:
+            skip |= set(fanwear_excluded_ids(sib))
+            cfg = team_store_config(sib)
+            if not cfg['fan_show_jersey_logo']:
+                skip |= {cfg['uniform'].get('home_design_id'), cfg['uniform'].get('away_design_id')}
+        merged, seen = [], set()
+        for sib in teams:
+            for did in allowed_design_ids(sib):
+                if did not in seen and did not in skip:
                     seen.add(did)
                     merged.append(did)
-        # Fan Wear collection's own designs come last
-        for did in allowed_design_ids(fan_collection):
-            if did not in seen:
-                seen.add(did)
-                merged.append(did)
-        return merged
+        if _is_fan_label(section.label):
+            for did in own:
+                if did not in seen and did not in skip:
+                    seen.add(did)
+                    merged.append(did)
+        return merged or own
     except Exception:
-        return allowed_design_ids(fan_collection)
+        return own
 
 
 def showcase_design_ids(collection):
@@ -1074,7 +1189,10 @@ def load_collection_designs(collection):
 def design_allowed_for_collection(design, collection):
     if not design:
         return False
-    return design.id in allowed_design_ids(collection)
+    if design.id in allowed_design_ids(collection):
+        return True
+    # Org Fan Wear page: designs uploaded on any team store are fair game.
+    return design.id in org_fanwear_design_ids(collection)
 
 
 def session_collection_id():

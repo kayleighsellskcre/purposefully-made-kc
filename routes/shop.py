@@ -736,7 +736,7 @@ def edit_group_order(slug):
             return redirect(url_for('shop.edit_group_order', slug=slug))
 
     catalog = load_group_order_form_catalog()
-    from utils.group_orders import fan_color_checked_keys, team_store_config
+    from utils.group_orders import fan_color_checked_keys, fanwear_excluded_ids, team_store_config
     fan_color_checked = fan_color_checked_keys(
         collection, collection.products, catalog['uniform_colors_by_product']
     )
@@ -755,6 +755,7 @@ def edit_group_order(slug):
         allowed_design_ids_list=allowed_design_ids_list,
         showcase_design_ids_list=showcase_design_ids_list,
         allowed_placements_list=allowed_placements_list,
+        fanwear_excluded_ids_list=fanwear_excluded_ids(collection),
         back_design_fonts=_GROUP_ORDER_FONTS,
         collection_product_ids=[p.id for p in collection.products],
         catalog_filter_opts=catalog['catalog_filter_opts'],
@@ -1037,12 +1038,13 @@ def customize(product_slug):
     gallery_designs = []
     try:
         if coll:
-            # ── Fan Wear org section: merge designs from all sibling team stores ──
-            from models import OrgSection as _OrgSec
-            _fw_sec = _OrgSec.query.filter_by(collection_id=coll.id).first()
-            _is_org_fanwear = bool(_fw_sec and 'fan' in (_fw_sec.label or '').lower())
+            # ── Org Fan Wear: same org-wide designs on every Fan Wear path ──
+            from utils.group_orders import org_for_collection, org_fanwear_design_ids
+            _org, _fw_sec = org_for_collection(coll)
+            _is_org_fanwear = bool(_org) and (
+                catalog_section == 'fan' or 'fan' in (_fw_sec.label or '').lower()
+            )
             if _is_org_fanwear:
-                from utils.group_orders import org_fanwear_design_ids
                 _merged = org_fanwear_design_ids(coll)
                 if _merged:
                     from models import Design as _FWDesign

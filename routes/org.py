@@ -60,34 +60,12 @@ def _require_org_auth(org):
 
 @org_bp.route('/org/<slug>')
 def landing(slug):
-    import json as _json
     org = _org_or_404(slug)
     sections = org.sections.order_by(OrgSection.sort_order).all()
 
-    # Compute the best Fan Wear URL for this org:
-    # 1. If there's an OrgSection labelled "fan …" with a collection → use that collection's URL
-    # 2. Else look at each team collection for fan_product_ids in team_store_config → ?path=fan
-    # 3. Otherwise None (hides the button)
-    fan_wear_url = None
-    fan_sections = [s for s in sections if 'fan' in (s.label or '').lower()]
-    team_sections = [s for s in sections if 'fan' not in (s.label or '').lower()]
-
-    if fan_sections and fan_sections[0].collection:
-        fan_wear_url = url_for('collection.view', slug=fan_sections[0].collection.slug)
-    else:
-        for s in team_sections:
-            coll = s.collection
-            if not coll or not coll.is_active:
-                continue
-            try:
-                raw = coll.team_store_config or ''
-                parsed = _json.loads(raw) if isinstance(raw, str) and raw.strip() else {}
-                fan_ids = parsed.get('fan_product_ids') or []
-                if fan_ids:
-                    fan_wear_url = url_for('collection.view', slug=coll.slug) + '?path=fan'
-                    break
-            except Exception:
-                continue
+    # One Fan Wear link for the whole org (same page as every other Fan Wear button).
+    from utils.group_orders import org_fan_wear_url
+    fan_wear_url = org_fan_wear_url(org)
 
     return render_template('org/landing.html', org=org, sections=sections,
                            fan_wear_url=fan_wear_url)

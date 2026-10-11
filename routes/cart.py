@@ -36,8 +36,11 @@ def index():
         isinstance(item, dict) and item.get('catalog_section') == 'uniform'
         for item in cart
     ):
-        store_config = team_store_config(active_group_order)
-        if store_config.get('fan_product_ids'):
+        from utils.group_orders import org_fan_wear_url, org_for_collection
+        org, _sec = org_for_collection(active_group_order)
+        if org:
+            fan_wear_url = org_fan_wear_url(org, current=active_group_order, stay=True)
+        elif team_store_config(active_group_order).get('fan_product_ids'):
             fan_wear_url = (
                 url_for('collection.view', slug=active_group_order.slug, path='fan')
                 + '#fanWearSection'

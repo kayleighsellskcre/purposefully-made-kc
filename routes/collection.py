@@ -209,64 +209,40 @@ def view(slug):
     age_matching_note = None
     showcase_designs = load_showcase_designs(collection)
 
-    # ── Org navigation: if this collection belongs to an org, pass sibling sections
-    import json as _json_nav
-    from models import OrgSection, Organization
+    # ── Org navigation: sibling team tabs + ONE shared Fan Wear link ──────────
+    from utils.group_orders import (
+        org_fan_wear_url, org_fanwear_design_ids, org_for_collection,
+    )
     org_nav = None
-    org_section = OrgSection.query.filter_by(collection_id=collection.id).first()
-    if org_section:
-        org = Organization.query.get(org_section.organization_id)
-        if org:
-            all_sections = list(org.sections)
-            # Compute the best Fan Wear URL for this org (used in template nav)
-            fan_sections = [s for s in all_sections if 'fan' in (s.label or '').lower()]
-            team_sections = [s for s in all_sections if 'fan' not in (s.label or '').lower()]
-            fan_wear_nav_url = None
-            if fan_sections and fan_sections[0].collection:
-                from flask import url_for as _url_for
-                fan_wear_nav_url = _url_for('collection.view', slug=fan_sections[0].collection.slug)
-            else:
-                for _s in team_sections:
-                    _c = _s.collection
-                    if not _c or not _c.is_active:
-                        continue
-                    try:
-                        _raw = _c.team_store_config or ''
-                        _parsed = _json_nav.loads(_raw) if isinstance(_raw, str) and _raw.strip() else {}
-                        if _parsed.get('fan_product_ids'):
-                            from flask import url_for as _url_for
-                            fan_wear_nav_url = _url_for('collection.view', slug=_c.slug) + '?path=fan'
-                            break
-                    except Exception:
-                        continue
-            org_nav = {
-                'org': org,
-                'current_section': org_section,
-                'sections': all_sections,
-                'fan_wear_url': fan_wear_nav_url,
-            }
+    org, org_section = org_for_collection(collection)
+    if org:
+        org_nav = {
+            'org': org,
+            'current_section': org_section,
+            'sections': list(org.sections),
+            'fan_wear_url': org_fan_wear_url(org, current=collection),
+        }
 
-    # ── Fan Wear org section: auto-inherit designs from sibling team stores ──
-    # If this collection is the Fan Wear tile in an org, pull allowed_design_ids
-    # from every non-fan sibling collection (minus jersey-only exclusions) so
-    # shoppers see the org's full design library without the admin having to
-    # manually re-add each logo here.
-    if org_nav and org_section and 'fan' in (org_section.label or '').lower():
+    # Fan Wear page (?path=fan, or the org's dedicated Fan section): the same
+    # org-wide designs everywhere, honoring "Jersey only" and the jersey-logo toggle.
+    fan_page = bool(org_nav) and (
+        request.args.get('path') == 'fan'
+        or 'fan' in (org_section.label or '').lower()
+    )
+    if fan_page:
         try:
-            from utils.group_orders import org_fanwear_design_ids
             from models import Design as _Design
             from utils.cloud_storage import image_url as _img_url
             merged_ids = org_fanwear_design_ids(collection)
-            if merged_ids:
-                _dm = {d.id: d for d in _Design.query.filter(_Design.id.in_(merged_ids)).all()}
-                showcase_designs = [
-                    {
-                        'id': i,
-                        'url': _img_url(_dm[i].file_path),
-                        'title': _dm[i].title or _dm[i].original_filename or 'Design',
-                    }
-                    for i in merged_ids if i in _dm
-                ]
+            _dm = {d.id: d for d in _Design.query.filter(_Design.id.in_(merged_ids)).all()}
+            showcase_designs = [
+                {
+                    'id': i,
+                    'url': _img_url(_dm[i].file_path),
+                    'title': _dm[i].title or _dm[i].original_filename or 'Design',
+                }
+                for i in merged_ids if i in _dm
+            ]
         except Exception:
             pass  # fall back to collection's own showcase_designs
 
@@ -281,7 +257,8 @@ def view(slug):
                          uniform_kits=uniform_kits,
                          showcase_designs=showcase_designs,
                          catalog_filter_opts=filter_opts,
-                         org_nav=org_nav)
+                         org_nav=org_nav,
+                         fan_page=fan_page)
 
 
 # ── Organizer pays: the link collects name + size only ──────────────────────

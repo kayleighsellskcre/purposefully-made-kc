@@ -494,8 +494,13 @@
         </div>
         {% endif %}
         <span class="eyebrow">Group Order</span>
+        {% if fan_page and org_nav %}
+        <h1>{{ org_nav.org.name }} Fan Wear</h1>
+        <p class="collection-header-subtitle">Tees, hoodies &amp; matching looks for the whole family. Pick a style, then choose a design.</p>
+        {% else %}
         <h1>{{ collection.name }}</h1>
-        {% if collection.description %}
+        {% endif %}
+        {% if collection.description and not (fan_page and org_nav) %}
         <p class="collection-header-subtitle">{{ collection.description }}</p>
         {% endif %}
         {% if collection.deadline_passed %}
@@ -535,7 +540,7 @@
         <div class="org-nav-links">
             {% for s in org_nav.sections %}
             {% if 'fan' not in (s.label or '')|lower and s.collection %}
-                {% if s.id == org_nav.current_section.id %}
+                {% if s.id == org_nav.current_section.id and not fan_page %}
                 <span class="org-nav-link org-nav-link--active">{{ s.icon or '' }} {{ s.label }}</span>
                 {% else %}
                 <a href="{{ url_for('collection.view', slug=s.collection.slug) }}" class="org-nav-link">{{ s.icon or '' }} {{ s.label }}</a>
@@ -543,7 +548,11 @@
             {% endif %}
             {% endfor %}
             {% if org_nav.fan_wear_url %}
+            {% if fan_page %}
+            <span class="org-nav-link org-nav-link--active org-nav-link--fanwear">👕 Fan Wear</span>
+            {% else %}
             <a href="{{ org_nav.fan_wear_url }}" class="org-nav-link org-nav-link--fanwear">👕 Fan Wear</a>
+            {% endif %}
             {% endif %}
         </div>
     </div>
@@ -613,7 +622,7 @@
 
 <section class="design-board">
     <div class="container">
-        {% set has_uniform_lane = team_store.uniform.enabled and uniform_products %}
+        {% set has_uniform_lane = team_store.uniform.enabled and uniform_products and not fan_page %}
         {% if has_uniform_lane %}
         <section class="uniform-section" id="uniformSection">
             <div class="store-lane-heading">
@@ -648,10 +657,10 @@
             <p class="text-muted" style="text-align:center;">Uniform colors are being updated. Please contact the organizer.</p>
             {% endif %}
         </section>
-        {% if products and request.args.get('path') != 'fan' %}
+        {% if products and not fan_page and request.args.get('path') != 'fan' %}
         <div class="fan-wear-cta">
             <p class="fan-wear-cta-note">Don&rsquo;t need a jersey?</p>
-            <a href="?path=fan#fanWearSection" class="fan-wear-cta-btn" id="fanWearToggle"
+            <a href="{{ org_nav.fan_wear_url if org_nav and org_nav.fan_wear_url else '?path=fan#fanWearSection' }}" class="fan-wear-cta-btn" id="fanWearToggle"
                aria-controls="fanWearSection" aria-expanded="false">
                 Shop Family &amp; Fan Wear
             </a>
