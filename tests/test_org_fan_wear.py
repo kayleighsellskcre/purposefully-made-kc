@@ -254,3 +254,38 @@ def test_admin_list_shows_one_org_card_not_every_team(admin_client, app, seed):
     assert 'Edit Rainbow Cheetahs' in html
     assert 'id="orgGroup' in html
     assert 'collection-card' not in html.split('Other Group Orders')[0]
+
+
+def _hero_keys(app, slug):
+    from routes.org import org_photos
+    with app.app_context():
+        org = Organization.query.filter_by(slug=slug).one()
+        return {p['key'] for p in org_photos(org) if p['hero'] and not p['hidden']}
+
+
+def test_each_photo_can_be_chosen_for_the_top_of_the_page(admin_client, client, app, seed, monkeypatch):
+    _build(admin_client, app, seed)
+    slug = _org_slug(app)
+    monkeypatch.setattr('utils.cloud_storage.upload_image', lambda *a, **k: 'uploads/org-photos/mine.png')
+    _save(admin_client, slug, photos=(io.BytesIO(b'x'), 'mine.png'))
+    # Before anyone chooses, only the photos the organizer added are on top.
+    assert _hero_keys(app, slug) == {'up:uploads/org-photos/mine.png'}
+
+    fan_key = next(k for k, _h in _photos(app, slug) if k.startswith('fan:'))
+    _save(admin_client, slug, hero_present='1', hero_photo=[fan_key, 'up:uploads/org-photos/mine.png'])
+    assert _hero_keys(app, slug) == {fan_key, 'up:uploads/org-photos/mine.png'}
+
+    _save(admin_client, slug, hero_present='1', hero_photo=[fan_key])
+    assert _hero_keys(app, slug) == {fan_key}
+    html = client.get(f'/org/{slug}').get_data(as_text=True)
+    assert 'org-cover-tile' in html and 'org-photos/mine.png' not in html
+
+
+def test_a_photo_added_after_choosing_shows_up_on_top(admin_client, app, seed, monkeypatch):
+    _build(admin_client, app, seed)
+    slug = _org_slug(app)
+    fan_key = next(k for k, _h in _photos(app, slug) if k.startswith('fan:'))
+    _save(admin_client, slug, hero_present='1', hero_photo=[fan_key])
+    monkeypatch.setattr('utils.cloud_storage.upload_image', lambda *a, **k: 'uploads/org-photos/later.png')
+    _save(admin_client, slug, photos=(io.BytesIO(b'x'), 'later.png'))
+    assert _hero_keys(app, slug) == {fan_key, 'up:uploads/org-photos/later.png'}

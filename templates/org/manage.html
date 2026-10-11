@@ -76,8 +76,10 @@
 .om-photo img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 8px; background: linear-gradient(145deg, var(--ivory-silk), var(--cashmere-sand)); }
 .om-photo-tag { font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); text-align: center; }
 .om-photo-remove { display: flex; align-items: center; justify-content: center; gap: .35rem; font-size: .82rem; color: #c0392b; }
-.om-photo:has(input:checked) { border-color: #c0392b; background: #fdf1ef; }
-.om-photo:has(input:checked) img { opacity: .35; }
+.om-photo-show { display: flex; align-items: center; justify-content: center; gap: .35rem; font-size: .82rem; color: var(--text-primary); cursor: pointer; }
+.om-photo-remove { cursor: pointer; }
+.om-photo:has(.om-remove-box:checked) { border-color: #c0392b; background: #fdf1ef; }
+.om-photo:has(.om-remove-box:checked) img { opacity: .35; }
 .om-photo--faded img { opacity: .55; }
 .om-photo--faded .om-photo-remove { color: var(--accent-color); }
 .om-removed { margin-top: .5rem; }
@@ -221,14 +223,16 @@
 
         <div class="om-img om-photos">
             <span class="om-img-title">Main photos</span>
-            <span class="om-hint" style="margin-top:-.3rem">These show on your page and on the Group Orders list. Adding a photo keeps the others. Tick Remove only on the ones you do not want.</span>
+            <span class="om-hint" style="margin-top:-.3rem">Tick <b>Show on page</b> for the photos you want at the top of your page. All of them also appear on the Group Orders list. Adding a photo keeps the others, and only the ones you tick Remove on go away.</span>
+            <input type="hidden" name="hero_present" value="1">
             <div class="om-photo-grid">
                 {% for ph in photos if not ph.hidden %}
-                <label class="om-photo">
+                <div class="om-photo">
                     <img src="{{ ph.url }}" alt="">
                     <span class="om-photo-tag">{{ 'Fan Wear design' if ph.kind == 'fan' else 'Added by you' }}</span>
-                    <span class="om-photo-remove"><input type="checkbox" name="remove_photo" value="{{ ph.key }}"> Remove</span>
-                </label>
+                    <label class="om-photo-show"><input type="checkbox" name="hero_photo" value="{{ ph.key }}" {% if ph.hero %}checked{% endif %}> Show on page</label>
+                    <label class="om-photo-remove"><input type="checkbox" class="om-remove-box" name="remove_photo" value="{{ ph.key }}"> Remove</label>
+                </div>
                 {% else %}
                 <p class="om-hint" style="grid-column:1/-1">No photos yet. Add one below.</p>
                 {% endfor %}

@@ -91,6 +91,10 @@ def _photo_cfg(org):
     cfg = cfg if isinstance(cfg, dict) else {}
     cfg['uploads'] = [u for u in cfg.get('uploads') or [] if isinstance(u, str) and u]
     cfg['hidden'] = [i for i in cfg.get('hidden') or [] if isinstance(i, int)]
+    # Keys of the photos shown big at the top of the org page. None = never
+    # chosen yet, so the photos the organizer added themselves are used.
+    hero = cfg.get('hero')
+    cfg['hero'] = [k for k in hero if isinstance(k, str)] if isinstance(hero, list) else None
     return cfg
 
 
@@ -123,6 +127,11 @@ def org_photos(org):
         items.append({'key': 'cover', 'kind': 'upload', 'url': image_url(org.cover_image), 'hidden': False})
     for path in cfg['uploads']:
         items.append({'key': f'up:{path}', 'kind': 'upload', 'url': image_url(path), 'hidden': False})
+    for item in items:
+        if cfg['hero'] is None:
+            item['hero'] = item['kind'] == 'upload'
+        else:
+            item['hero'] = item['key'] in cfg['hero']
     return items
 
 
@@ -138,7 +147,9 @@ def _fan_design_urls(org, limit=4):
 def _apply_photo_changes(org):
     """Handle the Main photos part of the edit form."""
     cfg = _photo_cfg(org)
+    removed = set()
     for key in request.form.getlist('remove_photo'):
+        removed.add(key)
         if key.startswith('fan:') and key[4:].isdigit():
             if int(key[4:]) not in cfg['hidden']:
                 cfg['hidden'].append(int(key[4:]))
@@ -149,10 +160,19 @@ def _apply_photo_changes(org):
     for key in request.form.getlist('restore_photo'):
         if key.startswith('fan:') and key[4:].isdigit() and int(key[4:]) in cfg['hidden']:
             cfg['hidden'].remove(int(key[4:]))
+
+    # Which photos appear at the top of the page (the form lists them all).
+    if 'hero_present' in request.form:
+        cfg['hero'] = [k for k in request.form.getlist('hero_photo') if k not in removed]
+    elif cfg['hero'] is not None:
+        cfg['hero'] = [k for k in cfg['hero'] if k not in removed]
+
     for f in request.files.getlist('photos'):
         saved = _store_upload(f, 'org-photos')
         if saved:
             cfg['uploads'].append(saved)
+            if cfg['hero'] is not None:      # a photo you just added shows up right away
+                cfg['hero'].append(f'up:{saved}')
     _save_photo_cfg(org, cfg)
 
 
@@ -197,7 +217,7 @@ def landing(slug):
         pass
     return render_template('org/landing.html', org=org, sections=sections,
                            section_art=section_art, fan_art=fan_art,
-                           hero_photos=[p['url'] for p in org_photos(org) if p['kind'] == 'upload'],
+                           hero_photos=[p['url'] for p in org_photos(org) if p['hero'] and not p['hidden']],
                            fan_wear_url=fan_wear_url, welcome=welcome,
                            lead_collection=lead,
                            lead_not_open=bool(lead and is_not_yet_open(lead)))
