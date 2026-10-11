@@ -127,11 +127,9 @@
         {% for org in orgs %}{% if org.grouped_collections %}
         <div class="org-cards">
             <article class="org-card-admin" id="orgGroup{{ org.id }}">
-                <div class="org-card-photo{% if not org.cover_image and org.fan_art %} org-card-photo--fan{% endif %}">
-                    {% if org.cover_image %}
-                    <img src="{{ org.cover_image | image_url }}" alt="{{ org.name }}">
-                    {% elif org.fan_art %}
-                    <span class="org-card-circles">{% for u in org.fan_art[:3] %}<span><img src="{{ u }}" alt=""></span>{% endfor %}</span>
+                <div class="org-card-photo{% if org.fan_art %} org-card-photo--fan{% endif %}">
+                    {% if org.fan_art %}
+                    <span class="org-card-circles">{% for u in org.fan_art[:4] %}<span><img src="{{ u }}" alt=""></span>{% endfor %}</span>
                     {% else %}
                     <span class="org-card-letter">{{ org.name[:1] }}</span>
                     {% endif %}
@@ -255,8 +253,9 @@ function copyLink(url, btn) {
 .org-card-photo img { max-width: 88%; max-height: 88%; object-fit: contain; }
 .org-card-photo--fan { background: radial-gradient(ellipse at 85% 15%, rgba(232,208,177,.35), transparent 55%), linear-gradient(125deg, #3A3D48 0%, #4a4350 45%, #8d5e55 100%); }
 .org-card-circles { display: flex; align-items: center; justify-content: center; }
-.org-card-circles span { width: 92px; height: 92px; padding: .6rem; border-radius: 50%; background: #fff; border: 3px solid rgba(232,208,177,.8); box-shadow: 0 8px 18px rgba(0,0,0,.3); display: flex; align-items: center; justify-content: center; }
-.org-card-circles span + span { margin-left: -24px; }
+.org-card-circles { width: 100%; padding: 0 1rem; }
+.org-card-circles span { width: min(86px, 26%); aspect-ratio: 1; padding: .5rem; border-radius: 50%; background: #fff; border: 3px solid rgba(232,208,177,.8); box-shadow: 0 8px 18px rgba(0,0,0,.3); display: flex; align-items: center; justify-content: center; }
+.org-card-circles span + span { margin-left: -5%; }
 .org-card-circles img { max-width: 100%; max-height: 100%; }
 .org-card-letter { font-family: var(--font-heading, serif); font-size: 4rem; color: var(--terra-cotta, #b56c4c); }
 .org-card-main { padding: 1.5rem 1.75rem; display: flex; flex-direction: column; gap: .5rem; justify-content: center; }

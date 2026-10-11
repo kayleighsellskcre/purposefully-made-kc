@@ -70,6 +70,18 @@
 .om-img input[type="file"] { font-size: .85rem; max-width: 100%; }
 .om-remove { display: inline-flex; align-items: center; gap: .35rem; color: #c0392b; cursor: pointer; }
 
+.om-photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: .8rem; }
+.om-photo-grid--small { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
+.om-photo { position: relative; display: flex; flex-direction: column; gap: .35rem; padding: .6rem; border: 1px solid var(--border-light); border-radius: 12px; background: #fff; cursor: pointer; }
+.om-photo img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 8px; background: linear-gradient(145deg, var(--ivory-silk), var(--cashmere-sand)); }
+.om-photo-tag { font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); text-align: center; }
+.om-photo-remove { display: flex; align-items: center; justify-content: center; gap: .35rem; font-size: .82rem; color: #c0392b; }
+.om-photo:has(input:checked) { border-color: #c0392b; background: #fdf1ef; }
+.om-photo:has(input:checked) img { opacity: .35; }
+.om-photo--faded img { opacity: .55; }
+.om-photo--faded .om-photo-remove { color: var(--accent-color); }
+.om-removed { margin-top: .5rem; }
+.om-removed > summary { cursor: pointer; font-size: .88rem; color: var(--text-secondary); margin-bottom: .6rem; }
 .om-advanced { margin: .5rem 0 1.5rem; border-top: 1px solid var(--border-light); padding-top: 1rem; }
 .om-advanced > summary { cursor: pointer; font-weight: 600; color: var(--text-secondary); }
 .om-savebar { display: flex; justify-content: flex-end; }
@@ -207,33 +219,51 @@
             <span class="om-hint">Shown under your name. Leave blank to use your first team's message.</span>
         </div>
 
-        <div class="om-imgs">
-            <div class="om-img">
-                <span class="om-img-title">Main photo</span>
-                {% if org.cover_image %}
-                <div class="om-img-view"><img src="{{ org.cover_image | image_url }}" alt="Main photo"></div>
-                {% elif fan_art %}
-                <div class="om-img-view om-img-view--fan"><span class="om-fan-circles">{% for u in fan_art %}<span><img src="{{ u }}" alt=""></span>{% endfor %}</span></div>
+        <div class="om-img om-photos">
+            <span class="om-img-title">Main photos</span>
+            <span class="om-hint" style="margin-top:-.3rem">These show on your page and on the Group Orders list. Adding a photo keeps the others. Tick Remove only on the ones you do not want.</span>
+            <div class="om-photo-grid">
+                {% for ph in photos if not ph.hidden %}
+                <label class="om-photo">
+                    <img src="{{ ph.url }}" alt="">
+                    <span class="om-photo-tag">{{ 'Fan Wear design' if ph.kind == 'fan' else 'Added by you' }}</span>
+                    <span class="om-photo-remove"><input type="checkbox" name="remove_photo" value="{{ ph.key }}"> Remove</span>
+                </label>
                 {% else %}
-                <div class="om-img-view"><span class="om-empty">No photo yet</span></div>
-                {% endif %}
-                <div class="om-img-actions">
-                    <input type="file" name="cover" accept=".png,.jpg,.jpeg,.webp,.gif">
-                    {% if org.cover_image %}<label class="om-remove"><input type="checkbox" name="remove_cover"> Remove</label>{% endif %}
-                </div>
-                <span class="om-hint">{% if org.cover_image %}Upload another to switch it out.{% else %}Using your Fan Wear designs. Upload a photo to replace them.{% endif %}</span>
+                <p class="om-hint" style="grid-column:1/-1">No photos yet. Add one below.</p>
+                {% endfor %}
             </div>
-            <div class="om-img">
-                <span class="om-img-title">Logo <span class="om-hint" style="display:inline">(optional)</span></span>
-                <div class="om-img-view">
-                    {% if org.logo_url %}<img src="{{ org.logo_url | image_url }}" alt="Logo">{% else %}<span class="om-empty">No logo</span>{% endif %}
-                </div>
-                <div class="om-img-actions">
-                    <input type="file" name="logo" accept=".png,.jpg,.jpeg,.webp,.gif">
-                    {% if org.logo_url %}<label class="om-remove"><input type="checkbox" name="remove_logo"> Remove</label>{% endif %}
-                </div>
-                <span class="om-hint">Shown at the top of your page.</span>
+            <div class="om-img-actions">
+                <label class="om-chip" for="omPhotos">+ Add photos</label>
+                <input type="file" id="omPhotos" name="photos" accept=".png,.jpg,.jpeg,.webp,.gif" multiple style="display:none">
+                <span class="om-hint" id="omPhotosName" style="margin:0">PNG, JPG, WEBP or GIF</span>
             </div>
+            {% set removed = photos | selectattr('hidden') | list %}
+            {% if removed %}
+            <details class="om-removed">
+                <summary>Removed Fan Wear designs ({{ removed|length }})</summary>
+                <div class="om-photo-grid om-photo-grid--small">
+                    {% for ph in removed %}
+                    <label class="om-photo om-photo--faded">
+                        <img src="{{ ph.url }}" alt="">
+                        <span class="om-photo-remove"><input type="checkbox" name="restore_photo" value="{{ ph.key }}"> Put back</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </details>
+            {% endif %}
+        </div>
+
+        <div class="om-img" style="margin-top:1.25rem">
+            <span class="om-img-title">Logo <span class="om-hint" style="display:inline">(optional)</span></span>
+            <div class="om-img-view" style="height:110px">
+                {% if org.logo_url %}<img src="{{ org.logo_url | image_url }}" alt="Logo">{% else %}<span class="om-empty">No logo</span>{% endif %}
+            </div>
+            <div class="om-img-actions">
+                <input type="file" name="logo" accept=".png,.jpg,.jpeg,.webp,.gif">
+                {% if org.logo_url %}<label class="om-remove"><input type="checkbox" name="remove_logo"> Remove</label>{% endif %}
+            </div>
+            <span class="om-hint">Shown at the top of your page. Upload another to switch it out.</span>
         </div>
 
         <details class="om-advanced">
@@ -250,6 +280,10 @@
 
 <script>
 (function () {
+    var pick = document.getElementById('omPhotos');
+    if (pick) pick.addEventListener('change', function () {
+        document.getElementById('omPhotosName').textContent = pick.files.length ? pick.files.length + ' photo' + (pick.files.length === 1 ? '' : 's') + ' ready. Press Save changes.' : 'PNG, JPG, WEBP or GIF';
+    });
     function copy(text, btn) {
         var done = function () { var o = btn.textContent; btn.textContent = 'Copied!'; setTimeout(function () { btn.textContent = o; }, 1800); };
         if (navigator.clipboard) { navigator.clipboard.writeText(text).then(done); }

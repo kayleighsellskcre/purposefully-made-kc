@@ -160,31 +160,76 @@ def test_admin_opens_org_edit_page_with_teams_inside_it(admin_client, app, seed)
     html = admin_client.get(f'/org/{_org_slug(app)}/manage').get_data(as_text=True)
     for label in ('Basketball', 'Soccer', 'Volleyball'):
         assert f'Edit {label}' in html
-    assert 'name="cover"' in html and 'name="logo"' in html
+    assert 'name="photos"' in html and 'name="logo"' in html
 
 
-def test_org_images_can_be_added_switched_and_removed(admin_client, app, seed, monkeypatch):
+def _photos(app, slug):
+    from routes.org import org_photos
+    with app.app_context():
+        org = Organization.query.filter_by(slug=slug).one()
+        return [(p['key'], p['hidden']) for p in org_photos(org)]
+
+
+def _save(admin_client, slug, **extra):
+    data = {'action': 'save_settings', 'name': 'Rainbow Cheetahs', 'description': 'Hi'}
+    data.update(extra)
+    return admin_client.post(f'/org/{slug}/manage', data=data, content_type='multipart/form-data',
+                             follow_redirects=True)
+
+
+def test_adding_a_photo_keeps_the_fan_designs(admin_client, app, seed, monkeypatch):
     _build(admin_client, app, seed)
     slug = _org_slug(app)
-    uploads = iter(['uploads/org-covers/first.png', 'uploads/org-covers/second.png'])
-    monkeypatch.setattr('utils.cloud_storage.upload_image', lambda *a, **k: next(uploads))
+    before = _photos(app, slug)
+    fan_keys = [k for k, _h in before if k.startswith('fan:')]
+    assert fan_keys, 'fan wear designs are the default main photos'
+    monkeypatch.setattr('utils.cloud_storage.upload_image', lambda *a, **k: 'uploads/org-photos/new.png')
+    _save(admin_client, slug, photos=(io.BytesIO(b'x'), 'new.png'))
+    after = _photos(app, slug)
+    assert [k for k, _h in after if k.startswith('fan:')] == fan_keys
+    assert ('up:uploads/org-photos/new.png', False) in after
+    assert not any(h for _k, h in after)
 
-    def save(**extra):
-        data = {'action': 'save_settings', 'name': 'Rainbow Cheetahs', 'description': 'Hi'}
-        data.update(extra)
-        return admin_client.post(f'/org/{slug}/manage', data=data, content_type='multipart/form-data',
-                                 follow_redirects=True)
 
-    def cover():
-        with app.app_context():
-            return Organization.query.filter_by(slug=slug).one().cover_image
+def test_photos_are_only_removed_when_ticked_and_can_be_restored(admin_client, app, seed, monkeypatch):
+    _build(admin_client, app, seed)
+    slug = _org_slug(app)
+    monkeypatch.setattr('utils.cloud_storage.upload_image', lambda *a, **k: 'uploads/org-photos/new.png')
+    _save(admin_client, slug, photos=(io.BytesIO(b'x'), 'new.png'))
+    fan_key = next(k for k, _h in _photos(app, slug) if k.startswith('fan:'))
 
-    save(cover=(io.BytesIO(b'x'), 'a.png'))
-    assert cover() == 'uploads/org-covers/first.png'
-    save(cover=(io.BytesIO(b'x'), 'b.png'))
-    assert cover() == 'uploads/org-covers/second.png'
-    save(remove_cover='on')
-    assert cover() is None
+    _save(admin_client, slug, remove_photo=fan_key)
+    state = dict(_photos(app, slug))
+    assert state[fan_key] is True                      # hidden, not gone
+    assert state['up:uploads/org-photos/new.png'] is False
+
+    _save(admin_client, slug, restore_photo=fan_key)
+    assert dict(_photos(app, slug))[fan_key] is False
+
+    _save(admin_client, slug, remove_photo='up:uploads/org-photos/new.png')
+    assert 'up:uploads/org-photos/new.png' not in dict(_photos(app, slug))
+
+
+def test_photo_added_before_this_change_is_kept_and_removable(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    slug = _org_slug(app)
+    with app.app_context():
+        org = Organization.query.filter_by(slug=slug).one()
+        org.cover_image = 'uploads/org-covers/old.png'
+        db.session.commit()
+    keys = dict(_photos(app, slug))
+    assert 'cover' in keys and any(k.startswith('fan:') for k in keys)
+    _save(admin_client, slug, remove_photo='cover')
+    assert 'cover' not in dict(_photos(app, slug))
+
+
+def test_every_card_lists_all_photos(admin_client, client, app, seed, monkeypatch):
+    _build(admin_client, app, seed)
+    slug = _org_slug(app)
+    monkeypatch.setattr('utils.cloud_storage.upload_image', lambda *a, **k: 'uploads/org-photos/new.png')
+    _save(admin_client, slug, photos=(io.BytesIO(b'x'), 'new.png'))
+    html = admin_client.get('/admin/collections').get_data(as_text=True)
+    assert 'org-photos/new.png' in html
 
 
 def test_org_team_rename_and_reorder(admin_client, app, seed):

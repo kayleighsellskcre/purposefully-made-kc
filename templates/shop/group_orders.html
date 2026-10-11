@@ -175,8 +175,9 @@
 }
 .dir-card-img--fan { background: radial-gradient(ellipse at 85% 15%, rgba(232,208,177,.35) 0%, transparent 55%), linear-gradient(125deg, #3A3D48 0%, #4a4350 45%, #8d5e55 100%); }
 .dir-fan-circles { display: flex; align-items: center; justify-content: center; }
-.dir-fan-circles span { width: 92px; height: 92px; flex-shrink: 0; padding: .6rem; border-radius: 50%; background: #fff; border: 3px solid rgba(232,208,177,.8); box-shadow: 0 10px 22px rgba(0,0,0,.3); display: flex; align-items: center; justify-content: center; }
-.dir-fan-circles span + span { margin-left: -22px; }
+.dir-fan-circles { width: 100%; padding: 0 1rem; }
+.dir-fan-circles span { width: min(96px, 24%); aspect-ratio: 1; flex-shrink: 0; padding: .5rem; border-radius: 50%; background: #fff; border: 3px solid rgba(232,208,177,.8); box-shadow: 0 10px 22px rgba(0,0,0,.3); display: flex; align-items: center; justify-content: center; }
+.dir-fan-circles span + span { margin-left: -4%; }
 .dir-fan-circles span:nth-child(odd) { transform: translateY(-6px); }
 .dir-fan-circles span:nth-child(even) { transform: translateY(8px); }
 .dir-fan-circles img { max-width: 100%; max-height: 100%; object-fit: contain; }
@@ -399,18 +400,9 @@
                 {% for item in open_orgs %}
                 {% set org = item.org %}
                 <div class="dir-card" data-name="{{ org.name | lower }}" data-desc="{{ (org.description or '') | lower }}" data-visibility="public">
-                    {% if org.cover_image %}
-                    <div class="dir-card-img has-cover">
-                        <div class="dir-card-art-frame">
-                            <img src="{{ org.cover_image | image_url }}" alt="{{ org.name }}"
-                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
-                            <div class="dir-card-lettermark" style="display:none"><span>{{ org.name }}</span></div>
-                        </div>
-                        <div class="dir-card-cover-title">{{ org.name }}</div>
-                    </div>
-                    {% elif item.fan_art %}
+                    {% if item.fan_art %}
                     <div class="dir-card-img dir-card-img--fan">
-                        <div class="dir-fan-circles">{% for u in item.fan_art[:3] %}<span><img src="{{ u }}" alt="" loading="lazy" decoding="async"></span>{% endfor %}</div>
+                        <div class="dir-fan-circles">{% for u in item.fan_art[:4] %}<span><img src="{{ u }}" alt="" loading="lazy" decoding="async"></span>{% endfor %}</div>
                     </div>
                     {% else %}
                     <div class="dir-card-img">
@@ -418,9 +410,7 @@
                     </div>
                     {% endif %}
                     <div class="dir-card-body">
-                        {% if not org.cover_image %}
                         <p class="dir-card-name">{{ org.name }}</p>
-                        {% endif %}
                         {% if org.description %}
                         <p class="dir-card-desc">{{ org.description[:120] }}{% if org.description|length > 120 %}…{% endif %}</p>
                         {% endif %}

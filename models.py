@@ -281,6 +281,8 @@ class Organization(db.Model):
     description = db.Column(db.Text)
     logo_url = db.Column(db.String(500))
     cover_image = db.Column(db.String(500))
+    # JSON: {"uploads": [paths added by the organizer], "hidden": [fan design ids they removed]}
+    photo_config = db.Column(db.Text)
     is_active = db.Column(db.Boolean, default=True)
 
     # Organizer dashboard access

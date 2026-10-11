@@ -63,13 +63,12 @@ def _require_org_auth(org):
 _IMAGE_EXTS = {'.png', '.jpg', '.jpeg', '.webp', '.gif'}
 
 
-def _save_org_image(field, subfolder):
-    """Upload the image in request.files[field]; return its stored path or None."""
+def _store_upload(f, subfolder):
+    """Upload one FileStorage; return its stored path or None."""
     from flask import current_app
     from werkzeug.utils import secure_filename
     from utils.cloud_storage import upload_image
 
-    f = request.files.get(field)
     if not f or not f.filename:
         return None
     if Path(secure_filename(f.filename)).suffix.lower() not in _IMAGE_EXTS:
@@ -79,26 +78,82 @@ def _save_org_image(field, subfolder):
                         process_artwork=False)
 
 
-def fan_art_urls(org, limit=3):
-    """Image URLs of the org's Fan Wear designs (the default main photo)."""
-    return _fan_art_urls(org, limit)
+# ── main photos ──────────────────────────────────────────────────────────────
+# An org's main photos are its Fan Wear designs plus anything the organizer
+# uploads. Uploading adds to the set; nothing disappears unless it is removed.
+
+def _photo_cfg(org):
+    import json
+    try:
+        cfg = json.loads(org.photo_config or '{}')
+    except (TypeError, ValueError):
+        cfg = {}
+    cfg = cfg if isinstance(cfg, dict) else {}
+    cfg['uploads'] = [u for u in cfg.get('uploads') or [] if isinstance(u, str) and u]
+    cfg['hidden'] = [i for i in cfg.get('hidden') or [] if isinstance(i, int)]
+    return cfg
 
 
-def _fan_art_urls(org, limit=3):
+def _save_photo_cfg(org, cfg):
+    import json
+    org.photo_config = json.dumps(cfg, separators=(',', ':'))
+
+
+def org_photos(org):
+    """Every main photo for this org as dicts: key, url, kind, hidden."""
     from models import Design
     from utils.cloud_storage import image_url
     from utils.group_orders import org_fanwear_design_ids
+
+    cfg = _photo_cfg(org)
+    items = []
     try:
         lead = next((sec.collection for sec in org.sections
                      if sec.collection and sec.collection.is_active
                      and 'fan' not in (sec.label or '').lower()), None)
-        if not lead:
-            return []
-        ids = org_fanwear_design_ids(lead)[:limit]
+        ids = org_fanwear_design_ids(lead) if lead else []
         by_id = {d.id: d for d in Design.query.filter(Design.id.in_(ids)).all()} if ids else {}
-        return [image_url(by_id[i].file_path) for i in ids if i in by_id]
+        for i in ids:
+            if i in by_id:
+                items.append({'key': f'fan:{i}', 'kind': 'fan', 'url': image_url(by_id[i].file_path),
+                              'hidden': i in cfg['hidden']})
     except Exception:
-        return []
+        pass
+    if org.cover_image:   # photo added before multi-photo support
+        items.append({'key': 'cover', 'kind': 'upload', 'url': image_url(org.cover_image), 'hidden': False})
+    for path in cfg['uploads']:
+        items.append({'key': f'up:{path}', 'kind': 'upload', 'url': image_url(path), 'hidden': False})
+    return items
+
+
+def fan_art_urls(org, limit=4):
+    """URLs of the photos shown on the org's cards (visible ones, up to ``limit``)."""
+    return [p['url'] for p in org_photos(org) if not p['hidden']][:limit]
+
+
+def _fan_design_urls(org, limit=4):
+    return [p['url'] for p in org_photos(org) if p['kind'] == 'fan' and not p['hidden']][:limit]
+
+
+def _apply_photo_changes(org):
+    """Handle the Main photos part of the edit form."""
+    cfg = _photo_cfg(org)
+    for key in request.form.getlist('remove_photo'):
+        if key.startswith('fan:') and key[4:].isdigit():
+            if int(key[4:]) not in cfg['hidden']:
+                cfg['hidden'].append(int(key[4:]))
+        elif key == 'cover':
+            org.cover_image = None
+        elif key.startswith('up:') and key[3:] in cfg['uploads']:
+            cfg['uploads'].remove(key[3:])
+    for key in request.form.getlist('restore_photo'):
+        if key.startswith('fan:') and key[4:].isdigit() and int(key[4:]) in cfg['hidden']:
+            cfg['hidden'].remove(int(key[4:]))
+    for f in request.files.getlist('photos'):
+        saved = _store_upload(f, 'org-photos')
+        if saved:
+            cfg['uploads'].append(saved)
+    _save_photo_cfg(org, cfg)
 
 
 # ── public: landing page ──────────────────────────────────────────────────────
@@ -137,14 +192,12 @@ def landing(slug):
                 section_art[sec.id] = shown[0]['url']
             elif coll.cover_image:
                 section_art[sec.id] = _img_url(coll.cover_image)
-        if lead:
-            ids = org_fanwear_design_ids(lead)[:4]
-            by_id = {d.id: d for d in Design.query.filter(Design.id.in_(ids)).all()} if ids else {}
-            fan_art = [_img_url(by_id[i].file_path) for i in ids if i in by_id]
+        fan_art = _fan_design_urls(org, 3)
     except Exception:
         pass
     return render_template('org/landing.html', org=org, sections=sections,
                            section_art=section_art, fan_art=fan_art,
+                           hero_photos=[p['url'] for p in org_photos(org) if p['kind'] == 'upload'],
                            fan_wear_url=fan_wear_url, welcome=welcome,
                            lead_collection=lead,
                            lead_not_open=bool(lead and is_not_yet_open(lead)))
@@ -227,14 +280,14 @@ def manage(slug):
         if action == 'save_settings':
             org.name = (request.form.get('name') or org.name).strip()
             org.description = (request.form.get('description') or '').strip() or None
-            # Images: upload to add or switch, tick "remove" to delete.
-            for field, column, folder in (('logo', 'logo_url', 'org-logos'),
-                                          ('cover', 'cover_image', 'org-covers')):
-                if request.form.get(f'remove_{field}') == 'on':
-                    setattr(org, column, None)
-                saved = _save_org_image(field, folder)
-                if saved:
-                    setattr(org, column, saved)
+            # Main photos: uploads are added; remove only what is ticked.
+            _apply_photo_changes(org)
+            # Logo: upload to switch it, tick remove to delete.
+            if request.form.get('remove_logo') == 'on':
+                org.logo_url = None
+            logo = _store_upload(request.files.get('logo'), 'org-logos')
+            if logo:
+                org.logo_url = logo
             new_password = (request.form.get('new_password') or '').strip()
             if new_password:
                 org.set_password(new_password)
@@ -315,6 +368,6 @@ def manage(slug):
         org=org,
         sections=sections,
         available_collections=available_collections,
-        fan_art=_fan_art_urls(org),
+        photos=org_photos(org),
         is_admin=is_admin,
     )
