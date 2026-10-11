@@ -5,71 +5,120 @@
 
 {% block extra_css %}
 <style>
-.org-body { padding: 3rem 0 4.5rem; background: #fff; }
-.org-body .container { max-width: 960px; }
+/* ── Header band ───────────────────────────────────────────────── */
+.org-hero { padding: 3.25rem 2rem 3rem; }
+.org-logo { display: block; max-height: 96px; max-width: 260px; object-fit: contain; margin: 0 auto 1.25rem; }
+.org-hero h1 { font-size: clamp(2.4rem, 6vw, 3.6rem); letter-spacing: 0.01em; margin-bottom: 0.4rem; }
+.org-orn { display: flex; align-items: center; justify-content: center; gap: 0.9rem; margin: 0.9rem auto 1.1rem; color: var(--accent-color); }
+.org-orn::before, .org-orn::after { content: ''; width: 72px; height: 1px; background: linear-gradient(90deg, transparent, var(--accent-color)); }
+.org-orn::after { transform: scaleX(-1); }
+.org-orn i { font-style: normal; font-size: 0.8rem; letter-spacing: 0.4em; }
+.org-lead { max-width: 780px; margin: 0 auto; color: var(--text-secondary); font-size: 1.1rem; line-height: 1.75; white-space: pre-line; }
+.org-dates { display: inline-block; margin: 1.3rem 0 0; padding: 0.4rem 1.1rem; border-radius: 999px; background: rgba(255,255,255,0.65); border: 1px solid var(--border-light); color: var(--text-secondary); font-size: 0.92rem; letter-spacing: 0.02em; }
 
-.org-logo { display: block; max-height: 96px; max-width: 260px; object-fit: contain; margin: 0 auto 1.1rem; }
-.org-lead { max-width: 820px; margin: 0.75rem auto 0; color: var(--text-secondary); font-size: 1.1rem; line-height: 1.7; white-space: pre-line; }
-.org-dates { margin: 1.1rem 0 0; color: var(--text-secondary); font-size: 1rem; }
+/* ── Body ──────────────────────────────────────────────────────── */
+.org-body { padding: 4rem 0 5rem; background: linear-gradient(180deg, #fffdf9 0%, #fbf7ee 55%, var(--ivory-silk) 100%); }
+.org-body .container { max-width: 1020px; }
+.org-section-head { text-align: center; margin-bottom: 2.5rem; }
+.org-section-head .eyebrow { margin-bottom: 0.5rem; }
+.org-section-head h2 { font-size: clamp(1.8rem, 4vw, 2.4rem); margin: 0 0 0.5rem; color: var(--text-primary); }
+.org-section-head p { margin: 0; color: var(--text-secondary); }
 
-.org-heading { text-align: center; margin: 0 0 0.35rem; font-size: 1.75rem; color: var(--text-primary); }
-.org-subheading { text-align: center; margin: 0 0 2rem; color: var(--text-secondary); font-size: 1rem; }
-.org-divider { display: flex; align-items: center; gap: 1rem; margin: 3rem 0 2rem; color: var(--accent-color); }
-.org-divider::before, .org-divider::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--border-color), transparent); }
-.org-divider span { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; }
-
-.org-team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 260px)); justify-content: center; gap: 1.25rem; }
-
-.org-team-card {
-    display: flex; flex-direction: column; align-items: center; text-align: center;
-    padding: 2rem 1.25rem 1.5rem; background: #fff; text-decoration: none; color: var(--text-primary);
-    border: 1px solid var(--border-light); border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow); transition: var(--transition); position: relative; overflow: hidden;
+/* ── Team cards ────────────────────────────────────────────────── */
+.org-team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 300px)); justify-content: center; gap: 1.5rem; }
+.org-card {
+    display: flex; flex-direction: column; text-decoration: none; color: var(--text-primary);
+    background: #fff; border-radius: 18px; overflow: hidden;
+    border: 1px solid var(--border-light);
+    box-shadow: 0 2px 4px rgba(58,61,72,0.04), 0 12px 32px rgba(58,61,72,0.08);
+    transition: transform .45s cubic-bezier(.4,0,.2,1), box-shadow .45s cubic-bezier(.4,0,.2,1), border-color .3s;
+    animation: orgRise .8s cubic-bezier(.2,.7,.2,1) both;
 }
-.org-team-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--cashmere-sand), var(--accent-color), var(--cashmere-sand)); }
-.org-team-card:hover { box-shadow: var(--box-shadow-luxury); transform: translateY(-4px); border-color: var(--accent-color); color: var(--text-primary); }
-.org-team-badge {
-    width: 84px; height: 84px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-size: 2.6rem; line-height: 1; margin-bottom: 1.1rem;
-    background: radial-gradient(circle at 30% 25%, #fff 0%, var(--ivory-silk) 60%, var(--cashmere-sand) 100%);
-    box-shadow: inset 0 0 0 1px var(--border-light), 0 4px 10px rgba(58, 61, 72, 0.08);
+.org-card:nth-child(2) { animation-delay: .08s; }
+.org-card:nth-child(3) { animation-delay: .16s; }
+.org-card:nth-child(4) { animation-delay: .24s; }
+.org-card:hover { transform: translateY(-8px); box-shadow: 0 4px 8px rgba(58,61,72,0.06), 0 28px 56px rgba(58,61,72,0.16); border-color: rgba(184,124,111,0.55); color: var(--text-primary); }
+
+.org-card-art {
+    position: relative; aspect-ratio: 5 / 4; display: flex; align-items: center; justify-content: center; padding: 1.6rem;
+    background:
+        radial-gradient(circle at 50% 38%, #fff 0%, rgba(255,255,255,0) 62%),
+        linear-gradient(145deg, var(--ivory-silk) 0%, var(--cashmere-sand) 100%);
 }
-.org-team-name { font-family: var(--font-heading); font-size: 1.4rem; font-weight: 600; margin-bottom: 0.2rem; }
-.org-team-sub { color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 1.1rem; }
-.org-team-go { margin-top: auto; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-color); }
-.org-team-card:hover .org-team-go { text-decoration: underline; text-underline-offset: 4px; }
+.org-card-art img { position: absolute; top: 3rem; left: 1.5rem; width: calc(100% - 3rem); height: calc(100% - 4.4rem); object-fit: contain; filter: drop-shadow(0 10px 18px rgba(58,61,72,0.22)); transition: transform .6s cubic-bezier(.4,0,.2,1); }
+.org-card:hover .org-card-art img { transform: scale(1.07) rotate(-1.5deg); }
+.org-card-emoji { font-size: 5rem; line-height: 1; filter: drop-shadow(0 8px 14px rgba(58,61,72,0.18)); }
+.org-card-chip {
+    position: absolute; top: 0.9rem; left: 0.9rem; display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.3rem 0.8rem 0.3rem 0.55rem; border-radius: 999px; background: rgba(255,255,255,0.92);
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-secondary);
+    box-shadow: 0 2px 8px rgba(58,61,72,0.1);
+}
+.org-card-chip b { font-weight: 400; font-size: 1rem; letter-spacing: 0; }
+
+.org-card-body { padding: 1.4rem 1.5rem 1.6rem; text-align: center; display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
+.org-card-name { font-family: var(--font-heading); font-size: 1.65rem; font-weight: 600; line-height: 1.2; }
+.org-card-sub { color: var(--text-secondary); font-size: 0.95rem; }
+.org-card-cta {
+    margin-top: 1rem; align-self: center; padding: 0.75rem 1.8rem; border-radius: 999px;
+    border: 1.5px solid var(--accent-color); color: var(--accent-color);
+    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+    transition: background .3s, color .3s, box-shadow .3s;
+}
+.org-card:hover .org-card-cta { background: var(--accent-color); color: #fff; box-shadow: 0 8px 20px rgba(184,124,111,0.4); }
+
+/* ── Fan Wear feature ──────────────────────────────────────────── */
+.org-or { display: flex; align-items: center; gap: 1.25rem; margin: 4rem 0 2.25rem; color: var(--accent-color); }
+.org-or::before, .org-or::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--border-color), transparent); }
+.org-or span { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; }
 
 .org-fan {
-    display: flex; align-items: center; gap: 1.75rem; padding: 2rem 2.25rem; text-decoration: none; color: #fff;
-    background: linear-gradient(135deg, var(--accent-color) 0%, #a06456 55%, var(--accent-secondary) 140%);
-    border-radius: var(--border-radius); box-shadow: var(--box-shadow-luxury); transition: var(--transition);
-    position: relative; overflow: hidden;
+    position: relative; display: grid; grid-template-columns: 1.1fr 1fr; align-items: center; gap: 2rem;
+    padding: 3rem 3.25rem; border-radius: 22px; overflow: hidden; text-decoration: none; color: #fff;
+    background: linear-gradient(125deg, var(--midnight-charcoal) 0%, #4a4350 45%, #8d5e55 100%);
+    box-shadow: 0 24px 60px rgba(58,61,72,0.28);
+    transition: transform .45s cubic-bezier(.4,0,.2,1), box-shadow .45s cubic-bezier(.4,0,.2,1);
 }
-.org-fan::after { content: ''; position: absolute; top: -60%; right: -10%; width: 55%; height: 220%; background: radial-gradient(ellipse at center, rgba(255,255,255,0.18) 0%, transparent 65%); pointer-events: none; }
-.org-fan:hover { transform: translateY(-3px); box-shadow: 0 16px 48px rgba(58, 61, 72, 0.25); color: #fff; }
-.org-fan-badge { flex-shrink: 0; width: 76px; height: 76px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.3rem; background: rgba(255,255,255,0.18); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.4); position: relative; z-index: 1; }
-.org-fan-text { flex: 1; min-width: 0; text-align: left; position: relative; z-index: 1; }
-.org-fan-text strong { display: block; font-family: var(--font-heading); font-size: 1.7rem; font-weight: 600; margin-bottom: 0.25rem; }
-.org-fan-text span { display: block; opacity: 0.92; line-height: 1.5; }
-.org-fan-btn { flex-shrink: 0; position: relative; z-index: 1; padding: 0.8rem 1.6rem; border: 1.5px solid rgba(255,255,255,0.85); border-radius: 999px; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; transition: var(--transition); }
-.org-fan:hover .org-fan-btn { background: #fff; color: var(--accent-color); }
+.org-fan::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 85% 20%, rgba(232,208,177,0.35) 0%, transparent 55%); pointer-events: none; }
+.org-fan:hover { transform: translateY(-6px); box-shadow: 0 34px 72px rgba(58,61,72,0.36); color: #fff; }
+.org-fan-text { position: relative; z-index: 1; }
+.org-fan-kicker { display: block; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: var(--cashmere-sand); margin-bottom: 0.75rem; }
+.org-fan-title { display: block; font-family: var(--font-heading); font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 600; line-height: 1.1; margin-bottom: 0.8rem; }
+.org-fan-desc { display: block; font-size: 1.05rem; line-height: 1.65; color: rgba(255,255,255,0.85); max-width: 420px; }
+.org-fan-btn {
+    display: inline-block; margin-top: 1.6rem; padding: 0.85rem 2rem; border-radius: 999px; background: var(--cashmere-sand); color: var(--midnight-charcoal);
+    font-size: 0.8rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; transition: background .3s, color .3s, transform .3s;
+}
+.org-fan:hover .org-fan-btn { background: #fff; transform: translateX(4px); }
+
+.org-fan-art { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; min-height: 190px; }
+.org-fan-tile {
+    width: 150px; height: 150px; padding: 1rem; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 14px 30px rgba(0,0,0,0.3); border: 4px solid rgba(232,208,177,0.7);
+}
+.org-fan-tile img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.org-fan-tile + .org-fan-tile { margin-left: -38px; }
+.org-fan-tile:nth-child(odd) { transform: translateY(-10px); }
+.org-fan-tile:nth-child(even) { transform: translateY(12px); }
+.org-fan-emoji { font-size: 6rem; filter: drop-shadow(0 10px 18px rgba(0,0,0,0.3)); }
 
 .org-empty { text-align: center; color: var(--text-secondary); padding: 3rem 0; }
-.org-footer-note { text-align: center; margin: 3rem 0 0; color: var(--text-secondary); font-size: 0.95rem; }
+.org-footer-note { text-align: center; margin: 3.5rem 0 0; color: var(--text-secondary); font-size: 0.95rem; }
 .org-footer-note a { color: var(--accent-color); text-decoration: underline; text-underline-offset: 3px; }
 
-@media (max-width: 640px) {
-    .org-body { padding: 2.25rem 0 3.5rem; }
-    .org-team-grid { grid-template-columns: 1fr 1fr; gap: 0.85rem; }
-    .org-team-card { padding: 1.4rem 0.75rem 1.1rem; }
-    .org-team-card:last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 0.45rem); }
-    .org-team-badge { width: 64px; height: 64px; font-size: 2rem; margin-bottom: 0.8rem; }
-    .org-team-name { font-size: 1.15rem; }
-    .org-team-sub { font-size: 0.82rem; margin-bottom: 0.8rem; }
-    .org-team-go { font-size: 0.7rem; }
-    .org-fan { flex-direction: column; text-align: center; padding: 1.75rem 1.25rem; gap: 1rem; }
-    .org-fan-text { text-align: center; }
-    .org-fan-text strong { font-size: 1.45rem; }
+@keyframes orgRise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .org-card { animation: none; } .org-card, .org-card-art img, .org-fan, .org-fan-btn { transition: none; } }
+
+@media (max-width: 760px) {
+    .org-hero { padding: 2.25rem 1.25rem 2.25rem; }
+    .org-body { padding: 2.75rem 0 3.5rem; }
+    .org-team-grid { grid-template-columns: 1fr; gap: 1.4rem; max-width: 360px; margin: 0 auto; }
+    .org-card-name { font-size: 1.45rem; }
+    .org-fan { grid-template-columns: 1fr; padding: 2.25rem 1.5rem; text-align: center; gap: 1.5rem; }
+    .org-fan-desc { margin: 0 auto; }
+    .org-fan-art { order: -1; min-height: 150px; }
+    .org-fan-tile { width: 112px; height: 112px; padding: 0.75rem; }
+    .org-fan-tile + .org-fan-tile { margin-left: -26px; }
 }
 </style>
 {% endblock %}
@@ -87,13 +136,14 @@
 {% set team_sections = ns.team_sections %}
 {% set tiles = team_sections if team_sections else sections %}
 
-<div class="page-header">
+<div class="page-header org-hero">
     <div class="container">
         {% if org.logo_url %}
         <img src="{{ org.logo_url }}" alt="{{ org.name }} logo" class="org-logo">
         {% endif %}
         <span class="eyebrow">Group Order Store</span>
         <h1>{{ org.name }}</h1>
+        <div class="org-orn" aria-hidden="true"><i>&#10022;</i></div>
         {% if welcome %}
         <p class="org-lead">{{ welcome }}</p>
         {% else %}
@@ -101,9 +151,9 @@
         {% endif %}
         {% if lead_collection %}
             {% if lead_collection.order_opens_at %}
-            <p class="org-dates">{{ 'Orders open' if lead_not_open else 'Orders opened' }} {{ lead_collection.order_opens_at|kc_date }}{% if lead_collection.order_deadline %} &middot; Deadline: <strong>{{ lead_collection.order_deadline|kc_date }}</strong>{% endif %}</p>
+            <span class="org-dates">{{ 'Orders open' if lead_not_open else 'Orders opened' }} {{ lead_collection.order_opens_at|kc_date }}{% if lead_collection.order_deadline %} &middot; Deadline: <strong>{{ lead_collection.order_deadline|kc_date }}</strong>{% endif %}</span>
             {% elif lead_collection.order_deadline %}
-            <p class="org-dates">Order deadline: <strong>{{ lead_collection.order_deadline|kc_date }}</strong></p>
+            <span class="org-dates">Order deadline: <strong>{{ lead_collection.order_deadline|kc_date }}</strong></span>
             {% endif %}
         {% endif %}
     </div>
@@ -113,30 +163,48 @@
     <div class="container">
     {% if sections %}
 
-        <h2 class="org-heading">Choose Your Team</h2>
-        <p class="org-subheading">Tap your team to see jerseys, sizes and ordering.</p>
+        <div class="org-section-head">
+            <span class="eyebrow">Team Jerseys</span>
+            <h2>Choose Your Team</h2>
+            <p>Tap your team to see jerseys, sizes and ordering.</p>
+        </div>
         <div class="org-team-grid">
             {% for section in tiles if section.collection %}
-            <a href="{{ url_for('collection.view', slug=section.collection.slug) }}" class="org-team-card">
-                <span class="org-team-badge" aria-hidden="true">{{ section.icon or '🏷️' }}</span>
-                <span class="org-team-name">{{ section.label }}</span>
-                <span class="org-team-sub">Jerseys &amp; uniforms</span>
-                <span class="org-team-go">Shop now →</span>
+            <a href="{{ url_for('collection.view', slug=section.collection.slug) }}" class="org-card">
+                <div class="org-card-art">
+                    <span class="org-card-chip"><b aria-hidden="true">{{ section.icon or '🏷️' }}</b> {{ section.label }}</span>
+                    {% if section_art.get(section.id) %}
+                    <img src="{{ section_art[section.id] }}" alt="{{ section.label }} logo" loading="lazy" decoding="async">
+                    {% else %}
+                    <span class="org-card-emoji" aria-hidden="true">{{ section.icon or '🏷️' }}</span>
+                    {% endif %}
+                </div>
+                <div class="org-card-body">
+                    <span class="org-card-name">{{ section.label }}</span>
+                    <span class="org-card-sub">Jerseys &amp; uniforms</span>
+                    <span class="org-card-cta">Shop {{ section.label }}</span>
+                </div>
             </a>
             {% endfor %}
         </div>
 
         {% if team_sections and (fan_sections or fan_wear_url) %}
         {% set fan_href = fan_wear_url or url_for('collection.view', slug=fan_sections[0].collection.slug) %}
-        {% set fan_icon = (fan_sections[0].icon if fan_sections else none) or '👕' %}
-        <div class="org-divider"><span>Or shop for everyone</span></div>
+        <div class="org-or"><span>Or shop for everyone</span></div>
         <a href="{{ fan_href }}" class="org-fan">
-            <span class="org-fan-badge" aria-hidden="true">{{ fan_icon }}</span>
             <span class="org-fan-text">
-                <strong>Fan Wear</strong>
-                <span>Tees, hoodies &amp; matching looks for parents, siblings and fans.</span>
+                <span class="org-fan-kicker">For the whole family</span>
+                <span class="org-fan-title">Fan Wear</span>
+                <span class="org-fan-desc">Tees, hoodies &amp; matching looks for parents, grandparents, siblings and every fan in the stands.</span>
+                <span class="org-fan-btn">Shop Fan Wear</span>
             </span>
-            <span class="org-fan-btn">Shop Fan Wear</span>
+            <span class="org-fan-art" aria-hidden="true">
+                {% if fan_art %}
+                    {% for u in fan_art[:3] %}<span class="org-fan-tile"><img src="{{ u }}" alt="" loading="lazy" decoding="async"></span>{% endfor %}
+                {% else %}
+                    <span class="org-fan-emoji">👕</span>
+                {% endif %}
+            </span>
         </a>
         {% endif %}
 

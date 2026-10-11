@@ -74,7 +74,32 @@ def landing(slug):
                  and 'fan' not in (s.label or '').lower()), None)
     from utils.group_orders import is_not_yet_open
     welcome = (org.description or (lead.description if lead else '') or '').strip()
+    # Artwork for the page: each team's own logo, and a few fan designs for the banner.
+    from utils.group_orders import (
+        allowed_design_ids, load_showcase_designs, org_fanwear_design_ids,
+    )
+    from utils.cloud_storage import image_url as _img_url
+    from models import Design
+    section_art = {}
+    fan_art = []
+    try:
+        for sec in sections:
+            coll = sec.collection
+            if not coll or 'fan' in (sec.label or '').lower():
+                continue
+            shown = load_showcase_designs(coll)
+            if shown:
+                section_art[sec.id] = shown[0]['url']
+            elif coll.cover_image:
+                section_art[sec.id] = _img_url(coll.cover_image)
+        if lead:
+            ids = org_fanwear_design_ids(lead)[:4]
+            by_id = {d.id: d for d in Design.query.filter(Design.id.in_(ids)).all()} if ids else {}
+            fan_art = [_img_url(by_id[i].file_path) for i in ids if i in by_id]
+    except Exception:
+        pass
     return render_template('org/landing.html', org=org, sections=sections,
+                           section_art=section_art, fan_art=fan_art,
                            fan_wear_url=fan_wear_url, welcome=welcome,
                            lead_collection=lead,
                            lead_not_open=bool(lead and is_not_yet_open(lead)))
