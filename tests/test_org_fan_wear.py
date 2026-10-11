@@ -143,3 +143,69 @@ def test_edit_page_has_the_quick_color_bar_and_sync_box(admin_client, app, seed)
     assert 'id="fanQuickRow"' in html
     assert 'name="sync_fan_to_org"' in html
     assert 'Select products above first' not in html
+
+
+# ── Organization edit page ───────────────────────────────────────────────────
+
+import io
+
+
+def _org_slug(app):
+    with app.app_context():
+        return Organization.query.filter_by(name='Rainbow Cheetahs').one().slug
+
+
+def test_admin_opens_org_edit_page_with_teams_inside_it(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    html = admin_client.get(f'/org/{_org_slug(app)}/manage').get_data(as_text=True)
+    for label in ('Basketball', 'Soccer', 'Volleyball'):
+        assert f'Edit {label}' in html
+    assert 'name="cover"' in html and 'name="logo"' in html
+
+
+def test_org_images_can_be_added_switched_and_removed(admin_client, app, seed, monkeypatch):
+    _build(admin_client, app, seed)
+    slug = _org_slug(app)
+    uploads = iter(['uploads/org-covers/first.png', 'uploads/org-covers/second.png'])
+    monkeypatch.setattr('utils.cloud_storage.upload_image', lambda *a, **k: next(uploads))
+
+    def save(**extra):
+        data = {'action': 'save_settings', 'name': 'Rainbow Cheetahs', 'description': 'Hi'}
+        data.update(extra)
+        return admin_client.post(f'/org/{slug}/manage', data=data, content_type='multipart/form-data',
+                                 follow_redirects=True)
+
+    def cover():
+        with app.app_context():
+            return Organization.query.filter_by(slug=slug).one().cover_image
+
+    save(cover=(io.BytesIO(b'x'), 'a.png'))
+    assert cover() == 'uploads/org-covers/first.png'
+    save(cover=(io.BytesIO(b'x'), 'b.png'))
+    assert cover() == 'uploads/org-covers/second.png'
+    save(remove_cover='on')
+    assert cover() is None
+
+
+def test_org_team_rename_and_reorder(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    slug = _org_slug(app)
+    with app.app_context():
+        secs = Organization.query.filter_by(slug=slug).one().sections.all()
+        first, second = secs[0].id, secs[1].id
+    admin_client.post(f'/org/{slug}/manage', data={
+        'action': 'rename_section', 'section_id': first, 'label': 'Hoops', 'icon': '🏀'})
+    admin_client.post(f'/org/{slug}/manage', data={
+        'action': 'reorder', 'section_order[]': [str(second), str(first)]})
+    with app.app_context():
+        from models import OrgSection
+        assert OrgSection.query.get(first).label == 'Hoops'
+        assert OrgSection.query.get(second).sort_order == 0
+
+
+def test_admin_list_shows_one_org_card_not_every_team(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    html = admin_client.get('/admin/collections').get_data(as_text=True)
+    assert 'Edit Rainbow Cheetahs' in html
+    assert 'id="orgGroup' in html
+    assert 'collection-card' not in html.split('Other Group Orders')[0]

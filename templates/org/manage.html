@@ -1,388 +1,291 @@
 {% extends "base.html" %}
-{% block title %}Manage {{ org.name }} — Purposefully Made KC{% endblock %}
+{% block title %}Edit {{ org.name }} - Purposefully Made KC{% endblock %}
 {% block robots %}noindex, nofollow{% endblock %}
 
-{% block content %}
-<div class="org-manage">
+{% block extra_css %}
+<style>
+.om { max-width: 860px; margin: 0 auto; padding: 0 1.25rem 5rem; }
+.om-head { text-align: center; padding: 2.5rem 1rem 2rem; }
+.om-head h1 { font-size: clamp(2rem, 5vw, 2.8rem); margin: 0 0 1rem; }
+.om-head-actions { display: flex; flex-wrap: wrap; gap: .6rem; justify-content: center; }
+.om-chip { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem 1.2rem; border: 1.5px solid var(--border-color); border-radius: 999px; background: #fff; color: var(--text-primary); font-size: .85rem; font-weight: 600; text-decoration: none; cursor: pointer; transition: var(--transition); }
+.om-chip:hover { border-color: var(--accent-color); color: var(--accent-color); }
+.om-chip--primary { background: var(--accent-color); border-color: var(--accent-color); color: #fff; }
+.om-chip--primary:hover { background: #a56a5d; color: #fff; }
+.om-chip--danger:hover { border-color: #c0392b; color: #c0392b; }
 
-    <div class="org-manage-header">
-        <span class="org-eyebrow">Organizer Dashboard</span>
+.om-card { background: #fff; border: 1px solid var(--border-light); border-radius: 18px; box-shadow: var(--box-shadow); padding: 1.75rem 1.75rem 1.9rem; margin-bottom: 1.75rem; }
+.om-card h2 { font-size: 1.5rem; margin: 0 0 .25rem; }
+.om-sub { margin: 0 0 1.4rem; color: var(--text-secondary); font-size: .95rem; }
+.om-flash { padding: .8rem 1.1rem; border-radius: 12px; margin-bottom: 1.25rem; font-size: .95rem; }
+.om-flash.success { background: var(--notice-success-bg, #eef1e9); color: var(--notice-success-fg, #4f5d3a); }
+.om-flash.error { background: var(--notice-error-bg, #fbeeec); color: var(--notice-error-fg, #9a4436); }
+
+/* teams */
+.om-teams { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .7rem; }
+.om-team { display: flex; align-items: center; gap: .9rem; padding: .85rem 1rem; border: 1px solid var(--border-light); border-radius: 14px; background: #fffdf9; transition: var(--transition); }
+.om-team.dragging { opacity: .5; }
+.om-grip { cursor: grab; color: var(--text-secondary); font-size: 1.2rem; user-select: none; }
+.om-team-icon { width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; background: radial-gradient(circle at 30% 25%, #fff, var(--ivory-silk) 60%, var(--cashmere-sand)); box-shadow: inset 0 0 0 1px var(--border-light); flex-shrink: 0; }
+.om-team-name { flex: 1; min-width: 0; font-family: var(--font-heading); font-size: 1.2rem; font-weight: 600; }
+.om-team-name small { display: block; font-family: var(--font-primary); font-size: .8rem; font-weight: 400; color: var(--text-secondary); }
+.om-team-actions { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; justify-content: flex-end; }
+.om-more { position: relative; }
+.om-more > summary { list-style: none; }
+.om-more > summary::-webkit-details-marker { display: none; }
+.om-more-menu { position: absolute; right: 0; top: calc(100% + .4rem); z-index: 20; min-width: 220px; background: #fff; border: 1px solid var(--border-light); border-radius: 12px; box-shadow: var(--box-shadow-luxury); padding: .4rem; display: flex; flex-direction: column; }
+.om-more-menu a, .om-more-menu button { text-align: left; padding: .55rem .8rem; border: none; background: none; border-radius: 8px; font: inherit; font-size: .9rem; color: var(--text-primary); text-decoration: none; cursor: pointer; }
+.om-more-menu a:hover, .om-more-menu button:hover { background: var(--ivory-silk); }
+.om-more-menu .om-rename { display: flex; gap: .4rem; padding: .4rem .5rem; }
+.om-more-menu .om-rename input { min-width: 0; padding: .4rem .6rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: .9rem; }
+.om-more-menu .om-rename input[name="icon"] { width: 3.2rem; text-align: center; }
+.om-more-menu .danger { color: #c0392b; }
+
+.om-add { margin-top: 1.1rem; border: 1.5px dashed var(--border-color); border-radius: 14px; padding: .25rem 1rem; }
+.om-add > summary { cursor: pointer; list-style: none; padding: .8rem 0; font-weight: 700; color: var(--accent-color); }
+.om-add > summary::-webkit-details-marker { display: none; }
+.om-add-body { padding: .25rem 0 1rem; display: grid; gap: .9rem; }
+.om-add-row { display: grid; grid-template-columns: 5rem 1fr; gap: .75rem; }
+
+/* form fields */
+.om-field { margin-bottom: 1.25rem; }
+.om-field > label, .om-label { display: block; font-weight: 700; font-size: .92rem; margin-bottom: .4rem; }
+.om-field input[type="text"], .om-field input[type="password"], .om-field textarea, .om-field select, .om-add-body input[type="text"], .om-add-body select { width: 100%; padding: .7rem .9rem; border: 1.5px solid var(--border-color); border-radius: 10px; font: inherit; background: #fff; }
+.om-field textarea { min-height: 120px; resize: vertical; line-height: 1.6; }
+.om-hint { display: block; margin-top: .35rem; color: var(--text-secondary); font-size: .85rem; }
+
+/* images */
+.om-imgs { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+.om-img { border: 1px solid var(--border-light); border-radius: 14px; padding: 1rem; background: #fffdf9; display: flex; flex-direction: column; gap: .75rem; }
+.om-img-view { height: 150px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: linear-gradient(145deg, var(--ivory-silk), var(--cashmere-sand)); overflow: hidden; position: relative; }
+.om-img-view img { max-width: 90%; max-height: 90%; object-fit: contain; }
+.om-img-view .om-empty { color: var(--text-secondary); font-size: .9rem; }
+.om-img-view--fan { background: linear-gradient(125deg, var(--midnight-charcoal), #4a4350 45%, #8d5e55); }
+.om-fan-circles { display: flex; align-items: center; justify-content: center; }
+.om-fan-circles span { width: 78px; height: 78px; border-radius: 50%; background: #fff; padding: 8px; border: 3px solid rgba(232,208,177,.8); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 18px rgba(0,0,0,.3); }
+.om-fan-circles span + span { margin-left: -22px; }
+.om-fan-circles img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.om-img-title { font-weight: 700; font-size: .95rem; }
+.om-img-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .9rem; font-size: .88rem; }
+.om-img input[type="file"] { font-size: .85rem; max-width: 100%; }
+.om-remove { display: inline-flex; align-items: center; gap: .35rem; color: #c0392b; cursor: pointer; }
+
+.om-advanced { margin: .5rem 0 1.5rem; border-top: 1px solid var(--border-light); padding-top: 1rem; }
+.om-advanced > summary { cursor: pointer; font-weight: 600; color: var(--text-secondary); }
+.om-savebar { display: flex; justify-content: flex-end; }
+.om-empty-teams { text-align: center; color: var(--text-secondary); padding: 1rem 0; }
+
+@media (max-width: 640px) {
+    .om-card { padding: 1.25rem 1.1rem 1.4rem; }
+    .om-imgs { grid-template-columns: 1fr; }
+    .om-team { flex-wrap: wrap; }
+    .om-team-actions { width: 100%; justify-content: flex-start; padding-left: 2.2rem; }
+    .om-add-row { grid-template-columns: 4rem 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header om-head-band">
+    <div class="container om-head">
+        <span class="eyebrow">Edit Organization</span>
         <h1>{{ org.name }}</h1>
-        <div class="org-manage-links">
-            <a href="{{ url_for('org.landing', slug=org.slug) }}" class="btn btn-outline btn-sm" target="_blank">
-                View live page →
-            </a>
-            <a href="{{ url_for('org.org_logout', slug=org.slug) }}" class="btn-text-muted">Sign out</a>
+        <div class="om-head-actions">
+            <a href="{{ url_for('org.landing', slug=org.slug) }}" class="om-chip om-chip--primary" target="_blank" rel="noopener">View live page &rarr;</a>
+            <button type="button" class="om-chip" id="omCopy" data-url="{{ request.host_url.rstrip('/') }}{{ url_for('org.landing', slug=org.slug) }}">Copy share link</button>
+            {% if not is_admin %}<a href="{{ url_for('org.org_logout', slug=org.slug) }}" class="om-chip">Sign out</a>{% endif %}
         </div>
     </div>
+</div>
 
+<div class="om">
+    <div style="height:1.75rem"></div>
     {% with messages = get_flashed_messages(with_categories=true) %}
-    {% for cat, msg in messages %}
-    <div class="alert alert-{{ cat }}">{{ msg }}</div>
-    {% endfor %}
+    {% for cat, msg in messages %}<div class="om-flash {{ cat }}">{{ msg }}</div>{% endfor %}
     {% endwith %}
 
-    {# ── Share link ── #}
-    <div class="org-share-box">
-        <span class="org-share-label">Your shareable link</span>
-        <div class="org-share-row">
-            <input type="text" readonly class="org-share-input"
-                   value="{{ request.host_url.rstrip('/') }}{{ url_for('org.landing', slug=org.slug) }}"
-                   id="orgShareUrl">
-            <button type="button" class="btn btn-sm btn-outline" onclick="copyShareUrl()">Copy</button>
-        </div>
-        <small>Share this one link — parents click their sport and go straight to that store.</small>
-    </div>
-
-    {# ── Current sections ── #}
-    <section class="org-section-list-wrap">
-        <h2>Sections <span class="org-section-count">{{ sections|length }}</span></h2>
-        <p class="org-section-hint">These are the tiles shoppers see on your landing page. Drag to reorder.</p>
+    {# ── 1. Teams ─────────────────────────────────────────────── #}
+    <section class="om-card">
+        <h2>Teams</h2>
+        <p class="om-sub">Each team is its own store. Open a team to change its jerseys, colors and designs. Drag to reorder.</p>
 
         {% if sections %}
-        <form method="post" id="reorderForm">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="action" value="reorder">
-            <ul class="org-section-list" id="sectionList">
-                {% for section in sections %}
-                <li class="org-section-row" data-id="{{ section.id }}">
-                    <input type="hidden" name="section_order[]" value="{{ section.id }}">
-                    <span class="org-drag-handle" title="Drag to reorder">⠿</span>
-                    <span class="org-section-icon">{{ section.icon }}</span>
-                    <div class="org-section-info">
-                        <strong>{{ section.label }}</strong>
-                        <span>→ <a href="{{ url_for('collection.view', slug=section.collection.slug) }}" target="_blank">{{ section.collection.name }}</a></span>
-                    </div>
-                    <form method="post" class="org-delete-form" onsubmit="return confirm('Remove this section?')">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <input type="hidden" name="action" value="delete_section">
-                        <input type="hidden" name="section_id" value="{{ section.id }}">
-                        <button type="submit" class="btn-icon-danger" title="Remove section">✕</button>
-                    </form>
-                </li>
-                {% endfor %}
-            </ul>
-        </form>
+        <ul class="om-teams" id="omTeams">
+            {% for section in sections %}
+            {% set coll = section.collection %}
+            <li class="om-team" data-id="{{ section.id }}" draggable="true">
+                <span class="om-grip" title="Drag to reorder" aria-hidden="true">&#8942;&#8942;</span>
+                <span class="om-team-icon" aria-hidden="true">{{ section.icon or '🏷️' }}</span>
+                <span class="om-team-name">{{ section.label }}{% if coll and not coll.is_active %}<small>Hidden from shoppers</small>{% endif %}</span>
+                <span class="om-team-actions">
+                    {% if coll %}
+                    {% if is_admin %}
+                    <a class="om-chip om-chip--primary" href="{{ url_for('admin.edit_collection', collection_id=coll.id) }}">Edit {{ section.label }}</a>
+                    {% else %}
+                    <a class="om-chip om-chip--primary" href="{{ url_for('shop.edit_group_order', slug=coll.slug) }}">Edit {{ section.label }}</a>
+                    {% endif %}
+                    <a class="om-chip" href="{{ url_for('collection.view', slug=coll.slug) }}" target="_blank" rel="noopener">View</a>
+                    {% endif %}
+                    <details class="om-more">
+                        <summary class="om-chip" aria-label="More options for {{ section.label }}">&#8943;</summary>
+                        <div class="om-more-menu">
+                            <form method="post" class="om-rename">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="action" value="rename_section">
+                                <input type="hidden" name="section_id" value="{{ section.id }}">
+                                <input type="text" name="icon" value="{{ section.icon }}" maxlength="4" aria-label="Icon">
+                                <input type="text" name="label" value="{{ section.label }}" maxlength="100" aria-label="Team name" required>
+                                <button type="submit">Save</button>
+                            </form>
+                            {% if coll and is_admin %}
+                            <a href="{{ url_for('collection.export_xlsx', slug=coll.slug) }}">Export orders</a>
+                            <a href="{{ url_for('admin.logo_chart', collection=coll.id) }}">Logo chart</a>
+                            {% endif %}
+                            {% if coll %}
+                            <button type="button" class="om-copy-team" data-url="{{ request.host_url.rstrip('/') }}{{ url_for('collection.view', slug=coll.slug) }}">Copy team link</button>
+                            {% endif %}
+                            <form method="post" onsubmit="return confirm('Take {{ section.label|e }} off this page? The store itself is kept.')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="action" value="delete_section">
+                                <input type="hidden" name="section_id" value="{{ section.id }}">
+                                <button type="submit" class="danger" style="width:100%">Remove from this page</button>
+                            </form>
+                        </div>
+                    </details>
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
         {% else %}
-        <p class="org-no-sections">No sections yet — add your first one below.</p>
+        <p class="om-empty-teams">No teams yet. Add your first one below.</p>
         {% endif %}
+
+        <details class="om-add">
+            <summary>+ Add a team</summary>
+            <div class="om-add-body">
+                {% if available_collections %}
+                <form method="post" class="om-add-body" style="padding:0">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="add_section">
+                    <div>
+                        <label class="om-label" for="omStore">Which store?</label>
+                        <select id="omStore" name="collection_id" required>
+                            <option value="">Choose a store</option>
+                            {% for c in available_collections %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="om-add-row">
+                        <div><label class="om-label" for="omIcon">Icon</label><input type="text" id="omIcon" name="icon" value="🏷️" maxlength="4"></div>
+                        <div><label class="om-label" for="omLabel">Team name</label><input type="text" id="omLabel" name="label" placeholder="e.g. Soccer" maxlength="100" required></div>
+                    </div>
+                    <div><button type="submit" class="om-chip om-chip--primary">Add team</button></div>
+                </form>
+                {% endif %}
+                <p class="om-hint" style="margin:0">
+                    {% if available_collections %}Don't see it?{% else %}All your stores are already here.{% endif %}
+                    {% if is_admin %}<a href="{{ url_for('admin.add_collection') }}">Create a new team store &rarr;</a>{% else %}<a href="{{ url_for('shop.create_group_order') }}">Create a new team store &rarr;</a>{% endif %}
+                    Then come back and add it here.
+                </p>
+            </div>
+        </details>
     </section>
 
-    {# ── Create a new team / store ── #}
-    <section class="org-add-section">
-        <h2>Create a team or store</h2>
-        <p>Start a brand-new group order store and place it directly on your org landing page.</p>
-        <form method="post" class="org-add-form">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="action" value="create_store">
+    {# ── 2. Look ──────────────────────────────────────────────── #}
+    <form method="post" enctype="multipart/form-data" class="om-card">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="save_settings">
+        <h2>Page &amp; Photos</h2>
+        <p class="om-sub">What parents see at the top of your page and on the Group Orders list.</p>
 
-            <div class="org-add-row">
-                <div class="form-group">
-                    <label for="create_icon">Icon</label>
-                    <input type="text" id="create_icon" name="icon" class="form-control org-icon-input"
-                           value="🏀" maxlength="4" placeholder="🏀">
+        <div class="om-field">
+            <label for="omName">Organization name</label>
+            <input type="text" id="omName" name="name" value="{{ org.name }}" maxlength="200" required>
+        </div>
+        <div class="om-field">
+            <label for="omDesc">Welcome message</label>
+            <textarea id="omDesc" name="description" placeholder="A warm hello for your families">{{ org.description or '' }}</textarea>
+            <span class="om-hint">Shown under your name. Leave blank to use your first team's message.</span>
+        </div>
+
+        <div class="om-imgs">
+            <div class="om-img">
+                <span class="om-img-title">Main photo</span>
+                {% if org.cover_image %}
+                <div class="om-img-view"><img src="{{ org.cover_image | image_url }}" alt="Main photo"></div>
+                {% elif fan_art %}
+                <div class="om-img-view om-img-view--fan"><span class="om-fan-circles">{% for u in fan_art %}<span><img src="{{ u }}" alt=""></span>{% endfor %}</span></div>
+                {% else %}
+                <div class="om-img-view"><span class="om-empty">No photo yet</span></div>
+                {% endif %}
+                <div class="om-img-actions">
+                    <input type="file" name="cover" accept=".png,.jpg,.jpeg,.webp,.gif">
+                    {% if org.cover_image %}<label class="om-remove"><input type="checkbox" name="remove_cover"> Remove</label>{% endif %}
                 </div>
-                <div class="form-group org-add-label-group">
-                    <label for="create_label">Section label <span class="req">*</span></label>
-                    <input type="text" id="create_label" name="label" class="form-control"
-                           placeholder="Basketball" maxlength="100" required>
+                <span class="om-hint">{% if org.cover_image %}Upload another to switch it out.{% else %}Using your Fan Wear designs. Upload a photo to replace them.{% endif %}</span>
+            </div>
+            <div class="om-img">
+                <span class="om-img-title">Logo <span class="om-hint" style="display:inline">(optional)</span></span>
+                <div class="om-img-view">
+                    {% if org.logo_url %}<img src="{{ org.logo_url | image_url }}" alt="Logo">{% else %}<span class="om-empty">No logo</span>{% endif %}
                 </div>
-            </div>
-
-            <div class="form-group">
-                <label for="store_name">Team / store name <span class="req">*</span></label>
-                <input type="text" id="store_name" name="store_name" class="form-control"
-                       placeholder="Rainbow Cheetahs Basketball" maxlength="200" required>
-            </div>
-
-            <div class="form-group">
-                <label for="store_slug">Custom URL slug <span class="opt">(optional)</span></label>
-                <input type="text" id="store_slug" name="store_slug" class="form-control"
-                       placeholder="rainbow-cheetahs-basketball" maxlength="80">
-            </div>
-
-            <div class="form-group">
-                <label for="store_description">Short description <span class="opt">(optional)</span></label>
-                <textarea id="store_description" name="store_description" class="form-control" rows="2"
-                          placeholder="Basketball spirit wear for the 2026 season."></textarea>
-            </div>
-
-            <button type="submit" class="btn btn-primary">Create store and add to page</button>
-        </form>
-    </section>
-
-    {# ── Add a section ── #}
-    <section class="org-add-section">
-        <h2>Add an existing store</h2>
-        <p>Each section is a tile on your landing page that links to one of your group order stores.</p>
-        <form method="post" class="org-add-form">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="action" value="add_section">
-
-            <div class="org-add-row">
-                <div class="form-group">
-                    <label for="icon">Icon</label>
-                    <input type="text" id="icon" name="icon" class="form-control org-icon-input"
-                           value="🏷️" maxlength="4" placeholder="🏀">
-                    <small>Any emoji</small>
+                <div class="om-img-actions">
+                    <input type="file" name="logo" accept=".png,.jpg,.jpeg,.webp,.gif">
+                    {% if org.logo_url %}<label class="om-remove"><input type="checkbox" name="remove_logo"> Remove</label>{% endif %}
                 </div>
-                <div class="form-group org-add-label-group">
-                    <label for="label">Section name <span class="req">*</span></label>
-                    <input type="text" id="label" name="label" class="form-control"
-                           placeholder="e.g. Basketball, Fan Wear, Volleyball" maxlength="100" required>
-                </div>
+                <span class="om-hint">Shown at the top of your page.</span>
             </div>
+        </div>
 
-            <div class="form-group">
-                <label for="collection_id">Group order store <span class="req">*</span></label>
-                <select id="collection_id" name="collection_id" class="form-control" required>
-                    <option value="">— Select a group order store —</option>
-                    {% for c in available_collections %}
-                    <option value="{{ c.id }}">{{ c.name }}</option>
-                    {% endfor %}
-                </select>
-                <small>Don't see it? <a href="{{ url_for('shop.create_group_order') }}" target="_blank">Create a new group order store first →</a></small>
+        <details class="om-advanced">
+            <summary>Organizer password</summary>
+            <div class="om-field" style="margin-top:.9rem">
+                <label for="omPw">New password</label>
+                <input type="password" id="omPw" name="new_password" placeholder="Leave blank to keep the current one" autocomplete="new-password">
             </div>
+        </details>
 
-            <button type="submit" class="btn btn-primary">Add section</button>
-        </form>
-    </section>
-
-    {# ── Settings ── #}
-    <section class="org-settings">
-        <h2>Settings</h2>
-        <form method="post" class="org-settings-form">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="action" value="save_settings">
-
-            <div class="form-group">
-                <label for="s_name">Organization name</label>
-                <input type="text" id="s_name" name="name" class="form-control"
-                       value="{{ org.name }}" maxlength="200" required>
-            </div>
-
-            <div class="form-group">
-                <label for="s_description">Description <span class="opt">(optional)</span></label>
-                <textarea id="s_description" name="description" class="form-control" rows="2">{{ org.description or '' }}</textarea>
-            </div>
-
-            <div class="form-group">
-                <label for="s_logo_url">Logo URL <span class="opt">(optional)</span></label>
-                <input type="url" id="s_logo_url" name="logo_url" class="form-control"
-                       value="{{ org.logo_url or '' }}" placeholder="https://...">
-            </div>
-
-            <div class="form-group">
-                <label for="s_password">New organizer password <span class="opt">(leave blank to keep current)</span></label>
-                <input type="password" id="s_password" name="new_password" class="form-control"
-                       placeholder="New password">
-            </div>
-
-            <button type="submit" class="btn btn-outline">Save settings</button>
-        </form>
-    </section>
-
+        <div class="om-savebar"><button type="submit" class="om-chip om-chip--primary" style="padding:.8rem 2.2rem;font-size:.9rem">Save changes</button></div>
+    </form>
 </div>
 
 <script>
-function copyShareUrl() {
-    const input = document.getElementById('orgShareUrl');
-    input.select();
-    navigator.clipboard.writeText(input.value).then(() => {
-        const btn = event.target;
-        btn.textContent = 'Copied!';
-        setTimeout(() => btn.textContent = 'Copy', 2000);
-    }).catch(() => {
-        document.execCommand('copy');
-    });
-}
-
-// Simple drag-to-reorder
 (function () {
-    const list = document.getElementById('sectionList');
-    if (!list) return;
-    let dragging = null;
-
-    list.querySelectorAll('.org-section-row').forEach(row => {
-        row.draggable = true;
-        row.addEventListener('dragstart', () => { dragging = row; row.classList.add('dragging'); });
-        row.addEventListener('dragend', () => {
-            row.classList.remove('dragging');
-            dragging = null;
-            syncHiddenInputs();
-            document.getElementById('reorderForm').submit();
-        });
-        row.addEventListener('dragover', e => {
-            e.preventDefault();
-            if (dragging && dragging !== row) {
-                const rect = row.getBoundingClientRect();
-                const mid = rect.top + rect.height / 2;
-                if (e.clientY < mid) {
-                    list.insertBefore(dragging, row);
-                } else {
-                    list.insertBefore(dragging, row.nextSibling);
-                }
-            }
-        });
+    function copy(text, btn) {
+        var done = function () { var o = btn.textContent; btn.textContent = 'Copied!'; setTimeout(function () { btn.textContent = o; }, 1800); };
+        if (navigator.clipboard) { navigator.clipboard.writeText(text).then(done); }
+    }
+    var main = document.getElementById('omCopy');
+    if (main) main.addEventListener('click', function () { copy(main.dataset.url, main); });
+    document.querySelectorAll('.om-copy-team').forEach(function (b) {
+        b.addEventListener('click', function () { copy(b.dataset.url, b); });
     });
 
-    function syncHiddenInputs() {
-        list.querySelectorAll('.org-section-row').forEach((row, idx) => {
-            const input = row.querySelector('input[name="section_order[]"]');
-            if (input) input.value = row.dataset.id;
+    // Close an open "more" menu when clicking elsewhere.
+    document.addEventListener('click', function (e) {
+        document.querySelectorAll('.om-more[open]').forEach(function (d) { if (!d.contains(e.target)) d.removeAttribute('open'); });
+    });
+
+    // Drag to reorder; saves automatically.
+    var list = document.getElementById('omTeams');
+    if (!list) return;
+    var dragging = null;
+    list.querySelectorAll('.om-team').forEach(function (row) {
+        row.addEventListener('dragstart', function () { dragging = row; row.classList.add('dragging'); });
+        row.addEventListener('dragend', function () {
+            row.classList.remove('dragging'); dragging = null;
+            var body = new URLSearchParams();
+            body.append('csrf_token', '{{ csrf_token() }}');
+            body.append('action', 'reorder');
+            list.querySelectorAll('.om-team').forEach(function (r) { body.append('section_order[]', r.dataset.id); });
+            fetch(window.location.href, { method: 'POST', body: body, credentials: 'same-origin' });
         });
-    }
+        row.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            if (!dragging || dragging === row) return;
+            var r = row.getBoundingClientRect();
+            list.insertBefore(dragging, e.clientY < r.top + r.height / 2 ? row : row.nextSibling);
+        });
+    });
 })();
 </script>
-
-<style>
-.org-manage {
-    max-width: 680px;
-    margin: 0 auto;
-    padding: 3rem 1.25rem 5rem;
-}
-.org-eyebrow {
-    display: block;
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--terra-cotta, #b56c4c);
-    margin-bottom: 0.3rem;
-}
-.org-manage-header {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.75rem;
-    margin-bottom: 1.75rem;
-}
-.org-manage-header h1 {
-    font-size: 1.85rem;
-    font-weight: 800;
-    margin: 0;
-    flex: 1 1 100%;
-}
-.org-manage-links { display: flex; align-items: center; gap: 1rem; }
-.btn-text-muted { font-size: 0.82rem; color: var(--text-secondary, #aaa); text-decoration: none; }
-.btn-text-muted:hover { color: var(--text-primary, #333); }
-
-/* Share box */
-.org-share-box {
-    background: #fdf6f3;
-    border: 1.5px solid #e8d5cb;
-    border-radius: 12px;
-    padding: 1rem 1.25rem;
-    margin-bottom: 2rem;
-}
-.org-share-label {
-    display: block;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--terra-cotta, #b56c4c);
-    margin-bottom: 0.5rem;
-}
-.org-share-row { display: flex; gap: 0.5rem; margin-bottom: 0.35rem; }
-.org-share-input {
-    flex: 1;
-    font-family: monospace;
-    font-size: 0.82rem;
-    padding: 0.45rem 0.7rem;
-    border: 1.5px solid #ddd;
-    border-radius: 8px;
-    background: #fff;
-    color: #333;
-}
-.org-share-box small { font-size: 0.78rem; color: var(--text-secondary, #888); }
-
-/* Sections */
-.org-section-list-wrap, .org-add-section, .org-settings {
-    margin-bottom: 2.5rem;
-    padding-bottom: 2.5rem;
-    border-bottom: 1.5px solid #f0ebe8;
-}
-.org-section-list-wrap h2, .org-add-section h2, .org-settings h2 {
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin-bottom: 0.3rem;
-}
-.org-section-count {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--terra-cotta, #b56c4c);
-    color: #fff;
-    font-size: 0.72rem;
-    font-weight: 700;
-    border-radius: 20px;
-    padding: 0.1rem 0.45rem;
-    margin-left: 0.35rem;
-    vertical-align: middle;
-}
-.org-section-hint { font-size: 0.82rem; color: var(--text-secondary, #888); margin-bottom: 0.85rem; }
-
-.org-section-list {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 0;
-    margin: 0;
-}
-.org-section-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    background: #fff;
-    border: 1.5px solid #e8e0db;
-    border-radius: 10px;
-    padding: 0.65rem 0.85rem;
-    cursor: grab;
-    transition: box-shadow 0.15s;
-}
-.org-section-row.dragging { opacity: 0.5; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
-.org-drag-handle { font-size: 1.1rem; color: #ccc; cursor: grab; flex-shrink: 0; }
-.org-section-icon { font-size: 1.4rem; flex-shrink: 0; }
-.org-section-info { flex: 1; min-width: 0; }
-.org-section-info strong { display: block; font-size: 0.9rem; }
-.org-section-info span { font-size: 0.78rem; color: var(--text-secondary, #888); }
-.org-section-info a { color: var(--terra-cotta, #b56c4c); }
-.org-delete-form { margin: 0; }
-.btn-icon-danger {
-    background: none;
-    border: none;
-    color: #ccc;
-    font-size: 0.9rem;
-    cursor: pointer;
-    padding: 0.2rem 0.35rem;
-    border-radius: 6px;
-    transition: color 0.15s, background 0.15s;
-}
-.btn-icon-danger:hover { color: #c0392b; background: #fff0f0; }
-.org-no-sections { color: var(--text-secondary, #aaa); font-size: 0.9rem; padding: 1rem 0; }
-
-/* Add section form */
-.org-add-section p, .org-settings p { font-size: 0.85rem; color: var(--text-secondary, #777); margin-bottom: 1rem; }
-.org-add-form { display: flex; flex-direction: column; gap: 1rem; }
-.org-add-row { display: flex; gap: 0.75rem; align-items: flex-start; }
-.org-icon-input { width: 70px; text-align: center; font-size: 1.25rem; }
-.org-add-label-group { flex: 1; }
-.form-group { display: flex; flex-direction: column; gap: 0.3rem; }
-.form-group label { font-size: 0.85rem; font-weight: 600; color: var(--text-primary, #333); }
-.form-group small { font-size: 0.78rem; color: var(--text-secondary, #888); }
-.form-group small a { color: var(--terra-cotta, #b56c4c); }
-.req { color: #c0392b; }
-.opt { color: var(--text-secondary, #aaa); font-weight: 400; font-size: 0.8rem; }
-
-/* Settings form */
-.org-settings-form { display: flex; flex-direction: column; gap: 1rem; }
-
-@media (max-width: 480px) {
-    .org-add-row { flex-direction: column; }
-    .org-icon-input { width: 100%; }
-}
-</style>
 {% endblock %}

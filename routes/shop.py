@@ -407,7 +407,9 @@ def group_orders():
                     1 for s in org.sections.all()
                     if s.collection and s.collection.is_active
                 )
-                open_orgs.append({'org': org, 'team_count': team_count})
+                from routes.org import fan_art_urls
+                open_orgs.append({'org': org, 'team_count': team_count,
+                                  'fan_art': fan_art_urls(org)})
         else:
             open_collections.append({
                 'collection': c,

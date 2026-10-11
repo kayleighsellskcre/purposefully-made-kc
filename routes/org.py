@@ -19,6 +19,8 @@ from flask import (
     Blueprint, render_template, request, redirect, url_for,
     flash, session, abort,
 )
+from pathlib import Path
+from flask_login import current_user
 from models import db, Organization, OrgSection, Collection
 
 org_bp = Blueprint('org', __name__)
@@ -52,8 +54,51 @@ def _org_or_404(slug):
 
 
 def _require_org_auth(org):
-    """Return True if the organizer is authenticated for this org."""
+    """Return True if the organizer is authenticated for this org (site admins always are)."""
+    if current_user.is_authenticated and getattr(current_user, 'is_admin', False):
+        return True
     return session.get(f'org_auth_{org.id}') is True
+
+
+_IMAGE_EXTS = {'.png', '.jpg', '.jpeg', '.webp', '.gif'}
+
+
+def _save_org_image(field, subfolder):
+    """Upload the image in request.files[field]; return its stored path or None."""
+    from flask import current_app
+    from werkzeug.utils import secure_filename
+    from utils.cloud_storage import upload_image
+
+    f = request.files.get(field)
+    if not f or not f.filename:
+        return None
+    if Path(secure_filename(f.filename)).suffix.lower() not in _IMAGE_EXTS:
+        flash('Please choose a PNG, JPG, WEBP or GIF image.', 'error')
+        return None
+    return upload_image(f, current_app, subfolder=subfolder, public_id_prefix=subfolder,
+                        process_artwork=False)
+
+
+def fan_art_urls(org, limit=3):
+    """Image URLs of the org's Fan Wear designs (the default main photo)."""
+    return _fan_art_urls(org, limit)
+
+
+def _fan_art_urls(org, limit=3):
+    from models import Design
+    from utils.cloud_storage import image_url
+    from utils.group_orders import org_fanwear_design_ids
+    try:
+        lead = next((sec.collection for sec in org.sections
+                     if sec.collection and sec.collection.is_active
+                     and 'fan' not in (sec.label or '').lower()), None)
+        if not lead:
+            return []
+        ids = org_fanwear_design_ids(lead)[:limit]
+        by_id = {d.id: d for d in Design.query.filter(Design.id.in_(ids)).all()} if ids else {}
+        return [image_url(by_id[i].file_path) for i in ids if i in by_id]
+    except Exception:
+        return []
 
 
 # ── public: landing page ──────────────────────────────────────────────────────
@@ -182,12 +227,32 @@ def manage(slug):
         if action == 'save_settings':
             org.name = (request.form.get('name') or org.name).strip()
             org.description = (request.form.get('description') or '').strip() or None
-            org.logo_url = (request.form.get('logo_url') or '').strip() or None
+            # Images: upload to add or switch, tick "remove" to delete.
+            for field, column, folder in (('logo', 'logo_url', 'org-logos'),
+                                          ('cover', 'cover_image', 'org-covers')):
+                if request.form.get(f'remove_{field}') == 'on':
+                    setattr(org, column, None)
+                saved = _save_org_image(field, folder)
+                if saved:
+                    setattr(org, column, saved)
             new_password = (request.form.get('new_password') or '').strip()
             if new_password:
                 org.set_password(new_password)
             db.session.commit()
-            flash('Settings saved.', 'success')
+            flash('Saved.', 'success')
+
+        elif action == 'rename_section':
+            section = OrgSection.query.filter_by(
+                id=request.form.get('section_id', type=int), organization_id=org.id
+            ).first()
+            label = (request.form.get('label') or '').strip()
+            if section and label:
+                section.label = label[:100]
+                icon = (request.form.get('icon') or '').strip()
+                if icon:
+                    section.icon = icon[:10]
+                db.session.commit()
+                flash('Team updated.', 'success')
 
         elif action == 'add_section':
             label = (request.form.get('label') or '').strip()
@@ -239,10 +304,17 @@ def manage(slug):
         return redirect(url_for('org.manage', slug=slug))
 
     sections = org.sections.order_by(OrgSection.sort_order).all()
-    available_collections = Collection.query.filter_by(is_active=True).order_by(Collection.name).all()
+    in_org = {sec.collection_id for sec in OrgSection.query.all()}
+    available_collections = [
+        c for c in Collection.query.filter_by(is_active=True).order_by(Collection.name).all()
+        if c.id not in in_org
+    ]
+    is_admin = current_user.is_authenticated and getattr(current_user, 'is_admin', False)
     return render_template(
         'org/manage.html',
         org=org,
         sections=sections,
         available_collections=available_collections,
+        fan_art=_fan_art_urls(org),
+        is_admin=is_admin,
     )

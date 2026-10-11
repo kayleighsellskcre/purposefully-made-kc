@@ -2870,6 +2870,7 @@ def collections():
     """Manage collections — grouped under their org when applicable."""
     from utils.group_orders import is_deadline_passed
     from models import Organization, OrgSection, Order
+    from routes.org import fan_art_urls
     from sqlalchemy import func
 
     all_collections = Collection.query.order_by(Collection.created_at.desc()).all()
@@ -2903,6 +2904,8 @@ def collections():
             if sec.collection_id in coll_by_id
         ]
         org_collection_ids.update(sec.collection_id for sec in sections)
+        org.total_orders = sum(c['collection'].cached_order_count for c in org.grouped_collections)
+        org.fan_art = fan_art_urls(org)
 
     standalone = [c for c in all_collections if c.id not in org_collection_ids]
     return render_template(
