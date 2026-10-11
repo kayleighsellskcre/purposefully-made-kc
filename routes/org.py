@@ -67,8 +67,17 @@ def landing(slug):
     from utils.group_orders import org_fan_wear_url
     fan_wear_url = org_fan_wear_url(org)
 
+    # The welcome message lives on the team stores; show it here too unless the
+    # organization has its own description.
+    lead = next((s.collection for s in sections
+                 if s.collection and s.collection.is_active
+                 and 'fan' not in (s.label or '').lower()), None)
+    from utils.group_orders import is_not_yet_open
+    welcome = (org.description or (lead.description if lead else '') or '').strip()
     return render_template('org/landing.html', org=org, sections=sections,
-                           fan_wear_url=fan_wear_url)
+                           fan_wear_url=fan_wear_url, welcome=welcome,
+                           lead_collection=lead,
+                           lead_not_open=bool(lead and is_not_yet_open(lead)))
 
 
 # ── organizer auth ────────────────────────────────────────────────────────────
