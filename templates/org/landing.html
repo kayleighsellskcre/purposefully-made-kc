@@ -3,6 +3,76 @@
 {% block meta_description %}Shop {{ org.name }} apparel. Choose your team or category to find exactly what you need.{% endblock %}
 {% block robots %}noindex, nofollow{% endblock %}
 
+{% block extra_css %}
+<style>
+.org-body { padding: 3rem 0 4.5rem; background: #fff; }
+.org-body .container { max-width: 960px; }
+
+.org-logo { display: block; max-height: 96px; max-width: 260px; object-fit: contain; margin: 0 auto 1.1rem; }
+.org-lead { max-width: 560px; margin: 0.75rem auto 0; color: var(--text-secondary); font-size: 1.1rem; line-height: 1.6; }
+
+.org-heading { text-align: center; margin: 0 0 0.35rem; font-size: 1.75rem; color: var(--text-primary); }
+.org-subheading { text-align: center; margin: 0 0 2rem; color: var(--text-secondary); font-size: 1rem; }
+.org-divider { display: flex; align-items: center; gap: 1rem; margin: 3rem 0 2rem; color: var(--accent-color); }
+.org-divider::before, .org-divider::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--border-color), transparent); }
+.org-divider span { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; }
+
+.org-team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 260px)); justify-content: center; gap: 1.25rem; }
+
+.org-team-card {
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    padding: 2rem 1.25rem 1.5rem; background: #fff; text-decoration: none; color: var(--text-primary);
+    border: 1px solid var(--border-light); border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow); transition: var(--transition); position: relative; overflow: hidden;
+}
+.org-team-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--cashmere-sand), var(--accent-color), var(--cashmere-sand)); }
+.org-team-card:hover { box-shadow: var(--box-shadow-luxury); transform: translateY(-4px); border-color: var(--accent-color); color: var(--text-primary); }
+.org-team-badge {
+    width: 84px; height: 84px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 2.6rem; line-height: 1; margin-bottom: 1.1rem;
+    background: radial-gradient(circle at 30% 25%, #fff 0%, var(--ivory-silk) 60%, var(--cashmere-sand) 100%);
+    box-shadow: inset 0 0 0 1px var(--border-light), 0 4px 10px rgba(58, 61, 72, 0.08);
+}
+.org-team-name { font-family: var(--font-heading); font-size: 1.4rem; font-weight: 600; margin-bottom: 0.2rem; }
+.org-team-sub { color: var(--text-secondary); font-size: 0.92rem; margin-bottom: 1.1rem; }
+.org-team-go { margin-top: auto; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-color); }
+.org-team-card:hover .org-team-go { text-decoration: underline; text-underline-offset: 4px; }
+
+.org-fan {
+    display: flex; align-items: center; gap: 1.75rem; padding: 2rem 2.25rem; text-decoration: none; color: #fff;
+    background: linear-gradient(135deg, var(--accent-color) 0%, #a06456 55%, var(--accent-secondary) 140%);
+    border-radius: var(--border-radius); box-shadow: var(--box-shadow-luxury); transition: var(--transition);
+    position: relative; overflow: hidden;
+}
+.org-fan::after { content: ''; position: absolute; top: -60%; right: -10%; width: 55%; height: 220%; background: radial-gradient(ellipse at center, rgba(255,255,255,0.18) 0%, transparent 65%); pointer-events: none; }
+.org-fan:hover { transform: translateY(-3px); box-shadow: 0 16px 48px rgba(58, 61, 72, 0.25); color: #fff; }
+.org-fan-badge { flex-shrink: 0; width: 76px; height: 76px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.3rem; background: rgba(255,255,255,0.18); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.4); position: relative; z-index: 1; }
+.org-fan-text { flex: 1; min-width: 0; text-align: left; position: relative; z-index: 1; }
+.org-fan-text strong { display: block; font-family: var(--font-heading); font-size: 1.7rem; font-weight: 600; margin-bottom: 0.25rem; }
+.org-fan-text span { display: block; opacity: 0.92; line-height: 1.5; }
+.org-fan-btn { flex-shrink: 0; position: relative; z-index: 1; padding: 0.8rem 1.6rem; border: 1.5px solid rgba(255,255,255,0.85); border-radius: 999px; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; transition: var(--transition); }
+.org-fan:hover .org-fan-btn { background: #fff; color: var(--accent-color); }
+
+.org-empty { text-align: center; color: var(--text-secondary); padding: 3rem 0; }
+.org-footer-note { text-align: center; margin: 3rem 0 0; color: var(--text-secondary); font-size: 0.95rem; }
+.org-footer-note a { color: var(--accent-color); text-decoration: underline; text-underline-offset: 3px; }
+
+@media (max-width: 640px) {
+    .org-body { padding: 2.25rem 0 3.5rem; }
+    .org-team-grid { grid-template-columns: 1fr 1fr; gap: 0.85rem; }
+    .org-team-card { padding: 1.4rem 0.75rem 1.1rem; }
+    .org-team-card:last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 0.45rem); }
+    .org-team-badge { width: 64px; height: 64px; font-size: 2rem; margin-bottom: 0.8rem; }
+    .org-team-name { font-size: 1.15rem; }
+    .org-team-sub { font-size: 0.82rem; margin-bottom: 0.8rem; }
+    .org-team-go { font-size: 0.7rem; }
+    .org-fan { flex-direction: column; text-align: center; padding: 1.75rem 1.25rem; gap: 1rem; }
+    .org-fan-text { text-align: center; }
+    .org-fan-text strong { font-size: 1.45rem; }
+}
+</style>
+{% endblock %}
+
 {% block content %}
 {% set ns = namespace(fan_sections=[], team_sections=[]) %}
 {% for section in sections %}
@@ -14,245 +84,59 @@
 {% endfor %}
 {% set fan_sections = ns.fan_sections %}
 {% set team_sections = ns.team_sections %}
+{% set tiles = team_sections if team_sections else sections %}
 
-<div class="org-landing">
-
-    {# ── Header ── #}
-    <div class="org-header">
+<div class="page-header">
+    <div class="container">
         {% if org.logo_url %}
         <img src="{{ org.logo_url }}" alt="{{ org.name }} logo" class="org-logo">
         {% endif %}
-        <h1 class="org-name">{{ org.name }}</h1>
+        <span class="eyebrow">Group Order Store</span>
+        <h1>{{ org.name }}</h1>
         {% if org.description %}
-        <p class="org-desc">{{ org.description }}</p>
+        <p class="org-lead">{{ org.description }}</p>
+        {% else %}
+        <p class="org-lead">Pick your team to order jerseys and uniforms, or shop Fan Wear for the whole family.</p>
         {% endif %}
     </div>
+</div>
 
+<section class="org-body">
+    <div class="container">
     {% if sections %}
 
-    {# ── Team / sport buttons ── #}
-    {% if team_sections %}
-    <div class="org-section-group">
-        <p class="org-section-label">Choose your team</p>
+        <h2 class="org-heading">Choose Your Team</h2>
+        <p class="org-subheading">Tap your team to see jerseys, sizes and ordering.</p>
         <div class="org-team-grid">
-            {% for section in team_sections %}
-            <a href="{{ url_for('collection.view', slug=section.collection.slug) }}"
-               class="org-team-btn">
-                <span class="org-team-icon">{{ section.icon }}</span>
+            {% for section in tiles if section.collection %}
+            <a href="{{ url_for('collection.view', slug=section.collection.slug) }}" class="org-team-card">
+                <span class="org-team-badge" aria-hidden="true">{{ section.icon or '🏷️' }}</span>
                 <span class="org-team-name">{{ section.label }}</span>
-                <small class="org-team-sub">Jerseys &amp; uniforms</small>
+                <span class="org-team-sub">Jerseys &amp; uniforms</span>
+                <span class="org-team-go">Shop now →</span>
             </a>
             {% endfor %}
         </div>
-    </div>
-    {% endif %}
 
-    {# ── Fan Wear button ── #}
-    {% if fan_sections %}
-    <div class="org-fanwear-wrap">
-        <p class="org-fanwear-divider">— or —</p>
-        {% for section in fan_sections %}
-        <a href="{{ url_for('collection.view', slug=section.collection.slug) }}"
-           class="org-fanwear-btn">
-            <span>{{ section.icon or '👕' }}</span>
-            <span>{{ section.label }}</span>
-            <small>Tees, hoodies &amp; matching looks for the whole family</small>
+        {% if team_sections and (fan_sections or fan_wear_url) %}
+        {% set fan_href = fan_wear_url or url_for('collection.view', slug=fan_sections[0].collection.slug) %}
+        {% set fan_icon = (fan_sections[0].icon if fan_sections else none) or '👕' %}
+        <div class="org-divider"><span>Or shop for everyone</span></div>
+        <a href="{{ fan_href }}" class="org-fan">
+            <span class="org-fan-badge" aria-hidden="true">{{ fan_icon }}</span>
+            <span class="org-fan-text">
+                <strong>Fan Wear</strong>
+                <span>Tees, hoodies &amp; matching looks for parents, siblings and fans.</span>
+            </span>
+            <span class="org-fan-btn">Shop Fan Wear</span>
         </a>
-        {% endfor %}
-    </div>
-    {% elif team_sections and fan_wear_url %}
-    {# Show Fan Wear CTA using the best fan wear URL from this org's team collections #}
-    <div class="org-fanwear-wrap">
-        <p class="org-fanwear-divider">— or —</p>
-        <a href="{{ fan_wear_url }}" class="org-fanwear-btn">
-            <span>👕</span>
-            <span>Fan Wear</span>
-            <small>Tees, hoodies &amp; matching looks for the whole family</small>
-        </a>
-    </div>
-    {% elif sections and not team_sections %}
-    {# All sections, no fan-wear label — show standard tiles #}
-    <div class="org-team-grid">
-        {% for section in sections %}
-        <a href="{{ url_for('collection.view', slug=section.collection.slug) }}"
-           class="org-team-btn">
-            <span class="org-team-icon">{{ section.icon }}</span>
-            <span class="org-team-name">{{ section.label }}</span>
-        </a>
-        {% endfor %}
-    </div>
-    {% endif %}
+        {% endif %}
 
     {% else %}
-    <p class="org-empty">This group store is being set up — check back soon!</p>
+        <p class="org-empty">This group store is being set up. Check back soon!</p>
     {% endif %}
 
-    <p class="org-footer-note">
-        Questions? <a href="{{ url_for('main.contact') }}">Contact us</a> anytime.
-    </p>
-
-</div>
-
-<style>
-.org-landing {
-    max-width: 780px;
-    margin: 0 auto;
-    padding: 3.5rem 1.25rem 5rem;
-    text-align: center;
-}
-
-/* Header */
-.org-header { margin-bottom: 2.75rem; }
-
-.org-logo {
-    max-height: 110px;
-    max-width: 280px;
-    object-fit: contain;
-    margin: 0 auto 1.25rem;
-    display: block;
-}
-
-.org-name {
-    font-size: clamp(2rem, 5vw, 2.75rem);
-    font-weight: 800;
-    color: var(--text-primary, #1a1a1a);
-    margin: 0 0 0.5rem;
-    letter-spacing: -0.02em;
-}
-
-.org-desc {
-    color: var(--text-secondary, #666);
-    font-size: 1rem;
-    max-width: 500px;
-    margin: 0 auto;
-    line-height: 1.6;
-}
-
-/* Section label */
-.org-section-group { margin-bottom: 1.5rem; }
-
-.org-section-label {
-    font-size: 0.78rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--text-secondary, #999);
-    margin: 0 0 1.1rem;
-}
-
-/* Team buttons grid */
-.org-team-grid {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 1rem;
-    margin-bottom: 0.5rem;
-}
-
-.org-team-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 1.75rem 2rem;
-    min-width: 160px;
-    background: #fff;
-    border: 2px solid #ede8e5;
-    border-radius: 18px;
-    text-decoration: none;
-    color: var(--text-primary, #1a1a1a);
-    transition: border-color 0.18s, box-shadow 0.18s, transform 0.15s;
-    cursor: pointer;
-}
-
-.org-team-btn:hover {
-    border-color: var(--terra-cotta, #b56c4c);
-    box-shadow: 0 8px 28px rgba(181, 108, 76, 0.15);
-    transform: translateY(-3px);
-}
-
-.org-team-icon {
-    font-size: 2.75rem;
-    line-height: 1;
-    display: block;
-}
-
-.org-team-name {
-    font-size: 1.1rem;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-}
-
-.org-team-sub {
-    font-size: 0.75rem;
-    color: var(--text-secondary, #999);
-    font-style: normal;
-    margin-top: 0.1rem;
-}
-
-/* Fan wear */
-.org-fanwear-wrap {
-    margin-top: 0.5rem;
-}
-
-.org-fanwear-divider {
-    font-size: 0.85rem;
-    color: #bbb;
-    margin: 0 0 1.25rem;
-    letter-spacing: 0.05em;
-}
-
-.org-fanwear-btn {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.3rem;
-    padding: 1.25rem 3rem;
-    background: var(--terra-cotta, #b56c4c);
-    color: #fff;
-    border-radius: 14px;
-    text-decoration: none;
-    font-size: 1.05rem;
-    font-weight: 700;
-    transition: background 0.18s, transform 0.15s, box-shadow 0.18s;
-    min-width: 220px;
-}
-
-.org-fanwear-btn:hover {
-    background: #9e5c3e;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(181, 108, 76, 0.3);
-    color: #fff;
-}
-
-.org-fanwear-btn small {
-    font-size: 0.78rem;
-    font-weight: 400;
-    opacity: 0.88;
-}
-
-.org-empty {
-    color: var(--text-secondary, #888);
-    font-size: 1rem;
-    padding: 3rem 0;
-}
-
-.org-footer-note {
-    font-size: 0.85rem;
-    color: #bbb;
-    margin-top: 2.5rem;
-}
-
-.org-footer-note a {
-    color: var(--terra-cotta, #b56c4c);
-    text-decoration: underline;
-}
-
-@media (max-width: 520px) {
-    .org-team-btn { min-width: 130px; padding: 1.4rem 1rem; }
-    .org-team-icon { font-size: 2.2rem; }
-    .org-team-name { font-size: 0.95rem; }
-    .org-fanwear-btn { padding: 1.1rem 2rem; min-width: 0; width: 100%; max-width: 320px; }
-}
-</style>
+        <p class="org-footer-note">Questions? <a href="{{ url_for('main.contact') }}">Contact us</a> anytime.</p>
+    </div>
+</section>
 {% endblock %}
