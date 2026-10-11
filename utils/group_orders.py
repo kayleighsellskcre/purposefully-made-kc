@@ -864,6 +864,12 @@ def set_collection_products_from_form(collection):
                 if 'fan_show_jersey_logo' in request.form
                 else True
             ),
+            # Design IDs the admin wants EXCLUDED from the sibling Fan Wear store.
+            # Each checked "Jersey only" box sends this design's ID in the form.
+            'fanwear_excluded_ids': [
+                int(x) for x in request.form.getlist('fanwear_excluded_ids')
+                if str(x).strip().isdigit()
+            ],
         }, separators=(',', ':'))
     else:
         collection.team_store_config = None
@@ -910,6 +916,64 @@ def allowed_design_ids(collection):
         except (TypeError, ValueError):
             continue
     return ids
+
+
+def fanwear_excluded_ids(collection):
+    """Design IDs the admin marked as jersey-only (excluded from Fan Wear) for this collection."""
+    raw = getattr(collection, 'team_store_config', None) or ''
+    try:
+        parsed = json.loads(raw) if isinstance(raw, str) and raw.strip() else {}
+    except (TypeError, ValueError, AttributeError):
+        parsed = {}
+    excluded = parsed.get('fanwear_excluded_ids') or []
+    result = []
+    for x in excluded:
+        try:
+            result.append(int(x))
+        except (TypeError, ValueError):
+            continue
+    return result
+
+
+def org_fanwear_design_ids(fan_collection):
+    """Return merged allowed_design_ids for a Fan Wear collection in an org.
+
+    Pulls allowed_design_ids from every non-fan sibling collection in the same
+    org, strips designs the admin flagged jersey-only on that sibling, then
+    appends the Fan Wear collection's own allowed_design_ids at the end.
+    De-duped, preserving order.
+    """
+    try:
+        from models import OrgSection
+        section = OrgSection.query.filter_by(collection_id=fan_collection.id).first()
+        if not section or 'fan' not in (section.label or '').lower():
+            return allowed_design_ids(fan_collection)
+        org = section.organization
+        if not org:
+            return allowed_design_ids(fan_collection)
+        seen = set()
+        merged = []
+        for sib in org.sections.all():
+            if sib.id == section.id:
+                continue
+            if 'fan' in (sib.label or '').lower():
+                continue
+            sibling_coll = sib.collection
+            if not sibling_coll or not sibling_coll.is_active:
+                continue
+            excluded = set(fanwear_excluded_ids(sibling_coll))
+            for did in allowed_design_ids(sibling_coll):
+                if did not in seen and did not in excluded:
+                    seen.add(did)
+                    merged.append(did)
+        # Fan Wear collection's own designs come last
+        for did in allowed_design_ids(fan_collection):
+            if did not in seen:
+                seen.add(did)
+                merged.append(did)
+        return merged
+    except Exception:
+        return allowed_design_ids(fan_collection)
 
 
 def showcase_design_ids(collection):

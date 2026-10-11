@@ -139,6 +139,13 @@
                                 <span>{{ d.title or d.original_filename or 'Design' }}</span>
                             </label>
                             {% if not is_user_edit %}
+                            {# Jersey-only toggle: checked = exclude this design from the org Fan Wear store #}
+                            <label style="display:flex;align-items:center;gap:4px;margin-top:4px;font-size:0.72rem;color:#666;cursor:pointer;" title="Check to hide this design from the Fan Wear store (jersey logo, not for fans)">
+                                <input type="checkbox" name="fanwear_excluded_ids" value="{{ d.id }}"
+                                       {% if d.id in (fanwear_excluded_ids_list or []) %}checked{% endif %}
+                                       style="width:13px;height:13px;margin:0;">
+                                Jersey only
+                            </label>
                             {# Button only. Its form is emitted after the collection
                                form closes, and is targeted here by id. A <form>
                                at this point sits inside the collection form, and

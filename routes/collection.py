@@ -223,6 +223,30 @@ def view(slug):
                 'sections': all_sections,
             }
 
+    # ── Fan Wear org section: auto-inherit designs from sibling team stores ──
+    # If this collection is the Fan Wear tile in an org, pull allowed_design_ids
+    # from every non-fan sibling collection (minus jersey-only exclusions) so
+    # shoppers see the org's full design library without the admin having to
+    # manually re-add each logo here.
+    if org_nav and org_section and 'fan' in (org_section.label or '').lower():
+        try:
+            from utils.group_orders import org_fanwear_design_ids
+            from models import Design as _Design
+            from utils.cloud_storage import image_url as _img_url
+            merged_ids = org_fanwear_design_ids(collection)
+            if merged_ids:
+                _dm = {d.id: d for d in _Design.query.filter(_Design.id.in_(merged_ids)).all()}
+                showcase_designs = [
+                    {
+                        'id': i,
+                        'url': _img_url(_dm[i].file_path),
+                        'title': _dm[i].title or _dm[i].original_filename or 'Design',
+                    }
+                    for i in merged_ids if i in _dm
+                ]
+        except Exception:
+            pass  # fall back to collection's own showcase_designs
+
     return render_template('collection/view.html',
                          collection=collection,
                          products=products,

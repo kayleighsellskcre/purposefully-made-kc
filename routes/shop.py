@@ -1037,7 +1037,24 @@ def customize(product_slug):
     gallery_designs = []
     try:
         if coll:
-            if uniform_logo_locked:
+            # ── Fan Wear org section: merge designs from all sibling team stores ──
+            from models import OrgSection as _OrgSec
+            _fw_sec = _OrgSec.query.filter_by(collection_id=coll.id).first()
+            _is_org_fanwear = bool(_fw_sec and 'fan' in (_fw_sec.label or '').lower())
+            if _is_org_fanwear:
+                from utils.group_orders import org_fanwear_design_ids
+                _merged = org_fanwear_design_ids(coll)
+                if _merged:
+                    from models import Design as _FWDesign
+                    _dm = {d.id: d for d in _FWDesign.query.filter(_FWDesign.id.in_(_merged)).all()}
+                    gallery_designs = [
+                        {'id': i, 'url': _resolve_image_url(_dm[i].file_path),
+                         'title': _dm[i].title or _dm[i].original_filename or 'Design'}
+                        for i in _merged if i in _dm
+                    ]
+                    allowed_design_ids = set(_merged)
+                    collection_restricted = collection_restricted or bool(_merged)
+            elif uniform_logo_locked:
                 gallery_designs = []
             elif catalog_section == 'fan':
                 # Fan wear: show only the designs the organizer uploaded for this
