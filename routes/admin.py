@@ -3228,7 +3228,7 @@ def edit_collection(collection_id):
 @admin_required
 def delete_collection(collection_id):
     """Delete a collection, cleaning up FK references first."""
-    from models import Order, Design, OrgSection
+    from models import Order, Design, OrgSection, GroupRosterEntry
     collection = Collection.query.get_or_404(collection_id)
     try:
         # Detach orders — preserve order records, just remove the link
@@ -3243,6 +3243,14 @@ def delete_collection(collection_id):
         db.session.query(Design).filter(Design.collection_id == collection_id).update(
             {Design.collection_id: None}, synchronize_session=False
         )
+        # Explicitly delete roster entries — lazy='dynamic' relationships don't
+        # cascade reliably after synchronize_session=False bulk operations.
+        db.session.query(GroupRosterEntry).filter(
+            GroupRosterEntry.collection_id == collection_id
+        ).delete(synchronize_session=False)
+        # Flush all cleanup SQL to the DB before deleting the parent row,
+        # so FK constraints fire in the right order.
+        db.session.flush()
         db.session.delete(collection)
         db.session.commit()
         flash('Group order deleted', 'success')
