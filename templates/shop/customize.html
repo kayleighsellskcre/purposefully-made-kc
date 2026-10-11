@@ -70,12 +70,23 @@
 }
 
 .collection-restricted-banner {
-    background: rgba(184, 124, 111, 0.12);
-    border: 1px solid rgba(184, 124, 111, 0.3);
-    border-radius: 8px;
-    padding: 0.75rem 1rem;
-    margin-bottom: 1.25rem;
-    font-size: 0.9rem;
+    background: linear-gradient(135deg, #fffdf9 0%, var(--ivory-silk, #F5F0E1) 100%);
+    border: 1px solid var(--border-light);
+    border-left: 4px solid var(--accent-color, #B87C6F);
+    border-radius: 12px;
+    padding: 0.9rem 1.15rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    box-shadow: var(--box-shadow);
+}
+.collection-restricted-banner strong {
+    display: block;
+    margin-bottom: 0.15rem;
+    font-family: var(--font-heading);
+    font-size: 1.05rem;
+    font-weight: 600;
     color: var(--text-primary);
 }
 
@@ -433,11 +444,15 @@
 /* The page heading. It is an h1 for document structure, sized as the h2 it
    used to be because the customizer panel is narrow. */
 .customize-product-title {
-    font-size: 2.5rem;
+    font-size: clamp(1.7rem, 2.6vw, 2.2rem);
+    line-height: 1.2;
+    overflow-wrap: break-word;
+    word-break: normal;
+    hyphens: manual;
 }
 
 @media (max-width: 768px) {
-    .customize-product-title { font-size: 1.75rem; }
+    .customize-product-title { font-size: 1.6rem; }
 }
 
 .product-feel {
@@ -2063,7 +2078,7 @@
                     {% if uniform_logo_locked %}Your organizer selected this uniform color and jersey logo. Choose the player's size and back details.
                     {% else %}Your organizer selected this uniform color. Choose the player's size, logo, and back details.{% endif %}
                     {% else %}
-                    <strong>Family &amp; Fan Wear</strong> Pick the jersey look, or another matching design. You do not have to use the same image as the player uniform.
+                    <strong>Fan Wear</strong> Pick a color, a size and a design. It does not have to match the player uniform.
                     {% endif %}
                 </div>
                 {% endif %}
