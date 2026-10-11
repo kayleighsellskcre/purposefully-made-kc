@@ -1097,6 +1097,80 @@ def sync_fan_wear_to_org(collection):
     return changed
 
 
+def org_fan_wear_state(org):
+    """What the org's shared Fan Wear currently looks like (for the Fan Wear page).
+
+    Returns a dict: lead (the store the settings are read from), team_collections,
+    fan_product_ids, jersey_product_ids (all teams), design_ids (every design any
+    team uploaded) and shown_design_ids (the ones fans can pick).
+    """
+    teams = [sec.collection for sec in _team_sections(org)]
+    lead = next((c for c in teams if team_store_config(c)['fan_product_ids']), None) or (teams[0] if teams else None)
+    jerseys, design_ids, skip = [], [], set()
+    for c in teams:
+        cfg = team_store_config(c)
+        if cfg['uniform']['enabled']:
+            jerseys.extend(pid for pid in cfg['uniform']['product_ids'] if pid not in jerseys)
+        for did in allowed_design_ids(c):
+            if did not in design_ids:
+                design_ids.append(did)
+        skip |= set(fanwear_excluded_ids(c))
+        if not cfg['fan_show_jersey_logo']:
+            skip |= {cfg['uniform'].get('home_design_id'), cfg['uniform'].get('away_design_id')}
+    return {
+        'lead': lead,
+        'team_collections': teams,
+        'fan_product_ids': team_store_config(lead)['fan_product_ids'] if lead else [],
+        'jersey_product_ids': jerseys,
+        'design_ids': design_ids,
+        'shown_design_ids': [d for d in design_ids if d not in skip],
+    }
+
+
+_KEEP = object()
+
+
+def apply_org_fan_wear(org, product_ids, allowed_colors=_KEEP, excluded_design_ids=None):
+    """Save one shared Fan Wear setup onto every team store in the org.
+
+    Fan styles, allowed colors and the "not for fans" design list become the same
+    everywhere. Each team keeps its own jerseys, jersey colors, back-print
+    settings and logos. Adds to the current transaction; the caller commits.
+    Returns the number of team stores updated.
+    """
+    from models import Product
+    from utils.mockups import product_has_shop_image
+
+    teams = [sec.collection for sec in _team_sections(org)]
+    ordered = list(dict.fromkeys(int(i) for i in product_ids))
+    found = {p.id: p for p in Product.query.filter(Product.id.in_(ordered), Product.is_active == True).all()} if ordered else {}  # noqa: E712
+    fan_ids = [i for i in ordered if i in found and product_has_shop_image(found[i])]
+    excluded = sorted({int(i) for i in (excluded_design_ids or [])})
+
+    changed = 0
+    for sib in teams:
+        try:
+            cfg = json.loads(sib.team_store_config or '{}')
+        except (TypeError, ValueError):
+            cfg = {}
+        if not isinstance(cfg, dict) or not cfg:
+            continue  # legacy store with no jersey/fan setup: leave it alone
+        current = team_store_config(sib)
+        jerseys = current['uniform']['product_ids'] if current['uniform']['enabled'] else []
+        sib_fan = [i for i in fan_ids if i not in jerseys]
+        cfg['fan_product_ids'] = sib_fan
+        cfg['fan_show_jersey_logo'] = True      # the per-design list below is the one control
+        cfg['fanwear_excluded_ids'] = excluded
+        sib.team_store_config = json.dumps(cfg, separators=(',', ':'))
+        if allowed_colors is not _KEEP:
+            sib.allowed_colors = allowed_colors
+        wanted = list(dict.fromkeys(jerseys + sib_fan))
+        by_id = {p.id: p for p in Product.query.filter(Product.id.in_(wanted)).all()} if wanted else {}
+        sib.products = [by_id[i] for i in wanted if i in by_id]
+        changed += 1
+    return changed
+
+
 def org_fanwear_design_ids(collection):
     """Designs shoppers can pick on this org's Fan Wear page.
 

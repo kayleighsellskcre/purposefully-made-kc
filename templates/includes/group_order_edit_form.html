@@ -40,11 +40,9 @@
 
             {% if sync_org %}
             <div class="form-section">
-                <label class="choice-checkbox" style="display:flex;gap:.6rem;align-items:flex-start;padding:.8rem 1rem;">
-                    <input type="checkbox" name="sync_fan_to_org" value="on" checked style="margin-top:.2rem;">
-                    <span><strong>Use these Fan Wear styles &amp; colors for every team in {{ sync_org.name }}</strong><br>
-                    <small class="text-muted">Keeps the Fan Wear page the same no matter which team a parent starts from. Jerseys stay separate for each team. Untick to change only this team.</small></span>
-                </label>
+                <input type="hidden" name="sync_fan_to_org" value="on">
+                <p class="form-hint" style="margin:0">Fan Wear styles and colors are shared by every team in <strong>{{ sync_org.name }}</strong>. Changes here apply to all teams.
+                {% if not is_user_edit %}<a href="{{ url_for('org.fan_wear', slug=sync_org.slug) }}">Edit Fan Wear for the whole group &rarr;</a>{% endif %}</p>
             </div>
             {% endif %}
 

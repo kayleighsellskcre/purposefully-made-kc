@@ -389,5 +389,119 @@ def manage(slug):
         sections=sections,
         available_collections=available_collections,
         photos=org_photos(org),
+        fan_summary=_fan_summary(org),
         is_admin=is_admin,
+    )
+
+
+# ── Fan Wear: one setup for the whole group ──────────────────────────────────
+
+def _int_list(values):
+    out = []
+    for v in values:
+        try:
+            out.append(int(v))
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+def _fan_summary(org):
+    """Small summary for the Fan Wear card on the edit page."""
+    from models import Design
+    from utils.cloud_storage import image_url
+    from utils.group_orders import collection_has_color_restrictions, org_fan_wear_state
+    state = org_fan_wear_state(org)
+    lead = state['lead']
+    shown = state['shown_design_ids']
+    by_id = {d.id: d for d in Design.query.filter(Design.id.in_(shown[:4])).all()} if shown else {}
+    return {
+        'styles': len(state['fan_product_ids']),
+        'colors_limited': bool(lead and collection_has_color_restrictions(lead)),
+        'designs_shown': len(shown),
+        'designs_total': len(state['design_ids']),
+        'thumbs': [image_url(by_id[i].file_path) for i in shown[:4] if i in by_id],
+        'has_teams': bool(lead),
+    }
+
+
+@org_bp.route('/org/<slug>/fan-wear', methods=['GET', 'POST'])
+def fan_wear(slug):
+    """Shirt styles, colors and designs for Fan Wear, set once for every team."""
+    import json
+    from models import Design
+    from utils.group_orders import (
+        allowed_design_ids, apply_org_fan_wear, collection_has_color_restrictions,
+        fan_color_checked_keys, org_fan_wear_state, serialize_allowed_colors_from_form,
+        _KEEP,
+    )
+    from utils.product_filters import load_group_order_form_catalog
+
+    org = _org_or_404(slug)
+    if org.password_hash and not _require_org_auth(org):
+        return redirect(url_for('org.org_login', slug=slug))
+    state = org_fan_wear_state(org)
+    lead = state['lead']
+    if not lead:
+        flash('Add a team first, then you can set up Fan Wear.', 'error')
+        return redirect(url_for('org.manage', slug=slug))
+
+    if request.method == 'POST':
+        listed = _int_list(request.form.getlist('design_ids'))
+        shown = set(_int_list(request.form.getlist('fan_designs')))
+
+        new_ids = []
+        if current_user.is_authenticated:
+            from routes.admin import _save_collection_design
+            for f in request.files.getlist('new_designs'):
+                if f and f.filename:
+                    try:
+                        design = _save_collection_design(f, current_user.id)
+                    except Exception:
+                        design = None
+                    if design:
+                        new_ids.append(design.id)
+        if new_ids:
+            ids = allowed_design_ids(lead)
+            lead.allowed_design_ids = json.dumps(ids + [i for i in new_ids if i not in ids])
+            listed += new_ids
+            shown |= set(new_ids)
+
+        if listed and not shown:
+            db.session.rollback()
+            flash('Pick at least one design for fans to choose from.', 'error')
+            return redirect(url_for('org.fan_wear', slug=slug))
+
+        colors = (serialize_allowed_colors_from_form(request.form.getlist('allowed_colors'))
+                  if 'color_picker_present' in request.form else _KEEP)
+        apply_org_fan_wear(
+            org,
+            _int_list(request.form.getlist('products')),
+            allowed_colors=colors,
+            excluded_design_ids=[i for i in listed if i not in shown],
+        )
+        db.session.commit()
+        flash('Fan Wear saved for every team.', 'success')
+        return redirect(url_for('org.manage', slug=slug))
+
+    catalog = load_group_order_form_catalog()
+    designs = []
+    if state['design_ids']:
+        by_id = {d.id: d for d in Design.query.filter(Design.id.in_(state['design_ids'])).all()}
+        designs = [by_id[i] for i in state['design_ids'] if i in by_id]
+    return render_template(
+        'org/fan_wear.html',
+        org=org,
+        products=catalog['products'],
+        catalog_filter_opts=catalog['catalog_filter_opts'],
+        catalog_filter_picker=True,
+        fan_color_picker=catalog['fan_color_picker'],
+        fan_color_checked=fan_color_checked_keys(lead, catalog['products'], catalog['uniform_colors_by_product']),
+        checked_product_ids=set(state['fan_product_ids']),
+        team_store={'uniform': {'product_ids': state['jersey_product_ids']}},
+        designs=designs,
+        shown_design_ids=set(state['shown_design_ids']),
+        can_upload=current_user.is_authenticated,
+        teams=[sec for sec in org.sections.order_by(OrgSection.sort_order).all()
+               if sec.collection and 'fan' not in (sec.label or '').lower()],
     )

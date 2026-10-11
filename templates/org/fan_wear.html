@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Fan Wear - {{ org.name }} - Purposefully Made KC{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block extra_css %}
+{% include 'org/_om_styles.html' %}
+<style>
+.fw-step { display: flex; align-items: center; gap: .8rem; margin-bottom: .35rem; }
+.fw-step > span { width: 2rem; height: 2rem; border-radius: 50%; background: var(--accent-color); color: #fff; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.fw-step h2 { margin: 0; }
+.fw-products { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: .75rem; margin-top: 1rem; }
+.product-checkbox { display: flex; align-items: center; gap: .75rem; padding: .6rem .8rem; background: #fffdf9; border: 1.5px solid var(--border-light); border-radius: 12px; cursor: pointer; transition: var(--transition); }
+.product-checkbox:hover { border-color: var(--accent-color); }
+.product-checkbox:has(input:checked) { border-color: var(--accent-color); background: #fdf6f3; box-shadow: 0 0 0 1px var(--accent-color) inset; }
+.product-checkbox input { flex-shrink: 0; }
+.product-checkbox-mockup { width: 54px; height: 54px; flex-shrink: 0; border-radius: 8px; background: var(--ivory-silk); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.product-checkbox-mockup img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.product-checkbox-info { display: flex; flex-direction: column; min-width: 0; }
+.product-checkbox-name { font-size: .9rem; font-weight: 600; line-height: 1.3; }
+.product-checkbox-info small { color: var(--text-secondary); font-size: .78rem; }
+.fw-designs { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: .8rem; margin-top: 1rem; }
+.fw-design { display: flex; flex-direction: column; gap: .4rem; padding: .6rem; border: 1.5px solid var(--border-light); border-radius: 12px; background: #fff; cursor: pointer; }
+.fw-design img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 8px; background: linear-gradient(145deg, var(--ivory-silk), var(--cashmere-sand)); }
+.fw-design span { display: flex; align-items: center; justify-content: center; gap: .35rem; font-size: .84rem; }
+.fw-design:has(input:checked) { border-color: var(--accent-color); background: #fdf6f3; }
+.fw-design:not(:has(input:checked)) img { opacity: .4; }
+.fw-note { background: #fdf6f3; border: 1px solid #e8d5cb; border-radius: 12px; padding: .8rem 1rem; font-size: .9rem; color: var(--text-secondary); margin: 0 0 1.5rem; }
+.fw-actions { display: flex; flex-wrap: wrap; gap: .75rem; justify-content: space-between; align-items: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header om-head-band">
+    <div class="container om-head">
+        <span class="eyebrow">{{ org.name }}</span>
+        <h1>Fan Wear</h1>
+        <div class="om-head-actions">
+            <a href="{{ url_for('org.manage', slug=org.slug) }}" class="om-chip">&larr; Back to {{ org.name }}</a>
+        </div>
+    </div>
+</div>
+
+<div class="om">
+    <div style="height:1.75rem"></div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="om-flash {{ cat }}">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+
+    <p class="fw-note">Changes here apply to <b>every team</b>{% if teams %} ({% for t in teams %}{{ t.label }}{{ ', ' if not loop.last }}{% endfor %}){% endif %}. Each team keeps its own jerseys, jersey colors and logo.</p>
+
+    <form method="post" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <section class="om-card">
+            <div class="fw-step"><span>1</span><h2>Shirt styles</h2></div>
+            <p class="om-sub">Check every style families can order. Check youth and adult if both will order. Leave all unchecked to hide Fan Wear.</p>
+            {% include 'includes/catalog_filter.html' %}
+            <div class="fw-products">
+                {% for product in products %}
+                <label class="product-checkbox" data-catalog-item data-age="{{ product.display_age or '' }}" data-age-raw="{{ product.age_group or '' }}" data-category="{{ product.display_category or '' }}" data-category-raw="{{ product.category or '' }}" data-brand="{{ product.display_brand or '' }}" data-brand-raw="{{ product.brand or '' }}" data-style="{{ product.style_number or '' }}">
+                    <input type="checkbox" name="products" value="{{ product.id }}" {% if product.id in checked_product_ids %}checked{% endif %}>
+                    <div class="product-checkbox-mockup">{% if product.preview_image_url %}<img src="{{ product.preview_image_url }}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">{% endif %}</div>
+                    <div class="product-checkbox-info">
+                        <span class="product-checkbox-name">{{ product|display_name }}</span>
+                        <small>{{ product.display_brand or '' }} &middot; {{ product.display_category or '' }} &middot; {{ product.style_number }}</small>
+                    </div>
+                </label>
+                {% else %}
+                <p class="om-hint">No products available yet.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="om-card">
+            <div class="fw-step"><span>2</span><h2>Colors</h2></div>
+            <p class="om-sub">Tap a color to offer it on every shirt. Leave a shirt alone to allow all of its colors.</p>
+            {% include 'includes/group_order_color_picker.html' %}
+        </section>
+
+        <section class="om-card">
+            <div class="fw-step"><span>3</span><h2>Designs</h2></div>
+            <p class="om-sub">Tick the designs fans can put on their shirt. Untick a jersey-only logo to keep it off Fan Wear.</p>
+            {% if designs %}
+            <div class="fw-designs">
+                {% for d in designs %}
+                <label class="fw-design">
+                    <input type="hidden" name="design_ids" value="{{ d.id }}">
+                    <img src="{{ d.file_path | image_url }}" alt="{{ d.title or d.original_filename or 'Design' }}" loading="lazy" decoding="async">
+                    <span><input type="checkbox" name="fan_designs" value="{{ d.id }}" {% if d.id in shown_design_ids %}checked{% endif %}> Show to fans</span>
+                </label>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="om-hint">No designs yet. Upload one below.</p>
+            {% endif %}
+            {% if can_upload %}
+            <div class="om-img-actions" style="margin-top:1.1rem">
+                <label class="om-chip" for="fwNew">+ Add designs</label>
+                <input type="file" id="fwNew" name="new_designs" accept=".png,.jpg,.jpeg,.webp" multiple style="display:none">
+                <span class="om-hint" id="fwNewName" style="margin:0">PNG, JPG or WEBP. New designs are shown to fans.</span>
+            </div>
+            {% endif %}
+        </section>
+
+        <div class="fw-actions">
+            <a href="{{ url_for('org.manage', slug=org.slug) }}" class="om-chip">Cancel</a>
+            <button type="submit" class="om-chip om-chip--primary" style="padding:.8rem 2.2rem;font-size:.9rem">Save Fan Wear for all teams</button>
+        </div>
+    </form>
+</div>
+
+<script>
+(function () {
+    var pick = document.getElementById('fwNew');
+    if (pick) pick.addEventListener('change', function () {
+        document.getElementById('fwNewName').textContent = pick.files.length ? pick.files.length + ' design' + (pick.files.length === 1 ? '' : 's') + ' ready. Press Save.' : 'PNG, JPG or WEBP. New designs are shown to fans.';
+    });
+})();
+</script>
+{% endblock %}

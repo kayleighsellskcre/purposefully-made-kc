@@ -289,3 +289,69 @@ def test_a_photo_added_after_choosing_shows_up_on_top(admin_client, app, seed, m
     monkeypatch.setattr('utils.cloud_storage.upload_image', lambda *a, **k: 'uploads/org-photos/later.png')
     _save(admin_client, slug, photos=(io.BytesIO(b'x'), 'later.png'))
     assert _hero_keys(app, slug) == {fan_key, 'up:uploads/org-photos/later.png'}
+
+
+# ── Fan Wear page: one setup for every team ──────────────────────────────────
+
+def _cfgs(app):
+    with app.app_context():
+        out = {}
+        for c in Collection.query.filter(Collection.name.like('%: Rainbow Cheetahs')).all():
+            out[c.name.split(':')[0]] = (json.loads(c.team_store_config), c.allowed_colors)
+        return out
+
+
+def test_edit_page_has_a_fan_wear_card(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    html = admin_client.get(f'/org/{_org_slug(app)}/manage').get_data(as_text=True)
+    assert 'Edit Fan Wear' in html and f'/org/{_org_slug(app)}/fan-wear' in html
+
+
+def test_fan_wear_page_loads_with_styles_colors_and_designs(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    html = admin_client.get(f'/org/{_org_slug(app)}/fan-wear').get_data(as_text=True)
+    assert 'Save Fan Wear for all teams' in html
+    assert 'name="products"' in html and 'id="fanQuickRow"' in html
+    assert html.count('name="fan_designs"') == 3
+    for team in ('Basketball', 'Soccer', 'Volleyball'):
+        assert team in html
+
+
+def test_saving_fan_wear_applies_to_every_team_and_keeps_jerseys(admin_client, app, seed):
+    a, b, c = _build(admin_client, app, seed)
+    before = _cfgs(app)
+    color = f"p:{seed['hoodie_id']}||Black"
+    resp = admin_client.post(f'/org/{_org_slug(app)}/fan-wear', data={
+        'products': [str(seed['hoodie_id'])],
+        'allowed_colors': [color], 'color_picker_present': '1',
+        'design_ids': [str(a), str(b), str(c)], 'fan_designs': [str(c)],
+    }, follow_redirects=True)
+    assert resp.status_code == 200
+    after = _cfgs(app)
+    for team, (cfg, colors) in after.items():
+        assert cfg['fan_product_ids'] == [seed['hoodie_id']]
+        assert cfg['fanwear_excluded_ids'] == sorted([a, b])
+        assert cfg['fan_show_jersey_logo'] is True
+        assert json.loads(colors) == json.loads(after['Basketball'][1])
+        assert cfg['uniform'] == before[team][0]['uniform']      # jerseys untouched
+    with app.app_context():
+        coll = Collection.query.filter_by(name='Soccer: Rainbow Cheetahs').one()
+        assert org_fanwear_design_ids(coll) == [c]
+
+
+def test_fan_wear_needs_at_least_one_design_shown(admin_client, app, seed):
+    a, b, c = _build(admin_client, app, seed)
+    before = _cfgs(app)
+    resp = admin_client.post(f'/org/{_org_slug(app)}/fan-wear', data={
+        'products': [str(seed['hoodie_id'])], 'design_ids': [str(a), str(b), str(c)],
+    }, follow_redirects=True)
+    assert 'Pick at least one design' in resp.get_data(as_text=True)
+    assert _cfgs(app) == before
+
+
+def test_team_edit_page_points_to_the_shared_fan_wear(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    coll_id, _, _, _ = _store(app, 'Basketball: Rainbow Cheetahs')
+    html = admin_client.get(f'/admin/collections/{coll_id}/edit').get_data(as_text=True)
+    assert 'name="sync_fan_to_org" value="on"' in html
+    assert f'/org/{_org_slug(app)}/fan-wear' in html
