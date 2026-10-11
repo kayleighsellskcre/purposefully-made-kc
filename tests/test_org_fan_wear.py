@@ -405,3 +405,32 @@ def test_fan_wear_page_has_a_delete_button_per_design(admin_client, app, seed):
     html = admin_client.get(f'/org/{_org_slug(app)}/fan-wear').get_data(as_text=True)
     assert html.count('class="fw-design-del"') == 3
     assert html.count('/delete"') >= 3
+
+
+# ── The surfaces agree with each other ───────────────────────────────────────
+
+def test_fan_wear_banner_shows_designs_fans_can_pick_even_if_photos_are_hidden(admin_client, client, app, seed):
+    _build(admin_client, app, seed)
+    slug = _org_slug(app)
+    for key, _hidden in _photos(app, slug):
+        if key.startswith('fan:'):
+            _save(admin_client, slug, remove_photo=key)       # hidden from the main photos
+    html = client.get(f'/org/{slug}').get_data(as_text=True)
+    assert 'org-fan-tile' in html
+    assert '<span class="org-fan-emoji"' not in html
+
+
+def test_org_page_reads_logo_name_message_then_photos(admin_client, client, app, seed, monkeypatch):
+    _build(admin_client, app, seed)
+    slug = _org_slug(app)
+    monkeypatch.setattr('utils.cloud_storage.upload_image', lambda *a, **k: 'uploads/org-photos/top.png')
+    _save(admin_client, slug, photos=(io.BytesIO(b'x'), 'top.png'))
+    html = client.get(f'/org/{slug}').get_data(as_text=True)
+    assert html.index('<h1>Rainbow Cheetahs</h1>') < html.index('class="org-lead"') < html.index('class="org-cover"')
+
+
+def test_admin_list_filter_and_count_include_organization_cards(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    html = admin_client.get('/admin/collections').get_data(as_text=True)
+    assert 'class="org-card-admin"' in html and 'data-active="true"' in html
+    assert "querySelectorAll('.collection-card, .org-card-admin')" in html

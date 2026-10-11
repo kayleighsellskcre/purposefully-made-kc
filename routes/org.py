@@ -140,6 +140,19 @@ def fan_art_urls(org, limit=4):
     return [p['url'] for p in org_photos(org) if not p['hidden']][:limit]
 
 
+def _fan_banner_urls(org, limit=3):
+    """Designs fans can actually pick on the Fan Wear page (what the banner advertises)."""
+    from models import Design
+    from utils.cloud_storage import image_url
+    from utils.group_orders import org_fan_wear_state
+    try:
+        ids = org_fan_wear_state(org)['shown_design_ids'][:limit]
+        by_id = {d.id: d for d in Design.query.filter(Design.id.in_(ids)).all()} if ids else {}
+        return [image_url(by_id[i].file_path) for i in ids if i in by_id]
+    except Exception:
+        return []
+
+
 def _fan_design_urls(org, limit=4):
     return [p['url'] for p in org_photos(org) if p['kind'] == 'fan' and not p['hidden']][:limit]
 
@@ -212,7 +225,7 @@ def landing(slug):
                 section_art[sec.id] = shown[0]['url']
             elif coll.cover_image:
                 section_art[sec.id] = _img_url(coll.cover_image)
-        fan_art = _fan_design_urls(org, 3)
+        fan_art = _fan_banner_urls(org, 3)
     except Exception:
         pass
     return render_template('org/landing.html', org=org, sections=sections,

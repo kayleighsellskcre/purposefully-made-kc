@@ -126,7 +126,7 @@
         {# ── Organizations: one card each. Teams live inside the org's Edit page. ── #}
         {% for org in orgs %}{% if org.grouped_collections %}
         <div class="org-cards">
-            <article class="org-card-admin" id="orgGroup{{ org.id }}">
+            <article class="org-card-admin" id="orgGroup{{ org.id }}" data-active="{{ 'true' if org.is_active else 'false' }}">
                 <div class="org-card-photo{% if org.fan_art %} org-card-photo--fan{% endif %}">
                     {% if org.fan_art %}
                     <span class="org-card-circles">{% for u in org.fan_art[:4] %}<span><img src="{{ u }}" alt=""></span>{% endfor %}</span>
@@ -191,9 +191,8 @@ function copyLink(url, btn) {
 }
 
 (function() {
-    var grid = document.getElementById('collectionsGrid');
-    if (!grid) return;
-    var cards = grid.querySelectorAll('.collection-card');
+    var cards = document.querySelectorAll('.collection-card, .org-card-admin');
+    if (!cards.length) return;
     var empty = document.getElementById('goFilterEmpty');
     var hint = document.getElementById('goFilterHint');
     var tabs = document.querySelectorAll('.go-filter-tabs .filter-tab');
@@ -247,7 +246,8 @@ function copyLink(url, btn) {
 .org-group-count { font-size: .8rem; color: var(--text-secondary, #888); }
 .org-group-hdr-actions { display: flex; gap: .6rem; flex-wrap: wrap; }
 .org-subgrid { margin-top: 0; }
-.org-cards { margin-bottom: 1.5rem; }
+.org-card-admin[hidden] { display: none !important; }
+.org-card-admin { margin-bottom: 1.5rem; }
 .org-card-admin { display: grid; grid-template-columns: 260px 1fr; background: #fff; border: 1px solid var(--border-light, #e8e0d8); border-radius: 18px; overflow: hidden; box-shadow: 0 2px 4px rgba(58,61,72,.04), 0 12px 32px rgba(58,61,72,.08); }
 .org-card-photo { display: flex; align-items: center; justify-content: center; min-height: 190px; background: linear-gradient(145deg, #f5f0e1, #e8d0b1); overflow: hidden; }
 .org-card-photo img { max-width: 88%; max-height: 88%; object-fit: contain; }
