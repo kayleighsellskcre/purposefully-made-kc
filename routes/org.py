@@ -194,7 +194,8 @@ def _apply_photo_changes(org):
 @org_bp.route('/org/<slug>')
 def landing(slug):
     org = _org_or_404(slug)
-    sections = org.sections.order_by(OrgSection.sort_order).all()
+    sections = [s for s in org.sections.order_by(OrgSection.sort_order).all()
+                if s.collection and s.collection.is_active]
 
     # One Fan Wear link for the whole org (same page as every other Fan Wear button).
     from utils.group_orders import org_fan_wear_url
@@ -326,6 +327,22 @@ def manage(slug):
                 org.set_password(new_password)
             db.session.commit()
             flash('Saved.', 'success')
+
+        elif action == 'delete_org':
+            if not (current_user.is_authenticated and getattr(current_user, 'is_admin', False)):
+                flash('Only a site admin can delete an organization.', 'error')
+            else:
+                name = org.name
+                # Older databases carry an unused collection.organization_id column.
+                from sqlalchemy import inspect, text
+                if 'organization_id' in [c['name'] for c in inspect(db.engine).get_columns('collection')]:
+                    db.session.execute(text('UPDATE collection SET organization_id = NULL '
+                                            'WHERE organization_id = :id'), {'id': org.id})
+                OrgSection.query.filter_by(organization_id=org.id).delete(synchronize_session=False)
+                db.session.delete(org)
+                db.session.commit()
+                flash(f'"{name}" deleted. Its stores and orders are all still there.', 'success')
+                return redirect(url_for('admin.collections'))
 
         elif action == 'rename_section':
             section = OrgSection.query.filter_by(

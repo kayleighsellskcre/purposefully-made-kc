@@ -398,7 +398,9 @@ def group_orders():
         if is_deadline_passed(c):
             continue
         section = OrgSection.query.filter_by(collection_id=c.id).first()
-        if section and section.organization and section.organization.is_active:
+        if section and section.organization and not section.organization.is_active:
+            continue          # hidden organization: its stores stay off the public list
+        if section and section.organization:
             org = section.organization
             if org.id not in org_ids_seen:
                 org_ids_seen.add(org.id)

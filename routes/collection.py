@@ -219,7 +219,8 @@ def view(slug):
         org_nav = {
             'org': org,
             'current_section': org_section,
-            'sections': list(org.sections),
+            'sections': [sec for sec in org.sections
+                         if sec.collection and sec.collection.is_active],
             'fan_wear_url': org_fan_wear_url(org, current=collection),
         }
 

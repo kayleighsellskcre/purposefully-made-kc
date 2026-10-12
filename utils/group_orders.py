@@ -1023,11 +1023,15 @@ def org_fan_hub(org):
     or (None, False) when the org sells no fan wear.
     """
     from models import OrgSection
+    from utils.group_roster import is_organizer_pays
     sections = org.sections.order_by(OrgSection.sort_order).all()
     for sec in sections:
-        if _is_fan_label(sec.label) and sec.collection and sec.collection.is_active:
+        if (_is_fan_label(sec.label) and sec.collection and sec.collection.is_active
+                and not is_organizer_pays(sec.collection)):
             return sec.collection, True
     for sec in _team_sections(org):
+        if is_organizer_pays(sec.collection):
+            continue          # that link only collects sizes, there is nothing to shop
         if team_store_config(sec.collection)['fan_product_ids']:
             return sec.collection, False
     return None, False

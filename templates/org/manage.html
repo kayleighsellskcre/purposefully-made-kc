@@ -208,6 +208,18 @@
 
         <div class="om-savebar"><button type="submit" class="om-chip om-chip--primary" style="padding:.8rem 2.2rem;font-size:.9rem">Save changes</button></div>
     </form>
+
+    {% if is_admin %}
+    <section class="om-card om-danger">
+        <h2>Delete this organization</h2>
+        <p class="om-sub">Removes this page and its link. Your team stores, orders and designs are all kept. The stores simply stop being grouped together.</p>
+        <form method="post" onsubmit="return confirm('Delete the {{ org.name|e }} organization page? Its stores, orders and designs are kept.')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="delete_org">
+            <button type="submit" class="om-chip om-chip--danger">Delete organization</button>
+        </form>
+    </section>
+    {% endif %}
 </div>
 
 <script>
