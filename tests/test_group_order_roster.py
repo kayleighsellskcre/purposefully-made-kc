@@ -277,6 +277,14 @@ def test_organizer_can_remove_a_duplicate(guest, seed, app, login):
     admin_client = guest
     slug = _make_roster_store(app, seed)
     _submit(guest, slug)
+    def _age_it():
+        # A repeat inside two minutes is a double tap and counts once; a parent who
+        # comes back later and sends the same size again makes a real duplicate.
+        from datetime import datetime, timedelta
+        entry = GroupRosterEntry.query.first()
+        entry.created_at = datetime.utcnow() - timedelta(minutes=10)
+        db.session.commit()
+    _in_db(app, _age_it)
     _submit(guest, slug)
     def _check10():
         return GroupRosterEntry.query.order_by(GroupRosterEntry.id.desc()).first().id

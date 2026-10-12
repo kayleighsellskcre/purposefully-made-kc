@@ -334,11 +334,23 @@ def roster_submit(slug):
     if error:
         return _roster_form(collection, error=error, form=request.form, status=400)
     first, last, size = cleaned
-    entry = GroupRosterEntry(
-        collection_id=collection.id, first_name=first, last_name=last, size=size,
-    )
-    db.session.add(entry)
-    db.session.commit()
+    # A double tap or a page refresh sends the same form twice. Count it once, so
+    # the organizer never pays for the same shirt twice by accident.
+    from datetime import datetime, timedelta
+    from sqlalchemy import func
+    entry = GroupRosterEntry.query.filter(
+        GroupRosterEntry.collection_id == collection.id,
+        func.lower(GroupRosterEntry.first_name) == first.lower(),
+        func.lower(GroupRosterEntry.last_name) == last.lower(),
+        GroupRosterEntry.size == size,
+        GroupRosterEntry.created_at >= datetime.utcnow() - timedelta(minutes=2),
+    ).first()
+    if entry is None:
+        entry = GroupRosterEntry(
+            collection_id=collection.id, first_name=first, last_name=last, size=size,
+        )
+        db.session.add(entry)
+        db.session.commit()
     session[f'roster_thanks_{collection.id}'] = {
         'name': entry.full_name, 'size': entry.size,
     }

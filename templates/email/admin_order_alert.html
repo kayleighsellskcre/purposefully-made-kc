@@ -56,6 +56,7 @@
                   <p style="margin:4px 0 0;font-size:13px;color:#5a5d68;font-family:Arial,sans-serif;">
                     {{ order.email }}{% if order.phone %} · {{ order.phone }}{% endif %}
                   </p>
+                  {% if group_name %}<p style="margin:8px 0 0;font-size:13px;color:#3a3d48;font-family:Arial,sans-serif;"><strong>Group order:</strong> {{ group_name }}</p>{% endif %}
                 </td>
               </tr>
             </table>

@@ -298,6 +298,7 @@ def _send_order_confirmation_email(order):
         group_pickup_next_step,
     )
     pickup_coll = getattr(order, 'collection', None)
+    group_name = (getattr(pickup_coll, 'name', None) or '').strip()
     pickup_heading = group_pickup_heading(pickup_coll)
     pickup_details = group_pickup_details(pickup_coll)
     pickup_next_step = group_pickup_next_step(pickup_coll)
@@ -324,6 +325,7 @@ def _send_order_confirmation_email(order):
             f"Your order is confirmed. Save this email as your receipt.\n\n"
             f"Order Number : {order.order_number}\n"
             f"Date         : {format_central(placed_at)}\n"
+            f"{'Group order  : ' + group_name + chr(10) if group_name else ''}"
             f"Payment      : {(order.payment_method or 'Card').title()} — "
             f"{'PAID' if paid else 'PENDING (pay on pickup)'}\n\n"
             f"Items:\n{items_text}\n\n"
@@ -353,6 +355,7 @@ def _send_order_confirmation_email(order):
             pickup_heading=pickup_heading,
             pickup_details=pickup_details,
             pickup_next_step=pickup_next_step,
+            group_name=group_name,
         )
 
         from utils.mailer import send as _send_mail
@@ -382,6 +385,7 @@ def _send_order_confirmation_email(order):
             'email/admin_order_alert.html',
             order=order,
             admin_base_url=admin_base_url,
+            group_name=group_name,
         )
         payment_note = {
             'paid': 'PAID',
@@ -389,6 +393,7 @@ def _send_order_confirmation_email(order):
         }.get(order.payment_status, 'CASH — collect on pickup')
         admin_plain = (
             f"NEW ORDER — {order.order_number} · ${order.total:.2f} · {payment_note}\n\n"
+            f"{'Group order : ' + group_name + chr(10) if group_name else ''}"
             f"Customer : {order.full_name} <{order.email}>"
             f"{' · ' + order.phone if order.phone else ''}\n\n"
             f"Items:\n{items_text}\n\n"
@@ -397,7 +402,8 @@ def _send_order_confirmation_email(order):
         )
         from utils.mailer import send as _send_mail
         admin_msg = Message(
-            subject=f"New Order — {order.order_number} · ${order.total:.2f}",
+            subject=f"New Order — {order.order_number} · ${order.total:.2f}"
+                    + (f" · {group_name}" if group_name else ""),
             recipients=[admin_email],
             body=admin_plain,
             html=admin_html,

@@ -533,7 +533,8 @@ def fan_wear(slug):
         shown_design_ids=set(state['shown_design_ids']),
         can_upload=current_user.is_authenticated,
         teams=[sec for sec in org.sections.order_by(OrgSection.sort_order).all()
-               if sec.collection and 'fan' not in (sec.label or '').lower()],
+               if sec.collection and 'fan' not in (sec.label or '').lower()
+               and sec.collection_id in {c.id for c in state['team_collections']}],
     )
 
 

@@ -1007,10 +1007,12 @@ def org_for_collection(collection):
 def _team_sections(org):
     """Active, non-fan team stores of an org, in display order."""
     from models import OrgSection
+    from utils.group_roster import is_organizer_pays
     out = []
     for sec in org.sections.order_by(OrgSection.sort_order).all():
         coll = sec.collection
-        if coll and coll.is_active and not _is_fan_label(sec.label):
+        # A pay-for-everyone store has exactly one shirt and color; shared Fan Wear must not touch it.
+        if coll and coll.is_active and not _is_fan_label(sec.label) and not is_organizer_pays(coll):
             out.append(sec)
     return out
 
@@ -1061,8 +1063,9 @@ def org_fan_wear_url(org, current=None, stay=False):
 
 def org_sync_info(collection):
     """The org when this is one of 2+ team stores (so "apply to all teams" makes sense)."""
+    from utils.group_roster import is_organizer_pays
     org, section = org_for_collection(collection)
-    if not org or _is_fan_label(section.label):
+    if not org or _is_fan_label(section.label) or is_organizer_pays(collection):
         return None
     return org if len(_team_sections(org)) > 1 else None
 
