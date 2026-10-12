@@ -4184,8 +4184,8 @@
             : 1;
         const maxH = 60;
         const isTank = !!(TRANSFER_SIZING && TRANSFER_SIZING.is_tank);
-        const maxVsGarment = garmentWidth * (isTank ? 0.70 : 0.50);
-        const maxVsCanvas = canvasWidth * 0.42;
+        const maxVsGarment = garmentWidth * (isTank ? 0.70 : 0.56);
+        const maxVsCanvas = canvasWidth * 0.5;
         const minVsGarment = garmentWidth * (isTank ? 0.42 : 0.28);
         let layerWidthPx;
         if (isTank && box && box.pxPerInch) {
@@ -4193,7 +4193,7 @@
                 || ((TRANSFER_SIZING && TRANSFER_SIZING.preview_ref_width) || 10);
             layerWidthPx = widthIn * box.pxPerInch / visibleWidthRatio;
         } else {
-            const targetRatio = isTank ? 0.58 : 0.38;
+            const targetRatio = isTank ? 0.58 : 0.46;
             layerWidthPx = garmentWidth * targetRatio / visibleWidthRatio;
         }
         layerWidthPx = Math.min(layerWidthPx, maxVsGarment, maxVsCanvas);

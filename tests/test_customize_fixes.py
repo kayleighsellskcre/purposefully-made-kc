@@ -465,7 +465,7 @@ def test_uploaded_back_art_uses_center_front_fit_not_name_number_width(client, s
     html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     assert 'function applyBackUploadFit()' in html
     assert 'Same visual target as center-front' in html
-    assert 'const targetRatio = isTank ? 0.58 : 0.38;' in html
+    assert 'const targetRatio = isTank ? 0.58 : 0.46;' in html
     assert "if (state.backDesignMode !== 'upload' || !state.backDesignUrl) return;" in html
     assert "if (state.currentView !== 'back') return;" in html
     assert "backDesignLayer.classList.add('is-upload');" in html
