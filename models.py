@@ -209,6 +209,8 @@ class Collection(db.Model):
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     # Email waiting to claim this store if the organizer does not have an account yet
     pending_organizer_email = db.Column(db.String(120))
+    # When the "last day to order" reminder went out (so it is never sent twice for one deadline)
+    deadline_reminder_sent_at = db.Column(db.DateTime)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

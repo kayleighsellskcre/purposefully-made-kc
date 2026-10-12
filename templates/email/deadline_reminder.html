@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Last day to order: {{ group_name }}</title>
+<style>
+  @media only screen and (max-width: 520px) {
+    .pmkc-pad { padding-left:18px !important; padding-right:18px !important; }
+    .pmkc-big { font-size:24px !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#f5f0e8;font-family:'Georgia',serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0e8;padding:40px 16px;">
+  <tr>
+    <td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+        <!-- Header -->
+        <tr>
+          <td align="center" style="padding-bottom:28px;">
+            <p style="margin:0;font-family:'Georgia',serif;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#b87c6f;">Purposefully Made KC</p>
+            {% if audience == 'admin' %}
+            <h1 class="pmkc-big" style="margin:8px 0 0;font-family:'Georgia',serif;font-size:28px;font-weight:400;color:#3a3d48;letter-spacing:0.04em;">Order Deadline Today</h1>
+            <p style="margin:8px 0 0;font-size:14px;color:#888;font-family:Arial,sans-serif;">{{ group_name }} closes tonight.</p>
+            {% else %}
+            <h1 class="pmkc-big" style="margin:8px 0 0;font-family:'Georgia',serif;font-size:28px;font-weight:400;color:#3a3d48;letter-spacing:0.04em;">Today Is the Last Day to Order</h1>
+            <p style="margin:8px 0 0;font-size:14px;color:#888;font-family:Arial,sans-serif;">Hi {{ first_name or 'there' }}, a quick reminder for your group.</p>
+            {% endif %}
+          </td>
+        </tr>
+
+        <!-- Deadline card -->
+        <tr>
+          <td>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#b87c6f;border-radius:14px;margin-bottom:20px;">
+              <tr>
+                <td align="center" class="pmkc-pad" style="padding:26px 28px;">
+                  <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.75);font-family:Arial,sans-serif;">Orders close tonight</p>
+                  <p style="margin:0;font-family:'Georgia',serif;font-size:26px;font-weight:700;color:#fff;letter-spacing:0.03em;">{{ group_name }}</p>
+                  <p style="margin:10px 0 0;font-size:13px;color:rgba(255,255,255,0.85);font-family:Arial,sans-serif;">11:59 PM Central Time</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Message -->
+        <tr>
+          <td class="pmkc-pad" style="background:#ffffff;border-radius:14px;padding:28px 32px;">
+            {% if audience == 'admin' %}
+            <p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:#3a3d48;font-family:Arial,sans-serif;">{{ organizer_note }}</p>
+            {% else %}
+            <p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#3a3d48;font-family:Arial,sans-serif;">
+              <strong>Please remind your group today.</strong> Anyone who has not ordered yet needs to do it before tonight. A quick text or message this morning makes a big difference.
+            </p>
+            <p style="margin:0 0 22px;font-size:15px;line-height:1.7;color:#5a5d68;font-family:Arial,sans-serif;">Here is the link to share:</p>
+            <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+              <tr>
+                <td style="background:#b87c6f;border-radius:8px;">
+                  <a href="{{ share_url }}" style="display:inline-block;padding:14px 30px;color:#ffffff;text-decoration:none;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;">Open Your Group Link</a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:0 0 20px;font-size:13px;line-height:1.6;color:#888;font-family:Arial,sans-serif;word-break:break-all;">{{ share_url }}</p>
+            {% endif %}
+
+            <!-- Tally -->
+            <p style="margin:0 0 8px;font-size:10px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#b87c6f;font-family:Arial,sans-serif;">So far</p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e8d0b1;">
+              {% for r in rows %}
+              <tr>
+                <td style="padding:10px 0;border-bottom:1px solid #f0e6d8;font-size:15px;color:#3a3d48;font-family:Arial,sans-serif;">{{ r.name }}</td>
+                <td align="right" style="padding:10px 0;border-bottom:1px solid #f0e6d8;font-size:15px;font-weight:700;color:#3a3d48;font-family:Arial,sans-serif;">{{ r.count }} {{ r.noun }}</td>
+              </tr>
+              {% endfor %}
+            </table>
+
+            {% if audience == 'admin' %}
+            <table cellpadding="0" cellspacing="0" style="margin:24px 0 0;">
+              <tr>
+                <td style="background:#3a3d48;border-radius:8px;">
+                  <a href="{{ admin_url }}" style="display:inline-block;padding:13px 28px;color:#ffffff;text-decoration:none;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;">Group Orders in Admin</a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:#888;font-family:Arial,sans-serif;word-break:break-all;">Public link: {{ share_url }}</p>
+            {% endif %}
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td align="center" style="padding:26px 12px 0;">
+            <p style="margin:0;font-size:13px;color:#888;font-family:Arial,sans-serif;">Questions? Just reply to this email.</p>
+            <p style="margin:10px 0 0;font-size:13px;color:#b87c6f;font-family:'Georgia',serif;font-style:italic;">Made with purpose, for you.</p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>

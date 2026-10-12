@@ -17,7 +17,7 @@ from models import db, Collection, Organization, OrgSection, Product, ProductCol
 # share token and the per-store card text are left out on purpose.
 _SKIP_COLUMNS = {
     'id', 'name', 'slug', 'share_token', 'created_at', 'updated_at',
-    'card_title', 'team_store_config', 'expected_count',
+    'card_title', 'team_store_config', 'expected_count', 'deadline_reminder_sent_at',
 }
 
 _SPORT_ICONS = (

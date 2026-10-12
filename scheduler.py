@@ -4,6 +4,8 @@ Nightly (America/Chicago):
   1:00 AM — SanMar curated catalog (does not overwrite live warehouse qty)
   2:00 AM — S&S ghost/front images for Bella+Canvas
   3:00 AM — live in-stock quantities from SanMar and S&S
+Mornings (America/Chicago):
+  8:00-11:00 AM — "last day to order" reminders for groups whose deadline is today
 """
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -44,6 +46,21 @@ def _one_worker_at_a_time(lock_id):
                 conn.invalidate()
             except Exception:
                 pass
+
+
+def deadline_reminders_job(app):
+    """Email each organizer (and the admin) on the morning their group order closes."""
+    with app.app_context():
+        try:
+            with _one_worker_at_a_time(731002) as mine:
+                if not mine:
+                    return
+                from utils.deadline_reminders import send_deadline_reminders
+                result = send_deadline_reminders(app)
+                if result['groups']:
+                    print(f"DEADLINE REMINDERS SENT: {result}", file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f"deadline reminders failed: {exc}", file=sys.stderr, flush=True)
 
 
 def unsaved_payments_job(app):
@@ -508,6 +525,16 @@ def init_scheduler(app):
             replace_existing=True
         )
 
+        # "Last day to order" reminders. Runs at 8, 9, 10 and 11 AM Chicago: each group is
+        # reminded once (the store remembers), so the later runs only matter if 8 AM missed.
+        scheduler.add_job(
+            func=lambda: deadline_reminders_job(app),
+            trigger=CronTrigger(hour='8-11', minute=0, timezone=CHICAGO),
+            id='deadline_reminders',
+            name='Group order deadline-day reminders',
+            replace_existing=True
+        )
+
         # Every 3 minutes: any paid checkout (card or PayPal) without an order gets one
         from apscheduler.triggers.interval import IntervalTrigger
         scheduler.add_job(
@@ -548,6 +575,7 @@ def init_scheduler(app):
         print("  - Nightly S&S image sync: 2:00 AM America/Chicago", file=sys.stderr, flush=True)
         print("  - Nightly live inventory (SanMar + S&S): 3:00 AM America/Chicago", file=sys.stderr, flush=True)
         print("  - Nightly DIP file inventory (SanMar SFTP): 4:00 AM America/Chicago", file=sys.stderr, flush=True)
+        print("  - Deadline-day reminders: 8-11 AM America/Chicago", file=sys.stderr, flush=True)
         print("  - S&S image sync running in 30 seconds (startup)", file=sys.stderr, flush=True)
         print("=" * 80, file=sys.stderr, flush=True)
 

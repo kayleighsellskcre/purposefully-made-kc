@@ -272,6 +272,7 @@ def create_app(config_class=Config):
                     "CREATE INDEX IF NOT EXISTS ix_org_section_org ON org_section (organization_id)",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS organization_id INTEGER REFERENCES organization(id)",
                     "ALTER TABLE organization ADD COLUMN IF NOT EXISTS photo_config TEXT",
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS deadline_reminder_sent_at TIMESTAMP",
                 ]
                 for migration in all_migrations:
                     try:
