@@ -129,9 +129,12 @@ def replicate_blend_color_picks(allowed_colors_json):
         parsed = json.loads(allowed_colors_json) if allowed_colors_json else None
     except (TypeError, ValueError):
         return allowed_colors_json
-    if not isinstance(parsed, dict):
+    if not isinstance(parsed, dict) or not any(str(k).startswith(PRODUCT_COLOR_PREFIX) for k in parsed):
         return allowed_colors_json
-    twins = partner_map()
+    try:
+        twins = partner_map()
+    except Exception:          # no catalog to look in (or no database): leave the picks as they are
+        return allowed_colors_json
     changed = False
     for key in list(parsed):
         if not str(key).startswith(PRODUCT_COLOR_PREFIX):
