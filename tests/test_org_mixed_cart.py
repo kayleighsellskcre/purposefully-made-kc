@@ -443,3 +443,45 @@ def test_adding_a_regular_style_while_still_attached_adds_it_as_a_regular_item(c
     assert resp.get_json().get('success'), resp.get_json()
     cart = _cart(client)
     assert any(not i.get('collection_id') for i in cart) and any(i.get('collection_id') for i in cart)
+
+
+# ── The banner names the group being browsed ─────────────────────────────────
+
+def test_a_different_groups_page_names_that_group_not_whats_in_the_cart(client, admin_client, app, seed):
+    _build(admin_client, app, seed)
+    admin_client.get('/auth/logout')
+    _add_jersey(client, app, BASKETBALL, seed)
+    _add_fan(client, app, seed)
+    html = client.get('/c/test-elementary').get_data(as_text=True)          # a different group's store
+    assert "You're ordering for <strong>Test Elementary Spirit Wear</strong>" in html
+    assert "ordering for <strong>Rainbow Cheetahs" not in html
+    assert 'Your cart has items from Rainbow Cheetahs. Adding from this group will replace them.' in html
+
+
+def test_the_cart_page_still_names_the_group_the_cart_holds(client, admin_client, app, seed):
+    _build(admin_client, app, seed)
+    admin_client.get('/auth/logout')
+    _add_jersey(client, app, BASKETBALL, seed)
+    client.get('/c/test-elementary')                                          # browsing elsewhere
+    html = client.get('/cart/').get_data(as_text=True)
+    assert f"You're ordering for <strong>{BASKETBALL}</strong>" in html
+
+
+def test_no_warning_when_browsing_another_team_of_the_same_organization(client, admin_client, app, seed):
+    _build(admin_client, app, seed)
+    admin_client.get('/auth/logout')
+    _add_jersey(client, app, BASKETBALL, seed)
+    html = client.get(f'/c/{_slug_of(app, VOLLEYBALL)}').get_data(as_text=True)
+    assert 'Adding from this group will replace them' not in html
+    assert f"You're ordering for <strong>{VOLLEYBALL}</strong>" in html
+
+
+def test_switching_to_another_group_says_which_items_were_taken_out(client, admin_client, app, seed):
+    _build(admin_client, app, seed)
+    admin_client.get('/auth/logout')
+    _add_jersey(client, app, BASKETBALL, seed)
+    client.get('/c/test-elementary')
+    resp = client.post('/cart/add', data={'product_id': seed['tee_id'], 'size': 'M', 'color': 'Black', 'quantity': 1,
+                                          'placement': 'center_chest', 'design_id': seed['free_design_id']})
+    notice = resp.get_json().get('notice') or ''
+    assert 'Rainbow Cheetahs' in notice and 'taken out' in notice

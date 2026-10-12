@@ -847,6 +847,7 @@ def create_app(config_class=Config):
         active_group_order = None
         cart_group_name = None
         cart_group_url = None
+        other_group_in_cart = None
         try:
             from utils.group_orders import get_active_collection
             # The "You're ordering for X" banner used to render on every page
@@ -859,13 +860,24 @@ def create_app(config_class=Config):
             _banner_blueprints = {'collection', 'cart', 'checkout'}
             _banner_endpoints = {'shop.customize', 'shop.product_detail'}
             if request.blueprint in _banner_blueprints or request.endpoint in _banner_endpoints:
-                active_group_order = get_active_collection(cart)
-                from utils.group_orders import cart_collections, cart_group_label
-                if active_group_order and len(cart_collections(cart)) > 1:
-                    cart_group_name = cart_group_label(cart)      # several stores in one cart: name the organization
-                    from utils.group_orders import org_for_collection
-                    _org, _sec = org_for_collection(active_group_order)
-                    cart_group_url = f'/org/{_org.slug}' if _org else None
+                from utils.group_orders import (
+                    cart_collections, cart_group_label, org_for_collection, stores_share_an_org,
+                )
+                if request.blueprint in {'cart', 'checkout'}:
+                    # The cart and checkout belong to whatever group the cart holds.
+                    active_group_order = get_active_collection(cart)
+                    if active_group_order and len(cart_collections(cart)) > 1:
+                        cart_group_name = cart_group_label(cart)      # several stores: name the organization
+                        _org, _sec = org_for_collection(active_group_order)
+                        cart_group_url = f'/org/{_org.slug}' if _org else None
+                else:
+                    # A store's own pages (and the styles opened from it) always name the store
+                    # being browsed, never whatever group the cart happens to hold.
+                    active_group_order = get_active_collection()
+                    if active_group_order:
+                        _held = cart_collections(cart)
+                        if _held and not all(stores_share_an_org(s.id, active_group_order.id) for s in _held):
+                            other_group_in_cart = cart_group_label(cart)
         except Exception:
             active_group_order = None
         # Canonical URL and origin for <link rel="canonical"> and Open Graph.
@@ -907,6 +919,7 @@ def create_app(config_class=Config):
             'active_group_order': active_group_order,
             'cart_group_name': cart_group_name,
             'cart_group_url': cart_group_url,
+            'other_group_in_cart': other_group_in_cart,
             'site_origin': site_origin,
             'canonical_url': canonical_url,
             'robots_directive': robots_directive,

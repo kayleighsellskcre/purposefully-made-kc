@@ -530,9 +530,11 @@ def add():
     mixed = [item for item in cart if isinstance(item, dict) and not _compatible(item)]
     mixed_notice = None
     if mixed:
+        from utils.group_orders import cart_group_label
+        removed_name = cart_group_label(mixed, fallback='the other group')
         cart[:] = [item for item in cart if isinstance(item, dict) and _compatible(item)]
-        mixed_notice = ('Your cart can only hold one group at a time, so items from the other group '
-                        'were taken out.')
+        mixed_notice = (f'Your {removed_name} items were taken out of the cart, because one cart can only '
+                        'hold one group at a time.')
     
     # Check if identical item exists
     found = False
