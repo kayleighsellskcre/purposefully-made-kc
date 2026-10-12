@@ -142,3 +142,33 @@ def test_family_promo_rejects_card(client, seed, app):
     )
     assert resp.status_code == 400
     assert resp.get_json()['error_code'] == 'FAMILY_PROMO_CASH_ONLY'
+
+
+# ── The promo box is a quiet "Have a promo code?" line, open only when it matters ──
+
+def _add_to_cart(client, seed):
+    client.post('/cart/add', data={
+        'product_id': seed['tee_id'], 'size': 'M', 'color': 'Black',
+        'quantity': 1, 'placement': 'center_chest',
+        'design_id': seed['free_design_id'],
+    })
+
+
+def test_checkout_promo_starts_folded(client, seed):
+    _add_to_cart(client, seed)
+    html = client.get('/checkout/').get_data(as_text=True)
+    assert 'Have a promo code?' in html
+    tag = html[html.index('<details class="promo-disclosure"'):].split('>')[0]
+    assert ' open' not in tag
+    # still fully working once opened
+    assert 'id="promo_code"' in html and 'id="apply-promo"' in html
+
+
+def test_checkout_promo_is_open_when_a_promo_is_already_applied(client, seed):
+    _add_to_cart(client, seed)
+    with client.session_transaction() as sess:
+        sess['family_promo_code'] = 'AIRMATTRESS'
+    html = client.get('/checkout/').get_data(as_text=True)
+    tag = html[html.index('<details class="promo-disclosure"'):].split('>')[0]
+    assert ' open' in tag
+    assert 'Promo applied.' in html

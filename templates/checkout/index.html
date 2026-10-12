@@ -177,7 +177,8 @@
                 
                 <!-- Promo code -->
                 <div class="checkout-section" id="promo-section">
-                    <h2>Promo Code</h2>
+                  <details class="promo-disclosure"{% if family_promo_active or family_promo_code %} open{% endif %}>
+                    <summary>Have a promo code?</summary>
                     <div class="promo-row">
                         <input type="text" id="promo_code" class="form-control" autocomplete="off"
                                placeholder="Enter code"
@@ -192,6 +193,7 @@
                     <p class="promo-message" id="promo-message" role="status" aria-live="polite">
                         {% if family_promo_active %}Promo applied.{% endif %}
                     </p>
+                  </details>
                 </div>
 
                 <!-- Payment Method -->
@@ -1628,6 +1630,13 @@ async function completeOrder(paymentId, paymentMethodOverride) {
     }
     body { background: #fff !important; }
 }
+
+#promo-section { padding-top: 0; padding-bottom: .25rem; }
+.promo-disclosure > summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: .5rem; color: var(--accent-color); font-weight: 600; font-size: .95rem; padding: .35rem 0; }
+.promo-disclosure > summary::-webkit-details-marker { display: none; }
+.promo-disclosure > summary::before { content: '+'; font-size: 1.2rem; line-height: 1; }
+.promo-disclosure[open] > summary::before { content: '\2212'; }
+.promo-disclosure[open] > summary { margin-bottom: .6rem; }
 </style>
 <script>
 (function () {
