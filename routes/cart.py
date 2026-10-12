@@ -51,8 +51,11 @@ def index():
                 + '#fanWearSection'
             )
         stores = cart_collections(cart)
-        if len(stores) > 1:
+        regular = any(isinstance(i, dict) and not i.get('collection_id') for i in cart)
+        if len(stores) > 1 or (stores and regular):
             store_names = {c.id: c.name for c in stores}
+            if regular:
+                store_names[None] = 'the regular shop'
     
     # Enrich cart items with product details
     cart_items = []
@@ -87,7 +90,7 @@ def index():
 
             cart_items.append({
                 **item,
-                'store_name': store_names.get(item.get('collection_id')),
+                'store_name': store_names.get(item.get('collection_id') or None),
                 'product': product,
                 'item_total': item_total,
                 'image_url': display_front or None,
@@ -513,20 +516,19 @@ def add():
     from utils.group_orders import stores_share_an_org
 
     def _compatible(item):
+        # Regular shop items can sit in a cart next to group items (leaving a group
+        # never empties the cart). Only two different organizations cannot share one.
         cid = item.get('collection_id') or None
         if cid is None or new_cid is None:
-            return cid == new_cid
+            return True
         return stores_share_an_org(cid, new_cid)
 
     mixed = [item for item in cart if isinstance(item, dict) and not _compatible(item)]
     mixed_notice = None
     if mixed:
         cart[:] = [item for item in cart if isinstance(item, dict) and _compatible(item)]
-        mixed_notice = (
-            'This group order replaced other items in your cart so everything stays in one store.'
-            if new_cid else
-            'Items from a group order were removed so they are not mixed with a regular shop order.'
-        )
+        mixed_notice = ('Your cart can only hold one group at a time, so items from the other group '
+                        'were taken out.')
     
     # Check if identical item exists
     found = False

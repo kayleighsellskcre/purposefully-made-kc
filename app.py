@@ -684,8 +684,11 @@ def create_app(config_class=Config):
         from models import Collection
         from utils.group_orders import order_store_ids
         try:
-            if len(order_store_ids(order)) < 2:
+            from utils.group_orders import order_has_regular_items
+            if len(order_store_ids(order)) < 2 and not order_has_regular_items(order):
                 return None
+            if item.collection_id == 0:
+                return 'Regular shop'
             coll = db.session.get(Collection, item.collection_id or order.collection_id)
             return coll.name if coll else None
         except Exception:

@@ -35,8 +35,6 @@ def _group_cart_error(cart, collection):
     items = [i for i in cart or [] if isinstance(i, dict)]
     scopes = {i.get('collection_id') or None for i in items}
     group_ids = [c for c in scopes if c]
-    if group_ids and None in scopes:
-        return 'Your cart mixes group items with regular shop items. Please return to your cart and choose one.'
     if any(not stores_share_an_org(group_ids[0], other) for other in group_ids[1:]):
         return 'Your cart contains items from different groups. Please return to your cart and choose one group.'
     if group_ids and collection is None:
@@ -52,14 +50,16 @@ def _group_cart_error(cart, collection):
     stores = {}
     for item in items:
         cid = item.get('collection_id')
-        if cid not in stores:
-            stores[cid] = db.session.get(Collection, cid) if cid else None
-        store = stores[cid]
-        if store is None or not store.is_active:
-            return 'This group order is no longer available. Please return to the group store.'
         product = Product.query.get(_int_or_none(item.get('product_id')))
         if not product:
             return 'One of the items in your cart is no longer available.'
+        if not cid:
+            continue                         # a regular shop item riding along with the group items
+        if cid not in stores:
+            stores[cid] = db.session.get(Collection, cid)
+        store = stores[cid]
+        if store is None or not store.is_active:
+            return 'This group order is no longer available. Please return to the group store.'
         blocked = ordering_blocked(store, product.id)
         if blocked:
             return blocked
@@ -306,12 +306,15 @@ def _send_order_confirmation_email(order):
     from utils.group_orders import order_group_label, order_store_ids
     from models import Collection as _Collection
     _store_ids = order_store_ids(order)
+    from utils.group_orders import order_has_regular_items
+    _mixed = len(_store_ids) > 1 or order_has_regular_items(order)
     _store_names = ({c.id: c.name for c in _Collection.query.filter(_Collection.id.in_(_store_ids)).all()}
-                    if len(_store_ids) > 1 else {})
+                    if _mixed else {})
+    _store_names[0] = 'the regular shop'
 
     def _tagged(item):
         line = _item_lines(item)
-        tag = _store_names.get(item.collection_id or order.collection_id)
+        tag = _store_names.get(item.collection_id if item.collection_id is not None else order.collection_id) if _mixed else None
         return f"{line}\n      for {tag}" if tag else line
 
     items_text = '\n'.join(_tagged(item) for item in order_items)
@@ -322,7 +325,7 @@ def _send_order_confirmation_email(order):
     )
     pickup_coll = getattr(order, 'collection', None)
     group_name = (order_group_label(order) or '').strip()
-    if _store_names:                          # one payment, several groups: say which
+    if _mixed and len(_store_ids) > 1:        # one payment, several groups: say which
         group_name += ' (' + ', '.join(_store_names[i] for i in _store_ids if i in _store_names) + ')'
     pickup_heading = group_pickup_heading(pickup_coll)
     pickup_details = group_pickup_details(pickup_coll)
@@ -863,10 +866,13 @@ def index():
     enriched_cart = []
     from utils.group_orders import cart_collections
     _stores = cart_collections(cart)
-    _store_names = {c.id: c.name for c in _stores} if len(_stores) > 1 else {}
+    _regular = any(isinstance(i, dict) and not i.get('collection_id') for i in cart)
+    _store_names = {c.id: c.name for c in _stores} if (len(_stores) > 1 or (_stores and _regular)) else {}
+    if _store_names and _regular:
+        _store_names[None] = 'the regular shop'
     for item in cart:
         enriched = dict(item)
-        enriched['store_name'] = _store_names.get(item.get('collection_id'))
+        enriched['store_name'] = _store_names.get(item.get('collection_id') or None)
         try:
             prod = Product.query.get(item.get('product_id'))
             enriched['product_name'] = prod.name if prod else 'Item'
@@ -1225,6 +1231,9 @@ def build_order_items(order, cart, rid='-'):
     Shared by checkout and the admin's recover-a-paid-order tool.
     """
     saved_items = 0
+    # In an order that has group items, a regular shop item is marked 0 ("regular shop")
+    # so it is never mistaken for one of the group's shirts.
+    has_group_lines = any(isinstance(i, dict) and _int_or_none(i.get('collection_id')) for i in cart)
     for cart_item in cart:
         try:
             product = Product.query.get(_int_or_none(cart_item.get('product_id')))
@@ -1296,7 +1305,7 @@ def build_order_items(order, cart, rid='-'):
                     cart_item.get('catalog_section'), 20
                 ),
                 uniform_kit=_clip(cart_item.get('uniform_kit'), 20),
-                collection_id=_int_or_none(cart_item.get('collection_id')),
+                collection_id=_int_or_none(cart_item.get('collection_id')) or (0 if has_group_lines else None),
                 quantity=qty,
                 unit_price=unit_price,
                 subtotal=qty * unit_price,

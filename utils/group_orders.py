@@ -1511,9 +1511,14 @@ def order_store_ids(order):
 
 
 def order_items_for_store(order, collection_id):
-    """The shirts of this order that belong to one store."""
+    """The shirts of this order that belong to one store (0 marks a regular shop item)."""
     return [i for i in order.items
-            if (i.collection_id or order.collection_id) == collection_id]
+            if (i.collection_id if i.collection_id is not None else order.collection_id) == collection_id]
+
+
+def order_has_regular_items(order):
+    """True when a group order also carries regular shop items."""
+    return any(i.collection_id == 0 for i in order.items)
 
 
 def order_group_label(order):

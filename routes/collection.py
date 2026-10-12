@@ -646,7 +646,9 @@ def _build_group_order_xlsx(collection, include_internal=False):
     # Orders with shirts from this store. A parent can pay for several stores of an
     # organization at once; each store's file lists only its own shirts, and the
     # "Also Ordered From" column says what else was in the same payment.
-    from utils.group_orders import orders_for_collection, order_items_for_store, order_store_ids
+    from utils.group_orders import (
+        order_has_regular_items, order_items_for_store, order_store_ids, orders_for_collection,
+    )
     orders = orders_for_collection(collection.id).all()
 
     def mine(order):
@@ -655,11 +657,17 @@ def _build_group_order_xlsx(collection, include_internal=False):
     def also_from(order):
         ids = [i for i in order_store_ids(order) if i != collection.id]
         names = {c.id: c.name for c in Collection.query.filter(Collection.id.in_(ids)).all()} if ids else {}
-        return ', '.join(names[i] for i in ids if i in names)
+        listed = [names[i] for i in ids if i in names]
+        if any(i.collection_id == 0 for i in order.items):
+            listed.append('Regular shop items')
+        return ', '.join(listed)
+
+    def _shared(order):
+        return len(order_store_ids(order)) > 1 or order_has_regular_items(order)
 
     def group_money(order):
         """This store's share of an order's items (all of it unless the order spans several stores)."""
-        return sum(i.subtotal for i in mine(order)) if len(order_store_ids(order)) > 1 else order.subtotal
+        return sum(i.subtotal for i in mine(order)) if _shared(order) else order.subtotal
 
     orders.sort(key=lambda o: (
         0 if o.send_home_with_child else 1,
@@ -686,7 +694,7 @@ def _build_group_order_xlsx(collection, include_internal=False):
     ws_sum.merge_cells('A3:F3')
 
     paid_orders   = [o for o in orders if o.payment_status == 'paid']
-    total_revenue = sum((o.total if len(order_store_ids(o)) < 2 else group_money(o)) for o in paid_orders)
+    total_revenue = sum((group_money(o) if _shared(o) else o.total) for o in paid_orders)
     total_items   = sum(item.quantity for o in orders for item in mine(o))
 
     ws_sum['A5'] = 'Total Orders';  ws_sum['B5'] = len(orders)

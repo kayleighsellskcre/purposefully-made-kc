@@ -179,6 +179,8 @@ def _finish_request_in_background(app, file_bytes, filename, local_path, prefix,
 @custom_request_bp.route('/')
 def index():
     """Landing page - explain the service, require login to submit"""
+    from utils.group_orders import leave_group_order
+    leave_group_order()          # a recreate request is not part of a group order
     return render_template('custom_request/index.html')
 
 

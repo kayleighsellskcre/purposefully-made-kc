@@ -747,6 +747,8 @@ def edit_group_order(slug):
 @shop_bp.route('/designs')
 def design_gallery():
     """Browse designs by folder, then pick a design (grouped color variants)."""
+    from utils.group_orders import leave_group_order
+    leave_group_order()          # the gallery is not part of a group order
     from utils.design_categories import GALLERY_CATEGORY_LABELS, normalize_category
     from utils.design_variants import (
         filter_gallery_cards,

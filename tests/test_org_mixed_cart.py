@@ -322,3 +322,96 @@ def test_shop_items_are_not_tied_to_a_group_after_leaving(client, admin_client, 
     client.get('/shop/')
     page = client.get('/').get_data(as_text=True)
     assert "You're ordering for" not in page
+
+
+# ── Leaving a group never empties the cart ───────────────────────────────────
+
+def _add_regular(client, seed):
+    client.get('/shop/')                                         # leaves any group order
+    resp = client.post('/cart/add', data={
+        'product_id': seed['tee_id'], 'size': 'L', 'color': 'Black', 'quantity': 1, 'placement': 'center_chest',
+    })
+    assert resp.get_json().get('success'), resp.get_json()
+    return resp.get_json()
+
+
+def test_the_design_gallery_and_recreate_pages_also_leave_the_group(client, admin_client, app, seed):
+    _build(admin_client, app, seed)
+    admin_client.get('/auth/logout')
+    for url in ('/shop/designs', '/custom-design/'):
+        _add_jersey(client, app, BASKETBALL, seed)
+        with client.session_transaction() as sess:
+            assert sess.get('collection_id')
+        assert client.get(url).status_code == 200
+        with client.session_transaction() as sess:
+            assert not sess.get('collection_id'), url
+
+
+def test_adding_a_regular_item_after_leaving_keeps_the_group_items(client, admin_client, app, seed):
+    _build(admin_client, app, seed)
+    admin_client.get('/auth/logout')
+    _add_jersey(client, app, BASKETBALL, seed)
+    _add_jersey(client, app, VOLLEYBALL, seed)
+    _add_fan(client, app, seed)
+    reply = _add_regular(client, seed)
+    assert not reply.get('notice')
+    cart = _cart(client)
+    assert len(cart) == 4
+    assert sum(1 for i in cart if not i.get('collection_id')) == 1
+
+
+def test_a_group_item_added_after_a_regular_one_keeps_the_regular_one(client, admin_client, app, seed):
+    _build(admin_client, app, seed)
+    admin_client.get('/auth/logout')
+    _add_regular(client, seed)
+    reply = _add_jersey(client, app, BASKETBALL, seed)
+    assert not reply.get('notice')
+    assert len(_cart(client)) == 2
+
+
+def test_the_cart_labels_regular_items_next_to_group_items(client, admin_client, app, seed):
+    _build(admin_client, app, seed)
+    admin_client.get('/auth/logout')
+    _add_jersey(client, app, BASKETBALL, seed)
+    _add_regular(client, seed)
+    html = client.get('/cart/').get_data(as_text=True)
+    assert f'For {BASKETBALL}' in html and 'For the regular shop' in html
+
+
+def test_one_payment_for_group_shirts_and_a_regular_item_keeps_each_in_its_place(client, admin_client, app, seed):
+    _build(admin_client, app, seed)
+    _open_cash_everywhere(app)
+    admin_client.get('/auth/logout')
+    _add_jersey(client, app, BASKETBALL, seed)
+    _add_regular(client, seed)
+    resp = _checkout(client)
+    assert resp.status_code == 200 and resp.get_json()['success'], resp.get_json()
+    number = resp.get_json()['order_number']
+    with app.app_context():
+        order = Order.query.filter_by(order_number=number).one()
+        bb = Collection.query.filter_by(name=BASKETBALL).one().id
+        assert order.collection_id == bb
+        assert sorted(i.collection_id for i in order.items) == sorted([bb, 0])      # 0 = regular shop
+    head, rows = _xlsx_rows(app, bb, 'All Orders')
+    assert len(rows) == 1                                                            # only the team's own shirt
+    row = dict(zip(head, rows[0]))
+    assert 'Regular shop items' in row['Also Ordered From']
+    from routes.collection import _build_group_order_xlsx
+    with app.app_context():
+        order = Order.query.one()
+        order.payment_status = 'paid'
+        db.session.commit()
+        share = sum(i.subtotal for i in order.items if i.collection_id == bb)
+        book = openpyxl.load_workbook(io.BytesIO(_build_group_order_xlsx(db.session.get(Collection, bb), include_internal=True)))
+        summary = {r[0]: r[1] for r in book['Summary'].iter_rows(min_row=5, max_row=9, values_only=True)}
+    assert round(summary['Total Revenue'], 2) == round(share, 2)
+    from tests.conftest import ADMIN_EMAIL, _login
+    client.get('/auth/logout')
+    _login(client, ADMIN_EMAIL)
+    html = client.get(f'/admin/orders/{_order_id(app, number)}').get_data(as_text=True)
+    assert 'From: Regular shop' in html and f'From: {BASKETBALL}' in html
+
+
+def _order_id(app, number):
+    with app.app_context():
+        return Order.query.filter_by(order_number=number).one().id
