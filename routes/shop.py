@@ -917,6 +917,10 @@ def customize(product_slug):
     uniform_locked_color = None
     uniform_logo_locked = False
     coll = get_active_collection()
+    from utils.group_orders import leave_group_order, shopping_outside_group
+    if coll and shopping_outside_group(coll, product.id):
+        leave_group_order()          # a style the group does not sell: this is regular shopping
+        coll = None
     if coll:
         from utils.group_orders import is_not_yet_open
         blocked = ordering_blocked(coll, product.id)

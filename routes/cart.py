@@ -158,6 +158,10 @@ def add():
         team_store_choice,
     )
     collection = get_active_collection()
+    from utils.group_orders import leave_group_order, shopping_outside_group
+    if collection and shopping_outside_group(collection, product_id):
+        leave_group_order()          # not one of this group's styles: a regular shop item
+        collection = None
     catalog_section = None
     uniform_kit = None
     if collection:

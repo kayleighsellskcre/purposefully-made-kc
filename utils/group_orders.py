@@ -1348,6 +1348,19 @@ def product_in_collection(collection, product_id):
     return row is not None
 
 
+def shopping_outside_group(collection, product_id):
+    """True when the shopper opened a style this group store does not sell.
+
+    They are shopping the regular store, so they are taken out of the group
+    (instead of being bounced back to the group page with an error).
+    """
+    return bool(
+        collection and product_id
+        and collection_has_products(collection)
+        and not product_in_collection(collection, product_id)
+    )
+
+
 def collection_has_products(collection):
     if not collection:
         return False

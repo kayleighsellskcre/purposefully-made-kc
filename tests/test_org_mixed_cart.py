@@ -415,3 +415,31 @@ def test_one_payment_for_group_shirts_and_a_regular_item_keeps_each_in_its_place
 def _order_id(app, number):
     with app.app_context():
         return Order.query.filter_by(order_number=number).one().id
+
+
+def test_opening_a_style_the_group_does_not_sell_leaves_the_group_instead_of_an_error(client, admin_client, app, seed):
+    """Even if the group is still attached, a regular style opens as regular shopping."""
+    _build(admin_client, app, seed)
+    admin_client.get('/auth/logout')
+    _add_jersey(client, app, VOLLEYBALL, seed)            # the Soccer store does not sell the youth shirt
+    from models import Product
+    with app.app_context():
+        slug = db.session.get(Product, seed['youth_id']).slug
+    with client.session_transaction() as sess:
+        assert sess.get('collection_id')                  # still attached to the team
+    resp = client.get(f'/shop/customize/{slug}', follow_redirects=False)
+    assert resp.status_code == 200                        # opens normally, no bounce to the group page
+    with client.session_transaction() as sess:
+        assert not sess.get('collection_id')
+
+
+def test_adding_a_regular_style_while_still_attached_adds_it_as_a_regular_item(client, admin_client, app, seed, monkeypatch):
+    _build(admin_client, app, seed)
+    admin_client.get('/auth/logout')
+    _add_jersey(client, app, VOLLEYBALL, seed)
+    monkeypatch.setattr('utils.stock.check_stock', lambda *a, **k: (True, None, 99))
+    resp = client.post('/cart/add', data={'product_id': seed['youth_id'], 'size': 'M', 'color': 'Black',
+                                          'quantity': 1, 'placement': 'center_chest'})
+    assert resp.get_json().get('success'), resp.get_json()
+    cart = _cart(client)
+    assert any(not i.get('collection_id') for i in cart) and any(i.get('collection_id') for i in cart)
