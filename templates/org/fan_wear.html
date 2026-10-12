@@ -18,6 +18,17 @@
 .product-checkbox-info { display: flex; flex-direction: column; min-width: 0; }
 .product-checkbox-name { font-size: .9rem; font-weight: 600; line-height: 1.3; }
 .product-checkbox-info small { color: var(--text-secondary); font-size: .78rem; }
+.fw-groups { margin-top: 1rem; display: flex; flex-direction: column; gap: .7rem; }
+.fw-group { border: 1px solid var(--border-light); border-radius: 14px; background: #fffdf9; overflow: hidden; }
+.fw-group > summary { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .85rem 1.1rem; cursor: pointer; list-style: none; }
+.fw-group > summary::-webkit-details-marker { display: none; }
+.fw-group > summary::after { content: '+'; font-size: 1.4rem; line-height: 1; color: var(--accent-color); margin-left: .5rem; }
+.fw-group[open] > summary::after { content: '\2212'; }
+.fw-group-name { font-family: var(--font-heading); font-size: 1.1rem; font-weight: 600; flex: 1; }
+.fw-group-count { font-size: .84rem; color: var(--text-secondary); }
+.fw-group-count.has-picks { color: var(--accent-color); font-weight: 700; }
+.fw-group[open] > summary { border-bottom: 1px solid var(--border-light); }
+.fw-group .fw-products { padding: .9rem 1rem 1rem; margin-top: 0; }
 .fw-designs { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: .8rem; margin-top: 1rem; }
 .fw-design-wrap { position: relative; }
 .fw-design-del { position: absolute; top: -8px; right: -8px; width: 26px; height: 26px; border-radius: 50%; border: 2px solid #fff; background: #c0392b; color: #fff; font-size: 16px; line-height: 1; cursor: pointer; padding: 0; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
@@ -58,20 +69,33 @@
             <div class="fw-step"><span>1</span><h2>Shirt styles</h2></div>
             <p class="om-sub">Check every style families can order. Check youth and adult if both will order. Leave all unchecked to hide Fan Wear.</p>
             {% include 'includes/catalog_filter.html' %}
-            <div class="fw-products">
-                {% for product in products %}
-                <label class="product-checkbox" data-catalog-item data-age="{{ product.display_age or '' }}" data-age-raw="{{ product.age_group or '' }}" data-category="{{ product.display_category or '' }}" data-category-raw="{{ product.category or '' }}" data-brand="{{ product.display_brand or '' }}" data-brand-raw="{{ product.brand or '' }}" data-style="{{ product.style_number or '' }}">
-                    <input type="checkbox" name="products" value="{{ product.id }}" {% if product.id in checked_product_ids %}checked{% endif %}>
-                    <div class="product-checkbox-mockup">{% if product.preview_image_url %}<img src="{{ product.preview_image_url }}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">{% endif %}</div>
-                    <div class="product-checkbox-info">
-                        <span class="product-checkbox-name">{{ product|display_name }}</span>
-                        <small>{{ product.display_brand or '' }} &middot; {{ product.display_category or '' }} &middot; {{ product.style_number }}</small>
+            {% if products %}
+            <div class="fw-groups">
+                {% for category, group in products|groupby('display_category') %}
+                {% set picked = group|selectattr('id', 'in', checked_product_ids)|list|length %}
+                <details class="fw-group"{% if picked or loop.first %} open{% endif %}>
+                    <summary>
+                        <span class="fw-group-name">{{ category or 'Other' }}</span>
+                        <span class="fw-group-count" data-total="{{ group|length }}">{{ picked }} of {{ group|length }} selected</span>
+                    </summary>
+                    <div class="fw-products">
+                        {% for product in group %}
+                        <label class="product-checkbox" data-catalog-item data-age="{{ product.display_age or '' }}" data-age-raw="{{ product.age_group or '' }}" data-category="{{ product.display_category or '' }}" data-category-raw="{{ product.category or '' }}" data-brand="{{ product.display_brand or '' }}" data-brand-raw="{{ product.brand or '' }}" data-style="{{ product.style_number or '' }}">
+                            <input type="checkbox" name="products" value="{{ product.id }}" {% if product.id in checked_product_ids %}checked{% endif %}>
+                            <div class="product-checkbox-mockup">{% if product.preview_image_url %}<img src="{{ product.preview_image_url }}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">{% endif %}</div>
+                            <div class="product-checkbox-info">
+                                <span class="product-checkbox-name">{{ product|display_name }}</span>
+                                <small>{{ product.display_brand or '' }} &middot; {{ product.style_number }}</small>
+                            </div>
+                        </label>
+                        {% endfor %}
                     </div>
-                </label>
-                {% else %}
-                <p class="om-hint">No products available yet.</p>
+                </details>
                 {% endfor %}
             </div>
+            {% else %}
+            <p class="om-hint">No products available yet.</p>
+            {% endif %}
         </section>
 
         <section class="om-card">
@@ -126,6 +150,23 @@
 
 <script>
 (function () {
+    // "3 of 12 selected" per group, updated as styles are ticked
+    function updateGroupCounts() {
+        document.querySelectorAll('.fw-group').forEach(function (g) {
+            var total = g.querySelectorAll('input[name="products"]').length;
+            var n = g.querySelectorAll('input[name="products"]:checked').length;
+            var el = g.querySelector('.fw-group-count');
+            el.textContent = n + ' of ' + total + ' selected';
+            el.classList.toggle('has-picks', n > 0);
+        });
+    }
+    document.addEventListener('change', function (e) {
+        if (e.target && e.target.name === 'products') updateGroupCounts();
+    });
+    document.addEventListener('click', function (e) {          // "Select these" / "Clear" change many boxes at once
+        if (e.target && (e.target.id === 'catalogSelectVisible' || e.target.id === 'catalogClearFilters')) setTimeout(updateGroupCounts, 50);
+    });
+    updateGroupCounts();
     var pick = document.getElementById('fwNew');
     if (pick) pick.addEventListener('change', function () {
         document.getElementById('fwNewName').textContent = pick.files.length ? pick.files.length + ' design' + (pick.files.length === 1 ? '' : 's') + ' ready. Press Save.' : 'PNG, JPG or WEBP. New designs are shown to fans.';

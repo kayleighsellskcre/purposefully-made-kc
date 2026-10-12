@@ -434,3 +434,25 @@ def test_admin_list_filter_and_count_include_organization_cards(admin_client, ap
     html = admin_client.get('/admin/collections').get_data(as_text=True)
     assert 'class="org-card-admin"' in html and 'data-active="true"' in html
     assert "querySelectorAll('.collection-card, .org-card-admin')" in html
+
+
+# ── Shirt styles are grouped by type ─────────────────────────────────────────
+
+def test_fan_wear_styles_are_grouped_by_type_with_counts(admin_client, app, seed):
+    import re
+    _build(admin_client, app, seed)
+    html = admin_client.get(f'/org/{_org_slug(app)}/fan-wear').get_data(as_text=True)
+    groups = re.findall(r'<details class="fw-group"[^>]*>', html)
+    assert len(groups) >= 2                                   # at least Hoodie and Tee in the sample catalog
+    assert 'fw-group-count' in html and ' selected' in html
+    # grouping hides nothing: every shirt is still a checkbox in the form
+    assert html.count('name="products"') >= 3
+
+
+def test_a_group_with_picked_styles_starts_open(admin_client, app, seed):
+    import re
+    _build(admin_client, app, seed)
+    html = admin_client.get(f'/org/{_org_slug(app)}/fan-wear').get_data(as_text=True)
+    hoodie_group = html[html.index('<details class="fw-group"'):]
+    assert 'open' in re.match(r'<details class="fw-group"[^>]*>', hoodie_group).group(0)
+    assert re.search(r'1 of \d+ selected', html)             # the hoodie is the group's one picked style
