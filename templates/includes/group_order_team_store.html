@@ -105,6 +105,7 @@
                 <label for="uniform_away_youth_product_id">Youth away style <span class="text-muted">(optional)</span></label>
                 <select id="uniform_away_youth_product_id" name="uniform_away_youth_product_id" class="form-control">
                     <option value="">Same as youth Home style</option>
+                    <option value="none" {% if _away_ids and _youth_id and _youth_id not in _away_ids and not _away_youth_id %}selected{% endif %}>No youth Away jersey</option>
                     {% for product in products %}
                     <option value="{{ product.id }}" {% if _away_youth_id == product.id %}selected{% endif %}>
                         {{ product.display_age or product.age_group or '' }} {{ product|display_name }} - {{ product.style_number }}
@@ -114,6 +115,26 @@
             </div>
         </div>
         <p class="form-hint">Shoppers ordering for a player can choose Home, Away, or both. Family and friends can skip directly to fan wear.</p>
+
+        {% if jersey_logo_picker_here %}
+        <div class="jersey-logo-block" style="margin-top:1.25rem;">
+            <p style="font-weight:700;margin:0 0 .25rem;">Which logo goes on the jerseys?</p>
+            <p class="form-hint" style="margin:0 0 .6rem;">Pick from the designs ticked under "What design goes on the front?" below. It is already on the shirt, so players never choose it.</p>
+            <div class="team-store-grid">
+                <div>
+                    <p style="font-size:.85rem;font-weight:600;margin:0 0 .35rem;">Home jersey logo</p>
+                    <div id="homeLogoOptions" class="jersey-logo-options"></div>
+                    <p class="form-hint uniform-logo-empty" id="homeLogoEmpty" style="margin-top:.4rem;">Tick a design below and it will appear here.</p>
+                    <input type="hidden" name="uniform_home_design_id" id="uniform_home_design_id" value="{{ _uniform.get('home_design_id') or '' }}">
+                </div>
+                <div id="awayLogoPickerWrap" hidden>
+                    <p style="font-size:.85rem;font-weight:600;margin:0 0 .35rem;">Away jersey logo <span style="font-weight:400;color:#999;">(optional)</span></p>
+                    <div id="awayLogoOptions" class="jersey-logo-options"></div>
+                    <input type="hidden" name="uniform_away_design_id" id="uniform_away_design_id" value="{{ _uniform.get('away_design_id') or '' }}">
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
         <label class="team-store-toggle" style="margin-top:.75rem;">
             <input type="checkbox" id="fan_personalization_enabled"
@@ -229,7 +250,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function awayUniformIds() {
         const ids = [];
         const main = (awayProduct && awayProduct.value) || product.value;
-        const kid = (awayYouth && awayYouth.value) || (youth && youth.value) || '';
+        const rawKid = awayYouth ? awayYouth.value : '';
+        const kid = rawKid === 'none' ? '' : (rawKid || (youth && youth.value) || '');
         if (main) ids.push(main);
         if (kid && kid !== main) ids.push(kid);
         return ids;
@@ -326,15 +348,13 @@ document.addEventListener('DOMContentLoaded', function() {
     window.PMKCRefreshUniformLogos = renderUniformLogos;
 
     function syncFanProduct() {
-        const uniformIds = selectedUniformIds().concat(away.value ? awayUniformIds() : []);
+        // A jersey shirt can ALSO be offered as Fan Wear, so nothing is un-ticked or greyed out here.
         document.querySelectorAll('input[name="products"]').forEach(function(box) {
-            const isUniform = enabled.checked && uniformIds.indexOf(box.value) !== -1;
-            if (isUniform) box.checked = false;
-            box.disabled = isUniform;
+            box.disabled = false;
             const card = box.closest('.product-checkbox');
             if (card) {
-                card.classList.toggle('is-uniform-style', isUniform);
-                card.setAttribute('aria-disabled', isUniform ? 'true' : 'false');
+                card.classList.remove('is-uniform-style');
+                card.setAttribute('aria-disabled', 'false');
             }
         });
     }

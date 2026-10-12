@@ -44,7 +44,8 @@ class _Form(HTMLParser):
             else:
                 self.fields.append((name, a.get('value', '')))
         elif tag == 'select' and name and not a.get('disabled'):
-            self._select = {'name': name, 'first': None, 'chosen': None}
+            # Some menus are filled in by JavaScript from data-selected; a browser would submit that value.
+            self._select = {'name': name, 'first': None, 'chosen': None, 'data': a.get('data-selected')}
         elif tag == 'option' and self._select is not None:
             value = a.get('value', '')
             if self._select['first'] is None:
@@ -60,7 +61,9 @@ class _Form(HTMLParser):
 
     def handle_endtag(self, tag):
         if tag == 'select' and self._select is not None:
-            value = self._select['chosen'] if self._select['chosen'] is not None else self._select['first']
+            value = self._select['chosen']
+            if value is None:
+                value = self._select['data'] if self._select['data'] is not None else self._select['first']
             self.fields.append((self._select['name'], value or ''))
             self._select = None
         elif tag == 'textarea' and self._textarea is not None:

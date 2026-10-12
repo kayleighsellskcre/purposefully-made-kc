@@ -171,8 +171,7 @@ def _load_config(collection):
 def _apply_uniform(store, uniform, fan_ids):
     """Point the store at this team's jersey plus the shared fan wear."""
     config = _load_config(store)
-    jersey_ids = set(uniform.get('product_ids') or [])
-    fan_ids = [pid for pid in fan_ids if pid not in jersey_ids]
+    fan_ids = list(fan_ids)                  # a jersey shirt may also be a Fan Wear style
     config['version'] = 1
     config['uniform'] = uniform
     config['fan_product_ids'] = fan_ids

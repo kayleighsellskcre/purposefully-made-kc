@@ -179,7 +179,8 @@ def view(slug):
                 uniform_product = product
                 uniform_kits = kits
             uniform_products.append({'product': product, 'kits': kits})
-            continue
+            if product.id not in fan_ids:
+                continue          # jersey only; otherwise carry on and list it as Fan Wear too
         if store_config['configured'] and product.id not in fan_ids:
             continue
         allowed_colors = allowed_colors_for_product(product, collection)

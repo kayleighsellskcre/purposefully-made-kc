@@ -449,7 +449,6 @@
             var active = productInputs().filter(function(cb) { return cb.checked; });
             var openOnLoad = active.length <= 2;
             productInputs().forEach(function(cb) {
-                if (skip.has(String(cb.value))) return;
                 var card = cards[cb.value];
                 if (cb.checked && !card) {
                     card = buildCard(cb);

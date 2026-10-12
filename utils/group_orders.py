@@ -724,7 +724,7 @@ def _keep_team_store_on_edit(collection, checked_ids):
 
     current = team_store_config(collection)
     uniform_ids = list(current['uniform']['product_ids']) if current['uniform']['enabled'] else []
-    fan_ids = [pid for pid in checked_ids if pid not in uniform_ids]
+    fan_ids = list(dict.fromkeys(checked_ids))     # a jersey shirt may also be a Fan Wear style
 
     ids = list(dict.fromkeys(uniform_ids + fan_ids))
     if not ids:
@@ -806,10 +806,13 @@ def set_collection_products_from_form(collection):
         if not home_color:
             return [], 'Choose a Home color for the player uniform.'
         away_main = _as_int(request.form.get('uniform_away_product_id'))
-        away_youth = _as_int(request.form.get('uniform_away_youth_product_id'))
+        raw_away_youth = (request.form.get('uniform_away_youth_product_id') or '').strip()
+        no_youth_away = raw_away_youth == 'none'          # an adult-only Away jersey
+        away_youth = None if no_youth_away else _as_int(raw_away_youth)
         if away_color:
-            if away_main or away_youth:
-                away_ids = [pid for pid in (away_main or home_ids[0], away_youth or youth_id) if pid]
+            if away_main or away_youth or no_youth_away:
+                away_ids = [pid for pid in (away_main or home_ids[0],
+                                            None if no_youth_away else (away_youth or youth_id)) if pid]
                 away_ids = list(dict.fromkeys(away_ids))
             else:
                 away_ids = list(home_ids)
@@ -832,8 +835,7 @@ def set_collection_products_from_form(collection):
                 return [], 'The selected Home color is not available for every Home uniform style. Pick a color both youth and adult come in, or choose one style.'
         for pid in away_ids:
             if away_color not in (colors_by_product.get(pid) or set()):
-                return [], 'The selected Away color is not available for every Away uniform style. Pick a color both youth and adult come in, or leave Away blank.'
-        fan_ids = [pid for pid in fan_ids if pid not in uniform_ids]
+                return [], 'The selected Away color is not available for every Away uniform style. Pick a color both youth and adult come in, choose "No youth Away jersey", or leave Away blank.'
         allowed_logo_ids = set(allowed_design_ids(collection))
         for raw in request.form.getlist('allowed_designs'):
             did = _as_int(raw)
@@ -862,7 +864,6 @@ def set_collection_products_from_form(collection):
         if uniform_ids:
             team_home_colors = request.form.getlist('org_team_home_color[]')
             home_color = team_home_colors[0].strip() if team_home_colors else ''
-        fan_ids = [pid for pid in fan_ids if pid not in uniform_ids]
 
     ids = list(fan_ids)
     for pid in reversed(uniform_ids):
@@ -1095,7 +1096,7 @@ def sync_fan_wear_to_org(collection):
             continue  # legacy store with no jersey/fan setup: leave it alone
         current = team_store_config(sib)
         jerseys = current['uniform']['product_ids'] if current['uniform']['enabled'] else []
-        sib_fan = [pid for pid in fan_ids if pid not in jerseys]
+        sib_fan = list(fan_ids)
         cfg['fan_product_ids'] = sib_fan
         sib.team_store_config = json.dumps(cfg, separators=(',', ':'))
         sib.allowed_colors = collection.allowed_colors
@@ -1205,7 +1206,7 @@ def apply_org_fan_wear(org, product_ids, allowed_colors=_KEEP, excluded_design_i
             continue  # legacy store with no jersey/fan setup: leave it alone
         current = team_store_config(sib)
         jerseys = current['uniform']['product_ids'] if current['uniform']['enabled'] else []
-        sib_fan = [i for i in fan_ids if i not in jerseys]
+        sib_fan = list(fan_ids)
         cfg['fan_product_ids'] = sib_fan
         cfg['fan_show_jersey_logo'] = True      # the per-design list below is the one control
         cfg['fanwear_excluded_ids'] = excluded
