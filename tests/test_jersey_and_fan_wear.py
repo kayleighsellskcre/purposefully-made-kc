@@ -170,3 +170,13 @@ def test_a_jersey_shirt_is_not_greyed_out_in_the_fan_wear_list(admin_client, app
     html = admin_client.get(f'/admin/collections/{coll_id}/edit').get_data(as_text=True)
     assert 'box.disabled = isUniform' not in html                     # the old rule that greyed it out is gone
     assert 'A jersey shirt can ALSO be offered as Fan Wear' in html
+
+
+def test_the_fan_wear_page_names_the_organization_not_a_team(admin_client, client, app, seed):
+    _build(admin_client, app, seed)
+    page = client.get(f'/c/{_slug_of(app, TEAM)}?path=fan').get_data(as_text=True)
+    assert "You're ordering for <strong>Rainbow Cheetahs</strong>" in page
+    assert 'Rainbow Cheetahs Fan Wear - Purposefully Made KC' in page
+    assert "ordering for <strong>Basketball" not in page
+    team_page = client.get(f'/c/{_slug_of(app, TEAM)}').get_data(as_text=True)
+    assert 'Basketball' in team_page.split('<title>')[1].split('</title>')[0]

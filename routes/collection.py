@@ -260,7 +260,8 @@ def view(slug):
                          showcase_designs=showcase_designs,
                          catalog_filter_opts=filter_opts,
                          org_nav=org_nav,
-                         fan_page=fan_page)
+                         fan_page=fan_page,
+                         banner_name=(org_nav['org'].name if fan_page else None))
 
 
 # ── Organizer pays: the link collects name + size only ──────────────────────
