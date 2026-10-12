@@ -2905,6 +2905,7 @@ def collections():
         ]
         org_collection_ids.update(sec.collection_id for sec in sections)
         org.total_orders = sum(c['collection'].cached_order_count for c in org.grouped_collections)
+        org.team_store_count = sum(1 for c in org.grouped_collections if 'fan' not in (c['section'].label or '').lower())
         org.fan_art = fan_art_urls(org)
 
     standalone = [c for c in all_collections if c.id not in org_collection_ids]
@@ -3238,6 +3239,8 @@ def delete_collection(collection_id):
     from models import Order, OrgSection, GroupRosterEntry
     from sqlalchemy import text
     collection = Collection.query.get_or_404(collection_id)
+    team_section = OrgSection.query.filter_by(collection_id=collection_id).first()
+    team_org = team_section.organization if team_section else None
     try:
         # Step 1: nullify FK references that allow NULL
         db.session.query(Order).filter(Order.collection_id == collection_id).update(
@@ -3262,6 +3265,10 @@ def delete_collection(collection_id):
         # Step 5: now safe to delete the collection row itself
         db.session.delete(collection)
         db.session.commit()
+        if team_org is not None:      # the org's Fan Wear store follows its remaining teams
+            from utils.org_fan_store import sync_org_fan_store
+            sync_org_fan_store(team_org)
+            db.session.commit()
         flash('Group order deleted', 'success')
     except Exception as e:
         db.session.rollback()

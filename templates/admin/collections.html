@@ -140,7 +140,7 @@
                     <div class="org-card-teams">
                         {% for item in org.grouped_collections %}<span class="org-card-team">{{ item.section.icon }} {{ item.section.label }}</span>{% endfor %}
                     </div>
-                    <p class="org-group-count">{{ org.grouped_collections|length }} team store{{ '' if org.grouped_collections|length == 1 else 's' }} &middot; {{ org.total_orders }} order{{ '' if org.total_orders == 1 else 's' }}</p>
+                    <p class="org-group-count">{{ org.team_store_count }} team store{{ '' if org.team_store_count == 1 else 's' }}{% if org.team_store_count != org.grouped_collections|length %} + Fan Wear{% endif %} &middot; {{ org.total_orders }} order{{ '' if org.total_orders == 1 else 's' }}</p>
                     <div class="org-group-hdr-actions">
                         <a href="{{ url_for('org.manage', slug=org.slug) }}" class="go-chip go-chip--primary">Edit {{ org.name }}</a>
                         <a href="{{ url_for('org.landing', slug=org.slug) }}" class="go-chip" target="_blank" rel="noopener">View page &rarr;</a>

@@ -37,7 +37,7 @@
             <li class="om-team" data-id="{{ section.id }}" draggable="true">
                 <span class="om-grip" title="Drag to reorder" aria-hidden="true">&#8942;&#8942;</span>
                 <span class="om-team-icon" aria-hidden="true">{{ section.icon or '🏷️' }}</span>
-                <span class="om-team-name">{{ section.label }}{% if coll and not coll.is_active %}<small>Hidden from shoppers</small>{% endif %}</span>
+                <span class="om-team-name">{{ section.label }}{% if coll and not coll.is_active %}<small>Hidden from shoppers</small>{% elif coll %}<small>{{ order_counts.get(coll.id, 0) }} order{{ '' if order_counts.get(coll.id, 0) == 1 else 's' }}</small>{% endif %}</span>
                 <span class="om-team-actions">
                     {% if coll %}
                     {% if is_admin %}
@@ -127,6 +127,19 @@
             </ul>
             <a class="om-chip om-chip--primary" href="{{ url_for('org.fan_wear', slug=org.slug) }}">Edit Fan Wear</a>
         </div>
+        {% if fan_store %}
+        <div class="om-fan-orders">
+            <span><b>{{ order_counts.get(fan_store.id, 0) }}</b> Fan Wear order{{ '' if order_counts.get(fan_store.id, 0) == 1 else 's' }} so far
+                <small>kept apart from your teams' orders</small></span>
+            <span class="om-fan-orders-links">
+                <a class="om-chip" href="{{ url_for('collection.view', slug=fan_store.slug) }}" target="_blank" rel="noopener">View Fan Wear</a>
+                {% if is_admin %}
+                <a class="om-chip" href="{{ url_for('admin.orders', collection=fan_store.id) }}">Orders</a>
+                <a class="om-chip" href="{{ url_for('collection.export_xlsx', slug=fan_store.slug) }}">Excel</a>
+                {% endif %}
+            </span>
+        </div>
+        {% endif %}
         {% else %}
         <p class="om-empty-teams">Add a team first, then you can set up Fan Wear.</p>
         {% endif %}

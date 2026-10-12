@@ -33,15 +33,15 @@ def test_every_fan_wear_button_points_to_the_same_page(admin_client, client, app
     with app.app_context():
         org = Organization.query.filter_by(name='Rainbow Cheetahs').one()
         hub, dedicated = org_fan_hub(org)
-        assert hub is not None and not dedicated
+        assert hub is not None and dedicated           # Fan Wear is its own store
         url = org_fan_wear_url(org)
-        assert url.endswith('?path=fan#fanWearSection')
+        assert url == f'/c/{hub.slug}'
     landing = client.get(f'/org/{org.slug}').get_data(as_text=True)
-    assert url in landing or url.replace('&', '&amp;') in landing
-    # A team's nav bar keeps the shopper in their own store (cart stays intact).
+    assert url in landing
+    # Every team's nav bar opens that same page (when the cart is empty).
     _, slug, _, _ = _store(app, 'Soccer: Rainbow Cheetahs')
     page = client.get(f'/c/{slug}').get_data(as_text=True)
-    assert f'/c/{slug}?path=fan#fanWearSection' in page
+    assert f'href="{url}"' in page
 
 
 def test_fan_page_hides_jerseys_and_shows_org_designs(admin_client, client, app, seed):

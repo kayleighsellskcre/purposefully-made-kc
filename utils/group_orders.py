@@ -1067,6 +1067,14 @@ def org_fan_wear_url(org, current=None, stay=False):
     return url_for('collection.view', slug=target.slug) + '?path=fan#fanWearSection'
 
 
+def _refresh_org_fan_store(collection):
+    """A team's dates or designs changed: bring the org's Fan Wear store along."""
+    org, _section = org_for_collection(collection)
+    if org:
+        from utils.org_fan_store import sync_org_fan_store
+        sync_org_fan_store(org)
+
+
 def org_sync_info(collection):
     """The org when this is one of 2+ team stores (so "apply to all teams" makes sense)."""
     from utils.group_roster import is_organizer_pays
@@ -1109,6 +1117,8 @@ def sync_fan_wear_to_org(collection):
         by_id = {p.id: p for p in Product.query.filter(Product.id.in_(wanted)).all()} if wanted else {}
         sib.products = [by_id[i] for i in wanted if i in by_id]
         changed += 1
+    from utils.org_fan_store import sync_org_fan_store
+    sync_org_fan_store(org)
     return changed
 
 
@@ -1139,7 +1149,8 @@ def public_group_directory(*, skip_password_protected=False):
             from routes.org import fan_art_urls
             orgs.append({
                 'org': org,
-                'team_count': sum(1 for s in org.sections.all() if s.collection and s.collection.is_active),
+                'team_count': sum(1 for s in org.sections.all()
+                                  if s.collection and s.collection.is_active and not _is_fan_label(s.label)),
                 'fan_art': fan_art_urls(org),
             })
         else:
@@ -1222,6 +1233,8 @@ def apply_org_fan_wear(org, product_ids, allowed_colors=_KEEP, excluded_design_i
         by_id = {p.id: p for p in Product.query.filter(Product.id.in_(wanted)).all()} if wanted else {}
         sib.products = [by_id[i] for i in wanted if i in by_id]
         changed += 1
+    from utils.org_fan_store import sync_org_fan_store
+    sync_org_fan_store(org)
     return changed
 
 
@@ -1720,6 +1733,8 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
 
     if request.form.get('sync_fan_to_org') == 'on':
         sync_fan_wear_to_org(collection)
+    else:
+        _refresh_org_fan_store(collection)
 
     ok, organizer_error, organizer_notice = apply_organizer_from_form(collection, user)
     if not ok:

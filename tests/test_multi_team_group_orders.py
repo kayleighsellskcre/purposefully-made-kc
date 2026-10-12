@@ -70,8 +70,8 @@ def test_wizard_builds_every_team_store_with_its_own_jersey(admin_client, app, s
     with app.app_context():
         org = Organization.query.filter_by(name='Rainbow Cheetahs').one()
         sections = OrgSection.query.filter_by(organization_id=org.id).order_by(OrgSection.sort_order).all()
-        assert [s.label for s in sections] == ['Basketball', 'Soccer', 'Volleyball']
-        assert [s.icon for s in sections] == ['🏀', '⚽', '🏐']
+        assert [s.label for s in sections] == ['Basketball', 'Soccer', 'Volleyball', 'Fan Wear']   # Fan Wear is its own store
+        assert [s.icon for s in sections] == ['🏀', '⚽', '🏐', '👕']
         assert sections[0].collection.slug == 'rainbow-cheetahs'
 
     _, _, bb, bb_allowed = _store(app, 'Basketball: Rainbow Cheetahs')

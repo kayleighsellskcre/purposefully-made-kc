@@ -63,6 +63,31 @@ def deadline_reminders_job(app):
             print(f"deadline reminders failed: {exc}", file=sys.stderr, flush=True)
 
 
+def org_fan_stores_job(app):
+    """Give every existing organization its own Fan Wear store (runs once at startup)."""
+    with app.app_context():
+        try:
+            with _one_worker_at_a_time(731003) as mine:
+                if not mine:
+                    return
+                from models import db, Organization
+                from utils.org_fan_store import fan_store_for, sync_org_fan_store
+                made = 0
+                for org in Organization.query.filter_by(is_active=True).all():
+                    if fan_store_for(org) is None and sync_org_fan_store(org) is not None:
+                        made += 1
+                db.session.commit()
+                if made:
+                    print(f"FAN WEAR STORES CREATED: {made}", file=sys.stderr, flush=True)
+        except Exception as exc:
+            try:
+                from models import db
+                db.session.rollback()
+            except Exception:
+                pass
+            print(f"fan wear store setup failed: {exc}", file=sys.stderr, flush=True)
+
+
 def unsaved_payments_job(app):
     """Create any paid order the customer's phone never finished; alert if that fails."""
     with app.app_context():
@@ -562,6 +587,13 @@ def init_scheduler(app):
             trigger=DateTrigger(run_date=datetime.now() + timedelta(seconds=30)),
             id='startup_ss_images',
             name='Startup S&S Image Sync (one-time)',
+            replace_existing=True
+        )
+        scheduler.add_job(
+            func=lambda: org_fan_stores_job(app),
+            trigger=DateTrigger(run_date=datetime.now() + timedelta(seconds=20)),
+            id='startup_org_fan_stores',
+            name='Startup Fan Wear store setup (one-time)',
             replace_existing=True
         )
         # Startup live inventory sync removed — the nightly 3 AM job handles this.

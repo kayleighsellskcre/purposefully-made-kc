@@ -174,7 +174,11 @@ def test_a_jersey_shirt_is_not_greyed_out_in_the_fan_wear_list(admin_client, app
 
 def test_the_fan_wear_page_names_the_organization_not_a_team(admin_client, client, app, seed):
     _build(admin_client, app, seed)
-    page = client.get(f'/c/{_slug_of(app, TEAM)}?path=fan').get_data(as_text=True)
+    from utils.org_fan_store import fan_store_for
+    from models import Organization
+    with app.app_context():
+        fan_slug = fan_store_for(Organization.query.filter_by(name='Rainbow Cheetahs').one()).slug
+    page = client.get(f'/c/{fan_slug}').get_data(as_text=True)
     assert "You're ordering for <strong>Rainbow Cheetahs</strong>" in page
     assert 'Rainbow Cheetahs Fan Wear - Purposefully Made KC' in page
     assert "ordering for <strong>Basketball" not in page

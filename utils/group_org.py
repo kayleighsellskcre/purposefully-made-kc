@@ -321,6 +321,8 @@ def create_org_from_wizard(collection, form, user):
             sort_order=sort_idx,
         ))
     db.session.flush()
+    from utils.org_fan_store import sync_org_fan_store
+    sync_org_fan_store(org)
     return org, stores
 
 

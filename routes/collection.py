@@ -222,7 +222,7 @@ def view(slug):
             'current_section': org_section,
             'sections': [sec for sec in org.sections
                          if sec.collection and sec.collection.is_active],
-            'fan_wear_url': org_fan_wear_url(org, current=collection),
+            'fan_wear_url': org_fan_wear_url(org, current=collection, stay=_cart_holds_store(collection)),
         }
 
     # Fan Wear page (?path=fan, or the org's dedicated Fan section): the same
@@ -261,7 +261,8 @@ def view(slug):
                          catalog_filter_opts=filter_opts,
                          org_nav=org_nav,
                          fan_page=fan_page,
-                         banner_name=(org_nav['org'].name if fan_page else None))
+                         banner_name=(org_nav['org'].name
+                                      if fan_page and 'fan' in (org_section.label or '').lower() else None))
 
 
 # ── Organizer pays: the link collects name + size only ──────────────────────
@@ -369,6 +370,19 @@ def _managed_roster_collection(slug):
     if not is_organizer_pays(collection) or not user_can_manage_collection(collection):
         return None
     return collection
+
+
+def _cart_holds_store(collection):
+    """True when the shopper already has items from this store in their cart.
+
+    A cart holds one store, so then Fan Wear opens inside this store instead of
+    swapping the cart for the separate Fan Wear store.
+    """
+    try:
+        from utils.cart_store import get_cart
+        return any(isinstance(i, dict) and i.get('collection_id') == collection.id for i in get_cart())
+    except Exception:
+        return False
 
 
 @collection_bp.route('/<slug>/roster.xlsx')

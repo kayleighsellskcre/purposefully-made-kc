@@ -338,6 +338,8 @@ def manage(slug):
                 if 'organization_id' in [c['name'] for c in inspect(db.engine).get_columns('collection')]:
                     db.session.execute(text('UPDATE collection SET organization_id = NULL '
                                             'WHERE organization_id = :id'), {'id': org.id})
+                from utils.org_fan_store import retire_org_fan_store
+                retire_org_fan_store(org)
                 OrgSection.query.filter_by(organization_id=org.id).delete(synchronize_session=False)
                 db.session.delete(org)
                 db.session.commit()
@@ -381,6 +383,9 @@ def manage(slug):
                     # Tag the collection so we know which org it belongs to
                     collection.organization_id = org.id
                     db.session.add(section)
+                    db.session.flush()
+                    from utils.org_fan_store import sync_org_fan_store
+                    sync_org_fan_store(org)
                     db.session.commit()
                     flash(f'"{label}" section added.', 'success')
 
@@ -391,6 +396,9 @@ def manage(slug):
             ).first()
             if section:
                 db.session.delete(section)
+                db.session.flush()
+                from utils.org_fan_store import sync_org_fan_store
+                sync_org_fan_store(org)
                 db.session.commit()
                 flash('Section removed.', 'success')
 
@@ -406,7 +414,19 @@ def manage(slug):
 
         return redirect(url_for('org.manage', slug=slug))
 
+    from utils.org_fan_store import fan_store_for, is_auto_fan_store
+    from models import Order
     sections = org.sections.order_by(OrgSection.sort_order).all()
+    fan_store = fan_store_for(org)
+    if fan_store is not None and is_auto_fan_store(fan_store):
+        sections = [sec for sec in sections if sec.collection_id != fan_store.id]   # shown on the Fan Wear card
+    else:
+        fan_store = None
+    order_counts = dict(
+        db.session.query(Order.collection_id, db.func.count(Order.id))
+        .filter(Order.collection_id.in_([s.collection_id for s in sections] + ([fan_store.id] if fan_store else [])))
+        .group_by(Order.collection_id).all()
+    )
     in_org = {sec.collection_id for sec in OrgSection.query.all()}
     available_collections = [
         c for c in Collection.query.filter_by(is_active=True).order_by(Collection.name).all()
@@ -420,6 +440,8 @@ def manage(slug):
         available_collections=available_collections,
         photos=org_photos(org),
         fan_summary=_fan_summary(org),
+        fan_store=fan_store,
+        order_counts=order_counts,
         is_admin=is_admin,
     )
 
@@ -590,6 +612,8 @@ def fan_wear_delete_design(slug, design_id):
     if photos['hero'] is not None:
         photos['hero'] = [k for k in photos['hero'] if k != f'fan:{design_id}']
     _save_photo_cfg(org, photos)
+    from utils.org_fan_store import sync_org_fan_store
+    sync_org_fan_store(org)
 
     design = Design.query.get(design_id)
     deleted = False
