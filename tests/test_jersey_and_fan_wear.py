@@ -180,3 +180,15 @@ def test_the_fan_wear_page_names_the_organization_not_a_team(admin_client, clien
     assert "ordering for <strong>Basketball" not in page
     team_page = client.get(f'/c/{_slug_of(app, TEAM)}').get_data(as_text=True)
     assert 'Basketball' in team_page.split('<title>')[1].split('</title>')[0]
+
+
+def test_the_fan_wear_page_hides_the_team_cover_photo(admin_client, client, app, seed):
+    _build(admin_client, app, seed)
+    with app.app_context():
+        coll = Collection.query.filter_by(name=TEAM).one()
+        coll.cover_image = 'uploads/team_cover_marker.png'
+        from models import db
+        db.session.commit()
+    slug = _slug_of(app, TEAM)
+    assert 'team_cover_marker' in client.get(f'/c/{slug}').get_data(as_text=True)
+    assert 'team_cover_marker' not in client.get(f'/c/{slug}?path=fan').get_data(as_text=True)

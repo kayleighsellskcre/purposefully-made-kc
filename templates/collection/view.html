@@ -505,7 +505,7 @@
 {% block content %}
 <div class="page-header">
     <div class="container">
-        {% if collection.cover_image %}
+        {% if collection.cover_image and not (fan_page and org_nav) %}
         <div class="group-order-cover">
             <img src="{{ collection.cover_image | image_url }}"
                  alt="{{ collection.card_title or collection.name }}"
