@@ -125,22 +125,6 @@ def test_a_fan_wear_style_can_not_be_ordered_as_a_jersey_from_the_fan_store(admi
     assert resp.status_code == 400
 
 
-def test_shoppers_with_team_items_stay_in_their_team_for_fan_wear(admin_client, client, app, seed):
-    """A cart holds one store, so Fan Wear must not swap out a cart that already has a team's items."""
-    _build(admin_client, app, seed)
-    _, fan_slug = _fan(app)
-    team_slug = _slug_of(app, TEAM)
-    client.get(f'/c/{team_slug}')
-    resp = client.post('/cart/add', data={
-        'product_id': seed['tee_id'], 'size': 'M', 'color': 'Black', 'quantity': 1,
-        'catalog_section': 'uniform', 'uniform_kit': 'home', 'placement': 'center_chest',
-    })
-    assert resp.get_json().get('success'), resp.get_json()
-    page = client.get(f'/c/{team_slug}').get_data(as_text=True)
-    assert f'/c/{team_slug}?path=fan#fanWearSection' in page
-    assert f'href="/c/{fan_slug}"' not in page
-
-
 # ── Staying in step with the teams ───────────────────────────────────────────
 
 def test_saving_fan_wear_updates_the_fan_store(admin_client, app, seed):
@@ -262,3 +246,56 @@ def test_a_hand_made_fan_section_is_never_overwritten(admin_client, app, seed):
         sync_org_fan_store(org)
         db.session.commit()
         assert team_store_config(fan_store_for(org))['fan_product_ids'] == [seed['tee_id']]
+
+
+# ── Audit follow-ups ─────────────────────────────────────────────────────────
+
+def test_saving_the_fan_wear_store_from_its_edit_page_keeps_it_following_the_teams(admin_client, app, seed):
+    """Saving it once used to drop its marker, after which it silently stopped following the teams."""
+    _build(admin_client, app, seed)
+    _save_edit(admin_client, app, lambda d: None, name='Fan Wear: Rainbow Cheetahs')
+    with app.app_context():
+        assert is_auto_fan_store(fan_store_for(_org(app)))
+    later = (datetime.utcnow() + timedelta(days=60)).strftime('%Y-%m-%d')
+    for name in ('Soccer: Rainbow Cheetahs', 'Volleyball: Rainbow Cheetahs', TEAM):
+        _save_edit(admin_client, app, lambda d: d.update(order_deadline=[later]), name=name)
+    with app.app_context():
+        assert fan_store_for(_org(app)).order_deadline is not None
+
+
+def test_a_problem_syncing_fan_wear_never_blocks_a_team_save(admin_client, app, seed, monkeypatch):
+    _build(admin_client, app, seed)
+
+    def boom(*a, **k):
+        raise RuntimeError('fan store exploded')
+    monkeypatch.setattr('utils.org_fan_store._fill', boom)
+    later = (datetime.utcnow() + timedelta(days=20)).strftime('%Y-%m-%d')
+    _save_edit(admin_client, app, lambda d: d.update(order_deadline=[later]), name=TEAM)
+    with app.app_context():
+        team = Collection.query.filter_by(name=TEAM).one()
+        assert team.order_deadline is not None                 # the team's own save went through
+
+
+def test_deleting_the_last_team_closes_the_fan_wear_store(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    with app.app_context():
+        ids = [c.id for c in Collection.query.filter(Collection.name.in_(
+            [f'{n}: Rainbow Cheetahs' for n in ('Basketball', 'Soccer', 'Volleyball')])).all()]
+    for coll_id in ids:
+        admin_client.post(f'/admin/collections/{coll_id}/delete', follow_redirects=True)
+    with app.app_context():
+        assert not fan_store_for(_org(app)).is_active
+
+
+def test_admin_orders_can_be_filtered_to_just_fan_wear(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    fan_id, _ = _fan(app)
+    with app.app_context():
+        team_id = Collection.query.filter_by(name=TEAM).one().id
+        for collection_id, number in ((fan_id, 'FAN-5001'), (team_id, 'TEAM-5001')):
+            db.session.add(Order(order_number=number, collection_id=collection_id, email='x@example.com',
+                                 first_name='X', last_name='Y', subtotal=5, total=5, status='pending'))
+        db.session.commit()
+    html = admin_client.get(f'/admin/orders?collection={fan_id}&status=all').get_data(as_text=True)
+    assert 'FAN-5001' in html and 'TEAM-5001' not in html
+    assert 'Fan Wear: Rainbow Cheetahs' in html                      # named in the store filter

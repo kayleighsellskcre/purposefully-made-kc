@@ -877,8 +877,10 @@ def set_collection_products_from_form(collection):
     if not ids:
         collection.products = []
         if configured:
+            from utils.org_fan_store import is_auto_fan_store
             collection.team_store_config = json.dumps({
                 'version': 1,
+                **({'org_fan_store': True} if is_auto_fan_store(collection) else {}),
                 'uniform': {'enabled': False},
                 'fan_product_ids': [],
                 'fan_personalization_enabled': False,
@@ -896,8 +898,10 @@ def set_collection_products_from_form(collection):
     collection.products = selected
     if configured:
         primary = uniform_ids[0] if uniform_ids else None
+        from utils.org_fan_store import is_auto_fan_store
         collection.team_store_config = json.dumps({
             'version': 1,
+            **({'org_fan_store': True} if is_auto_fan_store(collection) else {}),   # keeps Fan Wear following the teams
             'uniform': {
                 'enabled': bool(primary),
                 'product_id': primary,
@@ -1410,6 +1414,118 @@ def get_active_collection(cart=None):
         session.pop('collection_id', None)
         return None
     return collection
+
+
+# ── One cart, one payment, several stores of the same organization ─────────────
+#
+# A parent can put a Basketball jersey, a Volleyball jersey and Fan Wear in one
+# cart and pay once. Each shirt remembers the store it came from
+# (OrderItem.collection_id), so every group's admin list and Excel file still
+# shows exactly its own shirts. Stores of different organizations never mix.
+
+def _org_id_of(collection_id):
+    """The active organization this store belongs to, or None."""
+    if not collection_id:
+        return None
+    from models import OrgSection
+    section = OrgSection.query.filter_by(collection_id=collection_id).first()
+    org = section.organization if section else None
+    return org.id if org is not None and org.is_active else None
+
+
+def stores_share_an_org(collection_id, other_id):
+    """True when two stores are the same store or belong to the same organization."""
+    if collection_id == other_id:
+        return True
+    org_id = _org_id_of(collection_id)
+    return org_id is not None and org_id == _org_id_of(other_id)
+
+
+def cart_collections(cart):
+    """The distinct stores a cart's items came from, in the order first added."""
+    seen, out = set(), []
+    for item in cart or []:
+        cid = item.get('collection_id') if isinstance(item, dict) else None
+        try:
+            cid = int(cid) if cid is not None else None
+        except (TypeError, ValueError):
+            cid = None
+        if cid and cid not in seen:
+            seen.add(cid)
+            coll = Collection.query.get(cid)
+            if coll is not None:
+                out.append(coll)
+    return out
+
+
+def cart_group_label(cart, fallback=None):
+    """What to call the group(s) in a cart: the store, or the organization when it spans several."""
+    stores = cart_collections(cart)
+    if len(stores) > 1:
+        org, _section = org_for_collection(stores[0])
+        if org:
+            return org.name
+    return (stores[0].name if stores else None) or fallback
+
+
+def orders_for_collection(collection_id):
+    """Orders with at least one shirt from this store (older orders: the order's own store)."""
+    from models import Order, OrderItem, db
+    return Order.query.filter(db.or_(
+        Order.collection_id == collection_id,
+        Order.id.in_(db.session.query(OrderItem.order_id).filter(OrderItem.collection_id == collection_id)),
+    ))
+
+
+def order_counts_by_collection():
+    """{store id: number of orders with shirts from it}, counting shared payments for every store."""
+    from models import Order, OrderItem, db
+    pairs = db.session.query(Order.collection_id, Order.id).filter(Order.collection_id.isnot(None)).union(
+        db.session.query(OrderItem.collection_id, OrderItem.order_id).filter(OrderItem.collection_id.isnot(None))
+    ).subquery()
+    return dict(db.session.query(pairs.c[0], db.func.count()).group_by(pairs.c[0]).all())
+
+
+def filter_orders_to_collection(query, collection_id):
+    """Narrow any Order query to the orders that have shirts from this store."""
+    from models import Order, OrderItem, db
+    try:
+        collection_id = int(collection_id)
+    except (TypeError, ValueError):
+        pass
+    return query.filter(db.or_(
+        Order.collection_id == collection_id,
+        Order.id.in_(db.session.query(OrderItem.order_id).filter(OrderItem.collection_id == collection_id)),
+    ))
+
+
+def order_store_ids(order):
+    """Ids of every store this order has shirts from (always includes its own store)."""
+    ids = []
+    if order.collection_id:
+        ids.append(order.collection_id)
+    for item in order.items:
+        if item.collection_id and item.collection_id not in ids:
+            ids.append(item.collection_id)
+    return ids
+
+
+def order_items_for_store(order, collection_id):
+    """The shirts of this order that belong to one store."""
+    return [i for i in order.items
+            if (i.collection_id or order.collection_id) == collection_id]
+
+
+def order_group_label(order):
+    """Group name for an order: its store, or the organization when it spans several stores."""
+    ids = order_store_ids(order)
+    if len(ids) > 1:
+        coll = Collection.query.get(ids[0])
+        org, _section = org_for_collection(coll) if coll else (None, None)
+        if org:
+            return org.name
+    coll = getattr(order, 'collection', None)
+    return coll.name if coll else None
 
 
 def access_code_required(collection):

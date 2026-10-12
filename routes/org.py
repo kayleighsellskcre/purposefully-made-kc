@@ -422,11 +422,8 @@ def manage(slug):
         sections = [sec for sec in sections if sec.collection_id != fan_store.id]   # shown on the Fan Wear card
     else:
         fan_store = None
-    order_counts = dict(
-        db.session.query(Order.collection_id, db.func.count(Order.id))
-        .filter(Order.collection_id.in_([s.collection_id for s in sections] + ([fan_store.id] if fan_store else [])))
-        .group_by(Order.collection_id).all()
-    )
+    from utils.group_orders import order_counts_by_collection
+    order_counts = order_counts_by_collection()
     in_org = {sec.collection_id for sec in OrgSection.query.all()}
     available_collections = [
         c for c in Collection.query.filter_by(is_active=True).order_by(Collection.name).all()

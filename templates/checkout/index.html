@@ -303,6 +303,7 @@
                         {% endif %}
                         <div class="summary-item-info">
                             <strong>{{ item.quantity }}× {{ item.product_name or 'Item' }}</strong>
+                            {% if item.store_name %}<p class="summary-design-name">For {{ item.store_name }}</p>{% endif %}
                             {% if item.design_title %}
                             <p class="summary-design-name">{{ item.design_title }}</p>
                             {% endif %}

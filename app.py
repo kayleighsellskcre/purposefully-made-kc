@@ -273,6 +273,8 @@ def create_app(config_class=Config):
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS organization_id INTEGER REFERENCES organization(id)",
                     "ALTER TABLE organization ADD COLUMN IF NOT EXISTS photo_config TEXT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS deadline_reminder_sent_at TIMESTAMP",
+                    "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS collection_id INTEGER",
+                    "CREATE INDEX IF NOT EXISTS ix_order_item_collection_id ON order_item (collection_id)",
                 ]
                 for migration in all_migrations:
                     try:
@@ -662,6 +664,33 @@ def create_app(config_class=Config):
             'rembg_model_loaded': bool(getattr(__import__('services.image_processing', fromlist=['_SESSION_CACHE']), '_SESSION_CACHE', {})),
         })
 
+    @app.template_global('order_group_label')
+    def _order_group_label(order):
+        """Group name for an order: its store, or the organization when it spans several."""
+        from utils.group_orders import order_group_label
+        try:
+            return order_group_label(order)
+        except Exception:
+            return None
+
+    @app.template_global('store_order_count')
+    def _store_order_count(collection):
+        from utils.group_orders import orders_for_collection
+        return orders_for_collection(collection.id).count()
+
+    @app.template_global('item_store_name')
+    def _item_store_name(item, order):
+        """Which store one shirt came from, only when the order spans several stores."""
+        from models import Collection
+        from utils.group_orders import order_store_ids
+        try:
+            if len(order_store_ids(order)) < 2:
+                return None
+            coll = db.session.get(Collection, item.collection_id or order.collection_id)
+            return coll.name if coll else None
+        except Exception:
+            return None
+
     # Add custom template filters
     @app.template_filter('image_url')
     def image_url_filter(path_or_url):
@@ -805,6 +834,8 @@ def create_app(config_class=Config):
 
         from datetime import datetime as _dt
         active_group_order = None
+        cart_group_name = None
+        cart_group_url = None
         try:
             from utils.group_orders import get_active_collection
             # The "You're ordering for X" banner used to render on every page
@@ -818,6 +849,12 @@ def create_app(config_class=Config):
             _banner_endpoints = {'shop.customize', 'shop.product_detail'}
             if request.blueprint in _banner_blueprints or request.endpoint in _banner_endpoints:
                 active_group_order = get_active_collection(cart)
+                from utils.group_orders import cart_collections, cart_group_label
+                if active_group_order and len(cart_collections(cart)) > 1:
+                    cart_group_name = cart_group_label(cart)      # several stores in one cart: name the organization
+                    from utils.group_orders import org_for_collection
+                    _org, _sec = org_for_collection(active_group_order)
+                    cart_group_url = f'/org/{_org.slug}' if _org else None
         except Exception:
             active_group_order = None
         # Canonical URL and origin for <link rel="canonical"> and Open Graph.
@@ -857,6 +894,8 @@ def create_app(config_class=Config):
             'admin_email': admin_email,
             'is_site_admin': is_site_admin,
             'active_group_order': active_group_order,
+            'cart_group_name': cart_group_name,
+            'cart_group_url': cart_group_url,
             'site_origin': site_origin,
             'canonical_url': canonical_url,
             'robots_directive': robots_directive,

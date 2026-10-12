@@ -222,7 +222,7 @@ def view(slug):
             'current_section': org_section,
             'sections': [sec for sec in org.sections
                          if sec.collection and sec.collection.is_active],
-            'fan_wear_url': org_fan_wear_url(org, current=collection, stay=_cart_holds_store(collection)),
+            'fan_wear_url': org_fan_wear_url(org, current=collection),
         }
 
     # Fan Wear page (?path=fan, or the org's dedicated Fan section): the same
@@ -370,19 +370,6 @@ def _managed_roster_collection(slug):
     if not is_organizer_pays(collection) or not user_can_manage_collection(collection):
         return None
     return collection
-
-
-def _cart_holds_store(collection):
-    """True when the shopper already has items from this store in their cart.
-
-    A cart holds one store, so then Fan Wear opens inside this store instead of
-    swapping the cart for the separate Fan Wear store.
-    """
-    try:
-        from utils.cart_store import get_cart
-        return any(isinstance(i, dict) and i.get('collection_id') == collection.id for i in get_cart())
-    except Exception:
-        return False
 
 
 @collection_bp.route('/<slug>/roster.xlsx')
@@ -656,7 +643,24 @@ def _build_group_order_xlsx(collection, include_internal=False):
 
     from datetime import datetime
 
-    orders = collection.orders.all()
+    # Orders with shirts from this store. A parent can pay for several stores of an
+    # organization at once; each store's file lists only its own shirts, and the
+    # "Also Ordered From" column says what else was in the same payment.
+    from utils.group_orders import orders_for_collection, order_items_for_store, order_store_ids
+    orders = orders_for_collection(collection.id).all()
+
+    def mine(order):
+        return order_items_for_store(order, collection.id)
+
+    def also_from(order):
+        ids = [i for i in order_store_ids(order) if i != collection.id]
+        names = {c.id: c.name for c in Collection.query.filter(Collection.id.in_(ids)).all()} if ids else {}
+        return ', '.join(names[i] for i in ids if i in names)
+
+    def group_money(order):
+        """This store's share of an order's items (all of it unless the order spans several stores)."""
+        return sum(i.subtotal for i in mine(order)) if len(order_store_ids(order)) > 1 else order.subtotal
+
     orders.sort(key=lambda o: (
         0 if o.send_home_with_child else 1,
         (o.teacher_name or '').strip().lower(),
@@ -682,8 +686,8 @@ def _build_group_order_xlsx(collection, include_internal=False):
     ws_sum.merge_cells('A3:F3')
 
     paid_orders   = [o for o in orders if o.payment_status == 'paid']
-    total_revenue = sum(o.total for o in paid_orders)
-    total_items   = sum(item.quantity for o in orders for item in o.items)
+    total_revenue = sum((o.total if len(order_store_ids(o)) < 2 else group_money(o)) for o in paid_orders)
+    total_items   = sum(item.quantity for o in orders for item in mine(o))
 
     ws_sum['A5'] = 'Total Orders';  ws_sum['B5'] = len(orders)
     ws_sum['A6'] = 'Paid Orders';   ws_sum['B6'] = len(paid_orders)
@@ -719,7 +723,7 @@ def _build_group_order_xlsx(collection, include_internal=False):
         'Payment', 'Status',
         'Items', 'Subtotal', 'Shipping', 'Tax', 'Total', 'Notes',
         'Paid With', 'Amount Paid', 'Paid On', 'Promo Code',
-        'Production Stage', 'Ship To', 'Tracking',
+        'Production Stage', 'Ship To', 'Tracking', 'Also Ordered From',
     ]
     if include_internal:
         ord_headers += ['Admin Notes', 'Cost of Goods', 'Profit']
@@ -728,7 +732,7 @@ def _build_group_order_xlsx(collection, include_internal=False):
     ws_ord.row_dimensions[1].height = 22
 
     for idx, order in enumerate(orders, start=2):
-        items_count = sum(i.quantity for i in order.items)
+        items_count = sum(i.quantity for i in mine(order))
         ws_ord.append([
             order.order_number,
             format_central(order.created_at, '%Y-%m-%d %I:%M %p') if order.created_at else '',
@@ -743,7 +747,7 @@ def _build_group_order_xlsx(collection, include_internal=False):
             order.payment_status or '',
             order.status or '',
             items_count,
-            order.subtotal,
+            group_money(order),
             order.shipping_cost or 0,
             order.tax or 0,
             order.total,
@@ -755,18 +759,19 @@ def _build_group_order_xlsx(collection, include_internal=False):
             _stage_label(order.production_stage),
             _ship_to(order),
             ' '.join(x for x in (order.carrier or '', order.tracking_number or '') if x),
+            also_from(order),
         ] + ([
             order.admin_notes or '',
             order.cost_of_goods if order.cost_of_goods is not None else '',
             order.profit if order.profit is not None else '',
         ] if include_internal else []))
         style_data_row(ws_ord, idx, len(ord_headers), alt=(idx % 2 == 0))
-        money_cols = [14, 15, 16, 17, 20] + ([27, 28] if include_internal else [])
+        money_cols = [14, 15, 16, 17, 20] + ([28, 29] if include_internal else [])
         for col in money_cols:
             ws_ord.cell(row=idx, column=col).number_format = MONEY_FMT
 
     set_col_widths(ws_ord, [18, 18, 22, 28, 14, 12, 12, 18, 18, 10, 10, 14, 7, 10, 10, 8, 10, 30,
-                            12, 12, 18, 12, 18, 36, 22] + ([30, 12, 10] if include_internal else []))
+                            12, 12, 18, 12, 18, 36, 22, 24] + ([30, 12, 10] if include_internal else []))
     ws_ord.freeze_panes = 'B2'
     ws_ord.auto_filter.ref = ws_ord.dimensions
 
@@ -786,7 +791,7 @@ def _build_group_order_xlsx(collection, include_internal=False):
 
     row_idx = 2
     for order in orders:
-        for item in order.items:
+        for item in mine(order):
             back_meta = {}
             if item.back_design_meta:
                 try:
@@ -843,7 +848,7 @@ def _build_group_order_xlsx(collection, include_internal=False):
         'Item Notes', 'Unit Price', 'Line Total',
         'Order Subtotal', 'Shipping', 'Tax', 'Order Total',
         'Paid With', 'Payment Status', 'Amount Paid', 'Promo Code',
-        'Order Status', 'Production Stage', 'Tracking', 'Customer Notes',
+        'Order Status', 'Production Stage', 'Tracking', 'Customer Notes', 'Also Ordered From',
     ]
     if include_internal:
         all_headers += ['Admin Notes']
@@ -855,7 +860,7 @@ def _build_group_order_xlsx(collection, include_internal=False):
 
     row_idx = 2
     for n, order in enumerate(orders):
-        items = list(order.items) or [None]
+        items = mine(order) or [None]
         for i, item in enumerate(items):
             first = i == 0
             meta = (item.back_design_details or {}) if item else {}
@@ -916,6 +921,7 @@ def _build_group_order_xlsx(collection, include_internal=False):
                 _stage_label(order.production_stage),
                 ' '.join(x for x in (order.carrier or '', order.tracking_number or '') if x),
                 order.customer_notes or '',
+                also_from(order),
             ] + ([order.admin_notes or ''] if include_internal else []))
             # Alternate shading by order, not by row, so one order's shirts read as a block.
             style_data_row(ws_all, row_idx, len(all_headers), alt=(n % 2 == 1))
@@ -936,7 +942,7 @@ def _build_group_order_xlsx(collection, include_internal=False):
         26, 10, 10,
         12, 10, 9, 11,
         11, 13, 11, 12,
-        13, 17, 22, 30,
+        13, 17, 22, 30, 24,
     ] + ([30] if include_internal else []))
     ws_all.freeze_panes = 'D2'
     ws_all.auto_filter.ref = ws_all.dimensions
@@ -970,7 +976,7 @@ def _build_group_order_xlsx(collection, include_internal=False):
     tally    = {}
     all_sizes = set()
     for order in orders:
-        for item in order.items:
+        for item in mine(order):
             section = (
                 f'{(item.uniform_kit or "Player").title()} Uniform'
                 if item.catalog_section == 'uniform'

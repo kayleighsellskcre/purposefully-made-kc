@@ -101,7 +101,7 @@
                     <p class="wf-card-send-home">Send home: {{ order.child_name or 'child' }}{% if order.teacher_name %} · {{ order.teacher_name }}{% endif %}</p>
                     {% endif %}
                     {% if order.collection %}
-                    <p class="wf-card-group">{{ order.collection.name }}</p>
+                    <p class="wf-card-group">{{ order_group_label(order) or order.collection.name }}</p>
                     {% endif %}
                     <div class="wf-card-meta">
                         <span>${{ "%.2f"|format(order.total) }}</span>

@@ -101,46 +101,53 @@ def sync_org_fan_store(org):
     Never raises. Safe to call after any team or Fan Wear change.
     """
     try:
-        from utils.group_org import _unique_slug
-        from utils.group_orders import _team_sections, org_fan_wear_state
-
-        existing = fan_store_for(org)
-        if existing is not None and not is_auto_fan_store(existing):
-            return existing                      # someone built Fan Wear by hand: leave it alone
-
-        teams = [sec.collection for sec in _team_sections(org)]
-        state = org_fan_wear_state(org)
-        lead = state['lead']
-        if lead is None:
-            if existing is not None:
-                existing.is_active = False       # no teams left: nothing to sell
-            return existing
-
-        if existing is None:
-            if not state['fan_product_ids']:
-                return None                      # nothing for fans yet: no store needed
-            from utils.group_org import _copy_store
-            existing = _copy_store(
-                lead,
-                name=f'{FAN_LABEL}: {org.name}',
-                slug=_unique_slug(Collection, f'{org.name}-fan-wear'),
-            )
-            db.session.add(existing)
-            db.session.flush()
-            last = db.session.query(db.func.max(OrgSection.sort_order)).filter_by(
-                organization_id=org.id).scalar() or 0
-            db.session.add(OrgSection(
-                organization_id=org.id, collection_id=existing.id,
-                label=FAN_LABEL, icon=FAN_ICON, sort_order=last + 1,
-            ))
-        _fill(existing, org, teams, state, lead)
-        db.session.flush()
-        return existing
+        # A savepoint: if anything in here fails, only this part is undone and the
+        # team or Fan Wear save that called us still goes through.
+        with db.session.begin_nested():
+            return _sync(org)
     except Exception:
         from flask import current_app
         current_app.logger.exception('could not sync the Fan Wear store for organization %s',
                                      getattr(org, 'id', '?'))
         return None
+
+
+def _sync(org):
+    from utils.group_org import _unique_slug
+    from utils.group_orders import _team_sections, org_fan_wear_state
+
+    existing = fan_store_for(org)
+    if existing is not None and not is_auto_fan_store(existing):
+        return existing                      # someone built Fan Wear by hand: leave it alone
+
+    teams = [sec.collection for sec in _team_sections(org)]
+    state = org_fan_wear_state(org)
+    lead = state['lead']
+    if lead is None:
+        if existing is not None:
+            existing.is_active = False       # no teams left: nothing to sell
+        return existing
+
+    if existing is None:
+        if not state['fan_product_ids']:
+            return None                      # nothing for fans yet: no store needed
+        from utils.group_org import _copy_store
+        existing = _copy_store(
+            lead,
+            name=f'{FAN_LABEL}: {org.name}',
+            slug=_unique_slug(Collection, f'{org.name}-fan-wear'),
+        )
+        db.session.add(existing)
+        db.session.flush()
+        last = db.session.query(db.func.max(OrgSection.sort_order)).filter_by(
+            organization_id=org.id).scalar() or 0
+        db.session.add(OrgSection(
+            organization_id=org.id, collection_id=existing.id,
+            label=FAN_LABEL, icon=FAN_ICON, sort_order=last + 1,
+        ))
+    _fill(existing, org, teams, state, lead)
+    db.session.flush()
+    return existing
 
 
 def retire_org_fan_store(org):

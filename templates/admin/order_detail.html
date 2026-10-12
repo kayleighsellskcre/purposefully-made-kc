@@ -317,6 +317,8 @@
             <header class="od-kit-head">
                 <div>
                     <h3>{{ item.product_name }}</h3>
+                    {% set store_name = item_store_name(item, order) %}
+                    {% if store_name %}<p><strong>From: {{ store_name }}</strong></p>{% endif %}
                     {% if item.catalog_section == 'uniform' %}
                     <p><strong>{{ (item.uniform_kit or 'Player')|title }} Player Uniform</strong></p>
                     {% elif item.catalog_section == 'fan' %}

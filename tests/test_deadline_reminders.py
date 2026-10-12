@@ -215,3 +215,17 @@ def test_an_organization_without_team_organizers_uses_the_organizations_organize
     assert _run(app) == {'groups': 1, 'emails': 2}
     mail = _to(outbox, 'president@example.com')
     assert len(mail) == 1 and all(t in mail[0].body for t in ('Basketball', 'Soccer', 'Volleyball'))
+
+
+def test_the_fan_wear_store_joins_the_organizations_reminder_instead_of_sending_its_own(admin_client, app, seed, outbox):
+    from tests.test_org_fan_wear import _build, _store
+    from utils.org_fan_store import sync_org_fan_store
+    from models import Organization
+    _build(admin_client, app, seed)
+    for team in ('Basketball', 'Soccer', 'Volleyball'):
+        _prepare(app, _store(app, f'{team}: Rainbow Cheetahs')[0], created_by_user_id=seed['customer_id'])
+    with app.app_context():
+        sync_org_fan_store(Organization.query.filter_by(name='Rainbow Cheetahs').one())   # Fan Wear closes today too
+        db.session.commit()
+    assert _run(app) == {'groups': 1, 'emails': 2}            # still one email each, not extra ones for Fan Wear
+    assert 'Fan Wear' in _to(outbox, CUSTOMER_EMAIL)[0].body          # the teams' organizer hears about Fan Wear too

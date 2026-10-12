@@ -36,6 +36,7 @@
                            and then an "Order Summary" h2, so an h3 here made the
                            outline jump a level and then go backwards. #}
                         <h2>{{ item.product|display_name }}</h2>
+                        {% if item.store_name %}<p class="item-transfer"><strong>For {{ item.store_name }}</strong></p>{% endif %}
                         {% if item.get('catalog_section') == 'uniform' %}
                         <p class="item-transfer"><strong>{{ (item.get('uniform_kit') or 'player')|title }} Player Uniform</strong></p>
                         {% elif item.get('catalog_section') == 'fan' %}
@@ -104,7 +105,7 @@
                 </div>
                 <p class="cart-tax-note">Tax and shipping are added at checkout.</p>
 
-                {% if fan_wear_url %}
+                {% if fan_wear_url and not org_url %}
                 <div class="cart-next-step">
                     <span class="cart-next-step-eyebrow">Player uniform added</span>
                     <strong>Need family or fan wear too?</strong>
@@ -113,9 +114,17 @@
                         Add Family &amp; Fan Wear
                     </a>
                 </div>
+                {% elif org_url %}
+                <div class="cart-next-step">
+                    <span class="cart-next-step-eyebrow">Shopping for the whole family?</span>
+                    <strong>Add anything else to this same cart.</strong>
+                    <p>Jerseys from another team, family and fan wear, anything you like. Everything is paid for together, and each team still gets its own order.</p>
+                    {% if fan_wear_url %}<a href="{{ fan_wear_url }}" class="btn btn-primary btn-block">Add Family &amp; Fan Wear</a>{% endif %}
+                    {% if org_url %}<a href="{{ org_url }}" class="btn btn-outline btn-block" style="margin-top:.5rem">Add another team</a>{% endif %}
+                </div>
                 {% endif %}
                 
-                <a href="{{ url_for('checkout.index') }}" class="btn {% if fan_wear_url %}btn-outline{% else %}btn-primary{% endif %} btn-block">
+                <a href="{{ url_for('checkout.index') }}" class="btn {% if fan_wear_url or org_url %}btn-outline{% else %}btn-primary{% endif %} btn-block">
                     Proceed to Checkout
                 </a>
                 

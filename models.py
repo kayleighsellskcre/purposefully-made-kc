@@ -709,6 +709,10 @@ class OrderItem(db.Model):
     # Group-store lane snapshot: fan | uniform, plus home | away for uniforms.
     catalog_section = db.Column(db.String(20))
     uniform_kit = db.Column(db.String(20))
+    # Which group store this shirt was ordered from. One checkout can hold shirts
+    # from several stores of the same organization (Basketball + Volleyball + Fan
+    # Wear). Empty on older orders: those belong to the order's own store.
+    collection_id = db.Column(db.Integer, index=True)
     
     # Quantity and pricing
     quantity = db.Column(db.Integer, nullable=False, default=1)

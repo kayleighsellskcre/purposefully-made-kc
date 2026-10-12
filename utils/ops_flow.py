@@ -166,8 +166,23 @@ def ops_order_query(default_stages):
     query = orders_for_stages(stages)
     collection_id = current_collection() or None
     if collection_id:
-        query = query.filter_by(collection_id=collection_id)
+        from utils.group_orders import filter_orders_to_collection
+        query = filter_orders_to_collection(query, collection_id)
     return query, stages, collection_id
+
+
+def ops_order_query_for(stages):
+    """Like ops_order_query, but always these stages (the page's own ?stage= is ignored).
+
+    The weekly shopping lists are only about orders still to be bought. Orders
+    waiting on supplies were already ordered from the vendors.
+    """
+    query = orders_for_stages(list(stages))
+    collection_id = current_collection() or None
+    if collection_id:
+        from utils.group_orders import filter_orders_to_collection
+        query = filter_orders_to_collection(query, collection_id)
+    return query, list(stages), collection_id
 
 
 def template_context():

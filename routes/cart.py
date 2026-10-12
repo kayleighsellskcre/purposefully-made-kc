@@ -32,19 +32,27 @@ def index():
 
     active_group_order = get_active_collection(cart)
     fan_wear_url = None
-    if active_group_order and any(
-        isinstance(item, dict) and item.get('catalog_section') == 'uniform'
-        for item in cart
-    ):
-        from utils.group_orders import org_fan_wear_url, org_for_collection
+    org_url = None
+    store_names = {}
+    if active_group_order:
+        from utils.group_orders import cart_collections, org_fan_wear_url, org_for_collection
         org, _sec = org_for_collection(active_group_order)
         if org:
-            fan_wear_url = org_fan_wear_url(org, current=active_group_order, stay=True)
-        elif team_store_config(active_group_order).get('fan_product_ids'):
+            org_url = url_for('org.landing', slug=org.slug)
+            fan_wear_url = org_fan_wear_url(org, current=active_group_order)
+            # Fan Wear is its own store now; no need to offer it when it is already in the cart.
+            if any(isinstance(i, dict) and i.get('catalog_section') == 'fan' for i in cart) and                     fan_wear_url and fan_wear_url.split('?')[0].rstrip('/').endswith(
+                        tuple(c.slug for c in cart_collections(cart))):
+                fan_wear_url = None
+        elif team_store_config(active_group_order).get('fan_product_ids') and any(
+                isinstance(i, dict) and i.get('catalog_section') == 'uniform' for i in cart):
             fan_wear_url = (
                 url_for('collection.view', slug=active_group_order.slug, path='fan')
                 + '#fanWearSection'
             )
+        stores = cart_collections(cart)
+        if len(stores) > 1:
+            store_names = {c.id: c.name for c in stores}
     
     # Enrich cart items with product details
     cart_items = []
@@ -79,6 +87,7 @@ def index():
 
             cart_items.append({
                 **item,
+                'store_name': store_names.get(item.get('collection_id')),
                 'product': product,
                 'item_total': item_total,
                 'image_url': display_front or None,
@@ -98,7 +107,8 @@ def index():
                          cart_items=cart_items,
                          subtotal=subtotal,
                          active_group_order=active_group_order,
-                         fan_wear_url=fan_wear_url)
+                         fan_wear_url=fan_wear_url,
+                         org_url=org_url)
 
 
 @cart_bp.route('/add', methods=['POST'])
@@ -499,13 +509,19 @@ def add():
 
     # Don't mix a group order with regular shop items (or another group)
     new_cid = cart_item['collection_id']
-    mixed = [
-        item for item in cart
-        if isinstance(item, dict) and (item.get('collection_id') or None) != new_cid
-    ]
+    # Stores of the same organization (Basketball + Volleyball + Fan Wear) share one cart.
+    from utils.group_orders import stores_share_an_org
+
+    def _compatible(item):
+        cid = item.get('collection_id') or None
+        if cid is None or new_cid is None:
+            return cid == new_cid
+        return stores_share_an_org(cid, new_cid)
+
+    mixed = [item for item in cart if isinstance(item, dict) and not _compatible(item)]
     mixed_notice = None
     if mixed:
-        cart[:] = [item for item in cart if isinstance(item, dict) and (item.get('collection_id') or None) == new_cid]
+        cart[:] = [item for item in cart if isinstance(item, dict) and _compatible(item)]
         mixed_notice = (
             'This group order replaced other items in your cart so everything stays in one store.'
             if new_cid else
@@ -523,7 +539,8 @@ def add():
             item.get('back_design_url') == back_design_url and
             item.get('back_design_meta') == back_design_meta and
             item.get('catalog_section') == catalog_section and
-            item.get('uniform_kit') == uniform_kit):
+            item.get('uniform_kit') == uniform_kit and
+            (item.get('collection_id') or None) == new_cid):
             item['quantity'] += quantity
             found = True
             break

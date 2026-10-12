@@ -24,15 +24,22 @@ def _json_error(message, code, status=400, **extra):
 
 
 def _group_cart_error(cart, collection):
-    """Revalidate group-store lane, product, and color before payment."""
-    scopes = {
-        item.get('collection_id') or None
-        for item in cart or []
-        if isinstance(item, dict)
-    }
-    if len(scopes) > 1:
-        return 'Your cart contains items from different stores. Please return to your cart and choose one store.'
-    if any(scopes) and collection is None:
+    """Revalidate group-store lane, product, and color before payment.
+
+    A cart may hold shirts from several stores of ONE organization (Basketball,
+    Volleyball, Fan Wear). Each shirt is checked against the store it came from.
+    """
+    from models import Collection
+    from utils.group_orders import stores_share_an_org
+
+    items = [i for i in cart or [] if isinstance(i, dict)]
+    scopes = {i.get('collection_id') or None for i in items}
+    group_ids = [c for c in scopes if c]
+    if group_ids and None in scopes:
+        return 'Your cart mixes group items with regular shop items. Please return to your cart and choose one.'
+    if any(not stores_share_an_org(group_ids[0], other) for other in group_ids[1:]):
+        return 'Your cart contains items from different groups. Please return to your cart and choose one group.'
+    if group_ids and collection is None:
         return 'This group order is no longer available. Please return to the group store.'
     if not collection:
         return None
@@ -42,17 +49,22 @@ def _group_cart_error(cart, collection):
         ordering_blocked,
         team_store_choice,
     )
-    for item in cart or []:
-        if not isinstance(item, dict) or item.get('collection_id') != collection.id:
-            return 'Every item must come from the same group store.'
+    stores = {}
+    for item in items:
+        cid = item.get('collection_id')
+        if cid not in stores:
+            stores[cid] = db.session.get(Collection, cid) if cid else None
+        store = stores[cid]
+        if store is None or not store.is_active:
+            return 'This group order is no longer available. Please return to the group store.'
         product = Product.query.get(_int_or_none(item.get('product_id')))
         if not product:
             return 'One of the items in your cart is no longer available.'
-        blocked = ordering_blocked(collection, product.id)
+        blocked = ordering_blocked(store, product.id)
         if blocked:
             return blocked
         section, kit, locked_color, error = team_store_choice(
-            collection,
+            store,
             product.id,
             item.get('catalog_section'),
             item.get('uniform_kit'),
@@ -63,7 +75,7 @@ def _group_cart_error(cart, collection):
         if locked_color and color != locked_color:
             return f'The {kit.title()} uniform is now offered in {locked_color}. Please add it again.'
         if section == 'fan':
-            allowed = allowed_colors_for_product(product, collection)
+            allowed = allowed_colors_for_product(product, store)
             if allowed is not None and color not in allowed:
                 return 'A fan-wear color in your cart is no longer offered. Please add that item again.'
     return None
@@ -291,14 +303,27 @@ def _send_order_confirmation_email(order):
         return head
 
     order_items = order.items.all() if hasattr(order.items, 'all') else list(order.items or [])
-    items_text = '\n'.join(_item_lines(item) for item in order_items)
+    from utils.group_orders import order_group_label, order_store_ids
+    from models import Collection as _Collection
+    _store_ids = order_store_ids(order)
+    _store_names = ({c.id: c.name for c in _Collection.query.filter(_Collection.id.in_(_store_ids)).all()}
+                    if len(_store_ids) > 1 else {})
+
+    def _tagged(item):
+        line = _item_lines(item)
+        tag = _store_names.get(item.collection_id or order.collection_id)
+        return f"{line}\n      for {tag}" if tag else line
+
+    items_text = '\n'.join(_tagged(item) for item in order_items)
     from utils.group_orders import (
         group_pickup_details,
         group_pickup_heading,
         group_pickup_next_step,
     )
     pickup_coll = getattr(order, 'collection', None)
-    group_name = (getattr(pickup_coll, 'name', None) or '').strip()
+    group_name = (order_group_label(order) or '').strip()
+    if _store_names:                          # one payment, several groups: say which
+        group_name += ' (' + ', '.join(_store_names[i] for i in _store_ids if i in _store_names) + ')'
     pickup_heading = group_pickup_heading(pickup_coll)
     pickup_details = group_pickup_details(pickup_coll)
     pickup_next_step = group_pickup_next_step(pickup_coll)
@@ -836,8 +861,12 @@ def index():
     
     from utils.order_artwork import FRONT_PLACEMENTS, existing_image_url, mockup_urls
     enriched_cart = []
+    from utils.group_orders import cart_collections
+    _stores = cart_collections(cart)
+    _store_names = {c.id: c.name for c in _stores} if len(_stores) > 1 else {}
     for item in cart:
         enriched = dict(item)
+        enriched['store_name'] = _store_names.get(item.get('collection_id'))
         try:
             prod = Product.query.get(item.get('product_id'))
             enriched['product_name'] = prod.name if prod else 'Item'
@@ -1267,6 +1296,7 @@ def build_order_items(order, cart, rid='-'):
                     cart_item.get('catalog_section'), 20
                 ),
                 uniform_kit=_clip(cart_item.get('uniform_kit'), 20),
+                collection_id=_int_or_none(cart_item.get('collection_id')),
                 quantity=qty,
                 unit_price=unit_price,
                 subtotal=qty * unit_price,

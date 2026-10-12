@@ -503,7 +503,8 @@ def orders():
     else:
         query = orders_for_stage(stage)
     if collection_id:
-        query = query.filter_by(collection_id=collection_id)
+        from utils.group_orders import filter_orders_to_collection
+        query = filter_orders_to_collection(query, collection_id)
     if order_type:
         if order_type == 'retail':
             query = query.filter(or_(Order.order_type == 'retail', Order.order_type == None))
@@ -2878,12 +2879,8 @@ def collections():
         c.list_active = bool(c.is_active) and not is_deadline_passed(c)
 
     # Pre-compute order counts in ONE query instead of one .count() per card.
-    order_counts = dict(
-        db.session.query(Order.collection_id, func.count(Order.id))
-        .filter(Order.collection_id.isnot(None))
-        .group_by(Order.collection_id)
-        .all()
-    )
+    from utils.group_orders import order_counts_by_collection
+    order_counts = order_counts_by_collection()
     for c in all_collections:
         c.cached_order_count = order_counts.get(c.id, 0)
 
@@ -3419,7 +3416,8 @@ def transfer_production():
         csv_query = orders_for_stages(csv_stages)
         cid = request.args.get('collection') or current_collection() or None
         if cid:
-            csv_query = csv_query.filter_by(collection_id=cid)
+            from utils.group_orders import filter_orders_to_collection
+            csv_query = filter_orders_to_collection(csv_query, cid)
         csv_orders = csv_query.order_by(Order.created_at).all()
         from utils.print_sizes import group_production_rows
         rows = group_production_rows(
@@ -3467,7 +3465,8 @@ def production_master_move():
     query, _stages, collection_id = ops_order_query(['order_received', 'waiting_supplies'])
     if request.form.get('collection') or collection_id:
         cid = request.form.get('collection') or collection_id
-        query = query.filter_by(collection_id=cid)
+        from utils.group_orders import filter_orders_to_collection
+        query = filter_orders_to_collection(query, cid)
 
     orders = query.all()
     count = 0
@@ -3502,9 +3501,10 @@ def production():
 @admin_required
 def blank_apparel_list():
     """Weekly blank shopping list — nothing is purchased until you check out at S&S/SanMar."""
-    from utils.ops_flow import ops_order_query
+    from utils.ops_flow import ops_order_query_for
     from utils.blank_orders import build_blank_shopping_list
-    query, _stages, collection_id = ops_order_query(['order_received', 'waiting_supplies'])
+    # New orders only: anything waiting on supplies was already ordered from the vendors.
+    query, _stages, collection_id = ops_order_query_for(['order_received'])
     orders = query.all()
     shopping = build_blank_shopping_list(orders)
 
@@ -3586,7 +3586,8 @@ def print_labels():
     else:
         query = orders_for_stages(stage_filter)
         if collection_id:
-            query = query.filter_by(collection_id=collection_id)
+            from utils.group_orders import filter_orders_to_collection
+            query = filter_orders_to_collection(query, collection_id)
 
     from utils.ops_flow import packing_sort_key
 
@@ -3674,9 +3675,10 @@ def production_bulk_sheet():
 @admin_required
 def dtf_batch_sheets():
     """Weekly DTF shopping list — nothing is purchased until you check out on the DTF site."""
-    from utils.ops_flow import ops_order_query
+    from utils.ops_flow import ops_order_query_for
     from utils.dtf_orders import build_dtf_shopping_list
-    query, _stages, collection_id = ops_order_query(['order_received', 'waiting_supplies'])
+    # New orders only: anything waiting on supplies was already ordered from the vendors.
+    query, _stages, collection_id = ops_order_query_for(['order_received'])
     orders = query.order_by(Order.created_at).all()
     shopping = build_dtf_shopping_list(orders)
 
@@ -5133,7 +5135,8 @@ def production_workflow():
     for sid, _name, _desc in stages:
         query = orders_for_stage(sid).options(joinedload(Order.collection))
         if collection_id:
-            query = query.filter_by(collection_id=collection_id)
+            from utils.group_orders import filter_orders_to_collection
+            query = filter_orders_to_collection(query, collection_id)
         orders_by_stage[sid] = query.order_by(Order.created_at).all()
     from datetime import datetime
     return render_template('admin/operations/workflow.html', stages=stages, orders_by_stage=orders_by_stage, now=datetime.utcnow())

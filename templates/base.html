@@ -163,10 +163,10 @@
     {% if active_group_order %}
     <div class="group-order-banner">
         <div class="container group-order-banner-inner">
-            <p>You're ordering for <strong>{{ banner_name or active_group_order.name }}</strong>.</p>
+            <p>You're ordering for <strong>{{ banner_name or cart_group_name or active_group_order.name }}</strong>.</p>
             <div class="group-order-banner-actions">
                 {% if request.endpoint != 'collection.view' %}
-                <a href="{{ url_for('collection.view', slug=active_group_order.slug) }}">← Back to {{ active_group_order.name }}</a>
+                <a href="{{ cart_group_url or url_for('collection.view', slug=active_group_order.slug) }}">← Back to {{ cart_group_name or active_group_order.name }}</a>
                 {% endif %}
                 <a href="{{ url_for('collection.leave', next=url_for('main.index')) }}">Exit group store</a>
             </div>

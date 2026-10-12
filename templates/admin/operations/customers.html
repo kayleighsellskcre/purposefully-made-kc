@@ -28,7 +28,7 @@
             <thead><tr><th>Name</th><th>Orders</th><th>Link</th></tr></thead>
             <tbody>
                 {% for c in collections %}
-                <tr><td>{{ c.name }}</td><td>{{ c.orders.count() }}</td>
+                <tr><td>{{ c.name }}</td><td>{{ store_order_count(c) }}</td>
                     <td><a href="{{ url_for('collection.view', slug=c.slug) }}" target="_blank">View</a></td></tr>
                 {% else %}<tr><td colspan="3" class="text-muted">No group orders yet.</td></tr>{% endfor %}
             </tbody>

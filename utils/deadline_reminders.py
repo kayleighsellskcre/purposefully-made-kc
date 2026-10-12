@@ -63,9 +63,18 @@ def _store_contacts(store, org):
         if email and email.lower() not in {e.lower() for e, _ in found}:
             found.append((email, (name or '').strip() or None))
 
-    if store.created_by is not None:
+    from utils.org_fan_store import is_auto_fan_store
+    if org is not None and is_auto_fan_store(store):
+        # Fan Wear belongs to the whole organization: every team's organizer hears about it.
+        from utils.group_orders import _team_sections
+        for sec in _team_sections(org):
+            if sec.collection.created_by is not None:
+                add(sec.collection.created_by.email, sec.collection.created_by.first_name)
+            add(sec.collection.pending_organizer_email)
+    elif store.created_by is not None:
         add(store.created_by.email, store.created_by.first_name)
-    add(store.pending_organizer_email)
+    if not (org is not None and is_auto_fan_store(store)):
+        add(store.pending_organizer_email)
     if not found and org is not None:
         if org.created_by is not None:
             add(org.created_by.email, org.created_by.first_name)
@@ -77,7 +86,8 @@ def _count(store):
     if getattr(store, 'payment_mode', None) == 'organizer_pays':
         n = GroupRosterEntry.query.filter_by(collection_id=store.id).count()
         return n, 'size' if n == 1 else 'sizes'
-    n = Order.query.filter_by(collection_id=store.id).count()
+    from utils.group_orders import orders_for_collection
+    n = orders_for_collection(store.id).count()
     return n, 'order' if n == 1 else 'orders'
 
 

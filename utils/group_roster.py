@@ -51,7 +51,7 @@ def apply_payment_mode_from_form(collection):
             raw == ORGANIZER_PAYS
             and previous != ORGANIZER_PAYS
             and getattr(collection, 'id', None)
-            and collection.orders.count() > 0
+            and _has_orders(collection)
         ):
             return False, ('Shoppers have already placed orders on this group order, so it '
                            'cannot switch to you paying for the whole group. Start a new '
@@ -204,7 +204,12 @@ def roster_item(collection, app=None):
 
 def roster_closed(collection) -> bool:
     """The organizer has placed the group's order, so the link stops taking sizes."""
-    return collection.orders.count() > 0
+    return _has_orders(collection)
+
+
+def _has_orders(collection):
+    from utils.group_orders import orders_for_collection
+    return orders_for_collection(collection.id).count() > 0
 
 
 def roster_entries(collection):
