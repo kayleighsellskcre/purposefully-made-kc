@@ -1106,6 +1106,45 @@ def sync_fan_wear_to_org(collection):
     return changed
 
 
+def public_group_directory(*, skip_password_protected=False):
+    """What the public may see: (organizations, plain stores), newest first.
+
+    One card per organization (never one per team), nothing past its deadline,
+    and a hidden organization takes all of its stores off the list. Shared by
+    the homepage and the Group Orders page so they can never disagree.
+    """
+    from models import Collection, OrgSection
+
+    query = publicly_listed_collections().order_by(Collection.created_at.desc())
+    if skip_password_protected:
+        query = query.filter(Collection.is_password_protected == False)  # noqa: E712
+    orgs, stores, seen = [], [], set()
+    for c in query.all():
+        if is_deadline_passed(c):
+            continue
+        section = OrgSection.query.filter_by(collection_id=c.id).first()
+        org = section.organization if section else None
+        if org is not None and not org.is_active:
+            continue                                  # hidden organization: its stores stay hidden
+        if org is not None:
+            if org.id in seen:
+                continue
+            seen.add(org.id)
+            from routes.org import fan_art_urls
+            orgs.append({
+                'org': org,
+                'team_count': sum(1 for s in org.sections.all() if s.collection and s.collection.is_active),
+                'fan_art': fan_art_urls(org),
+            })
+        else:
+            stores.append({
+                'collection': c,
+                'product_count': visible_store_product_count(c),
+                'not_yet_open': is_not_yet_open(c),
+            })
+    return orgs, stores
+
+
 def org_fan_wear_state(org):
     """What the org's shared Fan Wear currently looks like (for the Fan Wear page).
 

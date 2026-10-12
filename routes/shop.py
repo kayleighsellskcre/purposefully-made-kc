@@ -377,47 +377,10 @@ def group_orders():
     from utils.group_orders import (
         is_deadline_passed,
         is_not_yet_open,
-        publicly_listed_collections,
-        visible_store_product_count,
+        public_group_directory,
     )
 
-    directory = (
-        publicly_listed_collections()
-        .order_by(Collection.created_at.desc())
-        .all()
-    )
-
-    # Separate org-grouped collections from standalone ones.
-    # If a collection belongs to an Organization, show the org card once
-    # (linking to /org/<slug>) instead of individual team store cards.
-    org_ids_seen = set()
-    open_orgs = []        # Organization umbrella cards
-    open_collections = [] # Standalone (non-org) collection cards
-
-    for c in directory:
-        if is_deadline_passed(c):
-            continue
-        section = OrgSection.query.filter_by(collection_id=c.id).first()
-        if section and section.organization and not section.organization.is_active:
-            continue          # hidden organization: its stores stay off the public list
-        if section and section.organization:
-            org = section.organization
-            if org.id not in org_ids_seen:
-                org_ids_seen.add(org.id)
-                # Count active team stores in this org
-                team_count = sum(
-                    1 for s in org.sections.all()
-                    if s.collection and s.collection.is_active
-                )
-                from routes.org import fan_art_urls
-                open_orgs.append({'org': org, 'team_count': team_count,
-                                  'fan_art': fan_art_urls(org)})
-        else:
-            open_collections.append({
-                'collection': c,
-                'product_count': visible_store_product_count(c),
-                'not_yet_open': is_not_yet_open(c),
-            })
+    open_orgs, open_collections = public_group_directory()
 
     return render_template(
         'shop/group_orders.html',

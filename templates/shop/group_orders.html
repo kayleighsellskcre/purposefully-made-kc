@@ -4,7 +4,7 @@
 {% block extra_css %}
 <style>
 .group-orders-content {
-    padding: 4rem 0 6rem;
+    padding: 3rem 0 5rem;
 }
 .steps-grid {
     display: grid;
@@ -94,9 +94,9 @@
 }
 /* ── Directory ── */
 .directory-section {
-    margin-top: 5rem;
-    padding-top: 3.5rem;
-    border-top: 2px solid var(--border-light);
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
 }
 .directory-section h2 {
     font-family: var(--font-heading);
@@ -299,6 +299,20 @@
 }
 .dir-search-clear:hover { color: var(--text-primary); }
 .dir-card[hidden] { display: none !important; }
+.go-jump { display: flex; flex-wrap: wrap; gap: .75rem; justify-content: center; margin: 1.4rem 0 0; }
+.go-jump-link { display: inline-block; padding: .65rem 1.5rem; border: 1.5px solid var(--accent-color); border-radius: 999px; color: var(--accent-color); font-size: .8rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; text-decoration: none; background: rgba(255,255,255,.6); transition: var(--transition); }
+.go-jump-link:hover, .go-jump-link--solid { background: var(--accent-color); color: #fff; }
+.go-jump-link--solid:hover { background: #a56a5d; color: #fff; }
+.go-help { max-width: 860px; margin: 2.5rem auto 0; border: 1px solid var(--border-light); border-radius: 16px; background: #fff; box-shadow: var(--box-shadow); }
+.go-help > summary { cursor: pointer; list-style: none; padding: 1.1rem 1.5rem; font-family: var(--font-heading); font-size: 1.15rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.go-help > summary::-webkit-details-marker { display: none; }
+.go-help > summary::after { content: '+'; font-family: var(--font-primary); font-size: 1.5rem; color: var(--accent-color); line-height: 1; }
+.go-help[open] > summary::after { content: '\2212'; }
+.go-help[open] > summary { border-bottom: 1px solid var(--border-light); }
+.go-help > :not(summary) { padding-left: 1.25rem; padding-right: 1.25rem; }
+.go-help .steps-grid { padding-top: 1.5rem; }
+.go-help .faq-section { padding-bottom: 1rem; margin-bottom: 0 !important; }
+.directory-section { margin-bottom: 3rem; }
 </style>
 {% endblock %}
 {% block content %}
@@ -307,80 +321,18 @@
         <span class="eyebrow">Bulk Ordering</span>
         <h1>Group Orders</h1>
         <p class="lead">Custom apparel for teams, schools, and organizations. Create your options and share one link. Everyone stays matching.</p>
+        <p class="go-jump">
+            {% if open_collections or open_orgs %}<a href="#open-orders" class="go-jump-link">Find your group</a>{% endif %}
+            {% if current_user.is_authenticated %}<a href="{{ url_for('shop.create_group_order') }}" class="go-jump-link go-jump-link--solid">Start a group order</a>
+            {% else %}<a href="{{ url_for('auth.login') }}?next={{ url_for('shop.create_group_order') }}" class="go-jump-link go-jump-link--solid">Start a group order</a>{% endif %}
+        </p>
     </div>
 </div>
 
 <section class="group-orders-content">
     <div class="container">
-        {# The three step cards are h3s with no h2 above them, which left a gap
-           in the outline. The design has no visible heading here, so this names
-           the section for screen readers only. #}
-        <h2 class="visually-hidden">How group orders work</h2>
-        <div class="steps-grid">
-            <div class="step-card">
-                <div class="step-num">1</div>
-                <h3>Build your store</h3>
-                <p>Pick the styles, colors, and logo options your team can order from. Set a deadline and pickup location.</p>
-            </div>
-            <div class="step-card">
-                <div class="step-num">2</div>
-                <h3>Get your instant link</h3>
-                <p>You get a shareable link right away. No waiting. Password-protect it if you want to keep it private.</p>
-            </div>
-            <div class="step-card">
-                <div class="step-num">3</div>
-                <h3>Everyone orders their own</h3>
-                <p>Team members choose their size and pay individually. You get an order summary spreadsheet when it closes.</p>
-            </div>
-        </div>
-
-        <div class="faq-section" style="max-width:680px;margin:0 auto 3.5rem;">
-            <h2 style="text-align:center;font-family:var(--font-heading);font-size:1.5rem;margin-bottom:1.75rem;">Common Questions</h2>
-            <div class="faq-item">
-                <strong>Is there a minimum order?</strong>
-                <p>No minimum. One shirt or one hundred, we print what gets ordered.</p>
-            </div>
-            <div class="faq-item">
-                <strong>How does payment work?</strong>
-                <p>Each person pays individually at checkout (card, Apple Pay, Google Pay, PayPal, or Venmo). You don't collect money yourself.</p>
-            </div>
-            <div class="faq-item">
-                <strong>How long does it take?</strong>
-                <p>Typically 2 to 3 weeks from when the order closes. We'll confirm your timeline when you set up the order.</p>
-            </div>
-            <div class="faq-item">
-                <strong>Can I restrict what people can order?</strong>
-                <p>Yes! You choose which styles, colors, and designs the team can pick from. Great for keeping everyone matching.</p>
-            </div>
-            <div class="faq-item">
-                <strong>Can I do pickup instead of shipping?</strong>
-                <p>Yes. Set a pickup address and instructions when you create your group order. Shipping is also available (+$11).</p>
-            </div>
-        </div>
-
-        <div class="cta-section">
-            <h2>Ready to get started?</h2>
-            <p>Set up your group order in minutes. You'll have a share link before you leave this page.</p>
-            <div class="cta-buttons">
-                {% if current_user.is_authenticated %}
-                <a href="{{ url_for('shop.create_group_order') }}" class="btn btn-primary btn-lg">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    Create Group Order
-                </a>
-                <a href="{{ url_for('account.my_group_orders') }}" class="btn btn-secondary btn-lg">My Group Orders</a>
-                {% else %}
-                <a href="{{ url_for('auth.login') }}?next={{ url_for('shop.create_group_order') }}" class="btn btn-primary btn-lg">
-                    Log in to create a group order
-                </a>
-                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 1rem;">Create an account or log in to set up your group order and get a shareable link.</p>
-                {% endif %}
-            </div>
-        </div>
         {% if open_collections or open_orgs %}
-        <div class="directory-section">
+        <div class="directory-section" id="open-orders">
             <h2>Open Group Orders</h2>
             <p class="section-sub">Join an existing order: pick your size, pay your own way, and you're done.</p>
 
@@ -482,6 +434,79 @@
             </div>
         </div>
         {% endif %}
+
+        <div class="cta-section">
+            <h2>Ready to get started?</h2>
+            <p>Set up your group order in minutes. You'll have a share link before you leave this page.</p>
+            <div class="cta-buttons">
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('shop.create_group_order') }}" class="btn btn-primary btn-lg">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Create Group Order
+                </a>
+                <a href="{{ url_for('account.my_group_orders') }}" class="btn btn-secondary btn-lg">My Group Orders</a>
+                {% else %}
+                <a href="{{ url_for('auth.login') }}?next={{ url_for('shop.create_group_order') }}" class="btn btn-primary btn-lg">
+                    Log in to create a group order
+                </a>
+                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 1rem;">Create an account or log in to set up your group order and get a shareable link.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <details class="go-help"{% if not (open_collections or open_orgs) %} open{% endif %}>
+            <summary>How group orders work &amp; common questions</summary>
+        {# The three step cards are h3s with no h2 above them, which left a gap
+           in the outline. The design has no visible heading here, so this names
+           the section for screen readers only. #}
+        <h2 class="visually-hidden">How group orders work</h2>
+        <div class="steps-grid">
+            <div class="step-card">
+                <div class="step-num">1</div>
+                <h3>Build your store</h3>
+                <p>Pick the styles, colors, and logo options your team can order from. Set a deadline and pickup location.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-num">2</div>
+                <h3>Get your instant link</h3>
+                <p>You get a shareable link right away. No waiting. Password-protect it if you want to keep it private.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-num">3</div>
+                <h3>Everyone orders their own</h3>
+                <p>Team members choose their size and pay individually. You get an order summary spreadsheet when it closes.</p>
+            </div>
+        </div>
+
+        <div class="faq-section" style="max-width:680px;margin:0 auto 3.5rem;">
+            <h2 style="text-align:center;font-family:var(--font-heading);font-size:1.5rem;margin-bottom:1.75rem;">Common Questions</h2>
+            <div class="faq-item">
+                <strong>Is there a minimum order?</strong>
+                <p>No minimum. One shirt or one hundred, we print what gets ordered.</p>
+            </div>
+            <div class="faq-item">
+                <strong>How does payment work?</strong>
+                <p>Each person pays individually at checkout (card, Apple Pay, Google Pay, PayPal, or Venmo). You don't collect money yourself.</p>
+            </div>
+            <div class="faq-item">
+                <strong>How long does it take?</strong>
+                <p>Typically 2 to 3 weeks from when the order closes. We'll confirm your timeline when you set up the order.</p>
+            </div>
+            <div class="faq-item">
+                <strong>Can I restrict what people can order?</strong>
+                <p>Yes! You choose which styles, colors, and designs the team can pick from. Great for keeping everyone matching.</p>
+            </div>
+            <div class="faq-item">
+                <strong>Can I do pickup instead of shipping?</strong>
+                <p>Yes. Set a pickup address and instructions when you create your group order. Shipping is also available (+$11).</p>
+            </div>
+        </div>
+
+        </details>
+
 
     </div>
 </section>

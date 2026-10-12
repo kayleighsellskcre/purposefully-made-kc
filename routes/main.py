@@ -40,35 +40,24 @@ def index():
             p for p in Product.query.filter_by(is_active=True).order_by(Product.style_number).all()
             if product_has_shop_image(p)
         ][:8]
-        from utils.group_orders import is_not_yet_open, is_deadline_passed, publicly_listed_collections
-        # Same "public store" definition as the Group Orders directory, minus
-        # password-protected stores (those need the password to shop) and
-        # ones past their deadline. Used to also require created_by_user_id
-        # to be empty, which was meant to hide customer self-service stores
-        # but ended up hiding every store an admin created too, since any
-        # store made through the normal create flow gets a creator recorded.
-        active_collections = [
-            c for c in (
-                publicly_listed_collections()
-                .filter(Collection.is_password_protected == False)
-                .order_by(Collection.created_at.desc())
-                .all()
-            )
-            if not is_deadline_passed(c)
-        ][:6]
-        for collection in active_collections:
-            collection.not_yet_open = is_not_yet_open(collection)
-        return render_template('index.html', 
+        from utils.group_orders import public_group_directory
+        # Same list as the Group Orders page (one card per organization), minus
+        # password-protected stores, which need the password to shop.
+        orgs, stores = public_group_directory(skip_password_protected=True)
+        cards = [{'kind': 'org', **o} for o in orgs] + [{'kind': 'store', **c} for c in stores]
+        return render_template('index.html',
                              featured_products=featured_products,
-                             active_collections=active_collections)
+                             group_cards=cards[:3],
+                             group_cards_total=len(cards))
     except Exception as e:
         # Log the error but don't crash
         import sys
         print(f"Error in index route: {e}", file=sys.stderr)
         # Return a simple homepage without products if there's an error
-        return render_template('index.html', 
+        return render_template('index.html',
                              featured_products=[],
-                             active_collections=[])
+                             group_cards=[],
+                             group_cards_total=0)
 
 @main_bp.route('/about')
 def about():

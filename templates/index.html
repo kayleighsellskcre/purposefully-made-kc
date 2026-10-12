@@ -308,37 +308,69 @@
     </div>
 </section>
 
-<!-- Active Collections -->
+<!-- Active Group Orders -->
 <section class="collections" id="collections">
+    <style>
+    .hg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 320px)); justify-content: center; gap: 1.5rem; }
+    .hg-card { display: flex; flex-direction: column; background: #fff; border: 1px solid var(--border-light); border-radius: 16px; overflow: hidden; text-decoration: none; color: var(--text-primary); box-shadow: var(--box-shadow); transition: var(--transition); }
+    .hg-card:hover { transform: translateY(-5px); box-shadow: var(--box-shadow-luxury); border-color: var(--accent-color); color: var(--text-primary); }
+    .hg-art { height: 150px; display: flex; align-items: center; justify-content: center; background: linear-gradient(145deg, var(--ivory-silk), var(--cashmere-sand)); overflow: hidden; }
+    .hg-art--fan { background: radial-gradient(ellipse at 85% 15%, rgba(232,208,177,.35), transparent 55%), linear-gradient(125deg, #3A3D48, #4a4350 45%, #8d5e55); }
+    .hg-art img.hg-cover { width: 100%; height: 100%; object-fit: cover; }
+    .hg-circles { display: flex; align-items: center; justify-content: center; width: 100%; padding: 0 1rem; }
+    .hg-circles span { width: min(84px, 24%); aspect-ratio: 1; padding: .45rem; border-radius: 50%; background: #fff; border: 3px solid rgba(232,208,177,.8); box-shadow: 0 8px 18px rgba(0,0,0,.3); display: flex; align-items: center; justify-content: center; }
+    .hg-circles span + span { margin-left: -4%; }
+    .hg-circles img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .hg-letter { font-family: var(--font-heading); font-size: 1.5rem; color: var(--accent-secondary); padding: 1rem; text-align: center; }
+    .hg-body { padding: 1.1rem 1.25rem 1.3rem; display: flex; flex-direction: column; gap: .35rem; flex: 1; }
+    .hg-name { font-family: var(--font-heading); font-size: 1.3rem; font-weight: 600; line-height: 1.25; }
+    .hg-meta { font-size: .88rem; color: var(--accent-color); font-weight: 600; }
+    .hg-desc { font-size: .92rem; color: var(--text-secondary); line-height: 1.5; margin: 0; }
+    .hg-go { margin-top: auto; padding-top: .6rem; font-size: .78rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--accent-color); }
+    .hg-more { text-align: center; margin-top: 2rem; }
+    </style>
     <div class="container">
-        {% if active_collections %}
+        {% if group_cards %}
         <div class="section-header">
             <h2 class="section-title">Active Group Orders</h2>
             <p class="section-subtitle">Team stores open for ordering right now</p>
         </div>
-        <div class="collections-grid">
-            {% for collection in active_collections %}
-            <div class="collection-card">
-                <div class="collection-content">
-                    <h3 class="collection-name">{{ collection.name }}</h3>
-                    {% if collection.description %}
-                    <p class="collection-description">{{ collection.description }}</p>
-                    {% endif %}
-                    {% if collection.not_yet_open and collection.order_opens_at %}
-                    <p class="collection-deadline">Opens {{ collection.order_opens_at|kc_date }}</p>
-                    {% elif collection.order_opens_at %}
-                    <p class="collection-deadline">Open now</p>
-                    {% endif %}
-                    {% if collection.order_deadline %}
-                    <p class="collection-deadline">Order by {{ collection.order_deadline|kc_date }}</p>
-                    {% endif %}
-                    <a href="{{ url_for('collection.view', slug=collection.slug) }}" class="btn btn-outline">
-                        Shop This Collection
-                    </a>
+        <div class="hg-grid">
+            {% for card in group_cards %}
+            {% if card.kind == 'org' %}
+            {% set o = card.org %}
+            <a class="hg-card" href="{{ url_for('org.landing', slug=o.slug) }}">
+                <div class="hg-art{% if card.fan_art %} hg-art--fan{% endif %}">
+                    {% if card.fan_art %}<span class="hg-circles">{% for u in card.fan_art[:4] %}<span><img src="{{ u }}" alt="" loading="lazy" decoding="async"></span>{% endfor %}</span>
+                    {% else %}<span class="hg-letter">{{ o.name }}</span>{% endif %}
                 </div>
-            </div>
+                <div class="hg-body">
+                    <span class="hg-name">{{ o.name }}</span>
+                    <span class="hg-meta">{{ card.team_count }} team{{ '' if card.team_count == 1 else 's' }}</span>
+                    {% if o.description %}<p class="hg-desc">{{ o.description|truncate(110, true, '…') }}</p>{% endif %}
+                    <span class="hg-go">Shop all teams &rarr;</span>
+                </div>
+            </a>
+            {% else %}
+            {% set c = card.collection %}
+            <a class="hg-card" href="{{ url_for('collection.view', slug=c.slug) }}">
+                <div class="hg-art">
+                    {% if c.cover_image %}<img class="hg-cover" src="{{ c.cover_image | image_url }}" alt="" loading="lazy" decoding="async">
+                    {% else %}<span class="hg-letter">{{ c.card_title or c.name }}</span>{% endif %}
+                </div>
+                <div class="hg-body">
+                    <span class="hg-name">{{ c.card_title or c.name }}</span>
+                    <span class="hg-meta">{% if card.not_yet_open and c.order_opens_at %}Opens {{ c.order_opens_at|kc_date }}{% elif c.order_deadline %}Order by {{ c.order_deadline|kc_date }}{% else %}Open now{% endif %}</span>
+                    {% if c.description %}<p class="hg-desc">{{ c.description|truncate(110, true, '…') }}</p>{% endif %}
+                    <span class="hg-go">Shop this store &rarr;</span>
+                </div>
+            </a>
+            {% endif %}
             {% endfor %}
         </div>
+        {% if group_cards_total > group_cards|length %}
+        <div class="hg-more"><a href="{{ url_for('shop.group_orders') }}" class="btn btn-outline">See all {{ group_cards_total }} group orders</a></div>
+        {% endif %}
         {% else %}
         <div class="section-header">
             <h2 class="section-title">Group Orders</h2>
