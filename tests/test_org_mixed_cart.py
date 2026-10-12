@@ -295,3 +295,30 @@ def test_the_receipt_says_which_group_each_shirt_is_for(client, admin_client, ap
     bodies = ' '.join(m.body for m in outbox)
     assert f'for {BASKETBALL}' in bodies and f'for {VOLLEYBALL}' in bodies and 'for Fan Wear: Rainbow Cheetahs' in bodies
     assert 'Rainbow Cheetahs (' in bodies
+
+
+# ── Leaving a group order ────────────────────────────────────────────────────
+
+def test_the_shop_button_takes_shoppers_out_of_any_group_order(client, admin_client, app, seed):
+    _build(admin_client, app, seed)
+    admin_client.get('/auth/logout')
+    _add_jersey(client, app, BASKETBALL, seed)
+    with client.session_transaction() as sess:
+        assert sess.get('collection_id')
+    assert client.get('/shop/').status_code == 200
+    with client.session_transaction() as sess:
+        assert not sess.get('collection_id')                 # no longer attached to a group
+        assert _cart_len(sess) == 1                          # the cart itself is untouched
+
+
+def _cart_len(sess):
+    return len(sess.get('cart') or [])
+
+
+def test_shop_items_are_not_tied_to_a_group_after_leaving(client, admin_client, app, seed):
+    _build(admin_client, app, seed)
+    admin_client.get('/auth/logout')
+    _add_jersey(client, app, BASKETBALL, seed)
+    client.get('/shop/')
+    page = client.get('/').get_data(as_text=True)
+    assert "You're ordering for" not in page

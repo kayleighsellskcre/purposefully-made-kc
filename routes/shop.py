@@ -170,6 +170,10 @@ def _measure_artwork_fits(cards, app=None):
 @shop_bp.route('/')
 def index():
     """Shop page - browse all products. Products come from S&S Activewear sync (Admin → Products)."""
+    # The regular shop is never part of a group order: opening it leaves any group store,
+    # so nothing added from here is tied to a team (a cart's group items are not touched).
+    from utils.group_orders import leave_group_order
+    leave_group_order()
     try:
         category = canonical_category_param(request.args.get('category'))
         age_group = (request.args.get('age_group') or '').strip().lower() or None
