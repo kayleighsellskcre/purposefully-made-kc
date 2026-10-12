@@ -654,9 +654,14 @@ def format_schedule_date(dt, fmt='%B %d, %Y'):
         return ''
     naive = _as_naive_utc(dt)
     if naive.hour == 0 and naive.minute == 0 and naive.second == 0:
-        return naive.strftime(fmt)
-    from utils.local_time import format_central
-    return format_central(dt, fmt)
+        # %-d (day without a leading zero) is not valid on every platform, so handle it here
+        return naive.strftime(fmt.replace('%-d', str(naive.day)))
+    from utils.local_time import to_central
+    local = to_central(dt)
+    if not local:
+        return ''
+    fmt = fmt.replace('%-d', str(local.day))
+    return local.strftime(fmt).lstrip('0').replace(' 0', ' ')
 
 
 def is_deadline_passed(collection):

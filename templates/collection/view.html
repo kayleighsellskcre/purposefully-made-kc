@@ -533,7 +533,11 @@
         </p>
         {% elif collection.not_yet_open %}
         <p class="collection-header-subtitle" style="margin-top:0.5rem; color:#b87c6f; font-weight:600; font-style:italic; letter-spacing:0.01em;">
+            {% if collection.order_deadline %}
+            ✨ Orders open {{ collection.order_opens_at|kc_date('%A, %B %-d') }} and close {{ collection.order_deadline|kc_date('%A, %B %-d') }}. Feel free to look around now, and be ready to order once we open!
+            {% else %}
             ✨ Orders open {{ collection.order_opens_at|kc_date('%A, %B %-d') }} and will stay open throughout the school year - so no rush, just excitement! Feel free to look around now.
+            {% endif %}
         </p>
         {% else %}
             {% if collection.order_opens_at %}
@@ -735,7 +739,11 @@
         </div>
         {% elif collection.order_deadline %}
         <div style="max-width:700px;margin:0 auto 2rem;padding:0.65rem 1.25rem;background:rgba(184,124,111,0.08);border:1px solid rgba(184,124,111,0.25);border-radius:8px;color:var(--text-primary);text-align:center;font-size:0.92rem;">
+            {% if collection.not_yet_open and collection.order_opens_at %}
+            🗓 <strong>Orders open {{ collection.order_opens_at|kc_date('%A, %B %-d') }} and close {{ collection.order_deadline|kc_date }}.</strong> Browse the styles now and order once we open.
+            {% else %}
             🗓 <strong>Order deadline: {{ collection.order_deadline|kc_date }}</strong>. Place your order by then to be included.
+            {% endif %}
         </div>
         {% elif collection.not_yet_open %}
         <div style="max-width:700px;margin:0 auto 2rem;padding:1.25rem 1.5rem;background:linear-gradient(135deg,rgba(184,124,111,0.08),rgba(184,124,111,0.04));border:1px solid rgba(184,124,111,0.3);border-radius:12px;color:var(--text-primary);text-align:center;">

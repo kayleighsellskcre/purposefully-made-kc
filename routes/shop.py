@@ -564,6 +564,14 @@ def create_group_order():
             if not collection.id:
                 raise SQLAlchemyError('Collection was not assigned an ID after commit')
 
+            # Tell the admin a group was just set up (not for groups the admin makes themself).
+            if not getattr(current_user, 'is_admin', False):
+                from utils.group_org import team_names_from_form
+                from utils.group_notifications import notify_group_created
+                teams = team_names_from_form(request.form) if request.form.get('org_action') == 'new' else []
+                notify_group_created(current_app._get_current_object(), collection, current_user,
+                                     teams if len(teams) > 1 else [])
+
             # ── 8. Multi-team organization (optional) ───────────────────────
             # Mirrors admin logic: create an org + one store per team in the
             # same transaction, then commit once so nothing is left half-built.

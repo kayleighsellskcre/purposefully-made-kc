@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>New group order: {{ group_name }}</title>
+<style>
+  @media only screen and (max-width: 520px) {
+    .pmkc-pad { padding-left:18px !important; padding-right:18px !important; }
+    .pmkc-big { font-size:24px !important; }
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#f5f0e8;font-family:'Georgia',serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0e8;padding:40px 16px;">
+  <tr>
+    <td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+        <tr>
+          <td align="center" style="padding-bottom:28px;">
+            <p style="margin:0;font-family:'Georgia',serif;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#b87c6f;">Purposefully Made KC</p>
+            <h1 class="pmkc-big" style="margin:8px 0 0;font-family:'Georgia',serif;font-size:28px;font-weight:400;color:#3a3d48;letter-spacing:0.04em;">New Group Order</h1>
+            <p style="margin:8px 0 0;font-size:14px;color:#888;font-family:Arial,sans-serif;">Someone just set up a group.</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#b87c6f;border-radius:14px;margin-bottom:20px;">
+              <tr>
+                <td align="center" class="pmkc-pad" style="padding:26px 28px;">
+                  <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.75);font-family:Arial,sans-serif;">{{ kind }}</p>
+                  <p style="margin:0;font-family:'Georgia',serif;font-size:26px;font-weight:700;color:#fff;letter-spacing:0.03em;">{{ group_name }}</p>
+                  <p style="margin:10px 0 0;font-size:13px;color:rgba(255,255,255,0.85);font-family:Arial,sans-serif;">Set up by {{ created_by }}</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="pmkc-pad" style="background:#ffffff;border-radius:14px;padding:26px 32px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;font-size:15px;color:#3a3d48;">
+              {% if created_by_email %}<tr><td style="padding:9px 0;border-bottom:1px solid #f0e6d8;color:#888;width:38%;">Email</td><td style="padding:9px 0;border-bottom:1px solid #f0e6d8;"><a href="mailto:{{ created_by_email }}" style="color:#3a3d48;">{{ created_by_email }}</a></td></tr>{% endif %}
+              {% if organizer_email %}<tr><td style="padding:9px 0;border-bottom:1px solid #f0e6d8;color:#888;">Organizer invited</td><td style="padding:9px 0;border-bottom:1px solid #f0e6d8;">{{ organizer_email }}</td></tr>{% endif %}
+              <tr><td style="padding:9px 0;border-bottom:1px solid #f0e6d8;color:#888;">Payment</td><td style="padding:9px 0;border-bottom:1px solid #f0e6d8;">{{ payment }}</td></tr>
+              <tr><td style="padding:9px 0;border-bottom:1px solid #f0e6d8;color:#888;">Orders open</td><td style="padding:9px 0;border-bottom:1px solid #f0e6d8;">{{ opens or 'Right away' }}</td></tr>
+              <tr><td style="padding:9px 0;border-bottom:1px solid #f0e6d8;color:#888;">Deadline</td><td style="padding:9px 0;border-bottom:1px solid #f0e6d8;">{{ deadline or 'No deadline' }}</td></tr>
+              <tr><td style="padding:9px 0;{% if teams %}border-bottom:1px solid #f0e6d8;{% endif %}color:#888;">Who can see it</td><td style="padding:9px 0;{% if teams %}border-bottom:1px solid #f0e6d8;{% endif %}">{{ visibility }}</td></tr>
+              {% if teams %}<tr><td style="padding:9px 0;color:#888;vertical-align:top;">Teams</td><td style="padding:9px 0;">{{ teams|join(', ') }}</td></tr>{% endif %}
+            </table>
+
+            <table cellpadding="0" cellspacing="0" style="margin:26px 0 0;">
+              <tr>
+                <td style="background:#3a3d48;border-radius:8px;">
+                  <a href="{{ admin_url }}" style="display:inline-block;padding:13px 28px;color:#ffffff;text-decoration:none;font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;">Open in Admin</a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:#888;font-family:Arial,sans-serif;word-break:break-all;">Store link: <a href="{{ store_url }}" style="color:#b87c6f;">{{ store_url }}</a></p>
+          </td>
+        </tr>
+
+        <tr>
+          <td align="center" style="padding:26px 12px 0;">
+            <p style="margin:0;font-size:13px;color:#888;font-family:Arial,sans-serif;">Reply to this email to reach {{ created_by }}.</p>
+            <p style="margin:10px 0 0;font-size:13px;color:#b87c6f;font-family:'Georgia',serif;font-style:italic;">Made with purpose, for you.</p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>
