@@ -676,6 +676,13 @@ def load_group_order_form_catalog():
                 if indexes:
                     fan_color_picker['products'][pid] = indexes
             fan_color_picker['twins'] = matching_age_styles(products)
+            # A cotton shirt and its CVC twin are one card in the forms: its color list holds both.
+            from utils.style_pairs import blend_pairs
+            for cotton, blend in blend_pairs(products):
+                cotton.blend_id, blend.blend_of = blend.id, cotton.id
+                own = fan_color_picker['products'].get(str(cotton.id), [])
+                extra = fan_color_picker['products'].get(str(blend.id), [])
+                fan_color_picker['products'][str(cotton.id)] = own + [i for i in extra if i not in own]
     except Exception:
         all_colors = []
         colors_by_brand = {}

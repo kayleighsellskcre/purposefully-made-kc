@@ -71,7 +71,7 @@
             {% include 'includes/catalog_filter.html' %}
             {% if products %}
             <div class="fw-groups">
-                {% for category, group in products|groupby('display_category') %}
+                {% for category, group in visible_form_products(products, checked_product_ids)|groupby('display_category') %}
                 {% set picked = group|selectattr('id', 'in', checked_product_ids)|list|length %}
                 <details class="fw-group"{% if picked or loop.first %} open{% endif %}>
                     <summary>

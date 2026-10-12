@@ -200,7 +200,8 @@ def serialize_allowed_colors_from_form(raw_values):
             legacy.append(text)
     if by_brand:
         # Brand-scoped wins when any scoped value is present.
-        return json.dumps(dict(by_brand), separators=(',', ':'))
+        from utils.style_pairs import replicate_blend_color_picks
+        return replicate_blend_color_picks(json.dumps(dict(by_brand), separators=(',', ':')))
     if legacy:
         return json.dumps(legacy, separators=(',', ':'))
     return None
@@ -327,14 +328,19 @@ def fan_color_checked_keys(collection, products, colors_by_product):
     if collection is None or not collection_has_color_restrictions(collection):
         return []
     from utils.color_names import color_in_allowed_set
+    from utils.style_pairs import blend_pairs
 
+    twin_labels = {str(cotton.id): colors_by_product.get(str(blend.id)) or []
+                   for cotton, blend in blend_pairs(products)}
     checked = []
     for product in products or []:
         allowed = allowed_colors_for_product(product, collection)
         if allowed is None:
             continue
         key = product_color_key(product.id)
-        for label in colors_by_product.get(str(product.id)) or []:
+        labels = list(colors_by_product.get(str(product.id)) or [])
+        labels += [l for l in twin_labels.get(str(product.id), []) if l not in labels]
+        for label in labels:
             if color_in_allowed_set(label, allowed):
                 checked.append(f'{key}{ALLOWED_COLOR_SEP}{label}')
     return checked
@@ -729,7 +735,9 @@ def _keep_team_store_on_edit(collection, checked_ids):
 
     current = team_store_config(collection)
     uniform_ids = list(current['uniform']['product_ids']) if current['uniform']['enabled'] else []
-    fan_ids = list(dict.fromkeys(checked_ids))     # a jersey shirt may also be a Fan Wear style
+    from utils.style_pairs import expand_with_blends
+    # a jersey shirt may also be a Fan Wear style; a cotton shirt brings its CVC twin
+    fan_ids = expand_with_blends(list(dict.fromkeys(checked_ids)))
 
     ids = list(dict.fromkeys(uniform_ids + fan_ids))
     if not ids:
@@ -870,6 +878,8 @@ def set_collection_products_from_form(collection):
             team_home_colors = request.form.getlist('org_team_home_color[]')
             home_color = team_home_colors[0].strip() if team_home_colors else ''
 
+    from utils.style_pairs import expand_with_blends
+    fan_ids = expand_with_blends(fan_ids)             # one shirt in the form = cotton + its CVC twin
     ids = list(fan_ids)
     for pid in reversed(uniform_ids):
         if pid not in ids:
@@ -1211,7 +1221,8 @@ def apply_org_fan_wear(org, product_ids, allowed_colors=_KEEP, excluded_design_i
     from utils.mockups import product_has_shop_image
 
     teams = [sec.collection for sec in _team_sections(org)]
-    ordered = list(dict.fromkeys(int(i) for i in product_ids))
+    from utils.style_pairs import expand_with_blends
+    ordered = expand_with_blends(product_ids)
     found = {p.id: p for p in Product.query.filter(Product.id.in_(ordered), Product.is_active == True).all()} if ordered else {}  # noqa: E712
     fan_ids = [i for i in ordered if i in found and product_has_shop_image(found[i])]
     excluded = sorted({int(i) for i in (excluded_design_ids or [])})

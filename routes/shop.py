@@ -220,12 +220,26 @@ def index():
             for variant in variants_by_product.get(pid, [])
         )
 
+        # Cotton and CVC versions of one shirt show as ONE tile with every color; the color
+        # a shopper picks decides which vendor style they buy (see utils/style_pairs.py).
+        from utils.style_pairs import blend_pairs
+        partner_of = {}
+        for cotton, blend in blend_pairs(sellable):
+            seen_colors = {(c.get('color_name') or '').strip().lower() for c in cotton.carousel_colors}
+            for c in blend.carousel_colors:
+                if (c.get('color_name') or '').strip().lower() not in seen_colors:
+                    cotton.carousel_colors.append(c)
+            cotton.merged_partner = blend
+            partner_of[cotton.id] = blend
+        hidden_partner_ids = {b.id for b in partner_of.values()}
+        sellable = [p for p in sellable if p.id not in hidden_partner_ids]
+
         products = sellable
         if search_q:
             needle = search_q.lower()
             products = [
                 p for p in products
-                if needle in (p.name or '').lower()
+                if needle in ' '.join([(partner_of[p.id].name or '') if p.id in partner_of else '', p.name or '']).lower()
                 or needle in (p.style_number or '').lower()
                 or needle in (p.description or '').lower()
                 or needle in (p.category or '').lower()
@@ -248,6 +262,9 @@ def index():
                 pid for pid, variants in variants_by_product.items()
                 if any(color_matches_any_filter(v.color_name, color_filters) for v in variants)
             }
+            for cotton_id, blend in partner_of.items():      # a heather match counts for the combined shirt
+                if blend.id in matching_ids:
+                    matching_ids.add(cotton_id)
             products = [p for p in products if p.id in matching_ids]
             for product in products:
                 product.carousel_colors = filter_carousel_to_color_filters(
@@ -996,6 +1013,41 @@ def customize(product_slug):
         if allow_back_design and back_design_type in ('image', 'both'):
             preset_back_design = load_design_dict(getattr(coll, 'back_design_id', None))
     
+    # Cotton + CVC versions of this shirt are one item: add the other fabric's colors, each
+    # color remembering its own vendor style (the page switches style/price when one is picked).
+    style_note = None
+    merged_partner = None
+    try:
+        from utils.style_pairs import fabric_label, find_partner
+        partner = find_partner(product)
+        if partner is not None and product_has_shop_image(partner, current_app) and catalog_section != 'uniform':
+            partner_ok = True
+            if coll:
+                from utils.group_orders import product_in_collection
+                partner_ok = (product_in_collection(coll, partner.id)
+                              and not team_store_choice(coll, partner.id, catalog_section, None)[3])
+            if partner_ok:
+                partner_variants = get_color_variants_data_for_product(partner, current_app)
+                if coll and catalog_section == 'fan' and collection_has_color_restrictions(coll):
+                    allowed_partner = allowed_colors_for_product(partner, coll)
+                    if allowed_partner is not None:
+                        partner_variants = [v for v in partner_variants if v['color_name'] in allowed_partner]
+                known = {(v['color_name'] or '').strip().lower() for v in color_variants_data}
+                extra = [v for v in partner_variants if (v['color_name'] or '').strip().lower() not in known]
+                if extra:
+                    merged_partner = partner
+                    for v in color_variants_data:
+                        v.update(product_id=product.id, style=product.style_number,
+                                 price=float(product.base_price or 0), fabric=fabric_label(product))
+                    for v in extra:
+                        v.update(product_id=partner.id, style=partner.style_number,
+                                 price=float(partner.base_price or 0), fabric=fabric_label(partner))
+                    color_variants_data = color_variants_data + extra
+                    available_sizes = list(dict.fromkeys(list(available_sizes) + list(shop_sizes_for_product(partner))))
+    except Exception:
+        current_app.logger.exception('Could not merge the cotton/CVC colors for product %s', product.id)
+        merged_partner = None
+
     # Check for pre-selected design from gallery
     design_id = request.args.get('design_id', type=int)
     preset_design = None
@@ -1138,6 +1190,7 @@ def customize(product_slug):
             age_switch = []
     return render_template('shop/customize.html',
                          age_switch=age_switch,
+                         merged_partner=merged_partner,
                          group_color_key=f'pmkc-group-color-{coll.id}' if coll else '',
                          product=product,
                          available_sizes=available_sizes,

@@ -2093,7 +2093,7 @@
                    h2, since the panel is narrow and 3.5rem would wrap badly. #}
                 <h1 class="customize-product-title">{{ product|display_name }}</h1>
                 <p class="product-style">
-                    Style {{ product.style_number }}
+                    Style <span id="styleNumberText">{{ product.style_number }}</span>
                     {% set sheet = product|spec_sheet_target %}
                     {% if sheet.mode == 'external' and sheet.url %}
                     <a href="{{ sheet.url }}"
@@ -2118,10 +2118,11 @@
                     <span class="product-feel-softness">{{ product.softness_label }}</span>
                     {% endif %}
                     {% if product.fabric_summary %}
-                    <span class="product-feel-fabric">{{ product.fabric_summary }}</span>
+                    <span class="product-feel-fabric" id="fabricText">{{ product.fabric_summary }}</span>
                     {% endif %}
                 </div>
                 {% endif %}
+                {% if merged_partner %}<p class="step-hint" id="fabricColorNote" hidden></p>{% endif %}
                 
                 <!-- Size Chart Button -->
                 {% if product.size_chart %}
@@ -2180,6 +2181,7 @@
                                  data-front-image="{{ variant.front_image or '' }}"
                                  data-back-image="{{ variant.back_image or '' }}"
                                  data-inventory='{{ variant.inventory|tojson }}'
+                                 {% if variant.product_id %}data-product-id="{{ variant.product_id }}" data-style="{{ variant.style or '' }}" data-price="{{ variant.price }}" data-fabric="{{ variant.fabric or '' }}"{% endif %}
                                  onclick="selectColor(this, true)">
                                 <div class="color-image-wrapper">
                                     {% if variant.front_image %}
@@ -2824,6 +2826,7 @@
         backDesignDragOffset: { y: 0 },
         colorVariants: {{ color_variants | tojson }} || [],
         basePrice: {{ product.base_price }},
+        productId: {{ product.id|tojson }},
         isAdult: {{ 'true' if is_adult else 'false' }},
         designDragOffset: { center_chest: { x: 0, y: 0 }, left_chest: { x: 0, y: 0 }, right_chest: { x: 0, y: 0 }, center_back: { x: 0, y: 0 } },
         presetDesignId: {{ preset_design.id if preset_design else 'null' }},
@@ -3206,6 +3209,24 @@
             inventory = JSON.parse(inventoryStr);
         } catch (e) {
             console.error('Failed to parse inventory:', e);
+        }
+
+        // One shirt, two fabrics (cotton / CVC blend): the color picked decides the vendor style.
+        if (element.dataset.productId) {
+            state.productId = Number(element.dataset.productId);
+            const price = parseFloat(element.dataset.price);
+            if (!isNaN(price)) state.basePrice = price;
+            const styleEl = document.getElementById('styleNumberText');
+            if (styleEl && element.dataset.style) styleEl.textContent = element.dataset.style;
+            const fabricEl = document.getElementById('fabricText');
+            if (fabricEl && element.dataset.fabric) fabricEl.textContent = element.dataset.fabric;
+            const fabricNote = document.getElementById('fabricColorNote');
+            if (fabricNote) {
+                const blend = /blend/i.test(element.dataset.fabric || '');
+                fabricNote.textContent = blend ? 'This color is a cotton/poly blend (soft, with a heathered look).' : '';
+                fabricNote.hidden = !blend;
+            }
+            if (typeof updateTotalPrice === 'function') updateTotalPrice();
         }
 
         // Update state synchronously so size/qty/options always see the latest color
@@ -5928,7 +5949,7 @@
                 const unitPrice = state.basePrice - smallLogoDiscount + getSizeUpcharge() + currentBackDesignFee();
                 
                 const formData = new FormData();
-                formData.append('product_id', {{ product.id }});
+                formData.append('product_id', state.productId);
                 {% if catalog_section %}
                 formData.append('catalog_section', {{ catalog_section|tojson }});
                 {% endif %}

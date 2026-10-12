@@ -203,6 +203,16 @@ def view(slug):
         )
         products.append(product)
 
+    # Cotton and CVC versions of one shirt show as one tile with every color.
+    from utils.style_pairs import blend_pairs
+    hidden_blends = set()
+    for cotton, blend in blend_pairs(products):
+        known = {(c.get('color_name') or '').strip().lower() for c in cotton.carousel_colors}
+        cotton.carousel_colors = list(cotton.carousel_colors) + [
+            c for c in blend.carousel_colors if (c.get('color_name') or '').strip().lower() not in known]
+        hidden_blends.add(blend.id)
+    products = [p for p in products if p.id not in hidden_blends]
+
     products = prepare_catalog(products)
     filter_opts = catalog_filter_options(products)
     from utils.product_filters import group_products_by_family

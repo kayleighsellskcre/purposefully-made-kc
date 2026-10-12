@@ -673,6 +673,14 @@ def create_app(config_class=Config):
         except Exception:
             return None
 
+    @app.template_global('visible_form_products')
+    def _visible_form_products(products, selected_ids):
+        """Group-order form cards: a cotton shirt and its CVC twin are one card."""
+        selected = set(selected_ids or [])
+        return [p for p in products
+                if not (getattr(p, 'blend_of', None)
+                        and not (p.id in selected and p.blend_of not in selected))]
+
     @app.template_global('store_order_count')
     def _store_order_count(collection):
         from utils.group_orders import orders_for_collection

@@ -67,7 +67,8 @@
                 {% if products %}
                 {% include 'includes/catalog_filter.html' %}
                 <div class="product-checkboxes">
-                    {% for product in products %}
+                    {# A cotton shirt and its CVC twin are one card (the twin is hidden unless this store only ever chose the CVC style). #}
+                    {% for product in visible_form_products(products, fan_product_ids) %}
                     <label class="product-checkbox" data-catalog-item data-age="{{ product.display_age or '' }}" data-age-raw="{{ product.age_group or '' }}" data-category="{{ product.display_category or '' }}" data-category-raw="{{ product.category or '' }}" data-brand="{{ product.display_brand or '' }}" data-brand-raw="{{ product.brand or '' }}" data-style="{{ product.style_number or '' }}">
                         <input type="checkbox" name="products" value="{{ product.id }}" {% if product.id in fan_product_ids %}checked{% endif %}>
                         {% set mockup_url = product.preview_image_url or none %}
@@ -88,6 +89,7 @@
                         <div class="product-checkbox-info">
                             <span class="product-checkbox-name">{{ product|display_name }}</span>
                             <small>{{ product.display_brand or '' }} · {{ product.display_category or '' }} · {{ product.style_number }} · ${{ "%.2f"|format(product.base_price or 0) }}</small>
+                            {% if product.blend_id %}<small>Includes heather (cotton/poly blend) colors</small>{% endif %}
                         </div>
                     </label>
                     {% endfor %}
