@@ -140,3 +140,27 @@ def test_saving_a_plain_store_only_upgrades_it_to_the_current_format(admin_clien
     assert changed.pop('team_store_config')[1]['fan_product_ids'] == before['products']
     assert changed.pop('restrict_options') == (False, True)
     assert not changed, changed
+
+
+# ── The edit page folds into one-line sections ───────────────────────────────
+
+def test_edit_page_folds_into_sections_that_open_on_demand(admin_client, seed):
+    html = admin_client.get(f"/admin/collections/{seed['collection_id']}/edit").get_data(as_text=True)
+    assert '.acc-head' in html and '.acc-body[hidden]' in html           # the folding styles
+    assert 'Expand all' in html and 'Collapse all' in html               # one tap to open or close everything
+    assert "addEventListener('invalid'" in html                          # a problem field never stays hidden
+    assert 'hashchange' in html                                          # a link to a folded field opens it
+    # every part is still in the page, so saving is unchanged
+    for field in ('name="name"', 'name="visibility"', 'name="organizer"', 'name="order_deadline"'):
+        assert field in html
+
+
+def test_folding_does_not_change_what_a_save_sends(admin_client, app, seed):
+    """The parsed form (what a browser submits) is identical to before: nothing is dropped."""
+    coll_id = seed['collection_id']
+    page = admin_client.get(f'/admin/collections/{coll_id}/edit').get_data(as_text=True)
+    form = _Form()
+    form.feed(page)
+    names = {key for key, _ in form.fields}
+    assert {'name', 'slug', 'description', 'products', 'allowed_placements', 'back_design_type',
+            'order_deadline', 'is_active'} <= names

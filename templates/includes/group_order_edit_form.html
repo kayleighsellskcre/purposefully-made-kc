@@ -645,5 +645,212 @@ function confirmDelete(btn) {
     .placement-checkboxes { grid-template-columns: 1fr 1fr; }
 }
 </style>
+{# ── Folding sections: each part of the form collapses to one line with a summary. ──
+   Every field stays in the page (collapsed parts are only hidden), so saving is unchanged.
+   Without JavaScript everything simply shows. #}
+<style>
+.collection-form .form-section.is-acc { padding: 0; overflow: hidden; }
+.collection-form .form-section.is-acc > h2.acc-title { margin: 0; }
+.acc-head {
+    display: flex; align-items: center; gap: 1rem; width: 100%; padding: 1.15rem 1.5rem;
+    background: none; border: none; cursor: pointer; text-align: left; font: inherit; color: inherit;
+}
+.acc-head:hover { background: rgba(184, 124, 111, 0.05); }
+.acc-head:focus-visible { outline: 2px solid var(--accent-color); outline-offset: -2px; }
+.acc-name { font-family: var(--font-heading); font-size: 1.25rem; font-weight: 600; color: var(--text-primary); }
+.acc-sum { flex: 1; min-width: 0; text-align: right; font-family: var(--font-primary); font-size: .88rem; font-weight: 400; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acc-chev { flex-shrink: 0; width: .6rem; height: .6rem; border-right: 2px solid var(--accent-color); border-bottom: 2px solid var(--accent-color); transform: rotate(45deg); transition: transform .2s; margin: 0 .25rem .2rem 0; }
+.acc-head[aria-expanded="true"] .acc-chev { transform: rotate(-135deg); margin-bottom: -.2rem; }
+.acc-body { padding: 0 1.75rem 1.75rem; }
+.acc-body[hidden] { display: none; }
+.acc-head[aria-expanded="true"] { border-bottom: 1px solid var(--border-light); }
+
+/* the numbered choices inside "Your Choices" */
+.organizer-block.is-acc { border: 1px solid var(--border-light); border-radius: 14px; margin-bottom: .85rem; padding: 0; overflow: hidden; background: #fff; }
+.organizer-block.is-acc > .organizer-block-label { margin: 0; }
+.organizer-block.is-acc .acc-head { padding: .9rem 1.1rem; align-items: center; }
+.organizer-block.is-acc .acc-head .organizer-step { flex-shrink: 0; }
+.organizer-block.is-acc .acc-head .acc-name { font-family: var(--font-primary); font-size: 1rem; font-weight: 600; }
+.organizer-block.is-acc .acc-head .acc-hint { display: none; }
+.organizer-block.is-acc .acc-body { padding: 1rem 1.25rem 1.25rem; }
+.organizer-pair > .organizer-block.is-acc { margin: 0 0 .85rem; padding: 0; border: 1px solid var(--border-light); }
+.acc-tools { display: flex; justify-content: flex-end; gap: .75rem; margin: 0 0 .75rem; }
+.acc-tools button { background: none; border: none; color: var(--accent-color); font-size: .85rem; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; padding: .25rem; }
+@media (max-width: 700px) {
+    .acc-head { padding: 1rem 1.1rem; flex-wrap: wrap; }
+    .acc-sum { flex-basis: 100%; order: 3; text-align: left; white-space: normal; }
+    .acc-body { padding: 0 1.1rem 1.25rem; }
+}
+</style>
+<script>
+(function () {
+    var form = document.getElementById('collection-form');
+    if (!form || !form.children.length) return;
+    var uid = 0;
+
+    function q(sel, root) { return (root || form).querySelectorAll(sel); }
+    function checked(sel) { return q(sel + ':checked').length; }
+    function val(sel) { var el = form.querySelector(sel); return el ? (el.value || '').trim() : ''; }
+    function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
+
+    // One-line summaries, kept current as the form changes.
+    var summaries = {
+        basic: function () { return val('#name'); },
+        uniforms: function () {
+            var on = form.querySelector('#uniform_enabled');
+            if (!on || !on.checked) return 'No uniform';
+            var home = val('#uniform_home_color'), away = val('#uniform_away_color');
+            return [home && 'Home ' + home, away && 'Away ' + away].filter(Boolean).join(' · ') || 'On';
+        },
+        styles: function () {
+            var n = checked('input[name="products"]');
+            return n ? plural(n, 'style') + ' selected' : 'None selected';
+        },
+        colors: function () {
+            var n = checked('input[name="allowed_colors"]');
+            return n ? plural(n, 'color') + ' chosen' : 'All colors';
+        },
+        designs: function () {
+            var n = checked('input[name=allowed_designs]');
+            return n ? plural(n, 'design') : 'None yet';
+        },
+        placement: function () {
+            var n = checked('input[name="allowed_placements"]');
+            return (n === 0 || n === 4) ? 'Any spot' : plural(n, 'spot');
+        },
+        back: function () {
+            var r = form.querySelector('input[name="back_design_type"]:checked');
+            var map = { none: 'Front only', name_number: 'Name & number', image: 'Image', both: 'Name, number & image' };
+            return r ? (map[r.value] || '') : '';
+        },
+        settings: function () {
+            var opens = val('#order_opens_at'), ends = val('#order_deadline');
+            var vis = form.querySelector('input[name="visibility"]:checked');
+            var parts = [];
+            parts.push(ends ? 'Closes ' + ends : 'No deadline');
+            if (vis) parts.push(vis.value === 'public' ? 'Public' : 'Link only');
+            return parts.join(' · ');
+        }
+    };
+
+    var enhanced = [];
+
+    // Turns one part of the form into [heading button][folding body].
+    function make(container, bodyNodes, key, startOpen, fill, mount) {
+        var id = 'acc' + (++uid);
+        var body = document.createElement('div');
+        body.className = 'acc-body';
+        body.id = id;
+        bodyNodes.forEach(function (n) { body.appendChild(n); });
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'acc-head';
+        btn.setAttribute('aria-controls', id);
+        var sum = document.createElement('span');
+        sum.className = 'acc-sum';
+        var chev = document.createElement('span');
+        chev.className = 'acc-chev';
+        chev.setAttribute('aria-hidden', 'true');
+        var extra = fill(btn, sum, chev) || [];
+        function set(open) {
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            body.hidden = !open;
+        }
+        btn.addEventListener('click', function () { set(body.hidden); });
+        set(startOpen);
+        container.classList.add('is-acc');
+        mount(btn);
+        container.appendChild(body);
+        extra.forEach(function (n) { body.insertBefore(n, body.firstChild); });
+        var entry = { btn: btn, body: body, sum: sum, key: key, open: set };
+        enhanced.push(entry);
+        return entry;
+    }
+
+    // 1. the big sections: heading becomes the button, the rest folds
+    Array.from(form.children).forEach(function (sec, index) {
+        if (!sec.classList || !sec.classList.contains('form-section')) return;
+        var h2 = Array.from(sec.children).find(function (c) { return c.tagName === 'H2'; });
+        var holder = h2;                       // what gets replaced by the heading button
+        if (!h2) {                             // e.g. Player Uniforms keeps its heading in a small header block
+            h2 = sec.querySelector('#uniformsSectionHeader h2');
+            holder = h2 && h2.parentElement;
+            if (!h2 || !holder || holder === sec) return;
+        }
+        var text = h2.textContent;
+        var key = sec.id === 'playerUniformsSection' ? 'uniforms'
+                : /Fan Wear|Styles to Offer/.test(text) ? 'styles'
+                : /Settings/.test(text) ? 'settings'
+                : /Basic/.test(text) ? 'basic' : null;
+        var rest = Array.from(sec.childNodes).filter(function (n) { return n !== holder; });
+        var startOpen = index === 0 || /Your Choices/.test(text);
+        make(sec, rest, key, startOpen, function (btn, sum, chev) {
+            h2.classList.add('acc-title');
+            var name = document.createElement('span');
+            name.className = 'acc-name';
+            while (h2.firstChild) name.appendChild(h2.firstChild);   // keeps the wording spans other scripts toggle
+            btn.appendChild(name); btn.appendChild(sum); btn.appendChild(chev);
+            // a longer help line under the heading moves into the opened part
+            return holder === h2 ? [] : Array.from(holder.querySelectorAll('p.form-hint'));
+        }, function (btn) {
+            if (holder !== h2) { holder.textContent = ''; holder.appendChild(h2); }
+            h2.appendChild(btn);
+        });
+    });
+
+    // 2. the numbered choices inside "Your Choices": one line each, open on demand
+    var keys = ['colors', 'designs', 'placement', 'back'];
+    Array.from(q('.organizer-block')).forEach(function (block, i) {
+        var label = Array.from(block.children).find(function (c) { return c.classList.contains('organizer-block-label'); });
+        if (!label) return;
+        var rest = Array.from(block.childNodes).filter(function (n) { return n !== label; });
+        make(block, rest, keys[i] || null, false, function (btn, sum, chev) {
+            var step = label.querySelector('.organizer-step');
+            var title = label.querySelector('strong');
+            var name = document.createElement('span');
+            name.className = 'acc-name';
+            name.innerHTML = title ? title.innerHTML : '';
+            if (step) btn.appendChild(step);
+            btn.appendChild(name); btn.appendChild(sum); btn.appendChild(chev);
+            var hints = Array.from(label.querySelectorAll('p.form-hint'));
+            hints.forEach(function (h) { h.style.margin = '0 0 1rem'; });
+            return hints;                    // the longer help text moves into the opened part
+        }, function (btn) { block.replaceChild(btn, label); });
+    });
+
+    // 3. keep summaries current
+    function refresh() {
+        enhanced.forEach(function (e) { if (e.key && summaries[e.key]) e.sum.textContent = summaries[e.key](); });
+    }
+    form.addEventListener('change', refresh);
+    form.addEventListener('input', refresh);
+    refresh();
+    window.addEventListener('load', function () { refresh(); setTimeout(refresh, 400); });
+
+    // 4. never hide a problem: open whatever holds an invalid field, or the one a link points at
+    function openAround(el) {
+        enhanced.forEach(function (e) { if (e.body.contains(el)) e.open(true); });
+    }
+    form.addEventListener('invalid', function (ev) { openAround(ev.target); }, true);
+    function openHash() {
+        if (!location.hash) return;
+        var target = document.getElementById(location.hash.slice(1));
+        if (target) openAround(target);
+    }
+    window.addEventListener('hashchange', openHash);
+    openHash();
+
+    // 5. expand / collapse everything
+    var tools = document.createElement('div');
+    tools.className = 'acc-tools';
+    tools.innerHTML = '<button type="button" data-all="open">Expand all</button><button type="button" data-all="close">Collapse all</button>';
+    form.insertBefore(tools, form.firstChild);
+    tools.addEventListener('click', function (ev) {
+        var mode = ev.target && ev.target.getAttribute('data-all');
+        if (!mode) return;
+        enhanced.forEach(function (e) { e.open(mode === 'open'); });
+    });
+})();
+</script>
 {% include 'includes/group_order_wide_layout.html' %}
 {% include 'includes/group_order_logo_upload.js.html' %}
