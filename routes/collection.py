@@ -90,11 +90,11 @@ def view(slug):
         joinedload(Collection.products)
     ).filter_by(slug=slug, is_active=True).first_or_404()
     
-    # Check password if protected
-    if collection.is_password_protected:
-        if not session.get(f'collection_{collection.id}_access'):
-            return redirect(url_for('collection.password', slug=slug))
-    
+    # Check password if protected (admins always get in)
+    from utils.group_orders import access_code_required
+    if access_code_required(collection):
+        return redirect(url_for('collection.password', slug=slug))
+
     from utils.group_roster import is_organizer_pays
     if is_organizer_pays(collection):
         return _roster_form(collection)
@@ -314,7 +314,8 @@ def roster_submit(slug):
     collection = Collection.query.filter_by(slug=slug, is_active=True).first_or_404()
     if not is_organizer_pays(collection):
         return redirect(url_for('collection.view', slug=slug))
-    if collection.is_password_protected and not session.get(f'collection_{collection.id}_access'):
+    from utils.group_orders import access_code_required
+    if access_code_required(collection):
         return redirect(url_for('collection.password', slug=slug))
 
     # Honeypot: real people never see this field.
@@ -444,10 +445,11 @@ def roster_pay(slug):
 def password(slug):
     """Password protection for collection"""
     collection = Collection.query.filter_by(slug=slug, is_active=True).first_or_404()
-    
-    if not collection.is_password_protected:
+
+    from utils.group_orders import access_code_required
+    if not access_code_required(collection):
         return redirect(url_for('collection.view', slug=slug))
-    
+
     if request.method == 'POST':
         password = request.form.get('password')
         
@@ -470,10 +472,10 @@ def share(slug):
         from flask import abort
         abort(404)
 
-    # Check password if protected
-    if collection.is_password_protected:
-        if not session.get(f'collection_{collection.id}_access'):
-            return redirect(url_for('collection.password', slug=slug))
+    # Check password if protected (admins always get in)
+    from utils.group_orders import access_code_required
+    if access_code_required(collection):
+        return redirect(url_for('collection.password', slug=slug))
 
     # Resolve designs for this collection so the share page can show them
     designs = []

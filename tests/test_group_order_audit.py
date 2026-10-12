@@ -73,6 +73,7 @@ def test_a_password_protected_team_asks_for_the_password(admin_client, client, a
         coll = Collection.query.filter_by(name=name).one()
         coll.set_password('letmein')
         db.session.commit()
+    admin_client.get('/auth/logout')                 # admins skip the code, so look as a guest
     resp = client.get(f'/c/{_slug_of(app, name)}')
     assert resp.status_code == 302 and '/password' in resp.headers['Location']
 

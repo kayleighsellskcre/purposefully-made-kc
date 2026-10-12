@@ -1393,6 +1393,19 @@ def get_active_collection(cart=None):
     return collection
 
 
+def access_code_required(collection):
+    """True when this visitor still has to enter the group's access code.
+
+    Admins always see every group. Everyone else needs the code once per session.
+    """
+    if not collection or not collection.is_password_protected:
+        return False
+    if session.get(f'collection_{collection.id}_access'):
+        return False
+    from flask_login import current_user
+    return not (current_user.is_authenticated and getattr(current_user, 'is_admin', False))
+
+
 def attach_collection(collection):
     if collection and collection.is_active and not is_deadline_passed(collection):
         session['collection_id'] = collection.id
