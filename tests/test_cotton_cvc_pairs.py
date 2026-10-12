@@ -280,3 +280,10 @@ def test_the_org_fan_wear_page_uses_one_card_and_saves_both(admin_client, app, s
         from utils.group_orders import team_store_config
         ids = team_store_config(db.session.get(Collection, fan_id))['fan_product_ids']
     assert ids == [seed['tee_id'], blend_id]
+
+
+def test_the_no_mockup_placeholder_is_the_friendly_picture_day_card(client):
+    resp = client.get('/static/img/placeholder-product.svg')
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert 'skipped picture day' in body and 'you can still order' in body and 'No image' not in body

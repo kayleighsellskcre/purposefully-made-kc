@@ -1,4 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
-  <rect fill="#e5e5e5" width="200" height="200"/>
-  <text x="100" y="100" dominant-baseline="middle" text-anchor="middle" fill="#999" font-size="14" font-family="sans-serif">No image</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400" role="img" aria-label="This mockup skipped picture day">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fdf8f4"/>
+      <stop offset="1" stop-color="#f5ede4"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#bg)"/>
+  <text x="200" y="170" text-anchor="middle" font-size="64">&#128248;</text>
+  <text x="200" y="225" text-anchor="middle" fill="#8b6f5e" font-size="21" font-weight="700" font-family="Georgia, 'Times New Roman', serif">This mockup skipped picture day!</text>
+  <text x="200" y="258" text-anchor="middle" fill="#b09080" font-size="14" font-family="Arial, Helvetica, sans-serif">No worries, you can still order.</text>
+  <text x="200" y="280" text-anchor="middle" fill="#b09080" font-size="14" font-family="Arial, Helvetica, sans-serif">Just choose your favorite design! &#9825;</text>
 </svg>
