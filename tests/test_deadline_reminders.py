@@ -166,3 +166,52 @@ def test_the_job_is_scheduled_for_the_morning():
     import scheduler
     source = inspect.getsource(scheduler.init_scheduler)
     assert "id='deadline_reminders'" in source and "hour='8-11'" in source
+
+
+# ── Each organizer hears only about the group (or teams) they run ───────────
+
+def test_with_no_organizer_only_the_admin_is_reminded(app, seed, outbox):
+    _prepare(app, seed['collection_id'], created_by_user_id=None, pending_organizer_email=None)
+    assert _run(app) == {'groups': 1, 'emails': 1}
+    assert [m.recipients for m in outbox] == [[_admin(app)]]
+
+
+def test_different_coaches_each_get_only_their_own_teams(admin_client, app, seed, outbox):
+    from tests.test_org_fan_wear import _build, _store
+    _build(admin_client, app, seed)
+    _prepare(app, _store(app, 'Basketball: Rainbow Cheetahs')[0], created_by_user_id=seed['customer_id'])
+    _prepare(app, _store(app, 'Soccer: Rainbow Cheetahs')[0], created_by_user_id=None,
+             pending_organizer_email='coach@example.com')
+    _prepare(app, _store(app, 'Volleyball: Rainbow Cheetahs')[0], created_by_user_id=None,
+             pending_organizer_email=None)
+    assert _run(app) == {'groups': 1, 'emails': 3}            # two coaches + the admin
+
+    basketball = _to(outbox, CUSTOMER_EMAIL)
+    soccer = _to(outbox, 'coach@example.com')
+    assert len(basketball) == 1 and len(soccer) == 1
+    assert 'Basketball' in basketball[0].body
+    assert 'Soccer' not in basketball[0].body and 'Volleyball' not in basketball[0].body
+    assert 'Soccer' in soccer[0].body and 'Basketball' not in soccer[0].body
+    assert basketball[0].subject == 'Last day to order: Rainbow Cheetahs: Basketball'
+
+    admin = _to(outbox, _admin(app))
+    assert len(admin) == 1
+    for team in ('Basketball', 'Soccer', 'Volleyball'):
+        assert team in admin[0].body                           # the admin sees everything
+    # Volleyball has no coach of its own, so it falls back to the organization's organizer: the admin
+    assert 'You are the organizer for Volleyball' in admin[0].body
+
+
+def test_an_organization_without_team_organizers_uses_the_organizations_organizer(admin_client, app, seed, outbox):
+    from models import Organization
+    from tests.test_org_fan_wear import _build, _org_slug, _store
+    _build(admin_client, app, seed)
+    with app.app_context():
+        Organization.query.filter_by(slug=_org_slug(app)).one().pending_organizer_email = 'president@example.com'
+        db.session.commit()
+    for team in ('Basketball', 'Soccer', 'Volleyball'):
+        _prepare(app, _store(app, f'{team}: Rainbow Cheetahs')[0], created_by_user_id=None,
+                 pending_organizer_email=None)
+    assert _run(app) == {'groups': 1, 'emails': 2}
+    mail = _to(outbox, 'president@example.com')
+    assert len(mail) == 1 and all(t in mail[0].body for t in ('Basketball', 'Soccer', 'Volleyball'))

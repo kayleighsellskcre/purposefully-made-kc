@@ -1,13 +1,18 @@
 """Morning-of-the-deadline reminder emails for group orders.
 
-On the day a group order closes, the organizer gets a nudge to remind their
-group, and the admin gets a heads-up with the numbers. A multi-team
-organization is ONE group: one email each, listing every team, never one per
-team. Each store remembers the day its reminder went out, so running this
-more than once on the same morning (a late deploy, an hourly retry) can never
-send it twice.
+On the day a group order closes, each organizer gets a nudge to remind their
+group, and the admin gets a heads-up with the numbers.
+
+* An organizer only ever hears about the group (or the teams) they run.
+* A multi-team organization is ONE group: its organizer gets one email listing
+  their teams, never one per team. If different people run different teams,
+  each gets only their own.
+* With no organizer on file (or the admin is the organizer), the admin alone is
+  reminded.
+* Each store remembers the day its reminder went out, so running this more than
+  once on the same morning (a late deploy, an hourly retry) never sends twice.
 """
-from datetime import datetime, time
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from flask import render_template
@@ -49,8 +54,8 @@ def _group_key(collection):
     return ('store', collection.id), None, collection.name
 
 
-def _organizer_contacts(stores, org):
-    """[(email, first_name)] for the people who run this group, without duplicates."""
+def _store_contacts(store, org):
+    """[(email, first_name)] for whoever runs this store (falls back to the organization's organizer)."""
     found = []
 
     def add(email, name=None):
@@ -58,10 +63,9 @@ def _organizer_contacts(stores, org):
         if email and email.lower() not in {e.lower() for e, _ in found}:
             found.append((email, (name or '').strip() or None))
 
-    for store in stores:
-        if store.created_by is not None:
-            add(store.created_by.email, store.created_by.first_name)
-        add(store.pending_organizer_email)
+    if store.created_by is not None:
+        add(store.created_by.email, store.created_by.first_name)
+    add(store.pending_organizer_email)
     if not found and org is not None:
         if org.created_by is not None:
             add(org.created_by.email, org.created_by.first_name)
@@ -96,30 +100,58 @@ def due_groups(today=None):
     return list(groups.values())
 
 
-def _share_url(app, group):
-    base = admin_base_url(app)
-    if group['org'] is not None:
-        return f"{base}/org/{group['org'].slug}"
-    return f"{base}/c/{group['stores'][0].slug}"
-
-
-def _group_name(group):
-    return group['org'].name if group['org'] is not None else group['stores'][0].name
-
-
-def _rows(group):
-    rows = []
+def _plan(group, admin_email):
+    """Who hears about what: ({email: person}, stores with no organizer, stores the admin runs)."""
+    people, unassigned, admin_runs = {}, [], []
     for store in group['stores']:
+        contacts = _store_contacts(store, group['org'])
+        others = [c for c in contacts if c[0].lower() != admin_email]
+        if not contacts:
+            unassigned.append(store)
+        elif not others:
+            admin_runs.append(store)
+        for email, first_name in others:
+            person = people.setdefault(email.lower(), {'email': email, 'first_name': first_name, 'stores': []})
+            person['stores'].append(store)
+    return list(people.values()), unassigned, admin_runs
+
+
+def _labels(group, stores):
+    return [group['labels'].get(s.id) or s.name for s in stores]
+
+
+def _name_for(group, stores):
+    """Group name; for someone who runs only some teams of an organization, just those teams."""
+    if group['org'] is None:
+        return group['stores'][0].name
+    if len(stores) == len(group['stores']):
+        return group['org'].name
+    return f"{group['org'].name}: {' & '.join(_labels(group, stores))}"
+
+
+def _share_url(app, group, stores):
+    base = admin_base_url(app)
+    if group['org'] is None:
+        return f"{base}/c/{group['stores'][0].slug}"
+    if len(stores) == 1 and len(group['stores']) > 1:
+        return f"{base}/c/{stores[0].slug}"
+    return f"{base}/org/{group['org'].slug}"
+
+
+def _rows(group, stores):
+    rows = []
+    for store in stores:
         n, noun = _count(store)
-        rows.append({'name': group['labels'].get(store.id) or store.name, 'count': n, 'noun': noun,
-                     'id': store.id})
+        rows.append({'name': group['labels'].get(store.id) or store.name, 'count': n, 'noun': noun})
     return rows
 
 
-def _organizer_message(app, group, email, first_name):
-    name = _group_name(group)
-    url = _share_url(app, group)
-    rows = _rows(group)
+def _organizer_message(app, group, person):
+    stores = person['stores']
+    name = _name_for(group, stores)
+    url = _share_url(app, group, stores)
+    rows = _rows(group, stores)
+    first_name = person['first_name']
     plain = (
         f"Hi {first_name or 'there'},\n\n"
         f"Today is the last day to order for {name}.\n"
@@ -135,21 +167,36 @@ def _organizer_message(app, group, email, first_name):
                    admin_url=None, organizer_note=None)
     return Message(
         subject=f"Last day to order: {name}",
-        recipients=[email], body=plain, html=html, reply_to=reply_to(app),
+        recipients=[person['email']], body=plain, html=html, reply_to=reply_to(app),
     )
 
 
-def _admin_message(app, group, organizer_emails, you_are_organizer=False):
-    name = _group_name(group)
-    url = _share_url(app, group)
-    rows = _rows(group)
+def _admin_note(group, people, unassigned, admin_runs):
+    multi = group['org'] is not None
+    parts = []
+    if people:
+        if multi:
+            parts.append('Organizers emailed: ' + '; '.join(
+                f"{p['email']} ({', '.join(_labels(group, p['stores']))})" for p in people) + '.')
+        else:
+            parts.append('The organizer was emailed: ' + ', '.join(p['email'] for p in people) + '.')
+    if admin_runs:
+        which = f" for {', '.join(_labels(group, admin_runs))}" if multi else ''
+        parts.append(f"You are the organizer{which}, so that reminder is for you. Please remind your group today.")
+    if unassigned:
+        which = f" for {', '.join(_labels(group, unassigned))}" if multi else ' for this group'
+        parts.append(f"No organizer email is on file{which}, so only you were reminded. "
+                     "You may want to nudge them yourself.")
+    return ' '.join(parts)
+
+
+def _admin_message(app, group, people, unassigned, admin_runs):
+    stores = group['stores']
+    name = _name_for(group, stores)
+    url = _share_url(app, group, stores)
+    rows = _rows(group, stores)
     admin_url = f"{admin_base_url(app)}/admin/collections"
-    if organizer_emails:
-        note = 'The organizer was emailed: ' + ', '.join(organizer_emails) + '.'
-    elif you_are_organizer:
-        note = 'You are the organizer of this group, so this one reminder is for you. Please remind your group today.'
-    else:
-        note = 'No organizer email is on file for this group, so only you were reminded. You may want to nudge them yourself.'
+    note = _admin_note(group, people, unassigned, admin_runs)
     total = sum(r['count'] for r in rows)
     plain = (
         f"DEADLINE TODAY: {name}\n\n"
@@ -168,26 +215,24 @@ def _admin_message(app, group, organizer_emails, you_are_organizer=False):
 
 
 def send_deadline_reminders(app, today=None):
-    """Email the organizer and the admin for every group closing today.
+    """Email the organizer(s) and the admin for every group closing today.
 
     Returns {'groups': n, 'emails': n}. Safe to run repeatedly: a store that was
-    reminded today is skipped. A store is only marked once at least one email
-    for its group actually went out, so a mail outage retries on the next run.
+    reminded today is skipped. A group is only marked once at least one email for
+    it actually went out, so a mail outage retries on the next run.
     """
     admin_email = (admin_recipient(app) or '').strip().lower()
     summary = {'groups': 0, 'emails': 0}
     for group in due_groups(today):
-        everyone = _organizer_contacts(group['stores'], group['org'])
-        contacts = [c for c in everyone if c[0].lower() != admin_email]
-        you_are_organizer = bool(everyone) and not contacts
+        people, unassigned, admin_runs = _plan(group, admin_email)
         sent_any = False
-        for email, first_name in contacts:
-            if send(app, _organizer_message(app, group, email, first_name),
-                    description=f"deadline reminder to organizer {email}"):
+        for person in people:
+            if send(app, _organizer_message(app, group, person),
+                    description=f"deadline reminder to organizer {person['email']}"):
                 summary['emails'] += 1
                 sent_any = True
-        if send(app, _admin_message(app, group, [e for e, _ in contacts], you_are_organizer),
-                description=f"deadline reminder to admin for {_group_name(group)}"):
+        if send(app, _admin_message(app, group, people, unassigned, admin_runs),
+                description=f"deadline reminder to admin for {_name_for(group, group['stores'])}"):
             summary['emails'] += 1
             sent_any = True
         if sent_any:
