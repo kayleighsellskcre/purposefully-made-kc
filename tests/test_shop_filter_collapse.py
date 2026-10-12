@@ -1,8 +1,8 @@
 """The shop filter panel that collapses on phones.
 
 Six stacked dropdowns pushed the first product more than a screen below the
-fold on a 390px viewport, so they now sit behind a "Filter Products" button
-that CSS only reveals under 768px.
+fold on a 390px viewport, so they now sit behind a single "Filters" button on every screen size,
+which also shows how many filters are on.
 
 The part worth guarding here is the server-rendered state. If someone follows a
 filtered link — the footer's "T-Shirts" entry, say — and the panel renders
@@ -42,7 +42,7 @@ def controls_tag(html):
 # ── Unfiltered: collapsed ────────────────────────────────────────────────────
 
 def test_toggle_button_is_rendered(client):
-    assert 'Filter Products' in html_of(client)
+    assert '<span>Filters</span>' in html_of(client)
 
 
 def test_panel_starts_collapsed_with_no_filters(client):
@@ -359,3 +359,62 @@ def test_footer_baby_and_kids_link_uses_the_combined_filter(client, seed):
     html = html_of(client, '/')
     assert 'age_group=kids' in html
     assert "age_group=Baby'" not in html
+
+
+# ── The button says how many filters are on ─────────────────────────────────
+
+def test_filters_button_shows_how_many_are_active(client):
+    html = html_of(client, '/shop/?category=Tee&q=tee')
+    count = re.search(r'class="filter-toggle-count"[^>]*>(\d+)<', html)
+    assert count and count.group(1) == '2'
+
+
+def test_filters_button_has_no_count_when_nothing_is_filtered(client):
+    assert 'class="filter-toggle-count"' not in html_of(client)
+
+
+# ── Long catalogs show 12 products at a time ───────────────────────────────
+
+def _add_many_products(app, count):
+    import json
+    from models import Product, ProductColorVariant, db
+
+    stocked = json.dumps({'S': 5, 'M': 5, 'L': 5})
+    with app.app_context():
+        for n in range(count):
+            product = Product(
+                style_number=f'ZZ{n:03d}', name=f'Extra Tee {n}', category='Tee',
+                age_group='adult', base_price=20.0, wholesale_cost=5.0, is_active=True,
+                available_sizes=json.dumps(['S', 'M', 'L']),
+                available_colors=json.dumps(['Black']),
+            )
+            db.session.add(product)
+            db.session.flush()
+            db.session.add(ProductColorVariant(
+                product_id=product.id, color_name='Black', color_hex='#000000',
+                front_image_url='/static/img/logo.png', size_inventory=stocked,
+            ))
+        db.session.commit()
+
+
+def test_a_long_catalog_gets_a_show_more_button(client, app, seed):
+    _add_many_products(app, 20)
+    html = html_of(client)
+    assert 'id="showMoreWrap"' in html and 'id="showMoreBtn"' in html
+    assert 'const PAGE = 12' in html
+    # every product is still in the page (nothing is removed, only folded)
+    assert html.count('class="product-card') >= 20
+
+
+def test_show_more_button_comes_right_after_the_grid(client, app, seed):
+    _add_many_products(app, 20)
+    html = html_of(client)
+    assert html.index('class="products-grid"') < html.index('id="showMoreWrap"') < html.index('id="familyModal"')
+
+
+# ── The quote is a slim strip, not a full-screen card ──────────────────────
+
+def test_the_daily_quote_is_a_slim_strip(client):
+    html = html_of(client)
+    assert 'daily-affirmation-card' in html
+    assert 'Slim quote strip' in html
