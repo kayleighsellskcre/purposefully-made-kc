@@ -182,7 +182,7 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert 'function visibleArtworkWidthRatio(image)' in html
     assert 'let garmentWidth = (box && box.measured && box.widthPx)' in html
     assert 'garmentWidth * targetRatio / visibleWidthRatio' in html
-    assert 'const targetRatio = isSideChest ? (isTank ? 0.18 : 0.14) : (isTank ? 0.58 : 0.38)' in html
+    assert 'const targetRatio = isSideChest ? (isTank ? 0.18 : 0.14) : (isTank ? 0.58 : 0.44)' in html
     assert 'TRANSFER_SIZING.is_tank' in html
     assert "String(state.presetDesignId || state.designUrl || '') + '|' + src + '|' + placement" in html
     assert 'ctx.drawImage(mockup, disp.left, disp.top, disp.width, disp.height)' in html
