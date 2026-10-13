@@ -994,3 +994,35 @@ class PaymentCapture(db.Model):
 
     def __repr__(self):
         return f'<PaymentCapture {self.provider} {self.provider_ref}>'
+
+
+class ManualInvoice(db.Model):
+    """An invoice or receipt Kayleigh writes by hand (orders taken directly, any brand).
+
+    Deliberately NOT an Order: it never appears in production queues, blanks or
+    DTF lists. It exists to be printed and kept on file.
+    """
+    __tablename__ = 'manual_invoice'
+    id = db.Column(db.Integer, primary_key=True)
+    number = db.Column(db.String(30), unique=True, nullable=False, index=True)   # INV-2026-0001
+    kind = db.Column(db.String(10), default='auto')       # auto | invoice | receipt
+    customer_name = db.Column(db.String(200))
+    company = db.Column(db.String(200))
+    attn = db.Column(db.String(200))
+    email = db.Column(db.String(200))
+    phone = db.Column(db.String(40))
+    address = db.Column(db.Text)
+    po = db.Column(db.String(80))
+    note = db.Column(db.Text)
+    items_json = db.Column(db.Text, nullable=False, default='[]')    # [{description, qty, unit}]
+    tax_rate = db.Column(db.Float, default=0.0)           # percent, e.g. 9.5
+    shipping = db.Column(db.Float, default=0.0)
+    discount = db.Column(db.Float, default=0.0)
+    amount_paid = db.Column(db.Float, default=0.0)
+    payment_method = db.Column(db.String(40))             # Venmo, Cash, Check, Card, Other
+    issued_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<ManualInvoice {self.number}>'

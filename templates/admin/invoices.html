@@ -1,0 +1,76 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Invoices - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<style>
+.ivl { max-width: 980px; margin: 0 auto; padding-bottom: 3rem; }
+.ivl-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 1rem; margin: 1rem 0 1.5rem; }
+.ivl-head h1 { margin: .15rem 0 .3rem; }
+.ivl-head p { margin: 0; color: var(--text-secondary); max-width: 38rem; }
+.ivl-card { background: #fff; border: 1px solid var(--border-light, #eadfd2); border-radius: 16px; box-shadow: 0 6px 20px rgba(58,61,72,.05); overflow: hidden; }
+.ivl table { width: 100%; border-collapse: collapse; }
+.ivl th { text-align: left; font-size: .68rem; letter-spacing: .18em; text-transform: uppercase; color: var(--text-secondary); padding: .8rem 1rem; background: #fdf9f4; border-bottom: 1px solid var(--cashmere-sand, #E8D0B1); }
+.ivl td { padding: .85rem 1rem; border-bottom: 1px solid var(--border-light, #eadfd2); vertical-align: middle; }
+.ivl tr:last-child td { border-bottom: 0; }
+.ivl .num { text-align: right; white-space: nowrap; }
+.ivl .who b { display: block; font-family: var(--font-heading); font-size: 1.05rem; }
+.ivl .who span { color: var(--text-secondary); font-size: .85rem; }
+.ivl-pill { display: inline-block; padding: .2rem .7rem; border-radius: 999px; font-size: .66rem; letter-spacing: .16em; text-transform: uppercase; font-weight: 600; border: 1.5px solid #7a9a6b; color: #5f7a52; }
+.ivl-pill.due { border-color: var(--terra-cotta); color: var(--terra-cotta); }
+.ivl-actions { display: flex; gap: .4rem; justify-content: flex-end; flex-wrap: wrap; }
+.ivl-actions a, .ivl-actions button { font: 600 .72rem 'Inter', sans-serif; letter-spacing: .1em; text-transform: uppercase; text-decoration: none; padding: .45rem .9rem; border-radius: 999px; border: 1.5px solid var(--terra-cotta); color: var(--terra-cotta); background: #fff; cursor: pointer; }
+.ivl-actions .danger { border-color: #d8b8b3; color: #9b5b52; }
+.ivl-empty { padding: 3rem 1.5rem; text-align: center; color: var(--text-secondary); }
+.ivl-empty h2 { font-size: 1.3rem; margin: 0 0 .4rem; color: var(--text-primary); }
+@media (max-width: 720px) { .ivl th:nth-child(2), .ivl td:nth-child(2) { display: none; } }
+</style>
+<div class="ivl">
+    <div class="ivl-head">
+        <div>
+            <span class="adm-eyebrow">Admin / Business</span>
+            <h1>Invoices &amp; receipts</h1>
+            <p>For orders you take directly, even for brands that are not on your site. Orders placed on your site get their receipt from the Receipt button on the order page.</p>
+        </div>
+        <a href="{{ url_for('admin.invoice_new') }}" class="btn btn-primary">+ New invoice</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="alert alert-{{ cat }}" style="margin-bottom:1rem">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+
+    <div class="ivl-card">
+        {% if rows %}
+        <table>
+            <thead><tr><th>Invoice</th><th>Date</th><th class="num">Total</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+            {% for r in rows %}
+            <tr>
+                <td class="who"><b>{{ r.doc.company or r.doc.name or 'No name' }}</b><span>{{ r.doc.number }}{% if r.doc.company and r.doc.name %} &middot; {{ r.doc.name }}{% endif %}</span></td>
+                <td>{{ r.doc.date }}</td>
+                <td class="num">${{ '%.2f'|format(r.doc.total) }}</td>
+                <td><span class="ivl-pill {{ 'due' if r.doc.balance > 0 else '' }}">{{ 'Balance $%.2f'|format(r.doc.balance) if r.doc.balance > 0 else 'Paid' }}</span></td>
+                <td>
+                    <div class="ivl-actions">
+                        <a href="{{ url_for('admin.invoice_view', invoice_id=r.inv.id) }}">Open</a>
+                        <a href="{{ url_for('admin.invoice_edit', invoice_id=r.inv.id) }}">Edit</a>
+                        <form method="post" action="{{ url_for('admin.invoice_delete', invoice_id=r.inv.id) }}" onsubmit="return confirm('Delete {{ r.doc.number|e }}? This cannot be undone.')" style="margin:0">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="danger">Delete</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="ivl-empty">
+            <h2>No invoices yet</h2>
+            <p>Make one for anyone who orders directly and needs a receipt or invoice.</p>
+            <a href="{{ url_for('admin.invoice_new') }}" class="btn btn-primary">+ New invoice</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

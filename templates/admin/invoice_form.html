@@ -1,0 +1,182 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}{{ 'Edit' if inv else 'New' }} invoice - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<style>
+.iv { max-width: 860px; margin: 0 auto; padding-bottom: 3rem; }
+.iv-head { margin: 1rem 0 1.5rem; }
+.iv-head h1 { margin: .15rem 0 .35rem; }
+.iv-head p { color: var(--text-secondary); margin: 0; }
+.iv-card { background: #fff; border: 1px solid var(--border-light, #eadfd2); border-radius: 16px; padding: 1.4rem 1.5rem; margin-bottom: 1.25rem; box-shadow: 0 6px 20px rgba(58,61,72,.05); }
+.iv-card h2 { font-size: 1.25rem; margin: 0 0 .25rem; }
+.iv-sub { color: var(--text-secondary); font-size: .9rem; margin: 0 0 1rem; }
+.iv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem 1.1rem; }
+.iv-grid .wide { grid-column: 1 / -1; }
+.iv label.f { display: flex; flex-direction: column; gap: .3rem; font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; }
+.iv input[type=text], .iv input[type=email], .iv input[type=number], .iv input[type=date], .iv select, .iv textarea { font: 400 1rem 'Inter', sans-serif; padding: .65rem .8rem; border: 1px solid var(--border-color, #e3d6c8); border-radius: 10px; background: #fffdfb; color: var(--text-primary); text-transform: none; letter-spacing: 0; width: 100%; }
+.iv-lines { width: 100%; border-collapse: collapse; }
+.iv-lines th { text-align: left; font-size: .68rem; letter-spacing: .18em; text-transform: uppercase; color: var(--text-secondary); padding: .35rem .35rem; }
+.iv-lines td { padding: .3rem; vertical-align: middle; }
+.iv-lines .d { width: 52%; } .iv-lines .q { width: 12%; } .iv-lines .p { width: 18%; } .iv-lines .t { width: 14%; text-align: right; font-weight: 600; white-space: nowrap; }
+.iv-x { border: 0; background: transparent; color: var(--terra-cotta); font-size: 1.3rem; cursor: pointer; line-height: 1; padding: .2rem .5rem; }
+.iv-add { margin-top: .6rem; background: transparent; border: 1.5px dashed var(--terra-cotta); color: var(--terra-cotta); border-radius: 999px; padding: .55rem 1.2rem; font: 600 .78rem 'Inter', sans-serif; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; }
+.iv-sum { margin-left: auto; max-width: 340px; margin-top: 1.2rem; }
+.iv-sum div { display: flex; justify-content: space-between; padding: .25rem 0; color: var(--text-secondary); }
+.iv-sum [hidden] { display: none; }
+.iv-sum .tot { border-top: 1px solid var(--cashmere-sand, #E8D0B1); margin-top: .4rem; padding-top: .6rem; color: var(--text-primary); font-family: var(--font-heading); font-size: 1.3rem; }
+.iv-sum .bal { color: var(--terra-cotta); font-weight: 600; }
+.iv-chips { display: flex; gap: .5rem; margin-top: .45rem; flex-wrap: wrap; }
+.iv-chip { border: 1px solid var(--border-color, #e3d6c8); background: #fff; border-radius: 999px; padding: .3rem .8rem; font-size: .78rem; cursor: pointer; color: var(--text-secondary); }
+.iv-actions { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; }
+.iv-error { background: #fdecea; border: 1px solid #f3c2bc; color: #8c2f26; padding: .8rem 1rem; border-radius: 10px; margin-bottom: 1rem; }
+@media (max-width: 640px) { .iv-grid { grid-template-columns: 1fr; } .iv-lines .d { width: 40%; } }
+</style>
+
+<div class="iv">
+    <div class="iv-head">
+        <span class="adm-eyebrow">Admin / Invoices</span>
+        <h1>{{ 'Edit' if inv else 'New' }} invoice or receipt</h1>
+        <p>For orders you take directly, including brands that are not on your site. Fill it in, save, then print or save it as a PDF.</p>
+    </div>
+
+    {% if error %}<div class="iv-error">{{ error }}</div>{% endif %}
+
+    <form method="post" id="ivForm" autocomplete="off">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="items_json" id="itemsJson" value="">
+
+        <section class="iv-card">
+            <h2>Who is it for?</h2>
+            <p class="iv-sub">A company name is optional. It prints at the top of the Billed to block.</p>
+            <div class="iv-grid">
+                <label class="f">Name<input type="text" name="customer_name" value="{{ f.customer_name }}" required maxlength="200"></label>
+                <label class="f">Company<input type="text" name="company" value="{{ f.company }}" maxlength="200" placeholder="Optional"></label>
+                <label class="f">Attention<input type="text" name="attn" value="{{ f.attn }}" maxlength="200" placeholder="Optional"></label>
+                <label class="f">PO or reference #<input type="text" name="po" value="{{ f.po }}" maxlength="80" placeholder="Optional"></label>
+                <label class="f">Email<input type="email" name="email" value="{{ f.email }}" maxlength="200"></label>
+                <label class="f">Phone<input type="text" name="phone" value="{{ f.phone }}" maxlength="40"></label>
+                <label class="f wide">Address<textarea name="address" rows="2" maxlength="400" placeholder="Optional">{{ f.address }}</textarea></label>
+            </div>
+        </section>
+
+        <section class="iv-card">
+            <h2>What did they order?</h2>
+            <p class="iv-sub">One line for each item. Use any brand or description you like.</p>
+            <table class="iv-lines" id="ivLines">
+                <thead><tr><th class="d">Description</th><th class="q">Qty</th><th class="p">Price each</th><th class="t">Total</th><th></th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <button type="button" class="iv-add" id="ivAdd">+ Add a line</button>
+
+            <div class="iv-grid" style="margin-top:1.4rem">
+                <label class="f">Sales tax %
+                    <input type="number" step="0.001" min="0" max="30" name="tax_rate" id="ivTax" value="{{ f.tax_rate }}">
+                    <span class="iv-chips"><button type="button" class="iv-chip" data-tax="9.5">Kansas City 9.5%</button><button type="button" class="iv-chip" data-tax="0">No tax</button></span>
+                </label>
+                <label class="f">Shipping<input type="number" step="0.01" min="0" name="shipping" id="ivShip" value="{{ f.shipping }}"></label>
+                <label class="f">Discount<input type="number" step="0.01" min="0" name="discount" id="ivDisc" value="{{ f.discount }}"></label>
+            </div>
+
+            <div class="iv-sum">
+                <div><span>Subtotal</span><span id="sSub">$0.00</span></div>
+                <div id="sDiscRow" hidden><span>Discount</span><span id="sDisc">$0.00</span></div>
+                <div><span>Tax</span><span id="sTax">$0.00</span></div>
+                <div id="sShipRow" hidden><span>Shipping</span><span id="sShip">$0.00</span></div>
+                <div class="tot"><span>Total</span><span id="sTot">$0.00</span></div>
+                <div class="bal" id="sBalRow"><span>Balance due</span><span id="sBal">$0.00</span></div>
+            </div>
+        </section>
+
+        <section class="iv-card">
+            <h2>Payment</h2>
+            <p class="iv-sub">Leave "Paid so far" at 0 for an invoice. Enter the full total for a receipt.</p>
+            <div class="iv-grid">
+                <label class="f">Paid so far<input type="number" step="0.01" min="0" name="amount_paid" id="ivPaid" value="{{ f.amount_paid }}"></label>
+                <label class="f">Paid with
+                    <select name="payment_method">
+                        {% for m in ['', 'Venmo', 'Cash', 'Check', 'Card', 'Other'] %}<option value="{{ m }}" {% if f.payment_method == m %}selected{% endif %}>{{ m or 'Not paid yet' }}</option>{% endfor %}
+                    </select>
+                </label>
+                <label class="f">Date<input type="date" name="issued" value="{{ f.issued }}"></label>
+                <label class="f">Document
+                    <select name="kind">
+                        <option value="auto" {% if f.kind not in ['invoice','receipt'] %}selected{% endif %}>Automatic (receipt when paid, invoice when not)</option>
+                        <option value="invoice" {% if f.kind == 'invoice' %}selected{% endif %}>Always an invoice</option>
+                        <option value="receipt" {% if f.kind == 'receipt' %}selected{% endif %}>Always a receipt</option>
+                    </select>
+                </label>
+                <label class="f wide">A note on the document<textarea name="note" rows="2" maxlength="400" placeholder="Optional. Prints at the bottom.">{{ f.note }}</textarea></label>
+            </div>
+        </section>
+
+        <div class="iv-actions">
+            <button type="submit" class="btn btn-primary">{{ 'Save changes' if inv else 'Save and view' }}</button>
+            <a href="{{ url_for('admin.invoices') }}" class="btn btn-outline">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+(function () {
+    var body = document.querySelector('#ivLines tbody');
+    var initial = {{ (f.lines or [])|tojson }};
+    function fmt(n) { return '$' + (Math.round((n + Number.EPSILON) * 100) / 100).toFixed(2); }
+    function num(el) { var v = parseFloat(el && el.value); return isNaN(v) ? 0 : v; }
+
+    function addRow(row) {
+        row = row || {};
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td class="d"><input type="text" class="rd" maxlength="300" placeholder="e.g. Nike Dri-FIT tee, navy, adult M"></td>' +
+            '<td class="q"><input type="number" class="rq" min="0" step="1" value="1"></td>' +
+            '<td class="p"><input type="number" class="rp" min="0" step="0.01" placeholder="0.00"></td>' +
+            '<td class="t">$0.00</td>' +
+            '<td><button type="button" class="iv-x" aria-label="Remove line">&times;</button></td>';
+        tr.querySelector('.rd').value = row.description || '';
+        if (row.qty != null) tr.querySelector('.rq').value = row.qty;
+        if (row.unit != null) tr.querySelector('.rp').value = row.unit;
+        tr.querySelector('.iv-x').addEventListener('click', function () { tr.remove(); recalc(); });
+        body.appendChild(tr);
+    }
+
+    function recalc() {
+        var sub = 0;
+        body.querySelectorAll('tr').forEach(function (tr) {
+            var t = num(tr.querySelector('.rq')) * num(tr.querySelector('.rp'));
+            tr.querySelector('.t').textContent = fmt(t);
+            sub += Math.round(t * 100) / 100;
+        });
+        var disc = Math.min(Math.max(num(document.getElementById('ivDisc')), 0), sub);
+        var taxable = sub - disc;
+        var tax = Math.round(taxable * Math.max(num(document.getElementById('ivTax')), 0)) / 100;
+        var ship = Math.max(num(document.getElementById('ivShip')), 0);
+        var total = taxable + tax + ship;
+        var paid = Math.min(Math.max(num(document.getElementById('ivPaid')), 0), total);
+        document.getElementById('sSub').textContent = fmt(sub);
+        document.getElementById('sDisc').textContent = '-' + fmt(disc);
+        document.getElementById('sDiscRow').hidden = disc <= 0;
+        document.getElementById('sTax').textContent = fmt(tax);
+        document.getElementById('sShip').textContent = fmt(ship);
+        document.getElementById('sShipRow').hidden = ship <= 0;
+        document.getElementById('sTot').textContent = fmt(total);
+        document.getElementById('sBal').textContent = fmt(Math.max(total - paid, 0));
+        document.getElementById('sBalRow').hidden = total - paid <= 0.004;
+    }
+
+    (initial.length ? initial : [{}]).forEach(addRow);
+    document.getElementById('ivAdd').addEventListener('click', function () { addRow(); body.lastChild.querySelector('.rd').focus(); });
+    document.getElementById('ivForm').addEventListener('input', recalc);
+    document.querySelectorAll('[data-tax]').forEach(function (b) {
+        b.addEventListener('click', function () { document.getElementById('ivTax').value = b.dataset.tax; recalc(); });
+    });
+    document.getElementById('ivForm').addEventListener('submit', function () {
+        var rows = [];
+        body.querySelectorAll('tr').forEach(function (tr) {
+            rows.push({ description: tr.querySelector('.rd').value, qty: tr.querySelector('.rq').value, unit: tr.querySelector('.rp').value });
+        });
+        document.getElementById('itemsJson').value = JSON.stringify(rows);
+    });
+    recalc();
+})();
+</script>
+{% endblock %}

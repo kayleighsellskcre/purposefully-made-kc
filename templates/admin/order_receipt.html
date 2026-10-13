@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>{{ doc.kind|title }} {{ doc.number }} - {{ business.name }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;600;700&family=Cormorant+Garamond:ital,wght@1,400;1,500&display=swap">
+<style>
+:root {
+    --sand: #E8D0B1;
+    --terra: #B87C6F;
+    --bronze: #8b6f5e;
+    --ink: #3A3D48;
+    --muted: #8a8478;
+    --line: #eadfd2;
+    --cream: #f5f0e8;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: var(--cream); color: var(--ink); font-family: 'Inter', Arial, sans-serif; font-size: 14px; line-height: 1.55; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+.rc-tools { max-width: 820px; margin: 1.5rem auto 0; padding: 0 1rem; }
+.rc-bar { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; justify-content: space-between; }
+.rc-bar a, .rc-bar button { font: 600 .78rem 'Inter', sans-serif; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; padding: .7rem 1.2rem; border-radius: 999px; border: 1.5px solid var(--terra); color: var(--terra); background: #fff; cursor: pointer; }
+.rc-bar .rc-primary { background: var(--terra); color: #fff; }
+.rc-bill { margin-top: 1rem; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 1rem 1.25rem; }
+.rc-bill summary { cursor: pointer; font-weight: 600; color: var(--bronze); }
+.rc-bill form { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem 1rem; margin-top: .9rem; }
+.rc-bill label { display: flex; flex-direction: column; gap: .25rem; font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.rc-bill input, .rc-bill select, .rc-bill textarea { font: 400 .95rem 'Inter', sans-serif; padding: .6rem .75rem; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: #fffdfb; text-transform: none; letter-spacing: 0; }
+.rc-bill .rc-wide { grid-column: 1 / -1; }
+.rc-bill button { grid-column: 1 / -1; justify-self: start; font: 600 .78rem 'Inter', sans-serif; letter-spacing: .12em; text-transform: uppercase; padding: .7rem 1.4rem; border-radius: 999px; border: 1.5px solid var(--terra); background: var(--terra); color: #fff; cursor: pointer; }
+
+.rc-paper { max-width: 820px; margin: 1.25rem auto 3rem; background: #fff; border-radius: 6px; box-shadow: 0 18px 50px rgba(58,61,72,.12); padding: 3rem 3.25rem 2.5rem; position: relative; }
+.rc-paper::before { content: ''; position: absolute; inset: 14px; border: 1px solid var(--line); border-radius: 3px; pointer-events: none; }
+
+.rc-head { text-align: center; }
+.rc-logo { width: 190px; height: auto; display: block; margin: 0 auto; }
+.rc-orn { display: flex; align-items: center; justify-content: center; gap: .8rem; margin: 1.1rem 0 1.2rem; color: var(--terra); }
+.rc-orn::before, .rc-orn::after { content: ''; height: 1px; width: 90px; background: linear-gradient(90deg, transparent, var(--sand)); }
+.rc-orn::after { background: linear-gradient(270deg, transparent, var(--sand)); }
+.rc-kind { font-size: .72rem; letter-spacing: .34em; text-transform: uppercase; color: var(--terra); font-weight: 600; margin: 0; }
+.rc-number { font-family: 'Playfair Display', serif; font-size: 1.7rem; margin: .25rem 0 .15rem; color: var(--ink); }
+.rc-date { color: var(--muted); font-size: .85rem; margin: 0; }
+
+.rc-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 2.2rem 0 1.8rem; }
+.rc-label { font-size: .68rem; letter-spacing: .24em; text-transform: uppercase; color: var(--terra); font-weight: 600; margin: 0 0 .5rem; }
+.rc-party p { margin: 0; }
+.rc-party .rc-strong { font-family: 'Playfair Display', serif; font-size: 1.05rem; color: var(--ink); }
+.rc-party .rc-sub { color: var(--muted); font-size: .88rem; }
+.rc-party a { color: inherit; text-decoration: none; }
+
+table.rc-items { width: 100%; border-collapse: collapse; margin-top: .4rem; }
+.rc-items th { font-size: .66rem; letter-spacing: .22em; text-transform: uppercase; color: var(--bronze); font-weight: 600; text-align: left; padding: .7rem .5rem; border-top: 1px solid var(--sand); border-bottom: 1px solid var(--sand); background: #fdf9f4; }
+.rc-items th.num, .rc-items td.num { text-align: right; white-space: nowrap; }
+.rc-items td { padding: .85rem .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+.rc-item-name { font-weight: 600; color: var(--ink); }
+.rc-item-sub { color: var(--muted); font-size: .84rem; }
+.rc-for { display: inline-block; margin-top: .2rem; font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: var(--terra); }
+
+.rc-bottom { display: grid; grid-template-columns: 1fr 280px; gap: 2.2rem; margin-top: 1.6rem; align-items: start; }
+.rc-totals { width: 100%; }
+.rc-totals div { display: flex; justify-content: space-between; padding: .3rem 0; color: var(--ink); }
+.rc-totals .rc-muted { color: var(--muted); }
+.rc-totals .rc-total { border-top: 1px solid var(--sand); margin-top: .35rem; padding-top: .65rem; font-family: 'Playfair Display', serif; font-size: 1.25rem; }
+.rc-totals .rc-due { margin-top: .4rem; padding: .7rem .9rem; border-radius: 10px; background: #fbf1ec; color: var(--terra); font-weight: 600; letter-spacing: .02em; }
+.rc-totals .rc-paidline { color: #5f7a52; font-weight: 600; }
+
+.rc-stamp { display: inline-block; margin-bottom: .9rem; padding: .35rem 1rem; border: 1.5px solid #7a9a6b; color: #5f7a52; border-radius: 999px; font-size: .7rem; letter-spacing: .3em; text-transform: uppercase; font-weight: 600; }
+.rc-stamp.due { border-color: var(--terra); color: var(--terra); }
+
+.rc-pay { background: #fdf9f4; border: 1px solid var(--line); border-radius: 12px; padding: 1.1rem 1.25rem; }
+.rc-pay ul { list-style: none; margin: .2rem 0 0; padding: 0; }
+.rc-pay li { display: flex; justify-content: space-between; gap: 1rem; padding: .3rem 0; border-bottom: 1px dotted var(--line); }
+.rc-pay li:last-child { border-bottom: 0; }
+.rc-pay li b { font-weight: 600; }
+.rc-pay li span { color: var(--muted); text-align: right; }
+
+.rc-note { margin-top: 1.4rem; padding: .9rem 1.1rem; border-left: 3px solid var(--sand); background: #fdfaf6; color: var(--ink); white-space: pre-line; }
+
+.rc-foot { text-align: center; margin-top: 2.4rem; }
+.rc-thanks { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.3rem; color: var(--terra); margin: 0 0 .35rem; }
+.rc-contact { color: var(--muted); font-size: .8rem; letter-spacing: .06em; margin: 0; }
+
+@media (max-width: 680px) {
+    .rc-paper { padding: 2rem 1.25rem; }
+    .rc-parties, .rc-bottom, .rc-bill form { grid-template-columns: 1fr; }
+}
+@page { size: letter; margin: 0.45in; }
+@media print {
+    body { background: #fff; }
+    .rc-tools { display: none !important; }
+    .rc-paper { box-shadow: none; margin: 0; max-width: none; padding: .4in .45in .3in; border-radius: 0; }
+    .rc-paper::before { inset: 0; }
+    tr, .rc-pay, .rc-bottom { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<div class="rc-tools">
+    <div class="rc-bar">
+        {% if invoice %}
+        <a href="{{ url_for('admin.invoices') }}">&larr; All invoices</a>
+        <span style="display:flex;gap:.6rem;flex-wrap:wrap">
+            <a href="{{ url_for('admin.invoice_edit', invoice_id=invoice.id) }}">Edit</a>
+            <button type="button" class="rc-primary" onclick="window.print()">Print or save as PDF</button>
+        </span>
+        {% else %}
+        <a href="{{ url_for('admin.order_detail', order_id=order.id) }}">&larr; Back to order</a>
+        <button type="button" class="rc-primary" onclick="window.print()">Print or save as PDF</button>
+        {% endif %}
+    </div>
+    {% if not invoice %}
+    <details class="rc-bill"{% if doc.company or doc.attn or doc.po or doc.note or request.args.get('kind') %} open{% endif %}>
+        <summary>Billing this to a company? Add their details</summary>
+        <form method="get">
+            <label>Company name<input type="text" name="company" value="{{ doc.company }}" maxlength="120" placeholder="e.g. Riverview Elementary PTO"></label>
+            <label>Attention<input type="text" name="attn" value="{{ doc.attn }}" maxlength="120" placeholder="Contact name"></label>
+            <label>PO or reference #<input type="text" name="po" value="{{ doc.po }}" maxlength="60"></label>
+            <label>Document
+                <select name="kind">
+                    <option value="" {% if not request.args.get('kind') %}selected{% endif %}>Automatic ({{ 'Receipt' if doc.balance <= 0 else 'Invoice' }})</option>
+                    <option value="receipt" {% if request.args.get('kind') == 'receipt' %}selected{% endif %}>Receipt</option>
+                    <option value="invoice" {% if request.args.get('kind') == 'invoice' %}selected{% endif %}>Invoice</option>
+                </select>
+            </label>
+            <label class="rc-wide">A note on the document (optional)<textarea name="note" rows="2" maxlength="400" placeholder="Anything you want printed at the bottom">{{ doc.note }}</textarea></label>
+            <button type="submit" class="rc-primary">Update</button>
+        </form>
+    </details>
+    {% endif %}
+</div>
+
+<main class="rc-paper">
+    <header class="rc-head">
+        <img class="rc-logo" src="{{ url_for('static', filename='img/logo-wordmark.png') }}" alt="{{ business.name }}">
+        <div class="rc-orn" aria-hidden="true">&#10022;</div>
+        <p class="rc-kind">{{ doc.kind }}</p>
+        <h1 class="rc-number" style="font-weight:600">No. {{ doc.number }}</h1>
+        <p class="rc-date">{{ doc.date }}</p>
+    </header>
+
+    <section class="rc-parties">
+        <div class="rc-party">
+            <p class="rc-label">From</p>
+            <p class="rc-strong">{{ business.owner }}</p>
+            <p>{{ business.name }}</p>
+            <p class="rc-sub">{{ business.email }}</p>
+            <p class="rc-sub">{{ business.phone }}</p>
+        </div>
+        <div class="rc-party">
+            <p class="rc-label">Billed to</p>
+            {% if doc.company %}<p class="rc-strong">{{ doc.company }}</p>{% endif %}
+            <p class="{{ '' if doc.company else 'rc-strong' }}">{% if doc.company and doc.attn %}Attn: {{ doc.attn }}{% else %}{{ doc.name }}{% endif %}</p>
+            {% if doc.company and doc.attn and doc.name and doc.name != doc.attn %}<p class="rc-sub">{{ doc.name }}</p>{% endif %}
+            {% if doc.email %}<p class="rc-sub">{{ doc.email }}</p>{% endif %}
+            {% if doc.phone %}<p class="rc-sub">{{ doc.phone }}</p>{% endif %}
+            {% if doc.address %}<p class="rc-sub" style="white-space:pre-line">{{ doc.address }}</p>{% endif %}
+            {% if doc.po %}<p class="rc-sub">PO / Ref: {{ doc.po }}</p>{% endif %}
+            {% if doc.ship_to %}<p class="rc-sub" style="margin-top:.35rem">Ship to: {{ doc.ship_to }}</p>{% endif %}
+            {% if doc.group %}<p class="rc-sub" style="margin-top:.35rem">Group order: {{ doc.group }}</p>{% endif %}
+        </div>
+    </section>
+
+    <table class="rc-items">
+        <thead>
+            <tr><th>Item</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Total</th></tr>
+        </thead>
+        <tbody>
+            {% for line in doc.lines %}
+            <tr>
+                <td>
+                    <div class="rc-item-name">{{ line.name }}</div>
+                    {% if line.detail %}<div class="rc-item-sub">{{ line.detail }}</div>{% endif %}
+                    {% if line['for'] %}<div class="rc-for">For {{ line['for'] }}</div>{% endif %}
+                </td>
+                <td class="num">{{ line.qty }}</td>
+                <td class="num">${{ '%.2f'|format(line.unit) }}</td>
+                <td class="num">${{ '%.2f'|format(line.total) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <section class="rc-bottom">
+        <div>
+            <span class="rc-stamp {{ 'due' if doc.balance > 0 else '' }}">{{ 'Balance due' if doc.balance > 0 else 'Paid in full' }}</span>
+            <div class="rc-pay">
+                <p class="rc-label">Accepted forms of payment</p>
+                <ul>
+                    {% for name, detail in payment_methods %}<li><b>{{ name }}</b><span>{{ detail }}</span></li>{% endfor %}
+                </ul>
+            </div>
+        </div>
+        <div class="rc-totals">
+            <div class="rc-muted"><span>Subtotal</span><span>${{ '%.2f'|format(doc.subtotal) }}</span></div>
+            {% if doc.discount %}<div class="rc-muted"><span>Discount</span><span>-${{ '%.2f'|format(doc.discount) }}</span></div>{% endif %}
+            {% if doc.shipping %}<div class="rc-muted"><span>Shipping</span><span>${{ '%.2f'|format(doc.shipping) }}</span></div>{% endif %}
+            {% if doc.tax or doc.tax_label == 'Tax' %}<div class="rc-muted"><span>{{ doc.tax_label }}</span><span>${{ '%.2f'|format(doc.tax) }}</span></div>{% endif %}
+            <div class="rc-total"><span>Total</span><span>${{ '%.2f'|format(doc.total) }}</span></div>
+            {% if doc.paid > 0 %}
+            <div class="rc-paidline"><span>Paid{% if doc.method %} ({{ doc.method }}){% endif %}</span><span>${{ '%.2f'|format(doc.paid) }}</span></div>
+            {% endif %}
+            {% if doc.balance > 0 %}<div class="rc-due"><span>Balance due</span><span>${{ '%.2f'|format(doc.balance) }}</span></div>{% endif %}
+        </div>
+    </section>
+
+    {% if doc.note %}<div class="rc-note">{{ doc.note }}</div>{% endif %}
+
+    <footer class="rc-foot">
+        <p class="rc-thanks">Made with purpose, for you.</p>
+        <p class="rc-contact">Thank you for supporting a small business &nbsp;&middot;&nbsp; {{ business.email }} &nbsp;&middot;&nbsp; {{ business.phone }}</p>
+    </footer>
+</main>
+
+</body>
+</html>

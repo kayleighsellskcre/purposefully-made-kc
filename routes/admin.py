@@ -3572,6 +3572,160 @@ def blank_apparel_list():
     )
 
 
+@admin_bp.route('/orders/<int:order_id>/receipt')
+@admin_required
+def order_receipt(order_id):
+    """A printable receipt (or invoice, when a balance is due) with the business details and logo.
+
+    Optional ?company=, ?attn=, ?po=, ?note= and ?kind=receipt|invoice fill in the
+    "Billed to" block, so a company that needs one can get it in seconds.
+    """
+    from utils.business_info import BUSINESS, PAYMENT_METHODS
+    from utils.receipts import doc_from_order
+    order = Order.query.get_or_404(order_id)
+    return render_template('admin/order_receipt.html', doc=doc_from_order(order, request.args), business=BUSINESS,
+                           payment_methods=PAYMENT_METHODS, order=order, invoice=None)
+
+
+# -- Hand-made invoices and receipts (orders taken directly, any brand) --------
+
+def _invoice_fields(inv=None):
+    """Form values for the invoice page: the saved invoice, or sensible blanks."""
+    from utils.receipts import parse_items
+    from datetime import datetime as _dt
+    if inv is None:
+        return {'customer_name': '', 'company': '', 'attn': '', 'po': '', 'email': '', 'phone': '', 'address': '',
+                'note': '', 'lines': [], 'tax_rate': '9.5', 'shipping': '', 'discount': '', 'amount_paid': '',
+                'payment_method': '', 'kind': 'auto', 'issued': _dt.now().strftime('%Y-%m-%d')}
+    fmt = lambda v: ('%g' % v) if v else ''
+    issued = (inv.issued_at or inv.created_at or _dt.now()).strftime('%Y-%m-%d')
+    return {'customer_name': inv.customer_name or '', 'company': inv.company or '', 'attn': inv.attn or '',
+            'po': inv.po or '', 'email': inv.email or '', 'phone': inv.phone or '', 'address': inv.address or '',
+            'note': inv.note or '', 'lines': parse_items(inv.items_json), 'tax_rate': '%g' % (inv.tax_rate or 0),
+            'shipping': fmt(inv.shipping), 'discount': fmt(inv.discount), 'amount_paid': fmt(inv.amount_paid),
+            'payment_method': inv.payment_method or '', 'kind': inv.kind or 'auto', 'issued': issued}
+
+
+def _read_invoice_form(form):
+    """(values, error) from a submitted invoice form."""
+    from utils.receipts import parse_items
+
+    def num(name):
+        try:
+            return max(float((form.get(name) or '').strip() or 0), 0.0)
+        except ValueError:
+            return 0.0
+    values = {
+        'customer_name': (form.get('customer_name') or '').strip()[:200],
+        'company': (form.get('company') or '').strip()[:200],
+        'attn': (form.get('attn') or '').strip()[:200],
+        'po': (form.get('po') or '').strip()[:80],
+        'email': (form.get('email') or '').strip()[:200],
+        'phone': (form.get('phone') or '').strip()[:40],
+        'address': (form.get('address') or '').strip()[:400],
+        'note': (form.get('note') or '').strip()[:400],
+        'lines': parse_items(form.get('items_json') or '[]'),
+        'tax_rate': min(num('tax_rate'), 30.0), 'shipping': num('shipping'), 'discount': num('discount'),
+        'amount_paid': num('amount_paid'),
+        'payment_method': (form.get('payment_method') or '').strip()[:40],
+        'kind': form.get('kind') if form.get('kind') in ('invoice', 'receipt') else 'auto',
+        'issued': (form.get('issued') or '').strip(),
+    }
+    if not values['customer_name']:
+        return values, 'Please add a name for the invoice.'
+    if not values['lines']:
+        return values, 'Please add at least one item with a quantity and a description.'
+    return values, None
+
+
+def _save_invoice(inv, v):
+    from datetime import datetime as _dt
+    inv.customer_name, inv.company, inv.attn, inv.po = v['customer_name'], v['company'], v['attn'], v['po']
+    inv.email, inv.phone, inv.address, inv.note = v['email'], v['phone'], v['address'], v['note']
+    inv.items_json = json.dumps(v['lines'])
+    inv.tax_rate, inv.shipping, inv.discount = v['tax_rate'], v['shipping'], v['discount']
+    inv.amount_paid, inv.payment_method, inv.kind = v['amount_paid'], v['payment_method'], v['kind']
+    try:
+        inv.issued_at = _dt.strptime(v['issued'], '%Y-%m-%d')
+    except ValueError:
+        inv.issued_at = inv.issued_at or _dt.utcnow()
+
+
+@admin_bp.route('/invoices')
+@admin_required
+def invoices():
+    from models import ManualInvoice
+    from utils.receipts import doc_from_invoice
+    rows = [{'inv': inv, 'doc': doc_from_invoice(inv)}
+            for inv in ManualInvoice.query.order_by(ManualInvoice.created_at.desc(), ManualInvoice.id.desc()).all()]
+    return render_template('admin/invoices.html', rows=rows)
+
+
+@admin_bp.route('/invoices/new', methods=['GET', 'POST'])
+@admin_required
+def invoice_new():
+    from models import ManualInvoice
+    from sqlalchemy.exc import IntegrityError
+    from utils.receipts import next_invoice_number
+    from datetime import datetime as _dt
+    if request.method == 'POST':
+        values, error = _read_invoice_form(request.form)
+        if error:
+            return render_template('admin/invoice_form.html', inv=None, f={**_invoice_fields(), **values}, error=error)
+        for _attempt in range(3):        # two quick saves could pick the same number
+            inv = ManualInvoice(number=next_invoice_number(db.session, ManualInvoice, _dt.now().year))
+            _save_invoice(inv, values)
+            db.session.add(inv)
+            try:
+                db.session.commit()
+                break
+            except IntegrityError:
+                db.session.rollback()
+        else:
+            flash('Could not save the invoice. Please try again.', 'error')
+            return redirect(url_for('admin.invoice_new'))
+        return redirect(url_for('admin.invoice_view', invoice_id=inv.id))
+    return render_template('admin/invoice_form.html', inv=None, f=_invoice_fields(), error=None)
+
+
+@admin_bp.route('/invoices/<int:invoice_id>')
+@admin_required
+def invoice_view(invoice_id):
+    from models import ManualInvoice
+    from utils.business_info import BUSINESS, PAYMENT_METHODS
+    from utils.receipts import doc_from_invoice
+    inv = ManualInvoice.query.get_or_404(invoice_id)
+    return render_template('admin/order_receipt.html', doc=doc_from_invoice(inv), business=BUSINESS,
+                           payment_methods=PAYMENT_METHODS, invoice=inv, order=None)
+
+
+@admin_bp.route('/invoices/<int:invoice_id>/edit', methods=['GET', 'POST'])
+@admin_required
+def invoice_edit(invoice_id):
+    from models import ManualInvoice
+    inv = ManualInvoice.query.get_or_404(invoice_id)
+    if request.method == 'POST':
+        values, error = _read_invoice_form(request.form)
+        if error:
+            return render_template('admin/invoice_form.html', inv=inv, f={**_invoice_fields(inv), **values}, error=error)
+        _save_invoice(inv, values)
+        db.session.commit()
+        return redirect(url_for('admin.invoice_view', invoice_id=inv.id))
+    return render_template('admin/invoice_form.html', inv=inv, f=_invoice_fields(inv), error=None)
+
+
+@admin_bp.route('/invoices/<int:invoice_id>/delete', methods=['POST'])
+@admin_required
+def invoice_delete(invoice_id):
+    from models import ManualInvoice
+    inv = ManualInvoice.query.get_or_404(invoice_id)
+    number = inv.number
+    db.session.delete(inv)
+    db.session.commit()
+    flash(f'{number} deleted.', 'success')
+    return redirect(url_for('admin.invoices'))
+
+
 @admin_bp.route('/orders/print-labels')
 @admin_required
 def print_labels():

@@ -27,6 +27,7 @@
             <span class="od-status-badge od-cash-due">Cash Due</span>
             {% endif %}
             <a href="{{ url_for('admin.print_labels', order_id=order.id) }}" class="od-btn od-btn-outline">Print label</a>
+            <a href="{{ url_for('admin.order_receipt', order_id=order.id) }}" class="od-btn od-btn-outline" target="_blank" rel="noopener">Receipt</a>
             {% set _stage = order.production_stage or 'order_received' %}
             {% if _stage in ['order_received', 'waiting_supplies'] %}
             <a href="{{ ops_url('admin.production_master', stage=['order_received', 'waiting_supplies'], collection=order.collection_id) }}" class="od-btn od-btn-outline">Order blanks</a>
