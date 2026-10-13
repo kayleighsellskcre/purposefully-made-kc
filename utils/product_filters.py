@@ -295,6 +295,23 @@ def group_products_by_family(products):
             buckets[key] = []
         buckets[key].append(product)
 
+    # The same style number from two brands is two different shirts (Bella+Canvas 3001 and
+    # Independent Trading SS3001Y both reduce to "3001"): never one family.
+    from utils.style_pairs import _brand_key
+    split = OrderedDict()
+    for key, members in buckets.items():
+        by_brand = OrderedDict()
+        for p in members:
+            by_brand.setdefault(_brand_key(p), []).append(p)
+        named = [b for b in by_brand if b]
+        if len(named) <= 1:
+            split[key] = members
+            continue
+        unbranded = by_brand.pop('', [])
+        for brand, rows in by_brand.items():
+            split[f'{key}:{brand}'] = rows + (unbranded if brand == named[0] else [])
+    buckets = split
+
     result = []
     for key, members in buckets.items():
         def _age_rank(p):

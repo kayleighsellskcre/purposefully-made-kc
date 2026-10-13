@@ -287,3 +287,21 @@ def test_the_no_mockup_placeholder_is_the_friendly_picture_day_card(client):
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
     assert 'skipped picture day' in body and 'you can still order' in body and 'No image' not in body
+
+
+def test_the_same_style_number_from_two_brands_is_never_one_family():
+    from utils.product_filters import group_products_by_family
+    bella = P(id=1, style_number='BC3001', brand='Bella+Canvas', name='Bella Tee', display_age='adult')
+    bella_youth = P(id=2, style_number='3001Y', brand='BELLA + CANVAS', name='Bella Youth Tee', display_age='youth')
+    indy = P(id=3, style_number='SS3001Y', brand='Independent Trading Co.', name='Youth Sweatshirt', display_age='youth')
+    families = group_products_by_family([bella, bella_youth, indy])
+    groups = sorted(sorted(m.id for m in f['members']) for f in families)
+    assert groups == [[1, 2], [3]]
+
+
+def test_a_family_member_with_no_brand_still_joins_its_family():
+    from utils.product_filters import group_products_by_family
+    adult = P(id=1, style_number='BC3001', brand='Bella+Canvas', name='Tee', display_age='adult')
+    toddler = P(id=2, style_number='3001T', brand='', name='Toddler Tee', display_age='toddler')
+    families = group_products_by_family([adult, toddler])
+    assert [sorted(m.id for m in f['members']) for f in families] == [[1, 2]]
