@@ -20,11 +20,13 @@ def test_the_receipt_has_the_business_details_logo_and_payment_options(admin_cli
     oid = _order(app, seed)
     html = admin_client.get(f'/admin/orders/{oid}/receipt').get_data(as_text=True)
     for text in ('Kayleigh Biggs', 'Purposefully Made KC LLC', 'purposefullymadekc@gmail.com', '785.249.1464',
-                 '@Kayleigh-Biggs-1', 'Cash', 'Check', 'Made out to Kayleigh Biggs', 'Accepted forms of payment',
                  'PMKC-1001', 'Unisex Jersey Tee', 'Paid in full'):
         assert text in html, text
     assert 'img/logo-wordmark.png' in html
     assert '$65.70' in html and '$60.00' in html and '$5.70' in html
+    # already paid: no "how to pay" box
+    for text in ('Accepted forms of payment', '@Kayleigh-Biggs-1', 'Made out to Kayleigh Biggs'):
+        assert text not in html, text
 
 
 def test_a_paid_order_is_a_receipt_and_an_unpaid_one_is_an_invoice_with_the_balance(admin_client, app, seed):
@@ -36,6 +38,8 @@ def test_a_paid_order_is_a_receipt_and_an_unpaid_one_is_an_invoice_with_the_bala
         db.session.commit()
     unpaid = admin_client.get(f"/admin/orders/{_order(app, seed, paid=False)}/receipt").get_data(as_text=True)
     assert '<p class="rc-kind">invoice</p>' in unpaid and 'Balance due' in unpaid and '$65.70' in unpaid
+    for text in ('Accepted forms of payment', '@Kayleigh-Biggs-1', 'Cash', 'Check', 'Made out to Kayleigh Biggs'):
+        assert text in unpaid, text                       # an invoice tells them how to pay
 
 
 def test_company_details_and_a_note_can_be_added_before_printing(admin_client, app, seed):
@@ -57,3 +61,8 @@ def test_the_order_page_has_a_receipt_button(admin_client, app, seed):
     oid = _order(app, seed)
     html = admin_client.get(f'/admin/orders/{oid}').get_data(as_text=True)
     assert f'/admin/orders/{oid}/receipt' in html
+
+
+def test_the_orders_page_has_a_create_invoice_button(admin_client, app, seed):
+    html = admin_client.get('/admin/orders?stage=order_received', follow_redirects=True).get_data(as_text=True)
+    assert 'href="/admin/invoices/new"' in html and 'Create invoice' in html

@@ -65,6 +65,7 @@ def test_a_fully_paid_invoice_prints_as_a_receipt(admin_client):
     html = admin_client.get(f'/admin/invoices/{iid}').get_data(as_text=True)
     assert '<p class="rc-kind">receipt</p>' in html and 'Paid in full' in html and 'Paid (Venmo)' in html
     assert 'Balance due' not in html
+    assert 'Accepted forms of payment' not in html and '@Kayleigh-Biggs-1' not in html     # already paid
 
 
 def test_the_document_type_can_be_forced(admin_client):

@@ -189,12 +189,15 @@ table.rc-items { width: 100%; border-collapse: collapse; margin-top: .4rem; }
     <section class="rc-bottom">
         <div>
             <span class="rc-stamp {{ 'due' if doc.balance > 0 else '' }}">{{ 'Balance due' if doc.balance > 0 else 'Paid in full' }}</span>
+            {# How to pay only belongs on something that still has a balance. A receipt is already paid. #}
+            {% if doc.balance > 0 %}
             <div class="rc-pay">
                 <p class="rc-label">Accepted forms of payment</p>
                 <ul>
                     {% for name, detail in payment_methods %}<li><b>{{ name }}</b><span>{{ detail }}</span></li>{% endfor %}
                 </ul>
             </div>
+            {% endif %}
         </div>
         <div class="rc-totals">
             <div class="rc-muted"><span>Subtotal</span><span>${{ '%.2f'|format(doc.subtotal) }}</span></div>

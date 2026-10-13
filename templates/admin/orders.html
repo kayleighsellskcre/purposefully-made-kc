@@ -39,6 +39,9 @@
         <a href="{{ ops_url('admin.print_labels', stage=_status if _status and _status != 'all' else ['pressed', 'packaged_ready']) }}" class="btn btn-outline ord-action-btn">
             Print labels
         </a>
+        <a href="{{ url_for('admin.invoice_new') }}" class="btn btn-outline ord-action-btn">
+            Create invoice
+        </a>
     </div>
 </div>
 
