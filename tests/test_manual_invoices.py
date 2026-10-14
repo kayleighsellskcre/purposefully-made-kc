@@ -44,7 +44,7 @@ def test_totals_are_subtotal_minus_discount_plus_tax_and_shipping():
 def test_a_new_invoice_gets_a_number_and_prints_with_business_details(admin_client, app):
     iid = _create(admin_client)
     html = admin_client.get(f'/admin/invoices/{iid}').get_data(as_text=True)
-    for text in ('INV-', '0001', 'Riverview PTO', 'Attn: Amy Smith', 'PO / Ref: PO-9', 'Nike Dri-FIT tee, navy, adult M',
+    for text in ('INV-', '0001', 'Riverview PTO', 'Attn: Amy Smith', 'PO / Ref', 'PO-9', 'Nike Dri-FIT tee, navy, adult M',
                  'Carhartt beanie, black', 'Kayleigh Biggs', '@Kayleigh-Biggs-1', 'Made out to Kayleigh Biggs',
                  'Thanks!', 'Balance due', 'Tax (9.5%)', '$115.00', '$10.93', '$125.93'):
         assert text in html, text

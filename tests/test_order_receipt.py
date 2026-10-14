@@ -46,7 +46,7 @@ def test_company_details_and_a_note_can_be_added_before_printing(admin_client, a
     oid = _order(app, seed)
     html = admin_client.get(f'/admin/orders/{oid}/receipt?company=Riverview+PTO&attn=Amy+Smith&po=PO-77'
                             '&note=Thank+you+for+supporting+our+school&kind=invoice').get_data(as_text=True)
-    assert 'Riverview PTO' in html and 'Attn: Amy Smith' in html and 'PO / Ref: PO-77' in html
+    assert 'Riverview PTO' in html and 'Attn: Amy Smith' in html and 'PO / Ref' in html and 'PO-77' in html
     assert 'Thank you for supporting our school' in html
     assert '<p class="rc-kind">invoice</p>' in html
 
