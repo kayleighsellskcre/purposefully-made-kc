@@ -56,8 +56,11 @@ def test_numbers_count_up_each_year(admin_client, app):
     _create(admin_client)
     _create(admin_client)
     with app.app_context():
-        assert [i.number[-4:] for i in ManualInvoice.query.order_by(ManualInvoice.id)] == ['0001', '0002']
-        assert next_invoice_number(db.session, ManualInvoice, 2026).endswith('0003') or True
+        from datetime import datetime
+        year = datetime.now().year
+        assert [i.number for i in ManualInvoice.query.order_by(ManualInvoice.id)] == [f'INV-{year}-0001', f'INV-{year}-0002']
+        assert next_invoice_number(db.session, ManualInvoice, year) == f'INV-{year}-0003'
+        assert next_invoice_number(db.session, ManualInvoice, year + 1) == f'INV-{year + 1}-0001'
 
 
 def test_a_fully_paid_invoice_prints_as_a_receipt(admin_client):
@@ -120,3 +123,10 @@ def test_an_invoice_never_becomes_an_order(admin_client, app):
     _create(admin_client)
     with app.app_context():
         assert Order.query.count() == 0
+
+
+def test_the_number_sits_beside_the_logo_not_stacked_under_it(admin_client):
+    iid = _create(admin_client)
+    html = admin_client.get(f'/admin/invoices/{iid}').get_data(as_text=True)
+    head = html.split('<header class="rc-head">')[1].split('</header>')[0]
+    assert 'rc-logo' in head and 'rc-meta' in head and 'INV-' in head and 'No. ' not in head

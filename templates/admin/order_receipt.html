@@ -37,16 +37,17 @@ body { background: var(--cream); color: var(--ink); font-family: 'Inter', Arial,
 .rc-paper { max-width: 820px; margin: 1.25rem auto 3rem; background: #fff; border-radius: 6px; box-shadow: 0 18px 50px rgba(58,61,72,.12); padding: 3rem 3.25rem 2.5rem; position: relative; }
 .rc-paper::before { content: ''; position: absolute; inset: 14px; border: 1px solid var(--line); border-radius: 3px; pointer-events: none; }
 
-.rc-head { text-align: center; }
-.rc-logo { width: 190px; height: auto; display: block; margin: 0 auto; }
-.rc-orn { display: flex; align-items: center; justify-content: center; gap: .8rem; margin: 1.1rem 0 1.2rem; color: var(--terra); }
-.rc-orn::before, .rc-orn::after { content: ''; height: 1px; width: 90px; background: linear-gradient(90deg, transparent, var(--sand)); }
-.rc-orn::after { background: linear-gradient(270deg, transparent, var(--sand)); }
-.rc-kind { font-size: .72rem; letter-spacing: .34em; text-transform: uppercase; color: var(--terra); font-weight: 600; margin: 0; }
-.rc-number { font-family: 'Playfair Display', serif; font-size: 1.7rem; margin: .25rem 0 .15rem; color: var(--ink); }
+.rc-head { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; }
+.rc-logo { width: 165px; height: auto; display: block; margin-left: -.4rem; }
+.rc-meta { text-align: right; }
+.rc-kind { font-size: .72rem; letter-spacing: .34em; text-transform: uppercase; color: var(--terra); font-weight: 600; margin: 0 0 .3rem; }
+.rc-number { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 600; letter-spacing: .02em; margin: 0 0 .15rem; color: var(--ink); }
 .rc-date { color: var(--muted); font-size: .85rem; margin: 0; }
+.rc-orn { display: flex; align-items: center; gap: .8rem; margin: 1.1rem 0 0; color: var(--terra); }
+.rc-orn::before, .rc-orn::after { content: ''; height: 1px; flex: 1; background: linear-gradient(90deg, var(--sand), transparent); }
+.rc-orn::before { background: linear-gradient(90deg, transparent, var(--sand)); }
 
-.rc-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 2.2rem 0 1.8rem; }
+.rc-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 1.6rem 0 1.6rem; }
 .rc-label { font-size: .68rem; letter-spacing: .24em; text-transform: uppercase; color: var(--terra); font-weight: 600; margin: 0 0 .5rem; }
 .rc-party p { margin: 0; }
 .rc-party .rc-strong { font-family: 'Playfair Display', serif; font-size: 1.05rem; color: var(--ink); }
@@ -86,6 +87,8 @@ table.rc-items { width: 100%; border-collapse: collapse; margin-top: .4rem; }
 .rc-contact { color: var(--muted); font-size: .8rem; letter-spacing: .06em; margin: 0; }
 
 @media (max-width: 680px) {
+    .rc-head { flex-direction: column; align-items: flex-start; }
+    .rc-meta { text-align: left; }
     .rc-paper { padding: 2rem 1.25rem; }
     .rc-parties, .rc-bottom, .rc-bill form { grid-template-columns: 1fr; }
 }
@@ -138,11 +141,13 @@ table.rc-items { width: 100%; border-collapse: collapse; margin-top: .4rem; }
 <main class="rc-paper">
     <header class="rc-head">
         <img class="rc-logo" src="{{ url_for('static', filename='img/logo-wordmark.png') }}" alt="{{ business.name }}">
-        <div class="rc-orn" aria-hidden="true">&#10022;</div>
-        <p class="rc-kind">{{ doc.kind }}</p>
-        <h1 class="rc-number" style="font-weight:600">No. {{ doc.number }}</h1>
-        <p class="rc-date">{{ doc.date }}</p>
+        <div class="rc-meta">
+            <p class="rc-kind">{{ doc.kind }}</p>
+            <h1 class="rc-number">{{ doc.number }}</h1>
+            <p class="rc-date">{{ doc.date }}</p>
+        </div>
     </header>
+    <div class="rc-orn" aria-hidden="true">&#10022;</div>
 
     <section class="rc-parties">
         <div class="rc-party">
