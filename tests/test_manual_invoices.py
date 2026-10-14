@@ -130,3 +130,13 @@ def test_the_number_sits_beside_the_logo_not_stacked_under_it(admin_client):
     html = admin_client.get(f'/admin/invoices/{iid}').get_data(as_text=True)
     head = html.split('<header class="rc-head">')[1].split('</header>')[0]
     assert 'rc-logo' in head and 'rc-meta' in head and 'INV-' in head and 'No. ' not in head
+
+
+def test_the_wording_is_warm(admin_client):
+    iid = _create(admin_client)
+    html = admin_client.get(f'/admin/invoices/{iid}').get_data(as_text=True)
+    assert 'Thank you so much for your order, Amy!' in html and 'Here is everything we put together for you' in html
+    assert 'Choose whichever is easiest for you' in html and 'With gratitude, Kayleigh' in html
+    assert 'small, local business' in html
+    paid = admin_client.get(f"/admin/invoices/{_create(admin_client, amount_paid='125.93', payment_method='Cash')}").get_data(as_text=True)
+    assert 'Paid in full, thank you' in paid and 'we hope you love every piece' in paid
