@@ -140,3 +140,9 @@ def test_the_wording_is_warm(admin_client):
     assert 'small, local business' in html
     paid = admin_client.get(f"/admin/invoices/{_create(admin_client, amount_paid='125.93', payment_method='Cash')}").get_data(as_text=True)
     assert 'Paid in full, thank you' in paid and 'we hope you love every piece' in paid
+
+
+def test_it_prints_on_us_letter_paper(admin_client):
+    iid = _create(admin_client)
+    html = admin_client.get(f'/admin/invoices/{iid}').get_data(as_text=True)
+    assert '@page { size: 8.5in 11in;' in html

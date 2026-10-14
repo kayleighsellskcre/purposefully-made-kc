@@ -41,7 +41,7 @@ body { background: var(--cream); color: var(--ink); font-family: 'Inter', Arial,
 .rc-paper::before { content: ''; position: absolute; inset: 15px; border: 1px solid var(--gold-soft); pointer-events: none; }
 
 .rc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; }
-.rc-logo { width: 150px; height: auto; display: block; margin: -.3rem 0 0 -.35rem; }
+.rc-logo { width: 205px; height: auto; display: block; margin: -.5rem 0 -.4rem -.5rem; }
 .rc-meta { min-width: 250px; }
 .rc-kind { font-family: 'Cormorant Garamond', serif; font-style: normal; font-weight: 300; font-size: 2.6rem; letter-spacing: .34em; text-transform: uppercase; color: var(--ink); margin: 0 -.34em .85rem 0; text-align: right; line-height: 1; }
 .rc-meta dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: .28rem 1.4rem; }
@@ -104,14 +104,14 @@ table.rc-items { width: 100%; border-collapse: collapse; }
     .rc-pay-grid { grid-template-columns: 1fr; gap: .9rem; }
     .rc-pay-grid > div + div { border-left: 0; border-top: 1px solid var(--gold-soft); padding-top: .8rem; }
 }
-@page { size: letter; margin: 0.4in; }
+@page { size: 8.5in 11in; margin: 0.4in; }   /* US Letter */
 @media print {
     body { background: #fff; }
     .rc-tools { display: none !important; }
     /* A short invoice should fit one sheet: print the page a touch smaller and tighter. */
     .rc-paper { zoom: .81; box-shadow: none; margin: 0; max-width: none; padding: .28in .4in .16in; border-radius: 0; }
     .rc-paper::before { inset: 0; }
-    .rc-logo { width: 130px; }
+    .rc-logo { width: 176px; }
     .rc-kind { font-size: 2.1rem; margin-bottom: .6rem; }
     .rc-rule { margin: 1rem 0 1rem; }
     .rc-hello { margin-bottom: 1rem; font-size: 1.15rem; }
