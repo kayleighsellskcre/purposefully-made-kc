@@ -22,7 +22,7 @@ def test_the_receipt_has_the_business_details_logo_and_payment_options(admin_cli
     for text in ('Kayleigh Biggs', 'Purposefully Made KC LLC', 'purposefullymadekc@gmail.com', '785.249.1464',
                  'PMKC-1001', 'Unisex Jersey Tee', 'Paid in full'):
         assert text in html, text
-    assert 'img/logo-wordmark.png' in html
+    assert 'img/logo-invoice.png' in html
     assert '$65.70' in html and '$60.00' in html and '$5.70' in html
     # already paid: no "how to pay" box
     for text in ('Accepted forms of payment', '@Kayleigh-Biggs-1', 'Made out to Kayleigh Biggs'):

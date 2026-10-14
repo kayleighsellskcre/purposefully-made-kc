@@ -41,7 +41,7 @@ body { background: var(--cream); color: var(--ink); font-family: 'Inter', Arial,
 .rc-paper::before { content: ''; position: absolute; inset: 15px; border: 1px solid var(--gold-soft); pointer-events: none; }
 
 .rc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; }
-.rc-logo { width: 205px; height: auto; display: block; margin: -.5rem 0 -.4rem -.5rem; }
+.rc-logo { width: 270px; height: auto; display: block; margin: -.3rem 0 0 -.3rem; }
 .rc-meta { min-width: 250px; }
 .rc-kind { font-family: 'Cormorant Garamond', serif; font-style: normal; font-weight: 300; font-size: 2.6rem; letter-spacing: .34em; text-transform: uppercase; color: var(--ink); margin: 0 -.34em .85rem 0; text-align: right; line-height: 1; }
 .rc-meta dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: .28rem 1.4rem; }
@@ -108,20 +108,21 @@ table.rc-items { width: 100%; border-collapse: collapse; }
 @media print {
     body { background: #fff; }
     .rc-tools { display: none !important; }
-    /* A short invoice should fit one sheet: print the page a touch smaller and tighter. */
-    .rc-paper { zoom: .81; box-shadow: none; margin: 0; max-width: none; padding: .28in .4in .16in; border-radius: 0; }
+    /* The invoice is laid out to fill one US Letter sheet. The script below picks the biggest
+       print size that still fits; this CSS is the fallback if scripts are off. */
+    .rc-paper { --rc-zoom: .81; zoom: var(--rc-zoom); box-shadow: none; margin: 0; max-width: none; padding: .3in .42in .2in;
+                border-radius: 0; display: flex; flex-direction: column; min-height: calc(10.05in / var(--rc-zoom)); }
     .rc-paper::before { inset: 0; }
-    .rc-logo { width: 176px; }
-    .rc-kind { font-size: 2.1rem; margin-bottom: .6rem; }
-    .rc-rule { margin: 1rem 0 1rem; }
-    .rc-hello { margin-bottom: 1rem; font-size: 1.15rem; }
-    .rc-parties { margin-bottom: 1.1rem; }
-    .rc-items td { padding: .7rem .4rem; }
-    .rc-summary { margin-top: 1rem; }
-    .rc-grand { margin-top: .6rem; padding: .7rem 0 .65rem !important; }
-    .rc-pay { margin-top: 1.2rem; padding-top: .85rem; }
-    .rc-pay-hint { margin-bottom: .7rem; }
-    .rc-foot { margin-top: 1.3rem; }
+    .rc-kind { font-size: 2.2rem; margin-bottom: .7rem; }
+    .rc-rule { margin: 1.1rem 0 1.1rem; }
+    .rc-hello { margin-bottom: 1.1rem; font-size: 1.18rem; }
+    .rc-parties { margin-bottom: 1.2rem; }
+    .rc-items td { padding: .75rem .4rem; }
+    .rc-summary { margin-top: 1.1rem; }
+    .rc-grand { margin-top: .6rem; padding: .75rem 0 .7rem !important; }
+    .rc-pay { margin-top: 1.4rem; padding-top: .9rem; }
+    .rc-pay-hint { margin-bottom: .75rem; }
+    .rc-foot { margin-top: auto; padding-top: 1.4rem; }
     .rc-foot::before { margin-bottom: .9rem; }
     .rc-help { margin-bottom: .5rem; font-size: .8rem; }
     .rc-sign { margin-bottom: .7rem; }
@@ -167,7 +168,7 @@ table.rc-items { width: 100%; border-collapse: collapse; }
 
 <main class="rc-paper">
     <header class="rc-head">
-        <img class="rc-logo" src="{{ url_for('static', filename='img/logo-wordmark.png') }}" alt="{{ business.name }}">
+        <img class="rc-logo" src="{{ url_for('static', filename='img/logo-invoice.png') }}" alt="{{ business.name }}">
         <div class="rc-meta">
             <p class="rc-kind">{{ doc.kind }}</p>
             <dl>
@@ -268,6 +269,36 @@ table.rc-items { width: 100%; border-collapse: collapse; }
         <p class="rc-contact"><b>{{ business.name }}</b> &nbsp;&middot;&nbsp; {{ business.email }} &nbsp;&middot;&nbsp; {{ business.phone }}</p>
     </footer>
 </main>
+
+<script>
+/* When printing, use the largest size that keeps the invoice on one US Letter sheet
+   (a short invoice prints bigger, a longer one a little smaller). */
+(function () {
+    var paper = document.querySelector('.rc-paper');
+    if (!paper) return;
+    var PAGE_H = 10.05 * 96;                       /* printable height: 11in less margins, with a little to spare */
+    function fit() {
+        paper.style.setProperty('--rc-zoom', '1');
+        paper.style.minHeight = '0';
+        var natural = paper.scrollHeight;
+        var z = Math.max(0.6, Math.min(1, PAGE_H / (natural || PAGE_H)));
+        z = Math.floor(z * 100) / 100;
+        paper.style.setProperty('--rc-zoom', String(z));
+        paper.style.minHeight = '';
+    }
+    function reset() {
+        paper.style.removeProperty('--rc-zoom');
+        paper.style.minHeight = '';
+    }
+    window.addEventListener('beforeprint', fit);
+    window.addEventListener('afterprint', reset);
+    if (window.matchMedia) {
+        var mq = window.matchMedia('print');
+        var handler = function (e) { if (e.matches) { fit(); } else { reset(); } };
+        if (mq.addEventListener) { mq.addEventListener('change', handler); } else if (mq.addListener) { mq.addListener(handler); }
+    }
+})();
+</script>
 
 </body>
 </html>

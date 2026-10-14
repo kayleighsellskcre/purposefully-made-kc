@@ -48,7 +48,7 @@ def test_a_new_invoice_gets_a_number_and_prints_with_business_details(admin_clie
                  'Carhartt beanie, black', 'Kayleigh Biggs', '@Kayleigh-Biggs-1', 'Made out to Kayleigh Biggs',
                  'Thanks!', 'Balance due', 'Tax (9.5%)', '$115.00', '$10.93', '$125.93'):
         assert text in html, text
-    assert '<p class="rc-kind">invoice</p>' in html and 'img/logo-wordmark.png' in html
+    assert '<p class="rc-kind">invoice</p>' in html and 'img/logo-invoice.png' in html
     assert 'Back to order' not in html and 'All invoices' in html
 
 
@@ -146,3 +146,21 @@ def test_it_prints_on_us_letter_paper(admin_client):
     iid = _create(admin_client)
     html = admin_client.get(f'/admin/invoices/{iid}').get_data(as_text=True)
     assert '@page { size: 8.5in 11in;' in html
+
+
+def test_the_invoice_logo_is_the_monogram_and_name_only(admin_client):
+    from PIL import Image
+    import os
+    iid = _create(admin_client)
+    html = admin_client.get(f'/admin/invoices/{iid}').get_data(as_text=True)
+    assert 'img/logo-invoice.png' in html and 'logo-wordmark.png' not in html
+    path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'img', 'logo-invoice.png')
+    w, h = Image.open(path).size
+    assert w > h * 2            # monogram and "PURPOSEFULLY MADE" only (no kc line or byline below it)
+
+
+def test_the_page_fills_a_letter_sheet_when_printed(admin_client):
+    iid = _create(admin_client)
+    html = admin_client.get(f'/admin/invoices/{iid}').get_data(as_text=True)
+    assert 'min-height: calc(10.05in / var(--rc-zoom))' in html and 'margin-top: auto' in html
+    assert "matchMedia('print')" in html and 'beforeprint' in html          # picks the biggest size that fits
