@@ -3,8 +3,10 @@
 Nothing is purchased here. This is the list Kayleigh takes to her DTF site:
 upload the PNG, type the size, set the quantity.
 """
-from utils.order_artwork import front_print_url
-from utils.print_sizes import inches, production_from_order_item
+import re
+
+from utils.order_artwork import back_print_url, front_print_url
+from utils.print_sizes import front_transfer_size, inches, production_from_order_item
 
 
 def _label(value):
@@ -24,6 +26,16 @@ def _copy_personal(name, number, name_h, number_h, qty):
     if number:
         lines.append(f'  Number {number_h:.2f}" high × {qty}')
     return '\n'.join(lines)
+
+
+def _back_logo_name(item):
+    """A readable name for a back-of-shirt picture, from its file name."""
+    raw = (getattr(item, 'back_design_file_name', None) or '').replace(chr(92), '/').split('/')[-1].split('?')[0]
+    stem = re.sub(r'(?i)\.(png|jpe?g|webp|gif|svg)$', '', raw)
+    stem = re.sub(r'^(cart_back|back)[-_]?', '', stem, flags=re.I)
+    stem = re.sub(r'[-_]+', ' ', stem).strip()
+    stem = re.sub(r'\s*[0-9a-f]{6,}\s*$', '', stem).strip()      # trailing upload hash
+    return f'Back design: {stem}' if stem else 'Back design'
 
 
 def build_dtf_shopping_list(orders):
@@ -73,6 +85,34 @@ def build_dtf_shopping_list(orders):
                 row['quantity'] += qty
 
             back = prod.get('back')
+            if back and back.get('kind') == 'image':
+                # A picture printed on the back of the shirt (not a name or number). It is ordered
+                # by width like any other logo, so it belongs on this list too.
+                width = inches(front_transfer_size(
+                    item.size, getattr(item, 'product', None), 'center_back')['width'])
+                preview = back_print_url(item)
+                name = _back_logo_name(item)
+                key = ('back', preview or name.lower(), 'center_back', width)
+                row = logos.get(key)
+                if not row:
+                    row = {
+                        'design_name': name,
+                        'design_id': None,
+                        'collection_id': getattr(order, 'collection_id', None),
+                        'placement': 'Center Back',
+                        'width': width,
+                        'height': None,
+                        'width_display': f'{width:.2f}' if width is not None else 'N/A',
+                        'height_display': '',
+                        'quantity': 0,
+                        'preview_url': preview,
+                        'order_id': order.id,
+                        'item_id': item.id,
+                        'is_back': True,
+                    }
+                    logos[key] = row
+                row['quantity'] += qty
+
             if back and (back.get('name') or back.get('number')):
                 name_h = inches(back.get('name_height')) or 0
                 number_h = inches(back.get('number_height')) or 0
