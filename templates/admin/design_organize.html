@@ -1,0 +1,189 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Organize library - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<style>
+.og { max-width: 1040px; margin: 0 auto; padding-bottom: 3rem; }
+.og-head { margin: 1rem 0 1.3rem; }
+.og-head h1 { margin: .15rem 0 .35rem; }
+.og-head p { margin: 0; color: var(--text-secondary); max-width: 46rem; }
+.og-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: .7rem; margin-bottom: 1.1rem; }
+.og-stat { background: #fff; border: 1px solid var(--border-light, #eadfd2); border-radius: 14px; padding: .8rem 1rem; }
+.og-stat b { display: block; font-family: var(--font-heading); font-size: 1.6rem; font-weight: 600; line-height: 1.1; }
+.og-stat span { font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; }
+.og-card { background: #fff; border: 1px solid var(--border-light, #eadfd2); border-radius: 16px; padding: 1.2rem 1.4rem; margin-bottom: 1.1rem; box-shadow: 0 6px 20px rgba(58,61,72,.05); }
+.og-card h2 { font-size: 1.15rem; margin: 0 0 .2rem; }
+.og-sub { color: var(--text-secondary); font-size: .88rem; margin: 0 0 .9rem; }
+.og-run { display: flex; flex-wrap: wrap; gap: .8rem 1.2rem; align-items: end; }
+.og label.f { display: flex; flex-direction: column; gap: .25rem; font-size: .66rem; letter-spacing: .12em; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; }
+.og select { font: 400 .95rem 'Inter', sans-serif; padding: .55rem .7rem; border: 1px solid var(--border-color, #e3d6c8); border-radius: 10px; background: #fffdfb; }
+.og-mode { display: flex; gap: .7rem; flex-wrap: wrap; }
+.og-mode label { display: flex; gap: .4rem; align-items: flex-start; font-size: .88rem; letter-spacing: 0; text-transform: none; font-weight: 400; color: var(--text-primary); background: #faf6f0; border: 1px solid var(--border-light, #eadfd2); border-radius: 12px; padding: .5rem .8rem; max-width: 18rem; }
+.og-btn { font: 600 .72rem 'Inter', sans-serif; letter-spacing: .1em; text-transform: uppercase; padding: .62rem 1.15rem; border-radius: 999px; border: 1.5px solid var(--terra-cotta); background: var(--terra-cotta); color: #fff; cursor: pointer; text-decoration: none; display: inline-block; }
+.og-btn.ghost { background: #fff; color: var(--terra-cotta); }
+.og-btn.small { padding: .4rem .8rem; font-size: .66rem; }
+.og-progress { height: 6px; border-radius: 999px; background: #f0e8dc; overflow: hidden; margin: .8rem 0 .3rem; }
+.og-progress i { display: block; height: 100%; background: linear-gradient(90deg, var(--terra-cotta), #b79c79); width: 0; transition: width .4s; }
+.og-row { display: grid; grid-template-columns: 22px 78px 1fr auto; gap: .9rem; align-items: center; padding: .8rem 0; border-top: 1px solid var(--border-light, #eadfd2); }
+.og-row:first-of-type { border-top: 0; }
+.og-thumb { width: 78px; height: 78px; border-radius: 10px; background: #f1ece4; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.og-thumb img { max-width: 92%; max-height: 92%; object-fit: contain; }
+.og-name { font-family: var(--font-heading); font-size: 1.02rem; }
+.og-line { font-size: .85rem; color: var(--text-secondary); margin: .1rem 0 0; }
+.og-line b { font-weight: 600; color: var(--text-primary); }
+.og-chip { display: inline-block; font-size: .74rem; background: #faf6f0; border: 1px solid var(--border-light, #eadfd2); border-radius: 999px; padding: .08rem .55rem; margin: .1rem .2rem .1rem 0; }
+.og-chip.unsure { opacity: .65; border-style: dashed; }
+.og-pct { font-size: .74rem; letter-spacing: .08em; color: var(--text-secondary); white-space: nowrap; text-align: right; }
+.og-warn { font-size: .8rem; color: #8b5a4f; margin: .15rem 0 0; }
+.og-bar { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-top: .9rem; }
+.og details summary { cursor: pointer; font-weight: 600; color: var(--text-primary); }
+@media (max-width: 760px) { .og-stats { grid-template-columns: repeat(2, 1fr); } .og-row { grid-template-columns: 22px 60px 1fr; } .og-pct { grid-column: 3; text-align: left; } .og-thumb { width: 60px; height: 60px; } }
+</style>
+<div class="og">
+    <div class="og-head">
+        <span class="adm-eyebrow">Admin / Design Library</span>
+        <h1>Organize your library</h1>
+        <p>Let the system look at the designs you already have and suggest collections, tags and styles, without you uploading anything again. You see every suggestion first. Nothing changes until you apply it, it never renames a design you named or moves your folders, and every applied change can be undone. Customers will not see any difference until the new gallery goes live.</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="alert alert-{{ cat }}" style="margin-bottom:1rem">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+
+    <div class="og-stats">
+        <div class="og-stat"><b>{{ stats.total }}</b><span>Designs</span></div>
+        <div class="og-stat"><b>{{ stats.waiting }}</b><span>Not looked at yet</span></div>
+        <div class="og-stat"><b id="ogQueued">{{ stats.queued }}</b><span>Being looked at</span></div>
+        <div class="og-stat"><b>{{ stats.ready }}</b><span>Ready for you</span></div>
+        <div class="og-stat"><b>{{ stats.applied }}</b><span>Organized</span></div>
+    </div>
+
+    {% if stats.queued %}
+    <section class="og-card" id="ogWork">
+        <h2>Looking at your designs&hellip;</h2>
+        <p class="og-sub">This runs in the background. You can leave this page and come back.</p>
+        <div class="og-progress"><i id="ogBar"></i></div>
+        <p class="og-sub" id="ogMsg" style="margin:0">{{ stats.queued }} to go.</p>
+    </section>
+    {% endif %}
+
+    <section class="og-card">
+        <h2>1. Look at the next batch</h2>
+        <p class="og-sub">Start small. Try 10 first, check the suggestions, then do more. {{ stats.waiting }} design{{ '' if stats.waiting == 1 else 's' }} still waiting.</p>
+        <form method="post" class="og-run">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="analyze">
+            <label class="f">How many<select name="size">{% for n in (10, 25, 50, 100) %}<option value="{{ n }}" {% if n == 10 %}selected{% endif %}>{{ n }} designs</option>{% endfor %}</select></label>
+            <div class="og-mode">
+                <label><input type="radio" name="mode" value="smart" {% if ai_ready %}checked{% else %}disabled{% endif %}>
+                    <span><b>Look at the artwork</b> (best). Reads the picture and its wording. Costs roughly ${{ '%.2f'|format(per_design * 1000) }} per 1,000 designs with your OpenAI key{% if not ai_ready %}, which is not set up{% endif %}.</span></label>
+                <label><input type="radio" name="mode" value="name" {% if not ai_ready %}checked{% endif %}>
+                    <span><b>Use the name only</b> (free). Quick, but less certain, so most will wait for your okay.</span></label>
+            </div>
+            <button type="submit" class="og-btn" {% if not stats.waiting %}disabled{% endif %}>Look at this batch</button>
+        </form>
+        <div class="og-bar">
+            <a href="{{ url_for('admin.design_organize_backup') }}" class="og-btn ghost small">Download a backup first</a>
+            <span class="og-sub" style="margin:0">A copy of every design's name, folders, tags and categories, to keep before you apply anything.</span>
+        </div>
+    </section>
+
+    <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <section class="og-card">
+            <h2>2. Check the suggestions</h2>
+            <p class="og-sub">{{ stats.ready }} ready. The confident ones are ticked. The rest need your okay, so they start unticked.</p>
+
+            {% macro row(c, checked) %}
+            <div class="og-row">
+                <input type="checkbox" name="ids" value="{{ c.row.id }}" {% if checked %}checked{% endif %}>
+                <div class="og-thumb">{% if c.url %}<img src="{{ c.url }}" alt="" loading="lazy">{% endif %}</div>
+                <div>
+                    <div class="og-name">{{ c.design.title or c.design.original_filename or 'Untitled' }}{% if c.new_title %} <span class="og-line">will be named <b>{{ c.new_title }}</b></span>{% endif %}</div>
+                    <p class="og-line"><b>Today:</b> {{ c.today|join(', ') if c.today else 'no folder' }}</p>
+                    <p class="og-line"><b>Suggested:</b>
+                        {% for p in c.places %}<span class="og-chip {{ '' if p.sure else 'unsure' }}">{{ p.label }}{% if not p.sure %} ({{ p.confidence }}%){% endif %}</span>{% else %}<span class="og-line">no clear collection</span>{% endfor %}
+                        {% for t in c.tags %}<span class="og-chip">{{ t }}</span>{% endfor %}
+                        {% if c.style %}<span class="og-chip">{{ c.style }}</span>{% endif %}
+                    </p>
+                    {% if c.protected %}<p class="og-warn">Mentions a protected name ({{ c.protected|join(', ') }}). It stays live; just worth a look.</p>{% endif %}
+                </div>
+                <div class="og-pct">{{ c.confidence }}% sure{% if c.source == 'name' %}<br>from the name{% endif %}</div>
+            </div>
+            {% endmacro %}
+
+            {% if confident %}<p class="og-line" style="margin-top:.6rem"><b>Confident ({{ confident|length }}{% if confident_total > confident|length %} shown of {{ confident_total }}{% endif %})</b></p>{% endif %}
+            {% for c in confident %}{{ row(c, true) }}{% endfor %}
+            {% if attention %}<p class="og-line" style="margin-top:1rem"><b>Needs your okay ({{ attention|length }})</b></p>{% endif %}
+            {% for c in attention %}{{ row(c, false) }}{% endfor %}
+            {% if not confident and not attention %}<p class="og-sub">Nothing waiting. Look at a batch above to get suggestions.</p>{% endif %}
+
+            {% if confident or attention %}
+            <div class="og-bar">
+                <button type="submit" name="action" value="apply" class="og-btn">Apply the ticked ones</button>
+                {% if confident_total %}<button type="submit" name="action" value="apply_confident" class="og-btn ghost" onclick="return confirm('Apply all {{ confident_total }} confident suggestions? You can undo any of them afterward.')">Apply all {{ confident_total }} confident</button>{% endif %}
+                <button type="submit" name="action" value="skip" class="og-btn ghost">Skip the ticked ones</button>
+            </div>
+            {% endif %}
+        </section>
+    </form>
+
+    {% if applied %}
+    <section class="og-card">
+        <details>
+            <summary>3. Recently organized ({{ applied|length }}), with undo</summary>
+            <div style="margin-top:.8rem">
+                {% for c in applied %}
+                <div class="og-row" style="grid-template-columns: 78px 1fr auto">
+                    <div class="og-thumb">{% if c.url %}<img src="{{ c.url }}" alt="" loading="lazy">{% endif %}</div>
+                    <div>
+                        <div class="og-name">{{ c.design.title or 'Untitled' }}</div>
+                        <p class="og-line">{% for p in c.places if p.sure %}<span class="og-chip">{{ p.label }}</span>{% endfor %}{% for t in c.tags %}<span class="og-chip">{{ t }}</span>{% endfor %}</p>
+                    </div>
+                    <div>
+                        <form method="post" style="margin:0">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="action" value="undo"><input type="hidden" name="proposal_id" value="{{ c.row.id }}">
+                            <button type="submit" class="og-btn ghost small">Undo</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+                {% set batches = applied|map(attribute='row')|map(attribute='batch_id')|unique|list %}
+                <div class="og-bar">
+                    {% for b in batches %}
+                    <form method="post" style="margin:0" onsubmit="return confirm('Undo every applied change from this batch?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="undo_batch"><input type="hidden" name="batch_id" value="{{ b }}">
+                        <button type="submit" class="og-btn ghost small">Undo whole batch {{ loop.index }}</button>
+                    </form>
+                    {% endfor %}
+                </div>
+            </div>
+        </details>
+    </section>
+    {% endif %}
+</div>
+
+{% if stats.queued %}
+<script>
+(function () {
+    var start = {{ stats.queued }}, token = {{ csrf_token()|tojson }};
+    function tick() {
+        fetch('{{ url_for("admin.design_organize_process") }}', {method: 'POST', headers: {'X-CSRFToken': token, 'Accept': 'application/json'}, credentials: 'same-origin'})
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                var left = d.summary.queued;
+                document.getElementById('ogQueued').textContent = left;
+                document.getElementById('ogBar').style.width = Math.max(0, Math.min(100, Math.round((1 - left / Math.max(start, 1)) * 100))) + '%';
+                document.getElementById('ogMsg').textContent = left ? (left + ' to go.') : 'Done. Refreshing...';
+                if (left) { setTimeout(tick, 2500); } else { setTimeout(function () { location.reload(); }, 800); }
+            })
+            .catch(function () { setTimeout(tick, 6000); });
+    }
+    tick();
+})();
+</script>
+{% endif %}
+{% endblock %}

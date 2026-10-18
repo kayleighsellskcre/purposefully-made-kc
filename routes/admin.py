@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app, send_file, Response
 from sqlalchemy import or_
 from flask_login import login_required, current_user
 from functools import wraps
@@ -4115,6 +4115,117 @@ def design_review():
         'admin/design_review.html', cards=cards, collections=COLLECTIONS,
         tag_labels=sorted({t.label for t in vocab.values() if t.is_active}),
         subs={c.key: [(s.key, s.label) for s in c.subcategories] for c in COLLECTIONS})
+
+
+# -- Design library: organize the designs you already have -----------------------
+
+def _proposal_card(row, vocab):
+    from utils.cloud_storage import image_url
+    from utils.design_taxonomy import label_for
+    design = row.design
+    try:
+        result = json.loads(row.result_json or '{}')
+    except ValueError:
+        result = {}
+    today = []
+    for key in [design.folder] + [k for k in (design.extra_categories or '').split(',') if k.strip()]:
+        today.append(key)
+    places = [{'label': label_for(p['key'], p.get('sub')) or label_for(p['key']),
+               'confidence': int(round(p['confidence'] * 100)), 'sure': p['confidence'] >= 0.75}
+              for p in result.get('collections') or []]
+    return {
+        'row': row, 'design': design, 'url': image_url(design.file_path) if design.file_path else '',
+        'today': today, 'places': places,
+        'tags': [vocab[s].label for s in (result.get('tags') or []) if s in vocab
+                 and vocab[s].label.lower() not in {p['label'].lower() for p in places}
+                 and vocab[s].label.lower() != (result.get('style') or '').lower()],
+        'style': result.get('style') or '', 'protected': result.get('protected_words') or [],
+        'new_title': result.get('title') if result.get('title') and not (design.title or '').strip() else '',
+        'confidence': int(round((row.confidence or 0) * 100)), 'source': result.get('source'),
+    }
+
+
+@admin_bp.route('/design-library/organize', methods=['GET', 'POST'])
+@admin_required
+def design_organize():
+    from models import DesignProposal
+    from utils import design_organizer as org
+    from utils.design_tags import vocabulary
+    if request.method == 'POST':
+        action = request.form.get('action', '')
+        ids = [int(i) for i in request.form.getlist('ids') if str(i).isdigit()]
+        if action == 'analyze':
+            mode = 'name' if request.form.get('mode') == 'name' else 'smart'
+            batch, count = org.plan_batch(request.form.get('size', type=int) or 25, mode)
+            if not count:
+                flash('Every design has already been looked at.', 'info')
+            else:
+                org.process_queue(3)
+                flash(f'Looking at {count} design{"" if count == 1 else "s"}. They will appear below as they are ready. '
+                      'Nothing changes until you apply it.', 'success')
+        elif action in ('apply', 'apply_confident'):
+            query = DesignProposal.query.filter(DesignProposal.status == 'ready')
+            if action == 'apply_confident':
+                query = query.filter(DesignProposal.needs_attention == False)  # noqa: E712
+            else:
+                query = query.filter(DesignProposal.id.in_(ids or [0]))
+            applied = 0
+            for row in query.all():
+                if org.apply_proposal(row, current_user.id):
+                    applied += 1
+                    if applied % 25 == 0:
+                        db.session.commit()
+            db.session.commit()
+            flash(f'Applied to {applied} design{"" if applied == 1 else "s"}. You can undo any of them below.', 'success')
+        elif action == 'skip':
+            DesignProposal.query.filter(DesignProposal.id.in_(ids or [0]), DesignProposal.status == 'ready').update(
+                {'status': 'skipped'}, synchronize_session=False)
+            db.session.commit()
+            flash('Skipped. Those designs will not be suggested again.', 'info')
+        elif action == 'undo':
+            row = DesignProposal.query.get(request.form.get('proposal_id', type=int) or 0)
+            if row and org.undo_proposal(row):
+                db.session.commit()
+                flash('Undone. That design is back exactly as it was.', 'success')
+        elif action == 'undo_batch':
+            rows = DesignProposal.query.filter_by(batch_id=request.form.get('batch_id', ''), status='applied').all()
+            count = sum(1 for r in rows if org.undo_proposal(r))
+            db.session.commit()
+            flash(f'Undid {count} design{"" if count == 1 else "s"}.', 'success')
+        return redirect(url_for('admin.design_organize'))
+
+    vocab = vocabulary(active_only=False)
+    ready = (DesignProposal.query.filter_by(status='ready').order_by(DesignProposal.needs_attention,
+                                                                     DesignProposal.confidence.desc()).limit(150).all())
+    cards = [_proposal_card(r, vocab) for r in ready]
+    applied = (DesignProposal.query.filter_by(status='applied').order_by(DesignProposal.applied_at.desc()).limit(40).all())
+    stats = org.summary()
+    return render_template(
+        'admin/design_organize.html', stats=stats, confident=[c for c in cards if not c['row'].needs_attention],
+        attention=[c for c in cards if c['row'].needs_attention],
+        applied=[_proposal_card(r, vocab) for r in applied],
+        per_design=org.COST_PER_DESIGN,
+        ai_ready=bool((current_app.config.get('OPENAI_API_KEY') or '').strip()),
+        confident_total=DesignProposal.query.filter_by(status='ready', needs_attention=False).count())
+
+
+@admin_bp.route('/design-library/organize/process', methods=['POST'])
+@admin_required
+def design_organize_process():
+    """Do a little more of the queued analysis (the organize page calls this while it waits)."""
+    from utils import design_organizer as org
+    done = org.process_queue(3)
+    return jsonify({'processed': done, 'summary': org.summary()})
+
+
+@admin_bp.route('/design-library/organize/backup.json')
+@admin_required
+def design_organize_backup():
+    """A copy of everything the organizer can change, to keep before you apply anything."""
+    from utils import design_organizer as org
+    stamp = datetime.utcnow().strftime('%Y%m%d-%H%M')
+    return Response(json.dumps(org.snapshot(), indent=1), mimetype='application/json',
+                    headers={'Content-Disposition': f'attachment; filename=design-library-backup-{stamp}.json'})
 
 
 # -- Design library: the standard tag vocabulary -------------------------------

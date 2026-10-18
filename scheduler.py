@@ -88,6 +88,22 @@ def org_fan_stores_job(app):
             print(f"fan wear store setup failed: {exc}", file=sys.stderr, flush=True)
 
 
+def design_organize_job(app):
+    """Work through designs queued for the library organizer (a few per minute, one worker at a time)."""
+    with app.app_context():
+        try:
+            from models import DesignProposal
+            if not DesignProposal.query.filter_by(status='queued').first():
+                return
+            with _one_worker_at_a_time(731004) as mine:
+                if not mine:
+                    return
+                from utils.design_organizer import process_queue
+                process_queue(5)
+        except Exception as exc:
+            print(f"design organizer job failed: {exc}", file=sys.stderr, flush=True)
+
+
 def unsaved_payments_job(app):
     """Create any paid order the customer's phone never finished; alert if that fails."""
     with app.app_context():
@@ -594,6 +610,13 @@ def init_scheduler(app):
             trigger=DateTrigger(run_date=datetime.now() + timedelta(seconds=20)),
             id='startup_org_fan_stores',
             name='Startup Fan Wear store setup (one-time)',
+            replace_existing=True
+        )
+        scheduler.add_job(
+            func=lambda: design_organize_job(app),
+            trigger=IntervalTrigger(minutes=1),
+            id='design_organizer',
+            name='Design library organizer (works through queued designs)',
             replace_existing=True
         )
         # Startup live inventory sync removed — the nightly 3 AM job handles this.

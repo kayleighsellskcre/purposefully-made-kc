@@ -1108,3 +1108,23 @@ class DesignCorrection(db.Model):
     locked = db.Column(db.Boolean, default=True)
     user_id = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+
+class DesignProposal(db.Model):
+    """What the organizer suggests for one existing design. Nothing changes until you apply it; applied ones can be undone."""
+    __tablename__ = 'design_proposal'
+    id = db.Column(db.Integer, primary_key=True)
+    design_id = db.Column(db.Integer, db.ForeignKey('design.id', ondelete='CASCADE'), nullable=False, index=True)
+    batch_id = db.Column(db.String(20), index=True)
+    mode = db.Column(db.String(10), default='smart')        # smart (reads the artwork) | name (free, name only)
+    status = db.Column(db.String(12), default='queued', index=True)   # queued | processing | ready | applied | skipped | undone | error
+    result_json = db.Column(db.Text)                        # the checked suggestion
+    confidence = db.Column(db.Float)
+    needs_attention = db.Column(db.Boolean, default=False)
+    error = db.Column(db.Text)
+    undo_json = db.Column(db.Text)                          # exactly what applying created or changed
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    processed_at = db.Column(db.DateTime)
+    applied_at = db.Column(db.DateTime)
+
+    design = db.relationship('Design', backref=db.backref('proposals', lazy='dynamic', cascade='all, delete-orphan'))
