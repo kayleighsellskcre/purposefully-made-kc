@@ -8,6 +8,7 @@ from models import (db, Product, Collection, Order, OrderItem, Design, User, Pro
 from werkzeug.utils import secure_filename
 from datetime import datetime
 import json
+import re
 import os
 import csv
 from io import StringIO, BytesIO
@@ -857,8 +858,36 @@ def _collect_press_shirts(orders):
         items = order.items.all() if hasattr(order.items, 'all') else list(order.items)
         for item_seq, item in enumerate(items):
             prod = production_from_order_item(item, customer_name=customer_name)
-            if not prod or (not prod.get('front') and not prod.get('back')):
-                continue
+            # If no design is linked (manually-created orders), still show the
+            # shirt card on the press sheet with a "no design" warning so it
+            # isn't silently dropped.
+            no_design = not prod or (not prod.get('front') and not prod.get('back'))
+            if no_design:
+                print_type = (getattr(item, 'print_type', None) or '').upper()
+                if print_type not in ('DTF', 'SCREEN', 'VINYL', 'SUBLIMATION'):
+                    continue  # truly nothing to press — skip
+                # Build a minimal stub so the card renders with a warning
+                prod = {
+                    'front': {
+                        'kind': 'standard',
+                        'design_name': '⚠️ NO DESIGN LINKED — attach manually',
+                        'design_id': None,
+                        'garment_style': getattr(item, 'product_name', None),
+                        'age_group': None,
+                        'size': getattr(item, 'size', None),
+                        'color': getattr(item, 'color', None),
+                        'placement': getattr(item, 'placement', None) or 'center_chest',
+                        'placement_label': 'Center Chest',
+                        'order_by': 'WIDTH',
+                        'width': None,
+                        'height': None,
+                        'width_display': '?',
+                        'height_display': '?',
+                        'exceeds_safe_area': False,
+                        'quantity': getattr(item, 'quantity', 1) or 1,
+                    },
+                    'back': None,
+                }
             pending.append((item_seq, item, prod, getattr(item, 'quantity', 1) or 1))
         piece_total = sum(qty for _seq, _item, _prod, qty in pending)
         piece_index = 0
@@ -3960,6 +3989,94 @@ def _admin_designs_url(tab='gallery'):
     """Canonical designs page URL; tab is library|gallery."""
     tab = 'library' if tab == 'library' else 'gallery'
     return url_for('admin.designs', tab=tab)
+
+
+# -- Design library: the standard tag vocabulary -------------------------------
+
+def _words(raw, limit=25):
+    """A comma or line separated field -> clean, de-duplicated list."""
+    out = []
+    for part in re.split(r'[,\n]+', raw or ''):
+        word = re.sub(r'\s+', ' ', part).strip()[:60]
+        if word and word.lower() not in [w.lower() for w in out]:
+            out.append(word)
+    return out[:limit]
+
+
+@admin_bp.route('/design-library/tags', methods=['GET', 'POST'])
+@admin_required
+def design_tags():
+    from models import DesignTag, DesignTagLink
+    from utils.design_tags import (
+        TAG_TYPES, TAG_TYPE_LABELS, canonical_for, ensure_vocabulary, slugify,
+        tag_implies, tag_related, tag_synonyms,
+    )
+    ensure_vocabulary()
+    if request.method == 'POST':
+        action = request.form.get('action', '')
+        tag = DesignTag.query.get(request.form.get('tag_id', type=int)) if request.form.get('tag_id') else None
+
+        def slugs_for(raw):
+            found = []
+            for word in _words(raw):
+                other = canonical_for(word)
+                if other and other.slug not in found and (not tag or other.id != tag.id):
+                    found.append(other.slug)
+            return found
+
+        if action == 'add':
+            label = (request.form.get('label') or '').strip()[:80]
+            tag_type = request.form.get('tag_type') if request.form.get('tag_type') in TAG_TYPE_LABELS else 'theme'
+            slug = slugify(label)
+            if not label or not slug:
+                flash('Please give the tag a name.', 'error')
+            elif DesignTag.query.filter_by(slug=slug).first() or canonical_for(label):
+                flash(f'"{label}" already exists (or is a synonym of an existing tag), so I did not add a duplicate.', 'info')
+            else:
+                db.session.add(DesignTag(slug=slug, label=label, tag_type=tag_type,
+                                         synonyms=json.dumps(_words(request.form.get('synonyms'))),
+                                         implies=json.dumps(slugs_for(request.form.get('implies'))),
+                                         related=json.dumps(slugs_for(request.form.get('related'))), is_active=True))
+                db.session.commit()
+                flash(f'Added "{label}".', 'success')
+        elif tag and action == 'update':
+            label = (request.form.get('label') or '').strip()[:80]
+            if label:
+                tag.label = label
+            if request.form.get('tag_type') in TAG_TYPE_LABELS:
+                tag.tag_type = request.form.get('tag_type')
+            tag.synonyms = json.dumps(_words(request.form.get('synonyms')))
+            tag.implies = json.dumps(slugs_for(request.form.get('implies')))
+            tag.related = json.dumps(slugs_for(request.form.get('related')))
+            db.session.commit()
+            flash(f'Saved "{tag.label}".', 'success')
+        elif tag and action == 'toggle':
+            tag.is_active = not tag.is_active
+            db.session.commit()
+            flash(f'"{tag.label}" is now {"on" if tag.is_active else "off"}.', 'success')
+        elif tag and action == 'delete':
+            if DesignTagLink.query.filter_by(tag_id=tag.id).count():
+                tag.is_active = False
+                flash(f'"{tag.label}" is used by designs, so I turned it off instead of deleting it.', 'info')
+            else:
+                db.session.delete(tag)
+                flash('Tag deleted.', 'success')
+            db.session.commit()
+        return redirect(url_for('admin.design_tags'))
+
+    counts = dict(db.session.query(DesignTagLink.tag_id, db.func.count(DesignTagLink.id))
+                  .group_by(DesignTagLink.tag_id).all())
+    by_slug = {t.slug: t for t in DesignTag.query.all()}
+    groups = []
+    for key, label in TAG_TYPES:
+        rows = sorted((t for t in by_slug.values() if t.tag_type == key), key=lambda t: t.label.lower())
+        groups.append({'key': key, 'label': label, 'tags': [{
+            'tag': t, 'count': counts.get(t.id, 0),
+            'synonyms': ', '.join(tag_synonyms(t)),
+            'implies': ', '.join(by_slug[s].label for s in tag_implies(t) if s in by_slug),
+            'related': ', '.join(by_slug[s].label for s in tag_related(t) if s in by_slug),
+        } for t in rows]})
+    return render_template('admin/design_tags.html', groups=groups, types=TAG_TYPES)
 
 
 @admin_bp.route('/designs')

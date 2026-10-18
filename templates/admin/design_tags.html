@@ -1,0 +1,91 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Design tags - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<style>
+.dt { max-width: 980px; margin: 0 auto; padding-bottom: 3rem; }
+.dt-head { margin: 1rem 0 1.4rem; }
+.dt-head h1 { margin: .15rem 0 .35rem; }
+.dt-head p { margin: 0; color: var(--text-secondary); max-width: 44rem; }
+.dt-card { background: #fff; border: 1px solid var(--border-light, #eadfd2); border-radius: 16px; padding: 1.2rem 1.4rem; margin-bottom: 1.1rem; box-shadow: 0 6px 20px rgba(58,61,72,.05); }
+.dt-card h2 { font-size: 1.15rem; margin: 0 0 .15rem; }
+.dt-card .dt-sub { color: var(--text-secondary); font-size: .88rem; margin: 0 0 .9rem; }
+.dt-add { display: grid; grid-template-columns: 1.1fr .8fr 1.6fr auto; gap: .6rem; align-items: end; }
+.dt label.f { display: flex; flex-direction: column; gap: .25rem; font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; }
+.dt input[type=text], .dt select, .dt textarea { font: 400 .95rem 'Inter', sans-serif; padding: .55rem .7rem; border: 1px solid var(--border-color, #e3d6c8); border-radius: 10px; background: #fffdfb; color: var(--text-primary); text-transform: none; letter-spacing: 0; width: 100%; }
+.dt-btn { font: 600 .72rem 'Inter', sans-serif; letter-spacing: .1em; text-transform: uppercase; padding: .6rem 1.1rem; border-radius: 999px; border: 1.5px solid var(--terra-cotta); background: var(--terra-cotta); color: #fff; cursor: pointer; }
+.dt-btn.ghost { background: #fff; color: var(--terra-cotta); }
+.dt-btn.danger { background: #fff; border-color: #d8b8b3; color: #9b5b52; }
+.dt-tags { display: flex; flex-direction: column; }
+.dt-tag { border-top: 1px solid var(--border-light, #eadfd2); }
+.dt-tag:first-child { border-top: 0; }
+.dt-tag summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: .8rem; padding: .7rem .1rem; }
+.dt-tag summary::-webkit-details-marker { display: none; }
+.dt-name { font-family: var(--font-heading); font-size: 1.02rem; min-width: 10rem; }
+.dt-syn { color: var(--text-secondary); font-size: .84rem; flex: 1; }
+.dt-count { font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--text-secondary); white-space: nowrap; }
+.dt-off .dt-name { text-decoration: line-through; color: var(--text-secondary); }
+.dt-edit { padding: .2rem 0 1rem; display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+.dt-edit .wide { grid-column: 1 / -1; }
+.dt-actions { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+@media (max-width: 720px) { .dt-add, .dt-edit { grid-template-columns: 1fr; } .dt-syn { display: none; } }
+</style>
+<div class="dt">
+    <div class="dt-head">
+        <span class="adm-eyebrow">Admin / Design Library</span>
+        <h1>Design tags</h1>
+        <p>One standard list of tags keeps your library tidy. Synonyms mean "Mama," "Mommy" and "Mother" all find Mom. Related tags mean searching Grandma also shows Nana and Mimi, which stay separate. You rarely need to touch this: new designs are tagged for you.</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="alert alert-{{ cat }}" style="margin-bottom:1rem">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+
+    <section class="dt-card">
+        <h2>Add a tag</h2>
+        <p class="dt-sub">If a tag (or a synonym of one) already exists, I will not add a duplicate.</p>
+        <form method="post" class="dt-add">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="add">
+            <label class="f">Name<input type="text" name="label" maxlength="80" required placeholder="e.g. Pickleball"></label>
+            <label class="f">Type<select name="tag_type">{% for key, label in types %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></label>
+            <label class="f">Synonyms<input type="text" name="synonyms" placeholder="pickle ball, paddle"></label>
+            <button type="submit" class="dt-btn">Add</button>
+        </form>
+    </section>
+
+    {% for group in groups %}
+    <section class="dt-card">
+        <h2>{{ group.label }}</h2>
+        <p class="dt-sub">{{ group.tags|length }} tag{{ '' if group.tags|length == 1 else 's' }}</p>
+        <div class="dt-tags">
+            {% for row in group.tags %}
+            {% set t = row.tag %}
+            <details class="dt-tag {{ '' if t.is_active else 'dt-off' }}">
+                <summary>
+                    <span class="dt-name">{{ t.label }}</span>
+                    <span class="dt-syn">{{ row.synonyms }}</span>
+                    <span class="dt-count">{{ row.count }} design{{ '' if row.count == 1 else 's' }}</span>
+                </summary>
+                <form method="post" class="dt-edit">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="tag_id" value="{{ t.id }}">
+                    <label class="f">Name<input type="text" name="label" value="{{ t.label }}" maxlength="80"></label>
+                    <label class="f">Type<select name="tag_type">{% for key, label in types %}<option value="{{ key }}" {% if key == t.tag_type %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+                    <label class="f wide">Synonyms (other words that mean this)<input type="text" name="synonyms" value="{{ row.synonyms }}"></label>
+                    <label class="f">Also means (adds these tags too)<input type="text" name="implies" value="{{ row.implies }}" placeholder="e.g. Football, Mom"></label>
+                    <label class="f">Related (searched together, lower priority)<input type="text" name="related" value="{{ row.related }}"></label>
+                    <div class="dt-actions wide">
+                        <button type="submit" name="action" value="update" class="dt-btn">Save</button>
+                        <button type="submit" name="action" value="toggle" class="dt-btn ghost">{{ 'Turn off' if t.is_active else 'Turn on' }}</button>
+                        <button type="submit" name="action" value="delete" class="dt-btn danger" onclick="return confirm('Delete this tag? If designs use it, it is turned off instead.')">Delete</button>
+                    </div>
+                </form>
+            </details>
+            {% endfor %}
+        </div>
+    </section>
+    {% endfor %}
+</div>
+{% endblock %}

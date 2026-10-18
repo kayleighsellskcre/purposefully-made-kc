@@ -1,6 +1,6 @@
 {# Shared admin top nav - desktop hover menus, phone accordion #}
 {% set daily_eps = ['admin.orders','admin.completed_orders','admin.order_detail','admin.production_workflow','admin.production_master','admin.transfer_production','admin.order_transfer_summary','admin.print_labels','admin.dtf_batch_sheets','admin.logo_chart','admin.production_bulk_sheet','admin.blank_apparel_list','admin.custom_design_requests','admin.custom_design_request_detail','admin.production','admin.notifications','admin.notifications_open'] %}
-{% set store_eps = ['admin.products','admin.add_product','admin.edit_product','admin.collections','admin.add_collection','admin.edit_collection','admin.design_gallery','admin.gallery_queue','admin.designs','admin.affirmations','admin.organizations'] %}
+{% set store_eps = ['admin.products','admin.add_product','admin.edit_product','admin.collections','admin.add_collection','admin.edit_collection','admin.design_gallery','admin.gallery_queue','admin.designs','admin.design_tags','admin.affirmations','admin.organizations'] %}
 {% set biz_eps = ['admin.inventory','admin.save_inventory_costs','admin.operations_inventory','admin.vendors','admin.financial','admin.invoices','admin.invoice_new','admin.invoice_view','admin.invoice_edit','admin.growth','admin.customers','admin.packaging_sop'] %}
 
 <nav class="ops-nav" id="opsNav" aria-label="Admin navigation">
@@ -77,6 +77,10 @@
                 <a href="{{ url_for('admin.designs') }}" class="ops-drop-item {% if request.endpoint in ['admin.designs','admin.design_gallery'] %}ops-drop-active{% endif %}" role="menuitem">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                     Designs
+                </a>
+                <a href="{{ url_for('admin.design_tags') }}" class="ops-drop-item {% if request.endpoint == 'admin.design_tags' %}ops-drop-active{% endif %}" role="menuitem">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                    Design Tags
                 </a>
                 <a href="{{ url_for('admin.gallery_queue') }}" class="ops-drop-item {% if request.endpoint == 'admin.gallery_queue' %}ops-drop-active{% endif %}" role="menuitem">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>

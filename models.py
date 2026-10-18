@@ -515,6 +515,19 @@ class Design(db.Model):
     uploaded_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
     design_fee = db.Column(db.Float, default=0)  # Custom design fee: 0, 4, or 20 when from "Have Us Recreate"
+
+    # Master library record (automatic organization). All optional: older designs keep working untouched.
+    ai_status = db.Column(db.String(20))        # pending | processing | done | needs_review | error
+    ai_confidence = db.Column(db.Float)         # 0..1, how sure the automatic classification was
+    ai_error = db.Column(db.Text)
+    ai_processed_at = db.Column(db.DateTime)
+    style = db.Column(db.String(60))            # e.g. Vintage, Minimal
+    audience = db.Column(db.String(60))         # who it is for, e.g. Mom, Grandma
+    keywords = db.Column(db.Text)               # extra searchable words
+    ip_status = db.Column(db.String(20))        # review (check before publishing) | cleared
+    ip_note = db.Column(db.Text)
+    locked_fields = db.Column(db.Text)          # JSON list of fields you set by hand; automation never overwrites them
+    modified_at = db.Column(db.DateTime)
     
     # Relationships
     user = db.relationship('User', backref='uploaded_designs', foreign_keys=[uploaded_by_user_id])
@@ -526,6 +539,13 @@ class Design(db.Model):
         lazy='dynamic',
     )
     
+    tag_links = db.relationship('DesignTagLink', backref='design', lazy='dynamic',
+                                cascade='all, delete-orphan')
+    category_links = db.relationship('DesignCategoryLink', backref='design', lazy='dynamic',
+                                     cascade='all, delete-orphan')
+    corrections = db.relationship('DesignCorrection', backref='design', lazy='dynamic',
+                                  cascade='all, delete-orphan')
+
     def __repr__(self):
         return f'<Design {self.filename}>'
 
@@ -1026,3 +1046,64 @@ class ManualInvoice(db.Model):
 
     def __repr__(self):
         return f'<ManualInvoice {self.number}>'
+
+
+class DesignTag(db.Model):
+    """One standard tag (Mom, Football, Vintage...). Synonyms and related tags make search forgiving."""
+    __tablename__ = 'design_tag'
+    id = db.Column(db.Integer, primary_key=True)
+    slug = db.Column(db.String(60), unique=True, nullable=False, index=True)
+    label = db.Column(db.String(80), nullable=False)
+    tag_type = db.Column(db.String(20), nullable=False, default='theme', index=True)
+    synonyms = db.Column(db.Text)       # JSON list of other words that mean this tag
+    implies = db.Column(db.Text)        # JSON list of tag slugs this tag also means ("football-mom")
+    related = db.Column(db.Text)        # JSON list of tag slugs searched together at lower priority
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<DesignTag {self.slug}>'
+
+
+class DesignTagLink(db.Model):
+    """A tag on a design. source 'manual' (you) always wins over 'auto'; locked links are never removed."""
+    __tablename__ = 'design_tag_link'
+    __table_args__ = (db.UniqueConstraint('design_id', 'tag_id', name='uq_design_tag'),)
+    id = db.Column(db.Integer, primary_key=True)
+    design_id = db.Column(db.Integer, db.ForeignKey('design.id', ondelete='CASCADE'), nullable=False, index=True)
+    tag_id = db.Column(db.Integer, db.ForeignKey('design_tag.id', ondelete='CASCADE'), nullable=False, index=True)
+    source = db.Column(db.String(10), default='auto')
+    confidence = db.Column(db.Float)
+    locked = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    tag = db.relationship('DesignTag')
+
+
+class DesignCategoryLink(db.Model):
+    """A design's place in a gallery collection (and optionally one of its subcategories)."""
+    __tablename__ = 'design_category_link'
+    __table_args__ = (db.UniqueConstraint('design_id', 'category_key', 'subcategory_key', name='uq_design_category'),)
+    id = db.Column(db.Integer, primary_key=True)
+    design_id = db.Column(db.Integer, db.ForeignKey('design.id', ondelete='CASCADE'), nullable=False, index=True)
+    category_key = db.Column(db.String(40), nullable=False, index=True)
+    subcategory_key = db.Column(db.String(60))
+    is_primary = db.Column(db.Boolean, default=False)
+    source = db.Column(db.String(10), default='auto')       # auto | manual | legacy
+    confidence = db.Column(db.Float)
+    locked = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class DesignCorrection(db.Model):
+    """Every time you fix something automation set: what it was, what you made it, and whether it is locked."""
+    __tablename__ = 'design_correction'
+    id = db.Column(db.Integer, primary_key=True)
+    design_id = db.Column(db.Integer, db.ForeignKey('design.id', ondelete='CASCADE'), nullable=False, index=True)
+    field = db.Column(db.String(40), nullable=False)        # title | colors | tag | category | ...
+    original_value = db.Column(db.Text)
+    corrected_value = db.Column(db.Text)
+    correction_type = db.Column(db.String(30))              # renamed | wrong_category | missing_category | wrong_color | tag_removed | ...
+    locked = db.Column(db.Boolean, default=True)
+    user_id = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)

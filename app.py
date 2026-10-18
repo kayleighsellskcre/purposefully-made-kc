@@ -273,6 +273,17 @@ def create_app(config_class=Config):
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS organization_id INTEGER REFERENCES organization(id)",
                     "ALTER TABLE organization ADD COLUMN IF NOT EXISTS photo_config TEXT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS deadline_reminder_sent_at TIMESTAMP",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS ai_status VARCHAR(20)",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS ai_confidence DOUBLE PRECISION",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS ai_error TEXT",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS ai_processed_at TIMESTAMP",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS style VARCHAR(60)",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS audience VARCHAR(60)",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS keywords TEXT",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS ip_status VARCHAR(20)",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS ip_note TEXT",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS locked_fields TEXT",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS modified_at TIMESTAMP",
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS collection_id INTEGER",
                     "CREATE INDEX IF NOT EXISTS ix_order_item_collection_id ON order_item (collection_id)",
                 ]
@@ -328,6 +339,14 @@ def create_app(config_class=Config):
             # Create favorites table if it doesn't exist
             from models import Favorite
             db.create_all()
+
+            # The standard design-tag vocabulary (adds anything missing; never edits a tag you changed).
+            try:
+                from utils.design_tags import ensure_vocabulary
+                ensure_vocabulary()
+            except Exception as _tag_err:
+                db.session.rollback()
+                print(f"design tag vocabulary not seeded: {_tag_err}", file=__import__('sys').stderr)
 
             # ── One-time product category fixes ──────────────────────────────
             # Onesies: 100B and 134B were mis-labelled as "Tee"
