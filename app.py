@@ -280,6 +280,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS style VARCHAR(60)",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS audience VARCHAR(60)",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS keywords TEXT",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS ai_suggestions TEXT",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS ip_status VARCHAR(20)",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS ip_note TEXT",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS locked_fields TEXT",
@@ -691,6 +692,16 @@ def create_app(config_class=Config):
             return order_group_label(order)
         except Exception:
             return None
+
+    @app.template_global('design_review_count')
+    def _design_review_count():
+        """How many designs are waiting for your look (shown as a badge in the admin menu)."""
+        try:
+            from sqlalchemy import or_
+            return Design.query.filter(or_(Design.ai_status.in_(['needs_review', 'error']),
+                                           Design.ip_status == 'review')).count()
+        except Exception:
+            return 0
 
     @app.template_global('visible_form_products')
     def _visible_form_products(products, selected_ids):

@@ -524,6 +524,7 @@ class Design(db.Model):
     style = db.Column(db.String(60))            # e.g. Vintage, Minimal
     audience = db.Column(db.String(60))         # who it is for, e.g. Mom, Grandma
     keywords = db.Column(db.Text)               # extra searchable words
+    ai_suggestions = db.Column(db.Text)         # JSON: what the automation was unsure about
     ip_status = db.Column(db.String(20))        # review (check before publishing) | cleared
     ip_note = db.Column(db.Text)
     locked_fields = db.Column(db.Text)          # JSON list of fields you set by hand; automation never overwrites them

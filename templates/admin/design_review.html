@@ -1,0 +1,116 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Design review - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<style>
+.dr { max-width: 1000px; margin: 0 auto; padding-bottom: 3rem; }
+.dr-head { margin: 1rem 0 1.4rem; }
+.dr-head h1 { margin: .15rem 0 .35rem; }
+.dr-head p { margin: 0; color: var(--text-secondary); max-width: 44rem; }
+.dr-card { display: grid; grid-template-columns: 240px 1fr; gap: 1.4rem; background: #fff; border: 1px solid var(--border-light, #eadfd2); border-radius: 16px; padding: 1.2rem; margin-bottom: 1.1rem; box-shadow: 0 6px 20px rgba(58,61,72,.05); }
+.dr-img { aspect-ratio: 1 / 1; border-radius: 12px; background-color: #f1ece4; background-image: linear-gradient(45deg, #e6dfd4 25%, transparent 25%, transparent 75%, #e6dfd4 75%), linear-gradient(45deg, #e6dfd4 25%, transparent 25%, transparent 75%, #e6dfd4 75%); background-size: 20px 20px; background-position: 0 0, 10px 10px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.dr-img img { max-width: 92%; max-height: 92%; object-fit: contain; }
+.dr-badges { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: .7rem; }
+.dr-badge { font-size: .64rem; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; padding: .22rem .65rem; border-radius: 999px; border: 1.5px solid var(--terra-cotta); color: var(--terra-cotta); }
+.dr-badge.hold { border-color: #b79c79; color: #8b6f5e; }
+.dr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem 1rem; }
+.dr-grid .wide { grid-column: 1 / -1; }
+.dr label.f { display: flex; flex-direction: column; gap: .25rem; font-size: .66rem; letter-spacing: .12em; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; }
+.dr input[type=text], .dr select { font: 400 .95rem 'Inter', sans-serif; padding: .55rem .7rem; border: 1px solid var(--border-color, #e3d6c8); border-radius: 10px; background: #fffdfb; color: var(--text-primary); text-transform: none; letter-spacing: 0; width: 100%; }
+.dr-chips { display: flex; flex-wrap: wrap; gap: .35rem .5rem; }
+.dr-chips label { font-size: .82rem; letter-spacing: 0; text-transform: none; font-weight: 400; color: var(--text-primary); display: inline-flex; gap: .3rem; align-items: center; background: #faf6f0; border: 1px solid var(--border-light, #eadfd2); border-radius: 999px; padding: .2rem .65rem; }
+.dr-note { font-size: .86rem; color: var(--text-secondary); margin: .1rem 0 0; }
+.dr-warn { font-size: .86rem; color: #8b5a4f; background: #fbf1ec; border-radius: 10px; padding: .6rem .8rem; margin: 0 0 .8rem; }
+.dr-actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: 1rem; }
+.dr-btn { font: 600 .72rem 'Inter', sans-serif; letter-spacing: .1em; text-transform: uppercase; padding: .62rem 1.15rem; border-radius: 999px; border: 1.5px solid var(--terra-cotta); background: var(--terra-cotta); color: #fff; cursor: pointer; }
+.dr-btn.ghost { background: #fff; color: var(--terra-cotta); }
+.dr-empty { background: #fff; border: 1px solid var(--border-light, #eadfd2); border-radius: 16px; padding: 3rem 1.5rem; text-align: center; color: var(--text-secondary); }
+.dr-empty h2 { color: var(--text-primary); font-size: 1.3rem; margin: 0 0 .4rem; }
+@media (max-width: 720px) { .dr-card { grid-template-columns: 1fr; } .dr-img { max-width: 260px; } .dr-grid { grid-template-columns: 1fr; } }
+</style>
+<div class="dr">
+    <div class="dr-head">
+        <span class="adm-eyebrow">Admin / Design Library</span>
+        <h1>Design review</h1>
+        <p>New designs are named, filed and tagged for you. The ones that land here are the few the system was not sure about, or that mention a protected name. Check the suggestion, fix anything, and approve. Whatever you change is remembered and never overwritten.</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="alert alert-{{ cat }}" style="margin-bottom:1rem">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+
+    <datalist id="drTags">{% for label in tag_labels %}<option value="{{ label }}">{% endfor %}</datalist>
+
+    {% for card in cards %}
+    {% set d = card.design %}
+    <form method="post" class="dr-card" data-sub="{{ card.sub }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="design_id" value="{{ d.id }}">
+        <div class="dr-img">{% if card.url %}<img src="{{ card.url }}" alt="{{ d.title or 'Design' }}" loading="lazy">{% endif %}</div>
+        <div>
+            <div class="dr-badges">
+                {% if card.held %}<span class="dr-badge hold">Hidden from customers</span>{% endif %}
+                {% if d.ai_status == 'error' %}<span class="dr-badge">Needs filing</span>{% elif d.ai_status == 'needs_review' %}<span class="dr-badge">Not sure</span>{% endif %}
+                {% if d.ip_status == 'review' %}<span class="dr-badge">Check name</span>{% endif %}
+            </div>
+            {% if card.protected %}
+            <p class="dr-warn">This looks like it may include a protected name ({{ card.protected|join(', ') }}). Recognizing a team, artist or brand does not mean it is licensed for sale, so please check before you publish.
+                <label style="display:inline-flex;gap:.35rem;margin-left:.4rem;text-transform:none;letter-spacing:0;font-weight:500"><input type="checkbox" name="clear_ip"> I checked, it is fine</label></p>
+            {% endif %}
+            <div class="dr-grid">
+                <label class="f wide">Name<input type="text" name="title" value="{{ d.title or '' }}" maxlength="200"></label>
+                <label class="f">Collection
+                    <select name="collection" class="dr-coll">
+                        <option value="">Choose a collection</option>
+                        {% for c in collections %}<option value="{{ c.key }}" {% if c.key == card.primary %}selected{% endif %}>{{ c.label }}</option>{% endfor %}
+                    </select>
+                </label>
+                <label class="f">Subcategory<select name="sub" class="dr-sub"></select></label>
+                <div class="wide">
+                    <span class="f" style="display:block;font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-secondary);font-weight:600;margin-bottom:.35rem">Also belongs in</span>
+                    <div class="dr-chips">
+                        {% for c in collections %}<label><input type="checkbox" name="extra" value="{{ c.key }}" {% if c.key in card.extras %}checked{% endif %}> {{ c.label }}</label>{% endfor %}
+                    </div>
+                </div>
+                <label class="f wide">Tags<input type="text" name="tags" value="{{ card.tags }}" list="drTags" placeholder="Mom, Football, Vintage"></label>
+            </div>
+            {% if card.suggested %}<p class="dr-note">I was not sure about: {% for s in card.suggested %}{{ s.label }} ({{ s.confidence }}%){{ ', ' if not loop.last }}{% endfor %}.</p>{% endif %}
+            <div class="dr-actions">
+                <button type="submit" name="action" value="approve" class="dr-btn">Approve and publish</button>
+                <button type="submit" name="action" value="save" class="dr-btn ghost">Save</button>
+                <button type="submit" name="action" value="keep" class="dr-btn ghost">Keep hidden</button>
+            </div>
+        </div>
+    </form>
+    {% else %}
+    <div class="dr-empty">
+        <h2>All caught up</h2>
+        <p>New designs that need a look will show up here.</p>
+    </div>
+    {% endfor %}
+</div>
+<script>
+(function () {
+    var SUBS = {{ subs|tojson }};
+    document.querySelectorAll('.dr-card').forEach(function (card) {
+        var coll = card.querySelector('.dr-coll'), sub = card.querySelector('.dr-sub');
+        var want = card.getAttribute('data-sub') || '';
+        function fill() {
+            var options = SUBS[coll.value] || [];
+            sub.innerHTML = '<option value="">' + (options.length ? 'Choose a subcategory' : 'No subcategories') + '</option>';
+            options.forEach(function (o) {
+                var el = document.createElement('option');
+                el.value = o[0]; el.textContent = o[1];
+                if (o[0] === want) el.selected = true;
+                sub.appendChild(el);
+            });
+            sub.disabled = !options.length;
+            want = '';
+        }
+        coll.addEventListener('change', fill);
+        fill();
+    });
+})();
+</script>
+{% endblock %}

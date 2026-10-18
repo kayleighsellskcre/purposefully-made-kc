@@ -3991,6 +3991,132 @@ def _admin_designs_url(tab='gallery'):
     return url_for('admin.designs', tab=tab)
 
 
+# -- Design library: the review list --------------------------------------------
+
+def _review_designs():
+    from sqlalchemy import or_
+    return Design.query.filter(or_(Design.ai_status.in_(['needs_review', 'error']), Design.ip_status == 'review'))
+
+
+def _category_summary(design):
+    from models import DesignCategoryLink
+    from utils.design_taxonomy import label_for
+    rows = DesignCategoryLink.query.filter_by(design_id=design.id).order_by(DesignCategoryLink.is_primary.desc()).all()
+    return ', '.join(label_for(r.category_key, r.subcategory_key) or r.category_key for r in rows) or 'none'
+
+
+def _apply_review_edits(design, form):
+    """Your edits from the review page: saved as manual choices, remembered and locked. Returns notes to show."""
+    from models import DesignCategoryLink
+    from utils.design_ai import link_manual_folders
+    from utils.design_categories import compose_extra_categories, public_extra_storage_keys, stored_music_genres
+    from utils.design_tags import clean_tags, record_correction, set_manual_tags
+    from utils.design_taxonomy import is_valid_pair, legacy_key_for, COLLECTION_BY_KEY
+    notes = []
+    uid = current_user.id
+
+    title = re.sub(r'\s+', ' ', (form.get('title') or '')).strip()[:200]
+    if title and title != (design.title or ''):
+        record_correction(design, 'title', design.title, title, 'renamed', user_id=uid)
+        design.title = title
+
+    primary = (form.get('collection') or '').strip()
+    sub = (form.get('sub') or '').strip() or None
+    extras = [k for k in form.getlist('extra') if k in COLLECTION_BY_KEY and k != primary]
+    if primary in COLLECTION_BY_KEY:
+        if not is_valid_pair(primary, sub):
+            sub = None
+        before = _category_summary(design)
+        DesignCategoryLink.query.filter_by(design_id=design.id).delete()
+        db.session.add(DesignCategoryLink(design_id=design.id, category_key=primary, subcategory_key=sub,
+                                          is_primary=True, source='manual', locked=True))
+        for key in extras:
+            db.session.add(DesignCategoryLink(design_id=design.id, category_key=key, subcategory_key=None,
+                                              is_primary=False, source='manual', locked=True))
+        db.session.flush()
+        after = _category_summary(design)
+        if before != after:
+            record_correction(design, 'categories', before, after, 'categories_changed', user_id=uid)
+        # keep the gallery you already have working
+        legacy_primary = legacy_key_for(primary)
+        design.folder = legacy_primary or 'evergreen'
+        public = [legacy_key_for(k) for k in extras if legacy_key_for(k) and legacy_key_for(k) != design.folder]
+        design.extra_categories = compose_extra_categories(
+            public, stored_music_genres(design.extra_categories)) or None
+
+    words = [w for w in re.split(r'[,\n]+', form.get('tags') or '') if w.strip()]
+    if 'tags' in form:
+        slugs = clean_tags(words)
+        unknown = [w.strip() for w in words if not clean_tags([w])]
+        set_manual_tags(design, slugs, user_id=uid)
+        if unknown:
+            notes.append('Not in the tag list, so skipped: ' + ', '.join(unknown[:6]) + '. You can add them under Design Tags.')
+    return notes
+
+
+@admin_bp.route('/design-library/review', methods=['GET', 'POST'])
+@admin_required
+def design_review():
+    from models import DesignCategoryLink
+    from utils.cloud_storage import image_url
+    from utils.design_tags import design_tag_slugs, vocabulary
+    from utils.design_taxonomy import COLLECTIONS, label_for
+    if request.method == 'POST':
+        design = Design.query.get_or_404(request.form.get('design_id', type=int))
+        action = request.form.get('action', 'save')
+        for note in _apply_review_edits(design, request.form):
+            flash(note, 'info')
+        if action == 'clear_ip' or request.form.get('clear_ip') == 'on':
+            design.ip_status = 'cleared'
+        label = design.title or design.original_filename or 'Design'
+        if action == 'approve':
+            has_place = DesignCategoryLink.query.filter_by(design_id=design.id).count() > 0
+            if not has_place:
+                db.session.rollback()
+                flash(f'Pick a collection for "{label}" first, then approve it.', 'error')
+                return redirect(url_for('admin.design_review'))
+            design.is_gallery = True
+            design.ai_status = 'done'
+            if not design.sku:
+                design.sku = _next_sku(design.folder)
+            flash(f'"{label}" is approved and live in the gallery.', 'success')
+        elif action == 'keep':
+            design.is_gallery = False
+            flash(f'"{label}" stays hidden for now.', 'info')
+        else:
+            flash(f'Saved "{label}".', 'success')
+        design.modified_at = datetime.utcnow()
+        db.session.commit()
+        return redirect(url_for('admin.design_review'))
+
+    vocab = vocabulary(active_only=False)
+    cards = []
+    for design in _review_designs().order_by(Design.uploaded_at.desc()).limit(100).all():
+        try:
+            sug = json.loads(design.ai_suggestions or '{}')
+        except ValueError:
+            sug = {}
+        links = DesignCategoryLink.query.filter_by(design_id=design.id).order_by(DesignCategoryLink.is_primary.desc()).all()
+        primary = next((l for l in links if l.is_primary), links[0] if links else None)
+        guess = (sug.get('unsure') or [None])[0] if not primary else None
+        cards.append({
+            'design': design, 'url': image_url(design.file_path) if design.file_path else '',
+            'primary': primary.category_key if primary else (guess or {}).get('key', ''),
+            'sub': (primary.subcategory_key if primary else (guess or {}).get('sub')) or '',
+            'extras': [l.category_key for l in links if not l.is_primary],
+            'suggested': [{'label': label_for(p.get('key'), p.get('sub')) or label_for(p.get('key')),
+                           'confidence': int(round(float(p.get('confidence') or 0) * 100))}
+                          for p in (sug.get('unsure') or [])],
+            'tags': ', '.join(vocab[s].label for s in design_tag_slugs(design) if s in vocab),
+            'protected': sug.get('protected_words') or [],
+            'held': not design.is_gallery,
+        })
+    return render_template(
+        'admin/design_review.html', cards=cards, collections=COLLECTIONS,
+        tag_labels=sorted({t.label for t in vocab.values() if t.is_active}),
+        subs={c.key: [(s.key, s.label) for s in c.subcategories] for c in COLLECTIONS})
+
+
 # -- Design library: the standard tag vocabulary -------------------------------
 
 def _words(raw, limit=25):
@@ -4287,8 +4413,9 @@ def design_gallery_upload():
             parent = ensure_not_nested_parent(Design.query.get(parent_id))
             if not (parent and parent.is_gallery and parent.id):
                 parent = None
-        if not all_cats and parent is None:
-            return _err('Choose a folder before uploading.')
+        ai_key = (current_app.config.get('OPENAI_API_KEY') or '').strip()
+        if not all_cats and parent is None and not ai_key:
+            return _err('Choose a folder before uploading.')       # without the AI key there is nothing to file it for you
 
         # Grab bytes now for color detection (stream is consumed by _save_uploaded_design)
         try:
@@ -4315,13 +4442,16 @@ def design_gallery_upload():
 
         title = (request.form.get('title') or '').strip()
         variant_label = (request.form.get('variant_label') or '').strip()[:80]
-        needs_vision = is_generic_title(title) or not variant_label
+        needs_vision = is_generic_title(title) or not variant_label or (parent is None and bool(ai_key))
         metadata = {}
-        if needs_vision and _color_bytes:
-            metadata = suggest_design_metadata(
-                _color_bytes,
-                current_app.config.get('OPENAI_API_KEY') or '',
-            )
+        smart = None
+        if needs_vision and _color_bytes and ai_key:
+            # One look at the artwork gives the name, colors, collections, tags and style.
+            from utils.design_ai import interpret, request_classification
+            raw_result = request_classification(_color_bytes, ai_key)
+            if raw_result:
+                smart = interpret(raw_result, filename=file.filename, title_hint=title)
+                metadata = smart
 
         if is_generic_title(title):
             title = (
@@ -4342,6 +4472,7 @@ def design_gallery_upload():
                 or _detect_image_color(_color_bytes)
             )
 
+        held = False
         if parent and parent.id != design.id:
             design.parent_design_id = parent.id
             design.variant_label = unique_variant_label(
@@ -4359,26 +4490,45 @@ def design_gallery_upload():
             elif not sku:
                 design.sku = _next_sku(design.folder)
         else:
-            folder = all_cats[0]
-            extra_cats = compose_extra_categories(all_cats[1:], genres) or ''
-            design.folder = folder
-            design.extra_categories = extra_cats or None
-            if not sku:
-                design.sku = _next_sku(folder)
+            from utils.design_ai import apply_classification, classify_from_text, link_manual_folders
+            if all_cats:
+                folder = all_cats[0]
+                extra_cats = compose_extra_categories(all_cats[1:], genres) or ''
+                design.folder = folder
+                design.extra_categories = extra_cats or None
+            else:
+                design.folder = 'evergreen'                      # the automatic filing below replaces this
             if variant_label:
                 design.variant_label = unique_variant_label(None, variant_label)
+            try:
+                link_manual_folders(design, all_cats)
+                result = smart or classify_from_text(design.title, file.filename)
+                apply_classification(design, result, chose_folder=bool(all_cats), user_id=current_user.id)
+            except Exception:
+                current_app.logger.exception('smart filing failed for design %s', design.id)
+                design.ai_status = 'error'
+            # A design the system filed by itself and is not sure about waits for your review instead of going public.
+            held = (not all_cats) and design.ai_status in ('needs_review', 'error')
+            if held:
+                design.is_gallery = False
+            elif not sku:
+                design.sku = _next_sku(design.folder)
 
         db.session.commit()
 
         label = design.title or design.original_filename or 'Design'
         if is_ajax:
-            return jsonify({'ok': True, 'design_id': design.id, 'sku': design.sku or '', 'color': design.variant_label or '', 'message': f'"{label}" added to gallery!'})
+            note = f'"{label}" is waiting for your review.' if held else f'"{label}" added to gallery!'
+            return jsonify({'ok': True, 'design_id': design.id, 'sku': design.sku or '', 'color': design.variant_label or '',
+                            'status': design.ai_status or '', 'held': held, 'message': note})
         if design.parent_design_id:
             flash(
                 f'Color "{design.variant_label}" added to '
                 f'"{design.parent_design.title or design.parent_design.original_filename}".',
                 'success',
             )
+        elif held:
+            flash(f'"{label}" is waiting for your review before it goes public.', 'info')
         else:
             flash(f'Design "{label}" added to gallery!', 'success')
         return redirect(url_for('admin.designs', tab='gallery'))
