@@ -27,6 +27,13 @@
 .dl-list li { padding: .5rem 0; border-top: 1px solid var(--border-light, #eadfd2); font-size: .9rem; }
 .dl-list li:first-child { border-top: 0; }
 .dl-list small { color: var(--text-secondary); }
+.dl-steps { list-style: none; margin: 0; padding: 0; }
+.dl-steps li { display: flex; gap: .9rem; align-items: center; padding: .65rem 0; border-top: 1px solid var(--border-light, #eadfd2); }
+.dl-steps li:first-child { border-top: 0; }
+.dl-steps li > div { flex: 1; }
+.dl-steps small { color: var(--text-secondary); }
+.dl-dot { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--terra-cotta); color: var(--terra-cotta); display: flex; align-items: center; justify-content: center; font-weight: 700; flex: 0 0 30px; }
+.dl-steps li.done .dl-dot { background: #7a9a7e; border-color: #7a9a7e; color: #fff; }
 .dl-two { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem; }
 @media (max-width: 760px) { .dl-two { grid-template-columns: 1fr; } .dl-bar { grid-template-columns: 8rem 1fr 2rem; } }
 </style>
@@ -45,6 +52,20 @@
         <a class="dl-stat {{ 'todo' if o.unfiled else '' }}" href="{{ url_for('admin.design_organize') }}"><b>{{ o.unfiled }}</b><span>Not filed yet</span></a>
     </div>
     {% if o.reading %}<p class="sub" style="color:var(--text-secondary);margin:-.4rem 0 1rem">{{ o.reading }} design{{ '' if o.reading == 1 else 's' }} still being read in the background.</p>{% endif %}
+
+    {% if plan.any_work or not plan.all_done %}
+    <div class="dl-card">
+        <h2>Organize your existing designs</h2>
+        <p class="sub">Four safe steps, in order. You never have to upload anything again, and nothing is changed or deleted without your okay.</p>
+        <ol class="dl-steps">
+        {% for st in plan.steps %}
+            <li class="{{ 'done' if st.done else '' }}"><span class="dl-dot">{{ '✓' if st.done else st.n }}</span>
+                <div><b>{{ st.title }}</b><br><small>{{ st.note }}</small></div>
+                {% if not st.done %}<a class="dl-btn ghost" href="{{ url_for(st.link) }}">{{ st.cta }}</a>{% endif %}</li>
+        {% endfor %}
+        </ol>
+    </div>
+    {% endif %}
 
     <div class="dl-card">
         <h2>Jump to</h2>

@@ -276,3 +276,61 @@ def snapshot():
                      'ip_status': d.ip_status, 'locked_fields': d.locked_fields,
                      'categories': links.get(d.id, []), 'tags': tags.get(d.id, [])})
     return {'created_at': _now().isoformat(), 'designs': rows}
+
+
+# -- "Have you saved a backup?" -------------------------------------------------------------
+
+BACKUP_KEY = 'design_library_backup_at'
+BACKUP_FRESH_DAYS = 7
+
+
+def mark_backup():
+    """Remember that a backup was just downloaded."""
+    from models import SystemSettings
+    row = SystemSettings.query.filter_by(key=BACKUP_KEY).first()
+    if row is None:
+        row = SystemSettings(key=BACKUP_KEY, description='When the design library backup was last downloaded')
+        db.session.add(row)
+    row.value = _now().isoformat()
+    db.session.commit()
+
+
+def backup_age_days():
+    """Days since the last backup download, or None when there has never been one."""
+    from models import SystemSettings
+    row = SystemSettings.query.filter_by(key=BACKUP_KEY).first()
+    try:
+        return (_now() - datetime.fromisoformat(row.value)).total_seconds() / 86400 if row and row.value else None
+    except ValueError:
+        return None
+
+
+def backup_is_fresh():
+    age = backup_age_days()
+    return age is not None and age <= BACKUP_FRESH_DAYS
+
+
+def checklist():
+    """The four steps for organizing the existing library, with where each one stands."""
+    from utils import design_fingerprint as fp
+    s = summary()
+    scan_left = fp.pending_query().count()
+    steps = [
+        {'n': 1, 'title': 'Save a backup', 'done': backup_is_fresh(),
+         'note': 'A copy of every design: folders, tags and names. Your artwork files are never touched.',
+         'link': 'admin.design_organize_backup', 'cta': 'Download backup'},
+        {'n': 2, 'title': 'Let it read your designs', 'done': s['waiting'] == 0 and s['queued'] == 0,
+         'note': (f"{s['waiting']} still to read" if s['waiting'] else 'All designs have been read.')
+                 + (f", {s['queued']} being read now" if s['queued'] else ''),
+         'link': 'admin.design_organize', 'cta': 'Start reading'},
+        {'n': 3, 'title': 'Look over and apply', 'done': s['ready'] == 0 and s['waiting'] == 0 and s['queued'] == 0,
+         'note': f"{s['ready']} ready for your okay. Nothing changes until you apply, and every change can be undone." if s['ready']
+                 else 'Nothing waiting for your okay.',
+         'link': 'admin.design_organize', 'cta': 'Review'},
+        {'n': 4, 'title': 'Find duplicates and versions', 'done': scan_left == 0,
+         'note': f'{scan_left} still being compared (this runs by itself in the background).' if scan_left
+                 else 'Every design has been compared. Suggestions wait on the Duplicates page.',
+         'link': 'admin.design_matches', 'cta': 'See suggestions'},
+    ]
+    return {'steps': steps, 'all_done': all(st['done'] for st in steps),
+            'any_work': bool(s['waiting'] or s['ready'] or s['queued'] or scan_left)}

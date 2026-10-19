@@ -4059,7 +4059,8 @@ def _apply_review_edits(design, form):
 def design_library_overview():
     """One calm page: how the library is doing, what needs you, and what it has learned from you."""
     from utils.design_learning import overview
-    return render_template('admin/design_library.html', o=overview())
+    from utils.design_organizer import checklist
+    return render_template('admin/design_library.html', o=overview(), plan=checklist())
 
 
 @admin_bp.route('/design-library/browse', methods=['GET', 'POST'])
@@ -4319,6 +4320,8 @@ def design_organize():
                 org.process_queue(3)
                 flash(f'Looking at {count} design{"" if count == 1 else "s"}. They will appear below as they are ready. '
                       'Nothing changes until you apply it.', 'success')
+        elif action in ('apply', 'apply_confident') and not org.backup_is_fresh():
+            flash('Please download the backup first (button at the top). It takes a second and lets you go back if you ever want to.', 'error')
         elif action in ('apply', 'apply_confident'):
             query = DesignProposal.query.filter(DesignProposal.status == 'ready')
             if action == 'apply_confident':
@@ -4380,6 +4383,7 @@ def design_organize_backup():
     """A copy of everything the organizer can change, to keep before you apply anything."""
     from utils import design_organizer as org
     stamp = datetime.utcnow().strftime('%Y%m%d-%H%M')
+    org.mark_backup()
     return Response(json.dumps(org.snapshot(), indent=1), mimetype='application/json',
                     headers={'Content-Disposition': f'attachment; filename=design-library-backup-{stamp}.json'})
 

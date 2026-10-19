@@ -252,6 +252,11 @@ def test_the_organize_page_walks_through_look_preview_apply_and_undo(lib, admin_
         page = admin_client.get('/admin/design-library/organize').get_data(as_text=True)
         assert 'Confident (1)' in page and 'Football Mama' in page and 'Today:' in page and 'sports' in page
         assert 'Vintage' in page and 'Apply all 1 confident' in page
+        denied = admin_client.post('/admin/design-library/organize', data={'action': 'apply_confident'}, follow_redirects=True)
+        assert 'download the backup first' in denied.get_data(as_text=True)
+        with lib.app_context():
+            assert DesignProposal.query.filter_by(design_id=did).one().status == 'ready'
+        admin_client.get('/admin/design-library/organize/backup.json')
         resp = admin_client.post('/admin/design-library/organize', data={'action': 'apply_confident'}, follow_redirects=True)
         assert 'Applied to 1 design' in resp.get_data(as_text=True)
         assert 'Recently organized' in resp.get_data(as_text=True)
@@ -270,6 +275,7 @@ def test_apply_confident_skips_the_ones_that_need_your_okay(lib, admin_client, m
     pid = _ready(lib, sure, monkeypatch=monkeypatch)
     unsure = _make(lib, title='Unsure')
     _ready(lib, unsure, raw=_raw(collections=[{'key': 'sports-game-day', 'sub': None, 'confidence': 0.4}]), monkeypatch=monkeypatch)
+    admin_client.get('/admin/design-library/organize/backup.json')
     admin_client.post('/admin/design-library/organize', data={'action': 'apply_confident'})
     with lib.app_context():
         assert DesignProposal.query.filter_by(design_id=sure).one().status == 'applied'
