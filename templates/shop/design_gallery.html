@@ -411,8 +411,8 @@
 /* ── Folder landing ── */
 .dg-folders {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1.1rem;
 }
 .dg-folder {
     position: relative;
@@ -433,14 +433,14 @@
     text-decoration: none;
 }
 .dg-folder-stage {
-    aspect-ratio: 4 / 5;
+    aspect-ratio: 1 / 1;
     background: linear-gradient(135deg, var(--ivory-silk, #f7f3ec) 0%, #f0ebe0 100%);
     position: relative;
     overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 2rem 1.5rem 4.25rem;
+    padding: 1.1rem 1rem 3.4rem;
 }
 .dg-folder-image {
     max-width: 100%;
@@ -456,26 +456,26 @@
     left: 0;
     right: 0;
     bottom: 0;
-    padding: 2.4rem 1.2rem 1.1rem;
-    background: linear-gradient(transparent, rgba(32, 28, 24, 0.82) 55%);
+    padding: 1.6rem .9rem .75rem;
+    background: linear-gradient(transparent, rgba(32, 28, 24, 0.72) 60%);
     color: #fff;
     pointer-events: none;
     z-index: 2;
 }
 .dg-folder-title {
     font-family: var(--font-heading);
-    font-size: 1.28rem;
+    font-size: 1rem;
     font-weight: 600;
-    margin: 0 0 0.2rem;
+    margin: 0 0 0.1rem;
     color: #fff;
 }
 .dg-folder-count {
     margin: 0;
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    opacity: 0.82;
+    opacity: 0.85;
 }
 .dg-folder--empty .dg-folder-stage {
     background: linear-gradient(160deg, #f4efe6 0%, #e8dfd0 100%);
@@ -485,27 +485,32 @@
     top: 42%;
     transform: translateY(-50%);
     z-index: 4;
-    width: 36px;
-    height: 36px;
+    width: 28px;
+    height: 28px;
     padding: 0;
     border: 0;
     border-radius: 50%;
-    background: rgba(255,255,255,0.96);
+    background: rgba(255,255,255,0.92);
     color: var(--text-primary);
-    box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    opacity: 0;
+    transition: opacity .2s ease;
 }
+.dg-folder:hover .dg-folder-nav,
+.dg-folder-nav:focus-visible { opacity: 1; }
+.dg-folder-nav svg { width: 14px; height: 14px; }
 .dg-folder-nav:hover,
 .dg-folder-nav:focus-visible {
     background: var(--terra-cotta, #b87c6f);
     color: #fff;
     outline: none;
 }
-.dg-folder-nav.prev { left: 0.65rem; }
-.dg-folder-nav.next { right: 0.65rem; }
+.dg-folder-nav.prev { left: 0.4rem; }
+.dg-folder-nav.next { right: 0.4rem; }
 
 /* ── Gallery Section ── */
 .gallery-section {
@@ -858,10 +863,13 @@
     cursor: pointer;
     border: none;
 }
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
+    .dg-folders { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
     .dg-folders {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 1.15rem;
+        gap: .8rem;
     }
 }
 @media (max-width: 540px) {
@@ -875,19 +883,16 @@
     .dg-sort-wrap select {
         width: 100%;
     }
-    .dg-folders {
-        grid-template-columns: 1fr;
-    }
     .gallery-meta {
         align-items: flex-start;
         margin-bottom: 1.5rem;
     }
-    .gallery-carousel-btn,
-    .dg-folder-nav {
+    .gallery-carousel-btn {
         width: 42px;
         height: 42px;
         opacity: 1;
     }
+    .dg-folder-nav { opacity: 1; }
     .gcolor-card {
         width: min(96vw, 520px);
         padding: 1.15rem 1rem 1rem;
