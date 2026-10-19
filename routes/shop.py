@@ -761,6 +761,9 @@ def edit_group_order(slug):
     )
 
 
+MAX_GALLERY_CARDS = 300
+
+
 @shop_bp.route('/designs')
 def design_gallery():
     """Browse designs: collection, then subcategory, then the designs. Everything finer is a filter or a search."""
@@ -791,7 +794,7 @@ def design_gallery():
     sub = (request.args.get('sub') or '').strip().lower() if key and not automatic else ''
     autos = dg.automatic_collections(all_cards) if all_cards and (automatic or not key) else {}
 
-    active_folder, designs = None, []
+    active_folder, designs, truncated = None, [], 0
     subs, filters, chosen = [], {}, {}
     if key:
         if automatic:
@@ -824,6 +827,8 @@ def design_gallery():
         filters = dg.filter_options(designs)
         designs, chosen = dg.apply_filters(designs, request.args)
         dg.attach_related(all_cards)
+        if len(designs) > MAX_GALLERY_CARDS:          # thousands of designs: narrow by collection, subcategory or search
+            truncated, designs = len(designs), designs[:MAX_GALLERY_CARDS]
     folders = dg.landing_tiles(all_cards, autos) if gallery_view == 'folders' else []
 
     return render_template(
@@ -836,6 +841,7 @@ def design_gallery():
         filters=filters,
         chosen=chosen,
         collection_labels={**{k: c.label for k, c in COLLECTION_BY_KEY.items()}, **{k: l for k, l, _b in dg.AUTOMATIC}},
+        truncated=truncated,
         grouped=bool(key and not automatic and not search_query and not chosen),
         search_query=search_query,
         product_id=product_id,

@@ -387,6 +387,8 @@ def attach_related(cards, per_card=6):
                 if n >= 2 and other not in picked:
                     picked.append(other)
         card['related'] = [{'id': by_id[i]['id'], 'title': by_id[i]['title'], 'url': by_id[i]['url'],
-                            'variants': by_id[i]['variants'], 'has_colors': by_id[i]['has_colors']}
+                            'variants': by_id[i]['variants'] if by_id[i]['has_colors'] else
+                            [{'id': by_id[i]['variants'][0]['id']}] if by_id[i]['variants'] else [],
+                            'has_colors': by_id[i]['has_colors']}
                            for i in picked[:per_card] if i in by_id]
     return cards

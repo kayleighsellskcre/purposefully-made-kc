@@ -205,6 +205,8 @@
             {% endfor %}
         </div>
 
+        {% if truncated %}<p class="gallery-count" style="text-align:center;margin-top:1.5rem">Showing the first {{ designs|length }} of {{ truncated }} designs. Pick a category or search to narrow it down.</p>{% endif %}
+
         <div class="dg-empty-state" id="dgEmptyState">
             {% if gallery_view == 'folder' and not search_query %}
             <p>No designs in this collection yet.</p>
