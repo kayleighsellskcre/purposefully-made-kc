@@ -15,9 +15,8 @@ def test_admin_gallery_page_has_edit_controls(admin_client, seed):
     assert 'Design Library' in html
     assert 'Gallery' in html
     assert 'Music' in html
-    assert 'Country &amp; Western' in html
-    assert 'Rock &amp; Roll' in html
-    assert 'name="music_genres"' in html
+    assert 'Music &amp; Entertainment' in html and 'Country Music' in html      # music is a normal collection now
+    assert 'name="place"' in html and 'name="music_genres"' not in html
 
 
 def test_old_design_gallery_url_redirects(admin_client, seed):

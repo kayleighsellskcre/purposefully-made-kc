@@ -4480,7 +4480,8 @@ def design_tags():
 @admin_required
 def designs():
     """Combined Design Library (customer uploads) + Gallery (curated public designs)."""
-    from utils.design_categories import GALLERY_FOLDER_OPTIONS, MUSIC_GENRES
+    from utils.design_places import describe_many
+    from utils.design_taxonomy import COLLECTIONS
 
     tab = (request.args.get('tab') or 'library').strip().lower()
     if tab not in ('library', 'gallery'):
@@ -4527,8 +4528,9 @@ def designs():
         library_designs=library_designs,
         gallery_designs=gallery_designs,
         pending_designs=pending_designs,
-        gallery_folder_options=GALLERY_FOLDER_OPTIONS,
-        music_genre_options=MUSIC_GENRES,
+        collections=COLLECTIONS,
+        ai_ready=bool((current_app.config.get('OPENAI_API_KEY') or '').strip()),
+        design_places=describe_many(gallery_designs),
     )
 
 
@@ -4676,7 +4678,9 @@ def design_gallery_upload():
         )
         from utils.design_variants import ensure_not_nested_parent
 
-        all_cats = assigned_gallery_folders(request.form)
+        from utils.design_places import apply_places, parse_places, places_to_storage_keys
+        places = parse_places(request.form)
+        all_cats = assigned_gallery_folders(request.form) or places_to_storage_keys(places)
         genres = assigned_music_genres(request.form)
         parent_id = request.form.get('parent_design_id', type=int)
         parent = None
@@ -4788,7 +4792,10 @@ def design_gallery_upload():
             if variant_label:
                 design.variant_label = unique_variant_label(None, variant_label)
             try:
-                link_manual_folders(design, all_cats)
+                if places:
+                    apply_places(design, places, current_user.id, remember=False)
+                else:
+                    link_manual_folders(design, all_cats)
                 result = smart or classify_from_text(design.title, file.filename)
                 apply_classification(design, result, chose_folder=bool(all_cats), user_id=current_user.id)
             except Exception:
@@ -4915,7 +4922,23 @@ def design_gallery_edit(design_id):
         genres = assigned_music_genres(request.form)
     else:
         genres = stored_music_genres(design.extra_categories)
-    if request.form.get('categories_present') == '1':
+    from utils.design_places import apply_places, parse_places, places_label, places_attr, places_to_storage_keys, current_places
+    places = parse_places(request.form) if request.form.get('places_present') == '1' else None
+    if places is not None and not design.parent_design_id:
+        if not places:
+            msg = 'Choose where this design belongs.'
+            if is_ajax:
+                return jsonify({'ok': False, 'error': msg}), 400
+            flash(msg, 'error')
+            return redirect(url_for('admin.designs', tab='gallery'))
+        all_cats_raw = places_to_storage_keys(places)
+        folder = all_cats_raw[0]
+        extra_cats = compose_extra_categories(all_cats_raw[1:], genres)
+    elif places is not None:
+        places = None                                   # a color version keeps its main design's places
+        folder = design.folder or 'custom_orders'
+        extra_cats = design.extra_categories or ''
+    elif request.form.get('categories_present') == '1':
         if not all_cats_raw:
             msg = 'Choose at least one gallery category.'
             if is_ajax:
@@ -4944,6 +4967,8 @@ def design_gallery_edit(design_id):
     try:
         if title:
             design.title = title[:200]
+        if places:
+            apply_places(design, places, current_user.id)
         design.folder = folder
         design.extra_categories = extra_cats or None
         design.sku = sku[:50] if sku else None
@@ -5037,6 +5062,8 @@ def design_gallery_edit(design_id):
             'title': design.title or design.original_filename or 'Design',
             'folder': design.folder or 'custom_orders',
             'extra_categories': design.extra_categories or '',
+            'places': places_attr(current_places(design)),
+            'places_label': places_label(current_places(design)),
             'sku': design.sku or '',
             'variant_label': design.variant_label or '',
             'image_url': resolve_image_url(design.file_path) if design.file_path else '',

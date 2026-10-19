@@ -87,7 +87,7 @@
         </div>
 
         {# ── Gallery (curated public) ── #}
-        {% set music_genre_options = music_genre_options|default([]) %}
+        {% from 'admin/includes/places_picker.html' import places_picker %}
         <div class="designs-panel design-gallery-admin" id="panel-gallery" role="tabpanel" aria-labelledby="tab-gallery" {% if active_tab != 'gallery' %}hidden{% endif %}>
             <p class="designs-panel-lead">Upload designs for customers to use on their custom apparel</p>
 
@@ -97,24 +97,11 @@
 
                 <form id="galleryUploadForm" class="gallery-upload-form">
 
-                    {# ── Folder (required for new main designs) ── #}
+                    {# ── Where it belongs: the same two levels for every collection ── #}
                     <div class="form-group upload-cats-group">
-                        <label class="form-label">Folder <small style="font-weight:400;color:var(--text-secondary);">- pick where this design lives. Extra folders only if it truly belongs in more than one.</small></label>
-                        <div class="upload-cat-chips">
-                            {% for key, label in gallery_folder_options %}
-                            <label class="cat-chip"><input type="checkbox" name="upload_cats" value="{{ key }}"> {{ label }}</label>
-                            {% endfor %}
-                        </div>
-                        <small style="color:#bbb;font-size:0.75rem;margin-top:0.35rem;display:block;">Required for new designs. Color variants inherit the parent folder.</small>
-                    </div>
-
-                    <div class="form-group upload-cats-group">
-                        <label class="form-label">Music genre <small style="font-weight:400;color:var(--text-secondary);">- optional, admin only. Customers do not see these yet.</small></label>
-                        <div class="upload-cat-chips">
-                            {% for key, label in music_genre_options %}
-                            <label class="cat-chip"><input type="checkbox" name="music_genres" value="{{ key }}"> {{ label }}</label>
-                            {% endfor %}
-                        </div>
+                        <label class="form-label">Where does it belong? <small style="font-weight:400;color:var(--text-secondary);">- {% if ai_ready %}optional. Leave this empty and the design is named, filed and tagged for you.{% else %}pick a collection, then a category inside it if you like.{% endif %}</small></label>
+                        {{ places_picker('uploadPlaces', collections) }}
+                        <small style="color:#aaa;font-size:0.75rem;margin-top:0.35rem;display:block;">A design can belong in more than one place. Color versions use the same places as the main design. Fan Favorites builds itself from what sells.</small>
                     </div>
 
                     {# ── Multi-file drop zone ── #}
@@ -211,10 +198,10 @@
             </p>
             <div class="admin-gallery-tools">
                 <input type="search" id="adminGallerySearch" class="form-control" placeholder="Search gallery designs or SKUs..." autocomplete="off">
-                <select id="adminGalleryCategory" class="form-control" aria-label="Filter gallery designs by folder">
-                    <option value="">All folders</option>
-                    {% for key, label in gallery_folder_options %}
-                    <option value="{{ key }}">{{ label }}</option>
+                <select id="adminGalleryCategory" class="form-control" aria-label="Filter gallery designs by collection">
+                    <option value="">All collections</option>
+                    {% for c in collections %}
+                    <option value="{{ c.key }}">{{ c.label }}</option>
                     {% endfor %}
                 </select>
                 <span id="adminGalleryCount">{{ gallery_designs|length }} shown</span>
@@ -224,6 +211,7 @@
                 {% set variants = design.color_variants.filter_by(is_gallery=True).all() %}
                 <div class="gallery-design-card" data-design-id="{{ design.id }}"
                      data-title="{{ design.title or design.original_filename or '' }}"
+                     data-places="{{ design_places[design.id].attr }}"
                      data-folder="{{ design.folder or 'custom_orders' }}"
                      data-extra-categories="{{ design.extra_categories or '' }}"
                      data-sku="{{ design.sku or '' }}"
@@ -234,18 +222,7 @@
                     </div>
                     <div class="design-card-body">
                         <strong class="design-card-name">{{ design.title or design.original_filename }}</strong>
-                        {% set _extra_keys = (design.extra_categories or '').split(',') | map('trim') | reject('equalto', '') | list %}
-                        {% set _genre_count = namespace(n=0) %}
-                        {% for key, label in music_genre_options %}
-                            {% if key in _extra_keys %}{% set _genre_count.n = _genre_count.n + 1 %}{% endif %}
-                        {% endfor %}
-                        {% set _public_extra_count = _extra_keys|length - _genre_count.n %}
-                        <p class="design-card-meta">{{ design.folder or 'No folder' }}{% if _public_extra_count %} <span style="color:var(--terra-cotta,#b87c6f);">+{{ _public_extra_count }}</span>{% endif %} &middot; {{ design.sku or 'No SKU' }}{% if variants %} &middot; {{ variants|length + 1 }} colors{% endif %}</p>
-                        {% for key, label in music_genre_options %}
-                            {% if key in _extra_keys %}
-                            <span class="admin-genre-tag">{{ label }}</span>
-                            {% endif %}
-                        {% endfor %}
+                        <p class="design-card-meta">{{ design_places[design.id].label or 'Not filed yet' }} &middot; {{ design.sku or 'No SKU' }}{% if variants %} &middot; {{ variants|length + 1 }} colors{% endif %}</p>
                         {% if variants %}
                         <div class="gallery-variant-thumbs">
                             <div class="gallery-variant-thumb is-cover">
@@ -260,7 +237,7 @@
                             <div class="gallery-variant-thumb">
                                 <button type="button"
                                         title="Edit {{ v.variant_label or 'Color' }}"
-                                        onclick='openGalleryVariantEdit({{ v.id }}, {{ (design.title or design.original_filename or "Design")|tojson }}, {{ (v.sku or design.sku or "")|tojson }}, {{ (v.variant_label or "")|tojson }}, {{ (design.folder or "custom_orders")|tojson }}, {{ (design.extra_categories or "")|tojson }}, {{ url_for("admin.design_gallery_edit", design_id=v.id)|tojson }})'>
+                                        onclick='openGalleryVariantEdit({{ v.id }}, {{ (design.title or design.original_filename or "Design")|tojson }}, {{ (v.sku or design.sku or "")|tojson }}, {{ (v.variant_label or "")|tojson }}, {{ (design.folder or "custom_orders")|tojson }}, {{ (design.extra_categories or "")|tojson }}, {{ url_for("admin.design_gallery_edit", design_id=v.id)|tojson }}, {{ design_places[design.id].attr|tojson }})'>
                                     <img src="{{ v.file_path | image_url }}" alt="{{ v.variant_label or '' }}">
                                 </button>
                                 <form method="post" action="{{ url_for('admin.design_gallery_make_main', design_id=v.id) }}">
@@ -462,6 +439,13 @@
 
 /* Category chip checkboxes */
 .cat-chip { display:inline-flex; align-items:center; gap:0.35rem; padding:0.3rem 0.8rem; border-radius:999px; border:1.5px solid var(--border-color,#e0d8cc); font-size:0.78rem; cursor:pointer; transition:border-color 0.15s,background 0.15s,color 0.15s; user-select:none; font-family:inherit; }
+.places { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.4rem; }
+.places-group { display:flex; flex-wrap:wrap; gap:.4rem .5rem; align-items:flex-start; }
+.places-group.is-on { flex-basis:100%; }
+.places-subs { flex-basis:100%; display:flex; flex-wrap:wrap; gap:.35rem; margin:.15rem 0 .35rem 1.1rem; padding-left:.8rem; border-left:2px solid rgba(184,124,111,.35); }
+.places-subs[hidden] { display:none; }
+.places-main { font-weight:600; font-size:.82rem; }
+.places-sub { font-size:.74rem; }
 .cat-chip:hover { border-color:var(--terra-cotta,#b87c6f); }
 .cat-chip input[type="checkbox"] { width:0.82rem; height:0.82rem; accent-color:var(--terra-cotta,#b87c6f); margin:0; flex-shrink:0; }
 .cat-chip:has(input:checked) { border-color:var(--terra-cotta,#b87c6f); background:rgba(184,124,111,0.12); color:var(--terra-cotta,#b87c6f); font-weight:600; }
@@ -794,23 +778,10 @@
                     <label for="editTitle" class="form-label">Display Name</label>
                     <input type="text" id="editTitle" name="title" class="form-control" maxlength="200" required>
                 </div>
+                <input type="hidden" name="places_present" value="1">
                 <div class="form-group" style="margin-bottom:1rem;">
-                    <label class="form-label" style="margin-bottom:0.5rem;">Folder <small style="font-weight:400;color:#aaa;">- most designs need only one. Check extras only if it belongs in more than one folder.</small></label>
-                    <div id="editExtraCategories" style="display:flex;flex-wrap:wrap;gap:0.4rem;">
-                        {% for key, label in gallery_folder_options %}
-                        <label class="cat-chip"><input type="checkbox" name="extra_categories" value="{{ key }}"> {{ label }}</label>
-                        {% endfor %}
-                    </div>
-                    <small style="color:#bbb;font-size:0.75rem;margin-top:0.35rem;display:block;">At least one folder is required.</small>
-                </div>
-                <input type="hidden" name="music_genres_present" value="1">
-                <div class="form-group" style="margin-bottom:1rem;">
-                    <label class="form-label" style="margin-bottom:0.5rem;">Music genre <small style="font-weight:400;color:#aaa;">- optional, admin only. Customers do not see these yet.</small></label>
-                    <div id="editMusicGenres" style="display:flex;flex-wrap:wrap;gap:0.4rem;">
-                        {% for key, label in music_genre_options %}
-                        <label class="cat-chip"><input type="checkbox" name="music_genres" value="{{ key }}"> {{ label }}</label>
-                        {% endfor %}
-                    </div>
+                    <label class="form-label" style="margin-bottom:0.5rem;">Where it belongs <small style="font-weight:400;color:#aaa;">- pick a collection, then a category inside it if you like.</small></label>
+                    {{ places_picker('editPlaces', collections) }}
                 </div>
                 <div class="form-group" style="margin-bottom:1rem;">
                     <label for="editSku" class="form-label">SKU</label>
@@ -945,6 +916,41 @@ function showGalleryToast(msg) {
     t._h = setTimeout(function() { t.style.opacity = '0'; }, 3200);
 }
 
+// -- The collection / subcategory picker (same for uploads and edits) --
+function syncPlaces(box) {
+    box.querySelectorAll('.places-group').forEach(function(g) {
+        var main = g.querySelector('[data-main]');
+        var subs = g.querySelector('.places-subs');
+        if (subs) subs.hidden = !main.checked;
+        if (!main.checked) g.querySelectorAll('[data-sub]').forEach(function(cb) { cb.checked = false; });
+        g.classList.toggle('is-on', main.checked);
+    });
+}
+function setPlaces(box, list) {
+    if (!box) return;
+    var want = (list || []).filter(Boolean);
+    box.querySelectorAll('input[type="checkbox"]').forEach(function(cb) { cb.checked = false; });
+    want.forEach(function(v) {
+        var coll = v.split(':')[0];
+        var main = box.querySelector('[data-coll="' + coll + '"] [data-main]');
+        if (main) main.checked = true;
+        if (v.indexOf(':') !== -1) {
+            var sub = box.querySelector('input[data-sub][value="' + v + '"]');
+            if (sub) sub.checked = true;
+        }
+    });
+    syncPlaces(box);
+}
+document.querySelectorAll('.places').forEach(function(box) {
+    box.addEventListener('change', function(e) {
+        if (e.target.matches('[data-sub]') && e.target.checked) {
+            e.target.closest('.places-group').querySelector('[data-main]').checked = true;
+        }
+        syncPlaces(box);
+    });
+});
+
+var AI_READY = {{ 'true' if ai_ready else 'false' }};
 let _gUrl = '', _gId = 0, _gAction = '';
 let _editUrl = '';
 let _editingVariant = false;
@@ -959,23 +965,13 @@ function openGalleryEdit(id) {
     document.getElementById('editSku').value = card.getAttribute('data-sku') || '';
     document.getElementById('editVariantLabel').value = card.getAttribute('data-variant-label') || '';
     document.getElementById('editFile').value = '';
-    // Pre-check all category boxes (primary folder + extra_categories)
-    const primaryFolder = (card.getAttribute('data-folder') || '').trim();
-    const extras = (card.getAttribute('data-extra-categories') || '').split(',').map(s => s.trim()).filter(Boolean);
-    const allCats = primaryFolder ? [primaryFolder].concat(extras) : extras;
-    if (allCats.indexOf('custom_orders') !== -1) allCats.push('evergreen');
-    document.querySelectorAll('#editExtraCategories input[type="checkbox"]').forEach(function(cb) {
-        cb.checked = allCats.indexOf(cb.value) !== -1;
-    });
-    document.querySelectorAll('#editMusicGenres input[type="checkbox"]').forEach(function(cb) {
-        cb.checked = extras.indexOf(cb.value) !== -1;
-    });
+    setPlaces(document.getElementById('editPlaces'), (card.getAttribute('data-places') || '').split('|'));
     document.getElementById('galleryEditModal').classList.add('is-open');
     document.body.style.overflow = 'hidden';
     setTimeout(function() { document.getElementById('editTitle').focus(); }, 50);
 }
 
-function openGalleryVariantEdit(id, title, sku, variantLabel, folder, extras, editUrl) {
+function openGalleryVariantEdit(id, title, sku, variantLabel, folder, extras, editUrl, places) {
     _editingVariant = true;
     _gId = id;
     _editUrl = editUrl || '';
@@ -983,15 +979,7 @@ function openGalleryVariantEdit(id, title, sku, variantLabel, folder, extras, ed
     document.getElementById('editSku').value = sku || '';
     document.getElementById('editVariantLabel').value = variantLabel || '';
     document.getElementById('editFile').value = '';
-    const extraList = (extras || '').split(',').map(s => s.trim()).filter(Boolean);
-    const allCats = folder ? [folder].concat(extraList) : [];
-    if (allCats.indexOf('custom_orders') !== -1) allCats.push('evergreen');
-    document.querySelectorAll('#editExtraCategories input[type="checkbox"]').forEach(function(cb) {
-        cb.checked = allCats.indexOf(cb.value) !== -1;
-    });
-    document.querySelectorAll('#editMusicGenres input[type="checkbox"]').forEach(function(cb) {
-        cb.checked = extraList.indexOf(cb.value) !== -1;
-    });
+    setPlaces(document.getElementById('editPlaces'), (places || '').split('|'));
     document.getElementById('galleryEditTitle').textContent = 'Edit Design Color';
     document.getElementById('galleryEditModal').classList.add('is-open');
     document.body.style.overflow = 'hidden';
@@ -1031,6 +1019,7 @@ document.getElementById('galleryEditForm').addEventListener('submit', function(e
         const card = document.querySelector('.gallery-design-card[data-design-id="' + _gId + '"]');
         if (card) {
             card.setAttribute('data-title', d.title || '');
+            card.setAttribute('data-places', d.places || '');
             card.setAttribute('data-folder', d.folder || 'custom_orders');
             card.setAttribute('data-extra-categories', d.extra_categories || '');
             card.setAttribute('data-sku', d.sku || '');
@@ -1038,7 +1027,7 @@ document.getElementById('galleryEditForm').addEventListener('submit', function(e
             const nameEl = card.querySelector('.design-card-name');
             if (nameEl) nameEl.textContent = d.title || 'Design';
             const metaEl = card.querySelector('.design-card-meta');
-            if (metaEl) metaEl.textContent = (d.folder || 'No folder') + ' · ' + (d.sku || 'No SKU');
+            if (metaEl) metaEl.textContent = (d.places_label || 'Not filed yet') + ' · ' + (d.sku || 'No SKU');
             if (d.image_url) {
                 const img = card.querySelector('.design-card-image img');
                 if (img) img.src = d.image_url;
@@ -1248,7 +1237,7 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
     }
 
     function selectedFolders() {
-        return Array.from(document.querySelectorAll('#galleryUploadForm input[name="upload_cats"]:checked'));
+        return Array.from(document.querySelectorAll('#uploadPlaces input[name="place"]:checked'));
     }
     function hasParentDesign() {
         var sel = document.getElementById('parent_design_id');
@@ -1261,9 +1250,9 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
         if (!pending.length) {
             btn.disabled = true;
             btn.textContent = done.length ? 'All uploaded ✓' : 'Select files above to upload';
-        } else if (!selectedFolders().length && !hasParentDesign()) {
+        } else if (!selectedFolders().length && !hasParentDesign() && !AI_READY) {
             btn.disabled = true;
-            btn.textContent = 'Choose a folder first';
+            btn.textContent = 'Choose where it belongs first';
         } else {
             btn.disabled = false;
             btn.textContent = 'Upload ' + pending.length + ' Design' + (pending.length === 1 ? '' : 's') + ' →';
@@ -1288,7 +1277,7 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
         var pending = Object.values(_queue).filter(function(i) { return i.status === 'pending'; });
         if (!pending.length) return;
         var cats = selectedFolders().map(function(cb) { return cb.value; });
-        if (!cats.length && !hasParentDesign()) { showGalleryToast('Please choose a folder first.'); return; }
+        if (!cats.length && !hasParentDesign() && !AI_READY) { showGalleryToast('Please choose where this design belongs first.'); return; }
         _busy = true;
         _groupParentId = null;
         var prog = document.getElementById('uploadProgress');
@@ -1323,11 +1312,7 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
             if (manualParent) fd.append('parent_design_id', manualParent);
         }
 
-        cats.forEach(function(c) { fd.append('extra_categories', c); });
-        document.querySelectorAll('#galleryUploadForm input[name="music_genres"]:checked').forEach(function(cb) {
-            fd.append('music_genres', cb.value);
-        });
-        fd.append('music_genres_present', '1');
+        cats.forEach(function(c) { fd.append('place', c); });
         fd.append('csrf_token', '{{ csrf_token() if csrf_token is defined else "" }}');
 
         fetch('{{ url_for("admin.design_gallery_upload") }}', {
@@ -1375,7 +1360,7 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
         e.preventDefault(); zone.classList.remove('drag-over');
         if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
     });
-    document.querySelectorAll('#galleryUploadForm input[name="upload_cats"]').forEach(function(cb) {
+    document.querySelectorAll('#uploadPlaces input[name="place"]').forEach(function(cb) {
         cb.addEventListener('change', updateBtn);
     });
     var parentSelect = document.getElementById('parent_design_id');
@@ -1396,12 +1381,8 @@ document.getElementById('galleryModalConfirmBtn').addEventListener('click', func
         var wanted = category.value;
         var shown = 0;
         cards.forEach(function(card) {
-            var categories = [
-                card.dataset.folder || '',
-                card.dataset.extraCategories || ''
-            ].join(',').split(',').map(function(value) { return value.trim(); });
-            var categoryMatch = !wanted || categories.indexOf(wanted) !== -1
-                || (wanted === 'evergreen' && categories.indexOf('custom_orders') !== -1);
+            var categories = (card.dataset.places || '').split('|').map(function(v) { return v.split(':')[0]; }).filter(Boolean);
+            var categoryMatch = !wanted || categories.indexOf(wanted) !== -1;
             var text = [
                 card.dataset.title,
                 card.dataset.sku,

@@ -1,0 +1,17 @@
+{# One picker for every collection: tick a collection, then (optionally) its subcategories. Posts "place" values. #}
+{% macro places_picker(pid, collections) %}
+<div class="places" id="{{ pid }}" data-places>
+    {% for c in collections %}
+    <div class="places-group" data-coll="{{ c.key }}">
+        <label class="cat-chip places-main"><input type="checkbox" name="place" value="{{ c.key }}" data-main> {{ c.label }}</label>
+        {% if c.subcategories %}
+        <div class="places-subs" hidden>
+            {% for s in c.subcategories %}
+            <label class="cat-chip places-sub"><input type="checkbox" name="place" value="{{ c.key }}:{{ s.key }}" data-sub> {{ s.label }}</label>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endmacro %}
