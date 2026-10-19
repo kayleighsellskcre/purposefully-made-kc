@@ -80,6 +80,14 @@ TAG_TO_PLACE = {
 
 # -- Asking the vision model -------------------------------------------------------
 
+def _learned_rules():
+    try:
+        from utils.design_learning import prompt_addendum
+        return prompt_addendum()
+    except Exception:
+        return ''
+
+
 def _prompt():
     places = []
     for c in COLLECTIONS:
@@ -108,7 +116,7 @@ def _prompt():
         'Rules: choose up to 4 collections, only ones that truly fit, each with an honest confidence from 0 to 1. '
         'Never name a team, artist or school from colors alone; only if the words or logo are visible. '
         'Do not add tags just to add tags. If unsure, give a low confidence.'
-    )
+    ) + _learned_rules()
 
 
 def request_classification(file_bytes, api_key, timeout=25):

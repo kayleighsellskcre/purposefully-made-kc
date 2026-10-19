@@ -4054,6 +4054,14 @@ def _apply_review_edits(design, form):
     return notes
 
 
+@admin_bp.route('/design-library')
+@admin_required
+def design_library_overview():
+    """One calm page: how the library is doing, what needs you, and what it has learned from you."""
+    from utils.design_learning import overview
+    return render_template('admin/design_library.html', o=overview())
+
+
 @admin_bp.route('/design-library/review', methods=['GET', 'POST'])
 @admin_required
 def design_review():

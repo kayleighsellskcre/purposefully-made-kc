@@ -1,0 +1,91 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Design Library - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<style>
+.dl { max-width: 1000px; margin: 0 auto; padding-bottom: 3rem; }
+.dl-head { margin: 1rem 0 1.3rem; }
+.dl-head h1 { margin: .15rem 0 .35rem; }
+.dl-head p { margin: 0; color: var(--text-secondary); max-width: 46rem; }
+.dl-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .8rem; margin-bottom: 1.2rem; }
+.dl-stat { background: #fff; border: 1px solid var(--border-light, #eadfd2); border-radius: 16px; padding: 1rem 1.1rem; box-shadow: 0 6px 20px rgba(58,61,72,.05); text-decoration: none; color: inherit; display: block; }
+.dl-stat b { display: block; font-family: var(--font-heading); font-size: 1.9rem; line-height: 1.1; }
+.dl-stat span { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; }
+.dl-stat.todo { border-color: var(--terra-cotta); background: #fbf3ee; }
+.dl-stat.todo b { color: var(--terra-cotta); }
+.dl-card { background: #fff; border: 1px solid var(--border-light, #eadfd2); border-radius: 16px; padding: 1.2rem 1.3rem; margin-bottom: 1.1rem; box-shadow: 0 6px 20px rgba(58,61,72,.05); }
+.dl-card h2 { margin: 0 0 .2rem; font-size: 1.15rem; }
+.dl-card .sub { margin: 0 0 .9rem; color: var(--text-secondary); font-size: .88rem; }
+.dl-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.dl-btn { font: 600 .7rem 'Inter', sans-serif; letter-spacing: .1em; text-transform: uppercase; padding: .6rem 1.1rem; border-radius: 999px; border: 1.5px solid var(--terra-cotta); background: var(--terra-cotta); color: #fff; text-decoration: none; }
+.dl-btn.ghost { background: #fff; color: var(--terra-cotta); }
+.dl-bar { display: grid; grid-template-columns: 11rem 1fr 2.5rem; gap: .7rem; align-items: center; font-size: .88rem; margin: .35rem 0; }
+.dl-bar i { display: block; height: 8px; border-radius: 999px; background: linear-gradient(90deg, var(--terra-cotta), #b79c79); min-width: 2px; }
+.dl-bar em { font-style: normal; text-align: right; color: var(--text-secondary); }
+.dl-list { margin: 0; padding: 0; list-style: none; }
+.dl-list li { padding: .5rem 0; border-top: 1px solid var(--border-light, #eadfd2); font-size: .9rem; }
+.dl-list li:first-child { border-top: 0; }
+.dl-list small { color: var(--text-secondary); }
+.dl-two { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem; }
+@media (max-width: 760px) { .dl-two { grid-template-columns: 1fr; } .dl-bar { grid-template-columns: 8rem 1fr 2rem; } }
+</style>
+<div class="dl">
+    <div class="dl-head">
+        <span class="adm-eyebrow">Admin / Design Library</span>
+        <h1>Design Library</h1>
+        <p>Your designs are named, filed and tagged for you. This page shows how the library is doing and the few things that need a look from you.</p>
+    </div>
+
+    <div class="dl-stats">
+        <div class="dl-stat"><b>{{ o.published }}</b><span>Live designs</span></div>
+        <div class="dl-stat"><b>{{ o.added }}</b><span>Added this week</span></div>
+        <a class="dl-stat {{ 'todo' if o.review else '' }}" href="{{ url_for('admin.design_review') }}"><b>{{ o.review }}</b><span>Need your eye</span></a>
+        <a class="dl-stat {{ 'todo' if o.waiting else '' }}" href="{{ url_for('admin.design_matches') }}"><b>{{ o.waiting }}</b><span>Possible duplicates</span></a>
+        <a class="dl-stat {{ 'todo' if o.unfiled else '' }}" href="{{ url_for('admin.design_organize') }}"><b>{{ o.unfiled }}</b><span>Not filed yet</span></a>
+    </div>
+    {% if o.reading %}<p class="sub" style="color:var(--text-secondary);margin:-.4rem 0 1rem">{{ o.reading }} design{{ '' if o.reading == 1 else 's' }} still being read in the background.</p>{% endif %}
+
+    <div class="dl-card">
+        <h2>Jump to</h2>
+        <p class="sub">Everything for the library, one tap away.</p>
+        <div class="dl-actions">
+            <a class="dl-btn" href="{{ url_for('admin.designs', tab='gallery') }}">Add or manage designs</a>
+            <a class="dl-btn ghost" href="{{ url_for('admin.design_review') }}">Design review</a>
+            <a class="dl-btn ghost" href="{{ url_for('admin.design_organize') }}">Organize existing designs</a>
+            <a class="dl-btn ghost" href="{{ url_for('admin.design_matches') }}">Duplicates &amp; versions</a>
+            <a class="dl-btn ghost" href="{{ url_for('admin.design_tags') }}">Design tags</a>
+            <a class="dl-btn ghost" href="{{ url_for('shop.design_gallery') }}" target="_blank" rel="noopener">See it as a customer</a>
+        </div>
+    </div>
+
+    <div class="dl-card">
+        <h2>Designs by collection</h2>
+        <p class="sub">A design in two collections is counted in both.</p>
+        {% for c in o.collections %}
+        <div class="dl-bar"><span>{{ c.label }}</span><div><i style="width: {{ c.pct }}%"></i></div><em>{{ c.count }}</em></div>
+        {% endfor %}
+    </div>
+
+    <div class="dl-two">
+        <div class="dl-card">
+            <h2>What it has learned from you</h2>
+            <p class="sub">When you fix the same thing more than once, the system remembers and is more careful next time. Nothing it learns publishes or changes a design on its own.</p>
+            {% if o.lessons %}
+            <ul class="dl-list">{% for l in o.lessons %}<li>{{ l.text }} <small>({{ l.count }} time{{ '' if l.count == 1 else 's' }})</small></li>{% endfor %}</ul>
+            {% else %}
+            <p class="sub" style="margin:0">Nothing yet. {{ o.corrections }} correction{{ '' if o.corrections == 1 else 's' }} saved so far. Patterns appear after you fix the same thing a few times.</p>
+            {% endif %}
+        </div>
+        <div class="dl-card">
+            <h2>Recent changes you made</h2>
+            <p class="sub">Your edits are locked, so automation never overwrites them.</p>
+            {% if o.activity %}
+            <ul class="dl-list">{% for a in o.activity %}<li><b>{{ a.title }}</b> {{ a.what }} <small>{{ a.when.strftime('%b %d') if a.when else '' }}</small></li>{% endfor %}</ul>
+            {% else %}
+            <p class="sub" style="margin:0">No edits yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
