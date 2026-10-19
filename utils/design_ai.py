@@ -87,6 +87,8 @@ def _prompt():
         places.append(f'- {c.key} ({c.label})' + (f': {subs}' if subs else ''))
     by_type = {}
     for tag in sorted(vocabulary().values(), key=lambda t: t.slug):
+        if tag.tag_type == 'control':
+            continue
         by_type.setdefault(tag.tag_type, []).append(tag.slug)
     tags = '\n'.join(f'- {kind}: {", ".join(slugs)}' for kind, slugs in by_type.items() if kind != 'color')
     return (
@@ -165,6 +167,9 @@ def interpret(raw, *, filename='', title_hint=''):
     dropped = []
     for slug in list(slugs):
         tag = tags.get(slug)
+        if tag and tag.tag_type == 'control':
+            slugs.remove(slug)
+            continue
         if tag and tag.tag_type == 'team' and not _team_is_visible(tag, evidence):
             slugs.remove(slug)
             dropped.append(slug)                      # named a team without its words showing: not trusted

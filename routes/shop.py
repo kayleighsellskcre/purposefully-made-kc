@@ -763,60 +763,68 @@ def edit_group_order(slug):
 
 @shop_bp.route('/designs')
 def design_gallery():
-    """Browse designs by folder, then pick a design (grouped color variants)."""
+    """Browse designs: collection, then subcategory, then the designs. Everything finer is a filter or a search."""
     from utils.group_orders import leave_group_order
     leave_group_order()          # the gallery is not part of a group order
-    from utils.design_categories import GALLERY_CATEGORY_LABELS, normalize_category
-    from utils.design_variants import (
-        filter_gallery_cards,
-        gallery_cards_for_public,
-        gallery_folder_cards,
-    )
+    from utils.design_categories import normalize_category
+    from utils.design_taxonomy import COLLECTION_BY_KEY, label_for
+    from utils import design_gallery as dg
+    from utils.design_variants import gallery_cards_for_public
     try:
-        all_cards = gallery_cards_for_public(Design, resolve_url=_resolve_image_url)
+        all_cards = dg.enrich_cards(gallery_cards_for_public(Design, resolve_url=_resolve_image_url))
     except Exception:
+        current_app.logger.exception('design gallery could not load')
         all_cards = []
 
     product_id = request.args.get('product_id', type=int)
     gallery_product = Product.query.get(product_id) if product_id else None
     search_query = (request.args.get('q') or '').strip()
-    category = normalize_category(request.args.get('category'))
-    folders = gallery_folder_cards(all_cards)
 
-    active_folder = None
+    # Which collection? New links use ?collection=; links that already exist use ?category= (still honored).
+    key = (request.args.get('collection') or '').strip().lower()
+    legacy = normalize_category(request.args.get('category'))
+    if not key and legacy:
+        key = 'fan-favorites' if legacy == 'favorites' else dg.LEGACY_TO_COLLECTION.get(legacy, '')
+    automatic = key in dg.AUTOMATIC_KEYS
+    if key and not automatic and key not in COLLECTION_BY_KEY:
+        key = ''
+    sub = (request.args.get('sub') or '').strip().lower() if key and not automatic else ''
+    autos = dg.automatic_collections(all_cards) if all_cards and (automatic or not key) else {}
+
+    active_folder, designs = None, []
+    subs, filters, chosen = [], {}, {}
+    if key:
+        if automatic:
+            label = next(l for k, l, _b in dg.AUTOMATIC if k == key)
+            members = autos.get(key, [])
+        else:
+            label = COLLECTION_BY_KEY[key].label
+            subs = dg.subcategory_options(all_cards, key)
+            if sub and sub not in {s_['key'] for s_ in subs}:
+                sub = ''
+            members = dg.collection_members(all_cards, key, sub or None)
+        active_folder = {'key': key, 'label': label, 'count': len(members), 'covers': [],
+                         'sub': sub, 'sub_label': label_for(key, sub) if sub else ''}
+        pool = members
+    else:
+        pool = all_cards
+
     if not all_cards:
         gallery_view = 'empty'
-        designs = []
     elif search_query:
         gallery_view = 'search'
-        designs = filter_gallery_cards(
-            all_cards, category=category or None, query=search_query,
-        )
-        if category:
-            active_folder = next(
-                (folder for folder in folders if folder['key'] == category),
-                {
-                    'key': category,
-                    'label': GALLERY_CATEGORY_LABELS.get(category, category),
-                    'count': 0,
-                    'covers': [],
-                },
-            )
-    elif category:
+        designs = dg.search_cards(all_cards, search_query, pool=pool)
+    elif key:
         gallery_view = 'folder'
-        designs = filter_gallery_cards(all_cards, category=category)
-        active_folder = next(
-            (folder for folder in folders if folder['key'] == category),
-            {
-                'key': category,
-                'label': GALLERY_CATEGORY_LABELS.get(category, category),
-                'count': 0,
-                'covers': [],
-            },
-        )
+        designs = list(pool)
     else:
         gallery_view = 'folders'
-        designs = []
+
+    if gallery_view in ('folder', 'search'):
+        filters = dg.filter_options(designs)
+        designs, chosen = dg.apply_filters(designs, request.args)
+        dg.attach_related(all_cards)
+    folders = dg.landing_tiles(all_cards, autos) if gallery_view == 'folders' else []
 
     return render_template(
         'shop/design_gallery.html',
@@ -824,6 +832,11 @@ def design_gallery():
         folders=folders,
         gallery_view=gallery_view,
         active_folder=active_folder,
+        subs=subs,
+        filters=filters,
+        chosen=chosen,
+        collection_labels={**{k: c.label for k, c in COLLECTION_BY_KEY.items()}, **{k: l for k, l, _b in dg.AUTOMATIC}},
+        grouped=bool(key and not automatic and not search_query and not chosen),
         search_query=search_query,
         product_id=product_id,
         product_slug=gallery_product.slug if gallery_product else None,

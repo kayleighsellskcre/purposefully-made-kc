@@ -199,7 +199,7 @@ def test_gallery_folder_interior_only_shows_that_folder(client, app, seed):
     sports = client.get('/shop/designs?category=sports').get_data(as_text=True)
     assert 'Chiefs Helmet' in sports
     assert 'School Crest' not in sports
-    assert 'All folders' in sports
+    assert 'All collections' in sports
 
     landing = client.get('/shop/designs').get_data(as_text=True)
     assert 'Sports' in landing
@@ -209,7 +209,7 @@ def test_gallery_folder_interior_only_shows_that_folder(client, app, seed):
     assert 'Continue with this design' not in landing
 
     music = client.get('/shop/designs?category=music').get_data(as_text=True)
-    assert 'No designs in this folder yet.' in music
+    assert 'No designs in this collection yet.' in music
     assert 'Chiefs Helmet' not in music
     assert 'School Crest' not in music
 

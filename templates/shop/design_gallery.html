@@ -10,13 +10,13 @@
 <div class="page-header">
     <div class="container">
         {% if gallery_view == 'folder' %}
-        <a class="dg-back" href="{{ folders_url }}">All folders</a>
+        <a class="dg-back" href="{{ folders_url }}">All collections</a>
         {% elif gallery_view == 'search' %}
-        <a class="dg-back" href="{% if active_folder %}{{ url_for('shop.design_gallery', category=active_folder.key, product_id=product_id) }}{% else %}{{ folders_url }}{% endif %}">{% if active_folder %}{{ active_folder.label }}{% else %}All folders{% endif %}</a>
+        <a class="dg-back" href="{% if active_folder %}{{ url_for('shop.design_gallery', collection=active_folder.key, product_id=product_id) }}{% else %}{{ folders_url }}{% endif %}">{% if active_folder %}{{ active_folder.label }}{% else %}All collections{% endif %}</a>
         {% endif %}
         {% if gallery_view == 'folder' and active_folder %}
         <span class="eyebrow">Design Gallery</span>
-        <h1>{{ active_folder.label }}</h1>
+        <h1>{{ active_folder.label }}{% if active_folder.sub_label %} <span class="dg-h1-sub">/ {{ active_folder.sub_label }}</span>{% endif %}</h1>
         <p class="lead">Choose a design you love. If it comes in more than one color, you will pick the color next.</p>
         {% elif gallery_view == 'search' %}
         <span class="eyebrow">Design Gallery</span>
@@ -64,10 +64,10 @@
             </div>
         </form>
 
-        <div class="dg-folders" aria-label="Design folders">
+        <div class="dg-folders" aria-label="Design collections">
             {% for folder in folders %}
-            <article class="dg-folder{% if not folder.covers %} dg-folder--empty{% endif %}">
-                <a class="dg-folder-hit" href="{{ url_for('shop.design_gallery', category=folder.key, product_id=product_id) }}" aria-labelledby="dg-folder-{{ folder.key }}">
+            <article class="dg-folder{% if not folder.covers %} dg-folder--empty{% endif %}{% if folder.featured %} dg-folder--featured{% endif %}">
+                <a class="dg-folder-hit" href="{{ url_for('shop.design_gallery', collection=folder.key, product_id=product_id) }}" aria-labelledby="dg-folder-{{ folder.key }}">
                     <div class="dg-folder-stage" data-folder-carousel data-covers='{{ folder.covers | tojson }}'>
                         {% if folder.covers %}
                         <img src="{{ folder.covers[0].url }}"
@@ -78,7 +78,7 @@
                     </div>
                     <div class="dg-folder-meta">
                         <h2 id="dg-folder-{{ folder.key }}" class="dg-folder-title">{{ folder.label }}</h2>
-                        <p class="dg-folder-count">{{ folder.count }} design{{ 's' if folder.count != 1 else '' }}</p>
+                        <p class="dg-folder-count">{% if folder.blurb %}{{ folder.blurb }} &middot; {% endif %}{{ folder.count }} design{{ 's' if folder.count != 1 else '' }}</p>
                     </div>
                 </a>
                 {% if folder.covers|length > 1 %}
@@ -103,9 +103,11 @@
             <div class="dg-toolbar">
                 <form class="dg-search-form" method="get" action="{{ url_for('shop.design_gallery') }}" role="search">
                     {% if product_id %}<input type="hidden" name="product_id" value="{{ product_id }}">{% endif %}
-                    {% if gallery_view == 'folder' and active_folder %}
-                    <input type="hidden" name="category" value="{{ active_folder.key }}">
+                    {% if active_folder %}
+                    <input type="hidden" name="collection" value="{{ active_folder.key }}">
+                    {% if active_folder.sub %}<input type="hidden" name="sub" value="{{ active_folder.sub }}">{% endif %}
                     {% endif %}
+                    {% for fname, fvalue in chosen.items() %}<input type="hidden" name="{{ fname }}" value="{{ fvalue }}">{% endfor %}
                     <label class="dg-search" for="dgSearch">
                         <span class="dg-control-label">Search designs</span>
                         <span class="dg-search-field">
@@ -125,6 +127,30 @@
             </div>
         </div>
 
+        {% if subs and gallery_view == 'folder' %}
+        <nav class="dg-subs" aria-label="{{ active_folder.label }} categories">
+            <a class="dg-chip{% if not active_folder.sub %} on{% endif %}" href="{{ url_for('shop.design_gallery', collection=active_folder.key, product_id=product_id) }}">All</a>
+            {% for sc in subs %}<a class="dg-chip{% if active_folder.sub == sc.key %} on{% endif %}" href="{{ url_for('shop.design_gallery', collection=active_folder.key, sub=sc.key, product_id=product_id) }}">{{ sc.label }} <small>{{ sc.count }}</small></a>{% endfor %}
+        </nav>
+        {% endif %}
+        {% if filters %}
+        <form class="dg-filters" method="get" action="{{ url_for('shop.design_gallery') }}" aria-label="Narrow these designs">
+            {% if product_id %}<input type="hidden" name="product_id" value="{{ product_id }}">{% endif %}
+            {% if active_folder %}<input type="hidden" name="collection" value="{{ active_folder.key }}">{% if active_folder.sub %}<input type="hidden" name="sub" value="{{ active_folder.sub }}">{% endif %}{% endif %}
+            {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+            {% for fname, f in filters.items() %}
+            <label class="dg-filter"><span class="dg-control-label">{{ f.label }}</span>
+                <select name="{{ fname }}" onchange="this.form.submit()">
+                    <option value="">Any</option>
+                    {% for o in f.options %}<option value="{{ o.value }}"{% if chosen.get(fname) == o.value %} selected{% endif %}>{{ o.label }} ({{ o.count }})</option>{% endfor %}
+                </select>
+            </label>
+            {% endfor %}
+            {% if chosen %}<a class="dg-clear-filters" href="{{ url_for('shop.design_gallery', collection=active_folder.key if active_folder else None, sub=(active_folder.sub or None) if active_folder else None, q=search_query or None, product_id=product_id) }}">Clear filters</a>{% endif %}
+            <noscript><button type="submit" class="btn btn-outline">Apply</button></noscript>
+        </form>
+        {% endif %}
+
         <div class="gallery-meta">
             <p class="gallery-count" id="dgCount" aria-live="polite">{{ designs|length }} design{{ 's' if designs|length != 1 else '' }} available</p>
             <button type="button" class="dg-clear" id="dgClear" hidden>Clear search</button>
@@ -132,7 +158,8 @@
 
         <div class="gallery-grid" id="dgGrid"
              data-gallery-view="{{ gallery_view }}"
-             data-category="{{ active_folder.key if active_folder else '' }}">
+             data-grouped="{{ '1' if grouped else '0' }}"
+             data-category="">
             {% for design in designs %}
             <div class="gallery-card"
                  data-design-id="{{ design.id }}"
@@ -142,6 +169,8 @@
                  data-categories="{{ design.category_keys|join('|') }}"
                  data-category-labels="{{ design.category_labels|join(' ') }}"
                  data-group="{{ design.group }}"
+                 data-search="{{ design.search_extra }}"
+                 data-related='{{ design.related | tojson }}'
                  data-uploaded="{{ design.uploaded_at }}"
                  data-original-order="{{ loop.index0 }}">
                 <div class="gallery-card-image gallery-design-carousel">
@@ -165,8 +194,8 @@
                 </div>
                 <div class="gallery-card-body">
                     <h2 class="gallery-card-title">{{ design.title }}</h2>
-                    {% if gallery_view == 'search' and design.category_labels %}
-                    <p class="gallery-card-folder">{{ design.category_labels[0] }}</p>
+                    {% if gallery_view == 'search' and design.collections %}
+                    <p class="gallery-card-folder">{{ collection_labels[design.collections[0]] }}</p>
                     {% endif %}
                     <button type="button" class="gallery-card-link gallery-open-colors">
                         Continue with this design
@@ -178,10 +207,10 @@
 
         <div class="dg-empty-state" id="dgEmptyState">
             {% if gallery_view == 'folder' and not search_query %}
-            <p>No designs in this folder yet.</p>
-            <a href="{{ folders_url }}" class="btn btn-outline">All folders</a>
+            <p>No designs in this collection yet.</p>
+            <a href="{{ folders_url }}" class="btn btn-outline">All collections</a>
             {% else %}
-            <p>No designs match those filters.</p>
+            <p>Nothing matched just yet. Try fewer words, or <a href="{{ url_for('main.contact') }}">tell us what you are looking for</a> and we will make it.</p>
             <button type="button" class="btn btn-outline" id="dgEmptyClear">Clear search</button>
             {% endif %}
         </div>
@@ -191,7 +220,7 @@
         </div>
 
         <div class="gallery-footer">
-            <a href="{{ folders_url }}" class="btn btn-outline">All folders</a>
+            <a href="{{ folders_url }}" class="btn btn-outline">All collections</a>
         </div>
 
         {% endif %}
@@ -212,6 +241,10 @@
         <p id="gcolorSelectedLabel" class="gcolor-selected-label"></p>
         <div id="gcolorSwatches" class="gcolor-swatches" role="listbox" aria-label="Color options"></div>
         <button type="button" id="gcolorContinue" class="btn btn-primary gcolor-continue">Continue</button>
+        <div id="gcolorRelated" class="gcolor-related" hidden>
+            <p class="gcolor-related-title">You might also like</p>
+            <div id="gcolorRelatedRow" class="gcolor-related-row"></div>
+        </div>
     </div>
 </div>
 {% endif %}
@@ -353,6 +386,25 @@
 .dg-group-header:first-child {
     margin-top: 0;
 }
+
+/* ── Subcategories, filters, related ── */
+.dg-h1-sub { font-size: .6em; font-weight: 400; color: var(--text-secondary); }
+.dg-subs { display: flex; gap: .5rem; overflow-x: auto; padding: 0 0 .35rem; margin: 0 0 1.1rem; scrollbar-width: thin; }
+.dg-chip { flex: 0 0 auto; text-decoration: none; font-size: .82rem; font-weight: 600; padding: .5rem 1rem; border-radius: 999px; border: 1.5px solid var(--border-color, #e0d8cc); background: #fff; color: var(--text-secondary); white-space: nowrap; }
+.dg-chip small { opacity: .6; margin-left: .2rem; }
+.dg-chip:hover { border-color: var(--terra-cotta, #b87c6f); color: var(--terra-cotta, #b87c6f); }
+.dg-chip.on { background: var(--terra-cotta, #b87c6f); border-color: var(--terra-cotta, #b87c6f); color: #fff; }
+.dg-filters { display: flex; flex-wrap: wrap; gap: .85rem; align-items: end; margin: 0 0 1.1rem; }
+.dg-filter select { min-height: 42px; border: 1.5px solid var(--border-color, #e0d8cc); border-radius: 10px; background: #fff; padding: .4rem 2rem .4rem .75rem; font: inherit; font-size: .88rem; min-width: 150px; }
+.dg-clear-filters { font-size: .82rem; font-weight: 700; color: var(--terra-cotta, #b87c6f); padding-bottom: .7rem; }
+.dg-folder--featured { border-color: rgba(184, 124, 111, .45); }
+.gcolor-related { border-top: 1px solid rgba(232,208,177,.6); margin-top: .9rem; padding-top: .7rem; flex-shrink: 0; }
+.gcolor-related-title { margin: 0 0 .45rem; font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-secondary); }
+.gcolor-related-row { display: flex; gap: .55rem; overflow-x: auto; }
+.gcolor-related-item { flex: 0 0 74px; border: 1.5px solid transparent; border-radius: 10px; background: #f7f3ec; padding: .3rem; cursor: pointer; font-family: inherit; }
+.gcolor-related-item:hover { border-color: var(--terra-cotta, #b87c6f); }
+.gcolor-related-item img { width: 100%; aspect-ratio: 1; object-fit: contain; display: block; }
+.gcolor-related-item span { display: block; font-size: .64rem; line-height: 1.15; margin-top: .2rem; color: var(--text-secondary); }
 
 /* ── Folder landing ── */
 .dg-folders {
@@ -947,17 +999,51 @@
         });
     }
 
+    const relatedBox = document.getElementById('gcolorRelated');
+    const relatedRow = document.getElementById('gcolorRelatedRow');
+
+    function showRelated(items) {
+        relatedRow.innerHTML = '';
+        (items || []).forEach(function(r) {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'gcolor-related-item';
+            b.innerHTML = '<img src="' + (r.url || '') + '" alt=""><span></span>';
+            b.querySelector('span').textContent = r.title || '';
+            b.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const vs = r.variants || [];
+                if (r.has_colors && vs.length > 1) {
+                    openData({title: r.title, variants: vs, related: [], id: r.id, currentIndex: 0});
+                } else {
+                    goWithDesign((vs[0] && vs[0].id) || r.id);
+                }
+            });
+            relatedRow.appendChild(b);
+        });
+        relatedBox.hidden = !(items && items.length);
+    }
+
     function openPicker(card) {
         let variants = [];
+        let related = [];
         try { variants = JSON.parse(card.getAttribute('data-variants') || '[]'); } catch (e) { variants = []; }
-        designTitle = card.getAttribute('data-title') || 'Design';
+        try { related = JSON.parse(card.getAttribute('data-related') || '[]'); } catch (e) { related = []; }
         const hasColors = card.getAttribute('data-has-colors') === '1' && variants.length > 1;
-
-        if (!hasColors) {
+        if (!hasColors && !related.length) {
             const id = (variants[0] && variants[0].id) || card.getAttribute('data-design-id');
             goWithDesign(id);
             return;
         }
+        openData({title: card.getAttribute('data-title') || 'Design', variants: variants, related: related,
+                  id: card.getAttribute('data-design-id'),
+                  currentIndex: parseInt(card.getAttribute('data-carousel-index') || '0', 10)});
+    }
+
+    function openData(d) {
+        const variants = d.variants || [];
+        designTitle = d.title || 'Design';
 
         titleEl.textContent = designTitle;
         swatches.innerHTML = '';
@@ -976,8 +1062,9 @@
             });
             swatches.appendChild(btn);
         });
-        const currentIndex = parseInt(card.getAttribute('data-carousel-index') || '0', 10);
-        selectVariant(variants[currentIndex] || variants[0]);
+        selectVariant(variants[d.currentIndex || 0] || variants[0] || {id: d.id, url: '', label: ''});
+        swatches.style.display = variants.length > 1 ? '' : 'none';
+        showRelated(d.related);
         modal.hidden = false;
         document.body.style.overflow = 'hidden';
     }
@@ -1099,6 +1186,7 @@
                 .join(' ');
         } catch (e) {}
         card._searchText = normalized([
+            card.getAttribute('data-search'),
             card.getAttribute('data-title'),
             card.getAttribute('data-categories'),
             card.getAttribute('data-category-labels'),
@@ -1149,7 +1237,7 @@
 
         var matches = matchingCards();
         var visible = matches.slice(0, shown);
-        var shouldGroup = galleryView === 'folder'
+        var shouldGroup = grid.getAttribute('data-grouped') === '1'
             && !(search && search.value.trim())
             && (!sort || sort.value === 'recommended');
         if (shouldGroup) {

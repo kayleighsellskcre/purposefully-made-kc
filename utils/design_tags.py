@@ -21,6 +21,7 @@ TAG_TYPES = (
     ('holiday', 'Holiday'),
     ('hobby', 'Hobby'),
     ('collection', 'Collection'),
+    ('control', 'Gallery control'),
 )
 TAG_TYPE_LABELS = dict(TAG_TYPES)
 
@@ -129,6 +130,9 @@ SEED_TAGS = [
     ('couples-set', 'Couples Set', 'collection', ['his and hers set'], ['couple', 'matching-set'], []),
     ('besties-set', 'Best Friends Set', 'collection', ['matching besties'], ['bestie', 'matching-set'], []),
     ('family-set', 'Family Set', 'collection', ['matching family set'], ['matching-set'], []),
+    # Gallery controls (you set these by hand; automation never uses them)
+    ('fan-favorite', 'Pin to Fan Favorites', 'control', [], [], []),
+    ('hide-favorite', 'Keep out of Fan Favorites', 'control', [], [], []),
 ]
 
 
