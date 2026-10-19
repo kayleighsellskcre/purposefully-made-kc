@@ -7,6 +7,7 @@ from threading import Thread
 import math
 import secrets
 import stripe
+from utils.business_info import BUSINESS
 import paypalrestsdk
 import json
 from utils.order_costs import default_due_date
@@ -977,6 +978,7 @@ def index():
                          family_promo_active=family_promo_active,
                          family_promo_code=get_session_family_promo() or '',
                          stripe_public_key=current_app.config.get('STRIPE_PUBLIC_KEY'),
+                         business_phone=BUSINESS['phone'],
                          paypal_client_id=paypal_client_id,
                          paypal_mode=paypal_mode,
                          shipping_flat_rate=current_app.config.get('SHIPPING_FLAT_RATE', 11.00))

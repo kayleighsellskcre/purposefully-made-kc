@@ -66,3 +66,11 @@ def test_the_design_pages_load_with_a_big_library(app, seed, client, admin_clien
             assert 'Showing the first 300 of 1200 designs' in r.get_data(as_text=True)
             assert len(r.data) < 900 * 1024
         assert took < budget, (url, round(took, 2))
+
+
+def test_checkout_card_errors_use_kind_wording_and_show_the_shop_phone(client, seed):
+    client.post('/cart/add', data={'product_id': seed['tee_id'], 'size': 'M', 'color': 'Black', 'quantity': 1,
+                                   'placement': 'center_chest', 'design_id': seed['free_design_id']})
+    html = client.get('/checkout/').get_data(as_text=True)
+    assert 'function friendlyCardError' in html and 'expiration date does not look right' in html
+    assert '785.249.1464' in html

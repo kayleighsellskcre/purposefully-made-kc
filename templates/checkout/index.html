@@ -521,7 +521,7 @@ async function initPaymentElement() {
                 await stashCheckoutForWallets();
                 const error = await confirmStripeWalletPayment();
                 if (error) {
-                    document.getElementById('card-errors').textContent = error.message || 'Payment failed. Please try again.';
+                    document.getElementById('card-errors').textContent = friendlyCardError(error);
                     restorePayButton();
                     return;
                 }
@@ -547,7 +547,7 @@ async function initPaymentElement() {
         cardElement.mount('#card-element');
         cardElement.on('change', function (event) {
             const err = document.getElementById('card-errors');
-            if (err) err.textContent = event.error ? event.error.message : '';
+            if (err) err.textContent = event.error ? friendlyCardError(event.error) : '';
         });
     } catch (err) {
         document.getElementById('card-errors').textContent =
@@ -710,6 +710,33 @@ document.getElementById('submit-payment').addEventListener('click', async () => 
     }
 });
 
+// Plain, kind wording for the card problems customers hit most. The card form itself (Stripe) reports these;
+// anything we do not recognize still shows Stripe's own message.
+function friendlyCardError(error) {
+    var code = (error && (error.decline_code || error.code)) || '';
+    var help = ' Still stuck? Try another card, Apple Pay or Google Pay, or text us at {{ business_phone }} and we will help.';
+    var expiry = "That expiration date does not look right. Please check the month and year (like 08/28) and try again.";
+    var map = {
+        expired_card: expiry + ' If the date is right, your bank may have declined it, so another card may work.',
+        invalid_expiry_month: expiry, invalid_expiry_year: expiry, invalid_expiry_month_past: expiry,
+        invalid_expiry_year_past: expiry, incomplete_expiry: 'Please finish the expiration date (month and year).',
+        incorrect_number: 'That card number does not look right. Please check it and try again.',
+        invalid_number: 'That card number does not look right. Please check it and try again.',
+        incomplete_number: 'Please finish the card number.',
+        incorrect_cvc: 'That security code does not look right. It is the 3 or 4 digits on your card.',
+        invalid_cvc: 'That security code does not look right. It is the 3 or 4 digits on your card.',
+        incomplete_cvc: 'Please finish the security code.',
+        insufficient_funds: 'Your bank said there were not enough funds on that card. Another card may work.',
+        card_declined: 'Your bank did not approve that card.',
+        generic_decline: 'Your bank did not approve that card.',
+        processing_error: 'Something hiccuped while processing. Nothing was charged. Please try again in a moment.'
+    };
+    if (map[code]) {
+        return map[code] + (code.indexOf('incomplete') === 0 ? '' : help);
+    }
+    return (error && error.message) || 'Payment failed. Please try again.';
+}
+
 function restorePayButton() {
     placingOrder = false;
     const button = document.getElementById('submit-payment');
@@ -789,7 +816,7 @@ async function handleStripePayment() {
 
         if (error) {
             if (error.type === 'card_error' || error.type === 'validation_error') {
-                document.getElementById('card-errors').textContent = error.message;
+                document.getElementById('card-errors').textContent = friendlyCardError(error);
             } else {
                 PMKC.showFlash(error.message || 'Payment failed. Please try again.', 'error');
             }
