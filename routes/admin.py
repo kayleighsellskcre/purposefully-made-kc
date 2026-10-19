@@ -4117,6 +4117,116 @@ def design_review():
         subs={c.key: [(s.key, s.label) for s in c.subcategories] for c in COLLECTIONS})
 
 
+# -- Design library: duplicates and versions of the same design ------------------
+
+MATCH_TABS = (('duplicates', 'Same artwork', 'exact_duplicate'), ('colors', 'Color versions', 'color_variation'),
+              ('wording', 'Wording versions', 'wording_variation'), ('sets', 'Matching sets', 'matching_set'))
+
+
+def _decide(rel, status):
+    rel.status = status
+    rel.decided_at = datetime.utcnow()
+
+
+def _group_as_colors(rel):
+    """Make one design the color option of another, using the gallery's existing color-family feature."""
+    from utils.design_metadata import unique_variant_label
+    from utils.design_variants import ensure_not_nested_parent
+    a, b = rel.design, rel.related
+    parent = ensure_not_nested_parent(a if a.id < b.id else b) or (a if a.id < b.id else b)
+    child = b if parent.id == a.id else a
+    if child.id == parent.id or child.color_variants.count() or child.parent_design_id:
+        return False, 'One of these already belongs to a color family, so I only connected them.'
+    families = [f for f in (child.color_families or '').split(',') if f]
+    label = unique_variant_label(parent, (' & '.join(f.title() for f in families[:2]) or 'Color')[:80])
+    if not (parent.variant_label or '').strip():
+        parent.variant_label = unique_variant_label(parent, ' & '.join(f.title() for f in
+                                                                       (parent.color_families or '').split(',')[:2] if f) or 'Default')
+    child.parent_design_id = parent.id
+    child.variant_label = label
+    child.title = parent.title or child.title
+    child.is_gallery = True
+    rel.action = 'grouped'
+    return True, f'"{child.variant_label}" is now a color option of "{parent.title or "the main design"}".'
+
+
+@admin_bp.route('/design-library/matches', methods=['GET', 'POST'])
+@admin_required
+def design_matches():
+    from models import DesignRelation
+    from utils import design_fingerprint as fp
+    from utils.cloud_storage import image_url
+    if request.method == 'POST':
+        rel = DesignRelation.query.get(request.form.get('relation_id', type=int) or 0)
+        action = request.form.get('action', '')
+        if rel is None:
+            return redirect(url_for('admin.design_matches'))
+        tab = next((k for k, _l, t in MATCH_TABS if t == rel.relation_type), 'duplicates')
+        if action == 'dismiss':
+            _decide(rel, 'dismissed')
+            flash('Okay, I will not suggest that pair again.', 'info')
+        elif action == 'connect':
+            _decide(rel, 'confirmed')
+            flash('Connected. They will show as related designs.', 'success')
+        elif action == 'make_set':
+            rel.relation_type = 'matching_set'
+            _decide(rel, 'confirmed')
+            tab = 'sets'
+            flash('Marked as a matching set.', 'success')
+        elif action == 'group_colors':
+            ok, note = _group_as_colors(rel)
+            _decide(rel, 'confirmed')
+            flash(note, 'success' if ok else 'info')
+        elif action == 'hide_copy':
+            extra = rel.related if rel.related_design_id > rel.design_id else rel.design
+            extra.is_gallery = False
+            rel.action = 'hidden'
+            _decide(rel, 'confirmed')
+            flash(f'"{extra.title or "The extra copy"}" is hidden from customers. Nothing was deleted, and you can undo this.', 'success')
+        elif action == 'undo':
+            if rel.action == 'grouped':
+                child = rel.design if rel.design.parent_design_id else rel.related
+                if child.parent_design_id:
+                    child.parent_design_id = None
+            elif rel.action == 'hidden':
+                extra = rel.related if rel.related_design_id > rel.design_id else rel.design
+                extra.is_gallery = True
+            rel.action = None
+            rel.status, rel.decided_at = 'suggested', None
+            flash('Undone.', 'success')
+        db.session.commit()
+        return redirect(url_for('admin.design_matches', tab=tab))
+
+    tab = request.args.get('tab') if request.args.get('tab') in {k for k, _l, _t in MATCH_TABS} else None
+    tallies = dict(db.session.query(DesignRelation.relation_type, db.func.count(DesignRelation.id))
+                   .filter(DesignRelation.status == 'suggested').group_by(DesignRelation.relation_type).all())
+    tabs = [{'key': k, 'label': label, 'type': t, 'count': tallies.get(t, 0)} for k, label, t in MATCH_TABS]
+    if tab is None:
+        tab = next((t['key'] for t in tabs if t['count']), 'duplicates')
+    kind = next(t['type'] for t in tabs if t['key'] == tab)
+
+    def card(rel):
+        def side(d):
+            return {'design': d, 'url': image_url(d.file_path) if d.file_path else '',
+                    'colors': ', '.join(f.title() for f in (d.color_families or '').split(',') if f)}
+        return {'rel': rel, 'a': side(rel.design), 'b': side(rel.related), 'score': int(round((rel.score or 0) * 100))}
+    open_rows = (DesignRelation.query.filter_by(relation_type=kind, status='suggested')
+                 .order_by(DesignRelation.score.desc()).limit(60).all())
+    done_rows = (DesignRelation.query.filter_by(status='confirmed').filter(DesignRelation.action.isnot(None))
+                 .order_by(DesignRelation.decided_at.desc()).limit(15).all())
+    return render_template('admin/design_matches.html', tabs=tabs, tab=tab, cards=[card(r) for r in open_rows],
+                           done=[card(r) for r in done_rows], stats=fp.counts(), labels=fp.RELATION_LABELS)
+
+
+@admin_bp.route('/design-library/matches/scan', methods=['POST'])
+@admin_required
+def design_matches_scan():
+    """Fingerprint a few more designs and look for matches (the matches page calls this while it waits)."""
+    from utils import design_fingerprint as fp
+    done, found = fp.scan_batch(3)
+    return jsonify({'processed': done, 'found': found, 'counts': fp.counts()})
+
+
 # -- Design library: organize the designs you already have -----------------------
 
 def _proposal_card(row, vocab):
@@ -4536,6 +4646,22 @@ def design_gallery_upload():
         except Exception:
             _color_bytes = None
 
+        # The exact same file already in the gallery: do not store a second copy. A design can sit in as
+        # many collections as it needs, so there is no reason for two records.
+        upload_hash = None
+        if _color_bytes and parent is None:
+            from utils.design_fingerprint import file_hash as _file_hash
+            upload_hash = _file_hash(_color_bytes)
+            twin = Design.query.filter(Design.file_hash == upload_hash, Design.is_gallery == True).first()  # noqa: E712
+            if twin is not None:
+                said = (f'"{twin.title or twin.original_filename or "That design"}" is already in your library, '
+                        'so I did not add it again.')
+                if is_ajax:
+                    return jsonify({'ok': True, 'duplicate': True, 'design_id': twin.id, 'sku': twin.sku or '',
+                                    'color': '', 'status': twin.ai_status or '', 'held': False, 'message': said})
+                flash(said, 'info')
+                return redirect(url_for('admin.designs', tab='gallery'))
+
         # Use _save_uploaded_design so cloud storage (R2) and background
         # removal are handled exactly the same way as every other upload path.
         design = _save_uploaded_design(file, current_user.id)
@@ -4626,6 +4752,19 @@ def design_gallery_upload():
                 design.sku = _next_sku(design.folder)
 
         db.session.commit()
+
+        # Fingerprint it so duplicates and color or wording versions are noticed (suggestions only).
+        try:
+            if _color_bytes:
+                from utils.design_fingerprint import store_fingerprint, suggest_for
+                design.file_hash = upload_hash or design.file_hash
+                if store_fingerprint(design, _color_bytes):
+                    db.session.flush()
+                    suggest_for(design)
+                db.session.commit()
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception('could not fingerprint design %s', design.id)
 
         label = design.title or design.original_filename or 'Design'
         if is_ajax:

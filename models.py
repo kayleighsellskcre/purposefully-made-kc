@@ -525,6 +525,14 @@ class Design(db.Model):
     audience = db.Column(db.String(60))         # who it is for, e.g. Mom, Grandma
     keywords = db.Column(db.Text)               # extra searchable words
     ai_suggestions = db.Column(db.Text)         # JSON: what the automation was unsure about
+    # Fingerprint (finds duplicates and color/wording versions; see utils/design_fingerprint.py)
+    file_hash = db.Column(db.String(64), index=True)
+    phash = db.Column(db.String(16))
+    shape_hash = db.Column(db.String(64))
+    art_text = db.Column(db.Text)               # the words on the artwork, when known
+    palette = db.Column(db.Text)                # JSON: ink colors with family and share
+    color_families = db.Column(db.String(120))  # e.g. black,red
+    fingerprinted_at = db.Column(db.DateTime)
     ip_status = db.Column(db.String(20))        # review (check before publishing) | cleared
     ip_note = db.Column(db.Text)
     locked_fields = db.Column(db.Text)          # JSON list of fields you set by hand; automation never overwrites them
@@ -1128,3 +1136,23 @@ class DesignProposal(db.Model):
     applied_at = db.Column(db.DateTime)
 
     design = db.relationship('Design', backref=db.backref('proposals', lazy='dynamic', cascade='all, delete-orphan'))
+
+
+class DesignRelation(db.Model):
+    """A link between two designs. Suggested by the system, then confirmed or dismissed by you. Never merges anything."""
+    __tablename__ = 'design_relation'
+    __table_args__ = (db.UniqueConstraint('design_id', 'related_design_id', 'relation_type', name='uq_design_relation'),)
+    id = db.Column(db.Integer, primary_key=True)
+    design_id = db.Column(db.Integer, db.ForeignKey('design.id', ondelete='CASCADE'), nullable=False, index=True)
+    related_design_id = db.Column(db.Integer, db.ForeignKey('design.id', ondelete='CASCADE'), nullable=False, index=True)
+    relation_type = db.Column(db.String(24), nullable=False)    # exact_duplicate | color_variation | wording_variation | matching_set
+    status = db.Column(db.String(12), default='suggested', index=True)   # suggested | confirmed | dismissed
+    score = db.Column(db.Float)
+    reason = db.Column(db.String(300))
+    source = db.Column(db.String(10), default='auto')           # auto | manual
+    action = db.Column(db.String(12))                           # what confirming did: grouped | hidden (so it can be undone)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    decided_at = db.Column(db.DateTime)
+
+    design = db.relationship('Design', foreign_keys=[design_id])
+    related = db.relationship('Design', foreign_keys=[related_design_id])

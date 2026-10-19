@@ -281,6 +281,14 @@ def create_app(config_class=Config):
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS audience VARCHAR(60)",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS keywords TEXT",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS ai_suggestions TEXT",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS file_hash VARCHAR(64)",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS phash VARCHAR(16)",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS shape_hash VARCHAR(64)",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS art_text TEXT",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS palette TEXT",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS color_families VARCHAR(120)",
+                    "ALTER TABLE design ADD COLUMN IF NOT EXISTS fingerprinted_at TIMESTAMP",
+                    "CREATE INDEX IF NOT EXISTS ix_design_file_hash ON design (file_hash)",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS ip_status VARCHAR(20)",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS ip_note TEXT",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS locked_fields TEXT",
@@ -692,6 +700,15 @@ def create_app(config_class=Config):
             return order_group_label(order)
         except Exception:
             return None
+
+    @app.template_global('design_matches_count')
+    def _design_matches_count():
+        """Suggested duplicates and versions waiting for your decision (menu badge)."""
+        try:
+            from models import DesignRelation
+            return DesignRelation.query.filter_by(status='suggested').count()
+        except Exception:
+            return 0
 
     @app.template_global('design_review_count')
     def _design_review_count():

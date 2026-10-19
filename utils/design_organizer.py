@@ -217,6 +217,8 @@ def apply_proposal(proposal, user_id=None):
                                  if l.id not in before_ids]
     undo['tag_link_ids'] = [l.id for l in DesignTagLink.query.filter_by(design_id=design.id) if l.id not in tag_before]
 
+    if result.get('visible_text') and not design.art_text:
+        design.art_text = result['visible_text'][:400]
     design.ai_confidence = result.get('confidence')
     design.ai_status = 'done'
     design.ai_processed_at = _now()

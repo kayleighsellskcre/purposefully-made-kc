@@ -281,6 +281,8 @@ def apply_classification(design, result, *, chose_folder=False, user_id=None):
         extras = [k for k in legacy[1:] if k != design.folder]
         design.extra_categories = ','.join(extras) or design.extra_categories
 
+    if result.get('visible_text') and not design.art_text:
+        design.art_text = result['visible_text'][:400]
     design.ai_confidence = result['confidence']
     design.ai_processed_at = datetime.utcnow()
     design.modified_at = datetime.utcnow()

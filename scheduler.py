@@ -104,6 +104,21 @@ def design_organize_job(app):
             print(f"design organizer job failed: {exc}", file=sys.stderr, flush=True)
 
 
+def design_fingerprint_job(app):
+    """Fingerprint a few designs a minute so duplicates and color or wording versions are noticed (free, no AI)."""
+    with app.app_context():
+        try:
+            from utils.design_fingerprint import pending_query, scan_batch
+            if not pending_query().first():
+                return
+            with _one_worker_at_a_time(731005) as mine:
+                if not mine:
+                    return
+                scan_batch(3)
+        except Exception as exc:
+            print(f"design fingerprint job failed: {exc}", file=sys.stderr, flush=True)
+
+
 def unsaved_payments_job(app):
     """Create any paid order the customer's phone never finished; alert if that fails."""
     with app.app_context():
@@ -617,6 +632,13 @@ def init_scheduler(app):
             trigger=IntervalTrigger(minutes=1),
             id='design_organizer',
             name='Design library organizer (works through queued designs)',
+            replace_existing=True
+        )
+        scheduler.add_job(
+            func=lambda: design_fingerprint_job(app),
+            trigger=IntervalTrigger(minutes=1),
+            id='design_fingerprints',
+            name='Design fingerprints (finds duplicates and versions)',
             replace_existing=True
         )
         # Startup live inventory sync removed — the nightly 3 AM job handles this.
