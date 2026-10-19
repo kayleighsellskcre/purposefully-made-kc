@@ -1,0 +1,124 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Find designs - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<style>
+.db { max-width: 1100px; margin: 0 auto; padding-bottom: 5rem; }
+.db-head { margin: 1rem 0 1.1rem; }
+.db-head h1 { margin: .15rem 0 .35rem; }
+.db-head p { margin: 0; color: var(--text-secondary); max-width: 46rem; }
+.db-filters { display: flex; flex-wrap: wrap; gap: .6rem; align-items: end; background: #fff; border: 1px solid var(--border-light, #eadfd2); border-radius: 16px; padding: .9rem 1rem; margin-bottom: 1rem; }
+.db-filters label { display: flex; flex-direction: column; gap: .25rem; font-size: .64rem; letter-spacing: .12em; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; }
+.db-filters input, .db-filters select, .db-bulk select { font: 400 .9rem 'Inter', sans-serif; padding: .5rem .65rem; border: 1px solid var(--border-color, #e3d6c8); border-radius: 10px; background: #fffdfb; text-transform: none; letter-spacing: 0; }
+.db-filters .grow { flex: 1 1 220px; }
+.db-btn { font: 600 .7rem 'Inter', sans-serif; letter-spacing: .1em; text-transform: uppercase; padding: .6rem 1.1rem; border-radius: 999px; border: 1.5px solid var(--terra-cotta); background: var(--terra-cotta); color: #fff; cursor: pointer; text-decoration: none; }
+.db-btn.ghost { background: #fff; color: var(--terra-cotta); }
+.db-count { color: var(--text-secondary); font-size: .85rem; margin: 0 0 .7rem; display: flex; justify-content: space-between; align-items: center; }
+.db-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: .9rem; }
+.db-card { position: relative; background: #fff; border: 1px solid var(--border-light, #eadfd2); border-radius: 14px; padding: .6rem; display: block; cursor: pointer; }
+.db-card.on { border-color: var(--terra-cotta); box-shadow: 0 0 0 2px rgba(184,124,111,.25); }
+.db-card input { position: absolute; top: .9rem; left: .9rem; width: 18px; height: 18px; z-index: 2; }
+.db-img { aspect-ratio: 1/1; border-radius: 10px; background-color: #f1ece4; background-image: linear-gradient(45deg, #e6dfd4 25%, transparent 25%, transparent 75%, #e6dfd4 75%), linear-gradient(45deg, #e6dfd4 25%, transparent 25%, transparent 75%, #e6dfd4 75%); background-size: 16px 16px; background-position: 0 0, 8px 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.db-img img { max-width: 90%; max-height: 90%; object-fit: contain; }
+.db-name { font-weight: 600; font-size: .9rem; margin: .45rem 0 .1rem; }
+.db-meta { font-size: .74rem; color: var(--text-secondary); margin: 0; line-height: 1.35; }
+.db-badge { display: inline-block; font-size: .58rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; padding: .12rem .5rem; border-radius: 999px; border: 1.5px solid #b79c79; color: #8b6f5e; margin-top: .3rem; }
+.db-badge.live { border-color: #7a9a7e; color: #5d7d61; }
+.db-badge.warn { border-color: var(--terra-cotta); color: var(--terra-cotta); }
+.db-err { font-size: .72rem; color: #8b5a4f; margin: .25rem 0 0; }
+.db-bulk { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; background: #fff; border-top: 1px solid var(--border-light, #eadfd2); box-shadow: 0 -8px 24px rgba(58,61,72,.1); padding: .7rem 1rem; display: none; }
+.db-bulk.show { display: block; }
+.db-bulk-in { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: .5rem .8rem; align-items: center; }
+.db-bulk-in .grp { display: flex; gap: .35rem; align-items: center; }
+.db-pager { display: flex; gap: .5rem; justify-content: center; margin-top: 1.2rem; }
+.db-empty { background: #fff; border: 1px solid var(--border-light, #eadfd2); border-radius: 16px; padding: 2.5rem 1.5rem; text-align: center; color: var(--text-secondary); }
+</style>
+<div class="db">
+    <div class="db-head">
+        <span class="adm-eyebrow">Admin / Design Library</span>
+        <h1>Find &amp; bulk edit</h1>
+        <p>Search every design, including ones that are not live. Tick a few, then add them to a collection, add or remove a tag, hide or publish them, or have them read again. Nothing here deletes anything.</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="alert alert-{{ cat }}" style="margin-bottom:1rem">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+
+    <form class="db-filters" method="get" action="{{ url_for('admin.design_browse') }}">
+        <label class="grow">Search<input type="search" name="q" value="{{ used.q or '' }}" placeholder="Name, SKU, words on it, mom, football..."></label>
+        <label>Collection<select name="collection"><option value="">Any</option>{% for c in collections %}<option value="{{ c.key }}" {{ 'selected' if used.collection == c.key }}>{{ c.label }}</option>{% endfor %}</select></label>
+        <label>Tag<select name="tag"><option value="">Any</option>{% for t in vocab %}<option value="{{ t.slug }}" {{ 'selected' if used.tag == t.slug }}>{{ t.label }}</option>{% endfor %}</select></label>
+        <label>Color<select name="color"><option value="">Any</option>{% for c in colors %}<option value="{{ c }}" {{ 'selected' if used.color == c }}>{{ c|title }}</option>{% endfor %}</select></label>
+        <label>Show<select name="status">{% for k, l in statuses %}<option value="{{ k }}" {{ 'selected' if used.status == k }}>{{ l }}</option>{% endfor %}</select></label>
+        <button class="db-btn" type="submit">Search</button>
+        {% if used %}<a class="db-btn ghost" href="{{ url_for('admin.design_browse') }}">Clear</a>{% endif %}
+    </form>
+
+    <form method="post" id="dbForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% for k, v in used.items() %}<input type="hidden" name="f_{{ k }}" value="{{ v }}">{% endfor %}
+        <p class="db-count"><span>{{ total }} design{{ '' if total == 1 else 's' }}{% if pages > 1 %} &middot; page {{ page }} of {{ pages }}{% endif %}</span>
+            {% if cards %}<button type="button" class="db-btn ghost" id="dbAll">Tick all on this page</button>{% endif %}</p>
+
+        {% if cards %}
+        <div class="db-grid">
+            {% for c in cards %}{% set d = c.d %}
+            <label class="db-card">
+                <input type="checkbox" name="ids" value="{{ d.id }}" class="db-box">
+                <div class="db-img">{% if c.url %}<img src="{{ c.url }}" alt="" loading="lazy">{% endif %}</div>
+                <p class="db-name">{{ d.title or d.original_filename or 'Untitled' }}</p>
+                <p class="db-meta">{{ d.sku or 'no SKU' }}{% if d.color_families %} &middot; {{ d.color_families.replace(',', ', ') }}{% endif %}</p>
+                <p class="db-meta">{{ c.places|join(', ') or 'Not filed yet' }}</p>
+                {% if c.tags %}<p class="db-meta">{{ c.tags|join(' · ') }}</p>{% endif %}
+                {% if d.ai_status == 'error' %}<span class="db-badge warn">Could not be read</span><p class="db-err">{{ d.ai_error or 'Unknown problem' }}</p>
+                {% elif d.ip_status == 'review' or d.ai_status == 'needs_review' %}<span class="db-badge warn">Needs review</span>
+                {% elif d.is_gallery %}<span class="db-badge live">Live</span>{% else %}<span class="db-badge">Not live</span>{% endif %}
+            </label>
+            {% endfor %}
+        </div>
+        {% if pages > 1 %}
+        <div class="db-pager">
+            {% if page > 1 %}<a class="db-btn ghost" href="{{ url_for('admin.design_browse', page=page-1, **used) }}">Previous</a>{% endif %}
+            {% if page < pages %}<a class="db-btn ghost" href="{{ url_for('admin.design_browse', page=page+1, **used) }}">Next</a>{% endif %}
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="db-empty"><h2 style="color:var(--text-primary);font-size:1.2rem;margin:0 0 .3rem">Nothing found</h2>Try fewer words, or clear the filters.</div>
+        {% endif %}
+
+        <div class="db-bulk" id="dbBulk">
+            <div class="db-bulk-in">
+                <b id="dbN">0 selected</b>
+                <span class="grp"><select name="collection"><option value="">Collection...</option>
+                    {% for c in collections %}<option value="{{ c.key }}">{{ c.label }}</option>{% for s in c.subcategories %}<option value="{{ c.key }}:{{ s.key }}">&nbsp;&nbsp;{{ c.label }} / {{ s.label }}</option>{% endfor %}{% endfor %}</select>
+                    <button class="db-btn" type="submit" name="action" value="add_collection">Add</button></span>
+                <span class="grp"><select name="tag"><option value="">Tag...</option>{% for t in vocab %}<option value="{{ t.slug }}">{{ t.label }}</option>{% endfor %}</select>
+                    <button class="db-btn" type="submit" name="action" value="add_tag">Add</button>
+                    <button class="db-btn ghost" type="submit" name="action" value="remove_tag">Remove</button></span>
+                <span class="grp"><button class="db-btn ghost" type="submit" name="action" value="show">Publish</button>
+                    <button class="db-btn ghost" type="submit" name="action" value="hide">Hide</button>
+                    <button class="db-btn ghost" type="submit" name="action" value="reread">Read again</button></span>
+            </div>
+        </div>
+    </form>
+</div>
+<script>
+(function () {
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('.db-box'));
+    var bar = document.getElementById('dbBulk'), n = document.getElementById('dbN');
+    function sync() {
+        var on = boxes.filter(function (b) { return b.checked; }).length;
+        boxes.forEach(function (b) { b.closest('.db-card').classList.toggle('on', b.checked); });
+        n.textContent = on + ' selected';
+        bar.classList.toggle('show', on > 0);
+    }
+    boxes.forEach(function (b) { b.addEventListener('change', sync); });
+    var all = document.getElementById('dbAll');
+    if (all) all.addEventListener('click', function () {
+        var anyOff = boxes.some(function (b) { return !b.checked; });
+        boxes.forEach(function (b) { b.checked = anyOff; }); sync();
+    });
+})();
+</script>
+{% endblock %}

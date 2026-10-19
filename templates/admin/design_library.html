@@ -51,6 +51,8 @@
         <p class="sub">Everything for the library, one tap away.</p>
         <div class="dl-actions">
             <a class="dl-btn" href="{{ url_for('admin.designs', tab='gallery') }}">Add or manage designs</a>
+            <a class="dl-btn ghost" href="{{ url_for('admin.design_browse') }}">Find &amp; bulk edit</a>
+            <a class="dl-btn ghost" href="{{ url_for('admin.design_browse', status='errors') }}">Processing errors</a>
             <a class="dl-btn ghost" href="{{ url_for('admin.design_review') }}">Design review</a>
             <a class="dl-btn ghost" href="{{ url_for('admin.design_organize') }}">Organize existing designs</a>
             <a class="dl-btn ghost" href="{{ url_for('admin.design_matches') }}">Duplicates &amp; versions</a>

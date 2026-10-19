@@ -4062,6 +4062,44 @@ def design_library_overview():
     return render_template('admin/design_library.html', o=overview())
 
 
+@admin_bp.route('/design-library/browse', methods=['GET', 'POST'])
+@admin_required
+def design_browse():
+    """Search the whole library (hidden designs too) and change many designs at once."""
+    from utils import design_browse as br
+    from utils.cloud_storage import image_url
+    from utils.design_tags import TAG_TYPE_LABELS, vocabulary
+    from utils.design_taxonomy import COLLECTIONS
+    if request.method == 'POST':
+        ids = [int(i) for i in request.form.getlist('ids') if i.isdigit()]
+        action = request.form.get('action', '')
+        back = {k: v for k, v in request.form.items() if k.startswith('f_') and v}
+        back = {k[2:]: v for k, v in back.items()}
+        if not ids:
+            flash('Tick the designs you want to change first.', 'info')
+        elif action == 'reread':
+            key = (current_app.config.get('OPENAI_API_KEY') or '').strip()
+            done, failed = br.reread(ids, key)
+            flash(f'Read {done} design{"" if done == 1 else "s"} again' + (f'; {failed} could not be read (see Processing errors).' if failed else '.')
+                  + (' Only the first 5 are read at a time.' if len(ids) > 5 else ''), 'success' if not failed else 'info')
+        else:
+            value = request.form.get('collection') if action == 'add_collection' else request.form.get('tag')
+            _n, note = br.bulk_apply(ids, action, value, user_id=current_user.id)
+            flash(note, 'success' if _n else 'info')
+        db.session.commit()
+        return redirect(url_for('admin.design_browse', **back))
+    rows, total, page, used = br.find(request.args)
+    places, tags = br.describe(rows)
+    vocab = sorted((t for t in vocabulary(active_only=False).values() if t.tag_type != 'color'),
+                   key=lambda t: (t.tag_type, t.label.lower()))
+    cards = [{'d': d, 'url': image_url(d.file_path) if d.file_path else '', 'places': places.get(d.id, []),
+              'tags': tags.get(d.id, [])[:6]} for d in rows]
+    return render_template('admin/design_browse.html', cards=cards, total=total, page=page, used=used,
+                           pages=max(1, -(-total // br.PAGE_SIZE)), statuses=br.STATUSES, collections=COLLECTIONS,
+                           vocab=vocab, type_labels=TAG_TYPE_LABELS,
+                           colors=['black', 'white', 'gray', 'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'brown', 'gold', 'silver'])
+
+
 @admin_bp.route('/design-library/review', methods=['GET', 'POST'])
 @admin_required
 def design_review():
