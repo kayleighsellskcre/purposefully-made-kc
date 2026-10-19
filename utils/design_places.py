@@ -59,7 +59,7 @@ def current_places(design, links=None):
         if coll and (coll, None) not in places:
             places.append((coll, None))
         genre = LEGACY_GENRE_PLACES.get(value.lower())
-        if genre and genre not in places:
+        if genre and genre not in places and is_valid_pair(*genre):
             places.append(genre)
     return places
 

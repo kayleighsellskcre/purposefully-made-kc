@@ -63,13 +63,18 @@ def app():
 @pytest.fixture()
 def _clean_db(app):
     """Give every test a fresh schema so row IDs and state never leak between tests."""
+    from utils import design_taxonomy as _tax
     with app.app_context():
         db.session.remove()
         db.drop_all()
         db.create_all()
+    _tax.apply_overrides({})                # your own category changes never leak between tests
+    _tax._state.update({'raw': None, 'checked': 0.0})
     yield
     with app.app_context():
         db.session.remove()
+    _tax.apply_overrides({})
+    _tax._state.update({'raw': None, 'checked': 0.0})
 
 
 @pytest.fixture()

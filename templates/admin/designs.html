@@ -103,6 +103,7 @@
                     <div class="form-group upload-cats-group">
                         <label class="form-label">Where does it belong? <small style="font-weight:400;color:var(--text-secondary);">- {% if ai_ready %}optional. Leave this empty and the design is named, filed and tagged for you.{% else %}pick a collection, then a category inside it if you like.{% endif %}</small></label>
                         {{ places_picker('uploadPlaces', collections) }}
+                        <a href="{{ url_for('admin.design_categories') }}" style="font-size:.78rem;display:inline-block;margin-top:.4rem">Add, rename or remove categories</a>
                         <small style="color:#aaa;font-size:0.75rem;margin-top:0.35rem;display:block;">A design can belong in more than one place. Color versions use the same places as the main design. Fan Favorites builds itself from what sells.</small>
                     </div>
 
@@ -185,7 +186,9 @@
             <div class="gallery-designs-grid" id="adminGalleryGrid">
                 {% for design in gallery_designs %}
                 {% set variants = design.color_variants.filter_by(is_gallery=True).all() %}
-                <div class="gallery-design-card" data-design-id="{{ design.id }}"
+                {% set colors = [{'id': design.id, 'label': design.variant_label or 'Default', 'url': design.file_path | image_url, 'cover': true, 'sku': design.sku or ''}] %}
+                {% for v in variants %}{% set _ = colors.append({'id': v.id, 'label': v.variant_label or 'Color', 'url': v.file_path | image_url, 'cover': false, 'sku': v.sku or design.sku or ''}) %}{% endfor %}
+                <div class="gallery-design-card" data-design-id="{{ design.id }}" data-colors='{{ colors | tojson }}'
                      data-title="{{ design.title or design.original_filename or '' }}"
                      data-places="{{ design_places[design.id].attr }}"
                      data-folder="{{ design.folder or 'custom_orders' }}"
@@ -417,6 +420,11 @@
 .cat-chip { display:inline-flex; align-items:center; gap:0.35rem; padding:0.3rem 0.8rem; border-radius:999px; border:1.5px solid var(--border-color,#e0d8cc); font-size:0.78rem; cursor:pointer; transition:border-color 0.15s,background 0.15s,color 0.15s; user-select:none; font-family:inherit; }
 .gallery-organize-note { display:flex; gap:1rem; align-items:center; justify-content:space-between; flex-wrap:wrap; background:#fbf3ee; border:1px solid var(--terra-cotta,#b87c6f); border-radius:14px; padding:.9rem 1.1rem; margin:0 0 1rem; }
 .gallery-organize-note span { display:block; font-size:.88rem; color:var(--text-secondary); margin-top:.15rem; }
+.edit-colors { display:flex; flex-wrap:wrap; gap:.5rem; }
+.edit-color { display:flex; flex-direction:column; align-items:center; gap:.2rem; width:78px; padding:.3rem; border:1.5px solid var(--border-color,#e0d8cc); border-radius:10px; background:#fff; cursor:pointer; font:inherit; }
+.edit-color img { width:100%; aspect-ratio:1; object-fit:contain; }
+.edit-color span { font-size:.66rem; line-height:1.15; text-align:center; color:var(--text-secondary); word-break:break-word; }
+.edit-color.is-current { border-color:var(--terra-cotta,#b87c6f); box-shadow:0 0 0 1px var(--terra-cotta,#b87c6f); }
 .places { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.4rem; }
 .places-group { display:flex; flex-wrap:wrap; gap:.4rem .5rem; align-items:flex-start; }
 .places-group.is-on { flex-basis:100%; }
@@ -578,7 +586,7 @@
     flex-direction: column;
     align-items: center;
     gap: 0.25rem;
-    width: 52px;
+    min-width: 60px;
 }
 .gallery-variant-thumb button {
     width: 44px;
@@ -756,10 +764,15 @@
                     <label for="editTitle" class="form-label">Display Name</label>
                     <input type="text" id="editTitle" name="title" class="form-control" maxlength="200" required>
                 </div>
+                <div class="form-group" id="editColorsGroup" style="margin-bottom:1rem;" hidden>
+                    <label class="form-label" style="margin-bottom:0.5rem;">All colors of this design <small style="font-weight:400;color:#aaa;">- tap a color to edit it. Use Add Color on the card to add another.</small></label>
+                    <div id="editColors" class="edit-colors"></div>
+                </div>
                 <input type="hidden" name="places_present" value="1">
                 <div class="form-group" style="margin-bottom:1rem;">
                     <label class="form-label" style="margin-bottom:0.5rem;">Where it belongs <small style="font-weight:400;color:#aaa;">- pick a collection, then a category inside it if you like.</small></label>
                     {{ places_picker('editPlaces', collections) }}
+                    <a href="{{ url_for('admin.design_categories') }}" style="font-size:.78rem;display:inline-block;margin-top:.4rem">Add, rename or remove categories</a>
                 </div>
                 <div class="form-group" style="margin-bottom:1rem;">
                     <label for="editSku" class="form-label">SKU</label>
@@ -944,9 +957,35 @@ function openGalleryEdit(id) {
     document.getElementById('editVariantLabel').value = card.getAttribute('data-variant-label') || '';
     document.getElementById('editFile').value = '';
     setPlaces(document.getElementById('editPlaces'), (card.getAttribute('data-places') || '').split('|'));
+    renderEditColors(card);
     document.getElementById('galleryEditModal').classList.add('is-open');
     document.body.style.overflow = 'hidden';
     setTimeout(function() { document.getElementById('editTitle').focus(); }, 50);
+}
+
+function renderEditColors(card) {
+    var group = document.getElementById('editColorsGroup');
+    var box = document.getElementById('editColors');
+    var colors = [];
+    try { colors = JSON.parse(card.getAttribute('data-colors') || '[]'); } catch (e) { colors = []; }
+    box.innerHTML = '';
+    group.hidden = colors.length < 2;
+    var base = {{ url_for('admin.design_gallery_edit', design_id=0)|tojson }};
+    colors.forEach(function(c) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'edit-color' + (c.id === _gId ? ' is-current' : '');
+        b.innerHTML = '<img src="' + (c.url || '') + '" alt=""><span></span>';
+        b.querySelector('span').textContent = c.label + (c.cover ? ' (cover)' : '');
+        b.addEventListener('click', function() {
+            if (c.id === _gId) return;
+            closeGalleryEdit();
+            openGalleryVariantEdit(c.id, card.getAttribute('data-title') || '', c.sku || '', c.label === 'Default' ? '' : c.label,
+                card.getAttribute('data-folder') || '', card.getAttribute('data-extra-categories') || '',
+                base.replace('/0/', '/' + c.id + '/'), card.getAttribute('data-places') || '');
+        });
+        box.appendChild(b);
+    });
 }
 
 function openGalleryVariantEdit(id, title, sku, variantLabel, folder, extras, editUrl, places) {
@@ -958,6 +997,7 @@ function openGalleryVariantEdit(id, title, sku, variantLabel, folder, extras, ed
     document.getElementById('editVariantLabel').value = variantLabel || '';
     document.getElementById('editFile').value = '';
     setPlaces(document.getElementById('editPlaces'), (places || '').split('|'));
+    document.getElementById('editColorsGroup').hidden = true;
     document.getElementById('galleryEditTitle').textContent = 'Edit Design Color';
     document.getElementById('galleryEditModal').classList.add('is-open');
     document.body.style.overflow = 'hidden';

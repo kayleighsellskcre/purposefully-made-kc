@@ -90,7 +90,7 @@ def test_analyzing_saves_a_proposal_and_changes_nothing_on_the_design(lib, monke
 
 
 def test_a_name_only_run_uses_no_ai_and_asks_for_your_okay(lib):
-    did = _make(lib, title='Vintage Football Mama')
+    did = _make(lib, title='Vintage Football Mama', folder=None)
     with lib.app_context():
         org.plan_batch(5, 'name')
         org.process_queue(5, api_key='')
@@ -245,20 +245,16 @@ def test_the_organize_page_walks_through_look_preview_apply_and_undo(lib, admin_
     lib.config['OPENAI_API_KEY'] = 'k'
     try:
         page = admin_client.get('/admin/design-library/organize').get_data(as_text=True)
-        assert 'Organize your library' in page and 'Download a backup first' in page and 'Look at this batch' in page
+        assert 'Organize your library' in page and 'Download a backup copy' in page and 'Look at this batch' in page
         resp = admin_client.post('/admin/design-library/organize', data={'action': 'analyze', 'size': '10', 'mode': 'smart'},
                                  follow_redirects=True)
         assert 'Looking at 1 design' in resp.get_data(as_text=True)
         page = admin_client.get('/admin/design-library/organize').get_data(as_text=True)
         assert 'Confident (1)' in page and 'Football Mama' in page and 'Today:' in page and 'sports' in page
         assert 'Vintage' in page and 'Apply all 1 confident' in page
-        denied = admin_client.post('/admin/design-library/organize', data={'action': 'apply_confident'}, follow_redirects=True)
-        assert 'download the backup first' in denied.get_data(as_text=True)
-        with lib.app_context():
-            assert DesignProposal.query.filter_by(design_id=did).one().status == 'ready'
-        admin_client.get('/admin/design-library/organize/backup.json')
         resp = admin_client.post('/admin/design-library/organize', data={'action': 'apply_confident'}, follow_redirects=True)
-        assert 'Applied to 1 design' in resp.get_data(as_text=True)
+        assert 'Applied to 1 design' in resp.get_data(as_text=True) and 'A backup was saved first' in resp.get_data(as_text=True)
+        assert org.last_auto_backup() is not None
         assert 'Recently organized' in resp.get_data(as_text=True)
         with lib.app_context():
             pid = DesignProposal.query.filter_by(design_id=did).one().id
@@ -273,9 +269,8 @@ def test_the_organize_page_walks_through_look_preview_apply_and_undo(lib, admin_
 def test_apply_confident_skips_the_ones_that_need_your_okay(lib, admin_client, monkeypatch):
     sure = _make(lib, title='Sure')
     pid = _ready(lib, sure, monkeypatch=monkeypatch)
-    unsure = _make(lib, title='Unsure')
+    unsure = _make(lib, title='Unsure', folder=None)
     _ready(lib, unsure, raw=_raw(collections=[{'key': 'sports-game-day', 'sub': None, 'confidence': 0.4}]), monkeypatch=monkeypatch)
-    admin_client.get('/admin/design-library/organize/backup.json')
     admin_client.post('/admin/design-library/organize', data={'action': 'apply_confident'})
     with lib.app_context():
         assert DesignProposal.query.filter_by(design_id=sure).one().status == 'applied'
@@ -325,3 +320,24 @@ def test_an_undone_design_is_not_suggested_again_either(lib, monkeypatch):
         org.undo_proposal(db.session.get(DesignProposal, pid))
         db.session.commit()
         assert org.plan_batch(10)[1] == 0
+
+
+def test_designs_already_in_a_folder_you_chose_do_not_wait_for_your_okay_and_apply_with_nothing_blocking(lib, admin_client, monkeypatch):
+    did = _make(lib, title='Make Heaven Crowded', folder='faith')
+    with lib.app_context():
+        org.plan_batch(5, 'name')
+        org.process_queue(5, api_key='')
+        row = DesignProposal.query.filter_by(design_id=did).one()
+        assert row.status == 'ready' and row.needs_attention is False       # the folder is carried over safely
+    page = admin_client.get('/admin/design-library/organize').get_data(as_text=True)
+    assert 'Faith &amp; Inspiration' in page and 'your current folder' in page
+    resp = admin_client.post('/admin/design-library/organize', data={'action': 'apply', 'ids': [row.id]}, follow_redirects=True)
+    assert 'Applied to 1 design' in resp.get_data(as_text=True)
+    with lib.app_context():
+        link = DesignCategoryLink.query.filter_by(design_id=did).one()
+        assert (link.category_key, link.source) == ('faith-inspiration', 'legacy')
+
+
+def test_applying_with_nothing_ticked_says_so(lib, admin_client):
+    resp = admin_client.post('/admin/design-library/organize', data={'action': 'apply'}, follow_redirects=True)
+    assert 'Tick the designs you want to apply first' in resp.get_data(as_text=True)

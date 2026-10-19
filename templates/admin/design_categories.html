@@ -1,0 +1,81 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Categories - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<style>
+.cg { max-width: 920px; margin: 0 auto; padding-bottom: 3rem; }
+.cg-head { margin: 1rem 0 1.2rem; }
+.cg-head h1 { margin: .15rem 0 .35rem; }
+.cg-head p { margin: 0; color: var(--text-secondary); max-width: 46rem; }
+.cg-card { background: #fff; border: 1px solid var(--border-light, #eadfd2); border-radius: 16px; padding: 1.1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 6px 20px rgba(58,61,72,.05); }
+.cg-top { display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+.cg-top h2 { margin: 0; font-size: 1.15rem; }
+.cg-count { font-size: .75rem; color: var(--text-secondary); letter-spacing: .08em; text-transform: uppercase; font-weight: 600; margin-left: .5rem; }
+.cg-subs { list-style: none; margin: .8rem 0 .6rem; padding: 0; }
+.cg-subs li { display: flex; gap: .6rem; align-items: center; padding: .4rem 0; border-top: 1px solid var(--border-light, #eadfd2); flex-wrap: wrap; }
+.cg-subs .nm { flex: 1; min-width: 9rem; }
+.cg-subs small { color: var(--text-secondary); }
+.cg form.inline { display: inline-flex; gap: .35rem; align-items: center; margin: 0; }
+.cg input[type=text] { font: 400 .9rem 'Inter', sans-serif; padding: .45rem .65rem; border: 1px solid var(--border-color, #e3d6c8); border-radius: 10px; background: #fffdfb; }
+.cg-btn { font: 600 .66rem 'Inter', sans-serif; letter-spacing: .1em; text-transform: uppercase; padding: .5rem .95rem; border-radius: 999px; border: 1.5px solid var(--terra-cotta); background: var(--terra-cotta); color: #fff; cursor: pointer; }
+.cg-btn.ghost { background: #fff; color: var(--terra-cotta); }
+.cg-btn[disabled] { opacity: .45; cursor: not-allowed; }
+.cg-add { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .4rem; }
+</style>
+<div class="cg">
+    <div class="cg-head">
+        <span class="adm-eyebrow">Admin / Design Library</span>
+        <h1>Collections &amp; categories</h1>
+        <p>This is the list customers browse and the list you pick from when you add a design. Add your own, rename any, or remove ones you do not need. Removing a category never removes a design: it just stays in its collection. You can bring back anything you remove.</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="alert alert-{{ cat }}" style="margin-bottom:1rem">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+
+    {% for c in collections %}
+    <div class="cg-card">
+        <div class="cg-top">
+            <h2>{{ c.label }}<span class="cg-count">{{ per_coll.get(c.key, 0) }} design{{ '' if per_coll.get(c.key, 0) == 1 else 's' }}</span></h2>
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+                <form method="post" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="rename"><input type="hidden" name="target" value="{{ c.key }}">
+                    <input type="text" name="label" value="{{ c.label }}" maxlength="60" aria-label="Collection name"><button class="cg-btn ghost" type="submit">Rename</button></form>
+                <form method="post" class="inline" onsubmit="return confirm('Remove the {{ c.label|e }} collection?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="remove_collection"><input type="hidden" name="key" value="{{ c.key }}">
+                    <button class="cg-btn ghost" type="submit" {% if per_coll.get(c.key, 0) %}disabled title="Move its designs first"{% endif %}>Remove</button></form>
+            </div>
+        </div>
+        <ul class="cg-subs">
+            {% for s in c.subcategories %}
+            <li><span class="nm">{{ s.label }} <small>{{ per_sub.get((c.key, s.key), 0) }}</small></span>
+                <form method="post" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="rename"><input type="hidden" name="target" value="{{ c.key }}:{{ s.key }}">
+                    <input type="text" name="label" value="{{ s.label }}" maxlength="60" aria-label="Category name"><button class="cg-btn ghost" type="submit">Rename</button></form>
+                <form method="post" class="inline" onsubmit="return confirm('Remove {{ s.label|e }}?{% if per_sub.get((c.key, s.key), 0) %} Its {{ per_sub.get((c.key, s.key), 0) }} design(s) stay in {{ c.label|e }}.{% endif %}')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="remove_sub"><input type="hidden" name="coll" value="{{ c.key }}"><input type="hidden" name="sub" value="{{ s.key }}">
+                    <button class="cg-btn ghost" type="submit">Remove</button></form></li>
+            {% else %}
+            <li><span class="nm"><small>No categories inside yet. Designs here sit directly in {{ c.label }}.</small></span></li>
+            {% endfor %}
+        </ul>
+        <form method="post" class="cg-add"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="add_sub"><input type="hidden" name="coll" value="{{ c.key }}">
+            <input type="text" name="label" maxlength="60" placeholder="New category in {{ c.label }}"><button class="cg-btn" type="submit">Add category</button></form>
+    </div>
+    {% endfor %}
+
+    <div class="cg-card">
+        <h2 style="margin:0 0 .5rem;font-size:1.15rem">Add a new collection</h2>
+        <form method="post" class="cg-add"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="add_collection">
+            <input type="text" name="label" maxlength="60" placeholder="For example: Teachers"><button class="cg-btn" type="submit">Add collection</button></form>
+    </div>
+
+    {% if removed %}
+    <div class="cg-card">
+        <h2 style="margin:0 0 .5rem;font-size:1.15rem">Removed, in case you want them back</h2>
+        <ul class="cg-subs">{% for r in removed %}
+            <li><span class="nm">{{ r.label }}</span>
+                <form method="post" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="restore"><input type="hidden" name="kind" value="{{ r.kind }}"><input type="hidden" name="key" value="{{ r.key }}">
+                    <button class="cg-btn ghost" type="submit">Bring back</button></form></li>{% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -66,7 +66,7 @@ def test_the_checklist_walks_through_backup_read_apply_and_compare(app, seed, ad
         assert not steps[1]['done'] and not steps[2]['done'] and org.checklist()['any_work']
         assert not org.backup_is_fresh() and org.backup_age_days() is None
     page = admin_client.get('/admin/design-library').get_data(as_text=True)
-    assert 'Organize your existing designs' in page and 'Save a backup' in page
+    assert 'Organize your existing designs' in page and 'A backup is saved for you' in page
     admin_client.get('/admin/design-library/organize/backup.json')
     with app.app_context():
         assert org.backup_is_fresh()

@@ -829,6 +829,13 @@ def create_app(config_class=Config):
             return {}
 
     @app.before_request
+    def refresh_design_categories():
+        """Pick up category changes made on another worker (one tiny query every few seconds at most)."""
+        if request.endpoint and request.endpoint != 'static':
+            from utils.design_taxonomy import refresh
+            refresh()
+
+    @app.before_request
     def ensure_admin_email_has_admin():
         """On every request: if logged-in user is a known admin email, force is_admin=True.
         Ensures admin access even if DB was reset or grant was missed on login."""

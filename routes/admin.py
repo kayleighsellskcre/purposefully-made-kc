@@ -4063,6 +4063,38 @@ def design_library_overview():
     return render_template('admin/design_library.html', o=overview(), plan=checklist())
 
 
+@admin_bp.route('/design-library/categories', methods=['GET', 'POST'])
+@admin_required
+def design_categories():
+    """Add, rename and remove your own collections and categories."""
+    from utils import design_category_admin as ca
+    from utils.design_taxonomy import COLLECTIONS, refresh
+    refresh(force=True)
+    if request.method == 'POST':
+        f = request.form
+        action = f.get('action', '')
+        if action == 'add_sub':
+            ok, msg = ca.add_subcategory(f.get('coll', ''), f.get('label', ''))
+        elif action == 'add_collection':
+            ok, msg = ca.add_collection(f.get('label', ''))
+        elif action == 'rename':
+            ok, msg = ca.rename(f.get('target', ''), f.get('label', ''))
+        elif action == 'remove_sub':
+            ok, msg = ca.remove_subcategory(f.get('coll', ''), f.get('sub', ''))
+        elif action == 'remove_collection':
+            ok, msg = ca.remove_collection(f.get('key', ''))
+        elif action == 'restore':
+            ok, msg = ca.restore(f.get('kind', ''), f.get('key', ''))
+        else:
+            ok, msg = False, 'Choose what to do first.'
+        flash(msg, 'success' if ok else 'info')
+        db.session.commit()
+        return redirect(url_for('admin.design_categories'))
+    per_coll, per_sub = ca.counts()
+    return render_template('admin/design_categories.html', collections=list(COLLECTIONS), per_coll=per_coll,
+                           per_sub=per_sub, removed=ca.removed_items())
+
+
 @admin_bp.route('/design-library/browse', methods=['GET', 'POST'])
 @admin_required
 def design_browse():
@@ -4290,9 +4322,12 @@ def _proposal_card(row, vocab):
     places = [{'label': label_for(p['key'], p.get('sub')) or label_for(p['key']),
                'confidence': int(round(p['confidence'] * 100)), 'sure': p['confidence'] >= 0.75}
               for p in result.get('collections') or []]
+    from utils.design_organizer import folder_places
+    have = {p['label'] for p in places}
+    carried = [label_for(k) for k in folder_places(design) if label_for(k) not in have]
     return {
         'row': row, 'design': design, 'url': image_url(design.file_path) if design.file_path else '',
-        'today': today, 'places': places,
+        'today': today, 'places': places, 'carried': carried,
         'tags': [vocab[s].label for s in (result.get('tags') or []) if s in vocab
                  and vocab[s].label.lower() not in {p['label'].lower() for p in places}
                  and vocab[s].label.lower() != (result.get('style') or '').lower()],
@@ -4320,9 +4355,10 @@ def design_organize():
                 org.process_queue(3)
                 flash(f'Looking at {count} design{"" if count == 1 else "s"}. They will appear below as they are ready. '
                       'Nothing changes until you apply it.', 'success')
-        elif action in ('apply', 'apply_confident') and not org.backup_is_fresh():
-            flash('Please download the backup first (button at the top). It takes a second and lets you go back if you ever want to.', 'error')
+        elif action == 'apply' and not ids:
+            flash('Tick the designs you want to apply first.', 'info')
         elif action in ('apply', 'apply_confident'):
+            org.auto_backup()                          # a copy of everything, saved right before any change
             query = DesignProposal.query.filter(DesignProposal.status == 'ready')
             if action == 'apply_confident':
                 query = query.filter(DesignProposal.needs_attention == False)  # noqa: E712
@@ -4335,12 +4371,13 @@ def design_organize():
                     if applied % 25 == 0:
                         db.session.commit()
             db.session.commit()
-            flash(f'Applied to {applied} design{"" if applied == 1 else "s"}. You can undo any of them below.', 'success')
+            flash(f'Applied to {applied} design{"" if applied == 1 else "s"}. A backup was saved first, and you can undo any of them below.'
+                  if applied else 'Nothing needed applying for those.', 'success' if applied else 'info')
         elif action == 'skip':
             DesignProposal.query.filter(DesignProposal.id.in_(ids or [0]), DesignProposal.status == 'ready').update(
                 {'status': 'skipped'}, synchronize_session=False)
             db.session.commit()
-            flash('Skipped. Those designs will not be suggested again.', 'info')
+            flash('Skipped. Those designs will not be suggested again.' if ids else 'Tick the designs you want to skip first.', 'info')
         elif action == 'undo':
             row = DesignProposal.query.get(request.form.get('proposal_id', type=int) or 0)
             if row and org.undo_proposal(row):
@@ -4351,7 +4388,7 @@ def design_organize():
             count = sum(1 for r in rows if org.undo_proposal(r))
             db.session.commit()
             flash(f'Undid {count} design{"" if count == 1 else "s"}.', 'success')
-        return redirect(url_for('admin.design_organize'))
+        return redirect(url_for('admin.design_organize') + '#ogFlash')
 
     vocab = vocabulary(active_only=False)
     ready = (DesignProposal.query.filter_by(status='ready').order_by(DesignProposal.needs_attention,

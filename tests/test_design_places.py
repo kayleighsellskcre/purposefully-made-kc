@@ -158,3 +158,16 @@ def test_customer_uploads_can_still_be_added_to_the_gallery_from_the_customer_up
         did = d.id
     lib = admin_client.get('/admin/designs?tab=library').get_data(as_text=True)
     assert f'/promote' in lib or 'Add to Gallery' in lib
+
+
+def test_the_edit_box_lists_every_color_of_a_design(app, seed, admin_client):
+    with app.app_context():
+        main = _d(title='Hope Tee', file_path='uploads/hope-main.png', variant_label='Default')
+        _d(title='Hope Tee', file_path='uploads/hope-navy.png', parent_design_id=main.id, variant_label='Navy')
+        _d(title='Hope Tee', file_path='uploads/hope-sage.png', parent_design_id=main.id, variant_label='Sage')
+        db.session.commit()
+    html = admin_client.get('/admin/designs?tab=gallery').get_data(as_text=True)
+    assert 'All colors of this design' in html and 'id="editColors"' in html
+    for needle in ('hope-navy.png', 'hope-sage.png', '&#34;label&#34;: &#34;Navy&#34;' if False else 'Navy', 'Sage'):
+        assert needle in html
+    assert 'data-colors=' in html

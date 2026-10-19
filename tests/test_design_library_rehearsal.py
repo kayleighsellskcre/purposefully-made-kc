@@ -158,14 +158,13 @@ def test_the_safety_guards_hold_for_a_big_run(app, library, admin_client, monkey
         with app.app_context():
             while org.process_queue(10, api_key='k'):
                 pass
-        denied = admin_client.post('/admin/design-library/organize', data={'action': 'apply_confident'}, follow_redirects=True)
-        assert 'download the backup first' in denied.get_data(as_text=True)
         with app.app_context():
-            assert DesignCategoryLink.query.count() == 0
+            assert DesignCategoryLink.query.count() == 0 and org.last_auto_backup() is None
         backup = admin_client.get('/admin/design-library/organize/backup.json')
         assert backup.status_code == 200 and len(backup.get_json()['designs']) == 42      # every live design incl. colorways
         admin_client.post('/admin/design-library/organize', data={'action': 'apply_confident'})
         with app.app_context():
             assert DesignCategoryLink.query.count() >= 40
+            assert len(org.last_auto_backup()['designs']) == 42           # saved automatically before applying
     finally:
         app.config['OPENAI_API_KEY'] = None

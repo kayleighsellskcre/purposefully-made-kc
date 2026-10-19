@@ -119,6 +119,17 @@ def _analyze(design, mode, api_key):
     return classify_from_text(title, filename)
 
 
+def folder_places(design):
+    """Collections the design is already in through the folders you chose (safe to carry over)."""
+    from utils.design_taxonomy import collection_for_legacy
+    out = []
+    for value in [design.folder] + (design.extra_categories or '').split(','):
+        coll = collection_for_legacy((value or '').strip())
+        if coll and coll not in out:
+            out.append(coll)
+    return out
+
+
 def process_queue(max_items=5, api_key=None):
     """Analyze up to ``max_items`` queued designs. Returns how many were processed. Never raises."""
     if api_key is None:
@@ -135,8 +146,9 @@ def process_queue(max_items=5, api_key=None):
                 result = _analyze(design, row.mode, api_key)
                 row.result_json = json.dumps(result)
                 row.confidence = result.get('confidence') or 0.0
-                row.needs_attention = bool(
-                    row.confidence < AUTO_THRESHOLD or result.get('protected') or not result.get('collections'))
+                carried = bool(folder_places(design))        # already in a folder you chose: carrying it over is safe
+                row.needs_attention = bool(result.get('protected')) or (
+                    not carried and (row.confidence < AUTO_THRESHOLD or not result.get('collections')))
                 row.status = 'ready'
             row.processed_at = _now()
         except Exception as exc:
@@ -295,6 +307,27 @@ def mark_backup():
     db.session.commit()
 
 
+AUTO_BACKUP_KEY = 'design_library_auto_backup'
+
+
+def auto_backup():
+    """Save a copy of everything the organizer can change, right before it changes anything (latest copy kept)."""
+    from models import SystemSettings
+    row = SystemSettings.query.filter_by(key=AUTO_BACKUP_KEY).first()
+    if row is None:
+        row = SystemSettings(key=AUTO_BACKUP_KEY, description='Automatic copy of the design library taken before organizing')
+        db.session.add(row)
+    row.value = json.dumps(snapshot())
+    mark_backup()                      # commits
+    return True
+
+
+def last_auto_backup():
+    from models import SystemSettings
+    row = SystemSettings.query.filter_by(key=AUTO_BACKUP_KEY).first()
+    return json.loads(row.value) if row and row.value else None
+
+
 def backup_age_days():
     """Days since the last backup download, or None when there has never been one."""
     from models import SystemSettings
@@ -316,9 +349,9 @@ def checklist():
     s = summary()
     scan_left = fp.pending_query().count()
     steps = [
-        {'n': 1, 'title': 'Save a backup', 'done': backup_is_fresh(),
-         'note': 'A copy of every design: folders, tags and names. Your artwork files are never touched.',
-         'link': 'admin.design_organize_backup', 'cta': 'Download backup'},
+        {'n': 1, 'title': 'A backup is saved for you', 'done': backup_is_fresh(),
+         'note': 'Saved for you automatically right before anything is applied. You can also download a copy. Your artwork files are never touched.',
+         'link': 'admin.design_organize_backup', 'cta': 'Download a copy'},
         {'n': 2, 'title': 'Let it read your designs', 'done': s['waiting'] == 0 and s['queued'] == 0,
          'note': (f"{s['waiting']} still to read" if s['waiting'] else 'All designs have been read.')
                  + (f", {s['queued']} being read now" if s['queued'] else ''),

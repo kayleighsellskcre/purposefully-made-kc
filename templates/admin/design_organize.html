@@ -47,6 +47,7 @@
         <p>Let the system look at the designs you already have and suggest collections, tags and styles, without you uploading anything again. You see every suggestion first. Nothing changes until you apply it, it never renames a design you named or moves your folders, and every applied change can be undone. Customers will not see any difference until the new gallery goes live.</p>
     </div>
 
+    <div id="ogFlash"></div>
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% for cat, msg in messages %}<div class="alert alert-{{ cat }}" style="margin-bottom:1rem">{{ msg }}</div>{% endfor %}
     {% endwith %}
@@ -84,8 +85,8 @@
             <button type="submit" class="og-btn" {% if not stats.waiting %}disabled{% endif %}>Look at this batch</button>
         </form>
         <div class="og-bar">
-            <a href="{{ url_for('admin.design_organize_backup') }}" class="og-btn ghost small">Download a backup first</a>
-            <span class="og-sub" style="margin:0">A copy of every design's name, folders, tags and categories, to keep before you apply anything.</span>
+            <a href="{{ url_for('admin.design_organize_backup') }}" class="og-btn ghost small">Download a backup copy</a>
+            <span class="og-sub" style="margin:0">A copy is also saved automatically right before anything is applied. Applying never touches your artwork files.</span>
         </div>
     </section>
 
@@ -103,7 +104,8 @@
                     <div class="og-name">{{ c.design.title or c.design.original_filename or 'Untitled' }}{% if c.new_title %} <span class="og-line">will be named <b>{{ c.new_title }}</b></span>{% endif %}</div>
                     <p class="og-line"><b>Today:</b> {{ c.today|join(', ') if c.today else 'no folder' }}</p>
                     <p class="og-line"><b>Suggested:</b>
-                        {% for p in c.places %}<span class="og-chip {{ '' if p.sure else 'unsure' }}">{{ p.label }}{% if not p.sure %} ({{ p.confidence }}%){% endif %}</span>{% else %}<span class="og-line">no clear collection</span>{% endfor %}
+                        {% for l in c.carried %}<span class="og-chip">{{ l }} <small>(your current folder)</small></span>{% endfor %}
+                        {% for p in c.places %}<span class="og-chip {{ '' if p.sure else 'unsure' }}">{{ p.label }}{% if not p.sure %} ({{ p.confidence }}%){% endif %}</span>{% else %}{% if not c.carried %}<span class="og-line">no clear collection</span>{% endif %}{% endfor %}
                         {% for t in c.tags %}<span class="og-chip">{{ t }}</span>{% endfor %}
                         {% if c.style %}<span class="og-chip">{{ c.style }}</span>{% endif %}
                     </p>
