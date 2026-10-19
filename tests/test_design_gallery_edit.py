@@ -12,7 +12,7 @@ def test_admin_gallery_page_has_edit_controls(admin_client, seed):
     assert '/design-gallery/' in html and '/edit' in html
     assert 'Remove from Gallery' in html
     assert 'Delete' in html
-    assert 'Design Library' in html
+    assert 'Customer uploads' in html                # a quiet link; the picture grid is no longer on this page
     assert 'Gallery' in html
     assert 'Music' in html
     assert 'Music &amp; Entertainment' in html and 'Country Music' in html      # music is a normal collection now

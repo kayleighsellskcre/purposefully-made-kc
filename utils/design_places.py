@@ -90,6 +90,15 @@ def describe_many(designs):
     return out
 
 
+def unfiled_count(designs):
+    """How many of these designs have not been placed in the new collections yet."""
+    ids = [d.id for d in designs]
+    if not ids:
+        return 0
+    filed = {i for (i,) in db.session.query(DesignCategoryLink.design_id).filter(DesignCategoryLink.design_id.in_(ids)).distinct()}
+    return len([i for i in ids if i not in filed])
+
+
 def apply_places(design, places, user_id=None, remember=True):
     """Save these places as your own choice (manual, locked, remembered) and keep the old folder fields in step."""
     from utils.design_categories import compose_extra_categories, public_extra_storage_keys, stored_music_genres

@@ -4480,22 +4480,24 @@ def design_tags():
 @admin_required
 def designs():
     """Combined Design Library (customer uploads) + Gallery (curated public designs)."""
-    from utils.design_places import describe_many
+    from utils.design_places import describe_many, unfiled_count
     from utils.design_taxonomy import COLLECTIONS
 
-    tab = (request.args.get('tab') or 'library').strip().lower()
+    tab = (request.args.get('tab') or 'gallery').strip().lower()
     if tab not in ('library', 'gallery'):
-        tab = 'library'
+        tab = 'gallery'
 
-    library_designs = (
-        Design.query
-        .filter(
-            Design.is_gallery == False,
-            or_(Design.hidden_from_admin == False, Design.hidden_from_admin.is_(None)),
+    library_designs = []
+    if tab == 'library':                      # the customer-upload pictures are only loaded when you ask for them
+        library_designs = (
+            Design.query
+            .filter(
+                Design.is_gallery == False,
+                or_(Design.hidden_from_admin == False, Design.hidden_from_admin.is_(None)),
+            )
+            .order_by(Design.uploaded_at.desc())
+            .all()
         )
-        .order_by(Design.uploaded_at.desc())
-        .all()
-    )
 
     try:
         from utils.design_variants import gallery_mains_query
@@ -4507,30 +4509,15 @@ def designs():
               'If this persists, a database migration may be pending.', 'error')
         gallery_designs = []
 
-    # Pending non-gallery uploads for promote-to-gallery (gallery tab)
-    try:
-        pending_designs = (
-            Design.query
-            .filter(
-                Design.is_gallery == False,
-                or_(Design.hidden_from_admin == False, Design.hidden_from_admin.is_(None)),
-            )
-            .order_by(Design.uploaded_at.desc())
-            .limit(50)
-            .all()
-        )
-    except Exception:
-        pending_designs = []
-
     return render_template(
         'admin/designs.html',
         active_tab=tab,
         library_designs=library_designs,
         gallery_designs=gallery_designs,
-        pending_designs=pending_designs,
         collections=COLLECTIONS,
         ai_ready=bool((current_app.config.get('OPENAI_API_KEY') or '').strip()),
         design_places=describe_many(gallery_designs),
+        unfiled_count=unfiled_count(gallery_designs),
     )
 
 

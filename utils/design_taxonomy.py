@@ -34,7 +34,7 @@ def _subs(*labels):
 
 COLLECTIONS = (
     Collection('kansas-city', 'Kansas City', ('kc',), _subs(
-        'KC Chiefs', 'KC Royals', 'KC Current', 'Sporting KC', 'Other KC Teams', 'Kansas City Pride')),
+        'KC Chiefs', 'KC Royals', 'KC Current', 'Sporting KC', 'Other KC Teams')),
     Collection('faith-inspiration', 'Faith & Inspiration', ('faith',), _subs(
         'Faith-Based', 'Scripture & Biblical Sayings', 'Encouragement', 'Inspirational', 'Positive Affirmations')),
     Collection('sports-game-day', 'Sports & Game Day', ('sports',), _subs(

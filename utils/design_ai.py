@@ -56,7 +56,7 @@ TAG_TO_PLACE = {
     'game-day': ('sports-game-day', 'general-sports'),
     'kc-chiefs': ('kansas-city', 'kc-chiefs'), 'kc-royals': ('kansas-city', 'kc-royals'),
     'kc-current': ('kansas-city', 'kc-current'), 'sporting-kc': ('kansas-city', 'sporting-kc'),
-    'kansas-city': ('kansas-city', 'kansas-city-pride'),
+    'kansas-city': ('kansas-city', None),
     'faith': ('faith-inspiration', 'faith-based'), 'scripture': ('faith-inspiration', 'scripture-and-biblical-sayings'),
     'encouragement': ('faith-inspiration', 'encouragement'), 'inspirational': ('faith-inspiration', 'inspirational'),
     'affirmation': ('faith-inspiration', 'positive-affirmations'),

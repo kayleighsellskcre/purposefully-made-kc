@@ -115,3 +115,46 @@ def test_a_color_version_edit_does_not_change_places(app, seed, admin_client):
     assert r.status_code == 200
     with app.app_context():
         assert DesignCategoryLink.query.filter_by(design_id=cid).count() == 0
+
+
+def test_there_is_no_pride_category(app, seed, admin_client):
+    from utils.design_taxonomy import COLLECTIONS
+    labels = [s.label.lower() for c in COLLECTIONS for s in c.subcategories] + [c.label.lower() for c in COLLECTIONS]
+    assert not [l for l in labels if 'pride' in l]
+    assert 'pride' not in admin_client.get('/admin/designs?tab=gallery').get_data(as_text=True).split('uploadPlaces')[1].split('galleryUploadForm')[0].lower()
+
+
+def test_the_designs_page_opens_on_the_gallery_and_does_not_load_customer_upload_pictures(app, seed, admin_client):
+    with app.app_context():
+        _d(title='Customer Art', is_gallery=False, file_path='uploads/customer-art-unique.png')
+        db.session.commit()
+    page = admin_client.get('/admin/designs').get_data(as_text=True)
+    assert 'Add Design to Gallery' in page and 'customer-art-unique.png' not in page
+    assert 'tab=library' in page                                        # still one click away
+    lib = admin_client.get('/admin/designs?tab=library').get_data(as_text=True)
+    assert 'customer-art-unique.png' in lib and 'Back to the gallery' in lib
+
+
+def test_the_gallery_offers_to_organize_designs_that_are_not_in_the_new_collections(app, seed, admin_client):
+    with app.app_context():
+        Design.query.update({'is_gallery': False})
+        filed = _d(title='Filed One')
+        db.session.add(DesignCategoryLink(design_id=filed.id, category_key='faith-inspiration', is_primary=True))
+        _d(title='Loose One')
+        db.session.commit()
+    page = admin_client.get('/admin/designs?tab=gallery').get_data(as_text=True)
+    assert '1 of your 2 designs is not in the new collections yet' in page and 'Organize my designs' in page
+    with app.app_context():
+        for d in Design.query.filter_by(title='Loose One'):
+            db.session.add(DesignCategoryLink(design_id=d.id, category_key='faith-inspiration', is_primary=True))
+        db.session.commit()
+    assert 'Organize my designs' not in admin_client.get('/admin/designs?tab=gallery').get_data(as_text=True)
+
+
+def test_customer_uploads_can_still_be_added_to_the_gallery_from_the_customer_uploads_view(app, seed, admin_client):
+    with app.app_context():
+        d = _d(title='Customer Art', is_gallery=False)
+        db.session.commit()
+        did = d.id
+    lib = admin_client.get('/admin/designs?tab=library').get_data(as_text=True)
+    assert f'/promote' in lib or 'Add to Gallery' in lib

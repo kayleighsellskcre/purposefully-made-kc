@@ -73,7 +73,7 @@ def lib(app, admin_client, client, monkeypatch):
 
 
 CHIEFS = [{'key': 'sports-game-day', 'sub': 'football', 'confidence': 0.95},
-          {'key': 'kansas-city', 'sub': 'kansas-city-pride', 'confidence': 0.9}]
+          {'key': 'kansas-city', 'sub': 'other-kc-teams', 'confidence': 0.9}]
 MOMS = [{'key': 'family-relationships', 'sub': 'moms', 'confidence': 0.92}]
 
 
@@ -108,7 +108,7 @@ def test_a_small_library_works_end_to_end(app, lib):
 
     # customers: both collections show it, search by a synonym finds it, the held one is invisible
     sports = lib.public.get('/shop/designs?collection=sports-game-day').get_data(as_text=True)
-    kc = lib.public.get('/shop/designs?collection=kansas-city&sub=kansas-city-pride').get_data(as_text=True)
+    kc = lib.public.get('/shop/designs?collection=kansas-city&sub=other-kc-teams').get_data(as_text=True)
     assert 'Kansas City Crest' in sports and 'Kansas City Crest' in kc
     assert 'Mystery Stack' not in lib.public.get('/shop/designs?q=mystery').get_data(as_text=True)
     assert 'Mama Banner' in lib.public.get('/shop/designs?q=mommy').get_data(as_text=True)

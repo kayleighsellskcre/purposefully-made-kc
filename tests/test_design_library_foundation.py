@@ -22,7 +22,7 @@ def test_there_are_ten_collections_and_subcategories_follow_the_plan():
         'Kansas City', 'Faith & Inspiration', 'Sports & Game Day', 'School Spirit', 'Music & Entertainment',
         'Funny & Sarcastic', 'Family & Relationships', 'Lifestyle & Interests', 'Holidays & Seasons', 'Luxury Basics']
     assert subcategory_keys('kansas-city') == ['kc-chiefs', 'kc-royals', 'kc-current', 'sporting-kc',
-                                               'other-kc-teams', 'kansas-city-pride']
+                                               'other-kc-teams']
     assert 'baseball-and-softball' in subcategory_keys('sports-game-day')
     assert 'valentines-day' in subcategory_keys('holidays-seasons')
     assert is_valid_pair('family-relationships', 'moms') and not is_valid_pair('family-relationships', 'football')
