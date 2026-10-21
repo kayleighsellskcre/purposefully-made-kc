@@ -81,6 +81,13 @@
             <div class="master-section">
                 <h2>Designs & Logos to Print</h2>
                 <p class="section-hint">Use the weekly DTF list to download each PNG and order it on your DTF site. Logos are grouped by size. Names are one file each.</p>
+                {% if art_files %}
+                <div class="save-all" id="saveAll" data-files='{{ art_files | tojson }}'>
+                    <button type="button" class="btn btn-primary btn-sm" id="saveAllBtn" disabled>Getting your pictures ready&hellip;</button>
+                    <a class="btn btn-outline btn-sm" href="{{ url_for('admin.production_master_zip', **request.args.to_dict(flat=False)) }}">Download all as a ZIP</a>
+                    <span class="save-all-note" id="saveAllNote">On a phone, <strong>Save all</strong> opens the share sheet: choose <em>Save Images</em> to put them in Photos. Every file is named with its size, like <code>YM_8.5x7in_...</code></span>
+                </div>
+                {% endif %}
                 <div class="design-cards">
                     {% for group in design_list %}
                     <div class="design-master-card">
@@ -98,6 +105,7 @@
                             <p><strong>{{ group.design.filename if group.design else 'No file' }}</strong></p>
                             <p>Placement: {{ group.placement.replace('_', ' ')|title }}</p>
                             <p>Print size: {% if group.print_width %}{{ group.print_width|inches }}″ W × {{ (group.print_height or group.print_width)|inches }}″ H{% else %}N/A{% endif %}</p>
+                            {% if group.sizes_text %}<p class="sizes-line"><strong>Sizes:</strong> {{ group.sizes_text }}</p>{% endif %}
                             <p class="qty-badge">Qty: {{ group.quantity }}</p>
                         </div>
                     </div>
@@ -111,18 +119,28 @@
                     <div class="design-master-card">
                         {% if row.print_url %}
                         <div class="design-master-preview">
-                            <img src="{{ row.print_url }}" alt="{{ row.name or 'Back' }} {{ row.number or '' }}">
+                            {% if row.size_code %}<span class="size-tag" title="Shirt size">{{ row.size_code }}</span>{% endif %}
+                            <img src="{{ row.print_url }}" alt="{{ row.name or row.logo_name or 'Back' }} {{ row.number or '' }}">
                         </div>
                         {% else %}
                         <div class="design-master-preview">
+                            {% if row.size_code %}<span class="size-tag" title="Shirt size">{{ row.size_code }}</span>{% endif %}
                             <div class="no-design">No image</div>
                         </div>
                         {% endif %}
                         <div class="design-master-info">
+                            {% if row.kind == 'image' %}
+                            <p><strong>Back design: {{ row.logo_name }}</strong></p>
+                            <p>{{ (row.age_group or '')|title }} {{ row.size }} &middot; <strong>{{ row.size_code }}</strong></p>
+                            <p class="print-size">Print size: {% if row.logo_height_display %}<strong>{{ row.logo_width_display }}″ W × {{ row.logo_height_display }}″ H</strong>{% else %}<strong>{{ row.logo_width_display }}″ wide</strong> <small>(height: open the picture to check)</small>{% endif %}</p>
+                            {% if row.logo_exceeds %}<p class="size-warn">Taller than the safe print area for this shirt. Check it before you order.</p>{% endif %}
+                            {% else %}
                             <p><strong>{{ row.name or '-' }}{% if row.number %} #{{ row.number }}{% endif %}</strong></p>
-                            <p>{{ (row.age_group or '')|title }} {{ row.size }}</p>
+                            <p>{{ (row.age_group or '')|title }} {{ row.size }} &middot; <strong>{{ row.size_code }}</strong></p>
                             <p>Name {{ row.name_width_display }}″ × {{ row.name_height_display }}″</p>
                             <p>Number {{ row.number_width_display }}″ × {{ row.number_height_display }}″</p>
+                            {% if row.combined_width_display %}<p class="print-size">Whole back: <strong>{{ row.combined_width_display }}″ W × {{ row.combined_height_display }}″ H</strong></p>{% endif %}
+                            {% endif %}
                             <p class="qty-badge">Qty: {{ row.quantity }}</p>
                             {% if row.order_id and row.item_id %}
                             <a class="btn btn-primary btn-sm od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=row.order_id, item_id=row.item_id, side='back') }}" style="margin-top:0.65rem;">Download back PNG</a>
@@ -145,6 +163,12 @@
 </div>
 
 <style>
+.size-tag { position: absolute; top: .55rem; left: .55rem; z-index: 2; min-width: 2.4rem; text-align: center; padding: .25rem .6rem; border-radius: 999px; background: #3a3d48; color: #fff; font: 800 .95rem/1.2 'Inter', sans-serif; letter-spacing: .04em; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.design-master-preview { position: relative; }
+.sizes-line, .print-size { margin: .2rem 0; }
+.size-warn { margin: .2rem 0; color: #8b5a4f; font-size: .85rem; }
+.save-all { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin: 0 0 1.2rem; padding: .8rem 1rem; background: var(--ivory-silk, #faf7f2); border: 1px solid var(--border-color); border-radius: 12px; }
+.save-all-note { flex-basis: 100%; font-size: .82rem; color: var(--text-secondary); }
 .admin-page { padding: 4rem 0; }
 .admin-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 2rem; }
 .page-subtitle { color: var(--text-secondary); margin-top: 0.5rem; }
@@ -213,4 +237,40 @@
     .design-cards { grid-template-columns: 1fr; }
 }
 </style>
+<script>
+(function () {
+    var box = document.getElementById('saveAll');
+    if (!box) return;
+    var files = [];
+    try { files = JSON.parse(box.getAttribute('data-files') || '[]'); } catch (e) { files = []; }
+    var btn = document.getElementById('saveAllBtn');
+    var note = document.getElementById('saveAllNote');
+    var ready = [];
+    var canShareFiles = !!(navigator.canShare && navigator.share);
+    if (!files.length) { btn.hidden = true; return; }
+    if (!canShareFiles) {
+        btn.hidden = true;                       // desktop: the ZIP button does the job
+        note.innerHTML = 'The ZIP has every picture, named with its size, like <code>YM_8.5x7in_...</code>. Open this page on your phone to save them straight to Photos.';
+        return;
+    }
+    // Get every picture ready ahead of time, so the share sheet can open the instant you tap.
+    Promise.all(files.map(function (f) {
+        return fetch(f.url, {credentials: 'same-origin'}).then(function (r) { return r.ok ? r.blob() : null; })
+            .then(function (b) { return b ? new File([b], f.name, {type: b.type || 'image/png'}) : null; })
+            .catch(function () { return null; });
+    })).then(function (list) {
+        ready = list.filter(Boolean);
+        if (!ready.length || !navigator.canShare({files: ready})) {
+            btn.hidden = true;
+            note.textContent = 'Use the ZIP button to get every picture at once.';
+            return;
+        }
+        btn.disabled = false;
+        btn.textContent = 'Save all ' + ready.length + ' to my phone';
+    });
+    btn.addEventListener('click', function () {
+        navigator.share({files: ready, title: 'Print files'}).catch(function () {});
+    });
+})();
+</script>
 {% endblock %}

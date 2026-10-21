@@ -6,7 +6,9 @@ upload the PNG, type the size, set the quantity.
 import re
 
 from utils.order_artwork import back_print_url, front_print_url
+from utils.back_logo_size import back_logo_dims
 from utils.print_sizes import front_transfer_size, inches, production_from_order_item
+from utils.size_codes import breakdown, size_code
 
 
 def _label(value):
@@ -51,6 +53,7 @@ def build_dtf_shopping_list(orders):
             if qty < 1:
                 continue
             order_ids.add(order.id)
+            code = size_code(item.size, getattr(item, 'product', None))
 
             front = prod.get('front')
             if front:
@@ -80,19 +83,21 @@ def build_dtf_shopping_list(orders):
                         'preview_url': preview,
                         'order_id': order.id,
                         'item_id': item.id,
+                        'sizes': {},
                     }
                     logos[key] = row
                 row['quantity'] += qty
+                row['sizes'][code] = row['sizes'].get(code, 0) + qty
 
             back = prod.get('back')
             if back and back.get('kind') == 'image':
                 # A picture printed on the back of the shirt (not a name or number). It is ordered
                 # by width like any other logo, so it belongs on this list too.
-                width = inches(front_transfer_size(
-                    item.size, getattr(item, 'product', None), 'center_back')['width'])
+                dims = back_logo_dims(item)
+                width, height = inches(dims['width']), inches(dims['height']) if dims['height'] is not None else None
                 preview = back_print_url(item)
                 name = _back_logo_name(item)
-                key = ('back', preview or name.lower(), 'center_back', width)
+                key = ('back', preview or name.lower(), 'center_back', width, height)
                 row = logos.get(key)
                 if not row:
                     row = {
@@ -101,17 +106,19 @@ def build_dtf_shopping_list(orders):
                         'collection_id': getattr(order, 'collection_id', None),
                         'placement': 'Center Back',
                         'width': width,
-                        'height': None,
+                        'height': height,
                         'width_display': f'{width:.2f}' if width is not None else 'N/A',
-                        'height_display': '',
+                        'height_display': f'{height:.2f}' if height is not None else 'see file',
                         'quantity': 0,
                         'preview_url': preview,
                         'order_id': order.id,
                         'item_id': item.id,
                         'is_back': True,
+                        'sizes': {},
                     }
                     logos[key] = row
                 row['quantity'] += qty
+                row['sizes'][code] = row['sizes'].get(code, 0) + qty
 
             if back and (back.get('name') or back.get('number')):
                 name_h = inches(back.get('name_height')) or 0
@@ -126,6 +133,7 @@ def build_dtf_shopping_list(orders):
                     'combined_width_display': back.get('combined_width_display'),
                     'combined_height_display': back.get('combined_height_display'),
                     'quantity': qty,
+                    'size_code': code,
                     'order_id': order.id,
                     'item_id': item.id,
                     'order_number': order.order_number,
@@ -151,6 +159,8 @@ def build_dtf_shopping_list(orders):
             r['width'] or 0,
         ),
     ):
+        row['sizes_text'] = breakdown(row.get('sizes') or {})
+        row['size_tag'] = next(iter(row['sizes'])) if len(row.get('sizes') or {}) == 1 else ''
         row['copy_text'] = _copy_logo(
             row['design_name'],
             row['placement'],
@@ -158,6 +168,8 @@ def build_dtf_shopping_list(orders):
             row['quantity'],
             code=row.get('logo_code'),
         )
+        if row['sizes_text']:
+            row['copy_text'] += f"  [{row['sizes_text']}]"
         logo_list.append(row)
 
     personal.sort(key=lambda r: ((r['name'] or '').lower(), r['number'] or ''))
@@ -187,6 +199,7 @@ def build_dtf_shopping_list(orders):
             'size_in': row['width_display'],
             'height_in': row['height_display'],
             'quantity': row['quantity'],
+            'sizes': row.get('sizes_text', ''),
             'order_number': '',
         })
     for row in personal:
@@ -199,6 +212,7 @@ def build_dtf_shopping_list(orders):
             'size_in': row['name_height_display'] or row['number_height_display'] or '',
             'height_in': row['combined_height_display'] or '',
             'quantity': row['quantity'],
+            'sizes': row.get('size_code') or '',
             'order_number': row['order_number'] or '',
         })
 

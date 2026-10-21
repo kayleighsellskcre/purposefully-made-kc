@@ -3341,6 +3341,72 @@ def collection_design_remove(collection_id, design_id):
 
 # ===== PRODUCTION CENTER =====
 
+def _master_art_files(orders):
+    """Every print picture on the Production Master page, each with its size code, print size and file name."""
+    from utils.print_sizes import production_from_order_item
+    from utils.production_images import code_for, file_name
+    from utils.back_logo_size import back_logo_dims
+    from utils.dtf_orders import _back_logo_name
+    from utils.size_codes import size_order
+    files = []
+    seen_fronts = {}
+    for order in orders:
+        for item in order.items:
+            prod = production_from_order_item(item, customer_name=order.full_name) or {}
+            code = code_for(item)
+            qty = int(item.quantity or 1)
+            front = prod.get('front')
+            if front:
+                key = (item.design_id, item.placement or '', round(front.get('width') or 0, 2), round(front.get('height') or 0, 2))
+                rec = seen_fronts.get(key)
+                if rec is None:
+                    rec = {'order': order, 'item': item, 'side': 'front', 'codes': set(), 'qty': 0, 'width': front.get('width'),
+                           'height': front.get('height'), 'label': front.get('design_name') or item.design_file_name or 'logo',
+                           'order_number': 'weekly'}
+                    seen_fronts[key] = rec
+                    files.append(rec)
+                rec['codes'].add(code)
+                rec['qty'] += qty
+            back = prod.get('back')
+            if back:
+                if back.get('kind') == 'image':
+                    dims = back_logo_dims(item)
+                    width, height = dims['width'], dims['height']
+                    label = 'back-' + (_back_logo_name(item).replace('Back design: ', '') or 'design')
+                elif back.get('name') or back.get('number'):
+                    width, height = back.get('combined_width'), back.get('combined_height')
+                    label = 'back-' + ' '.join(p for p in (back.get('name'), str(back.get('number') or '')) if p)
+                else:
+                    continue
+                files.append({'order': order, 'item': item, 'side': 'back', 'codes': {code}, 'qty': qty, 'width': width,
+                              'height': height, 'label': label, 'order_number': order.order_number})
+    for rec in files:
+        codes = sorted(rec['codes'], key=size_order)
+        rec['name'] = file_name('+'.join(c for c in codes if c) or 'NA', rec['width'], rec['height'], rec['label'], rec['qty'],
+                                rec['order_number'])
+    return files
+
+
+@admin_bp.route('/production/master/images.zip')
+@admin_required
+def production_master_zip():
+    """All the print pictures from the Production Master page in one ZIP, named by size."""
+    from utils.ops_flow import ops_order_query
+    from utils.production_images import zip_bytes
+    query, stages, collection_id = ops_order_query(['order_received', 'waiting_supplies'])
+    orders = query.order_by(Order.created_at).all()
+    entries = [(f['order'], f['item'], f['side'], f['name']) for f in _master_art_files(orders)]
+    if not entries:
+        flash('There are no print pictures to save yet.', 'info')
+        return redirect(url_for('admin.production_master'))
+    data, added, missing = zip_bytes(entries, request.host_url)
+    if not added:
+        flash('None of the pictures could be read. Open the page and save them one at a time.', 'error')
+        return redirect(url_for('admin.production_master'))
+    return send_file(BytesIO(data), mimetype='application/zip', as_attachment=True,
+                     download_name=f'print-files_{datetime.now().strftime("%Y%m%d")}.zip')
+
+
 @admin_bp.route('/production/master')
 @admin_required
 def production_master():
@@ -3382,11 +3448,15 @@ def production_master():
     # Design/logo totals (grouped by design, placement, print size)
     from utils.print_sizes import production_from_order_item, inches
     from utils.order_artwork import back_print_url
+    from utils.size_codes import size_code
+    from utils.back_logo_size import back_logo_dims
+    from utils.dtf_orders import _back_logo_name
     design_groups = {}
     personal_list = []
     for order in orders:
         for item in order.items:
             prod = production_from_order_item(item, customer_name=order.full_name)
+            code = size_code(item.size, getattr(item, 'product', None))
             front = (prod or {}).get('front')
             if front:
                 pw = front.get('width')
@@ -3399,22 +3469,37 @@ def production_master():
                         'placement': item.placement or '-',
                         'print_width': pw,
                         'print_height': ph,
-                        'quantity': 0
+                        'quantity': 0,
+                        'sizes': {},
                     }
                 design_groups[key]['quantity'] += item.quantity
+                design_groups[key]['sizes'][code] = design_groups[key]['sizes'].get(code, 0) + item.quantity
             back = (prod or {}).get('back')
             if back:
                 back = dict(back)
                 back['print_url'] = back_print_url(item)
                 back['order_id'] = order.id
                 back['item_id'] = item.id
+                back['size_code'] = code
+                back['order_number'] = order.order_number
+                if back.get('kind') == 'image':
+                    dims = back_logo_dims(item)               # the width AND height to order
+                    back.update({'logo_name': _back_logo_name(item).replace('Back design: ', '') or 'Back design',
+                                 'logo_width_display': dims['width_display'], 'logo_height_display': dims['height_display'],
+                                 'logo_exceeds': dims['exceeds_safe_area']})
                 personal_list.append(back)
     
     design_list = sorted(design_groups.values(), key=lambda x: (getattr(x['design'], 'filename', '') or x.get('design_name') or '', x['placement']))
-    
+    from utils.size_codes import breakdown
+    for group in design_list:
+        group['sizes_text'] = breakdown(group['sizes'])
+
+    art_files = [{'name': f['name'], 'url': url_for('admin.save_item_artwork', order_id=f['order'].id, item_id=f['item'].id,
+                                                    side=f['side'], inline=1)} for f in _master_art_files(orders)]
     collections = Collection.query.all()
-    
+
     return render_template('admin/production_master.html',
+                         art_files=art_files,
                          orders=orders,
                          apparel_list=apparel_list,
                          design_list=design_list,
@@ -3869,7 +3954,7 @@ def dtf_batch_sheets():
         output = StringIO()
         writer = csv.DictWriter(
             output,
-            fieldnames=['kind', 'design_or_name', 'placement', 'order_by', 'size_in', 'height_in', 'quantity', 'order_number'],
+            fieldnames=['kind', 'design_or_name', 'placement', 'order_by', 'size_in', 'height_in', 'quantity', 'sizes', 'order_number'],
         )
         writer.writeheader()
         writer.writerows(shopping['csv_rows'])
@@ -3887,7 +3972,7 @@ def dtf_batch_sheets():
 
         headers = [
             'kind', 'design_or_name', 'placement', 'order_by',
-            'size_in', 'height_in', 'quantity', 'order_number',
+            'size_in', 'height_in', 'quantity', 'sizes', 'order_number',
         ]
         wb = Workbook()
         ws = wb.active

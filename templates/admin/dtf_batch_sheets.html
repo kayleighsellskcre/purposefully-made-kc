@@ -53,6 +53,7 @@
                 {% for row in logos %}
                 <article class="dtf-card">
                     <div class="dtf-preview">
+                        {% if row.size_tag %}<span class="dtf-size-tag">{{ row.size_tag }}</span>{% endif %}
                         {% if row.preview_url %}
                         <img src="{{ row.preview_url | image_url }}" alt="{{ row.design_name }}">
                         {% else %}
@@ -66,7 +67,8 @@
                         <p class="style-num">{{ row.design_name }}</p>
                         <p class="style-name">{{ row.placement }}</p>
                         <p class="dtf-size">Enter width <strong>{{ row.width_display }}″</strong></p>
-                        <p class="style-name">File is {{ row.width_display }}″ W × {{ row.height_display }}″ H</p>
+                        <p class="style-name">File is {{ row.width_display }}″ W × {{ row.height_display }}{% if row.height_display != 'see file' %}″ H{% else %} (open the picture){% endif %}</p>
+                        {% if row.sizes_text %}<p class="dtf-sizes">Sizes: <strong>{{ row.sizes_text }}</strong></p>{% endif %}
                         <p class="qty-line">Qty <strong>{{ row.quantity }}</strong></p>
                         <p class="dtf-hold-hint">On your phone, press and hold the picture, then tap Add to Photos.</p>
                         <div class="dtf-btns no-print">
@@ -98,10 +100,11 @@
                 {% for row in personal %}
                 <article class="dtf-card">
                     <div class="dtf-preview">
+                        {% if row.size_code %}<span class="dtf-size-tag">{{ row.size_code }}</span>{% endif %}
                         <img src="{{ url_for('admin.preview_item_artwork', order_id=row.order_id, item_id=row.item_id, side='back') }}" alt="{{ row.name }} {{ row.number }}">
                     </div>
                     <div class="dtf-info">
-                        <p class="style-num">{{ row.name or '-' }}{% if row.number %} #{{ row.number }}{% endif %}</p>
+                        <p class="style-num">{{ row.name or '-' }}{% if row.number %} #{{ row.number }}{% endif %}{% if row.size_code %} <span class="dtf-sizes">&middot; size <strong>{{ row.size_code }}</strong></span>{% endif %}</p>
                         <p class="style-name">{{ row.order_number }}</p>
                         {% if row.name %}
                         <p class="dtf-size">Name height <strong>{{ row.name_height_display }}″</strong> <span>({{ row.name_width_display }}″ wide)</span></p>
@@ -141,6 +144,11 @@
 <div id="copyToast" class="copy-toast" hidden>Copied</div>
 
 <style>
+.dtf-preview { position: relative; }
+.dtf-size-tag { position: absolute; top: .5rem; left: .5rem; z-index: 2; min-width: 2.2rem; text-align: center; padding: .22rem .55rem; border-radius: 999px; background: #3a3d48; color: #fff; font: 800 .9rem/1.2 'Inter', sans-serif; letter-spacing: .04em; }
+.dtf-size-tag:empty { display: none; }
+.dtf-sizes { margin: .2rem 0; }
+
 .admin-page { padding: 4rem 0; }
 .admin-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
 .page-subtitle { color: var(--text-secondary); margin-top: 0.5rem; max-width: 40rem; }
