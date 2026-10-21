@@ -3391,9 +3391,9 @@ def _master_art_files(orders):
 @admin_required
 def production_master_zip():
     """All the print pictures from the Production Master page in one ZIP, named by size."""
-    from utils.ops_flow import ops_order_query
+    from utils.ops_flow import ops_order_query_for
     from utils.production_images import zip_bytes
-    query, stages, collection_id = ops_order_query(['order_received', 'waiting_supplies'])
+    query, stages, collection_id = ops_order_query_for(['order_received'])
     orders = query.order_by(Order.created_at).all()
     entries = [(f['order'], f['item'], f['side'], f['name']) for f in _master_art_files(orders)]
     if not entries:
@@ -3411,10 +3411,17 @@ def production_master_zip():
 @admin_required
 def production_master():
     """Master copy: blanks + designs for orders just received or waiting on supplies."""
-    from utils.ops_flow import ops_order_query
-    query, stages, collection_id = ops_order_query(['order_received', 'waiting_supplies'])
+    from utils.ops_flow import ops_order_query_for
+    from utils.production_stages import orders_for_stages
+    # New orders only: anything waiting on supplies was already ordered from the vendors.
+    query, stages, collection_id = ops_order_query_for(['order_received'])
     orders = query.order_by(Order.created_at).all()
-    
+    waiting_query = orders_for_stages(['waiting_supplies'])
+    if collection_id:
+        from utils.group_orders import filter_orders_to_collection
+        waiting_query = filter_orders_to_collection(waiting_query, collection_id)
+    waiting_count = waiting_query.count()
+
     # Blank apparel totals
     apparel_totals = {}
     for order in orders:
@@ -3439,12 +3446,12 @@ def production_master():
                     'quantity': 0
                 }
             apparel_totals[key]['quantity'] += item.quantity
-    
+
     apparel_list = sorted(
         apparel_totals.values(),
         key=lambda x: (x['section'], x['style_number'], x['color'], x['size']),
     )
-    
+
     # Design/logo totals (grouped by design, placement, print size)
     from utils.print_sizes import production_from_order_item, inches
     from utils.order_artwork import back_print_url
@@ -3488,7 +3495,7 @@ def production_master():
                                  'logo_width_display': dims['width_display'], 'logo_height_display': dims['height_display'],
                                  'logo_exceeds': dims['exceeds_safe_area']})
                 personal_list.append(back)
-    
+
     design_list = sorted(design_groups.values(), key=lambda x: (getattr(x['design'], 'filename', '') or x.get('design_name') or '', x['placement']))
     from utils.size_codes import breakdown
     for group in design_list:
@@ -3500,6 +3507,7 @@ def production_master():
 
     return render_template('admin/production_master.html',
                          art_files=art_files,
+                         waiting_count=waiting_count,
                          orders=orders,
                          apparel_list=apparel_list,
                          design_list=design_list,
@@ -3573,30 +3581,38 @@ def transfer_production():
 @admin_bp.route('/production/master/move-to-production', methods=['POST'])
 @admin_required
 def production_master_move():
-    """After blanks are ordered, move these orders to Ready to Press."""
-    from utils.ops_flow import ops_order_query
+    """Two quick moves. 'ordered': these new orders are bought, so they wait on supplies.
+    'arrived': the boxes are in, so the waiting orders are ready to press."""
+    from utils.ops_flow import ops_order_query_for, ops_url
     from utils.production_stages import apply_stage
-    query, _stages, collection_id = ops_order_query(['order_received', 'waiting_supplies'])
-    if request.form.get('collection') or collection_id:
-        cid = request.form.get('collection') or collection_id
+    which = request.form.get('which') if request.form.get('which') in ('ordered', 'arrived') else 'ordered'
+    source, target = (['order_received'], 'waiting_supplies') if which == 'ordered' else (['waiting_supplies'], 'ready_to_press')
+    query, _stages, collection_id = ops_order_query_for(source)
+    cid = request.form.get('collection') or collection_id
+    if cid:
         from utils.group_orders import filter_orders_to_collection
         query = filter_orders_to_collection(query, cid)
 
-    orders = query.all()
     count = 0
-    for order in orders:
-        apply_stage(order, 'ready_to_press')
+    for order in query.all():
+        apply_stage(order, target)
         count += 1
 
     try:
         db.session.commit()
-        flash(f'Moved {count} order(s) to Ready to Press — next up: press sheets.', 'success')
+        if which == 'ordered':
+            flash(f'Moved {count} order(s) to Waiting on Supplies. They will stay off the weekly lists now.' if count
+                  else 'There were no new orders to move.', 'success' if count else 'info')
+        else:
+            flash(f'Moved {count} order(s) to Ready to Press. Next up: press sheets.' if count
+                  else 'No orders were waiting on supplies.', 'success' if count else 'info')
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('production_master_move commit failed: %s', e)
         flash('Could not move orders. Please try again.', 'error')
-    from utils.ops_flow import ops_url
-    return redirect(ops_url('admin.transfer_production', stage=['ready_to_press'], collection=collection_id))
+    if which == 'ordered':
+        return redirect(ops_url('admin.production_master', stage=['order_received'], collection=cid))
+    return redirect(ops_url('admin.transfer_production', stage=['ready_to_press'], collection=cid))
 
 
 @admin_bp.route('/production')

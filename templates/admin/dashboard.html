@@ -139,23 +139,10 @@
                         </div>
                         <div class="dash-tool-body">
                             <h3>1. Orders</h3>
-                            <p>See what came in today</p>
+                            <p>See what came in and move each one along (list or board)</p>
                         </div>
                         {% if pending_orders > 0 %}
                         <span class="dash-tool-badge dash-tool-badge--blue">{{ pending_orders }} new</span>
-                        {% endif %}
-                    </a>
-
-                    <a href="{{ url_for('admin.production_workflow') }}" class="dash-tool-card dash-tool-card--primary">
-                        <div class="dash-tool-icon">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-                        </div>
-                        <div class="dash-tool-body">
-                            <h3>2. Workflow</h3>
-                            <p>Move each order to the next stage</p>
-                        </div>
-                        {% if in_production > 0 %}
-                        <span class="dash-tool-badge dash-tool-badge--amber">{{ in_production }} active</span>
                         {% endif %}
                     </a>
 
@@ -164,8 +151,8 @@
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
                         </div>
                         <div class="dash-tool-body">
-                            <h3>3. Order blanks</h3>
-                            <p>Weekly blanks + DTF lists - nothing buys until you check out</p>
+                            <h3>2. Order blanks</h3>
+                            <p>New orders only: weekly blanks + DTF lists</p>
                         </div>
                     </a>
 
@@ -174,7 +161,7 @@
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                         </div>
                         <div class="dash-tool-body">
-                            <h3>4. Press</h3>
+                            <h3>3. Press</h3>
                             <p>Press sheets for the heat press</p>
                         </div>
                     </a>
@@ -184,7 +171,7 @@
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                         </div>
                         <div class="dash-tool-body">
-                            <h3>5. Pack &amp; labels</h3>
+                            <h3>4. Pack &amp; labels</h3>
                             <p>Print labels, including send-home</p>
                         </div>
                         {% if ready_for_pickup > 0 %}

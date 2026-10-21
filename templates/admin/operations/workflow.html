@@ -7,11 +7,12 @@
 <div class="wf-page-header">
     <div>
         <span class="adm-eyebrow">Admin / Operations</span>
-        <h1 class="wf-title">Production Workflow</h1>
+        <h1 class="wf-title">Orders: board view</h1>
         <p class="wf-lead">Select orders to move in bulk, or drag cards between columns on desktop.</p>
     </div>
     <div class="wf-header-actions">
-        <a href="{{ ops_url('admin.production_master', stage=['order_received', 'waiting_supplies']) }}" class="btn btn-outline wf-header-btn">Order blanks</a>
+        <a href="{{ ops_url('admin.orders', stage='order_received') }}" class="btn btn-outline wf-header-btn">List view</a>
+        <a href="{{ ops_url('admin.production_master', stage=['order_received']) }}" class="btn btn-outline wf-header-btn">Order blanks</a>
         <a href="{{ ops_url('admin.transfer_production', stage=['ready_to_press']) }}" class="btn btn-outline wf-header-btn">Press sheets</a>
         <a href="{{ ops_url('admin.print_labels', stage=['pressed', 'packaged_ready']) }}" class="btn btn-outline wf-header-btn">Print labels</a>
         <a href="{{ url_for('admin.orders_completed') }}" class="btn btn-outline wf-header-btn">All Completed</a>

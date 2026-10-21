@@ -29,12 +29,12 @@
         <p class="ord-lead" style="font-size:.8rem;margin-top:.2rem"><a href="{{ url_for('admin.unsaved_payments') }}">Got paid but no order showed up? Find the payment</a></p>
     </div>
     <div class="ord-header-actions">
-        <a href="{{ ops_url('admin.production_workflow') }}" class="btn btn-primary ord-action-btn">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-            Next: Workflow
+        <a href="{{ ops_url('admin.production_workflow') }}" class="btn btn-outline ord-action-btn" title="See every order in columns by stage and move them">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="18"/><rect x="14" y="3" width="7" height="12"/></svg>
+            Board view
         </a>
-        <a href="{{ ops_url('admin.production_master', stage=['order_received', 'waiting_supplies']) }}" class="btn btn-outline ord-action-btn">
-            Order blanks
+        <a href="{{ ops_url('admin.production_master', stage=['order_received']) }}" class="btn btn-primary ord-action-btn">
+            Next: Order blanks
         </a>
         <a href="{{ ops_url('admin.print_labels', stage=_status if _status and _status != 'all' else ['pressed', 'packaged_ready']) }}" class="btn btn-outline ord-action-btn">
             Print labels

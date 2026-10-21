@@ -7,9 +7,9 @@
     <div class="container">
         <div class="admin-header">
             <div>
-                <span class="adm-eyebrow">Admin / Daily Operations · Step 3</span>
+                <span class="adm-eyebrow">Admin / Daily Operations · Step 2</span>
                 <h1>Order blanks</h1>
-                <p class="page-subtitle">Buy shirts and logos this week. When both are in, move these orders to Ready to Press.</p>
+                <p class="page-subtitle">Only your new orders are here. Orders already waiting on supplies are not included, since those are already bought.</p>
             </div>
             <div class="master-actions">
                 <a href="{{ ops_url('admin.blank_apparel_list') }}" class="btn btn-primary">Weekly blanks list</a>
@@ -17,15 +17,30 @@
                 <a href="{{ ops_url('admin.logo_chart') }}" class="btn btn-outline">Logo chart</a>
                 <a href="{{ ops_url('admin.transfer_production', stage=['ready_to_press']) }}" class="btn btn-outline">Press sheets</a>
                 <a href="{{ ops_url('admin.orders', stage='order_received') }}" class="btn btn-outline">View Orders</a>
-                <form method="post" action="{{ url_for('admin.production_master_move') }}" style="display: inline;">
+                <form method="post" action="{{ url_for('admin.production_master_move') }}" style="display: inline;"
+                      onsubmit="return confirm('Move these new orders to Waiting on Supplies? Do this after you have ordered their blanks and DTF.')">
+                    <input type="hidden" name="which" value="ordered">
                     {% if selected_collection %}<input type="hidden" name="collection" value="{{ selected_collection }}">{% endif %}
                     <button type="submit" class="btn btn-primary" {% if not orders %}disabled{% endif %}>
-                        Blanks are in: Ready to Press
+                        I've ordered these: Waiting on Supplies
                     </button>
                 </form>
             </div>
         </div>
         
+        {% if waiting_count %}
+        <div class="master-summary waiting-box">
+            <p><strong>{{ waiting_count }}</strong> order(s) are waiting on supplies (already ordered, so they are not listed below).</p>
+            <form method="post" action="{{ url_for('admin.production_master_move') }}" style="display:inline;"
+                  onsubmit="return confirm('Move every order waiting on supplies to Ready to Press?')">
+                <input type="hidden" name="which" value="arrived">
+                {% if selected_collection %}<input type="hidden" name="collection" value="{{ selected_collection }}">{% endif %}
+                <button type="submit" class="btn btn-outline btn-sm">Supplies are in: Ready to Press</button>
+            </form>
+            <a class="btn btn-outline btn-sm" href="{{ ops_url('admin.orders', stage='waiting_supplies') }}">See them</a>
+        </div>
+        {% endif %}
+
         {% if orders %}
         <div class="master-summary">
             <p><strong>{{ orders|length }}</strong> order(s) · <strong>{{ apparel_list|length }}</strong> blank SKUs · <strong>{{ design_list|length }}</strong> design/placement combos</p>
@@ -155,7 +170,7 @@
         
         {% else %}
         <div class="empty-state">
-            <p>No New or Paid orders. Orders will appear here once placed.</p>
+            <p>You're all caught up. No new orders need blanks or DTF right now.</p>
             <a href="{{ url_for('admin.orders') }}" class="btn btn-primary">View All Orders</a>
         </div>
         {% endif %}
@@ -174,6 +189,8 @@
 .page-subtitle { color: var(--text-secondary); margin-top: 0.5rem; }
 .master-actions { display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap; }
 .master-actions form { display: inline; }
+.waiting-box { display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; }
+.waiting-box p { margin: 0; }
 .master-summary { margin-bottom: 2rem; padding: 1rem; background: var(--secondary-color); border-radius: var(--border-radius); }
 .master-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
 @media (max-width: 968px) { .master-grid { grid-template-columns: 1fr; } }
