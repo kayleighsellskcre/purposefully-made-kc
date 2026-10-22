@@ -1,4 +1,4 @@
-{% set _pm = (collection.payment_mode if collection is defined and collection else none) or 'each_pays' %}
+{% set _pm = (collection.payment_mode if collection is defined and collection else none) or ('company_sponsored' if request.args.get('mode') == 'company' else 'each_pays') %}
 {% set _spi = (collection.sponsor_items_per_person if collection is defined and collection else none) or 1 %}
 {% set _spb = (collection.sponsor_budget_per_person if collection is defined and collection else none) %}
 {% set _spm = (collection.sponsor_message if collection is defined and collection else none) %}

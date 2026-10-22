@@ -16,6 +16,13 @@
             <div><b>{{ counts.rejected }}</b><span>Removed</span></div>
         </div>
 
+        <div class="sm-money">
+            <div><span>The company will be billed</span><b>${{ '%.2f'|format(spend.company_unbilled) }}</b><small>before tax, not invoiced yet</small></div>
+            <div><span>Already invoiced</span><b>${{ '%.2f'|format(spend.company_billed) }}</b><small>before tax</small></div>
+            <div><span>Employees paid for extras</span><b>${{ '%.2f'|format(spend.employees_paid) }}</b><small>{{ spend.items }} item{{ 's' if spend.items != 1 }} for {{ spend.people }} {{ 'person' if spend.people == 1 else 'people' }}</small></div>
+        </div>
+        {% if submissions %}<p style="margin:.5rem 0 0;text-align:right;"><a class="btn btn-outline btn-sm" href="{{ url_for('sponsored.requests_export', slug=collection.slug) }}">Download list (Excel / CSV)</a></p>{% endif %}
+
         {% if invoices %}
         <h2 class="sm-h2">Invoices</h2>
         {% for inv in invoices %}
@@ -95,10 +102,11 @@
         {% endfor %}
 
         {% if ready %}
-        <form method="POST" action="{{ url_for('sponsored.make_invoice', slug=collection.slug) }}" class="sm-make" onsubmit="return confirm('Close this group order to new requests and create the invoice for the {{ ready }} request(s) on the list?');">
+        <form method="POST" action="{{ url_for('sponsored.make_invoice', slug=collection.slug) }}" class="sm-make">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-primary">Close requests &amp; create invoice</button>
-            <p class="sm-muted">This stops new requests and bills the company for everyone on the list.</p>
+            <button type="submit" class="btn btn-primary" onclick="return confirm('Close this group order to new requests and create the invoice for the {{ ready }} request(s) on the list?');">Close requests &amp; create invoice</button>
+            <button type="submit" name="close" value="0" class="btn btn-outline" formnovalidate onclick="return confirm('Create an invoice for the {{ ready }} request(s) so far and keep the link open? Later requests go on the next invoice.');">Invoice so far, keep link open</button>
+            <p class="sm-muted">"Close" stops new requests and bills everyone on the list. "Keep link open" bills what is here now, and anyone who joins later goes on the next invoice.</p>
         </form>
         {% endif %}
     </div>
@@ -126,6 +134,12 @@
 .sm-inline { display:flex; gap:.4rem; align-items:center; margin:0; }
 .sm-inline input[type=text], .sm-inline select { padding:.4rem .6rem; border:1px solid rgba(232,208,177,.9); border-radius:8px; font-size:.9rem; }
 .sm-make { margin-top:1.5rem; text-align:center; }
+.sm-money { display:grid; grid-template-columns:repeat(3,1fr); gap:.6rem; margin-top:.75rem; }
+.sm-money div { background:#fff; border:1px solid rgba(232,208,177,.6); border-radius:12px; padding:.75rem; text-align:center; }
+.sm-money span { display:block; font-size:.78rem; color:var(--text-secondary); }
+.sm-money b { display:block; font-size:1.3rem; margin:.15rem 0; }
+.sm-money small { color:var(--text-secondary); font-size:.75rem; }
+@media (max-width:560px) { .sm-money { grid-template-columns:1fr; } }
 @media (max-width:560px) { .sm-stats { grid-template-columns:repeat(2,1fr); } .sm-inv-head { flex-direction:column; } }
 </style>
 {% endblock %}

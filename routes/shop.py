@@ -390,6 +390,12 @@ def index():
                              design_id=None)
 
 
+@shop_bp.route('/company-apparel')
+def company_apparel():
+    """For a business that wants to buy shirts for its team. Leads into the normal group-order setup."""
+    return render_template('shop/company_apparel.html')
+
+
 @shop_bp.route('/group-orders')
 def group_orders():
     """Group order landing page + public directory of open collections"""

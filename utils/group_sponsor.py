@@ -166,8 +166,13 @@ def submission_summary(collection):
     return rows, counts
 
 
-def create_invoice(collection):
-    """Invoice every request and lock the link. Returns (invoice, error)."""
+def create_invoice(collection, close=True):
+    """Invoice every request that is not on an invoice yet. Returns (invoice, error).
+
+    close=True also stops new requests (the usual "we are done" step). close=False
+    bills what has come in so far and keeps the link open: requests that arrive later
+    go on the next invoice, so a long-running group can be billed in batches.
+    """
     from models import CompanyInvoice, SponsorSubmission, db
 
     rows = SponsorSubmission.query.filter_by(collection_id=collection.id).all()
@@ -188,7 +193,8 @@ def create_invoice(collection):
     )
     for r in approved:
         r.status = 'invoiced'
-    collection.sponsor_submissions_locked = True
+    if close:
+        collection.sponsor_submissions_locked = True
     db.session.add(invoice)
     db.session.commit()
     return invoice, None
@@ -303,8 +309,7 @@ def sub_from_token(collection, token):
 
 
 def is_editable(sub) -> bool:
-    return (sub.status in ('approved', 'pending')
-            and not sub.collection.sponsor_submissions_locked)
+    return sub.status in ('approved', 'pending')       # until it is on an invoice
 
 
 def _line_can_resize(line) -> bool:
@@ -392,3 +397,50 @@ def cancel_request(sub):
     from utils import sponsor_emails
     sponsor_emails.cancelled(sub, refunded=bool(sub.overage_refunded_at) and not was_refunded)
     return True, None
+
+
+# ── What the company and the employees are paying ───────────────────────────
+
+def spend_summary(rows):
+    """Plain totals for the organizer's dashboard."""
+    live = [r for r in rows if r.status != 'rejected']
+    unbilled = [r for r in live if r.status in ('approved', 'pending')]
+    billed = [r for r in live if r.status in ('invoiced', 'converted')]
+    paid_extra = [r for r in rows if r.overage_paid_at and not r.overage_refunded_at]
+    return {
+        'people': len(live),
+        'items': sum(r.item_count for r in live),
+        'company_unbilled': round(sum(r.sponsored_total or 0 for r in unbilled), 2),
+        'company_billed': round(sum(r.sponsored_total or 0 for r in billed), 2),
+        'employees_paid': round(sum(r.overage_charge for r in paid_extra), 2),
+    }
+
+
+def _csv_cell(value):
+    """Spreadsheet-safe text: a leading = + - @ would be run as a formula."""
+    text = '' if value is None else str(value)
+    return "'" + text if text[:1] in ('=', '+', '-', '@') else text
+
+
+def requests_csv(collection) -> str:
+    """One row per item: who, what, size, who pays how much, and where it goes."""
+    import csv
+    import io
+
+    rows, _counts = submission_summary(collection)
+    buf = io.StringIO()
+    out = csv.writer(buf)
+    out.writerow(['Name', 'Email', 'Phone', 'Item', 'Color', 'Size',
+                  'Company pays', 'Employee pays', 'Status', 'How they get it'])
+    labels = {'approved': 'Counted', 'pending': 'Counted', 'invoiced': 'On invoice',
+              'converted': 'In production', 'rejected': 'Removed'}
+    for r in rows:
+        how = 'Ship' if r.fulfillment_method == 'shipping' else 'Pickup'
+        for line in r.items:
+            out.writerow([_csv_cell(v) for v in (
+                r.full_name, r.email, r.phone, line.get('product_name') or 'Item',
+                line.get('color'), line.get('size'),
+                f"{float(line.get('company_part') or 0):.2f}",
+                f"{float(line.get('employee_part') or 0):.2f}",
+                labels.get(r.status, r.status), how)])
+    return buf.getvalue()

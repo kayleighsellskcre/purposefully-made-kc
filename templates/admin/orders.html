@@ -51,18 +51,27 @@
         <span class="ord-filter-label">Status</span>
         <div class="ord-chips">
             <a href="{{ url_for('admin.orders', stage='all', order_type=_order_type, collection=_collection) }}"
-               class="ord-chip {% if _status == 'all' %}ord-chip--active{% endif %}">All Open</a>
+               class="ord-chip {% if _status == 'all' %}ord-chip--active{% endif %}">All Open <span class="ord-chip-count">{{ stage_counts.get('all', 0) }}</span></a>
             <a href="{{ url_for('admin.orders', stage='order_received', order_type=_order_type, collection=_collection) }}"
-               class="ord-chip {% if _status == 'order_received' or _status == 'new' %}ord-chip--active{% endif %}">Order Received</a>
+               class="ord-chip {% if _status == 'order_received' or _status == 'new' %}ord-chip--active{% endif %}">Order Received <span class="ord-chip-count">{{ stage_counts.get('order_received', 0) }}</span></a>
             <a href="{{ url_for('admin.orders', stage='waiting_supplies', order_type=_order_type, collection=_collection) }}"
-               class="ord-chip {% if _status == 'waiting_supplies' %}ord-chip--active{% endif %}">Waiting on Supplies</a>
+               class="ord-chip {% if _status == 'waiting_supplies' %}ord-chip--active{% endif %}">Waiting on Supplies <span class="ord-chip-count">{{ stage_counts.get('waiting_supplies', 0) }}</span></a>
             <a href="{{ url_for('admin.orders', stage='ready_to_press', order_type=_order_type, collection=_collection) }}"
-               class="ord-chip {% if _status == 'ready_to_press' %}ord-chip--active{% endif %}">Ready to Press</a>
+               class="ord-chip {% if _status == 'ready_to_press' %}ord-chip--active{% endif %}">Ready to Press <span class="ord-chip-count">{{ stage_counts.get('ready_to_press', 0) }}</span></a>
             <a href="{{ url_for('admin.orders', stage='pressed', order_type=_order_type, collection=_collection) }}"
-               class="ord-chip {% if _status == 'pressed' %}ord-chip--active{% endif %}">Pressed</a>
+               class="ord-chip {% if _status == 'pressed' %}ord-chip--active{% endif %}">Pressed <span class="ord-chip-count">{{ stage_counts.get('pressed', 0) }}</span></a>
             <a href="{{ url_for('admin.orders', stage='packaged_ready', order_type=_order_type, collection=_collection) }}"
-               class="ord-chip {% if _status == 'packaged_ready' or _status == 'ready' %}ord-chip--active{% endif %}">Packaged &amp; Ready</a>
+               class="ord-chip {% if _status == 'packaged_ready' or _status == 'ready' %}ord-chip--active{% endif %}">Packaged &amp; Ready <span class="ord-chip-count">{{ stage_counts.get('packaged_ready', 0) }}</span></a>
             <a href="{{ url_for('admin.orders_completed') }}" class="ord-chip ord-chip--muted">All Completed</a>
+        </div>
+    </div>
+    <div class="ord-filter-row">
+        <span class="ord-filter-label">Sort</span>
+        <div class="ord-chips">
+            {% set _sort = selected_sort or 'newest' %}
+            <a href="{{ url_for('admin.orders', stage=_status, order_type=_order_type, collection=_collection, sort='newest') }}" class="ord-chip {% if _sort == 'newest' %}ord-chip--active{% endif %}">Newest</a>
+            <a href="{{ url_for('admin.orders', stage=_status, order_type=_order_type, collection=_collection, sort='oldest') }}" class="ord-chip {% if _sort == 'oldest' %}ord-chip--active{% endif %}">Oldest first</a>
+            <a href="{{ url_for('admin.orders', stage=_status, order_type=_order_type, collection=_collection, sort='due') }}" class="ord-chip {% if _sort == 'due' %}ord-chip--active{% endif %}">Due date</a>
         </div>
     </div>
     <div class="ord-filter-row">
@@ -120,6 +129,8 @@
                 <th>Status</th>
                 <th>Type</th>
                 <th>Date</th>
+                <th>Due</th>
+                <th>Move to</th>
                 <th></th>
             </tr>
         </thead>
@@ -135,13 +146,18 @@
                     </label>
                 </td>
                 <td><strong class="ord-num">{{ order.order_number }}</strong></td>
-                <td class="ord-name">{{ order.full_name }}</td>
+                <td class="ord-name">{{ order.full_name }}
+                    {% if order.collection %}<span class="ord-sub">{{ order_group_label(order) or order.collection.name }}</span>{% endif %}
+                    {% if order.send_home_with_child %}<span class="ord-sub ord-sendhome">Send home: {{ order.child_name or 'child' }}{% if order.teacher_name %} · {{ order.teacher_name }}{% endif %}</span>{% endif %}
+                </td>
                 <td class="ord-email">{{ order.email }}</td>
                 <td class="ord-center">{{ order.items.count() }}</td>
                 <td class="ord-total"><strong>${{ "%.2f"|format(order.total) }}</strong></td>
                 <td><span class="ord-badge ord-badge--{{ stage_key }}">{{ stage_label }}</span></td>
                 <td><span class="ord-type">{{ (order.order_type or 'retail').title() }}</span></td>
                 <td class="ord-date">{{ order.created_at.strftime('%b %d') }}</td>
+                <td class="ord-date">{% if order.due_date %}<span class="ord-due {% if order.due_date < now %}ord-due--overdue{% endif %}">{{ order.due_date.strftime('%b %d') }}</span>{% else %}&mdash;{% endif %}</td>
+                <td onclick="event.stopPropagation()">{% with _o = order %}{% include 'admin/includes/order_quick_move.html' %}{% endwith %}</td>
                 <td><a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="adm-view-link" onclick="event.stopPropagation()">View</a></td>
             </tr>
             {% endfor %}
@@ -167,6 +183,9 @@
                 </div>
                 <p class="ord-card-name">{{ order.full_name }}</p>
                 <p class="ord-card-email">{{ order.email }}</p>
+                {% if order.collection %}<p class="ord-sub">{{ order_group_label(order) or order.collection.name }}</p>{% endif %}
+                {% if order.send_home_with_child %}<p class="ord-sub ord-sendhome">Send home: {{ order.child_name or 'child' }}{% if order.teacher_name %} · {{ order.teacher_name }}{% endif %}</p>{% endif %}
+                {% if order.due_date %}<p class="ord-sub"><span class="ord-due {% if order.due_date < now %}ord-due--overdue{% endif %}">Due {{ order.due_date.strftime('%b %d') }}</span></p>{% endif %}
             </div>
             <div class="ord-card-footer">
                 <div class="ord-card-meta">
@@ -179,6 +198,7 @@
                 <strong class="ord-card-total">${{ "%.2f"|format(order.total) }}</strong>
             </div>
         </a>
+        <div class="ord-card-move">{% with _o = order %}{% include 'admin/includes/order_quick_move.html' %}{% endwith %}</div>
     </div>
     {% endfor %}
 </div>
@@ -187,14 +207,14 @@
 {% if orders.has_prev or orders.has_next %}
 <div class="ord-pagination">
     {% if orders.has_prev %}
-    <a href="{{ url_for('admin.orders', page=orders.prev_num, status=_status, order_type=_order_type, collection=_collection) }}" class="btn btn-outline btn-sm">
+    <a href="{{ url_for('admin.orders', page=orders.prev_num, stage=_status, order_type=_order_type, collection=_collection, sort=selected_sort) }}" class="btn btn-outline btn-sm">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
         Previous
     </a>
     {% endif %}
     <span class="ord-page-info">Page {{ orders.page }} of {{ orders.pages }}</span>
     {% if orders.has_next %}
-    <a href="{{ url_for('admin.orders', page=orders.next_num, status=_status, order_type=_order_type, collection=_collection) }}" class="btn btn-outline btn-sm">
+    <a href="{{ url_for('admin.orders', page=orders.next_num, stage=_status, order_type=_order_type, collection=_collection, sort=selected_sort) }}" class="btn btn-outline btn-sm">
         Next
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
     </a>
@@ -351,6 +371,15 @@
 .ord-center { text-align: center; }
 .ord-total { white-space: nowrap; }
 .ord-date { font-size: 0.82rem; color: var(--text-secondary); white-space: nowrap; }
+.ord-sub { display: block; font-weight: 400; font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.1rem; }
+.ord-sendhome { color: var(--terra-cotta, #b87c6f); font-weight: 600; }
+.ord-due { font-weight: 600; }
+.ord-due--overdue { color: #c0392b; }
+.ord-chip-count { display:inline-block; margin-left:.25rem; padding:0 .4rem; border-radius:10px; background:rgba(58,61,72,.08); font-size:.72rem; font-weight:700; }
+.ord-chip--active .ord-chip-count { background: rgba(255,255,255,.25); }
+.ord-move-select { padding:.3rem .4rem; border:1px solid var(--border-light, #e6ddd0); border-radius:8px; font-size:.82rem; background:#fff; max-width:140px; }
+.ord-card-move { padding: 0 1rem 1rem; }
+.ord-card-move .ord-move-select { width: 100%; max-width: none; }
 .ord-type { font-size: 0.78rem; color: var(--text-secondary); }
 
 /* Selection checkboxes */

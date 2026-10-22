@@ -22,7 +22,7 @@ from models import CompanyInvoice, Collection, SponsorSubmission, db
 from utils.group_sponsor import (
     create_invoice, employee_charge, finalize_overage_payment, is_company_sponsored,
     mark_invoice_paid, refund_overage, split_cart, sponsor_cart_problem, submission_summary,
-    cancel_request, change_sizes, sub_from_token,
+    cancel_request, change_sizes, requests_csv, spend_summary, sub_from_token,
 )
 
 sponsored_bp = Blueprint('sponsored', __name__, url_prefix='/c')
@@ -266,6 +266,7 @@ def manage(slug):
                 .order_by(CompanyInvoice.created_at.desc()).all())
     return render_template(
         'sponsored/manage.html', collection=collection, submissions=rows, counts=counts,
+        spend=spend_summary(rows),
         invoices=invoices, is_admin=bool(getattr(current_user, 'is_admin', False)),
         manual_methods=MANUAL_METHODS,
         stripe_ready=bool(current_app.config.get('STRIPE_PUBLIC_KEY') and stripe.api_key),
@@ -312,12 +313,25 @@ def review(slug):
 @login_required
 def make_invoice(slug):
     collection = _organizer_collection(slug)
-    invoice, error = create_invoice(collection)
+    invoice, error = create_invoice(collection, close=request.form.get('close') != '0')
     if error:
         flash(error, 'error')
     else:
         flash(f'Invoice {invoice.invoice_number} created for ${invoice.total:,.2f}.', 'success')
     return redirect(url_for('sponsored.manage', slug=slug))
+
+
+@sponsored_bp.route('/<slug>/manage-sponsored/requests.csv')
+@login_required
+def requests_export(slug):
+    from flask import Response
+    collection = _organizer_collection(slug)
+    safe = collection.slug.replace('/', '_')
+    return Response(
+        requests_csv(collection), mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename="requests_{safe}.csv"',
+                 'Cache-Control': 'no-store, private'},
+    )
 
 
 def _invoice_for(collection, invoice_id):

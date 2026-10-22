@@ -498,3 +498,56 @@ def test_employee_can_cancel_and_is_refunded(seed, app, outbox, monkeypatch):
     assert _status_of(app, 'ava@example.com') == 'rejected'
     assert len(refunds) == 1
     assert sum(m.subject.startswith('Request cancelled') for m in outbox) == 1
+
+
+# ── Batches, spending totals, CSV, company page ─────────────────────────────
+
+def test_invoice_in_batches_keeps_the_link_open(seed, app):
+    slug = _setup(app, seed)
+    organizer = _login_as(app, CUSTOMER_EMAIL)
+    first = _guest(app)
+    _make_pending(first, seed, app, slug, email='one@example.com')
+    organizer.post(f'/c/{slug}/manage-sponsored/invoice', data={'close': '0'})
+    assert not _in_db(app, lambda: db.session.get(Collection, seed['collection_id']).sponsor_submissions_locked)
+
+    second = _guest(app)                                   # link still open: a new person can join
+    _make_pending(second, seed, app, slug, email='two@example.com')
+    organizer.post(f'/c/{slug}/manage-sponsored/invoice')  # final batch, closes the link
+
+    def check():
+        invoices = CompanyInvoice.query.order_by(CompanyInvoice.id).all()
+        assert len(invoices) == 2
+        assert invoices[0].submission_ids != invoices[1].submission_ids
+        assert [i.total for i in invoices] == [19.71, 19.71]
+        assert db.session.get(Collection, seed['collection_id']).sponsor_submissions_locked
+    _in_db(app, check)
+
+
+def test_dashboard_shows_what_everyone_owes(seed, app):
+    slug = _setup(app, seed)
+    _make_pending(_guest(app), seed, app, slug)
+    html = _login_as(app, CUSTOMER_EMAIL).get(f'/c/{slug}/manage-sponsored').get_data(as_text=True)
+    assert 'The company will be billed' in html and '$18.00' in html
+    assert 'Download list' in html
+
+
+def test_csv_lists_every_item_and_is_safe_in_excel(seed, app):
+    slug = _setup(app, seed)
+    guest = _guest(app)
+    _fill_cart(guest, seed)
+    _request(guest, slug, first_name='=HYPERLINK("x")')
+    resp = _login_as(app, CUSTOMER_EMAIL).get(f'/c/{slug}/manage-sponsored/requests.csv')
+    assert resp.status_code == 200 and resp.mimetype == 'text/csv'
+    text = resp.get_data(as_text=True)
+    assert 'Company pays' in text and '18.00' in text and 'Counted' in text
+    assert "'=HYPERLINK" in text                           # a formula is made harmless
+    assert _guest(app).get(f'/c/{slug}/manage-sponsored/requests.csv').status_code in (302, 401, 403)
+
+
+def test_company_page_and_signup_flow(seed, app):
+    page = _guest(app).get('/shop/company-apparel')
+    assert page.status_code == 200 and 'Cover your team' in page.get_data(as_text=True)
+    form = _login_as(app, CUSTOMER_EMAIL).get('/shop/group-orders/create?mode=company').get_data(as_text=True)
+    assert 'value="company_sponsored" checked' in form
+    plain = _login_as(app, CUSTOMER_EMAIL).get('/shop/group-orders/create').get_data(as_text=True)
+    assert 'value="each_pays" checked' in plain

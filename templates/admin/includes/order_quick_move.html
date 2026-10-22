@@ -1,0 +1,12 @@
+{# One-order stage mover, the same choices the board has. Expects _o (the order). #}
+{% set _here = _o.production_stage or ('order_received' if _o.status in ('new', 'paid') else ('packaged_ready' if _o.status == 'ready' else _o.status)) %}
+<form method="POST" action="{{ url_for('admin.update_order_stage', order_id=_o.id) }}" class="ord-move-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <select name="stage" class="ord-move-select" aria-label="Move order {{ _o.order_number }} to a stage" onchange="this.form.submit()">
+        <option value="" disabled selected>Move to…</option>
+        {% for sid, sname in [('order_received','Order Received'),('waiting_supplies','Waiting on Supplies'),('ready_to_press','Ready to Press'),('pressed','Pressed'),('packaged_ready','Packaged & Ready')] %}
+        {% if sid != _here %}<option value="{{ sid }}">→ {{ sname }}</option>{% endif %}
+        {% endfor %}
+        <option value="completed">→ All Completed</option>
+    </select>
+</form>

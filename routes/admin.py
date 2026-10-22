@@ -484,6 +484,7 @@ def site_errors_clear():
 @admin_required
 def orders():
     """Manage orders - Master Order Log"""
+    from datetime import datetime
     from utils.production_stages import DONE_STATUSES, normalize_stage_arg, orders_for_stage
     status = request.args.get('stage') or request.args.get('status')
     collection_id = request.args.get('collection')
@@ -512,10 +513,32 @@ def orders():
         else:
             query = query.filter_by(order_type=order_type)
     
-    orders = query.order_by(Order.created_at.desc()).paginate(
-        page=page, per_page=20, error_out=False
-    )
+    sort = request.args.get('sort') or 'newest'
+    if sort == 'due':
+        # Soonest due date first; orders with no due date go last.
+        query = query.order_by(Order.due_date.is_(None), Order.due_date, Order.created_at)
+    elif sort == 'oldest':
+        query = query.order_by(Order.created_at)
+    else:
+        sort = 'newest'
+        query = query.order_by(Order.created_at.desc())
+    orders = query.paginate(page=page, per_page=20, error_out=False)
     
+    # How many orders wait in each stage (same group and type filters), like the board's column counts.
+    from utils.production_stages import STAGES
+    from utils.group_orders import filter_orders_to_collection
+    stage_counts = {}
+    for sid, _name, _desc in STAGES:
+        count_query = orders_for_stage(sid)
+        if collection_id:
+            count_query = filter_orders_to_collection(count_query, collection_id)
+        if order_type == 'retail':
+            count_query = count_query.filter(or_(Order.order_type == 'retail', Order.order_type == None))
+        elif order_type:
+            count_query = count_query.filter_by(order_type=order_type)
+        stage_counts[sid] = count_query.count()
+    stage_counts['all'] = sum(stage_counts.values())
+
     collections = Collection.query.all()
     try:
         from models import PaymentCapture
@@ -535,7 +558,10 @@ def orders():
                          unsaved_payment_count=unsaved_payment_count,
                          selected_status=stage,
                          selected_collection=collection_id,
-                         selected_order_type=order_type)
+                         selected_order_type=order_type,
+                         selected_sort=sort,
+                         stage_counts=stage_counts,
+                         now=datetime.utcnow())
 
 
 @admin_bp.route('/orders/completed')
