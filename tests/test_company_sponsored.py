@@ -417,3 +417,84 @@ def test_declined_email_mentions_the_refund(seed, app, outbox, monkeypatch):
     declined = [m for m in outbox if m.subject.startswith('Update on your request')]
     assert len(declined) == 1
     assert 'refunded' in declined[0].body and 'Not on staff' in declined[0].body
+
+
+# ── Employee changes a size or cancels ──────────────────────────────────────
+
+def _my_request_path(app):
+    from utils.group_sponsor import edit_url
+    url = _in_db(app, lambda: edit_url(SponsorSubmission.query.first()))
+    return url[url.index('/c/'):]
+
+
+def _line_size(app):
+    return _in_db(app, lambda: SponsorSubmission.query.first().items[0]['size'])
+
+
+def test_email_carries_the_private_link_and_bad_links_404(seed, app, outbox):
+    guest = _guest(app)
+    slug = _setup(app, seed)
+    _fill_cart(guest, seed)
+    _request(guest, slug)
+    mail = [m for m in outbox if "You're in" in m.subject][0]
+    assert '/sponsored/my-request/' in mail.body
+    path = _my_request_path(app)
+    assert guest.get(path).status_code == 200
+    assert guest.get(path[:-3] + 'abc').status_code == 404
+
+
+def test_employee_can_change_a_size_that_costs_the_same(seed, app):
+    guest = _guest(app)
+    slug = _setup(app, seed)
+    _fill_cart(guest, seed)
+    _request(guest, slug)
+    path = _my_request_path(app)
+    guest.post(path + '/sizes', data={'size_0': 'L'})
+    assert _line_size(app) == 'L'
+    prod = _in_db(app, lambda: SponsorSubmission.query.first().items[0].get('transfer_production'))
+    assert prod is None or prod.get('size') == 'L'          # print info follows the size
+
+
+def test_a_size_with_a_different_price_is_refused(seed, app, monkeypatch):
+    import utils.pricing as pricing
+    guest = _guest(app)
+    slug = _setup(app, seed)
+    _fill_cart(guest, seed)
+    _request(guest, slug)
+    path = _my_request_path(app)
+    real = pricing.price_cart_item
+    monkeypatch.setattr(pricing, 'price_cart_item',
+                        lambda item, product, design=None: 25.0 if item.get('size') == '4XL' else real(item, product, design=design))
+    resp = guest.post(path + '/sizes', data={'size_0': '4XL'}, follow_redirects=True)
+    assert 'priced differently' in resp.get_data(as_text=True)
+    assert _line_size(app) == 'M'                              # nothing was saved
+
+
+def test_no_changes_once_the_invoice_exists(seed, app):
+    guest = _guest(app)
+    slug = _setup(app, seed)
+    _fill_cart(guest, seed)
+    _request(guest, slug)
+    path = _my_request_path(app)
+    _login_as(app, CUSTOMER_EMAIL).post(f'/c/{slug}/manage-sponsored/invoice')
+    resp = guest.post(path + '/sizes', data={'size_0': 'L'}, follow_redirects=True)
+    assert 'can no longer be changed' in resp.get_data(as_text=True)
+    assert _line_size(app) == 'M'
+    assert guest.post(path + '/cancel').status_code == 302
+    assert _status_of(app, 'ava@example.com') == 'invoiced'
+
+
+def test_employee_can_cancel_and_is_refunded(seed, app, outbox, monkeypatch):
+    guest = _guest(app)
+    slug = _setup(app, seed, items=1)
+    refunds = []
+    _fake_stripe(monkeypatch, charge_cents=1971, refunds=refunds)
+    _fill_cart(guest, seed, qty=2)
+    _request(guest, slug)
+    guest.get(f'/c/{slug}/sponsored/paid')
+    path = _my_request_path(app)
+    guest.post(path + '/cancel')
+    guest.post(path + '/cancel')                              # a second tap does nothing
+    assert _status_of(app, 'ava@example.com') == 'rejected'
+    assert len(refunds) == 1
+    assert sum(m.subject.startswith('Request cancelled') for m in outbox) == 1

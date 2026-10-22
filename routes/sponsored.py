@@ -22,6 +22,7 @@ from models import CompanyInvoice, Collection, SponsorSubmission, db
 from utils.group_sponsor import (
     create_invoice, employee_charge, finalize_overage_payment, is_company_sponsored,
     mark_invoice_paid, refund_overage, split_cart, sponsor_cart_problem, submission_summary,
+    cancel_request, change_sizes, sub_from_token,
 )
 
 sponsored_bp = Blueprint('sponsored', __name__, url_prefix='/c')
@@ -212,6 +213,46 @@ def confirm(slug):
     if not sub or sub.collection_id != collection.id or sub.status == 'awaiting_payment':
         return redirect(url_for('collection.view', slug=slug))
     return render_template('sponsored/confirm.html', collection=collection, sub=sub)
+
+
+@sponsored_bp.route('/<slug>/sponsored/my-request/<token>')
+def my_request(slug, token):
+    """Private page from the employee's email: change a size or cancel."""
+    from utils.group_sponsor import is_editable, sizes_for, _line_can_resize
+    collection = _sponsored_collection(slug)
+    sub = sub_from_token(collection, token)
+    if not sub:
+        abort(404)
+    lines = [{'line': l, 'sizes': sizes_for(l), 'can_resize': _line_can_resize(l)} for l in sub.items]
+    return render_template('sponsored/my_request.html', collection=collection, sub=sub,
+                           lines=lines, editable=is_editable(sub), token=token)
+
+
+@sponsored_bp.route('/<slug>/sponsored/my-request/<token>/sizes', methods=['POST'])
+def my_request_sizes(slug, token):
+    collection = _sponsored_collection(slug)
+    sub = sub_from_token(collection, token)
+    if not sub:
+        abort(404)
+    wanted = {}
+    for key, value in request.form.items():
+        if key.startswith('size_') and key[5:].isdigit():
+            wanted[int(key[5:])] = value.strip()
+    ok, error = change_sizes(sub, wanted)
+    flash('Your sizes are saved.' if ok else error, 'success' if ok else 'error')
+    return redirect(url_for('sponsored.my_request', slug=slug, token=token))
+
+
+@sponsored_bp.route('/<slug>/sponsored/my-request/<token>/cancel', methods=['POST'])
+def my_request_cancel(slug, token):
+    collection = _sponsored_collection(slug)
+    sub = sub_from_token(collection, token)
+    if not sub:
+        abort(404)
+    ok, error = cancel_request(sub)
+    flash('Your request is cancelled.' + (' Your card payment is being refunded.' if ok and sub.overage_refunded_at else '')
+          if ok else error, 'success' if ok else 'error')
+    return redirect(url_for('sponsored.my_request', slug=slug, token=token))
 
 
 # ── Organizer ───────────────────────────────────────────────────────────────

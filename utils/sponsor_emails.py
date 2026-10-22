@@ -72,8 +72,25 @@ def request_received(sub):
         [f'Everything is set.{paid} Your items are printed as soon as your '
          "company's invoice is paid, and we will email you when that happens."],
         details=[('Group', sub.collection.name), ('Items', _items_text(sub))],
-        note='If your organizer removes your request, any card payment you made is refunded.' if sub.overage_paid_at else None,
+        button={'label': 'Change a size or cancel', 'url': _edit_link(sub)},
+        note='Need to fix something? Use the button until the invoice is created. '
+             'If you cancel, any card payment you made is refunded.' if sub.overage_paid_at else
+             'Need to fix something? Use the button until the invoice is created.',
     )
+
+
+def _edit_link(sub):
+    from utils.group_sponsor import edit_url
+    return edit_url(sub)
+
+
+def cancelled(sub, refunded):
+    paras = ['Your request has been cancelled.']
+    if refunded:
+        paras.append(f'Your card payment of ${sub.overage_charge:,.2f} has been refunded. '
+                     'It can take a few days to show up.')
+    return _safe(_send, sub.email, f'Request cancelled: {sub.collection.name}',
+                 f'Hi {sub.first_name},', paras, details=[('Group', sub.collection.name)])
 
 
 def declined(sub, refunded):

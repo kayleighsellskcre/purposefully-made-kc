@@ -273,3 +273,122 @@ def convert_invoice_to_orders(invoice):
     if made:
         sponsor_emails.invoice_paid_to_shop(invoice, made)
     return made
+
+
+# ── Employee self-service: change a size or cancel until the invoice is made ─
+
+def _edit_serializer():
+    from flask import current_app
+    from itsdangerous import URLSafeSerializer
+    return URLSafeSerializer(current_app.secret_key, salt='sponsor-edit')
+
+
+def edit_url(sub):
+    """Private link in the employee's email. Anyone holding it can edit that one request."""
+    from flask import current_app
+    from utils.mailer import admin_base_url
+    token = _edit_serializer().dumps(sub.id)
+    return f"{admin_base_url(current_app)}/c/{sub.collection.slug}/sponsored/my-request/{token}"
+
+
+def sub_from_token(collection, token):
+    from itsdangerous import BadSignature
+    from models import SponsorSubmission, db
+    try:
+        sub_id = _edit_serializer().loads(token)
+    except BadSignature:
+        return None
+    sub = db.session.get(SponsorSubmission, sub_id)
+    return sub if sub and sub.collection_id == collection.id else None
+
+
+def is_editable(sub) -> bool:
+    return (sub.status in ('approved', 'pending')
+            and not sub.collection.sponsor_submissions_locked)
+
+
+def _line_can_resize(line) -> bool:
+    """Only simple front-logo items: the print size is recomputed from the new size.
+
+    Anything with back artwork, a name or number, or a back-only placement needs
+    a person to redo it, so those are left alone.
+    """
+    meta = line.get('back_design_meta')
+    if isinstance(meta, str):
+        try:
+            meta = json.loads(meta)
+        except ValueError:
+            meta = None
+    personalised = isinstance(meta, dict) and (meta.get('name') or meta.get('number'))
+    return not (line.get('back_design_url') or personalised or line.get('placement') == 'center_back')
+
+
+def sizes_for(line):
+    from models import Product, db
+    from utils.json_fields import parse_json_list
+    from utils.sizes import sort_sizes
+    product = db.session.get(Product, int(line.get('product_id') or 0))
+    return sort_sizes(parse_json_list(product.available_sizes)) if product else []
+
+
+def change_sizes(sub, new_sizes):
+    """Apply {line index: size}. Returns (ok, error). Never changes what anyone owes."""
+    from models import Design, Product, db
+    from utils.pricing import price_cart_item
+    from utils.print_sizes import build_item_production
+
+    if not is_editable(sub):
+        return False, 'This request can no longer be changed.'
+    lines = sub.items
+    changed = False
+    for idx, size in new_sizes.items():
+        if not (0 <= idx < len(lines)) or not size or size == lines[idx].get('size'):
+            continue
+        line = lines[idx]
+        product = db.session.get(Product, int(line.get('product_id') or 0))
+        if not product or size not in sizes_for(line):
+            return False, 'Please choose a size from the list.'
+        if not _line_can_resize(line):
+            return False, ('That item has custom back artwork, so its size cannot be changed here. '
+                           'Please cancel your request and send a new one.')
+        design = db.session.get(Design, int(line['design_id'])) if line.get('design_id') else None
+        old_front = ((line.get('transfer_production') or {}).get('front') or {})
+        line['size'] = size
+        production = build_item_production(
+            product=product, size=size, color=line.get('color'), placement=line.get('placement'),
+            quantity=1, design_name=old_front.get('design_name') or (design.title if design else None),
+            design_id=line.get('design_id'),
+            aspect_w=float(design.width) if design and design.width else None,
+            aspect_h=float(design.height) if design and design.height else None,
+            has_front=bool(line.get('design_id') or line.get('design_url')),
+            customer_name=((line.get('transfer_production') or {}).get('customer_name')),
+        )
+        front = (production or {}).get('front') or {}
+        line['transfer_production'] = production
+        line['print_width'] = front.get('width')
+        line['print_height'] = front.get('height')
+        if abs(price_cart_item(line, product, design=design) - float(line.get('unit_price') or 0)) > 0.005:
+            return False, ('That size is priced differently, so it cannot be swapped here. '
+                           'Please cancel your request and send a new one.')
+        changed = True
+    if changed:
+        sub.items_json = json.dumps(lines, default=str)
+        db.session.commit()
+    return True, None
+
+
+def cancel_request(sub):
+    """The employee cancels their own request. Returns (ok, error)."""
+    from models import db
+    if not is_editable(sub):
+        return False, 'This request can no longer be cancelled here.'
+    was_refunded = bool(sub.overage_refunded_at)
+    ok, error = refund_overage(sub)
+    if not ok:
+        return False, error
+    sub.status = 'rejected'
+    sub.rejection_reason = 'Cancelled by the employee'
+    db.session.commit()
+    from utils import sponsor_emails
+    sponsor_emails.cancelled(sub, refunded=bool(sub.overage_refunded_at) and not was_refunded)
+    return True, None

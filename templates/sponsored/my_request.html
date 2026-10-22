@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Your request - {{ collection.name }} - Purposefully Made KC{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+{% block content %}
+<div style="padding:2.5rem 0 4rem;min-height:60vh;">
+    <div class="container">
+        <div style="max-width:520px;margin:0 auto;background:#fff;padding:2rem 1.75rem;border-radius:18px;box-shadow:0 8px 40px rgba(58,61,72,.08);border:1px solid rgba(232,208,177,.5);">
+            <span style="display:block;font-size:.7rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--terra-cotta);text-align:center;margin-bottom:.5rem;">{{ collection.name }}</span>
+            <h1 style="font-family:var(--font-heading);font-size:1.5rem;text-align:center;margin:0 0 1rem;">Your request, {{ sub.first_name }}</h1>
+
+            {% if sub.status == 'rejected' %}
+            <p style="text-align:center;">This request was cancelled{% if sub.overage_refunded_at %} and your card payment was refunded{% endif %}.</p>
+            {% elif not editable %}
+            <p style="text-align:center;color:var(--text-secondary);">Your company's invoice has been created, so this request can no longer be changed here. If something is wrong, please talk to your organizer.</p>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('sponsored.my_request_sizes', slug=collection.slug, token=token) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <ul style="list-style:none;margin:0 0 1rem;padding:0;background:var(--ivory-silk,#faf7f2);border-radius:14px;">
+                    {% for row in lines %}
+                    <li style="padding:.8rem 1rem;display:flex;justify-content:space-between;gap:1rem;align-items:center;{% if not loop.first %}border-top:1px solid rgba(232,208,177,.6);{% endif %}">
+                        <span><strong>{{ row.line.get('product_name') or 'Item' }}</strong><br>
+                            <span style="color:var(--text-secondary);font-size:.9rem;">{{ row.line.color }}</span></span>
+                        {% if editable and row.can_resize %}
+                        <select name="size_{{ loop.index0 }}" aria-label="Size" style="padding:.5rem;border:1.5px solid rgba(232,208,177,.9);border-radius:8px;font-size:16px;">
+                            {% for sz in row.sizes %}<option value="{{ sz }}" {% if sz == row.line.size %}selected{% endif %}>{{ sz }}</option>{% endfor %}
+                        </select>
+                        {% else %}
+                        <span>Size {{ row.line.size }}</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% if editable %}
+                <button type="submit" class="btn btn-primary" style="width:100%;">Save my sizes</button>
+                {% endif %}
+            </form>
+
+            {% if editable %}
+            <form method="POST" action="{{ url_for('sponsored.my_request_cancel', slug=collection.slug, token=token) }}" style="margin-top:1.25rem;text-align:center;"
+                  onsubmit="return confirm('Cancel your request?{% if sub.overage_paid_at %} Your card payment will be refunded.{% endif %}');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-outline btn-sm">Cancel my request</button>
+            </form>
+            <p style="text-align:center;color:var(--text-secondary);font-size:.85rem;margin:1rem 0 0;">Items with custom back artwork can only be changed by cancelling and sending a new request.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
