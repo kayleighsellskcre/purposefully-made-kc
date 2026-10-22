@@ -18,7 +18,8 @@ from collections import OrderedDict
 
 EACH_PAYS = 'each_pays'
 ORGANIZER_PAYS = 'organizer_pays'
-PAYMENT_MODES = (EACH_PAYS, ORGANIZER_PAYS)
+COMPANY_SPONSORED = 'company_sponsored'
+PAYMENT_MODES = (EACH_PAYS, ORGANIZER_PAYS, COMPANY_SPONSORED)
 
 NAME_MAX = 80
 EXPECTED_MAX = 5000
@@ -31,6 +32,8 @@ def is_organizer_pays(collection) -> bool:
 
 def payment_mode_label(collection) -> str:
     """Short label for admin and account lists."""
+    if getattr(collection, 'payment_mode', None) == COMPANY_SPONSORED:
+        return 'Company sponsored'
     return 'Organizer pays' if is_organizer_pays(collection) else 'Each person pays'
 
 
@@ -56,7 +59,27 @@ def apply_payment_mode_from_form(collection):
             return False, ('Shoppers have already placed orders on this group order, so it '
                            'cannot switch to you paying for the whole group. Start a new '
                            'group order for that instead.')
+        if (
+            raw == COMPANY_SPONSORED
+            and previous != COMPANY_SPONSORED
+            and getattr(collection, 'id', None)
+            and _has_orders(collection)
+        ):
+            return False, ('Shoppers have already placed orders on this group order, so it '
+                           'cannot switch to a company paying. Start a new group order for that instead.')
+        if (
+            previous == COMPANY_SPONSORED
+            and raw != COMPANY_SPONSORED
+            and getattr(collection, 'id', None)
+            and _has_sponsor_requests(collection)
+        ):
+            return False, ('Requests have already come in for the company, so this group order '
+                           'cannot switch to another way of paying.')
         collection.payment_mode = raw
+        from utils.group_sponsor import apply_sponsor_settings_from_form
+        ok, sponsor_error = apply_sponsor_settings_from_form(collection)
+        if not ok:
+            return False, sponsor_error
     elif not getattr(collection, 'payment_mode', None):
         collection.payment_mode = EACH_PAYS
 
@@ -205,6 +228,11 @@ def roster_item(collection, app=None):
 def roster_closed(collection) -> bool:
     """The organizer has placed the group's order, so the link stops taking sizes."""
     return _has_orders(collection)
+
+
+def _has_sponsor_requests(collection):
+    from models import SponsorSubmission
+    return SponsorSubmission.query.filter_by(collection_id=collection.id).count() > 0
 
 
 def _has_orders(collection):

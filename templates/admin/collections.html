@@ -41,7 +41,9 @@
                     </div>
                 </div>
                 <div class="collection-badges">
-                    {% if collection.payment_mode == 'organizer_pays' %}
+                    {% if collection.payment_mode == 'company_sponsored' %}
+                    <span class="badge badge-pay-organizer">Company sponsored</span>
+                    {% elif collection.payment_mode == 'organizer_pays' %}
                     <span class="badge badge-pay-organizer">Organizer pays</span>
                     {% else %}
                     <span class="badge badge-pay-each">Each person pays</span>

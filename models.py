@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
@@ -195,7 +196,14 @@ class Collection(db.Model):
     # How the group order is paid for:
     #   'each_pays'      - every shopper checks out and pays for their own item (default)
     #   'organizer_pays' - the link only collects name + size; the organizer pays once
+    #   'company_sponsored' - a company covers N items per employee; the organizer
+    #                      approves requests and pays one invoice before production
     payment_mode = db.Column(db.String(20), default='each_pays')
+    # Company-sponsored only
+    sponsor_items_per_person = db.Column(db.Integer, default=1)
+    sponsor_budget_per_person = db.Column(db.Float, nullable=True)  # per-item price cap; None = no cap
+    sponsor_message = db.Column(db.Text, nullable=True)
+    sponsor_submissions_locked = db.Column(db.Boolean, default=False)
     # Organizer-pays only: how many people the organizer expects to respond
     expected_count = db.Column(db.Integer)
 
@@ -267,6 +275,101 @@ class GroupRosterEntry(db.Model):
 
     def __repr__(self):
         return f'<GroupRosterEntry {self.full_name} {self.size}>'
+
+
+class SponsorSubmission(db.Model):
+    """One employee's request under a company-sponsored group order.
+
+    A staging record only: no Order exists (so nothing is produced) until the
+    company invoice is paid. items_json holds the full, repriced cart lines so
+    the real order can be built from them later.
+    """
+    __tablename__ = 'sponsor_submission'
+    id = db.Column(db.Integer, primary_key=True)
+    collection_id = db.Column(db.Integer, db.ForeignKey('collection.id'), nullable=False, index=True)
+
+    first_name = db.Column(db.String(80), nullable=False)
+    last_name = db.Column(db.String(80), nullable=False)
+    email = db.Column(db.String(120), nullable=False)
+    phone = db.Column(db.String(20))
+
+    fulfillment_method = db.Column(db.String(20), default='pickup')
+    shipping_recipient = db.Column(db.String(200))
+    shipping_street = db.Column(db.String(200))
+    shipping_city = db.Column(db.String(100))
+    shipping_state = db.Column(db.String(50))
+    shipping_zip = db.Column(db.String(20))
+
+    items_json = db.Column(db.Text, nullable=False)
+    sponsored_total = db.Column(db.Float, default=0.0)   # what the company owes (before tax)
+
+    # pending -> approved -> invoiced -> converted, or rejected
+    status = db.Column(db.String(20), default='pending', index=True)
+    rejection_reason = db.Column(db.Text)
+
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=True)
+    order = db.relationship('Order', foreign_keys=[order_id])
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    collection = db.relationship('Collection', backref=db.backref('sponsor_submissions', lazy='dynamic'))
+
+    @property
+    def full_name(self):
+        return f'{self.first_name} {self.last_name}'.strip()
+
+    @property
+    def items(self):
+        try:
+            return json.loads(self.items_json or '[]')
+        except (TypeError, ValueError):
+            return []
+
+    @property
+    def item_count(self):
+        return sum(int(i.get('quantity') or 1) for i in self.items)
+
+    def __repr__(self):
+        return f'<SponsorSubmission {self.full_name} collection={self.collection_id}>'
+
+
+class CompanyInvoice(db.Model):
+    """One consolidated bill to the company for the approved sponsored items."""
+    __tablename__ = 'company_invoice'
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_number = db.Column(db.String(50), unique=True, nullable=False)
+    collection_id = db.Column(db.Integer, db.ForeignKey('collection.id'), nullable=False, index=True)
+    submission_ids_json = db.Column(db.Text, nullable=False)
+
+    subtotal = db.Column(db.Float, nullable=False)
+    tax = db.Column(db.Float, default=0.0)
+    total = db.Column(db.Float, nullable=False)
+
+    payment_method = db.Column(db.String(50))   # stripe, cash, check, venmo, paypal
+    payment_status = db.Column(db.String(20), default='unpaid')  # unpaid, paid, voided
+    payment_intent_id = db.Column(db.String(200))
+    paid_at = db.Column(db.DateTime)
+    admin_notes = db.Column(db.Text)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    collection = db.relationship('Collection', backref=db.backref('company_invoices', lazy='dynamic'))
+
+    @staticmethod
+    def generate_invoice_number():
+        return f"INV-{datetime.utcnow().strftime('%Y%m%d')}-{secrets.token_hex(3).upper()}"
+
+    @property
+    def submission_ids(self):
+        try:
+            return json.loads(self.submission_ids_json or '[]')
+        except (TypeError, ValueError):
+            return []
+
+    def __repr__(self):
+        return f'<CompanyInvoice {self.invoice_number}>'
 
 
 class Organization(db.Model):

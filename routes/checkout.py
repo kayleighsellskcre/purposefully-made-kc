@@ -857,12 +857,16 @@ def index():
     if cart_error:
         flash(cart_error, 'error')
         return redirect(url_for('cart.index'))
+    from utils.group_sponsor import is_company_sponsored
+    if is_company_sponsored(collection):
+        # The company pays: the employee sends a request instead of a card.
+        return redirect(url_for('sponsored.checkout', slug=collection.slug))
     if reprice_cart(cart):
         flash('Some prices in your cart were updated to current pricing.', 'info')
     from utils.family_promo import get_session_family_promo
     family_promo_active = bool(get_session_family_promo())
     totals = calculate_totals(cart, family_promo=family_promo_active)
-    
+
     from utils.order_artwork import FRONT_PLACEMENTS, existing_image_url, mockup_urls
     enriched_cart = []
     from utils.group_orders import cart_collections
@@ -2142,6 +2146,17 @@ def stripe_webhook():
     if event_type == 'payment_intent.succeeded' and intent_id:
         order = Order.query.filter_by(payment_intent_id=intent_id).first()
         if order is None:
+            # A company paying its sponsored-apparel invoice (inside the verified event).
+            from models import CompanyInvoice
+            from utils.group_sponsor import mark_invoice_paid
+            invoice = CompanyInvoice.query.filter_by(payment_intent_id=intent_id).first()
+            if invoice is not None:
+                if invoice.payment_status == 'unpaid' and obj.get('amount') == int(round(invoice.total * 100)):
+                    mark_invoice_paid(invoice, 'stripe', intent_id)
+                elif invoice.payment_status == 'unpaid':
+                    current_app.logger.error('invoice %s paid with the wrong amount (%s)',
+                                             invoice.invoice_number, obj.get('amount'))
+                return jsonify({'received': True, 'invoice': invoice.invoice_number})
             # Paid, but no order row. Build it from the checkout saved just
             # before the card was charged.
             try:

@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Send your request - {{ collection.name }} - Purposefully Made KC{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+{% block content %}
+<div class="sp-page">
+    <div class="container">
+        <div class="sp-card">
+            <span class="sp-eyebrow">{{ collection.name }}</span>
+            <h1 class="sp-title">Almost done</h1>
+            <p class="sp-lead">{{ collection.sponsor_message or 'Your company is covering your apparel.' }} There is nothing to pay.</p>
+
+            <ul class="sp-items">
+                {% for item in cart %}
+                <li>
+                    <strong>{{ item.get('product_name') or 'Item' }}</strong>
+                    <span>{{ item.color }} · size {{ item.size }}{% if item.quantity and item.quantity > 1 %} · × {{ item.quantity }}{% endif %}</span>
+                </li>
+                {% endfor %}
+            </ul>
+
+            <form method="POST" action="{{ url_for('sponsored.checkout', slug=collection.slug) }}" class="sp-form" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="sp-hp" aria-hidden="true">
+                    <label for="website">Leave this field blank</label>
+                    <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+                </div>
+                {% if error %}<p class="sp-error" role="alert">{{ error }}</p>{% endif %}
+
+                <div class="sp-row">
+                    <div class="sp-field"><label for="first_name">First name</label>
+                        <input type="text" id="first_name" name="first_name" maxlength="80" autocomplete="given-name" required value="{{ form.get('first_name', '') }}"></div>
+                    <div class="sp-field"><label for="last_name">Last name</label>
+                        <input type="text" id="last_name" name="last_name" maxlength="80" autocomplete="family-name" required value="{{ form.get('last_name', '') }}"></div>
+                </div>
+                <div class="sp-field"><label for="email">Email</label>
+                    <input type="email" id="email" name="email" maxlength="120" autocomplete="email" required value="{{ form.get('email', '') }}"></div>
+                <div class="sp-field"><label for="phone">Phone <span class="sp-opt">Optional</span></label>
+                    <input type="tel" id="phone" name="phone" maxlength="20" autocomplete="tel" value="{{ form.get('phone', '') }}"></div>
+
+                <fieldset class="sp-field sp-fulfill">
+                    <legend>How would you like to get it?</legend>
+                    <label class="sp-choice"><input type="radio" name="fulfillment_method" value="pickup" {% if form.get('fulfillment_method') != 'shipping' %}checked{% endif %}> <span>Pick it up{% if collection.pickup_address %} · {{ collection.pickup_address }}{% endif %}</span></label>
+                    {% if collection.shipping_enabled %}
+                    <label class="sp-choice"><input type="radio" name="fulfillment_method" value="shipping" {% if form.get('fulfillment_method') == 'shipping' %}checked{% endif %}> <span>Ship it to me</span></label>
+                    {% endif %}
+                </fieldset>
+
+                <div id="spShip" hidden>
+                    <div class="sp-field"><label for="street">Street address</label>
+                        <input type="text" id="street" name="street" maxlength="200" autocomplete="address-line1" value="{{ form.get('street', '') }}"></div>
+                    <div class="sp-row">
+                        <div class="sp-field"><label for="city">City</label>
+                            <input type="text" id="city" name="city" maxlength="100" autocomplete="address-level2" value="{{ form.get('city', '') }}"></div>
+                        <div class="sp-field"><label for="state">State</label>
+                            <input type="text" id="state" name="state" maxlength="50" autocomplete="address-level1" value="{{ form.get('state', '') }}"></div>
+                    </div>
+                    <div class="sp-field"><label for="zip">ZIP code</label>
+                        <input type="text" id="zip" name="zip" maxlength="20" autocomplete="postal-code" inputmode="numeric" value="{{ form.get('zip', '') }}"></div>
+                </div>
+
+                <button type="submit" class="btn btn-primary sp-submit">Send my request</button>
+                <p class="sp-note">Your organizer will look it over. Nothing is printed until your company approves and pays.</p>
+                <p class="sp-note"><a href="{{ url_for('cart.index') }}">Change my item</a></p>
+            </form>
+        </div>
+    </div>
+</div>
+<style>
+.sp-page { padding: 2.5rem 0 4rem; min-height: 60vh; }
+.sp-card { max-width: 520px; margin: 0 auto; background:#fff; padding:2rem 1.75rem; border-radius:18px; box-shadow:0 8px 40px rgba(58,61,72,.08); border:1px solid rgba(232,208,177,.5); }
+.sp-eyebrow { display:block; font-size:.7rem; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:var(--terra-cotta); text-align:center; margin-bottom:.5rem; }
+.sp-title { font-family:var(--font-heading); font-size:1.6rem; text-align:center; margin:0 0 .5rem; }
+.sp-lead { text-align:center; color:var(--text-secondary); margin:0 0 1.25rem; }
+.sp-items { list-style:none; margin:0 0 1.5rem; padding:0; background:var(--ivory-silk,#faf7f2); border-radius:14px; }
+.sp-items li { display:flex; flex-direction:column; padding:.8rem 1rem; }
+.sp-items li + li { border-top:1px solid rgba(232,208,177,.6); }
+.sp-items span { color:var(--text-secondary); font-size:.9rem; }
+.sp-form { display:flex; flex-direction:column; gap:1rem; }
+.sp-row { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
+.sp-field { border:0; padding:0; margin:0; min-width:0; }
+.sp-field label, .sp-field legend { display:block; font-size:.85rem; font-weight:600; margin-bottom:.35rem; padding:0; }
+.sp-opt { font-weight:400; color:var(--text-secondary); }
+.sp-field input[type=text], .sp-field input[type=email], .sp-field input[type=tel] { width:100%; box-sizing:border-box; padding:.8rem .9rem; font-size:16px; border:1.5px solid rgba(232,208,177,.9); border-radius:10px; font-family:var(--font-primary); }
+.sp-field input:focus { outline:none; border-color:var(--terra-cotta); box-shadow:0 0 0 3px rgba(184,124,111,.15); }
+.sp-choice { display:flex; gap:.6rem; align-items:flex-start; font-weight:400 !important; padding:.65rem .8rem; border:1px solid rgba(232,208,177,.9); border-radius:10px; margin-bottom:.5rem; cursor:pointer; }
+.sp-choice:has(input:checked) { border-color:var(--terra-cotta); background:rgba(184,124,111,.08); }
+.sp-error { background:rgba(192,57,43,.08); border:1px solid rgba(192,57,43,.3); color:#8e2a1f; border-radius:10px; padding:.75rem 1rem; margin:0; }
+.sp-submit { width:100%; }
+.sp-note { text-align:center; color:var(--text-secondary); font-size:.85rem; margin:0; }
+.sp-hp { position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
+[hidden] { display:none !important; }
+@media (max-width:480px) { .sp-card { padding:1.5rem 1.1rem; } }
+</style>
+<script>
+(function () {
+    var ship = document.getElementById('spShip');
+    function sync() {
+        var picked = document.querySelector('input[name="fulfillment_method"]:checked');
+        ship.hidden = !(picked && picked.value === 'shipping');
+    }
+    document.querySelectorAll('input[name="fulfillment_method"]').forEach(function (r) { r.addEventListener('change', sync); });
+    sync();
+})();
+</script>
+{% endblock %}

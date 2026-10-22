@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Requests - {{ collection.name }} - Purposefully Made KC{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+{% block content %}
+<div class="sm-page">
+    <div class="container">
+        <p class="sm-back"><a href="{{ url_for('collection.share', slug=collection.slug) }}">&larr; Back to share page</a></p>
+        <h1 class="sm-title">{{ collection.name }}</h1>
+        <p class="sm-sub">Your company covers {{ collection.sponsor_items_per_person or 1 }} item{{ 's' if (collection.sponsor_items_per_person or 1) != 1 }} per person. Approve each request, then pay one invoice. <strong>Nothing is printed until the invoice is paid.</strong></p>
+
+        <div class="sm-stats">
+            <div><b>{{ counts.pending }}</b><span>Waiting for you</span></div>
+            <div><b>{{ counts.approved }}</b><span>Approved</span></div>
+            <div><b>{{ counts.invoiced + counts.converted }}</b><span>On an invoice</span></div>
+            <div><b>{{ counts.rejected }}</b><span>Declined</span></div>
+        </div>
+
+        {% if invoices %}
+        <h2 class="sm-h2">Invoices</h2>
+        {% for inv in invoices %}
+        <div class="sm-card">
+            <div class="sm-inv-head">
+                <div>
+                    <strong>{{ inv.invoice_number }}</strong>
+                    <span class="sm-pill {{ 'ok' if inv.payment_status == 'paid' else 'due' }}">{{ 'Paid' if inv.payment_status == 'paid' else 'Waiting for payment' }}</span>
+                    <div class="sm-muted">{{ inv.submission_ids|length }} item request{{ 's' if inv.submission_ids|length != 1 }} · subtotal ${{ '%.2f'|format(inv.subtotal) }} + tax ${{ '%.2f'|format(inv.tax) }}</div>
+                </div>
+                <div class="sm-total">${{ '%.2f'|format(inv.total) }}</div>
+            </div>
+            <div class="sm-actions">
+                <a class="btn btn-outline btn-sm" href="{{ url_for('sponsored.invoice_view', slug=collection.slug, invoice_id=inv.id) }}" target="_blank">View / print</a>
+                {% if inv.payment_status == 'unpaid' %}
+                    {% if stripe_ready %}<a class="btn btn-primary btn-sm" href="{{ url_for('sponsored.invoice_pay', slug=collection.slug, invoice_id=inv.id) }}">Pay online</a>{% endif %}
+                    {% if is_admin %}
+                    <form method="POST" action="{{ url_for('sponsored.invoice_mark_paid', slug=collection.slug, invoice_id=inv.id) }}" class="sm-inline" onsubmit="return confirm('Mark this invoice paid and send these orders to production?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <select name="method" aria-label="How was it paid">
+                            {% for m in manual_methods %}<option value="{{ m }}">{{ m|capitalize }}</option>{% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-outline btn-sm">Mark paid</button>
+                    </form>
+                    {% elif not stripe_ready %}
+                    <span class="sm-muted">To pay this invoice, please call us.</span>
+                    {% endif %}
+                {% else %}
+                    <span class="sm-muted">Paid {{ inv.paid_at.strftime('%b %d, %Y') if inv.paid_at }}{% if inv.payment_method %} by {{ inv.payment_method }}{% endif %}. Orders are in production.</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <h2 class="sm-h2">Requests</h2>
+        {% if not submissions %}
+        <p class="sm-muted">No requests yet. Share your link and they will show up here.</p>
+        {% endif %}
+        {% for s in submissions %}
+        <div class="sm-card">
+            <div class="sm-inv-head">
+                <div>
+                    <strong>{{ s.full_name }}</strong>
+                    <span class="sm-pill {{ {'pending':'due','approved':'ok','invoiced':'ok','converted':'ok','rejected':'no'}.get(s.status, '') }}">
+                        {{ {'pending':'Waiting for you','approved':'Approved','invoiced':'On invoice','converted':'In production','rejected':'Declined'}.get(s.status, s.status) }}
+                    </span>
+                    <div class="sm-muted">{{ s.email }}{% if s.phone %} · {{ s.phone }}{% endif %} · {{ 'Ship' if s.fulfillment_method == 'shipping' else 'Pickup' }}</div>
+                    <div>{% for item in s.items %}{{ item.get('product_name') or 'Item' }}, {{ item.color }}, size {{ item.size }}{% if item.quantity and item.quantity > 1 %} × {{ item.quantity }}{% endif %}{% if not loop.last %}; {% endif %}{% endfor %}</div>
+                    {% if s.rejection_reason %}<div class="sm-muted">Reason: {{ s.rejection_reason }}</div>{% endif %}
+                </div>
+                <div class="sm-total">${{ '%.2f'|format(s.sponsored_total) }}</div>
+            </div>
+            {% if s.status in ('pending', 'approved', 'rejected') %}
+            <div class="sm-actions">
+                {% if s.status != 'approved' %}
+                <form method="POST" action="{{ url_for('sponsored.review', slug=collection.slug) }}" class="sm-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="submission_id" value="{{ s.id }}">
+                    <input type="hidden" name="action" value="approve">
+                    <button type="submit" class="btn btn-primary btn-sm">Approve</button>
+                </form>
+                {% endif %}
+                {% if s.status != 'rejected' %}
+                <form method="POST" action="{{ url_for('sponsored.review', slug=collection.slug) }}" class="sm-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="submission_id" value="{{ s.id }}">
+                    <input type="hidden" name="action" value="reject">
+                    <input type="text" name="reason" maxlength="500" placeholder="Reason (optional)" aria-label="Reason for declining">
+                    <button type="submit" class="btn btn-outline btn-sm">Decline</button>
+                </form>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        {% if counts.approved or counts.pending %}
+        <form method="POST" action="{{ url_for('sponsored.make_invoice', slug=collection.slug) }}" class="sm-make" onsubmit="return confirm('Close this group order to new requests and create the invoice for the {{ counts.approved }} approved request(s)?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-primary" {% if not counts.approved %}disabled{% endif %}>Close requests &amp; create invoice</button>
+            <p class="sm-muted">{% if counts.pending %}Answer the {{ counts.pending }} waiting request{{ 's' if counts.pending != 1 }} first. {% endif %}This stops new requests and bills the company for every approved one.</p>
+        </form>
+        {% endif %}
+    </div>
+</div>
+<style>
+.sm-page { padding:2rem 0 4rem; }
+.sm-page .container { max-width:820px; }
+.sm-back { margin:0 0 .5rem; font-size:.9rem; }
+.sm-title { font-family:var(--font-heading); margin:0 0 .35rem; }
+.sm-sub { color:var(--text-secondary); margin:0 0 1.25rem; }
+.sm-h2 { font-family:var(--font-heading); font-size:1.2rem; margin:1.75rem 0 .75rem; }
+.sm-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:.6rem; }
+.sm-stats div { background:#fff; border:1px solid rgba(232,208,177,.6); border-radius:12px; padding:.75rem; text-align:center; }
+.sm-stats b { display:block; font-size:1.5rem; }
+.sm-stats span { font-size:.78rem; color:var(--text-secondary); }
+.sm-card { background:#fff; border:1px solid rgba(232,208,177,.6); border-radius:14px; padding:1rem 1.1rem; margin-bottom:.75rem; }
+.sm-inv-head { display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; }
+.sm-total { font-weight:700; white-space:nowrap; }
+.sm-muted { color:var(--text-secondary); font-size:.88rem; }
+.sm-pill { display:inline-block; font-size:.7rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:.15rem .55rem; border-radius:20px; margin-left:.4rem; background:rgba(58,61,72,.08); color:#555; }
+.sm-pill.ok { background:rgba(39,174,96,.12); color:#1e8449; }
+.sm-pill.due { background:rgba(184,124,111,.15); color:#8a5a50; }
+.sm-pill.no { background:rgba(192,57,43,.1); color:#c0392b; }
+.sm-actions { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; margin-top:.75rem; }
+.sm-inline { display:flex; gap:.4rem; align-items:center; margin:0; }
+.sm-inline input[type=text], .sm-inline select { padding:.4rem .6rem; border:1px solid rgba(232,208,177,.9); border-radius:8px; font-size:.9rem; }
+.sm-make { margin-top:1.5rem; text-align:center; }
+@media (max-width:560px) { .sm-stats { grid-template-columns:repeat(2,1fr); } .sm-inv-head { flex-direction:column; } }
+</style>
+{% endblock %}

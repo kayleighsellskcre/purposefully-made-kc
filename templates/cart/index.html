@@ -125,7 +125,7 @@
                 {% endif %}
                 
                 <a href="{{ url_for('checkout.index') }}" class="btn {% if fan_wear_url or org_url %}btn-outline{% else %}btn-primary{% endif %} btn-block">
-                    Proceed to Checkout
+                    {% if active_group_order and active_group_order.payment_mode == 'company_sponsored' %}Send my request{% else %}Proceed to Checkout{% endif %}
                 </a>
                 
                 <a href="{{ url_for('collection.view', slug=active_group_order.slug) if active_group_order else url_for('shop.index') }}" class="btn btn-outline btn-block">

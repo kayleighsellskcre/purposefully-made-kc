@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Request received - {{ collection.name }} - Purposefully Made KC{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+{% block content %}
+<div style="padding:2.5rem 0 4rem;min-height:60vh;">
+    <div class="container">
+        <div style="max-width:520px;margin:0 auto;background:#fff;padding:2rem 1.75rem;border-radius:18px;box-shadow:0 8px 40px rgba(58,61,72,.08);border:1px solid rgba(232,208,177,.5);text-align:center;">
+            <span style="display:block;font-size:.7rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--terra-cotta);margin-bottom:.5rem;">{{ collection.name }}</span>
+            <h1 style="font-family:var(--font-heading);font-size:1.6rem;margin:0 0 .75rem;">You're all set, {{ sub.first_name }}!</h1>
+            <p style="color:var(--text-secondary);margin:0 0 1.25rem;">We received your request. There is nothing to pay.</p>
+            <ul style="list-style:none;margin:0 0 1.25rem;padding:0;background:var(--ivory-silk,#faf7f2);border-radius:14px;text-align:left;">
+                {% for item in sub.items %}
+                <li style="padding:.8rem 1rem;{% if not loop.first %}border-top:1px solid rgba(232,208,177,.6);{% endif %}">
+                    <strong>{{ item.get('product_name') or 'Item' }}</strong><br>
+                    <span style="color:var(--text-secondary);font-size:.9rem;">{{ item.color }} · size {{ item.size }}{% if item.quantity and item.quantity > 1 %} · × {{ item.quantity }}{% endif %}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            <p style="margin:0;">Your organizer will review your request. Your item is printed once your company has approved and paid.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

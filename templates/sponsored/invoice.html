@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Invoice {{ invoice.invoice_number }} - Purposefully Made KC{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+{% block content %}
+<div style="padding:2rem 0 4rem;">
+    <div class="container" style="max-width:760px;background:#fff;border:1px solid rgba(232,208,177,.6);border-radius:14px;padding:2rem;">
+        <h1 style="font-family:var(--font-heading);margin:0;">Invoice {{ invoice.invoice_number }}</h1>
+        <p style="color:var(--text-secondary);margin:.25rem 0 1.5rem;">{{ collection.name }} · {{ invoice.created_at.strftime('%B %d, %Y') }} · <strong>{{ 'PAID' if invoice.payment_status == 'paid' else 'DUE' }}</strong></p>
+        <table style="width:100%;border-collapse:collapse;">
+            <thead><tr style="text-align:left;border-bottom:2px solid rgba(232,208,177,.9);"><th style="padding:.4rem 0;">Who</th><th>Item</th><th style="text-align:right;">Amount</th></tr></thead>
+            <tbody>
+            {% for s in submissions %}
+                <tr style="border-bottom:1px solid rgba(232,208,177,.5);">
+                    <td style="padding:.5rem 0;">{{ s.full_name }}</td>
+                    <td>{% for item in s.items %}{{ item.get('product_name') or 'Item' }}, {{ item.color }}, {{ item.size }}{% if item.quantity and item.quantity > 1 %} × {{ item.quantity }}{% endif %}{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
+                    <td style="text-align:right;">${{ '%.2f'|format(s.sponsored_total) }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <div style="text-align:right;margin-top:1rem;line-height:1.7;">
+            Subtotal ${{ '%.2f'|format(invoice.subtotal) }}<br>
+            Sales tax ${{ '%.2f'|format(invoice.tax) }}<br>
+            <strong style="font-size:1.2rem;">Total ${{ '%.2f'|format(invoice.total) }}</strong>
+        </div>
+        <p style="margin-top:1.5rem;"><button type="button" class="btn btn-outline btn-sm" onclick="window.print()">Print</button></p>
+    </div>
+</div>
+{% endblock %}

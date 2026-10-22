@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Pay invoice {{ invoice.invoice_number }} - Purposefully Made KC{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+{% block content %}
+<div style="padding:2.5rem 0 4rem;min-height:60vh;">
+    <div class="container">
+        <div style="max-width:520px;margin:0 auto;background:#fff;padding:2rem 1.75rem;border-radius:18px;box-shadow:0 8px 40px rgba(58,61,72,.08);border:1px solid rgba(232,208,177,.5);">
+            <h1 style="font-family:var(--font-heading);font-size:1.5rem;text-align:center;margin:0 0 .25rem;">Pay your invoice</h1>
+            <p style="text-align:center;color:var(--text-secondary);margin:0 0 1.5rem;">{{ collection.name }} · {{ invoice.invoice_number }}<br><strong style="font-size:1.3rem;color:var(--text-primary);">${{ '%.2f'|format(invoice.total) }}</strong></p>
+            <form id="payForm">
+                <div id="payElement"></div>
+                <p id="payError" role="alert" style="color:#8e2a1f;margin:.75rem 0 0;" hidden></p>
+                <button type="submit" id="payBtn" class="btn btn-primary" style="width:100%;margin-top:1rem;">Pay ${{ '%.2f'|format(invoice.total) }}</button>
+                <p style="text-align:center;color:var(--text-secondary);font-size:.85rem;margin:.75rem 0 0;">Your card is handled securely by Stripe. Your items go into production once the payment goes through.</p>
+            </form>
+        </div>
+    </div>
+</div>
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+(function () {
+    var stripe = Stripe({{ stripe_public_key|tojson }});
+    var elements = stripe.elements({ clientSecret: {{ client_secret|tojson }} });
+    elements.create('payment').mount('#payElement');
+    var form = document.getElementById('payForm');
+    var btn = document.getElementById('payBtn');
+    var err = document.getElementById('payError');
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        btn.disabled = true;
+        err.hidden = true;
+        stripe.confirmPayment({ elements: elements, confirmParams: { return_url: {{ return_url|tojson }} } })
+            .then(function (result) {
+                if (result.error) {
+                    err.textContent = result.error.message || 'That payment did not go through. Please check your card and try again.';
+                    err.hidden = false;
+                    btn.disabled = false;
+                }
+            });
+    });
+})();
+</script>
+{% endblock %}

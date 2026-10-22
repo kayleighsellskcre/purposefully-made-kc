@@ -13,7 +13,12 @@
                 <button type="button" class="btn btn-primary" onclick="copyLink(this)">Copy Link</button>
             </div>
 
-            {% if organizer_pays %}
+            {% if collection.payment_mode == 'company_sponsored' %}
+            <p class="share-hint">Anyone with this link can pick their item. Your company covers it, so nobody is asked to pay. You approve each request, then pay one invoice.</p>
+            {% if can_manage %}
+            <p style="text-align:center;margin:1rem 0;"><a href="{{ url_for('sponsored.manage', slug=collection.slug) }}" class="btn btn-primary">Review requests &amp; invoice</a></p>
+            {% endif %}
+            {% elif organizer_pays %}
             <p class="share-hint">Anyone with this link can send in their name and size. Nobody is asked to pay. You pay once for the whole group when you're ready.</p>
             {% else %}
             <p class="share-hint">Anyone with this link can view and order from this group order.</p>

@@ -230,6 +230,11 @@ def create_app(config_class=Config):
                     # Organizer-pays group orders: payment mode + expected headcount
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(20) DEFAULT 'each_pays'",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS expected_count INTEGER",
+                    # Company-sponsored group orders
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS sponsor_items_per_person INTEGER DEFAULT 1",
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS sponsor_budget_per_person FLOAT",
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS sponsor_message TEXT",
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS sponsor_submissions_locked BOOLEAN DEFAULT FALSE",
                     # product.spec_sheet_url — SanMar CDN PDF link added during Bella+Canvas CSV import
                     "ALTER TABLE product ADD COLUMN IF NOT EXISTS spec_sheet_url VARCHAR(500)",
                     # Softness rating + short fabric blurb (seeded by style number)
@@ -485,6 +490,7 @@ def create_app(config_class=Config):
     from routes.custom_request import custom_request_bp
     from routes.favorites import favorites_bp
     from routes.org import org_bp
+    from routes.sponsored import sponsored_bp
     
     # Serve uploads (mockups, designs) - register FIRST so /uploads/mockups/... works
     @app.route('/uploads/<path:path>')
@@ -516,6 +522,7 @@ def create_app(config_class=Config):
     app.register_blueprint(api_bp)
     app.register_blueprint(favorites_bp)
     app.register_blueprint(org_bp)
+    app.register_blueprint(sponsored_bp)
 
     # ── CSRF exemptions ──────────────────────────────────────────────────────
     # Stripe / PayPal webhooks POST with their own signatures, not our CSRF token.
