@@ -149,7 +149,7 @@ def test_employee_pays_for_extras_before_the_request_is_sent(seed, app, monkeypa
 
     back = guest.get(f'/c/{slug}/sponsored/paid')
     assert back.status_code == 302 and back.headers['Location'].endswith('/sponsored/confirm')
-    assert _status_of(app, 'ava@example.com') == 'pending'
+    assert _status_of(app, 'ava@example.com') == 'approved'          # counted automatically
     assert 'Ava Lopez' in organizer.get(f'/c/{slug}/manage-sponsored').get_data(as_text=True)
     assert _submission_count(app)[1] == 0
     html = guest.get(f'/c/{slug}/sponsored/confirm').get_data(as_text=True)
@@ -183,10 +183,10 @@ def test_webhook_finishes_an_employee_payment_if_they_closed_the_tab(seed, app, 
     for _ in range(2):                                      # Stripe retries
         resp = hook.post('/checkout/stripe-webhook', data=b'{}', headers={'Stripe-Signature': 'x'})
         assert resp.get_json()['sponsor_request']
-    assert _status_of(app, 'ava@example.com') == 'pending'
+    assert _status_of(app, 'ava@example.com') == 'approved'
 
 
-def test_declining_a_paid_request_refunds_the_employee(seed, app, monkeypatch):
+def test_removing_a_paid_request_refunds_the_employee(seed, app, monkeypatch):
     guest = _guest(app)
     slug = _setup(app, seed, items=1)
     refunds = []
@@ -200,7 +200,7 @@ def test_declining_a_paid_request_refunds_the_employee(seed, app, monkeypatch):
                    data={'submission_id': sub_id, 'action': 'reject', 'reason': 'Not on staff'})
     assert len(refunds) == 1 and refunds[0]['payment_intent'] == 'pi_emp_1'
     assert _status_of(app, 'ava@example.com') == 'rejected'
-    # A refunded request cannot be quietly approved again.
+    # A refunded request cannot be quietly put back.
     organizer.post(f'/c/{slug}/manage-sponsored/review', data={'submission_id': sub_id, 'action': 'approve'})
     assert _status_of(app, 'ava@example.com') == 'rejected'
     # Declining twice does not refund twice.
@@ -289,11 +289,8 @@ def test_full_flow_nothing_is_made_until_the_invoice_is_paid(app, seed):
     slug = _setup(app, seed)
     sub_id = _make_pending(guest, seed, app, slug)
 
-    # Organizer: cannot invoice while a request is waiting, then approves.
-    resp = customer_client.post(f'/c/{slug}/manage-sponsored/invoice', follow_redirects=True)
-    assert 'still waiting' in resp.get_data(as_text=True)
-    customer_client.post(f'/c/{slug}/manage-sponsored/review',
-                         data={'submission_id': sub_id, 'action': 'approve'})
+    # No approval step: the request is already counted, so the organizer just invoices.
+    assert _status_of(app, 'ava@example.com') == 'approved'
     customer_client.post(f'/c/{slug}/manage-sponsored/invoice')
 
     inv = _the_invoice(app)
@@ -329,14 +326,13 @@ def test_full_flow_nothing_is_made_until_the_invoice_is_paid(app, seed):
     _in_db(app, check)
 
 
-def test_declined_request_is_not_invoiced(app, seed):
+def test_removed_request_is_not_invoiced(app, seed):
     guest = _guest(app)
     customer_client = _login_as(app, CUSTOMER_EMAIL)
     slug = _setup(app, seed)
     keep = _make_pending(guest, seed, app, slug, email='keep@example.com')
     other = app.test_client()
     skip = _make_pending(other, seed, app, slug, email='skip@example.com')
-    customer_client.post(f'/c/{slug}/manage-sponsored/review', data={'submission_id': keep, 'action': 'approve'})
     customer_client.post(f'/c/{slug}/manage-sponsored/review',
                          data={'submission_id': skip, 'action': 'reject', 'reason': 'Not on staff'})
     customer_client.post(f'/c/{slug}/manage-sponsored/invoice')
@@ -350,7 +346,6 @@ def test_stripe_webhook_pays_the_invoice(app, seed, monkeypatch):
     import stripe
     slug = _setup(app, seed)
     sub_id = _make_pending(guest, seed, app, slug)
-    customer_client.post(f'/c/{slug}/manage-sponsored/review', data={'submission_id': sub_id, 'action': 'approve'})
     customer_client.post(f'/c/{slug}/manage-sponsored/invoice')
 
     def tag():
@@ -382,3 +377,43 @@ def test_edit_form_offers_the_company_option(seed, app):
     html = admin_client.get(f'/admin/collections/{seed["collection_id"]}/edit').get_data(as_text=True)
     assert 'A company is covering it' in html
     assert 'name="sponsor_items_per_person"' in html
+
+
+# ── Emails ───────────────────────────────────────────────────────────────────
+
+def _subjects(outbox):
+    return [(m.subject, list(m.recipients)) for m in outbox]
+
+
+def test_emails_follow_a_request_from_start_to_production(seed, app, outbox):
+    guest = _guest(app)
+    slug = _setup(app, seed)
+    _fill_cart(guest, seed)
+    _request(guest, slug, email='ava@example.com')
+    assert any("You're in" in s and r == ['ava@example.com'] for s, r in _subjects(outbox))
+
+    sub_id = _in_db(app, lambda: SponsorSubmission.query.first().id)
+    organizer = _login_as(app, CUSTOMER_EMAIL)
+    organizer.post(f'/c/{slug}/manage-sponsored/invoice')
+    before = len(outbox)
+    inv = _the_invoice(app)
+    _owner_client(app).post(f'/c/{slug}/manage-sponsored/invoice/{inv["id"]}/mark-paid', data={'method': 'check'})
+    sent = _subjects(outbox)[before:]
+    assert any('going into production' in s and r == ['ava@example.com'] for s, r in sent)
+    assert any('Company invoice paid' in s and app.config['ADMIN_EMAIL'] in r for s, r in sent)
+
+
+def test_declined_email_mentions_the_refund(seed, app, outbox, monkeypatch):
+    guest = _guest(app)
+    slug = _setup(app, seed, items=1)
+    _fake_stripe(monkeypatch, charge_cents=1971, refunds=[])
+    _fill_cart(guest, seed, qty=2)
+    _request(guest, slug)
+    guest.get(f'/c/{slug}/sponsored/paid')
+    sub_id = _in_db(app, lambda: SponsorSubmission.query.first().id)
+    _login_as(app, CUSTOMER_EMAIL).post(
+        f'/c/{slug}/manage-sponsored/review',
+        data={'submission_id': sub_id, 'action': 'reject', 'reason': 'Not on staff'})
+    declined = [m for m in outbox if m.subject.startswith('Update on your request')]
+    assert len(declined) == 1
+    assert 'refunded' in declined[0].body and 'Not on staff' in declined[0].body

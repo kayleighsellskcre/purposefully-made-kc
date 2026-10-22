@@ -1,10 +1,10 @@
 """Company-sponsored group orders: employee requests, organizer dashboard, invoice.
 
 URL map (all under /c/<slug>):
-  GET/POST /sponsored/checkout             employee reviews cart and sends a request
+  GET/POST /sponsored/checkout             employee checks their cart and sends a request
   GET      /sponsored/confirm              "request received" page
   GET      /manage-sponsored               organizer dashboard
-  POST     /manage-sponsored/review        approve / decline one request
+  POST     /manage-sponsored/review        remove (or put back) one request
   POST     /manage-sponsored/invoice       lock the link and create the invoice
   GET      /manage-sponsored/invoice/<id>  printable invoice
   GET      /manage-sponsored/invoice/<id>/pay     pay online (card)
@@ -139,7 +139,7 @@ def checkout(slug):
         items_json=json.dumps(lines, default=str),
         sponsored_total=company_total,
         overage_total=overage_total, overage_tax=tax, overage_shipping=shipping,
-        status='awaiting_payment' if pay_now else 'pending',
+        status='awaiting_payment' if pay_now else 'approved',
     )
     db.session.add(sub)
     db.session.commit()
@@ -149,6 +149,8 @@ def checkout(slug):
     if not pay_now:
         save_cart([])
         session.pop('collection_id', None)
+        from utils import sponsor_emails
+        sponsor_emails.request_received(sub)
         return redirect(url_for('sponsored.confirm', slug=slug))
 
     try:
@@ -172,7 +174,7 @@ def checkout(slug):
         amount=charge, client_secret=intent.client_secret,
         stripe_public_key=current_app.config.get('STRIPE_PUBLIC_KEY'),
         return_url=url_for('sponsored.paid', slug=slug, _external=True),
-        footnote='Your card is handled securely by Stripe. If your organizer declines your '
+        footnote='Your card is handled securely by Stripe. If your organizer removes your '
                  'request, you are refunded automatically.',
         back_url=url_for('cart.index'),
     )
@@ -241,13 +243,15 @@ def review(slug):
         flash('That request is already on an invoice, so it cannot change.', 'error')
     elif action == 'approve':
         if sub.status == 'rejected' and sub.overage_refunded_at:
-            flash('That request was declined and refunded. Ask them to send a new one.', 'error')
+            flash('That request was removed and refunded. Ask them to send a new one.', 'error')
             return redirect(url_for('sponsored.manage', slug=slug))
         sub.status = 'approved'
         sub.rejection_reason = None
         db.session.commit()
-        flash(f'Approved {sub.full_name}.', 'success')
+        flash(f'Put {sub.full_name} back on the list.', 'success')
     elif action == 'reject':
+        newly = sub.status != 'rejected'
+        was_refunded = bool(sub.overage_refunded_at)
         ok, refund_error = refund_overage(sub)      # give back any card payment first
         if not ok:
             flash(refund_error, 'error')
@@ -255,7 +259,10 @@ def review(slug):
         sub.status = 'rejected'
         sub.rejection_reason = _clean(request.form.get('reason'), 500) or None
         db.session.commit()
-        flash(f'Declined {sub.full_name}.' + (' Their card payment was refunded.' if sub.overage_refunded_at else ''),
+        if newly:
+            from utils import sponsor_emails
+            sponsor_emails.declined(sub, refunded=bool(sub.overage_refunded_at) and not was_refunded)
+        flash(f'Removed {sub.full_name}.' + (' Their card payment was refunded.' if sub.overage_refunded_at else ''),
               'success')
     return redirect(url_for('sponsored.manage', slug=slug))
 

@@ -71,7 +71,7 @@
                 </div>
 
                 <button type="submit" class="btn btn-primary sp-submit">{% if overage_total %}Continue to payment{% else %}Send my request{% endif %}</button>
-                <p class="sp-note">Your organizer will look it over. Nothing is printed until your company approves and pays.{% if overage_total %} If your request is declined, you are refunded.{% endif %}</p>
+                <p class="sp-note">Nothing is printed until your company's invoice is paid.{% if overage_total %} If your organizer removes your request, you are refunded.{% endif %}</p>
                 <p class="sp-note"><a href="{{ url_for('cart.index') }}">Change my items</a></p>
             </form>
         </div>

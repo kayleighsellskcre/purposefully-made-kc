@@ -6,13 +6,14 @@
     <div class="container">
         <p class="sm-back"><a href="{{ url_for('collection.share', slug=collection.slug) }}">&larr; Back to share page</a></p>
         <h1 class="sm-title">{{ collection.name }}</h1>
-        <p class="sm-sub">Your company covers {{ collection.sponsor_items_per_person or 1 }} item{{ 's' if (collection.sponsor_items_per_person or 1) != 1 }} per person. Approve each request, then pay one invoice. <strong>Nothing is printed until the invoice is paid.</strong></p>
+        <p class="sm-sub">Your company covers {{ collection.sponsor_items_per_person or 1 }} item{{ 's' if (collection.sponsor_items_per_person or 1) != 1 }} per person. Requests are counted automatically. When everyone has answered, create one invoice. <strong>Nothing is printed until the invoice is paid.</strong></p>
 
         <div class="sm-stats">
-            <div><b>{{ counts.pending }}</b><span>Waiting for you</span></div>
-            <div><b>{{ counts.approved }}</b><span>Approved</span></div>
+            {% set ready = counts.approved + counts.pending %}
+            <div><b>{{ ready + counts.invoiced + counts.converted }}</b><span>Requests</span></div>
+            <div><b>{{ ready }}</b><span>Not invoiced yet</span></div>
             <div><b>{{ counts.invoiced + counts.converted }}</b><span>On an invoice</span></div>
-            <div><b>{{ counts.rejected }}</b><span>Declined</span></div>
+            <div><b>{{ counts.rejected }}</b><span>Removed</span></div>
         </div>
 
         {% if invoices %}
@@ -60,7 +61,7 @@
                 <div>
                     <strong>{{ s.full_name }}</strong>
                     <span class="sm-pill {{ {'pending':'due','approved':'ok','invoiced':'ok','converted':'ok','rejected':'no'}.get(s.status, '') }}">
-                        {{ {'pending':'Waiting for you','approved':'Approved','invoiced':'On invoice','converted':'In production','rejected':'Declined'}.get(s.status, s.status) }}
+                        {{ {'pending':'Counted','approved':'Counted','invoiced':'On invoice','converted':'In production','rejected':'Removed'}.get(s.status, s.status) }}
                     </span>
                     <div class="sm-muted">{{ s.email }}{% if s.phone %} · {{ s.phone }}{% endif %} · {{ 'Ship' if s.fulfillment_method == 'shipping' else 'Pickup' }}</div>
                     <div>{% for item in s.items %}{{ item.get('product_name') or 'Item' }}, {{ item.color }}, size {{ item.size }}{% if item.quantity and item.quantity > 1 %} × {{ item.quantity }}{% endif %}{% if not loop.last %}; {% endif %}{% endfor %}</div>
@@ -71,12 +72,12 @@
             </div>
             {% if s.status in ('pending', 'approved', 'rejected') %}
             <div class="sm-actions">
-                {% if s.status != 'approved' %}
+                {% if s.status == 'rejected' and not s.overage_refunded_at %}
                 <form method="POST" action="{{ url_for('sponsored.review', slug=collection.slug) }}" class="sm-inline">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="submission_id" value="{{ s.id }}">
                     <input type="hidden" name="action" value="approve">
-                    <button type="submit" class="btn btn-primary btn-sm">Approve</button>
+                    <button type="submit" class="btn btn-outline btn-sm">Put back</button>
                 </form>
                 {% endif %}
                 {% if s.status != 'rejected' %}
@@ -84,8 +85,8 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="submission_id" value="{{ s.id }}">
                     <input type="hidden" name="action" value="reject">
-                    <input type="text" name="reason" maxlength="500" placeholder="Reason (optional)" aria-label="Reason for declining">
-                    <button type="submit" class="btn btn-outline btn-sm">Decline</button>
+                    <input type="text" name="reason" maxlength="500" placeholder="Reason (optional)" aria-label="Reason for removing">
+                    <button type="submit" class="btn btn-outline btn-sm" onclick="return confirm('Remove this request from the list?{% if s.overage_paid_at %} Their card payment will be refunded.{% endif %}');">Remove</button>
                 </form>
                 {% endif %}
             </div>
@@ -93,11 +94,11 @@
         </div>
         {% endfor %}
 
-        {% if counts.approved or counts.pending %}
-        <form method="POST" action="{{ url_for('sponsored.make_invoice', slug=collection.slug) }}" class="sm-make" onsubmit="return confirm('Close this group order to new requests and create the invoice for the {{ counts.approved }} approved request(s)?');">
+        {% if ready %}
+        <form method="POST" action="{{ url_for('sponsored.make_invoice', slug=collection.slug) }}" class="sm-make" onsubmit="return confirm('Close this group order to new requests and create the invoice for the {{ ready }} request(s) on the list?');">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-primary" {% if not counts.approved %}disabled{% endif %}>Close requests &amp; create invoice</button>
-            <p class="sm-muted">{% if counts.pending %}Answer the {{ counts.pending }} waiting request{{ 's' if counts.pending != 1 }} first. {% endif %}This stops new requests and bills the company for every approved one.</p>
+            <button type="submit" class="btn btn-primary">Close requests &amp; create invoice</button>
+            <p class="sm-muted">This stops new requests and bills the company for everyone on the list.</p>
         </form>
         {% endif %}
     </div>

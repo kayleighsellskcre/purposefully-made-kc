@@ -4,7 +4,9 @@ Employees shop the normal group storefront and fill the normal cart. At
 checkout they send a request. The company covers the first N items (up to an
 optional per-item price cap); anything extra, plus tax on it and shipping if
 they want it shipped, the employee pays by card right then. If the organizer
-later declines the request, that card payment is refunded. The organizer approves
+later removes the request, that card payment is refunded. Requests are counted
+automatically from the group order's settings (items per person, price limit): there
+is no approval step. The organizer only
 requests and pays one invoice. Nothing is produced until that invoice is paid:
 a SponsorSubmission is only a saved request, and the real Order rows are built
 by convert_invoice_to_orders() once the money is in.
@@ -118,9 +120,11 @@ def finalize_overage_payment(sub, intent_id, amount_cents):
     if sub.overage_payment_intent_id != intent_id or amount_cents != int(round(sub.overage_charge * 100)):
         current_app.logger.error('sponsor request %s paid with a mismatched intent or amount', sub.id)
         return False
-    sub.status = 'pending'
+    sub.status = 'approved'          # counted automatically: no approval step
     sub.overage_paid_at = datetime.utcnow()
     db.session.commit()
+    from utils import sponsor_emails
+    sponsor_emails.request_received(sub)
     return True
 
 
@@ -163,18 +167,13 @@ def submission_summary(collection):
 
 
 def create_invoice(collection):
-    """Invoice every approved request and lock the link. Returns (invoice, error)."""
+    """Invoice every request and lock the link. Returns (invoice, error)."""
     from models import CompanyInvoice, SponsorSubmission, db
 
     rows = SponsorSubmission.query.filter_by(collection_id=collection.id).all()
-    pending = [r for r in rows if r.status == 'pending']
-    approved = [r for r in rows if r.status == 'approved']
-    if pending:
-        n = len(pending)
-        return None, (f'{n} request{"s are" if n != 1 else " is"} still waiting for your '
-                      'answer. Approve or decline each one first.')
+    approved = [r for r in rows if r.status in ('approved', 'pending')]   # 'pending' = older rows
     if not approved:
-        return None, 'There are no approved requests to invoice yet.'
+        return None, 'No requests have come in yet, so there is nothing to invoice.'
 
     subtotal = round(sum(r.sponsored_total or 0 for r in approved), 2)
     tax = round(sum(tax_for(collection, r.sponsored_total) for r in approved), 2)
@@ -221,6 +220,7 @@ def convert_invoice_to_orders(invoice):
 
     if invoice.payment_status != 'paid':
         return []
+    from utils import sponsor_emails
     made = []
     for sub_id in invoice.submission_ids:
         sub = db.session.get(SponsorSubmission, sub_id)
@@ -266,7 +266,10 @@ def convert_invoice_to_orders(invoice):
             sub.order_id = order.id
             db.session.commit()
             made.append(order)
+            sponsor_emails.in_production(sub, order)
         except Exception:
             db.session.rollback()
             current_app.logger.exception('sponsor submission %s could not become an order', sub_id)
+    if made:
+        sponsor_emails.invoice_paid_to_shop(invoice, made)
     return made
