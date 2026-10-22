@@ -7,16 +7,28 @@
         <div class="sp-card">
             <span class="sp-eyebrow">{{ collection.name }}</span>
             <h1 class="sp-title">Almost done</h1>
-            <p class="sp-lead">{{ collection.sponsor_message or 'Your company is covering your apparel.' }} There is nothing to pay.</p>
+            <p class="sp-lead">{{ collection.sponsor_message or 'Your company is covering your apparel.' }}
+                {% if overage_total %}Your company covers {{ collection.sponsor_items_per_person or 1 }} item{{ 's' if (collection.sponsor_items_per_person or 1) != 1 }}. You pay for the rest.{% else %}There is nothing to pay.{% endif %}</p>
 
             <ul class="sp-items">
-                {% for item in cart %}
+                {% for item in lines %}
                 <li>
                     <strong>{{ item.get('product_name') or 'Item' }}</strong>
-                    <span>{{ item.color }} · size {{ item.size }}{% if item.quantity and item.quantity > 1 %} · × {{ item.quantity }}{% endif %}</span>
+                    <span>{{ item.color }} · size {{ item.size }}</span>
+                    {% if item.employee_part == 0 %}
+                    <span class="sp-covered">Covered by your company</span>
+                    {% elif item.company_part == 0 %}
+                    <span class="sp-you">You pay ${{ '%.2f'|format(item.employee_part) }}</span>
+                    {% else %}
+                    <span class="sp-you">Company covers ${{ '%.2f'|format(item.company_part) }} · you pay ${{ '%.2f'|format(item.employee_part) }}</span>
+                    {% endif %}
                 </li>
                 {% endfor %}
             </ul>
+            {% if overage_total %}
+            <p class="sp-total">Extra items ${{ '%.2f'|format(overage_total) }} + tax ${{ '%.2f'|format(overage_tax) }}<br>
+                <small>(shipping is added if you choose to have it shipped)</small></p>
+            {% endif %}
 
             <form method="POST" action="{{ url_for('sponsored.checkout', slug=collection.slug) }}" class="sp-form" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -41,7 +53,7 @@
                     <legend>How would you like to get it?</legend>
                     <label class="sp-choice"><input type="radio" name="fulfillment_method" value="pickup" {% if form.get('fulfillment_method') != 'shipping' %}checked{% endif %}> <span>Pick it up{% if collection.pickup_address %} · {{ collection.pickup_address }}{% endif %}</span></label>
                     {% if collection.shipping_enabled %}
-                    <label class="sp-choice"><input type="radio" name="fulfillment_method" value="shipping" {% if form.get('fulfillment_method') == 'shipping' %}checked{% endif %}> <span>Ship it to me</span></label>
+                    <label class="sp-choice"><input type="radio" name="fulfillment_method" value="shipping" {% if form.get('fulfillment_method') == 'shipping' %}checked{% endif %}> <span>Ship it to me (+${{ '%.2f'|format(shipping_rate) }} shipping, paid by you)</span></label>
                     {% endif %}
                 </fieldset>
 
@@ -58,9 +70,9 @@
                         <input type="text" id="zip" name="zip" maxlength="20" autocomplete="postal-code" inputmode="numeric" value="{{ form.get('zip', '') }}"></div>
                 </div>
 
-                <button type="submit" class="btn btn-primary sp-submit">Send my request</button>
-                <p class="sp-note">Your organizer will look it over. Nothing is printed until your company approves and pays.</p>
-                <p class="sp-note"><a href="{{ url_for('cart.index') }}">Change my item</a></p>
+                <button type="submit" class="btn btn-primary sp-submit">{% if overage_total %}Continue to payment{% else %}Send my request{% endif %}</button>
+                <p class="sp-note">Your organizer will look it over. Nothing is printed until your company approves and pays.{% if overage_total %} If your request is declined, you are refunded.{% endif %}</p>
+                <p class="sp-note"><a href="{{ url_for('cart.index') }}">Change my items</a></p>
             </form>
         </div>
     </div>
@@ -75,6 +87,9 @@
 .sp-items li { display:flex; flex-direction:column; padding:.8rem 1rem; }
 .sp-items li + li { border-top:1px solid rgba(232,208,177,.6); }
 .sp-items span { color:var(--text-secondary); font-size:.9rem; }
+.sp-items .sp-covered { color:#1e8449; font-weight:600; }
+.sp-items .sp-you { color:#8a5a50; font-weight:600; }
+.sp-total { text-align:center; margin:-.75rem 0 1.25rem; font-weight:600; }
 .sp-form { display:flex; flex-direction:column; gap:1rem; }
 .sp-row { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; }
 .sp-field { border:0; padding:0; margin:0; min-width:0; }

@@ -20,8 +20,8 @@ from flask_login import current_user, login_required
 
 from models import CompanyInvoice, Collection, SponsorSubmission, db
 from utils.group_sponsor import (
-    create_invoice, is_company_sponsored, mark_invoice_paid, sponsor_cart_problem,
-    sponsored_total, submission_summary,
+    create_invoice, employee_charge, finalize_overage_payment, is_company_sponsored,
+    mark_invoice_paid, refund_overage, split_cart, sponsor_cart_problem, submission_summary,
 )
 
 sponsored_bp = Blueprint('sponsored', __name__, url_prefix='/c')
@@ -78,9 +78,18 @@ def checkout(slug):
         flash(problem, 'error')
         return redirect(url_for('cart.index'))
 
+    lines, company_total, overage_total = split_cart(collection, cart)
+    shipping_rate = float(current_app.config.get('SHIPPING_FLAT_RATE', 11.0))
+
+    def page(form, error=None, status=200):
+        return render_template(
+            'sponsored/checkout.html', collection=collection, lines=lines,
+            company_total=company_total, overage_total=overage_total,
+            overage_tax=employee_charge(collection, overage_total, 'pickup')[0],
+            shipping_rate=shipping_rate, form=form, error=error), status
+
     if request.method == 'GET':
-        return render_template('sponsored/checkout.html', collection=collection, cart=cart,
-                               form={}, error=None)
+        return page({})
 
     form = request.form
     if (form.get('website') or '').strip():          # honeypot
@@ -106,10 +115,18 @@ def checkout(slug):
     ).first():
         error = 'We already have a request from this email address. Each person can send one.'
     if error:
-        return render_template('sponsored/checkout.html', collection=collection, cart=cart,
-                               form=form, error=error), 400
+        return page(form, error, 400)
 
     import json
+    tax, shipping, charge = employee_charge(collection, overage_total, method)
+    pay_now = charge > 0
+    if pay_now and not (current_app.config.get('STRIPE_PUBLIC_KEY') and stripe.api_key):
+        return page(form, 'Card payments are not available right now. '
+                          'Please call us to finish your request.', 503)
+    # A half-finished earlier try (never paid) is replaced by this one.
+    SponsorSubmission.query.filter_by(
+        collection_id=collection.id, email=email, status='awaiting_payment',
+    ).delete()
     sub = SponsorSubmission(
         collection_id=collection.id,
         first_name=first, last_name=last, email=email, phone=phone,
@@ -119,17 +136,70 @@ def checkout(slug):
         shipping_city=_clean(form.get('city'), 100) if method == 'shipping' else None,
         shipping_state=_clean(form.get('state'), 50) if method == 'shipping' else None,
         shipping_zip=_clean(form.get('zip'), 20) if method == 'shipping' else None,
-        items_json=json.dumps(cart, default=str),
-        sponsored_total=sponsored_total(cart),
-        status='pending',
+        items_json=json.dumps(lines, default=str),
+        sponsored_total=company_total,
+        overage_total=overage_total, overage_tax=tax, overage_shipping=shipping,
+        status='awaiting_payment' if pay_now else 'pending',
     )
     db.session.add(sub)
     db.session.commit()
-
-    save_cart([])
-    session.pop('collection_id', None)
     session[f'sponsor_request_{collection.id}'] = sub.id
     session.modified = True
+
+    if not pay_now:
+        save_cart([])
+        session.pop('collection_id', None)
+        return redirect(url_for('sponsored.confirm', slug=slug))
+
+    try:
+        intent = stripe.PaymentIntent.create(
+            amount=int(round(charge * 100)), currency='usd',
+            automatic_payment_methods={'enabled': True},
+            receipt_email=email,
+            description=f'{collection.name}: extra items for {first} {last}',
+            metadata={'sponsor_submission_id': str(sub.id), 'collection_id': str(collection.id)},
+        )
+    except stripe.error.StripeError:
+        current_app.logger.exception('sponsor request %s payment intent failed', sub.id)
+        db.session.delete(sub)
+        db.session.commit()
+        return page(form, 'We could not start the payment. Please try again in a moment.', 502)
+    sub.overage_payment_intent_id = intent.id
+    db.session.commit()
+    return render_template(
+        'sponsored/pay.html', collection=collection, heading='Pay for your extra items',
+        subtitle=f'{collection.name} · your company covers the rest',
+        amount=charge, client_secret=intent.client_secret,
+        stripe_public_key=current_app.config.get('STRIPE_PUBLIC_KEY'),
+        return_url=url_for('sponsored.paid', slug=slug, _external=True),
+        footnote='Your card is handled securely by Stripe. If your organizer declines your '
+                 'request, you are refunded automatically.',
+        back_url=url_for('cart.index'),
+    )
+
+
+@sponsored_bp.route('/<slug>/sponsored/paid')
+def paid(slug):
+    """Stripe sends the employee back here; confirm with Stripe, not the URL."""
+    from utils.cart_store import save_cart
+
+    collection = _sponsored_collection(slug)
+    sub = db.session.get(SponsorSubmission, session.get(f'sponsor_request_{collection.id}') or 0)
+    if not sub or sub.collection_id != collection.id or not sub.overage_payment_intent_id:
+        return redirect(url_for('collection.view', slug=slug))
+    if sub.status == 'awaiting_payment':
+        try:
+            intent = stripe.PaymentIntent.retrieve(sub.overage_payment_intent_id)
+            if intent.status == 'succeeded':
+                finalize_overage_payment(sub, intent.id, intent.amount)
+        except stripe.error.StripeError:
+            current_app.logger.exception('sponsor request %s return check failed', sub.id)
+    if sub.status == 'awaiting_payment':
+        flash('Your payment did not go through, so your request has not been sent. '
+              'Please try again.', 'error')
+        return redirect(url_for('sponsored.checkout', slug=slug))
+    save_cart([])
+    session.pop('collection_id', None)
     return redirect(url_for('sponsored.confirm', slug=slug))
 
 
@@ -137,7 +207,7 @@ def checkout(slug):
 def confirm(slug):
     collection = _sponsored_collection(slug)
     sub = db.session.get(SponsorSubmission, session.get(f'sponsor_request_{collection.id}') or 0)
-    if not sub or sub.collection_id != collection.id:
+    if not sub or sub.collection_id != collection.id or sub.status == 'awaiting_payment':
         return redirect(url_for('collection.view', slug=slug))
     return render_template('sponsored/confirm.html', collection=collection, sub=sub)
 
@@ -170,15 +240,23 @@ def review(slug):
     if sub.status not in ('pending', 'approved', 'rejected'):
         flash('That request is already on an invoice, so it cannot change.', 'error')
     elif action == 'approve':
+        if sub.status == 'rejected' and sub.overage_refunded_at:
+            flash('That request was declined and refunded. Ask them to send a new one.', 'error')
+            return redirect(url_for('sponsored.manage', slug=slug))
         sub.status = 'approved'
         sub.rejection_reason = None
         db.session.commit()
         flash(f'Approved {sub.full_name}.', 'success')
     elif action == 'reject':
+        ok, refund_error = refund_overage(sub)      # give back any card payment first
+        if not ok:
+            flash(refund_error, 'error')
+            return redirect(url_for('sponsored.manage', slug=slug))
         sub.status = 'rejected'
         sub.rejection_reason = _clean(request.form.get('reason'), 500) or None
         db.session.commit()
-        flash(f'Declined {sub.full_name}.', 'success')
+        flash(f'Declined {sub.full_name}.' + (' Their card payment was refunded.' if sub.overage_refunded_at else ''),
+              'success')
     return redirect(url_for('sponsored.manage', slug=slug))
 
 
@@ -244,9 +322,13 @@ def invoice_pay(slug, invoice_id):
         return redirect(url_for('sponsored.manage', slug=slug))
 
     return render_template(
-        'sponsored/pay.html', collection=collection, invoice=invoice,
+        'sponsored/pay.html', collection=collection, heading='Pay your invoice',
+        subtitle=f'{collection.name} · {invoice.invoice_number}', amount=invoice.total,
         client_secret=intent.client_secret, stripe_public_key=public_key,
         return_url=url_for('sponsored.invoice_return', slug=slug, invoice_id=invoice.id, _external=True),
+        footnote='Your card is handled securely by Stripe. Your items go into production '
+                 'once the payment goes through.',
+        back_url=url_for('sponsored.manage', slug=slug),
     )
 
 

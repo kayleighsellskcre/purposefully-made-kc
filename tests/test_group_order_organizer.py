@@ -166,7 +166,7 @@ def test_admin_create_and_edit_forms_offer_the_organizer_field(admin_client, see
     ).get_data(as_text=True)
     assert 'name="organizer"' in create
     assert 'name="organizer"' in edit
-    assert 'Abby Hayes or their email' in create
+    assert 'Leave blank for you' in create
 
 
 def test_admin_can_start_a_store_for_someone_else(admin_client, seed, app):

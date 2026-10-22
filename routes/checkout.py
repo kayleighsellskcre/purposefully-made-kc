@@ -2149,6 +2149,12 @@ def stripe_webhook():
             # A company paying its sponsored-apparel invoice (inside the verified event).
             from models import CompanyInvoice
             from utils.group_sponsor import mark_invoice_paid
+            from models import SponsorSubmission
+            from utils.group_sponsor import finalize_overage_payment
+            request_row = SponsorSubmission.query.filter_by(overage_payment_intent_id=intent_id).first()
+            if request_row is not None:
+                finalize_overage_payment(request_row, intent_id, obj.get('amount'))
+                return jsonify({'received': True, 'sponsor_request': request_row.id})
             invoice = CompanyInvoice.query.filter_by(payment_intent_id=intent_id).first()
             if invoice is not None:
                 if invoice.payment_status == 'unpaid' and obj.get('amount') == int(round(invoice.total * 100)):

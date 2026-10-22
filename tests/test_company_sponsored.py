@@ -78,22 +78,160 @@ def test_checkout_redirects_to_request_page(seed, app):
     assert 'Send my request' in html
 
 
-def test_cart_over_the_allowance_is_bounced(seed, app):
+def test_extra_items_are_shown_as_the_employees_to_pay(seed, app):
     guest = _guest(app)
     slug = _setup(app, seed, items=1)
     _fill_cart(guest, seed, qty=2)
-    resp = guest.get(f'/c/{slug}/sponsored/checkout', follow_redirects=True)
-    assert 'covers 1 item per person' in resp.get_data(as_text=True)
-    assert _request(guest, slug).status_code == 302  # still bounced, never saved
-    assert _submission_count(app) == (0, 0)
+    html = guest.get(f'/c/{slug}/sponsored/checkout').get_data(as_text=True)
+    assert 'Covered by your company' in html
+    assert 'You pay $18.00' in html
+    assert 'Continue to payment' in html
 
 
-def test_price_cap_blocks_an_item_that_costs_more(seed, app):
+def test_price_cap_makes_the_employee_pay_the_difference(seed, app):
     guest = _guest(app)
     slug = _setup(app, seed, budget=10.0)
     _fill_cart(guest, seed)
-    resp = guest.get(f'/c/{slug}/sponsored/checkout', follow_redirects=True)
-    assert 'covers up to $10.00 per item' in resp.get_data(as_text=True)
+    html = guest.get(f'/c/{slug}/sponsored/checkout').get_data(as_text=True)
+    assert 'Company covers $10.00' in html and 'you pay $8.00' in html
+
+
+def test_split_cart_rules(seed, app):
+    from utils.group_sponsor import split_cart
+
+    def go():
+        c = db.session.get(Collection, seed['collection_id'])
+        c.sponsor_items_per_person = 2
+        c.sponsor_budget_per_person = 15.0
+        cart = [{'unit_price': 18.0, 'quantity': 3}, {'unit_price': 12.0, 'quantity': 1}]
+        lines, company, employee = split_cart(c, cart)
+        assert len(lines) == 4
+        assert (company, employee) == (30.0, 36.0)
+        assert [l['company_part'] for l in lines] == [15.0, 15.0, 0.0, 0.0]
+        assert [l['employee_part'] for l in lines] == [3.0, 3.0, 18.0, 12.0]
+    _in_db(app, go)
+
+
+class _Obj:
+    def __init__(self, **kw):
+        self.__dict__.update(kw)
+
+
+def _fake_stripe(monkeypatch, *, charge_cents, refunds=None):
+    import stripe
+    monkeypatch.setattr(stripe, 'api_key', 'sk_test_fake')
+    monkeypatch.setattr(stripe.PaymentIntent, 'create',
+                        lambda **kw: _Obj(id='pi_emp_1', client_secret='cs_1', amount=kw['amount']))
+    monkeypatch.setattr(stripe.PaymentIntent, 'retrieve',
+                        lambda pid: _Obj(id=pid, status='succeeded', amount=charge_cents))
+    if refunds is not None:
+        monkeypatch.setattr(stripe.Refund, 'create', lambda **kw: refunds.append(kw) or _Obj(id='re_1'))
+
+
+def _status_of(app, email):
+    return _in_db(app, lambda: SponsorSubmission.query.filter_by(email=email).first().status)
+
+
+def test_employee_pays_for_extras_before_the_request_is_sent(seed, app, monkeypatch):
+    guest = _guest(app)
+    slug = _setup(app, seed, items=1)
+    _fake_stripe(monkeypatch, charge_cents=1971)          # $18 extra + $1.71 tax
+    _fill_cart(guest, seed, qty=2)
+    resp = _request(guest, slug)
+    assert resp.status_code == 200 and 'Pay for your extra items' in resp.get_data(as_text=True)
+    assert _status_of(app, 'ava@example.com') == 'awaiting_payment'
+
+    # Not on the organizer's list and not invoiceable until paid.
+    organizer = _login_as(app, CUSTOMER_EMAIL)
+    assert 'Ava Lopez' not in organizer.get(f'/c/{slug}/manage-sponsored').get_data(as_text=True)
+    with guest.session_transaction() as sess:
+        assert sess.get('cart')                             # cart kept until paid
+
+    back = guest.get(f'/c/{slug}/sponsored/paid')
+    assert back.status_code == 302 and back.headers['Location'].endswith('/sponsored/confirm')
+    assert _status_of(app, 'ava@example.com') == 'pending'
+    assert 'Ava Lopez' in organizer.get(f'/c/{slug}/manage-sponsored').get_data(as_text=True)
+    assert _submission_count(app)[1] == 0
+    html = guest.get(f'/c/{slug}/sponsored/confirm').get_data(as_text=True)
+    assert 'payment of $19.71' in html
+
+
+def test_unpaid_extras_never_reach_the_organizer(seed, app, monkeypatch):
+    import stripe
+    guest = _guest(app)
+    slug = _setup(app, seed, items=1)
+    _fake_stripe(monkeypatch, charge_cents=1971)
+    monkeypatch.setattr(stripe.PaymentIntent, 'retrieve',
+                        lambda pid: _Obj(id=pid, status='requires_payment_method', amount=1971))
+    _fill_cart(guest, seed, qty=2)
+    _request(guest, slug)
+    resp = guest.get(f'/c/{slug}/sponsored/paid', follow_redirects=True)
+    assert 'did not go through' in resp.get_data(as_text=True)
+    assert _status_of(app, 'ava@example.com') == 'awaiting_payment'
+
+
+def test_webhook_finishes_an_employee_payment_if_they_closed_the_tab(seed, app, monkeypatch):
+    import stripe
+    guest = _guest(app)
+    slug = _setup(app, seed, items=1)
+    _fake_stripe(monkeypatch, charge_cents=1971)
+    _fill_cart(guest, seed, qty=2)
+    _request(guest, slug)
+    monkeypatch.setattr(stripe.Webhook, 'construct_event', lambda *a, **k: {
+        'type': 'payment_intent.succeeded', 'data': {'object': {'id': 'pi_emp_1', 'amount': 1971}}})
+    hook = app.test_client()
+    for _ in range(2):                                      # Stripe retries
+        resp = hook.post('/checkout/stripe-webhook', data=b'{}', headers={'Stripe-Signature': 'x'})
+        assert resp.get_json()['sponsor_request']
+    assert _status_of(app, 'ava@example.com') == 'pending'
+
+
+def test_declining_a_paid_request_refunds_the_employee(seed, app, monkeypatch):
+    guest = _guest(app)
+    slug = _setup(app, seed, items=1)
+    refunds = []
+    _fake_stripe(monkeypatch, charge_cents=1971, refunds=refunds)
+    _fill_cart(guest, seed, qty=2)
+    _request(guest, slug)
+    guest.get(f'/c/{slug}/sponsored/paid')
+    sub_id = _in_db(app, lambda: SponsorSubmission.query.first().id)
+    organizer = _login_as(app, CUSTOMER_EMAIL)
+    organizer.post(f'/c/{slug}/manage-sponsored/review',
+                   data={'submission_id': sub_id, 'action': 'reject', 'reason': 'Not on staff'})
+    assert len(refunds) == 1 and refunds[0]['payment_intent'] == 'pi_emp_1'
+    assert _status_of(app, 'ava@example.com') == 'rejected'
+    # A refunded request cannot be quietly approved again.
+    organizer.post(f'/c/{slug}/manage-sponsored/review', data={'submission_id': sub_id, 'action': 'approve'})
+    assert _status_of(app, 'ava@example.com') == 'rejected'
+    # Declining twice does not refund twice.
+    organizer.post(f'/c/{slug}/manage-sponsored/review', data={'submission_id': sub_id, 'action': 'reject'})
+    assert len(refunds) == 1
+
+
+def test_order_holds_every_item_and_the_employees_shipping(seed, app, monkeypatch):
+    guest = _guest(app)
+    slug = _setup(app, seed, items=1)
+    _fake_stripe(monkeypatch, charge_cents=3071)            # $18 + $1.71 tax + $11 shipping
+    _fill_cart(guest, seed, qty=2)
+    _request(guest, slug, fulfillment_method='shipping', street='1 Main St', city='Olathe',
+             state='KS', zip='66061')
+    guest.get(f'/c/{slug}/sponsored/paid')
+    sub_id = _in_db(app, lambda: SponsorSubmission.query.first().id)
+    organizer = _login_as(app, CUSTOMER_EMAIL)
+    organizer.post(f'/c/{slug}/manage-sponsored/review', data={'submission_id': sub_id, 'action': 'approve'})
+    organizer.post(f'/c/{slug}/manage-sponsored/invoice')
+    inv = _the_invoice(app)
+    assert inv['subtotal'] == 18.0 and inv['total'] == 19.71        # company pays only its one item
+    _owner_client(app).post(f'/c/{slug}/manage-sponsored/invoice/{inv["id"]}/mark-paid',
+                            data={'method': 'check'})
+
+    def check():
+        order = Order.query.one()
+        assert order.items.count() == 2
+        assert order.subtotal == 36.0 and order.shipping_cost == 11.0
+        assert order.tax == 3.42 and order.total == 50.42
+        assert order.fulfillment_method == 'shipping'
+    _in_db(app, check)
 
 
 def test_request_is_saved_without_making_an_order(seed, app):

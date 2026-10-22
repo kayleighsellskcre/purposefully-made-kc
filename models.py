@@ -303,7 +303,17 @@ class SponsorSubmission(db.Model):
     items_json = db.Column(db.Text, nullable=False)
     sponsored_total = db.Column(db.Float, default=0.0)   # what the company owes (before tax)
 
-    # pending -> approved -> invoiced -> converted, or rejected
+    # What the employee pays by card: items past the allowance (or above the price
+    # cap), their tax, and shipping if they chose it.
+    overage_total = db.Column(db.Float, default=0.0)
+    overage_tax = db.Column(db.Float, default=0.0)
+    overage_shipping = db.Column(db.Float, default=0.0)
+    overage_payment_intent_id = db.Column(db.String(200), index=True)
+    overage_paid_at = db.Column(db.DateTime)
+    overage_refunded_at = db.Column(db.DateTime)
+
+    # awaiting_payment (employee still paying) -> pending -> approved -> invoiced -> converted,
+    # or rejected
     status = db.Column(db.String(20), default='pending', index=True)
     rejection_reason = db.Column(db.Text)
 
@@ -325,6 +335,10 @@ class SponsorSubmission(db.Model):
             return json.loads(self.items_json or '[]')
         except (TypeError, ValueError):
             return []
+
+    @property
+    def overage_charge(self):
+        return round((self.overage_total or 0) + (self.overage_tax or 0) + (self.overage_shipping or 0), 2)
 
     @property
     def item_count(self):

@@ -7,7 +7,7 @@
         <div style="max-width:520px;margin:0 auto;background:#fff;padding:2rem 1.75rem;border-radius:18px;box-shadow:0 8px 40px rgba(58,61,72,.08);border:1px solid rgba(232,208,177,.5);text-align:center;">
             <span style="display:block;font-size:.7rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--terra-cotta);margin-bottom:.5rem;">{{ collection.name }}</span>
             <h1 style="font-family:var(--font-heading);font-size:1.6rem;margin:0 0 .75rem;">You're all set, {{ sub.first_name }}!</h1>
-            <p style="color:var(--text-secondary);margin:0 0 1.25rem;">We received your request. There is nothing to pay.</p>
+            <p style="color:var(--text-secondary);margin:0 0 1.25rem;">We received your request.{% if sub.overage_paid_at %} Thank you for your payment of ${{ '%.2f'|format(sub.overage_charge) }} for your extra items and shipping.{% else %} There is nothing to pay.{% endif %}</p>
             <ul style="list-style:none;margin:0 0 1.25rem;padding:0;background:var(--ivory-silk,#faf7f2);border-radius:14px;text-align:left;">
                 {% for item in sub.items %}
                 <li style="padding:.8rem 1rem;{% if not loop.first %}border-top:1px solid rgba(232,208,177,.6);{% endif %}">
@@ -16,7 +16,7 @@
                 </li>
                 {% endfor %}
             </ul>
-            <p style="margin:0;">Your organizer will review your request. Your item is printed once your company has approved and paid.</p>
+            <p style="margin:0;">Your organizer will review your request. Your items are printed once your company has approved and paid.{% if sub.overage_paid_at %} If your request is declined, your card is refunded.{% endif %}</p>
         </div>
     </div>
 </div>

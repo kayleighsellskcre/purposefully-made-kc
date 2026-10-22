@@ -235,6 +235,12 @@ def create_app(config_class=Config):
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS sponsor_budget_per_person FLOAT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS sponsor_message TEXT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS sponsor_submissions_locked BOOLEAN DEFAULT FALSE",
+                    "ALTER TABLE sponsor_submission ADD COLUMN IF NOT EXISTS overage_total FLOAT DEFAULT 0",
+                    "ALTER TABLE sponsor_submission ADD COLUMN IF NOT EXISTS overage_tax FLOAT DEFAULT 0",
+                    "ALTER TABLE sponsor_submission ADD COLUMN IF NOT EXISTS overage_shipping FLOAT DEFAULT 0",
+                    "ALTER TABLE sponsor_submission ADD COLUMN IF NOT EXISTS overage_payment_intent_id VARCHAR(200)",
+                    "ALTER TABLE sponsor_submission ADD COLUMN IF NOT EXISTS overage_paid_at TIMESTAMP",
+                    "ALTER TABLE sponsor_submission ADD COLUMN IF NOT EXISTS overage_refunded_at TIMESTAMP",
                     # product.spec_sheet_url — SanMar CDN PDF link added during Bella+Canvas CSV import
                     "ALTER TABLE product ADD COLUMN IF NOT EXISTS spec_sheet_url VARCHAR(500)",
                     # Softness rating + short fabric blurb (seeded by style number)

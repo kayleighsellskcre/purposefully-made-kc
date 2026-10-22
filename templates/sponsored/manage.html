@@ -64,9 +64,10 @@
                     </span>
                     <div class="sm-muted">{{ s.email }}{% if s.phone %} · {{ s.phone }}{% endif %} · {{ 'Ship' if s.fulfillment_method == 'shipping' else 'Pickup' }}</div>
                     <div>{% for item in s.items %}{{ item.get('product_name') or 'Item' }}, {{ item.color }}, size {{ item.size }}{% if item.quantity and item.quantity > 1 %} × {{ item.quantity }}{% endif %}{% if not loop.last %}; {% endif %}{% endfor %}</div>
+                    {% if s.overage_paid_at %}<div class="sm-muted">Employee paid ${{ '%.2f'|format(s.overage_charge) }} by card for extra items{% if s.overage_shipping %} and shipping{% endif %}{% if s.overage_refunded_at %} (refunded){% endif %}.</div>{% endif %}
                     {% if s.rejection_reason %}<div class="sm-muted">Reason: {{ s.rejection_reason }}</div>{% endif %}
                 </div>
-                <div class="sm-total">${{ '%.2f'|format(s.sponsored_total) }}</div>
+                <div class="sm-total" title="What the company pays">${{ '%.2f'|format(s.sponsored_total) }}</div>
             </div>
             {% if s.status in ('pending', 'approved', 'rejected') %}
             <div class="sm-actions">

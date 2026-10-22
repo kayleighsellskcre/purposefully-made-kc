@@ -1,7 +1,10 @@
 """Company-sponsored group orders: a company covers N items per employee.
 
 Employees shop the normal group storefront and fill the normal cart. At
-checkout they send a request instead of paying. The organizer approves
+checkout they send a request. The company covers the first N items (up to an
+optional per-item price cap); anything extra, plus tax on it and shipping if
+they want it shipped, the employee pays by card right then. If the organizer
+later declines the request, that card payment is refunded. The organizer approves
 requests and pays one invoice. Nothing is produced until that invoice is paid:
 a SponsorSubmission is only a saved request, and the real Order rows are built
 by convert_invoice_to_orders() once the money is in.
@@ -55,37 +58,90 @@ def apply_sponsor_settings_from_form(collection):
 
 
 def sponsor_cart_problem(collection, cart):
-    """Why this cart cannot be sent as a sponsored request, or None.
-
-    Phase 1 covers whole items only: the cart must fit inside the allowance, so
-    nothing is ever left for the employee to pay.
-    """
+    """Why this cart cannot be sent as a sponsored request, or None."""
     lines = [i for i in cart or [] if isinstance(i, dict)]
     if not lines:
         return 'Your cart is empty.'
     if any((i.get('collection_id') or None) != collection.id for i in lines):
         return ('Your cart has items from somewhere else. This company-sponsored order '
                 'can only include items from this page. Please remove the others.')
-    allowed = collection.sponsor_items_per_person or 1
-    qty = sum(max(1, int(i.get('quantity') or 1)) for i in lines)
-    if qty > allowed:
-        noun = 'item' if allowed == 1 else 'items'
-        return (f'Your company covers {allowed} {noun} per person and you have {qty} in your cart. '
-                f'Please remove {qty - allowed} to continue.')
-    cap = collection.sponsor_budget_per_person
-    if cap is not None:
-        over = [i for i in lines if float(i.get('unit_price') or 0) > cap + 0.005]
-        if over:
-            return (f'Your company covers up to ${cap:,.2f} per item. '
-                    'Please choose a less expensive item or a different print option.')
     return None
 
 
-def sponsored_total(cart) -> float:
-    return round(sum(
-        max(1, int(i.get('quantity') or 1)) * float(i.get('unit_price') or 0)
-        for i in cart if isinstance(i, dict)
-    ), 2)
+def split_cart(collection, cart):
+    """Split a cart into what the company covers and what the employee pays.
+
+    One line per unit. The first N units (cart order) are covered, each up to the
+    per-item price cap; the employee pays the rest of any unit above the cap and
+    all of every unit past N. Returns (lines, company_total, employee_total).
+    """
+    allowed = collection.sponsor_items_per_person or 1
+    cap = collection.sponsor_budget_per_person
+    lines, covered = [], 0
+    for item in cart:
+        if not isinstance(item, dict):
+            continue
+        unit = round(float(item.get('unit_price') or 0), 2)
+        for _ in range(max(1, int(item.get('quantity') or 1))):
+            line = dict(item)
+            line['quantity'] = 1
+            company = 0.0
+            if covered < allowed:
+                covered += 1
+                company = min(unit, cap) if cap is not None else unit
+            line['company_part'] = round(company, 2)
+            line['employee_part'] = round(unit - company, 2)
+            lines.append(line)
+    return (lines,
+            round(sum(l['company_part'] for l in lines), 2),
+            round(sum(l['employee_part'] for l in lines), 2))
+
+
+def employee_charge(collection, overage_total, method):
+    """What the employee pays by card: (tax, shipping, total). Shipping is always theirs."""
+    from flask import current_app
+    shipping = float(current_app.config.get('SHIPPING_FLAT_RATE', 11.0)) if method == 'shipping' else 0.0
+    tax = tax_for(collection, overage_total)
+    return tax, round(shipping, 2), round(overage_total + tax + shipping, 2)
+
+
+def finalize_overage_payment(sub, intent_id, amount_cents):
+    """The employee's card payment went through: the request now waits for the organizer.
+
+    Safe to call twice (the return page and the webhook both do). Returns True once paid.
+    """
+    from flask import current_app
+    from models import db
+
+    if sub.status != 'awaiting_payment':
+        return bool(sub.overage_paid_at)
+    if sub.overage_payment_intent_id != intent_id or amount_cents != int(round(sub.overage_charge * 100)):
+        current_app.logger.error('sponsor request %s paid with a mismatched intent or amount', sub.id)
+        return False
+    sub.status = 'pending'
+    sub.overage_paid_at = datetime.utcnow()
+    db.session.commit()
+    return True
+
+
+def refund_overage(sub):
+    """Give the employee their card payment back. Returns (ok, error)."""
+    import stripe
+    from flask import current_app
+    from models import db
+
+    if not sub.overage_paid_at or sub.overage_refunded_at:
+        return True, None
+    try:
+        stripe.Refund.create(payment_intent=sub.overage_payment_intent_id,
+                             idempotency_key=f'sponsor-refund-{sub.id}')
+    except stripe.error.StripeError:
+        current_app.logger.exception('sponsor request %s refund failed', sub.id)
+        return False, ('We could not send the refund through Stripe. Please try again, '
+                       'or refund it from your Stripe dashboard.')
+    sub.overage_refunded_at = datetime.utcnow()
+    db.session.commit()
+    return True, None
 
 
 def tax_for(collection, amount) -> float:
@@ -98,6 +154,7 @@ def submission_summary(collection):
     from models import SponsorSubmission
 
     rows = (SponsorSubmission.query.filter_by(collection_id=collection.id)
+            .filter(SponsorSubmission.status != 'awaiting_payment')
             .order_by(SponsorSubmission.created_at, SponsorSubmission.id).all())
     counts = {s: 0 for s in ('pending', 'approved', 'invoiced', 'converted', 'rejected')}
     for r in rows:
@@ -170,8 +227,11 @@ def convert_invoice_to_orders(invoice):
         if not sub or sub.status != 'invoiced' or sub.order_id:
             continue
         try:
-            tax = tax_for(sub.collection, sub.sponsored_total)
-            total = round((sub.sponsored_total or 0) + tax, 2)
+            lines = sub.items
+            subtotal = round(sum(float(l.get('unit_price') or 0) for l in lines), 2)
+            shipping = sub.overage_shipping or 0.0
+            tax = round(tax_for(sub.collection, sub.sponsored_total) + (sub.overage_tax or 0), 2)
+            total = round(subtotal + shipping + tax, 2)
             order = Order(
                 collection_id=invoice.collection_id,
                 email=sub.email,
@@ -184,8 +244,8 @@ def convert_invoice_to_orders(invoice):
                 shipping_city=sub.shipping_city,
                 shipping_state=sub.shipping_state,
                 shipping_zip=sub.shipping_zip,
-                subtotal=sub.sponsored_total or 0,
-                shipping_cost=0.0,
+                subtotal=subtotal,
+                shipping_cost=shipping,
                 tax=tax,
                 total=total,
                 payment_method='company_invoice',
@@ -198,7 +258,7 @@ def convert_invoice_to_orders(invoice):
             )
             db.session.add(order)
             db.session.flush()
-            if not build_order_items(order, sub.items, rid=f'sponsor-{sub.id}'):
+            if not build_order_items(order, lines, rid=f'sponsor-{sub.id}'):
                 db.session.rollback()
                 current_app.logger.error('sponsor submission %s had no usable items', sub.id)
                 continue
