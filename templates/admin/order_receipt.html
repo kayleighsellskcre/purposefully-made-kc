@@ -28,6 +28,16 @@ body { background: var(--cream); color: var(--ink); font-family: 'Inter', Arial,
 .rc-bar { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; justify-content: space-between; }
 .rc-bar a, .rc-bar button { font: 600 .78rem 'Inter', sans-serif; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; padding: .7rem 1.2rem; border-radius: 999px; border: 1.5px solid var(--terra); color: var(--terra); background: #fff; cursor: pointer; }
 .rc-bar .rc-primary { background: var(--terra); color: #fff; }
+.rc-flash { margin: 0 0 .8rem; padding: .7rem 1rem; border-radius: 10px; background: rgba(39,174,96,.1); border: 1px solid rgba(39,174,96,.3); color: #1e5c3a; font-size: .9rem; }
+.rc-flash--error { background: rgba(192,57,43,.08); border-color: rgba(192,57,43,.3); color: #8e2a1f; }
+.rc-send { margin-top: 1rem; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 1rem 1.25rem; }
+.rc-send-title { margin: 0 0 .6rem; font-weight: 600; color: var(--bronze); }
+.rc-send-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-bottom: .6rem; }
+.rc-send-row form { margin: 0; }
+.rc-send-row input { flex: 1 1 260px; font: 400 .9rem 'Inter', sans-serif; padding: .55rem .7rem; border: 1px solid var(--line); border-radius: 8px; background: #fffdfb; }
+.rc-send button, .rc-send .rc-textbtn { font: 600 .74rem 'Inter', sans-serif; letter-spacing: .1em; text-transform: uppercase; text-decoration: none; padding: .6rem 1.05rem; border-radius: 999px; border: 1.5px solid var(--terra); color: var(--terra); background: #fff; cursor: pointer; }
+.rc-send .rc-primary { background: var(--terra); color: #fff; }
+.rc-send-note { margin: .3rem 0 0; color: var(--muted); font-size: .82rem; }
 .rc-bill { margin-top: 1rem; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 1rem 1.25rem; }
 .rc-bill summary { cursor: pointer; font-weight: 600; color: var(--bronze); }
 .rc-bill form { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem 1rem; margin-top: .9rem; }
@@ -83,6 +93,8 @@ table.rc-items { width: 100%; border-collapse: collapse; }
 .rc-pay-hint { text-align: center; color: var(--muted); font-size: .84rem; font-style: italic; margin: 0 0 1.05rem; }
 .rc-pay-grid { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; }
 .rc-pay-grid > div + div { border-left: 1px solid var(--gold-soft); }
+.rc-qr { text-align: center; margin-top: 1.1rem; }
+.rc-qr img { display: block; margin: 0 auto .35rem; }
 .rc-pay-name { font-family: 'Playfair Display', serif; font-weight: 400; font-size: 1.05rem; color: var(--ink); margin: 0; }
 .rc-pay-detail { color: var(--muted); font-size: .82rem; margin: .15rem 0 0; letter-spacing: .03em; }
 
@@ -133,6 +145,9 @@ table.rc-items { width: 100%; border-collapse: collapse; }
 <body>
 
 <div class="rc-tools">
+    {% with _msgs = get_flashed_messages(with_categories=true) %}{% for _cat, _msg in _msgs %}
+    <p class="rc-flash rc-flash--{{ _cat }}" role="status">{{ _msg }}</p>
+    {% endfor %}{% endwith %}
     <div class="rc-bar">
         {% if invoice %}
         <a href="{{ url_for('admin.invoices') }}">&larr; All invoices</a>
@@ -145,6 +160,26 @@ table.rc-items { width: 100%; border-collapse: collapse; }
         <button type="button" class="rc-primary" onclick="window.print()">Print or save as PDF</button>
         {% endif %}
     </div>
+    {% if invoice and doc.balance > 0 %}
+    <div class="rc-send">
+        <p class="rc-send-title">Get paid online</p>
+        {% if pay_link %}
+        <div class="rc-send-row">
+            <input type="text" id="rcPayLink" value="{{ pay_link }}" readonly aria-label="Pay link">
+            <button type="button" onclick="var i=document.getElementById('rcPayLink');i.select();navigator.clipboard&&navigator.clipboard.writeText(i.value);this.textContent='Copied!';">Copy link</button>
+        </div>
+        <div class="rc-send-row">
+            <form method="post" action="{{ url_for('admin.invoice_send', invoice_id=invoice.id) }}"><button type="submit" class="rc-primary">Email invoice{% if invoice.email %} to {{ invoice.email }}{% endif %}</button></form>
+            {% if sms_link %}<a href="{{ sms_link }}" class="rc-textbtn">Text the link</a>{% endif %}
+            <form method="post" action="{{ url_for('admin.invoice_pay_link', invoice_id=invoice.id) }}" onsubmit="return confirm('Turn the pay link off? The link and QR code will stop working.');"><input type="hidden" name="action" value="off"><button type="submit">Turn link off</button></form>
+        </div>
+        <p class="rc-send-note">{% if invoice.pay_link_sent_at %}Last emailed {{ invoice.pay_link_sent_at.strftime('%b %d') }}. {% endif %}The QR code is on the printed invoice. {% if not invoice.email %}Add an email (Edit) to send it by email. {% endif %}{% if not invoice.phone %}Add a phone number (Edit) to text it.{% endif %}</p>
+        {% else %}
+        <p class="rc-send-note" style="margin-top:0">Let this customer pay by card. You get a private link to email or text, plus a QR code on the printed invoice.</p>
+        <form method="post" action="{{ url_for('admin.invoice_pay_link', invoice_id=invoice.id) }}"><button type="submit" class="rc-primary">Create pay link</button></form>
+        {% endif %}
+    </div>
+    {% endif %}
     {% if not invoice %}
     <details class="rc-bill"{% if doc.company or doc.attn or doc.po or doc.note or request.args.get('kind') %} open{% endif %}>
         <summary>Billing this to a company? Add their details</summary>
@@ -259,6 +294,13 @@ table.rc-items { width: 100%; border-collapse: collapse; }
             <div><p class="rc-pay-name">{{ name }}</p><p class="rc-pay-detail">{{ detail }}</p></div>
             {% endfor %}
         </div>
+        {% if invoice and invoice.pay_token %}
+        <div class="rc-qr">
+            <img src="{{ url_for('invoice_pay.qr', token=invoice.pay_token) }}" alt="QR code to pay this invoice by card" width="104" height="104">
+            <p class="rc-pay-name">Pay by card</p>
+            <p class="rc-pay-detail">Scan with your phone's camera</p>
+        </div>
+        {% endif %}
     </section>
     {% endif %}
 

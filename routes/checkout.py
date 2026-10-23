@@ -2155,6 +2155,12 @@ def stripe_webhook():
             if request_row is not None:
                 finalize_overage_payment(request_row, intent_id, obj.get('amount'))
                 return jsonify({'received': True, 'sponsor_request': request_row.id})
+            from models import ManualInvoice
+            from utils.invoice_pay import apply_card_payment
+            hand_made = ManualInvoice.query.filter_by(payment_intent_id=intent_id).first()
+            if hand_made is not None:
+                apply_card_payment(hand_made, intent_id, obj.get('amount'))
+                return jsonify({'received': True, 'manual_invoice': hand_made.number})
             invoice = CompanyInvoice.query.filter_by(payment_intent_id=intent_id).first()
             if invoice is not None:
                 if invoice.payment_status == 'unpaid' and obj.get('amount') == int(round(invoice.total * 100)):

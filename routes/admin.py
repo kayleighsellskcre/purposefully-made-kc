@@ -3851,8 +3851,49 @@ def invoice_view(invoice_id):
     from utils.business_info import BUSINESS, PAYMENT_METHODS
     from utils.receipts import doc_from_invoice
     inv = ManualInvoice.query.get_or_404(invoice_id)
+    from utils.invoice_pay import pay_url, sms_href
+    link = pay_url(inv) if inv.pay_token else None
     return render_template('admin/order_receipt.html', doc=doc_from_invoice(inv), business=BUSINESS,
-                           payment_methods=PAYMENT_METHODS, invoice=inv, order=None)
+                           payment_methods=PAYMENT_METHODS, invoice=inv, order=None,
+                           pay_link=link, sms_link=sms_href(inv) if link and inv.phone else None)
+
+
+@admin_bp.route('/invoices/<int:invoice_id>/pay-link', methods=['POST'])
+@admin_required
+def invoice_pay_link(invoice_id):
+    """Turn the customer's pay-online link on, or off (it stops working at once)."""
+    from models import ManualInvoice
+    from utils.invoice_pay import ensure_token, turn_off
+    inv = ManualInvoice.query.get_or_404(invoice_id)
+    if request.form.get('action') == 'off':
+        turn_off(inv)
+        flash('The pay link is turned off. The old link no longer works.', 'success')
+    else:
+        ensure_token(inv)
+        flash('Pay link is ready. You can email it, text it, or show the QR code.', 'success')
+    return redirect(url_for('admin.invoice_view', invoice_id=inv.id))
+
+
+@admin_bp.route('/invoices/<int:invoice_id>/send', methods=['POST'])
+@admin_required
+def invoice_send(invoice_id):
+    """Email the customer the invoice with a Pay button."""
+    from datetime import datetime as _dt
+    from models import ManualInvoice
+    from utils import invoice_emails
+    from utils.invoice_pay import ensure_token
+    inv = ManualInvoice.query.get_or_404(invoice_id)
+    if not (inv.email or '').strip() or '@' not in inv.email:
+        flash('Add the customer\'s email to this invoice first (Edit), then send it.', 'error')
+        return redirect(url_for('admin.invoice_view', invoice_id=inv.id))
+    ensure_token(inv)
+    if invoice_emails.send_invoice(inv):
+        inv.pay_link_sent_at = _dt.utcnow()
+        db.session.commit()
+        flash(f'Invoice emailed to {inv.email}.', 'success')
+    else:
+        flash('The email could not be sent. Please check your email settings, or copy the link and text it.', 'error')
+    return redirect(url_for('admin.invoice_view', invoice_id=inv.id))
 
 
 @admin_bp.route('/invoices/<int:invoice_id>/edit', methods=['GET', 'POST'])

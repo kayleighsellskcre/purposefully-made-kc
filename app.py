@@ -242,6 +242,12 @@ def create_app(config_class=Config):
                     "ALTER TABLE sponsor_submission ADD COLUMN IF NOT EXISTS overage_paid_at TIMESTAMP",
                     "ALTER TABLE sponsor_submission ADD COLUMN IF NOT EXISTS overage_refunded_at TIMESTAMP",
                     "ALTER TABLE sponsor_submission ADD COLUMN IF NOT EXISTS immediate_order_id INTEGER REFERENCES \"order\"(id)",
+                    # Hand-made invoices: pay online link
+                    "ALTER TABLE manual_invoice ADD COLUMN IF NOT EXISTS pay_token VARCHAR(64)",
+                    "ALTER TABLE manual_invoice ADD COLUMN IF NOT EXISTS payment_intent_id VARCHAR(200)",
+                    "ALTER TABLE manual_invoice ADD COLUMN IF NOT EXISTS card_paid_intent_id VARCHAR(200)",
+                    "ALTER TABLE manual_invoice ADD COLUMN IF NOT EXISTS pay_link_sent_at TIMESTAMP",
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ix_manual_invoice_pay_token ON manual_invoice (pay_token)",
                     # product.spec_sheet_url — SanMar CDN PDF link added during Bella+Canvas CSV import
                     "ALTER TABLE product ADD COLUMN IF NOT EXISTS spec_sheet_url VARCHAR(500)",
                     # Softness rating + short fabric blurb (seeded by style number)
@@ -498,6 +504,7 @@ def create_app(config_class=Config):
     from routes.favorites import favorites_bp
     from routes.org import org_bp
     from routes.sponsored import sponsored_bp
+    from routes.invoice_pay import invoice_pay_bp
     
     # Serve uploads (mockups, designs) - register FIRST so /uploads/mockups/... works
     @app.route('/uploads/<path:path>')
@@ -530,6 +537,7 @@ def create_app(config_class=Config):
     app.register_blueprint(favorites_bp)
     app.register_blueprint(org_bp)
     app.register_blueprint(sponsored_bp)
+    app.register_blueprint(invoice_pay_bp)
 
     # ── CSRF exemptions ──────────────────────────────────────────────────────
     # Stripe / PayPal webhooks POST with their own signatures, not our CSRF token.

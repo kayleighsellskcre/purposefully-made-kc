@@ -1169,6 +1169,11 @@ class ManualInvoice(db.Model):
     discount = db.Column(db.Float, default=0.0)
     amount_paid = db.Column(db.Float, default=0.0)
     payment_method = db.Column(db.String(40))             # Venmo, Cash, Check, Card, Other
+    # Pay online: a private link the customer can open to pay the balance by card.
+    pay_token = db.Column(db.String(64), unique=True, index=True)   # None = link is off
+    payment_intent_id = db.Column(db.String(200), index=True)       # the Stripe payment being collected
+    card_paid_intent_id = db.Column(db.String(200))                  # the last one that was applied
+    pay_link_sent_at = db.Column(db.DateTime)
     issued_at = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
