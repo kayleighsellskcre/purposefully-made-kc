@@ -35,7 +35,7 @@ def test_list_shows_due_date_group_send_home_and_counts(admin_client, app, seed)
     assert 'ord-due--overdue' in html                       # the late one is flagged
     assert 'Send home: Mia' in html and 'Ms. Park' in html
     assert 'Test Elementary Spirit Wear' in html            # which group it belongs to
-    assert '<span class="ord-chip-count">3</span>' in html  # All Open
+    assert '<span class="wf-chip-count">3</span>' in html  # All Open
     assert 'Move to' in html                                # quick mover on each row
 
 
@@ -54,3 +54,22 @@ def test_quick_move_changes_the_stage_and_comes_back_to_the_list(admin_client, a
     assert resp.status_code == 302 and '/admin/orders' in resp.headers['Location']
     with app.app_context():
         assert db.session.get(Order, late_id).production_stage == 'ready_to_press'
+
+
+def test_list_has_the_boards_buttons_bar_and_a_search(admin_client, app, seed):
+    _three(app, seed)
+    html = admin_client.get('/admin/orders?stage=all').get_data(as_text=True)
+    for text in ('Board view', 'Order blanks', 'Press sheets', 'Print labels', 'Create invoice', 'All Completed',
+                 'class="wf-filters"', 'name="q"'):
+        assert text in html, text
+
+
+def test_search_finds_orders_by_name_email_and_order_number(admin_client, app, seed):
+    (late_id, late_no), _, _ = _three(app, seed)
+    by_name = admin_client.get('/admin/orders?stage=all&q=Soon').get_data(as_text=True)
+    assert 'Soon' in by_name and 'Nodue' not in by_name
+    by_number = admin_client.get(f'/admin/orders?stage=all&q={late_no[-6:]}').get_data(as_text=True)
+    assert late_no in by_number and 'Nodue' not in by_number
+    by_email = admin_client.get('/admin/orders?stage=all&q=customer-test@').get_data(as_text=True)
+    assert late_no in by_email
+    assert 'Nodue' not in admin_client.get('/admin/orders?stage=all&q=zzzz-nothing').get_data(as_text=True)

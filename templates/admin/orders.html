@@ -50,63 +50,53 @@
         </p>
         <p class="ord-lead" style="font-size:.8rem;margin-top:.2rem"><a href="{{ url_for('admin.unsaved_payments') }}">Got paid but no order showed up? Find the payment</a></p>
     </div>
-    <div class="ord-header-actions">
-        <a href="{{ ops_url('admin.production_workflow') }}" class="btn btn-outline ord-action-btn" title="See every order in columns by stage and move them">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="18"/><rect x="14" y="3" width="7" height="12"/></svg>
-            Board view
-        </a>
-        <a href="{{ ops_url('admin.production_master', stage=['order_received']) }}" class="btn btn-primary ord-action-btn">
-            Next: Order blanks
-        </a>
-        <a href="{{ ops_url('admin.print_labels', stage=_status if _status and _status != 'all' else ['pressed', 'packaged_ready']) }}" class="btn btn-outline ord-action-btn">
-            Print labels
-        </a>
-        <a href="{{ url_for('admin.invoice_new') }}" class="btn btn-outline ord-action-btn">
-            Create invoice
-        </a>
+    <div class="wf-header-actions">
+        <a href="{{ ops_url('admin.production_workflow') }}" class="btn btn-outline wf-header-btn" title="Every order in columns by stage">Board view</a>
+        <a href="{{ ops_url('admin.production_master', stage=['order_received']) }}" class="btn btn-outline wf-header-btn">Order blanks</a>
+        <a href="{{ ops_url('admin.transfer_production', stage=['ready_to_press']) }}" class="btn btn-outline wf-header-btn">Press sheets</a>
+        <a href="{{ ops_url('admin.print_labels', stage=_status if _status and _status != 'all' else ['pressed', 'packaged_ready']) }}" class="btn btn-outline wf-header-btn">Print labels</a>
+        <a href="{{ url_for('admin.invoice_new') }}" class="btn btn-outline wf-header-btn">Create invoice</a>
+        <a href="{{ url_for('admin.orders_completed') }}" class="btn btn-outline wf-header-btn">All Completed</a>
     </div>
 </div>
 
-<!-- Filters -->
-<div class="ord-filters">
-    <div class="ord-filter-row">
-        <span class="ord-filter-label">Status</span>
-        <div class="ord-chips">
-            <a href="{{ url_for('admin.orders', stage='all', order_type=_order_type, collection=_collection) }}"
-               class="ord-chip {% if _status == 'all' %}ord-chip--active{% endif %}">All Open <span class="ord-chip-count">{{ stage_counts.get('all', 0) }}</span></a>
-            <a href="{{ url_for('admin.orders', stage='order_received', order_type=_order_type, collection=_collection) }}"
-               class="ord-chip {% if _status == 'order_received' or _status == 'new' %}ord-chip--active{% endif %}">Order Received <span class="ord-chip-count">{{ stage_counts.get('order_received', 0) }}</span></a>
-            <a href="{{ url_for('admin.orders', stage='waiting_supplies', order_type=_order_type, collection=_collection) }}"
-               class="ord-chip {% if _status == 'waiting_supplies' %}ord-chip--active{% endif %}">Waiting on Supplies <span class="ord-chip-count">{{ stage_counts.get('waiting_supplies', 0) }}</span></a>
-            <a href="{{ url_for('admin.orders', stage='ready_to_press', order_type=_order_type, collection=_collection) }}"
-               class="ord-chip {% if _status == 'ready_to_press' %}ord-chip--active{% endif %}">Ready to Press <span class="ord-chip-count">{{ stage_counts.get('ready_to_press', 0) }}</span></a>
-            <a href="{{ url_for('admin.orders', stage='pressed', order_type=_order_type, collection=_collection) }}"
-               class="ord-chip {% if _status == 'pressed' %}ord-chip--active{% endif %}">Pressed <span class="ord-chip-count">{{ stage_counts.get('pressed', 0) }}</span></a>
-            <a href="{{ url_for('admin.orders', stage='packaged_ready', order_type=_order_type, collection=_collection) }}"
-               class="ord-chip {% if _status == 'packaged_ready' or _status == 'ready' %}ord-chip--active{% endif %}">Packaged &amp; Ready <span class="ord-chip-count">{{ stage_counts.get('packaged_ready', 0) }}</span></a>
-            <a href="{{ url_for('admin.orders_completed') }}" class="ord-chip ord-chip--muted">All Completed</a>
-        </div>
+<!-- Filters (same bar as the board) -->
+{% set _q = selected_q or none %}
+{% set _sort = selected_sort or 'newest' %}
+<div class="wf-filters">
+    <div class="wf-chipset wf-chipset--full">
+        <span class="wf-chip-label">Status</span>
+        {% for sid, label, on in [
+            ('all', 'All Open', _status == 'all'),
+            ('order_received', 'Order Received', _status in ('order_received', 'new')),
+            ('waiting_supplies', 'Waiting on Supplies', _status == 'waiting_supplies'),
+            ('ready_to_press', 'Ready to Press', _status == 'ready_to_press'),
+            ('pressed', 'Pressed', _status == 'pressed'),
+            ('packaged_ready', 'Packaged & Ready', _status in ('packaged_ready', 'ready')) ] %}
+        <a href="{{ url_for('admin.orders', stage=sid, order_type=_order_type, collection=_collection, sort=_sort if _sort != 'newest' else None, q=_q) }}" class="wf-chip {% if on %}wf-chip--on{% endif %}">{{ label }} <span class="wf-chip-count">{{ stage_counts.get(sid, 0) }}</span></a>
+        {% endfor %}
     </div>
-    <div class="ord-filter-row">
-        <span class="ord-filter-label">Sort</span>
-        <div class="ord-chips">
-            {% set _sort = selected_sort or 'newest' %}
-            <a href="{{ url_for('admin.orders', stage=_status, order_type=_order_type, collection=_collection, sort='newest') }}" class="ord-chip {% if _sort == 'newest' %}ord-chip--active{% endif %}">Newest</a>
-            <a href="{{ url_for('admin.orders', stage=_status, order_type=_order_type, collection=_collection, sort='oldest') }}" class="ord-chip {% if _sort == 'oldest' %}ord-chip--active{% endif %}">Oldest first</a>
-            <a href="{{ url_for('admin.orders', stage=_status, order_type=_order_type, collection=_collection, sort='due') }}" class="ord-chip {% if _sort == 'due' %}ord-chip--active{% endif %}">Due date</a>
-        </div>
+    <div class="wf-chipset">
+        <span class="wf-chip-label">Type</span>
+        <a href="{{ url_for('admin.orders', stage=_status, collection=_collection, sort=_sort if _sort != 'newest' else None, q=_q) }}" class="wf-chip {% if not _order_type %}wf-chip--on{% endif %}">All</a>
+        {% for t, label in [('retail', 'Retail'), ('wholesale', 'Wholesale'), ('event', 'Event')] %}
+        <a href="{{ url_for('admin.orders', stage=_status, order_type=t, collection=_collection, sort=_sort if _sort != 'newest' else None, q=_q) }}" class="wf-chip {% if _order_type == t %}wf-chip--on{% endif %}">{{ label }}</a>
+        {% endfor %}
     </div>
-    <div class="ord-filter-row">
-        <span class="ord-filter-label">Type</span>
-        <div class="ord-chips">
-            <a href="{{ url_for('admin.orders', stage=_status, order_type='retail', collection=_collection) }}"
-               class="ord-chip {% if _order_type == 'retail' or not _order_type %}ord-chip--active{% endif %}">Retail</a>
-            <a href="{{ url_for('admin.orders', stage=_status, order_type='wholesale', collection=_collection) }}"
-               class="ord-chip {% if _order_type == 'wholesale' %}ord-chip--active{% endif %}">Wholesale</a>
-            <a href="{{ url_for('admin.orders', stage=_status, order_type='event', collection=_collection) }}"
-               class="ord-chip {% if _order_type == 'event' %}ord-chip--active{% endif %}">Event</a>
-        </div>
+    <div class="wf-chipset">
+        <span class="wf-chip-label">Sort</span>
+        {% for key, label in [('newest', 'Newest'), ('oldest', 'Oldest first'), ('due', 'Due date')] %}
+        <a href="{{ url_for('admin.orders', stage=_status, order_type=_order_type, collection=_collection, sort=key if key != 'newest' else None, q=_q) }}" class="wf-chip {% if _sort == key %}wf-chip--on{% endif %}">{{ label }}</a>
+        {% endfor %}
     </div>
+    <form method="get" action="{{ url_for('admin.orders') }}" class="wf-search" role="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="hidden" name="stage" value="{{ _status or 'all' }}">
+        {% if _order_type %}<input type="hidden" name="order_type" value="{{ _order_type }}">{% endif %}
+        {% if _collection %}<input type="hidden" name="collection" value="{{ _collection }}">{% endif %}
+        {% if _sort != 'newest' %}<input type="hidden" name="sort" value="{{ _sort }}">{% endif %}
+        <input type="search" name="q" value="{{ selected_q or '' }}" placeholder="Find a name, email or order #" autocomplete="off" aria-label="Find an order">
+    </form>
 </div>
 
 {% if orders.items %}

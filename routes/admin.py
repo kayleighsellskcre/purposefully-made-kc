@@ -514,6 +514,13 @@ def orders():
         else:
             query = query.filter_by(order_type=order_type)
     
+    q = (request.args.get('q') or '').strip()
+    if q:
+        like = f'%{q}%'
+        query = query.filter(or_(
+            Order.order_number.ilike(like), Order.first_name.ilike(like), Order.last_name.ilike(like),
+            Order.email.ilike(like), (Order.first_name + ' ' + Order.last_name).ilike(like),
+        ))
     sort = request.args.get('sort') or 'newest'
     if sort == 'due':
         # Soonest due date first; orders with no due date go last.
@@ -561,6 +568,7 @@ def orders():
                          selected_collection=collection_id,
                          selected_order_type=order_type,
                          selected_sort=sort,
+                         selected_q=q,
                          stage_counts=stage_counts,
                          now=datetime.utcnow())
 

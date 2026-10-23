@@ -62,7 +62,7 @@ def test_orders_and_workflow_are_one_step(app, seed, admin_client):
     assert [s['id'] for s in FLOW_STEPS] == ['orders', 'blanks', 'press', 'pack']
     assert [s['num'] for s in FLOW_STEPS] == ['1', '2', '3', '4']
     orders = admin_client.get('/admin/orders?stage=order_received').get_data(as_text=True)
-    assert 'Board view' in orders and 'Next: Order blanks' in orders and 'Next: Workflow' not in orders
+    assert 'Board view' in orders and 'Order blanks' in orders and 'Next: Workflow' not in orders
     board = admin_client.get('/admin/operations/workflow').get_data(as_text=True)
     assert '<h1 class="wf-title">Orders</h1>' in board and 'List view' in board
     dash = admin_client.get('/admin/').get_data(as_text=True)
