@@ -3198,24 +3198,45 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 @media (max-width: 520px) { .kw-collage { column-gap: 0.8rem; } .kw-tile { margin-bottom: 0.9rem; } .kw-quote blockquote { font-size: 1.05rem; } }
 @media (prefers-reduced-motion: reduce) { .kw-photo, .kw-photo:hover { transition: none; transform: none; } }
 
-/* Size boxes: easy to see and tap. Empty boxes show only a "+", boxes with items turn solid rose. */
-.customizer-container .size-grid-professional { gap: 0.5rem; }
-.customizer-container .size-grid-professional .size-card { width: 68px; padding: 0.5rem 0.25rem 0.6rem; }
-.customizer-container .size-card .size-qty { gap: 0.25rem; margin-top: 0.4rem; }
-.customizer-container .size-card .size-qty button { width: 24px; height: 24px; font-size: 1.1rem; }
-.customizer-container .size-card:not(.has-qty) .qty-dec,
-.customizer-container .size-card:not(.has-qty) .qty-val { display: none; }
-.customizer-container .size-card:not(.has-qty) .qty-inc { width: 32px; height: 32px; font-size: 1.3rem; }
+/* Size picker: simple buttons. A tap adds one; the "Your sizes" line below changes the counts. */
+.customizer-container .size-grid-professional { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.customizer-container .size-grid-professional .size-card {
+    position: relative; width: 62px; min-height: 52px; padding: 0.55rem 0.2rem; border-width: 2px; border-radius: 10px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.1rem; flex: 0 0 auto;
+}
+.customizer-container .size-card .size-label { font-size: 1rem; font-weight: 700; }
+.customizer-container .size-card .size-upcharge-badge { font-size: 0.68rem; line-height: 1.1; }
+.customizer-container .size-card .stock-badge { font-size: 0.64rem; line-height: 1.1; min-height: 0; }
+.customizer-container .size-card .stock-badge:empty { display: none; }
+.customizer-container .size-card.out-of-stock { opacity: 0.45; }
 .customizer-container .size-card.has-qty,
 .customizer-container .size-card.has-qty.selected {
     background: linear-gradient(135deg, var(--terra-cotta), var(--aged-bronze)); border-color: var(--terra-cotta);
-    transform: none; box-shadow: 0 4px 12px rgba(184, 124, 111, 0.35);
+    transform: none; box-shadow: 0 4px 12px rgba(184, 124, 111, 0.3);
 }
 .customizer-container .size-card.has-qty .size-label,
-.customizer-container .size-card.has-qty .size-upcharge-badge,
-.customizer-container .size-card.has-qty .qty-val { color: #fff; }
-.customizer-container .size-card.has-qty .qty-val { font-size: 1.05rem; min-width: 1.2rem; }
-.customizer-container .size-card.has-qty .size-qty button { border-color: #fff; }
+.customizer-container .size-card.has-qty .size-upcharge-badge { color: #fff; }
+.customizer-container .size-card .size-count {
+    position: absolute; top: -8px; right: -8px; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px;
+    background: #fff; color: var(--terra-cotta); border: 2px solid var(--terra-cotta); font-size: 0.8rem; font-weight: 800;
+    line-height: 18px; text-align: center; box-sizing: border-box;
+}
+.customizer-container .size-card .size-count:empty { display: none; }
+.customizer-container .size-summary {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.6rem; margin: 0.9rem 0 0; padding: 0.65rem 0.8rem;
+    background: rgba(232, 208, 177, 0.25); border-radius: 12px;
+}
+.customizer-container .size-summary[hidden] { display: none; }
+.customizer-container .ss-title { width: 100%; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-secondary); }
+.customizer-container .ss-item { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.5rem 0.25rem 0.7rem;
+    background: #fff; border: 1px solid rgba(232, 208, 177, 0.95); border-radius: 999px; }
+.customizer-container .ss-item b { font-size: 0.95rem; }
+.customizer-container .ss-item button {
+    width: 28px; height: 28px; padding: 0; border: 1px solid rgba(184, 124, 111, 0.55); border-radius: 50%; background: #fff;
+    color: var(--terra-cotta); font-size: 1.15rem; line-height: 1; cursor: pointer;
+}
+.customizer-container .ss-item button:hover { background: rgba(184, 124, 111, 0.12); }
+.customizer-container .ss-item .qty-val { min-width: 1.3rem; text-align: center; font-weight: 700; font-size: 1rem; }
 
 /* Order bar: solid, and one row shorter */
 .customizer-container .order-bar { background: #fff; }

@@ -123,10 +123,9 @@ def test_contact_form_accepts_photos(guest, monkeypatch):
 
 # ---- size boxes and footer ----
 
-def test_empty_size_boxes_hide_the_zero_and_filled_ones_turn_solid():
+def test_size_buttons_are_simple_and_chosen_ones_turn_solid():
     css = open('static/css/main.css', encoding='utf-8').read()
-    assert '.size-card:not(.has-qty) .qty-val { display: none; }' in css
-    assert '.size-card:not(.has-qty) .qty-dec' in css
+    assert '.size-card .size-count' in css and '.size-summary' in css and '.ss-item' in css
     assert '.size-card.has-qty .size-label' in css and 'color: #fff' in css.split('.size-card.has-qty .size-label')[1][:200]
 
 

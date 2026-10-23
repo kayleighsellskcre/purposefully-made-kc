@@ -27,7 +27,8 @@ def test_color_search_and_filters_only_show_with_many_colors(guest, seed):
 def test_sizes_step_is_a_multi_size_grid_in_the_regular_shop(guest, seed):
     html = _page(guest, seed)
     assert 'Sizes and quantities' in html
-    assert html.count('class="size-qty"') >= 5
+    assert html.count('class="size-count"') >= 5 and 'id="sizeSummary"' in html
+    assert 'class="qty-val"' not in html.split('id="sizeGrid"')[1].split('id="sizeSummary"')[0]    # no zeros in the size buttons
     assert 'Pick a color first to see availability' not in html
     assert 'const MULTI_SIZE = true;' in html
     # the separate Quantity step is gone from view (the input stays for older code)

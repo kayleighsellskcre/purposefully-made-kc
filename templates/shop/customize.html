@@ -2235,7 +2235,7 @@
                        and Add to Cart sat greyed out with no reason given - which
                        reads as a broken page rather than an unavailable garment. #}
                     <p class="step-hint">
-                        {%- if available_sizes %}{% if multi_size %}Add as many sizes as you need.{% else %}Select your size.{% endif %}
+                        {%- if available_sizes %}{% if multi_size %}Tap a size to add it. Tap again below to change how many.{% else %}Select your size.{% endif %}
                         {%- else %}Sizes for this style aren't listed yet.{% endif %}
                     </p>
                     <div class="size-grid-professional" id="sizeGrid">
@@ -2247,16 +2247,11 @@
                             <div class="size-label">{{ size }}</div>
                             {% if _up %}<div class="size-upcharge-badge">+${{ _up }}</div>{% endif %}
                             <div class="stock-badge"></div>
-                            {% if multi_size %}
-                            <div class="size-qty" role="group" aria-label="Quantity for size {{ size }}">
-                                <button type="button" class="qty-dec" aria-label="Fewer size {{ size }}" tabindex="-1">&minus;</button>
-                                <span class="qty-val" aria-live="polite">0</span>
-                                <button type="button" class="qty-inc" aria-label="More size {{ size }}" tabindex="-1">+</button>
-                            </div>
-                            {% endif %}
+                            {% if multi_size %}<span class="size-count" aria-hidden="true"></span>{% endif %}
                         </div>
                         {% endfor %}
                     </div>
+                    {% if multi_size %}<div class="size-summary" id="sizeSummary" aria-live="polite" hidden></div>{% endif %}
                     {% if not available_sizes %}
                     <p class="size-unavailable-note">
                         This one can't be ordered just yet. <a href="{{ url_for('shop.index') }}">Browse other styles</a>
@@ -4499,11 +4494,23 @@
     function paintSizeQuantities() {
         document.querySelectorAll('.size-card').forEach(function (card) {
             const qty = state.sizeQty[card.dataset.size] || 0;
-            const val = card.querySelector('.qty-val');
-            if (val) val.textContent = qty;
+            const badge = card.querySelector('.size-count');
+            if (badge) badge.textContent = qty > 0 ? qty : '';
             card.classList.toggle('has-qty', qty > 0);
             card.classList.toggle('selected', card.dataset.size === state.selectedSize && qty > 0);
         });
+        const summary = document.getElementById('sizeSummary');
+        if (!summary) return;
+        const picked = sizesOrdered();
+        summary.hidden = picked.length === 0;
+        summary.innerHTML = '<span class="ss-title">Your sizes</span>' + picked.map(function (size) {
+            return '<span class="ss-item" role="group" aria-label="Size ' + size + '">' +
+                '<b>' + size + '</b>' +
+                '<button type="button" class="qty-dec" data-size="' + size + '" aria-label="One fewer size ' + size + '">&minus;</button>' +
+                '<span class="qty-val">' + state.sizeQty[size] + '</span>' +
+                '<button type="button" class="qty-inc" data-size="' + size + '" aria-label="One more size ' + size + '">+</button>' +
+                '</span>';
+        }).join('');
     }
 
     function capMultiToStock() {
@@ -4525,15 +4532,14 @@
     }
 
     function setupSizeSteppers() {
-        const grid = document.getElementById('sizeGrid');
-        if (!grid || !MULTI_SIZE) return;
-        grid.addEventListener('click', function (event) {
+        const summary = document.getElementById('sizeSummary');
+        if (!summary || !MULTI_SIZE) return;
+        summary.addEventListener('click', function (event) {
             const btn = event.target.closest('.qty-inc, .qty-dec');
             if (!btn) return;
-            event.stopPropagation();
-            const card = btn.closest('.size-card');
+            const size = btn.dataset.size;
+            const card = document.querySelector('.size-card[data-size="' + size + '"]');
             if (!card || card.classList.contains('out-of-stock')) return;
-            const size = card.dataset.size;
             const next = (state.sizeQty[size] || 0) + (btn.classList.contains('qty-inc') ? 1 : -1);
             state.sizeQty[size] = Math.max(0, Math.min(100, next));
             if (state.sizeQty[size] > 0) state.selectedSize = size;
@@ -4541,7 +4547,7 @@
             updateTotalPrice();
             applyDesignFit();
             updateBackDesignPreview();
-        }, true);
+        });
     }
 
     function capQuantityToStock() {
