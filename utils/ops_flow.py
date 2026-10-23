@@ -65,7 +65,7 @@ FLOW_STEPS = [
         'hint': 'Print labels and send home',
         'endpoint': 'admin.print_labels',
         'active_eps': ('admin.print_labels',),
-        'params': {'stage': ['pressed', 'packaged_ready']},
+        'params': {'stage': ['ready_to_press']},
     },
 ]
 
@@ -81,6 +81,7 @@ STAGE_TOOLS = {
     'ready_to_press': [
         ('admin.transfer_production', 'Press sheets', {'stage': ['ready_to_press']}),
         ('admin.logo_chart', 'Logo chart', {'stage': ['ready_to_press']}),
+        ('admin.print_labels', 'Print labels', {'stage': ['ready_to_press']}),
         ('admin.dtf_batch_sheets', 'Weekly DTF list', {'stage': ['ready_to_press']}),
     ],
     'pressed': [

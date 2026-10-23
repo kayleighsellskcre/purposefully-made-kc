@@ -7,7 +7,7 @@
         <div>
             <span class="adm-eyebrow">Admin / Production</span>
             <h1>Logo chart</h1>
-            <p class="logo-chart-sub">Hand this to the presser with the press sheet. Each main logo gets a number. Other colors of that same logo get a letter: 1, then 1a, 1b, 1c. The next distinct logo is 2.</p>
+            <p class="logo-chart-sub">Fronts and backs are both here. Hand this to the presser with the press sheet. Each main logo gets a number. Other colors of that same logo get a letter: 1, then 1a, 1b, 1c. The next distinct logo is 2.</p>
         </div>
         <div class="logo-chart-actions">
             <a class="btn btn-outline" href="{{ ops_url('admin.dtf_batch_sheets') }}">Weekly DTF list</a>
@@ -39,11 +39,13 @@
             <strong>{{ chart.collection.name }}</strong>
             · {{ chart.main_count }} main logo{{ 's' if chart.main_count != 1 else '' }}
             · {{ chart.logo_count }} color{{ 's' if chart.logo_count != 1 else '' }}
+            {% if chart.back_tiles %}· {{ chart.back_tiles|length }} back{% endif %}
         </header>
         <div class="logo-grid">
             {% for family in chart.families %}
             {% for variant in family.variants %}
             <article class="logo-tile">
+                <span class="logo-side logo-side--{{ variant.side or 'front' }}">{{ 'Back' if variant.side == 'back' else 'Front' }}</span>
                 <span class="logo-code">{{ variant.code }}</span>
                 <div class="logo-art">
                     {% if variant.image_url %}
@@ -60,6 +62,31 @@
             {% endfor %}
             {% endfor %}
         </div>
+        {% if chart.back_tiles %}
+        <h2 class="logo-side-title">Back of the shirt</h2>
+        <div class="logo-grid">
+            {% for tile in chart.back_tiles %}
+            <article class="logo-tile">
+                <span class="logo-side logo-side--back">Back</span>
+                <span class="logo-code">{{ tile.code }}</span>
+                <div class="logo-art{% if tile.kind == 'names' %} logo-art--names{% endif %}">
+                    {% if tile.kind == 'names' %}
+                    <span class="logo-names-sample">NAME<br>00</span>
+                    {% elif tile.image_url %}
+                    <img src="{{ tile.image_url }}" alt="Back {{ tile.code }}">
+                    {% else %}
+                    <span class="logo-missing">No file</span>
+                    {% endif %}
+                </div>
+                <p class="logo-name">{{ tile.title }}</p>
+                <p class="logo-label">
+                    {% if tile.count %}{{ tile.count }} shirt{{ 's' if tile.count != 1 }}{% else %}Group back design{% endif %}
+                    {% if tile.kind == 'names' and (tile.font or tile.color) %} · {{ tile.font }}{{ ' ' ~ tile.color if tile.color }}{% endif %}
+                </p>
+            </article>
+            {% endfor %}
+        </div>
+        {% endif %}
     </section>
     {% endfor %}
     {% else %}
@@ -68,7 +95,7 @@
 </div>
 
 <style>
-.logo-chart-page { padding: 3.5rem 0 4rem; }
+.logo-chart-page { padding: 0.75rem 0 4rem; }
 .logo-chart-header { display: flex; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
 .logo-chart-sub { color: var(--text-secondary); max-width: 42rem; margin-top: 0.35rem; }
 .logo-chart-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-start; }
@@ -119,6 +146,11 @@
 }
 .logo-art img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .logo-missing { color: #666; font-size: 0.9rem; }
+.logo-side { position: absolute; top: 0.4rem; right: 0.4rem; padding: 0.12rem 0.5rem; border: 1.5px solid #111; border-radius: 999px; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; background: #fff; }
+.logo-side--back { background: #111; color: #fff; }
+.logo-side-title { font-size: 1.05rem; letter-spacing: 0.12em; text-transform: uppercase; margin: 1.25rem 0 0.6rem; padding-top: 0.6rem; border-top: 1px dashed #999; break-after: avoid; }
+.logo-art--names { background: #fff; }
+.logo-names-sample { font-weight: 900; font-size: 1.6rem; line-height: 1.05; letter-spacing: 0.04em; color: #111; }
 .logo-name { margin: 0.4rem 0 0; font-size: 1.08rem; font-weight: 800; line-height: 1.2; }
 .logo-label { margin: 0.12rem 0 0; font-size: 0.95rem; color: #444; line-height: 1.2; }
 .logo-chart-empty { padding: 2rem; background: #fff; }
@@ -157,6 +189,8 @@
         break-inside: avoid !important;
         page-break-inside: avoid !important;
     }
+    .logo-side { font-size: 9pt !important; top: 0.08in !important; right: 0.08in !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .logo-side-title { font-size: 12pt !important; margin: 0.12in 0 0.08in !important; }
     .logo-code {
         font-size: 26pt !important;
         margin: 0 0 0.06in !important;

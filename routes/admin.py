@@ -3939,7 +3939,8 @@ def print_labels():
     from utils.production_stages import STAGES, orders_for_stages
     collection_id = request.args.get('collection')
     order_id = request.args.get('order_id', type=int)
-    stage_filter = request.args.getlist('stage') or [sid for sid, _name, _desc in STAGES]
+    # Most of the time you print labels for everything that is ready to press; pick other stages when you need them.
+    stage_filter = request.args.getlist('stage') or ['ready_to_press']
 
     if order_id:
         query = Order.query.filter_by(id=order_id)
@@ -4117,7 +4118,7 @@ def dtf_batch_sheets():
 def logo_chart():
     """Printable master logo chart: 1, 1a, 1b for each group order."""
     from utils.ops_flow import ops_order_query
-    from utils.logo_codes import extra_design_ids_from_orders, logo_families
+    from utils.logo_codes import back_logo_tiles, design_sides, extra_design_ids_from_orders, logo_families
 
     query, stages, collection_id = ops_order_query(
         ['order_received', 'waiting_supplies', 'ready_to_press', 'pressed']
@@ -4141,10 +4142,16 @@ def logo_chart():
     for collection in chosen:
         extra = extra_design_ids_from_orders(orders, collection.id)
         families = logo_families(collection, extra)
-        if families:
+        sides = design_sides(orders, collection.id)
+        for family in families:
+            for variant in family['variants']:
+                variant['side'] = sides.get(variant['design_id'], 'front')
+        back_tiles = back_logo_tiles(collection, orders)
+        if families or back_tiles:
             charts.append({
                 'collection': collection,
                 'families': families,
+                'back_tiles': back_tiles,
                 'logo_count': sum(len(family['variants']) for family in families),
                 'main_count': len(families),
             })

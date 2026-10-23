@@ -183,3 +183,90 @@ def stamp_logo_codes(orders, rows, *, design_key='design_id', collection_key='co
         prefix = prefixes.get(cid) or ''
         row['logo_code'] = f'{prefix} {code}'.strip() if code else ''
     return rows
+
+
+def _orders_items(orders, collection_id):
+    for order in orders or []:
+        if collection_id is not None and getattr(order, 'collection_id', None) != collection_id:
+            continue
+        items = order.items.all() if hasattr(getattr(order, 'items', None), 'all') else list(getattr(order, 'items', None) or [])
+        for item in items:
+            yield item
+
+
+def design_sides(orders, collection_id=None):
+    """{design_id: 'front' | 'back'}. A logo is "back" only if every order line puts it on the back."""
+    seen = {}
+    for item in _orders_items(orders, collection_id):
+        did = getattr(item, 'design_id', None)
+        if not did:
+            continue
+        placement = (getattr(item, 'placement', None) or '').strip().lower().replace(' ', '_')
+        seen.setdefault(did, set()).add('back' if placement == 'center_back' else 'front')
+    return {did: ('back' if sides == {'back'} else 'front') for did, sides in seen.items()}
+
+
+def _file_key(url):
+    return (url or '').replace('\\', '/').split('?')[0].rstrip('/').split('/')[-1].lower()
+
+
+def _pretty_name(url):
+    raw = _file_key(url)
+    if '.' in raw:
+        raw = raw.rsplit('.', 1)[0]
+    return raw.replace('_', ' ').replace('-', ' ').strip().title() or 'Back art'
+
+
+def back_logo_tiles(collection, orders):
+    """What is printed on the BACK of the shirts: shared back art, and names and numbers.
+
+    Shared back art (the group's locked back design, or a back file customers added) gets a code
+    B1, B2... Names and numbers are personal, so they get one tile with the count and the style.
+    """
+    from models import Design, db
+    from utils.order_artwork import back_print_url
+
+    art = {}                     # file name -> tile
+    names_count = 0
+    names_style = {}
+
+    def add_art(url, title, qty):
+        key = _file_key(url)
+        if not key:
+            return
+        tile = art.setdefault(key, {'kind': 'art', 'image_url': url, 'title': title or _pretty_name(url), 'count': 0})
+        tile['count'] += qty
+
+    back_id = getattr(collection, 'back_design_id', None)
+    if back_id:
+        design = db.session.get(Design, back_id)
+        if design and design.file_path:
+            add_art(image_url(design.file_path), _design_title(design), 0)
+
+    for item in _orders_items(orders, collection.id):
+        qty = getattr(item, 'quantity', None) or 1
+        details = getattr(item, 'back_design_details', None)   # a property on the order line
+        if callable(details):
+            details = details()
+        meta = details if isinstance(details, dict) else {}
+        if meta.get('name') or meta.get('number'):
+            names_count += qty
+            names_style = names_style or {
+                'font': meta.get('font') or getattr(collection, 'back_design_font', None) or '',
+                'color': meta.get('text_color') or getattr(collection, 'back_design_text_color', None) or '',
+            }
+            continue
+        url = back_print_url(item)
+        if url:
+            add_art(url, None, qty)
+
+    tiles = []
+    for number, tile in enumerate(art.values(), start=1):
+        tile['code'] = f'B{number}'
+        tiles.append(tile)
+    if names_count:
+        tiles.append({
+            'kind': 'names', 'code': 'N', 'image_url': '', 'title': 'Names & numbers',
+            'count': names_count, 'font': names_style.get('font', ''), 'color': names_style.get('color', ''),
+        })
+    return tiles

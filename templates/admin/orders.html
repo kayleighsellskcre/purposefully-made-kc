@@ -54,7 +54,7 @@
         <a href="{{ ops_url('admin.production_workflow') }}" class="btn btn-outline wf-header-btn" title="Every order in columns by stage">Board view</a>
         <a href="{{ ops_url('admin.production_master', stage=['order_received']) }}" class="btn btn-outline wf-header-btn">Order blanks</a>
         <a href="{{ ops_url('admin.transfer_production', stage=['ready_to_press']) }}" class="btn btn-outline wf-header-btn">Press sheets</a>
-        <a href="{{ ops_url('admin.print_labels', stage=_status if _status and _status != 'all' else ['pressed', 'packaged_ready']) }}" class="btn btn-outline wf-header-btn">Print labels</a>
+        <a href="{{ ops_url('admin.print_labels', stage=_status if _status and _status != 'all' else ['ready_to_press']) }}" class="btn btn-outline wf-header-btn">Print labels</a>
         <a href="{{ url_for('admin.invoice_new') }}" class="btn btn-outline wf-header-btn">Create invoice</a>
         <a href="{{ url_for('admin.orders_completed') }}" class="btn btn-outline wf-header-btn">All Completed</a>
     </div>
