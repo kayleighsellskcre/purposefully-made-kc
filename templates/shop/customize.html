@@ -2350,18 +2350,6 @@
                     {% else %}
                     {# Regular shop: tabbed category picker + search + paginated grid #}
                     {%- macro _autogroup(title) -%}{%- set _t=(title or '')|lower -%}{%- if 'chief' in _t -%}Kansas City Chiefs{%- elif 'royal' in _t -%}Kansas City Royals{%- elif 'sporting' in _t -%}Sporting KC{%- elif 'kc current' in _t or 'current fc' in _t -%}KC Current{%- elif 'jayhawk' in _t -%}KU Jayhawks{%- elif 'wildcat' in _t or 'k-state' in _t or 'kstate' in _t -%}K-State Wildcats{%- elif 'mizzou' in _t or ('tiger' in _t and 'mu' in _t) -%}Mizzou Tigers{%- elif 'riverview' in _t -%}Riverview Falcons{%- elif 'falcon' in _t -%}Falcons{%- elif 'eagle' in _t -%}Eagles{%- elif 'bulldog' in _t -%}Bulldogs{%- elif 'bear' in _t -%}Bears{%- elif 'patriot' in _t -%}Patriots{%- elif 'trojan' in _t -%}Trojans{%- elif 'panther' in _t -%}Panthers{%- elif 'cardinal' in _t -%}Cardinals{%- elif 'tiger' in _t -%}Tigers{%- elif 'hawk' in _t -%}Hawks{%- else -%}{%- endif -%}{%- endmacro -%}
-                    {%- macro _dcat(d) -%}{%- set _f = (d.folder or '')|lower -%}{%- if _f in ['faith','bible','inspirational'] -%}Faith & Inspiration{%- elif _f == 'sports' -%}Sports{%- elif _f == 'school' -%}School{%- elif _f in ['couples','family'] -%}Couples & Family{%- elif _f in ['holiday','seasonal'] -%}Holiday{%- elif _f == 'kc' -%}Kansas City{%- elif _f == 'music' -%}Music{%- elif _f == 'funny' -%}Funny{%- elif _f in ['luxury_basics','luxury'] -%}Luxury Basics{%- elif _f in ['evergreen','favorites','fan_favorites',''] -%}Fan Favorites{%- else -%}Fan Favorites{%- endif -%}{%- endmacro -%}
-                    {%- macro _rawcat(f) -%}{%- set _f = (f or '')|lower|trim -%}{%- if _f in ['faith','bible','inspirational'] -%}Faith & Inspiration{%- elif _f == 'sports' -%}Sports{%- elif _f == 'school' -%}School{%- elif _f in ['couples','family'] -%}Couples & Family{%- elif _f in ['holiday','seasonal'] -%}Holiday{%- elif _f == 'kc' -%}Kansas City{%- elif _f == 'music' -%}Music{%- elif _f == 'funny' -%}Funny{%- elif _f in ['luxury_basics','luxury'] -%}Luxury Basics{%- elif _f in ['evergreen','favorites'] -%}Fan Favorites{%- else -%}{%- endif -%}{%- endmacro -%}
-                    {%- set _ns = namespace(faith=0,sports=0,school=0,couples=0,holiday=0,kc=0,music=0,funny=0,luxury=0,favs=0) -%}
-                    {%- macro _count_cat(f) -%}{%- set _f=(f or '')|lower|trim -%}{%- if _f in ['faith','bible','inspirational'] -%}faith{%- elif _f=='sports' -%}sports{%- elif _f=='school' -%}school{%- elif _f in ['couples','family'] -%}couples{%- elif _f in ['holiday','seasonal'] -%}holiday{%- elif _f=='kc' -%}kc{%- elif _f=='music' -%}music{%- elif _f=='funny' -%}funny{%- elif _f in ['luxury_basics','luxury'] -%}luxury{%- elif _f in ['evergreen','favorites','fan_favorites'] -%}favs{%- else -%}{%- endif -%}{%- endmacro -%}
-                    {%- for d in gallery_designs -%}
-                      {%- set _pk = _count_cat(d.folder) -%}
-                      {%- if _pk == 'faith' -%}{%- set _ns.faith=_ns.faith+1 -%}{%- elif _pk == 'sports' -%}{%- set _ns.sports=_ns.sports+1 -%}{%- elif _pk == 'school' -%}{%- set _ns.school=_ns.school+1 -%}{%- elif _pk == 'couples' -%}{%- set _ns.couples=_ns.couples+1 -%}{%- elif _pk == 'holiday' -%}{%- set _ns.holiday=_ns.holiday+1 -%}{%- elif _pk == 'kc' -%}{%- set _ns.kc=_ns.kc+1 -%}{%- elif _pk == 'music' -%}{%- set _ns.music=_ns.music+1 -%}{%- elif _pk == 'funny' -%}{%- set _ns.funny=_ns.funny+1 -%}{%- elif _pk == 'luxury' -%}{%- set _ns.luxury=_ns.luxury+1 -%}{%- else -%}{%- set _ns.favs=_ns.favs+1 -%}{%- endif -%}
-                      {%- for _ec in (d.extra_categories or '').split(',') -%}
-                        {%- set _ek = _count_cat(_ec) -%}
-                        {%- if _ek == 'faith' -%}{%- set _ns.faith=_ns.faith+1 -%}{%- elif _ek == 'sports' -%}{%- set _ns.sports=_ns.sports+1 -%}{%- elif _ek == 'school' -%}{%- set _ns.school=_ns.school+1 -%}{%- elif _ek == 'couples' -%}{%- set _ns.couples=_ns.couples+1 -%}{%- elif _ek == 'holiday' -%}{%- set _ns.holiday=_ns.holiday+1 -%}{%- elif _ek == 'kc' -%}{%- set _ns.kc=_ns.kc+1 -%}{%- elif _ek == 'music' -%}{%- set _ns.music=_ns.music+1 -%}{%- elif _ek == 'funny' -%}{%- set _ns.funny=_ns.funny+1 -%}{%- elif _ek == 'luxury' -%}{%- set _ns.luxury=_ns.luxury+1 -%}{%- elif _ek == 'favs' -%}{%- set _ns.favs=_ns.favs+1 -%}{%- endif -%}
-                      {%- endfor -%}
-                    {%- endfor -%}
                     <div class="design-pane" data-pane="gallery"{% if _dp != 'gallery' %} hidden{% endif %}>
                     <div class="logo-gallery-inline gallery-design-picker" id="logoGalleryInline">
 
@@ -2369,16 +2357,9 @@
                         <p class="logo-gallery-label" style="margin-bottom:0.6rem;font-weight:600;">Design Gallery: pick a category to browse</p>
                         <div class="design-picker-tabs" id="designTabBar" role="tablist" aria-label="Design categories">
                             <button class="design-tab-btn" data-tab="All" onclick="filterDesignTab(this)" role="tab" aria-selected="false">All <span class="design-tab-count">({{ gallery_designs|length }})</span></button>
-                            <button class="design-tab-btn" data-tab="Faith &amp; Inspiration" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Faith &amp; Inspiration{% if _ns.faith > 0 %} <span class="design-tab-count">({{ _ns.faith }})</span>{% endif %}</button>
-                            <button class="design-tab-btn" data-tab="Sports" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Sports{% if _ns.sports > 0 %} <span class="design-tab-count">({{ _ns.sports }})</span>{% endif %}</button>
-                            <button class="design-tab-btn" data-tab="School" onclick="filterDesignTab(this)" role="tab" aria-selected="false">School{% if _ns.school > 0 %} <span class="design-tab-count">({{ _ns.school }})</span>{% endif %}</button>
-                            <button class="design-tab-btn" data-tab="Couples &amp; Family" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Couples &amp; Family{% if _ns.couples > 0 %} <span class="design-tab-count">({{ _ns.couples }})</span>{% endif %}</button>
-                            <button class="design-tab-btn" data-tab="Holiday" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Holiday{% if _ns.holiday > 0 %} <span class="design-tab-count">({{ _ns.holiday }})</span>{% endif %}</button>
-                            <button class="design-tab-btn" data-tab="Kansas City" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Kansas City{% if _ns.kc > 0 %} <span class="design-tab-count">({{ _ns.kc }})</span>{% endif %}</button>
-                            <button class="design-tab-btn" data-tab="Music" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Music{% if _ns.music > 0 %} <span class="design-tab-count">({{ _ns.music }})</span>{% endif %}</button>
-                            <button class="design-tab-btn" data-tab="Funny" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Funny{% if _ns.funny > 0 %} <span class="design-tab-count">({{ _ns.funny }})</span>{% endif %}</button>
-                            <button class="design-tab-btn" data-tab="Luxury Basics" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Luxury Basics{% if _ns.luxury > 0 %} <span class="design-tab-count">({{ _ns.luxury }})</span>{% endif %}</button>
-                            <button class="design-tab-btn" data-tab="Fan Favorites" onclick="filterDesignTab(this)" role="tab" aria-selected="false">Fan Favorites{% if _ns.favs > 0 %} <span class="design-tab-count">({{ _ns.favs }})</span>{% endif %}</button>
+                            {% for _col in design_collections %}
+                            <button class="design-tab-btn" data-tab="{{ _col.key }}" onclick="filterDesignTab(this)" role="tab" aria-selected="false">{{ _col.label }} <span class="design-tab-count">({{ _col.count }})</span></button>
+                            {% endfor %}
                         </div>
 
                         {# ── Tap-to-browse prompt (hidden once a tab is selected) ── #}
@@ -2397,16 +2378,13 @@
                         {# ── Design grid - all tiles, JS shows/hides ── #}
                         <div class="logo-gallery-grid gallery-image-grid" id="logoGalleryGrid">
                             {%- for d in gallery_designs -%}
-                            {%- set _primary_cat = _dcat(d) -%}
-                            {%- set _extra_ns = namespace(cats=_primary_cat) -%}
-                            {%- for _raw in (d.extra_categories or '').split(',') -%}{%- set _raw = _raw.strip() -%}{%- if _raw -%}{%- set _mapped = _rawcat(_raw) -%}{%- if _mapped and _mapped != _primary_cat -%}{%- set _extra_ns.cats = _extra_ns.cats + '|' + _mapped -%}{%- endif -%}{%- endif -%}{%- endfor -%}
                             <div class="logo-gallery-item{% if preset_design and (preset_design.id == d.id or preset_design.parent_design_id == d.id) %} selected{% endif %}"
                                  data-design-id="{{ d.id }}"
                                  data-design-url="{{ d.url }}"
                                  data-design-title="{{ d.title }}"
                                  data-artwork-fit="{{ d.artwork_fit if d.artwork_fit is not none else '' }}"
-                                 data-category="{{ _primary_cat }}"
-                                 data-categories="{{ _extra_ns.cats }}"
+                                 data-category="{{ (d.collections or [""])[0] }}"
+                                 data-categories="{{ (d.collections or [])|join('|') }}{% if d.curated_favorite %}{{ '|' if d.collections else '' }}fan-favorites{% endif %}"
                                  data-group="{{ _autogroup(d.title) }}"
                                  data-has-colors="{{ '1' if d.has_colors else '0' }}"
                                  data-variants='{{ d.variants | tojson }}'
@@ -2488,33 +2466,7 @@
                     <a href="{{ url_for('shop.design_gallery', product_id=product.id) }}" class="btn btn-outline btn-sm" style="margin-top: 0.75rem; display: inline-block;">Browse full design gallery</a>
                     {% endif %}
                     {% endif %}
-                </div>
-                
-                <!-- Placement Selection -->
-                <div class="panel-section" id="placementSection" style="display: none;">
-                    <h3>Placement</h3>
-                    <p style="font-size: 0.85rem; color: #666; margin-bottom: 1rem;">Choose where you want your design placed when wearing the shirt</p>
-                    <div class="placement-grid" id="placementGrid">
-                        <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="center_chest">
-                            <strong>Center Chest</strong>
-                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Medium size, centered</small>
-                        </div>
-                        <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="left_chest">
-                            <strong>Left Chest</strong>
-                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Small logo, your left</small>
-                        </div>
-                        <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="right_chest">
-                            <strong>Right Chest</strong>
-                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Small logo, your right</small>
-                        </div>
-                        <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="center_back">
-                            <strong>Center Back</strong>
-                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Medium size, centered</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Add Back Design Option -->
+                <!-- Back design toggle (part of Step 3) -->
                 {% if not collection_restricted or allow_back_design %}
                 <div class="panel-section" id="backDesignSection" style="display: block;">
                     {% if collection_restricted and allow_back_design %}
@@ -2705,6 +2657,32 @@
                     </div>
                 </div>
                 {% endif %}{# end allow_back_design #}
+                </div>
+                
+                <!-- Placement Selection -->
+                <div class="panel-section" id="placementSection" style="display: none;">
+                    <h3>Placement</h3>
+                    <p style="font-size: 0.85rem; color: #666; margin-bottom: 1rem;">Choose where you want your design placed when wearing the shirt</p>
+                    <div class="placement-grid" id="placementGrid">
+                        <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="center_chest">
+                            <strong>Center Chest</strong>
+                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Medium size, centered</small>
+                        </div>
+                        <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="left_chest">
+                            <strong>Left Chest</strong>
+                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Small logo, your left</small>
+                        </div>
+                        <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="right_chest">
+                            <strong>Right Chest</strong>
+                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Small logo, your right</small>
+                        </div>
+                        <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="center_back">
+                            <strong>Center Back</strong>
+                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Medium size, centered</small>
+                        </div>
+                    </div>
+                </div>
+                
 
                 <!-- Quantity -->
                 <div class="panel-section"{% if multi_size %} hidden{% endif %}>

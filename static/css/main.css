@@ -3124,3 +3124,16 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 .title-heart:hover { background: rgba(184, 124, 111, 0.12); }
 .title-heart.active { color: #c0536a; }
 .title-heart:focus-visible { outline: 2px solid var(--terra-cotta); outline-offset: 2px; }
+
+/* Order bar on phones: pinned to the bottom of the window */
+@media (max-width: 968px) {
+    .customizer-container .order-bar {
+        position: fixed; left: 0; right: 0; bottom: 0; margin: 0; padding: 0.6rem 1rem calc(0.7rem + env(safe-area-inset-bottom));
+        border-radius: 12px 12px 0 0; z-index: 40;
+    }
+    .customizer-container .order-bar p.production-timeline-note { font-size: 0.72rem; margin-top: 0.3rem; }
+    .customizer-container { padding-bottom: 11rem; }
+}
+
+/* Back design lives inside Step 3 */
+.customizer-container .step-section > #backDesignSection { margin: 0.75rem 0 0; padding: 0; border: 0; }

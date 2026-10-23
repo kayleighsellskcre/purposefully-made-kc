@@ -3,9 +3,8 @@
 
 def test_customize_design_picker_includes_music_without_genre_menus(client, seed):
     html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
-    assert 'data-tab="Music"' in html
-    assert 'Faith &amp; Inspiration' in html
-    assert 'Kansas City' in html
+    assert 'data-tab="music-entertainment"' in html
+    assert 'Music &amp; Entertainment' in html
     assert 'Country &amp; Western' not in html
     assert 'Rock &amp; Roll' not in html
     assert 'Soul/Blues/Jazz' not in html

@@ -53,3 +53,23 @@ def test_heart_and_size_guide_link(guest, seed):
     assert 'href="/size-guide"' in html
     detail = guest.get(f'/shop/product/{seed["tee_slug"]}').get_data(as_text=True)
     assert 'class="title-heart"' in detail and 'Not sure of your size?' in detail
+
+
+def test_customizer_design_tabs_use_the_gallery_collection_names(guest, app, seed):
+    from models import Design, db
+    with app.app_context():
+        db.session.add(Design(filename='f.png', original_filename='f.png', file_path='uploads/f.png',
+                              title='Grace Upon Grace', is_gallery=True, design_fee=0, folder='faith'))
+        db.session.add(Design(filename='s.png', original_filename='s.png', file_path='uploads/s.png',
+                              title='Game Day', is_gallery=True, design_fee=0, folder='sports'))
+        db.session.commit()
+    html = _page(guest, seed)
+    assert 'data-tab="faith-inspiration"' in html and 'Faith &amp; Inspiration' in html
+    assert 'data-tab="sports-game-day"' in html and 'Sports &amp; Game Day' in html
+    assert 'data-categories="faith-inspiration"' in html
+    assert 'data-tab="Faith &amp; Inspiration"' not in html
+
+
+def test_back_design_toggle_sits_inside_the_design_step(guest, seed):
+    html = _page(guest, seed)
+    assert html.index('id="designPaneTabs"') < html.index('id="backDesignSection"') < html.index('id="placementSection"')

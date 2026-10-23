@@ -1143,8 +1143,24 @@ def customize(product_slug):
             gallery_designs = gallery_cards_for_public(
                 Design, resolve_url=_resolve_image_url, limit=200
             )
+            from utils.design_gallery import enrich_cards
+            enrich_cards(gallery_designs)
     except Exception:
         pass
+    # Category tabs use the same collections (and names) as the Design Gallery page.
+    design_collections = []
+    try:
+        from utils.design_taxonomy import COLLECTIONS as _GALLERY_COLLECTIONS
+        from utils.design_gallery import ALWAYS_SHOW
+        for _col in _GALLERY_COLLECTIONS:
+            _n = sum(1 for _d in gallery_designs if _col.key in (_d.get('collections') or []))
+            if _n or _col.key in ALWAYS_SHOW:      # music stays visible even when empty, as in the gallery
+                design_collections.append({'key': _col.key, 'label': _col.label, 'count': _n})
+        _fav = sum(1 for _d in gallery_designs if _d.get('curated_favorite'))
+        if _fav:
+            design_collections.append({'key': 'fan-favorites', 'label': 'Fan Favorites', 'count': _fav})
+    except Exception:
+        design_collections = []
     # User's own designs — hidden in group orders so only organizer-approved designs show
     my_designs = []
     if current_user.is_authenticated and not collection_restricted:
@@ -1217,6 +1233,7 @@ def customize(product_slug):
                          print_area_config=print_area_config,
                          preset_design=preset_design,
                          gallery_designs=gallery_designs,
+                         design_collections=design_collections,
                          my_designs=my_designs,
                          customize_back_fonts=CUSTOMIZE_BACK_FONTS,
                          current_user=current_user,
