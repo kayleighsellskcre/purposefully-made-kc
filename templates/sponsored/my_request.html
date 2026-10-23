@@ -10,6 +10,8 @@
 
             {% if sub.status == 'rejected' %}
             <p style="text-align:center;">This request was cancelled{% if sub.overage_refunded_at %} and your card payment was refunded{% endif %}.</p>
+            {% elif sub.immediate_order_id %}
+            <p style="text-align:center;color:var(--text-secondary);">The items you paid for are already being made, so this request can no longer be changed here. If something is wrong, please talk to your organizer.</p>
             {% elif not editable %}
             <p style="text-align:center;color:var(--text-secondary);">Your company's invoice has been created, so this request can no longer be changed here. If something is wrong, please talk to your organizer.</p>
             {% endif %}

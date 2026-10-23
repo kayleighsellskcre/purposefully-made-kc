@@ -291,6 +291,9 @@ def review(slug):
         sub.rejection_reason = None
         db.session.commit()
         flash(f'Put {sub.full_name} back on the list.', 'success')
+    elif action == 'reject' and sub.immediate_order_id:
+        flash('Their paid items are already being made, so this request cannot be removed here. '
+              'Please contact us.', 'error')
     elif action == 'reject':
         newly = sub.status != 'rejected'
         was_refunded = bool(sub.overage_refunded_at)

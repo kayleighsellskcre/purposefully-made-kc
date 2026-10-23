@@ -151,7 +151,13 @@ def test_employee_pays_for_extras_before_the_request_is_sent(seed, app, monkeypa
     assert back.status_code == 302 and back.headers['Location'].endswith('/sponsored/confirm')
     assert _status_of(app, 'ava@example.com') == 'approved'          # counted automatically
     assert 'Ava Lopez' in organizer.get(f'/c/{slug}/manage-sponsored').get_data(as_text=True)
-    assert _submission_count(app)[1] == 0
+
+    def check():                                           # only the employee's own paid item is made
+        order = Order.query.one()
+        assert order.payment_method == 'stripe' and order.payment_status == 'paid'
+        assert order.items.count() == 1 and order.total == 19.71
+        assert order.production_stage == 'order_received'
+    _in_db(app, check)
     html = guest.get(f'/c/{slug}/sponsored/confirm').get_data(as_text=True)
     assert 'payment of $19.71' in html
 
@@ -188,10 +194,10 @@ def test_webhook_finishes_an_employee_payment_if_they_closed_the_tab(seed, app, 
 
 def test_removing_a_paid_request_refunds_the_employee(seed, app, monkeypatch):
     guest = _guest(app)
-    slug = _setup(app, seed, items=1)
+    slug = _setup(app, seed, items=1, budget=10.0)
     refunds = []
-    _fake_stripe(monkeypatch, charge_cents=1971, refunds=refunds)
-    _fill_cart(guest, seed, qty=2)
+    _fake_stripe(monkeypatch, charge_cents=876, refunds=refunds)
+    _fill_cart(guest, seed, qty=1)
     _request(guest, slug)
     guest.get(f'/c/{slug}/sponsored/paid')
     sub_id = _in_db(app, lambda: SponsorSubmission.query.first().id)
@@ -208,7 +214,7 @@ def test_removing_a_paid_request_refunds_the_employee(seed, app, monkeypatch):
     assert len(refunds) == 1
 
 
-def test_order_holds_every_item_and_the_employees_shipping(seed, app, monkeypatch):
+def test_paid_items_start_now_and_covered_items_wait_for_the_invoice(seed, app, monkeypatch):
     guest = _guest(app)
     slug = _setup(app, seed, items=1)
     _fake_stripe(monkeypatch, charge_cents=3071)            # $18 + $1.71 tax + $11 shipping
@@ -216,23 +222,53 @@ def test_order_holds_every_item_and_the_employees_shipping(seed, app, monkeypatc
     _request(guest, slug, fulfillment_method='shipping', street='1 Main St', city='Olathe',
              state='KS', zip='66061')
     guest.get(f'/c/{slug}/sponsored/paid')
-    sub_id = _in_db(app, lambda: SponsorSubmission.query.first().id)
+
+    def now_order():
+        order = Order.query.one()                           # made at payment: just the paid item
+        assert order.items.count() == 1 and order.subtotal == 18.0
+        assert order.shipping_cost == 11.0 and order.tax == 1.71 and order.total == 30.71
+        assert order.fulfillment_method == 'shipping' and order.first_name == 'Ava'
+        assert SponsorSubmission.query.first().immediate_order_id == order.id
+    _in_db(app, now_order)
+
     organizer = _login_as(app, CUSTOMER_EMAIL)
-    organizer.post(f'/c/{slug}/manage-sponsored/review', data={'submission_id': sub_id, 'action': 'approve'})
     organizer.post(f'/c/{slug}/manage-sponsored/invoice')
     inv = _the_invoice(app)
     assert inv['subtotal'] == 18.0 and inv['total'] == 19.71        # company pays only its one item
+    page = organizer.get(f'/c/{slug}/manage-sponsored/invoice/{inv["id"]}').get_data(as_text=True)
+    assert 'Ava Lopez' in page and page.count('$18.00') >= 2        # name on the invoice, one line
+    assert _submission_count(app)[1] == 1                           # still only the paid item
+
     _owner_client(app).post(f'/c/{slug}/manage-sponsored/invoice/{inv["id"]}/mark-paid',
                             data={'method': 'check'})
 
-    def check():
-        order = Order.query.one()
-        assert order.items.count() == 2
-        assert order.subtotal == 36.0 and order.shipping_cost == 11.0
-        assert order.tax == 3.42 and order.total == 50.42
-        assert order.fulfillment_method == 'shipping'
-    _in_db(app, check)
+    def both_orders():
+        orders = Order.query.order_by(Order.id).all()
+        assert len(orders) == 2
+        later = orders[1]                                   # the covered item, now released
+        assert later.items.count() == 1 and later.first_name == 'Ava'
+        assert later.shipping_cost == 0 and later.total == 19.71
+        assert later.payment_method == 'company_invoice'
+    _in_db(app, both_orders)
 
+
+def test_paid_items_already_in_production_cannot_be_cancelled_or_removed(seed, app, monkeypatch):
+    guest = _guest(app)
+    slug = _setup(app, seed, items=1)
+    refunds = []
+    _fake_stripe(monkeypatch, charge_cents=1971, refunds=refunds)
+    _fill_cart(guest, seed, qty=2)
+    _request(guest, slug)
+    guest.get(f'/c/{slug}/sponsored/paid')
+    path = _my_request_path(app)
+    page = guest.post(path + '/cancel', follow_redirects=True).get_data(as_text=True)
+    assert 'being made' in page or 'can no longer' in page
+    sub_id = _in_db(app, lambda: SponsorSubmission.query.first().id)
+    resp = _login_as(app, CUSTOMER_EMAIL).post(
+        f'/c/{slug}/manage-sponsored/review', data={'submission_id': sub_id, 'action': 'reject'},
+        follow_redirects=True)
+    assert 'already being made' in resp.get_data(as_text=True)
+    assert _status_of(app, 'ava@example.com') == 'approved' and refunds == []
 
 def test_request_is_saved_without_making_an_order(seed, app):
     guest = _guest(app)
@@ -405,9 +441,9 @@ def test_emails_follow_a_request_from_start_to_production(seed, app, outbox):
 
 def test_declined_email_mentions_the_refund(seed, app, outbox, monkeypatch):
     guest = _guest(app)
-    slug = _setup(app, seed, items=1)
-    _fake_stripe(monkeypatch, charge_cents=1971, refunds=[])
-    _fill_cart(guest, seed, qty=2)
+    slug = _setup(app, seed, items=1, budget=10.0)
+    _fake_stripe(monkeypatch, charge_cents=876, refunds=[])
+    _fill_cart(guest, seed, qty=1)
     _request(guest, slug)
     guest.get(f'/c/{slug}/sponsored/paid')
     sub_id = _in_db(app, lambda: SponsorSubmission.query.first().id)
@@ -486,10 +522,10 @@ def test_no_changes_once_the_invoice_exists(seed, app):
 
 def test_employee_can_cancel_and_is_refunded(seed, app, outbox, monkeypatch):
     guest = _guest(app)
-    slug = _setup(app, seed, items=1)
+    slug = _setup(app, seed, items=1, budget=10.0)
     refunds = []
-    _fake_stripe(monkeypatch, charge_cents=1971, refunds=refunds)
-    _fill_cart(guest, seed, qty=2)
+    _fake_stripe(monkeypatch, charge_cents=876, refunds=refunds)
+    _fill_cart(guest, seed, qty=1)
     _request(guest, slug)
     guest.get(f'/c/{slug}/sponsored/paid')
     path = _my_request_path(app)

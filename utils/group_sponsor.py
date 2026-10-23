@@ -4,7 +4,7 @@ Employees shop the normal group storefront and fill the normal cart. At
 checkout they send a request. The company covers the first N items (up to an
 optional per-item price cap); anything extra, plus tax on it and shipping if
 they want it shipped, the employee pays by card right then. If the organizer
-later removes the request, that card payment is refunded. Requests are counted
+later removes the request, that card payment is refunded (unless those items are already being made). Requests are counted
 automatically from the group order's settings (items per person, price limit): there
 is no approval step. The organizer only
 requests and pays one invoice. Nothing is produced until that invoice is paid:
@@ -125,7 +125,72 @@ def finalize_overage_payment(sub, intent_id, amount_cents):
     db.session.commit()
     from utils import sponsor_emails
     sponsor_emails.request_received(sub)
+    try:
+        create_immediate_order(sub)
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('sponsor request %s: paid items could not be started', sub.id)
     return True
+
+
+def is_immediate_line(line) -> bool:
+    """A unit the employee pays for entirely: it can be made now, without the company."""
+    return float(line.get('employee_part') or 0) > 0 and float(line.get('company_part') or 0) == 0
+
+
+def _build_order(sub, lines, *, shipping, tax, payment_method, paid_at, rid):
+    from models import Order, db
+    from routes.checkout import build_order_items
+    from utils.order_costs import default_due_date
+
+    subtotal = round(sum(float(l.get('unit_price') or 0) for l in lines), 2)
+    total = round(subtotal + shipping + tax, 2)
+    order = Order(
+        collection_id=sub.collection_id, email=sub.email, first_name=sub.first_name,
+        last_name=sub.last_name, phone=sub.phone,
+        fulfillment_method=sub.fulfillment_method or 'pickup',
+        shipping_recipient=sub.shipping_recipient, shipping_street=sub.shipping_street,
+        shipping_city=sub.shipping_city, shipping_state=sub.shipping_state,
+        shipping_zip=sub.shipping_zip,
+        subtotal=subtotal, shipping_cost=shipping, tax=tax, total=total,
+        payment_method=payment_method, payment_status='paid', amount_paid=total,
+        paid_at=paid_at, status='paid', production_stage='order_received',
+        due_date=default_due_date(),
+    )
+    db.session.add(order)
+    db.session.flush()
+    if not build_order_items(order, lines, rid=rid):
+        db.session.rollback()
+        return None
+    return order
+
+
+def create_immediate_order(sub):
+    """Start production now on the items the employee paid for in full.
+
+    Their shipping and the tax on those items ride with this order. Items the company
+    covers (even partly) wait for the company's invoice and keep the employee's name.
+    """
+    from models import db
+
+    if sub.immediate_order_id:
+        return None
+    lines = [l for l in sub.items if is_immediate_line(l)]
+    if not lines:
+        return None
+    subtotal = round(sum(float(l.get('unit_price') or 0) for l in lines), 2)
+    order = _build_order(
+        sub, lines, shipping=sub.overage_shipping or 0.0, tax=tax_for(sub.collection, subtotal),
+        payment_method='stripe', paid_at=sub.overage_paid_at or datetime.utcnow(),
+        rid=f'sponsor-now-{sub.id}',
+    )
+    if order is None:
+        return None
+    sub.immediate_order_id = order.id
+    db.session.commit()
+    from routes.checkout import queue_order_confirmation_email
+    queue_order_confirmation_email(order.id)       # receipt to the employee, alert to the shop
+    return order
 
 
 def refund_overage(sub):
@@ -234,38 +299,23 @@ def convert_invoice_to_orders(invoice):
             continue
         try:
             lines = sub.items
-            subtotal = round(sum(float(l.get('unit_price') or 0) for l in lines), 2)
-            shipping = sub.overage_shipping or 0.0
-            tax = round(tax_for(sub.collection, sub.sponsored_total) + (sub.overage_tax or 0), 2)
-            total = round(subtotal + shipping + tax, 2)
-            order = Order(
-                collection_id=invoice.collection_id,
-                email=sub.email,
-                first_name=sub.first_name,
-                last_name=sub.last_name,
-                phone=sub.phone,
-                fulfillment_method=sub.fulfillment_method or 'pickup',
-                shipping_recipient=sub.shipping_recipient,
-                shipping_street=sub.shipping_street,
-                shipping_city=sub.shipping_city,
-                shipping_state=sub.shipping_state,
-                shipping_zip=sub.shipping_zip,
-                subtotal=subtotal,
-                shipping_cost=shipping,
-                tax=tax,
-                total=total,
-                payment_method='company_invoice',
-                payment_status='paid',
-                amount_paid=total,
-                paid_at=invoice.paid_at,
-                status='paid',
-                production_stage='order_received',
-                due_date=default_due_date(),
-            )
-            db.session.add(order)
-            db.session.flush()
-            if not build_order_items(order, lines, rid=f'sponsor-{sub.id}'):
-                db.session.rollback()
+            company_tax = tax_for(sub.collection, sub.sponsored_total)
+            if sub.immediate_order_id:
+                # The employee's own paid items are already being made; this order is the rest.
+                lines = [l for l in lines if not is_immediate_line(l)]
+                made_now = sum(float(l.get('unit_price') or 0) for l in sub.items if is_immediate_line(l))
+                left_over_tax = max(0.0, round((sub.overage_tax or 0) - tax_for(sub.collection, made_now), 2))
+                shipping, tax = 0.0, round(company_tax + left_over_tax, 2)
+            else:
+                shipping, tax = sub.overage_shipping or 0.0, round(company_tax + (sub.overage_tax or 0), 2)
+            if not lines:
+                sub.status = 'converted'
+                db.session.commit()
+                continue
+            order = _build_order(sub, lines, shipping=shipping, tax=tax,
+                                 payment_method='company_invoice', paid_at=invoice.paid_at,
+                                 rid=f'sponsor-{sub.id}')
+            if order is None:
                 current_app.logger.error('sponsor submission %s had no usable items', sub.id)
                 continue
             sub.status = 'converted'
@@ -309,7 +359,8 @@ def sub_from_token(collection, token):
 
 
 def is_editable(sub) -> bool:
-    return sub.status in ('approved', 'pending')       # until it is on an invoice
+    # Until it is on an invoice, and not once their own paid items are being made.
+    return sub.status in ('approved', 'pending') and not sub.immediate_order_id
 
 
 def _line_can_resize(line) -> bool:

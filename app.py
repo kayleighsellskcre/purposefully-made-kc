@@ -241,6 +241,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE sponsor_submission ADD COLUMN IF NOT EXISTS overage_payment_intent_id VARCHAR(200)",
                     "ALTER TABLE sponsor_submission ADD COLUMN IF NOT EXISTS overage_paid_at TIMESTAMP",
                     "ALTER TABLE sponsor_submission ADD COLUMN IF NOT EXISTS overage_refunded_at TIMESTAMP",
+                    "ALTER TABLE sponsor_submission ADD COLUMN IF NOT EXISTS immediate_order_id INTEGER REFERENCES \"order\"(id)",
                     # product.spec_sheet_url — SanMar CDN PDF link added during Bella+Canvas CSV import
                     "ALTER TABLE product ADD COLUMN IF NOT EXISTS spec_sheet_url VARCHAR(500)",
                     # Softness rating + short fabric blurb (seeded by style number)

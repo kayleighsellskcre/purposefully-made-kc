@@ -319,6 +319,9 @@ class SponsorSubmission(db.Model):
 
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=True)
     order = db.relationship('Order', foreign_keys=[order_id])
+    # The employee's own paid items go into production at once, as their own order.
+    immediate_order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=True)
+    immediate_order = db.relationship('Order', foreign_keys=[immediate_order_id])
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

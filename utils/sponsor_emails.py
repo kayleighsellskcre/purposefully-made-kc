@@ -66,11 +66,21 @@ def _safe(fn, *args, **kwargs):
 def request_received(sub):
     paid = (f' We received your payment of ${sub.overage_charge:,.2f} for your extra items'
             f'{" and shipping" if sub.overage_shipping else ""}.') if sub.overage_paid_at else ''
+    from utils.group_sponsor import is_immediate_line
+    now_items = any(is_immediate_line(l) for l in sub.items)
+    covered_items = any(not is_immediate_line(l) for l in sub.items)
+    if now_items and covered_items:
+        timing = ("The items you paid for are being made now. The items your company covers are made "
+                  "as soon as its invoice is paid, and we will email you when that happens.")
+    elif now_items:
+        timing = 'The items you paid for are being made now.'
+    else:
+        timing = ("Your items are made as soon as your company's invoice is paid, "
+                  "and we will email you when that happens.")
     return _safe(
         _send, sub.email, f"You're in: {sub.collection.name}",
         f"Thanks, {sub.first_name}! Your request is in.",
-        [f'Everything is set.{paid} Your items are printed as soon as your '
-         "company's invoice is paid, and we will email you when that happens."],
+        [f'Everything is set.{paid} {timing}'],
         details=[('Group', sub.collection.name), ('Items', _items_text(sub))],
         button={'label': 'Change a size or cancel', 'url': _edit_link(sub)},
         note='Need to fix something? Use the button until the invoice is created. '

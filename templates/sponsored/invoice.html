@@ -9,13 +9,13 @@
         <table style="width:100%;border-collapse:collapse;">
             <thead><tr style="text-align:left;border-bottom:2px solid rgba(232,208,177,.9);"><th style="padding:.4rem 0;">Who</th><th>Item</th><th style="text-align:right;">Amount</th></tr></thead>
             <tbody>
-            {% for s in submissions %}
+            {% for s in submissions %}{% for item in s.items if item.company_part %}
                 <tr style="border-bottom:1px solid rgba(232,208,177,.5);">
                     <td style="padding:.5rem 0;">{{ s.full_name }}</td>
-                    <td>{% for item in s.items %}{{ item.get('product_name') or 'Item' }}, {{ item.color }}, {{ item.size }}{% if item.quantity and item.quantity > 1 %} × {{ item.quantity }}{% endif %}{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
-                    <td style="text-align:right;">${{ '%.2f'|format(s.sponsored_total) }}</td>
+                    <td>{{ item.get('product_name') or 'Item' }}, {{ item.color }}, {{ item.size }}</td>
+                    <td style="text-align:right;">${{ '%.2f'|format(item.company_part) }}</td>
                 </tr>
-            {% endfor %}
+            {% endfor %}{% endfor %}
             </tbody>
         </table>
         <div style="text-align:right;margin-top:1rem;line-height:1.7;">
