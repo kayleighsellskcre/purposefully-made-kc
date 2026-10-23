@@ -3197,3 +3197,30 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 @media (max-width: 860px) { .kw-collage { column-count: 2; } }
 @media (max-width: 520px) { .kw-collage { column-gap: 0.8rem; } .kw-tile { margin-bottom: 0.9rem; } .kw-quote blockquote { font-size: 1.05rem; } }
 @media (prefers-reduced-motion: reduce) { .kw-photo, .kw-photo:hover { transition: none; transform: none; } }
+
+/* Size boxes: easy to see and tap. Empty boxes show only a "+", boxes with items turn solid rose. */
+.customizer-container .size-grid-professional { gap: 0.5rem; }
+.customizer-container .size-grid-professional .size-card { width: 68px; padding: 0.5rem 0.25rem 0.6rem; }
+.customizer-container .size-card .size-qty { gap: 0.25rem; margin-top: 0.4rem; }
+.customizer-container .size-card .size-qty button { width: 24px; height: 24px; font-size: 1.1rem; }
+.customizer-container .size-card:not(.has-qty) .qty-dec,
+.customizer-container .size-card:not(.has-qty) .qty-val { display: none; }
+.customizer-container .size-card:not(.has-qty) .qty-inc { width: 32px; height: 32px; font-size: 1.3rem; }
+.customizer-container .size-card.has-qty,
+.customizer-container .size-card.has-qty.selected {
+    background: linear-gradient(135deg, var(--terra-cotta), var(--aged-bronze)); border-color: var(--terra-cotta);
+    transform: none; box-shadow: 0 4px 12px rgba(184, 124, 111, 0.35);
+}
+.customizer-container .size-card.has-qty .size-label,
+.customizer-container .size-card.has-qty .size-upcharge-badge,
+.customizer-container .size-card.has-qty .qty-val { color: #fff; }
+.customizer-container .size-card.has-qty .qty-val { font-size: 1.05rem; min-width: 1.2rem; }
+.customizer-container .size-card.has-qty .size-qty button { border-color: #fff; }
+
+/* Order bar: solid, and one row shorter */
+.customizer-container .order-bar { background: #fff; }
+.customizer-container .order-bar .price-summary { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 0.75rem; }
+.customizer-container .order-bar .price-details { flex: 0 0 auto; margin: 0; }
+.customizer-container .order-bar .price-details[open] { flex-basis: 100%; order: 3; }
+.customizer-container .order-bar .price-total { flex: 1 1 auto; justify-content: flex-end; gap: 0.75rem; }
+@media (max-height: 820px) { .customizer-container .order-bar p.production-timeline-note { display: none; } }

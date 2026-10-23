@@ -119,3 +119,18 @@ def test_contact_form_accepts_photos(guest, monkeypatch):
                       content_type='multipart/form-data')
     assert resp.status_code == 302
     assert 'Like this one' in seen['message'] and 'https://cdn.example/contact/idea.png' in seen['message']
+
+
+# ---- size boxes and footer ----
+
+def test_empty_size_boxes_hide_the_zero_and_filled_ones_turn_solid():
+    css = open('static/css/main.css', encoding='utf-8').read()
+    assert '.size-card:not(.has-qty) .qty-val { display: none; }' in css
+    assert '.size-card:not(.has-qty) .qty-dec' in css
+    assert '.size-card.has-qty .size-label' in css and 'color: #fff' in css.split('.size-card.has-qty .size-label')[1][:200]
+
+
+def test_footer_says_shawnee_kansas(guest, seed):
+    html = guest.get('/about').get_data(as_text=True)
+    footer = html.split('class="footer-contact"')[1].split('</p>')[0]
+    assert 'Shawnee, Kansas' in footer and 'Kansas City' not in footer
