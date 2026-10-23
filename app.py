@@ -63,7 +63,7 @@ def _sync_mockups_to_static(app):
 
 from utils.business_info import BUSINESS as _BUSINESS
 from utils.daily_quote import todays_quote as _daily_quote
-from utils.ready_date import ready_note as _ready_note
+from utils.ready_date import ready_note as _ready_note, weeks_phrase as _ready_weeks
 from utils.reviews_public import has_reviews as _has_reviews
 
 _ASSET_VERSIONS = {}
@@ -1020,6 +1020,7 @@ def create_app(config_class=Config):
             'css_version': _asset_version('css/main.css'),
             'daily_quote': _daily_quote(),
             'ready_note': _ready_note(),
+            'ready_weeks': _ready_weeks(),
             'has_reviews': _has_reviews(),
             'business': _BUSINESS,
             'cart_count': cart_count,

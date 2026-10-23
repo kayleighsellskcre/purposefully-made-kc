@@ -135,9 +135,21 @@
                 {% if order.tracking_number %}
                 <div class="od-info-row">
                     <span class="od-info-label">Tracking</span>
-                    <span class="od-info-val od-mono">{{ order.tracking_number }}</span>
+                    <span class="od-info-val od-mono">{{ order.carrier or '' }} {{ order.tracking_number }}</span>
                 </div>
                 {% endif %}
+                <form method="post" action="{{ url_for('admin.order_tracking', order_id=order.id) }}" class="od-tracking-form" style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:flex-end;margin-top:0.6rem;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label style="display:flex;flex-direction:column;gap:0.2rem;font-size:0.8rem;font-weight:600;">Carrier
+                        <select name="carrier">
+                            {% for name in ['USPS', 'UPS', 'FedEx', 'Other'] %}<option value="{{ name }}"{% if (order.carrier or 'USPS') == name %} selected{% endif %}>{{ name }}</option>{% endfor %}
+                        </select>
+                    </label>
+                    <label style="display:flex;flex-direction:column;gap:0.2rem;font-size:0.8rem;font-weight:600;">Tracking number
+                        <input type="text" name="tracking_number" value="{{ order.tracking_number or '' }}" maxlength="60" autocomplete="off" style="min-width:12rem;">
+                    </label>
+                    <button type="submit" class="btn btn-outline btn-sm">{{ 'Update tracking' if order.tracking_number else 'Save and email tracking' }}</button>
+                </form>
                 {% endif %}
                 {% if order.occasion_note %}
                 <div class="od-info-row">

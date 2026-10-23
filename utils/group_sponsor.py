@@ -269,14 +269,19 @@ def mark_invoice_paid(invoice, method, payment_intent_id=None):
     """Record payment and build the production orders. Safe to call twice."""
     from models import db
 
-    if invoice.payment_status != 'paid':
+    newly_paid = invoice.payment_status != 'paid'
+    if newly_paid:
         invoice.payment_status = 'paid'
         invoice.payment_method = method
         invoice.paid_at = datetime.utcnow()
         if payment_intent_id:
             invoice.payment_intent_id = payment_intent_id
         db.session.commit()
-    return convert_invoice_to_orders(invoice)
+    orders = convert_invoice_to_orders(invoice)
+    if newly_paid:
+        from utils import sponsor_emails
+        sponsor_emails.invoice_paid_to_organizer(invoice, orders)
+    return orders
 
 
 def convert_invoice_to_orders(invoice):

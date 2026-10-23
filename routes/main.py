@@ -117,6 +117,15 @@ def contact():
             flash('One of those fields is longer than we can take. Please shorten it and try again.', 'error')
             return redirect(url_for('main.contact'))
 
+        photo_files = [f for f in request.files.getlist('photos') if f and f.filename]
+        if photo_files:
+            photo_urls, photo_note = _save_review_photos(photo_files, 'contact')
+            if photo_urls:
+                message = (message + '\n\n' if message else '') + 'Photos:\n' + '\n'.join(
+                    u if u.startswith('http') else request.url_root.rstrip('/') + u for u in photo_urls)
+            if photo_note:
+                flash(photo_note, 'info')
+
         if name or email or message:
             try:
                 from utils.admin_notifications import notify_contact_message
@@ -132,9 +141,9 @@ def contact():
         # Send email to admin if mail is configured — after the thank-you redirect.
         try:
             from flask_mail import Message as MailMessage
-            mail = current_app.extensions.get('mail')
+            from utils.mailer import mail_configured
             admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').strip()
-            if mail and current_app.config.get('MAIL_SERVER') and current_app.config.get('MAIL_USERNAME'):
+            if mail_configured(current_app):
                 subject_line = f"[PMKC Contact] {subject or 'New message'} — from {name}"
                 body = (
                     f"New contact form submission from purposefullymadekc.com\n\n"
@@ -384,7 +393,7 @@ def _suggest_review_name(order):
     return f'{first} {last[:1]}.'.strip() if last else first
 
 
-def _save_review_photos(files):
+def _save_review_photos(files, subfolder='reviews'):
     """Store up to three photos. Returns (urls, message): message is set when something was skipped."""
     from utils.cloud_storage import store_upload
     urls, skipped = [], False
@@ -398,7 +407,7 @@ def _save_review_photos(files):
         if ext not in _REVIEW_PHOTO_TYPES or size > _REVIEW_PHOTO_MAX_BYTES or size == 0:
             skipped = True
             continue
-        urls.append(store_upload(f, 'reviews', 'review'))
+        urls.append(store_upload(f, subfolder, subfolder.rstrip('s')))
     msg = 'One of your photos could not be added (photos must be images under 8 MB).' if skipped else ''
     return urls, msg
 

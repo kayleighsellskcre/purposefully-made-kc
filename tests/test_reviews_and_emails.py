@@ -65,9 +65,9 @@ def test_pickup_email_uses_the_address_from_settings(app, seed, sent):
     assert 'Porch pickup' in mail['details']['Pickup details']
 
 
-def test_pickup_email_without_an_address_asks_them_to_reply(app, seed, sent):
+def test_pickup_email_falls_back_to_the_shop_address(app, seed, sent):
     _in_db(app, lambda: customer_emails.notify_stage_change(_order(), 'packaged_ready'))
-    assert 'reply to this email' in sent[0]['text']
+    assert sent[0]['details']['Pickup address'] == '4632 Woodstock Street, Shawnee, KS 66218'
 
 
 def test_send_home_email_names_the_child_and_teacher(app, seed, sent):

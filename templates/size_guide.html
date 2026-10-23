@@ -26,7 +26,7 @@
             {% if loop.first and card.note %}<p class="sg-note">{{ card.note }}</p>{% endif %}
             <div class="sg-table-wrap">
                 <table class="sg-table">
-                    <caption>{{ card.age }}{% if card.style %} · Style {{ card.style }}{% endif %}</caption>
+                    <caption>{{ card.age }}{% if card.title %} · {{ card.title }}{% endif %}{% if card.style %} · Style {{ card.style }}{% endif %}</caption>
                     <thead><tr><th scope="col">Size</th><th scope="col">Chest</th><th scope="col">Length</th></tr></thead>
                     <tbody>
                     {% for size, chest, length in card.rows %}
@@ -35,6 +35,7 @@
                     </tbody>
                 </table>
             </div>
+            {% if card.reference %}<p class="sg-note sg-ref">Published measurements for our most popular {{ brand }} style. Other styles are close. Ask us if you would like exact numbers for the one you are ordering.</p>{% endif %}
             {% endfor %}
         </article>
         {% endfor %}

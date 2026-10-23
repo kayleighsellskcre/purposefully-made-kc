@@ -131,6 +131,35 @@ def doc_from_invoice(inv, args=None):
     }
 
 
+def doc_from_company_invoice(invoice):
+    """Document for a company-sponsored invoice (one line per sponsored item)."""
+    from models import SponsorSubmission, db
+    lines = []
+    for sub_id in invoice.submission_ids:
+        sub = db.session.get(SponsorSubmission, sub_id)
+        if not sub:
+            continue
+        for item in sub.items:
+            part = money(item.get('company_part'))
+            if not item.get('company_part'):
+                continue
+            what = ', '.join(str(x) for x in (item.get('product_name') or 'Item', item.get('color'), item.get('size')) if x)
+            lines.append({'name': f'{sub.full_name}: {what}', 'detail': '', 'qty': 1, 'unit': part,
+                          'total': part, 'for': None})
+    total = money(invoice.total)
+    paid = total if invoice.payment_status == 'paid' else 0.0
+    organizer = getattr(invoice.collection, 'created_by', None)
+    method = {'stripe': 'Card'}.get(invoice.payment_method or '', (invoice.payment_method or '').title())
+    return {
+        'kind': 'receipt' if paid else 'invoice', 'number': invoice.invoice_number,
+        'date': _date_label(invoice.paid_at or invoice.created_at),
+        'name': invoice.collection.name, 'email': getattr(organizer, 'email', '') or '', 'phone': '',
+        'company': invoice.collection.name, 'attn': '', 'po': '', 'address': '', 'ship_to': '', 'group': '', 'note': '',
+        'lines': lines, 'subtotal': money(invoice.subtotal), 'discount': 0.0, 'shipping': 0.0, 'tax': money(invoice.tax),
+        'tax_label': 'Sales tax', 'total': total, 'paid': paid, 'balance': round(total - paid, 2), 'method': method,
+    }
+
+
 def next_invoice_number(session, model, year):
     """INV-2026-0001, then 0002, and so on (counted per year)."""
     prefix = f'INV-{year}-'

@@ -125,6 +125,23 @@
                     </select>
                 </label>
             </div>
+            {% if filters %}
+            <form class="dg-filters" method="get" action="{{ url_for('shop.design_gallery') }}" aria-label="Narrow these designs">
+                {% if product_id %}<input type="hidden" name="product_id" value="{{ product_id }}">{% endif %}
+                {% if active_folder %}<input type="hidden" name="collection" value="{{ active_folder.key }}">{% if active_folder.sub %}<input type="hidden" name="sub" value="{{ active_folder.sub }}">{% endif %}{% endif %}
+                {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+                {% for fname, f in filters.items() %}
+                <label class="dg-filter"><span class="dg-control-label">{{ f.label }}</span>
+                    <select name="{{ fname }}" onchange="this.form.submit()">
+                        <option value="">Any</option>
+                        {% for o in f.options %}<option value="{{ o.value }}"{% if chosen.get(fname) == o.value %} selected{% endif %}>{{ o.label }} ({{ o.count }})</option>{% endfor %}
+                    </select>
+                </label>
+                {% endfor %}
+                {% if chosen %}<a class="dg-clear-filters" href="{{ url_for('shop.design_gallery', collection=active_folder.key if active_folder else None, sub=(active_folder.sub or None) if active_folder else None, q=search_query or None, product_id=product_id) }}">Clear filters</a>{% endif %}
+                <noscript><button type="submit" class="btn btn-outline">Apply</button></noscript>
+            </form>
+            {% endif %}
         </div>
 
         {% if subs and gallery_view == 'folder' %}
@@ -132,23 +149,6 @@
             <a class="dg-chip{% if not active_folder.sub %} on{% endif %}" href="{{ url_for('shop.design_gallery', collection=active_folder.key, product_id=product_id) }}">All</a>
             {% for sc in subs %}<a class="dg-chip{% if active_folder.sub == sc.key %} on{% endif %}" href="{{ url_for('shop.design_gallery', collection=active_folder.key, sub=sc.key, product_id=product_id) }}">{{ sc.label }} <small>{{ sc.count }}</small></a>{% endfor %}
         </nav>
-        {% endif %}
-        {% if filters %}
-        <form class="dg-filters" method="get" action="{{ url_for('shop.design_gallery') }}" aria-label="Narrow these designs">
-            {% if product_id %}<input type="hidden" name="product_id" value="{{ product_id }}">{% endif %}
-            {% if active_folder %}<input type="hidden" name="collection" value="{{ active_folder.key }}">{% if active_folder.sub %}<input type="hidden" name="sub" value="{{ active_folder.sub }}">{% endif %}{% endif %}
-            {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
-            {% for fname, f in filters.items() %}
-            <label class="dg-filter"><span class="dg-control-label">{{ f.label }}</span>
-                <select name="{{ fname }}" onchange="this.form.submit()">
-                    <option value="">Any</option>
-                    {% for o in f.options %}<option value="{{ o.value }}"{% if chosen.get(fname) == o.value %} selected{% endif %}>{{ o.label }} ({{ o.count }})</option>{% endfor %}
-                </select>
-            </label>
-            {% endfor %}
-            {% if chosen %}<a class="dg-clear-filters" href="{{ url_for('shop.design_gallery', collection=active_folder.key if active_folder else None, sub=(active_folder.sub or None) if active_folder else None, q=search_query or None, product_id=product_id) }}">Clear filters</a>{% endif %}
-            <noscript><button type="submit" class="btn btn-outline">Apply</button></noscript>
-        </form>
         {% endif %}
 
         <div class="gallery-meta">
@@ -396,7 +396,9 @@
 .dg-chip small { opacity: .6; margin-left: .2rem; }
 .dg-chip:hover { border-color: var(--terra-cotta, #b87c6f); color: var(--terra-cotta, #b87c6f); }
 .dg-chip.on { background: var(--terra-cotta, #b87c6f); border-color: var(--terra-cotta, #b87c6f); color: #fff; }
-.dg-filters { display: flex; flex-wrap: wrap; gap: .85rem; align-items: end; margin: 0 0 1.1rem; }
+.dg-filters { display: flex; flex-wrap: wrap; gap: .85rem; align-items: end; margin: 0; }
+.dg-discovery { display: flex; flex-wrap: wrap; gap: .85rem 1.1rem; align-items: end; margin-bottom: 1.1rem; }
+.dg-discovery .dg-toolbar { flex: 1 1 360px; }
 .dg-filter select { min-height: 42px; border: 1.5px solid var(--border-color, #e0d8cc); border-radius: 10px; background: #fff; padding: .4rem 2rem .4rem .75rem; font: inherit; font-size: .88rem; min-width: 150px; }
 .dg-clear-filters { font-size: .82rem; font-weight: 700; color: var(--terra-cotta, #b87c6f); padding-bottom: .7rem; }
 .dg-folder--featured { border-color: rgba(184, 124, 111, .45); }

@@ -125,3 +125,82 @@ def test_printed_checkout_receipt_is_compact():
     printed = src.split('@media print')[1]
     for rule in ('.next-steps', '#email-status', '.confirmation-page { min-height: 0; }'):
         assert rule in printed, rule
+
+
+# ---- company-sponsored invoices ----
+
+def _company_invoice(app, seed):
+    out = {}
+
+    def run():
+        with app.app_context():
+            from models import Collection, CompanyInvoice, SponsorSubmission, User
+            from tests.conftest import CUSTOMER_EMAIL
+            coll = db.session.get(Collection, seed['collection_id'])
+            coll.payment_mode = 'company_sponsored'
+            coll.created_by_user_id = User.query.filter_by(email=CUSTOMER_EMAIL).first().id
+            items = [{'product_name': 'Tee', 'color': 'Black', 'size': 'M', 'quantity': 1, 'unit_price': 20.0, 'company_part': 20.0}]
+            sub = SponsorSubmission(collection_id=coll.id, first_name='Ava', last_name='Lopez', email='ava@example.com',
+                                    items_json=json.dumps(items), sponsored_total=20.0, status='invoiced')
+            db.session.add(sub)
+            db.session.flush()
+            inv = CompanyInvoice(invoice_number='INV-20261023-ABC123', collection_id=coll.id,
+                                 submission_ids_json=json.dumps([sub.id]), subtotal=20.0, tax=1.8, total=21.8)
+            db.session.add(inv)
+            db.session.commit()
+            out['id'], out['slug'] = inv.id, coll.slug
+    t = threading.Thread(target=run)
+    t.start()
+    t.join()
+    return out
+
+
+def test_company_invoice_document_and_pdf(app, seed):
+    out = _company_invoice(app, seed)
+
+    def run():
+        with app.app_context():
+            from models import CompanyInvoice
+            from utils.receipts import doc_from_company_invoice
+            inv = db.session.get(CompanyInvoice, out['id'])
+            doc = doc_from_company_invoice(inv)
+            assert doc['kind'] == 'invoice' and doc['balance'] == 21.8 and doc['lines'][0]['name'].startswith('Ava Lopez')
+            inv.payment_status, inv.payment_method = 'paid', 'stripe'
+            paid = doc_from_company_invoice(inv)
+            assert paid['kind'] == 'receipt' and paid['balance'] == 0 and paid['method'] == 'Card'
+            assert _pages(build_receipt_pdf(paid, BUSINESS)) == 1
+    t = threading.Thread(target=run)
+    t.start()
+    t.join()
+
+
+def test_organizer_gets_a_receipt_email_with_the_pdf_when_the_invoice_is_paid(app, seed, monkeypatch):
+    from utils import sponsor_emails
+    out = _company_invoice(app, seed)
+    box = []
+    monkeypatch.setattr(sponsor_emails, '_send', lambda *a, **kw: box.append((a, kw)) or True)
+
+    def run():
+        with app.app_context():
+            from models import CompanyInvoice
+            from utils.group_sponsor import mark_invoice_paid
+            inv = db.session.get(CompanyInvoice, out['id'])
+            mark_invoice_paid(inv, 'check')
+            mark_invoice_paid(inv, 'check')                       # a second call must not send a second email
+    t = threading.Thread(target=run)
+    t.start()
+    t.join()
+    mine = [(a, kw) for a, kw in box if a[0] == 'customer-test@example.com']
+    assert len(mine) == 1
+    (name, ctype, data), = mine[0][1]['attachments']
+    assert name == 'Receipt-INV-20261023-ABC123.pdf' and data.startswith(b'%PDF')
+
+
+def test_organizer_can_download_the_company_invoice_pdf(app, seed):
+    from tests.test_company_sponsored import _login_as
+    out = _company_invoice(app, seed)
+    client = _login_as(app, 'customer-test@example.com')
+    resp = client.get(f"/c/{out['slug']}/manage-sponsored/invoice/{out['id']}/pdf")
+    assert resp.status_code == 200 and resp.mimetype == 'application/pdf' and _pages(resp.data) == 1
+    page = client.get(f"/c/{out['slug']}/manage-sponsored/invoice/{out['id']}").get_data(as_text=True)
+    assert 'Download invoice (PDF)' in page

@@ -44,7 +44,9 @@ def _pickup_lines(order):
     notes, address = _pickup_text(coll)
     if address or notes:
         return address, notes
-    return get_setting(PICKUP_ADDRESS_KEY, '').strip(), get_setting(PICKUP_NOTES_KEY, '').strip()
+    from utils.business_info import BUSINESS
+    return (get_setting(PICKUP_ADDRESS_KEY, '').strip() or BUSINESS['pickup_address'],
+            get_setting(PICKUP_NOTES_KEY, '').strip())
 
 
 def _order_details(order):
@@ -101,7 +103,7 @@ def shipped_email(order):
         details += [('Shipping to', addr)]
     paragraphs = [f'Hi {name}, your order is finished and on its way to you.']
     paragraphs.append('Your tracking number is below.' if order.tracking_number
-                      else 'We will send tracking as soon as the carrier has it. Just reply if you would like it sooner.')
+                      else 'We will email your tracking number as soon as we have it.')
     return ('Your order is on its way', 'On its way to you', paragraphs, details)
 
 
@@ -123,6 +125,33 @@ def _claim(order_id, column):
         db.session.rollback()
         return False
     return bool(claimed)
+
+
+TRACK_URLS = {
+    'USPS': 'https://tools.usps.com/go/TrackConfirmAction?tLabels={n}',
+    'UPS': 'https://www.ups.com/track?tracknum={n}',
+    'FEDEX': 'https://www.fedex.com/fedextrack/?trknbr={n}',
+}
+
+
+def tracking_url(carrier, number):
+    template = TRACK_URLS.get((carrier or '').strip().upper())
+    return template.format(n=''.join(ch for ch in (number or '') if ch.isalnum())) if template else None
+
+
+def send_tracking_email(order):
+    """Tell the customer their tracking number (with a track-it link for USPS, UPS and FedEx)."""
+    from utils.site_settings import get_flag
+    if not get_flag(FLAG_KEY, True) or not (order.email or '').strip() or not order.tracking_number:
+        return False
+    url = tracking_url(order.carrier, order.tracking_number)
+    name = _first_name(order)
+    return _send(
+        order.email.strip(), 'Tracking for your order', 'Here is your tracking number',
+        [f'Hi {name}, your order is on its way. Here is the tracking number so you can follow it home.'],
+        button={'label': 'Track your package', 'url': url} if url else None,
+        details=_order_details(order) + [('Tracking', f'{order.carrier + " " if order.carrier else ""}{order.tracking_number}')],
+        note='Carriers can take a few hours to show movement after a label is made.')
 
 
 def notify_stage_change(order_id, stage):

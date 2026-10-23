@@ -62,6 +62,14 @@ def ready_by(start=None):
     return add_business_days(start or date.today(), get_business_days())
 
 
+def weeks_phrase():
+    """The wait in words, from the business-days setting: 15 days is '2 to 3 weeks'."""
+    days = get_business_days()
+    high = max(1, -(-days // 5))                    # whole weeks, rounded up
+    low = max(1, high - 1)
+    return 'about a week' if high == 1 else f'{low} to {high} weeks'
+
+
 def ready_note():
     """One calm line for product, cart and checkout pages."""
     return f'Estimated ready by {format_day(ready_by())}.'

@@ -1114,6 +1114,27 @@ def update_order_status(order_id):
     return redirect(url_for('admin.order_detail', order_id=order_id))
 
 
+@admin_bp.route('/orders/<int:order_id>/tracking', methods=['POST'])
+@admin_required
+def order_tracking(order_id):
+    """Save a tracking number. A new or changed number is emailed to the customer."""
+    order = Order.query.get_or_404(order_id)
+    number = ' '.join((request.form.get('tracking_number') or '').split())[:60]
+    carrier = (request.form.get('carrier') or '').strip()
+    carrier = carrier if carrier in ('USPS', 'UPS', 'FedEx', 'Other') else 'USPS'
+    changed = (number != (order.tracking_number or '')) or (carrier != (order.carrier or ''))
+    order.tracking_number = number or None
+    order.carrier = carrier if number else None
+    db.session.commit()
+    if number and changed:
+        from utils.customer_emails import send_tracking_email
+        sent = send_tracking_email(order)
+        flash('Tracking saved' + (' and emailed to the customer.' if sent else '. (No email was sent. Check email settings.)'), 'success')
+    else:
+        flash('Tracking saved.' if number else 'Tracking cleared.', 'success')
+    return redirect(url_for('admin.order_detail', order_id=order_id))
+
+
 @admin_bp.route('/orders/<int:order_id>/delete', methods=['POST'])
 @admin_required
 def delete_order(order_id):
@@ -6426,6 +6447,8 @@ def site_settings():
     from utils import ready_date
     from utils.site_settings import get_flag, get_setting, set_setting
     from utils.customer_emails import FLAG_KEY, PICKUP_ADDRESS_KEY, PICKUP_NOTES_KEY
+    from utils.business_info import BUSINESS
+    BUSINESS_PICKUP = BUSINESS['pickup_address']
     if request.method == 'POST':
         section = request.form.get('section')
         if section == 'ready':
@@ -6462,7 +6485,7 @@ def site_settings():
                            preview=ready_date.format_day(ready_date.ready_by()),
                            min_days=ready_date.MIN_DAYS, max_days=ready_date.MAX_DAYS,
                            emails_on=get_flag(FLAG_KEY, True),
-                           pickup_address=get_setting(PICKUP_ADDRESS_KEY, ''),
+                           pickup_address=get_setting(PICKUP_ADDRESS_KEY, '') or BUSINESS_PICKUP,
                            pickup_notes=get_setting(PICKUP_NOTES_KEY, ''),
                            owner=_owner(), owner_name_saved=get_setting('owner_name', ''),
                            owner_note_saved=get_setting('owner_note', ''))

@@ -113,7 +113,7 @@
                         <p class="contact-form-subtitle">Quick question? <a href="{{ url_for('main.faq') }}">The FAQ may have your answer.</a></p>
                     </div>
 
-                    <form class="contact-form" method="POST" action="{{ url_for('main.contact') }}">
+                    <form class="contact-form" method="POST" action="{{ url_for('main.contact') }}" enctype="multipart/form-data">
                         <div class="cf-hp" aria-hidden="true">
                             <label for="website">Leave this field blank</label>
                             <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
@@ -149,6 +149,12 @@
                         <div class="cf-group">
                             <label for="message">Your Message</label>
                             <textarea id="message" name="message" rows="5" maxlength="3000" placeholder="Tell us what you are thinking. The more detail the better!" required></textarea>
+                        </div>
+
+                        <div class="cf-group">
+                            <label for="cf-photos">Add a photo <span class="cf-optional">Optional</span></label>
+                            <input type="file" id="cf-photos" name="photos" accept="image/*" multiple>
+                            <p class="cf-hint" style="margin:0.4rem 0 0;">A picture helps us see what you have in mind. Up to 3 photos.</p>
                         </div>
 
                         <button type="submit" class="contact-submit">

@@ -148,3 +148,32 @@ def invoice_paid_to_shop(invoice, orders):
         button={'label': 'Open orders', 'url': f'{base}/admin/orders'},
         details=[(o.order_number, o.full_name) for o in orders[:30]],
     )
+
+
+def invoice_paid_to_organizer(invoice, orders):
+    """Receipt for the person who paid the company invoice, with the one-page PDF attached."""
+    organizer = getattr(invoice.collection, 'created_by', None)
+    to = getattr(organizer, 'email', None)
+    if not to:
+        return False
+    attachments = []
+    try:
+        from utils.business_info import BUSINESS
+        from utils.receipt_pdf import build_receipt_pdf
+        from utils.receipts import _date_label, doc_from_company_invoice
+        from datetime import datetime
+        doc = doc_from_company_invoice(invoice)
+        pdf = build_receipt_pdf(doc, BUSINESS, paid_on=_date_label(invoice.paid_at or datetime.utcnow()))
+        attachments = [(f'Receipt-{invoice.invoice_number}.pdf', 'application/pdf', pdf)]
+    except Exception:
+        current_app.logger.exception('company receipt PDF failed for %s', invoice.invoice_number)
+    first = (getattr(organizer, 'first_name', '') or '').strip()
+    return _safe(
+        _send, to, f'Payment received: {invoice.invoice_number}', 'Thank you, your payment was received',
+        [f"Hi{' ' + first if first else ''}! We received ${invoice.total:,.2f} for invoice {invoice.invoice_number}. "
+         f'The {len(orders)} order{"s" if len(orders) != 1 else ""} for {invoice.collection.name} '
+         'are now going into production.']
+        + (['Your receipt is attached as a PDF for your records.'] if attachments else []),
+        details=[('Invoice', invoice.invoice_number), ('Total', f'${invoice.total:,.2f}')],
+        attachments=attachments,
+    )

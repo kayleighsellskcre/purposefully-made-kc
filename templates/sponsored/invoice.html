@@ -23,7 +23,8 @@
             Sales tax ${{ '%.2f'|format(invoice.tax) }}<br>
             <strong style="font-size:1.2rem;">Total ${{ '%.2f'|format(invoice.total) }}</strong>
         </div>
-        <p style="margin-top:1.5rem;"><button type="button" class="btn btn-outline btn-sm" onclick="window.print()">Print</button></p>
+        <p style="margin-top:1.5rem;"><a class="btn btn-outline btn-sm" href="{{ url_for('sponsored.invoice_pdf', slug=collection.slug, invoice_id=invoice.id) }}" target="_blank" rel="noopener">{{ 'Download receipt (PDF)' if invoice.payment_status == 'paid' else 'Download invoice (PDF)' }}</a>
+        <button type="button" class="btn btn-outline btn-sm" onclick="window.print()">Print</button></p>
     </div>
 </div>
 {% endblock %}

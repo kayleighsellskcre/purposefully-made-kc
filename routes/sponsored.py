@@ -351,6 +351,23 @@ def invoice_view(slug, invoice_id):
                            submissions=[s for s in subs if s])
 
 
+@sponsored_bp.route('/<slug>/manage-sponsored/invoice/<int:invoice_id>/pdf')
+@login_required
+def invoice_pdf(slug, invoice_id):
+    """One-page PDF: the invoice before it is paid, the receipt after."""
+    from flask import Response
+    from utils.business_info import BUSINESS
+    from utils.receipt_pdf import build_receipt_pdf
+    from utils.receipts import _date_label, doc_from_company_invoice
+    collection = _organizer_collection(slug)
+    invoice = _invoice_for(collection, invoice_id)
+    doc = doc_from_company_invoice(invoice)
+    pdf = build_receipt_pdf(doc, BUSINESS, paid_on=doc['date'])
+    return Response(pdf, mimetype='application/pdf',
+                    headers={'Content-Disposition': f'inline; filename="{invoice.invoice_number}.pdf"',
+                             'Cache-Control': 'private, no-store'})
+
+
 @sponsored_bp.route('/<slug>/manage-sponsored/invoice/<int:invoice_id>/pay')
 @login_required
 def invoice_pay(slug, invoice_id):

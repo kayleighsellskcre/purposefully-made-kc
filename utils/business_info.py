@@ -7,6 +7,7 @@ BUSINESS = {
     'phone': '785.249.1464',
     'venmo': '@Kayleigh-Biggs-1',
     'check_payable_to': 'Kayleigh Biggs',
+    'pickup_address': '4632 Woodstock Street, Shawnee, KS 66218',
 }
 
 PAYMENT_METHODS = (
