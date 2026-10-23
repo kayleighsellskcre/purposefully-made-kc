@@ -2,6 +2,17 @@
 {% block title %}Production Workflow - Admin - Purposefully Made KC{% endblock %}
 
 {% block ops_content %}
+<style>
+/* Board: compact desktop */
+@media (min-width: 900px) {
+    .ops-page .wf-page-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.55rem; }
+    .ops-page .wf-title { font-size: 1.55rem; margin: 0.05rem 0 0.1rem; }
+    .ops-page .wf-lead { font-size: 0.82rem; margin: 0; }
+    .ops-page .wf-header-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .ops-page .wf-header-btn { padding: 0.42rem 0.85rem; font-size: 0.72rem; letter-spacing: 0.08em; min-height: 0; border-radius: 10px; }
+    .ops-page .wf-summary { display: none; }   /* each column already shows its own count */
+}
+</style>
 
 <!-- ── Page Header ── -->
 <div class="wf-page-header">

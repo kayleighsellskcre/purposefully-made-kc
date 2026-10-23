@@ -435,3 +435,25 @@
     });
 })();
 </script>
+
+<style>
+/* ── Compact admin (desktop) ──
+   Tighter spacing, a smaller header, and wider content so more shows at once.
+   Text sizes stay readable; phones keep their own layout. */
+@media (min-width: 900px) {
+    body:has(.ops-page) .nav-content { height: 54px; }
+    body:has(.ops-page) .logo { height: 54px; min-width: 84px; }
+    body:has(.ops-page) .logo-image { top: 4px; height: 46px !important; border-width: 2px; }
+    body:has(.ops-page) .nav-links { left: calc(50% + 36px); }
+    .ops-page { padding: 0.85rem 0 2.5rem; }
+    .ops-page > .container { max-width: 1480px; padding: 0 1.25rem; }
+    .ops-nav { margin-bottom: 0.55rem; padding: 0.3rem 0.6rem; border-radius: 12px; }
+    .ops-flow { margin: 0 0 0.75rem; padding: 0.35rem 0.7rem; border-radius: 12px; }
+    .ops-flow-step { padding: 0.22rem 0.55rem; }
+    .ops-page .adm-table th { padding: 0.55rem 0.8rem; }
+    .ops-page .adm-table td { padding: 0.6rem 0.8rem; font-size: 0.88rem; }
+    .ops-page .adm-table-wrap { border-radius: 12px; }
+    .ops-page .adm-section { margin-bottom: 1.5rem; }
+    .ops-page .adm-eyebrow { margin-bottom: 0.15rem; }
+}
+</style>

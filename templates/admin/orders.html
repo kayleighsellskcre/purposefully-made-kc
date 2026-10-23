@@ -3,6 +3,28 @@
 {% block title %}Orders - Admin - Purposefully Made KC{% endblock %}
 
 {% block admin_content %}
+<style>
+/* Orders: compact desktop */
+@media (min-width: 900px) {
+    .ops-page .ord-page-header { margin-bottom: 0.55rem; align-items: center; gap: 0.75rem; }
+    .ops-page .ord-title { font-size: 1.55rem; margin: 0.05rem 0 0.1rem; }
+    .ops-page .ord-lead { font-size: 0.82rem; }
+    .ops-page .ord-header-actions { gap: 0.4rem; }
+    .ops-page .ord-header-actions .btn { padding: 0.42rem 0.85rem; font-size: 0.72rem; letter-spacing: 0.08em; min-height: 0; border-radius: 10px; }
+    .ops-page .ord-filters { padding: 0.5rem 0.85rem; gap: 0.35rem 1.75rem; margin-bottom: 0.65rem; flex-direction: row; flex-wrap: wrap; align-items: center; border-radius: 12px; }
+    .ops-page .ord-filter-row:first-child { flex-basis: 100%; }
+    .ops-page .ord-chip { padding: 0.2rem 0.7rem; min-height: 28px; font-size: 0.78rem; }
+    .ops-page .ord-num { white-space: nowrap; font-size: 0.78rem; }
+    .ops-page .ord-name { min-width: 190px; }
+    .ops-page .ord-name .ord-sub { max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ops-page .ord-email { max-width: 150px; }
+    .ops-page .ord-table-only .adm-table th, .ops-page .ord-table-only .adm-table td { padding-left: 0.55rem; padding-right: 0.55rem; }
+    .ops-page .ord-table-only .ord-check-col { width: 34px; padding-right: 0; }
+    .ops-page .ord-page-header .ord-lead { display: inline-block; margin: 0 1rem 0 0; }
+    .ops-page .ord-page-header .ord-lead[style] { margin-top: 0 !important; font-size: 0.82rem !important; }
+    .ops-page .ord-move-select { max-width: 112px; padding: 0.22rem 0.35rem; }
+}
+</style>
 
 {% set _status = request.args.get('stage') or request.args.get('status') %}
 {% set _order_type = request.args.get('order_type') %}
