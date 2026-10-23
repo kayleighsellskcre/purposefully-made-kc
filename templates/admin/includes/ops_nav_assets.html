@@ -441,11 +441,7 @@
    Tighter spacing, a smaller header, and wider content so more shows at once.
    Text sizes stay readable; phones keep their own layout. */
 @media (min-width: 900px) {
-    body:has(.ops-page) .nav-content { height: 54px; }
-    body:has(.ops-page) .logo { height: 54px; min-width: 84px; }
-    body:has(.ops-page) .logo-image { top: 4px; height: 46px !important; border-width: 2px; }
-    body:has(.ops-page) .nav-links { left: calc(50% + 36px); }
-    .ops-page { padding: 0.85rem 0 2.5rem; }
+    .ops-page { padding: 2rem 0 2.5rem; }   /* leaves room for the logo that hangs below the header */
     .ops-page > .container { max-width: 1480px; padding: 0 1.25rem; }
     .ops-nav { margin-bottom: 0.55rem; padding: 0.3rem 0.6rem; border-radius: 12px; }
     .ops-flow { margin: 0 0 0.75rem; padding: 0.35rem 0.7rem; border-radius: 12px; }
@@ -455,5 +451,32 @@
     .ops-page .adm-table-wrap { border-radius: 12px; }
     .ops-page .adm-section { margin-bottom: 1.5rem; }
     .ops-page .adm-eyebrow { margin-bottom: 0.15rem; }
+}
+</style>
+<style>
+/* admin titles + buttons: one look on every admin page */
+@media (min-width: 900px) {
+    .ops-page .btn { padding: 0.45rem 1rem; font-size: 0.76rem; letter-spacing: 0.08em; border-radius: 10px; }
+    .ops-page .btn-lg { padding: 0.6rem 1.25rem; font-size: 0.82rem; }
+    .ops-page h1 { font-size: 1.65rem; margin: 0.05rem 0 0.2rem; text-align: left; }
+    .ops-page h2 { font-size: 1.3rem; }
+    .ops-page h3 { font-size: 1.1rem; }
+    /* eyebrow, title and buttons: title stacks under the eyebrow on the left, buttons sit on the right */
+    .ops-page .admin-header:has(> .adm-eyebrow) { display: grid; grid-template-columns: 1fr auto; column-gap: 1rem; align-items: center; margin-bottom: 0.7rem; text-align: left; }
+    .ops-page .admin-header:has(> .adm-eyebrow) > .adm-eyebrow { grid-column: 1; grid-row: 1; }
+    .ops-page .admin-header:has(> .adm-eyebrow) > h1 { grid-column: 1; grid-row: 2; margin: 0; }
+    .ops-page .admin-header:has(> .adm-eyebrow) > :last-child:not(h1):not(.adm-eyebrow) { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+    .ops-page .admin-header:has(> .adm-eyebrow) > h1:last-child { grid-column: 1 / -1; }
+    /* the other kind of header: a title block, and a block of buttons beside it */
+    .ops-page .admin-header:not(:has(> .adm-eyebrow)) { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 0.6rem 1.25rem; margin-bottom: 0.8rem; }
+    .ops-page .admin-header:not(:has(> .adm-eyebrow)) > div:first-child { flex: 1 1 380px; min-width: 0; }
+    .ops-page .admin-header:not(:has(> .adm-eyebrow)) > div:first-child h1 { margin: 0.05rem 0 0.2rem; }
+    .ops-page .admin-header:not(:has(> .adm-eyebrow)) > div:first-child p { margin: 0; }
+    .ops-page .master-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+    .ops-page .admin-header > h1 { text-align: left; }
+    .ops-page .admin-header:has(> .adm-eyebrow) > p { grid-column: 1 / -1; grid-row: 3; margin: 0.15rem 0 0; max-width: none; }
+    /* The site-wide "break long words anywhere" rule squeezed table columns until words split ("Blac k").
+       Keep words whole and only wrap when a single word is wider than its cell. */
+    .ops-page td, .ops-page th { word-break: normal; overflow-wrap: break-word; }
 }
 </style>
