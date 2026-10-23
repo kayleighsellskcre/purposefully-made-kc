@@ -83,12 +83,22 @@
                 </a>
                 
                 <nav class="nav-links" aria-label="Main">
-                    <a href="{{ url_for('shop.index') }}" class="nav-link">Shop</a>
-                    <a href="{{ url_for('shop.design_gallery') }}" class="nav-link">Design Gallery</a>
-                    <a href="{{ url_for('shop.group_orders') }}" class="nav-link">Group Orders</a>
-                    <a href="{{ url_for('custom_request.index') }}" class="nav-link">Have Us Recreate</a>
-                    <a href="{{ url_for('main.about') }}" class="nav-link">About</a>
-                    <a href="{{ url_for('main.contact') }}" class="nav-link">Contact</a>
+                    {# Which menu item matches this page, so the current one is marked. #}
+                    {% set _ep = request.endpoint or '' %}
+                    {% set _group_eps = ['shop.group_orders', 'shop.company_apparel', 'shop.create_group_order', 'shop.edit_group_order'] %}
+                    {% set _nav_here = (
+                        'design' if _ep == 'shop.design_gallery' else
+                        'group' if (_ep in _group_eps or _ep.startswith('collection.') or _ep.startswith('org.') or _ep.startswith('sponsored.')) else
+                        'shop' if _ep.startswith('shop.') else
+                        'recreate' if _ep.startswith('custom_request.') else
+                        'about' if _ep == 'main.about' else
+                        'contact' if _ep == 'main.contact' else '') %}
+                    <a href="{{ url_for('shop.index') }}" class="nav-link{% if _nav_here == 'shop' %} nav-link--current{% endif %}"{% if _nav_here == 'shop' %} aria-current="page"{% endif %}>Shop</a>
+                    <a href="{{ url_for('shop.design_gallery') }}" class="nav-link{% if _nav_here == 'design' %} nav-link--current{% endif %}"{% if _nav_here == 'design' %} aria-current="page"{% endif %}>Design Gallery</a>
+                    <a href="{{ url_for('shop.group_orders') }}" class="nav-link{% if _nav_here == 'group' %} nav-link--current{% endif %}"{% if _nav_here == 'group' %} aria-current="page"{% endif %}>Group Orders</a>
+                    <a href="{{ url_for('custom_request.index') }}" class="nav-link{% if _nav_here == 'recreate' %} nav-link--current{% endif %}"{% if _nav_here == 'recreate' %} aria-current="page"{% endif %}>Have Us Recreate</a>
+                    <a href="{{ url_for('main.about') }}" class="nav-link{% if _nav_here == 'about' %} nav-link--current{% endif %}"{% if _nav_here == 'about' %} aria-current="page"{% endif %}>About</a>
+                    <a href="{{ url_for('main.contact') }}" class="nav-link{% if _nav_here == 'contact' %} nav-link--current{% endif %}"{% if _nav_here == 'contact' %} aria-current="page"{% endif %}>Contact</a>
 
                     {# Desktop: one My Account control. Admin and Log Out live in the menu. #}
                     {% if current_user.is_authenticated %}
@@ -291,6 +301,7 @@
     <script src="{{ url_for('static', filename='js/main.js') }}?v=4"></script>
     <script src="{{ url_for('static', filename='js/a11y.js') }}?v=1"></script>
     <script src="{{ url_for('static', filename='js/keep-scroll.js') }}?v=1"></script>
+    <script src="{{ url_for('static', filename='js/header-scroll.js') }}?v=1"></script>
     {% block extra_js %}{% endblock %}
 
     <!-- ── CSRF auto-protection ─────────────────────────────────────────────

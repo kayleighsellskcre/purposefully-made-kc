@@ -300,7 +300,7 @@
 .dir-search-clear:hover { color: var(--text-primary); }
 .dir-card[hidden] { display: none !important; }
 .go-jump { display: flex; flex-wrap: wrap; gap: .75rem; justify-content: center; margin: 1.4rem 0 0; }
-.go-jump-link { display: inline-block; padding: .65rem 1.5rem; border: 1.5px solid var(--accent-color); border-radius: 999px; color: var(--accent-color); font-size: .8rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; text-decoration: none; background: rgba(255,255,255,.6); transition: var(--transition); }
+.go-jump-link { display: inline-block; padding: .65rem 1.5rem; border: 1.5px solid var(--accent-color); border-radius: var(--radius-btn, 12px); color: var(--accent-color); font-size: .8rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; text-decoration: none; background: rgba(255,255,255,.6); transition: var(--transition); }
 .go-jump-link:hover, .go-jump-link--solid { background: var(--accent-color); color: #fff; }
 .go-jump-link--solid:hover { background: #a56a5d; color: #fff; }
 .go-help { max-width: 860px; margin: 2.5rem auto 0; border: 1px solid var(--border-light); border-radius: 16px; background: #fff; box-shadow: var(--box-shadow); }
@@ -482,7 +482,7 @@
         </div>
 
         <div class="faq-section" style="max-width:680px;margin:0 auto 3.5rem;">
-            <h2 style="text-align:center;font-family:var(--font-heading);font-size:1.5rem;margin-bottom:1.75rem;">Common Questions</h2>
+            <h2 style="text-align:center;font-family:var(--font-heading);margin-bottom:1.75rem;">Common Questions</h2>
             <div class="faq-item">
                 <strong>Is there a minimum order?</strong>
                 <p>No minimum. One shirt or one hundred, we print what gets ordered.</p>

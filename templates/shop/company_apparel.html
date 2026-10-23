@@ -3,22 +3,23 @@
 {% block meta_description %}Cover custom shirts for your team. Set how many items each person gets, share one link, and pay one invoice.{% endblock %}
 {% block content %}
 {% set start_url = url_for('shop.create_group_order', mode='company') %}
+<div class="page-header">
+    <div class="container">
+        <span class="eyebrow">For Businesses &amp; Teams</span>
+        <h1>Company Apparel</h1>
+        <p class="lead">Choose the shirts and your logo, decide how many items your company covers for each person, and share one link. Everyone picks a size, and you pay one invoice.</p>
+        <p>
+            {% if current_user.is_authenticated %}
+            <a href="{{ start_url }}" class="btn btn-primary">Set Up Your Company Order</a>
+            {% else %}
+            <a href="{{ url_for('auth.login') }}?next={{ start_url|urlencode }}" class="btn btn-primary">Sign In to Set Up Your Order</a>
+            <span class="ca-small">New here? You can create a free account on the next screen.</span>
+            {% endif %}
+        </p>
+    </div>
+</div>
 <div class="ca-page">
     <div class="container">
-        <section class="ca-hero">
-            <span class="ca-eyebrow">For businesses &amp; teams</span>
-            <h1>Cover your team's apparel, the easy way</h1>
-            <p class="ca-lead">Choose the shirts and your logo. Decide how many items your company covers for each person. Share one link. Everyone picks their size, and you pay one invoice.</p>
-            <p>
-                {% if current_user.is_authenticated %}
-                <a href="{{ start_url }}" class="btn btn-primary btn-lg">Set up your company order</a>
-                {% else %}
-                <a href="{{ url_for('auth.login') }}?next={{ start_url|urlencode }}" class="btn btn-primary btn-lg">Sign in to set up your order</a>
-                <span class="ca-small">New here? You can create a free account on the next screen.</span>
-                {% endif %}
-            </p>
-        </section>
-
         <section class="ca-steps">
             <div><b>1</b><h2>You set it up</h2><p>Pick the styles, colors and your logo. Tell us how many items your company covers for each person, and an optional price limit per item.</p></div>
             <div><b>2</b><h2>Your team picks</h2><p>Everyone opens your link, chooses their item and size, and that is it. Nothing to pay for covered items. If someone wants extras, they pay for those themselves.</p></div>
@@ -37,19 +38,15 @@
     </div>
 </div>
 <style>
-.ca-page { padding: 2rem 0 4rem; }
-.ca-hero { text-align:center; max-width:720px; margin:0 auto 2.5rem; }
-.ca-eyebrow { display:block; font-size:.72rem; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:var(--terra-cotta); margin-bottom:.5rem; }
-.ca-hero h1 { font-family:var(--font-heading); margin:0 0 1rem; }
-.ca-lead { color:var(--text-secondary); font-size:1.1rem; line-height:1.6; }
-.ca-small { display:block; margin-top:.6rem; color:var(--text-secondary); font-size:.9rem; }
+.ca-page { padding: 2rem 0 3rem; }
+.ca-small { display:block; margin-top:.6rem; color:var(--text-secondary); font-size:.88rem; }
 .ca-steps { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; max-width:960px; margin:0 auto 2.5rem; }
 .ca-steps div { background:#fff; border:1px solid rgba(232,208,177,.6); border-radius:16px; padding:1.4rem; }
 .ca-steps b { display:inline-flex; width:32px; height:32px; align-items:center; justify-content:center; border-radius:50%; background:rgba(184,124,111,.15); color:#8a5a50; margin-bottom:.6rem; }
-.ca-steps h2 { font-size:1.1rem; margin:0 0 .4rem; }
+.ca-steps h2 { font-size:var(--card-title); margin:0 0 .4rem; }
 .ca-steps p { margin:0; color:var(--text-secondary); line-height:1.55; }
 .ca-note { max-width:720px; margin:0 auto; background:var(--ivory-silk,#faf7f2); border-radius:16px; padding:1.5rem 1.75rem; }
-.ca-note h2 { font-size:1.15rem; margin:0 0 .6rem; }
+.ca-note h2 { font-size:var(--card-title); margin:0 0 .6rem; }
 .ca-note ul { margin:0 0 1rem; padding-left:1.2rem; line-height:1.7; }
 @media (max-width:720px) { .ca-steps { grid-template-columns:1fr; } }
 </style>

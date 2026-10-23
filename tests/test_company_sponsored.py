@@ -582,7 +582,7 @@ def test_csv_lists_every_item_and_is_safe_in_excel(seed, app):
 
 def test_company_page_and_signup_flow(seed, app):
     page = _guest(app).get('/shop/company-apparel')
-    assert page.status_code == 200 and 'Cover your team' in page.get_data(as_text=True)
+    assert page.status_code == 200 and 'Company Apparel' in page.get_data(as_text=True)
     form = _login_as(app, CUSTOMER_EMAIL).get('/shop/group-orders/create?mode=company').get_data(as_text=True)
     assert 'value="company_sponsored" checked' in form
     plain = _login_as(app, CUSTOMER_EMAIL).get('/shop/group-orders/create').get_data(as_text=True)

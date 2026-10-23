@@ -321,7 +321,7 @@
                             {% endif %}
                             <p class="product-price">${{ "%.2f"|format(product.base_price) }}</p>
                             {% if family.is_family %}
-                            <span class="btn btn-customize btn-sm">Choose Age Group →</span>
+                            <span class="btn btn-customize btn-sm">Choose Age →</span>
                             {% else %}
                             <span class="btn btn-customize btn-sm">Customize</span>
                             {% endif %}
@@ -426,9 +426,9 @@
     border: 1.5px solid rgba(255,255,255,0.5);
 }
 .family-age-chip--adult   { background: var(--terra-cotta, #b56c4c); }
-.family-age-chip--youth   { background: #7a9e7e; }
-.family-age-chip--toddler { background: #8a7ab0; }
-.family-age-chip--baby    { background: #7ab0b0; }
+.family-age-chip--youth   { background: #8c7a5b; }
+.family-age-chip--toddler { background: #b87c6f; }
+.family-age-chip--baby    { background: #c4a672; }
 
 /* Family card: subtle ring so it's visually distinct */
 .family-card .product-link { position: relative; }
@@ -638,12 +638,12 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.75rem 1.75rem;
+    padding: 0.65rem 1.6rem;
     background: var(--accent-color);
     color: #fff;
-    border-radius: var(--border-radius);
+    border-radius: var(--radius-btn);
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     transition: var(--transition);
     text-decoration: none;
 }

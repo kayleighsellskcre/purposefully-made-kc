@@ -102,7 +102,7 @@ h1, h2, h3, h4, h5, h6 {
     margin-bottom: 1rem;
 }
 
-h1 { font-size: 2.6rem; }
+h1 { font-size: 2.5rem; }
 h2 { font-size: 2rem; }
 h3 { font-size: 1.45rem; }
 h4 { font-size: 1.25rem; }
@@ -639,15 +639,6 @@ a:hover {
     transform: translateY(-2px);
 }
 
-.btn-lg {
-    padding: 1rem 2.5rem;
-    font-size: 1rem;
-}
-
-.btn-sm {
-    padding: 0.5rem 1.5rem;
-    font-size: 0.875rem;
-}
 
 /* Customize button - refined luxury CTA */
 .btn-customize,
@@ -2697,3 +2688,109 @@ textarea:focus-visible,
         visibility: hidden !important;
     }
 }
+
+/* ── Cohesion layer: one set of sizes for the whole site ── */
+:root { --section-h2: 2.25rem; --card-title: 1.35rem; --radius-btn: 12px; }
+
+/* Section headings: one size. Card titles: one size. */
+.section-title, .cta-title { font-size: var(--section-h2); }
+.main-content .contact-info-col h2,
+.main-content .directory-section h2,
+.main-content .design-board-intro h2,
+.main-content .about-story-inner h2,
+.main-content .about-occasions-header h2,
+.main-content .about-cta-inner h2 { font-size: var(--section-h2); }
+
+/* The line under a page title is the same width everywhere. */
+.main-content .page-header p,
+.main-content .page-header .lead,
+.main-content .collection-header-subtitle,
+.main-content .org-lead { max-width: 34rem; margin-left: auto; margin-right: auto; }
+
+/* Buttons: one corner, two sizes (regular and large). */
+.btn { border-radius: var(--radius-btn); }
+.btn-lg { padding: 0.8rem 2rem; font-size: 0.95rem; }
+.btn-sm { padding: 0.42rem 1rem; font-size: 0.8rem; }
+.main-content .contact-submit,
+.main-content .go-jump-link,
+.main-content #viewFront,
+.main-content #viewBack { border-radius: var(--radius-btn); }
+
+/* Small labels: one style, uppercase sans. (Italic serif is kept for form labels only.) */
+.section-eyebrow, .account-content-eyebrow, .legal-updated {
+    font-family: var(--font-primary);
+    font-style: normal;
+    font-weight: 700;
+    font-size: 0.78rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+.legal-updated { color: var(--text-secondary); }
+
+/* Privacy and Terms use the same heading font as every other page. */
+.legal-section h2 { font-family: var(--font-heading); font-size: var(--card-title); font-weight: 600; letter-spacing: 0; }
+
+/* Empty states: palette colours only. */
+.empty-cart svg, .empty-favorites svg { color: var(--terra-cotta); opacity: 0.5; }
+
+/* Shop cards: price and button line up along the bottom of every row. */
+.product-card { display: flex; flex-direction: column; }
+.product-card > a { display: flex; flex-direction: column; flex: 1; color: inherit; text-decoration: none; }
+.product-card .product-info { display: flex; flex-direction: column; flex: 1; }
+.product-card .product-price { margin-top: auto; }
+.product-card .btn-customize { white-space: nowrap; align-self: stretch; }
+
+/* The current page in the main menu. */
+.nav-link--current,
+.nav-link--current:hover { color: var(--terra-cotta); background: rgba(184, 124, 111, 0.08); box-shadow: inset 0 -2px 0 var(--terra-cotta); }
+
+/* The logo badge keeps its size at the top of a page, and tucks into the bar once you scroll. */
+.logo-image { transition: height 0.22s ease, top 0.22s ease, border-width 0.22s ease; }
+@media (min-width: 769px) {
+    .navbar.is-scrolled .logo-image { height: 56px !important; top: 6px; border-width: 2px; }
+    /* Left-aligned content that starts right under the header clears the badge. */
+    .group-order-banner-inner { padding-left: 11rem; }
+    .account-page { padding-top: 3.25rem; }
+    .crumbs { padding-top: 2rem; }
+}
+
+/* ── Cohesion layer 2 ── */
+:root { --card-title: 1.2rem; }
+
+/* Section headings: the one big size, on every page. */
+.main-content .made-for-you-title,
+.main-content .features-section-title,
+.main-content .collections .section-title,
+.main-content .cta-section h2,
+.main-content .faq-section h2,
+.main-content .org-section-head h2,
+.main-content .contact-bottom-title { font-size: var(--section-h2); }
+
+/* Card titles: the one small size. */
+.main-content .feature-title,
+.main-content .product-name,
+.main-content .step-card h3,
+.main-content .path-title,
+.main-content .form-section h2,
+.main-content .dc-product-name,
+.main-content .occasion-card h3,
+.main-content .why-card h3,
+.main-content .contact-form-title,
+.main-content .product-features h3,
+.main-content .empty-cart h2,
+.main-content .empty-favorites h2 { font-size: var(--card-title); }
+
+/* Page titles on the pages that are not a banner (product, wizard) match the banner size. */
+.main-content .product-title,
+.main-content .product-detail h1,
+.main-content .org-create-header h1 { font-size: 2.5rem; }
+
+/* Buttons: regular, large and small, each one height, on every page. */
+.btn, .btn-group-order { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; min-height: 46px; line-height: 1.2; }
+.btn-lg { min-height: 54px; padding: 0.8rem 2rem; font-size: 0.95rem; }
+.btn-sm { min-height: 36px; padding: 0.4rem 1rem; font-size: 0.8rem; }
+.btn-block { display: flex; width: 100%; }
+.main-content .btn-customize,
+.main-content a.btn-customize { border-radius: var(--radius-btn); }
+.main-content .btn-lg { min-height: 54px; padding-top: 0.8rem; padding-bottom: 0.8rem; font-size: 0.95rem; }
+.main-content .btn-group-order { min-height: 46px; padding-top: 0.5rem; padding-bottom: 0.5rem; }

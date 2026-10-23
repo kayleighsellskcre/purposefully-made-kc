@@ -516,11 +516,9 @@
         <span class="eyebrow">{% if org_nav %}{{ org_nav.org.name }}{% else %}Group Order{% endif %}</span>
         {% if fan_page and org_nav %}
         <h1>Fan Wear</h1>
-        <div class="team-orn" aria-hidden="true"><i>&#10022;</i></div>
         <p class="collection-header-subtitle">Tees, hoodies &amp; matching looks for the whole family. Pick a style, then choose a design.</p>
         {% elif org_nav and org_nav.current_section %}
         <h1>{{ org_nav.current_section.label }}</h1>
-        <div class="team-orn" aria-hidden="true"><i>&#10022;</i></div>
         {% else %}
         <h1>{{ collection.name }}</h1>
         {% endif %}
