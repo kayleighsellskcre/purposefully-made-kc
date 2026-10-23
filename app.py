@@ -61,6 +61,25 @@ def _sync_mockups_to_static(app):
                 shutil.copy2(src_path, dst_path)
 
 
+_ASSET_VERSIONS = {}
+
+
+def _asset_version(rel_path):
+    """A number that changes whenever the file changes, so browsers and Cloudflare never keep an old copy.
+
+    The stylesheet used a hand-bumped ?v=53, so a design change that forgot to bump it showed up
+    half-updated: new page styles with the old stylesheet.
+    """
+    import os
+    if rel_path not in _ASSET_VERSIONS:
+        try:
+            full = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', *rel_path.split('/'))
+            _ASSET_VERSIONS[rel_path] = str(int(os.path.getmtime(full)))
+        except OSError:
+            _ASSET_VERSIONS[rel_path] = '1'
+    return _ASSET_VERSIONS[rel_path]
+
+
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.request_class = SiteRequest
@@ -987,6 +1006,7 @@ def create_app(config_class=Config):
         robots_directive = 'noindex, nofollow' if is_private else 'index, follow'
 
         return {
+            'css_version': _asset_version('css/main.css'),
             'cart_count': cart_count,
             'cart_fingerprint': cart_fingerprint,
             'current_year': _dt.now().year,

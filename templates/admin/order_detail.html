@@ -1433,4 +1433,31 @@ a.od-btn-outline { color: var(--text-primary); }
 })();
 </script>
 
+<style>
+/* Order page: compact desktop */
+@media (min-width: 900px) {
+    .od-page { padding: 1.1rem 0 3rem; }
+    .od-page .od-header { margin-bottom: 0.85rem; gap: 0.6rem; }
+    .od-page .od-header-left { gap: 0.15rem; }
+    .od-page .od-title { font-size: 1.55rem; margin: 0.05rem 0 0.1rem; }
+    .od-page .od-date { font-size: 0.8rem; }
+    .od-page .od-header-right { padding-top: 0.2rem; gap: 0.4rem; }
+    .od-page .od-btn { min-height: 34px; padding: 0.4rem 0.95rem; font-size: 0.8rem; border-radius: 9px; }
+    .od-page .od-status-badge { padding: 0.22rem 0.65rem; font-size: 0.68rem; }
+    .od-page .od-delete-btn { min-height: 32px; padding: 0.3rem 0.75rem; font-size: 0.74rem; }
+    .od-page .od-grid { gap: 0.8rem; margin-bottom: 0.8rem; }
+    .od-page .od-card { padding: 1.05rem 1.25rem; border-radius: 14px; }
+    .od-page .od-wide { margin-bottom: 0.8rem; }
+    .od-page .od-card-title { font-size: 1.05rem; margin: 0 0 0.6rem; }
+    .od-page .od-card-hint { line-height: 1.5; }
+    .od-page .od-info-rows { gap: 0.5rem; }
+    .od-page .od-info-val { font-size: 0.86rem; }
+    .od-page .od-field { margin-bottom: 0.6rem; gap: 0.25rem; }
+    .od-page .od-select, .od-page .od-input { min-height: 38px; padding: 0.45rem 0.8rem; font-size: 0.86rem; }
+    .od-page .od-select { padding-right: 2.1rem; }
+    .od-page .od-textarea { min-height: 54px; padding: 0.5rem 0.8rem; }
+    .od-page .od-xfer { padding: 0.8rem 1rem 0.9rem; margin-bottom: 0.7rem; }
+}
+</style>
+
 {% endblock %}
