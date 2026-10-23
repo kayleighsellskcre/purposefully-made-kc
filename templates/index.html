@@ -405,6 +405,7 @@
             <figure class="review-card">{% if r.photo %}<img class="review-photo" src="{{ r.photo }}" alt="Photo from {{ r.name }}" loading="lazy">{% endif %}{% if r.text %}<blockquote>&ldquo;{{ r.text }}&rdquo;</blockquote>{% endif %}<figcaption>{{ r.name }}{% if r.occasion %}, {{ r.occasion }}{% endif %}</figcaption></figure>
             {% endfor %}
         </div>
+        <p class="reviews-more"><a href="{{ url_for('main.reviews_page') }}">Read more kind words and see photos</a></p>
     </div>
 </section>
 {% endif %}

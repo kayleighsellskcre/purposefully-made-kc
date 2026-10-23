@@ -157,6 +157,7 @@ table.rc-items { width: 100%; border-collapse: collapse; }
         <a href="{{ url_for('admin.invoices') }}">&larr; All invoices</a>
         <span style="display:flex;gap:.6rem;flex-wrap:wrap">
             <a href="{{ url_for('admin.invoice_edit', invoice_id=invoice.id) }}">Edit</a>
+            <a href="{{ url_for('admin.invoice_pdf', invoice_id=invoice.id) }}" target="_blank" rel="noopener">One-page PDF</a>
             <button type="button" class="rc-primary" onclick="window.print()">Print or save as PDF</button>
         </span>
         {% else %}

@@ -14,7 +14,7 @@ from threading import Thread
 from flask import current_app
 
 
-def _send(to, subject, heading, paragraphs, *, button=None, details=None, note=None):
+def _send(to, subject, heading, paragraphs, *, button=None, details=None, note=None, attachments=None):
     from flask_mail import Message
     from routes.checkout import _render_email
     from utils.mailer import (admin_base_url, mail_configured, reply_to,
@@ -36,6 +36,8 @@ def _send(to, subject, heading, paragraphs, *, button=None, details=None, note=N
     plain_lines += ['', 'Made with purpose, for you.', '— Purposefully Made KC']
     msg = Message(subject=subject, recipients=to, body='\n'.join(plain_lines), html=html,
                   sender=sender(app), reply_to=reply_to(app))
+    for filename, content_type, data in (attachments or []):
+        msg.attach(filename, content_type, data)
 
     def run():
         with app.app_context():

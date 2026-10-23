@@ -32,19 +32,37 @@ def send_invoice(inv):
     )
 
 
+def receipt_attachments(inv, doc=None):
+    """The one-page PDF receipt as an email attachment (empty if it could not be made)."""
+    try:
+        from utils.business_info import BUSINESS
+        from utils.receipt_pdf import build_receipt_pdf
+        from utils.receipts import _date_label
+        from datetime import datetime
+        doc = doc or _doc(inv)
+        pdf = build_receipt_pdf(doc, BUSINESS, paid_on=_date_label(datetime.utcnow()))
+        return [(f"Receipt-{inv.number}.pdf", 'application/pdf', pdf)]
+    except Exception:
+        current_app.logger.exception('receipt PDF could not be made for %s', getattr(inv, 'number', '?'))
+        return []
+
+
 def paid(inv, amount):
     """Receipt to the customer, and a heads-up to the shop."""
     from utils.mailer import admin_base_url, admin_recipient
     doc = _doc(inv)
     app = current_app._get_current_object()
     if inv.email:
+        attachments = receipt_attachments(inv, doc)
         _safe(
             _send, inv.email, f"Payment received: {inv.number}",
             'Thank you, your payment went through!',
             [f"We received ${amount:,.2f} for invoice {inv.number}."
              + (' Your invoice is now paid in full.' if doc['balance'] <= 0 else
-                f" The remaining balance is ${doc['balance']:,.2f}.")],
+                f" The remaining balance is ${doc['balance']:,.2f}.")]
+            + (['Your receipt is attached as a PDF for your records.'] if attachments else []),
             details=[('Invoice', inv.number), ('Paid by', 'Card')],
+            attachments=attachments,
         )
     _safe(
         _send, admin_recipient(app), f"Invoice paid by card: {inv.number} (${amount:,.2f})",

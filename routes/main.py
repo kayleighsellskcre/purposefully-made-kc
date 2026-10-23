@@ -64,20 +64,9 @@ def index():
 
 def _approved_reviews(limit=6):
     """Approved customer reviews for the homepage. A photo only appears when the customer allowed it."""
-    try:
-        from models import Review
-        rows = Review.query.filter_by(status='approved').order_by(Review.created_at.desc()).limit(limit).all()
-    except Exception:
-        return []
-    out = []
-    for r in rows:
-        text = (r.body or '').strip()
-        photos = r.photo_urls() if r.photos_ok else []
-        if not text and not photos:
-            continue
-        out.append({'name': r.name, 'occasion': (r.order.occasion_note if r.order and r.order.occasion_note else ''),
-                    'text': text, 'photo': photos[0] if photos else ''})
-    return out
+    from utils.reviews_public import approved
+    return [{'name': r['name'], 'occasion': r['occasion'], 'text': r['text'], 'photo': r['photo']}
+            for r in approved(limit)]
 
 
 def _owner():
@@ -251,6 +240,9 @@ def sitemap_xml():
     add('main.privacy', 'yearly', '0.3', lastmod=_template_lastmod('privacy.html'))
     add('main.terms', 'yearly', '0.3', lastmod=_template_lastmod('terms.html'))
     add('main.faq', 'monthly', '0.6', lastmod=_template_lastmod('faq.html'))
+    from utils.reviews_public import has_reviews
+    if has_reviews():
+        add('main.reviews_page', 'weekly', '0.5', lastmod=_template_lastmod('reviews.html'))
     add('main.size_guide', 'monthly', '0.6', lastmod=_template_lastmod('size_guide.html'))
 
     try:
@@ -308,6 +300,16 @@ def privacy():
     """Privacy Policy page"""
     # Fixed to the day this text was last published, not the current date.
     return render_template('privacy.html', privacy_last_updated='September 21, 2026')
+
+@main_bp.route('/reviews')
+def reviews_page():
+    """Kind Words: every approved review and photo, as a quiet collage."""
+    from utils.reviews_public import approved, tiles
+    items = tiles(approved(limit=120))
+    return render_template('reviews.html', tiles=items,
+                           has_photos=any(t['kind'] == 'photo' for t in items),
+                           has_quotes=any(t['kind'] == 'quote' for t in items))
+
 
 @main_bp.route('/faq')
 def faq():

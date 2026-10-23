@@ -56,6 +56,12 @@ def _send_via_brevo_api(app, msg):
         payload['htmlContent'] = msg.html
     if msg.body:
         payload['textContent'] = msg.body
+    attachments = getattr(msg, 'attachments', None) or []
+    if attachments:
+        import base64
+        payload['attachment'] = [
+            {'name': a.filename, 'content': base64.b64encode(a.data).decode('ascii')} for a in attachments
+        ]
     if msg.reply_to:
         rt = msg.reply_to
         payload['replyTo'] = {'email': rt} if isinstance(rt, str) else {'email': rt[1], 'name': rt[0]}

@@ -185,6 +185,19 @@
         background: transparent;
     }
     body { background: #fff !important; }
+    /* A printed receipt is one sheet: drop what only helps on screen and tighten the rest. */
+    .confirmation-page { min-height: 0; }
+    .success-icon-wrap, .next-steps, .confirmation-quote, #email-status { display: none !important; }
+    .confirmation-header { padding: 0.7rem 1.25rem 0.5rem; }
+    .confirmation-header h1 { font-size: 1.6rem; margin-bottom: 0.2rem; }
+    .confirmation-header p { margin: 0.15rem 0 0 !important; font-size: 0.9rem; }
+    .order-info, .confirmation-message, .order-items { padding: 0.75rem 1.25rem; }
+    .info-row { padding: 0.35rem 0; font-size: 0.92rem; }
+    .confirmation-message h2, .order-items h3 { font-size: 1.05rem; margin-bottom: 0.4rem; }
+    .confirmation-message p, .confirmation-message address { margin: 0.25rem 0; font-size: 0.9rem; padding: 0.4rem 0.6rem; }
+    .confirmation-item { padding: 0.45rem 0; break-inside: avoid; }
+    .confirmation-item p { display: inline-block; font-size: 0.8rem; margin: 0.1rem 0.9rem 0 0; }
+    .confirmation-item { padding: 0.3rem 0; font-size: 0.9rem; }
 }
 </style>
 {% if not email_sent %}

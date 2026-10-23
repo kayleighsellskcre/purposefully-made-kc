@@ -3159,3 +3159,41 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 .rv-note { margin: 0.8rem 0 0; font-size: 0.82rem; color: var(--text-secondary); text-align: center; }
 .review-form .btn { width: 100%; }
 .review-card .review-photo { display: block; width: 100%; max-height: 220px; object-fit: cover; border-radius: 10px; margin: 0 0 0.7rem; }
+
+/* Kind Words: a quiet collage of photos and notes */
+.kw-wrap { padding: 1.5rem 0 3.5rem; }
+.kw-wrap .container { max-width: 1080px; }
+.kw-filters { display: flex; justify-content: center; gap: 0.5rem; margin: 0 0 1.5rem; }
+.kw-chip { padding: 0.4rem 1.1rem; border: 1px solid rgba(232, 208, 177, 0.95); border-radius: 999px; background: transparent;
+    font-family: var(--font-primary); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-secondary); cursor: pointer; }
+.kw-chip.is-on { background: rgba(184, 124, 111, 0.12); border-color: var(--terra-cotta); color: var(--terra-cotta); }
+.kw-collage { column-count: 3; column-gap: 1.25rem; }
+.kw-tile { display: inline-block; width: 100%; margin: 0 0 1.25rem; break-inside: avoid; }
+.kw-tile[hidden] { display: none; }
+.kw-photo { padding: 0.55rem 0.55rem 0.9rem; background: #fff; border: 1px solid rgba(232, 208, 177, 0.7); border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(58, 61, 72, 0.08); transform: rotate(var(--tilt, 0deg)); transition: transform 0.25s ease, box-shadow 0.25s ease; }
+.kw-photo:hover { transform: rotate(0deg) translateY(-3px); box-shadow: 0 12px 26px rgba(58, 61, 72, 0.12); }
+.kw-zoom { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; line-height: 0; }
+.kw-zoom img { width: 100%; height: auto; border-radius: 3px; display: block; }
+.kw-zoom:focus-visible { outline: 2px solid var(--terra-cotta); outline-offset: 2px; }
+.kw-photo figcaption { padding: 0.7rem 0.35rem 0; text-align: center; }
+.kw-words { display: block; margin-bottom: 0.45rem; font-family: var(--font-secondary); font-style: italic; font-size: 1.05rem; line-height: 1.45; color: var(--text-primary); }
+.kw-name { display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-secondary); }
+.kw-name i { font-style: normal; font-weight: 400; letter-spacing: 0.06em; text-transform: none; }
+.kw-quote { padding: 1.5rem 1.4rem 1.2rem; background: linear-gradient(160deg, rgba(232, 208, 177, 0.38), rgba(232, 208, 177, 0.16));
+    border-radius: 6px; text-align: center; }
+.kw-quote blockquote { margin: 0 0 0.9rem; font-family: var(--font-secondary); font-style: italic; font-size: 1.2rem; line-height: 1.5; color: var(--text-primary); }
+.kw-invite { margin: 1.5rem 0 0; text-align: center; font-size: 0.95rem; color: var(--text-secondary); }
+.kw-empty { max-width: 460px; margin: 1rem auto; text-align: center; }
+.kw-empty-title { font-family: var(--font-secondary); font-style: italic; font-size: 1.4rem; margin-bottom: 0.4rem; }
+.kw-lightbox { position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 1.5rem; background: rgba(40, 36, 34, 0.88); }
+.kw-lightbox[hidden] { display: none; }
+.kw-lightbox img { max-width: min(92vw, 900px); max-height: 78vh; border-radius: 6px; background: #fff; }
+.kw-lightbox p { max-width: 640px; margin: 0.9rem 0 0; text-align: center; font-family: var(--font-secondary); font-style: italic; color: #f5f0e8; }
+.kw-close { position: absolute; top: 0.9rem; right: 1.1rem; border: 0; background: none; color: #fff; font-size: 2.2rem; line-height: 1; cursor: pointer; }
+.reviews-more { margin: 1.25rem 0 0; text-align: center; font-size: 0.92rem; }
+.reviews-more a { color: var(--terra-cotta); font-weight: 600; }
+@media (max-width: 860px) { .kw-collage { column-count: 2; } }
+@media (max-width: 520px) { .kw-collage { column-gap: 0.8rem; } .kw-tile { margin-bottom: 0.9rem; } .kw-quote blockquote { font-size: 1.05rem; } }
+@media (prefers-reduced-motion: reduce) { .kw-photo, .kw-photo:hover { transition: none; transform: none; } }

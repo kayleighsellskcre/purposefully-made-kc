@@ -32,6 +32,10 @@
                 <strong style="font-size:1.25rem;">{% if doc.balance > 0 %}Balance due ${{ '%.2f'|format(doc.balance) }}{% else %}Paid in full{% endif %}</strong>
             </div>
 
+            {% if doc.paid > 0 %}
+            <p style="text-align:center;margin:0 0 1rem;"><a class="btn btn-outline" href="{{ url_for('invoice_pay.receipt_pdf', token=token) }}" target="_blank" rel="noopener">Download your receipt (PDF)</a></p>
+            {% endif %}
+
             {% if notice %}
             <p style="text-align:center;color:#8e2a1f;background:rgba(192,57,43,.08);border-radius:10px;padding:.75rem 1rem;">{{ notice }}</p>
             {% elif client_secret %}

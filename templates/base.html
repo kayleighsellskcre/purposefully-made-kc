@@ -292,6 +292,7 @@
                         <li><a href="{{ url_for('main.size_guide') }}">Size Guide</a></li>
                         <li><a href="{{ url_for('main.faq') }}#shipping">Shipping &amp; Returns</a></li>
                         <li><a href="{{ url_for('main.contact') }}">Contact</a></li>
+                        {% if has_reviews %}<li><a href="{{ url_for('main.reviews_page') }}">Kind Words</a></li>{% endif %}
                     </ul>
                 </div>
 

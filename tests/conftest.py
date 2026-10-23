@@ -252,3 +252,12 @@ def outbox(app):
     from app import mail
     with mail.record_messages() as messages:
         yield messages
+
+
+@pytest.fixture(autouse=True)
+def _fresh_review_cache():
+    """The "are there reviews to show" answer is cached for a couple of minutes; every test starts clean."""
+    from utils import reviews_public
+    reviews_public.clear_cache()
+    yield
+    reviews_public.clear_cache()

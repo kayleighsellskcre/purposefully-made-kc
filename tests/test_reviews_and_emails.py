@@ -278,3 +278,50 @@ def test_email_settings_save(admin_client, app, seed):
     assert _in_db(app, read) == (False, '9 Oak Ave')
     page = admin_client.get('/admin/operations/site-settings').get_data(as_text=True)
     assert 'value="9 Oak Ave"' in page
+
+
+# ---- the Kind Words page ----
+
+def _seed_reviews(app):
+    def make():
+        db.session.add(Review(name='Amy K.', body='Loved them', status='approved', photos_ok=True,
+                              photos='["https://cdn.example/a.png", "https://cdn.example/b.png"]'))
+        db.session.add(Review(name='Private Pat', body='Nice', status='approved', photos_ok=False,
+                              photos='["https://cdn.example/secret.png"]'))
+        db.session.add(Review(name='Words Wes', body='Just words here', status='approved'))
+        db.session.add(Review(name='Waiting Wren', body='Not yet', status='pending'))
+        db.session.add(Review(name='Hidden Hal', body='Gone', status='hidden'))
+        db.session.commit()
+    _in_db(app, make)
+    from utils import reviews_public
+    reviews_public.clear_cache()
+
+
+def test_kind_words_page_shows_approved_reviews_and_permitted_photos(guest, app, seed):
+    _seed_reviews(app)
+    html = guest.get('/reviews').get_data(as_text=True)
+    assert 'Made for You, Worn with Love' in html
+    assert 'Loved them' in html and 'Just words here' in html and 'Nice' in html
+    assert html.count('class="kw-tile kw-photo"') == 2                 # Amy's two photos
+    assert 'https://cdn.example/a.png' in html and 'https://cdn.example/b.png' in html
+    assert 'secret.png' not in html                                    # no permission: the words only
+    assert 'Waiting Wren' not in html and 'Hidden Hal' not in html
+    assert 'data-filter="photo"' in html and 'data-filter="quote"' in html
+
+
+def test_kind_words_page_is_kind_when_empty(guest, seed):
+    from utils import reviews_public
+    reviews_public.clear_cache()
+    html = guest.get('/reviews').get_data(as_text=True)
+    assert 'first kind words are on their way' in html
+
+
+def test_footer_and_sitemap_link_appear_only_with_reviews(guest, app, seed):
+    from utils import reviews_public
+    reviews_public.clear_cache()
+    assert 'Kind Words</a>' not in guest.get('/about').get_data(as_text=True)
+    assert '/reviews' not in guest.get('/sitemap.xml').get_data(as_text=True)
+    _seed_reviews(app)
+    assert 'Kind Words</a>' in guest.get('/about').get_data(as_text=True)
+    assert '/reviews' in guest.get('/sitemap.xml').get_data(as_text=True)
+    assert 'Read more kind words' in guest.get('/').get_data(as_text=True)

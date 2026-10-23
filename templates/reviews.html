@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Kind Words - Purposefully Made KC{% endblock %}
+{% block meta_description %}Kind words and photos from the families, teams and friends who wear Purposefully Made KC.{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <span class="eyebrow">Kind Words</span>
+        <h1>Made for You, Worn with Love</h1>
+        <p class="lead">Notes and photos from the families, teams and friends who wear what we make. Every one of them means the world to us.</p>
+    </div>
+</div>
+
+<section class="kw-wrap">
+    <div class="container">
+        {% if tiles %}
+        <div class="kw-filters" role="group" aria-label="Show">
+            <button type="button" class="kw-chip is-on" data-filter="all" aria-pressed="true">All</button>
+            {% if has_photos %}<button type="button" class="kw-chip" data-filter="photo" aria-pressed="false">Photos</button>{% endif %}
+            {% if has_quotes %}<button type="button" class="kw-chip" data-filter="quote" aria-pressed="false">Words</button>{% endif %}
+        </div>
+
+        <div class="kw-collage" id="kwCollage">
+            {% for t in tiles %}
+            {% if t.kind == 'photo' %}
+            <figure class="kw-tile kw-photo" data-kind="photo" style="--tilt: {{ ['-1.1deg', '0.8deg', '-0.5deg', '1.2deg', '-0.9deg', '0.4deg'][loop.index0 % 6] }};">
+                <button type="button" class="kw-zoom" data-src="{{ t.url }}" data-caption="{{ t.name }}{% if t.text %}: {{ t.text }}{% endif %}" aria-label="Open photo from {{ t.name }}">
+                    <img src="{{ t.url }}" alt="Photo shared by {{ t.name }}" loading="lazy" decoding="async">
+                </button>
+                <figcaption>
+                    {% if t.text %}<span class="kw-words">&ldquo;{{ t.text }}&rdquo;</span>{% endif %}
+                    <span class="kw-name">{{ t.name }}{% if t.occasion %} <i>&middot; {{ t.occasion }}</i>{% endif %}</span>
+                </figcaption>
+            </figure>
+            {% else %}
+            <figure class="kw-tile kw-quote" data-kind="quote">
+                <blockquote>&ldquo;{{ t.text }}&rdquo;</blockquote>
+                <figcaption class="kw-name">{{ t.name }}{% if t.occasion %} <i>&middot; {{ t.occasion }}</i>{% endif %}</figcaption>
+            </figure>
+            {% endif %}
+            {% endfor %}
+        </div>
+
+        <p class="kw-invite">Ordered from us? Watch for a little email after your order is complete. We would love to see you in your favorites.</p>
+        {% else %}
+        <div class="kw-empty">
+            <p class="kw-empty-title">Our first kind words are on their way.</p>
+            <p>When customers share their notes and photos, you will find them here.</p>
+            <a href="{{ url_for('shop.index') }}" class="btn btn-primary">Shop apparel</a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<div class="kw-lightbox" id="kwLightbox" hidden role="dialog" aria-modal="true" aria-label="Photo">
+    <button type="button" class="kw-close" aria-label="Close photo">&times;</button>
+    <img src="" alt="" id="kwLightboxImg">
+    <p id="kwLightboxCap"></p>
+</div>
+<script src="{{ url_for('static', filename='js/kind-words.js') }}?v=1"></script>
+{% endblock %}

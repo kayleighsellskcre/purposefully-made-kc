@@ -3869,6 +3869,17 @@ def invoice_view(invoice_id):
                            pay_link=link, sms_link=sms_href(inv) if link and inv.phone else None)
 
 
+@admin_bp.route('/invoices/<int:invoice_id>/pdf')
+@admin_required
+def invoice_pdf(invoice_id):
+    """One-page PDF of the invoice, or of the receipt once it is paid. Prints on a single sheet."""
+    from models import ManualInvoice
+    from utils.invoice_pay import receipt_pdf_bytes
+    inv = ManualInvoice.query.get_or_404(invoice_id)
+    return Response(receipt_pdf_bytes(inv), mimetype='application/pdf',
+                    headers={'Content-Disposition': f'inline; filename="{inv.number}.pdf"'})
+
+
 @admin_bp.route('/invoices/<int:invoice_id>/pay-link', methods=['POST'])
 @admin_required
 def invoice_pay_link(invoice_id):
@@ -6465,12 +6476,14 @@ def reviews():
     if request.method == 'POST':
         row = db.session.get(Review, int(request.form.get('review_id') or 0))
         action = request.form.get('action')
+        from utils.reviews_public import clear_cache
+        clear_cache()
         if row is None:
             flash('That review was not found.', 'error')
         elif action == 'approve':
             row.status = 'approved'
             db.session.commit()
-            flash('Approved. It now shows on the homepage.', 'success')
+            flash('Approved. It now shows on the homepage and the Kind Words page.', 'success')
         elif action == 'hide':
             row.status = 'hidden'
             db.session.commit()

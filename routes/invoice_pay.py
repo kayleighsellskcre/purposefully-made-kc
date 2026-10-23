@@ -9,7 +9,7 @@ from flask import Blueprint, Response, abort, current_app, redirect, render_temp
 
 from models import db
 from utils.invoice_pay import (MIN_CARD_CENTS, apply_card_payment, balance_cents, doc_for,
-                               invoice_for_token, pay_url, qr_png)
+                               invoice_for_token, pay_url, qr_png, receipt_pdf_bytes)
 
 invoice_pay_bp = Blueprint('invoice_pay', __name__, url_prefix='/pay')
 
@@ -76,6 +76,17 @@ def pay_return(token):
         except stripe.error.StripeError:
             current_app.logger.exception('invoice %s return check failed', inv.number)
     return redirect(url_for('invoice_pay.pay', token=token, paid='1'))
+
+
+@invoice_pay_bp.route('/<token>/receipt.pdf')
+def receipt_pdf(token):
+    """The one-page PDF receipt for a payment that was made. Only the private link opens it."""
+    inv = _invoice_or_404(token)
+    if doc_for(inv)['paid'] <= 0:
+        abort(404)
+    return Response(receipt_pdf_bytes(inv), mimetype='application/pdf',
+                    headers={'Content-Disposition': f'inline; filename="Receipt-{inv.number}.pdf"',
+                             'Cache-Control': 'private, no-store'})
 
 
 @invoice_pay_bp.route('/<token>/qr.png')

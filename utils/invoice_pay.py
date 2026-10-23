@@ -62,6 +62,17 @@ def sms_href(inv):
     return f"sms:{digits}?&body={quote(body)}"
 
 
+def receipt_pdf_bytes(inv) -> bytes:
+    """The one-page PDF (a receipt once something is paid, an invoice before that)."""
+    from datetime import datetime
+    from utils.business_info import BUSINESS
+    from utils.receipt_pdf import build_receipt_pdf
+    from utils.receipts import _date_label
+    doc = doc_for(inv)
+    paid_on = _date_label(datetime.utcnow()) if doc['paid'] > 0 else doc['date']
+    return build_receipt_pdf(doc, BUSINESS, paid_on=paid_on)
+
+
 def qr_png(url) -> bytes:
     import io
     import qrcode
