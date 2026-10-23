@@ -3015,3 +3015,112 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 .care-lines { margin: 0.6rem 0 0; padding: 0; list-style: none; font-size: 0.85rem; line-height: 1.55; color: var(--text-secondary); }
 .care-lines li + li { margin-top: 0.2rem; }
 .care-lines a { color: var(--terra-cotta); font-weight: 600; }
+
+/* ── Customizer (Phase 3) ── */
+/* Color: round swatches, ten or so per row */
+.customizer-container .color-picker-disclosure { border: 0; background: transparent; box-shadow: none; overflow: visible; }
+.customizer-container .color-picker-disclosure summary { min-height: 0; padding: 0 0 0.45rem; pointer-events: none; cursor: default; }
+.customizer-container .color-picker-summary-value { flex-direction: row; align-items: baseline; gap: 0.35rem; }
+.customizer-container .color-picker-summary-value small { font-size: 0.82rem; letter-spacing: 0; text-transform: none; color: var(--text-secondary); }
+.customizer-container .color-picker-summary-value small::after { content: ':'; }
+.customizer-container .color-picker-summary-value strong { font-family: var(--font-primary); font-size: 0.92rem; font-weight: 600; }
+.customizer-container .color-picker-summary-action { display: none; }
+.customizer-container .color-picker-dropdown { padding: 0; border: 0; background: transparent; }
+.customizer-container .color-picker-dropdown .color-grid-professional {
+    display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.15rem; max-height: 168px; overflow-y: auto;
+}
+.customizer-container .color-card {
+    width: 28px; height: 28px; min-height: 0; padding: 0; border: 0; border-radius: 50%;
+    background: transparent; overflow: visible; box-shadow: none; transform: none; flex: 0 0 auto;
+}
+.customizer-container .color-card:hover { transform: scale(1.12); box-shadow: none; border-color: transparent; }
+.customizer-container .color-card .color-image-wrapper,
+.customizer-container .color-card .color-name,
+.customizer-container .color-card .color-checkmark { display: none; }
+.customizer-container .color-card .color-dot {
+    display: block; width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(58, 61, 72, 0.25); box-sizing: border-box;
+}
+.customizer-container .color-card.selected { transform: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--terra-cotta); }
+.customizer-container .color-card:focus-visible { outline: 2px solid var(--terra-cotta); outline-offset: 3px; }
+.customizer-container .color-search-box[hidden], .customizer-container .color-filter-tabs-simple[hidden] { display: none; }
+
+/* Sizes and quantities: one compact row of size boxes with a stepper under each */
+.customizer-container .size-grid-professional { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.customizer-container .size-grid-professional .size-card {
+    width: 62px; min-height: 0; padding: 0.4rem 0.2rem 0.35rem; border-radius: 10px; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 0.1rem; flex: 0 0 auto;
+}
+.customizer-container .size-card .size-label { font-size: 0.95rem; font-weight: 700; }
+.customizer-container .size-card .size-upcharge-badge { font-size: 0.68rem; line-height: 1.1; }
+.customizer-container .size-card .stock-badge { font-size: 0.64rem; line-height: 1.1; min-height: 0.7rem; }
+.customizer-container .size-card .stock-badge:empty { display: none; }
+.customizer-container .size-card .size-qty { display: flex; align-items: center; justify-content: center; gap: 0.15rem; margin-top: 0.2rem; }
+.customizer-container .size-card .size-qty button {
+    width: 20px; height: 20px; padding: 0; border: 1px solid rgba(184, 124, 111, 0.5); border-radius: 50%;
+    background: #fff; color: var(--terra-cotta); font-size: 0.95rem; line-height: 1; cursor: pointer;
+}
+.customizer-container .size-card .size-qty button:hover { background: rgba(184, 124, 111, 0.12); }
+.customizer-container .size-card .qty-val { min-width: 1.1rem; font-size: 0.85rem; font-weight: 700; }
+.customizer-container .size-card.has-qty { border-color: var(--terra-cotta); background: rgba(184, 124, 111, 0.08); }
+.customizer-container .size-card.out-of-stock { opacity: 0.45; }
+.customizer-container .size-card.out-of-stock .size-qty { display: none; }
+
+/* Order bar: pinned to the bottom of the options panel */
+.customizer-container .order-bar {
+    position: sticky; bottom: 0; z-index: 5; margin: 1rem -0.25rem 0; padding: 0.7rem 0.9rem 0.8rem;
+    background: rgba(255, 255, 255, 0.97); border-top: 1px solid rgba(232, 208, 177, 0.8);
+    box-shadow: 0 -8px 18px rgba(58, 61, 72, 0.07); border-radius: 12px 12px 0 0;
+}
+.customizer-container .order-bar .price-summary { margin: 0 0 0.5rem; padding: 0; background: transparent; border: 0; box-shadow: none; }
+.customizer-container .order-bar .price-details { margin-bottom: 0.25rem; }
+.customizer-container .order-bar .price-details summary { cursor: pointer; font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); list-style: none; }
+.customizer-container .order-bar .price-details summary::-webkit-details-marker { display: none; }
+.customizer-container .order-bar .price-details summary::after { content: ' \2304'; }
+.customizer-container .order-bar .price-details[open] summary::after { content: ' \2303'; }
+.customizer-container .order-bar .price-row { padding: 0.15rem 0; font-size: 0.85rem; }
+.customizer-container .order-bar .price-total { font-size: 1.1rem; }
+.customizer-container .order-bar #addToCart { margin: 0; }
+.customizer-container .order-bar #addToCart.is-incomplete { opacity: 0.8; }
+.customizer-container .order-bar .add-to-cart-hint { display: none; }
+.customizer-container .order-bar p.production-timeline-note { margin: 0.4rem 0 0; padding: 0; background: none; border: 0; font-size: 0.78rem; line-height: 1.35; text-align: center; max-width: none; }
+
+/* Customizer: tighter steps so the whole order fits in about two screens */
+.customizer-container .panel-section { margin-bottom: 1rem; padding-bottom: 1rem; }
+.customizer-container .step-section { padding-left: 2.5rem; }
+.customizer-container .panel-section h3 { margin-bottom: 0.55rem; font-size: 1.15rem; }
+.customizer-container .panel-section h3::after { margin-top: 0.3rem; height: 2px; }
+.customizer-container .step-hint { margin: 0 0 0.5rem; }
+.customizer-container .step-badge { width: 1.75rem; height: 1.75rem; font-size: 0.8rem; }
+.customizer-container .size-grid-professional { gap: 0.4rem; }
+.customizer-container .size-grid-professional .size-card { width: 46px; }
+
+/* Design step: Upload / My Designs / Gallery tabs */
+.customizer-container .design-tabs { display: flex; gap: 0.35rem; margin: 0 0 0.75rem; border-bottom: 1px solid rgba(232, 208, 177, 0.9); }
+.customizer-container .design-pane-tab {
+    flex: 1 1 0; padding: 0.5rem 0.4rem; border: 0; border-bottom: 2px solid transparent; background: transparent;
+    font-family: var(--font-primary); font-size: 0.82rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text-secondary); cursor: pointer;
+}
+.customizer-container .design-pane-tab.active { color: var(--terra-cotta); border-bottom-color: var(--terra-cotta); }
+.customizer-container .design-pane[hidden] { display: none; }
+.customizer-container .design-pane #logoGalleryGrid, .customizer-container .design-pane #myDesignsGrid { max-height: 26rem; overflow-y: auto; overscroll-behavior: contain; }
+.customizer-container .design-picker-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 0.3rem; scrollbar-width: thin; }
+.customizer-container .design-picker-tabs .design-tab-btn { flex: 0 0 auto; white-space: nowrap; }
+.customizer-container .upload-rights-note { margin: 0.4rem 0 0; font-size: 0.78rem; line-height: 1.4; }
+.customizer-container .upload-rights-note a { color: var(--terra-cotta); font-weight: 600; }
+.customizer-container .upload-area { padding: 0.9rem 1rem; min-height: 0; }
+.customizer-container .upload-area svg { width: 26px; height: 26px; margin-bottom: 0.2rem !important; }
+.customizer-container .upload-area p { margin: 0.1rem 0; }
+.customizer-container .upload-own-section { margin-bottom: 0.4rem !important; }
+.customizer-container #backDesignSection > div:first-child { padding: 0.7rem 0.9rem !important; margin-bottom: 0 !important; }
+.customizer-container #backDesignSection .back-design-offer-header strong { font-size: 0.95rem !important; }
+.customizer-container #backDesignSection .back-design-offer-header p { font-size: 0.78rem !important; }
+.customizer-container #backDesignSection #addBackDesignBtn { margin-top: 0.5rem !important; padding: 0.4rem 0.75rem; font-size: 0.85rem; }
+
+/* Heart beside the product name */
+.title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+.title-row h1 { flex: 1 1 auto; min-width: 0; }
+.title-heart { flex: 0 0 auto; margin-top: 0.2rem; padding: 0.35rem; border: 0; border-radius: 50%; background: transparent; color: var(--terra-cotta); cursor: pointer; line-height: 0; }
+.title-heart:hover { background: rgba(184, 124, 111, 0.12); }
+.title-heart.active { color: #c0536a; }
+.title-heart:focus-visible { outline: 2px solid var(--terra-cotta); outline-offset: 2px; }

@@ -2091,7 +2091,10 @@
                 {# The product name is this page's heading, so it has to be the h1;
                    the page had none at all. The class keeps the size it had as an
                    h2, since the panel is narrow and 3.5rem would wrap badly. #}
-                <h1 class="customize-product-title">{{ product|display_name }}</h1>
+                <div class="title-row"><h1 class="customize-product-title">{{ product|display_name }}</h1>
+                <button type="button" class="title-heart" data-heart-id="{{ product.id }}" aria-pressed="false" aria-label="Save to favorites" title="Save to favorites">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                </button></div>
                 <p class="product-style">
                     Style <span id="styleNumberText">{{ product.style_number }}</span>
                     {% set sheet = product|spec_sheet_target %}
@@ -2111,6 +2114,7 @@
                         Spec Sheet
                     </button>
                     {% endif %}
+                    <a href="{{ url_for('main.size_guide') }}" target="_blank" rel="noopener" class="spec-sheet-link" onclick="window.open(this.href,'sizeguide','width=760,height=820,scrollbars=yes');return false;">Size guide</a>
                 </p>
                 {% if product.softness_label or product.fabric_summary %}
                 <div class="product-feel">
@@ -2141,20 +2145,20 @@
                 <!-- Step 1: Color Selection -->
                 <div class="panel-section step-section">
                     <div class="step-badge">1</div>
-                    <h3>Choose Color</h3>
-                    <p class="step-hint">Select your color. {{ color_variants|length if color_variants else available_colors|length }} available.</p>
+                    <h3>Color</h3>
+                    {% set _ncolors = color_variants|length if color_variants else available_colors|length %}
                     <p class="color-carry-note" id="colorCarryNote" hidden></p>
 
                     <details class="color-picker-disclosure" id="colorPickerDisclosure" open>
                         <summary>
                             <span class="color-picker-summary-value">
-                                <small>Selected color</small>
-                                <strong id="colorDisclosureName">Choose below ↓</strong>
+                                <small>Color</small>
+                                <strong id="colorDisclosureName">Choose below</strong>
                             </span>
                             <span class="color-picker-summary-action" id="colorPickerToggleLabel">Hide colors <span aria-hidden="true">⌃</span></span>
                         </summary>
                         <div class="color-picker-dropdown">
-                    <div class="color-search-box" style="margin-bottom: 0.75rem;">
+                    <div class="color-search-box" style="margin-bottom: 0.75rem;"{% if _ncolors <= 20 %} hidden{% endif %}>
                         <label for="colorSearch" class="visually-hidden">Search colors</label>
                         <input type="text" id="colorSearch" class="color-search-input" placeholder="Search colors..." autocomplete="off">
                         <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -2163,7 +2167,7 @@
                         </svg>
                     </div>
                     
-                    <div class="color-filter-tabs-simple" id="colorFilterTabs" role="group" aria-label="Filter colors by family">
+                    <div class="color-filter-tabs-simple" id="colorFilterTabs" role="group" aria-label="Filter colors by family"{% if _ncolors <= 20 %} hidden{% endif %}>
                         <button type="button" class="filter-tab active" data-filter="all" aria-pressed="true">All</button>
                         <button type="button" class="filter-tab" data-filter="tiedye" aria-pressed="false">Tie-Dye</button>
                         <button type="button" class="filter-tab" data-filter="heather" aria-pressed="false">Heather</button>
@@ -2177,6 +2181,7 @@
                             {% for variant in color_variants %}
                             <div class="color-card" 
                                  role="button" tabindex="0" aria-pressed="false"
+                                 title="{{ variant.color_name }}" aria-label="{{ variant.color_name }}"
                                  data-color="{{ variant.color_name }}"
                                  data-front-image="{{ variant.front_image or '' }}"
                                  data-back-image="{{ variant.back_image or '' }}"
@@ -2191,6 +2196,7 @@
                                     <div class="color-placeholder" style="{% if variant.color_hex %}background-color: {{ variant.color_hex }};{% elif variant.color_name|color_hex_fallback %}background-color: {{ variant.color_name|color_hex_fallback }};{% else %}background: linear-gradient(135deg, #ddd, #bbb);{% endif %}"></div>
                                     {% endif %}
                                 </div>
+                                <span class="color-dot" style="{% if variant.color_hex %}background-color: {{ variant.color_hex }};{% elif variant.color_name|color_hex_fallback %}background-color: {{ variant.color_name|color_hex_fallback }};{% else %}background: linear-gradient(135deg, #ddd, #bbb);{% endif %}" aria-hidden="true"></span>
                                 <div class="color-name">{{ variant.color_name }}</div>
                                 <div class="color-checkmark">✓</div>
                             </div>
@@ -2199,11 +2205,12 @@
                             {% for color in available_colors %}
                             <div class="color-card" 
                                  role="button" tabindex="0" aria-pressed="false"
-                                 data-color="{{ color }}" 
+                                 title="{{ color }}" aria-label="{{ color }}" data-color="{{ color }}" 
                                  onclick="selectColor(this, true)">
                                 <div class="color-image-wrapper">
                                     <div class="color-placeholder" style="background-color: {{ color.lower() }};"></div>
                                 </div>
+                                <span class="color-dot" style="background-color: {{ color.lower() }};" aria-hidden="true"></span>
                                 <div class="color-name">{{ color }}</div>
                                 <div class="color-checkmark">✓</div>
                             </div>
@@ -2219,14 +2226,15 @@
                 <!-- Step 2: Size Selection -->
                 <div class="panel-section step-section">
                     <div class="step-badge">2</div>
-                    <h3>Choose Size</h3>
+                    {% set multi_size = (not collection_restricted) and (not in_group_order) and (not catalog_section) %}
+                    <h3>{% if multi_size %}Sizes and quantities{% else %}Choose Size{% endif %}</h3>
                     {# available_sizes comes back empty for a style that was imported
                        without its size list. The grid then renders nothing at all,
                        while the hint still told the customer to pick a color first
                        and Add to Cart sat greyed out with no reason given - which
                        reads as a broken page rather than an unavailable garment. #}
                     <p class="step-hint">
-                        {%- if available_sizes %}Select your size. Pick a color first to see availability.
+                        {%- if available_sizes %}{% if multi_size %}Add as many sizes as you need.{% else %}Select your size.{% endif %}
                         {%- else %}Sizes for this style aren't listed yet.{% endif %}
                     </p>
                     <div class="size-grid-professional" id="sizeGrid">
@@ -2238,6 +2246,13 @@
                             <div class="size-label">{{ size }}</div>
                             {% if _up %}<div class="size-upcharge-badge">+${{ _up }}</div>{% endif %}
                             <div class="stock-badge"></div>
+                            {% if multi_size %}
+                            <div class="size-qty" role="group" aria-label="Quantity for size {{ size }}">
+                                <button type="button" class="qty-dec" aria-label="Fewer size {{ size }}" tabindex="-1">&minus;</button>
+                                <span class="qty-val" aria-live="polite">0</span>
+                                <button type="button" class="qty-inc" aria-label="More size {{ size }}" tabindex="-1">+</button>
+                            </div>
+                            {% endif %}
                         </div>
                         {% endfor %}
                     </div>
@@ -2271,8 +2286,16 @@
                     {% endif %}
 
                     {% if not collection_restricted %}
-                    {# Regular shop: show upload box + personal designs #}
-                    <div class="upload-own-section" style="margin-bottom: 1.25rem;">
+                    {# Regular shop: three choices as tabs, only the active one shows #}
+                    {% set _dp = 'gallery' if (preset_design and gallery_designs) else 'upload' %}
+                    {% set _has_mine = my_designs and current_user and current_user.is_authenticated %}
+                    <div class="design-tabs" id="designPaneTabs" role="tablist" aria-label="Where your design comes from">
+                        <button type="button" class="design-pane-tab{% if _dp == 'upload' %} active{% endif %}" data-pane="upload" role="tab" aria-selected="{{ 'true' if _dp == 'upload' else 'false' }}">Upload</button>
+                        {% if _has_mine %}<button type="button" class="design-pane-tab" data-pane="mine" role="tab" aria-selected="false">My Designs</button>{% endif %}
+                        {% if gallery_designs %}<button type="button" class="design-pane-tab{% if _dp == 'gallery' %} active{% endif %}" data-pane="gallery" role="tab" aria-selected="{{ 'true' if _dp == 'gallery' else 'false' }}">Gallery</button>{% endif %}
+                    </div>
+                    <div class="design-pane" data-pane="upload"{% if _dp != 'upload' %} hidden{% endif %}>
+                    <div class="upload-own-section" style="margin-bottom: 0.5rem;">
                         <div class="upload-area" id="uploadAreaMain" role="button" tabindex="0"
                              aria-controls="designFileMain"
                              onclick="document.getElementById('designFileMain').click()">
@@ -2286,10 +2309,12 @@
                         </div>
                         <input type="file" id="designFileMain" accept="image/*,.heic,.heif,.png,.jpg,.jpeg,.webp" style="display: none;">
                         <p class="upload-rights-note">
-                            Uploading an image gives Purposefully Made KC the right to add it to our design gallery and offer it to our clients.
+                            By uploading, you let us add it to our design gallery. <a href="{{ url_for('main.terms') }}">Learn more</a>
                         </p>
                     </div>
-                    {% if my_designs and current_user and current_user.is_authenticated %}
+                    </div>{# end upload pane #}
+                    {% if _has_mine %}
+                    <div class="design-pane" data-pane="mine" hidden>
                     <p class="logo-gallery-label" style="margin-bottom: 0.5rem;">Your designs:</p>
                     <div class="logo-gallery-inline" id="myDesignsInline">
                         <div class="logo-gallery-grid" id="myDesignsGrid">
@@ -2300,6 +2325,7 @@
                             {% endfor %}
                         </div>
                     </div>
+                    </div>{# end my designs pane #}
                     {% endif %}
                     {% endif %}
                     
@@ -2336,6 +2362,7 @@
                         {%- if _ek == 'faith' -%}{%- set _ns.faith=_ns.faith+1 -%}{%- elif _ek == 'sports' -%}{%- set _ns.sports=_ns.sports+1 -%}{%- elif _ek == 'school' -%}{%- set _ns.school=_ns.school+1 -%}{%- elif _ek == 'couples' -%}{%- set _ns.couples=_ns.couples+1 -%}{%- elif _ek == 'holiday' -%}{%- set _ns.holiday=_ns.holiday+1 -%}{%- elif _ek == 'kc' -%}{%- set _ns.kc=_ns.kc+1 -%}{%- elif _ek == 'music' -%}{%- set _ns.music=_ns.music+1 -%}{%- elif _ek == 'funny' -%}{%- set _ns.funny=_ns.funny+1 -%}{%- elif _ek == 'luxury' -%}{%- set _ns.luxury=_ns.luxury+1 -%}{%- elif _ek == 'favs' -%}{%- set _ns.favs=_ns.favs+1 -%}{%- endif -%}
                       {%- endfor -%}
                     {%- endfor -%}
+                    <div class="design-pane" data-pane="gallery"{% if _dp != 'gallery' %} hidden{% endif %}>
                     <div class="logo-gallery-inline gallery-design-picker" id="logoGalleryInline">
 
                         {# ── Label + Tab bar ── #}
@@ -2408,6 +2435,7 @@
                             <div id="logoColorChooserGrid" class="logo-color-chooser-grid"></div>
                         </div>
                     </div>
+                    </div>{# end gallery pane #}
                     {% endif %}
                     {% endif %}
                     
@@ -2679,7 +2707,7 @@
                 {% endif %}{# end allow_back_design #}
 
                 <!-- Quantity -->
-                <div class="panel-section">
+                <div class="panel-section"{% if multi_size %} hidden{% endif %}>
                     <h3>Quantity</h3>
                     <div class="form-group">
                         {# A nearby heading is not a label; the field needs its own. #}
@@ -2688,8 +2716,12 @@
                     </div>
                 </div>
                 
+                <!-- Order bar: stays at the bottom of the panel while the customer scrolls -->
+                <div class="order-bar" id="orderBar">
                 <!-- Price Summary -->
                 <div class="price-summary">
+                    <details class="price-details">
+                    <summary>Price details</summary>
                     <div class="price-row">
                         <span>Unit Price:</span>
                         <span id="unitPrice">${{ "%.2f"|format(product.base_price) }}</span>
@@ -2707,9 +2739,10 @@
                         <span id="backDesignFeeAmount" style="color: var(--terra-cotta); font-weight: 600;">+$6.00</span>
                     </div>
                     <div class="price-row">
-                        <span>Quantity:</span>
+                        <span>Items:</span>
                         <span id="quantityDisplay">1</span>
                     </div>
+                    </details>
                     <div class="price-row price-total">
                         <span>Total:</span>
                         <span id="totalPrice">${{ "%.2f"|format(product.base_price) }}</span>
@@ -2726,7 +2759,8 @@
                     If Add to Cart is greyed out, choose a size and upload or select a design.
                 </p>
                 {% endif %}
-                <p class="production-timeline-note">{{ fulfillment_note|default('Shipping is $11. Pickup is available at checkout. ' ~ ready_note) }}</p>
+                <p class="production-timeline-note">{{ fulfillment_note|default('Shipping is $11, or free local pickup. ' ~ ready_note) }}</p>
+                </div>{# end order-bar #}
             </div>
         </div>
     </div>
@@ -2797,10 +2831,12 @@
         }
     }
 
+    const MULTI_SIZE = {{ 'true' if ((not collection_restricted) and (not in_group_order) and (not catalog_section)) else 'false' }};
     const state = {
         selectedColor: null,
         _mockupGen: 0,
         selectedSize: null,
+        sizeQty: {},
         selectedPlacement: 'center_chest',
         quantity: 1,
         currentView: 'front',
@@ -2950,6 +2986,7 @@
         filterPlacementOptions();
         setupColorSelection();
         setupSizeSelection();
+        setupSizeSteppers();
         setupViewToggle();
         setupQuantity();
         setupDesignUpload();
@@ -3255,18 +3292,7 @@
         if (frontImage) ensureGarmentMetrics(frontImage);
         updateMockupImage();
 
-        if (closePicker) {
-            const disclosure = document.getElementById('colorPickerDisclosure');
-            if (disclosure) {
-                window.setTimeout(function() {
-                    disclosure.open = false;
-                    disclosure.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    // Update toggle label to show "View colors" when collapsed after pick
-                    const toggleLabel = document.getElementById('colorPickerToggleLabel');
-                    if (toggleLabel) toggleLabel.innerHTML = 'View colors <span aria-hidden="true">⌄</span>';
-                }, 160);
-            }
-        }
+        // The swatch picker is small enough to stay open after a pick.
     };
 
     // Keep toggle label in sync whenever the details element is opened/closed manually
@@ -3454,6 +3480,7 @@
         
         element.classList.add('selected');
         state.selectedSize = element.dataset.size;
+        if (MULTI_SIZE && !(state.sizeQty[state.selectedSize] > 0)) state.sizeQty[state.selectedSize] = 1;
         capQuantityToStock();
         updateTotalPrice();
         applyDesignFit();
@@ -4480,7 +4507,66 @@
         return 0;
     }
 
+    function totalQty() {
+        return Object.keys(state.sizeQty).reduce(function (n, k) { return n + (state.sizeQty[k] > 0 ? state.sizeQty[k] : 0); }, 0);
+    }
+
+    function sizesOrdered() {
+        return Array.from(document.querySelectorAll('.size-card'))
+            .map(function (card) { return card.dataset.size; })
+            .filter(function (size) { return state.sizeQty[size] > 0; });
+    }
+
+    function paintSizeQuantities() {
+        document.querySelectorAll('.size-card').forEach(function (card) {
+            const qty = state.sizeQty[card.dataset.size] || 0;
+            const val = card.querySelector('.qty-val');
+            if (val) val.textContent = qty;
+            card.classList.toggle('has-qty', qty > 0);
+            card.classList.toggle('selected', card.dataset.size === state.selectedSize && qty > 0);
+        });
+    }
+
+    function capMultiToStock() {
+        const inv = (state.selectedColor && state.selectedColor.inventory) || {};
+        const hasInventoryData = Object.keys(inv).length > 0;
+        Object.keys(state.sizeQty).forEach(function (size) {
+            const max = hasInventoryData ? Math.max(0, stockQty(inv, size)) : 100;
+            if (state.sizeQty[size] > max) state.sizeQty[size] = Math.min(max, 100);
+            if (!(state.sizeQty[size] > 0)) delete state.sizeQty[size];
+        });
+        if (state.selectedSize && !(state.sizeQty[state.selectedSize] > 0)) {
+            state.selectedSize = sizesOrdered()[0] || null;
+        }
+        state.quantity = Math.max(1, totalQty());
+        const display = document.getElementById('quantityDisplay');
+        if (display) display.textContent = totalQty();
+        paintSizeQuantities();
+        refreshAddToCartButton(100);
+    }
+
+    function setupSizeSteppers() {
+        const grid = document.getElementById('sizeGrid');
+        if (!grid || !MULTI_SIZE) return;
+        grid.addEventListener('click', function (event) {
+            const btn = event.target.closest('.qty-inc, .qty-dec');
+            if (!btn) return;
+            event.stopPropagation();
+            const card = btn.closest('.size-card');
+            if (!card || card.classList.contains('out-of-stock')) return;
+            const size = card.dataset.size;
+            const next = (state.sizeQty[size] || 0) + (btn.classList.contains('qty-inc') ? 1 : -1);
+            state.sizeQty[size] = Math.max(0, Math.min(100, next));
+            if (state.sizeQty[size] > 0) state.selectedSize = size;
+            capQuantityToStock();
+            updateTotalPrice();
+            applyDesignFit();
+            updateBackDesignPreview();
+        }, true);
+    }
+
     function capQuantityToStock() {
+        if (MULTI_SIZE) { capMultiToStock(); return; }
         const quantityInput = document.getElementById('quantity');
         if (!quantityInput) return;
         const inv = (state.selectedColor && state.selectedColor.inventory) || {};
@@ -4525,15 +4611,15 @@
             max = Math.max(0, available);
         }
 
-        const hasSize = !!state.selectedSize;
+        const hasSize = MULTI_SIZE ? totalQty() > 0 : !!state.selectedSize;
         const hasDesign = hasCartReadyDesign();
-        const outOfStock = hasSize && max <= 0;
+        const outOfStock = !MULTI_SIZE && hasSize && max <= 0;
         const ready = hasSize && hasDesign && !outOfStock;
 
         if (addBtn.dataset.busy !== '1') {
-            addBtn.disabled = !ready;
-            addBtn.style.opacity = ready ? '' : '0.65';
-            addBtn.style.cursor = ready ? '' : 'not-allowed';
+            addBtn.disabled = false;
+            addBtn.setAttribute('aria-disabled', ready ? 'false' : 'true');
+            addBtn.classList.toggle('is-incomplete', !ready);
         }
 
         if (!hint) return;
@@ -4567,15 +4653,16 @@
                 card.classList.remove('selected');
                 if (state.selectedSize === size) state.selectedSize = null;
             }
+            if (isOutOfStock && MULTI_SIZE) delete state.sizeQty[size];
             if (stockBadge) {
                 if (isOutOfStock) {
-                    stockBadge.textContent = 'Out of Stock';
+                    stockBadge.textContent = MULTI_SIZE ? 'Sold out' : 'Out of Stock';
                     stockBadge.style.color = '#ef4444';
                 } else if (hasInventoryData && qty <= 12) {
                     stockBadge.textContent = qty + ' left';
                     stockBadge.style.color = '#d97706';
                 } else {
-                    stockBadge.textContent = 'In Stock';
+                    stockBadge.textContent = MULTI_SIZE ? '' : 'In Stock';
                     stockBadge.style.color = '#22c55e';
                 }
             }
@@ -4597,9 +4684,10 @@
         });
     }
     
-    function getSizeUpcharge() {
-        if (!state.isAdult || !state.selectedSize) return 0;
-        const s = String(state.selectedSize).toUpperCase();
+    function getSizeUpcharge(sizeArg) {
+        const picked = sizeArg !== undefined ? sizeArg : state.selectedSize;
+        if (!state.isAdult || !picked) return 0;
+        const s = String(picked).toUpperCase();
         if (s === '2XL' || s === '2X' || s === 'XXL') return 2;
         if (s === '3XL' || s === '3X' || s === 'XXXL') return 3;
         if (s === '4XL' || s === '4X') return 4;
@@ -4654,7 +4742,14 @@
         }
         
         if (unitPrice) unitPrice.textContent = '$' + state.basePrice.toFixed(2);
-        const total = itemPrice * state.quantity;
+        let total = itemPrice * state.quantity;
+        if (MULTI_SIZE) {
+            // itemPrice above includes the preview size's upcharge; price every size on its own.
+            const flat = itemPrice - sizeUpcharge;
+            total = sizesOrdered().reduce(function (sum, size) {
+                return sum + (flat + getSizeUpcharge(size)) * state.sizeQty[size];
+            }, 0);
+        }
         totalPrice.textContent = '$' + total.toFixed(2);
     }
     
@@ -5891,29 +5986,34 @@
         document.getElementById('addToCart').addEventListener('click', async function() {
             // Validation - toast + scroll-to missing section
             if (!state.selectedColor) {
-                PMKC.showFlash('Please select a color to continue', 'error');
+                PMKC.showFlash('Almost there, just choose a color.', 'error');
                 document.querySelector('.color-grid-professional, .color-section, [data-section="color"], .color-grid, .color-cards')
                     ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
-            if (!state.selectedSize) {
-                PMKC.showFlash('Please select a size to continue', 'error');
+            if (MULTI_SIZE ? totalQty() < 1 : !state.selectedSize) {
+                PMKC.showFlash('Almost there, just choose a size.', 'error');
                 document.querySelector('.size-grid, .size-grid-professional, [data-section="size"]')
                     ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
             }
             const invNow = (state.selectedColor && state.selectedColor.inventory) || {};
             const hasStockMap = Object.keys(invNow).length > 0;
-            const availableNow = stockQty(invNow, state.selectedSize);
-            if (hasStockMap && availableNow <= 0) {
-                PMKC.showFlash('That size is out of stock. Please choose another size or color.', 'error');
-                return;
-            }
-            if (hasStockMap && state.quantity > availableNow) {
-                PMKC.showFlash('Only ' + availableNow + ' left in that size. Please lower the quantity.', 'error');
-                state.quantity = availableNow;
-                capQuantityToStock();
-                return;
+            const orderLines = MULTI_SIZE
+                ? sizesOrdered().map(function (size) { return { size: size, qty: state.sizeQty[size] }; })
+                : [{ size: state.selectedSize, qty: state.quantity }];
+            for (const line of orderLines) {
+                const availableNow = stockQty(invNow, line.size);
+                if (hasStockMap && availableNow <= 0) {
+                    PMKC.showFlash('Size ' + line.size + ' is out of stock. Please choose another size or color.', 'error');
+                    return;
+                }
+                if (hasStockMap && line.qty > availableNow) {
+                    PMKC.showFlash('Only ' + availableNow + ' left in size ' + line.size + '. Please lower the quantity.', 'error');
+                    if (MULTI_SIZE) { state.sizeQty[line.size] = availableNow; } else { state.quantity = availableNow; }
+                    capQuantityToStock();
+                    return;
+                }
             }
             const hasFrontDesign = !!(state.designUrl || state.designFile || state.presetDesignId);
             const hasBackDesign = !!(state.backDesignEnabled && (
@@ -5921,7 +6021,7 @@
                 (state.backDesignMode === 'upload' && (state.backDesignFile || state.backDesignUrl))
             ));
             if (!hasFrontDesign && !hasBackDesign) {
-                PMKC.showFlash('Please upload a design or add a name and number', 'error');
+                PMKC.showFlash('Almost there, just add a design.', 'error');
                 document.querySelector('.design-upload-section, [data-section="design"], .upload-area')
                     ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 return;
@@ -5946,7 +6046,26 @@
             
             try {
                 const smallLogoDiscount = (state.selectedPlacement === 'left_chest' || state.selectedPlacement === 'right_chest') ? 2 : 0;
-                const unitPrice = state.basePrice - smallLogoDiscount + getSizeUpcharge() + currentBackDesignFee();
+                const flatPrice = state.basePrice - smallLogoDiscount + currentBackDesignFee();
+                const previewSize = state.selectedSize;
+                let frontProof = null;
+                let backProof = null;
+                try {
+                    frontProof = await capturePreviewProofBlob('front');
+                    if (hasBackDesign) {
+                        backProof = await capturePreviewProofBlob('back');
+                        const frontBtn = document.getElementById('viewFront');
+                        if (frontBtn) frontBtn.click();
+                        applyDesignFit();
+                        applyDesignPosition();
+                    }
+                } catch (proofErr) {
+                    console.warn('Could not save mockup proof snapshot', proofErr);
+                }
+                let addedCount = 0;
+                let lastResult = {};
+                for (const line of orderLines) {
+                const unitPrice = flatPrice + getSizeUpcharge(line.size);
                 
                 const formData = new FormData();
                 formData.append('product_id', state.productId);
@@ -5957,8 +6076,8 @@
                 formData.append('uniform_kit', {{ uniform_kit|tojson }});
                 {% endif %}
                 formData.append('color', state.selectedColor.name);
-                formData.append('size', state.selectedSize);
-                formData.append('quantity', state.quantity);
+                formData.append('size', line.size);
+                formData.append('quantity', line.qty);
                 formData.append('placement', state.selectedPlacement);
                 formData.append('unit_price', unitPrice);
                 if (state.designWidth) formData.append('design_width', state.designWidth);
@@ -5976,7 +6095,9 @@
                 if (state.backDesignEnabled) {
                     if (state.backDesignMode === 'name_number') {
                         if (state.backDesignName || state.backDesignNumber) {
+                        state.selectedSize = line.size;
                         const backFile = await generateBackDesignNameNumberImage();
+                        state.selectedSize = previewSize;
                         if (!backFile) {
                             this.textContent = 'Add to Cart';
                             this.disabled = false;
@@ -6009,22 +6130,9 @@
                     }
                 }
 
-                // Snapshot what the customer sees - used on admin order pages
-                try {
-                    const frontProof = await capturePreviewProofBlob('front');
-                    if (frontProof) formData.append('proof_front', frontProof, 'proof_front.png');
-                    if (hasBackDesign) {
-                        const backProof = await capturePreviewProofBlob('back');
-                        if (backProof) formData.append('proof_back', backProof, 'proof_back.png');
-                        const frontBtn = document.getElementById('viewFront');
-                        if (frontBtn) frontBtn.click();
-                        applyDesignFit();
-                        applyDesignPosition();
-                    }
-                } catch (proofErr) {
-                    console.warn('Could not save mockup proof snapshot', proofErr);
-                }
-                
+                if (frontProof) formData.append('proof_front', frontProof, 'proof_front.png');
+                if (backProof) formData.append('proof_back', backProof, 'proof_back.png');
+
                 const response = await fetch('/cart/add', {
                     method: 'POST',
                     body: formData
@@ -6036,18 +6144,21 @@
                 }
 
                 if (response.ok && result.success) {
-                    if (result.notice) {
-                        PMKC.showFlash(result.notice, 'info');
-                    }
-                    this.textContent = '✓ Added to Cart!';
-                    this.style.background = 'var(--olive-stone)';
-                    window.location.href = '/cart';
+                    addedCount += 1;
+                    lastResult = result;
                 } else {
                     const message = result.error
                         || (response.status === 413 ? 'That design is too large to add. Try a smaller file.' : '')
                         || 'Failed to add to cart';
-                    throw new Error(message);
+                    throw new Error((addedCount ? 'Size ' + line.size + ' could not be added (' + addedCount + ' already in your cart). ' : '') + message);
                 }
+                }
+                if (lastResult.notice) {
+                    PMKC.showFlash(lastResult.notice, 'info');
+                }
+                this.textContent = '✓ Added to Cart!';
+                this.style.background = 'var(--olive-stone)';
+                window.location.href = '/cart';
             } catch (error) {
                 PMKC.showFlash(error.message || 'Something went wrong adding to cart. Please try again.', 'error');
                 this.textContent = 'Add to Cart';
@@ -6055,6 +6166,24 @@
             }
         });
     }
+})();
+
+// ── Upload / My Designs / Gallery tabs ──────────────────────────
+(function() {
+    var bar = document.getElementById('designPaneTabs');
+    if (!bar) return;
+    bar.addEventListener('click', function(event) {
+        var btn = event.target.closest('.design-pane-tab');
+        if (!btn) return;
+        bar.querySelectorAll('.design-pane-tab').forEach(function(t) {
+            var on = t === btn;
+            t.classList.toggle('active', on);
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        document.querySelectorAll('.design-pane').forEach(function(pane) {
+            pane.hidden = pane.dataset.pane !== btn.dataset.pane;
+        });
+    });
 })();
 
 // ── Tabbed Design Picker ────────────────────────────────────────
@@ -6211,4 +6340,5 @@ function toggleSizeChart() {
     }
 }
 </script>
+<script src="{{ url_for('static', filename='js/product-heart.js') }}?v=1"></script>
 {% endblock %}

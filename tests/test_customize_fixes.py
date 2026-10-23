@@ -240,7 +240,7 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert 'transition: transform 0.3s ease' in html
     # Production is still generated from state.selectedSize via the default
     # size-aware helpers, then measured before the values are submitted.
-    assert "formData.append('size', state.selectedSize)" in html
+    assert "formData.append('size', line.size)" in html
     generated = html.index('await generateBackDesignNameNumberImage()')
     measured = html.index("formData.append('name_width_in'", generated)
     assert measured > generated
@@ -267,7 +267,7 @@ def test_mockup_viewport_keeps_whole_shirt_and_view_buttons_visible(client, seed
     assert 'grid-template-columns: repeat(2, minmax(0, 1fr))' in html
     assert 'id="colorPickerDisclosure"' in html
     assert 'id="colorDisclosureName"' in html
-    assert 'disclosure.open = false' in html
+    assert 'The swatch picker is small enough to stay open after a pick.' in html
 
 
 def test_add_to_cart_refits_mockup_and_prices_partial_back_personalization(client, seed):
