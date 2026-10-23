@@ -126,7 +126,7 @@ def doc_from_invoice(inv, args=None):
         'address': inv.address or '', 'ship_to': '', 'group': '', 'note': inv.note or '',
         'lines': lines,
         'subtotal': t['subtotal'], 'discount': t['discount'], 'shipping': t['shipping'], 'tax': t['tax'],
-        'tax_label': f'Tax ({rate:g}%)' if rate else 'Tax', 'total': t['total'],
+        'tax_label': 'Tax', 'total': t['total'],
         'paid': paid, 'balance': balance, 'method': (inv.payment_method or '').strip(),
     }
 

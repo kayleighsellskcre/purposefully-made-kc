@@ -46,8 +46,9 @@ def test_a_new_invoice_gets_a_number_and_prints_with_business_details(admin_clie
     html = admin_client.get(f'/admin/invoices/{iid}').get_data(as_text=True)
     for text in ('INV-', '0001', 'Riverview PTO', 'Attn: Amy Smith', 'PO / Ref', 'PO-9', 'Nike Dri-FIT tee, navy, adult M',
                  'Carhartt beanie, black', 'Kayleigh Biggs', '@Kayleigh-Biggs-1', 'Made out to Kayleigh Biggs',
-                 'Thanks!', 'Balance due', 'Tax (9.5%)', '$115.00', '$10.93', '$125.93'):
+                 'Thanks!', 'Balance due', '>Tax<', '$115.00', '$10.93', '$125.93'):
         assert text in html, text
+    assert 'Tax (' not in html                          # just "Tax", no percentage printed
     assert '<p class="rc-kind">invoice</p>' in html and 'img/logo-invoice.png' in html
     assert 'Back to order' not in html and 'All invoices' in html
 

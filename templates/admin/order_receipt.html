@@ -93,7 +93,8 @@ table.rc-items { width: 100%; border-collapse: collapse; }
 .rc-pay-hint { text-align: center; color: var(--muted); font-size: .84rem; font-style: italic; margin: 0 0 1.05rem; }
 .rc-pay-grid { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; }
 .rc-pay-grid > div + div { border-left: 1px solid var(--gold-soft); }
-.rc-qr { text-align: center; margin-top: 1.1rem; }
+.rc-pay-body--qr { display: grid; grid-template-columns: 1fr auto; gap: 1.6rem; align-items: center; }
+.rc-qr { text-align: center; padding-left: 1.6rem; border-left: 1px solid var(--gold-soft); }
 .rc-qr img { display: block; margin: 0 auto .35rem; }
 .rc-pay-name { font-family: 'Playfair Display', serif; font-weight: 400; font-size: 1.05rem; color: var(--ink); margin: 0; }
 .rc-pay-detail { color: var(--muted); font-size: .82rem; margin: .15rem 0 0; letter-spacing: .03em; }
@@ -115,6 +116,9 @@ table.rc-items { width: 100%; border-collapse: collapse; }
     .rc-parties, .rc-summary, .rc-bill form { grid-template-columns: 1fr; gap: 1.5rem; }
     .rc-pay-grid { grid-template-columns: 1fr; gap: .9rem; }
     .rc-pay-grid > div + div { border-left: 0; border-top: 1px solid var(--gold-soft); padding-top: .8rem; }
+    .rc-pay-body--qr { grid-template-columns: 1fr; }
+    .rc-pay-body--qr .rc-pay-grid { grid-template-columns: 1fr; }
+    .rc-qr { padding-left: 0; border-left: 0; border-top: 1px solid var(--gold-soft); padding-top: 1rem; }
 }
 @page { size: 8.5in 11in; margin: 0.4in; }   /* US Letter */
 @media print {
@@ -122,7 +126,7 @@ table.rc-items { width: 100%; border-collapse: collapse; }
     .rc-tools { display: none !important; }
     /* The invoice is laid out to fill one US Letter sheet. The script below picks the biggest
        print size that still fits; this CSS is the fallback if scripts are off. */
-    .rc-paper { --rc-zoom: .81; zoom: var(--rc-zoom); box-shadow: none; margin: 0; max-width: none; padding: .3in .42in .2in;
+    .rc-paper { --rc-zoom: 1.15; zoom: var(--rc-zoom); box-shadow: none; margin: 0; max-width: none; padding: .3in .42in .2in;
                 border-radius: 0; display: flex; flex-direction: column; min-height: calc(10.05in / var(--rc-zoom)); }
     .rc-paper::before { inset: 0; }
     .rc-kind { font-size: 2.2rem; margin-bottom: .7rem; }
@@ -289,18 +293,20 @@ table.rc-items { width: 100%; border-collapse: collapse; }
     <section class="rc-pay">
         <p class="rc-label">Accepted forms of payment</p>
         <p class="rc-pay-hint">Choose whichever is easiest for you.</p>
-        <div class="rc-pay-grid">
-            {% for name, detail in payment_methods %}
-            <div><p class="rc-pay-name">{{ name }}</p><p class="rc-pay-detail">{{ detail }}</p></div>
-            {% endfor %}
+        <div class="rc-pay-body{% if invoice and invoice.pay_token %} rc-pay-body--qr{% endif %}">
+            <div class="rc-pay-grid">
+                {% for name, detail in payment_methods %}
+                <div><p class="rc-pay-name">{{ name }}</p><p class="rc-pay-detail">{{ detail }}</p></div>
+                {% endfor %}
+            </div>
+            {% if invoice and invoice.pay_token %}
+            <div class="rc-qr">
+                <img src="{{ url_for('invoice_pay.qr', token=invoice.pay_token) }}" alt="QR code to pay this invoice by card" width="120" height="120">
+                <p class="rc-pay-name">Pay by card</p>
+                <p class="rc-pay-detail">Scan with your phone's camera</p>
+            </div>
+            {% endif %}
         </div>
-        {% if invoice and invoice.pay_token %}
-        <div class="rc-qr">
-            <img src="{{ url_for('invoice_pay.qr', token=invoice.pay_token) }}" alt="QR code to pay this invoice by card" width="104" height="104">
-            <p class="rc-pay-name">Pay by card</p>
-            <p class="rc-pay-detail">Scan with your phone's camera</p>
-        </div>
-        {% endif %}
     </section>
     {% endif %}
 
@@ -319,13 +325,23 @@ table.rc-items { width: 100%; border-collapse: collapse; }
     var paper = document.querySelector('.rc-paper');
     if (!paper) return;
     var PAGE_H = 10.05 * 96;                       /* printable height: 11in less margins, with a little to spare */
-    function fit() {
-        paper.style.setProperty('--rc-zoom', '1');
-        paper.style.minHeight = '0';
-        var natural = paper.scrollHeight;
-        var z = Math.max(0.6, Math.min(1, PAGE_H / (natural || PAGE_H)));
-        z = Math.floor(z * 100) / 100;
+    var MIN_Z = 0.6, MAX_Z = 1.6;                  /* a long invoice shrinks, a short one grows to fill the sheet */
+    function heightAt(z) {
         paper.style.setProperty('--rc-zoom', String(z));
+        paper.style.minHeight = '0';
+        return paper.getBoundingClientRect().height;   /* the height it will really take on paper */
+    }
+    function fit() {
+        /* Text re-wraps as the size changes, so search for the biggest size that still fits one page. */
+        var lo = MIN_Z, hi = MAX_Z;
+        if (heightAt(hi) <= PAGE_H) { lo = hi; }
+        else {
+            for (var i = 0; i < 9; i++) {
+                var mid = (lo + hi) / 2;
+                if (heightAt(mid) <= PAGE_H) { lo = mid; } else { hi = mid; }
+            }
+        }
+        paper.style.setProperty('--rc-zoom', String(Math.floor(lo * 100) / 100));
         paper.style.minHeight = '';
     }
     function reset() {

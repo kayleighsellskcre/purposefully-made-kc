@@ -3751,7 +3751,7 @@ def _invoice_fields(inv=None):
     from datetime import datetime as _dt
     if inv is None:
         return {'customer_name': '', 'company': '', 'attn': '', 'po': '', 'email': '', 'phone': '', 'address': '',
-                'note': '', 'lines': [], 'tax_rate': '9.5', 'shipping': '', 'discount': '', 'amount_paid': '',
+                'note': '', 'lines': [], 'tax_rate': '%g' % current_app.config.get('KS_SALES_TAX_PERCENT', 9.5), 'shipping': '', 'discount': '', 'amount_paid': '',
                 'payment_method': '', 'kind': 'auto', 'issued': _dt.now().strftime('%Y-%m-%d')}
     fmt = lambda v: ('%g' % v) if v else ''
     issued = (inv.issued_at or inv.created_at or _dt.now()).strftime('%Y-%m-%d')
