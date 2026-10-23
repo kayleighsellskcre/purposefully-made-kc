@@ -1140,8 +1140,8 @@ a.btn-customize:hover {
 .footer-logo-link { display: inline-block; }
 .footer-logo-img {
     height: auto;
-    max-height: 72px;
-    max-width: min(260px, 82vw);
+    max-height: 150px;
+    max-width: min(380px, 82vw);
     width: auto;
     display: block;
     margin: 0 auto 0.5rem;
@@ -1149,6 +1149,7 @@ a.btn-customize:hover {
     opacity: 0.92;
 }
 .footer-logo-img[hidden] { display: none; }
+.footer-logo-text[hidden] { display: none; }
 .footer-logo-text {
     display: block;
     font-family: 'Playfair Display', Georgia, serif;
