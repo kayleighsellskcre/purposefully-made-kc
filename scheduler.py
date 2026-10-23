@@ -63,6 +63,21 @@ def deadline_reminders_job(app):
             print(f"deadline reminders failed: {exc}", file=sys.stderr, flush=True)
 
 
+def review_requests_job(app):
+    """Email the review invitation to customers whose order was completed 15 days ago."""
+    with app.app_context():
+        try:
+            with _one_worker_at_a_time(731003) as mine:
+                if not mine:
+                    return
+                from utils.customer_emails import send_due_review_requests
+                sent = send_due_review_requests()
+                if sent:
+                    print(f"REVIEW REQUESTS SENT: {sent}", file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f"review requests failed: {exc}", file=sys.stderr, flush=True)
+
+
 def org_fan_stores_job(app):
     """Give every existing organization its own Fan Wear store (runs once at startup)."""
     with app.app_context():
@@ -588,6 +603,15 @@ def init_scheduler(app):
             trigger=CronTrigger(hour='8-11', minute=0, timezone=CHICAGO),
             id='deadline_reminders',
             name='Group order deadline-day reminders',
+            replace_existing=True
+        )
+
+        # Review invitations: every morning at 10 AM Chicago (each order is only ever emailed once)
+        scheduler.add_job(
+            func=lambda: review_requests_job(app),
+            trigger=CronTrigger(hour=10, minute=0, timezone=CHICAGO),
+            id='review_requests',
+            name='Review invitations 15 days after completion',
             replace_existing=True
         )
 

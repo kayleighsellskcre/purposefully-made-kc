@@ -73,3 +73,9 @@ def test_customizer_design_tabs_use_the_gallery_collection_names(guest, app, see
 def test_back_design_toggle_sits_inside_the_design_step(guest, seed):
     html = _page(guest, seed)
     assert html.index('id="designPaneTabs"') < html.index('id="backDesignSection"') < html.index('id="placementSection"')
+
+
+def test_top_block_shows_price_and_brand_line(guest, seed):
+    html = _page(guest, seed)
+    assert 'id="topPrice"' in html and '$30.00' in html.split('id="topPrice"')[1][:40]
+    assert html.index('class="customize-product-title"') < html.index('id="topPrice"') < html.index('id="colorGrid"')

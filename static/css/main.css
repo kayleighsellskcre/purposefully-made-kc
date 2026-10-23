@@ -3137,3 +3137,25 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 
 /* Back design lives inside Step 3 */
 .customizer-container .step-section > #backDesignSection { margin: 0.75rem 0 0; padding: 0; border: 0; }
+
+/* Customizer top block: name, brand and style, price, feel */
+.customizer-container .customize-product-title { font-family: var(--font-heading); font-size: 1.75rem; line-height: 1.15; margin: 0 0 0.35rem; }
+.customizer-container .customize-price { margin: 0.4rem 0 0.2rem; font-size: 1.35rem; font-weight: 700; color: var(--text-primary); }
+.customizer-container .customize-price small { font-size: 0.78rem; font-weight: 400; color: var(--text-secondary); }
+
+/* Reviews: the customer form */
+.review-wrap { padding: 1.5rem 0 3rem; }
+.review-form { max-width: 600px; margin: 0 auto; padding: 1.5rem 1.6rem; background: #fff; border: 1px solid rgba(232, 208, 177, 0.7); border-radius: 14px; }
+.rv-field { margin-bottom: 1.1rem; }
+.rv-field > label:first-child { display: block; margin-bottom: 0.35rem; font-weight: 700; font-size: 0.92rem; color: var(--text-primary); }
+.rv-field textarea, .rv-field input[type="text"] { width: 100%; padding: 0.7rem 0.85rem; border: 1px solid rgba(58, 61, 72, 0.25); border-radius: 10px; font: inherit; font-size: 1rem; background: #fffdfb; }
+.rv-field textarea:focus, .rv-field input[type="text"]:focus { outline: 2px solid var(--terra-cotta); outline-offset: 1px; }
+.rv-field input[aria-invalid="true"], .rv-field textarea[aria-invalid="true"] { border-color: #b3261e; }
+.rv-optional { margin-left: 0.3rem; font-weight: 400; color: var(--text-secondary); }
+.rv-help { margin: 0 0 0.5rem; font-size: 0.88rem; line-height: 1.5; color: var(--text-secondary); }
+.rv-check { display: flex; align-items: flex-start; gap: 0.5rem; margin-top: 0.6rem; font-size: 0.9rem; }
+.rv-check[hidden] { display: none; }
+.rv-error { margin: 0.35rem 0 0; font-size: 0.85rem; color: #b3261e; }
+.rv-note { margin: 0.8rem 0 0; font-size: 0.82rem; color: var(--text-secondary); text-align: center; }
+.review-form .btn { width: 100%; }
+.review-card .review-photo { display: block; width: 100%; max-height: 220px; object-fit: cover; border-radius: 10px; margin: 0 0 0.7rem; }

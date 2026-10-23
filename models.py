@@ -753,6 +753,12 @@ class Order(db.Model):
     send_home_with_child = db.Column(db.Boolean, default=False)
     teacher_name = db.Column(db.String(120))
     occasion_note = db.Column(db.String(200))
+    # Customer emails: when each one went out, so none is ever sent twice
+    completed_at = db.Column(db.DateTime)
+    ready_notified_at = db.Column(db.DateTime)
+    completed_notified_at = db.Column(db.DateTime)
+    review_email_sent_at = db.Column(db.DateTime)
+    review_token = db.Column(db.String(40), index=True)
     child_grade = db.Column(db.String(40))
     child_name = db.Column(db.String(120))
     
@@ -1054,6 +1060,29 @@ class SystemSettings(db.Model):
     
     def __repr__(self):
         return f'<SystemSettings {self.key}>'
+
+
+class Review(db.Model):
+    """A customer's words (and optional photos) about an order. Shown on the site only once approved."""
+    __tablename__ = 'review'
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), index=True)
+    name = db.Column(db.String(80), nullable=False)
+    body = db.Column(db.Text)
+    photos = db.Column(db.Text)                       # JSON list of image URLs
+    photos_ok = db.Column(db.Boolean, default=False)  # the customer said we may show their photos
+    status = db.Column(db.String(12), default='pending', index=True)   # pending | approved | hidden
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    order = db.relationship('Order', backref=db.backref('reviews', lazy='dynamic'))
+
+    def photo_urls(self):
+        import json
+        try:
+            return [u for u in json.loads(self.photos or '[]') if isinstance(u, str)]
+        except Exception:
+            return []
 
 
 class Affirmation(db.Model):

@@ -95,7 +95,7 @@
 
                 {% if owner %}
                 <div class="contact-owner">
-                    {% if owner.photo %}<img src="{{ url_for('static', filename=owner.photo) }}" alt="{{ owner.name }}" width="56" height="56">{% endif %}
+                    {% if owner.photo %}<img src="{{ owner.photo }}" alt="{{ owner.name }}" width="56" height="56">{% endif %}
                     <p>I read every message myself.<br><strong>{{ owner.name }}</strong></p>
                 </div>
                 {% endif %}

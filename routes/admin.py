@@ -1102,6 +1102,8 @@ def update_order_status(order_id):
     try:
         db.session.commit()
         flash(f'Order moved to: {MOVE_LABELS.get(stage, stage)}', 'success')
+        from utils.customer_emails import notify_in_background
+        notify_in_background([order.id], stage)
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('update_order_status commit failed: %s', e)
@@ -6135,6 +6137,8 @@ def update_order_stage(order_id):
         flash('Could not update that stage', 'error')
         return redirect(request.referrer or url_for('admin.production_workflow'))
     db.session.commit()
+    from utils.customer_emails import notify_in_background
+    notify_in_background([order.id], stage)
     if stage in FINISH_LABELS:
         flash('Moved to All Completed', 'success')
         return redirect(url_for('admin.orders_completed'))
@@ -6185,10 +6189,14 @@ def bulk_update_order_stage():
         return redirect(request.referrer or url_for('admin.orders'))
 
     updated = 0
+    moved_ids = []
     for order in Order.query.filter(Order.id.in_(order_ids)).all():
         if apply_stage(order, stage):
             updated += 1
+            moved_ids.append(order.id)
     db.session.commit()
+    from utils.customer_emails import notify_in_background
+    notify_in_background(moved_ids, stage)
 
     if wants_json:
         return jsonify({
@@ -6403,20 +6411,78 @@ def reprocess_design_backgrounds():
 @admin_bp.route('/operations/site-settings', methods=['GET', 'POST'])
 @admin_required
 def site_settings():
-    """Small settings the owner changes herself (how long an order takes)."""
+    """Small settings the owner changes herself: order time, customer emails, pickup spot, her photo and note."""
     from utils import ready_date
+    from utils.site_settings import get_flag, get_setting, set_setting
+    from utils.customer_emails import FLAG_KEY, PICKUP_ADDRESS_KEY, PICKUP_NOTES_KEY
     if request.method == 'POST':
-        raw = (request.form.get('ready_business_days') or '').strip()
-        if raw.isdigit() and ready_date.MIN_DAYS <= int(raw) <= ready_date.MAX_DAYS:
-            ready_date.save_business_days(raw)
-            flash('Saved. Customers now see the new ready date.', 'success')
-        else:
-            flash(f'Enter a whole number from {ready_date.MIN_DAYS} to {ready_date.MAX_DAYS}.', 'error')
+        section = request.form.get('section')
+        if section == 'ready':
+            raw = (request.form.get('ready_business_days') or '').strip()
+            if raw.isdigit() and ready_date.MIN_DAYS <= int(raw) <= ready_date.MAX_DAYS:
+                ready_date.save_business_days(raw)
+                flash('Saved. Customers now see the new ready date.', 'success')
+            else:
+                flash(f'Enter a whole number from {ready_date.MIN_DAYS} to {ready_date.MAX_DAYS}.', 'error')
+        elif section == 'emails':
+            set_setting(FLAG_KEY, '1' if request.form.get('customer_status_emails') else '0', 'Email customers as orders move')
+            set_setting(PICKUP_ADDRESS_KEY, (request.form.get('pickup_address') or '').strip()[:300], 'Where customers pick up orders')
+            set_setting(PICKUP_NOTES_KEY, (request.form.get('pickup_notes') or '').strip()[:300], 'Pickup hours or instructions')
+            flash('Saved.', 'success')
+        elif section == 'owner':
+            set_setting('owner_name', (request.form.get('owner_name') or '').strip()[:80], 'Owner name')
+            set_setting('owner_note', (request.form.get('owner_note') or '').strip()[:600], 'Owner note')
+            if request.form.get('remove_owner_photo'):
+                set_setting('owner_photo_url', '', 'Owner photo')
+            photo = request.files.get('owner_photo')
+            if photo and photo.filename:
+                ext = os.path.splitext(photo.filename.lower())[1]
+                if ext in ('.jpg', '.jpeg', '.png', '.webp'):
+                    from utils.cloud_storage import store_upload
+                    set_setting('owner_photo_url', store_upload(photo, 'site', 'owner'), 'Owner photo')
+                else:
+                    flash('Please choose a JPG, PNG or WEBP photo.', 'error')
+                    return redirect(url_for('admin.site_settings'))
+            flash('Saved. Your photo and note now show on About and Contact.', 'success')
         return redirect(url_for('admin.site_settings'))
+    from routes.main import _owner
     return render_template('admin/operations/site_settings.html',
                            business_days=ready_date.get_business_days(),
                            preview=ready_date.format_day(ready_date.ready_by()),
-                           min_days=ready_date.MIN_DAYS, max_days=ready_date.MAX_DAYS)
+                           min_days=ready_date.MIN_DAYS, max_days=ready_date.MAX_DAYS,
+                           emails_on=get_flag(FLAG_KEY, True),
+                           pickup_address=get_setting(PICKUP_ADDRESS_KEY, ''),
+                           pickup_notes=get_setting(PICKUP_NOTES_KEY, ''),
+                           owner=_owner(), owner_name_saved=get_setting('owner_name', ''),
+                           owner_note_saved=get_setting('owner_note', ''))
+
+
+@admin_bp.route('/operations/reviews', methods=['GET', 'POST'])
+@admin_required
+def reviews():
+    """Read, approve, hide or delete customer reviews. Only approved ones show on the site."""
+    from models import Review
+    if request.method == 'POST':
+        row = db.session.get(Review, int(request.form.get('review_id') or 0))
+        action = request.form.get('action')
+        if row is None:
+            flash('That review was not found.', 'error')
+        elif action == 'approve':
+            row.status = 'approved'
+            db.session.commit()
+            flash('Approved. It now shows on the homepage.', 'success')
+        elif action == 'hide':
+            row.status = 'hidden'
+            db.session.commit()
+            flash('Hidden from the website.', 'success')
+        elif action == 'delete':
+            db.session.delete(row)
+            db.session.commit()
+            flash('Deleted.', 'success')
+        return redirect(url_for('admin.reviews'))
+    rows = Review.query.order_by((Review.status == 'pending').desc(), Review.created_at.desc()).all()
+    return render_template('admin/operations/reviews.html', reviews=rows,
+                           pending=sum(1 for r in rows if r.status == 'pending'))
 
 
 # ===== OPERATIONS: PACKAGING SOP =====

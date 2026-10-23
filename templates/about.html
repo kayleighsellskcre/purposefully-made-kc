@@ -16,7 +16,7 @@
 
         {% if owner.photo or owner.note %}
         <div class="about-owner">
-            {% if owner.photo %}<img class="about-owner-photo" src="{{ url_for('static', filename=owner.photo) }}" alt="{{ owner.name }}, owner of Purposefully Made KC" width="120" height="120">{% endif %}
+            {% if owner.photo %}<img class="about-owner-photo" src="{{ owner.photo }}" alt="{{ owner.name }}, owner of Purposefully Made KC" width="120" height="120">{% endif %}
             <div>
                 {% if owner.note %}<p class="about-owner-note">{{ owner.note }}</p>{% endif %}
                 <p class="about-owner-name">{{ owner.name }}</p>

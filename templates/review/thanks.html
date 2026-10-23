@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Thank You - Purposefully Made KC{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        {% if state == 'thanks' %}
+        <span class="eyebrow">Received</span>
+        <h1>Thank You</h1>
+        <p class="lead">Your words mean so much to us. We will read them ourselves, and with your OK they may appear on our site.</p>
+        {% elif state == 'already' %}
+        <span class="eyebrow">Already Received</span>
+        <h1>Thank You Again</h1>
+        <p class="lead">We already have your review for this order, and we are grateful for it.</p>
+        {% else %}
+        <span class="eyebrow">Hmm</span>
+        <h1>We Could Not Find That Link</h1>
+        <p class="lead">The review link may be incomplete. If you copied it from an email, please try the button in the email again, or send us a message.</p>
+        {% endif %}
+    </div>
+</div>
+<section class="review-wrap">
+    <div class="container" style="text-align:center;">
+        {% if state == 'unknown' %}
+        <a href="{{ url_for('main.contact') }}" class="btn btn-primary">Contact us</a>
+        {% else %}
+        <a href="{{ url_for('shop.design_gallery') }}" class="btn btn-primary">Browse designs</a>
+        <a href="{{ url_for('main.index') }}" class="btn btn-outline">Back to the homepage</a>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

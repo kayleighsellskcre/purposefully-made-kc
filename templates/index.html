@@ -402,7 +402,7 @@
         <h2 class="section-title">Kind Words</h2>
         <div class="reviews-grid">
             {% for r in reviews %}
-            <figure class="review-card"><blockquote>&ldquo;{{ r.text }}&rdquo;</blockquote><figcaption>{{ r.name }}{% if r.occasion %}, {{ r.occasion }}{% endif %}</figcaption></figure>
+            <figure class="review-card">{% if r.photo %}<img class="review-photo" src="{{ r.photo }}" alt="Photo from {{ r.name }}" loading="lazy">{% endif %}{% if r.text %}<blockquote>&ldquo;{{ r.text }}&rdquo;</blockquote>{% endif %}<figcaption>{{ r.name }}{% if r.occasion %}, {{ r.occasion }}{% endif %}</figcaption></figure>
             {% endfor %}
         </div>
     </div>

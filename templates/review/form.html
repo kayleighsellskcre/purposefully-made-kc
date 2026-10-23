@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Share Your Thoughts - Purposefully Made KC{% endblock %}
+{% block meta_description %}Tell us how your order turned out. A few words and a photo are all it takes.{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <span class="eyebrow">Your Order {{ order.order_number }}</span>
+        <h1>How Did It Turn Out?</h1>
+        <p class="lead">Thank you for letting us make this for you. A few kind words help other families and teams choose with confidence, and they truly make our day.</p>
+    </div>
+</div>
+
+<section class="review-wrap">
+    <div class="container">
+        <form method="post" enctype="multipart/form-data" class="review-form" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="rv-field">
+                <label for="rv-body">Your review</label>
+                <textarea id="rv-body" name="body" rows="5" maxlength="2000" placeholder="What did you love? How did it fit? Anything you want to say is welcome."{% if errors.body %} aria-invalid="true" aria-describedby="rv-body-err"{% endif %}>{{ form.body }}</textarea>
+                {% if errors.body %}<p class="rv-error" id="rv-body-err" role="alert">{{ errors.body }}</p>{% endif %}
+            </div>
+
+            <div class="rv-field">
+                <label for="rv-photos">Photos <span class="rv-optional">Optional</span></label>
+                <p class="rv-help">Feel free to take photos of you wearing your items and upload them! We would love to show people how great everyone looks. Up to {{ photo_limit }} photos.</p>
+                <input type="file" id="rv-photos" name="photos" accept="image/*" multiple>
+                <label class="rv-check" id="rv-ok-wrap" hidden>
+                    <input type="checkbox" name="photos_ok" value="1"{% if form.photos_ok %} checked{% endif %}>
+                    <span>Yes, you may show my photos on your website.</span>
+                </label>
+            </div>
+
+            <div class="rv-field">
+                <label for="rv-name">Name to show with your review</label>
+                <input type="text" id="rv-name" name="name" value="{{ form.name }}" maxlength="80" autocomplete="given-name"{% if errors.name %} aria-invalid="true" aria-describedby="rv-name-err"{% endif %}>
+                {% if errors.name %}<p class="rv-error" id="rv-name-err" role="alert">{{ errors.name }}</p>{% endif %}
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg">Send my review</button>
+            <p class="rv-note">We read every review ourselves before it appears on the site.</p>
+        </form>
+    </div>
+</section>
+<script>
+(function () {
+    var input = document.getElementById('rv-photos');
+    var wrap = document.getElementById('rv-ok-wrap');
+    if (!input || !wrap) return;
+    function sync() { wrap.hidden = !(input.files && input.files.length); }
+    input.addEventListener('change', sync);
+    sync();
+})();
+</script>
+{% endblock %}

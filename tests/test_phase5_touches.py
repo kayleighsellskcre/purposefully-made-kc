@@ -21,13 +21,13 @@ def test_ready_note_and_care_lines_show_on_the_product_page(guest, seed):
 
 
 def test_admin_can_change_the_ready_days(admin_client, app):
-    resp = admin_client.post('/admin/operations/site-settings', data={'ready_business_days': '20'})
+    resp = admin_client.post('/admin/operations/site-settings', data={'section': 'ready', 'ready_business_days': '20'})
     assert resp.status_code == 302
     with app.app_context():
         assert SystemSettings.query.filter_by(key='ready_business_days').first().value == '20'
     ready_date._CACHE['at'] = 0.0
     assert ready_date.get_business_days() == 20
-    admin_client.post('/admin/operations/site-settings', data={'ready_business_days': '2'})   # too low: ignored
+    admin_client.post('/admin/operations/site-settings', data={'section': 'ready', 'ready_business_days': '2'})   # too low: ignored
     with app.app_context():
         assert SystemSettings.query.filter_by(key='ready_business_days').first().value == '20'
 

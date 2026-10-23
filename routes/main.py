@@ -46,6 +46,7 @@ def index():
         orgs, stores = public_group_directory(skip_password_protected=True)
         cards = [{'kind': 'org', **o} for o in orgs] + [{'kind': 'store', **c} for c in stores]
         from utils.site_content import REVIEWS as SITE_REVIEWS
+        SITE_REVIEWS = _approved_reviews() + list(SITE_REVIEWS)
         return render_template('index.html',
                              featured_products=featured_products,
                              group_cards=cards[:3],
@@ -61,15 +62,37 @@ def index():
                              group_cards=[],
                              group_cards_total=0)
 
+def _approved_reviews(limit=6):
+    """Approved customer reviews for the homepage. A photo only appears when the customer allowed it."""
+    try:
+        from models import Review
+        rows = Review.query.filter_by(status='approved').order_by(Review.created_at.desc()).limit(limit).all()
+    except Exception:
+        return []
+    out = []
+    for r in rows:
+        text = (r.body or '').strip()
+        photos = r.photo_urls() if r.photos_ok else []
+        if not text and not photos:
+            continue
+        out.append({'name': r.name, 'occasion': (r.order.occasion_note if r.order and r.order.occasion_note else ''),
+                    'text': text, 'photo': photos[0] if photos else ''})
+    return out
+
+
 def _owner():
-    """The owner's name, note and photo (the photo only if the file has been added)."""
-    import os
-    from flask import current_app
+    """The owner's name, note and photo URL. Saved in Site settings; the files in utils/site_content.py are the fallback."""
     from utils import site_content
-    photo = None
-    if os.path.exists(os.path.join(current_app.static_folder, *site_content.OWNER_PHOTO.split('/'))):
-        photo = site_content.OWNER_PHOTO
-    return {'name': site_content.OWNER_NAME, 'note': site_content.OWNER_NOTE, 'photo': photo}
+    from utils.cloud_storage import image_url
+    from utils.site_settings import get_setting
+    photo = (get_setting('owner_photo_url', '') or '').strip()
+    if not photo and os.path.exists(os.path.join(current_app.static_folder, *site_content.OWNER_PHOTO.split('/'))):
+        photo = '/static/' + site_content.OWNER_PHOTO
+    return {
+        'name': (get_setting('owner_name', '') or '').strip() or site_content.OWNER_NAME,
+        'note': (get_setting('owner_note', '') or '').strip() or site_content.OWNER_NOTE,
+        'photo': image_url(photo) if photo else None,
+    }
 
 
 @main_bp.route('/about')
@@ -336,3 +359,103 @@ def status():
         db_ok=db_ok,
         product_count=product_count,
     )
+
+
+# ---- Reviews: a private link per order, words and photos, shown only once approved ----
+
+_REVIEW_PHOTO_LIMIT = 3
+_REVIEW_PHOTO_MAX_BYTES = 8 * 1024 * 1024
+_REVIEW_PHOTO_TYPES = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif'}
+
+
+def _review_order(token):
+    from models import Order
+    token = (token or '').strip()
+    if len(token) < 16:
+        return None
+    return Order.query.filter_by(review_token=token).first()
+
+
+def _suggest_review_name(order):
+    first = (order.first_name or '').strip()
+    last = (order.last_name or '').strip()
+    return f'{first} {last[:1]}.'.strip() if last else first
+
+
+def _save_review_photos(files):
+    """Store up to three photos. Returns (urls, message): message is set when something was skipped."""
+    from utils.cloud_storage import store_upload
+    urls, skipped = [], False
+    for f in files[:_REVIEW_PHOTO_LIMIT]:
+        if not f or not f.filename:
+            continue
+        ext = os.path.splitext(f.filename.lower())[1]
+        f.stream.seek(0, os.SEEK_END)
+        size = f.stream.tell()
+        f.stream.seek(0)
+        if ext not in _REVIEW_PHOTO_TYPES or size > _REVIEW_PHOTO_MAX_BYTES or size == 0:
+            skipped = True
+            continue
+        urls.append(store_upload(f, 'reviews', 'review'))
+    msg = 'One of your photos could not be added (photos must be images under 8 MB).' if skipped else ''
+    return urls, msg
+
+
+@main_bp.route('/review/<token>', methods=['GET', 'POST'])
+def review(token):
+    """The page a customer reaches from the review email. No account needed."""
+    import json
+    from models import Review, db
+    order = _review_order(token)
+    if order is None:
+        return render_template('review/thanks.html', state='unknown'), 404
+    if Review.query.filter_by(order_id=order.id).first():
+        return render_template('review/thanks.html', state='already')
+    errors = {}
+    form = {'name': _suggest_review_name(order), 'body': '', 'photos_ok': False}
+    if request.method == 'POST':
+        form['name'] = (request.form.get('name') or '').strip()[:80]
+        form['body'] = (request.form.get('body') or '').strip()[:2000]
+        form['photos_ok'] = bool(request.form.get('photos_ok'))
+        files = [f for f in request.files.getlist('photos') if f and f.filename]
+        if not form['name']:
+            errors['name'] = 'Please tell us what name to show.'
+        if not form['body'] and not files:
+            errors['body'] = 'Share a few words or add a photo and we will be so happy.'
+        if not errors:
+            urls, note = _save_review_photos(files)
+            if not form['body'] and not urls:
+                errors['body'] = note or 'We could not add that photo. Please try another or write a few words.'
+            else:
+                row = Review(order_id=order.id, name=form['name'], body=form['body'] or None,
+                             photos=json.dumps(urls) if urls else None,
+                             photos_ok=bool(urls) and form['photos_ok'], status='pending')
+                db.session.add(row)
+                db.session.commit()
+                _alert_owner_of_review(row, order)
+                return redirect(url_for('main.review_thanks', token=token))
+    return render_template('review/form.html', order=order, form=form, errors=errors,
+                           photo_limit=_REVIEW_PHOTO_LIMIT)
+
+
+@main_bp.route('/review/<token>/thanks')
+def review_thanks(token):
+    order = _review_order(token)
+    return render_template('review/thanks.html', state='thanks' if order else 'unknown')
+
+
+def _alert_owner_of_review(row, order):
+    """Tell the owner a review is waiting for approval. Best effort, never blocks the customer."""
+    try:
+        from utils.mailer import admin_recipient
+        from utils.sponsor_emails import _send
+        to = admin_recipient(current_app)
+        if not to:
+            return
+        _send(to, 'A new review is waiting for you', 'A new review is waiting',
+              [f'{row.name} shared a review for order {order.order_number}.',
+               'It will not show on the website until you approve it.'],
+              details=[('Review', (row.body or 'Photos only')[:200])],
+              button={'label': 'Open reviews', 'url': url_for('admin.reviews', _external=True)})
+    except Exception:
+        current_app.logger.exception('review alert email failed')

@@ -52,6 +52,8 @@ def apply_stage(order, stage):
         order.status = stage if stage in ('shipped', 'picked_up') else complete_status_for(order)
         order.production_stage = FINISH_STAGE
         order.updated_at = datetime.utcnow()
+        if not getattr(order, 'completed_at', None):
+            order.completed_at = order.updated_at     # starts the 15 day clock for the review request
         return True
     if stage not in STAGE_MAP:
         return False

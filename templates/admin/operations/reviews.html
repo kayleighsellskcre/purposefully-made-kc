@@ -1,0 +1,38 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Reviews - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Operations</span>
+<h1 class="ops-title">Reviews</h1>
+<p class="ops-subtitle">{% if pending %}{{ pending }} waiting for you.{% else %}Nothing waiting.{% endif %} Only approved reviews show on the homepage. Photos only show when the customer gave permission.</p>
+
+{% for r in reviews %}
+<div class="ops-card" style="max-width:720px;margin-bottom:0.9rem;">
+    <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+        <strong>{{ r.name }}</strong>
+        <span style="color:var(--text-secondary);font-size:0.85rem;">
+            {{ r.status|capitalize }} &middot; {{ r.created_at|central }}
+            {% if r.order %}&middot; <a href="{{ url_for('admin.order_detail', order_id=r.order.id) }}">Order {{ r.order.order_number }}</a>{% endif %}
+        </span>
+    </div>
+    {% if r.body %}<p style="margin:0.6rem 0;white-space:pre-wrap;">{{ r.body }}</p>{% endif %}
+    {% set urls = r.photo_urls() %}
+    {% if urls %}
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin:0.5rem 0;">
+        {% for u in urls %}<a href="{{ u }}" target="_blank" rel="noopener"><img src="{{ u }}" alt="Photo from {{ r.name }}" width="96" height="96" style="width:96px;height:96px;object-fit:cover;border-radius:8px;"></a>{% endfor %}
+    </div>
+    <p style="margin:0 0 0.5rem;font-size:0.85rem;color:var(--text-secondary);">{% if r.photos_ok %}Customer said you may show their photos.{% else %}Customer did not give permission to show photos, so they will stay private.{% endif %}</p>
+    {% endif %}
+    <form method="post" style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="review_id" value="{{ r.id }}">
+        {% if r.status != 'approved' %}<button type="submit" name="action" value="approve" class="btn btn-primary btn-sm">Approve</button>{% endif %}
+        {% if r.status != 'hidden' %}<button type="submit" name="action" value="hide" class="btn btn-outline btn-sm">Hide</button>{% endif %}
+        <button type="submit" name="action" value="delete" class="btn btn-outline btn-sm" onclick="return confirm('Delete this review for good?');">Delete</button>
+    </form>
+</div>
+{% else %}
+<div class="ops-card" style="max-width:720px;">
+    <p style="margin:0;">No reviews yet. Customers get the review email 15 days after their order is completed.</p>
+</div>
+{% endfor %}
+{% endblock %}

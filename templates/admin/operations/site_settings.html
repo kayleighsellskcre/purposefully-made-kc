@@ -5,11 +5,55 @@
 <h1 class="ops-title">Site Settings</h1>
 <p class="ops-subtitle">Small things you can change yourself.</p>
 
-<div class="ops-card" style="max-width:560px;">
+<div class="ops-card" style="max-width:600px;margin-bottom:1rem;">
+    <h2>About you</h2>
+    <p>Your photo and a short note show on the About and Contact pages. Leave the note empty to show only your photo.</p>
+    <form method="post" enctype="multipart/form-data" style="display:grid;gap:0.75rem;margin-top:0.75rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="section" value="owner">
+        {% if owner.photo %}
+        <div style="display:flex;align-items:center;gap:0.9rem;">
+            <img src="{{ owner.photo }}" alt="Your current photo" width="72" height="72" style="width:72px;height:72px;border-radius:50%;object-fit:cover;">
+            <label style="font-weight:400;"><input type="checkbox" name="remove_owner_photo" value="1"> Remove this photo</label>
+        </div>
+        {% endif %}
+        <label style="display:flex;flex-direction:column;gap:0.25rem;font-weight:600;">Photo (JPG, PNG or WEBP)
+            <input type="file" name="owner_photo" accept="image/jpeg,image/png,image/webp">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:0.25rem;font-weight:600;">Name
+            <input type="text" name="owner_name" value="{{ owner_name_saved or owner.name }}" maxlength="80">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:0.25rem;font-weight:600;">A short note in your own words (3 or 4 sentences)
+            <textarea name="owner_note" rows="4" maxlength="600">{{ owner_note_saved }}</textarea>
+        </label>
+        <div><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+</div>
+
+<div class="ops-card" style="max-width:600px;margin-bottom:1rem;">
+    <h2>Emails to customers</h2>
+    <p>When you move an order to Packaged &amp; Ready, Shipped or Completed, the customer gets a short, kind email. It says where to pick it up, that it is going home with a child, or that it shipped. Fifteen days after an order is completed, they get one more email inviting a review and photos.</p>
+    <form method="post" style="display:grid;gap:0.75rem;margin-top:0.75rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="section" value="emails">
+        <label style="font-weight:600;"><input type="checkbox" name="customer_status_emails" value="1"{% if emails_on %} checked{% endif %}> Send these emails</label>
+        <label style="display:flex;flex-direction:column;gap:0.25rem;font-weight:600;">Pickup address
+            <input type="text" name="pickup_address" value="{{ pickup_address }}" maxlength="300" placeholder="Street, city, state">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:0.25rem;font-weight:600;">Pickup details (hours or instructions)
+            <input type="text" name="pickup_notes" value="{{ pickup_notes }}" maxlength="300" placeholder="For example: porch pickup, text me when you arrive">
+        </label>
+        <p style="margin:0;color:var(--text-secondary);font-size:0.9rem;">Group stores with their own pickup spot use that one instead.</p>
+        <div><button type="submit" class="btn btn-primary">Save</button></div>
+    </form>
+</div>
+
+<div class="ops-card" style="max-width:600px;">
     <h2>How long an order takes</h2>
     <p>Customers see an estimated ready date on product pages, the cart, checkout and their confirmation. Weekends are skipped.</p>
     <form method="post" style="display:flex;align-items:flex-end;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="section" value="ready">
         <label style="display:flex;flex-direction:column;gap:0.25rem;font-weight:600;">
             Business days
             <input type="number" name="ready_business_days" value="{{ business_days }}" min="{{ min_days }}" max="{{ max_days }}" required style="width:7rem;">
