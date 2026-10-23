@@ -21,8 +21,8 @@
                 <span class="confirmation-eyebrow">Order Received</span>
                 <h1>Thank You!</h1>
                 <p>Your order has been confirmed and is being prepared with care.</p>
-                <p class="production-timeline-note" style="margin:1rem auto 0;max-width:36rem;text-align:left;">
-                    Please allow <strong>2 to 3 weeks</strong> for your order. Most orders are finished within about a week and a half.
+                <p class="production-timeline-note" style="margin:1rem auto 0;max-width:36rem;">
+                    Estimated ready by <strong>{{ ready_day }}</strong>.
                 </p>
             </div>
 
@@ -39,6 +39,12 @@
                     <strong>Email:</strong>
                     <span>{{ order.email }}</span>
                 </div>
+                {% if order.occasion_note %}
+                <div class="info-row">
+                    <strong>Made for:</strong>
+                    <span>{{ order.occasion_note }}</span>
+                </div>
+                {% endif %}
                 <div class="info-row">
                     <strong>Total:</strong>
                     <span class="total-amount">${{ "%.2f"|format(order.total) }}</span>
@@ -58,14 +64,17 @@
                     {{ order.shipping_city }}, {{ order.shipping_state }} {{ order.shipping_zip }}
                 </address>
                 <p>You'll receive a shipping notification with tracking information once your order ships.</p>
-                <p>Please allow <strong>2 to 3 weeks</strong> for your order. Most orders are finished within about a week and a half.</p>
                 {% else %}
                 <p><strong>{{ pickup_heading }}:</strong></p>
                 {% for line in pickup_details %}
                 <p>{{ line }}</p>
                 {% endfor %}
-                <p>Please allow <strong>2 to 3 weeks</strong> for your order. Most orders are finished within about a week and a half.</p>
                 {% endif %}
+                <ol class="next-steps">
+                    <li>We check your design and get your garments ready.</li>
+                    <li>We print and press everything by hand.</li>
+                    <li>{% if order.fulfillment_method == 'shipping' %}We ship it and email you tracking.{% else %}We email you when it is ready for pickup.{% endif %}</li>
+                </ol>
                 {% if order.send_home_with_child %}
                 <p><strong>Send home with child:</strong></p>
                 <address>
@@ -89,6 +98,8 @@
                 </div>
                 {% endfor %}
             </div>
+
+            {% if daily_quote %}<p class="confirmation-quote">&ldquo;{{ daily_quote }}&rdquo;</p>{% endif %}
 
             <div class="confirmation-actions no-print">
                 <button type="button" class="btn btn-primary" id="printReceiptBtn" onclick="window.print()">
@@ -128,6 +139,8 @@
 .confirmation-item:last-child { border-bottom: none; }
 .confirmation-item p { color: var(--text-secondary); font-size: 0.875rem; margin: 0.25rem 0 0; }
 .item-total { font-weight: 600; color: var(--accent-color); }
+.next-steps { margin: 1rem 0 0; padding-left: 1.25rem; color: var(--text-secondary); line-height: 1.7; }
+.confirmation-quote { margin: 0; padding: 1.5rem 2rem 0; text-align: center; font-family: var(--font-secondary); font-style: italic; font-size: 1.15rem; color: var(--text-secondary); }
 .confirmation-actions { padding: 2rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
 @media (max-width: 768px) { .confirmation-actions { flex-direction: column; } }
 .print-only { display: none; }

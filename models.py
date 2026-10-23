@@ -752,6 +752,7 @@ class Order(db.Model):
     # Group-order send-home (printed on packing labels)
     send_home_with_child = db.Column(db.Boolean, default=False)
     teacher_name = db.Column(db.String(120))
+    occasion_note = db.Column(db.String(200))
     child_grade = db.Column(db.String(40))
     child_name = db.Column(db.String(120))
     

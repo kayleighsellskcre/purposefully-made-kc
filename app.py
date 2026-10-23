@@ -61,6 +61,10 @@ def _sync_mockups_to_static(app):
                 shutil.copy2(src_path, dst_path)
 
 
+from utils.business_info import BUSINESS as _BUSINESS
+from utils.daily_quote import todays_quote as _daily_quote
+from utils.ready_date import ready_note as _ready_note
+
 _ASSET_VERSIONS = {}
 
 
@@ -189,6 +193,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS send_home_with_child BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS teacher_name VARCHAR(120)",
+                    "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS occasion_note VARCHAR(200)",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS child_grade VARCHAR(40)",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS child_name VARCHAR(120)",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS amount_paid DOUBLE PRECISION",
@@ -1007,6 +1012,9 @@ def create_app(config_class=Config):
 
         return {
             'css_version': _asset_version('css/main.css'),
+            'daily_quote': _daily_quote(),
+            'ready_note': _ready_note(),
+            'business': _BUSINESS,
             'cart_count': cart_count,
             'cart_fingerprint': cart_fingerprint,
             'current_year': _dt.now().year,

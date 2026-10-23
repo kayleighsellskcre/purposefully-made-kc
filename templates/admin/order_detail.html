@@ -139,6 +139,12 @@
                 </div>
                 {% endif %}
                 {% endif %}
+                {% if order.occasion_note %}
+                <div class="od-info-row">
+                    <span class="od-info-label">Occasion</span>
+                    <span class="od-info-val">{{ order.occasion_note }}</span>
+                </div>
+                {% endif %}
                 {% if order.send_home_with_child %}
                 <div class="od-info-row">
                     <span class="od-info-label">Send home</span>

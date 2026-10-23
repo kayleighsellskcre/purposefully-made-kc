@@ -164,7 +164,8 @@ def _gallery_title_key(title):
 
 def _gallery_title_display(title):
     text = re.sub(r'\s+', ' ', (title or '').strip())
-    return text.title() if text else 'Design'
+    from utils.titles import smart_title
+    return smart_title(text) if text else 'Design'
 
 
 def _public_variant(variant, fallback_url=''):

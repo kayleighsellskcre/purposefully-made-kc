@@ -104,6 +104,7 @@
                     <span class="total-amount">${{ "%.2f"|format(subtotal) }}</span>
                 </div>
                 <p class="cart-tax-note">Tax and shipping are added at checkout.</p>
+                <p class="cart-tax-note">{{ ready_note }}</p>
 
                 {% if fan_wear_url and not org_url %}
                 <div class="cart-next-step">

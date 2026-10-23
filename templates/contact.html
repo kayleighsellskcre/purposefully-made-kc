@@ -34,7 +34,6 @@
             <!-- Left: Info -->
             <div class="contact-info-col">
                 <span class="contact-col-eyebrow">Reach Out</span>
-                <h2>We Are a Real Team<br>That Really Cares</h2>
                 <p class="contact-intro">We are not a big box operation. We are a small business based in Kansas City that puts genuine care into every order and every conversation. When you reach out, a real person reads it and responds.</p>
 
                 <div class="contact-methods">
@@ -94,6 +93,12 @@
                     </div>
                 </div>
 
+                {% if owner %}
+                <div class="contact-owner">
+                    {% if owner.photo %}<img src="{{ url_for('static', filename=owner.photo) }}" alt="{{ owner.name }}" width="56" height="56">{% endif %}
+                    <p>I read every message myself.<br><strong>{{ owner.name }}</strong></p>
+                </div>
+                {% endif %}
                 <div class="contact-reassurance">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" style="color:var(--accent-color);flex-shrink:0;margin-top:2px;"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
                     <p>Not sure what you need? That is completely okay. Tell us about your occasion and we will figure it out together.</p>
@@ -104,8 +109,8 @@
             <div class="contact-form-col">
                 <div class="contact-form-card">
                     <div class="contact-form-card-header">
-                        <h3 class="contact-form-title">Send Us a Message</h3>
-                        <p class="contact-form-subtitle">Fill in the details below and we will be in touch soon.</p>
+                        <h2 class="contact-form-title">Send Us a Message</h2>
+                        <p class="contact-form-subtitle">Quick question? <a href="{{ url_for('main.faq') }}">The FAQ may have your answer.</a></p>
                     </div>
 
                     <form class="contact-form" method="POST" action="{{ url_for('main.contact') }}">
@@ -136,6 +141,11 @@
                             </select>
                         </div>
 
+                        <div class="cf-group" id="orderNumberGroup" hidden>
+                            <label for="order_number">Order Number <span class="cf-optional">Optional</span></label>
+                            <input type="text" id="order_number" name="order_number" maxlength="40" placeholder="PMKC20261023ABCD1234" autocomplete="off">
+                        </div>
+                        <p class="cf-hint" id="customDesignHint" hidden>Have a picture or an idea to show us? The <a href="{{ url_for('custom_request.index') }}">Custom Design page</a> lets you upload it.</p>
                         <div class="cf-group">
                             <label for="message">Your Message</label>
                             <textarea id="message" name="message" rows="5" maxlength="3000" placeholder="Tell us what you are thinking. The more detail the better!" required></textarea>
@@ -153,20 +163,7 @@
     </div>
 </section>
 
-<!-- Bottom Strip -->
-<section class="contact-bottom">
-    <div class="container">
-        <div class="contact-bottom-inner">
-            <span class="contact-bottom-eyebrow">Keep Exploring</span>
-            <h3 class="contact-bottom-title">Not ready to reach out just yet?</h3>
-            <p>No pressure at all. Browse the shop or learn more about how we can help bring your vision to life.</p>
-            <div class="contact-bottom-links">
-                <a href="{{ url_for('shop.index') }}" class="btn btn-primary">Shop Now</a>
-                <a href="{{ url_for('custom_request.index') }}" class="btn btn-outline">Have Us Recreate a Design</a>
-            </div>
-        </div>
-    </div>
-</section>
+
 
 <style>
 /* Contact Section */
@@ -430,49 +427,11 @@ a.contact-method-value:hover { color: var(--accent-color); }
 }
 
 /* Bottom Strip */
-.contact-bottom {
-    background: linear-gradient(135deg, var(--cashmere-sand) 0%, #d4a97a 100%);
-    padding: 4.5rem 2rem;
-    border-top: 1px solid rgba(184,124,111,0.2);
-}
 
-.contact-bottom-inner {
-    text-align: center;
-    max-width: 540px;
-    margin: 0 auto;
-}
 
-.contact-bottom-eyebrow {
-    display: block;
-    font-size: 0.65rem;
-    font-weight: 700;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: rgba(44,32,22,0.55);
-    margin-bottom: 0.65rem;
-    font-family: var(--font-secondary);
-}
 
-.contact-bottom-title {
-    font-family: var(--font-heading);
-    font-size: 1.6rem;
-    color: var(--text-primary);
-    margin-bottom: 0.75rem;
-}
 
-.contact-bottom-inner p {
-    font-size: 0.95rem;
-    color: rgba(44,32,22,0.65);
-    margin-bottom: 2rem;
-    line-height: 1.7;
-}
 
-.contact-bottom-links {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    flex-wrap: wrap;
-}
 
 /* Mobile */
 @media (max-width: 900px) {

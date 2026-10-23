@@ -791,6 +791,7 @@ def paypal_capture_order():
                             'email', 'first_name', 'last_name', 'phone',
                             'shipping_method', 'shipping_info', 'checkout_token',
                             'send_home_with_child', 'teacher_name', 'child_grade', 'child_name',
+                            'occasion_note',
                         ) if data.get(k) not in (None, '')
                     }
                     cart_now = get_cart()
@@ -1110,7 +1111,7 @@ def create_payment_intent():
 PENDING_CHECKOUT_FIELDS = (
     'shipping_method', 'email', 'first_name', 'last_name', 'phone',
     'shipping_info', 'checkout_token', 'send_home_with_child',
-    'teacher_name', 'child_grade', 'child_name',
+    'teacher_name', 'child_grade', 'child_name', 'occasion_note',
 )
 
 
@@ -1481,6 +1482,7 @@ def _build_order_from_capture(cap, *, overrides=None, send_email=True):
         collection_id=cap.collection_id,
         send_home_with_child=bool(customer.get('send_home_with_child')),
         teacher_name=_clip(customer.get('teacher_name'), 120),
+        occasion_note=_clip(customer.get('occasion_note'), 200),
         child_grade=_clip(customer.get('child_grade'), 40),
         child_name=_clip(customer.get('child_name'), 120),
     )
@@ -1951,6 +1953,7 @@ def _complete_order():
             checkout_token=checkout_token,
             send_home_with_child=send_home,
             teacher_name=teacher_name,
+            occasion_note=_clip(data.get('occasion_note'), 200),
             child_grade=child_grade,
             child_name=child_name,
         )
@@ -2242,7 +2245,17 @@ def confirmation(order_number):
         email_sent=email_sent,
         pickup_heading=group_pickup_heading(coll),
         pickup_details=group_pickup_details(coll),
+        ready_day=_ready_day_for(order),
     )
+
+
+def _ready_day_for(order):
+    """'Friday, November 13' for an order, counted from the day it was placed."""
+    from utils import ready_date
+    try:
+        return ready_date.format_day(ready_date.ready_by(order.created_at))
+    except Exception:
+        return ready_date.format_day(ready_date.ready_by())
 
 
 @checkout_bp.route('/confirmation/<order_number>/send-email', methods=['POST'])

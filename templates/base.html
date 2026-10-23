@@ -95,8 +95,14 @@
                         'contact' if _ep == 'main.contact' else '') %}
                     <a href="{{ url_for('shop.index') }}" class="nav-link{% if _nav_here == 'shop' %} nav-link--current{% endif %}"{% if _nav_here == 'shop' %} aria-current="page"{% endif %}>Shop</a>
                     <a href="{{ url_for('shop.design_gallery') }}" class="nav-link{% if _nav_here == 'design' %} nav-link--current{% endif %}"{% if _nav_here == 'design' %} aria-current="page"{% endif %}>Design Gallery</a>
-                    <a href="{{ url_for('shop.group_orders') }}" class="nav-link{% if _nav_here == 'group' %} nav-link--current{% endif %}"{% if _nav_here == 'group' %} aria-current="page"{% endif %}>Group Orders</a>
-                    <a href="{{ url_for('custom_request.index') }}" class="nav-link{% if _nav_here == 'recreate' %} nav-link--current{% endif %}"{% if _nav_here == 'recreate' %} aria-current="page"{% endif %}>Have Us Recreate</a>
+                    <div class="nav-dropdown">
+                        <a href="{{ url_for('shop.group_orders') }}" class="nav-link{% if _nav_here == 'group' %} nav-link--current{% endif %}"{% if _nav_here == 'group' %} aria-current="page"{% endif %} aria-haspopup="true">Group Orders</a>
+                        <div class="nav-dropdown-menu">
+                            <a href="{{ url_for('shop.group_orders') }}">Group Orders</a>
+                            <a href="{{ url_for('shop.company_apparel') }}">Company Apparel</a>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('custom_request.index') }}" class="nav-link{% if _nav_here == 'recreate' %} nav-link--current{% endif %}"{% if _nav_here == 'recreate' %} aria-current="page"{% endif %}>Custom Design</a>
                     <a href="{{ url_for('main.about') }}" class="nav-link{% if _nav_here == 'about' %} nav-link--current{% endif %}"{% if _nav_here == 'about' %} aria-current="page"{% endif %}>About</a>
                     <a href="{{ url_for('main.contact') }}" class="nav-link{% if _nav_here == 'contact' %} nav-link--current{% endif %}"{% if _nav_here == 'contact' %} aria-current="page"{% endif %}>Contact</a>
 
@@ -145,6 +151,9 @@
 
                 {# Always-visible: favorites, cart, hamburger #}
                 <div class="nav-icons">
+                    <button type="button" class="nav-search-btn" id="siteSearchToggle" aria-label="Search the shop and designs" aria-expanded="false" aria-controls="siteSearch">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    </button>
                     <a href="{{ url_for('favorites.index') }}" class="favorites-link" title="My Favorites" aria-label="Favorites">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
@@ -169,6 +178,14 @@
             </div>
         </div>
     </header>
+
+    <div class="site-search" id="siteSearch" role="search" hidden>
+        <div class="container site-search-inner">
+            <label for="siteSearchInput" class="visually-hidden">Search products and designs</label>
+            <input type="search" id="siteSearchInput" placeholder="Search shirts and designs" autocomplete="off">
+            <div class="site-search-results" id="siteSearchResults" aria-live="polite"></div>
+        </div>
+    </div>
 
     {% if active_group_order %}
     <div class="group-order-banner">
@@ -239,19 +256,15 @@
                     <span class="footer-logo-text" hidden>Purposefully Made KC</span>
                 </a>
                 <p class="footer-brand-desc">Custom apparel, made with intention, for every occasion that deserves something special.</p>
-                {% if config.SHOW_SOCIAL_LINKS %}
-                <div class="footer-social">
+                <p class="footer-contact"><a href="mailto:{{ business.email }}">{{ business.email }}</a> &middot; <a href="tel:{{ business.phone|replace('.', '') }}">{{ business.phone }}</a><br>Kansas City</p>
+                                <div class="footer-social">
                     <a href="https://www.instagram.com/purposefullymadekc" target="_blank" rel="noopener" aria-label="Instagram" class="footer-social-link">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
                     </a>
                     <a href="https://www.facebook.com/purposefullymadekc" target="_blank" rel="noopener" aria-label="Facebook" class="footer-social-link">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
                     </a>
-                    <a href="https://www.tiktok.com/@purposefullymadekc" target="_blank" rel="noopener" aria-label="TikTok" class="footer-social-link">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.73a4.85 4.85 0 0 1-1.01-.04z"/></svg>
-                    </a>
                 </div>
-                {% endif %}
             </div>
 
             <!-- Divider -->
@@ -273,11 +286,20 @@
                 </div>
 
                 <div class="footer-col">
+                    <p class="footer-col-title">Help</p>
+                    <ul class="footer-links">
+                        <li><a href="{{ url_for('main.faq') }}">FAQ</a></li>
+                        <li><a href="{{ url_for('main.size_guide') }}">Size Guide</a></li>
+                        <li><a href="{{ url_for('main.faq') }}#shipping">Shipping &amp; Returns</a></li>
+                        <li><a href="{{ url_for('main.contact') }}">Contact</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-col">
                     <p class="footer-col-title">Company</p>
                     <ul class="footer-links">
                         <li><a href="{{ url_for('main.about') }}">About Us</a></li>
-                        <li><a href="{{ url_for('main.contact') }}">Contact</a></li>
-                        <li><a href="{{ url_for('custom_request.index') }}">Have Us Recreate</a></li>
+                        <li><a href="{{ url_for('custom_request.index') }}">Custom Design</a></li>
                     </ul>
                 </div>
 
@@ -289,6 +311,8 @@
                     </ul>
                 </div>
             </div>
+
+            {% if daily_quote %}<p class="footer-quote">&ldquo;{{ daily_quote }}&rdquo;</p>{% endif %}
 
             <div class="footer-bottom">
                 &copy; {{ current_year }} Purposefully Made KC. All rights reserved.
@@ -302,6 +326,8 @@
     <script src="{{ url_for('static', filename='js/a11y.js') }}?v=1"></script>
     <script src="{{ url_for('static', filename='js/keep-scroll.js') }}?v=1"></script>
     <script src="{{ url_for('static', filename='js/header-scroll.js') }}?v=1"></script>
+    <script src="{{ url_for('static', filename='js/read-more.js') }}?v=1"></script>
+    <script src="{{ url_for('static', filename='js/site-search.js') }}?v=1"></script>
     {% block extra_js %}{% endblock %}
 
     <!-- ── CSRF auto-protection ─────────────────────────────────────────────

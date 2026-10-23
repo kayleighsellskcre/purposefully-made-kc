@@ -236,6 +236,23 @@
     </div>
 </section>
 
+<div class="home-strip">Printed in Kansas City &middot; Ready in 2 to 3 weeks &middot; Local pickup available</div>
+
+<section class="start-ways" aria-label="Ways to start">
+    <div class="container">
+        <div class="start-grid">
+            <a class="start-card" href="{{ url_for('shop.index') }}"><strong>Shop Apparel</strong><span>Pick a style and make it yours</span></a>
+            <a class="start-card" href="{{ url_for('shop.design_gallery') }}"><strong>Browse Designs</strong><span>Start from art we have made</span></a>
+            <a class="start-card" href="{{ url_for('custom_request.index') }}"><strong>Custom Design</strong><span>Bring us your idea</span></a>
+        </div>
+        <ol class="how-steps">
+            <li><b>1</b> Pick your shirt</li>
+            <li><b>2</b> Add your design</li>
+            <li><b>3</b> We print and ship</li>
+        </ol>
+    </div>
+</section>
+
 <!-- Product Imagery -->
 <section class="made-for-you">
     <div class="container">
@@ -338,7 +355,7 @@
             <a class="hg-card" href="{{ url_for('org.landing', slug=o.slug) }}">
                 <div class="hg-art{% if card.fan_art %} hg-art--fan{% endif %}">
                     {% if card.fan_art %}<span class="hg-circles">{% for u in card.fan_art[:4] %}<span><img src="{{ u }}" alt="" loading="lazy" decoding="async"></span>{% endfor %}</span>
-                    {% else %}<span class="hg-letter">{{ o.name }}</span>{% endif %}
+                    {% else %}<span class="hg-letter">{{ o.name[:1] }}</span>{% endif %}
                 </div>
                 <div class="hg-body">
                     <span class="hg-name">{{ o.name }}</span>
@@ -352,7 +369,7 @@
             <a class="hg-card" href="{{ url_for('collection.view', slug=c.slug) }}">
                 <div class="hg-art">
                     {% if c.cover_image %}<img class="hg-cover" src="{{ c.cover_image | image_url }}" alt="" loading="lazy" decoding="async">
-                    {% else %}<span class="hg-letter">{{ c.card_title or c.name }}</span>{% endif %}
+                    {% else %}<span class="hg-letter">{{ (c.card_title or c.name)[:1] }}</span>{% endif %}
                 </div>
                 <div class="hg-body">
                     <span class="hg-name">{{ c.card_title or c.name }}</span>
@@ -379,13 +396,26 @@
     </div>
 </section>
 
+{% if reviews %}
+<section class="home-reviews" aria-label="Kind words">
+    <div class="container">
+        <h2 class="section-title">Kind Words</h2>
+        <div class="reviews-grid">
+            {% for r in reviews %}
+            <figure class="review-card"><blockquote>&ldquo;{{ r.text }}&rdquo;</blockquote><figcaption>{{ r.name }}{% if r.occasion %}, {{ r.occasion }}{% endif %}</figcaption></figure>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
 <!-- CTA Section -->
 <section class="cta">
     <div class="container">
         <div class="cta-content">
-            <h2 class="cta-title">Ready to Make Something?</h2>
-            <p class="cta-text">Browse luxury styles from top brands and bring your design to life in minutes.</p>
-            <a href="{{ url_for('shop.index') }}" class="btn btn-primary btn-lg">Shop the Collection</a>
+            <h2 class="cta-title">Have Something in Mind?</h2>
+            <p class="cta-text">Tell us your idea and we will help bring it to life.</p>
+            <a href="{{ url_for('custom_request.index') }}" class="btn btn-primary btn-lg">Start a Custom Design</a>
         </div>
     </div>
 </section>

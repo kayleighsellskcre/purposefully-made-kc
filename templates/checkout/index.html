@@ -15,7 +15,7 @@
         <h1>Checkout</h1>
         <p class="lead">Secure checkout. Your order is just a moment away.</p>
         <p class="production-timeline-note" style="max-width:40rem;margin:1rem auto 0;text-align:left;">
-            Please allow <strong>2 to 3 weeks</strong> for your order. Most orders are finished within about a week and a half.
+            <strong>{{ ready_note }}</strong> Everything is made to order, and most orders are finished sooner.
         </p>
     </div>
 </div>
@@ -53,6 +53,11 @@
                         <label for="phone">Phone</label>
                         <input type="tel" id="phone" class="form-control" 
                                value="{{ current_user.phone if current_user.is_authenticated else '' }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="occasion_note">What is this for? <span class="optional-tag">Optional</span></label>
+                        <input type="text" id="occasion_note" class="form-control" maxlength="200" autocomplete="off" placeholder="A birthday, a team, a trip. It helps us make it feel right.">
                     </div>
                 </div>
                 
@@ -888,7 +893,8 @@ function buildOrderPayload(paymentId, paymentMethodOverride) {
         send_home_with_child: !!(document.getElementById('send_home_with_child') && document.getElementById('send_home_with_child').checked),
         teacher_name: ((document.getElementById('teacher_name') || {}).value || '').trim(),
         child_grade: ((document.getElementById('child_grade') || {}).value || '').trim(),
-        child_name: ((document.getElementById('child_name') || {}).value || '').trim()
+        child_name: ((document.getElementById('child_name') || {}).value || '').trim(),
+        occasion_note: ((document.getElementById('occasion_note') || {}).value || '').trim()
     };
 }
 

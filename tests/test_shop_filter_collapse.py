@@ -416,5 +416,5 @@ def test_show_more_button_comes_right_after_the_grid(client, app, seed):
 
 def test_the_daily_quote_is_a_slim_strip(client):
     html = html_of(client)
-    assert 'daily-affirmation-card' in html
+    assert 'daily-quote' in html
     assert 'Slim quote strip' in html

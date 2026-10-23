@@ -110,7 +110,9 @@ def test_homepage_shows_three_cards_and_a_see_all_link_when_there_are_more(clien
 
 def test_group_orders_page_lists_open_orders_before_the_explanations(client, seed):
     html = client.get('/shop/group-orders').get_data(as_text=True)
-    assert html.index('id="open-orders"') < html.index('class="cta-section"') < html.index('class="go-help"')
+    assert html.index('id="open-orders"') < html.index('class="go-help"')
+    assert 'class="cta-section"' not in html and 'Ready to get started' not in html     # the repeat block is gone
+    assert 'Everyone pays their own' in html and 'Company covers it' in html           # the two ways to order
     assert 'href="#open-orders"' in html                         # "Find your group"
 
 

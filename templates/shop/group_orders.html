@@ -321,16 +321,29 @@
         <span class="eyebrow">Bulk Ordering</span>
         <h1>Group Orders</h1>
         <p class="lead">Custom apparel for teams, schools, and organizations. Create your options and share one link. Everyone stays matching.</p>
-        <p class="go-jump">
-            {% if open_collections or open_orgs %}<a href="#open-orders" class="go-jump-link">Find your group</a>{% endif %}
-            {% if current_user.is_authenticated %}<a href="{{ url_for('shop.create_group_order') }}" class="go-jump-link go-jump-link--solid">Start a group order</a>
-            {% else %}<a href="{{ url_for('auth.login') }}?next={{ url_for('shop.create_group_order') }}" class="go-jump-link go-jump-link--solid">Start a group order</a>{% endif %}
+        <p class="go-links">
+            {% if open_collections or open_orgs %}<a href="#open-orders">Find your group</a>{% endif %}
+            {% if current_user.is_authenticated %}<a href="{{ url_for('account.my_group_orders') }}">My group orders</a>{% endif %}
         </p>
     </div>
 </div>
 
 <section class="group-orders-content">
     <div class="container">
+        <div class="go-choose">
+            <div class="go-option">
+                <h2 class="go-option-title">Everyone pays their own</h2>
+                <p>You pick the styles and the logo. Everyone opens your link, chooses a size and pays for their own. We print and sort the whole order.</p>
+                {% if current_user.is_authenticated %}<a href="{{ url_for('shop.create_group_order') }}" class="btn btn-primary">Start a group order</a>
+                {% else %}<a href="{{ url_for('auth.login') }}?next={{ url_for('shop.create_group_order') }}" class="btn btn-primary">Start a group order</a>{% endif %}
+            </div>
+            <div class="go-option">
+                <h2 class="go-option-title">Company covers it</h2>
+                <p>Your company covers a set number of items per person and pays one invoice. Anyone who wants extras pays for those themselves.</p>
+                <a href="{{ url_for('shop.company_apparel') }}" class="btn btn-outline">See Company Apparel</a>
+            </div>
+        </div>
+
         {% if open_collections or open_orgs %}
         <div class="directory-section" id="open-orders">
             <h2>Open Group Orders</h2>
@@ -358,7 +371,7 @@
                     </div>
                     {% else %}
                     <div class="dir-card-img">
-                        <div class="dir-card-lettermark"><span>{{ org.name }}</span></div>
+                        <div class="dir-card-lettermark"><span>{{ org.name[:1] }}</span></div>
                     </div>
                     {% endif %}
                     <div class="dir-card-body">
@@ -368,11 +381,10 @@
                         {% endif %}
                         <div class="dir-card-meta">
                             <span>{{ item.team_count }} team store{{ 's' if item.team_count != 1 }}</span>
-                            <span class="dir-badge public">🌐 Public</span>
                         </div>
                     </div>
                     <div class="dir-card-footer">
-                        <a href="/org/{{ org.slug }}" class="btn btn-primary">Shop All Teams</a>
+                        <a href="/org/{{ org.slug }}" class="btn btn-primary">Shop this store</a>
                     </div>
                 </div>
                 {% endfor %}
@@ -393,7 +405,7 @@
                     </div>
                     {% else %}
                     <div class="dir-card-img">
-                        <div class="dir-card-lettermark"><span>{{ card_label }}</span></div>
+                        <div class="dir-card-lettermark"><span>{{ card_label[:1] }}</span></div>
                     </div>
                     {% endif %}
                     <div class="dir-card-body">
@@ -416,46 +428,19 @@
                             {% if c.is_password_protected %}
                             <span class="dir-badge locked">🔒 Code required</span>
                             {% elif c.show_in_directory %}
-                            <span class="dir-badge public">🌐 Public</span>
                             {% else %}
                             <span class="dir-badge private">🔗 Link only</span>
                             {% endif %}
                         </div>
                     </div>
                     <div class="dir-card-footer">
-                        <a href="{{ url_for('collection.view', slug=c.slug) }}" class="btn btn-primary">
-                            {% if item.not_yet_open %}View Store
-                            {% elif c.is_password_protected %}Enter Code & Join
-                            {% else %}Join This Order{% endif %}
-                        </a>
+                        <a href="{{ url_for('collection.view', slug=c.slug) }}" class="btn btn-primary">Shop this store</a>
                     </div>
                 </div>
                 {% endfor %}
             </div>
         </div>
         {% endif %}
-
-        <div class="cta-section">
-            <h2>Ready to get started?</h2>
-            <p>Set up your group order in minutes. You'll have a share link before you leave this page.</p>
-            <div class="cta-buttons">
-                {% if current_user.is_authenticated %}
-                <a href="{{ url_for('shop.create_group_order') }}" class="btn btn-primary btn-lg">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    Create Group Order
-                </a>
-                <a href="{{ url_for('account.my_group_orders') }}" class="btn btn-secondary btn-lg">My Group Orders</a>
-                {% else %}
-                <a href="{{ url_for('auth.login') }}?next={{ url_for('shop.create_group_order') }}" class="btn btn-primary btn-lg">
-                    Log in to create a group order
-                </a>
-                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 1rem;">Create an account or log in to set up your group order and get a shareable link.</p>
-                {% endif %}
-            </div>
-        </div>
 
         <details class="go-help"{% if not (open_collections or open_orgs) %} open{% endif %}>
             <summary>How group orders work &amp; common questions</summary>

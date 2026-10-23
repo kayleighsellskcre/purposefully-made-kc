@@ -45,10 +45,12 @@ def index():
         # password-protected stores, which need the password to shop.
         orgs, stores = public_group_directory(skip_password_protected=True)
         cards = [{'kind': 'org', **o} for o in orgs] + [{'kind': 'store', **c} for c in stores]
+        from utils.site_content import REVIEWS as SITE_REVIEWS
         return render_template('index.html',
                              featured_products=featured_products,
                              group_cards=cards[:3],
-                             group_cards_total=len(cards))
+                             group_cards_total=len(cards),
+                             reviews=SITE_REVIEWS)
     except Exception as e:
         # Log the error but don't crash
         import sys
@@ -59,10 +61,21 @@ def index():
                              group_cards=[],
                              group_cards_total=0)
 
+def _owner():
+    """The owner's name, note and photo (the photo only if the file has been added)."""
+    import os
+    from flask import current_app
+    from utils import site_content
+    photo = None
+    if os.path.exists(os.path.join(current_app.static_folder, *site_content.OWNER_PHOTO.split('/'))):
+        photo = site_content.OWNER_PHOTO
+    return {'name': site_content.OWNER_NAME, 'note': site_content.OWNER_NOTE, 'photo': photo}
+
+
 @main_bp.route('/about')
 def about():
     """About page"""
-    return render_template('about.html')
+    return render_template('about.html', owner=_owner())
 
 @main_bp.route('/contact', methods=['GET', 'POST'])
 # Public, unauthenticated, and it sends an email on every POST. Without a limit
@@ -84,6 +97,9 @@ def contact():
         email = request.form.get('email', '').strip()
         subject = request.form.get('subject', '').strip()
         message = request.form.get('message', '').strip()
+        order_number = ''.join(ch for ch in request.form.get('order_number', '') if ch.isalnum() or ch in '-_ ')[:40].strip()
+        if order_number and subject == 'Order question':
+            message = f'Order number: {order_number}\n\n{message}'
 
         if len(name) > 100 or len(email) > 254 or len(subject) > 150 or len(message) > 3000:
             flash('One of those fields is longer than we can take. Please shorten it and try again.', 'error')
@@ -138,7 +154,8 @@ def contact():
 
     digits = ''.join(c for c in str(current_app.config.get('ADMIN_PHONE', '')) if c.isdigit())
     contact_phone_display = f'({digits[0:3]}) {digits[3:6]}-{digits[6:10]}' if len(digits) == 10 else None
-    return render_template('contact.html', contact_phone_display=contact_phone_display, contact_phone_digits=digits)
+    return render_template('contact.html', contact_phone_display=contact_phone_display,
+                           contact_phone_digits=digits, owner=_owner())
 
 
 @main_bp.route('/robots.txt')
@@ -210,6 +227,8 @@ def sitemap_xml():
     add('main.contact', 'yearly', '0.5', lastmod=_template_lastmod('contact.html'))
     add('main.privacy', 'yearly', '0.3', lastmod=_template_lastmod('privacy.html'))
     add('main.terms', 'yearly', '0.3', lastmod=_template_lastmod('terms.html'))
+    add('main.faq', 'monthly', '0.6', lastmod=_template_lastmod('faq.html'))
+    add('main.size_guide', 'monthly', '0.6', lastmod=_template_lastmod('size_guide.html'))
 
     try:
         from utils.mockups import product_has_shop_image
@@ -266,6 +285,19 @@ def privacy():
     """Privacy Policy page"""
     # Fixed to the day this text was last published, not the current date.
     return render_template('privacy.html', privacy_last_updated='September 21, 2026')
+
+@main_bp.route('/faq')
+def faq():
+    """Questions people ask before they order."""
+    return render_template('faq.html')
+
+
+@main_bp.route('/size-guide')
+def size_guide():
+    """Chest and length by brand, measured flat, in inches."""
+    from utils.size_guide import GENERAL_NOTE, brand_charts
+    return render_template('size_guide.html', charts=brand_charts(), general_note=GENERAL_NOTE)
+
 
 @main_bp.route('/terms')
 def terms():

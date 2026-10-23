@@ -15,19 +15,9 @@
     <div class="container">
         <span class="eyebrow">Luxury Custom Apparel</span>
         <h1>Shop Custom Apparel</h1>
-        <p class="lead">Luxury custom apparel from Bella+Canvas, Comfort Colors, and more, printed with your design. Built for every occasion.</p>
-        <div class="shop-header-actions">
-            <a href="{{ url_for('shop.group_orders') }}" class="btn btn-group-order">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg>
-                Start a Group Order
-            </a>
-        </div>
-        <p class="group-order-hint">For teams, schools, and organizations. Choose the styles they can order, then share the link.</p>
+        <p class="lead">Bella+Canvas, Comfort Colors and more, printed with your design.</p>
+        <p class="shop-group-link">Ordering for a team or group? <a href="{{ url_for('shop.group_orders') }}">Start a group order</a></p>
+        {% if daily_affirmation %}<p class="daily-quote">&ldquo;{{ daily_affirmation }}&rdquo;</p>{% endif %}
         {% if design_id %}
         <p class="design-selected-notice">
             <strong>You selected a design from the gallery.</strong> Choose a product below to customize with it.
@@ -36,16 +26,6 @@
     </div>
 </div>
 
-{% if daily_affirmation %}
-<div class="daily-affirmation-wrap">
-    <div class="daily-affirmation-card">
-        <span class="daily-affirmation-mark" aria-hidden="true">&ldquo;</span>
-        <p class="daily-affirmation-text">{{ daily_affirmation }}</p>
-        <span class="daily-affirmation-rule"></span>
-    </div>
-</div>
-{% endif %}
-
 <section class="shop-section">
     <div class="container">
         <!-- Filter Bar -->
@@ -53,19 +33,8 @@
            arriving on a filtered link can see which filters are cutting the
            results down rather than wondering where the products went. #}
         {% set filters_active = selected_brand or selected_category or selected_age_group or selected_colors or selected_color or selected_fit_type or selected_neck_style or selected_sleeve_length or request.args.get('q') %}
-        <div class="filter-bar">
-            <div class="filter-bar-header">
-                <span class="filter-bar-title">Refine Your Selection</span>
-                {% if filters_active %}
-                <button class="clear-filters-btn" onclick="clearFilters()">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    Clear Filters
-                </button>
-                {% endif %}
-            </div>
-            <!-- Keyword search -->
-            <div class="shop-search-wrap">
-                <form method="GET" action="{{ url_for('shop.index') }}" class="shop-search-form" id="shopSearchForm">
+        <div class="filter-bar shop-toolbar">
+            <form method="GET" action="{{ url_for('shop.index') }}" class="shop-search-form" id="shopSearchForm">
                     <input type="hidden" name="category" id="searchCategory" value="{{ request.args.get('category', '') }}">
                     <input type="hidden" name="age_group" id="searchAgeGroup" value="{{ request.args.get('age_group', '') }}">
                     <input type="hidden" name="fit_type" id="searchFitType" value="{{ request.args.get('fit_type', '') }}">
@@ -78,6 +47,7 @@
                     {% else %}
                     <input type="hidden" name="color" id="searchColor" class="search-color-param" value="">
                     {% endif %}
+                    <input type="hidden" name="sort" id="searchSort" value="{{ selected_sort if selected_sort and selected_sort != 'featured' else '' }}">
                     <input type="hidden" name="brand" id="searchBrand" value="{{ request.args.get('brand', '') }}">
                     <div class="shop-search-field">
                         {# The placeholder is not a label: it disappears as soon as
@@ -91,10 +61,6 @@
                         {% endif %}
                     </div>
                 </form>
-            </div>
-            {# On a phone the six stacked dropdowns pushed the first product
-               more than a screen below the fold. This button exists only
-               under 768px; the panel is always open on wider screens. #}
             <button type="button" class="filter-toggle" id="filterToggle"
                     aria-expanded="{{ 'true' if filters_active else 'false' }}"
                     aria-controls="filterControls"
@@ -105,6 +71,26 @@
                 {% if active_count %}<span class="filter-toggle-count" aria-label="{{ active_count }} active">{{ active_count }}</span>{% endif %}
                 <svg class="filter-toggle-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
+            <div class="shop-sort">
+                <label for="sortSelect" class="visually-hidden">Sort by</label>
+                <select id="sortSelect" class="filter-dropdown" onchange="applyFilters()">
+                    {% set _sort = selected_sort or 'featured' %}
+                    <option value="featured" {% if _sort == 'featured' %}selected{% endif %}>Sort: Featured</option>
+                    <option value="price_asc" {% if _sort == 'price_asc' %}selected{% endif %}>Price, low to high</option>
+                    <option value="price_desc" {% if _sort == 'price_desc' %}selected{% endif %}>Price, high to low</option>
+                    <option value="newest" {% if _sort == 'newest' %}selected{% endif %}>Newest</option>
+                    <option value="popular" {% if _sort == 'popular' %}selected{% endif %}>Most popular</option>
+                </select>
+            </div>
+            {% if filters_active %}
+                <button class="clear-filters-btn" onclick="clearFilters()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    Clear Filters
+                </button>
+                {% endif %}
+            <p class="product-count">{{ product_families|length }} style{% if product_families|length != 1 %}s{% endif %}</p>
+        </div>
+        <div class="filter-panel">
             <div class="filter-controls{% if filters_active %} open{% endif %}" id="filterControls">
                 <div class="filter-group">
                     <label for="brandFilter">Brand</label>
@@ -207,17 +193,23 @@
             </div>
         </div>
         
+        <nav class="shop-chips" aria-label="Quick filters">
+            {% set _cat = selected_category or '' %}
+            {% set _age = selected_age_group or '' %}
+            {% set _q = request.args.get('q') or None %}
+            {% set _srt = (selected_sort if selected_sort and selected_sort != 'featured' else None) %}
+            <a href="{{ url_for('shop.index', q=_q, sort=_srt) }}" class="shop-chip {% if not _cat and not _age %}shop-chip--on{% endif %}">All</a>
+            <a href="{{ url_for('shop.index', category='Tee', q=_q, sort=_srt) }}" class="shop-chip {% if _cat == 'Tee' %}shop-chip--on{% endif %}">Tees</a>
+            <a href="{{ url_for('shop.index', category='Long Sleeve', q=_q, sort=_srt) }}" class="shop-chip {% if _cat == 'Long Sleeve' %}shop-chip--on{% endif %}">Long Sleeve</a>
+            <a href="{{ url_for('shop.index', category='Sweatshirt', q=_q, sort=_srt) }}" class="shop-chip {% if _cat == 'Sweatshirt' %}shop-chip--on{% endif %}">Sweatshirts</a>
+            <a href="{{ url_for('shop.index', category='Hoodie', q=_q, sort=_srt) }}" class="shop-chip {% if _cat == 'Hoodie' %}shop-chip--on{% endif %}">Hoodies</a>
+            <a href="{{ url_for('shop.index', age_group='kids', q=_q, sort=_srt) }}" class="shop-chip {% if _age == 'kids' %}shop-chip--on{% endif %}">Kids &amp; Baby</a>
+        </nav>
         <div class="shop-layout">
             <!-- Products Grid -->
             <div class="shop-content">
                 {% if products %}
-                <div class="shop-header">
-                    <p class="product-count">
-                        {{ product_families|length }} style{% if product_families|length != 1 %}s{% endif %}
-                        {% set fam_count = product_families|selectattr('is_family')|list|length %}
-                        {% if fam_count %}<span class="shop-family-note"> · {{ fam_count }} available in multiple age groups</span>{% endif %}
-                    </p>
-                </div>
+
 
                 {% set ns = namespace(card_index=0) %}
                 <div class="products-grid">
@@ -289,10 +281,6 @@
                                 <button class="carousel-btn carousel-next" type="button" aria-label="Next color">
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
                                 </button>
-                                <div class="color-indicator">
-                                    <span class="current-color">{{ product.carousel_colors[0].color_name }}</span>
-                                    <span class="color-count">{{ product.carousel_colors|length }} colors</span>
-                                </div>
                                 {% endif %}
                             </div>
                             {% else %}
@@ -311,20 +299,14 @@
                         </div>
 
                         <div class="product-info">
+                            {% set ncol = (product.carousel_colors|length) if product.carousel_colors else 0 %}
                             <h2 class="product-name">{{ product|display_name }}</h2>
-                            <p class="product-style">{% if product.display_brand %}{{ product.display_brand }} · {% endif %}Style {{ product.style_number }}</p>
-                            {% if product.display_category or product.category %}
-                            <p class="product-category">{{ product.display_category or product.category }}</p>
-                            {% endif %}
-                            {% if product.softness_label %}
-                            <p class="product-softness">{{ product.softness_label }}</p>
+                            {% if product.display_brand %}<p class="product-brand-line">{{ product.display_brand }}</p>{% endif %}
+                            {% if product.softness_label or ncol %}
+                            <p class="product-meta-line">{{ product.softness_label if product.softness_label else '' }}{% if product.softness_label and ncol %} &middot; {% endif %}{% if ncol %}{{ ncol }} color{{ 's' if ncol != 1 }}{% endif %}</p>
                             {% endif %}
                             <p class="product-price">${{ "%.2f"|format(product.base_price) }}</p>
-                            {% if family.is_family %}
-                            <span class="btn btn-customize btn-sm">Choose Age →</span>
-                            {% else %}
                             <span class="btn btn-customize btn-sm">Customize</span>
-                            {% endif %}
                         </div>
                     </a>
 
@@ -394,11 +376,6 @@
 
 <style>
 /* ── Product Family Cards ── */
-.shop-family-note {
-    font-size: 0.82em;
-    color: var(--terra-cotta, #b56c4c);
-    font-weight: 500;
-}
 
 /* Age-group strip overlaid at the bottom of the product image */
 .family-age-strip {
@@ -565,99 +542,11 @@
 .fam-mac:hover .fam-mac-arrow { color: var(--terra-cotta, #b56c4c); transform: translateX(2px); }
 
 /* ── Daily Affirmation ── */
-.daily-affirmation-wrap {
-    background: linear-gradient(180deg, var(--ivory-silk, #faf7f2) 0%, #fff 100%);
-    padding: clamp(1rem, 3vw, 1.75rem) 1.25rem;
-    text-align: center;
-}
-.daily-affirmation-card {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: clamp(0.5rem, 1.5vw, 0.85rem);
-    max-width: 880px;
-    margin: 0 auto;
-    padding: clamp(1.25rem, 3vw, 1.75rem) clamp(1.5rem, 5vw, 3.5rem);
-    background: #fff;
-    border: 1px solid rgba(184, 124, 111, 0.18);
-    border-radius: 20px;
-    box-shadow: 0 18px 45px -22px rgba(58, 61, 72, 0.35);
-}
-.daily-affirmation-card::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: clamp(60px, 30%, 160px);
-    height: 4px;
-    border-radius: 0 0 4px 4px;
-    background: linear-gradient(90deg, transparent, var(--terra-cotta, #b87c6f), transparent);
-}
-.daily-affirmation-mark {
-    font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
-    font-size: clamp(3.5rem, 9vw, 5.5rem);
-    line-height: 0.5;
-    color: var(--terra-cotta, #b87c6f);
-    opacity: 0.28;
-    margin-bottom: -0.35em;
-}
-.daily-affirmation-text {
-    font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
-    font-style: italic;
-    font-size: clamp(1.65rem, 5vw, 2.85rem);
-    font-weight: 600;
-    color: var(--primary-color, #3a3d48);
-    line-height: 1.4;
-    letter-spacing: 0.005em;
-    margin: 0;
-    max-width: 22ch;
-    text-wrap: balance;
-}
-.daily-affirmation-rule {
-    display: block;
-    width: 72px;
-    height: 2px;
-    border-radius: 2px;
-    background: linear-gradient(90deg, transparent, var(--terra-cotta, #b87c6f), transparent);
-    opacity: 0.6;
-}
 
 @media (max-width: 600px) {
-    .daily-affirmation-text { max-width: 100%; }
 }
 
-.shop-header-actions {
-    display: flex;
-    justify-content: center;
-    margin: 1.25rem 0 0.5rem;
-}
 
-.btn-group-order {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.65rem 1.6rem;
-    background: var(--accent-color);
-    color: #fff;
-    border-radius: var(--radius-btn);
-    font-weight: 600;
-    font-size: 0.88rem;
-    transition: var(--transition);
-    text-decoration: none;
-}
-.btn-group-order:hover {
-    background: var(--accent-secondary);
-    color: #fff;
-    transform: translateY(-2px);
-}
-.group-order-hint {
-    font-size: 0.88rem;
-    color: var(--text-secondary);
-    margin-top: 0.4rem;
-    text-align: center !important;
-}
 
 .design-selected-notice {
     display: inline-block;
@@ -683,16 +572,8 @@
     overflow: hidden;
 }
 
-.filter-bar-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1rem 1.75rem 0.75rem;
-    border-bottom: 1px solid rgba(232, 208, 177, 0.5);
-}
 
 /* Shop search bar */
-.shop-search-wrap { padding: 0.85rem 1.75rem; border-bottom: 1px solid rgba(232, 208, 177, 0.4); background: rgba(248, 245, 240, 0.5); }
 .shop-search-form { margin: 0; }
 .shop-search-field { position: relative; display: flex; align-items: center; }
 .shop-search-icon { position: absolute; left: 0.9rem; color: var(--text-secondary); pointer-events: none; flex-shrink: 0; }
@@ -710,14 +591,6 @@
 .shop-search-input:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(184,124,111,0.12); }
 .shop-search-clear { position: absolute; right: 0.75rem; background: none; border: none; cursor: pointer; color: var(--text-secondary); font-size: 1.1rem; line-height: 1; padding: 0.25rem; }
 
-.filter-bar-title {
-    font-family: var(--font-heading);
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-}
 
 .filter-controls {
     display: flex;
@@ -939,7 +812,6 @@
 
     .filter-divider { width: 100%; height: 1px; margin: 0; }
     .filter-group { padding: 0.7rem 1.25rem; min-width: unset; }
-    .filter-bar-header { padding: 0.85rem 1.25rem 0.65rem; }
 
     /* Gaps above the first product, none of which carry any words.
        4rem of section padding and 2.5rem under the filter bar look considered
@@ -947,14 +819,10 @@
        phone screen on empty background before a single garment appeared. */
     .shop-section { padding-top: 1.5rem; }
     .filter-bar { margin-bottom: 1.25rem; }
-    .daily-affirmation-wrap { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-    .daily-affirmation-card { padding-top: 0.85rem; padding-bottom: 0.85rem; }
 
     /* "40 products" is one 26px line that was carrying 64px of padding and
        margin around it, which bought nothing on a screen this narrow. */
-    .shop-header { padding-bottom: 0.25rem; margin-bottom: 0.75rem; }
     .product-count { margin-bottom: 0; }
-    .shop-header-actions { margin-top: 0.75rem; }
 }
 
 .shop-layout {
@@ -965,16 +833,6 @@
     width: 100%;
 }
 
-.shop-header {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 0.75rem 1.5rem;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--border-color);
-}
 
 .product-count {
     color: var(--text-secondary);
@@ -1384,14 +1242,7 @@
 }
 
 /* Slim quote strip: the quote stays, but no longer pushes the products down a full screen. */
-.daily-affirmation-wrap { padding: .85rem 1.25rem .35rem; background: none; }
-.daily-affirmation-card { flex-direction: row; justify-content: center; gap: .75rem; max-width: 760px; padding: .7rem 1.5rem; border-radius: 999px; box-shadow: 0 6px 18px -12px rgba(58, 61, 72, 0.35); }
-.daily-affirmation-card::before, .daily-affirmation-rule { display: none; }
-.daily-affirmation-mark { font-size: 2rem; line-height: 1; margin: 0; opacity: .4; }
-.daily-affirmation-text { font-size: clamp(1.05rem, 2.6vw, 1.4rem); max-width: none; line-height: 1.3; text-wrap: pretty; }
 @media (max-width: 600px) {
-    .daily-affirmation-card { border-radius: 18px; padding: .6rem 1rem; gap: .5rem; }
-    .daily-affirmation-mark { font-size: 1.5rem; }
 }
 
 .show-more-wrap { text-align: center; margin: 2.5rem 0 1rem; }
@@ -1621,6 +1472,8 @@ function applyFilters() {
     colors.forEach((color) => params.append('color', color));
     if (designId) params.append('design_id', designId);
     if (searchQ.trim()) params.append('q', searchQ.trim());
+    const sortSel = document.getElementById('sortSelect');
+    if (sortSel && sortSel.value && sortSel.value !== 'featured') params.append('sort', sortSel.value);
 
     window.location.href = '/shop' + (params.toString() ? '?' + params.toString() : '');
 }

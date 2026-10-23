@@ -278,6 +278,28 @@ def index():
         products = sort_catalog(products)
         product_sections = group_catalog_by_age(products)
         product_families = group_products_by_family(products)
+        # Sort. "Featured" puts customer favorites first and otherwise keeps the catalog order.
+        sort = (request.args.get('sort') or 'featured').strip().lower()
+        if sort not in ('featured', 'price_asc', 'price_desc', 'newest', 'popular'):
+            sort = 'featured'
+        if sort in ('price_asc', 'price_desc'):
+            product_families = sorted(product_families, key=lambda f: float(f['primary'].base_price or 0),
+                                      reverse=(sort == 'price_desc'))
+        elif sort == 'newest':
+            from datetime import datetime as _dt
+            product_families = sorted(
+                product_families,
+                key=lambda f: max((m.created_at or _dt.min) for m in f['members']), reverse=True)
+        elif sort == 'popular':
+            from sqlalchemy import func
+            from models import OrderItem
+            sold = dict(db.session.query(OrderItem.product_id, func.sum(OrderItem.quantity))
+                        .group_by(OrderItem.product_id).all())
+            product_families = sorted(
+                product_families, key=lambda f: sum(int(sold.get(m.id) or 0) for m in f['members']), reverse=True)
+        else:
+            product_families = sorted(
+                product_families, key=lambda f: 0 if any(m.is_customer_favorite for m in f['members']) else 1)
         categories = [row['key'] for row in filter_opts['categories']]
         fit_types = filter_opts['fits']
         neck_styles = []
@@ -296,43 +318,14 @@ def index():
         highlighted_families = selected_color_families(color_filters)
         design_id = request.args.get('design_id', type=int)
 
-        # Daily affirmation: same message for every visitor on the same calendar date
-        daily_affirmation = None
-        try:
-            from datetime import date
-            today = date.today()
-            day_index = (today - date(today.year, 1, 1)).days
-
-            # Try DB first (admin-managed list)
-            try:
-                from models import Affirmation
-                db_affirmations = (
-                    Affirmation.query
-                    .filter_by(is_active=True)
-                    .order_by(Affirmation.sort_order, Affirmation.id)
-                    .all()
-                )
-                if db_affirmations:
-                    from affirmations_seed import normalize_affirmation_text
-                    daily_affirmation = normalize_affirmation_text(
-                        db_affirmations[day_index % len(db_affirmations)].text
-                    )
-            except Exception:
-                pass
-
-            # Fallback: use seed list directly if DB had nothing
-            if not daily_affirmation:
-                from affirmations_seed import AFFIRMATIONS, normalize_affirmation_text
-                daily_affirmation = normalize_affirmation_text(
-                    AFFIRMATIONS[day_index % len(AFFIRMATIONS)]
-                )
-        except Exception:
-            pass
+        from utils.daily_quote import todays_quote
+        daily_affirmation = todays_quote()
 
         return render_template('shop/index.html',
                              products=products,
                              product_sections=product_sections,
                              product_families=product_families,
+                             selected_sort=sort,
                              categories=categories,
                              fit_types=fit_types,
                              neck_styles=neck_styles,

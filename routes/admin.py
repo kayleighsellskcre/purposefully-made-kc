@@ -6398,6 +6398,27 @@ def reprocess_design_backgrounds():
         return jsonify({'error': err}), 500
 
 
+# ===== SITE SETTINGS =====
+
+@admin_bp.route('/operations/site-settings', methods=['GET', 'POST'])
+@admin_required
+def site_settings():
+    """Small settings the owner changes herself (how long an order takes)."""
+    from utils import ready_date
+    if request.method == 'POST':
+        raw = (request.form.get('ready_business_days') or '').strip()
+        if raw.isdigit() and ready_date.MIN_DAYS <= int(raw) <= ready_date.MAX_DAYS:
+            ready_date.save_business_days(raw)
+            flash('Saved. Customers now see the new ready date.', 'success')
+        else:
+            flash(f'Enter a whole number from {ready_date.MIN_DAYS} to {ready_date.MAX_DAYS}.', 'error')
+        return redirect(url_for('admin.site_settings'))
+    return render_template('admin/operations/site_settings.html',
+                           business_days=ready_date.get_business_days(),
+                           preview=ready_date.format_day(ready_date.ready_by()),
+                           min_days=ready_date.MIN_DAYS, max_days=ready_date.MAX_DAYS)
+
+
 # ===== OPERATIONS: PACKAGING SOP =====
 
 @admin_bp.route('/operations/packaging-sop')

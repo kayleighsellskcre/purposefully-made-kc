@@ -47,10 +47,10 @@ def test_footer_logo_is_capped_and_falls_back(client):
     assert 'data-fallback' in html
 
 
-def test_social_links_are_hidden_until_accounts_exist(client):
+def test_tiktok_is_not_linked_and_real_accounts_are(client):
     html = client.get('/').get_data(as_text=True)
-    assert 'instagram.com/purposefullymadekc' not in html
-    assert 'facebook.com/purposefullymadekc' not in html
+    assert 'instagram.com/purposefullymadekc' in html
+    assert 'facebook.com/purposefullymadekc' in html
     assert 'tiktok.com/@purposefullymadekc' not in html
 
 

@@ -66,7 +66,7 @@ def test_public_gallery_dedupes_same_name_and_normalizes_title(app, seed):
         _gallery_design(title='Best Dad By Par', filename='dad-1b.png', file_path='uploads/dad-1.png')
         _gallery_design(title='BEST DAD BY PAR', filename='dad-2.png', file_path='uploads/dad-2.png')
         db.session.commit()
-        cards = [c for c in gallery_cards_for_public(Design) if c['title'] == 'Best Dad By Par']
+        cards = [c for c in gallery_cards_for_public(Design) if c['title'] == 'Best Dad by Par']
         assert len(cards) == 1
         assert cards[0]['color_count'] == 2
         assert cards[0]['has_colors'] is True
@@ -164,9 +164,8 @@ def test_public_design_gallery_page_groups_variants(client, app, seed):
         main_id = main.id
 
     landing = client.get('/shop/designs').get_data(as_text=True)
-    assert 'This platform is for custom apparel' in landing
-    assert 'legal to print' in landing
-    assert 'changed a little' in landing
+    assert 'Browse designs we have made' in landing
+    assert 'adjust it for you' in landing
     assert 'Open a folder to browse' not in landing
     assert 'Curated Collection' not in landing
     assert '\u2014' not in landing
@@ -204,7 +203,7 @@ def test_gallery_folder_interior_only_shows_that_folder(client, app, seed):
     landing = client.get('/shop/designs').get_data(as_text=True)
     assert 'Sports' in landing
     assert 'School' in landing
-    assert 'Music' in landing
+    assert 'Music &amp; Entertainment' not in landing       # a folder with no designs is not shown
     assert 'Country &amp; Western' not in landing
     assert 'Continue with this design' not in landing
 

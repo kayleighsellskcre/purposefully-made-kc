@@ -25,7 +25,7 @@
         {% else %}
         <span class="eyebrow">Custom Apparel</span>
         <h1>Design Gallery</h1>
-        <p class="lead">This platform is for custom apparel, so we can make almost anything you want as long as it is legal to print. Feel free to browse designs we have created and use one, or <a href="{{ url_for('main.contact') }}">reach out</a> if you like a design but want it changed a little.</p>
+        <p class="lead">Browse designs we have made. Use one as is, or reach out and we will adjust it for you.</p>
         {% endif %}
     </div>
 </div>
@@ -65,7 +65,7 @@
         </form>
 
         <div class="dg-folders" aria-label="Design collections">
-            {% for folder in folders %}
+            {% for folder in folders if folder.count %}
             <article class="dg-folder{% if not folder.covers %} dg-folder--empty{% endif %}{% if folder.featured %} dg-folder--featured{% endif %}">
                 <a class="dg-folder-hit" href="{{ url_for('shop.design_gallery', collection=folder.key, product_id=product_id) }}" aria-labelledby="dg-folder-{{ folder.key }}">
                     <div class="dg-folder-stage" data-folder-carousel data-covers='{{ folder.covers | tojson }}'>

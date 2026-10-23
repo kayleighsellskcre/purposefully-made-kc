@@ -523,7 +523,7 @@
         <h1>{{ collection.name }}</h1>
         {% endif %}
         {% if collection.description and not (fan_page and org_nav) %}
-        <p class="collection-header-subtitle">{{ collection.description }}</p>
+        <p class="collection-header-subtitle" data-readmore>{{ collection.description }}</p>
         {% endif %}
         {% if collection.deadline_passed %}
         <p class="collection-header-subtitle" style="margin-top:0.5rem; color:#c0392b; font-weight:600;">

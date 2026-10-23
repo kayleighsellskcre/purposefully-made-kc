@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Size Guide - Purposefully Made KC{% endblock %}
+{% block meta_description %}Chest and length measurements for every brand we print on, in inches, measured flat.{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <span class="eyebrow">Fit Help</span>
+        <h1>Size Guide</h1>
+        <p class="lead">Chest and length for each brand, in inches, measured flat.</p>
+    </div>
+</div>
+
+<section class="sg-wrap">
+    <div class="container">
+        {% if charts %}
+        {% set brands = [] %}
+        {% for card in charts %}{% if card.brand not in brands %}{% set _ = brands.append(card.brand) %}{% endif %}{% endfor %}
+        <nav class="sg-tabs" aria-label="Brands">
+            {% for brand in brands %}<a href="#brand-{{ loop.index }}" class="shop-chip">{{ brand }}</a>{% endfor %}
+        </nav>
+        {% for brand in brands %}
+        {% set brand_index = loop.index %}
+        <article class="sg-brand" id="brand-{{ brand_index }}">
+            <h2 class="sg-brand-title">{{ brand }}</h2>
+            {% for card in charts if card.brand == brand %}
+            {% if loop.first and card.note %}<p class="sg-note">{{ card.note }}</p>{% endif %}
+            <div class="sg-table-wrap">
+                <table class="sg-table">
+                    <caption>{{ card.age }}{% if card.style %} · Style {{ card.style }}{% endif %}</caption>
+                    <thead><tr><th scope="col">Size</th><th scope="col">Chest</th><th scope="col">Length</th></tr></thead>
+                    <tbody>
+                    {% for size, chest, length in card.rows %}
+                        <tr><th scope="row">{{ size }}</th><td>{{ chest }}{% if chest != '' %}"{% endif %}</td><td>{{ length }}{% if length != '' %}"{% endif %}</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endfor %}
+        </article>
+        {% endfor %}
+        {% else %}
+        <p class="sg-note sg-empty">Our size charts are being added. In the meantime, send us a message and we will help you choose.</p>
+        {% endif %}
+        <p class="sg-note sg-general">{{ general_note }} <a href="{{ url_for('main.contact') }}">Message us</a> or see the <a href="{{ url_for('main.faq') }}">questions and answers</a>.</p>
+    </div>
+</section>
+{% endblock %}

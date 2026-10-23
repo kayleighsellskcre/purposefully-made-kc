@@ -1,0 +1,21 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Site Settings - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Operations</span>
+<h1 class="ops-title">Site Settings</h1>
+<p class="ops-subtitle">Small things you can change yourself.</p>
+
+<div class="ops-card" style="max-width:560px;">
+    <h2>How long an order takes</h2>
+    <p>Customers see an estimated ready date on product pages, the cart, checkout and their confirmation. Weekends are skipped.</p>
+    <form method="post" style="display:flex;align-items:flex-end;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label style="display:flex;flex-direction:column;gap:0.25rem;font-weight:600;">
+            Business days
+            <input type="number" name="ready_business_days" value="{{ business_days }}" min="{{ min_days }}" max="{{ max_days }}" required style="width:7rem;">
+        </label>
+        <button type="submit" class="btn btn-primary">Save</button>
+    </form>
+    <p style="margin-top:1rem;color:var(--text-secondary);">An order placed today would show: <strong>Estimated ready by {{ preview }}.</strong></p>
+</div>
+{% endblock %}

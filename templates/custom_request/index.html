@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}Have Us Recreate Your Design - Purposefully Made KC{% endblock %}
+{% block title %}Custom Design - Purposefully Made KC{% endblock %}
 {% block meta_description %}Send us a sketch, a photo or an old logo and we will redraw it as a clean, print-ready design for your apparel.{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div class="container">
-        <span class="eyebrow">Custom Design Service</span>
-        <h1>Have Us Recreate</h1>
-        <p class="lead">See an image online you love? Screenshot it or save it and we'll recreate it for you.</p>
+        <span class="eyebrow">Your Idea, Made Wearable</span>
+        <h1>Custom Design</h1>
+        <p class="lead">Describe it, show us a picture, or start from something you love. Choose the way that fits your idea.</p>
     </div>
 </div>
 
@@ -20,19 +20,19 @@
 
             <div class="recreate-path recreate-path--ai">
                 <div class="path-badge">New</div>
-                <div class="path-icon">✨</div>
+                <div class="path-icon" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4L12 3z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z"/></svg></div>
                 <h2 class="path-title">AI Design Studio</h2>
                 <p class="path-desc">Describe what you want, or upload a reference image, and we will generate a design for you. Free with your order.</p>
                 <ul class="path-steps">
                     <li>Type a description</li>
-                    <li>AI creates it (30–60 sec)</li>
+                    <li>AI creates it in about a minute</li>
                     <li>Put it on any shirt</li>
                 </ul>
                 <a href="{{ url_for('custom_request.ai_design') }}" class="btn btn-primary path-btn">Try AI Design →</a>
             </div>
 
             <div class="recreate-path">
-                <div class="path-icon">🎨</div>
+                <div class="path-icon" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
                 <h2 class="path-title">Have Us Recreate</h2>
                 <p class="path-desc">See something you love online? Upload it and we will hand-craft a clean, print-ready version for you.</p>
                 <ul class="path-steps">

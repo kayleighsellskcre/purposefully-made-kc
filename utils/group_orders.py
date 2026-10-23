@@ -101,7 +101,8 @@ def group_fulfillment_customer_note(collection=None):
     """Line under Add to Cart / product price. Always includes the 2-3 week wait."""
     wait = 'Please allow 2 to 3 weeks.'
     if not collection:
-        return f'Shipping is $11. Pickup is available at checkout. {wait}'
+        from utils.ready_date import ready_note
+        return f'Shipping is $11. Pickup is available at checkout. {ready_note()}'
     shipping = bool(getattr(collection, 'shipping_enabled', True))
     instructions, address = _pickup_text(collection)
     bits = []

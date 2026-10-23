@@ -475,3 +475,49 @@ def check_collection_slug():
     return jsonify({
         'available': not exists
     })
+
+
+_GALLERY_CACHE = {'at': 0.0, 'cards': []}
+
+
+def _gallery_cards():
+    """Public gallery cards, reloaded at most every five minutes (search runs as you type)."""
+    import time
+    if time.time() - _GALLERY_CACHE['at'] > 300 or not _GALLERY_CACHE['cards']:
+        try:
+            from models import Design
+            from utils import design_gallery as dg
+            from utils.cloud_storage import image_url
+            from utils.design_variants import gallery_cards_for_public
+            _GALLERY_CACHE['cards'] = dg.enrich_cards(gallery_cards_for_public(Design, resolve_url=image_url))
+        except Exception:
+            current_app.logger.exception('site search could not load the gallery')
+            _GALLERY_CACHE['cards'] = []
+        _GALLERY_CACHE['at'] = time.time()
+    return _GALLERY_CACHE['cards']
+
+
+@api_bp.route('/site-search')
+def site_search():
+    """Products and gallery designs that match what was typed, for the header search."""
+    from sqlalchemy import or_
+    from models import Product
+    from utils import design_gallery as dg
+    from utils.product_filters import infer_brand
+    from utils.product_names import display_product_name
+
+    q = (request.args.get('q') or '').strip()[:60]
+    if len(q) < 2:
+        return jsonify({'products': [], 'designs': []})
+    like = f'%{q}%'
+    products = (Product.query.filter(Product.is_active.is_(True),
+                                     or_(Product.name.ilike(like), Product.style_number.ilike(like)))
+                .order_by(Product.name).limit(5).all())
+    designs = dg.search_cards(_gallery_cards(), q)[:5]
+    return jsonify({
+        'products': [{'name': display_product_name(p),
+                      'brand': infer_brand(p) or '',
+                      'url': url_for('shop.customize', product_slug=p.slug)} for p in products],
+        'designs': [{'title': d.get('title') or 'Design', 'image': d.get('url') or '',
+                     'url': url_for('shop.index', design_id=d.get('id'))} for d in designs],
+    })

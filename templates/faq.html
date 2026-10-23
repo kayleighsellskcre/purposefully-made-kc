@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Questions and Answers - Purposefully Made KC{% endblock %}
+{% block meta_description %}Answers about ordering, turnaround, shipping, returns, sizing and care for custom apparel from Purposefully Made KC.{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <span class="eyebrow">Help</span>
+        <h1>Questions and Answers</h1>
+        <p class="lead">Quick answers about ordering, timing and care. Still wondering? <a href="{{ url_for('main.contact') }}">Send us a message</a>.</p>
+    </div>
+</div>
+
+<section class="faq-wrap">
+    <div class="container">
+        <div class="faq-column">
+
+            <h2 class="faq-group" id="ordering">Ordering</h2>
+            <details class="faq-item"><summary>How does customizing work?</summary>
+                <div class="faq-answer"><p>Pick a style, choose a color, then choose your sizes. Add your design by uploading a file, choosing one from My Designs, or picking one from our gallery. You will see it on the shirt before you order.</p></div></details>
+            <details class="faq-item"><summary>Can I upload my own design?</summary>
+                <div class="faq-answer"><p>Yes. A clear, high-resolution PNG or JPG works best. When you upload, you confirm you have the right to use the artwork. If we notice a quality problem with your file, we will contact you before we print.</p></div></details>
+            <details class="faq-item"><summary>Can I use a design from the gallery?</summary>
+                <div class="faq-answer"><p>Yes. Open the <a href="{{ url_for('shop.design_gallery') }}">Design Gallery</a>, choose a design, then pick the shirt it goes on. Want a change, like a different name or color? Send us a message and we will adjust it for you.</p></div></details>
+            <details class="faq-item"><summary>Can I add something to the back?</summary>
+                <div class="faq-answer"><p>Yes. A back design is $3 for just a name or just a number, and $6 for both, or for artwork on the back.</p></div></details>
+
+            <h2 class="faq-group" id="shipping">Timing and shipping</h2>
+            <details class="faq-item"><summary>How long does an order take?</summary>
+                <div class="faq-answer"><p>Everything is made to order, so please allow 2 to 3 weeks. Most orders are finished in about a week and a half, and production usually starts within 1 to 3 business days after your order is confirmed.</p></div></details>
+            <details class="faq-item"><summary>How much is shipping?</summary>
+                <div class="faq-answer"><p>Shipping is a flat $11. Pickup is also available at checkout. You will get a tracking number as soon as your order ships.</p></div></details>
+            <details class="faq-item"><summary>Can I get my order faster?</summary>
+                <div class="faq-answer"><p>If you have a date to hit, send us a message before you order. We will tell you honestly what is possible.</p></div></details>
+
+            <h2 class="faq-group" id="returns">Returns and fixes</h2>
+            <details class="faq-item"><summary>What if something is wrong with my order?</summary>
+                <div class="faq-answer"><p>Because every order is custom made, we cannot accept returns or exchanges unless there is a defect or a printing error on our part. If something is not right, contact us within 7 days of receiving it and we will make it right.</p></div></details>
+            <details class="faq-item"><summary>What if I ordered the wrong size?</summary>
+                <div class="faq-answer"><p>Tell us as soon as you notice. Changes may not be possible once production has started, so it is worth double-checking your size before you order. Our <a href="{{ url_for('main.size_guide') }}">size guide</a> can help.</p></div></details>
+            <details class="faq-item"><summary>Will the colors match my screen?</summary>
+                <div class="faq-answer"><p>Very close, but not always exact. Screens differ, and printing on fabric always has small variations. We do our very best to match.</p></div></details>
+
+            <h2 class="faq-group" id="sizing-care">Sizing and care</h2>
+            <details class="faq-item"><summary>How do I choose a size?</summary>
+                <div class="faq-answer"><p>Our <a href="{{ url_for('main.size_guide') }}">size guide</a> lists chest and length for each brand, measured flat. Between sizes? Send us a message and we will help.</p></div></details>
+            <details class="faq-item"><summary>How do I care for my shirt?</summary>
+                <div class="faq-answer"><p>Wash it inside out in cold water. Tumble dry low or hang dry. Do not iron directly on the print.</p></div></details>
+
+            <h2 class="faq-group" id="groups">Group and company orders</h2>
+            <details class="faq-item"><summary>How do group orders work?</summary>
+                <div class="faq-answer"><p>Choose the styles and your logo, then share one link. Everyone picks their own size and pays their own way, and we print and sort the whole order. <a href="{{ url_for('shop.group_orders') }}">See group orders</a>.</p></div></details>
+            <details class="faq-item"><summary>Can a company pay for its team?</summary>
+                <div class="faq-answer"><p>Yes. With Company Apparel, your company covers a set number of items per person and pays one invoice. Anyone who wants extras pays for those themselves. <a href="{{ url_for('shop.company_apparel') }}">Learn more</a>.</p></div></details>
+
+        </div>
+    </div>
+</section>
+{% endblock %}
