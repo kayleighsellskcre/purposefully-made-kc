@@ -24,7 +24,7 @@
                 <svg class="ops-chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div class="ops-dropdown-menu" role="menu">
-                <a href="{{ ops_url('admin.orders') }}" class="ops-drop-item {% if request.endpoint in ['admin.orders','admin.completed_orders','admin.order_detail','admin.production_workflow'] %}ops-drop-active{% endif %}" role="menuitem">
+                <a href="{{ ops_url('admin.production_workflow') }}" class="ops-drop-item {% if request.endpoint in ['admin.orders','admin.completed_orders','admin.order_detail','admin.production_workflow'] %}ops-drop-active{% endif %}" role="menuitem">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
                     1. Orders
                 </a>

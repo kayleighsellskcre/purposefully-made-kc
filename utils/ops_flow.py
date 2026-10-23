@@ -36,9 +36,9 @@ FLOW_STEPS = [
         'num': '1',
         'label': 'Orders',
         'hint': 'See what came in, move them along',
-        'endpoint': 'admin.orders',
+        'endpoint': 'admin.production_workflow',
         'active_eps': ('admin.orders', 'admin.order_detail', 'admin.completed_orders', 'admin.production_workflow'),
-        'params': {'stage': ['order_received']},
+        'params': {},
     },
     {
         'id': 'blanks',

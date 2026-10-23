@@ -492,12 +492,13 @@ def orders():
     page = request.args.get('page', 1, type=int)
 
     if status is None or status == '':
-        redirect_args = {'stage': 'order_received'}
+        # Orders opens on the board. A stage or status in the link keeps the list (filtered).
+        redirect_args = {}
         if collection_id:
             redirect_args['collection'] = collection_id
         if order_type:
             redirect_args['order_type'] = order_type
-        return redirect(url_for('admin.orders', **redirect_args))
+        return redirect(url_for('admin.production_workflow', **redirect_args))
 
     stage = normalize_stage_arg(status)
     if stage == 'all':
@@ -6071,15 +6072,42 @@ def production_workflow():
     from sqlalchemy.orm import joinedload
     stages = STAGES
     collection_id = current_collection() or None
+    order_type = request.args.get('order_type') or None
+    sort = request.args.get('sort') or 'oldest'
+    if sort not in ('oldest', 'newest', 'due'):
+        sort = 'oldest'
     orders_by_stage = {}
     for sid, _name, _desc in stages:
         query = orders_for_stage(sid).options(joinedload(Order.collection))
         if collection_id:
             from utils.group_orders import filter_orders_to_collection
             query = filter_orders_to_collection(query, collection_id)
-        orders_by_stage[sid] = query.order_by(Order.created_at).all()
+        if order_type == 'retail':
+            query = query.filter(or_(Order.order_type == 'retail', Order.order_type == None))
+        elif order_type:
+            query = query.filter(Order.order_type == order_type)
+        if sort == 'newest':
+            query = query.order_by(Order.created_at.desc())
+        elif sort == 'due':
+            query = query.order_by(Order.due_date.is_(None), Order.due_date, Order.created_at)
+        else:
+            query = query.order_by(Order.created_at)
+        orders_by_stage[sid] = query.all()
+    try:
+        from models import PaymentCapture
+        unsaved_payment_count = (
+            PaymentCapture.query
+            .filter(PaymentCapture.order_id.is_(None), PaymentCapture.resolved_at.is_(None),
+                    db.or_(PaymentCapture.amount.isnot(None), PaymentCapture.awaiting_collection.is_(True)))
+            .count()
+        )
+    except Exception:
+        db.session.rollback()
+        unsaved_payment_count = 0
     from datetime import datetime
-    return render_template('admin/operations/workflow.html', stages=stages, orders_by_stage=orders_by_stage, now=datetime.utcnow())
+    return render_template('admin/operations/workflow.html', stages=stages, orders_by_stage=orders_by_stage,
+                           now=datetime.utcnow(), selected_order_type=order_type, selected_sort=sort,
+                           unsaved_payment_count=unsaved_payment_count)
 
 
 @admin_bp.route('/orders/<int:order_id>/update-stage', methods=['POST'])
