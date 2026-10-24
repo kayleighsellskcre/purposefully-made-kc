@@ -34,3 +34,4 @@ pytest_out.txt
 dist/
 build/
 *.egg-info/
+private/
