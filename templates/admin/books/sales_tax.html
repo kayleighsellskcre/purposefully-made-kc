@@ -1,0 +1,69 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Sales Tax - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Books</span>
+<h1 class="ops-title">Sales Tax</h1>
+<p class="ops-subtitle">Sales and tax collected, grouped by where each sale was taxed. The rate in use today is <strong>{{ '%g'|format(rate) }}%</strong>. <a href="{{ url_for('admin.site_settings') }}">Change it in Site settings.</a></p>
+
+<form class="bk-picker" method="get" action="{{ url_for('admin.sales_tax_report') }}">
+    <label>Period
+        <select name="period" id="bkPeriod">
+            {% for key, name in periods %}<option value="{{ key }}"{% if key == period %} selected{% endif %}>{{ name }}</option>{% endfor %}
+        </select>
+    </label>
+    <label>Year <small>(for quarters)</small>
+        <select name="year">
+            {% for y in years %}<option value="{{ y }}"{% if y == year %} selected{% endif %}>{{ y }}</option>{% endfor %}
+        </select>
+    </label>
+    <label class="bk-custom">From <input type="date" name="from" value="{{ first.isoformat() }}"></label>
+    <label class="bk-custom">To <input type="date" name="to" value="{{ last.isoformat() }}"></label>
+    <button type="submit" class="btn btn-primary">Show</button>
+    <a class="btn btn-outline" href="{{ url_for('admin.sales_tax_report', format='pdf', **query) }}" target="_blank" rel="noopener">PDF</a>
+    <a class="btn btn-outline" href="{{ url_for('admin.sales_tax_report', format='csv', **query) }}">Download CSV</a>
+</form>
+
+{% if report.out_of_state_tax %}
+<div class="ops-card bk-card bk-alert">
+    <strong>{{ money(report.out_of_state_tax) }} of Kansas tax was collected on orders shipped out of state.</strong>
+    That was charged before the site stopped taxing out-of-state shipments. Ask your CPA whether to refund those customers or how to include it on your return.
+</div>
+{% endif %}
+
+<div class="ops-card bk-card">
+    <h2>By where it was taxed <small>{{ label }}</small></h2>
+    <div class="ops-table-scroll">
+    <table class="bk-table bk-tax">
+        <thead><tr><th>Where taxed</th><th>Orders</th><th>Taxable sales</th><th>Not taxed</th><th>Shipping charged</th><th>Tax collected</th></tr></thead>
+        <tbody>
+            {% for r in report.rows %}
+            <tr>
+                <td>{{ r.label }}{% if r.rate %} <small>about {{ '%g'|format(r.rate) }}%</small>{% endif %}</td>
+                <td>{{ r.orders }}</td>
+                <td>{{ money(r.taxable) }}</td>
+                <td>{{ money(r.not_taxed) }}</td>
+                <td>{{ money(r.shipping) }}</td>
+                <td>{{ money(r.tax) }}</td>
+            </tr>
+            {% else %}<tr><td colspan="6" class="bk-muted">No sales in this period.</td></tr>{% endfor %}
+            {% if report.rows %}
+            <tr class="bk-total">
+                <td>Total</td><td>{{ report.totals.orders }}</td><td>{{ money(report.totals.taxable) }}</td>
+                <td>{{ money(report.totals.not_taxed) }}</td><td>{{ money(report.totals.shipping) }}</td><td>{{ money(report.totals.tax) }}</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+    </div>
+    <p class="bk-note">Taxable sales are merchandise after discounts and refunds. Shipping is not taxed. Refunds are subtracted on the day they went out, not the day of the sale. <a href="{{ url_for('admin.ledger', type='sales_tax,refund_tax', **{'from': first.isoformat(), 'to': last.isoformat()}) }}">See every tax entry.</a></p>
+</div>
+<script>
+(function () {
+    var select = document.getElementById('bkPeriod');
+    var custom = document.querySelectorAll('.bk-custom');
+    function sync() { custom.forEach(function (el) { el.hidden = select.value !== 'custom'; }); }
+    select.addEventListener('change', sync);
+    sync();
+})();
+</script>
+{% endblock %}

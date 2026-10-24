@@ -6,6 +6,7 @@ from models import (db, Product, Collection, Order, OrderItem, Design, User, Pro
                     Vendor, ApparelInventory, TransferInventory, Supply, GrowthMetric, FinancialEntry,
                     CustomDesignRequest, SiteError, AdminNotification)
 from werkzeug.utils import secure_filename
+from utils import sales_tax
 from datetime import datetime
 import json
 import re
@@ -3037,7 +3038,7 @@ def add_collection():
                 pickup_instructions=request.form.get('pickup_instructions'),
                 shipping_enabled=request.form.get('shipping_enabled') == 'on',
                 allow_cash_pickup=request.form.get('allow_cash_pickup') == 'on',
-                tax_rate=float(current_app.config['KS_SALES_TAX_PERCENT']),
+                tax_rate=sales_tax.rate_percent(),
                 # Without this, a store made here never showed up under My
                 # Group Orders for the admin who made it - only the
                 # customer-facing create flow was setting it.
@@ -3787,7 +3788,7 @@ def _invoice_fields(inv=None):
     from datetime import datetime as _dt
     if inv is None:
         return {'customer_name': '', 'company': '', 'attn': '', 'po': '', 'email': '', 'phone': '', 'address': '',
-                'note': '', 'lines': [], 'tax_rate': '%g' % current_app.config.get('KS_SALES_TAX_PERCENT', 9.5), 'shipping': '', 'discount': '', 'amount_paid': '',
+                'note': '', 'lines': [], 'tax_rate': '%g' % sales_tax.rate_percent(), 'shipping': '', 'discount': '', 'amount_paid': '',
                 'payment_method': '', 'kind': 'auto', 'issued': _dt.now().strftime('%Y-%m-%d')}
     fmt = lambda v: ('%g' % v) if v else ''
     issued = (inv.issued_at or inv.created_at or _dt.now()).strftime('%Y-%m-%d')
@@ -6469,6 +6470,12 @@ def site_settings():
             set_setting(PICKUP_ADDRESS_KEY, (request.form.get('pickup_address') or '').strip()[:300], 'Where customers pick up orders')
             set_setting(PICKUP_NOTES_KEY, (request.form.get('pickup_notes') or '').strip()[:300], 'Pickup hours or instructions')
             flash('Saved.', 'success')
+        elif section == 'tax':
+            try:
+                saved = sales_tax.save_rate_percent(request.form.get('rate'))
+                flash(f'Saved. New orders use {saved:g}% Kansas sales tax.', 'success')
+            except (TypeError, ValueError) as exc:
+                flash(str(exc) if str(exc) else 'Enter a rate like 9.6.', 'error')
         elif section == 'owner':
             set_setting('owner_name', (request.form.get('owner_name') or '').strip()[:80], 'Owner name')
             set_setting('owner_note', (request.form.get('owner_note') or '').strip()[:600], 'Owner note')
@@ -6490,7 +6497,7 @@ def site_settings():
                            business_days=ready_date.get_business_days(),
                            preview=ready_date.format_day(ready_date.ready_by()),
                            min_days=ready_date.MIN_DAYS, max_days=ready_date.MAX_DAYS,
-                           emails_on=get_flag(FLAG_KEY, True),
+                           emails_on=get_flag(FLAG_KEY, True), tax_percent=sales_tax.rate_percent(),
                            pickup_address=get_setting(PICKUP_ADDRESS_KEY, '') or BUSINESS_PICKUP,
                            pickup_notes=get_setting(PICKUP_NOTES_KEY, ''),
                            owner=_owner(), owner_name_saved=get_setting('owner_name', ''),

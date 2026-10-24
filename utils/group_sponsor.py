@@ -214,9 +214,8 @@ def refund_overage(sub):
 
 
 def tax_for(collection, amount) -> float:
-    from flask import current_app
-    rate = float(current_app.config.get('KS_SALES_TAX_RATE', 0.095))
-    return round(float(amount or 0) * rate, 2)
+    from utils.sales_tax import rate_fraction
+    return round(float(amount or 0) * rate_fraction(), 2)
 
 
 def submission_summary(collection):

@@ -524,7 +524,7 @@ def reprice_cart(cart, persist=True):
     return corrections
 
 
-def calculate_totals(cart, shipping_method='pickup', *, family_promo=False):
+def calculate_totals(cart, shipping_method='pickup', *, family_promo=False, ship_state=None, ship_zip=None):
     """Calculate order totals.
 
     Assumes reprice_cart() has already run, so item unit prices are trusted
@@ -548,8 +548,12 @@ def calculate_totals(cart, shipping_method='pickup', *, family_promo=False):
     if shipping_method == 'shipping':
         shipping_cost = current_app.config['SHIPPING_FLAT_RATE']
     
-    # Fixed KS sales tax on subtotal only (shipping is not taxed)
-    tax = round(subtotal * float(current_app.config['KS_SALES_TAX_RATE']), 2)
+    # Kansas sales tax on the merchandise only (shipping is not taxed). Shipped to another state: no Kansas tax.
+    from utils import sales_tax
+    taxable = sales_tax.charges_tax(shipping_method, ship_state, ship_zip)
+    rate_percent = sales_tax.rate_percent() if taxable else 0.0
+    tax = round(subtotal * rate_percent / 100.0, 2)
+    jurisdiction = sales_tax.jurisdiction_key(shipping_method, ship_state, ship_zip)
     
     total = round(subtotal + shipping_cost + tax, 2)
     
@@ -561,7 +565,16 @@ def calculate_totals(cart, shipping_method='pickup', *, family_promo=False):
         'total': total,
         'family_promo': False,
         'promo_code': None,
+        'tax_jurisdiction': jurisdiction,
+        'tax_rate_percent': rate_percent,
     }
+
+
+def _ship_fields(data):
+    """(state, zip) of the ship-to address from a posted form, wherever the page put it."""
+    info = data.get('shipping_info') if isinstance(data.get('shipping_info'), dict) else {}
+    return (info.get('state') or data.get('ship_state')), (info.get('zip') or data.get('ship_zip'))
+
 
 def _paypal_base_url(app):
     mode = (app.config.get('PAYPAL_MODE') or 'sandbox').strip().lower()
@@ -696,7 +709,8 @@ def paypal_create_order():
 
     reprice_cart(cart)
     shipping_method = data.get('shipping_method', 'pickup')
-    totals = calculate_totals(cart, shipping_method)
+    _state, _zip = _ship_fields(data)
+    totals = calculate_totals(cart, shipping_method, ship_state=_state, ship_zip=_zip)
 
     token = _get_paypal_access_token(current_app)
     if not token:
@@ -1008,7 +1022,8 @@ def apply_promo():
     reprice_cart(cart)
     if not code:
         clear_session_family_promo()
-        totals = calculate_totals(cart, data.get('shipping_method') or 'pickup')
+        _state, _zip = _ship_fields(data)
+        totals = calculate_totals(cart, data.get('shipping_method') or 'pickup', ship_state=_state, ship_zip=_zip)
         return jsonify({
             'success': True,
             'family_promo': False,
@@ -1068,7 +1083,8 @@ def create_payment_intent():
     shipping_method = data.get('shipping_method', 'pickup')
     # Price the intent from the database, never from the session's stored prices.
     reprice_cart(cart)
-    totals = calculate_totals(cart, shipping_method)
+    _state, _zip = _ship_fields(data)
+    totals = calculate_totals(cart, shipping_method, ship_state=_state, ship_zip=_zip)
     
     try:
         intent = stripe.PaymentIntent.create(
@@ -1418,7 +1434,7 @@ def _build_order_from_capture(cap, *, overrides=None, send_email=True):
     fulfillment = overrides.get('fulfillment') or customer.get('shipping_method') or 'pickup'
     ship = customer.get('shipping_info') or customer.get('paypal_shipping_info') or {}
 
-    totals = calculate_totals(cart, fulfillment)
+    totals = calculate_totals(cart, fulfillment, ship_state=ship.get('state'), ship_zip=ship.get('zip'))
     is_stripe = cap.provider == 'stripe'
 
     # Same checks the normal save step makes. The money is already taken, so
@@ -1468,6 +1484,8 @@ def _build_order_from_capture(cap, *, overrides=None, send_email=True):
         subtotal=totals['subtotal'],
         shipping_cost=totals['shipping_cost'],
         tax=totals['tax'],
+        tax_jurisdiction=totals.get('tax_jurisdiction'),
+        tax_rate_percent=totals.get('tax_rate_percent'),
         total=totals['total'],
         payment_method='stripe' if is_stripe else 'paypal',
         payment_status='underpaid' if underpaid else 'paid',
@@ -1781,7 +1799,8 @@ def _complete_order():
             shipping_info = {}
 
         reprice_cart(cart)
-        totals = calculate_totals(cart, shipping_method, family_promo=family_promo_active)
+        totals = calculate_totals(cart, shipping_method, family_promo=family_promo_active,
+                                  ship_state=(shipping_info or {}).get('state'), ship_zip=(shipping_info or {}).get('zip'))
 
         if not email:
             return _json_error('Please enter your email so we can send the order confirmation.', 'EMAIL_REQUIRED', 400, request_id=rid)
@@ -1859,7 +1878,7 @@ def _complete_order():
                         saved_cart = json.loads(saved_cap.cart_json) or []
                     except ValueError:
                         saved_cart = []
-                saved_totals = calculate_totals(saved_cart, shipping_method) if saved_cart else None
+                saved_totals = calculate_totals(saved_cart, shipping_method, ship_state=(shipping_info or {}).get('state'), ship_zip=(shipping_info or {}).get('zip')) if saved_cart else None
                 if saved_totals and int(round(saved_totals['total'] * 100)) == captured_cents:
                     cart, totals = saved_cart, saved_totals
                     prepaid_issues.append(
@@ -1939,6 +1958,8 @@ def _complete_order():
             subtotal=totals['subtotal'],
             shipping_cost=totals['shipping_cost'],
             tax=totals['tax'],
+            tax_jurisdiction=totals.get('tax_jurisdiction'),
+            tax_rate_percent=totals.get('tax_rate_percent'),
             total=totals['total'],
             payment_method=payment_method,
             payment_status='pending' if is_cash else ('underpaid' if underpaid else 'paid'),

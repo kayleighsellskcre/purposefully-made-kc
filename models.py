@@ -815,6 +815,8 @@ class Order(db.Model):
     refunded_cents = db.Column(db.BigInteger, default=0)      # total refunded so far, in cents (partial refunds too)
     refunded_at = db.Column(db.DateTime)                       # when the latest refund went out (UTC)
     refund_checked_at = db.Column(db.DateTime)                 # last time PayPal was asked about refunds
+    tax_jurisdiction = db.Column(db.String(20))                # local, ks_shipped, out_of_state (where it was taxed)
+    tax_rate_percent = db.Column(db.Float)                     # the rate actually charged, e.g. 9.5
     
     # Tracking
     tracking_number = db.Column(db.String(200))
@@ -1076,6 +1078,9 @@ class LedgerEntry(db.Model):
     vendor = db.Column(db.String(120))
     note = db.Column(db.Text)
     is_estimate = db.Column(db.Boolean, default=False)
+    jurisdiction = db.Column(db.String(20), index=True)      # where the sale was taxed (sales tax report)
+    taxable = db.Column(db.Boolean)                          # whether tax was charged on this sale
+    tax_rate_percent = db.Column(db.Float)
     created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

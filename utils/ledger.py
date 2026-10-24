@@ -230,18 +230,28 @@ def sync_all(force=False, min_gap=60):
     if not force and now - _LAST_SYNC['at'] < min_gap:
         return 0
     _LAST_SYNC['at'] = now
+    from utils import sales_tax
     current = _current_sums()
     added = 0
+    tax_labels = {}                       # order or invoice id -> (where taxed, was tax charged, rate)
     for order in Order.query.all():
         want, estimates = order_desired(order)
         key = f'order:{order.id}'
         if not want and not any(k == key for (k, _t) in current):
             continue
+        guessed, effective = sales_tax.classify_order(order)
+        if not order.tax_jurisdiction:
+            order.tax_jurisdiction = guessed                 # the label is kept on the order from now on
+        if order.tax_rate_percent is None:
+            order.tax_rate_percent = effective
+        label = (order.tax_jurisdiction, bool(order.tax and order.tax > 0), order.tax_rate_percent)
+        tax_labels[('order', order.id)] = label
         when = order.paid_at or order.created_at or datetime.utcnow()
         added += sync_source(key, want, when=when, current=current, estimate_types=estimates,
                              when_map={REFUND: refund_day(order), REFUND_TAX: refund_day(order)},
                              order_id=order.id, pay_source=_pay_source(order.payment_method), channel=_channel(order),
-                             collection_id=order.collection_id)
+                             collection_id=order.collection_id, jurisdiction=label[0], taxable=label[1],
+                             tax_rate_percent=label[2])
     for inv in ManualInvoice.query.all():
         want = invoice_desired(inv)
         key = f'invoice:{inv.id}'
@@ -249,12 +259,26 @@ def sync_all(force=False, min_gap=60):
             continue
         if want and not inv.paid_at:
             inv.paid_at = inv.updated_at or inv.issued_at or datetime.utcnow()      # first time we notice the payment
+        label = (sales_tax.INVOICE, (inv.tax_rate or 0) > 0, float(inv.tax_rate or 0))
+        tax_labels[('invoice', inv.id)] = label
         added += sync_source(key, want, when=inv.paid_at or datetime.utcnow(), current=current,
                              when_map={REFUND: refund_day(inv), REFUND_TAX: refund_day(inv)},
-                             invoice_id=inv.id, pay_source=_pay_source(inv.payment_method), channel='invoice')
+                             invoice_id=inv.id, pay_source=_pay_source(inv.payment_method), channel='invoice',
+                             jurisdiction=label[0], taxable=label[1], tax_rate_percent=label[2])
+    _label_older_entries(tax_labels)
     added += import_legacy_entries(current)
     db.session.commit()
     return added
+
+
+def _label_older_entries(tax_labels):
+    """Entries written before the sales tax labels existed get them now. Only the label changes, never an amount."""
+    rows = (LedgerEntry.query.filter(LedgerEntry.jurisdiction.is_(None))
+            .filter(db.or_(LedgerEntry.order_id.isnot(None), LedgerEntry.invoice_id.isnot(None))).all())
+    for row in rows:
+        label = tax_labels.get(('order', row.order_id)) if row.order_id else tax_labels.get(('invoice', row.invoice_id))
+        if label:
+            row.jurisdiction, row.taxable, row.tax_rate_percent = label
 
 
 # ---- expenses and owner money ------------------------------------------------------------------
@@ -388,6 +412,40 @@ def monthly(year: int):
         first = date(year, m, 1)
         out.append((first.strftime('%b'), pnl(first, _month_end(first))))
     return out
+
+
+def sales_tax_report(start: date, end: date):
+    """Sales and tax collected, grouped by where each sale was taxed. All figures in cents."""
+    from utils import sales_tax
+    types = [SALE, DISCOUNT, REFUND, SHIPPING, TAX, REFUND_TAX]
+    rows = (db.session.query(LedgerEntry.jurisdiction, LedgerEntry.taxable, LedgerEntry.entry_type,
+                             func.sum(LedgerEntry.amount_cents),
+                             func.count(func.distinct(LedgerEntry.source_key)))
+            .filter(LedgerEntry.kc_date >= start, LedgerEntry.kc_date <= end, LedgerEntry.entry_type.in_(types))
+            .group_by(LedgerEntry.jurisdiction, LedgerEntry.taxable, LedgerEntry.entry_type).all())
+    groups = {}
+    for jurisdiction, taxable, entry_type, cents, count in rows:
+        g = groups.setdefault(jurisdiction or 'other', {'taxable': 0, 'not_taxed': 0, 'shipping': 0, 'tax': 0, 'orders': 0})
+        cents = int(cents or 0)
+        if entry_type in (SALE, DISCOUNT, REFUND):
+            g['taxable' if taxable else 'not_taxed'] += cents
+            if entry_type == SALE:
+                g['orders'] += int(count or 0)
+        elif entry_type == SHIPPING:
+            g['shipping'] += cents
+        else:
+            g['tax'] += cents
+    labels = dict(sales_tax.JURISDICTION_LABELS, other='Other or older entries')
+    order = [sales_tax.LOCAL, sales_tax.KS_SHIPPED, sales_tax.OUT_OF_STATE, sales_tax.INVOICE, 'other']
+    table = []
+    for key in order:
+        if key in groups:
+            g = groups[key]
+            rate = round(100.0 * g['tax'] / g['taxable'], 2) if g['taxable'] > 0 else 0.0
+            table.append(dict(g, key=key, label=labels[key], rate=rate))
+    totals = {k: sum(r[k] for r in table) for k in ('taxable', 'not_taxed', 'shipping', 'tax', 'orders')}
+    out_of_state_tax = groups.get(sales_tax.OUT_OF_STATE, {}).get('tax', 0)
+    return {'rows': table, 'totals': totals, 'out_of_state_tax': out_of_state_tax}
 
 
 def estimate_counts():

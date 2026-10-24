@@ -59,7 +59,7 @@
         <h2>Below the line</h2>
         <table class="bk-table">
             <tbody>
-                <tr><td>Sales tax collected <small>(owed to the state, not income)</small></td><td><a href="{{ links.tax }}">{{ money(p.tax_collected) }}</a></td></tr>
+                <tr><td>Sales tax collected <small>(owed to the state, not income)</small></td><td><a href="{{ links.tax }}">{{ money(p.tax_collected) }}</a> <small><a href="{{ url_for('admin.sales_tax_report', **query) }}">by where taxed</a></small></td></tr>
                 <tr><td>Owner contributions</td><td><a href="{{ links.contributions }}">{{ money(p.contributions) }}</a></td></tr>
                 <tr><td>Owner draws</td><td><a href="{{ links.draws }}">{{ money(p.draws) }}</a></td></tr>
             </tbody>

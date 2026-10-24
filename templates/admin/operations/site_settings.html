@@ -48,6 +48,21 @@
     </form>
 </div>
 
+<div class="ops-card" style="max-width:600px;margin-bottom:1rem;">
+    <h2>Kansas sales tax rate</h2>
+    <p>This is the combined rate (state, county and city) for your Shawnee pickup address. Ask your CPA or look up the address with the Kansas Department of Revenue, then enter it here. It applies to pickups, hand-offs and orders shipped within Kansas. Orders shipped to another state are not charged Kansas tax. Shipping itself is not taxed.</p>
+    <form method="post" style="display:flex;align-items:flex-end;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="section" value="tax">
+        <label style="display:flex;flex-direction:column;gap:0.25rem;font-weight:600;">
+            Rate (percent)
+            <input type="number" name="rate" value="{{ '%g'|format(tax_percent) }}" min="0.01" max="15" step="0.001" required style="width:8rem;">
+        </label>
+        <button type="submit" class="btn btn-primary">Save</button>
+    </form>
+    <p style="margin-top:1rem;color:var(--text-secondary);">A $100 item would be charged <strong>${{ '%.2f'|format(tax_percent) }}</strong> in tax. New orders use the new rate right away; past orders keep the rate they were charged.</p>
+</div>
+
 <div class="ops-card" style="max-width:600px;">
     <h2>How long an order takes</h2>
     <p>Customers see an estimated ready date on product pages, the cart, checkout and their confirmation. Weekends are skipped.</p>

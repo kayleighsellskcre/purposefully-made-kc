@@ -1784,7 +1784,8 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
     collection.allow_cash_pickup = request.form.get('allow_cash_pickup') == 'on'
     apply_collection_visibility(collection)
     # Tax is fixed at KS 9.5% — ignore any form value so it cannot be adjusted.
-    collection.tax_rate = float(current_app.config['KS_SALES_TAX_PERCENT'])
+    from utils.sales_tax import rate_percent
+    collection.tax_rate = rate_percent()
 
     collection.is_active = request.form.get('is_active') == 'on'
 

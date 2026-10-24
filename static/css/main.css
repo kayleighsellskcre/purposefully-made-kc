@@ -3324,3 +3324,10 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 .bk-voided td:last-child, .bk-voided td:nth-child(6) { text-decoration: none; }
 .bk-pages { margin: 1rem 0 0; text-align: center; font-size: 0.9rem; }
 @media (max-width: 760px) { .bk-two { grid-template-columns: 1fr; } .bk-in { padding-left: 0.9rem !important; } }
+
+/* Checkout: a quiet note under the tax line when no Kansas tax applies */
+.summary-note { margin: -0.25rem 0 0.5rem; font-size: 0.8rem; color: var(--text-secondary); }
+.summary-note[hidden] { display: none; }
+.bk-alert { border-color: rgba(154, 91, 0, 0.45); background: #fff8ec; font-size: 0.95rem; line-height: 1.5; }
+.bk-tax th, .bk-tax td { font-size: 0.9rem; }
+.bk-tax td:first-child, .bk-tax th:first-child { text-align: left; }

@@ -143,3 +143,34 @@ def build_monthly_pdf(year, months, business):
                       topMargin=0.55 * inch, bottomMargin=0.5 * inch, title=f'Monthly Profit and Loss {year}',
                       author=business.get('name') or 'Purposefully Made KC').build(story)
     return buf.getvalue()
+
+
+def build_sales_tax_pdf(report, label, business, rate_percent):
+    """Sales tax by where each sale was taxed. report is utils.ledger.sales_tax_report()."""
+    head = ['Where taxed', 'Orders', 'Taxable sales', 'Not taxed', 'Shipping', 'Tax collected']
+    data = [[Paragraph(h, S['cellb' if i == 0 else 'cellbr']) for i, h in enumerate(head)]]
+    styles = [('LINEBELOW', (0, 0), (-1, 0), 0.8, INK), ('BACKGROUND', (0, 0), (-1, 0), CREAM)]
+    for r in report['rows']:
+        data.append([Paragraph(r['label'], S['cell']), Paragraph(str(r['orders']), S['cellr']),
+                     Paragraph(dollars(r['taxable']), S['cellr']), Paragraph(dollars(r['not_taxed']), S['cellr']),
+                     Paragraph(dollars(r['shipping']), S['cellr']), Paragraph(dollars(r['tax']), S['cellr'])])
+        styles.append(('LINEBELOW', (0, len(data) - 1), (-1, len(data) - 1), 0.25, SAND))
+    t = report['totals']
+    data.append([Paragraph('Total', S['cellb']), Paragraph(str(t['orders']), S['cellbr']), Paragraph(dollars(t['taxable']), S['cellbr']),
+                 Paragraph(dollars(t['not_taxed']), S['cellbr']), Paragraph(dollars(t['shipping']), S['cellbr']),
+                 Paragraph(dollars(t['tax']), S['cellbr'])])
+    styles.append(('LINEABOVE', (0, len(data) - 1), (-1, len(data) - 1), 0.8, INK))
+    table = Table(data, colWidths=[2.5 * inch, 0.6 * inch, 1.1 * inch, 1.0 * inch, 0.9 * inch, 1.2 * inch])
+    table.setStyle(TableStyle(styles + [('TOPPADDING', (0, 0), (-1, -1), 5), ('BOTTOMPADDING', (0, 0), (-1, -1), 5)]))
+    story = _header('Sales Tax Report', label, business) + [table, Spacer(1, 10)]
+    story.append(Paragraph(f'Rate in use today: {rate_percent:g}%. Shipping is not taxed. Refunds are subtracted on the day they went out.', S['note']))
+    if report['out_of_state_tax']:
+        story += [Spacer(1, 6), Paragraph(
+            f"Heads up: {dollars(report['out_of_state_tax'])} of Kansas tax was collected on orders shipped out of state "
+            'before that stopped. Ask your CPA how to handle it.', S['note'])]
+    story += [Spacer(1, 8), Paragraph('This report is not tax advice. Confirm the rate and the filing with your CPA.', S['note'])]
+    buf = io.BytesIO()
+    SimpleDocTemplate(buf, pagesize=letter, leftMargin=0.6 * inch, rightMargin=0.6 * inch, topMargin=0.55 * inch,
+                      bottomMargin=0.5 * inch, title=f'Sales Tax {label}',
+                      author=business.get('name') or 'Purposefully Made KC').build(story)
+    return buf.getvalue()

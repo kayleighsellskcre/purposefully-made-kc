@@ -65,6 +65,7 @@ from utils.business_info import BUSINESS as _BUSINESS
 from utils.daily_quote import todays_quote as _daily_quote
 from utils.ready_date import ready_note as _ready_note, weeks_phrase as _ready_weeks
 from utils.spam_guard import spam_fields as _spam_fields
+from utils.sales_tax import rate_fraction as _sales_tax_rate
 from utils.reviews_public import has_reviews as _has_reviews
 
 _ASSET_VERSIONS = {}
@@ -198,6 +199,11 @@ def create_app(config_class=Config):
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS occasion_note VARCHAR(200)",
                     "ALTER TABLE manual_invoice ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP",
                     "ALTER TABLE manual_invoice ADD COLUMN IF NOT EXISTS refunded_cents BIGINT DEFAULT 0",
+                    "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS tax_jurisdiction VARCHAR(20)",
+                    "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS tax_rate_percent DOUBLE PRECISION",
+                    "ALTER TABLE ledger_entry ADD COLUMN IF NOT EXISTS jurisdiction VARCHAR(20)",
+                    "ALTER TABLE ledger_entry ADD COLUMN IF NOT EXISTS taxable BOOLEAN",
+                    "ALTER TABLE ledger_entry ADD COLUMN IF NOT EXISTS tax_rate_percent DOUBLE PRECISION",
                     "ALTER TABLE manual_invoice ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMP",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS refunded_cents BIGINT DEFAULT 0",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMP",
@@ -1028,6 +1034,7 @@ def create_app(config_class=Config):
             'daily_quote': _daily_quote(),
             'ready_note': _ready_note(),
             'spam_fields': _spam_fields,
+            'sales_tax_rate': _sales_tax_rate(),
             'ready_weeks': _ready_weeks(),
             'has_reviews': _has_reviews(),
             'business': _BUSINESS,

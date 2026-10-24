@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify, url_for, session, redirect, flash, current_app, abort
 from models import db, Product, Design, Collection
+from utils import sales_tax
 from flask_login import login_required, current_user
 from utils.mockups import (
     get_carousel_colors_for_product,
@@ -451,7 +452,7 @@ def create_group_order():
                 pickup_instructions=request.form.get('pickup_instructions'),
                 shipping_enabled=request.form.get('shipping_enabled') == 'on',
                 allow_cash_pickup=request.form.get('allow_cash_pickup') == 'on',
-                tax_rate=float(current_app.config['KS_SALES_TAX_PERCENT']),
+                tax_rate=sales_tax.rate_percent(),
             )
             from utils.group_orders import apply_collection_visibility
             apply_collection_visibility(collection)

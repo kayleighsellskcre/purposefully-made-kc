@@ -200,3 +200,35 @@ def payouts():
     rows = Payout.query.order_by(Payout.arrival_date.desc(), Payout.id.desc()).limit(200).all()
     paid = sum(r.amount_cents for r in rows if r.status == 'paid')
     return render_template('admin/books/payouts.html', rows=rows, paid=paid, money=L.dollars)
+
+
+@admin_bp.route('/operations/sales-tax')
+@admin_required
+def sales_tax_report():
+    from utils import sales_tax
+    L.sync_all()
+    period, first, last, label = _period()
+    report = L.sales_tax_report(first, last)
+    if request.args.get('format') == 'csv':
+        out = StringIO()
+        writer = csv.writer(out)
+        writer.writerow(['Where taxed', 'Orders', 'Taxable sales', 'Not taxed', 'Shipping charged', 'Tax collected'])
+        for r in report['rows']:
+            writer.writerow([r['label'], r['orders'], f"{r['taxable'] / 100:.2f}", f"{r['not_taxed'] / 100:.2f}",
+                             f"{r['shipping'] / 100:.2f}", f"{r['tax'] / 100:.2f}"])
+        t = report['totals']
+        writer.writerow(['Total', t['orders'], f"{t['taxable'] / 100:.2f}", f"{t['not_taxed'] / 100:.2f}",
+                         f"{t['shipping'] / 100:.2f}", f"{t['tax'] / 100:.2f}"])
+        return Response(out.getvalue(), mimetype='text/csv',
+                        headers={'Content-Disposition': f'attachment; filename="sales-tax-{first.isoformat()}-to-{last.isoformat()}.csv"'})
+    if request.args.get('format') == 'pdf':
+        from utils.report_pdf import build_sales_tax_pdf
+        pdf = build_sales_tax_pdf(report, label, _business(), sales_tax.rate_percent())
+        return Response(pdf, mimetype='application/pdf',
+                        headers={'Content-Disposition': f'inline; filename="Sales-Tax-{first.isoformat()}-to-{last.isoformat()}.pdf"'})
+    query = {'period': period, 'from': first.isoformat(), 'to': last.isoformat(),
+             'year': request.args.get('year', type=int) or last.year}
+    return render_template('admin/books/sales_tax.html', report=report, label=label, period=period, periods=L.PERIODS,
+                           first=first, last=last, year=query['year'],
+                           years=list(range(L.kc_today().year, L.kc_today().year - 6, -1)), query=query, money=L.dollars,
+                           rate=sales_tax.rate_percent())
