@@ -2225,6 +2225,26 @@ def stripe_webhook():
             current_app.logger.info('webhook marked %s failed', order.order_number)
         return jsonify({'received': True})
 
+    if event_type == 'charge.refunded':
+        from utils.money_events import apply_stripe_charge_refund
+        try:
+            result = apply_stripe_charge_refund(obj, event_time=event.get('created'))
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception('could not record a stripe refund')
+            return jsonify({'error': 'refund not recorded'}), 500        # Stripe will send it again
+        return jsonify({'received': True, 'refund': result})
+
+    if (event_type or '').startswith('payout.'):
+        from utils.money_events import record_stripe_payout
+        try:
+            record_stripe_payout(obj, event_type)
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception('could not record a stripe payout')
+            return jsonify({'error': 'payout not recorded'}), 500
+        return jsonify({'received': True, 'payout': intent_id})
+
     return jsonify({'received': True, 'ignored': event_type})
 
 

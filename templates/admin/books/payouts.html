@@ -1,0 +1,27 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Payouts - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Books</span>
+<h1 class="ops-title">Payouts</h1>
+<p class="ops-subtitle">Money Stripe has sent to your bank. They are transfers, so they never count as income or expenses.</p>
+
+<div class="ops-card bk-card">
+    <p class="bk-summary"><strong>{{ money(paid) }}</strong> <span class="bk-muted">paid out so far</span></p>
+    <div class="ops-table-scroll">
+    <table class="admin-table bk-ledger">
+        <thead><tr><th>Arrives</th><th>From</th><th>Status</th><th class="bk-num">Amount</th><th>Reference</th></tr></thead>
+        <tbody>
+            {% for r in rows %}
+            <tr>
+                <td>{{ r.arrival_date.strftime('%b %d, %Y') if r.arrival_date else '' }}</td>
+                <td>{{ r.provider|capitalize }}</td>
+                <td>{{ (r.status or '')|replace('_', ' ')|capitalize }}</td>
+                <td class="bk-num">{{ money(r.amount_cents) }}</td>
+                <td class="bk-muted">{{ r.provider_id }}</td>
+            </tr>
+            {% else %}<tr><td colspan="5" class="bk-muted">No payouts recorded yet. They appear here as Stripe sends them, once the payout events are switched on for your webhook.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

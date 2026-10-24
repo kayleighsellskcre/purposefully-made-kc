@@ -9,7 +9,7 @@ from io import StringIO
 from flask import Response, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 
-from models import Expense, LedgerEntry, db
+from models import Expense, LedgerEntry, Payout, db
 from routes.admin import admin_bp, admin_required
 from utils import ledger as L
 
@@ -64,6 +64,16 @@ def reports():
 def reports_refresh():
     added = L.sync_all(force=True)
     flash(f'Books refreshed. {added} new entr{"y" if added == 1 else "ies"} added.' if added else 'Books are already up to date.', 'success')
+    return redirect(request.referrer or url_for('admin.reports'))
+
+
+@admin_bp.route('/operations/reports/fees', methods=['POST'])
+@admin_required
+def reports_fetch_fees():
+    from utils.background import run_in_background
+    from utils.money_events import fetch_real_fees
+    run_in_background(current_app._get_current_object(), fetch_real_fees, 40)
+    flash('Asking Stripe and PayPal for the real fees. Refresh this page in a minute to see them.', 'info')
     return redirect(request.referrer or url_for('admin.reports'))
 
 
@@ -181,3 +191,12 @@ def expenses():
     return render_template('admin/books/expenses.html', rows=rows, owner=owner, year=year, total=total, missing=missing,
                            categories=L.EXPENSE_CATEGORIES, methods=L.PAY_METHODS, today=L.kc_today().isoformat(),
                            years=list(range(L.kc_today().year, L.kc_today().year - 6, -1)), money=L.dollars)
+
+
+@admin_bp.route('/operations/payouts')
+@admin_required
+def payouts():
+    """What Stripe has sent to the bank. Each paid payout also appears in the ledger as a transfer."""
+    rows = Payout.query.order_by(Payout.arrival_date.desc(), Payout.id.desc()).limit(200).all()
+    paid = sum(r.amount_cents for r in rows if r.status == 'paid')
+    return render_template('admin/books/payouts.html', rows=rows, paid=paid, money=L.dollars)

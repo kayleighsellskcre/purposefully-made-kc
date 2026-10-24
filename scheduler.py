@@ -67,7 +67,7 @@ def review_requests_job(app):
     """Email the review invitation to customers whose order was completed 15 days ago."""
     with app.app_context():
         try:
-            with _one_worker_at_a_time(731003) as mine:
+            with _one_worker_at_a_time(731010) as mine:
                 if not mine:
                     return
                 from utils.customer_emails import send_due_review_requests
@@ -82,7 +82,7 @@ def growth_sync_job(app):
     """Refresh the Growth dashboard's weekly numbers (what the Auto-Sync Now button does)."""
     with app.app_context():
         try:
-            with _one_worker_at_a_time(731004) as mine:
+            with _one_worker_at_a_time(731011) as mine:
                 if not mine:
                     return
                 from services.growth_sync import sync_all_recent_weeks
@@ -96,10 +96,15 @@ def books_sync_job(app):
     """Keep the ledger current: every paid order, invoice and fee, written once."""
     with app.app_context():
         try:
-            with _one_worker_at_a_time(731005) as mine:
+            with _one_worker_at_a_time(731012) as mine:
                 if not mine:
                     return
                 from utils.ledger import sync_all
+                from utils.money_events import check_paypal_refunds
+                try:
+                    check_paypal_refunds(40)
+                except Exception as exc:
+                    print(f"paypal refund check failed: {exc}", file=sys.stderr, flush=True)
                 added = sync_all(force=True)
                 if added:
                     print(f"BOOKS SYNC: {added} ledger entries added", file=sys.stderr, flush=True)

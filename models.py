@@ -812,6 +812,9 @@ class Order(db.Model):
     confirmation_email_sent_at = db.Column(db.DateTime)
     is_refunded = db.Column(db.Boolean, default=False)
     refund_notes = db.Column(db.Text)
+    refunded_cents = db.Column(db.BigInteger, default=0)      # total refunded so far, in cents (partial refunds too)
+    refunded_at = db.Column(db.DateTime)                       # when the latest refund went out (UTC)
+    refund_checked_at = db.Column(db.DateTime)                 # last time PayPal was asked about refunds
     
     # Tracking
     tracking_number = db.Column(db.String(200))
@@ -1080,6 +1083,22 @@ class LedgerEntry(db.Model):
     invoice = db.relationship('ManualInvoice', foreign_keys=[invoice_id])
 
 
+class Payout(db.Model):
+    """Money the processor sent (or is sending) to the bank. Used to tie sales and fees to the deposit."""
+    __tablename__ = 'payout'
+    id = db.Column(db.Integer, primary_key=True)
+    provider = db.Column(db.String(12), nullable=False, default='stripe')
+    provider_id = db.Column(db.String(80), nullable=False, unique=True)
+    amount_cents = db.Column(db.BigInteger, nullable=False)
+    currency = db.Column(db.String(6), default='usd')
+    status = db.Column(db.String(20), index=True)             # pending, in_transit, paid, failed, canceled
+    arrival_date = db.Column(db.Date)                          # the Kansas City day it lands in the bank
+    reconciled_at = db.Column(db.DateTime)
+    reconcile_note = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class Expense(db.Model):
     """A business expense with its receipt. Its ledger entry is written alongside; voiding adds a reversing entry."""
     __tablename__ = 'expense'
@@ -1252,6 +1271,8 @@ class ManualInvoice(db.Model):
     card_paid_intent_id = db.Column(db.String(200))                  # the last one that was applied
     pay_link_sent_at = db.Column(db.DateTime)
     paid_at = db.Column(db.DateTime)                    # when money first came in (cash basis books)
+    refunded_cents = db.Column(db.BigInteger, default=0)
+    refunded_at = db.Column(db.DateTime)
     issued_at = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

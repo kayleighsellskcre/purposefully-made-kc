@@ -49,7 +49,8 @@
         </tbody>
     </table>
     {% if estimates.fees or estimates.cogs %}
-    <p class="bk-note">{{ estimates.fees }} paid order{{ 's' if estimates.fees != 1 }} still use an estimated processing fee and {{ estimates.cogs }} an estimated cost of goods. They update by themselves when the real amounts arrive.</p>
+    <p class="bk-note">{{ estimates.fees }} paid order{{ 's' if estimates.fees != 1 }} still use an estimated processing fee and {{ estimates.cogs }} an estimated cost of goods. They update by themselves when the real amounts arrive.
+        {% if estimates.fees %}<form method="post" action="{{ url_for('admin.reports_fetch_fees') }}" class="bk-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> <button type="submit" class="bk-link">Check for real fees now</button></form>{% endif %}</p>
     {% endif %}
 </div>
 

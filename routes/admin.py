@@ -1257,7 +1257,10 @@ def update_order_details(order_id):
             order.profit = true_profit(order)
         else:
             order.profit = _form_money('profit', None)
-    order.is_refunded = request.form.get('is_refunded') == 'on'
+    now_refunded = request.form.get('is_refunded') == 'on'
+    if now_refunded and not order.is_refunded:
+        order.refunded_at = datetime.utcnow()          # the day the refund counts in the books
+    order.is_refunded = now_refunded
     order.refund_notes = request.form.get('refund_notes')
     db.session.commit()
     flash('Order details updated', 'success')

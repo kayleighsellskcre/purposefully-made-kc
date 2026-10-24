@@ -24,11 +24,13 @@ SALE, SHIPPING, TAX, DISCOUNT = 'sale', 'shipping', 'sales_tax', 'discount'
 REFUND, REFUND_TAX = 'refund', 'refund_tax'
 FEE, COGS, EXPENSE = 'processing_fee', 'cogs', 'expense'
 OTHER_INCOME, CONTRIBUTION, DRAW = 'other_income', 'owner_contribution', 'owner_draw'
+PAYOUT = 'payout'                       # a transfer to the bank: not income, not an expense
 
 TYPE_LABELS = {
     SALE: 'Sales', SHIPPING: 'Shipping charged', TAX: 'Sales tax collected', DISCOUNT: 'Discounts',
     REFUND: 'Refunds', REFUND_TAX: 'Sales tax refunded', FEE: 'Processing fees', COGS: 'Cost of goods',
     EXPENSE: 'Expenses', OTHER_INCOME: 'Other income', CONTRIBUTION: 'Owner contributions', DRAW: 'Owner draws',
+    PAYOUT: 'Payouts to bank',
 }
 
 FEE_CATEGORY = 'Commissions and fees'
@@ -82,13 +84,14 @@ def _add(entry_type, cents, *, when, source_key=None, category=None, **extra):
     return row
 
 
-def sync_source(source_key, desired, *, when, current, estimate_types=(), **meta):
+def sync_source(source_key, desired, *, when, current, estimate_types=(), when_map=None, **meta):
     """Make the ledger match what one order or invoice says it should total, by adding only the difference.
 
     desired: {entry_type: cents}. current: {(source_key, entry_type): cents already in the ledger}.
     Returns how many entries were added.
     """
     added = 0
+    base_note = meta.pop('note', None)
     types = set(desired) | {t for (k, t) in current if k == source_key}
     for entry_type in types:
         want = int(desired.get(entry_type, 0))
@@ -98,9 +101,10 @@ def sync_source(source_key, desired, *, when, current, estimate_types=(), **meta
             continue
         first = (source_key, entry_type) not in current
         category = FEE_CATEGORY if entry_type == FEE else None
-        _add(entry_type, delta, when=when if first else datetime.utcnow(), source_key=source_key, category=category,
+        first_when = (when_map or {}).get(entry_type) or when          # a refund counts on the day it went out
+        _add(entry_type, delta, when=first_when if first else datetime.utcnow(), source_key=source_key, category=category,
              is_estimate=entry_type in estimate_types,
-             note=None if first else 'Adjustment: the order or invoice changed', **meta)
+             note=base_note if first else 'Adjustment: the order or invoice changed' + (f'. {base_note}' if base_note else ''), **meta)
         added += 1
     return added
 
@@ -126,6 +130,23 @@ def _channel(order):
     return 'retail'
 
 
+def _refund_parts(total_cents, tax_cents, refunded_cents, fully_refunded):
+    """Split what was refunded into the sale part and the sales tax part (in proportion to the order)."""
+    refunded = int(refunded_cents or 0)
+    if fully_refunded:
+        refunded = max(refunded, total_cents)                  # a manual "refunded" tick means all of it
+    refunded = min(refunded, total_cents)
+    if refunded <= 0 or total_cents <= 0:
+        return 0, 0
+    tax_part = int((Decimal(refunded) * Decimal(tax_cents) / Decimal(total_cents)).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+    return refunded - tax_part, tax_part
+
+
+def refund_day(obj):
+    """When a refund went out: the recorded time, else the last time the record changed."""
+    return getattr(obj, 'refunded_at', None) or getattr(obj, 'updated_at', None) or datetime.utcnow()
+
+
 def order_desired(order):
     """What the ledger should show for one order, as {entry_type: cents}. Empty until it is paid."""
     paid = (order.payment_status or '') in ('paid', 'refunded') or bool(order.is_refunded)
@@ -142,9 +163,9 @@ def order_desired(order):
         want[COGS] = -to_cents(order.cost_of_goods)
         if not order.cogs_is_actual:
             estimates.append(COGS)
-    if order.is_refunded:
-        want[REFUND] = -(merchandise + shipping)
-        want[REFUND_TAX] = -tax
+    refund, refund_tax = _refund_parts(merchandise + shipping + tax, tax, getattr(order, 'refunded_cents', 0), order.is_refunded)
+    if refund or refund_tax:
+        want[REFUND], want[REFUND_TAX] = -refund, -refund_tax
     return want, tuple(estimates)
 
 
@@ -163,6 +184,9 @@ def invoice_desired(inv):
     want = {SHIPPING: shipping, TAX: tax, SALE: paid - shipping - tax + discount}     # the pieces add up to what was paid
     if discount:
         want[DISCOUNT] = -discount
+    refund, refund_tax = _refund_parts(paid, tax, getattr(inv, 'refunded_cents', 0), False)
+    if refund or refund_tax:
+        want[REFUND], want[REFUND_TAX] = -refund, -refund_tax
     return want
 
 
@@ -215,6 +239,7 @@ def sync_all(force=False, min_gap=60):
             continue
         when = order.paid_at or order.created_at or datetime.utcnow()
         added += sync_source(key, want, when=when, current=current, estimate_types=estimates,
+                             when_map={REFUND: refund_day(order), REFUND_TAX: refund_day(order)},
                              order_id=order.id, pay_source=_pay_source(order.payment_method), channel=_channel(order),
                              collection_id=order.collection_id)
     for inv in ManualInvoice.query.all():
@@ -225,6 +250,7 @@ def sync_all(force=False, min_gap=60):
         if want and not inv.paid_at:
             inv.paid_at = inv.updated_at or inv.issued_at or datetime.utcnow()      # first time we notice the payment
         added += sync_source(key, want, when=inv.paid_at or datetime.utcnow(), current=current,
+                             when_map={REFUND: refund_day(inv), REFUND_TAX: refund_day(inv)},
                              invoice_id=inv.id, pay_source=_pay_source(inv.payment_method), channel='invoice')
     added += import_legacy_entries(current)
     db.session.commit()
