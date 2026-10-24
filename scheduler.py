@@ -92,6 +92,21 @@ def growth_sync_job(app):
             print(f"growth sync failed: {exc}", file=sys.stderr, flush=True)
 
 
+def books_sync_job(app):
+    """Keep the ledger current: every paid order, invoice and fee, written once."""
+    with app.app_context():
+        try:
+            with _one_worker_at_a_time(731005) as mine:
+                if not mine:
+                    return
+                from utils.ledger import sync_all
+                added = sync_all(force=True)
+                if added:
+                    print(f"BOOKS SYNC: {added} ledger entries added", file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f"books sync failed: {exc}", file=sys.stderr, flush=True)
+
+
 def org_fan_stores_job(app):
     """Give every existing organization its own Fan Wear store (runs once at startup)."""
     with app.app_context():
@@ -617,6 +632,15 @@ def init_scheduler(app):
             trigger=CronTrigger(hour='8-11', minute=0, timezone=CHICAGO),
             id='deadline_reminders',
             name='Group order deadline-day reminders',
+            replace_existing=True
+        )
+
+        # The books: every night at 2:30 AM Chicago, after the day's payments and fees have settled
+        scheduler.add_job(
+            func=lambda: books_sync_job(app),
+            trigger=CronTrigger(hour=2, minute=30, timezone=CHICAGO),
+            id='books_sync',
+            name='Nightly ledger sync',
             replace_existing=True
         )
 

@@ -98,6 +98,9 @@ def apply_card_payment(inv, intent_id, cents) -> bool:
     inv.amount_paid = min(total, round((inv.amount_paid or 0) + cents / 100.0, 2))
     inv.payment_method = 'Card'
     inv.card_paid_intent_id = intent_id
+    if not inv.paid_at:
+        from datetime import datetime
+        inv.paid_at = datetime.utcnow()
     db.session.commit()
     current_app.logger.info('invoice %s paid $%.2f by card', inv.number, cents / 100.0)
     from utils import invoice_emails

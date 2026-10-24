@@ -1,0 +1,116 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Reports - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Books</span>
+<h1 class="ops-title">Reports</h1>
+<p class="ops-subtitle">Profit and loss on a cash basis, in Kansas City time. Every number opens the entries behind it.</p>
+
+<form class="bk-picker" method="get" action="{{ url_for('admin.reports') }}">
+    <label>Period
+        <select name="period" id="bkPeriod">
+            {% for key, name in periods %}<option value="{{ key }}"{% if key == period %} selected{% endif %}>{{ name }}</option>{% endfor %}
+        </select>
+    </label>
+    <label>Year <small>(for quarters and the monthly view)</small>
+        <select name="year">
+            {% for y in years %}<option value="{{ y }}"{% if y == year %} selected{% endif %}>{{ y }}</option>{% endfor %}
+        </select>
+    </label>
+    <label class="bk-custom">From <input type="date" name="from" value="{{ first.isoformat() }}"></label>
+    <label class="bk-custom">To <input type="date" name="to" value="{{ last.isoformat() }}"></label>
+    <button type="submit" class="btn btn-primary">Show</button>
+    <a class="btn btn-outline" href="{{ url_for('admin.reports_pnl_pdf', **query) }}" target="_blank" rel="noopener">Profit and loss PDF</a>
+    <a class="btn btn-outline" href="{{ url_for('admin.reports_monthly_pdf', year=year) }}" target="_blank" rel="noopener">Monthly PDF ({{ year }})</a>
+</form>
+<form method="post" action="{{ url_for('admin.reports_refresh') }}" class="bk-refresh">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="bk-link">Refresh the books now</button>
+    <span>Orders, invoices and fees are picked up automatically; this just does it right away.</span>
+</form>
+
+<div class="ops-card bk-card">
+    <h2>Profit and loss <small>{{ label }}</small></h2>
+    <table class="bk-table">
+        <tbody>
+            <tr class="bk-sec"><th colspan="2">Income</th></tr>
+            <tr><td class="bk-in">Gross sales <small>(merchandise and shipping charged)</small></td><td><a href="{{ links.gross_sales }}">{{ money(p.gross_sales) }}</a></td></tr>
+            <tr><td class="bk-in">Discounts</td><td><a href="{{ links.discounts }}">{{ money(p.discounts) }}</a></td></tr>
+            <tr><td class="bk-in">Refunds</td><td><a href="{{ links.refunds }}">{{ money(p.refunds) }}</a></td></tr>
+            <tr class="bk-total"><td>Net sales</td><td>{{ money(p.net_sales) }}</td></tr>
+            <tr><td class="bk-in">Cost of goods</td><td><a href="{{ links.cogs }}">{{ money(-p.cogs) }}</a></td></tr>
+            <tr class="bk-total"><td>Gross profit</td><td>{{ money(p.gross_profit) }}</td></tr>
+            {% if p.other_income %}<tr><td class="bk-in">Other income</td><td><a href="{{ links.other_income }}">{{ money(p.other_income) }}</a></td></tr>{% endif %}
+            <tr class="bk-sec"><th colspan="2">Expenses</th></tr>
+            {% for name, cents in p.expenses %}
+            <tr><td class="bk-in">{{ name }}</td><td><a href="{{ links.expenses[name] }}">{{ money(-cents) }}</a></td></tr>
+            {% else %}<tr><td class="bk-in bk-muted" colspan="2">No expenses in this period.</td></tr>{% endfor %}
+            <tr class="bk-total"><td>Total expenses</td><td>{{ money(-p.total_expenses) }}</td></tr>
+            <tr class="bk-grand"><td>Net profit</td><td>{{ money(p.net_profit) }}</td></tr>
+        </tbody>
+    </table>
+    {% if estimates.fees or estimates.cogs %}
+    <p class="bk-note">{{ estimates.fees }} paid order{{ 's' if estimates.fees != 1 }} still use an estimated processing fee and {{ estimates.cogs }} an estimated cost of goods. They update by themselves when the real amounts arrive.</p>
+    {% endif %}
+</div>
+
+<div class="bk-two">
+    <div class="ops-card bk-card">
+        <h2>Below the line</h2>
+        <table class="bk-table">
+            <tbody>
+                <tr><td>Sales tax collected <small>(owed to the state, not income)</small></td><td><a href="{{ links.tax }}">{{ money(p.tax_collected) }}</a></td></tr>
+                <tr><td>Owner contributions</td><td><a href="{{ links.contributions }}">{{ money(p.contributions) }}</a></td></tr>
+                <tr><td>Owner draws</td><td><a href="{{ links.draws }}">{{ money(p.draws) }}</a></td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="ops-card bk-card">
+        <h2>Net sales by channel</h2>
+        <table class="bk-table">
+            <tbody>
+                {% for name, cents in channels %}<tr><td>{{ name }}</td><td>{{ money(cents) }}</td></tr>
+                {% else %}<tr><td class="bk-muted" colspan="2">Nothing in this period.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="ops-card bk-card">
+    <h2>By month <small>{{ year }}</small></h2>
+    <div class="bk-bars" role="img" aria-label="Net sales and net profit by month for {{ year }}">
+        {% for m, mp in months %}
+        <div class="bk-bar-col">
+            <div class="bk-bar-pair">
+                <span class="bk-bar bk-bar-sales" style="height: {{ (100 * mp.net_sales / chart_max)|round(1) if mp.net_sales > 0 else 0 }}%" title="Net sales {{ money(mp.net_sales) }}"></span>
+                <span class="bk-bar bk-bar-profit" style="height: {{ (100 * mp.net_profit / chart_max)|round(1) if mp.net_profit > 0 else 0 }}%" title="Net profit {{ money(mp.net_profit) }}"></span>
+            </div>
+            <span class="bk-bar-label">{{ m }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    <p class="bk-legend"><span class="bk-key bk-bar-sales"></span> Net sales <span class="bk-key bk-bar-profit"></span> Net profit</p>
+    <div class="ops-table-scroll">
+    <table class="bk-table bk-months">
+        <thead><tr><th></th>{% for m, mp in months %}<th>{{ m }}</th>{% endfor %}<th>Year</th></tr></thead>
+        <tbody>
+            {% for label_, key, sign in [('Net sales','net_sales',1), ('Cost of goods','cogs',-1), ('Gross profit','gross_profit',1), ('Expenses','total_expenses',-1), ('Net profit','net_profit',1), ('Sales tax collected','tax_collected',1)] %}
+            <tr{% if key in ('gross_profit','net_profit') %} class="bk-total"{% endif %}>
+                <td>{{ label_ }}</td>
+                {% for m, mp in months %}<td>{{ money(sign * mp[key]) }}</td>{% endfor %}
+                <td>{{ money(sign * totals[key]) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+<script>
+(function () {
+    var select = document.getElementById('bkPeriod');
+    var custom = document.querySelectorAll('.bk-custom');
+    function sync() { custom.forEach(function (el) { el.hidden = select.value !== 'custom'; }); }
+    select.addEventListener('change', sync);
+    sync();
+})();
+</script>
+{% endblock %}

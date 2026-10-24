@@ -3,7 +3,7 @@
 {% block ops_content %}
         <span class="adm-eyebrow">Admin / Business</span>
         <h1 class="ops-title">Financial Buckets</h1>
-<p class="ops-subtitle">Paid orders, minus sales tax, processing fees and cost of goods. Refunded orders are left out.</p>
+<p class="ops-subtitle">Paid orders, minus sales tax, processing fees and cost of goods. Refunded orders are left out. For any date range, expenses and a printable profit and loss, open <a href="{{ url_for('admin.reports') }}">Reports</a>.</p>
 
 <div class="ops-grid fin-grid">
     <div class="ops-card ops-stat">
@@ -25,9 +25,9 @@
         <p class="stat-number fin-out">${{ "%.2f"|format(total_cogs) }}</p>
     </div>
     <div class="ops-card ops-stat">
-        <h3>True Profit</h3>
+        <h3>Gross profit</h3>
         <p class="stat-number profit">${{ "%.2f"|format(total_profit) }}</p>
-        <p class="fin-note">After tax, fees and cost of goods</p>
+        <p class="fin-note">After tax, fees and cost of goods, before other expenses</p>
     </div>
 </div>
 

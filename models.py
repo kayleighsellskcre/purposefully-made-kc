@@ -1050,6 +1050,53 @@ class FinancialEntry(db.Model):
         return f'<FinancialEntry {self.category} ${self.amount}>'
 
 
+class LedgerEntry(db.Model):
+    """One money event, in whole cents. Rows are never edited or deleted: a correction is a new dated entry.
+
+    The sign is the effect on the business: sales and sales tax collected are positive; refunds, fees, cost of
+    goods, expenses and owner draws are negative. kc_date is the Kansas City calendar day, used for every report.
+    """
+    __tablename__ = 'ledger_entry'
+    id = db.Column(db.Integer, primary_key=True)
+    occurred_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)     # UTC
+    kc_date = db.Column(db.Date, nullable=False, index=True)                          # Kansas City day
+    entry_type = db.Column(db.String(24), nullable=False, index=True)
+    category = db.Column(db.String(60), index=True)
+    amount_cents = db.Column(db.BigInteger, nullable=False)
+    source_key = db.Column(db.String(40), index=True)        # order:12, invoice:3, legacy:7, expense:4, manual
+    pay_source = db.Column(db.String(20))                    # stripe, paypal, cash, check, venmo, bank, other
+    channel = db.Column(db.String(20), index=True)           # retail, group, company, invoice, cash
+    collection_id = db.Column(db.Integer, db.ForeignKey('collection.id'))
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), index=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('manual_invoice.id'), index=True)
+    expense_id = db.Column(db.Integer, db.ForeignKey('expense.id'), index=True)
+    vendor = db.Column(db.String(120))
+    note = db.Column(db.Text)
+    is_estimate = db.Column(db.Boolean, default=False)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    order = db.relationship('Order', foreign_keys=[order_id])
+    invoice = db.relationship('ManualInvoice', foreign_keys=[invoice_id])
+
+
+class Expense(db.Model):
+    """A business expense with its receipt. Its ledger entry is written alongside; voiding adds a reversing entry."""
+    __tablename__ = 'expense'
+    id = db.Column(db.Integer, primary_key=True)
+    expense_date = db.Column(db.Date, nullable=False, index=True)                     # Kansas City day
+    vendor = db.Column(db.String(120))
+    amount_cents = db.Column(db.BigInteger, nullable=False)
+    category = db.Column(db.String(60), nullable=False, index=True)
+    payment_method = db.Column(db.String(30))
+    note = db.Column(db.Text)
+    receipt_url = db.Column(db.String(500))
+    is_equipment = db.Column(db.Boolean, default=False)          # heat press, printer and similar (counted as supplies)
+    voided_at = db.Column(db.DateTime)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 class SystemSettings(db.Model):
     """System-wide settings"""
     id = db.Column(db.Integer, primary_key=True)
@@ -1204,6 +1251,7 @@ class ManualInvoice(db.Model):
     payment_intent_id = db.Column(db.String(200), index=True)       # the Stripe payment being collected
     card_paid_intent_id = db.Column(db.String(200))                  # the last one that was applied
     pay_link_sent_at = db.Column(db.DateTime)
+    paid_at = db.Column(db.DateTime)                    # when money first came in (cash basis books)
     issued_at = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

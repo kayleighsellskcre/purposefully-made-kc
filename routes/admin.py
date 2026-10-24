@@ -3834,6 +3834,8 @@ def _save_invoice(inv, v):
     inv.items_json = json.dumps(v['lines'])
     inv.tax_rate, inv.shipping, inv.discount = v['tax_rate'], v['shipping'], v['discount']
     inv.amount_paid, inv.payment_method, inv.kind = v['amount_paid'], v['payment_method'], v['kind']
+    if (inv.amount_paid or 0) > 0 and not inv.paid_at:
+        inv.paid_at = _dt.utcnow()                      # the day money first came in, for the cash-basis books
     try:
         inv.issued_at = _dt.strptime(v['issued'], '%Y-%m-%d')
     except ValueError:
@@ -7073,3 +7075,7 @@ def mark_order_paid(order_id):
         send_order_confirmation_email(order)
     flash(f'Order {order.order_number} marked paid.', 'success')
     return redirect(url_for('admin.order_detail', order_id=order_id))
+
+
+# The Reports, Ledger and Expenses pages live in their own file but share this blueprint and its locks.
+from routes import admin_books  # noqa: E402,F401

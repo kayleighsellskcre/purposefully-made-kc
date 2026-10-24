@@ -104,5 +104,5 @@ def test_financial_page_separates_tax_fees_and_profit(admin_client, app, seed):
     html = admin_client.get('/admin/operations/financial').get_data(as_text=True)
     assert 'Sales Tax Collected' in html
     assert 'Stripe &amp; PayPal Fees' in html
-    assert 'True Profit' in html
+    assert 'Gross profit' in html                       # renamed: it is before other expenses (see Reports)
     assert '$2.66' in html

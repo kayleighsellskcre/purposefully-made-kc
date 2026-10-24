@@ -1,0 +1,79 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Expenses - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Books</span>
+<h1 class="ops-title">Expenses</h1>
+<p class="ops-subtitle">Snap the receipt, pick a category, done. Categories follow the Schedule C lines your CPA uses.</p>
+
+<div class="ops-card bk-card">
+    <h2>Add an expense</h2>
+    <form method="post" enctype="multipart/form-data" class="bk-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="expense">
+        <label>Date <input type="date" name="day" value="{{ today }}" required></label>
+        <label>Amount <input type="number" name="amount" step="0.01" min="0.01" inputmode="decimal" placeholder="0.00" required></label>
+        <label>Vendor <input type="text" name="vendor" maxlength="120" placeholder="Who you paid" autocomplete="off"></label>
+        <label>Category
+            <select name="category" required>
+                <option value="">Choose one</option>
+                {% for name, line in categories %}<option value="{{ name }}">{{ name }} (line {{ line }})</option>{% endfor %}
+            </select>
+        </label>
+        <label>Paid with
+            <select name="payment_method">{% for m in methods %}<option>{{ m }}</option>{% endfor %}</select>
+        </label>
+        <label>Receipt <small>(photo or PDF)</small> <input type="file" name="receipt" accept="image/*,application/pdf" capture="environment"></label>
+        <label class="bk-wide">Note <input type="text" name="note" maxlength="300" placeholder="Optional"></label>
+        <label class="bk-check bk-wide"><input type="checkbox" name="is_equipment" value="1"> This is equipment (heat press, printer, cutter). It is counted as supplies.</label>
+        <div class="bk-wide"><button type="submit" class="btn btn-primary">Save expense</button></div>
+    </form>
+</div>
+
+<div class="ops-card bk-card">
+    <div class="bk-head">
+        <h2>{{ year }} expenses</h2>
+        <form method="get" class="bk-inline"><select name="year" onchange="this.form.submit()">{% for y in years %}<option value="{{ y }}"{% if y == year %} selected{% endif %}>{{ y }}</option>{% endfor %}</select></form>
+    </div>
+    <p class="bk-summary"><strong>{{ money(total) }}</strong> <span class="bk-muted">in {{ year }}</span>{% if missing %} &middot; <span class="bk-warn">{{ missing }} without a receipt</span>{% endif %}</p>
+    <div class="ops-table-scroll">
+    <table class="admin-table bk-ledger">
+        <thead><tr><th>Date</th><th>Vendor</th><th>Category</th><th class="bk-num">Amount</th><th>Paid with</th><th>Receipt</th><th></th></tr></thead>
+        <tbody>
+            {% for e in rows %}
+            <tr{% if e.voided_at %} class="bk-voided"{% endif %}>
+                <td>{{ e.expense_date.strftime('%b %d, %Y') }}</td>
+                <td>{{ e.vendor or '' }}{% if e.is_equipment %} <span class="bk-tag">equipment</span>{% endif %}{% if e.note %}<br><span class="bk-muted">{{ e.note }}</span>{% endif %}</td>
+                <td>{{ e.category }}</td>
+                <td class="bk-num">{{ money(e.amount_cents) }}</td>
+                <td>{{ e.payment_method or '' }}</td>
+                <td>{% if e.receipt_url %}<a href="{{ e.receipt_url }}" target="_blank" rel="noopener">View</a>{% elif e.voided_at %}{% else %}<span class="bk-warn">Missing</span>{% endif %}</td>
+                <td>{% if e.voided_at %}<span class="bk-muted">Voided</span>{% else %}
+                    <form method="post" class="bk-inline" onsubmit="return confirm('Void this expense? A reversing entry is added and the original stays on record.');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="void"><input type="hidden" name="expense_id" value="{{ e.id }}">
+                        <button type="submit" class="bk-link">Void</button></form>{% endif %}</td>
+            </tr>
+            {% else %}<tr><td colspan="7" class="bk-muted">No expenses yet for {{ year }}.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<div class="ops-card bk-card">
+    <h2>Owner money</h2>
+    <p class="bk-muted">Money you put into the business (a contribution) or took out for yourself (a draw). These are not income or expenses, so they stay out of the profit and loss.</p>
+    <form method="post" class="bk-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>Date <input type="date" name="day" value="{{ today }}" required></label>
+        <label>Amount <input type="number" name="amount" step="0.01" min="0.01" inputmode="decimal" placeholder="0.00" required></label>
+        <label>What is it <select name="action"><option value="draw">Owner draw (took out)</option><option value="contribution">Owner contribution (put in)</option></select></label>
+        <label class="bk-wide">Note <input type="text" name="note" maxlength="300" placeholder="Optional"></label>
+        <div class="bk-wide"><button type="submit" class="btn btn-outline">Save</button></div>
+    </form>
+    {% if owner %}
+    <table class="admin-table bk-ledger">
+        <thead><tr><th>Date</th><th>Type</th><th class="bk-num">Amount</th><th>Note</th></tr></thead>
+        <tbody>{% for e in owner %}<tr><td>{{ e.kc_date.strftime('%b %d, %Y') }}</td><td>{{ 'Contribution' if e.entry_type == 'owner_contribution' else 'Draw' }}</td><td class="bk-num">{{ money(e.amount_cents) }}</td><td class="bk-muted">{{ e.note or '' }}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% endif %}
+</div>
+{% endblock %}

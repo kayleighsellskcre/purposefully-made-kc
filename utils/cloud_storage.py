@@ -232,7 +232,7 @@ def _upload_to_r2(file_storage, app, subfolder, public_id_prefix):
     content_types = {
         'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
         'png': 'image/png', 'webp': 'image/webp',
-        'gif': 'image/gif', 'svg': 'image/svg+xml',
+        'gif': 'image/gif', 'svg': 'image/svg+xml', 'pdf': 'application/pdf',
     }
     content_type = content_types.get(ext, 'application/octet-stream')
 

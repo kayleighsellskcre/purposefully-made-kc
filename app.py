@@ -196,6 +196,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS send_home_with_child BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS teacher_name VARCHAR(120)",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS occasion_note VARCHAR(200)",
+                    "ALTER TABLE manual_invoice ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS ready_notified_at TIMESTAMP",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS completed_notified_at TIMESTAMP",

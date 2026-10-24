@@ -1,0 +1,60 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Ledger - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Books</span>
+<h1 class="ops-title">Ledger</h1>
+<p class="ops-subtitle">Every money event, newest first. Entries are never edited or deleted; a correction is a new dated entry.</p>
+
+<form class="bk-picker" method="get" action="{{ url_for('admin.ledger') }}">
+    <label>Type
+        <select name="type">
+            <option value="">All</option>
+            {% for key, name in labels.items() %}<option value="{{ key }}"{% if args.get('type') == key %} selected{% endif %}>{{ name }}</option>{% endfor %}
+        </select>
+    </label>
+    <label>Category
+        <select name="category">
+            <option value="">All</option>
+            {% for c in categories %}<option value="{{ c }}"{% if args.get('category') == c %} selected{% endif %}>{{ c }}</option>{% endfor %}
+        </select>
+    </label>
+    <label>From <input type="date" name="from" value="{{ args.get('from', '') }}"></label>
+    <label>To <input type="date" name="to" value="{{ args.get('to', '') }}"></label>
+    <button type="submit" class="btn btn-primary">Filter</button>
+    <a class="btn btn-outline" href="{{ url_for('admin.ledger', format='csv', **args) }}">Download CSV</a>
+    <a class="btn btn-outline" href="{{ url_for('admin.reports') }}">Back to reports</a>
+</form>
+
+<div class="ops-card bk-card">
+    <p class="bk-summary"><strong>{{ count }}</strong> entr{{ 'y' if count == 1 else 'ies' }} <span class="bk-muted">adding up to</span> <strong>{{ money(total) }}</strong></p>
+    <div class="ops-table-scroll">
+    <table class="admin-table bk-ledger">
+        <thead><tr><th>Date</th><th>Type</th><th>Category</th><th class="bk-num">Amount</th><th>From</th><th>Order or invoice</th><th>Note</th></tr></thead>
+        <tbody>
+            {% for e in rows %}
+            <tr>
+                <td>{{ e.kc_date.strftime('%b %d, %Y') }}</td>
+                <td>{{ labels.get(e.entry_type, e.entry_type) }}{% if e.is_estimate %} <span class="bk-tag">estimate</span>{% endif %}</td>
+                <td>{{ e.category or '' }}</td>
+                <td class="bk-num {{ 'bk-neg' if e.amount_cents < 0 }}">{{ money(e.amount_cents) }}</td>
+                <td>{{ (e.pay_source or '')|capitalize }}{% if e.channel %} <span class="bk-muted">{{ e.channel }}</span>{% endif %}</td>
+                <td>
+                    {% if e.order %}<a href="{{ url_for('admin.order_detail', order_id=e.order.id) }}">{{ e.order.order_number }}</a>
+                    {% elif e.invoice %}<a href="{{ url_for('admin.invoice_view', invoice_id=e.invoice.id) }}">{{ e.invoice.number }}</a>
+                    {% elif e.vendor %}{{ e.vendor }}{% endif %}
+                </td>
+                <td class="bk-muted">{{ e.note or '' }}</td>
+            </tr>
+            {% else %}<tr><td colspan="7" class="bk-muted">Nothing matches.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% if count > per %}
+    <p class="bk-pages">
+        {% if page > 1 %}<a href="{{ url_for('admin.ledger', page=page - 1, **args) }}">&larr; Newer</a>{% endif %}
+        Page {{ page }} of {{ ((count + per - 1) // per) }}
+        {% if page * per < count %}<a href="{{ url_for('admin.ledger', page=page + 1, **args) }}">Older &rarr;</a>{% endif %}
+    </p>
+    {% endif %}
+</div>
+{% endblock %}
