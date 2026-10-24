@@ -78,6 +78,20 @@ def review_requests_job(app):
             print(f"review requests failed: {exc}", file=sys.stderr, flush=True)
 
 
+def growth_sync_job(app):
+    """Refresh the Growth dashboard's weekly numbers (what the Auto-Sync Now button does)."""
+    with app.app_context():
+        try:
+            with _one_worker_at_a_time(731004) as mine:
+                if not mine:
+                    return
+                from services.growth_sync import sync_all_recent_weeks
+                results = sync_all_recent_weeks(weeks=4)
+                print(f"GROWTH SYNC: {len(results)} weeks refreshed", file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f"growth sync failed: {exc}", file=sys.stderr, flush=True)
+
+
 def org_fan_stores_job(app):
     """Give every existing organization its own Fan Wear store (runs once at startup)."""
     with app.app_context():
@@ -603,6 +617,15 @@ def init_scheduler(app):
             trigger=CronTrigger(hour='8-11', minute=0, timezone=CHICAGO),
             id='deadline_reminders',
             name='Group order deadline-day reminders',
+            replace_existing=True
+        )
+
+        # Growth dashboard: every Monday at 6:30 AM Chicago, so last week is always there when you sit down
+        scheduler.add_job(
+            func=lambda: growth_sync_job(app),
+            trigger=CronTrigger(day_of_week='mon', hour=6, minute=30, timezone=CHICAGO),
+            id='growth_sync',
+            name='Weekly Growth dashboard refresh',
             replace_existing=True
         )
 

@@ -117,7 +117,10 @@
                             {% if send_home_asks_grade %}
                             <div class="form-group">
                                 <label for="child_grade">Grade</label>
-                                <input type="text" id="child_grade" class="form-control" autocomplete="off" placeholder="e.g. 3rd or Kindergarten">
+                                <select id="child_grade" class="form-control">
+                                    <option value="">Choose a grade</option>
+                                    {% for g in ['Pre-K', 'K', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th', 'Staff'] %}<option value="{{ g }}">{{ g }}</option>{% endfor %}
+                                </select>
                             </div>
                             {% endif %}
                         </div>

@@ -585,7 +585,8 @@ def orders_completed():
     by_month = OrderedDict()
     for order in orders:
         # Use updated_at or created_at for grouping
-        dt = order.updated_at or order.created_at
+        from utils.local_time import to_central
+        dt = to_central(order.updated_at or order.created_at)      # month and year in Kansas City time
         key = (dt.year, dt.month)
         if key not in by_month:
             by_month[key] = []
@@ -6537,11 +6538,21 @@ def packaging_sop():
 def customers():
     """Customer & marketing tracker - repeat customers, collections (school/team/event)"""
     from sqlalchemy import func
-    # Repeat customers: users with 2+ orders
-    repeat_query = db.session.query(User, func.count(Order.id).label('order_count')).join(
-        Order, User.id == Order.user_id
-    ).group_by(User.id).having(func.count(Order.id) >= 2).all()
-    repeat_customers = [{'user': u, 'order_count': c} for u, c in repeat_query]
+    # Repeat customers: the same email on 2+ orders, in any capitalization, account or guest checkout
+    email_key = func.lower(func.trim(Order.email))
+    rows = (db.session.query(email_key.label('e'), func.count(Order.id), func.max(Order.created_at), func.sum(Order.total))
+            .filter(Order.email.isnot(None), Order.email != '', Order.status != 'cancelled')
+            .group_by(email_key).having(func.count(Order.id) >= 2)
+            .order_by(func.count(Order.id).desc(), func.max(Order.created_at).desc()).all())
+    repeat_customers = []
+    for key, count, last_at, spent in rows:
+        latest = (Order.query.filter(email_key == key, Order.status != 'cancelled')
+                  .order_by(Order.created_at.desc()).first())
+        user = User.query.filter(func.lower(User.email) == key).first()
+        name = (user.full_name if user else '') or ' '.join(
+            p for p in (latest.first_name, latest.last_name) if p) if latest else ''
+        repeat_customers.append({'name': name or key, 'email': key, 'order_count': count,
+                                 'last_order': last_at, 'spent': float(spent or 0)})
     # Collections (school/team/event)
     collections = Collection.query.filter_by(is_active=True).order_by(Collection.name).all()
     return render_template('admin/operations/customers.html',

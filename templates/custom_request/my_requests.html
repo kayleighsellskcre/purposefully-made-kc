@@ -76,7 +76,7 @@
                         <div class="rq-info">
                             <p class="rq-desc">{{ r.description[:160] }}{% if r.description|length > 160 %}…{% endif %}</p>
                             <div class="rq-meta-row">
-                                <span class="rq-date">{{ r.created_at.strftime('%b %d, %Y') }}</span>
+                                <span class="rq-date">{{ r.created_at|central('%b %d, %Y') }}</span>
                                 <span class="rq-badge rq-badge-{{ r.status }}">{{ r.status.title() }}</span>
                             </div>
 

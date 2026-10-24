@@ -87,7 +87,7 @@
                     <span class="od-info-label">Receipt</span>
                     <span class="od-info-val">
                         {% if order.confirmation_email_sent_at %}
-                        Sent {{ order.confirmation_email_sent_at.strftime('%b %d at %I:%M %p') }}
+                        Sent {{ order.confirmation_email_sent_at|central('%b %d at %I:%M %p') }}
                         {% else %}
                         Not sent yet
                         {% endif %}
@@ -229,7 +229,7 @@
                 {% if order.paid_at %}
                 <div class="od-info-row">
                     <span class="od-info-label">Paid At</span>
-                    <span class="od-info-val">{{ order.paid_at.strftime('%b %d, %Y %I:%M %p') }}</span>
+                    <span class="od-info-val">{{ order.paid_at|central('%b %d, %Y %I:%M %p') }}</span>
                 </div>
                 {% endif %}
                 {% if order.payment_intent_id %}

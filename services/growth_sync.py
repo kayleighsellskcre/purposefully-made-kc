@@ -1,12 +1,28 @@
 """Auto-sync weekly growth metrics from database (orders, collections)."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from sqlalchemy import and_, or_
 from models import db, Order, OrderItem, Collection, GrowthMetric
+
+
+CENTRAL = ZoneInfo('America/Chicago')
 
 
 def get_monday_of_week(dt):
     """Return Monday 00:00:00 of the week containing dt."""
     return (dt - timedelta(days=dt.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def kansas_city_now():
+    """Right now in Kansas City, as a plain datetime (weeks run Monday to Sunday there)."""
+    return datetime.now(CENTRAL).replace(tzinfo=None)
+
+
+def _utc_bounds(week_start):
+    """The stored (UTC) times that mark a Kansas City week: Monday midnight to the next Monday midnight."""
+    def to_utc(local_naive):
+        return local_naive.replace(tzinfo=CENTRAL).astimezone(timezone.utc).replace(tzinfo=None)
+    return to_utc(week_start), to_utc(week_start + timedelta(days=7))
 
 
 def sync_weekly_metrics(week_start=None):
@@ -21,18 +37,20 @@ def sync_weekly_metrics(week_start=None):
         (GrowthMetric, created_or_updated)
     """
     if week_start is None:
-        week_start = get_monday_of_week(datetime.utcnow())
+        week_start = get_monday_of_week(kansas_city_now())
     elif isinstance(week_start, datetime) and week_start.weekday() != 0:
         week_start = get_monday_of_week(week_start)
     
     week_end = week_start + timedelta(days=7)
-    
+    # Orders and stores are stored in UTC; the week itself is Monday to Sunday in Kansas City.
+    utc_start, utc_end = _utc_bounds(week_start)
+
     # Orders paid in this week (use paid_at, fallback to created_at for cash)
     paid_orders = Order.query.filter(
         Order.payment_status == 'paid',
         or_(
-            and_(Order.paid_at >= week_start, Order.paid_at < week_end),
-            and_(Order.paid_at.is_(None), Order.created_at >= week_start, Order.created_at < week_end)
+            and_(Order.paid_at >= utc_start, Order.paid_at < utc_end),
+            and_(Order.paid_at.is_(None), Order.created_at >= utc_start, Order.created_at < utc_end)
         )
     ).all()
     
@@ -45,8 +63,8 @@ def sync_weekly_metrics(week_start=None):
     
     # New collections (events) created in this week
     events_booked = Collection.query.filter(
-        Collection.created_at >= week_start,
-        Collection.created_at < week_end
+        Collection.created_at >= utc_start,
+        Collection.created_at < utc_end
     ).count()
     
     existing = GrowthMetric.query.filter(
@@ -82,7 +100,7 @@ def sync_all_recent_weeks(weeks=4):
     """Sync metrics for the last N weeks."""
     results = []
     for i in range(weeks):
-        week_start = get_monday_of_week(datetime.utcnow()) - timedelta(weeks=i)
+        week_start = get_monday_of_week(kansas_city_now()) - timedelta(weeks=i)
         m, action = sync_weekly_metrics(week_start)
         results.append((m, action))
     return results

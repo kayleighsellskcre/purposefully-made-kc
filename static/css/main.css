@@ -3245,3 +3245,35 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 .customizer-container .order-bar .price-details[open] { flex-basis: 100%; order: 3; }
 .customizer-container .order-bar .price-total { flex: 1 1 auto; justify-content: flex-end; gap: 0.75rem; }
 @media (max-height: 820px) { .customizer-container .order-bar p.production-timeline-note { display: none; } }
+
+/* Header: the centered menu used to run into the search and cart icons on mid-size screens */
+@media (min-width: 969px) and (max-width: 1480px) {
+    .nav-links { left: calc(50% + 48px); gap: 0.1rem; }
+    .nav-links .nav-link { padding: 0.5rem 0.42rem; font-size: 0.78rem; letter-spacing: 0.05em; }
+    .nav-links .nav-account-btn { padding: 0.4rem 0.6rem; font-size: 0.78rem; letter-spacing: 0.05em; min-height: 38px; }
+    .nav-icons { margin-left: auto; padding-left: 0.5rem; }
+}
+
+/* Hidden spam trap: real visitors never see it, bots fill it in */
+.cf-hp { position: absolute !important; left: -9999px !important; width: 1px; height: 1px; overflow: hidden; }
+
+/* Admin pages always use the compact header, so the badge never sits on top of the admin toolbar. */
+@media (min-width: 769px) {
+    .is-admin .navbar .logo-image { height: 56px !important; top: 6px; border-width: 2px; }
+}
+
+/* Small laptops and tablets held sideways: the menu gets a little tighter still */
+@media (min-width: 969px) and (max-width: 1180px) {
+    .nav-links { left: calc(50% + 40px); }
+    .nav-links .nav-link { padding: 0.5rem 0.28rem; font-size: 0.72rem; letter-spacing: 0.03em; }
+    .nav-links .nav-account-btn { padding: 0.35rem 0.5rem; font-size: 0.72rem; letter-spacing: 0.03em; min-height: 36px; }
+    .nav-links .nav-separator { margin: 0 0.15rem; }
+}
+@media (min-width: 969px) and (max-width: 1100px) {
+    .nav-account-my, .nav-account-chev { display: none; }
+}
+@media (min-width: 969px) and (max-width: 1020px) {
+    .nav-links .nav-link { padding: 0.5rem 0.18rem; font-size: 0.7rem; }
+    .nav-links .nav-separator { display: none; }
+    .nav-links .nav-account-btn { padding: 0.35rem 0.4rem; }
+}

@@ -77,7 +77,7 @@
                                 {% if c.order_deadline %}
                                 · Deadline: {{ c.order_deadline|kc_date('%b %d, %Y') }}
                                 {% endif %}
-                                · Created {{ c.created_at.strftime('%b %d, %Y') }}
+                                · Created {{ c.created_at|central('%b %d, %Y') }}
                             </p>
                         </div>
                         <div style="display:flex;gap:0.6rem;flex-shrink:0;">

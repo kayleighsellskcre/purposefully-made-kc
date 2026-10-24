@@ -114,10 +114,7 @@
                     </div>
 
                     <form class="contact-form" method="POST" action="{{ url_for('main.contact') }}" enctype="multipart/form-data">
-                        <div class="cf-hp" aria-hidden="true">
-                            <label for="website">Leave this field blank</label>
-                            <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
-                        </div>
+                        {{ spam_fields() }}
 
                         <div class="cf-row">
                             <div class="cf-group">

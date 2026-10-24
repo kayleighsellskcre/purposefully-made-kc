@@ -10,7 +10,7 @@
         <div class="dash-topbar-left">
             <span class="adm-eyebrow" style="margin-bottom:0;">Admin Dashboard</span>
             <h1 class="dash-greeting">{{ greeting }}{% if admin_name %}, {{ admin_name }}{% endif %}</h1>
-            <p class="dash-date">{{ now.strftime('%A, %B %d, %Y') }}</p>
+            <p class="dash-date">{{ now|central('%A, %B %d, %Y') }}</p>
         </div>
         <div class="dash-topbar-right" style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
             <a href="{{ url_for('admin.notifications') }}" class="dash-store-link" title="Contact messages and design requests">
@@ -323,7 +323,7 @@
                     <div class="dash-order-right">
                         <span class="dash-order-total">${{ "%.2f"|format(order.total) }}</span>
                         <span class="dash-order-badge dash-badge--{{ stage_key }}">{{ stage_label }}</span>
-                        <span class="dash-order-date">{{ order.created_at.strftime('%b %d') }}</span>
+                        <span class="dash-order-date">{{ order.created_at|central('%b %d') }}</span>
                     </div>
                 </a>
                 {% else %}

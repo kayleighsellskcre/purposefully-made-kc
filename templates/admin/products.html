@@ -20,7 +20,7 @@
 {% if last_sync_time %}
 <div class="adm-alert prod-sync-info">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-    <span>Last sync: <strong>{{ last_sync_time.strftime('%b %d, %Y at %I:%M %p') }}</strong></span>
+    <span>Last sync: <strong>{{ last_sync_time|central('%b %d, %Y at %I:%M %p') }}</strong></span>
     <span class="prod-sync-next">Next auto-sync: 1:00 AM daily</span>
 </div>
 {% endif %}

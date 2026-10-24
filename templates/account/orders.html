@@ -44,7 +44,7 @@
                         <div class="order-card-head">
                             <div class="order-card-meta">
                                 <h3>Order #{{ order.order_number }}</h3>
-                                <p class="order-card-date">{{ order.created_at.strftime('%B %d, %Y') }}</p>
+                                <p class="order-card-date">{{ order.created_at|central('%B %d, %Y') }}</p>
                             </div>
                             <span class="status-pill status-{{ order.status }}">{{ order.status.replace('_', ' ').title() }}</span>
                         </div>

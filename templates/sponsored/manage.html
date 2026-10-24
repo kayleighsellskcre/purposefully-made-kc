@@ -51,7 +51,7 @@
                     <span class="sm-muted">To pay this invoice, please call us.</span>
                     {% endif %}
                 {% else %}
-                    <span class="sm-muted">Paid {{ inv.paid_at.strftime('%b %d, %Y') if inv.paid_at }}{% if inv.payment_method %} by {{ inv.payment_method }}{% endif %}. Orders are in production.</span>
+                    <span class="sm-muted">Paid {{ inv.paid_at|central('%b %d, %Y') if inv.paid_at }}{% if inv.payment_method %} by {{ inv.payment_method }}{% endif %}. Orders are in production.</span>
                 {% endif %}
             </div>
         </div>

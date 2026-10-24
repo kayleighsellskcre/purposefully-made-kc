@@ -64,6 +64,7 @@ def _sync_mockups_to_static(app):
 from utils.business_info import BUSINESS as _BUSINESS
 from utils.daily_quote import todays_quote as _daily_quote
 from utils.ready_date import ready_note as _ready_note, weeks_phrase as _ready_weeks
+from utils.spam_guard import spam_fields as _spam_fields
 from utils.reviews_public import has_reviews as _has_reviews
 
 _ASSET_VERSIONS = {}
@@ -634,13 +635,13 @@ def create_app(config_class=Config):
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
                 "js.stripe.com www.paypal.com www.paypalobjects.com "
-                "cdnjs.cloudflare.com cdn.jsdelivr.net; "
+                "cdnjs.cloudflare.com cdn.jsdelivr.net challenges.cloudflare.com; "
             "style-src 'self' 'unsafe-inline' "
                 "fonts.googleapis.com cdnjs.cloudflare.com cdn.jsdelivr.net fonts.cdnfonts.com; "
             "font-src 'self' fonts.gstatic.com data: fonts.cdnfonts.com; "
             "img-src 'self' data: blob: https:; "
             "connect-src 'self' api.stripe.com api.ssactivewear.com; "
-            "frame-src js.stripe.com www.paypal.com; "
+            "frame-src js.stripe.com www.paypal.com challenges.cloudflare.com; "
             "object-src 'none'; "
             "base-uri 'self';"
         )
@@ -663,13 +664,13 @@ def create_app(config_class=Config):
             "default-src 'self'; "
             "script-src 'self' "
                 "js.stripe.com www.paypal.com www.paypalobjects.com "
-                "cdnjs.cloudflare.com cdn.jsdelivr.net; "
+                "cdnjs.cloudflare.com cdn.jsdelivr.net challenges.cloudflare.com; "
             "style-src 'self' "
                 "fonts.googleapis.com cdnjs.cloudflare.com cdn.jsdelivr.net fonts.cdnfonts.com; "
             "font-src 'self' fonts.gstatic.com data: fonts.cdnfonts.com; "
             "img-src 'self' data: blob: https:; "
             "connect-src 'self' api.stripe.com api.ssactivewear.com; "
-            "frame-src js.stripe.com www.paypal.com; "
+            "frame-src js.stripe.com www.paypal.com challenges.cloudflare.com; "
             "object-src 'none'; "
             "base-uri 'self'; "
             "report-uri /csp-report;"
@@ -1020,6 +1021,7 @@ def create_app(config_class=Config):
             'css_version': _asset_version('css/main.css'),
             'daily_quote': _daily_quote(),
             'ready_note': _ready_note(),
+            'spam_fields': _spam_fields,
             'ready_weeks': _ready_weeks(),
             'has_reviews': _has_reviews(),
             'business': _BUSINESS,

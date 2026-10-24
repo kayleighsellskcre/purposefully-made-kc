@@ -30,7 +30,7 @@
                     </p>
                     {% set submitted = design.gallery_submitted_at or design.uploaded_at %}
                     {% if submitted %}
-                    <p class="gq-meta">Submitted {{ submitted.strftime('%b %d, %Y') }}</p>
+                    <p class="gq-meta">Submitted {{ submitted|central('%b %d, %Y') }}</p>
                     {% endif %}
 
                     {% if design.gallery_status == 'changes_requested' %}

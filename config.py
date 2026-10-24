@@ -92,6 +92,8 @@ class Config:
 
     # Stripe settings
     STRIPE_PUBLIC_KEY = os.environ.get('STRIPE_PUBLIC_KEY')
+    TURNSTILE_SITE_KEY = os.environ.get('TURNSTILE_SITE_KEY')          # Cloudflare Turnstile (optional)
+    TURNSTILE_SECRET_KEY = os.environ.get('TURNSTILE_SECRET_KEY')
     STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
     STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET')
     
@@ -201,6 +203,7 @@ class TestConfig(Config):
     RATELIMIT_ENABLED = False
 
     SECRET_KEY = 'test-secret-key'
+    SPAM_GUARD_STRICT = False          # tests post forms directly; tests/test_spam_guard.py turns this on
     STRIPE_PUBLIC_KEY = 'pk_test_fake'
     STRIPE_SECRET_KEY = 'sk_test_fake'
     STRIPE_WEBHOOK_SECRET = 'whsec_test_fake'

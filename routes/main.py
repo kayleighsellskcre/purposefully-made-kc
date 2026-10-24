@@ -101,8 +101,13 @@ def contact():
         # Honeypot: real visitors never see or fill this field. A bot that
         # fills every input trips it, and we pretend to succeed so it doesn't
         # learn to look for a different tell.
-        if request.form.get('website', '').strip():
+        from utils import spam_guard
+        verdict, _why = spam_guard.check(request, max_links=1)
+        if verdict == 'spam':
             flash('Thank you for reaching out! We will get back to you within 1 to 2 business days.', 'success')
+            return redirect(url_for('main.contact'))
+        if verdict == 'retry':
+            flash('Please complete the quick check and send it again.', 'error')
             return redirect(url_for('main.contact'))
 
         name = request.form.get('name', '').strip()
@@ -264,7 +269,7 @@ def sitemap_xml():
             if not product.slug:
                 continue
             add(
-                'shop.product_detail', 'weekly', '0.8',
+                'shop.customize', 'weekly', '0.8',
                 lastmod=lastmod.date().isoformat() if lastmod else None,
                 product_slug=product.slug,
             )
@@ -279,7 +284,10 @@ def sitemap_xml():
             Collection.show_in_directory == True,
             Collection.is_password_protected == False,
         ).all()
+        from utils.group_orders import ordering_blocked
         for collection in collections:
+            if ordering_blocked(collection):          # closed, not open yet, or no longer active
+                continue
             lastmod = collection.updated_at or collection.created_at
             add(
                 'collection.view', 'weekly', '0.6',

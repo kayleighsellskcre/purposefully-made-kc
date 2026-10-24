@@ -5,7 +5,7 @@
 <div style="padding:2rem 0 4rem;">
     <div class="container" style="max-width:760px;background:#fff;border:1px solid rgba(232,208,177,.6);border-radius:14px;padding:2rem;">
         <h1 style="font-family:var(--font-heading);margin:0;">Invoice {{ invoice.invoice_number }}</h1>
-        <p style="color:var(--text-secondary);margin:.25rem 0 1.5rem;">{{ collection.name }} · {{ invoice.created_at.strftime('%B %d, %Y') }} · <strong>{{ 'PAID' if invoice.payment_status == 'paid' else 'DUE' }}</strong></p>
+        <p style="color:var(--text-secondary);margin:.25rem 0 1.5rem;">{{ collection.name }} · {{ invoice.created_at|central('%B %d, %Y') }} · <strong>{{ 'PAID' if invoice.payment_status == 'paid' else 'DUE' }}</strong></p>
         <table style="width:100%;border-collapse:collapse;">
             <thead><tr style="text-align:left;border-bottom:2px solid rgba(232,208,177,.9);"><th style="padding:.4rem 0;">Who</th><th>Item</th><th style="text-align:right;">Amount</th></tr></thead>
             <tbody>

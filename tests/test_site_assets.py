@@ -105,14 +105,14 @@ def test_sitemap_lists_the_key_public_pages(client):
 
 def test_sitemap_lists_active_products(client, seed):
     body = client.get('/sitemap.xml').get_data(as_text=True)
-    assert f'/shop/product/{seed["tee_slug"]}<' in body
-    assert f'/shop/product/{seed["hoodie_slug"]}<' in body
+    assert f'/shop/customize/{seed["tee_slug"]}<' in body
+    assert f'/shop/customize/{seed["hoodie_slug"]}<' in body
 
 
 def test_sitemap_omits_inactive_products(client, seed):
     body = client.get('/sitemap.xml').get_data(as_text=True)
-    assert f'/shop/product/{seed["inactive_slug"]}<' not in body
-    assert f'/shop/product/{seed["inactive_id"]}<' not in body
+    assert f'/shop/customize/{seed["inactive_slug"]}<' not in body
+    assert f'/shop/customize/{seed["inactive_id"]}<' not in body
 
 
 def test_sitemap_omits_private_pages(client):
@@ -181,7 +181,7 @@ def test_product_lastmod_still_works(client, seed):
     ns = {'s': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
     for url in root.findall('s:url', ns):
         loc = url.find('s:loc', ns).text
-        if loc.endswith(f'/shop/product/{seed["tee_slug"]}'):
+        if loc.endswith(f'/shop/customize/{seed["tee_slug"]}'):
             lastmod = url.find('s:lastmod', ns)
             assert lastmod is not None and lastmod.text
             break

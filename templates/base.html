@@ -64,7 +64,7 @@
     <!-- CSRF token available to JS -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
-<body>
+<body{% if request.blueprint == 'admin' %} class="is-admin"{% endif %}>
     {# Keyboard and screen-reader users would otherwise have to tab through all
        eleven navigation links on every single page before reaching the content. #}
     <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -111,8 +111,8 @@
                     <span class="nav-separator desktop-only" aria-hidden="true"></span>
                     <div class="nav-account desktop-only">
                         <button type="button" class="nav-account-btn" id="navAccountBtn" aria-expanded="false" aria-controls="navAccountMenu" aria-haspopup="true">
-                            My Account
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            <span><span class="nav-account-my">My </span>Account</span>
+                            <svg class="nav-account-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
                         </button>
                         <div class="nav-account-menu" id="navAccountMenu" hidden>
                             <a href="{{ url_for('account.index') }}">Account</a>
@@ -292,7 +292,7 @@
                         <li><a href="{{ url_for('main.size_guide') }}">Size Guide</a></li>
                         <li><a href="{{ url_for('main.faq') }}#shipping">Shipping &amp; Returns</a></li>
                         <li><a href="{{ url_for('main.contact') }}">Contact</a></li>
-                        {% if has_reviews %}<li><a href="{{ url_for('main.reviews_page') }}">Kind Words</a></li>{% endif %}
+                        <li><a href="{{ url_for('main.reviews_page') }}">Kind Words</a></li>
                     </ul>
                 </div>
 

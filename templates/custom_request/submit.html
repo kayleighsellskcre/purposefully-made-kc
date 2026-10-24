@@ -16,6 +16,7 @@
         <div class="submit-form-card">
             <form id="recreate-form" method="post" action="{{ url_for('custom_request.submit') }}" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {{ spam_fields() }}
                 <div class="form-group">
                     <label for="reference_image" class="form-label">Reference Image</label>
                     <p class="form-hint">Screenshot or save the image you want recreated (PNG, JPG, WEBP, HEIC)</p>

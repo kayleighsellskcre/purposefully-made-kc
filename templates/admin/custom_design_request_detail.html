@@ -8,7 +8,7 @@
         <a href="{{ url_for('admin.custom_design_requests') }}" class="back-link">← Back to Recreate Requests</a>
         
         <h1>Design Request from {{ req.user.full_name }}</h1>
-        <p class="request-date">{{ req.created_at.strftime('%B %d, %Y at %I:%M %p') }} · <span class="badge badge-{{ req.status }}">{{ req.status.title() }}</span></p>
+        <p class="request-date">{{ req.created_at|central('%B %d, %Y at %I:%M %p') }} · <span class="badge badge-{{ req.status }}">{{ req.status.title() }}</span></p>
         
         <div class="detail-grid">
             <div class="detail-section">

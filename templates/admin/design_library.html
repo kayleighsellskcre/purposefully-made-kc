@@ -105,7 +105,7 @@
             <h2>Recent changes you made</h2>
             <p class="sub">Your edits are locked, so automation never overwrites them.</p>
             {% if o.activity %}
-            <ul class="dl-list">{% for a in o.activity %}<li><b>{{ a.title }}</b> {{ a.what }} <small>{{ a.when.strftime('%b %d') if a.when else '' }}</small></li>{% endfor %}</ul>
+            <ul class="dl-list">{% for a in o.activity %}<li><b>{{ a.title }}</b> {{ a.what }} <small>{{ a.when|central('%b %d') if a.when else '' }}</small></li>{% endfor %}</ul>
             {% else %}
             <p class="sub" style="margin:0">No edits yet.</p>
             {% endif %}

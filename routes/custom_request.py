@@ -212,6 +212,14 @@ def submit():
 
 
 def _handle_submit_post():
+    from utils import spam_guard
+    verdict, _why = spam_guard.check(request, max_links=3, text_field='description')
+    if verdict == 'spam':
+        flash('Thank you! We received your request.', 'success')
+        return redirect(url_for('custom_request.index'))
+    if verdict == 'retry':
+        flash('Please complete the quick check and send it again.', 'error')
+        return redirect(url_for('custom_request.submit'))
     description = request.form.get('description', '').strip()
     file = request.files.get('reference_image')
 

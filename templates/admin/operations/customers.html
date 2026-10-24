@@ -8,14 +8,14 @@
 <div class="ops-grid">
     <div class="ops-card">
         <h2>Repeat Customers</h2>
-        <p class="text-muted">Customers with 2+ orders</p>
+        <p class="text-muted">Anyone with 2+ orders. Guest and account orders from the same email count together.</p>
         <div class="ops-table-scroll">
         <table class="admin-table">
-            <thead><tr><th>Name</th><th>Email</th><th>Orders</th></tr></thead>
+            <thead><tr><th>Name</th><th>Email</th><th>Orders</th><th>Last order</th><th>Spent</th></tr></thead>
             <tbody>
                 {% for r in repeat_customers %}
-                <tr><td>{{ r.user.full_name }}</td><td>{{ r.user.email }}</td><td>{{ r.order_count }}</td></tr>
-                {% else %}<tr><td colspan="3" class="text-muted">No repeat customers yet.</td></tr>{% endfor %}
+                <tr><td>{{ r.name }}</td><td>{{ r.email }}</td><td>{{ r.order_count }}</td><td>{{ r.last_order|central('%b %d, %Y') }}</td><td>${{ '%.2f'|format(r.spent) }}</td></tr>
+                {% else %}<tr><td colspan="5" class="text-muted">No repeat customers yet.</td></tr>{% endfor %}
             </tbody>
         </table>
         </div>

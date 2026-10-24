@@ -41,7 +41,7 @@
 
                     <div class="lib-design-info">
                         <h3>{{ design.original_filename or 'Untitled Design' }}</h3>
-                        <p><strong>Uploaded:</strong> {{ design.uploaded_at.strftime('%b %d, %Y') }}</p>
+                        <p><strong>Uploaded:</strong> {{ design.uploaded_at|central('%b %d, %Y') }}</p>
                         {% if design.user %}
                         <p><strong>Customer:</strong> {{ design.user.full_name }}</p>
                         {% endif %}

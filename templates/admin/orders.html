@@ -167,7 +167,7 @@
                 <td class="ord-total"><strong>${{ "%.2f"|format(order.total) }}</strong></td>
                 <td><span class="ord-badge ord-badge--{{ stage_key }}">{{ stage_label }}</span></td>
                 <td><span class="ord-type">{{ (order.order_type or 'retail').title() }}</span></td>
-                <td class="ord-date">{{ order.created_at.strftime('%b %d') }}</td>
+                <td class="ord-date">{{ order.created_at|central('%b %d') }}</td>
                 <td class="ord-date">{% if order.due_date %}<span class="ord-due {% if order.due_date < now %}ord-due--overdue{% endif %}">{{ order.due_date.strftime('%b %d') }}</span>{% else %}&mdash;{% endif %}</td>
                 <td onclick="event.stopPropagation()">{% with _o = order %}{% include 'admin/includes/order_quick_move.html' %}{% endwith %}</td>
                 <td><a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="adm-view-link" onclick="event.stopPropagation()">View</a></td>
@@ -205,7 +205,7 @@
                     <span class="ord-card-sep">&bull;</span>
                     <span>{{ (order.order_type or 'retail').title() }}</span>
                     <span class="ord-card-sep">&bull;</span>
-                    <span>{{ order.created_at.strftime('%b %d, %Y') }}</span>
+                    <span>{{ order.created_at|central('%b %d, %Y') }}</span>
                 </div>
                 <strong class="ord-card-total">${{ "%.2f"|format(order.total) }}</strong>
             </div>

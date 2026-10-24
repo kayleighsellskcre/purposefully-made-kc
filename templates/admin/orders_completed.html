@@ -18,7 +18,7 @@
         {% if by_month %}
         {% for (year, month), orders in by_month.items() %}
         <div class="completed-month-section">
-            <h2 class="month-header">{% if orders %}{{ (orders[0].updated_at or orders[0].created_at).strftime('%B %Y') }}{% endif %}</h2>
+            <h2 class="month-header">{% if orders %}{{ (orders[0].updated_at or orders[0].created_at)|central('%B %Y') }}{% endif %}</h2>
             <div class="table-container">
                 <table class="admin-table">
                     <thead>
@@ -42,7 +42,7 @@
                             <td>{{ order.items.count() }}</td>
                             <td>${{ "%.2f"|format(order.total) }}</td>
                             <td><span class="badge badge-{{ order.status }}">{{ order.status.replace('_', ' ').title() }}</span></td>
-                            <td>{{ (order.updated_at or order.created_at).strftime('%b %d, %Y') }}</td>
+                            <td>{{ (order.updated_at or order.created_at)|central('%b %d, %Y') }}</td>
                             <td>
                                 <a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="btn-link">View</a>
                             </td>

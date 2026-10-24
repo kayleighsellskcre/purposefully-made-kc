@@ -93,8 +93,8 @@ def test_unknown_slug_is_404(client):
 
 def test_sitemap_lists_slug_urls_not_numeric_ids(client, seed):
     body = client.get('/sitemap.xml').get_data(as_text=True)
-    assert f'/shop/product/{seed["tee_slug"]}' in body
-    assert f'/shop/product/{seed["tee_id"]}' not in body
+    assert f'/shop/customize/{seed["tee_slug"]}' in body
+    assert f'/shop/customize/{seed["tee_id"]}' not in body
 
 
 def test_new_products_receive_a_slug(app, _clean_db):

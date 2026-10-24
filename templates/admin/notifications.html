@@ -28,7 +28,7 @@
                 </span>
                 {% if not note.read_at %}<span class="inbox-dot" aria-label="Unread"></span>{% endif %}
                 <time class="inbox-time" datetime="{{ note.created_at.isoformat() if note.created_at else '' }}">
-                    {% if note.created_at %}{{ note.created_at.strftime('%b %d, %Y') }}{% endif %}
+                    {% if note.created_at %}{{ note.created_at|central('%b %d, %Y') }}{% endif %}
                 </time>
             </div>
             <h2 class="inbox-title">{{ note.title }}</h2>

@@ -178,7 +178,7 @@ table.rc-items { width: 100%; border-collapse: collapse; }
             {% if sms_link %}<a href="{{ sms_link }}" class="rc-textbtn">Text the link</a>{% endif %}
             <form method="post" action="{{ url_for('admin.invoice_pay_link', invoice_id=invoice.id) }}" onsubmit="return confirm('Turn the pay link off? The link and QR code will stop working.');"><input type="hidden" name="action" value="off"><button type="submit">Turn link off</button></form>
         </div>
-        <p class="rc-send-note">{% if invoice.pay_link_sent_at %}Last emailed {{ invoice.pay_link_sent_at.strftime('%b %d') }}. {% endif %}The QR code is on the printed invoice. {% if not invoice.email %}Add an email (Edit) to send it by email. {% endif %}{% if not invoice.phone %}Add a phone number (Edit) to text it.{% endif %}</p>
+        <p class="rc-send-note">{% if invoice.pay_link_sent_at %}Last emailed {{ invoice.pay_link_sent_at|central('%b %d') }}. {% endif %}The QR code is on the printed invoice. {% if not invoice.email %}Add an email (Edit) to send it by email. {% endif %}{% if not invoice.phone %}Add a phone number (Edit) to text it.{% endif %}</p>
         {% else %}
         <p class="rc-send-note" style="margin-top:0">Let this customer pay by card. You get a private link to email or text, plus a QR code on the printed invoice.</p>
         <form method="post" action="{{ url_for('admin.invoice_pay_link', invoice_id=invoice.id) }}"><button type="submit" class="rc-primary">Create pay link</button></form>
