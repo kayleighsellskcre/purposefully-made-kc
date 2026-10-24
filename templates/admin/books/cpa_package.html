@@ -1,0 +1,40 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}CPA Package - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Books</span>
+<h1 class="ops-title">CPA Package</h1>
+<p class="ops-subtitle">One download for your CPA: the profit and loss, ledger, sales tax, expenses with every receipt, inventory count and more, tied together with a one-page summary letter.</p>
+
+<form method="get" class="bk-picker">
+    <label>Year <select name="year" onchange="this.form.submit()">{% for y in years %}<option value="{{ y }}"{% if y == year %} selected{% endif %}>{{ y }}</option>{% endfor %}</select></label>
+</form>
+
+<div class="ops-card bk-card">
+    <h2>Before you send it <small>{{ year }}</small></h2>
+    <ul class="bk-checks">
+        {% for level, text, endpoint in checks %}
+        <li class="bk-check-{{ level }}">
+            <span class="bk-dot" aria-hidden="true"></span>
+            <span>{{ text }} <a href="{{ url_for(endpoint, year=year) }}">{{ 'Open' if level != 'ok' else 'View' }}</a></span>
+        </li>
+        {% endfor %}
+    </ul>
+    <p class="bk-note">Anything flagged is also listed in the summary letter, so your CPA sees it too. You can download the package now and again after fixing things.</p>
+    <p><a class="btn btn-primary" href="{{ url_for('admin.cpa_package_zip', year=year) }}">Download the {{ year }} CPA package</a></p>
+    <p class="bk-note">It can take a minute, because every receipt photo is gathered into the download.</p>
+</div>
+
+<div class="ops-card bk-card">
+    <h2>What is inside</h2>
+    <ul class="bk-list">
+        <li><strong>Summary letter</strong> (PDF): the key totals and a short list of anything flagged.</li>
+        <li><strong>Profit and loss</strong> (PDF), for the year and by month.</li>
+        <li><strong>General ledger</strong> (CSV): every money event, so the CPA can check any number.</li>
+        <li><strong>Sales detail</strong> by order and invoice, and the <strong>sales tax report</strong> by where each sale was taxed (PDF and CSV).</li>
+        <li><strong>Expenses</strong> by category (CSV) and a folder of every receipt, named by date, vendor and amount.</li>
+        <li><strong>Equipment purchases</strong>, <strong>mileage log</strong> and the year-end <strong>inventory count</strong>.</li>
+        <li><strong>Stripe and PayPal summary</strong>, with the 1099-K comparison, and every payout.</li>
+        <li><strong>Open invoices</strong> and <strong>owner contributions and draws</strong>.</li>
+    </ul>
+</div>
+{% endblock %}

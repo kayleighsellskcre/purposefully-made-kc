@@ -1104,6 +1104,56 @@ class Payout(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class InventoryCount(db.Model):
+    """A year-end count of what is on the shelf, valued at cost. Once locked it never changes."""
+    __tablename__ = 'inventory_count'
+    id = db.Column(db.Integer, primary_key=True)
+    year = db.Column(db.Integer, nullable=False, unique=True)
+    as_of = db.Column(db.Date, nullable=False)                   # the Kansas City day it counts (Dec 31 for a past year)
+    note = db.Column(db.Text)
+    locked_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    lines = db.relationship('InventoryCountLine', backref='count', order_by='InventoryCountLine.id',
+                            cascade='all, delete-orphan')
+
+
+class InventoryCountLine(db.Model):
+    __tablename__ = 'inventory_count_line'
+    id = db.Column(db.Integer, primary_key=True)
+    count_id = db.Column(db.Integer, db.ForeignKey('inventory_count.id'), nullable=False, index=True)
+    kind = db.Column(db.String(12), nullable=False, default='other')     # blanks, transfers, supplies, other
+    description = db.Column(db.String(200), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False, default=0)
+    unit_cost_cents = db.Column(db.BigInteger, nullable=False, default=0)
+
+    @property
+    def value_cents(self):
+        return int(self.quantity or 0) * int(self.unit_cost_cents or 0)
+
+
+class MileageTrip(db.Model):
+    """One business trip. The CPA applies the standard mileage rate to the total."""
+    __tablename__ = 'mileage_trip'
+    id = db.Column(db.Integer, primary_key=True)
+    trip_date = db.Column(db.Date, nullable=False, index=True)           # Kansas City day
+    start = db.Column(db.String(120))
+    destination = db.Column(db.String(120))
+    purpose = db.Column(db.String(200))
+    miles_tenths = db.Column(db.Integer, nullable=False)                 # 12.5 miles is stored as 125
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class MileageFavorite(db.Model):
+    """A trip you make again and again (supplier pickup, post office), logged with one tap."""
+    __tablename__ = 'mileage_favorite'
+    id = db.Column(db.Integer, primary_key=True)
+    label = db.Column(db.String(80), nullable=False)
+    start = db.Column(db.String(120))
+    destination = db.Column(db.String(120))
+    purpose = db.Column(db.String(200))
+    miles_tenths = db.Column(db.Integer, nullable=False)
+
+
 class Expense(db.Model):
     """A business expense with its receipt. Its ledger entry is written alongside; voiding adds a reversing entry."""
     __tablename__ = 'expense'

@@ -3331,3 +3331,18 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 .bk-alert { border-color: rgba(154, 91, 0, 0.45); background: #fff8ec; font-size: 0.95rem; line-height: 1.5; }
 .bk-tax th, .bk-tax td { font-size: 0.9rem; }
 .bk-tax td:first-child, .bk-tax th:first-child { text-align: left; }
+
+/* Books: year-end pages */
+.bk-tag-locked, .bk-card .bk-head .bk-tag { margin-left: auto; }
+.bk-rowform { display: inline-flex; align-items: center; gap: 0.4rem; margin: 0; }
+.bk-rowform input { min-height: 36px; padding: 0.25rem 0.5rem; border: 1px solid rgba(58, 61, 72, 0.25); border-radius: 8px; font: inherit; }
+.bk-favs { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; }
+.bk-favs form { display: inline-flex; align-items: center; gap: 0.4rem; }
+.bk-favs input[type="date"] { min-height: 36px; border: 1px solid rgba(58, 61, 72, 0.25); border-radius: 8px; padding: 0.2rem 0.4rem; font: inherit; }
+.bk-checks { list-style: none; margin: 0 0 1rem; padding: 0; }
+.bk-checks li { display: flex; gap: 0.7rem; align-items: flex-start; padding: 0.55rem 0; border-bottom: 1px solid rgba(232, 208, 177, 0.5); font-size: 0.95rem; }
+.bk-dot { flex: 0 0 11px; width: 11px; height: 11px; margin-top: 0.4rem; border-radius: 50%; background: #8a8f6a; }
+.bk-check-warn .bk-dot { background: #d08a1f; }
+.bk-check-info .bk-dot { background: #7a9bb5; }
+.bk-checks a { margin-left: 0.4rem; color: var(--terra-cotta); font-weight: 600; }
+.bk-list { margin: 0; padding-left: 1.2rem; line-height: 1.7; font-size: 0.95rem; }

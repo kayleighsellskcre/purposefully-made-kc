@@ -1,0 +1,34 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Payout Check - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Books</span>
+<h1 class="ops-title">Payout Check</h1>
+<p class="ops-subtitle">Month by month: what Stripe and PayPal took in, minus refunds and fees, against what they paid out to your bank. A small balance is normal, since payouts come a day or two after a sale.</p>
+
+<form method="get" class="bk-picker">
+    <label>Year <select name="year" onchange="this.form.submit()">{% for y in years %}<option value="{{ y }}"{% if y == year %} selected{% endif %}>{{ y }}</option>{% endfor %}</select></label>
+    <a class="btn btn-outline" href="{{ url_for('admin.payouts') }}">See the payouts</a>
+</form>
+
+{% for key, name in [('stripe', 'Stripe'), ('paypal', 'PayPal')] %}
+{% set data = summary[key] %}
+<div class="ops-card bk-card">
+    <h2>{{ name }} <small>{{ year }}</small></h2>
+    <div class="ops-table-scroll">
+    <table class="bk-table bk-tax">
+        <thead><tr><th>Month</th><th>Money in</th><th>Refunds</th><th>Fees</th><th>Should be left</th><th>Paid out</th><th>Still owed to you</th></tr></thead>
+        <tbody>
+            {% for r in data.rows %}
+            <tr><td>{{ r.month }}</td><td>{{ money(r['in']) }}</td><td>{{ money(r.refunds) }}</td><td>{{ money(r.fees) }}</td><td>{{ money(r.expected) }}</td><td>{{ money(r.paid_out) }}</td><td>{{ money(r.balance) }}</td></tr>
+            {% endfor %}
+            <tr class="bk-total"><td>{{ year }}</td><td>{{ money(data.totals['in']) }}</td><td>{{ money(data.totals.refunds) }}</td><td>{{ money(data.totals.fees) }}</td><td>{{ money(data.totals.expected) }}</td><td>{{ money(data.totals.paid_out) }}</td><td>{{ money(data.totals.balance) }}</td></tr>
+        </tbody>
+    </table>
+    </div>
+    <p class="bk-note">
+        <strong>For the 1099-K:</strong> money in for the year is {{ money(data.totals['in']) }}. A 1099-K reports the gross before refunds and fees, so compare it with this figure.
+        {% if key == 'paypal' %}PayPal transfers to your bank are not recorded here yet, so the last two columns only add up when you compare them with your PayPal statement.{% endif %}
+    </p>
+</div>
+{% endfor %}
+{% endblock %}

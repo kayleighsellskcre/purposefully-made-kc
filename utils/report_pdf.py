@@ -174,3 +174,43 @@ def build_sales_tax_pdf(report, label, business, rate_percent):
                       bottomMargin=0.5 * inch, title=f'Sales Tax {label}',
                       author=business.get('name') or 'Purposefully Made KC').build(story)
     return buf.getvalue()
+
+
+def build_summary_letter_pdf(year, p, extras, flags, business, expense_lines):
+    """The one-page letter at the front of the CPA package: key totals, how the books are kept, anything to look at."""
+    def row(label, cents, bold=False):
+        style_l, style_r = ('bold', 'boldr') if bold else ('row', 'rowr')
+        return [Paragraph(label, S[style_l]), Paragraph(dollars(cents) if cents is not None else 'none yet', S[style_r])]
+
+    rows = [row('Net sales (after refunds and discounts)', p['net_sales']), row('Cost of goods (blanks and DTF transfers)', p['cogs']),
+            row('Gross profit', p['gross_profit'], True), row('Expenses (processing fees included)', p['total_expenses']),
+            row('Net profit', p['net_profit'], True), row('Sales tax collected (owed to the state, not income)', p['tax_collected']),
+            row('Owner contributions', p['contributions']), row('Owner draws', p['draws']),
+            row('Inventory on hand at year end, at cost', extras.get('inventory_cents')),
+            row('Stripe money in, gross (compare with the 1099-K)', extras.get('stripe_gross')),
+            row('PayPal money in, gross (compare with the 1099-K)', extras.get('paypal_gross')),
+            row(f"Open invoices ({extras.get('open_count', 0)}), not income until paid", extras.get('open_cents', 0))]
+    table = Table(rows, colWidths=[5.0 * inch, 2.3 * inch])
+    table.setStyle(TableStyle([('LINEBELOW', (0, 0), (-1, -1), 0.25, SAND), ('TOPPADDING', (0, 0), (-1, -1), 3.5),
+                               ('BOTTOMPADDING', (0, 0), (-1, -1), 3.5)]))
+    story = _header(f'Year-End Summary {year}', f'Prepared for your CPA by {business.get("name", "")}', business)
+    story += [table, Spacer(1, 10), Paragraph('HOW THE BOOKS ARE KEPT', S['sec']), Spacer(1, 3), Paragraph(
+        'Cash basis: money counts on the day it was received. Dates and months use Kansas City time. Nothing is ever edited or '
+        'deleted; a correction is a new dated entry. DTF transfers are cost of goods. Equipment is recorded as supplies. '
+        f'Inventory is valued at cost. Mileage is logged in miles for you to apply the standard rate ({extras.get("miles", "0.0")} miles this year).',
+        S['row']), Spacer(1, 8), Paragraph('EXPENSES BY CATEGORY, WITH THE SCHEDULE C LINE TO CONFIRM', S['sec']), Spacer(1, 3)]
+    exp = Table([[Paragraph(f'{name}', S['row']), Paragraph(f'line {line}', S['rowr']), Paragraph(dollars(cents), S['rowr'])]
+                 for name, line, cents in expense_lines] or [[Paragraph('No expenses this year', S['row']), '', '']],
+                colWidths=[4.0 * inch, 1.0 * inch, 2.3 * inch])
+    exp.setStyle(TableStyle([('LINEBELOW', (0, 0), (-1, -1), 0.25, SAND), ('TOPPADDING', (0, 0), (-1, -1), 2.5),
+                             ('BOTTOMPADDING', (0, 0), (-1, -1), 2.5)]))
+    story += [exp, Spacer(1, 8), Paragraph('NEEDS A LOOK', S['sec']), Spacer(1, 3)]
+    notes = [t for level, t in flags if level != 'ok'] or ['Nothing flagged. Everything checked is in order.']
+    for text in notes:
+        story.append(Paragraph(f'&bull; {text}', S['row']))
+    story += [Spacer(1, 8), Paragraph('This is a summary of records, not tax advice. Categories and methods are for your CPA to confirm.', S['note'])]
+    buf = io.BytesIO()
+    SimpleDocTemplate(buf, pagesize=letter, leftMargin=0.6 * inch, rightMargin=0.6 * inch, topMargin=0.5 * inch,
+                      bottomMargin=0.45 * inch, title=f'Year-End Summary {year}',
+                      author=business.get('name') or 'Purposefully Made KC').build(story)
+    return buf.getvalue()

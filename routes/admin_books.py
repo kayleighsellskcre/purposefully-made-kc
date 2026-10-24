@@ -12,6 +12,7 @@ from flask_login import current_user
 from models import Expense, LedgerEntry, Payout, db
 from routes.admin import admin_bp, admin_required
 from utils import ledger as L
+from utils import year_end as Y
 
 _RECEIPT_TYPES = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif', '.pdf'}
 _RECEIPT_MAX = 10 * 1024 * 1024
@@ -232,3 +233,131 @@ def sales_tax_report():
                            first=first, last=last, year=query['year'],
                            years=list(range(L.kc_today().year, L.kc_today().year - 6, -1)), query=query, money=L.dollars,
                            rate=sales_tax.rate_percent())
+
+
+def _year():
+    year = request.args.get('year', type=int) or request.form.get('year', type=int) or L.kc_today().year
+    return min(max(year, 2000), L.kc_today().year + 1)
+
+
+def _years():
+    return list(range(L.kc_today().year, L.kc_today().year - 6, -1))
+
+
+@admin_bp.route('/operations/inventory-count', methods=['GET', 'POST'])
+@admin_required
+def inventory_count():
+    year = _year()
+    if request.method == 'POST':
+        action = request.form.get('action')
+        try:
+            if action == 'start':
+                Y.start_count(year)
+                flash(f'The {year} count is started from your current stock. Adjust any line, then lock it when you are done.', 'success')
+            elif action == 'update':
+                Y.update_line(request.form.get('line_id'), request.form.get('quantity'), request.form.get('unit_cost'))
+                flash('Saved.', 'success')
+            elif action == 'add':
+                count = Y.count_for(year)
+                if count is None:
+                    raise ValueError('Start the count first.')
+                Y.add_line(count, request.form.get('kind'), request.form.get('description'), request.form.get('quantity'),
+                           request.form.get('unit_cost'))
+                flash('Added.', 'success')
+            elif action == 'delete':
+                Y.delete_line(request.form.get('line_id'))
+                flash('Removed from the count.', 'success')
+            elif action == 'lock':
+                count = Y.count_for(year)
+                if count is not None:
+                    Y.lock_count(count)
+                    flash(f'The {year} count is locked. It will not change.', 'success')
+        except (ValueError, TypeError) as exc:
+            db.session.rollback()
+            flash(str(exc) or 'That did not save. Please check the numbers.', 'error')
+        return redirect(url_for('admin.inventory_count', year=year))
+    count = Y.count_for(year)
+    by_kind, total = Y.count_totals(count) if count else ({}, 0)
+    if request.args.get('format') == 'csv' and count:
+        out = StringIO()
+        writer = csv.writer(out)
+        writer.writerow(['Type', 'Description', 'Quantity', 'Unit cost', 'Value at cost'])
+        for line in count.lines:
+            writer.writerow([Y.KIND_LABELS.get(line.kind, line.kind), line.description, line.quantity,
+                             f'{line.unit_cost_cents / 100:.2f}', f'{line.value_cents / 100:.2f}'])
+        writer.writerow(['Total', '', '', '', f'{total / 100:.2f}'])
+        return Response(out.getvalue(), mimetype='text/csv',
+                        headers={'Content-Disposition': f'attachment; filename="inventory-count-{year}.csv"'})
+    return render_template('admin/books/inventory_count.html', year=year, years=_years(), count=count, by_kind=by_kind, total=total,
+                           kinds=Y.KINDS, kind_labels=Y.KIND_LABELS, money=L.dollars)
+
+
+@admin_bp.route('/operations/mileage', methods=['GET', 'POST'])
+@admin_required
+def mileage():
+    from models import MileageFavorite, MileageTrip
+    year = _year()
+    if request.method == 'POST':
+        action = request.form.get('action')
+        try:
+            day = L.parse_day(request.form.get('day')) or L.kc_today()
+            if action == 'trip':
+                Y.add_trip(day, request.form.get('start'), request.form.get('destination'), request.form.get('purpose'),
+                           request.form.get('miles'))
+                if (request.form.get('label') or '').strip():            # also keep it as a one-tap trip
+                    Y.add_favorite(request.form.get('label'), request.form.get('start'), request.form.get('destination'),
+                                   request.form.get('purpose'), request.form.get('miles'))
+                flash('Trip saved.', 'success')
+            elif action == 'favorite':
+                Y.add_favorite(request.form.get('label'), request.form.get('start'), request.form.get('destination'),
+                               request.form.get('purpose'), request.form.get('miles'))
+                flash('Saved. Now it is one tap.', 'success')
+            elif action == 'use_favorite':
+                Y.log_favorite(request.form.get('favorite_id'), day)
+                flash('Trip logged.', 'success')
+            elif action == 'delete_favorite':
+                fav = db.session.get(MileageFavorite, int(request.form.get('favorite_id') or 0))
+                if fav:
+                    db.session.delete(fav)
+                    db.session.commit()
+            elif action == 'delete_trip':
+                trip = db.session.get(MileageTrip, int(request.form.get('trip_id') or 0))
+                if trip:
+                    db.session.delete(trip)
+                    db.session.commit()
+                    flash('Trip removed.', 'success')
+        except (ValueError, TypeError) as exc:
+            db.session.rollback()
+            flash(str(exc) or 'That did not save.', 'error')
+        return redirect(url_for('admin.mileage', year=year))
+    trips = Y.trips_in_year(year)
+    return render_template('admin/books/mileage.html', year=year, years=_years(), trips=trips,
+                           total_miles=Y.miles_text(sum(t.miles_tenths for t in trips)), miles_text=Y.miles_text,
+                           favorites=MileageFavorite.query.order_by(MileageFavorite.label).all(), today=L.kc_today().isoformat())
+
+
+@admin_bp.route('/operations/payout-check')
+@admin_required
+def payout_check():
+    L.sync_all()
+    year = _year()
+    return render_template('admin/books/payout_check.html', year=year, years=_years(), summary=Y.processor_summary(year), money=L.dollars)
+
+
+@admin_bp.route('/operations/cpa-package')
+@admin_required
+def cpa_package():
+    L.sync_all()
+    year = _year()
+    return render_template('admin/books/cpa_package.html', year=year, years=_years(), checks=Y.package_checks(year))
+
+
+@admin_bp.route('/operations/cpa-package.zip')
+@admin_required
+def cpa_package_zip():
+    from utils.cpa_package import build_package
+    L.sync_all()
+    year = _year()
+    data = build_package(year, current_app._get_current_object())
+    return Response(data, mimetype='application/zip',
+                    headers={'Content-Disposition': f'attachment; filename="PMKC-CPA-Package-{year}.zip"'})

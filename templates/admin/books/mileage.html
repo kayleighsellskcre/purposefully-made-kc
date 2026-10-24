@@ -1,0 +1,68 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Mileage - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Books</span>
+<h1 class="ops-title">Mileage</h1>
+<p class="ops-subtitle">Log business trips. Your CPA applies the standard mileage rate to the total, so you only need the miles and the reason.</p>
+
+{% if favorites %}
+<div class="ops-card bk-card">
+    <h2>One tap</h2>
+    <p class="bk-muted">Tap a saved trip to log it for the date below.</p>
+    <div class="bk-favs">
+        {% for f in favorites %}
+        <form method="post" class="bk-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="use_favorite"><input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="favorite_id" value="{{ f.id }}">
+            <input type="date" name="day" value="{{ today }}" aria-label="Date for {{ f.label }}">
+            <button type="submit" class="btn btn-outline btn-sm">{{ f.label }} ({{ miles_text(f.miles_tenths) }} mi)</button>
+        </form>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="ops-card bk-card">
+    <h2>Add a trip</h2>
+    <form method="post" class="bk-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="year" value="{{ year }}">
+        <label>Date <input type="date" name="day" value="{{ today }}" required></label>
+        <label>Miles <input type="number" name="miles" step="0.1" min="0.1" inputmode="decimal" placeholder="12.5" required></label>
+        <label>From <input type="text" name="start" maxlength="120" placeholder="Home"></label>
+        <label>To <input type="text" name="destination" maxlength="120" placeholder="Post office"></label>
+        <label class="bk-wide">Why <input type="text" name="purpose" maxlength="200" placeholder="Shipping orders"></label>
+        <label class="bk-wide">Save as a one-tap trip named <small>(optional)</small> <input type="text" name="label" maxlength="80" placeholder="Post office run"></label>
+        <div class="bk-wide">
+            <button type="submit" name="action" value="trip" class="btn btn-primary">Save the trip</button>
+            <button type="submit" name="action" value="favorite" class="btn btn-outline">Save only as a one-tap trip</button>
+        </div>
+    </form>
+</div>
+
+<div class="ops-card bk-card">
+    <div class="bk-head">
+        <h2>{{ year }} trips</h2>
+        <form method="get" class="bk-inline"><select name="year" onchange="this.form.submit()">{% for y in years %}<option value="{{ y }}"{% if y == year %} selected{% endif %}>{{ y }}</option>{% endfor %}</select></form>
+    </div>
+    <p class="bk-summary"><strong>{{ total_miles }} miles</strong> <span class="bk-muted">in {{ year }}</span></p>
+    <div class="ops-table-scroll">
+    <table class="admin-table bk-ledger">
+        <thead><tr><th>Date</th><th>From</th><th>To</th><th>Why</th><th class="bk-num">Miles</th><th></th></tr></thead>
+        <tbody>
+            {% for t in trips %}
+            <tr><td>{{ t.trip_date.strftime('%b %d, %Y') }}</td><td>{{ t.start or '' }}</td><td>{{ t.destination or '' }}</td><td>{{ t.purpose or '' }}</td>
+                <td class="bk-num">{{ miles_text(t.miles_tenths) }}</td>
+                <td><form method="post" class="bk-inline" onsubmit="return confirm('Remove this trip?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete_trip"><input type="hidden" name="year" value="{{ year }}"><input type="hidden" name="trip_id" value="{{ t.id }}">
+                    <button type="submit" class="bk-link">Remove</button></form></td></tr>
+            {% else %}<tr><td colspan="6" class="bk-muted">No trips logged for {{ year }}.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% if favorites %}
+    <p class="bk-note">Saved one-tap trips:
+        {% for f in favorites %}{{ f.label }}
+        <form method="post" class="bk-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete_favorite"><input type="hidden" name="year" value="{{ year }}"><input type="hidden" name="favorite_id" value="{{ f.id }}"><button type="submit" class="bk-link">remove</button></form>{% if not loop.last %}, {% endif %}{% endfor %}</p>
+    {% endif %}
+</div>
+{% endblock %}

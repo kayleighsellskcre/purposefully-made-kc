@@ -1,0 +1,88 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Inventory Count - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Books</span>
+<h1 class="ops-title">Year-End Inventory Count</h1>
+<p class="ops-subtitle">What is on the shelf at the end of the year, valued at what you paid for it. Your CPA uses the total.</p>
+
+<form method="get" class="bk-picker">
+    <label>Year <select name="year" onchange="this.form.submit()">{% for y in years %}<option value="{{ y }}"{% if y == year %} selected{% endif %}>{{ y }}</option>{% endfor %}</select></label>
+    {% if count %}<a class="btn btn-outline" href="{{ url_for('admin.inventory_count', year=year, format='csv') }}">Download CSV</a>{% endif %}
+</form>
+
+{% if not count %}
+<div class="ops-card bk-card">
+    <h2>No {{ year }} count yet</h2>
+    <p>Start one and the page fills in from your current blank, transfer and supply stock, each valued at its cost. Then change any line to match what you really counted, add anything missing, and lock it when you are done.</p>
+    <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="start"><input type="hidden" name="year" value="{{ year }}">
+        <button type="submit" class="btn btn-primary">Start the {{ year }} count</button></form>
+</div>
+{% else %}
+<div class="ops-card bk-card">
+    <div class="bk-head">
+        <h2>As of {{ count.as_of.strftime('%B %d, %Y').replace(' 0', ' ') }}</h2>
+        {% if count.locked_at %}<span class="bk-tag">Locked</span>{% endif %}
+    </div>
+    <table class="bk-table">
+        <tbody>
+            {% for key, name in kinds %}{% if by_kind.get(key) %}<tr><td>{{ name }}</td><td>{{ money(by_kind[key]) }}</td></tr>{% endif %}{% endfor %}
+            <tr class="bk-grand"><td>Total at cost</td><td>{{ money(total) }}</td></tr>
+        </tbody>
+    </table>
+    {% if not count.locked_at %}
+    <form method="post" class="bk-inline" onsubmit="return confirm('Lock this count? It will not be able to change.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="lock"><input type="hidden" name="year" value="{{ year }}">
+        <p class="bk-note">When the numbers are right, <button type="submit" class="bk-link">lock the count</button> so it is final for your CPA.</p></form>
+    {% endif %}
+</div>
+
+<div class="ops-card bk-card">
+    <h2>Lines</h2>
+    <div class="ops-table-scroll">
+    <table class="admin-table bk-ledger">
+        <thead><tr><th>Type</th><th>What</th><th class="bk-num">Qty</th><th class="bk-num">Unit cost</th><th class="bk-num">Value</th><th></th></tr></thead>
+        <tbody>
+            {% for line in count.lines %}
+            <tr>
+                <td>{{ kind_labels.get(line.kind, line.kind) }}</td>
+                <td>{{ line.description }}</td>
+                {% if count.locked_at %}
+                <td class="bk-num">{{ line.quantity }}</td><td class="bk-num">{{ money(line.unit_cost_cents) }}</td><td class="bk-num">{{ money(line.value_cents) }}</td><td></td>
+                {% else %}
+                <td colspan="2" class="bk-num">
+                    <form method="post" class="bk-rowform">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="update"><input type="hidden" name="year" value="{{ year }}"><input type="hidden" name="line_id" value="{{ line.id }}">
+                        <input type="number" name="quantity" value="{{ line.quantity }}" min="0" aria-label="Quantity" style="width:5rem;">
+                        <input type="number" name="unit_cost" value="{{ '%.2f'|format(line.unit_cost_cents / 100) }}" min="0" step="0.01" aria-label="Unit cost" style="width:6rem;">
+                        <button type="submit" class="bk-link">Save</button>
+                    </form>
+                </td>
+                <td class="bk-num">{{ money(line.value_cents) }}</td>
+                <td>
+                    <form method="post" class="bk-inline" onsubmit="return confirm('Remove this line from the count?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete"><input type="hidden" name="year" value="{{ year }}"><input type="hidden" name="line_id" value="{{ line.id }}">
+                        <button type="submit" class="bk-link">Remove</button></form>
+                </td>
+                {% endif %}
+            </tr>
+            {% else %}<tr><td colspan="6" class="bk-muted">Nothing counted yet. Add what is on your shelf below.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+{% if not count.locked_at %}
+<div class="ops-card bk-card">
+    <h2>Add something you counted</h2>
+    <form method="post" class="bk-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="add"><input type="hidden" name="year" value="{{ year }}">
+        <label>Type <select name="kind">{% for key, name in kinds %}<option value="{{ key }}">{{ name }}</option>{% endfor %}</select></label>
+        <label>What <input type="text" name="description" maxlength="200" placeholder="Bella+Canvas 3001 Black M" required></label>
+        <label>Quantity <input type="number" name="quantity" min="0" value="1" required></label>
+        <label>Unit cost <input type="number" name="unit_cost" min="0" step="0.01" placeholder="0.00" required></label>
+        <div class="bk-wide"><button type="submit" class="btn btn-outline">Add to the count</button></div>
+    </form>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
