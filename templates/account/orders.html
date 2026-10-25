@@ -69,7 +69,8 @@
                             <div class="order-card-actions">
                                 <a href="{{ url_for('account.order_detail', order_number=order.order_number) }}" class="btn btn-outline btn-sm">View Details</a>
                                 <form action="{{ url_for('account.reorder', order_number=order.order_number) }}" method="POST" style="display:inline;">
-                                    <button type="submit" class="btn btn-primary btn-sm">Reorder</button>
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-primary btn-sm">Order again</button>
                                 </form>
                             </div>
                         </div>

@@ -138,7 +138,8 @@
                 <!-- Actions -->
                 <div style="display:flex;flex-direction:column;gap:0.75rem;">
                     <form action="{{ url_for('account.reorder', order_number=order.order_number) }}" method="POST">
-                        <button type="submit" class="btn btn-primary" style="width:100%;">Reorder</button>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-primary" style="width:100%;">Order again</button>
                     </form>
                     <a href="{{ url_for('account.orders') }}" class="btn btn-outline" style="width:100%;text-align:center;">Back to Orders</a>
                 </div>

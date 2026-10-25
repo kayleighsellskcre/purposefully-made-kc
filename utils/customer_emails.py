@@ -109,10 +109,13 @@ def shipped_email(order):
 
 def completed_email(order):
     name = _first_name(order)
-    return ('Your order is complete', 'Your order is complete',
-            [f'Hi {name}, your order is complete. Thank you for letting us make it for you.',
-             'If anything is not right, just reply to this email and we will fix it.'],
-            _order_details(order))
+    built = ('Your order is complete', 'Your order is complete',
+             [f'Hi {name}, your order is complete. Thank you for letting us make it for you.',
+              'If anything is not right, just reply to this email and we will fix it.'],
+             _order_details(order))
+    if order.user_id:           # an account can order the same thing again with one tap
+        return built + ({'label': 'Order again', 'url': f'{_base_url()}/account/orders/{order.order_number}'},)
+    return built
 
 
 def _claim(order_id, column):
@@ -176,8 +179,9 @@ def notify_stage_change(order_id, stage):
         built = content(order)
         if built is None or not _claim(order.id, column):
             return False
-        subject, heading, paragraphs, details = built
+        subject, heading, paragraphs, details, *rest = built
         return _send(order.email.strip(), subject, heading, paragraphs, details=details,
+                     button=rest[0] if rest else None,
                      note='Thank you for choosing a small local business.')
     except Exception:
         current_app.logger.exception('order status email failed for order %s', order_id)

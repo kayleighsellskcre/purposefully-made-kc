@@ -44,40 +44,28 @@ def order_detail(order_number):
 @account_bp.route('/reorder/<order_number>', methods=['POST'])
 @login_required
 def reorder(order_number):
-    """Reorder - add all items from previous order to cart"""
+    """Order again: put the same items, sizes and artwork back in the cart."""
+    from utils.cart_store import get_cart, save_cart
+    from utils.reorder import add_order_to_cart
+
     order = Order.query.filter_by(
         order_number=order_number,
         user_id=current_user.id
     ).first_or_404()
-    
-    from flask import session
-    
-    cart = session.get('cart', [])
-    
-    # Add each order item to cart
-    for item in order.items:
-        cart_item = {
-            'product_id': item.product_id,
-            'size': item.size,
-            'color': item.color,
-            'quantity': item.quantity,
-            'unit_price': item.product.base_price,  # Use current price
-            'design_id': item.design_id,
-            'placement': item.placement,
-            'print_width': item.print_width,
-            'print_height': item.print_height,
-            'position_x': item.position_x,
-            'position_y': item.position_y,
-            'rotation': item.rotation,
-            'proof_image': item.proof_image
-        }
-        cart.append(cart_item)
-    
-    session['cart'] = cart
-    session['cart_owner_id'] = current_user.id
-    session.modified = True
-    
-    flash(f'Added {len(order.items.all())} items to cart', 'success')
+
+    cart = list(get_cart())
+    added, skipped, note = add_order_to_cart(order, cart)
+    if added:
+        save_cart(cart)
+        flash(f'Added {added} item{"s" if added != 1 else ""} from order {order.order_number} to your cart.', 'success')
+    else:
+        flash('None of the items from that order can be ordered again right now.', 'error')
+    if note:
+        flash(note, 'info')
+    for name, reason in skipped:
+        flash(f'{name} was left out because {reason}.', 'info')
+    if not added:
+        return redirect(url_for('account.order_detail', order_number=order.order_number))
     return redirect(url_for('cart.index'))
 
 
