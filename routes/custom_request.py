@@ -133,6 +133,14 @@ def allowed_file(filename):
     return ext in {'png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'}
 
 
+def _run_image_generation_logged(app, job_id, api_key, enhanced_prompt, reference_b64=None):
+    """Run a generation, then record whether it worked (for the daily use log)."""
+    _run_image_generation(app, job_id, api_key, enhanced_prompt, reference_b64)
+    with app.app_context():
+        from utils import ai_usage
+        ai_usage.log_finish(job_id, (_read_job(job_id) or {}).get('status') == 'done')
+
+
 def _finish_request_in_background(app, file_bytes, filename, local_path, prefix, req_id, customer_name):
     """Promote the image to R2, email both parties, and text the admin.
 
@@ -409,8 +417,10 @@ def ai_design_generate():
     _write_job(job_id, {'status': 'pending', 'image_url': None, 'revised_prompt': '', 'error': None})
 
     app_obj = current_app._get_current_object()
+    from utils import ai_usage
+    ai_usage.log_start(job_id, bool(reference_b64))
     threading.Thread(
-        target=_run_image_generation,
+        target=_run_image_generation_logged,
         args=(app_obj, job_id, api_key, enhanced_prompt, reference_b64),
         daemon=True,
     ).start()

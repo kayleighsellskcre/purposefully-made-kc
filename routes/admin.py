@@ -5783,6 +5783,15 @@ def _handle_design_request_post(req):
         req.admin_notes = request.form.get('admin_notes', '')
         db.session.commit()
         flash('Notes saved', 'success')
+    elif action == 'start':
+        if req.status == 'pending' and not req.started_at:
+            req.started_at = datetime.utcnow()
+            db.session.commit()
+            from utils.background import run_in_background
+            run_in_background(current_app._get_current_object(), _email_design_request_decision, req.id, 'started')
+            flash('Marked in progress and the customer was emailed.', 'success')
+        else:
+            flash('That request is already underway or finished.', 'info')
     elif action == 'decline':
         reason = (request.form.get('decline_reason') or '').strip()
         req.status = 'declined'
@@ -5825,7 +5834,16 @@ def _send_design_request_decision_email(req, decision, reason=None):
         first = getattr(user, 'first_name', None) or 'there'
         sender = _sender_tuple(app_obj)
 
-        if decision == 'completed':
+        if decision == 'started':
+            subject = "We've started on your design, Purposefully Made KC"
+            body = (
+                f"Hi {first},\n\n"
+                f"Good news: Kayleigh has started working on your design request.\n\n"
+                f"Most designs take 1 to 2 business days. We will email you the moment it is ready in your My Designs.\n\n"
+                f"Questions? Reply here or email purposefullymadekc@gmail.com\n\n"
+                f"— Purposefully Made KC"
+            )
+        elif decision == 'completed':
             subject = "Your custom design is ready! — Purposefully Made KC"
             body = (
                 f"Hi {first},\n\n"

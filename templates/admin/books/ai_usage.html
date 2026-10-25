@@ -1,0 +1,31 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}AI Studio Use - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Daily Operations</span>
+<h1 class="ops-title">AI Studio Use</h1>
+<p class="ops-subtitle">How many designs customers made in the AI Design Studio each day. Each one costs a little, so this keeps an eye on it.</p>
+
+<div class="ops-card bk-card">
+    <p class="bk-summary"><strong>{{ today }}</strong> <span class="bk-muted">today &middot; {{ total }} in the last 30 days</span></p>
+    <form method="post" class="bk-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>Email me when a day reaches <input type="number" name="threshold" min="1" max="10000" value="{{ threshold }}" required></label>
+        <div class="bk-wide"><button type="submit" class="btn btn-outline">Save</button></div>
+    </form>
+</div>
+
+<div class="ops-card bk-card">
+    <div class="ops-table-scroll">
+    <table class="admin-table bk-ledger">
+        <thead><tr><th>Day</th><th class="bk-num">Designs started</th><th class="bk-num">Failed</th></tr></thead>
+        <tbody>
+            {% for day, started, failed in days %}
+            <tr><td>{{ day.strftime('%a %b') }} {{ day.day }}</td>
+                <td class="bk-num">{% if started >= threshold %}<span class="bk-warn">{{ started }}</span>{% else %}{{ started }}{% endif %}</td>
+                <td class="bk-num">{{ failed or '' }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

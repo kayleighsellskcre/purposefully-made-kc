@@ -25,7 +25,7 @@
                 <div class="request-body">
                     <p class="request-desc">{{ r.description[:120] }}{% if r.description|length > 120 %}...{% endif %}</p>
                     <p class="request-meta"><strong>{{ r.user.full_name }}</strong> · {{ r.created_at|central('%b %d, %Y') }}</p>
-                    <span class="badge badge-{{ r.status }}">{{ r.status.title() }}</span>
+                    <span class="badge badge-{{ r.status_key }}">{{ r.status_label }}</span>
                     <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.5rem;">
                         <a href="{{ url_for('admin.custom_design_request_detail', request_id=r.id) }}" class="btn btn-outline btn-sm">View &amp; Upload</a>
                         {% if r.status == 'pending' %}
@@ -64,6 +64,7 @@
 .request-desc { margin-bottom: 0.5rem; font-size: 0.9rem; }
 .request-meta { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
 .badge-pending { background: rgba(245, 158, 11, 0.2); color: #d97706; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.8rem; }
+.badge-in_progress { background: rgba(59, 130, 246, 0.18); color: #2563eb; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.8rem; }
 .badge-completed { background: rgba(16, 185, 129, 0.2); color: #059669; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.8rem; }
 .badge-declined { background: rgba(239, 68, 68, 0.2); color: #dc2626; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.8rem; }
 .filter-tab { padding: 0.5rem 1rem; border-radius: 8px; background: #fff; border: 1px solid var(--border-color); text-decoration: none; color: var(--text-primary); }

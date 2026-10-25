@@ -546,3 +546,20 @@ def order_pickup_qr(order_id):
     from utils.mailer import admin_base_url
     return Response(qr_png(f'{admin_base_url(current_app)}/admin/pickup/{order_id}'), mimetype='image/png',
                     headers={'Cache-Control': 'private, max-age=86400'})
+
+
+@admin_bp.route('/operations/ai-usage', methods=['GET', 'POST'])
+@admin_required
+def ai_usage():
+    """How often the AI Design Studio is used each day, and the limit that triggers an email."""
+    from utils import ai_usage as U
+    if request.method == 'POST':
+        try:
+            U.save_threshold(request.form.get('threshold'))
+            flash('Saved.', 'success')
+        except ValueError as exc:
+            flash(str(exc), 'error')
+        return redirect(url_for('admin.ai_usage'))
+    days = U.daily_counts(30)
+    return render_template('admin/books/ai_usage.html', days=days, today=days[0][1], threshold=U.threshold(),
+                           total=sum(d[1] for d in days))

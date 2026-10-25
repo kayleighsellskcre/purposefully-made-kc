@@ -77,7 +77,7 @@
                             <p class="rq-desc">{{ r.description[:160] }}{% if r.description|length > 160 %}…{% endif %}</p>
                             <div class="rq-meta-row">
                                 <span class="rq-date">{{ r.created_at|central('%b %d, %Y') }}</span>
-                                <span class="rq-badge rq-badge-{{ r.status }}">{{ r.status.title() }}</span>
+                                <span class="rq-badge rq-badge-{{ r.status_key }}">{{ r.status_label }}</span>
                             </div>
 
                             {% if r.created_design %}
@@ -220,6 +220,7 @@
     border-radius: 20px;
 }
 .rq-badge-pending  { background: rgba(245,158,11,0.12);  color: #d97706; }
+.rq-badge-in_progress { background: rgba(59,130,246,0.12); color: #2563eb; }
 .rq-badge-completed{ background: rgba(16,185,129,0.12);  color: #059669; }
 .rq-badge-declined { background: rgba(239,68,68,0.12);   color: #dc2626; }
 

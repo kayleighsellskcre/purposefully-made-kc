@@ -714,8 +714,19 @@ class CustomDesignRequest(db.Model):
     # so a refresh or a repeated submit cannot send the pair twice.
     emails_sent_at = db.Column(db.DateTime)
 
+    # Set when Kayleigh starts on it (the customer is emailed once). The status stays 'pending' until the design is ready.
+    started_at = db.Column(db.DateTime)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    @property
+    def status_key(self):
+        return 'in_progress' if (self.status or 'pending') == 'pending' and self.started_at else (self.status or 'pending')
+
+    @property
+    def status_label(self):
+        return 'In progress' if self.status_key == 'in_progress' else (self.status or 'pending').title()
 
     # Relationships
     user = db.relationship('User', backref='custom_design_requests')
@@ -1487,3 +1498,14 @@ class TaxExemption(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship('User', foreign_keys=[user_id])
+
+
+class AiGeneration(db.Model):
+    """One run of the AI Design Studio, logged when it starts so daily use (and cost) can be watched."""
+    __tablename__ = 'ai_generation'
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.String(40), index=True)
+    kc_date = db.Column(db.Date, nullable=False, index=True)                # Kansas City day
+    had_reference = db.Column(db.Boolean, default=False)
+    ok = db.Column(db.Boolean)                                              # None while it is still running
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)

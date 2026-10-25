@@ -8,7 +8,7 @@
         <a href="{{ url_for('admin.custom_design_requests') }}" class="back-link">← Back to Recreate Requests</a>
         
         <h1>Design Request from {{ req.user.full_name }}</h1>
-        <p class="request-date">{{ req.created_at|central('%B %d, %Y at %I:%M %p') }} · <span class="badge badge-{{ req.status }}">{{ req.status.title() }}</span></p>
+        <p class="request-date">{{ req.created_at|central('%B %d, %Y at %I:%M %p') }} · <span class="badge badge-{{ req.status_key }}">{{ req.status_label }}</span></p>
         
         <div class="detail-grid">
             <div class="detail-section">
@@ -27,6 +27,12 @@
                 <h3>Customer</h3>
                 <p>{{ req.user.full_name }} · {{ req.user.email }}</p>
                 
+                {% if req.status == 'pending' and not req.started_at %}
+                <form method="post" style="margin: 1rem 0;">
+                    <input type="hidden" name="action" value="start">
+                    <button type="submit" class="btn btn-outline">I've started on this (emails the customer)</button>
+                </form>
+                {% endif %}
                 {% if req.status == 'pending' %}
                 <div class="upload-section">
                     <h3>Upload Design for Customer</h3>
@@ -193,7 +199,7 @@
 .design-file-clear:hover { color: var(--terra-cotta); }
 .completed-info { padding: 1rem; background: rgba(16, 185, 129, 0.1); border-radius: 8px; margin-bottom: 1rem; }
 .admin-notes-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color); }
-.badge-pending, .badge-completed, .badge-declined { padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.85rem; }
+.badge-pending, .badge-in_progress, .badge-completed, .badge-declined { padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.85rem; }
 </style>
 
 <script>
