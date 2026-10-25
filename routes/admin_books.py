@@ -563,3 +563,11 @@ def ai_usage():
     days = U.daily_counts(30)
     return render_template('admin/books/ai_usage.html', days=days, today=days[0][1], threshold=U.threshold(),
                            total=sum(d[1] for d in days))
+
+
+@admin_bp.route('/operations/low-stock')
+@admin_required
+def low_stock():
+    """Blanks, supplies and transfers at or under their reorder number."""
+    from utils import low_stock as LS
+    return render_template('admin/books/low_stock.html', items=LS.low_items())

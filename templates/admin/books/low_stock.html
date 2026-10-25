@@ -1,0 +1,22 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Running Low - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Daily Operations</span>
+<h1 class="ops-title">Running Low</h1>
+<p class="ops-subtitle">Blanks, supplies and transfers at or under the reorder number you set for them. You hear about each one in your morning email the first time it runs low.</p>
+
+<div class="ops-card bk-card">
+    <div class="ops-table-scroll">
+    <table class="admin-table bk-ledger">
+        <thead><tr><th>Item</th><th>Type</th><th class="bk-num">Left</th><th class="bk-num">Reorder at</th></tr></thead>
+        <tbody>
+            {% for i in items %}
+            <tr><td>{{ i.name }}</td><td>{{ i.kind }}</td><td class="bk-num">{% if i.qty == 0 %}<span class="bk-warn">Out</span>{% else %}{{ i.qty }}{% endif %}</td><td class="bk-num">{{ i.reorder }}</td></tr>
+            {% else %}<tr><td colspan="4" class="bk-muted">Nothing is running low.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <p><a class="btn btn-outline" href="{{ url_for('admin.operations_inventory') }}">Update stock counts</a></p>
+    <p class="bk-note">Set a reorder number on a stock row to track it. A reorder number of 0 means it is not tracked.</p>
+</div>
+{% endblock %}

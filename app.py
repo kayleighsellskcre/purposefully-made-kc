@@ -340,6 +340,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS deadline_reminder_sent_at TIMESTAMP",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS progress_sent_at TIMESTAMP",
                     "ALTER TABLE custom_design_request ADD COLUMN IF NOT EXISTS started_at TIMESTAMP",
+                    "ALTER TABLE transfer_inventory ADD COLUMN IF NOT EXISTS reorder_threshold INTEGER DEFAULT 0",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS two_day_sent_at TIMESTAMP",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS closed_summary_sent_at TIMESTAMP",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS ai_status VARCHAR(20)",

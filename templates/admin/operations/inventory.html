@@ -3,7 +3,8 @@
 {% block ops_content %}
         <span class="adm-eyebrow">Admin / Operations</span>
         <h1 class="ops-title">Inventory Management</h1>
-<p class="ops-subtitle">Track apparel, transfers, and supplies.</p>
+<p class="ops-subtitle">Track apparel, transfers, and supplies. Set a reorder number on anything you want to hear about when it runs low; 0 means do not track.</p>
+{% if low_count %}<p class="bk-warn"><a href="{{ url_for('admin.low_stock') }}">{{ low_count }} item{{ '' if low_count == 1 else 's' }} running low</a></p>{% endif %}
 
 <div class="ops-grid">
     <div class="ops-card">
@@ -78,18 +79,22 @@
         <input type="text" name="size" placeholder="Size (adult/youth)">
         <input type="number" name="quantity" placeholder="Qty" value="0" min="0">
         <input type="number" name="cost_per_sheet" step="0.01" placeholder="Cost/sheet">
+        <input type="number" name="reorder_threshold" placeholder="Reorder" value="0" min="0">
         <select name="vendor_id"><option value="">Vendor</option>{% for v in vendors %}<option value="{{ v.id }}">{{ v.name }}</option>{% endfor %}</select>
         <input type="text" name="delivery_time" placeholder="Delivery time">
         <button type="submit" class="btn btn-primary">Add</button>
     </form>
     <div class="ops-table-scroll">
     <table class="admin-table">
-        <thead><tr><th>Design</th><th>Size</th><th>Qty</th><th>Cost</th><th>Vendor</th></tr></thead>
+        <thead><tr><th>Design</th><th>Size</th><th>Qty</th><th>Cost</th><th>Reorder</th><th>Vendor</th><th></th></tr></thead>
         <tbody>
             {% for t in transfers %}
             <tr><td>{{ t.design_name }}</td><td>{{ t.size or '-' }}</td><td>{{ t.quantity }}</td>
-                <td>{{ "$%.2f"|format(t.cost_per_sheet or 0) }}</td><td>{{ t.vendor.name if t.vendor else '-' }}</td></tr>
-            {% else %}<tr><td colspan="5" class="text-muted">No transfers yet.</td></tr>{% endfor %}
+                <td>{{ "$%.2f"|format(t.cost_per_sheet or 0) }}</td><td>{{ t.reorder_threshold or 0 }}</td><td>{{ t.vendor.name if t.vendor else '-' }}</td>
+                <td><form method="POST" action="{{ url_for('admin.update_transfer_inventory', id=t.id) }}" class="ops-qty-form">
+                    <input type="number" name="quantity" value="{{ t.quantity }}" min="0" class="ops-qty-input" aria-label="Quantity of {{ t.design_name }}">
+                    <button type="submit" class="btn btn-sm">Update</button></form></td></tr>
+            {% else %}<tr><td colspan="7" class="text-muted">No transfers yet.</td></tr>{% endfor %}
         </tbody>
     </table>
     </div>

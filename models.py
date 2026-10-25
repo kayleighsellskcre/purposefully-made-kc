@@ -991,6 +991,7 @@ class TransferInventory(db.Model):
     size = db.Column(db.String(50))  # adult, youth, chest width
     quantity = db.Column(db.Integer, default=0)
     cost_per_sheet = db.Column(db.Float)
+    reorder_threshold = db.Column(db.Integer, default=0)      # 0 = not tracked
     vendor_id = db.Column(db.Integer, db.ForeignKey('vendor.id'))
     delivery_time = db.Column(db.String(50))  # e.g. "3-5 days"
     notes = db.Column(db.Text)

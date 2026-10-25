@@ -23,7 +23,7 @@ DAILY_KEY, WEEKLY_KEY = 'daily_digest_sent', 'weekly_digest_sent'
 LINKS = {
     'orders': '/admin/orders', 'workflow': '/admin/operations/workflow', 'inbox': '/admin/notifications',
     'requests': '/admin/custom-design-requests', 'stores': '/admin/collections', 'growth': '/admin/operations/growth',
-    'blanks': '/admin/production/blank-apparel-list', 'reports': '/admin/operations/reports',
+    'blanks': '/admin/production/blank-apparel-list', 'reports': '/admin/operations/reports', 'lowstock': '/admin/operations/low-stock',
 }
 
 
@@ -103,6 +103,13 @@ def daily_sections(now=None):
         out.append({'key': 'requests', 'title': 'Recreate requests waiting', 'count': pending, 'tone': 'plain',
                     'lines': [f'{pending} waiting for you to start'], 'link': LINKS['requests'], 'link_label': 'Open the requests'})
 
+    from utils import low_stock
+    fresh = low_stock.newly_low()
+    if fresh:
+        out.append({'key': 'lowstock', 'title': 'Running low', 'count': len(fresh), 'tone': 'warn',
+                    'lines': [low_stock.line(i) for i in fresh[:SHOW]] + ([f'and {len(fresh) - SHOW} more'] if len(fresh) > SHOW else []),
+                    'link': LINKS['lowstock'], 'link_label': 'See what is low'})
+
     unread = AdminNotification.query.filter(AdminNotification.read_at.is_(None)).count()
     if unread:
         out.append({'key': 'messages', 'title': 'Unread messages', 'count': unread, 'tone': 'plain',
@@ -170,6 +177,9 @@ def send_daily(now=None, force=False):
     sent = _deliver(subject, 'Good morning', intro, sections, admin_base_url(current_app))
     if sent:
         set_setting(DAILY_KEY, key, 'The last day the morning digest was handled')
+        if any(s['key'] == 'lowstock' for s in sections):
+            from utils import low_stock
+            low_stock.mark_seen()
     return sent
 
 
@@ -191,6 +201,12 @@ def send_weekly(now=None, force=False):
          'lines': [f"{b['vendor']}: {b['quantity']} pieces" for b in w['blanks']] or ['Nothing new to order'],
          'link': LINKS['blanks'], 'link_label': 'Open the blank list'},
     ]
+    from utils import low_stock
+    low = low_stock.low_items()
+    if low:
+        sections.append({'key': 'low', 'title': 'Still running low', 'count': len(low), 'tone': 'plain',
+                         'lines': [low_stock.line(i) for i in low[:SHOW]] + ([f'and {len(low) - SHOW} more'] if len(low) > SHOW else []),
+                         'link': LINKS['lowstock'], 'link_label': 'See what is low'})
     sent = _deliver(f"Last week: {w['units']} units, {L.dollars(w['net_sales'])} in sales", 'Your week', 'Here is how last week went, and what to order for this one.',
                     sections, admin_base_url(current_app))
     if sent:

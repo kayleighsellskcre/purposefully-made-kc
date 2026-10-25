@@ -6017,8 +6017,9 @@ def operations_inventory():
     transfers = TransferInventory.query.order_by(TransferInventory.design_name).all()
     supplies = Supply.query.order_by(Supply.category, Supply.name).all()
     vendors = Vendor.query.order_by(Vendor.name).all()
+    from utils.low_stock import low_items
     return render_template('admin/operations/inventory.html',
-                         apparel=apparel, transfers=transfers, supplies=supplies, vendors=vendors)
+                         apparel=apparel, transfers=transfers, supplies=supplies, vendors=vendors, low_count=len(low_items()))
 
 
 @admin_bp.route('/operations/inventory/apparel/add', methods=['POST'])
@@ -6039,8 +6040,10 @@ def add_apparel_inventory():
 def update_apparel_inventory(id):
     inv = ApparelInventory.query.get_or_404(id)
     inv.quantity = int(request.form.get('quantity') or 0)
-    inv.cost_per_unit = _form_money('cost_per_unit', 0.0) or None
-    inv.reorder_threshold = int(request.form.get('reorder_threshold') or 5)
+    if 'cost_per_unit' in request.form:
+        inv.cost_per_unit = _form_money('cost_per_unit', 0.0) or None
+    if 'reorder_threshold' in request.form:
+        inv.reorder_threshold = int(request.form.get('reorder_threshold') or 0)
     db.session.commit()
     flash('Apparel updated', 'success')
     return redirect(url_for('admin.operations_inventory'))
@@ -6064,8 +6067,10 @@ def add_supply():
 def update_supply(id):
     s = Supply.query.get_or_404(id)
     s.quantity = int(request.form.get('quantity') or 0)
-    s.cost_per_unit = _form_money('cost_per_unit', 0.0) or None
-    s.reorder_threshold = int(request.form.get('reorder_threshold') or 0)
+    if 'cost_per_unit' in request.form:
+        s.cost_per_unit = _form_money('cost_per_unit', 0.0) or None
+    if 'reorder_threshold' in request.form:
+        s.reorder_threshold = int(request.form.get('reorder_threshold') or 0)
     db.session.commit()
     flash('Supply updated', 'success')
     return redirect(url_for('admin.operations_inventory'))
@@ -6077,11 +6082,24 @@ def add_transfer_inventory():
     t = TransferInventory(design_name=request.form.get('design_name'), size=request.form.get('size'),
                           quantity=int(request.form.get('quantity') or 0),
                           cost_per_sheet=_form_money('cost_per_sheet', 0.0) or None,
+                          reorder_threshold=int(request.form.get('reorder_threshold') or 0),
                           vendor_id=int(request.form.get('vendor_id')) if request.form.get('vendor_id') else None,
                           delivery_time=request.form.get('delivery_time'))
     db.session.add(t)
     db.session.commit()
     flash('Transfer added', 'success')
+    return redirect(url_for('admin.operations_inventory'))
+
+
+@admin_bp.route('/operations/inventory/transfer/<int:id>/update', methods=['POST'])
+@admin_required
+def update_transfer_inventory(id):
+    t = TransferInventory.query.get_or_404(id)
+    t.quantity = int(request.form.get('quantity') or 0)
+    if 'reorder_threshold' in request.form:
+        t.reorder_threshold = int(request.form.get('reorder_threshold') or 0)
+    db.session.commit()
+    flash('Transfer updated', 'success')
     return redirect(url_for('admin.operations_inventory'))
 
 
