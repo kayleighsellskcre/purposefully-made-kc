@@ -259,4 +259,10 @@ def my_group_orders():
     for c in collections:
         c.deadline_passed = is_deadline_passed(c)
         c.not_yet_open = is_not_yet_open(c)
+        c.share_kit = None
+        if c.short_slug:                       # district school stores get a permanent link, QR and flyer
+            from utils import districts as DS
+            school = DS.school_for_store(c)
+            if school is not None:
+                c.share_kit = DS.share_info(c, school)
     return render_template('account/my_group_orders.html', collections=collections)

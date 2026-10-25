@@ -40,7 +40,8 @@ def _unique_slug(base):
     slug = _slugify(base)
     candidate = slug
     i = 2
-    while Organization.query.filter_by(slug=candidate).first():
+    from models import District
+    while Organization.query.filter_by(slug=candidate).first() or District.query.filter_by(slug=candidate).first():
         candidate = f'{slug}-{i}'
         i += 1
     return candidate
@@ -193,7 +194,15 @@ def _apply_photo_changes(org):
 
 @org_bp.route('/org/<slug>')
 def landing(slug):
+    from models import District
+    district = District.query.filter_by(slug=slug, is_active=True).first()
+    if district is not None:
+        from routes.districts import district_page
+        return district_page(district)
     org = _org_or_404(slug)
+    if org.district_id:                      # a school lives on its district page
+        from utils.districts import school_url
+        return redirect(school_url(org))
     sections = [s for s in org.sections.order_by(OrgSection.sort_order).all()
                 if s.collection and s.collection.is_active]
 

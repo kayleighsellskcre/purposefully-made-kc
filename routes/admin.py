@@ -2967,6 +2967,10 @@ def collections():
     from sqlalchemy import func
 
     all_collections = Collection.query.order_by(Collection.created_at.desc()).all()
+    # School district stores are managed from Districts, not mixed in here.
+    district_store_ids = {sec.collection_id for sec in OrgSection.query.join(Organization).filter(
+        Organization.district_id.isnot(None)).all()}
+    all_collections = [c for c in all_collections if c.id not in district_store_ids]
     for c in all_collections:
         c.list_active = bool(c.is_active) and not is_deadline_passed(c)
 
@@ -2982,7 +2986,7 @@ def collections():
     for sec in all_sections:
         sections_by_org.setdefault(sec.organization_id, []).append(sec)
 
-    orgs = Organization.query.order_by(Organization.created_at.desc()).all()
+    orgs = Organization.query.filter(Organization.district_id.is_(None)).order_by(Organization.created_at.desc()).all()
     coll_by_id = {c.id: c for c in all_collections}
     org_collection_ids = set()
     for org in orgs:
@@ -7125,3 +7129,5 @@ def mark_order_paid(order_id):
 
 # The Reports, Ledger and Expenses pages live in their own file but share this blueprint and its locks.
 from routes import admin_books  # noqa: E402,F401
+# School district setup, QR codes and reports.
+from routes import admin_districts  # noqa: E402,F401

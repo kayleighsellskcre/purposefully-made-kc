@@ -232,7 +232,8 @@ def view(slug):
             'current_section': org_section,
             'sections': [sec for sec in org.sections
                          if sec.collection and sec.collection.is_active],
-            'fan_wear_url': org_fan_wear_url(org, current=collection),
+            # a school's School Spirit store is its fan wear, so there is no separate Fan Wear tab
+            'fan_wear_url': None if org.district_id else org_fan_wear_url(org, current=collection),
         }
 
     # Fan Wear page (?path=fan, or the org's dedicated Fan section): the same
@@ -270,9 +271,27 @@ def view(slug):
                          showcase_designs=showcase_designs,
                          catalog_filter_opts=filter_opts,
                          org_nav=org_nav,
+                         school_ctx=_school_context(collection, org),
                          fan_page=fan_page,
                          banner_name=(org_nav['org'].name
                                       if fan_page and 'fan' in (org_section.label or '').lower() else None))
+
+
+def _school_context(collection, org):
+    """Breadcrumbs, the School Spirit link and share info when this store belongs to a district school."""
+    if not org or not org.district_id:
+        return None
+    from utils import districts as DS
+    spirit = DS.spirit_store(org)
+    return {
+        'school': org,
+        'crumbs': [(org.district.name, DS.district_url(org.district)),
+                   (DS.level_heading(org), DS.district_url(org.district) + '#' + (org.level or '')),
+                   (org.name, DS.school_url(org)), (DS.store_label(collection), '')],
+        'spirit_url': (url_for('collection.view', slug=spirit.slug)
+                       if spirit and spirit.id != collection.id and DS.is_live(spirit) else None),
+        'share': DS.share_info(collection, org),
+    }
 
 
 # ── Organizer pays: the link collects name + size only ──────────────────────

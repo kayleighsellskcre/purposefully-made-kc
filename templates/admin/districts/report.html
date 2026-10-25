@@ -1,0 +1,42 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}{{ district.name }} Report - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / <a href="{{ url_for('admin.districts') }}">School Districts</a> / <a href="{{ url_for('admin.district_manage', district_id=district.id) }}">{{ district.name }}</a></span>
+<h1 class="ops-title">{{ district.name }} report</h1>
+<p class="ops-subtitle">Paid orders only. Fundraiser owed is the amount per item times the items sold.</p>
+
+<div class="ops-card bk-card">
+    <h2>By school</h2>
+    <div class="ops-table-scroll">
+    <table class="admin-table bk-ledger">
+        <thead><tr><th>School</th><th>Orders</th><th>Items</th><th>Sales</th><th>Fundraiser owed</th><th>Paid back</th><th>Still owed</th></tr></thead>
+        <tbody>
+        {% for r in report.schools %}
+        <tr>
+            <td><a href="{{ url_for('admin.district_school', school_id=r.school.id) }}">{{ r.school.name }}</a></td>
+            <td>{{ r.orders }}</td><td>{{ r['items'] }}</td><td>${{ '%.2f' % r.revenue }}</td>
+            <td>${{ '%.2f' % (r.owed_cents / 100) }}</td><td>${{ '%.2f' % (r.paid_cents / 100) }}</td><td>${{ '%.2f' % (r.balance_cents / 100) }}</td>
+        </tr>
+        {% endfor %}
+        <tr><th>District total</th><th>{{ report.orders }}</th><th>{{ report['items'] }}</th><th>${{ '%.2f' % report.revenue }}</th><th>${{ '%.2f' % (report.owed_cents / 100) }}</th><th></th><th>${{ '%.2f' % (report.balance_cents / 100) }}</th></tr>
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<div class="ops-card bk-card">
+    <h2>Blanks for the whole district</h2>
+    <p class="bk-muted">One total across every school, for buying blanks in bulk.
+        <a href="{{ url_for('admin.production_master', collection=blank_scope) }}">Open the order blanks page for this district</a>.</p>
+    <div class="ops-table-scroll">
+    <table class="admin-table bk-ledger">
+        <thead><tr><th>Item</th><th>Color</th><th>Size</th><th>Quantity</th></tr></thead>
+        <tbody>
+        {% for (name, color, size), qty in blanks %}
+        <tr><td>{{ name }}</td><td>{{ color }}</td><td>{{ size }}</td><td>{{ qty }}</td></tr>
+        {% else %}<tr><td colspan="4" class="bk-muted">No paid orders yet.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "district/_cards.html" import share_button, share_dialog %}
 {% block title %}My Group Orders - Purposefully Made KC{% endblock %}
 
 {% block content %}
@@ -84,11 +85,13 @@
                             <a href="{{ url_for('collection.view', slug=c.slug) }}" class="btn btn-outline btn-sm" target="_blank">View Store</a>
                             {% if c.payment_mode == 'company_sponsored' %}<a href="{{ url_for('sponsored.manage', slug=c.slug) }}" class="btn btn-outline btn-sm">Requests</a>{% endif %}
                             <a href="{{ url_for('shop.edit_group_order', slug=c.slug) }}" class="btn btn-outline btn-sm">Edit</a>
+                            {% if c.share_kit %}{{ share_button(c.share_kit, c.name, 'Link, QR and flyer') }}{% endif %}
                             <a href="{{ url_for('collection.share', slug=c.slug) }}" class="btn btn-primary btn-sm">Share</a>
                         </div>
                     </div>
                     {% endfor %}
                 </div>
+                {{ share_dialog() }}
                 {% else %}
                 <div style="text-align:center;padding:4rem 2rem;background:#fff;border-radius:var(--border-radius);border:2px dashed var(--border-color);margin-top:1.5rem;">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--border-color)" stroke-width="1.5" style="margin-bottom:1rem;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>

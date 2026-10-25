@@ -1,0 +1,23 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}School Districts - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Stores</span>
+<h1 class="ops-title">School Districts</h1>
+<p class="ops-subtitle">Set up a whole district once: its schools, each school's School Spirit store, and a store for every sport or activity. Parents find their school in two clicks.</p>
+
+<div class="ops-card bk-card">
+    <a href="{{ url_for('admin.district_new') }}" class="btn btn-primary">+ New District</a>
+</div>
+
+{% for row in rows %}
+<div class="ops-card bk-card">
+    <h2><a href="{{ url_for('admin.district_manage', district_id=row.district.id) }}">{{ row.district.name }}</a></h2>
+    <p class="bk-muted">{{ row.schools }} school{{ 's' if row.schools != 1 }}, {{ row.stores }} store{{ 's' if row.stores != 1 }}, {{ row.live }} live.
+        Parents see it at <a href="/org/{{ row.district.slug }}" target="_blank" rel="noopener">/org/{{ row.district.slug }}</a>.</p>
+    <a href="{{ url_for('admin.district_manage', district_id=row.district.id) }}" class="btn btn-outline btn-sm">Open</a>
+    <a href="{{ url_for('admin.district_report', district_id=row.district.id) }}" class="btn btn-outline btn-sm">Report</a>
+</div>
+{% else %}
+<div class="ops-card bk-card"><p class="bk-muted">No districts yet. Start with New District.</p></div>
+{% endfor %}
+{% endblock %}

@@ -224,6 +224,12 @@ class Collection(db.Model):
     two_day_sent_at = db.Column(db.DateTime)
     closed_summary_sent_at = db.Column(db.DateTime)
 
+    # School district stores: a permanent short link piece (never edited on rename,
+    # so printed flyers and QR codes keep working) and what kind of store this is
+    # ('spirit' = School Spirit, 'sport' = a sport or activity, 'staff').
+    short_slug = db.Column(db.String(80))
+    store_kind = db.Column(db.String(20))
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -393,6 +399,32 @@ class CompanyInvoice(db.Model):
         return f'<CompanyInvoice {self.invoice_number}>'
 
 
+class District(db.Model):
+    """A school district: schools (Organizations) sit under it by level.
+
+    Parents land at /org/<slug>; ``short_slug`` is the permanent piece of every
+    short link and QR code beneath it and is never edited after creation.
+    """
+    __tablename__ = 'district'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    slug = db.Column(db.String(200), unique=True, nullable=False, index=True)
+    short_slug = db.Column(db.String(80), unique=True, nullable=False, index=True)
+    description = db.Column(db.Text)
+    logo_url = db.Column(db.String(500))
+    is_active = db.Column(db.Boolean, default=True)
+    # One district-wide ordering window (a fall or spring window) that schools and stores start from
+    order_opens_at = db.Column(db.DateTime)
+    order_deadline = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    schools = db.relationship('Organization', backref='district', lazy='dynamic',
+                              order_by='Organization.sort_order, Organization.name')
+
+    def __repr__(self):
+        return f'<District {self.name}>'
+
+
 class Organization(db.Model):
     """An umbrella group (school, club, business) that owns multiple Collections.
 
@@ -417,6 +449,26 @@ class Organization(db.Model):
     # Creator tracking
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     pending_organizer_email = db.Column(db.String(120))
+
+    # School district schools. A school is an Organization that belongs to a District,
+    # so reminders, autopilot emails and My Group Orders treat its stores like any group.
+    district_id = db.Column(db.Integer, db.ForeignKey('district.id'), nullable=True, index=True)
+    level = db.Column(db.String(20))            # high | middle | elementary
+    school_slug = db.Column(db.String(120))     # the piece after the district in /org/<district>/<school>
+    short_slug = db.Column(db.String(80))       # permanent piece of the short link; never edited
+    mascot = db.Column(db.String(120))
+    primary_color = db.Column(db.String(20))
+    secondary_color = db.Column(db.String(20))
+    organizer_name = db.Column(db.String(120))
+    delivery_mode = db.Column(db.String(20))    # send_home | pickup
+    order_deadline = db.Column(db.DateTime)     # blank = the district window
+    fundraiser_cents = db.Column(db.Integer, default=0)       # per item
+    fundraiser_paid_cents = db.Column(db.Integer, default=0)  # already paid back to the school
+    tax_exempt = db.Column(db.Boolean, default=False)
+    tax_cert_number = db.Column(db.String(80))
+    tax_cert_url = db.Column(db.String(500))
+    tax_expires_on = db.Column(db.Date)
+    sort_order = db.Column(db.Integer, default=0)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

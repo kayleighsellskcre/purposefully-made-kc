@@ -1,0 +1,67 @@
+{# Cards shared by the district page and the school page: one style at every level. #}
+{% macro crumbs(items) %}
+<nav class="crumbs dist-crumbs" aria-label="Breadcrumb">
+    <ol class="crumbs-list">
+        {% for label, url in items %}
+        {% if loop.last %}<li aria-current="page">{{ label }}</li>{% else %}<li><a href="{{ url }}">{{ label }}</a></li>{% endif %}
+        {% endfor %}
+    </ol>
+</nav>
+{% endmacro %}
+
+{% macro share_button(share, title, label='Share') %}
+<button type="button" class="dist-share-btn" data-share-title="{{ title }}" data-share-url="{{ share.url }}"
+        data-share-display="{{ share.display }}" data-share-qr="{{ share.qr }}" data-share-flyer="{{ share.flyer }}">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>
+    {{ label }}
+</button>
+{% endmacro %}
+
+{# The Share box. Include once per page. #}
+{% macro share_dialog() %}
+<dialog class="dist-share-dialog" id="distShareDialog" aria-labelledby="distShareTitle">
+    <form method="dialog"><button class="dist-share-close" aria-label="Close">&times;</button></form>
+    <p class="dist-eyebrow">Share this link</p>
+    <h2 id="distShareTitle"></h2>
+    <div class="dist-share-link">
+        <input type="text" id="distShareInput" readonly aria-label="Link">
+        <button type="button" id="distShareCopy" class="dist-btn dist-btn-solid">Copy</button>
+    </div>
+    <img id="distShareQr" class="dist-share-qr" alt="QR code for this link" width="220" height="220">
+    <div class="dist-share-actions">
+        <a id="distShareDownload" class="dist-btn dist-btn-line" download>Download QR (PNG)</a>
+        <a id="distShareFlyer" class="dist-btn dist-btn-line" target="_blank" rel="noopener">Print flyer</a>
+    </div>
+</dialog>
+<script src="{{ url_for('static', filename='js/share_kit.js') }}" defer></script>
+{% endmacro %}
+
+{% macro school_card(school, info) %}
+<a class="dist-card dist-school-card" href="{{ info.url }}" style="--card-accent: {{ school.primary_color or '#B87C6F' }}"
+   data-school="{{ school.name }}" data-mascot="{{ school.mascot or '' }}">
+    <span class="dist-card-art">
+        {% if info.logo %}<img src="{{ info.logo }}" alt="" loading="lazy">{% else %}<span class="dist-monogram" aria-hidden="true">{{ school.name[:1] }}</span>{% endif %}
+    </span>
+    <span class="dist-card-body">
+        <span class="dist-card-name">{{ school.name }}</span>
+        {% if school.mascot %}<span class="dist-card-sub">{{ school.mascot }}</span>{% endif %}
+        {% if not info.live %}<span class="dist-card-note">Not live yet</span>
+        {% elif info.deadline %}<span class="dist-card-date">Order by {{ info.deadline|kc_date('%b %-d') }}</span>{% endif %}
+    </span>
+</a>
+{% endmacro %}
+
+{% macro store_card(c, school_accent, big=False, tagline=None) %}
+<a class="dist-card dist-store-card{% if big %} dist-store-card-big{% endif %}" href="{{ url_for('collection.view', slug=c.store.slug) }}"
+   style="--card-accent: {{ school_accent }}">
+    <span class="dist-card-art">
+        {% if c.image %}<img src="{{ c.image }}" alt="" loading="lazy">{% else %}<span class="dist-emoji" aria-hidden="true">{{ c.emoji or '🏷️' }}</span>{% endif %}
+    </span>
+    <span class="dist-card-body">
+        <span class="dist-card-name">{{ c.label }}</span>
+        {% if tagline %}<span class="dist-card-sub">{{ tagline }}</span>{% endif %}
+        {% if not c.live %}<span class="dist-card-note">Not live yet</span>
+        {% elif c.store.order_deadline %}<span class="dist-card-date">Order by {{ c.store.order_deadline|kc_date('%b %-d') }}</span>{% endif %}
+    </span>
+</a>
+{% endmacro %}

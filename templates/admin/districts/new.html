@@ -1,0 +1,32 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}New District - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / School Districts</span>
+<h1 class="ops-title">New District</h1>
+<p class="ops-subtitle">Name the district, list the schools under High, Middle and Elementary, and say which stores each school gets. Every school gets a School Spirit store on its own. You can change anything on the next screen.</p>
+
+<form method="post" class="ops-card bk-card dist-admin-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="bk-form">
+        <label>District name <input type="text" name="name" required maxlength="200" placeholder="Desoto USD 232" value="{{ form.get('name', '') }}"></label>
+        <label>Ordering opens <small>(optional)</small> <input type="date" name="opens" value="{{ form.get('opens', '') }}"></label>
+        <label>Order by <small>(one window for every school)</small> <input type="date" name="deadline" value="{{ form.get('deadline', '') }}"></label>
+        <label class="bk-wide">Welcome message <small>(optional)</small> <input type="text" name="description" maxlength="300" value="{{ form.get('description', '') }}"></label>
+    </div>
+
+    <h2>Stores every school gets</h2>
+    <label class="dist-admin-field">Sports and activities, separated by commas
+        <input type="text" name="common_stores" placeholder="Football, Volleyball, Band, Cheer" value="{{ form.get('common_stores', '') }}">
+    </label>
+    <label class="dist-admin-check"><input type="checkbox" name="add_staff" value="1" {% if form.get('add_staff') %}checked{% endif %}> Add a Staff store at the end of every school</label>
+
+    <h2>Schools</h2>
+    <p class="bk-muted">One school per line. To give a school its own mascot or its own stores, write it like this: <strong>Mill Valley High | Jaguars | Football, Volleyball</strong>. The mascot and stores are optional.</p>
+    {% for key, heading in levels %}
+    <label class="dist-admin-field">{{ heading }}
+        <textarea name="schools_{{ key }}" rows="4" placeholder="{% if key == 'high' %}Mill Valley High | Jaguars{% elif key == 'middle' %}Desoto Middle | Eagles{% else %}Riverview Elementary | Falcons{% endif %}">{{ form.get('schools_' ~ key, '') }}</textarea>
+    </label>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary">Set up the district</button>
+</form>
+{% endblock %}

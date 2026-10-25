@@ -1,0 +1,93 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}{{ school.name }} - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+{% from "district/_cards.html" import share_button, share_dialog %}
+<span class="adm-eyebrow">Admin / <a href="{{ url_for('admin.districts') }}">School Districts</a> / <a href="{{ url_for('admin.district_manage', district_id=district.id) }}">{{ district.name }}</a></span>
+<h1 class="ops-title">{{ school.name }}</h1>
+<p class="ops-subtitle">Short link <strong>{{ share.display }}</strong>. It never changes if you rename the school.</p>
+
+<div class="ops-card bk-card dist-admin-actions">
+    {{ share_button(share, school.name, 'Link, QR and flyer') }}
+    <a class="btn btn-outline btn-sm" href="{{ url_for('admin.district_school_qr_zip', school_id=school.id) }}">Download all QR codes</a>
+    <a class="btn btn-outline btn-sm" href="{{ url_for('admin.production_master', collection=blank_scope) }}">Order blanks</a>
+    <a class="btn btn-outline btn-sm" href="{{ url_for('admin.print_labels', collection=blank_scope) }}">Labels</a>
+</div>
+
+<div class="ops-card bk-card">
+    <h2>School settings</h2>
+    <form method="post" enctype="multipart/form-data" class="bk-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="save">
+        <label>School name <input type="text" name="name" maxlength="200" value="{{ school.name }}"></label>
+        <label>Level <select name="level">{% for key, heading in DS.LEVELS %}<option value="{{ key }}" {% if school.level == key %}selected{% endif %}>{{ heading }}</option>{% endfor %}</select></label>
+        <label>Mascot <input type="text" name="mascot" maxlength="120" value="{{ school.mascot or '' }}"></label>
+        <label>School color <input type="color" name="primary_color" value="{{ DS.accent(school) }}"></label>
+        <label>Second color <input type="color" name="secondary_color" value="{{ DS.accent2(school) }}"></label>
+        <label>Logo <input type="file" name="logo" accept="image/*"></label>
+        <label>Organizer name <small>(PTO or office)</small> <input type="text" name="organizer_name" maxlength="120" value="{{ school.organizer_name or '' }}"></label>
+        <label>Organizer email <small>(gets progress and closing emails)</small> <input type="email" name="organizer_email" maxlength="120" value="{{ school.pending_organizer_email or '' }}"></label>
+        <label>Delivery
+            <select name="delivery_mode">
+                <option value="send_home" {% if school.delivery_mode != 'pickup' %}selected{% endif %}>Send home with child, sorted by teacher and grade</option>
+                <option value="pickup" {% if school.delivery_mode == 'pickup' %}selected{% endif %}>Pickup at the school</option>
+            </select>
+        </label>
+        <label>Order by <small>(blank uses the district window)</small> <input type="date" name="order_deadline" value="{{ school.order_deadline.strftime('%Y-%m-%d') if school.order_deadline else '' }}"></label>
+        <label>Fundraiser per item <small>(dollars, blank for none)</small> <input type="text" name="fundraiser" inputmode="decimal" placeholder="2.00" value="{{ '%.2f' % (school.fundraiser_cents / 100) if school.fundraiser_cents else '' }}"></label>
+        <div class="bk-wide">
+            <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+    </form>
+    <p class="bk-note">Saving updates delivery on every store of this school. The organizer email is used for every store that does not already have its own organizer.</p>
+    <form method="post" class="bk-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="push_window">
+        <label>Apply an ordering window to every store of this school <input type="date" name="deadline" value="{{ (school.order_deadline or district.order_deadline).strftime('%Y-%m-%d') if (school.order_deadline or district.order_deadline) else '' }}" required></label>
+        <div class="bk-wide"><button type="submit" class="btn btn-outline btn-sm">Apply to every store</button></div>
+    </form>
+</div>
+
+<div class="ops-card bk-card">
+    <h2>Orders and fundraiser</h2>
+    <p class="bk-muted">{{ report.orders }} orders, {{ report.items }} items, ${{ '%.2f' % report.revenue }} in sales.
+        {% if school.fundraiser_cents %}Fundraiser ${{ '%.2f' % (school.fundraiser_cents / 100) }} per item: <strong>${{ '%.2f' % (report.owed_cents / 100) }}</strong> owed, ${{ '%.2f' % (report.paid_cents / 100) }} paid back, <strong>${{ '%.2f' % (report.balance_cents / 100) }}</strong> still to pay.{% endif %}</p>
+    {% if school.fundraiser_cents %}
+    <form method="post" class="bk-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="fundraiser_paid">
+        <label>Record a payment to the school <input type="text" name="amount" inputmode="decimal" placeholder="25.00" required></label>
+        <div class="bk-wide"><button type="submit" class="btn btn-outline btn-sm">Record payment</button></div>
+    </form>
+    {% endif %}
+</div>
+
+<div class="ops-card bk-card">
+    <h2>Tax exempt</h2>
+    <p class="bk-muted">Only for orders the school itself pays for, where the organizer places one bulk order. Parents who order from a store are taxed as normal.
+        {% if school.tax_exempt %}Right now: {% if exempt %}<strong>tax free</strong>{% else %}<span class="bk-warn">certificate expired, so tax is charged</span>{% endif %}.{% endif %}</p>
+    <form method="post" enctype="multipart/form-data" class="bk-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="tax">
+        <label class="dist-admin-check"><input type="checkbox" name="tax_exempt" value="1" {% if school.tax_exempt %}checked{% endif %}> This school or PTO is tax exempt</label>
+        <label>Certificate number <input type="text" name="tax_cert_number" maxlength="80" value="{{ school.tax_cert_number or '' }}"></label>
+        <label>Expires <small>(blank if it does not)</small> <input type="date" name="tax_expires_on" value="{{ school.tax_expires_on.strftime('%Y-%m-%d') if school.tax_expires_on else '' }}"></label>
+        <label>Certificate <small>(photo or PDF)</small> <input type="file" name="certificate" accept="image/*,application/pdf"></label>
+        <div class="bk-wide">{% if school.tax_cert_url %}<a href="{{ school.tax_cert_url }}" target="_blank" rel="noopener">View the certificate on file</a> {% endif %}<button type="submit" class="btn btn-outline btn-sm">Save</button></div>
+    </form>
+</div>
+
+<div class="ops-card bk-card">
+    <h2>Stores</h2>
+    <table class="admin-table bk-ledger">
+        <thead><tr><th>Store</th><th>Short link</th><th>Orders</th><th>Items</th><th></th></tr></thead>
+        <tbody>
+        {% for row in report.rows %}
+        <tr>
+            <td>{{ row.label }}</td>
+            <td><code>{{ DS.short_path(row.store, school) }}</code></td>
+            <td>{{ row.orders }}</td><td>{{ row.items }}</td>
+            <td><a class="bk-link" href="{{ url_for('admin.edit_collection', collection_id=row.store.id) }}">Edit products</a>
+                <a class="bk-link" href="{{ url_for('admin.district_copy_store', store_id=row.store.id) }}">Copy to other schools</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{{ share_dialog() }}
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "district/_cards.html" import crumbs, share_button, share_dialog, school_card %}
+{% block title %}{{ district.name }} - Purposefully Made KC{% endblock %}
+{% block meta_description %}Spirit wear for every {{ district.name }} school. Find your school and order.{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<section class="dist-hero">
+    <div class="container dist-narrow">
+        {{ crumbs([(district.name, '')]) }}
+        {% if logo %}<img class="dist-logo" src="{{ logo }}" alt="{{ district.name }} logo">{% endif %}
+        <p class="dist-eyebrow">School spirit wear</p>
+        <h1>{{ district.name }}</h1>
+        {% if district.description %}<p class="dist-lead">{{ district.description }}</p>{% endif %}
+        <div class="dist-find">
+            <label for="distFind" class="dist-find-label">Find your school</label>
+            <input type="search" id="distFind" class="dist-find-input" placeholder="Start typing a school name" autocomplete="off">
+            <ul class="dist-find-list" id="distFindList" hidden></ul>
+        </div>
+        <div class="dist-hero-actions">{{ share_button(share, district.name) }}</div>
+    </div>
+</section>
+
+<section class="dist-body">
+    <div class="container dist-wide">
+        {% for key, heading, schools in levels %}
+        <div class="dist-level" id="{{ key }}" data-level>
+            <h2 class="dist-level-title">{{ heading }}</h2>
+            <div class="dist-grid">
+                {% for school in schools %}{{ school_card(school, cards[school.id]) }}{% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <p class="dist-empty">Stores are opening soon. Check back shortly.</p>
+        {% endfor %}
+        <p class="dist-empty" id="distNone" hidden>We could not find that school. Try fewer letters.</p>
+    </div>
+</section>
+{{ share_dialog() }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/district_find.js') }}" defer></script>
+{% endblock %}

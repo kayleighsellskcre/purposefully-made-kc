@@ -29,9 +29,18 @@
             Group order
             <select name="collection" onchange="this.form.submit()">
                 <option value="">All orders</option>
+                {% if ops_scopes %}
+                <optgroup label="School districts">
+                    {% for token, label in ops_scopes %}
+                    <option value="{{ token }}" {% if ops_collection == token %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </optgroup>
+                <optgroup label="Single stores">
+                {% endif %}
                 {% for c in ops_collections %}
                 <option value="{{ c.id }}" {% if ops_collection == (c.id|string) %}selected{% endif %}>{{ c.name }}</option>
                 {% endfor %}
+                {% if ops_scopes %}</optgroup>{% endif %}
             </select>
         </label>
     </form>

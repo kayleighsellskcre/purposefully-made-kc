@@ -1,0 +1,84 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}{{ district.name }} - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+{% from "district/_cards.html" import share_button, share_dialog %}
+<span class="adm-eyebrow">Admin / <a href="{{ url_for('admin.districts') }}">School Districts</a></span>
+<h1 class="ops-title">{{ district.name }}</h1>
+<p class="ops-subtitle">Parents see this at <a href="/org/{{ district.slug }}" target="_blank" rel="noopener">/org/{{ district.slug }}</a>. The short link <strong>{{ share.display }}</strong> never changes, even if you rename the district.</p>
+
+<div class="ops-card bk-card dist-admin-actions">
+    {{ share_button(share, district.name, 'Link, QR and flyer') }}
+    <a class="btn btn-outline btn-sm" href="{{ url_for('admin.district_qr_zip', district_id=district.id) }}">Download all QR codes</a>
+    <a class="btn btn-outline btn-sm" href="{{ url_for('admin.district_report', district_id=district.id) }}">Report and bulk blanks</a>
+    <a class="btn btn-outline btn-sm" href="{{ url_for('admin.production_master', collection=blank_scope) }}">Order blanks for the district</a>
+    <a class="btn btn-outline btn-sm" href="{{ url_for('admin.print_labels', collection=blank_scope) }}">Labels</a>
+</div>
+
+<div class="ops-card bk-card">
+    <h2>District settings</h2>
+    <form method="post" enctype="multipart/form-data" class="bk-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="save">
+        <label>District name <input type="text" name="name" maxlength="200" value="{{ district.name }}"></label>
+        <label>Ordering opens <input type="date" name="opens" value="{{ district.order_opens_at.strftime('%Y-%m-%d') if district.order_opens_at else '' }}"></label>
+        <label>Order by <input type="date" name="deadline" value="{{ district.order_deadline.strftime('%Y-%m-%d') if district.order_deadline else '' }}"></label>
+        <label>Logo <input type="file" name="logo" accept="image/*"></label>
+        <label class="bk-wide">Welcome message <input type="text" name="description" maxlength="300" value="{{ district.description or '' }}"></label>
+        <div class="bk-wide">
+            <button type="submit" class="btn btn-primary">Save</button>
+            <button type="submit" name="action" value="push_window" class="btn btn-outline" onclick="return confirm('Use this window for every store in the district?')">Save and apply the window to every store</button>
+        </div>
+    </form>
+    <p class="bk-note">New stores start with this window. Applying it resets their reminder emails for the new date.</p>
+</div>
+
+{% for key, heading, schools in levels %}
+<h2 class="dist-admin-level">{{ heading }}</h2>
+{% for school in schools %}
+<div class="ops-card bk-card">
+    <div class="dist-admin-school-head">
+        <h3><a href="{{ url_for('admin.district_school', school_id=school.id) }}">{{ school.name }}</a>{% if school.mascot %} <span class="bk-muted">{{ school.mascot }}</span>{% endif %}</h3>
+        <span>
+            <a class="bk-link" href="/org/{{ district.slug }}/{{ school.school_slug }}" target="_blank" rel="noopener">View</a>
+            <a class="bk-link" href="{{ url_for('admin.district_school', school_id=school.id) }}">Settings</a>
+            <a class="bk-link" href="{{ url_for('admin.district_school_qr_zip', school_id=school.id) }}">QR codes</a>
+        </span>
+    </div>
+    <table class="admin-table bk-ledger">
+        <thead><tr><th>Store</th><th>Status</th><th>Order by</th><th></th></tr></thead>
+        <tbody>
+        {% for c in stores[school.id] %}
+        <tr>
+            <td>{{ DS.store_label(c) }}</td>
+            <td>{% if not c.is_active %}Off{% elif c.products %}Live, {{ c.products|length }} product{{ 's' if c.products|length != 1 }}{% else %}<span class="bk-warn">No products yet, hidden</span>{% endif %}</td>
+            <td>{{ c.order_deadline|kc_date('%b %-d') if c.order_deadline else '' }}</td>
+            <td>
+                <a class="bk-link" href="{{ url_for('admin.edit_collection', collection_id=c.id) }}">Edit products</a>
+                <a class="bk-link" href="{{ url_for('admin.district_copy_store', store_id=c.id) }}">Copy to other schools</a>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <form method="post" class="dist-admin-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="add_store"><input type="hidden" name="school_id" value="{{ school.id }}">
+        <input type="text" name="label" maxlength="100" placeholder="Add a store, like Volleyball" aria-label="New store name" required>
+        <button type="submit" class="btn btn-outline btn-sm">Add store</button>
+    </form>
+</div>
+{% endfor %}
+{% endfor %}
+
+<div class="ops-card bk-card">
+    <h2>Add a school</h2>
+    <form method="post" class="bk-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="add_school">
+        <label>School name <input type="text" name="name" required maxlength="200" placeholder="Mill Valley High"></label>
+        <label>Level <select name="level"><option value="high">High school</option><option value="middle">Middle school</option><option value="elementary">Elementary school</option></select></label>
+        <label>Mascot <input type="text" name="mascot" maxlength="120"></label>
+        <label>Stores <small>(commas)</small> <input type="text" name="stores" placeholder="Football, Volleyball"></label>
+        <div class="bk-wide"><button type="submit" class="btn btn-primary">Add school</button></div>
+    </form>
+    <p class="bk-note">School Spirit is added for you.</p>
+</div>
+{{ share_dialog() }}
+{% endblock %}

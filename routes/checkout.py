@@ -552,8 +552,8 @@ def calculate_totals(cart, shipping_method='pickup', *, family_promo=False, ship
     from utils import sales_tax
     taxable = sales_tax.charges_tax(shipping_method, ship_state, ship_zip)
     jurisdiction = sales_tax.jurisdiction_key(shipping_method, ship_state, ship_zip)
-    if taxable and sales_tax.exempt_now():
-        taxable, jurisdiction = False, sales_tax.EXEMPT          # a certificate is on file for this signed-in customer
+    if taxable and (sales_tax.exempt_now() or sales_tax.school_pays_exempt()):
+        taxable, jurisdiction = False, sales_tax.EXEMPT          # a certificate is on file for this customer or the school paying
     rate_percent = sales_tax.rate_percent() if taxable else 0.0
     tax = round(subtotal * rate_percent / 100.0, 2)
     

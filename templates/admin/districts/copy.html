@@ -1,0 +1,21 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Copy {{ label }} - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / <a href="{{ url_for('admin.districts') }}">School Districts</a> / <a href="{{ url_for('admin.district_manage', district_id=district.id) }}">{{ district.name }}</a></span>
+<h1 class="ops-title">Copy {{ label }} to other schools</h1>
+<p class="ops-subtitle">Set a store up once, then reuse it. The products, colors, logos and rules of {{ school.name }} {{ label }} are copied. Each school keeps its own name, links, deadline, delivery and organizer. A school without a {{ label }} store gets one.</p>
+
+<form method="post" class="ops-card bk-card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% for key, heading, schools in levels %}
+    <h2>{{ heading }}</h2>
+    {% for s in schools %}
+    <label class="dist-admin-check"><input type="checkbox" name="school_id" value="{{ s.id }}"> {{ s.name }}</label>
+    {% endfor %}
+    {% else %}
+    <p class="bk-muted">There are no other schools yet.</p>
+    {% endfor %}
+    <p><button type="submit" class="btn btn-primary">Copy</button>
+    <a href="{{ url_for('admin.district_manage', district_id=district.id) }}" class="btn btn-outline">Cancel</a></p>
+</form>
+{% endblock %}

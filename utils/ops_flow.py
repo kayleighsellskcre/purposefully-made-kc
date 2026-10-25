@@ -195,7 +195,14 @@ def template_context():
         collections = Collection.query.order_by(Collection.name).all()
     except Exception:
         collections = []
+    scopes = []
+    try:
+        from utils.districts import scope_options
+        scopes = scope_options() if endpoint in DAILY_ENDPOINTS else []
+    except Exception:
+        scopes = []
     return {
+        'ops_scopes': scopes,
         'ops_show_flow': endpoint in DAILY_ENDPOINTS,
         'ops_flow_steps': steps,
         'ops_collection': collection,

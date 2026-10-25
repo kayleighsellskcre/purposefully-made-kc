@@ -365,6 +365,25 @@ def create_app(config_class=Config):
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS modified_at TIMESTAMP",
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS collection_id INTEGER",
                     "CREATE INDEX IF NOT EXISTS ix_order_item_collection_id ON order_item (collection_id)",
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS short_slug VARCHAR(80)",
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS store_kind VARCHAR(20)",
+                    "ALTER TABLE organization ADD COLUMN IF NOT EXISTS district_id INTEGER REFERENCES district(id)",
+                    "ALTER TABLE organization ADD COLUMN IF NOT EXISTS level VARCHAR(20)",
+                    "ALTER TABLE organization ADD COLUMN IF NOT EXISTS school_slug VARCHAR(120)",
+                    "ALTER TABLE organization ADD COLUMN IF NOT EXISTS short_slug VARCHAR(80)",
+                    "ALTER TABLE organization ADD COLUMN IF NOT EXISTS mascot VARCHAR(120)",
+                    "ALTER TABLE organization ADD COLUMN IF NOT EXISTS primary_color VARCHAR(20)",
+                    "ALTER TABLE organization ADD COLUMN IF NOT EXISTS secondary_color VARCHAR(20)",
+                    "ALTER TABLE organization ADD COLUMN IF NOT EXISTS organizer_name VARCHAR(120)",
+                    "ALTER TABLE organization ADD COLUMN IF NOT EXISTS delivery_mode VARCHAR(20)",
+                    "ALTER TABLE organization ADD COLUMN IF NOT EXISTS order_deadline TIMESTAMP",
+                    "ALTER TABLE organization ADD COLUMN IF NOT EXISTS fundraiser_cents INTEGER DEFAULT 0",
+                    "ALTER TABLE organization ADD COLUMN IF NOT EXISTS fundraiser_paid_cents INTEGER DEFAULT 0",
+                    "ALTER TABLE organization ADD COLUMN IF NOT EXISTS tax_exempt BOOLEAN DEFAULT FALSE",
+                    "ALTER TABLE organization ADD COLUMN IF NOT EXISTS tax_cert_number VARCHAR(80)",
+                    "ALTER TABLE organization ADD COLUMN IF NOT EXISTS tax_cert_url VARCHAR(500)",
+                    "ALTER TABLE organization ADD COLUMN IF NOT EXISTS tax_expires_on DATE",
+                    "ALTER TABLE organization ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0",
                 ]
                 for migration in all_migrations:
                     try:
@@ -590,6 +609,8 @@ def create_app(config_class=Config):
     app.register_blueprint(org_bp)
     app.register_blueprint(sponsored_bp)
     app.register_blueprint(invoice_pay_bp)
+    from routes.districts import district_bp
+    app.register_blueprint(district_bp)
 
     # ── CSRF exemptions ──────────────────────────────────────────────────────
     # Stripe / PayPal webhooks POST with their own signatures, not our CSRF token.

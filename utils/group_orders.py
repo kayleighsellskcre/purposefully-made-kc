@@ -1514,6 +1514,14 @@ def order_counts_by_collection():
 def filter_orders_to_collection(query, collection_id):
     """Narrow any Order query to the orders that have shirts from this store."""
     from models import Order, OrderItem, db
+    if isinstance(collection_id, str) and ':' in collection_id:
+        # A whole district, level or school ("d:3", "l:3:high", "s:7") from the order filters.
+        from utils.districts import collection_ids_for_scope
+        ids = collection_ids_for_scope(collection_id) or [0]
+        return query.filter(db.or_(
+            Order.collection_id.in_(ids),
+            Order.id.in_(db.session.query(OrderItem.order_id).filter(OrderItem.collection_id.in_(ids))),
+        ))
     try:
         collection_id = int(collection_id)
     except (TypeError, ValueError):

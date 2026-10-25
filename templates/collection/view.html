@@ -513,6 +513,10 @@
                  onerror="this.parentElement.hidden = true">
         </div>
         {% endif %}
+        {% if school_ctx %}
+        {% from "district/_cards.html" import crumbs %}
+        {{ crumbs(school_ctx.crumbs) }}
+        {% endif %}
         <span class="eyebrow">{% if org_nav %}{{ org_nav.org.name }}{% else %}Group Order{% endif %}</span>
         {% if fan_page and org_nav %}
         <h1>Fan Wear</h1>
@@ -521,6 +525,12 @@
         <h1>{{ org_nav.current_section.label }}</h1>
         {% else %}
         <h1>{{ collection.name }}</h1>
+        {% endif %}
+        {% if school_ctx %}
+        {% from "district/_cards.html" import share_button, share_dialog %}
+        {% if school_ctx.spirit_url %}<p class="dist-also"><a href="{{ school_ctx.spirit_url }}">Also see School Spirit</a></p>{% endif %}
+        <div class="dist-hero-actions">{{ share_button(school_ctx.share, collection.name) }}</div>
+        {{ share_dialog() }}
         {% endif %}
         {% if collection.description and not (fan_page and org_nav) %}
         <p class="collection-header-subtitle" data-readmore>{{ collection.description }}</p>

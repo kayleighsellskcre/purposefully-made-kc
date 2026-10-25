@@ -127,6 +127,22 @@ def exemption_for(user, today=None):
     return row
 
 
+def school_pays_exempt():
+    """True when the school itself is paying one bulk order (organizer pays) and its certificate is good.
+
+    Parents ordering from a school store are never exempt. Only the school's own payment is.
+    """
+    try:
+        from flask import has_request_context, session
+        if not has_request_context() or not session.get('collection_id'):
+            return False
+        from models import Collection
+        from utils.districts import store_exempt_when_school_pays
+        return store_exempt_when_school_pays(Collection.query.get(session.get('collection_id')))
+    except Exception:
+        return False
+
+
 def exempt_now():
     """True when the signed-in customer making this request is tax exempt. False outside a request."""
     try:
