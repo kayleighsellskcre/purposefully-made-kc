@@ -506,3 +506,43 @@ def tax_exempt_customers():
     rows = TaxExemption.query.order_by(TaxExemption.active.desc(), TaxExemption.organization).all()
     return render_template('admin/books/tax_exempt.html', rows=rows, status=TE.status, filing=TE.filing_settings(),
                            frequencies=TE.FREQUENCIES)
+
+
+# ---- the pickup desk -----------------------------------------------------------------------------
+
+@admin_bp.route('/pickup')
+@admin_required
+def pickup_desk():
+    """Orders waiting at the door, with a search box. A tap hands one over."""
+    from utils import pickup
+    q = (request.args.get('q') or '').strip()
+    return render_template('admin/pickup.html', order=None, q=q, found=pickup.find(q) if q else [], waiting=pickup.ready_for_pickup(),
+                           cash_due=pickup.cash_due)
+
+
+@admin_bp.route('/pickup/<int:order_id>', methods=['GET', 'POST'])
+@admin_required
+def pickup_order(order_id):
+    """One order at the door. The QR code on a pickup label opens this page."""
+    from models import Order
+    from utils import pickup
+    order = db.session.get(Order, order_id)
+    if order is None:
+        flash('That order was not found.', 'error')
+        return redirect(url_for('admin.pickup_desk'))
+    if request.method == 'POST':
+        ok, message = pickup.hand_over(order)
+        flash(message, 'success' if ok else 'error')
+        return redirect(url_for('admin.pickup_desk') if ok else url_for('admin.pickup_order', order_id=order.id))
+    return render_template('admin/pickup.html', order=order, q='', found=[], waiting=[], cash_due=pickup.cash_due,
+                           items=list(order.items), is_pickup=pickup.is_pickup(order))
+
+
+@admin_bp.route('/orders/<int:order_id>/pickup-qr.png')
+@admin_required
+def order_pickup_qr(order_id):
+    """The QR code for an order's bag label: scanning it opens the pickup page."""
+    from utils.invoice_pay import qr_png
+    from utils.mailer import admin_base_url
+    return Response(qr_png(f'{admin_base_url(current_app)}/admin/pickup/{order_id}'), mimetype='image/png',
+                    headers={'Cache-Control': 'private, max-age=86400'})

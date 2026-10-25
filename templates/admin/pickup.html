@@ -1,0 +1,52 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Pickup Desk - Admin - Purposefully Made KC{% endblock %}
+{% block admin_content %}
+<div class="admin-page">
+<div class="container pk-wrap">
+    <span class="adm-eyebrow">Admin / Daily Operations</span>
+    <h1>Pickup Desk</h1>
+
+    {% if order %}
+    <div class="pk-card">
+        <p class="pk-num">{{ order.order_number }}</p>
+        <h2>{{ order.full_name or order.email }}</h2>
+        <p class="pk-muted">{% if order.phone %}{{ order.phone }}{% endif %}{% if order.phone and order.email %} &middot; {% endif %}{{ order.email or '' }}</p>
+        <ul class="pk-items">
+            {% for item in items %}<li>{{ item.quantity }} &times; {{ item.product_name }}{% if item.color %}, {{ item.color }}{% endif %}{% if item.size %}, {{ item.size }}{% endif %}</li>{% endfor %}
+        </ul>
+        {% if order.status in ['completed', 'picked_up', 'shipped'] %}
+            <p class="pk-done">Already handed over.</p>
+        {% elif not is_pickup %}
+            <p class="pk-warn">This is a shipping order, so it is not handed over at pickup.</p>
+        {% elif cash_due(order) %}
+            <p class="pk-due">Collect <strong>${{ '%.2f'|format(order.total) }}</strong> in cash</p>
+            <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-primary pk-btn">Cash received, hand over</button></form>
+        {% elif order.payment_status == 'paid' %}
+            <p class="pk-paid">Paid in full.</p>
+            <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-primary pk-btn">Hand over</button></form>
+        {% else %}
+            <p class="pk-warn">This order has not been paid yet.</p>
+        {% endif %}
+        <p><a href="{{ url_for('admin.order_detail', order_id=order.id) }}">Open the full order</a> &middot; <a href="{{ url_for('admin.pickup_desk') }}">Back to the desk</a></p>
+    </div>
+    {% else %}
+    <form method="get" class="pk-search">
+        <input type="search" name="q" value="{{ q }}" placeholder="Order number, name, email or phone" aria-label="Find an order" autofocus>
+        <button type="submit" class="btn btn-primary">Find</button>
+    </form>
+    {% if q %}
+    <div class="pk-card">
+        <h2>Results for &ldquo;{{ q }}&rdquo;</h2>
+        {% for o in found %}<p class="pk-row"><a href="{{ url_for('admin.pickup_order', order_id=o.id) }}">{{ o.order_number }}</a> {{ o.full_name or o.email }} <span class="pk-muted">${{ '%.2f'|format(o.total) }}{% if cash_due(o) %} &middot; cash due{% endif %}</span></p>
+        {% else %}<p class="pk-muted">No open pickup orders match that.</p>{% endfor %}
+    </div>
+    {% endif %}
+    <div class="pk-card">
+        <h2>Waiting at the door <small>({{ waiting|length }})</small></h2>
+        {% for o in waiting %}<p class="pk-row"><a href="{{ url_for('admin.pickup_order', order_id=o.id) }}">{{ o.order_number }}</a> {{ o.full_name or o.email }} <span class="pk-muted">${{ '%.2f'|format(o.total) }}{% if cash_due(o) %} &middot; cash due{% endif %}</span></p>
+        {% else %}<p class="pk-muted">Nothing is packed and waiting for pickup.</p>{% endfor %}
+    </div>
+    {% endif %}
+</div>
+</div>
+{% endblock %}

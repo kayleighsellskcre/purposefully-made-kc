@@ -188,6 +188,17 @@
     margin-bottom: 0.02in;
 }
 
+.label-cell { position: relative; }
+.label-cell .label-qr {
+    position: absolute;
+    right: 0.06in;
+    bottom: 0.04in;
+    width: 0.42in;
+    height: 0.42in;
+    background: #fff;
+    image-rendering: pixelated;
+}
+
 .label-cell .label-body {
     flex: 1 1 auto;
     min-height: 0;
@@ -464,6 +475,7 @@
         <!-- Filter Card -->
         <div class="pl-filter-card no-print">
             <form method="get" id="filterForm">
+                <label class="pl-qr-option"><input type="checkbox" name="qr" value="1"{% if request.args.get('qr') == '1' %} checked{% endif %}> Add a pickup QR code to pickup labels <small>(scan it with your phone to hand the order over)</small></label>
                 <div class="pl-filter-row">
                     <div class="pl-filter-group">
                         <span class="pl-filter-label">Status</span>
@@ -531,6 +543,8 @@
                             {% set order = orders[order_index] %}
                             <div class="label-cell {% if order.send_home_with_child %}send-home{% elif order.fulfillment_method == 'shipping' %}shipping{% else %}pickup{% endif %}">
                                 <span class="label-order-num">{{ order.order_number }}</span>
+                                {% set qr_on = request.args.get('qr') == '1' and not order.send_home_with_child and order.fulfillment_method != 'shipping' %}
+                                {% if qr_on %}<img class="label-qr" src="{{ url_for('admin.order_pickup_qr', order_id=order.id) }}" alt="Scan to hand over {{ order.order_number }}">{% endif %}
                                 <div class="label-body">
                                     <div class="label-who">
                                     {% if order.send_home_with_child %}
@@ -565,7 +579,7 @@
                                     {% set items = order.label_items or [] %}
                                     {% if items %}
                                     <div class="label-what">
-                                        {% for item in items[:2] %}
+                                        {% for item in (items[:1] if qr_on else items[:2]) %}
                                         <div class="label-item">
                                             <span class="label-item-top">{% if item.qty %}{{ item.qty }}× {% endif %}{% if item.color %}{{ item.color }}{% endif %}{% if item.color and item.size %} · {% endif %}{% if item.size %}{{ item.size }}{% endif %}</span>
                                             {% if item.brand or item.style %}
@@ -576,8 +590,9 @@
                                             {% endif %}
                                         </div>
                                         {% endfor %}
-                                        {% if items|length > 2 %}
-                                        <span class="label-more">+{{ items|length - 2 }} more</span>
+                                        {% set shown = 1 if qr_on else 2 %}
+                                        {% if items|length > shown %}
+                                        <span class="label-more">+{{ items|length - shown }} more</span>
                                         {% endif %}
                                     </div>
                                     {% endif %}

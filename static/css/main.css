@@ -3346,3 +3346,21 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 .bk-check-info .bk-dot { background: #7a9bb5; }
 .bk-checks a { margin-left: 0.4rem; color: var(--terra-cotta); font-weight: 600; }
 .bk-list { margin: 0; padding-left: 1.2rem; line-height: 1.7; font-size: 0.95rem; }
+
+/* Pickup desk */
+.pk-wrap { max-width: 640px; }
+.pk-search { display: flex; gap: 0.5rem; margin: 1rem 0; }
+.pk-search input { flex: 1; min-height: 48px; padding: 0.5rem 0.9rem; border: 1px solid rgba(58, 61, 72, 0.25); border-radius: 10px; font: inherit; font-size: 1rem; }
+.pk-card { background: #fff; border: 1px solid rgba(232, 208, 177, 0.55); border-radius: 16px; padding: 1.25rem 1.4rem; margin-bottom: 1rem; box-shadow: 0 2px 12px rgba(58, 61, 72, 0.04); }
+.pk-card h2 { margin: 0 0 0.4rem; font-size: 1.15rem; }
+.pk-num { margin: 0; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; color: var(--terra-cotta); }
+.pk-muted { color: #7a7c86; font-size: 0.9rem; }
+.pk-items { margin: 0.8rem 0; padding-left: 1.1rem; line-height: 1.7; }
+.pk-due { font-size: 1.2rem; margin: 0.8rem 0; }
+.pk-paid, .pk-done { color: #2e7d5b; font-weight: 600; }
+.pk-warn { color: #a8554a; font-weight: 600; }
+.pk-btn { width: 100%; min-height: 52px; font-size: 1.05rem; }
+.pk-row { margin: 0.35rem 0; }
+.pk-row a { font-weight: 700; margin-right: 0.4rem; }
+.pl-qr-option { display: block; margin-bottom: 1rem; font-size: 0.9rem; }
+.pl-qr-option small { color: #7a7c86; }
