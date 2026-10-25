@@ -3452,3 +3452,7 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 .dist-admin-school-head h3 { margin: 0; }
 .dist-admin-inline { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.9rem; }
 .dist-admin-inline input { flex: 1; min-width: 180px; padding: 0.5rem 0.8rem; border: 1px solid var(--border-color); border-radius: 10px; font: inherit; }
+
+/* Group store countdown ("Closes in 3 days") */
+.closes-pill { align-self: center; display: inline-block; margin: 0.6rem auto 0; padding: 0.3rem 0.95rem; border-radius: 999px; background: rgba(184, 124, 111, 0.14); border: 1px solid rgba(184, 124, 111, 0.4); color: #8a4f43; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.closes-pill-sm { margin-top: 0.4rem; padding: 0.18rem 0.55rem; font-size: 0.64rem; letter-spacing: 0.05em; text-align: center; }

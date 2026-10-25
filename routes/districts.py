@@ -35,6 +35,17 @@ def _store_art(store):
     return None, (sec.icon if sec and sec.icon else '🏷️')
 
 
+def _school_countdown(school):
+    """The soonest "Closes in N days" among a school's live stores."""
+    from utils.group_orders import closing_countdown
+    best = None
+    for store in DS.live_stores(school):
+        text = closing_countdown(store)
+        if text and (best is None or store.order_deadline < best[0]):
+            best = (store.order_deadline, text)
+    return best[1] if best else ''
+
+
 def _logo(obj):
     from utils.cloud_storage import image_url
     return image_url(obj.logo_url) if obj.logo_url else None
@@ -57,7 +68,8 @@ def district_page(d):
             stores = DS.stores_of(school) if admin else DS.live_stores(school)
             cards[school.id] = {'deadline': DS.school_deadline(school, DS.live_stores(school) or stores),
                                 'logo': _logo(school), 'live': bool(DS.live_stores(school)),
-                                'url': DS.school_url(school)}
+                                'url': DS.school_url(school),
+                                'countdown': _school_countdown(school)}
     return render_template('district/district.html', district=d, levels=levels, cards=cards, logo=_logo(d),
                            share=DS.share_info(d), accent=DS.accent, accent2=DS.accent2)
 

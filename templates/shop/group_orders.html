@@ -424,6 +424,7 @@
                             {% endif %}
                             {% if c.order_deadline %}
                             <span>Closes {{ c.order_deadline|kc_date('%b %d') }}</span>
+                            {% if c|closes_in %}<span class="closes-pill closes-pill-sm">{{ c|closes_in }}</span>{% endif %}
                             {% endif %}
                             {% if c.is_password_protected %}
                             <span class="dir-badge locked">🔒 Code required</span>

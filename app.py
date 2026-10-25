@@ -906,6 +906,12 @@ def create_app(config_class=Config):
         from utils.group_orders import format_schedule_date
         return format_schedule_date(dt, fmt)
 
+    @app.template_filter('closes_in')
+    def closes_in_filter(collection):
+        """"Closes in 3 days" for a group store that is close to its deadline, else blank."""
+        from utils.group_orders import closing_countdown
+        return closing_countdown(collection)
+
     @app.template_filter('kc_date_input')
     def kc_date_input_filter(dt):
         """YYYY-MM-DD for date inputs, in Kansas City time."""

@@ -683,6 +683,27 @@ def is_deadline_passed(collection):
     return deadline < datetime.utcnow()
 
 
+COUNTDOWN_DAYS = 14
+
+
+def closing_countdown(collection, today=None):
+    """"Closes in 3 days", "Closes tomorrow" or "Last day to order"; blank when far off, closed or not open yet.
+
+    Counts Kansas City calendar days so a store closing tonight never says "tomorrow".
+    """
+    if not collection or not collection.order_deadline or is_deadline_passed(collection) or is_not_yet_open(collection):
+        return ''
+    from datetime import date
+    if today is None:
+        today = datetime.now(CHICAGO).date()
+    left = (date.fromisoformat(schedule_date_input(collection.order_deadline)) - today).days
+    if left < 0 or left > COUNTDOWN_DAYS:
+        return ''
+    if left == 0:
+        return 'Last day to order'
+    return 'Closes tomorrow' if left == 1 else f'Closes in {left} days'
+
+
 def is_not_yet_open(collection):
     if not collection or not getattr(collection, 'order_opens_at', None):
         return False

@@ -187,6 +187,7 @@
                 <div class="org-card-body">
                     <span class="org-card-name">{{ section.label }}</span>
                     <span class="org-card-sub">Jerseys &amp; uniforms</span>
+                    {% if section.collection|closes_in %}<span class="closes-pill closes-pill-sm">{{ section.collection|closes_in }}</span>{% endif %}
                     <span class="org-card-cta">Shop {{ section.label }}</span>
                 </div>
             </a>

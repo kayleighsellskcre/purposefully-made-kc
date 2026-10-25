@@ -535,6 +535,7 @@
         {% if collection.description and not (fan_page and org_nav) %}
         <p class="collection-header-subtitle" data-readmore>{{ collection.description }}</p>
         {% endif %}
+        {% if collection|closes_in %}<p class="closes-pill" role="status">{{ collection|closes_in }}</p>{% endif %}
         {% if collection.deadline_passed %}
         <p class="collection-header-subtitle" style="margin-top:0.5rem; color:#c0392b; font-weight:600;">
             ⚠ This group order closed on {{ collection.order_deadline|kc_date }}. Ordering is no longer available.
