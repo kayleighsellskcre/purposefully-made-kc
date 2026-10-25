@@ -71,3 +71,27 @@ def paid(inv, amount):
          + (' It is now paid in full.' if doc['balance'] <= 0 else f" Balance left: ${doc['balance']:,.2f}.")],
         button={'label': 'Open invoice', 'url': f"{admin_base_url(app)}/admin/invoices/{inv.id}"},
     )
+
+
+_REMINDER_COPY = {
+    1: ("A quick reminder about your invoice",
+        'Just a friendly reminder that this invoice is still open. If you have already paid, thank you, and please ignore this note.'),
+    2: ("Your invoice is still open",
+        'This invoice is still waiting on a payment. You can pay by card with the button below, or reply and we will sort out Venmo, cash or a check.'),
+    3: ("Checking in on your invoice",
+        'It has been about a month, so we wanted to check in. Is there anything we can help with? Reply any time and we will work it out together.'),
+}
+
+
+def send_reminder(inv, stage):
+    """A gentle reminder that an invoice is still open. Returns True if it was handed to the mailer."""
+    from utils.invoice_pay import pay_url
+    doc = _doc(inv)
+    title, line = _REMINDER_COPY.get(stage, _REMINDER_COPY[1])
+    first = (doc['attn'] or doc['name'] or '').split(' ')[0]
+    return _safe(
+        _send, inv.email, f"{title} ({inv.number})", f"Balance due, ${doc['balance']:,.2f}",
+        [f"Hi{' ' + first if first else ''}! {line}"],
+        button={'label': 'View & pay invoice', 'url': pay_url(inv)},
+        details=[('Invoice', inv.number), ('Total', f"${doc['total']:,.2f}"), ('Balance due', f"${doc['balance']:,.2f}")],
+    )

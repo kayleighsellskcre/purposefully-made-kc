@@ -410,3 +410,39 @@ def equipment_log():
         return Response(out.getvalue(), mimetype='text/csv',
                         headers={'Content-Disposition': f'attachment; filename="equipment-{year}.csv"'})
     return render_template('admin/books/equipment.html', rows=rows, total=total, year=year, years=_years(), money=L.dollars)
+
+
+@admin_bp.route('/operations/receivables', methods=['GET', 'POST'])
+@admin_required
+def receivables():
+    """Open invoices by age, the cash/Venmo/check payment log, and the optional customer reminders."""
+    from models import InvoicePayment, ManualInvoice
+    from utils import receivables as R
+    if request.method == 'POST':
+        action = request.form.get('action')
+        try:
+            if action == 'payment':
+                row = R.record_payment(request.form.get('invoice_id'), request.form.get('amount'), request.form.get('method'),
+                                       paid_on=L.parse_day(request.form.get('day')), note=request.form.get('note'))
+                flash(f'Recorded {L.dollars(row.amount_cents)} by {row.method}. It is on your books.', 'success')
+            elif action == 'remind':
+                inv = db.session.get(ManualInvoice, int(request.form.get('invoice_id') or 0))
+                if inv is None or not R.send_reminder(inv, max(1, R.target_stage(R.age_days(inv)))):
+                    flash('The reminder could not be sent. Check that the invoice has an email address.', 'error')
+                else:
+                    inv.reminder_sent_at = L.datetime.utcnow()
+                    db.session.commit()
+                    flash(f'Reminder emailed to {inv.email}.', 'success')
+            elif action == 'auto':
+                R.set_reminders(request.form.get('on') == '1')
+                flash('Automatic reminders are on.' if R.reminders_on() else 'Automatic reminders are off.', 'success')
+        except ValueError as exc:
+            db.session.rollback()
+            flash(str(exc), 'error')
+        return redirect(url_for('admin.receivables'))
+    L.sync_all()
+    rows = R.open_rows()
+    log = (InvoicePayment.query.order_by(InvoicePayment.paid_on.desc(), InvoicePayment.id.desc()).limit(50).all())
+    return render_template('admin/books/receivables.html', rows=sorted(rows, key=lambda r: -r['age']), buckets=R.buckets(rows),
+                           total=sum(r['balance_cents'] for r in rows), log=log, methods=R.METHODS, auto=R.reminders_on(),
+                           days=R.REMINDER_DAYS, today=L.kc_today().isoformat(), money=L.dollars)

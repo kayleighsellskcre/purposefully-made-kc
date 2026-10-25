@@ -119,6 +119,21 @@ def books_sync_job(app):
             print(f"books sync failed: {exc}", file=sys.stderr, flush=True)
 
 
+def receivables_job(app):
+    """Gentle reminders for open invoices at 7, 14 and 30 days (only when the owner has switched them on)."""
+    with app.app_context():
+        try:
+            with _one_worker_at_a_time(731013) as mine:
+                if not mine:
+                    return
+                from utils.receivables import run_reminders
+                sent = run_reminders()
+                if sent:
+                    print(f"RECEIVABLES: {sent} invoice reminders sent", file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f"invoice reminders failed: {exc}", file=sys.stderr, flush=True)
+
+
 def org_fan_stores_job(app):
     """Give every existing organization its own Fan Wear store (runs once at startup)."""
     with app.app_context():
@@ -657,6 +672,13 @@ def init_scheduler(app):
         )
 
         # Growth dashboard: every Monday at 6:30 AM Chicago, so last week is always there when you sit down
+        scheduler.add_job(
+            func=lambda: receivables_job(app),
+            trigger=CronTrigger(hour=10, minute=30, timezone=CHICAGO),
+            id='receivables_reminders',
+            name='Invoice reminders',
+            replace_existing=True,
+        )
         scheduler.add_job(
             func=lambda: growth_sync_job(app),
             trigger=CronTrigger(day_of_week='mon', hour=6, minute=30, timezone=CHICAGO),

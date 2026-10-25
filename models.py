@@ -1329,6 +1329,8 @@ class ManualInvoice(db.Model):
     paid_at = db.Column(db.DateTime)                    # when money first came in (cash basis books)
     refunded_cents = db.Column(db.BigInteger, default=0)
     refunded_at = db.Column(db.DateTime)
+    reminder_stage = db.Column(db.Integer, default=0)      # 0 none, 1 after 7 days, 2 after 14, 3 after 30
+    reminder_sent_at = db.Column(db.DateTime)
     issued_at = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -1451,3 +1453,17 @@ class RecurringExpense(db.Model):
     start_date = db.Column(db.Date, nullable=False)                      # the first month it applies to
     active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class InvoicePayment(db.Model):
+    """A payment written down by hand (cash, Venmo, check) against an invoice. The log behind the invoice's paid amount."""
+    __tablename__ = 'invoice_payment'
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('manual_invoice.id'), nullable=False, index=True)
+    amount_cents = db.Column(db.BigInteger, nullable=False)
+    method = db.Column(db.String(20), nullable=False)
+    paid_on = db.Column(db.Date, nullable=False)                         # Kansas City day
+    note = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    invoice = db.relationship('ManualInvoice', backref=db.backref('payment_log', lazy='dynamic'))

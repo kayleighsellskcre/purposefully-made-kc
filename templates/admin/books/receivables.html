@@ -1,0 +1,57 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Who Owes You - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Books</span>
+<h1 class="ops-title">Who Owes You</h1>
+<p class="ops-subtitle">Open invoices by age. When someone pays you in cash, Venmo or a check, write it down here and it lands on your books today.</p>
+
+<div class="ops-card bk-card">
+    <h2>{{ money(total) }} <small>owed on {{ rows|length }} open invoice{{ '' if rows|length == 1 else 's' }}</small></h2>
+    <div class="bk-favs">
+        {% for b in buckets %}<span class="bk-tag">{{ b.label }}: {{ money(b.cents) }} ({{ b.count }})</span>{% endfor %}
+    </div>
+    <div class="ops-table-scroll">
+    <table class="admin-table bk-ledger">
+        <thead><tr><th>Invoice</th><th>Customer</th><th class="bk-num">Age</th><th class="bk-num">Owed</th><th>Reminded</th><th>Record a payment</th></tr></thead>
+        <tbody>
+            {% for r in rows %}
+            <tr>
+                <td><a href="{{ url_for('admin.invoice_view', invoice_id=r.inv.id) }}">{{ r.inv.number }}</a></td>
+                <td>{{ r.inv.company or r.inv.customer_name }}{% if r.inv.email %}<br><span class="bk-muted">{{ r.inv.email }}</span>{% endif %}</td>
+                <td class="bk-num">{{ r.age }} days</td>
+                <td class="bk-num">{{ money(r.balance_cents) }}</td>
+                <td>{% if r.inv.reminder_sent_at %}{{ r.inv.reminder_sent_at.strftime('%b %d') }}{% else %}<span class="bk-muted">Not yet</span>{% endif %}
+                    {% if r.inv.email %}<form method="post" class="bk-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="remind"><input type="hidden" name="invoice_id" value="{{ r.inv.id }}"><button type="submit" class="bk-link">Send one now</button></form>{% endif %}</td>
+                <td><form method="post" class="bk-rowform">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="payment"><input type="hidden" name="invoice_id" value="{{ r.inv.id }}">
+                    <input type="number" name="amount" step="0.01" min="0.01" max="{{ '%.2f' % (r.balance_cents / 100) }}" value="{{ '%.2f' % (r.balance_cents / 100) }}" inputmode="decimal" aria-label="Amount paid on {{ r.inv.number }}" required>
+                    <select name="method" aria-label="How it was paid">{% for m in methods %}<option>{{ m }}</option>{% endfor %}</select>
+                    <button type="submit" class="btn btn-outline btn-sm">Save</button></form></td>
+            </tr>
+            {% else %}<tr><td colspan="6" class="bk-muted">Nobody owes you anything right now.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<div class="ops-card bk-card">
+    <h2>Automatic reminders</h2>
+    <p class="bk-muted">When switched on, a customer with an email on their invoice gets one kind reminder at {{ days[0] }}, {{ days[1] }} and {{ days[2] }} days, with a button to pay. They are off until you turn them on.</p>
+    <form method="post" class="bk-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="auto">
+        <input type="hidden" name="on" value="{{ '0' if auto else '1' }}">
+        <button type="submit" class="btn {{ 'btn-outline' if auto else 'btn-primary' }}">{{ 'Reminders are on. Turn off' if auto else 'Turn reminders on' }}</button></form>
+</div>
+
+<div class="ops-card bk-card">
+    <h2>Payments you wrote down</h2>
+    <div class="ops-table-scroll">
+    <table class="admin-table bk-ledger">
+        <thead><tr><th>Date</th><th>Invoice</th><th>How</th><th class="bk-num">Amount</th></tr></thead>
+        <tbody>
+            {% for p in log %}<tr><td>{{ p.paid_on.strftime('%b %d, %Y') }}</td><td><a href="{{ url_for('admin.invoice_view', invoice_id=p.invoice_id) }}">{{ p.invoice.number }}</a></td><td>{{ p.method }}</td><td class="bk-num">{{ money(p.amount_cents) }}</td></tr>
+            {% else %}<tr><td colspan="4" class="bk-muted">Nothing written down yet.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}
