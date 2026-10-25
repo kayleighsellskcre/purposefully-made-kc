@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ heading }}</title>
+</head>
+<body style="margin:0;padding:0;background:#f5f0e8;font-family:'Georgia',serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0e8;padding:40px 16px;">
+  <tr>
+    <td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+        <tr>
+          <td align="center" style="padding-bottom:24px;">
+            <p style="margin:0;font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#b87c6f;">Purposefully Made KC</p>
+            <h1 style="margin:8px 0 0;font-family:'Georgia',serif;font-size:26px;font-weight:400;color:#3a3d48;">{{ heading }}</h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#ffffff;border-radius:14px;padding:28px 32px;">
+            <p style="margin:0 0 20px;font-size:16px;line-height:1.7;color:#3a3d48;font-family:Arial,sans-serif;">{{ intro }}</p>
+            {% for s in sections %}
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border-top:1px solid #eee;">
+              <tr>
+                <td style="padding:14px 0 4px;font-size:15px;font-weight:700;color:{{ '#a8554a' if s.tone == 'warn' else '#3a3d48' }};font-family:Arial,sans-serif;">{{ s.title }} <span style="color:#888;font-weight:400;">({{ s.count }})</span></td>
+              </tr>
+              <tr>
+                <td style="padding:0 0 8px;font-size:14px;line-height:1.7;color:#3a3d48;font-family:Arial,sans-serif;">
+                  {% for line in s.lines %}{{ line }}<br>{% endfor %}
+                </td>
+              </tr>
+              <tr>
+                <td><a href="{{ s.url }}" style="font-size:14px;font-weight:700;color:#b87c6f;text-decoration:none;font-family:Arial,sans-serif;">{{ s.link_label }} &rarr;</a></td>
+              </tr>
+            </table>
+            {% endfor %}
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding-top:20px;font-size:13px;color:#888;font-family:Arial,sans-serif;">
+            Made with purpose, for you.
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

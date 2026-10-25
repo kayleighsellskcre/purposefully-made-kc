@@ -80,6 +80,22 @@ def reports_close_email():
     return redirect(request.referrer or url_for('admin.reports'))
 
 
+@admin_bp.route('/operations/digest-now', methods=['POST'])
+@admin_required
+def digest_now():
+    """Email the morning digest or the Monday summary right now (they also go out by themselves)."""
+    from utils import daily_digest
+    weekly = request.form.get('which') == 'weekly'
+    sent = daily_digest.send_weekly(force=True) if weekly else daily_digest.send_daily(force=True)
+    if sent:
+        flash('Sent. Check your email.', 'success')
+    elif weekly:
+        flash('The email could not be sent. Please check your email settings.', 'error')
+    else:
+        flash('Nothing needs you right now, so there was nothing to send.', 'info')
+    return redirect(request.referrer or url_for('admin.reports'))
+
+
 @admin_bp.route('/operations/reports/fees', methods=['POST'])
 @admin_required
 def reports_fetch_fees():

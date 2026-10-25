@@ -32,6 +32,12 @@
     <button type="submit" class="bk-link">Email me last month&rsquo;s close</button>
     <span>This also arrives by itself on the 2nd of every month, with the profit and loss attached.</span>
 </form>
+<form method="post" action="{{ url_for('admin.digest_now') }}" class="bk-refresh">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" name="which" value="daily" class="bk-link">Email me this morning&rsquo;s digest</button> &middot;
+    <button type="submit" name="which" value="weekly" class="bk-link">Email me the weekly summary</button>
+    <span>The digest arrives at 7 AM, and the weekly summary on Monday mornings.</span>
+</form>
 
 <div class="ops-card bk-card">
     <h2>Profit and loss <small>{{ label }}</small></h2>

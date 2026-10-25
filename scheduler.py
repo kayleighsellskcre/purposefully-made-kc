@@ -119,6 +119,34 @@ def books_sync_job(app):
             print(f"books sync failed: {exc}", file=sys.stderr, flush=True)
 
 
+def daily_digest_job(app):
+    """7 AM: the morning digest (new orders, due soon, overdue, stuck, closing stores, requests, messages)."""
+    with app.app_context():
+        try:
+            with _one_worker_at_a_time(731015) as mine:
+                if not mine:
+                    return
+                from utils.daily_digest import send_daily
+                if send_daily():
+                    print("DAILY DIGEST: emailed", file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f"daily digest failed: {exc}", file=sys.stderr, flush=True)
+
+
+def weekly_digest_job(app):
+    """Monday 7 AM: last week's units, sales and profit, and the blanks to order this week."""
+    with app.app_context():
+        try:
+            with _one_worker_at_a_time(731016) as mine:
+                if not mine:
+                    return
+                from utils.daily_digest import send_weekly
+                if send_weekly():
+                    print("WEEKLY DIGEST: emailed", file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f"weekly digest failed: {exc}", file=sys.stderr, flush=True)
+
+
 def monthly_close_job(app):
     """On the 2nd, email last month's close to the owner (once per month)."""
     with app.app_context():
@@ -686,6 +714,20 @@ def init_scheduler(app):
         )
 
         # Growth dashboard: every Monday at 6:30 AM Chicago, so last week is always there when you sit down
+        scheduler.add_job(
+            func=lambda: daily_digest_job(app),
+            trigger=CronTrigger(hour=7, minute=0, timezone=CHICAGO),
+            id='daily_digest',
+            name='Morning digest',
+            replace_existing=True,
+        )
+        scheduler.add_job(
+            func=lambda: weekly_digest_job(app),
+            trigger=CronTrigger(day_of_week='mon', hour=7, minute=5, timezone=CHICAGO),
+            id='weekly_digest',
+            name='Monday summary',
+            replace_existing=True,
+        )
         scheduler.add_job(
             func=lambda: monthly_close_job(app),
             trigger=CronTrigger(day='2-4', hour=8, minute=0, timezone=CHICAGO),
