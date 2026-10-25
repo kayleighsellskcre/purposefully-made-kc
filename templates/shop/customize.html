@@ -2337,10 +2337,18 @@
                             <div class="logo-gallery-item{% if preset_design and preset_design.id == d.id %} selected{% endif %}"
                                  data-design-id="{{ d.id }}" data-design-url="{{ d.url }}" data-design-title="{{ d.title }}"
                                  data-artwork-fit="{{ d.artwork_fit if d.artwork_fit is not none else '' }}"
-                                 role="button" tabindex="0" title="{{ d.title }}">
+                                 data-has-colors="{{ '1' if d.has_colors else '0' }}"
+                                 data-variants='{{ (d.variants or []) | tojson }}'
+                                 role="button" tabindex="0" title="{{ d.title }}{% if d.has_colors %} ({{ d.color_count }} colors){% endif %}">
                                 <img src="{{ d.url }}" alt="{{ d.title }}" loading="eager" fetchpriority="high" decoding="async" draggable="false">
+                                {%- if d.has_colors %}<span class="logo-gallery-color-dot">{{ d.color_count }}</span>{%- endif -%}
                             </div>
                             {% endfor %}
+                        </div>
+                        {# Linked art colors: the same chooser the design gallery uses #}
+                        <div id="logoColorChooser" class="logo-color-chooser" hidden>
+                            <p class="logo-color-chooser-label">Pick a color for <strong id="logoColorChooserTitle"></strong></p>
+                            <div id="logoColorChooserGrid" class="logo-color-chooser-grid"></div>
                         </div>
                     </div>
                     {% else %}

@@ -1018,7 +1018,8 @@ def customize(product_slug):
                 )
                 return redirect(url_for('collection.view', slug=coll.slug))
         if has_designs:
-            allowed_design_ids = set(collection_design_id_list(coll))
+            from utils.group_orders import with_linked_colors
+            allowed_design_ids = with_linked_colors(collection_design_id_list(coll))
         if has_placements:
             allowed_placements = parse_json_list(coll.allowed_placements)
         lane_config = team_store_config(coll)
@@ -1105,13 +1106,9 @@ def customize(product_slug):
                 _merged = org_fanwear_design_ids(coll)
                 if _merged:
                     from models import Design as _FWDesign
-                    _dm = {d.id: d for d in _FWDesign.query.filter(_FWDesign.id.in_(_merged)).all()}
-                    gallery_designs = [
-                        {'id': i, 'url': _resolve_image_url(_dm[i].file_path),
-                         'title': _dm[i].title or _dm[i].original_filename or 'Design'}
-                        for i in _merged if i in _dm
-                    ]
-                    allowed_design_ids = set(_merged)
+                    from utils.group_orders import design_cards, with_linked_colors
+                    gallery_designs = design_cards(_merged)
+                    allowed_design_ids = with_linked_colors(_merged)
                     collection_restricted = collection_restricted or bool(_merged)
             elif uniform_logo_locked:
                 gallery_designs = []

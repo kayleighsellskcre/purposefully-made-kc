@@ -1381,23 +1381,67 @@ def collection_has_products(collection):
     ).first() is not None
 
 
-def load_collection_designs(collection):
-    """Designs the team can pick, including private uploads (not just the public gallery)."""
-    ids = allowed_design_ids(collection)
+def design_cards(ids):
+    """One card per design family, in the order of ``ids``.
+
+    Color versions linked in the design gallery (a main design plus children that point at it) are
+    one card with a ``variants`` list, so a shopper picks the art color the same way as in the gallery.
+    A design with no linked colors is a plain card, as before.
+    """
+    ids = [i for i in ids if i]
     if not ids:
         return []
-    designs = Design.query.filter(Design.id.in_(ids)).all()
-    by_id = {d.id: d for d in designs}
-    ordered = [by_id[i] for i in ids if i in by_id]
     from utils.cloud_storage import image_url as resolve_image_url
-    return [
-        {
-            'id': d.id,
-            'url': resolve_image_url(d.file_path),
-            'title': (d.title or d.original_filename or 'Design'),
-        }
-        for d in ordered
-    ]
+    designs = {d.id: d for d in Design.query.filter(Design.id.in_(ids)).all()}
+    parent_ids = {designs[i].parent_design_id or i for i in ids if i in designs}
+    children = Design.query.filter(Design.parent_design_id.in_(parent_ids)).order_by(Design.id.asc()).all() if parent_ids else []
+    mains = {d.id: d for d in Design.query.filter(Design.id.in_(parent_ids)).all()}
+    family = {}
+    for child in children:
+        family.setdefault(child.parent_design_id, []).append(child)
+    cards, seen = [], set()
+    for i in ids:
+        d = designs.get(i)
+        if d is None:
+            continue
+        root_id = d.parent_design_id or d.id
+        if root_id in seen:
+            continue
+        seen.add(root_id)
+        root = mains.get(root_id) or d
+        kids = sorted(family.get(root.id, []), key=lambda c: ((c.variant_label or 'zzz').lower(), c.id))
+        options = [root] + kids
+        title = root.title or root.original_filename or 'Design'
+        card = {'id': root.id, 'url': resolve_image_url(root.file_path), 'title': title}
+        if kids:
+            card.update({
+                'variants': [{'id': o.id, 'url': resolve_image_url(o.file_path),
+                              'label': (o.variant_label or ('Default' if n == 0 else f'Color {n + 1}'))}
+                             for n, o in enumerate(options)],
+                'has_colors': True, 'color_count': len(options),
+            })
+        cards.append(card)
+    return cards
+
+
+def with_linked_colors(ids):
+    """``ids`` plus every color version linked to those designs (so any color can be ordered)."""
+    ids = [i for i in ids if i]
+    if not ids:
+        return set()
+    out = set(ids)
+    rows = Design.query.filter(db.or_(Design.id.in_(ids), Design.parent_design_id.in_(ids))).all()
+    out.update(r.id for r in rows)
+    roots = {r.parent_design_id for r in rows if r.parent_design_id}
+    if roots:
+        out.update(r.id for r in Design.query.filter(Design.parent_design_id.in_(roots)).all())
+        out.update(roots)
+    return out
+
+
+def load_collection_designs(collection):
+    """Designs the team can pick, including private uploads (not just the public gallery)."""
+    return design_cards(allowed_design_ids(collection))
 
 
 def design_allowed_for_collection(design, collection):
@@ -1406,7 +1450,10 @@ def design_allowed_for_collection(design, collection):
     if design.id in allowed_design_ids(collection):
         return True
     # Org Fan Wear page: designs uploaded on any team store are fair game.
-    return design.id in org_fanwear_design_ids(collection)
+    if design.id in org_fanwear_design_ids(collection):
+        return True
+    # A color version linked (in the design gallery) to an allowed design is allowed too.
+    return design.id in with_linked_colors(allowed_design_ids(collection) + list(org_fanwear_design_ids(collection)))
 
 
 def session_collection_id():
