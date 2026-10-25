@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Track My Order - Purposefully Made KC{% endblock %}
+{% block meta_description %}See where your order is with your order number and email. No account needed.{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <span class="eyebrow">Your order</span>
+        <h1>Track My Order</h1>
+        <p class="lead">Type the order number from your confirmation email and the email you used. No account needed.</p>
+    </div>
+</div>
+
+<section class="track-body">
+    <div class="container track-narrow">
+        <form method="post" class="track-form" autocomplete="on">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label for="trackNumber">Order number</label>
+            <input type="text" id="trackNumber" name="order_number" required maxlength="60" value="{{ number }}"
+                   placeholder="PMKC20261025AB12CD34" autocapitalize="characters" autocomplete="off">
+            <label for="trackEmail">Email on the order</label>
+            <input type="email" id="trackEmail" name="email" required maxlength="120" value="{{ email }}" autocomplete="email">
+            <button type="submit" class="btn btn-primary">Find my order</button>
+        </form>
+
+        {% if not_found %}
+        <div class="track-card track-note" role="alert">
+            <p>We could not find an order with that number and email. Check them against your confirmation email, or
+               <a href="{{ url_for('main.contact') }}">send us a message</a> and we will help.</p>
+        </div>
+        {% endif %}
+
+        {% if result %}
+        <div class="track-card" aria-live="polite">
+            <p class="track-order-no">Order {{ result.order.order_number }}</p>
+            <h2>{{ result.headline }}</h2>
+            {% if not result.cancelled %}
+            <ol class="track-steps">
+                {% for step in result['steps'] %}
+                <li class="track-step track-{{ step.state }}"{% if step.state == 'current' %} aria-current="step"{% endif %}>
+                    <span class="track-dot" aria-hidden="true"></span>
+                    <span class="track-label">{{ step.label }}{% if step.state == 'done' %}<span class="visually-hidden"> (done)</span>{% endif %}</span>
+                </li>
+                {% endfor %}
+            </ol>
+            {% endif %}
+            {% if result.details %}
+            <dl class="track-details">
+                {% for label, value in result.details %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}
+            </dl>
+            {% endif %}
+            {% if result.tracking_url %}<a class="btn btn-outline btn-sm" href="{{ result.tracking_url }}" target="_blank" rel="noopener">Track the package</a>{% endif %}
+            <p class="track-foot">Questions? Just <a href="{{ url_for('main.contact') }}">send us a message</a>.</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

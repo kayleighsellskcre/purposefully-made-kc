@@ -89,6 +89,29 @@ def about():
     """About page"""
     return render_template('about.html', owner=_owner())
 
+@main_bp.route('/track', methods=['GET', 'POST'])
+# Public: it looks orders up, so cap the guesses. Viewing the form is never counted.
+@post_only("20 per hour")
+def track_order():
+    """See where an order is with the order number and the email on it. Nothing to sign in to."""
+    from utils import order_tracking as T
+    number = email = ''
+    result, not_found = None, False
+    if request.method == 'POST':
+        number = (request.form.get('order_number') or '').strip()[:60]
+        email = (request.form.get('email') or '').strip()[:120]
+        order = T.find_order(number, email)
+        if order is None:
+            not_found = True
+        else:
+            result = T.summary(order)
+    resp = Response(render_template('track_order.html', number=number, email=email, result=result,
+                                    not_found=not_found))
+    resp.headers['Cache-Control'] = 'no-store'
+    resp.headers['X-Robots-Tag'] = 'noindex'
+    return resp
+
+
 @main_bp.route('/contact', methods=['GET', 'POST'])
 # Public, unauthenticated, and it sends an email on every POST. Without a limit
 # it is a relay into the owner's inbox and burns the mail provider's quota.
