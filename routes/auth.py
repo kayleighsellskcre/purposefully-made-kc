@@ -14,7 +14,7 @@ def _safe_next_path(value):
         return None
     value = value.strip()
     parsed = urlparse(value)
-    if (not value.startswith('/') or value.startswith('//') or '\\\\' in value
+    if (not value.startswith('/') or value.startswith('//') or '\\' in value
             or any(ord(char) < 32 for char in value) or parsed.scheme or parsed.netloc):
         return None
     return value
