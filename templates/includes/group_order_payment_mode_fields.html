@@ -1,30 +1,30 @@
-{% set _pm = (collection.payment_mode if collection is defined and collection else none) or ('company_sponsored' if request.args.get('mode') == 'company' else 'each_pays') %}
+{% set _pm = (collection.payment_mode if collection is defined and collection else none) or ('company_sponsored' if request.args.get('mode') in ('company', 'amount') else 'organizer_pays' if request.args.get('mode') == 'whole' else 'each_pays') %}
 {% set _spi = (collection.sponsor_items_per_person if collection is defined and collection else none) or 1 %}
 {% set _spb = (collection.sponsor_budget_per_person if collection is defined and collection else none) %}
 {% set _spm = (collection.sponsor_message if collection is defined and collection else none) %}
 {% set _expected = (collection.expected_count if collection is defined and collection else none) %}
 <div class="form-group payment-mode-field" id="paymentModeField">
-    <span class="form-label-text">How will this order be paid for?</span>
+    <span class="form-label-text">How will your group order be paid for?</span>
     <div class="payment-mode-choices">
         <label class="payment-mode-choice">
             <input type="radio" name="payment_mode" value="each_pays" {% if _pm not in ('organizer_pays', 'company_sponsored') %}checked{% endif %}>
             <span>
-                <strong>Everyone pays their own way</strong>
-                <small>Each person picks their size and checks out on their own.</small>
+                <strong>Everyone Pays Individually</strong>
+                <small>Each person selects their items and pays for their own order at checkout.</small>
             </span>
         </label>
         <label class="payment-mode-choice">
             <input type="radio" name="payment_mode" value="organizer_pays" {% if _pm == 'organizer_pays' %}checked{% endif %}>
             <span>
-                <strong>I'm paying for the whole group</strong>
-                <small>Your link just collects each person's name and size. You pay once for everyone.</small>
+                <strong>The Entire Order Is Covered</strong>
+                <small>One person or organization pays for everyone's selections in a single payment.</small>
             </span>
         </label>
         <label class="payment-mode-choice">
             <input type="radio" name="payment_mode" value="company_sponsored" {% if _pm == 'company_sponsored' %}checked{% endif %}>
             <span>
-                <strong>A company is covering it</strong>
-                <small>The company pays for 1 or more items per person. Each person picks their item and it is counted automatically. The company pays one invoice before we print.</small>
+                <strong>A Set Amount Is Covered</strong>
+                <small>An organizer covers a certain number of items or a set allowance per person. Individuals can purchase additional items themselves.</small>
             </span>
         </label>
     </div>

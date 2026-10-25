@@ -112,7 +112,7 @@ def test_group_orders_page_lists_open_orders_before_the_explanations(client, see
     html = client.get('/shop/group-orders').get_data(as_text=True)
     assert html.index('id="open-orders"') < html.index('class="go-help"')
     assert 'class="cta-section"' not in html and 'Ready to get started' not in html     # the repeat block is gone
-    assert 'Everyone pays their own' in html and 'Company covers it' in html           # the two ways to order
+    assert all(name in html for name in ('Everyone Pays Individually', 'The Entire Order Is Covered', 'A Set Amount Is Covered'))
     assert 'href="#open-orders"' in html                         # "Find your group"
 
 
@@ -132,3 +132,14 @@ def test_group_orders_explanations_start_open_when_nothing_is_open(app, client, 
     tag = html[html.index('<details class="go-help"'):].split('>')[0]
     assert ' open' in tag
     assert 'href="#open-orders"' not in html
+
+
+def test_each_way_to_pay_starts_the_form_with_that_choice_selected(client, customer_client, seed):
+    html = customer_client.get('/shop/group-orders').get_data(as_text=True)
+    assert html.count('Start a group order') == 3
+    assert '/shop/group-orders/create?mode=whole' in html and '/shop/group-orders/create?mode=amount' in html
+    for mode, checked in (('', 'each_pays'), ('?mode=whole', 'organizer_pays'), ('?mode=amount', 'company_sponsored'),
+                          ('?mode=company', 'company_sponsored')):
+        page = customer_client.get('/shop/group-orders/create' + mode).get_data(as_text=True)
+        assert f'value="{checked}" checked' in page, mode
+    assert 'Everyone Pays Individually' in page and 'An organizer covers a certain number of items' in page

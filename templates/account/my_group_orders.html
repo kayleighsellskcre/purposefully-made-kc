@@ -55,11 +55,11 @@
                                 <span style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:rgba(39,174,96,0.12);color:#1e8449;padding:0.2rem 0.55rem;border-radius:20px;">Active</span>
                                 {% endif %}
                                 {% if c.payment_mode == 'company_sponsored' %}
-                                <span style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:rgba(184,124,111,0.15);color:#8a5a50;padding:0.2rem 0.55rem;border-radius:20px;" title="A company covers each person's item. You approve requests and pay one invoice.">Company sponsored</span>
+                                <span style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:rgba(184,124,111,0.15);color:#8a5a50;padding:0.2rem 0.55rem;border-radius:20px;" title="A company covers each person's item. You approve requests and pay one invoice.">Set amount covered</span>
                                 {% elif c.payment_mode == 'organizer_pays' %}
-                                <span style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:rgba(184,124,111,0.15);color:#8a5a50;padding:0.2rem 0.55rem;border-radius:20px;" title="The link only collects sizes. You pay once for everyone.">You pay for the group</span>
+                                <span style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:rgba(184,124,111,0.15);color:#8a5a50;padding:0.2rem 0.55rem;border-radius:20px;" title="The link only collects sizes. You pay once for everyone.">Entire order covered</span>
                                 {% else %}
-                                <span style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:rgba(58,61,72,0.07);color:#555;padding:0.2rem 0.55rem;border-radius:20px;" title="Each person checks out and pays for their own item.">Each person pays</span>
+                                <span style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:rgba(58,61,72,0.07);color:#555;padding:0.2rem 0.55rem;border-radius:20px;" title="Each person checks out and pays for their own item.">Pays individually</span>
                                 {% endif %}
                             </div>
                             <p style="font-size:0.85rem;color:var(--text-secondary);margin:0;">

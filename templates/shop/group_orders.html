@@ -331,16 +331,24 @@
 <section class="group-orders-content">
     <div class="container">
         <div class="go-choose">
+            {% set _start_each = url_for('shop.create_group_order') %}
+            {% set _start_whole = url_for('shop.create_group_order', mode='whole') %}
+            {% set _start_amount = url_for('shop.create_group_order', mode='amount') %}
             <div class="go-option">
-                <h2 class="go-option-title">Everyone pays their own</h2>
-                <p>You pick the styles and the logo. Everyone opens your link, chooses a size and pays for their own. We print and sort the whole order.</p>
-                {% if current_user.is_authenticated %}<a href="{{ url_for('shop.create_group_order') }}" class="btn btn-primary">Start a group order</a>
-                {% else %}<a href="{{ url_for('auth.login') }}?next={{ url_for('shop.create_group_order') }}" class="btn btn-primary">Start a group order</a>{% endif %}
+                <h2 class="go-option-title">Everyone Pays Individually</h2>
+                <p>Each person selects their items and pays for their own order at checkout. We print and sort the whole order.</p>
+                <a href="{{ _start_each if current_user.is_authenticated else url_for('auth.login') ~ '?next=' ~ _start_each }}" class="btn btn-primary">Start a group order</a>
             </div>
             <div class="go-option">
-                <h2 class="go-option-title">Company covers it</h2>
-                <p>Your company covers a set number of items per person and pays one invoice. Anyone who wants extras pays for those themselves.</p>
-                <a href="{{ url_for('shop.company_apparel') }}" class="btn btn-outline">See Company Apparel</a>
+                <h2 class="go-option-title">The Entire Order Is Covered</h2>
+                <p>One person or organization pays for everyone's selections in a single payment.</p>
+                <a href="{{ _start_whole if current_user.is_authenticated else url_for('auth.login') ~ '?next=' ~ _start_whole }}" class="btn btn-primary">Start a group order</a>
+            </div>
+            <div class="go-option">
+                <h2 class="go-option-title">A Set Amount Is Covered</h2>
+                <p>An organizer covers a certain number of items or a set allowance per person. Individuals can purchase additional items themselves.</p>
+                <a href="{{ _start_amount if current_user.is_authenticated else url_for('auth.login') ~ '?next=' ~ _start_amount }}" class="btn btn-primary">Start a group order</a>
+                <a href="{{ url_for('shop.company_apparel') }}" class="go-option-link">Covering a team at work? See Company Apparel</a>
             </div>
         </div>
 

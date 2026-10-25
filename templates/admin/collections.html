@@ -42,11 +42,11 @@
                 </div>
                 <div class="collection-badges">
                     {% if collection.payment_mode == 'company_sponsored' %}
-                    <span class="badge badge-pay-organizer">Company sponsored</span>
+                    <span class="badge badge-pay-organizer">Set amount covered</span>
                     {% elif collection.payment_mode == 'organizer_pays' %}
-                    <span class="badge badge-pay-organizer">Organizer pays</span>
+                    <span class="badge badge-pay-organizer">Entire order covered</span>
                     {% else %}
-                    <span class="badge badge-pay-each">Each person pays</span>
+                    <span class="badge badge-pay-each">Pays individually</span>
                     {% endif %}
                     {% if collection.restrict_options %}
                     <span class="badge badge-restricted">✦ Curated</span>

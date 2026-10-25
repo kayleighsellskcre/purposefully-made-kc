@@ -59,9 +59,9 @@ def _submit(client, slug, first='Ava', last='Lopez', size='M', **extra):
 
 def test_create_form_asks_how_the_order_is_paid_for(customer_client):
     html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
-    assert 'How will this order be paid for?' in html
+    assert 'How will your group order be paid for?' in html
     assert 'value="each_pays" checked' in html
-    assert "I'm paying for the whole group" in html
+    assert 'The Entire Order Is Covered' in html
 
 
 def test_new_store_defaults_to_each_person_paying(customer_client, seed, app):
@@ -357,12 +357,12 @@ def test_organizer_can_pay_after_the_size_deadline(guest, seed, app, login):
 
 def test_admin_and_account_lists_show_the_payment_mode(admin_client, seed, app):
     html = admin_client.get('/admin/collections').get_data(as_text=True)
-    assert 'Each person pays' in html
+    assert 'Pays individually' in html
     _make_roster_store(app, seed)
     html = admin_client.get('/admin/collections').get_data(as_text=True)
-    assert 'Organizer pays' in html
+    assert 'Entire order covered' in html
     mine = admin_client.get('/account/group-orders').get_data(as_text=True)
-    assert 'You pay for the group' in mine
+    assert 'Entire order covered' in mine
     assert '0 of 3 responded' in mine
 
 

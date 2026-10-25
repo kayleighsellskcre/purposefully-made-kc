@@ -411,7 +411,7 @@ def test_stripe_webhook_pays_the_invoice(app, seed, monkeypatch):
 def test_edit_form_offers_the_company_option(seed, app):
     admin_client = _login_as(app, 'admin-test@example.com')
     html = admin_client.get(f'/admin/collections/{seed["collection_id"]}/edit').get_data(as_text=True)
-    assert 'A company is covering it' in html
+    assert 'A Set Amount Is Covered' in html
     assert 'name="sponsor_items_per_person"' in html
 
 
