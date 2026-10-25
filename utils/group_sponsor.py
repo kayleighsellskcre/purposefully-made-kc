@@ -486,7 +486,7 @@ def requests_csv(collection) -> str:
     buf = io.StringIO()
     out = csv.writer(buf)
     out.writerow(['Name', 'Email', 'Phone', 'Item', 'Color', 'Size',
-                  'Company pays', 'Employee pays', 'Status', 'How they get it'])
+                  'Sponsor covers', 'Shopper pays', 'Status', 'How they get it'])
     labels = {'approved': 'Counted', 'pending': 'Counted', 'invoiced': 'On invoice',
               'converted': 'In production', 'rejected': 'Removed'}
     for r in rows:
