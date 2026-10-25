@@ -7,6 +7,23 @@ import os
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
+
+def _safe_next_path(value):
+    """Allow only same-site paths for post-auth redirects."""
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    parsed = urlparse(value)
+    if not value.startswith('/') or value.startswith('//') or parsed.scheme or parsed.netloc:
+        return None
+    return value
+
+
+def _auth_url(endpoint):
+    """Keep a safe requested destination through auth validation redirects."""
+    next_path = _safe_next_path(request.values.get('next'))
+    return url_for(endpoint, next=next_path) if next_path else url_for(endpoint)
+
 # Counting POSTs only. These routes answer GET and POST from one view, so the
 # previous bare limit meant simply loading the sign-in page ten times in a
 # minute locked a customer out of a form they had not yet submitted.
@@ -141,7 +158,7 @@ def _start_fresh_login_session():
 @_rate_limit("10 per minute")
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('main.index'))
+        return redirect(_safe_next_path(request.args.get('next')) or url_for('main.index'))
 
     if request.method == 'POST':
         email = (request.form.get('email') or '').strip().lower()
@@ -150,7 +167,7 @@ def login():
 
         # Generic message regardless of whether the user exists (prevents user enumeration)
         _bad = lambda: (flash('Invalid email or password. Please try again.', 'error'),
-                        redirect(url_for('auth.login')))[1]
+                        redirect(_auth_url('auth.login')))[1]
 
         user = User.query.filter(db.func.lower(User.email) == email).first()
 
@@ -162,7 +179,7 @@ def login():
         if user.is_locked and email != admin_email:
             flash('Your account is temporarily locked due to too many failed attempts. '
                   'Please wait 15 minutes and try again.', 'error')
-            return redirect(url_for('auth.login'))
+            return redirect(_auth_url('auth.login'))
         # Auto-clear any stale lockout on the admin account so it never gets
         # permanently blocked by automated attempts or AI-assistant retries.
         if email == admin_email and user.is_locked:
@@ -177,7 +194,7 @@ def login():
             else:
                 remaining = 5 - (user.failed_logins or 0)
                 flash(f'Invalid email or password. {remaining} attempt{"s" if remaining != 1 else ""} remaining before lockout.', 'error')
-            return redirect(url_for('auth.login'))
+            return redirect(_auth_url('auth.login'))
 
         # Successful login — reset lockout counter
         user.reset_login_attempts()
@@ -197,8 +214,8 @@ def login():
         if claimed:
             db.session.commit()
 
-        next_page = request.args.get('next')
-        if not next_page or urlparse(next_page).netloc != '':
+        next_page = _safe_next_path(request.values.get('next'))
+        if not next_page:
             next_page = url_for('account.my_group_orders') if claimed else url_for('main.index')
 
         flash(f'Welcome back, {user.first_name or user.email}!', 'success')
@@ -216,7 +233,7 @@ def login():
 @_rate_limit("5 per hour")
 def register():
     if current_user.is_authenticated:
-        return redirect(url_for('main.index'))
+        return redirect(_safe_next_path(request.args.get('next')) or url_for('main.index'))
     
     if request.method == 'POST':
         password = request.form.get('password')
@@ -228,24 +245,24 @@ def register():
         email, email_error = _clean_email(request.form.get('email'))
         if email_error:
             flash(email_error, 'error')
-            return redirect(url_for('auth.register'))
+            return redirect(_auth_url('auth.register'))
 
         if not password:
             flash('Please choose a password.', 'error')
-            return redirect(url_for('auth.register'))
+            return redirect(_auth_url('auth.register'))
         
         if password != confirm_password:
             flash('Passwords do not match', 'error')
-            return redirect(url_for('auth.register'))
+            return redirect(_auth_url('auth.register'))
         
         if len(password) < 8:
             flash('Password must be at least 8 characters long', 'error')
-            return redirect(url_for('auth.register'))
+            return redirect(_auth_url('auth.register'))
         
         # Case-insensitively, to match how login looks an account up.
         if User.query.filter(db.func.lower(User.email) == email).first():
             flash('Email already registered', 'error')
-            return redirect(url_for('auth.register'))
+            return redirect(_auth_url('auth.register'))
         
         # Create new user
         admin_email = os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com'
@@ -275,6 +292,10 @@ def register():
                 'A group order is ready for you to finish. You can edit it from My Group Orders.',
                 'success',
             )
+        next_page = _safe_next_path(request.values.get('next'))
+        if next_page:
+            return redirect(next_page)
+        if claimed:
             return redirect(url_for('account.my_group_orders'))
         return redirect(url_for('main.index'))
     

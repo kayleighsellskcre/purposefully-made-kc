@@ -33,7 +33,7 @@ def is_organizer_pays(collection) -> bool:
 def payment_mode_label(collection) -> str:
     """Short label for admin and account lists."""
     if getattr(collection, 'payment_mode', None) == COMPANY_SPONSORED:
-        return 'Company sponsored'
+        return 'Sponsor covers part of the order'
     return 'Organizer pays' if is_organizer_pays(collection) else 'Each person pays'
 
 
@@ -66,14 +66,14 @@ def apply_payment_mode_from_form(collection):
             and _has_orders(collection)
         ):
             return False, ('Shoppers have already placed orders on this group order, so it '
-                           'cannot switch to a company paying. Start a new group order for that instead.')
+                           'cannot switch to sponsor coverage. Start a new group order for that instead.')
         if (
             previous == COMPANY_SPONSORED
             and raw != COMPANY_SPONSORED
             and getattr(collection, 'id', None)
             and _has_sponsor_requests(collection)
         ):
-            return False, ('Requests have already come in for the company, so this group order '
+            return False, ('Requests have already come in for the sponsor, so this group order '
                            'cannot switch to another way of paying.')
         collection.payment_mode = raw
         from utils.group_sponsor import apply_sponsor_settings_from_form

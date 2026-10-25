@@ -7,8 +7,8 @@
         <div class="sp-card">
             <span class="sp-eyebrow">{{ collection.name }}</span>
             <h1 class="sp-title">Almost done</h1>
-            <p class="sp-lead">{{ collection.sponsor_message or 'Your company is covering your apparel.' }}
-                {% if overage_total %}Your company covers {{ collection.sponsor_items_per_person or 1 }} item{{ 's' if (collection.sponsor_items_per_person or 1) != 1 }}. You pay for the rest.{% else %}There is nothing to pay.{% endif %}</p>
+            <p class="sp-lead">{{ collection.sponsor_message or 'Your sponsor is covering part of your order.' }}
+                {% if overage_total %}Your sponsor covers {{ collection.sponsor_items_per_person or 1 }} item{{ 's' if (collection.sponsor_items_per_person or 1) != 1 }}. You pay for the rest.{% else %}There is nothing to pay.{% endif %}</p>
 
             <ul class="sp-items">
                 {% for item in lines %}
@@ -16,11 +16,11 @@
                     <strong>{{ item.get('product_name') or 'Item' }}</strong>
                     <span>{{ item.color }} · size {{ item.size }}</span>
                     {% if item.employee_part == 0 %}
-                    <span class="sp-covered">Covered by your company</span>
+                    <span class="sp-covered">Covered by your sponsor</span>
                     {% elif item.company_part == 0 %}
                     <span class="sp-you">You pay ${{ '%.2f'|format(item.employee_part) }}</span>
                     {% else %}
-                    <span class="sp-you">Company covers ${{ '%.2f'|format(item.company_part) }} · you pay ${{ '%.2f'|format(item.employee_part) }}</span>
+                    <span class="sp-you">Sponsor covers ${{ '%.2f'|format(item.company_part) }} · you pay ${{ '%.2f'|format(item.employee_part) }}</span>
                     {% endif %}
                 </li>
                 {% endfor %}
@@ -71,7 +71,7 @@
                 </div>
 
                 <button type="submit" class="btn btn-primary sp-submit">{% if overage_total %}Continue to payment{% else %}Send my request{% endif %}</button>
-                <p class="sp-note">Nothing is printed until your company's invoice is paid.{% if overage_total %} If your organizer removes your request, you are refunded.{% endif %}</p>
+                <p class="sp-note">Nothing is printed until your sponsor's invoice is paid.{% if overage_total %} If your organizer removes your request, you are refunded.{% endif %}</p>
                 <p class="sp-note"><a href="{{ url_for('cart.index') }}">Change my items</a></p>
             </form>
         </div>

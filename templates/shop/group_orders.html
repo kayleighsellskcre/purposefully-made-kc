@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Group Orders &amp; Spirit Wear - Purposefully Made KC{% endblock %}
-{% block meta_description %}Set up a group order for your team, school, church or business. Everyone picks their own size and pays for themselves, and we print and sort the whole order.{% endblock %}
+{% block meta_description %}Set up a group order for your team, school, church or business. Choose whether shoppers pay individually, an organizer pays for the roster, or a sponsor covers part of the order.{% endblock %}
 {% block extra_css %}
 <style>
 .group-orders-content {
@@ -336,17 +336,17 @@
             {% set _start_amount = url_for('shop.create_group_order', mode='amount') %}
             <div class="go-option">
                 <h2 class="go-option-title">Everyone Pays Individually</h2>
-                <p>Each person selects their items and pays for their own order at checkout. We print and sort the whole order.</p>
+                <p>Each person chooses from the options you offer and pays for their own order at checkout.</p>
                 <a href="{{ _start_each if current_user.is_authenticated else url_for('auth.login') ~ '?next=' ~ _start_each }}" class="btn btn-primary">Start a group order</a>
             </div>
             <div class="go-option">
                 <h2 class="go-option-title">The Entire Order Is Covered</h2>
-                <p>One person or organization pays for everyone's selections in a single payment.</p>
+                <p>Choose one style, color and design for the group. Each person adds their name and size; you pay once for the full roster.</p>
                 <a href="{{ _start_whole if current_user.is_authenticated else url_for('auth.login') ~ '?next=' ~ _start_whole }}" class="btn btn-primary">Start a group order</a>
             </div>
             <div class="go-option">
-                <h2 class="go-option-title">A Set Amount Is Covered</h2>
-                <p>An organizer covers a certain number of items or a set allowance per person. Individuals can purchase additional items themselves.</p>
+                <h2 class="go-option-title">A Sponsor Covers Items or an Allowance</h2>
+                <p>Choose how many items the sponsor covers per person and, if needed, a maximum contribution per item. Shoppers pay for extras and any amount above the limit.</p>
                 <a href="{{ _start_amount if current_user.is_authenticated else url_for('auth.login') ~ '?next=' ~ _start_amount }}" class="btn btn-primary">Start a group order</a>
                 <a href="{{ url_for('shop.company_apparel') }}" class="go-option-link">Covering a team at work? See Company Apparel</a>
             </div>
@@ -355,7 +355,7 @@
         {% if open_collections or open_orgs %}
         <div class="directory-section" id="open-orders">
             <h2>Open Group Orders</h2>
-            <p class="section-sub">Join an existing order: pick your size, pay your own way, and you're done.</p>
+            <p class="section-sub">Find your group, choose your size, and follow the store's payment instructions.</p>
 
             {% if (open_collections|length + open_orgs|length) > 3 %}
             <div class="dir-search-wrap">
@@ -470,8 +470,8 @@
             </div>
             <div class="step-card">
                 <div class="step-num">3</div>
-                <h3>Everyone orders their own</h3>
-                <p>Team members choose their size and pay individually. You get an order summary spreadsheet when it closes.</p>
+                <h3>Everyone responds to the link</h3>
+                <p>Shoppers follow the payment option you chose: individual checkout, one organizer-paid roster, or sponsor coverage.</p>
             </div>
         </div>
 
@@ -483,7 +483,7 @@
             </div>
             <div class="faq-item">
                 <strong>How does payment work?</strong>
-                <p>Each person pays individually at checkout (card, Apple Pay, Google Pay, PayPal, or Venmo). You don't collect money yourself.</p>
+                <p>Choose one option: each shopper pays at checkout; you choose one style, color and design, then pay once for the full roster; or a sponsor covers a set number of items or a maximum amount per item. Shoppers pay by card for extra items or any amount above the sponsor's limit.</p>
             </div>
             <div class="faq-item">
                 <strong>How long does it take?</strong>
