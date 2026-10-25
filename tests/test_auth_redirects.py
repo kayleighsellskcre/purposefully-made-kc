@@ -1,5 +1,6 @@
 """Regression tests for preserving safe post-auth destinations."""
-from urllib.parse import quote, urlparse
+from html.parser import HTMLParser
+from urllib.parse import parse_qs, quote, urlparse
 
 from tests.conftest import CUSTOMER_EMAIL, PASSWORD
 
@@ -62,3 +63,29 @@ def test_failed_sign_in_keeps_the_requested_destination(client, seed):
     assert response.status_code == 302
     assert location.path == "/auth/login"
     assert location.query == "next=%2Fshop%2Fgroup-orders%2Fcreate%3Fmode%3Dwhole"
+
+
+class _AuthPageLinks(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.hrefs = []
+        self.form_actions = []
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == "a" and attrs.get("href"):
+            self.hrefs.append(attrs["href"])
+        if tag == "form" and attrs.get("action"):
+            self.form_actions.append(attrs["action"])
+
+
+def test_sign_in_page_keeps_destination_in_form_and_create_account_link(client):
+    destination = "/shop/group-orders/create?mode=whole"
+    response = client.get("/auth/login", query_string={"next": destination})
+    links = _AuthPageLinks()
+    links.feed(response.get_data(as_text=True))
+
+    register = next(urlparse(href) for href in links.hrefs if urlparse(href).path == "/auth/register")
+    login_form = next(urlparse(action) for action in links.form_actions if urlparse(action).path == "/auth/login")
+    assert parse_qs(register.query)["next"] == [destination]
+    assert parse_qs(login_form.query)["next"] == [destination]
