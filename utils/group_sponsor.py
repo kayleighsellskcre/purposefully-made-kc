@@ -50,9 +50,9 @@ def apply_sponsor_settings_from_form(collection):
             try:
                 amount = float(raw)
             except ValueError:
-                return False, 'Please enter the sponsor's maximum contribution per item as a dollar amount.'
+                return False, "Please enter the sponsor's maximum contribution per item as a dollar amount."
             if amount <= 0:
-                return False, 'The sponsor's maximum contribution per item must be more than $0.'
+                return False, "The sponsor's maximum contribution per item must be more than $0."
             collection.sponsor_budget_per_person = round(amount, 2)
     if 'sponsor_message' in form:
         collection.sponsor_message = (form.get('sponsor_message') or '').strip()[:300] or None
