@@ -4,6 +4,12 @@
 .ops-page { padding: 2rem 0 4rem; }
 
 /* ── Nav bar ── */
+.ops-tabs { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: -0.5rem 0 1.5rem; padding: 0; }
+.ops-tab { padding: 0.5rem 1.05rem; border-radius: 999px; border: 1px solid rgba(232, 208, 177, 0.8); background: #fff; color: var(--text-secondary); font-size: 0.85rem; font-weight: 600; text-decoration: none; }
+.ops-tab:hover, .ops-tab:focus-visible { border-color: var(--accent-color); color: var(--accent-color); }
+.ops-tab-on { background: var(--accent-color); border-color: var(--accent-color); color: #fff; }
+.ops-tab-on:hover, .ops-tab-on:focus-visible { color: #fff; }
+@media (max-width: 640px) { .ops-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 0.3rem; } .ops-tab { white-space: nowrap; } }
 .ops-nav {
     display: flex;
     align-items: center;

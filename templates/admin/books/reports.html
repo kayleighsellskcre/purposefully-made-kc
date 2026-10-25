@@ -2,7 +2,7 @@
 {% block title %}Reports - Purposefully Made KC{% endblock %}
 {% block ops_content %}
 <span class="adm-eyebrow">Admin / Books</span>
-<h1 class="ops-title">Reports</h1>
+<h1 class="ops-title">Profit &amp; Loss</h1>
 <p class="ops-subtitle">Profit and loss on a cash basis, in Kansas City time. Every number opens the entries behind it.</p>
 
 <form class="bk-picker" method="get" action="{{ url_for('admin.reports') }}">
@@ -125,4 +125,5 @@
     sync();
 })();
 </script>
+<p class="bk-note">Looking for the older lifetime totals and hand-typed entries? <a href="{{ url_for('admin.financial') }}">Open Financial Buckets</a>.</p>
 {% endblock %}

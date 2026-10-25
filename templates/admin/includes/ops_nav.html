@@ -1,7 +1,25 @@
 {# Shared admin top nav - desktop hover menus, phone accordion #}
-{% set daily_eps = ['admin.orders','admin.completed_orders','admin.order_detail','admin.production_workflow','admin.production_master','admin.transfer_production','admin.order_transfer_summary','admin.print_labels','admin.dtf_batch_sheets','admin.logo_chart','admin.production_bulk_sheet','admin.blank_apparel_list','admin.custom_design_requests','admin.custom_design_request_detail','admin.production','admin.notifications','admin.notifications_open'] %}
+{% set daily_eps = ['admin.orders','admin.completed_orders','admin.order_detail','admin.production_workflow','admin.production_master','admin.transfer_production','admin.order_transfer_summary','admin.print_labels','admin.dtf_batch_sheets','admin.logo_chart','admin.production_bulk_sheet','admin.blank_apparel_list','admin.custom_design_requests','admin.custom_design_request_detail','admin.production','admin.notifications','admin.notifications_open','admin.packaging_sop'] %}
 {% set store_eps = ['admin.products','admin.add_product','admin.edit_product','admin.collections','admin.add_collection','admin.edit_collection','admin.design_gallery','admin.gallery_queue','admin.designs','admin.design_library_overview','admin.design_browse','admin.design_categories','admin.design_tags','admin.design_review','admin.design_organize','admin.design_matches','admin.affirmations','admin.organizations','admin.districts','admin.district_new','admin.district_manage','admin.district_school','admin.district_copy_store','admin.district_report'] %}
-{% set biz_eps = ['admin.inventory','admin.save_inventory_costs','admin.operations_inventory','admin.vendors','admin.financial','admin.reports','admin.ledger','admin.expenses','admin.ai_usage','admin.low_stock','admin.recurring_expenses','admin.equipment_log','admin.receivables','admin.tax_exempt_customers','admin.payouts','admin.sales_tax_report','admin.inventory_count','admin.mileage','admin.payout_check','admin.cpa_package','admin.reports_refresh','admin.invoices','admin.invoice_new','admin.invoice_view','admin.invoice_edit','admin.growth','admin.customers','admin.packaging_sop'] %}
+{% set money_eps = ['admin.reports','admin.reports_refresh','admin.ledger','admin.expenses','admin.recurring_expenses','admin.equipment_log','admin.receivables','admin.payouts','admin.payout_check','admin.financial','admin.invoices','admin.invoice_new','admin.invoice_view','admin.invoice_edit'] %}
+{% set tax_eps = ['admin.sales_tax_report','admin.tax_exempt_customers','admin.mileage','admin.inventory_count','admin.cpa_package'] %}
+{% set shop_eps = ['admin.inventory','admin.save_inventory_costs','admin.operations_inventory','admin.low_stock','admin.vendors','admin.customers','admin.reviews','admin.growth','admin.ai_usage','admin.site_settings'] %}
+{# One list of menu entries per group: (page, label, other pages that count as "here"). One plain icon keeps them tidy. #}
+{% macro ops_item(endpoint, label, here=none) %}
+<a href="{{ url_for(endpoint) }}" class="ops-drop-item {% if request.endpoint == endpoint or (here and request.endpoint in here) %}ops-drop-active{% endif %}" role="menuitem">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
+    {{ label }}
+</a>
+{% endmacro %}
+{% macro ops_group(title, active) %}
+<div class="ops-dropdown {% if active %}ops-dropdown-active{% endif %}">
+    <button type="button" class="ops-dropdown-btn" aria-haspopup="true" aria-expanded="false">
+        {{ title }}
+        <svg class="ops-chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="ops-dropdown-menu" role="menu">{{ caller() }}</div>
+</div>
+{% endmacro %}
 
 <nav class="ops-nav" id="opsNav" aria-label="Admin navigation">
     <div class="ops-nav-top">
@@ -49,6 +67,7 @@
                     Notifications
                     {% if admin_unread_notifications %}<span class="ops-drop-badge">{{ admin_unread_notifications }}</span>{% endif %}
                 </a>
+                {{ ops_item('admin.packaging_sop', 'Packaging guide') }}
             </div>
         </div>
 
@@ -120,109 +139,47 @@
             </div>
         </div>
 
-        <div class="ops-dropdown {% if request.endpoint in biz_eps %}ops-dropdown-active{% endif %}">
-            <button type="button" class="ops-dropdown-btn" aria-haspopup="true" aria-expanded="false">
-                Business &amp; Operations
-                <svg class="ops-chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <div class="ops-dropdown-menu" role="menu">
-                <a href="{{ url_for('admin.inventory') }}" class="ops-drop-item {% if request.endpoint in ['admin.inventory','admin.save_inventory_costs','admin.operations_inventory'] %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                    Inventory
-                </a>
-                <a href="{{ url_for('admin.vendors') }}" class="ops-drop-item {% if request.endpoint == 'admin.vendors' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                    Vendors
-                </a>
-                <a href="{{ url_for('admin.financial') }}" class="ops-drop-item {% if request.endpoint == 'admin.financial' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-                    Financial
-                </a>
-                <a href="{{ url_for('admin.reports') }}" class="ops-drop-item {% if request.endpoint in ['admin.reports'] %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
-                    Reports
-                </a>
-                <a href="{{ url_for('admin.expenses') }}" class="ops-drop-item {% if request.endpoint == 'admin.expenses' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
-                    Expenses
-                </a>
-                <a href="{{ url_for('admin.ledger') }}" class="ops-drop-item {% if request.endpoint == 'admin.ledger' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
-                    Ledger
-                </a>
-                <a href="{{ url_for('admin.receivables') }}" class="ops-drop-item {% if request.endpoint == 'admin.receivables' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
-                    Who owes you
-                </a>
-                <a href="{{ url_for('admin.low_stock') }}" class="ops-drop-item {% if request.endpoint == 'admin.low_stock' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
-                    Running low
-                </a>
-                <a href="{{ url_for('admin.ai_usage') }}" class="ops-drop-item {% if request.endpoint == 'admin.ai_usage' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
-                    AI studio use
-                </a>
-                <a href="{{ url_for('admin.recurring_expenses') }}" class="ops-drop-item {% if request.endpoint == 'admin.recurring_expenses' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
-                    Monthly bills
-                </a>
-                <a href="{{ url_for('admin.equipment_log') }}" class="ops-drop-item {% if request.endpoint == 'admin.equipment_log' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
-                    Equipment
-                </a>
-                <a href="{{ url_for('admin.payouts') }}" class="ops-drop-item {% if request.endpoint == 'admin.payouts' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
-                    Payouts
-                </a>
-                <a href="{{ url_for('admin.tax_exempt_customers') }}" class="ops-drop-item {% if request.endpoint == 'admin.tax_exempt_customers' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
-                    Tax-exempt customers
-                </a>
-                <a href="{{ url_for('admin.sales_tax_report') }}" class="ops-drop-item {% if request.endpoint == 'admin.sales_tax_report' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
-                    Sales tax
-                </a>
-                <a href="{{ url_for('admin.inventory_count') }}" class="ops-drop-item {% if request.endpoint == 'admin.inventory_count' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
-                    Inventory count
-                </a>
-                <a href="{{ url_for('admin.mileage') }}" class="ops-drop-item {% if request.endpoint == 'admin.mileage' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
-                    Mileage
-                </a>
-                <a href="{{ url_for('admin.payout_check') }}" class="ops-drop-item {% if request.endpoint == 'admin.payout_check' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
-                    Payout check
-                </a>
-                <a href="{{ url_for('admin.cpa_package') }}" class="ops-drop-item {% if request.endpoint == 'admin.cpa_package' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>
-                    CPA package
-                </a>
-                <a href="{{ url_for('admin.invoices') }}" class="ops-drop-item {% if request.endpoint in ['admin.invoices','admin.invoice_new','admin.invoice_view','admin.invoice_edit'] %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
-                    Invoices
-                </a>
-                <a href="{{ url_for('admin.growth') }}" class="ops-drop-item {% if request.endpoint == 'admin.growth' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-                    Growth
-                </a>
-                <a href="{{ url_for('admin.customers') }}" class="ops-drop-item {% if request.endpoint == 'admin.customers' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-                    Customers
-                </a>
-                <a href="{{ url_for('admin.packaging_sop') }}" class="ops-drop-item {% if request.endpoint == 'admin.packaging_sop' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
-                    Packaging SOP
-                </a>
-                <a href="{{ url_for('admin.site_settings') }}" class="ops-drop-item {% if request.endpoint == 'admin.site_settings' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-                    Site settings
-                </a>
-                <a href="{{ url_for('admin.reviews') }}" class="ops-drop-item {% if request.endpoint == 'admin.reviews' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-                    Reviews
-                </a>
-            </div>
-        </div>
+        {% call ops_group('Money', request.endpoint in money_eps) %}
+                {{ ops_item('admin.reports', 'Profit & Loss', ['admin.reports_refresh','admin.ledger','admin.financial']) }}
+                {{ ops_item('admin.expenses', 'Expenses', ['admin.recurring_expenses','admin.equipment_log']) }}
+                {{ ops_item('admin.invoices', 'Invoices', ['admin.invoice_new','admin.invoice_view','admin.invoice_edit']) }}
+                {{ ops_item('admin.receivables', 'Who owes you') }}
+                {{ ops_item('admin.payouts', 'Payouts', ['admin.payout_check']) }}
+        {% endcall %}
+
+        {% call ops_group('Tax & Year-End', request.endpoint in tax_eps) %}
+                {{ ops_item('admin.sales_tax_report', 'Sales tax', ['admin.tax_exempt_customers']) }}
+                {{ ops_item('admin.mileage', 'Mileage') }}
+                {{ ops_item('admin.inventory_count', 'Year-end inventory count') }}
+                {{ ops_item('admin.cpa_package', 'CPA package') }}
+        {% endcall %}
+
+        {% call ops_group('Stock & Shop', request.endpoint in shop_eps) %}
+                {{ ops_item('admin.inventory', 'Inventory', ['admin.save_inventory_costs','admin.operations_inventory','admin.low_stock']) }}
+                {{ ops_item('admin.vendors', 'Vendors') }}
+                {{ ops_item('admin.customers', 'Customers') }}
+                {{ ops_item('admin.reviews', 'Reviews') }}
+                {{ ops_item('admin.growth', 'Growth') }}
+                {{ ops_item('admin.ai_usage', 'AI studio use') }}
+                {{ ops_item('admin.site_settings', 'Site settings') }}
+        {% endcall %}
     </div>
 </nav>
+
+{# Pages that belong together show as tabs, so each menu entry is one thing, not a long list. #}
+{% set _ep = request.endpoint %}
+{% set _tab_families = [
+    [('admin.reports', 'Profit & Loss'), ('admin.expenses', 'Expenses'), ('admin.recurring_expenses', 'Monthly bills'), ('admin.equipment_log', 'Equipment'), ('admin.ledger', 'Every entry')],
+    [('admin.payouts', 'Payouts'), ('admin.payout_check', 'Month-by-month check')],
+    [('admin.sales_tax_report', 'Sales tax'), ('admin.tax_exempt_customers', 'Tax-exempt customers')],
+    [('admin.inventory', 'Inventory'), ('admin.low_stock', 'Running low')],
+] %}
+{% set _same = {'admin.reports_refresh': 'admin.reports', 'admin.save_inventory_costs': 'admin.inventory', 'admin.operations_inventory': 'admin.inventory'} %}
+{% set _here = _same.get(_ep, _ep) %}
+{% for _fam in _tab_families %}
+    {% if _here in _fam|map('first')|list %}
+<nav class="ops-tabs no-print" aria-label="Related pages">
+    {% for _end, _label in _fam %}<a href="{{ url_for(_end) }}" class="ops-tab{% if _end == _here %} ops-tab-on{% endif %}"{% if _end == _here %} aria-current="page"{% endif %}>{{ _label }}</a>{% endfor %}
+</nav>
+    {% endif %}
+{% endfor %}
