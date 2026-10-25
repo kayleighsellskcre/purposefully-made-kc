@@ -233,7 +233,7 @@ def login():
 @_rate_limit("5 per hour")
 def register():
     if current_user.is_authenticated:
-        return redirect(url_for('main.index'))
+        return redirect(_safe_next_path(request.args.get('next')) or url_for('main.index'))
     
     if request.method == 'POST':
         password = request.form.get('password')
@@ -306,7 +306,7 @@ def register():
 @_rate_limit("5 per hour")
 def forgot_password():
     if current_user.is_authenticated:
-        return redirect(_safe_next_path(request.args.get('next')) or url_for('main.index'))
+        return redirect(url_for('main.index'))
 
     if request.method == 'POST':
         email = (request.form.get('email') or '').strip().lower()
