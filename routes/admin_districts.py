@@ -95,6 +95,13 @@ def district_manage(district_id):
                                      request.form.get('opens') or d.order_opens_at)
                 d.order_deadline = DS._parse_dt(request.form.get('deadline')) or d.order_deadline
                 flash(f'The ordering window was applied to {n} stores.', 'success')
+            elif action == 'styles':
+                n = DS.set_district_styles(d, request.form.getlist('style'))
+                flash(f'Styles saved. {n} stores now use this list. Stores whose styles you changed by hand were left alone.', 'success')
+            elif action == 'colors':
+                for school in d.schools.all():
+                    DS.set_school_colors(school, request.form.getlist(f'c_{school.id}'))
+                flash('School colors saved. Every store follows its school unless it has its own colors.', 'success')
             elif action == 'add_school':
                 school = DS.add_school(d, request.form.get('name'), request.form.get('level'),
                                        mascot=request.form.get('mascot'))
@@ -113,8 +120,12 @@ def district_manage(district_id):
     levels = [(k, h, [s for s in d.schools.all() if s.level == k]) for k, h in DS.LEVELS]
     levels = [lv for lv in levels if lv[2]]
     stores = {s.id: DS.stores_of(s, include_inactive=True) for _k, _h, schools in levels for s in schools}
+    from models import Product
+    products = Product.query.filter(Product.is_active.is_(True)).order_by(Product.category, Product.name).all()
     return render_template('admin/districts/manage.html', district=d, levels=levels, stores=stores, DS=DS,
-                           share=DS.share_info(d), blank_scope=f'd:{d.id}')
+                           share=DS.share_info(d), blank_scope=f'd:{d.id}', products=products,
+                           chosen_styles=set(DS.district_style_ids(d)), colors=DS.available_colors(d),
+                           school_colors={s.id: set(DS.school_color_names(s)) for _k, _h, ss in levels for s in ss})
 
 
 @admin_bp.route('/districts/school/<int:school_id>', methods=['GET', 'POST'])
@@ -206,6 +217,28 @@ def district_copy_store(store_id):
     levels = [(k, h, [s for s in d.schools.all() if s.level == k and s.id != source_school.id]) for k, h in DS.LEVELS]
     return render_template('admin/districts/copy.html', store=store, label=DS.store_label(store), school=source_school,
                            district=d, levels=[lv for lv in levels if lv[2]])
+
+
+@admin_bp.route('/districts/store/<int:store_id>/colors', methods=['GET', 'POST'])
+@admin_required
+def district_store_colors(store_id):
+    from models import Collection
+    store = db.session.get(Collection, store_id) or abort(404)
+    school = DS.school_for_store(store) or abort(404)
+    if request.method == 'POST':
+        if request.form.get('action') == 'reset':
+            DS.reset_store_colors(store)
+            flash(f'{DS.store_label(store)} is back to {school.name} colors.', 'success')
+        else:
+            DS.set_store_colors(store, request.form.getlist('color'))
+            flash('Saved.', 'success')
+        db.session.commit()
+        return redirect(url_for('admin.district_store_colors', store_id=store.id))
+    from utils.group_orders import parse_allowed_colors_by_brand
+    chosen = {c for names in parse_allowed_colors_by_brand(store.allowed_colors).values() for c in names}
+    return render_template('admin/districts/store_colors.html', store=store, label=DS.store_label(store), school=school,
+                           district=school.district, colors=DS.available_colors(school.district), chosen=chosen,
+                           source=DS.colors_source(store, school), custom=bool(store.colors_custom))
 
 
 @admin_bp.route('/districts/<int:district_id>/report')

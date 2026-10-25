@@ -277,7 +277,7 @@ def test_copy_a_store_to_other_schools(app, seed, client, login):
         river = db.session.get(Organization, ids['river'])
         copy = next(s for s in DS.stores_of(river, True) if DS.store_label(s) == 'Volleyball')
         assert copy.name == 'Riverview Volleyball'
-        assert copy.allowed_colors == '["Black"]' and copy.restrict_options is True
+        assert copy.allowed_colors is None and copy.restrict_options is True      # the new school's colors, none chosen yet
         assert len(copy.products) == 1 and copy.short_slug == 'volleyball'
         assert copy.pending_organizer_email == river.pending_organizer_email
 

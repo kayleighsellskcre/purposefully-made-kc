@@ -13,13 +13,15 @@ so printed flyers keep working after a rename.
 from __future__ import annotations
 
 import io
+import json
 import re
 import zipfile
 from datetime import date, datetime
 
 from slugify import slugify
 
-from models import Collection, District, Order, OrderItem, Organization, OrgSection, db
+from models import (Collection, District, Order, OrderItem, Organization, OrgSection, Product,
+                    ProductColorVariant, db)
 
 LEVELS = [('high', 'High Schools'), ('middle', 'Middle Schools'), ('elementary', 'Elementary Schools')]
 LEVEL_ONE = {'high': 'High School', 'middle': 'Middle School', 'elementary': 'Elementary School'}
@@ -308,6 +310,8 @@ def _store_from_school(school, label, kind, slug_hint):
     )
     db.session.add(store)
     db.session.flush()
+    store.products = district_styles(school.district)        # styles come from the district
+    _follow_school_colors(store, school)                     # colors come from the school
     return store
 
 
@@ -390,9 +394,137 @@ def sync_school_delivery(school):
             store.pickup_instructions = 'Pickup at the school.'
 
 
+# ── styles (district) and shirt colors (school, with a store override) ────────────────────
+
+def _ids(raw):
+    try:
+        value = json.loads(raw) if raw else []
+    except (TypeError, ValueError):
+        return []
+    return [int(i) for i in value if str(i).isdigit()] if isinstance(value, list) else []
+
+
+def district_style_ids(district):
+    return _ids(district.style_ids)
+
+
+def district_styles(district):
+    ids = district_style_ids(district)
+    if not ids:
+        return []
+    by_id = {p.id: p for p in Product.query.filter(Product.id.in_(ids), Product.is_active.is_(True)).all()}
+    return [by_id[i] for i in ids if i in by_id]
+
+
+def set_district_styles(district, product_ids):
+    """Choose the district's styles. Stores that were using the old list (or had none) switch to the new one.
+
+    A store whose styles someone changed by hand is left alone. Returns how many stores were updated.
+    """
+    old = set(district_style_ids(district))
+    ids = []
+    for raw in product_ids:
+        if str(raw).isdigit() and int(raw) not in ids:
+            ids.append(int(raw))
+    district.style_ids = json.dumps(ids) if ids else None
+    new_products = district_styles(district)
+    updated = 0
+    for school in district.schools.all():
+        for store in stores_of(school, include_inactive=True):
+            current = {p.id for p in store.products}
+            if not current or current == old:
+                store.products = list(new_products)
+                updated += 1
+    return updated
+
+
+def school_color_names(school):
+    try:
+        value = json.loads(school.garment_colors) if school.garment_colors else []
+    except (TypeError, ValueError):
+        return []
+    return [str(c) for c in value] if isinstance(value, list) else []
+
+
+def _color_json(names):
+    return json.dumps(list(names)) if names else None
+
+
+def _follow_school_colors(store, school):
+    store.colors_custom = False
+    store.allowed_colors = _color_json(school_color_names(school))
+    store.restrict_options = True
+
+
+def available_colors(district):
+    """Colors the district's styles come in: [{name, label, hex, swatch}], by name.
+
+    A color a style does not come in is simply not offered for that style (the store page already hides it).
+    """
+    from utils.color_names import display_color_name
+    ids = district_style_ids(district)
+    if not ids:
+        return []
+    found = {}
+    rows = ProductColorVariant.query.filter(ProductColorVariant.product_id.in_(ids)).order_by(ProductColorVariant.id).all()
+    for row in rows:
+        name = (row.color_name or '').strip()
+        label = display_color_name(name) if name else None
+        if not name or not label:
+            continue
+        entry = found.setdefault(name, {'name': name, 'label': label, 'hex': None, 'swatch': None, 'styles': 0})
+        entry['hex'] = entry['hex'] or row.color_hex
+        entry['swatch'] = entry['swatch'] or row.color_swatch_url
+        entry['styles'] += 1
+    return sorted(found.values(), key=lambda c: c['label'].lower())
+
+
+def set_school_colors(school, names):
+    """Choose a school's colors. Every store that has not picked its own follows."""
+    keep = {c['name'] for c in available_colors(school.district)}
+    names = [n for n in dict.fromkeys(n.strip() for n in names if n and n.strip()) if n in keep]
+    school.garment_colors = _color_json(names)
+    n = 0
+    for store in stores_of(school, include_inactive=True):
+        if not store.colors_custom:
+            _follow_school_colors(store, school)
+            n += 1
+    return n
+
+
+def set_store_colors(store, names):
+    """One store picks its own colors (for example Cheer adds Pink)."""
+    school = school_for_store(store)
+    keep = {c['name'] for c in available_colors(school.district)} if school else None
+    names = [n for n in dict.fromkeys(n.strip() for n in names if n and n.strip()) if keep is None or n in keep]
+    store.allowed_colors = _color_json(names)
+    store.restrict_options = True
+    store.colors_custom = bool(names)
+    if not names and school:
+        _follow_school_colors(store, school)
+
+
+def reset_store_colors(store):
+    """"Go back to school colors"."""
+    school = school_for_store(store)
+    if school:
+        _follow_school_colors(store, school)
+
+
+def colors_source(store, school=None):
+    """Where a store's colors come from, in words: 'from Mill Valley High (3)' or 'custom for this store (4)'."""
+    school = school or school_for_store(store)
+    if store.colors_custom:
+        from utils.group_orders import parse_allowed_colors_by_brand
+        n = sum(len(v) for v in parse_allowed_colors_by_brand(store.allowed_colors).values())
+        return f'custom for this store ({n})'
+    n = len(school_color_names(school)) if school else 0
+    return f'from {school.name} ({n})' if n else f'from {school.name} (all colors, none chosen yet)'
+
+
 # ── copy a store's styles and settings to other schools ───────────────────────────────────
 
-_NOT_COPIED = {'id', 'name', 'slug', 'share_token', 'created_at', 'updated_at', 'card_title', 'expected_count',
+_NOT_COPIED = {'allowed_colors', 'colors_custom', 'id', 'name', 'slug', 'share_token', 'created_at', 'updated_at', 'card_title', 'expected_count',
                'deadline_reminder_sent_at', 'progress_sent_at', 'two_day_sent_at', 'closed_summary_sent_at',
                'order_opens_at', 'order_deadline', 'short_slug', 'store_kind', 'pending_organizer_email',
                'created_by_user_id', 'description', 'cover_image', 'group_kind', 'shipping_enabled',
@@ -424,7 +556,8 @@ def copy_store_to_schools(source, school_ids):
         for col in Collection.__table__.columns:
             if col.name not in _NOT_COPIED:
                 setattr(target, col.name, getattr(source, col.name))
-        target.products = list(source.products)
+        target.products = list(source.products)       # the styles travel with the store...
+        _follow_school_colors(target, school)         # ...the colors are the new school's own
     db.session.flush()
     return created, updated
 

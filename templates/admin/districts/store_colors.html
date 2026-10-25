@@ -1,0 +1,34 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}{{ label }} colors - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / <a href="{{ url_for('admin.districts') }}">School Districts</a> / <a href="{{ url_for('admin.district_manage', district_id=district.id) }}">{{ district.name }}</a></span>
+<h1 class="ops-title">{{ school.name }} {{ label }}: colors</h1>
+<p class="ops-subtitle">Colors: <strong>{{ source }}</strong>. Pick colors here to give this store its own, like adding Pink for Cheer. The rest of the school does not change.</p>
+
+<form method="post" class="ops-card bk-card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if not colors %}
+    <p class="bk-muted">The district has no styles yet. Choose them on the district page first.</p>
+    {% else %}
+    <input type="search" class="dist-admin-filter" data-filter=".dist-color-pick" placeholder="Search colors" aria-label="Search colors">
+    <div class="dist-color-picks">
+        {% for c in colors %}
+        <label class="dist-color-pick" data-label="{{ c.label|lower }}">
+            <input type="checkbox" name="color" value="{{ c.name }}" {% if c.name in chosen %}checked{% endif %}>
+            <span class="dist-swatch" style="{% if c.swatch %}background-image:url('{{ c.swatch }}'){% else %}background:{{ c.hex or '#ddd' }}{% endif %}"></span>
+            <span>{{ c.label }}</span>
+        </label>
+        {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-primary">Save colors for this store</button>
+    {% endif %}
+</form>
+{% if custom %}
+<form method="post" class="ops-card bk-card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="reset">
+    <p class="bk-muted">This store has its own colors. Going back makes it follow {{ school.name }} again.</p>
+    <button type="submit" class="btn btn-outline">Go back to school colors</button>
+</form>
+{% endif %}
+<script src="{{ url_for('static', filename='js/district_admin.js') }}" defer></script>
+{% endblock %}

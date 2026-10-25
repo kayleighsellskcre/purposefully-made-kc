@@ -75,12 +75,13 @@
 <div class="ops-card bk-card">
     <h2>Stores</h2>
     <table class="admin-table bk-ledger">
-        <thead><tr><th>Store</th><th>Short link</th><th>Orders</th><th>Items</th><th></th></tr></thead>
+        <thead><tr><th>Store</th><th>Short link</th><th>Colors</th><th>Orders</th><th>Items</th><th></th></tr></thead>
         <tbody>
         {% for row in report.rows %}
         <tr>
             <td>{{ row.label }}</td>
             <td><code>{{ DS.short_path(row.store, school) }}</code></td>
+            <td>{{ DS.colors_source(row.store, school) }} <a class="bk-link" href="{{ url_for('admin.district_store_colors', store_id=row.store.id) }}">Change</a></td>
             <td>{{ row.orders }}</td><td>{{ row.items }}</td>
             <td><a class="bk-link" href="{{ url_for('admin.edit_collection', collection_id=row.store.id) }}">Edit products</a>
                 <a class="bk-link" href="{{ url_for('admin.district_copy_store', store_id=row.store.id) }}">Copy to other schools</a></td>

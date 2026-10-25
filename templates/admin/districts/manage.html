@@ -31,6 +31,54 @@
     <p class="bk-note">New stores start with this window. Applying it resets their reminder emails for the new date.</p>
 </div>
 
+<div class="ops-card bk-card">
+    <h2>1. Styles for the whole district</h2>
+    <p class="bk-muted">Pick the tees, hoodies and crewnecks once. Every school and store uses this list unless someone changed a store's styles by hand.</p>
+    <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="styles">
+        <input type="search" class="dist-admin-filter" data-filter=".dist-style-row" placeholder="Search styles" aria-label="Search styles">
+        <div class="dist-style-list">
+            {% for p in products %}
+            <label class="dist-style-row"><input type="checkbox" name="style" value="{{ p.id }}" {% if p.id in chosen_styles %}checked{% endif %}>
+                <span>{{ p.name }} <small class="bk-muted">{{ p.category or '' }}{% if p.style_number %} {{ p.style_number }}{% endif %}</small></span></label>
+            {% endfor %}
+        </div>
+        <button type="submit" class="btn btn-primary">Save styles</button>
+    </form>
+</div>
+
+<div class="ops-card bk-card">
+    <h2>2. Shirt colors for each school</h2>
+    <p class="bk-muted">Tick the colors each school's families can choose from. Every store follows its school. If a style does not come in a color, that color is simply not shown for that style.</p>
+    {% if not colors %}
+    <p class="bk-muted">Choose and save the styles above first, then the colors they come in will show here.</p>
+    {% elif not levels %}
+    <p class="bk-muted">Add a school first.</p>
+    {% else %}
+    <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="colors">
+        <input type="search" class="dist-admin-filter" data-filter-cols="#colorGrid" placeholder="Search colors, like Navy" aria-label="Search colors">
+        <div class="dist-grid-scroll">
+        <table class="dist-color-grid" id="colorGrid">
+            <thead><tr><th class="dist-color-school">School</th>
+                {% for c in colors %}<th class="dist-color-head" data-label="{{ c.label|lower }}" title="{{ c.label }}">
+                    <span class="dist-swatch" style="{% if c.swatch %}background-image:url('{{ c.swatch }}'){% else %}background:{{ c.hex or '#ddd' }}{% endif %}"></span>
+                    <span class="dist-color-name">{{ c.label }}</span></th>{% endfor %}</tr></thead>
+            <tbody>
+            {% for key, heading, schools in levels %}{% for school in schools %}
+            <tr><th class="dist-color-school" scope="row">{{ school.name }}</th>
+                {% for c in colors %}<td data-label="{{ c.label|lower }}"><input type="checkbox" name="c_{{ school.id }}" value="{{ c.name }}"
+                    aria-label="{{ school.name }}: {{ c.label }}" {% if c.name in school_colors[school.id] %}checked{% endif %}></td>{% endfor %}</tr>
+            {% endfor %}{% endfor %}
+            </tbody>
+        </table>
+        </div>
+        <button type="submit" class="btn btn-primary">Save school colors</button>
+    </form>
+    {% endif %}
+</div>
+<script src="{{ url_for('static', filename='js/district_admin.js') }}" defer></script>
+
 {% for key, heading, schools in levels %}
 <h2 class="dist-admin-level">{{ heading }}</h2>
 {% for school in schools %}
@@ -44,14 +92,16 @@
         </span>
     </div>
     <table class="admin-table bk-ledger">
-        <thead><tr><th>Store</th><th>Status</th><th>Order by</th><th></th></tr></thead>
+        <thead><tr><th>Store</th><th>Status</th><th>Colors</th><th>Order by</th><th></th></tr></thead>
         <tbody>
         {% for c in stores[school.id] %}
         <tr>
             <td>{{ DS.store_label(c) }}</td>
             <td>{% if not c.is_active %}Off{% elif c.products %}Live, {{ c.products|length }} product{{ 's' if c.products|length != 1 }}{% else %}<span class="bk-warn">No products yet, hidden</span>{% endif %}</td>
+            <td>{{ DS.colors_source(c, school) }}</td>
             <td>{{ c.order_deadline|kc_date('%b %-d') if c.order_deadline else '' }}</td>
             <td>
+                <a class="bk-link" href="{{ url_for('admin.district_store_colors', store_id=c.id) }}">Colors</a>
                 <a class="bk-link" href="{{ url_for('admin.edit_collection', collection_id=c.id) }}">Edit products</a>
                 <a class="bk-link" href="{{ url_for('admin.district_copy_store', store_id=c.id) }}">Copy to other schools</a>
             </td>

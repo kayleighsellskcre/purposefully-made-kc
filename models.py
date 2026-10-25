@@ -229,6 +229,8 @@ class Collection(db.Model):
     # ('spirit' = School Spirit, 'sport' = a sport or activity, 'staff').
     short_slug = db.Column(db.String(80))
     store_kind = db.Column(db.String(20))
+    # True when this store picked its own shirt colors instead of following its school's
+    colors_custom = db.Column(db.Boolean, default=False)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -416,6 +418,8 @@ class District(db.Model):
     # One district-wide ordering window (a fall or spring window) that schools and stores start from
     order_opens_at = db.Column(db.DateTime)
     order_deadline = db.Column(db.DateTime)
+    # JSON list of product ids: the shirt styles every school and store starts with
+    style_ids = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     schools = db.relationship('Organization', backref='district', lazy='dynamic',
@@ -469,6 +473,8 @@ class Organization(db.Model):
     tax_cert_url = db.Column(db.String(500))
     tax_expires_on = db.Column(db.Date)
     sort_order = db.Column(db.Integer, default=0)
+    # JSON list of garment color names this school's families can choose from (every store follows it)
+    garment_colors = db.Column(db.Text)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
