@@ -119,6 +119,20 @@ def books_sync_job(app):
             print(f"books sync failed: {exc}", file=sys.stderr, flush=True)
 
 
+def monthly_close_job(app):
+    """On the 2nd, email last month's close to the owner (once per month)."""
+    with app.app_context():
+        try:
+            with _one_worker_at_a_time(731014) as mine:
+                if not mine:
+                    return
+                from utils.monthly_close import send_close
+                if send_close():
+                    print("MONTHLY CLOSE: emailed", file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f"monthly close failed: {exc}", file=sys.stderr, flush=True)
+
+
 def receivables_job(app):
     """Gentle reminders for open invoices at 7, 14 and 30 days (only when the owner has switched them on)."""
     with app.app_context():
@@ -672,6 +686,13 @@ def init_scheduler(app):
         )
 
         # Growth dashboard: every Monday at 6:30 AM Chicago, so last week is always there when you sit down
+        scheduler.add_job(
+            func=lambda: monthly_close_job(app),
+            trigger=CronTrigger(day='2-4', hour=8, minute=0, timezone=CHICAGO),
+            id='monthly_close',
+            name='Monthly close email',
+            replace_existing=True,
+        )
         scheduler.add_job(
             func=lambda: receivables_job(app),
             trigger=CronTrigger(hour=10, minute=30, timezone=CHICAGO),

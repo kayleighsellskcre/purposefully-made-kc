@@ -68,6 +68,18 @@ def reports_refresh():
     return redirect(request.referrer or url_for('admin.reports'))
 
 
+@admin_bp.route('/operations/reports/close-email', methods=['POST'])
+@admin_required
+def reports_close_email():
+    """Email last month's close to the owner right now (it also goes out by itself on the 2nd)."""
+    from utils import monthly_close
+    if monthly_close.send_close(force=True):
+        flash('The monthly close was emailed to you.', 'success')
+    else:
+        flash('The email could not be sent. Please check your email settings.', 'error')
+    return redirect(request.referrer or url_for('admin.reports'))
+
+
 @admin_bp.route('/operations/reports/fees', methods=['POST'])
 @admin_required
 def reports_fetch_fees():

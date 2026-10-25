@@ -27,6 +27,11 @@
     <button type="submit" class="bk-link">Refresh the books now</button>
     <span>Orders, invoices and fees are picked up automatically; this just does it right away.</span>
 </form>
+<form method="post" action="{{ url_for('admin.reports_close_email') }}" class="bk-refresh">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="bk-link">Email me last month&rsquo;s close</button>
+    <span>This also arrives by itself on the 2nd of every month, with the profit and loss attached.</span>
+</form>
 
 <div class="ops-card bk-card">
     <h2>Profit and loss <small>{{ label }}</small></h2>
