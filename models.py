@@ -219,6 +219,10 @@ class Collection(db.Model):
     pending_organizer_email = db.Column(db.String(120))
     # When the "last day to order" reminder went out (so it is never sent twice for one deadline)
     deadline_reminder_sent_at = db.Column(db.DateTime)
+    # Organizer autopilot emails, each sent once per store
+    progress_sent_at = db.Column(db.DateTime)
+    two_day_sent_at = db.Column(db.DateTime)
+    closed_summary_sent_at = db.Column(db.DateTime)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -119,6 +119,21 @@ def books_sync_job(app):
             print(f"books sync failed: {exc}", file=sys.stderr, flush=True)
 
 
+def group_autopilot_job(app):
+    """9 AM: organizer emails for group orders (weekly progress, two days left, closed summary)."""
+    with app.app_context():
+        try:
+            with _one_worker_at_a_time(731017) as mine:
+                if not mine:
+                    return
+                from utils.group_autopilot import run_all
+                result = run_all()
+                if any(result.values()):
+                    print(f"GROUP AUTOPILOT: {result}", file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f"group autopilot failed: {exc}", file=sys.stderr, flush=True)
+
+
 def daily_digest_job(app):
     """7 AM: the morning digest (new orders, due soon, overdue, stuck, closing stores, requests, messages)."""
     with app.app_context():
@@ -714,6 +729,13 @@ def init_scheduler(app):
         )
 
         # Growth dashboard: every Monday at 6:30 AM Chicago, so last week is always there when you sit down
+        scheduler.add_job(
+            func=lambda: group_autopilot_job(app),
+            trigger=CronTrigger(hour=9, minute=0, timezone=CHICAGO),
+            id='group_autopilot',
+            name='Group order organizer emails',
+            replace_existing=True,
+        )
         scheduler.add_job(
             func=lambda: daily_digest_job(app),
             trigger=CronTrigger(hour=7, minute=0, timezone=CHICAGO),
