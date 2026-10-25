@@ -105,6 +105,13 @@ def books_sync_job(app):
                     check_paypal_refunds(40)
                 except Exception as exc:
                     print(f"paypal refund check failed: {exc}", file=sys.stderr, flush=True)
+                try:
+                    from utils.recurring import make_due
+                    made = make_due()
+                    if made:
+                        print(f"RECURRING: {made} expenses made", file=sys.stderr, flush=True)
+                except Exception as exc:
+                    print(f"recurring expenses failed: {exc}", file=sys.stderr, flush=True)
                 added = sync_all(force=True)
                 if added:
                     print(f"BOOKS SYNC: {added} ledger entries added", file=sys.stderr, flush=True)

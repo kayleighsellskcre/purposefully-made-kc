@@ -1,0 +1,53 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Monthly Bills - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Books</span>
+<h1 class="ops-title">Monthly Bills</h1>
+<p class="ops-subtitle">Software, insurance, a storage unit: set a bill once and its expense is added every month on its own. Changing a bill only affects months not yet added.</p>
+
+<div class="ops-card bk-card">
+    <h2>Add a monthly bill</h2>
+    <form method="post" class="bk-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>Vendor <input type="text" name="vendor" maxlength="120" placeholder="Who you pay" required autocomplete="off"></label>
+        <label>Amount each month <input type="number" name="amount" step="0.01" min="0.01" inputmode="decimal" placeholder="0.00" required></label>
+        <label>Category
+            <select name="category" required>
+                <option value="">Choose one</option>
+                {% for name, line in categories %}<option value="{{ name }}">{{ name }} (line {{ line }})</option>{% endfor %}
+            </select>
+        </label>
+        <label>Paid with <select name="payment_method">{% for m in methods %}<option>{{ m }}</option>{% endfor %}</select></label>
+        <label>Day of the month <input type="number" name="day_of_month" min="1" max="28" value="1" required></label>
+        <label>Starting <input type="date" name="start" value="{{ today }}"></label>
+        <label class="bk-wide">Note <input type="text" name="note" maxlength="300" placeholder="Optional"></label>
+        <div class="bk-wide"><button type="submit" class="btn btn-primary">Save monthly bill</button></div>
+    </form>
+    <p class="bk-note">Starting in an earlier month adds the months since then. A bill with a receipt should still be attached to its expense on the Expenses page.</p>
+</div>
+
+<div class="ops-card bk-card">
+    <h2>Your monthly bills</h2>
+    {% if rules %}<p class="bk-summary"><strong>{{ money(yearly) }}</strong> <span class="bk-muted">a year at today&rsquo;s amounts</span></p>{% endif %}
+    <div class="ops-table-scroll">
+    <table class="admin-table bk-ledger">
+        <thead><tr><th>Vendor</th><th>Category</th><th class="bk-num">Each month</th><th>Day</th><th>Since</th><th></th></tr></thead>
+        <tbody>
+            {% for r in rules %}
+            <tr{% if not r.active %} class="bk-voided"{% endif %}>
+                <td>{{ r.vendor }}{% if r.note %}<br><span class="bk-muted">{{ r.note }}</span>{% endif %}</td>
+                <td>{{ r.category }}</td>
+                <td class="bk-num">{{ money(r.amount_cents) }}</td>
+                <td>{{ r.day_of_month }}</td>
+                <td>{{ r.start_date.strftime('%b %Y') }}</td>
+                <td><form method="post" class="bk-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="rule_id" value="{{ r.id }}">
+                    <input type="hidden" name="action" value="{{ 'stop' if r.active else 'resume' }}">
+                    <button type="submit" class="bk-link">{{ 'Stop' if r.active else 'Start again' }}</button></form></td>
+            </tr>
+            {% else %}<tr><td colspan="6" class="bk-muted">No monthly bills yet.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

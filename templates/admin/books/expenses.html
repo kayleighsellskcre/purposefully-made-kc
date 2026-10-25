@@ -3,7 +3,7 @@
 {% block ops_content %}
 <span class="adm-eyebrow">Admin / Books</span>
 <h1 class="ops-title">Expenses</h1>
-<p class="ops-subtitle">Snap the receipt, pick a category, done. Categories follow the Schedule C lines your CPA uses.</p>
+<p class="ops-subtitle">Snap the receipt, pick a category, done. Categories follow the Schedule C lines your CPA uses. Bills that repeat go under <a href="{{ url_for('admin.recurring_expenses') }}">Monthly bills</a>, and equipment is listed on its <a href="{{ url_for('admin.equipment_log') }}">own page</a>.</p>
 
 <div class="ops-card bk-card">
     <h2>Add an expense</h2>

@@ -198,6 +198,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS teacher_name VARCHAR(120)",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS occasion_note VARCHAR(200)",
                     "ALTER TABLE manual_invoice ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP",
+                    "ALTER TABLE expense ADD COLUMN IF NOT EXISTS recurring_id INTEGER",
                     "ALTER TABLE manual_invoice ADD COLUMN IF NOT EXISTS refunded_cents BIGINT DEFAULT 0",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS tax_jurisdiction VARCHAR(20)",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS tax_rate_percent DOUBLE PRECISION",

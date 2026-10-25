@@ -1,0 +1,33 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Equipment - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Books</span>
+<h1 class="ops-title">Equipment</h1>
+<p class="ops-subtitle">Heat press, printer, cutter and the like. Your CPA treats these as supplies. Mark an expense as equipment on the Expenses page and it appears here.</p>
+
+<div class="ops-card bk-card">
+    <div class="bk-head">
+        <h2>{{ year }} equipment</h2>
+        <form method="get" class="bk-inline"><select name="year" onchange="this.form.submit()">{% for y in years %}<option value="{{ y }}"{% if y == year %} selected{% endif %}>{{ y }}</option>{% endfor %}</select>
+            <a class="btn btn-outline btn-sm" href="{{ url_for('admin.equipment_log', year=year, format='csv') }}">Download CSV</a></form>
+    </div>
+    <p class="bk-summary"><strong>{{ money(total) }}</strong> <span class="bk-muted">in {{ year }}</span></p>
+    <div class="ops-table-scroll">
+    <table class="admin-table bk-ledger">
+        <thead><tr><th>Date</th><th>Item</th><th class="bk-num">Cost</th><th>Paid with</th><th>Receipt</th></tr></thead>
+        <tbody>
+            {% for e in rows %}
+            <tr{% if e.voided_at %} class="bk-voided"{% endif %}>
+                <td>{{ e.expense_date.strftime('%b %d, %Y') }}</td>
+                <td>{{ e.vendor or e.note or '' }}{% if e.voided_at %} <span class="bk-muted">(voided)</span>{% endif %}</td>
+                <td class="bk-num">{{ money(e.amount_cents) }}</td>
+                <td>{{ e.payment_method or '' }}</td>
+                <td>{% if e.receipt_url %}<a href="{{ e.receipt_url }}" target="_blank" rel="noopener">View</a>{% elif e.voided_at %}{% else %}<span class="bk-warn">Missing</span>{% endif %}</td>
+            </tr>
+            {% else %}<tr><td colspan="5" class="bk-muted">No equipment recorded for {{ year }}.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <p><a class="btn btn-outline" href="{{ url_for('admin.expenses') }}">Add an expense</a></p>
+</div>
+{% endblock %}

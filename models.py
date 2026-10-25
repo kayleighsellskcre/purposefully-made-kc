@@ -1166,6 +1166,7 @@ class Expense(db.Model):
     note = db.Column(db.Text)
     receipt_url = db.Column(db.String(500))
     is_equipment = db.Column(db.Boolean, default=False)          # heat press, printer and similar (counted as supplies)
+    recurring_id = db.Column(db.Integer, db.ForeignKey('recurring_expense.id'), index=True)   # made by a monthly rule
     voided_at = db.Column(db.DateTime)
     created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -1435,3 +1436,18 @@ class DesignRelation(db.Model):
 
     design = db.relationship('Design', foreign_keys=[design_id])
     related = db.relationship('Design', foreign_keys=[related_design_id])
+
+
+class RecurringExpense(db.Model):
+    """A bill that comes every month (software, insurance, a storage unit). One real Expense is made each month."""
+    __tablename__ = 'recurring_expense'
+    id = db.Column(db.Integer, primary_key=True)
+    vendor = db.Column(db.String(120), nullable=False)
+    amount_cents = db.Column(db.BigInteger, nullable=False)
+    category = db.Column(db.String(60), nullable=False)
+    payment_method = db.Column(db.String(30))
+    note = db.Column(db.Text)
+    day_of_month = db.Column(db.Integer, nullable=False, default=1)       # 1 to 28
+    start_date = db.Column(db.Date, nullable=False)                      # the first month it applies to
+    active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)

@@ -284,7 +284,7 @@ def _label_older_entries(tax_labels):
 # ---- expenses and owner money ------------------------------------------------------------------
 
 def add_expense(*, when_day: date, vendor, amount_dollars, category, payment_method=None, note=None, receipt_url=None,
-                is_equipment=False, user_id=None):
+                is_equipment=False, user_id=None, recurring_id=None):
     cents = to_cents(amount_dollars)
     if cents <= 0:
         raise ValueError('The amount must be more than zero.')
@@ -292,7 +292,7 @@ def add_expense(*, when_day: date, vendor, amount_dollars, category, payment_met
         raise ValueError('Choose a category.')
     exp = Expense(expense_date=when_day, vendor=(vendor or '').strip()[:120] or None, amount_cents=cents, category=category,
                   payment_method=payment_method, note=(note or '').strip() or None, receipt_url=receipt_url,
-                  is_equipment=bool(is_equipment), created_by_id=user_id)
+                  is_equipment=bool(is_equipment), created_by_id=user_id, recurring_id=recurring_id)
     db.session.add(exp)
     db.session.flush()
     noon = datetime.combine(when_day, datetime.min.time()).replace(hour=12, tzinfo=CENTRAL).astimezone(timezone.utc)

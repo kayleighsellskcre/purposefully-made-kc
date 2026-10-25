@@ -9,7 +9,7 @@ from io import StringIO
 from flask import Response, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 
-from models import Expense, LedgerEntry, Payout, db
+from models import Expense, LedgerEntry, Payout, RecurringExpense, db
 from routes.admin import admin_bp, admin_required
 from utils import ledger as L
 from utils import year_end as Y
@@ -361,3 +361,52 @@ def cpa_package_zip():
     data = build_package(year, current_app._get_current_object())
     return Response(data, mimetype='application/zip',
                     headers={'Content-Disposition': f'attachment; filename="PMKC-CPA-Package-{year}.zip"'})
+
+
+@admin_bp.route('/operations/recurring', methods=['GET', 'POST'])
+@admin_required
+def recurring_expenses():
+    """Monthly bills. Each month's real expense is made automatically, once."""
+    from utils import recurring
+    if request.method == 'POST':
+        action = request.form.get('action')
+        try:
+            if action in ('stop', 'resume'):
+                recurring.set_active(request.form.get('rule_id'), action == 'resume')
+                flash('Saved. Months already made stay on your books.', 'success')
+            else:
+                recurring.add_rule(vendor=request.form.get('vendor'), amount_dollars=request.form.get('amount'),
+                                   category=request.form.get('category'), payment_method=request.form.get('payment_method'),
+                                   note=request.form.get('note'), day_of_month=request.form.get('day_of_month', type=int),
+                                   start_date=L.parse_day(request.form.get('start')))
+                made = recurring.make_due()
+                flash(f'Saved. {made} past or current month{"s" if made != 1 else ""} added to your expenses.' if made else 'Saved.', 'success')
+        except ValueError as exc:
+            db.session.rollback()
+            flash(str(exc), 'error')
+        return redirect(url_for('admin.recurring_expenses'))
+    rules = RecurringExpense.query.order_by(RecurringExpense.active.desc(), RecurringExpense.vendor).all()
+    yearly = sum(r.amount_cents * 12 for r in rules if r.active)
+    return render_template('admin/books/recurring.html', rules=rules, yearly=yearly, categories=L.EXPENSE_CATEGORIES,
+                           methods=L.PAY_METHODS, today=L.kc_today().isoformat(), money=L.dollars)
+
+
+@admin_bp.route('/operations/equipment')
+@admin_required
+def equipment_log():
+    """Equipment bought (heat press, printer, cutter), counted as supplies, with its receipt."""
+    year = _year()
+    first, last = L.date(year, 1, 1), L.date(year, 12, 31)
+    rows = (Expense.query.filter(Expense.is_equipment.is_(True), Expense.expense_date >= first, Expense.expense_date <= last)
+            .order_by(Expense.expense_date.desc(), Expense.id.desc()).all())
+    total = sum(e.amount_cents for e in rows if not e.voided_at)
+    if request.args.get('format') == 'csv':
+        out = StringIO()
+        writer = csv.writer(out)
+        writer.writerow(['Date', 'Item', 'Cost', 'Paid with', 'Has receipt', 'Voided'])
+        for e in rows:
+            writer.writerow([e.expense_date.isoformat(), e.vendor or e.note or '', f'{e.amount_cents / 100:.2f}', e.payment_method or '',
+                             'yes' if e.receipt_url else 'no', 'yes' if e.voided_at else ''])
+        return Response(out.getvalue(), mimetype='text/csv',
+                        headers={'Content-Disposition': f'attachment; filename="equipment-{year}.csv"'})
+    return render_template('admin/books/equipment.html', rows=rows, total=total, year=year, years=_years(), money=L.dollars)
