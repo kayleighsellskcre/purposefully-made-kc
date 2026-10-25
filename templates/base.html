@@ -95,13 +95,7 @@
                         'contact' if _ep == 'main.contact' else '') %}
                     <a href="{{ url_for('shop.index') }}" class="nav-link{% if _nav_here == 'shop' %} nav-link--current{% endif %}"{% if _nav_here == 'shop' %} aria-current="page"{% endif %}>Shop</a>
                     <a href="{{ url_for('shop.design_gallery') }}" class="nav-link{% if _nav_here == 'design' %} nav-link--current{% endif %}"{% if _nav_here == 'design' %} aria-current="page"{% endif %}>Design Gallery</a>
-                    <div class="nav-dropdown">
-                        <a href="{{ url_for('shop.group_orders') }}" class="nav-link{% if _nav_here == 'group' %} nav-link--current{% endif %}"{% if _nav_here == 'group' %} aria-current="page"{% endif %} aria-haspopup="true">Group Orders</a>
-                        <div class="nav-dropdown-menu">
-                            <a href="{{ url_for('shop.group_orders') }}">Group Orders</a>
-                            <a href="{{ url_for('shop.company_apparel') }}">Company Apparel</a>
-                        </div>
-                    </div>
+                    <a href="{{ url_for('shop.group_orders') }}" class="nav-link{% if _nav_here == 'group' %} nav-link--current{% endif %}"{% if _nav_here == 'group' %} aria-current="page"{% endif %}>Group Orders</a>
                     <a href="{{ url_for('custom_request.index') }}" class="nav-link{% if _nav_here == 'recreate' %} nav-link--current{% endif %}"{% if _nav_here == 'recreate' %} aria-current="page"{% endif %}>Custom Design</a>
                     <a href="{{ url_for('main.about') }}" class="nav-link{% if _nav_here == 'about' %} nav-link--current{% endif %}"{% if _nav_here == 'about' %} aria-current="page"{% endif %}>About</a>
                     <a href="{{ url_for('main.contact') }}" class="nav-link{% if _nav_here == 'contact' %} nav-link--current{% endif %}"{% if _nav_here == 'contact' %} aria-current="page"{% endif %}>Contact</a>

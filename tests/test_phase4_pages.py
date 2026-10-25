@@ -32,9 +32,10 @@ def test_footer_and_menu_changes(guest):
     html = guest.get('/about').get_data(as_text=True)
     for text in ('footer-col-title">Help<', 'Size Guide', 'Shipping &amp; Returns', 'instagram.com/purposefullymadekc',
                  'facebook.com/purposefullymadekc', 'purposefullymadekc@gmail.com', 'class="footer-quote"',
-                 'Custom Design', 'nav-dropdown-menu', 'Company Apparel', 'id="siteSearchToggle"'):
+                 'Custom Design', 'Company Apparel', 'id="siteSearchToggle"'):
         assert text in html, text
     assert 'tiktok' not in html.lower() and '>Have Us Recreate</a>' not in html
+    assert 'nav-dropdown-menu' not in html               # Group Orders is one plain link, no pull-down
 
 
 def test_header_search_finds_shirts(guest):
