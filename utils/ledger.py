@@ -436,7 +436,7 @@ def sales_tax_report(start: date, end: date):
         else:
             g['tax'] += cents
     labels = dict(sales_tax.JURISDICTION_LABELS, other='Other or older entries')
-    order = [sales_tax.LOCAL, sales_tax.KS_SHIPPED, sales_tax.OUT_OF_STATE, sales_tax.INVOICE, 'other']
+    order = [sales_tax.LOCAL, sales_tax.KS_SHIPPED, sales_tax.OUT_OF_STATE, sales_tax.EXEMPT, sales_tax.INVOICE, 'other']
     table = []
     for key in order:
         if key in groups:

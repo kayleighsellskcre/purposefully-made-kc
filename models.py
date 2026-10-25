@@ -1467,3 +1467,19 @@ class InvoicePayment(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     invoice = db.relationship('ManualInvoice', backref=db.backref('payment_log', lazy='dynamic'))
+
+
+class TaxExemption(db.Model):
+    """A customer account that does not pay sales tax (a school, church or nonprofit) with its certificate on file."""
+    __tablename__ = 'tax_exemption'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True, index=True)
+    organization = db.Column(db.String(200))
+    certificate_number = db.Column(db.String(80))
+    certificate_url = db.Column(db.String(500))
+    expires_on = db.Column(db.Date)                          # blank means it does not expire
+    note = db.Column(db.Text)
+    active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', foreign_keys=[user_id])

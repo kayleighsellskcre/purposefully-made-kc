@@ -41,6 +41,11 @@ def summary(today=None):
         old = [r for r in owed if r['age'] > 30]
         looks.append(f"{len(owed)} open invoice{'s' if len(owed) != 1 else ''} worth {L.dollars(sum(r['balance_cents'] for r in owed))}"
                      + (f", {len(old)} over 30 days old." if old else "."))
+    from utils import tax_exempt
+    for row in tax_exempt.needing_attention(today):
+        who = row.organization or row.user.email
+        looks.append(f"{who}'s tax-exempt certificate " + ('has expired, so they are being charged tax.' if tax_exempt.status(row, today) == 'expired'
+                                                           else f"expires {row.expires_on.strftime('%b %d')}."))
     balance = Y.processor_summary(first.year)['stripe']['totals']['balance']
     if abs(balance) > 5000:
         looks.append(f"Stripe sales less fees and refunds are {L.dollars(abs(balance))} {'more' if balance > 0 else 'less'} than its payouts so far this year.")
@@ -68,6 +73,10 @@ def send_close(today=None, force=False):
              (f"Net profit was {L.dollars(p['net_profit'])}, "
               f"{'up' if change >= 0 else 'down'} {L.dollars(abs(change))} from the month before.")]
     lines += (['Worth a look: ' + ' '.join(s['looks'])] if s['looks'] else ['Nothing needs a look. Everything checked is in order.'])
+    from utils import tax_exempt
+    filing = tax_exempt.filing_line(today)
+    if filing:
+        lines.append(filing)
     sent = _safe(
         _send, admin_recipient(app), f"{label} is closed: net profit {L.dollars(p['net_profit'])}", f"{label} close",
         lines,

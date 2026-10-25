@@ -551,9 +551,11 @@ def calculate_totals(cart, shipping_method='pickup', *, family_promo=False, ship
     # Kansas sales tax on the merchandise only (shipping is not taxed). Shipped to another state: no Kansas tax.
     from utils import sales_tax
     taxable = sales_tax.charges_tax(shipping_method, ship_state, ship_zip)
+    jurisdiction = sales_tax.jurisdiction_key(shipping_method, ship_state, ship_zip)
+    if taxable and sales_tax.exempt_now():
+        taxable, jurisdiction = False, sales_tax.EXEMPT          # a certificate is on file for this signed-in customer
     rate_percent = sales_tax.rate_percent() if taxable else 0.0
     tax = round(subtotal * rate_percent / 100.0, 2)
-    jurisdiction = sales_tax.jurisdiction_key(shipping_method, ship_state, ship_zip)
     
     total = round(subtotal + shipping_cost + tax, 2)
     

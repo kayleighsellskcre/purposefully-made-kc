@@ -25,11 +25,13 @@ _TTL = 60
 _CACHE = {'at': 0.0, 'percent': None}
 
 LOCAL, KS_SHIPPED, OUT_OF_STATE, INVOICE = 'local', 'ks_shipped', 'out_of_state', 'invoice'
+EXEMPT = 'exempt'
 JURISDICTION_LABELS = {
     LOCAL: 'Pickup or hand-off in Kansas',
     KS_SHIPPED: 'Shipped within Kansas',
     OUT_OF_STATE: 'Shipped out of state (no Kansas tax)',
     INVOICE: 'Hand-made invoices',
+    EXEMPT: 'Tax-exempt customer (certificate on file)',
 }
 
 
@@ -107,3 +109,31 @@ def classify_order(order):
     subtotal = float(order.subtotal or 0)
     effective = round(100.0 * float(order.tax or 0) / subtotal, 3) if subtotal > 0 else 0.0
     return key, effective
+
+
+# ---- tax-exempt customers ----------------------------------------------------------------------
+
+def exemption_for(user, today=None):
+    """The customer's active, unexpired exemption, or None."""
+    if user is None or not getattr(user, 'is_authenticated', False):
+        return None
+    from datetime import date
+    from models import TaxExemption
+    row = TaxExemption.query.filter_by(user_id=user.id, active=True).first()
+    if row is None:
+        return None
+    if row.expires_on and row.expires_on < (today or date.today()):
+        return None
+    return row
+
+
+def exempt_now():
+    """True when the signed-in customer making this request is tax exempt. False outside a request."""
+    try:
+        from flask import has_request_context
+        if not has_request_context():
+            return False
+        from flask_login import current_user
+        return exemption_for(current_user._get_current_object()) is not None
+    except Exception:
+        return False

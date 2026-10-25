@@ -458,3 +458,35 @@ def receivables():
     return render_template('admin/books/receivables.html', rows=sorted(rows, key=lambda r: -r['age']), buckets=R.buckets(rows),
                            total=sum(r['balance_cents'] for r in rows), log=log, methods=R.METHODS, auto=R.reminders_on(),
                            days=R.REMINDER_DAYS, today=L.kc_today().isoformat(), money=L.dollars)
+
+
+@admin_bp.route('/operations/tax-exempt', methods=['GET', 'POST'])
+@admin_required
+def tax_exempt_customers():
+    """Customer accounts that do not pay sales tax, and the sales tax filing reminder."""
+    from models import TaxExemption
+    from utils import tax_exempt as TE
+    if request.method == 'POST':
+        action = request.form.get('action')
+        try:
+            if action in ('stop', 'resume'):
+                TE.set_active(request.form.get('exemption_id'), action == 'resume')
+                flash('Saved.', 'success')
+            elif action == 'filing':
+                TE.save_filing(request.form.get('frequency') or '', request.form.get('due_day'))
+                flash('Filing reminder saved.', 'success')
+            else:
+                url, problem = _save_receipt(request.files.get('certificate'))
+                if problem:
+                    flash(problem.replace('receipt', 'certificate'), 'info')
+                TE.add_exemption(email=request.form.get('email'), organization=request.form.get('organization'),
+                                 certificate_number=request.form.get('certificate_number'), certificate_url=url,
+                                 expires_on=L.parse_day(request.form.get('expires_on')), note=request.form.get('note'))
+                flash('Saved. This customer is not charged sales tax while signed in to that account.', 'success')
+        except ValueError as exc:
+            db.session.rollback()
+            flash(str(exc), 'error')
+        return redirect(url_for('admin.tax_exempt_customers'))
+    rows = TaxExemption.query.order_by(TaxExemption.active.desc(), TaxExemption.organization).all()
+    return render_template('admin/books/tax_exempt.html', rows=rows, status=TE.status, filing=TE.filing_settings(),
+                           frequencies=TE.FREQUENCIES)
