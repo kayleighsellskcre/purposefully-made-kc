@@ -23,7 +23,7 @@
                 <h1 class="auth-title">Sign In</h1>
                 <p class="auth-subtitle">Access your account and custom designs</p>
 
-                <form method="POST" action="{{ url_for('auth.login') }}" class="auth-form">
+                <form method="POST" action="{{ url_for('auth.login', next=request.args.get('next')) }}" class="auth-form">
                     <div class="form-group">
                         <label for="email" class="form-label">Email Address</label>
                         <input type="email" id="email" name="email" class="form-control"
@@ -57,7 +57,7 @@
 
                 <div class="auth-divider"><span>New here?</span></div>
                 <div class="auth-footer">
-                    <a href="{{ url_for('auth.register') }}" class="btn btn-outline btn-block">Create an Account</a>
+                    <a href="{{ url_for('auth.register', next=request.args.get('next')) }}" class="btn btn-outline btn-block">Create an Account</a>
                 </div>
             </div>
         </div>
