@@ -3611,3 +3611,23 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
     .nav-links .nav-separator { margin: 0 0.15rem; }
     .nav-links { gap: 0.1rem; margin-right: 0.5rem; }
 }
+
+/* Store pages: the same five-across cards as the shop page */
+.design-board .design-board-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; max-width: none; }
+.design-board .design-card { border-radius: 14px; }
+.design-board .design-card-image img { padding: 0.6rem; }
+.design-board .design-card-content { padding: 0.75rem 0.85rem 0.9rem; }
+.design-board .design-card-content h3 { font-size: 1rem; line-height: 1.25; margin: 0 0 0.25rem; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.5em; }
+.design-board .design-card-content .style-label { font-size: 0.72rem; margin-bottom: 0.3rem; display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.design-board .design-card-content .sizes-label { display: none; }
+.design-board .color-swatch { width: 13px; height: 13px; line-height: 13px; }
+.design-board .design-card-content .price-row { margin-top: 0.45rem; gap: 0.4rem; }
+.design-board .design-card-content .price { font-size: 1.05rem; }
+.design-board .design-card-content .cta { padding: 0.4rem 0.75rem; font-size: 0.7rem; letter-spacing: 0.05em; }
+.design-board .design-card .color-indicator { font-size: 0.68rem; padding: 0.2rem 0.55rem; max-width: calc(100% - 1rem); }
+.design-board .design-card .carousel-btn { width: 26px; height: 26px; }
+.design-board .family-age-strip { top: 0.4rem; bottom: auto; left: 0.4rem; right: auto; }
+.design-board .family-age-chip { font-size: 0.6rem; padding: 0.1rem 0.45rem; }
+@media (max-width: 1199px) { .design-board .design-board-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 1023px) { .design-board .design-board-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 767px) { .design-board .design-board-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; } .design-board .design-card-content { padding: 0.6rem; } }

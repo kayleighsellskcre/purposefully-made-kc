@@ -581,11 +581,11 @@
         <a href="/org/{{ org_nav.org.slug }}" class="org-nav-back">
             ← {{ org_nav.org.name }}
         </a>
-        <div class="org-nav-links">
+        <div class="org-nav-links" id="orgNavLinks">
             {% for s in org_nav.sections %}
             {% if 'fan' not in (s.label or '')|lower and s.collection %}
                 {% if s.id == org_nav.current_section.id and not fan_page %}
-                <span class="org-nav-link org-nav-link--active">{{ s.icon or '' }} {{ s.label }}</span>
+                <span class="org-nav-link org-nav-link--active" aria-current="page">{{ s.icon or '' }} {{ s.label }}</span>
                 {% else %}
                 <a href="{{ url_for('collection.view', slug=s.collection.slug) }}" class="org-nav-link">{{ s.icon or '' }} {{ s.label }}</a>
                 {% endif %}
@@ -599,6 +599,7 @@
             {% endif %}
             {% endif %}
         </div>
+        <button type="button" class="org-nav-more" id="orgNavMore" aria-expanded="false" aria-controls="orgNavLinks" hidden>All teams <span aria-hidden="true">&#9662;</span></button>
     </div>
 </div>
 <style>
@@ -662,7 +663,36 @@
     background: var(--terra-cotta, #b56c4c);
     color: #fff;
 }
+/* One tidy row: this team first, the rest tucked behind "All teams" */
+.org-collection-nav { padding: 0.45rem 0; }
+.org-collection-nav .container { flex-wrap: nowrap; gap: 0.9rem; position: relative; }
+.org-nav-links { flex: 1 1 auto; min-width: 0; max-height: 2rem; overflow: hidden; gap: 0.35rem; }
+.org-nav-link { font-size: 0.78rem; padding: 0.25rem 0.8rem; border-width: 1px; line-height: 1.4; }
+.org-nav-link--active { order: -1; }
+.org-nav-more { flex: 0 0 auto; font: inherit; font-size: 0.78rem; font-weight: 600; padding: 0.25rem 0.9rem; border-radius: 999px; border: 1px solid var(--terra-cotta, #b56c4c); background: #fff; color: var(--terra-cotta, #b56c4c); cursor: pointer; white-space: nowrap; }
+.org-nav-more:hover { background: var(--terra-cotta, #b56c4c); color: #fff; }
+.org-collection-nav.is-open .org-nav-links { position: absolute; left: 0; right: 0; top: calc(100% + 0.45rem); max-height: min(60vh, 22rem); overflow: auto; background: #fff; padding: 0.9rem 1rem; border-radius: 12px; box-shadow: 0 14px 34px rgba(58, 61, 72, 0.18); z-index: 5; }
+.org-collection-nav.is-open .org-nav-link--active { order: 0; }
+@media (max-width: 640px) { .org-nav-back { display: none; } }
 </style>
+<script>
+(function () {
+    var bar = document.querySelector('.org-collection-nav');
+    var links = document.getElementById('orgNavLinks');
+    var more = document.getElementById('orgNavMore');
+    if (!bar || !links || !more) { return; }
+    function fits() { return links.scrollHeight <= links.clientHeight + 2 || bar.classList.contains('is-open'); }
+    function check() { more.hidden = fits(); }
+    more.addEventListener('click', function () {
+        var open = bar.classList.toggle('is-open');
+        more.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    document.addEventListener('click', function (e) { if (!bar.contains(e.target)) { bar.classList.remove('is-open'); more.setAttribute('aria-expanded', 'false'); } });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { bar.classList.remove('is-open'); more.setAttribute('aria-expanded', 'false'); } });
+    window.addEventListener('resize', check);
+    check();
+})();
+</script>
 {% endif %}
 
 <section class="design-board">
