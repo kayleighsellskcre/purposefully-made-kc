@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Packing slip {{ order.order_number }} - {{ business.name }}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@400;600&display=swap">
+<style>
+:root { --ink: #3A3D48; --muted: #8a8478; --line: #eee4d8; --terra: #B87C6F; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #f5f0e8; color: var(--ink); font: 14px/1.55 'Inter', Arial, sans-serif; }
+.ps-bar { max-width: 760px; margin: 1.25rem auto 0; padding: 0 1rem; display: flex; gap: .6rem; flex-wrap: wrap; }
+.ps-bar a, .ps-bar button { font: 600 .78rem 'Inter', sans-serif; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; padding: .7rem 1.2rem; border-radius: 999px; border: 1.5px solid var(--terra); background: #fff; color: var(--terra); cursor: pointer; }
+.ps-bar .ps-primary { background: var(--terra); color: #fff; }
+.ps-paper { max-width: 760px; margin: 1rem auto 3rem; background: #fffefb; padding: 2.5rem 2.75rem; box-shadow: 0 18px 50px rgba(58,61,72,.1); }
+.ps-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 1.5rem; }
+.ps-brand { font-family: 'Playfair Display', Georgia, serif; font-size: 1.4rem; margin: 0; }
+.ps-sub { margin: .15rem 0 0; color: var(--muted); font-size: .85rem; }
+.ps-title { text-align: right; }
+.ps-title h1 { margin: 0; font: 600 .78rem 'Inter', sans-serif; letter-spacing: .2em; text-transform: uppercase; color: var(--terra); }
+.ps-title p { margin: .2rem 0 0; font-size: 1.05rem; font-weight: 600; }
+.ps-gift { margin: 0 0 1.5rem; padding: 1rem 1.25rem; border: 1px solid #e6d8c3; border-radius: 12px; background: #fcf8f3; font-family: 'Playfair Display', Georgia, serif; font-size: 1.2rem; text-align: center; }
+.ps-to { margin: 0 0 1.5rem; }
+.ps-to h2 { margin: 0 0 .25rem; font: 600 .72rem 'Inter', sans-serif; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+.ps-to p { margin: 0; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font: 600 .7rem 'Inter', sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); padding: .5rem .4rem; border-bottom: 1px solid var(--line); }
+td { padding: .7rem .4rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ps-detail { color: var(--muted); font-size: .85rem; }
+.ps-totals { margin: 1.25rem 0 0 auto; width: 260px; }
+.ps-totals div { display: flex; justify-content: space-between; padding: .2rem 0; }
+.ps-totals .ps-grand { border-top: 1px solid var(--line); margin-top: .35rem; padding-top: .5rem; font-weight: 600; }
+.ps-foot { margin-top: 2rem; text-align: center; color: var(--muted); font-size: .85rem; }
+@media print { body { background: #fff; } .ps-bar { display: none; } .ps-paper { box-shadow: none; margin: 0; max-width: none; padding: 0; } }
+</style>
+</head>
+<body>
+<div class="ps-bar">
+    <button type="button" class="ps-primary" onclick="window.print()">Print</button>
+    <a href="{{ url_for('admin.order_detail', order_id=order.id) }}">Back to the order</a>
+    {% if order.is_gift %}<a href="{{ url_for('admin.order_gift_card', order_id=order.id) }}">Gift card</a>{% endif %}
+</div>
+<main class="ps-paper">
+    <div class="ps-head">
+        <div>
+            <p class="ps-brand">Purposefully Made KC</p>
+            <p class="ps-sub">{{ business.email }} &middot; {{ business.phone }}</p>
+        </div>
+        <div class="ps-title"><h1>Packing slip</h1><p>{{ order.order_number }}</p></div>
+    </div>
+
+    {% if order.is_gift %}<p class="ps-gift">A gift, made with care{% if order.gift_message %}. Your card is tucked inside.{% endif %}</p>{% endif %}
+
+    <div class="ps-to">
+        <h2>For</h2>
+        <p><strong>{{ order.shipping_recipient or order.full_name }}</strong></p>
+        {% if order.fulfillment_method == 'shipping' and order.shipping_street %}
+        <p>{{ order.shipping_street }}{% if order.shipping_street_2 %}, {{ order.shipping_street_2 }}{% endif %}<br>{{ order.shipping_city }}, {{ order.shipping_state }} {{ order.shipping_zip }}</p>
+        {% elif order.send_home_with_child and order.child_name %}
+        <p>Going home with {{ order.child_name }}{% if order.teacher_name %} (teacher: {{ order.teacher_name }}){% endif %}</p>
+        {% else %}<p>Pickup</p>{% endif %}
+    </div>
+
+    <table>
+        <thead><tr><th>Qty</th><th>Item</th>{% if show_prices %}<th class="num">Price</th>{% endif %}</tr></thead>
+        <tbody>
+        {% for item in order.items %}
+        <tr>
+            <td>{{ item.quantity }}</td>
+            <td>{{ item.product_name or 'Item' }}
+                <div class="ps-detail">{{ item.color }}{% if item.size %} &middot; Size {{ item.size }}{% endif %}{% if item.design_file_name or item.design_id %} &middot; Custom print{% endif %}</div></td>
+            {% if show_prices %}<td class="num">${{ '%.2f'|format(item.subtotal or 0) }}</td>{% endif %}
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% if show_prices %}
+    <div class="ps-totals">
+        <div><span>Subtotal</span><span>${{ '%.2f'|format(order.subtotal or 0) }}</span></div>
+        {% if order.shipping_cost %}<div><span>Shipping</span><span>${{ '%.2f'|format(order.shipping_cost) }}</span></div>{% endif %}
+        {% if order.tax %}<div><span>Tax</span><span>${{ '%.2f'|format(order.tax) }}</span></div>{% endif %}
+        <div class="ps-grand"><span>Total</span><span>${{ '%.2f'|format(order.total or 0) }}</span></div>
+    </div>
+    {% endif %}
+    <p class="ps-foot">Thank you for choosing a small local business. If anything is not right, just reach out: {{ business.email }}</p>
+</main>
+</body>
+</html>

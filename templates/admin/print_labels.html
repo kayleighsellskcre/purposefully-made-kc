@@ -543,6 +543,7 @@
                             {% set order = orders[order_index] %}
                             <div class="label-cell {% if order.send_home_with_child %}send-home{% elif order.fulfillment_method == 'shipping' %}shipping{% else %}pickup{% endif %}">
                                 <span class="label-order-num">{{ order.order_number }}</span>
+                                {% if order.is_gift %}<span class="label-meta label-line"><strong>GIFT: add the card</strong></span>{% endif %}
                                 {% set qr_on = request.args.get('qr') == '1' and not order.send_home_with_child and order.fulfillment_method != 'shipping' %}
                                 {% if qr_on %}<img class="label-qr" src="{{ url_for('admin.order_pickup_qr', order_id=order.id) }}" alt="Scan to hand over {{ order.order_number }}">{% endif %}
                                 <div class="label-body">

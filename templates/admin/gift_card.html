@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Gift card {{ order.order_number }} - {{ business.name }}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@500;600&family=Playfair+Display:wght@400;600&display=swap">
+<style>
+@page { size: 5.5in 4.25in; margin: 0; }
+:root { --ink: #3A3D48; --muted: #8a8478; --terra: #B87C6F; --sand: #E8D0B1; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #f5f0e8; color: var(--ink); font-family: 'Inter', Arial, sans-serif; }
+.gc-bar { max-width: 520px; margin: 1.25rem auto 0; padding: 0 1rem; display: flex; gap: .6rem; flex-wrap: wrap; }
+.gc-bar a, .gc-bar button { font: 600 .78rem 'Inter', sans-serif; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; padding: .7rem 1.2rem; border-radius: 999px; border: 1.5px solid var(--terra); background: #fff; color: var(--terra); cursor: pointer; }
+.gc-bar .gc-primary { background: var(--terra); color: #fff; }
+.gc-card { width: 5.5in; height: 4.25in; margin: 1rem auto 3rem; background: #fffefb; border: 1px solid var(--sand); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: .55in .6in; position: relative; box-shadow: 0 14px 40px rgba(58,61,72,.12); }
+.gc-card::before { content: ''; position: absolute; inset: .16in; border: 1px solid var(--sand); pointer-events: none; }
+.gc-brand { position: absolute; top: .34in; font: 600 .62rem 'Inter', sans-serif; letter-spacing: .26em; text-transform: uppercase; color: var(--terra); }
+.gc-message { font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif; font-style: italic; font-size: 1.45rem; line-height: 1.4; margin: 0; overflow-wrap: anywhere; white-space: pre-line; }
+.gc-message.long { font-size: 1.15rem; }
+.gc-foot { position: absolute; bottom: .34in; font: 500 .62rem 'Inter', sans-serif; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+@media print { body { background: #fff; } .gc-bar { display: none; } .gc-card { margin: 0; box-shadow: none; border: 0; } }
+</style>
+</head>
+<body>
+<div class="gc-bar">
+    <button type="button" class="gc-primary" onclick="window.print()">Print the card</button>
+    <a href="{{ url_for('admin.order_detail', order_id=order.id) }}">Back to the order</a>
+    <a href="{{ url_for('admin.order_packing_slip', order_id=order.id) }}">Packing slip</a>
+</div>
+<div class="gc-card">
+    <div class="gc-brand">Purposefully Made KC</div>
+    <p class="gc-message{% if order.gift_message and order.gift_message|length > 140 %} long{% endif %}">{{ order.gift_message or 'Made with love, just for you.' }}</p>
+    <div class="gc-foot">Made with purpose, for you</div>
+</div>
+</body>
+</html>

@@ -3785,6 +3785,28 @@ def order_receipt(order_id):
                            payment_methods=PAYMENT_METHODS, order=order, invoice=None)
 
 
+@admin_bp.route('/orders/<int:order_id>/packing-slip')
+@admin_required
+def order_packing_slip(order_id):
+    """The slip that goes in the box. Prices stay off when the customer asked for that (a gift)."""
+    from utils.business_info import BUSINESS
+    order = Order.query.get_or_404(order_id)
+    return render_template('admin/packing_slip.html', order=order, business=BUSINESS,
+                           show_prices=not order.gift_hide_prices)
+
+
+@admin_bp.route('/orders/<int:order_id>/gift-card')
+@admin_required
+def order_gift_card(order_id):
+    """A small card with the gift message, ready to print and tuck in the box."""
+    from utils.business_info import BUSINESS
+    from flask import abort
+    order = Order.query.get_or_404(order_id)
+    if not order.is_gift:
+        abort(404)
+    return render_template('admin/gift_card.html', order=order, business=BUSINESS)
+
+
 # -- Hand-made invoices and receipts (orders taken directly, any brand) --------
 
 def _invoice_fields(inv=None):

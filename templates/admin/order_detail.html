@@ -151,6 +151,20 @@
                     <button type="submit" class="btn btn-outline btn-sm">{{ 'Update tracking' if order.tracking_number else 'Save and email tracking' }}</button>
                 </form>
                 {% endif %}
+                {% if order.is_gift %}
+                <div class="od-info-row">
+                    <span class="od-info-label">Gift</span>
+                    <span class="od-info-val"><strong>Yes.</strong> {% if order.gift_message %}Card: &ldquo;{{ order.gift_message }}&rdquo;{% else %}No message.{% endif %}
+                        {% if order.gift_hide_prices %}Leave prices off the slip.{% endif %}</span>
+                </div>
+                {% endif %}
+                <div class="od-info-row">
+                    <span class="od-info-label">Print</span>
+                    <span class="od-info-val">
+                        <a href="{{ url_for('admin.order_packing_slip', order_id=order.id) }}" target="_blank" rel="noopener">Packing slip{% if order.gift_hide_prices %} (no prices){% endif %}</a>
+                        {% if order.is_gift %} &middot; <a href="{{ url_for('admin.order_gift_card', order_id=order.id) }}" target="_blank" rel="noopener">Gift card</a>{% endif %}
+                    </span>
+                </div>
                 {% if order.occasion_note %}
                 <div class="od-info-row">
                     <span class="od-info-label">Occasion</span>

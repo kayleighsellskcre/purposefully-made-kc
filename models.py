@@ -840,6 +840,10 @@ class Order(db.Model):
     # Group-order send-home (printed on packing labels)
     send_home_with_child = db.Column(db.Boolean, default=False)
     teacher_name = db.Column(db.String(120))
+    # Gift: a message printed on a small card, and whether the packing slip leaves the prices off
+    is_gift = db.Column(db.Boolean, default=False)
+    gift_message = db.Column(db.String(300))
+    gift_hide_prices = db.Column(db.Boolean, default=False)
     occasion_note = db.Column(db.String(200))
     # Customer emails: when each one went out, so none is ever sent twice
     completed_at = db.Column(db.DateTime)

@@ -45,6 +45,12 @@
                     <span>{{ order.occasion_note }}</span>
                 </div>
                 {% endif %}
+                {% if order.is_gift %}
+                <div class="info-row">
+                    <strong>Gift:</strong>
+                    <span>{{ order.gift_message or 'No message' }}{% if order.gift_hide_prices %} (prices left off the packing slip){% endif %}</span>
+                </div>
+                {% endif %}
                 <div class="info-row">
                     <strong>Total:</strong>
                     <span class="total-amount">${{ "%.2f"|format(order.total) }}</span>

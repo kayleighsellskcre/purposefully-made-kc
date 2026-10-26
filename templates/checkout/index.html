@@ -59,6 +59,16 @@
                         <label for="occasion_note">What is this for? <span class="optional-tag">Optional</span></label>
                         <input type="text" id="occasion_note" class="form-control" maxlength="200" autocomplete="off" placeholder="A birthday, a team, a trip. It helps us make it feel right.">
                     </div>
+
+                    <div class="form-group gift-option">
+                        <label class="gift-check"><input type="checkbox" id="is_gift"> <span>This order is a gift</span></label>
+                        <div class="gift-fields" id="giftFields" hidden>
+                            <label for="gift_message">Gift message <span class="optional-tag">Optional</span></label>
+                            <textarea id="gift_message" class="form-control" rows="3" maxlength="250" placeholder="Happy birthday! We love you."></textarea>
+                            <p class="form-hint">We print it on a small card and tuck it in with the order. <span id="giftCount">250</span> characters left.</p>
+                            <label class="gift-check"><input type="checkbox" id="gift_hide_prices" checked> <span>Leave prices off the packing slip</span></label>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- Fulfillment Method -->
@@ -217,7 +227,23 @@
                     {% else %}
                     <div class="payment-tabs" id="payment-tabs">
                         <button type="button" class="payment-tab active" data-method="card">Card / Apple Pay / Google Pay</button>
-                        {% if paypal_client_id %}
+                        <script>
+(function () {
+    var box = document.getElementById('is_gift');
+    var fields = document.getElementById('giftFields');
+    var message = document.getElementById('gift_message');
+    var count = document.getElementById('giftCount');
+    if (!box || !fields) { return; }
+    function sync() { fields.hidden = !box.checked; }
+    box.addEventListener('change', sync);
+    if (message && count) {
+        message.addEventListener('input', function () { count.textContent = String(250 - message.value.length); });
+    }
+    sync();
+})();
+</script>
+
+{% if paypal_client_id %}
                         <button type="button" class="payment-tab" data-method="paypal">PayPal / Venmo</button>
                         {% endif %}
                         {% if allow_cash_payment %}
@@ -941,7 +967,10 @@ function buildOrderPayload(paymentId, paymentMethodOverride) {
         teacher_name: ((document.getElementById('teacher_name') || {}).value || '').trim(),
         child_grade: ((document.getElementById('child_grade') || {}).value || '').trim(),
         child_name: ((document.getElementById('child_name') || {}).value || '').trim(),
-        occasion_note: ((document.getElementById('occasion_note') || {}).value || '').trim()
+        occasion_note: ((document.getElementById('occasion_note') || {}).value || '').trim(),
+        is_gift: !!(document.getElementById('is_gift') && document.getElementById('is_gift').checked),
+        gift_message: ((document.getElementById('gift_message') || {}).value || '').trim(),
+        gift_hide_prices: !(document.getElementById('gift_hide_prices') && !document.getElementById('gift_hide_prices').checked)
     };
 }
 

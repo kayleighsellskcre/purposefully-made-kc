@@ -807,7 +807,7 @@ def paypal_capture_order():
                             'email', 'first_name', 'last_name', 'phone',
                             'shipping_method', 'shipping_info', 'checkout_token',
                             'send_home_with_child', 'teacher_name', 'child_grade', 'child_name',
-                            'occasion_note',
+                            'occasion_note', 'is_gift', 'gift_message', 'gift_hide_prices',
                         ) if data.get(k) not in (None, '')
                     }
                     cart_now = get_cart()
@@ -1126,10 +1126,24 @@ def create_payment_intent():
         return jsonify({'error': str(e)}), 400
 
 
+def gift_fields(data):
+    """The gift columns for a new order, from what the checkout form sent.
+
+    A gift can carry a message for the small card, and asks to leave prices off the packing slip (on unless unticked).
+    """
+    is_gift = str(data.get('is_gift')).lower() in ('1', 'true', 'on', 'yes')
+    if not is_gift:
+        return {'is_gift': False, 'gift_message': None, 'gift_hide_prices': False}
+    hide = data.get('gift_hide_prices')
+    return {'is_gift': True,
+            'gift_message': ' '.join(str(data.get('gift_message') or '').split())[:250] or None,
+            'gift_hide_prices': True if hide in (None, '') else str(hide).lower() in ('1', 'true', 'on', 'yes')}
+
+
 PENDING_CHECKOUT_FIELDS = (
     'shipping_method', 'email', 'first_name', 'last_name', 'phone',
     'shipping_info', 'checkout_token', 'send_home_with_child',
-    'teacher_name', 'child_grade', 'child_name', 'occasion_note',
+    'teacher_name', 'child_grade', 'child_name', 'occasion_note', 'is_gift', 'gift_message', 'gift_hide_prices',
 )
 
 
@@ -1503,6 +1517,7 @@ def _build_order_from_capture(cap, *, overrides=None, send_email=True):
         send_home_with_child=bool(customer.get('send_home_with_child')),
         teacher_name=_clip(customer.get('teacher_name'), 120),
         occasion_note=_clip(customer.get('occasion_note'), 200),
+        **gift_fields(customer),
         child_grade=_clip(customer.get('child_grade'), 40),
         child_name=_clip(customer.get('child_name'), 120),
     )
@@ -1977,6 +1992,7 @@ def _complete_order():
             send_home_with_child=send_home,
             teacher_name=teacher_name,
             occasion_note=_clip(data.get('occasion_note'), 200),
+            **gift_fields(data),
             child_grade=child_grade,
             child_name=child_name,
         )
