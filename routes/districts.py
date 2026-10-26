@@ -67,7 +67,7 @@ def district_page(d):
         for school in schools:
             stores = DS.stores_of(school) if admin else DS.live_stores(school)
             cards[school.id] = {'deadline': DS.school_deadline(school, DS.live_stores(school) or stores),
-                                'logo': _logo(school), 'live': bool(DS.live_stores(school)),
+                                'logo': _logo(school) or next((x['url'] for x in DS.school_logos(school)), None), 'live': bool(DS.live_stores(school)),
                                 'url': DS.school_url(school),
                                 'countdown': _school_countdown(school)}
     return render_template('district/district.html', district=d, levels=levels, cards=cards, logo=_logo(d),
@@ -81,16 +81,17 @@ def school_page(district_slug, school_slug):
     admin = _is_admin()
     stores = DS.stores_of(school) if admin else DS.live_stores(school)
     spirit = next((s for s in stores if s.store_kind == 'spirit'), None)
-    staff = [s for s in stores if s.store_kind == 'staff']
-    sports = [s for s in stores if s.store_kind not in ('spirit', 'staff')]
+    sections = DS.store_sections([s for s in stores if s.store_kind != 'spirit'])
 
     def card(store):
         image, emoji = _store_art(store)
         return {'store': store, 'label': DS.store_label(store), 'image': image, 'emoji': emoji,
                 'live': DS.is_live(store), 'share': DS.share_info(store, school)}
-    return render_template('district/school.html', district=d, school=school, logo=_logo(school),
-                           spirit=card(spirit) if spirit else None, sports=[card(s) for s in sports],
-                           staff=[card(s) for s in staff], deadline=DS.school_deadline(school),
+    logo = _logo(school) or next((x['url'] for x in DS.school_logos(school)), None)     # a main logo stands in
+    return render_template('district/school.html', district=d, school=school, logo=logo,
+                           spirit=card(spirit) if spirit else None,
+                           sections=[(kind, heading, [card(s) for s in group]) for kind, heading, group in sections],
+                           deadline=DS.school_deadline(school),
                            share=DS.share_info(school), level_heading=DS.level_heading(school), accent=DS.accent(school), accent2=DS.accent2(school),
                            tagline=DS.SPIRIT_TAGLINE)
 

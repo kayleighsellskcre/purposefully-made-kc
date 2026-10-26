@@ -92,11 +92,12 @@
         </span>
     </div>
     <table class="admin-table bk-ledger">
-        <thead><tr><th>Store</th><th>Status</th><th>Colors</th><th>Order by</th><th></th></tr></thead>
+        <thead><tr><th>Store</th><th>Kind</th><th>Status</th><th>Colors</th><th>Order by</th><th></th></tr></thead>
         <tbody>
         {% for c in stores[school.id] %}
         <tr>
             <td>{{ DS.store_label(c) }}</td>
+            <td>{{ 'School Spirit' if c.store_kind == 'spirit' else DS.KIND_LABEL.get(c.store_kind or 'sport', 'Sport') }}</td>
             <td>{% if not c.is_active %}Off{% elif c.products %}Live, {{ c.products|length }} product{{ 's' if c.products|length != 1 }}{% else %}<span class="bk-warn">No products yet, hidden</span>{% endif %}</td>
             <td>{{ DS.colors_source(c, school) }}</td>
             <td>{{ c.order_deadline|kc_date('%b %-d') if c.order_deadline else '' }}</td>
@@ -112,6 +113,10 @@
     <form method="post" class="dist-admin-inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="add_store"><input type="hidden" name="school_id" value="{{ school.id }}">
         <input type="text" name="label" maxlength="100" placeholder="Add a store, like Volleyball" aria-label="New store name" required>
+        <select name="kind" aria-label="What kind of store">
+            <option value="">Pick the kind for me</option>
+            {% for key, heading, label in kinds %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+        </select>
         <button type="submit" class="btn btn-outline btn-sm">Add store</button>
     </form>
 </div>
@@ -125,7 +130,7 @@
         <label>School name <input type="text" name="name" required maxlength="200" placeholder="Mill Valley High"></label>
         <label>Level <select name="level"><option value="high">High school</option><option value="middle">Middle school</option><option value="elementary">Elementary school</option></select></label>
         <label>Mascot <input type="text" name="mascot" maxlength="120"></label>
-        <label>Stores <small>(commas)</small> <input type="text" name="stores" placeholder="Football, Volleyball"></label>
+        <label>Stores <small>(commas)</small> <input type="text" name="stores" placeholder="Football, Band, teacher:Mrs. Lee, event:Fall Festival"></label>
         <div class="bk-wide"><button type="submit" class="btn btn-primary">Add school</button></div>
     </form>
     <p class="bk-note">School Spirit is added for you.</p>

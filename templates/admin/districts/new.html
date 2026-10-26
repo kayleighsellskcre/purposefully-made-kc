@@ -15,13 +15,13 @@
     </div>
 
     <h2>Stores every school gets</h2>
-    <label class="dist-admin-field">Sports and activities, separated by commas
+    <label class="dist-admin-field">Stores, separated by commas (sports, activities, events, teachers)
         <input type="text" name="common_stores" placeholder="Football, Volleyball, Band, Cheer" value="{{ form.get('common_stores', '') }}">
     </label>
     <label class="dist-admin-check"><input type="checkbox" name="add_staff" value="1" {% if form.get('add_staff') %}checked{% endif %}> Add a Staff store at the end of every school</label>
 
     <h2>Schools</h2>
-    <p class="bk-muted">One school per line. To give a school its own mascot or its own stores, write it like this: <strong>Mill Valley High | Jaguars | Football, Volleyball</strong>. The mascot and stores are optional.</p>
+    <p class="bk-muted">One school per line. To give a school its own mascot or its own stores, write it like this: <strong>Mill Valley High | Jaguars | Football, Band, teacher:Mrs. Lee, event:Fall Festival</strong>. The mascot and stores are optional. We sort each store into Sports, Activities and clubs, Events, Teachers and classrooms, or Staff. To choose yourself, start it with <strong>sport:</strong>, <strong>activity:</strong>, <strong>event:</strong>, <strong>teacher:</strong> or <strong>staff:</strong>.</p>
     {% for key, heading in levels %}
     <label class="dist-admin-field">{{ heading }}
         <textarea name="schools_{{ key }}" rows="4" placeholder="{% if key == 'high' %}Mill Valley High | Jaguars{% elif key == 'middle' %}Desoto Middle | Eagles{% else %}Riverview Elementary | Falcons{% endif %}">{{ form.get('schools_' ~ key, '') }}</textarea>

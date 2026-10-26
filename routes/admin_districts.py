@@ -105,13 +105,15 @@ def district_manage(district_id):
             elif action == 'add_school':
                 school = DS.add_school(d, request.form.get('name'), request.form.get('level'),
                                        mascot=request.form.get('mascot'))
-                for label in [s.strip() for s in (request.form.get('stores') or '').split(',') if s.strip()]:
-                    DS.add_store(school, label, kind='staff' if label.lower() == 'staff' else 'sport')
+                for entry in [s.strip() for s in (request.form.get('stores') or '').split(',') if s.strip()]:
+                    kind, label = DS.parse_store_entry(entry)
+                    DS.add_store(school, label, kind=kind)
                 flash(f'{school.name} was added with a School Spirit store.', 'success')
             elif action == 'add_store':
                 school = Organization.query.filter_by(id=request.form.get('school_id', type=int), district_id=d.id).first() or abort(404)
                 label = request.form.get('label')
-                DS.add_store(school, label, kind='staff' if (label or '').strip().lower() == 'staff' else 'sport')
+                kind = request.form.get('kind') if request.form.get('kind') in DS.KIND_KEYS else None
+                DS.add_store(school, label, kind=kind)
                 flash(f'{label.strip()} was added to {school.name}.', 'success')
             db.session.commit()
         except DS.DistrictError as exc:
@@ -122,7 +124,7 @@ def district_manage(district_id):
     stores = {s.id: DS.stores_of(s, include_inactive=True) for _k, _h, schools in levels for s in schools}
     from models import Product
     products = Product.query.filter(Product.is_active.is_(True)).order_by(Product.category, Product.name).all()
-    return render_template('admin/districts/manage.html', district=d, levels=levels, stores=stores, DS=DS,
+    return render_template('admin/districts/manage.html', district=d, levels=levels, stores=stores, DS=DS, kinds=DS.STORE_KINDS,
                            share=DS.share_info(d), blank_scope=f'd:{d.id}', products=products,
                            chosen_styles=set(DS.district_style_ids(d)), colors=DS.available_colors(d),
                            school_colors={s.id: set(DS.school_color_names(s)) for _k, _h, ss in levels for s in ss})
@@ -154,6 +156,20 @@ def district_school(school_id):
             elif action == 'push_window':
                 n = DS.push_deadline(school, request.form.get('deadline'), request.form.get('opens'))
                 flash(f'The ordering window was applied to {n} stores.', 'success')
+            elif action == 'logos':
+                from flask_login import current_user
+                from routes.admin import _save_collection_design
+                keep = [int(i) for i in request.form.getlist('keep_logo') if i.isdigit()]
+                added = []
+                for upload in request.files.getlist('logos'):
+                    if upload and upload.filename:
+                        design = _save_collection_design(upload, current_user.id)
+                        if design is None:
+                            flash(f'{upload.filename} was not added. Please use a PNG, JPG or WEBP image.', 'error')
+                        else:
+                            added.append(design.id)
+                n = DS.set_school_logos(school, keep + added)
+                flash(f'The school logos were saved. All {n} stores of {school.name} offer them now.', 'success')
             elif action == 'fundraiser_paid':
                 from decimal import Decimal, InvalidOperation
                 try:
@@ -180,7 +196,7 @@ def district_school(school_id):
         except DS.DistrictError as exc:
             _fail(exc)
         return redirect(url_for('admin.district_school', school_id=school.id))
-    return render_template('admin/districts/school.html', school=school, district=school.district,
+    return render_template('admin/districts/school.html', school=school, district=school.district, logos=DS.school_logos(school),
                            stores=DS.stores_of(school, include_inactive=True), DS=DS, share=DS.share_info(school),
                            report=DS.school_report(school), exempt=DS.school_exempt(school),
                            blank_scope=f's:{school.id}')

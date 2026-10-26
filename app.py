@@ -385,6 +385,8 @@ def create_app(config_class=Config):
                     "ALTER TABLE organization ADD COLUMN IF NOT EXISTS tax_expires_on DATE",
                     "ALTER TABLE organization ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0",
                     "ALTER TABLE organization ADD COLUMN IF NOT EXISTS garment_colors TEXT",
+                    "ALTER TABLE organization ADD COLUMN IF NOT EXISTS school_logo_ids TEXT",
+                    "ALTER TABLE organization ADD COLUMN IF NOT EXISTS school_logo_ids TEXT",
                     "ALTER TABLE district ADD COLUMN IF NOT EXISTS style_ids TEXT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS colors_custom BOOLEAN DEFAULT FALSE",
                 ]

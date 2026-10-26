@@ -46,6 +46,26 @@
 </div>
 
 <div class="ops-card bk-card">
+    <h2>Main logos</h2>
+    <p class="bk-muted">Upload the school's logos once. Every store of {{ school.name }} (sports, activities, events, teachers and staff) offers them, next to any extra logo a store has of its own. Tick a logo to keep it, untick to remove it from every store.</p>
+    <form method="post" enctype="multipart/form-data" class="dist-logo-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="logos">
+        {% if logos %}
+        <div class="dist-logo-grid">
+            {% for logo in logos %}
+            <label class="dist-logo-pick"><input type="checkbox" name="keep_logo" value="{{ logo.id }}" checked>
+                <img src="{{ logo.url }}" alt="{{ logo.title }}" loading="lazy"><span>{{ logo.title }}</span></label>
+            {% endfor %}
+        </div>
+        {% endif %}
+        <label class="dist-admin-field">Add logos <small>(PNG, JPG or WEBP; pick as many as you like)</small>
+            <input type="file" name="logos" accept="image/*" multiple>
+        </label>
+        <button type="submit" class="btn btn-primary">Save logos</button>
+    </form>
+</div>
+
+<div class="ops-card bk-card">
     <h2>Orders and fundraiser</h2>
     <p class="bk-muted">{{ report.orders }} orders, {{ report.items }} items, ${{ '%.2f' % report.revenue }} in sales.
         {% if school.fundraiser_cents %}Fundraiser ${{ '%.2f' % (school.fundraiser_cents / 100) }} per item: <strong>${{ '%.2f' % (report.owed_cents / 100) }}</strong> owed, ${{ '%.2f' % (report.paid_cents / 100) }} paid back, <strong>${{ '%.2f' % (report.balance_cents / 100) }}</strong> still to pay.{% endif %}</p>
@@ -75,11 +95,12 @@
 <div class="ops-card bk-card">
     <h2>Stores</h2>
     <table class="admin-table bk-ledger">
-        <thead><tr><th>Store</th><th>Short link</th><th>Colors</th><th>Orders</th><th>Items</th><th></th></tr></thead>
+        <thead><tr><th>Store</th><th>Kind</th><th>Short link</th><th>Colors</th><th>Orders</th><th>Items</th><th></th></tr></thead>
         <tbody>
         {% for row in report.rows %}
         <tr>
             <td>{{ row.label }}</td>
+            <td>{{ 'School Spirit' if row.store.store_kind == 'spirit' else DS.KIND_LABEL.get(row.store.store_kind or 'sport', 'Sport') }}</td>
             <td><code>{{ DS.short_path(row.store, school) }}</code></td>
             <td>{{ DS.colors_source(row.store, school) }} <a class="bk-link" href="{{ url_for('admin.district_store_colors', store_id=row.store.id) }}">Change</a></td>
             <td>{{ row.orders }}</td><td>{{ row.items }}</td>

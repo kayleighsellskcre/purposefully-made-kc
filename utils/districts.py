@@ -27,6 +27,27 @@ LEVELS = [('high', 'High Schools'), ('middle', 'Middle Schools'), ('elementary',
 LEVEL_ONE = {'high': 'High School', 'middle': 'Middle School', 'elementary': 'Elementary School'}
 LEVEL_KEYS = [k for k, _ in LEVELS]
 
+# What a school's stores can be. School Spirit is always first; the rest are grouped in this order on the school page.
+STORE_KINDS = [
+    ('sport', 'Sports', 'Sport'),
+    ('activity', 'Activities and clubs', 'Activity or club'),
+    ('event', 'Events', 'Event'),
+    ('teacher', 'Teachers and classrooms', 'Teacher or classroom'),
+    ('staff', 'Staff', 'Staff'),
+]
+KIND_KEYS = [k for k, _h, _l in STORE_KINDS]
+KIND_HEADING = {k: h for k, h, _l in STORE_KINDS}
+KIND_LABEL = {k: l for k, _h, l in STORE_KINDS}
+_ACTIVITY_WORDS = ('band', 'choir', 'orchestra', 'drama', 'theater', 'theatre', 'musical', 'chess', 'robotics', 'yearbook',
+                   'newspaper', 'council', 'club', 'debate', 'forensics', 'honor', 'fbla', 'fccla', 'art', 'color guard',
+                   'science', 'quiz', 'scholars', 'student')
+_EVENT_WORDS = ('festival', 'carnival', 'field day', 'dance', 'fun run', 'walk', 'night', 'fundraiser', 'picnic',
+                'graduation', 'homecoming', 'prom', 'spirit week', 'reunion', 'field trip', 'camp')
+_TEACHER_WORDS = ('mr.', 'mrs.', 'ms.', 'miss ', 'dr.', 'class', 'classroom', 'grade', 'teacher')
+KIND_PREFIXES = {'sport': 'sport', 'sports': 'sport', 'activity': 'activity', 'club': 'activity', 'activities': 'activity',
+                 'event': 'event', 'events': 'event', 'teacher': 'teacher', 'class': 'teacher', 'classroom': 'teacher',
+                 'staff': 'staff'}
+
 SPIRIT_LABEL = 'School Spirit'
 STAFF_LABEL = 'Staff'
 SPIRIT_TAGLINE = 'Wear it for anything.'
@@ -296,7 +317,10 @@ def add_school(district, name, level, **settings):
 def _store_from_school(school, label, kind, slug_hint):
     """A fresh store that starts from the school's delivery, deadline and organizer settings."""
     nick = school_nickname(school)
-    name = f'{nick} {label}'.strip()
+    if kind in ('teacher', 'event') and nick.lower() not in label.lower():
+        name = f'{label} at {nick}'.strip()          # "Mrs. Johnson's Class at Riverview", "Fall Festival at Riverview"
+    else:
+        name = f'{nick} {label}'.strip()
     base = slugify(f'{school.district.short_slug}-{nick}-{label}') or 'school-store'
     slug = _unique(base, {c.slug for c in Collection.query.filter(Collection.slug.like(f'{base}%')).all()})
     sends_home = (school.delivery_mode or 'send_home') == 'send_home'
@@ -314,6 +338,7 @@ def _store_from_school(school, label, kind, slug_hint):
     db.session.flush()
     store.products = district_styles(school.district)        # styles come from the district
     _follow_school_colors(store, school)                     # colors come from the school
+    _apply_school_logos(store, [], school_logo_id_list(school))   # main logos come from the school
     return store
 
 
@@ -337,20 +362,66 @@ def ensure_spirit(school):
     return store
 
 
-def add_store(school, label, *, kind='sport'):
+def guess_kind(label):
+    """A sensible type for a store name, so most lines need no label: Football is a sport, Band an activity."""
+    text = (label or '').strip().lower()
+    if text == STAFF_LABEL.lower():
+        return 'staff'
+    if any(w in text for w in _TEACHER_WORDS):
+        return 'teacher'
+    if any(w in text for w in _EVENT_WORDS):
+        return 'event'
+    from utils.group_org import sport_icon
+    if sport_icon(label) != DEFAULT_ICON and not any(w in text for w in ('band', 'choir')):
+        return 'sport'
+    if any(w in text for w in _ACTIVITY_WORDS):
+        return 'activity'
+    return 'sport'
+
+
+def parse_store_entry(entry):
+    """'teacher:Mrs. Johnson' gives ('teacher', 'Mrs. Johnson'); a bare name gets a guessed type."""
+    entry = (entry or '').strip()
+    if ':' in entry:
+        head, _sep, rest = entry.partition(':')
+        kind = KIND_PREFIXES.get(head.strip().lower())
+        if kind and rest.strip():
+            return kind, rest.strip()
+    return guess_kind(entry), entry
+
+
+DEFAULT_ICON = '\U0001F3F7\ufe0f'
+_KIND_ICON = {'teacher': '\U0001F34E', 'event': '\U0001F389', 'activity': '\U0001F3AD', 'staff': DEFAULT_ICON}
+
+
+def add_store(school, label, *, kind=None):
     label = (label or '').strip()
     if not label:
         raise DistrictError('Give the store a name, like Volleyball.')
-    if kind == 'sport' and label.lower() in (SPIRIT_LABEL.lower(), 'spirit'):
+    kind = kind if kind in KIND_KEYS else guess_kind(label)
+    if label.lower() in (SPIRIT_LABEL.lower(), 'spirit'):
         raise DistrictError('School Spirit is already there. It is added for every school.')
     if label.lower() in {store_label(s).lower() for s in stores_of(school, include_inactive=True)}:
         raise DistrictError(f'{school.name} already has a {label} store.')
     store = _store_from_school(school, label, kind, label)
     from utils.group_org import sport_icon
+    icon = _KIND_ICON.get(kind) or sport_icon(label)
+    if kind == 'activity' and icon == DEFAULT_ICON:
+        icon = _KIND_ICON['activity']
     db.session.add(OrgSection(organization_id=school.id, collection_id=store.id, label=label[:100],
-                              icon='🏷️' if kind == 'staff' else sport_icon(label), sort_order=_next_sort(school, kind)))
+                              icon=icon, sort_order=_next_sort(school, kind)))
     db.session.flush()
     return store
+
+
+def store_sections(stores):
+    """[(kind, heading, [stores])] in page order, leaving out types with nothing in them. School Spirit is not in here."""
+    out = []
+    for kind, heading, _label in STORE_KINDS:
+        group = [st for st in stores if (st.store_kind or 'sport') == kind]
+        if group:
+            out.append((kind, heading, group))
+    return out
 
 
 def set_up_district(name, schools, *, description=None, opens=None, deadline=None, logo_url=None):
@@ -358,14 +429,10 @@ def set_up_district(name, schools, *, description=None, opens=None, deadline=Non
     d = create_district(name, description=description, logo_url=logo_url, opens=opens, deadline=deadline)
     for school_name, level, store_names, settings in schools:
         school = add_school(d, school_name, level, **(settings or {}))
-        for label in store_names:
-            label = label.strip()
-            if not label:
-                continue
-            if label.lower() == STAFF_LABEL.lower():
-                add_store(school, STAFF_LABEL, kind='staff')
-            elif label.lower() not in (SPIRIT_LABEL.lower(), 'spirit'):
-                add_store(school, label)
+        for entry in store_names:
+            kind, label = parse_store_entry(entry)
+            if label and label.lower() not in (SPIRIT_LABEL.lower(), 'spirit'):
+                add_store(school, label, kind=kind)
     return d
 
 
@@ -458,6 +525,45 @@ def _follow_school_colors(store, school):
     store.restrict_options = True
 
 
+def school_logo_id_list(school):
+    return _ids(school.school_logo_ids) if school is not None else []
+
+
+def school_logos(school):
+    """The school's main logos as [{id, url, title}], in the order they were added."""
+    from models import Design
+    from utils.cloud_storage import image_url
+    ids = school_logo_id_list(school)
+    if not ids:
+        return []
+    by_id = {d.id: d for d in Design.query.filter(Design.id.in_(ids)).all()}
+    return [{'id': i, 'url': image_url(by_id[i].file_path), 'title': by_id[i].title or by_id[i].original_filename or 'Logo'}
+            for i in ids if i in by_id]
+
+
+def _apply_school_logos(store, old_ids, new_ids):
+    """Swap the school's old main logos for its new ones in a store, keeping the store's own extra logos."""
+    old = set(old_ids)
+    allowed = [i for i in _ids(store.allowed_design_ids) if i not in old]
+    allowed = list(dict.fromkeys(list(new_ids) + allowed))
+    show = [i for i in _ids(store.showcase_design_ids) if i not in old]
+    show = list(dict.fromkeys(list(new_ids)[:4] + show))
+    store.allowed_design_ids = json.dumps(allowed) if allowed else None
+    store.showcase_design_ids = json.dumps(show) if show else None
+
+
+def set_school_logos(school, design_ids):
+    """Choose the school's main logos. Every store of the school offers them, next to its own extras."""
+    old = school_logo_id_list(school)
+    new = list(dict.fromkeys(int(i) for i in design_ids if str(i).isdigit()))
+    school.school_logo_ids = json.dumps(new) if new else None
+    n = 0
+    for store in stores_of(school, include_inactive=True):
+        _apply_school_logos(store, old, new)
+        n += 1
+    return n
+
+
 def available_colors(district):
     """Colors the district's styles come in: [{name, label, hex, swatch}], by name.
 
@@ -526,7 +632,7 @@ def colors_source(store, school=None):
 
 # ── copy a store's styles and settings to other schools ───────────────────────────────────
 
-_NOT_COPIED = {'allowed_colors', 'colors_custom', 'id', 'name', 'slug', 'share_token', 'created_at', 'updated_at', 'card_title', 'expected_count',
+_NOT_COPIED = {'allowed_design_ids', 'showcase_design_ids', 'allowed_colors', 'colors_custom', 'id', 'name', 'slug', 'share_token', 'created_at', 'updated_at', 'card_title', 'expected_count',
                'deadline_reminder_sent_at', 'progress_sent_at', 'two_day_sent_at', 'closed_summary_sent_at',
                'order_opens_at', 'order_deadline', 'short_slug', 'store_kind', 'pending_organizer_email',
                'created_by_user_id', 'description', 'cover_image', 'group_kind', 'shipping_enabled',
@@ -550,8 +656,7 @@ def copy_store_to_schools(source, school_ids):
         if target is source:
             continue
         if target is None:
-            target = add_store(school, label, kind='staff' if kind == 'staff' else 'sport') if kind != 'spirit' \
-                else ensure_spirit(school)
+            target = add_store(school, label, kind=kind) if kind != 'spirit' else ensure_spirit(school)
             created += 1
         else:
             updated += 1
@@ -560,6 +665,12 @@ def copy_store_to_schools(source, school_ids):
                 setattr(target, col.name, getattr(source, col.name))
         target.products = list(source.products)       # the styles travel with the store...
         _follow_school_colors(target, school)         # ...the colors are the new school's own
+        source_school = school_for_store(source)      # ...and so are the main logos; the store's own extra logos travel
+        own = [i for i in _ids(source.allowed_design_ids) if i not in set(school_logo_id_list(source_school))]
+        own_show = [i for i in _ids(source.showcase_design_ids) if i in own]
+        mine = school_logo_id_list(school)
+        target.allowed_design_ids = json.dumps(list(dict.fromkeys(mine + own))) if (mine or own) else None
+        target.showcase_design_ids = json.dumps(list(dict.fromkeys(mine[:4] + own_show))) if (mine or own_show) else None
     db.session.flush()
     return created, updated
 

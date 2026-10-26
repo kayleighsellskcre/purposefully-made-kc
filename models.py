@@ -475,6 +475,10 @@ class Organization(db.Model):
     sort_order = db.Column(db.Integer, default=0)
     # JSON list of garment color names this school's families can choose from (every store follows it)
     garment_colors = db.Column(db.Text)
+    # JSON list of Design ids: the school's main logos, usable on every store of the school
+    school_logo_ids = db.Column(db.Text)
+    # JSON list of Design ids: the school's main logos, usable on every store of the school
+    school_logo_ids = db.Column(db.Text)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
