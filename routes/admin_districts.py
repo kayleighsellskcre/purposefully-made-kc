@@ -83,6 +83,7 @@ def district_manage(district_id):
             if action == 'save':
                 d.name = (request.form.get('name') or d.name).strip()[:200]      # the links never change on rename
                 d.description = (request.form.get('description') or '').strip() or None
+                d.listed = request.form.get('listed') == '1'
                 d.order_opens_at = DS._parse_dt(request.form.get('opens'))
                 d.order_deadline = DS._parse_dt(request.form.get('deadline'))
                 from routes.org import _store_upload

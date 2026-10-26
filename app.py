@@ -391,6 +391,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE organization ADD COLUMN IF NOT EXISTS school_logo_ids TEXT",
                     "ALTER TABLE organization ADD COLUMN IF NOT EXISTS school_logo_ids TEXT",
                     "ALTER TABLE district ADD COLUMN IF NOT EXISTS style_ids TEXT",
+                    "ALTER TABLE district ADD COLUMN IF NOT EXISTS listed BOOLEAN NOT NULL DEFAULT TRUE",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS colors_custom BOOLEAN DEFAULT FALSE",
                 ]
                 for migration in all_migrations:

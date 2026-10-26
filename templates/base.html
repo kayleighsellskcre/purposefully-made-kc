@@ -92,10 +92,12 @@
                         'shop' if _ep.startswith('shop.') else
                         'recreate' if _ep.startswith('custom_request.') else
                         'about' if _ep == 'main.about' else
+                        'schools' if _ep.startswith('district.') else
                         'contact' if _ep == 'main.contact' else '') %}
                     <a href="{{ url_for('shop.index') }}" class="nav-link{% if _nav_here == 'shop' %} nav-link--current{% endif %}"{% if _nav_here == 'shop' %} aria-current="page"{% endif %}>Shop</a>
                     <a href="{{ url_for('shop.design_gallery') }}" class="nav-link{% if _nav_here == 'design' %} nav-link--current{% endif %}"{% if _nav_here == 'design' %} aria-current="page"{% endif %}>Design Gallery</a>
                     <a href="{{ url_for('shop.group_orders') }}" class="nav-link{% if _nav_here == 'group' %} nav-link--current{% endif %}"{% if _nav_here == 'group' %} aria-current="page"{% endif %}>Group Orders</a>
+                    <a href="{{ url_for('district.directory') }}" class="nav-link{% if _nav_here == 'schools' %} nav-link--current{% endif %}"{% if _nav_here == 'schools' %} aria-current="page"{% endif %}>Schools</a>
                     <a href="{{ url_for('custom_request.index') }}" class="nav-link{% if _nav_here == 'recreate' %} nav-link--current{% endif %}"{% if _nav_here == 'recreate' %} aria-current="page"{% endif %}>Custom Design</a>
                     <a href="{{ url_for('main.about') }}" class="nav-link{% if _nav_here == 'about' %} nav-link--current{% endif %}"{% if _nav_here == 'about' %} aria-current="page"{% endif %}>About</a>
                     <a href="{{ url_for('main.contact') }}" class="nav-link{% if _nav_here == 'contact' %} nav-link--current{% endif %}"{% if _nav_here == 'contact' %} aria-current="page"{% endif %}>Contact</a>
@@ -271,6 +273,7 @@
                     <ul class="footer-links">
                         <li><a href="{{ url_for('shop.index') }}">All Products</a></li>
                         <li><a href="{{ url_for('shop.group_orders') }}">Group Orders</a></li>
+                        <li><a href="{{ url_for('district.directory') }}">School Districts</a></li>
                         <li><a href="{{ url_for('shop.company_apparel') }}">Company Apparel</a></li>
                         <li><a href="{{ url_for('shop.index', category='Tee') }}">T-Shirts</a></li>
                         <li><a href="{{ url_for('shop.index', category='Hoodie') }}">Hoodies</a></li>

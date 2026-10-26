@@ -51,6 +51,16 @@ def _logo(obj):
     return image_url(obj.logo_url) if obj.logo_url else None
 
 
+@district_bp.route('/school-districts')
+def directory():
+    """Every listed district, so families can find their school without a link."""
+    items = []
+    for d in District.query.filter_by(is_active=True, listed=True).order_by(District.name).all():
+        count = sum(1 for level in DS.schools_by_level(d, public=True) for _ in level[2])
+        items.append({'district': d, 'schools': count, 'logo': _logo(d), 'url': DS.district_url(d)})
+    return render_template('district/index.html', districts=items)
+
+
 def _district_or_404(slug):
     d = District.query.filter_by(slug=slug, is_active=True).first()
     if d is None:

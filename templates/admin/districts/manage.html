@@ -24,6 +24,7 @@
         <label>Order by <input type="date" name="deadline" value="{{ district.order_deadline.strftime('%Y-%m-%d') if district.order_deadline else '' }}"></label>
         <label>Logo <input type="file" name="logo" accept="image/*"></label>
         <label class="bk-wide">Welcome message <input type="text" name="description" maxlength="300" value="{{ district.description or '' }}"></label>
+        <label class="bk-wide bk-check"><input type="checkbox" name="listed" value="1" {{ 'checked' if district.listed else '' }}> Show this district on the public Schools page <small>(off keeps it link-only, like a private vault)</small></label>
         <div class="bk-wide">
             <button type="submit" class="btn btn-primary">Save</button>
             <button type="submit" name="action" value="push_window" class="btn btn-outline" onclick="return confirm('Use this window for every store in the district?')">Save and apply the window to every store</button>

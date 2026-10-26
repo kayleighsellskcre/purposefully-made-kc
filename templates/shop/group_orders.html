@@ -323,6 +323,7 @@
         <p class="lead">Custom apparel for teams, schools, and organizations. Create your options and share one link. Everyone stays matching.</p>
         <p class="go-links">
             {% if open_collections or open_orgs %}<a href="#open-orders">Find your group</a>{% endif %}
+            <a href="{{ url_for('district.directory') }}">School districts</a>
             {% if current_user.is_authenticated %}<a href="{{ url_for('account.my_group_orders') }}">My group orders</a>{% endif %}
         </p>
     </div>

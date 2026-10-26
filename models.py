@@ -431,6 +431,8 @@ class District(db.Model):
     order_deadline = db.Column(db.DateTime)
     # JSON list of product ids: the shirt styles every school and store starts with
     style_ids = db.Column(db.Text)
+    # Listed on the public Schools page; off keeps the district reachable by its link only
+    listed = db.Column(db.Boolean, default=True, nullable=False, server_default='1')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     schools = db.relationship('Organization', backref='district', lazy='dynamic',
