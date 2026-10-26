@@ -79,6 +79,8 @@
                         <p class="price">${{ "%.2f"|format(item.item_total) }}</p>
                         {# Every row's button reads simply "Remove" otherwise, so a
                            screen reader user cannot tell which item they are on. #}
+                        <button type="button" class="btn-save-later" data-save-for-later="{{ loop.index0 }}"
+                                aria-label="Save {{ item.product.name }}, {{ item.color }}, size {{ item.size }} for later">Save for later</button>
                         <button type="button" class="btn-remove" data-index="{{ loop.index0 }}"
                                 aria-label="Remove {{ item.product.name }}, {{ item.color }}, size {{ item.size }} from cart">Remove</button>
                     </div>
@@ -145,6 +147,7 @@
             <a href="{{ url_for('shop.index') }}" class="btn btn-primary">Shop Now</a>
         </div>
         {% endif %}
+        {% include 'cart/_saved.html' %}
     </div>
 </section>
 
@@ -517,4 +520,5 @@ document.querySelectorAll('.btn-remove').forEach(button => {
     });
 });
 </script>
+<script src="{{ url_for('static', filename='js/saved-for-later.js') }}" defer></script>
 {% endblock %}

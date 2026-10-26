@@ -1,0 +1,25 @@
+{# Items set aside from the cart. Shown on the cart page and on Favorites. #}
+{% if saved_items %}
+<section class="saved-section" id="savedForLater" aria-labelledby="savedHeading">
+    <h2 id="savedHeading">Saved for later <span class="saved-count">({{ saved_items|length }})</span></h2>
+    <p class="saved-note">Your size, color, artwork and back print are kept exactly as you set them. Prices are updated when you move an item back.</p>
+    <div class="saved-list">
+        {% for s in saved_items %}
+        {% set label = (s.product|display_name) ~ ', ' ~ s.line.color ~ ', size ' ~ s.line.size %}
+        <article class="saved-item">
+            {% if s.image %}<img class="saved-thumb" src="{{ s.image }}" alt="" loading="lazy" referrerpolicy="no-referrer">{% else %}<span class="saved-thumb saved-thumb-empty" aria-hidden="true"></span>{% endif %}
+            <div class="saved-info">
+                <strong>{{ s.product|display_name }}</strong>
+                <span>{{ s.line.color }} &middot; Size {{ s.line.size }} &middot; Qty {{ s.line.quantity }}</span>
+                {% if s.has_design %}<span>With your artwork</span>{% endif %}
+                {% if s.back_text %}<span>Back: {{ s.back_text }}</span>{% endif %}
+            </div>
+            <div class="saved-actions">
+                <button type="button" class="btn btn-outline btn-sm" data-saved-move="{{ s.token }}" aria-label="Move {{ label }} back to your cart">Move to cart</button>
+                <button type="button" class="saved-remove" data-saved-remove="{{ s.token }}" aria-label="Remove {{ label }} from saved items">Remove</button>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}

@@ -131,10 +131,13 @@ def _start_fresh_login_session():
     after login_user().
     """
     guest_cart = session.get('cart') if session.get('cart_owner_id') in (None, 'guest') else None
+    guest_saved = session.get('saved_for_later')
     session.clear()
     session.permanent = True
     if guest_cart:
         session['_pending_guest_cart'] = guest_cart
+    if guest_saved:
+        session['_pending_saved'] = guest_saved
 
 
 def _next_target():
@@ -210,6 +213,8 @@ def login():
         login_user(user, remember=remember)
         from utils.cart_store import adopt_guest_cart_on_login
         adopt_guest_cart_on_login(user, session.pop('_pending_guest_cart', None))
+        from utils.saved_items import adopt_guest_saved
+        adopt_guest_saved(user, session.pop('_pending_saved', None))
         from utils.group_orders import claim_pending_group_orders
         claimed = claim_pending_group_orders(user)
         if claimed:
@@ -282,6 +287,8 @@ def register():
         login_user(user)
         from utils.cart_store import adopt_guest_cart_on_login
         adopt_guest_cart_on_login(user, session.pop('_pending_guest_cart', None))
+        from utils.saved_items import adopt_guest_saved
+        adopt_guest_saved(user, session.pop('_pending_saved', None))
         from utils.group_orders import claim_pending_group_orders
         claimed = claim_pending_group_orders(user)
         if claimed:

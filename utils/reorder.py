@@ -126,8 +126,6 @@ def add_order_to_cart(order, cart):
     Returns (lines added, [(item name, reason) left out], note). The note is set when items from another group
     had to come out of the cart, because one cart holds one group at a time.
     """
-    from utils.group_orders import cart_group_label, stores_share_an_org
-
     lines, skipped = [], []
     for item in order.items:
         line, reason = _line_from(item)
@@ -136,8 +134,20 @@ def add_order_to_cart(order, cart):
         else:
             lines.append(line)
 
+    added, note = merge_lines(cart, lines)
+    return added, skipped, note
+
+
+def merge_lines(cart, lines):
+    """Add ``lines`` to ``cart`` (a list, changed in place), joining identical lines.
+
+    Returns (pieces added, note). The note is set when items from another group had to come out of the cart,
+    because one cart holds one group at a time.
+    """
+    from utils.group_orders import cart_group_label, stores_share_an_org
+
     note = None
-    new_ids = {line['collection_id'] for line in lines if line['collection_id']}
+    new_ids = {line['collection_id'] for line in lines if line.get('collection_id')}
     if new_ids:
         def compatible(existing):
             cid = existing.get('collection_id') or None
@@ -157,4 +167,41 @@ def add_order_to_cart(order, cart):
         else:
             cart.append(line)
         added += int(line['quantity'] or 0)
-    return added, skipped, note
+    return added, note
+
+
+def why_not_orderable(line):
+    """Why a cart line can no longer be ordered (a sentence fragment), or None when it still can."""
+    product = db.session.get(Product, line.get('product_id') or 0)
+    if product is None or not product.is_active:
+        return 'we no longer carry this style'
+    sizes = _json_list(product.available_sizes)
+    if sizes and line.get('size') not in sizes:
+        return f"size {line.get('size')} is no longer offered"
+    color = line.get('color')
+    if color and ProductColorVariant.query.filter_by(product_id=product.id).count()             and not ProductColorVariant.query.filter_by(product_id=product.id, color_name=color).first():
+        return f'{color} is no longer offered'
+    if line.get('collection_id'):
+        reason = _closed_store_reason(line['collection_id'])
+        if reason:
+            return reason
+    if line.get('design_id') and db.session.get(Design, line['design_id']) is None:
+        return 'the artwork is no longer on file'
+    return None
+
+
+def reprice_line(line):
+    """Set the line's price from today's price list (changes ``line``)."""
+    from utils.pricing import calculate_unit_price
+    product = db.session.get(Product, line['product_id'])
+    design = db.session.get(Design, line['design_id']) if line.get('design_id') else None
+    meta = line.get('back_design_meta') or {}
+    has_personalization = bool(meta.get('name') or meta.get('number'))
+    has_back = bool(has_personalization or line.get('back_design_url'))
+    line['unit_price'] = calculate_unit_price(
+        product, size=line.get('size'), placement=line.get('placement'), has_back_design=has_back,
+        back_design_parts=(int(bool(meta.get('name'))) + int(bool(meta.get('number')))
+                           if line.get('back_design_kind') == 'personalization' else None),
+        is_blank=not (design or line.get('design_url') or has_back),
+        design_fee=float(getattr(design, 'design_fee', 0) or 0))
+    return line

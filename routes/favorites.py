@@ -40,7 +40,8 @@ def index():
                     'color_name': fav_data.get('color_name')
                 })
     
-    return render_template('shop/favorites.html', favorites=favorites)
+    from utils.saved_items import saved_for_page
+    return render_template('shop/favorites.html', favorites=favorites, saved_items=saved_for_page())
 
 
 @favorites_bp.route('/favorites/add', methods=['POST'])

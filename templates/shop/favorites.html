@@ -13,6 +13,7 @@
 
 <div class="favorites-page">
     <div class="container">
+        {% include 'cart/_saved.html' %}
 
         {% if favorites %}
         <div class="products-grid">
@@ -242,4 +243,5 @@ async function removeFavorite(productId, colorName) {
     }
 }
 </style>
+<script src="{{ url_for('static', filename='js/saved-for-later.js') }}" defer></script>
 {% endblock %}

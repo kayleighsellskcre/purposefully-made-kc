@@ -106,7 +106,8 @@ def index():
             })
             subtotal += item_total
     
-    return render_template('cart/index.html', 
+    from utils.saved_items import saved_for_page
+    return render_template('cart/index.html', saved_items=saved_for_page(), 
                          cart_items=cart_items,
                          subtotal=subtotal,
                          active_group_order=active_group_order,
@@ -619,6 +620,41 @@ def remove(index):
         'cart_count': cart_count(cart),
         'cart_fingerprint': cart_fingerprint(cart),
     })
+
+
+def _saved_reply(ok, message, cart, note=None):
+    from utils.saved_items import saved_count
+    return jsonify({'success': ok, 'message': message, 'note': note, 'cart_count': cart_count(cart),
+                    'saved_count': saved_count(), 'cart_fingerprint': cart_fingerprint(cart)}), (200 if ok else 400)
+
+
+@cart_bp.route('/save-for-later/<int:index>', methods=['POST'])
+def save_for_later(index):
+    """Set a cart item aside, with everything about it, to come back to."""
+    from utils.saved_items import save_line
+    cart = get_cart()
+    ok, message = save_line(cart, index)
+    if ok:
+        save_cart(cart)
+    return _saved_reply(ok, message, cart)
+
+
+@cart_bp.route('/saved/<token>/move', methods=['POST'])
+def saved_move(token):
+    """Put a saved item back in the cart, at today's price."""
+    from utils.saved_items import move_to_cart
+    cart = get_cart()
+    ok, message, note = move_to_cart(token, cart)
+    if ok:
+        save_cart(cart)
+    return _saved_reply(ok, message, cart, note)
+
+
+@cart_bp.route('/saved/<token>/remove', methods=['POST'])
+def saved_remove(token):
+    from utils.saved_items import remove_saved
+    ok, message = remove_saved(token)
+    return _saved_reply(ok, message, get_cart())
 
 
 @cart_bp.route('/clear', methods=['POST'])

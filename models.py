@@ -401,6 +401,17 @@ class CompanyInvoice(db.Model):
         return f'<CompanyInvoice {self.invoice_number}>'
 
 
+class SavedCartItem(db.Model):
+    """A cart line a signed-in shopper set aside to come back to (the whole line: size, color, artwork, back print)."""
+    __tablename__ = 'saved_cart_item'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    token = db.Column(db.String(32), nullable=False, index=True)
+    product_id = db.Column(db.Integer)
+    line = db.Column(db.JSON, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 class District(db.Model):
     """A school district: schools (Organizations) sit under it by level.
 
