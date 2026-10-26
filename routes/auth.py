@@ -137,11 +137,29 @@ def _start_fresh_login_session():
         session['_pending_guest_cart'] = guest_cart
 
 
+def _next_target():
+    """Where to go after signing in or creating an account: a path on this site, or ''.
+
+    It rides along on the address (?next=) and in a hidden form field, so it survives the form, a wrong password,
+    and the trip between Sign In and Create an Account.
+    """
+    raw = (request.values.get('next') or '').strip()
+    if not raw.startswith('/') or raw.startswith('//') or '\\' in raw or any(ord(c) < 32 for c in raw):
+        return ''
+    return raw
+
+
+def _again(endpoint, target):
+    """Back to the same form, keeping the destination."""
+    return redirect(url_for(endpoint, next=target) if target else url_for(endpoint))
+
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @_rate_limit("10 per minute")
 def login():
+    target = _next_target()
     if current_user.is_authenticated:
-        return redirect(url_for('main.index'))
+        return redirect(target or url_for('main.index'))
 
     if request.method == 'POST':
         email = (request.form.get('email') or '').strip().lower()
@@ -150,7 +168,7 @@ def login():
 
         # Generic message regardless of whether the user exists (prevents user enumeration)
         _bad = lambda: (flash('Invalid email or password. Please try again.', 'error'),
-                        redirect(url_for('auth.login')))[1]
+                        _again('auth.login', target))[1]
 
         user = User.query.filter(db.func.lower(User.email) == email).first()
 
@@ -162,7 +180,7 @@ def login():
         if user.is_locked and email != admin_email:
             flash('Your account is temporarily locked due to too many failed attempts. '
                   'Please wait 15 minutes and try again.', 'error')
-            return redirect(url_for('auth.login'))
+            return _again('auth.login', target)
         # Auto-clear any stale lockout on the admin account so it never gets
         # permanently blocked by automated attempts or AI-assistant retries.
         if email == admin_email and user.is_locked:
@@ -177,7 +195,7 @@ def login():
             else:
                 remaining = 5 - (user.failed_logins or 0)
                 flash(f'Invalid email or password. {remaining} attempt{"s" if remaining != 1 else ""} remaining before lockout.', 'error')
-            return redirect(url_for('auth.login'))
+            return _again('auth.login', target)
 
         # Successful login — reset lockout counter
         user.reset_login_attempts()
@@ -197,9 +215,7 @@ def login():
         if claimed:
             db.session.commit()
 
-        next_page = request.args.get('next')
-        if not next_page or urlparse(next_page).netloc != '':
-            next_page = url_for('account.my_group_orders') if claimed else url_for('main.index')
+        next_page = target or (url_for('account.my_group_orders') if claimed else url_for('main.index'))
 
         flash(f'Welcome back, {user.first_name or user.email}!', 'success')
         if claimed:
@@ -209,14 +225,15 @@ def login():
             )
         return redirect(next_page)
 
-    return render_template('auth/login.html')
+    return render_template('auth/login.html', next=target)
 
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
 @_rate_limit("5 per hour")
 def register():
+    target = _next_target()
     if current_user.is_authenticated:
-        return redirect(url_for('main.index'))
+        return redirect(target or url_for('main.index'))
     
     if request.method == 'POST':
         password = request.form.get('password')
@@ -228,24 +245,24 @@ def register():
         email, email_error = _clean_email(request.form.get('email'))
         if email_error:
             flash(email_error, 'error')
-            return redirect(url_for('auth.register'))
+            return _again('auth.register', target)
 
         if not password:
             flash('Please choose a password.', 'error')
-            return redirect(url_for('auth.register'))
+            return _again('auth.register', target)
         
         if password != confirm_password:
             flash('Passwords do not match', 'error')
-            return redirect(url_for('auth.register'))
+            return _again('auth.register', target)
         
         if len(password) < 8:
             flash('Password must be at least 8 characters long', 'error')
-            return redirect(url_for('auth.register'))
+            return _again('auth.register', target)
         
         # Case-insensitively, to match how login looks an account up.
         if User.query.filter(db.func.lower(User.email) == email).first():
             flash('Email already registered', 'error')
-            return redirect(url_for('auth.register'))
+            return _again('auth.register', target)
         
         # Create new user
         admin_email = os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com'
@@ -275,10 +292,11 @@ def register():
                 'A group order is ready for you to finish. You can edit it from My Group Orders.',
                 'success',
             )
-            return redirect(url_for('account.my_group_orders'))
-        return redirect(url_for('main.index'))
+        if target:
+            return redirect(target)
+        return redirect(url_for('account.my_group_orders') if claimed else url_for('main.index'))
     
-    return render_template('auth/register.html')
+    return render_template('auth/register.html', next=target)
 
 
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])

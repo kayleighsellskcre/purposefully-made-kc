@@ -12,7 +12,7 @@
             {% if current_user.is_authenticated %}
             <a href="{{ start_url }}" class="btn btn-primary">Set Up Your Company Order</a>
             {% else %}
-            <a href="{{ url_for('auth.login') }}?next={{ start_url|urlencode }}" class="btn btn-primary">Sign In to Set Up Your Order</a>
+            <a href="{{ url_for('auth.login', next=start_url) }}" class="btn btn-primary">Sign In to Set Up Your Order</a>
             <span class="ca-small">New here? You can create a free account on the next screen.</span>
             {% endif %}
         </p>

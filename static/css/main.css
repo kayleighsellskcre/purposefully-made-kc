@@ -3520,3 +3520,15 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 .mgo-group-name { font-family: var(--font-heading); font-size: 1.2rem; font-weight: 600; }
 .mgo-group-meta { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
 .mgo-group .mgo-list { margin-top: 0; }
+
+/* Group store header: the logo strip and cover photo take less room on a phone, and a failed image shows the monogram */
+.group-order-showcase-item[hidden], .group-order-showcase[hidden] { display: none; }
+.img-fallback { opacity: 0.35; object-fit: contain; }
+@media (max-width: 640px) {
+    .page-header .group-order-cover { margin-bottom: 0.75rem; }
+    .page-header .group-order-cover img { max-height: 160px; }
+    .page-header .group-order-showcase { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; gap: 0.75rem; margin-top: 1rem; padding: 0.25rem 0.25rem 0.75rem; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+    .page-header .group-order-showcase-item { flex: 0 0 auto; width: 92px; padding: 0.5rem; border-radius: 14px; scroll-snap-align: start; box-shadow: 0 4px 14px rgba(58, 61, 72, 0.1); }
+}
+.faq-list { margin: 0.4rem 0 0; padding-left: 1.2rem; }
+.faq-list li { margin-bottom: 0.4rem; line-height: 1.55; }

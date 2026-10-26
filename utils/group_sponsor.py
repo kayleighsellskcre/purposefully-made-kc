@@ -38,9 +38,9 @@ def apply_sponsor_settings_from_form(collection):
         try:
             count = int(raw)
         except ValueError:
-            return False, 'Please enter how many items the company covers per person (a whole number).'
+            return False, 'Please enter how many items the sponsor covers per person (a whole number).'
         if count < 1 or count > ITEMS_MAX:
-            return False, f'The company can cover between 1 and {ITEMS_MAX} items per person.'
+            return False, f'The sponsor can cover between 1 and {ITEMS_MAX} items per person.'
         collection.sponsor_items_per_person = count
     if 'sponsor_budget_per_person' in form:
         raw = (form.get('sponsor_budget_per_person') or '').strip().lstrip('$')
@@ -50,9 +50,9 @@ def apply_sponsor_settings_from_form(collection):
             try:
                 amount = float(raw)
             except ValueError:
-                return False, 'Please enter the most the company will pay for one item as a dollar amount.'
+                return False, 'Please enter the most the sponsor will pay for one item as a dollar amount.'
             if amount <= 0:
-                return False, 'The most the company will pay for one item must be more than $0.'
+                return False, 'The most the sponsor will pay for one item must be more than $0.'
             collection.sponsor_budget_per_person = round(amount, 2)
     if 'sponsor_message' in form:
         collection.sponsor_message = (form.get('sponsor_message') or '').strip()[:300] or None
@@ -65,7 +65,7 @@ def sponsor_cart_problem(collection, cart):
     if not lines:
         return 'Your cart is empty.'
     if any((i.get('collection_id') or None) != collection.id for i in lines):
-        return ('Your cart has items from somewhere else. This company-sponsored order '
+        return ('Your cart has items from somewhere else. This sponsor-covered order '
                 'can only include items from this page. Please remove the others.')
     return None
 
@@ -447,7 +447,7 @@ def cancel_request(sub):
     if not ok:
         return False, error
     sub.status = 'rejected'
-    sub.rejection_reason = 'Cancelled by the employee'
+    sub.rejection_reason = 'Cancelled by the shopper'
     db.session.commit()
     from utils import sponsor_emails
     sponsor_emails.cancelled(sub, refunded=bool(sub.overage_refunded_at) and not was_refunded)
@@ -486,7 +486,7 @@ def requests_csv(collection) -> str:
     buf = io.StringIO()
     out = csv.writer(buf)
     out.writerow(['Name', 'Email', 'Phone', 'Item', 'Color', 'Size',
-                  'Company pays', 'Employee pays', 'Status', 'How they get it'])
+                  'Sponsor pays', 'Shopper pays', 'Status', 'How they get it'])
     labels = {'approved': 'Counted', 'pending': 'Counted', 'invoiced': 'On invoice',
               'converted': 'In production', 'rejected': 'Removed'}
     for r in rows:

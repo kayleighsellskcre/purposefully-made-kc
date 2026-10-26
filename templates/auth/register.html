@@ -23,7 +23,8 @@
                 <h1 class="auth-title">Create Account</h1>
                 <p class="auth-subtitle">Join Purposefully Made KC today</p>
 
-                <form method="POST" action="{{ url_for('auth.register') }}" class="auth-form" id="registerForm">
+                <form method="POST" action="{{ url_for('auth.register', next=next) if next else url_for('auth.register') }}" class="auth-form" id="registerForm">
+                    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
                     <div class="form-row">
                         <div class="form-group">
                             <label for="first_name" class="form-label">First Name</label>
@@ -80,7 +81,7 @@
 
                 <div class="auth-divider"><span>Already have an account?</span></div>
                 <div class="auth-footer">
-                    <a href="{{ url_for('auth.login') }}" class="btn btn-outline btn-block">Sign In</a>
+                    <a href="{{ url_for('auth.login', next=next) if next else url_for('auth.login') }}" class="btn btn-outline btn-block">Sign In</a>
                 </div>
             </div>
         </div>

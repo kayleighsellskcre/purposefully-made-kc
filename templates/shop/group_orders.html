@@ -331,31 +331,21 @@
 <section class="group-orders-content">
     <div class="container">
         <div class="go-choose">
-            {% set _start_each = url_for('shop.create_group_order') %}
-            {% set _start_whole = url_for('shop.create_group_order', mode='whole') %}
-            {% set _start_amount = url_for('shop.create_group_order', mode='amount') %}
+            {% for opt in PAYMENT_OPTIONS %}
+            {% set _start = url_for('shop.create_group_order', mode=opt.mode) if opt.mode else url_for('shop.create_group_order') %}
             <div class="go-option">
-                <h2 class="go-option-title">Everyone Pays Individually</h2>
-                <p>Each person selects their items and pays for their own order at checkout. We print and sort the whole order.</p>
-                <a href="{{ _start_each if current_user.is_authenticated else url_for('auth.login') ~ '?next=' ~ _start_each }}" class="btn btn-primary">Start a group order</a>
+                <h2 class="go-option-title">{{ opt.title }}</h2>
+                <p>{{ opt.text }}</p>
+                <a href="{{ _start if current_user.is_authenticated else url_for('auth.login', next=_start) }}" class="btn btn-primary" aria-label="{{ opt.label }}">Start a group order</a>
             </div>
-            <div class="go-option">
-                <h2 class="go-option-title">The Entire Order Is Covered</h2>
-                <p>One person or organization pays for everyone's selections in a single payment.</p>
-                <a href="{{ _start_whole if current_user.is_authenticated else url_for('auth.login') ~ '?next=' ~ _start_whole }}" class="btn btn-primary">Start a group order</a>
-            </div>
-            <div class="go-option">
-                <h2 class="go-option-title">A Set Amount Is Covered</h2>
-                <p>An organizer covers a certain number of items or a set allowance per person. Individuals can purchase additional items themselves.</p>
-                <a href="{{ _start_amount if current_user.is_authenticated else url_for('auth.login') ~ '?next=' ~ _start_amount }}" class="btn btn-primary">Start a group order</a>
-            </div>
+            {% endfor %}
         </div>
         <p class="go-option-note">Covering a team at work? <a href="{{ url_for('shop.company_apparel') }}">See Company Apparel</a>.</p>
 
         {% if open_collections or open_orgs %}
         <div class="directory-section" id="open-orders">
             <h2>Open Group Orders</h2>
-            <p class="section-sub">Join an existing order: pick your size, pay your own way, and you're done.</p>
+            <p class="section-sub">Join an existing order. Open it and follow that store's instructions for choosing and paying.</p>
 
             {% if (open_collections|length + open_orgs|length) > 3 %}
             <div class="dir-search-wrap">
@@ -461,7 +451,7 @@
             <div class="step-card">
                 <div class="step-num">1</div>
                 <h3>Build your store</h3>
-                <p>Pick the styles, colors, and logo options your team can order from. Set a deadline and pickup location.</p>
+                <p>Pick the styles, colors, and logo options everyone can choose from. Set a deadline and a pickup location.</p>
             </div>
             <div class="step-card">
                 <div class="step-num">2</div>
@@ -470,8 +460,8 @@
             </div>
             <div class="step-card">
                 <div class="step-num">3</div>
-                <h3>Everyone orders their own</h3>
-                <p>Team members choose their size and pay individually. You get an order summary spreadsheet when it closes.</p>
+                <h3>Everyone joins in</h3>
+                <p>Shoppers follow the instructions for your payment option: pick and pay for their own items, send in their sizes for you to pay, or pay only for extras beyond what a sponsor covers. You get an order summary when it closes.</p>
             </div>
         </div>
 
@@ -483,7 +473,9 @@
             </div>
             <div class="faq-item">
                 <strong>How does payment work?</strong>
-                <p>Each person pays individually at checkout (card, Apple Pay, Google Pay, PayPal, or Venmo). You don't collect money yourself.</p>
+                <ul class="faq-list">
+                    {% for opt in PAYMENT_OPTIONS %}<li><b>{{ opt.who }}:</b> {{ opt.text }}</li>{% endfor %}
+                </ul>
             </div>
             <div class="faq-item">
                 <strong>How long does it take?</strong>
@@ -491,7 +483,7 @@
             </div>
             <div class="faq-item">
                 <strong>Can I restrict what people can order?</strong>
-                <p>Yes! You choose which styles, colors, and designs the team can pick from. Great for keeping everyone matching.</p>
+                <p>Yes. When each person pays, you choose which styles, colors and designs everyone can pick from. When the organizer pays, you choose one style, color and design for the whole group. Either way, everyone matches.</p>
             </div>
             <div class="faq-item">
                 <strong>Can I do pickup instead of shipping?</strong>

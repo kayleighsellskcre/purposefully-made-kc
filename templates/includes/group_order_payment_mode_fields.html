@@ -6,36 +6,24 @@
 <div class="form-group payment-mode-field" id="paymentModeField">
     <span class="form-label-text">How will your group order be paid for?</span>
     <div class="payment-mode-choices">
+        {% for opt in PAYMENT_OPTIONS %}
         <label class="payment-mode-choice">
-            <input type="radio" name="payment_mode" value="each_pays" {% if _pm not in ('organizer_pays', 'company_sponsored') %}checked{% endif %}>
+            <input type="radio" name="payment_mode" value="{{ opt.key }}" {% if (opt.key == 'each_pays' and _pm not in ('organizer_pays', 'company_sponsored')) or _pm == opt.key %}checked{% endif %}>
             <span>
-                <strong>Everyone Pays Individually</strong>
-                <small>Each person selects their items and pays for their own order at checkout.</small>
+                <strong>{{ opt.title }}</strong>
+                <small>{{ opt.text }}</small>
             </span>
         </label>
-        <label class="payment-mode-choice">
-            <input type="radio" name="payment_mode" value="organizer_pays" {% if _pm == 'organizer_pays' %}checked{% endif %}>
-            <span>
-                <strong>The Entire Order Is Covered</strong>
-                <small>One person or organization pays for everyone's selections in a single payment.</small>
-            </span>
-        </label>
-        <label class="payment-mode-choice">
-            <input type="radio" name="payment_mode" value="company_sponsored" {% if _pm == 'company_sponsored' %}checked{% endif %}>
-            <span>
-                <strong>A Set Amount Is Covered</strong>
-                <small>An organizer covers a certain number of items or a set allowance per person. Individuals can purchase additional items themselves.</small>
-            </span>
-        </label>
+        {% endfor %}
     </div>
     <div class="payment-mode-details" id="sponsorDetails" {% if _pm != 'company_sponsored' %}hidden{% endif %}>
-        <label for="sponsor_items_per_person">How many items does the company cover for each person?</label>
+        <label for="sponsor_items_per_person">How many items does the sponsor cover for each person?</label>
         <input type="number" id="sponsor_items_per_person" name="sponsor_items_per_person" class="form-control" min="1" max="20" inputmode="numeric" value="{{ _spi }}">
-        <label for="sponsor_budget_per_person" style="margin-top:.75rem;">Most the company will pay for one item (the employee pays the difference) <span class="optional-tag">Optional</span></label>
+        <label for="sponsor_budget_per_person" style="margin-top:.75rem;">Most the sponsor will pay for one item (the shopper pays the difference) <span class="optional-tag">Optional</span></label>
         <input type="number" id="sponsor_budget_per_person" name="sponsor_budget_per_person" class="form-control" min="0" step="0.01" inputmode="decimal" value="{{ _spb if _spb is not none else '' }}" placeholder="e.g., 25.00">
         <label for="sponsor_message" style="margin-top:.75rem;">Message at the top of your page <span class="optional-tag">Optional</span></label>
         <textarea id="sponsor_message" name="sponsor_message" class="form-control" rows="2" maxlength="300" placeholder="e.g., Acme Co. is covering your shirt!">{{ _spm or '' }}</textarea>
-        <p class="form-hint">Items past that number (and any price above the per-item limit) are paid by the employee by card, and refunded if you remove their request.</p>
+        <p class="form-hint">Items past that number (and any price above the per-item limit) are paid by the shopper by card, and refunded if you remove their request.</p>
     </div>
     <div class="payment-mode-details" id="paymentModeDetails" {% if _pm != 'organizer_pays' %}hidden{% endif %}>
         <label for="expected_count">About how many people will fill it out? <span class="optional-tag">Optional</span></label>

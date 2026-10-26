@@ -909,6 +909,9 @@ def create_app(config_class=Config):
         from utils.group_orders import format_schedule_date
         return format_schedule_date(dt, fmt)
 
+    from utils.group_orders import PAYMENT_OPTIONS as _PAYMENT_OPTIONS
+    app.jinja_env.globals['PAYMENT_OPTIONS'] = _PAYMENT_OPTIONS
+
     @app.template_filter('closes_in')
     def closes_in_filter(collection):
         """"Closes in 3 days" for a group store that is close to its deadline, else blank."""

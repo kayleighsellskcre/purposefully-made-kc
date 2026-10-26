@@ -14,7 +14,7 @@
             </div>
 
             {% if collection.payment_mode == 'company_sponsored' %}
-            <p class="share-hint">Anyone with this link can pick their item. Your company covers the items you set, so nobody is asked to pay for those. Requests are counted automatically. When everyone has answered, you create one invoice.</p>
+            <p class="share-hint">Anyone with this link can pick their item. The sponsor covers the items you set, so nobody is asked to pay for those. Requests are counted automatically. When everyone has answered, you create one invoice.</p>
             {% if can_manage %}
             <p style="text-align:center;margin:1rem 0;"><a href="{{ url_for('sponsored.manage', slug=collection.slug) }}" class="btn btn-primary">See requests &amp; invoice</a></p>
             {% endif %}

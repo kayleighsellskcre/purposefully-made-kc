@@ -83,7 +83,7 @@ def test_extra_items_are_shown_as_the_employees_to_pay(seed, app):
     slug = _setup(app, seed, items=1)
     _fill_cart(guest, seed, qty=2)
     html = guest.get(f'/c/{slug}/sponsored/checkout').get_data(as_text=True)
-    assert 'Covered by your company' in html
+    assert 'Covered by the sponsor' in html
     assert 'You pay $18.00' in html
     assert 'Continue to payment' in html
 
@@ -93,7 +93,7 @@ def test_price_cap_makes_the_employee_pay_the_difference(seed, app):
     slug = _setup(app, seed, budget=10.0)
     _fill_cart(guest, seed)
     html = guest.get(f'/c/{slug}/sponsored/checkout').get_data(as_text=True)
-    assert 'Company covers $10.00' in html and 'you pay $8.00' in html
+    assert 'Sponsor covers $10.00' in html and 'you pay $8.00' in html
 
 
 def test_split_cart_rules(seed, app):
@@ -436,7 +436,7 @@ def test_emails_follow_a_request_from_start_to_production(seed, app, outbox):
     _owner_client(app).post(f'/c/{slug}/manage-sponsored/invoice/{inv["id"]}/mark-paid', data={'method': 'check'})
     sent = _subjects(outbox)[before:]
     assert any('going into production' in s and r == ['ava@example.com'] for s, r in sent)
-    assert any('Company invoice paid' in s and app.config['ADMIN_EMAIL'] in r for s, r in sent)
+    assert any('Sponsor invoice paid' in s and app.config['ADMIN_EMAIL'] in r for s, r in sent)
 
 
 def test_declined_email_mentions_the_refund(seed, app, outbox, monkeypatch):
@@ -563,7 +563,7 @@ def test_dashboard_shows_what_everyone_owes(seed, app):
     slug = _setup(app, seed)
     _make_pending(_guest(app), seed, app, slug)
     html = _login_as(app, CUSTOMER_EMAIL).get(f'/c/{slug}/manage-sponsored').get_data(as_text=True)
-    assert 'The company will be billed' in html and '$18.00' in html
+    assert 'The sponsor will be billed' in html and '$18.00' in html
     assert 'Download list' in html
 
 
@@ -575,7 +575,7 @@ def test_csv_lists_every_item_and_is_safe_in_excel(seed, app):
     resp = _login_as(app, CUSTOMER_EMAIL).get(f'/c/{slug}/manage-sponsored/requests.csv')
     assert resp.status_code == 200 and resp.mimetype == 'text/csv'
     text = resp.get_data(as_text=True)
-    assert 'Company pays' in text and '18.00' in text and 'Counted' in text
+    assert 'Sponsor pays' in text and '18.00' in text and 'Counted' in text
     assert "'=HYPERLINK" in text                           # a formula is made harmless
     assert _guest(app).get(f'/c/{slug}/manage-sponsored/requests.csv').status_code in (302, 401, 403)
 

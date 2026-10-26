@@ -683,6 +683,23 @@ def is_deadline_passed(collection):
     return deadline < datetime.utcnow()
 
 
+# What each way of paying means, in plain words. The front door, the setup form, the FAQ and the steps all read this,
+# so the three options are described the same way everywhere.
+PAYMENT_OPTIONS = [
+    {'key': 'each_pays', 'mode': None, 'title': 'Everyone Pays Individually',
+     'who': 'Each person pays',
+     'text': 'The organizer chooses which styles and options are available. Each shopper chooses and pays for their own items.',
+     'label': 'Start an order where each person pays'},
+    {'key': 'organizer_pays', 'mode': 'whole', 'title': 'The Entire Order Is Covered',
+     'who': 'Organizer pays',
+     'text': 'The organizer chooses one style, color and design. People submit their names and sizes, and the organizer pays for the full roster.',
+     'label': 'Start an organizer-paid order'},
+    {'key': 'company_sponsored', 'mode': 'amount', 'title': 'A Set Amount Is Covered',
+     'who': 'A sponsor covers part',
+     'text': 'A sponsor covers a set number of items, with an optional limit per item. Shoppers pay for extras and any amount over the limit. The organizer pays the sponsor invoice before covered items are printed.',
+     'label': 'Start a sponsor-covered order'},
+]
+
 COUNTDOWN_DAYS = 14
 
 

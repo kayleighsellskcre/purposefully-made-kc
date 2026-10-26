@@ -117,3 +117,34 @@ def test_group_order_pages_have_balanced_markup(app, seed, client, login):
              '/org/crawl-usd-1/mill-valley-high', f"/shop/group-orders/{seed['collection_slug']}/edit"]
     for path in pages:
         assert _unbalanced(client.get(path).get_data(as_text=True)) == {}, path
+
+
+def test_a_store_logo_strip_loads_its_first_images_right_away_and_has_a_failure_fallback(app, seed, guest):
+    import json
+    from models import Design
+    with app.app_context():
+        c = db.session.get(Collection, seed['collection_id'])
+        ids = []
+        for n in range(8):
+            d = Design(filename=f'logo{n}.png', file_path=f'uploads/designs/logo{n}.png', title=f'Logo {n}', is_gallery=True,
+                       uploaded_by_user_id=seed['admin_id'])
+            db.session.add(d)
+            db.session.flush()
+            ids.append(d.id)
+        c.allowed_design_ids = json.dumps(ids)
+        c.showcase_design_ids = json.dumps(ids)
+        db.session.commit()
+    html = guest.get(f"/c/{seed['collection_slug']}").get_data(as_text=True)
+    loads = re.findall(r'<div class="group-order-showcase-item">\s*<img[^>]*loading="(\w+)"', html)
+    assert loads == ['eager'] * 6 + ['lazy'] * 2
+    assert 'js/image-fallback.js' in html
+    js = open('static/js/image-fallback.js', encoding='utf-8').read()
+    assert 'group-order-showcase-item' in js and 'logo-monogram.png' in js
+    import os
+    assert os.path.exists('static/img/logo-monogram.png')
+
+
+def test_the_phone_layout_keeps_the_logo_strip_to_one_row(client):
+    css = open('static/css/main.css', encoding='utf-8').read()
+    block = css[css.index('/* Group store header: the logo strip'):]
+    assert 'overflow-x: auto' in block and 'max-height: 160px' in block and '.page-header .group-order-showcase' in block

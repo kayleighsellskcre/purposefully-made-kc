@@ -171,7 +171,7 @@ def checkout(slug):
     db.session.commit()
     return render_template(
         'sponsored/pay.html', collection=collection, heading='Pay for your extra items',
-        subtitle=f'{collection.name} · your company covers the rest',
+        subtitle=f'{collection.name} · the sponsor covers the rest',
         amount=charge, client_secret=intent.client_secret,
         stripe_public_key=current_app.config.get('STRIPE_PUBLIC_KEY'),
         return_url=url_for('sponsored.paid', slug=slug, _external=True),

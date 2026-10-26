@@ -558,7 +558,7 @@
         {% if collection.payment_mode == 'company_sponsored' %}
         {% set _n = collection.sponsor_items_per_person or 1 %}
         <div class="sponsor-banner" style="max-width:640px;margin:1.25rem auto 0;padding:1rem 1.25rem;border:1px solid rgba(184,124,111,.35);background:rgba(184,124,111,.08);border-radius:14px;text-align:center;">
-            <strong>{{ collection.sponsor_message or 'Your company is covering your apparel!' }}</strong>
+            <strong>{{ collection.sponsor_message or 'A sponsor is covering your apparel!' }}</strong>
             <p style="margin:.35rem 0 0;color:var(--text-secondary);">Choose {{ _n }} item{{ 's' if _n != 1 }}. There is nothing to pay{% if collection.sponsor_budget_per_person %} for items up to ${{ '%.2f'|format(collection.sponsor_budget_per_person) }} each{% endif %}.</p>
         </div>
         {% endif %}
@@ -566,7 +566,7 @@
         <div class="group-order-showcase" aria-label="Group order logos">
             {% for d in showcase_designs %}
             <div class="group-order-showcase-item">
-                <img src="{{ d.url }}" alt="{{ d.title }}" loading="lazy" decoding="async">
+                <img src="{{ d.url }}" alt="{{ d.title }}" loading="{{ 'eager' if loop.index <= 6 else 'lazy' }}" decoding="async">
             </div>
             {% endfor %}
         </div>

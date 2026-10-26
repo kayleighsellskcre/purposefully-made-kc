@@ -142,4 +142,4 @@ def test_each_way_to_pay_starts_the_form_with_that_choice_selected(client, custo
                           ('?mode=company', 'company_sponsored')):
         page = customer_client.get('/shop/group-orders/create' + mode).get_data(as_text=True)
         assert f'value="{checked}" checked' in page, mode
-    assert 'Everyone Pays Individually' in page and 'An organizer covers a certain number of items' in page
+    assert 'Everyone Pays Individually' in page and 'A sponsor covers a set number of items' in page

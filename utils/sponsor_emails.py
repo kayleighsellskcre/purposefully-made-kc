@@ -72,12 +72,12 @@ def request_received(sub):
     now_items = any(is_immediate_line(l) for l in sub.items)
     covered_items = any(not is_immediate_line(l) for l in sub.items)
     if now_items and covered_items:
-        timing = ("The items you paid for are being made now. The items your company covers are made "
-                  "as soon as its invoice is paid, and we will email you when that happens.")
+        timing = ("The items you paid for are being made now. The items the sponsor covers are made "
+                  "as soon as the sponsor's invoice is paid, and we will email you when that happens.")
     elif now_items:
         timing = 'The items you paid for are being made now.'
     else:
-        timing = ("Your items are made as soon as your company's invoice is paid, "
+        timing = ("Your items are made as soon as the sponsor's invoice is paid, "
                   "and we will email you when that happens.")
     return _safe(
         _send, sub.email, f"You're in: {sub.collection.name}",
@@ -128,7 +128,7 @@ def in_production(sub, order):
     return _safe(
         _send, sub.email, f'Your order is going into production: {c.name}',
         f'{sub.first_name}, your order is in!',
-        ["Your company's invoice has been paid, so we are making your items now.", how],
+        ["The sponsor's invoice has been paid, so we are making your items now.", how],
         details=[('Order number', order.order_number), ('Items', _items_text(sub))],
     )
 
@@ -140,8 +140,8 @@ def invoice_paid_to_shop(invoice, orders):
     base = admin_base_url(app)
     return _safe(
         _send, admin_recipient(app),
-        f'Company invoice paid: {invoice.collection.name} ({len(orders)} orders)',
-        'A company invoice was paid',
+        f'Sponsor invoice paid: {invoice.collection.name} ({len(orders)} orders)',
+        'A sponsor invoice was paid',
         [f'{invoice.collection.name}: invoice {invoice.invoice_number} for ${invoice.total:,.2f} '
          f'was paid ({invoice.payment_method or "unknown"}). {len(orders)} '
          f'order{"s are" if len(orders) != 1 else " is"} now in your list, ready to make.'],
