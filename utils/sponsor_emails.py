@@ -33,7 +33,7 @@ def _send(to, subject, heading, paragraphs, *, button=None, details=None, note=N
         plain_lines += ['', f"{button['label']}: {button['url']}"]
     if note:
         plain_lines += ['', note]
-    plain_lines += ['', 'Made with purpose, for you.', '— Purposefully Made KC']
+    plain_lines += ['', 'Made with purpose, for you.', 'Purposefully Made KC']
     msg = Message(subject=subject, recipients=to, body='\n'.join(plain_lines), html=html,
                   sender=sender(app), reply_to=reply_to(app))
     for filename, content_type, data in (attachments or []):

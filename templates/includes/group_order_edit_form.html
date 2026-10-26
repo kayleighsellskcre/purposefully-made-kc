@@ -104,7 +104,7 @@
 
             <div class="form-section">
                 <h2>Your Choices for This Group Order</h2>
-                <p class="form-hint">Set up colors, designs, placements, and back options. Your team will only see what you allow.</p>
+                <p class="form-hint">Set up colors, designs, placements, and back options. Everyone ordering will only see what you allow.</p>
 
                 {# ── 1. Colors ──────────────────────────────────────────── #}
                 <div class="organizer-block">
@@ -232,7 +232,7 @@
                         <label class="placement-checkbox">
                             <input type="radio" name="back_design_type" value="name_number" {% if bdt == 'name_number' %}checked{% endif %}>
                             <span>Yes - name &amp; number</span>
-                            <small>Team types their own name/number</small>
+                            <small>Each person types their own name/number</small>
                         </label>
                         <label class="placement-checkbox">
                             <input type="radio" name="back_design_type" value="image" {% if bdt == 'image' %}checked{% endif %}>
@@ -242,7 +242,7 @@
                         <label class="placement-checkbox">
                             <input type="radio" name="back_design_type" value="both" {% if bdt == 'both' %}checked{% endif %}>
                             <span>Yes - either option</span>
-                            <small>Team picks: name/number or your image</small>
+                            <small>Each person picks: name/number or your image</small>
                         </label>
                     </div>
 

@@ -753,19 +753,6 @@
         <div class="alert alert-warning" style="max-width:700px;margin:0 auto 2rem;padding:1rem 1.25rem;background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.3);border-radius:8px;color:var(--text-primary);text-align:center;">
             <strong>Ordering is closed.</strong> The deadline for this group order has passed. Contact the organizer if you have questions.
         </div>
-        {% elif collection.order_deadline %}
-        <div style="max-width:700px;margin:0 auto 2rem;padding:0.65rem 1.25rem;background:rgba(184,124,111,0.08);border:1px solid rgba(184,124,111,0.25);border-radius:8px;color:var(--text-primary);text-align:center;font-size:0.92rem;">
-            {% if collection.not_yet_open and collection.order_opens_at %}
-            🗓 <strong>Orders open {{ collection.order_opens_at|kc_date('%A, %B %-d') }} and close {{ collection.order_deadline|kc_date }}.</strong> Browse the styles now and order once we open.
-            {% else %}
-            🗓 <strong>Order deadline: {{ collection.order_deadline|kc_date }}</strong>. Place your order by then to be included.
-            {% endif %}
-        </div>
-        {% elif collection.not_yet_open %}
-        <div style="max-width:700px;margin:0 auto 2rem;padding:1.25rem 1.5rem;background:linear-gradient(135deg,rgba(184,124,111,0.08),rgba(184,124,111,0.04));border:1px solid rgba(184,124,111,0.3);border-radius:12px;color:var(--text-primary);text-align:center;">
-            <p style="font-size:1.15rem;font-weight:700;margin:0 0 0.4rem;color:#8a5a50;letter-spacing:0.01em;">🎉 Orders Open {{ collection.order_opens_at|kc_date('%A, %B %-d') }}!</p>
-            <p style="margin:0;font-size:0.95rem;color:var(--text-secondary);line-height:1.6;">This store will be open <em>throughout the entire school year</em> - so there's no pressure, just Falcon pride. Browse the styles now and come back to order whenever you're ready!</p>
-        </div>
         {% endif %}
 
         {% set fan_families = product_families if product_families is defined else [] %}

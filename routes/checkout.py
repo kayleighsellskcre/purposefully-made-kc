@@ -355,7 +355,7 @@ def _send_order_confirmation_email(order):
             f"Order Number : {order.order_number}\n"
             f"Date         : {format_central(placed_at)}\n"
             f"{'Group order  : ' + group_name + chr(10) if group_name else ''}"
-            f"Payment      : {(order.payment_method or 'Card').title()} — "
+            f"Payment      : {(order.payment_method or 'Card').title()}, "
             f"{'PAID' if paid else 'PENDING (pay on pickup)'}\n\n"
             f"Items:\n{items_text}\n\n"
             f"Subtotal : ${float(order.subtotal or 0):.2f}\n"
@@ -365,7 +365,7 @@ def _send_order_confirmation_email(order):
             f"Delivery:\n{delivery_text}\n\n"
             f"Questions? Email us at purposefullymadekc@gmail.com\n\n"
             f"Made with purpose, for you.\n"
-            f"— Purposefully Made KC"
+            f"Purposefully Made KC"
         )
         account_order_url = None
         if getattr(order, 'user_id', None) and order.order_number:
@@ -389,7 +389,7 @@ def _send_order_confirmation_email(order):
 
         from utils.mailer import send as _send_mail
         msg = Message(
-            subject=f"Your receipt — {order.order_number} | Purposefully Made KC",
+            subject=f"Your receipt: {order.order_number} | Purposefully Made KC",
             recipients=recipients,
             body=plain_body,
             html=html_body,
@@ -418,10 +418,10 @@ def _send_order_confirmation_email(order):
         )
         payment_note = {
             'paid': 'PAID',
-            'underpaid': 'UNDERPAID — check before making',
-        }.get(order.payment_status, 'CASH — collect on pickup')
+            'underpaid': 'UNDERPAID, check before making',
+        }.get(order.payment_status, 'CASH, collect on pickup')
         admin_plain = (
-            f"NEW ORDER — {order.order_number} · ${order.total:.2f} · {payment_note}\n\n"
+            f"NEW ORDER {order.order_number} · ${order.total:.2f} · {payment_note}\n\n"
             f"{'Group order : ' + group_name + chr(10) if group_name else ''}"
             f"Customer : {order.full_name} <{order.email}>"
             f"{' · ' + order.phone if order.phone else ''}\n\n"
@@ -431,7 +431,7 @@ def _send_order_confirmation_email(order):
         )
         from utils.mailer import send as _send_mail
         admin_msg = Message(
-            subject=f"New Order — {order.order_number} · ${order.total:.2f}"
+            subject=f"New Order {order.order_number} · ${order.total:.2f}"
                     + (f" · {group_name}" if group_name else ""),
             recipients=[admin_email],
             body=admin_plain,

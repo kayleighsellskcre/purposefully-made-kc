@@ -170,7 +170,7 @@ def _organizer_message(app, group, person):
         f"Here is the link to share:\n{url}\n\n"
         + ''.join(f"  - {r['name']}: {r['count']} {r['noun']} so far\n" for r in rows)
         + "\nQuestions? Just reply to this email.\n\n"
-          "Made with purpose, for you.\n— Purposefully Made KC"
+          "Made with purpose, for you.\nPurposefully Made KC"
     )
     html = _render(app, 'email/deadline_reminder.html', audience='organizer', group_name=name,
                    share_url=url, rows=rows, first_name=first_name, multi=group['org'] is not None,

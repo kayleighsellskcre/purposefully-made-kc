@@ -244,13 +244,24 @@ def my_group_orders():
         .order_by(Collection.created_at.desc())
         .all()
     )
+    from models import OrgSection
+    from utils import districts as DS
+    sections = {sec.collection_id: sec.organization for sec in
+                OrgSection.query.filter(OrgSection.collection_id.in_([c.id for c in collections] or [0])).all()
+                if sec.organization is not None}
+    groups, by_org, standalone = [], {}, []
     for c in collections:
         c.deadline_passed = is_deadline_passed(c)
         c.not_yet_open = is_not_yet_open(c)
-        c.share_kit = None
-        if c.short_slug:                       # district school stores get a permanent link, QR and flyer
-            from utils import districts as DS
-            school = DS.school_for_store(c)
-            if school is not None:
-                c.share_kit = DS.share_info(c, school)
-    return render_template('account/my_group_orders.html', collections=collections)
+        org = sections.get(c.id)
+        c.share_kit = DS.share_info(c, org if org is not None and org.district_id else None)
+        if org is None:
+            standalone.append(c)
+            continue
+        group = by_org.get(org.id)
+        if group is None:
+            group = by_org[org.id] = {'title': org.name, 'kind': 'School' if org.district_id else 'Organization', 'stores': []}
+            groups.append(group)
+        group['stores'].append(c)
+    return render_template('account/my_group_orders.html', collections=collections, groups=groups,
+                           standalone=standalone)

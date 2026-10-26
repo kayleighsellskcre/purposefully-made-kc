@@ -35,9 +35,7 @@
                     <a href="{{ url_for('shop.create_group_order') }}" class="btn btn-primary btn-sm">+ New Group Order</a>
                 </div>
 
-                {% if collections %}
-                <div style="display:flex;flex-direction:column;gap:1rem;margin-top:1rem;">
-                    {% for c in collections %}
+                {% macro store_row(c) %}
                     {% set order_count = store_order_count(c) %}
                     {% set is_expired = c.deadline_passed %}
                     {% set is_upcoming = c.not_yet_open %}
@@ -81,16 +79,33 @@
                                 · Created {{ c.created_at|central('%b %d, %Y') }}
                             </p>
                         </div>
-                        <div style="display:flex;gap:0.6rem;flex-shrink:0;">
+                        <div style="display:flex;gap:0.6rem;flex-shrink:0;flex-wrap:wrap;">
                             <a href="{{ url_for('collection.view', slug=c.slug) }}" class="btn btn-outline btn-sm" target="_blank">View Store</a>
                             {% if c.payment_mode == 'company_sponsored' %}<a href="{{ url_for('sponsored.manage', slug=c.slug) }}" class="btn btn-outline btn-sm">Requests</a>{% endif %}
                             <a href="{{ url_for('shop.edit_group_order', slug=c.slug) }}" class="btn btn-outline btn-sm">Edit</a>
-                            {% if c.share_kit %}{{ share_button(c.share_kit, c.name, 'Link, QR and flyer') }}{% endif %}
-                            <a href="{{ url_for('collection.share', slug=c.slug) }}" class="btn btn-primary btn-sm">Share</a>
+                            <a href="{{ url_for('collection.share', slug=c.slug) }}" class="btn btn-outline btn-sm">Orders</a>
+                            {{ share_button(c.share_kit, c.name, 'Share') }}
                         </div>
                     </div>
-                    {% endfor %}
+                {% endmacro %}
+
+                {% if collections %}
+                {% if standalone %}
+                <div class="mgo-list">
+                    {% for c in standalone %}{{ store_row(c) }}{% endfor %}
                 </div>
+                {% endif %}
+                {% for g in groups %}
+                <details class="mgo-group"{% if groups|length <= 2 and not standalone %} open{% endif %}>
+                    <summary>
+                        <span class="mgo-group-name">{{ g.title }}</span>
+                        <span class="mgo-group-meta">{{ g.kind }} &middot; {{ g.stores|length }} store{{ 's' if g.stores|length != 1 }}</span>
+                    </summary>
+                    <div class="mgo-list">
+                        {% for c in g.stores %}{{ store_row(c) }}{% endfor %}
+                    </div>
+                </details>
+                {% endfor %}
                 {{ share_dialog() }}
                 {% else %}
                 <div style="text-align:center;padding:4rem 2rem;background:#fff;border-radius:var(--border-radius);border:2px dashed var(--border-color);margin-top:1.5rem;">

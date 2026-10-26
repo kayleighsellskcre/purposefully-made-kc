@@ -36,6 +36,19 @@ def _private_download_headers(filename):
     }
 
 
+@collection_bp.route('/<slug>/flyer.pdf')
+def flyer(slug):
+    """One-page letter-size flyer with the store name, a large QR code, the link and the deadline."""
+    from flask import abort
+    from utils import districts as DS
+    collection = Collection.query.filter_by(slug=slug).first_or_404()
+    if not collection.is_active:
+        abort(404)
+    disposition = 'attachment' if request.args.get('download') else 'inline'
+    return Response(DS.flyer_pdf(collection), mimetype='application/pdf',
+                    headers={'Content-Disposition': f'{disposition}; filename="{DS._file_safe(collection.name)} flyer.pdf"'})
+
+
 @collection_bp.route('/<slug>/qr.png')
 def qr_code(slug):
     """Return a QR code PNG for this collection's share URL."""
@@ -56,11 +69,10 @@ def qr_code(slug):
         buf = io.BytesIO()
         img.save(buf, format='PNG')
         buf.seek(0)
-        return Response(
-            buf.getvalue(),
-            mimetype='image/png',
-            headers={'Cache-Control': 'public, max-age=3600'},
-        )
+        headers = {'Cache-Control': 'public, max-age=3600'}
+        if request.args.get('download'):
+            headers['Content-Disposition'] = f'attachment; filename="{collection.slug} QR.png"'
+        return Response(buf.getvalue(), mimetype='image/png', headers=headers)
     except ImportError:
         from flask import abort
         abort(500, 'qrcode library not installed. Run: pip install qrcode[pil]')

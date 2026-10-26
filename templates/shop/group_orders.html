@@ -348,9 +348,9 @@
                 <h2 class="go-option-title">A Set Amount Is Covered</h2>
                 <p>An organizer covers a certain number of items or a set allowance per person. Individuals can purchase additional items themselves.</p>
                 <a href="{{ _start_amount if current_user.is_authenticated else url_for('auth.login') ~ '?next=' ~ _start_amount }}" class="btn btn-primary">Start a group order</a>
-                <a href="{{ url_for('shop.company_apparel') }}" class="go-option-link">Covering a team at work? See Company Apparel</a>
             </div>
         </div>
+        <p class="go-option-note">Covering a team at work? <a href="{{ url_for('shop.company_apparel') }}">See Company Apparel</a>.</p>
 
         {% if open_collections or open_orgs %}
         <div class="directory-section" id="open-orders">

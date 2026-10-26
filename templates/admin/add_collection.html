@@ -133,7 +133,7 @@
 
             <div class="form-section" id="choicesSection">
                 <h2>Your Choices for This Group Order</h2>
-                <p class="form-hint">Set up colors, designs, placements, and back options. Your team will only see what you allow.</p>
+                <p class="form-hint">Set up colors, designs, placements, and back options. Everyone ordering will only see what you allow.</p>
 
                 {# Multi-team logo notice — only shown when org checkbox checked #}
                 <div id="orgLogoNotice" style="display:none;margin-bottom:1.25rem;padding:0.85rem 1rem;background:#fdf6f3;border:1.5px solid #e8d5cb;border-radius:10px;">
@@ -285,7 +285,7 @@
                         <label class="placement-checkbox">
                             <input type="radio" name="back_design_type" value="name_number">
                             <span>Yes - name &amp; number</span>
-                            <small>Team types their own name/number</small>
+                            <small>Each person types their own name/number</small>
                         </label>
                         <label class="placement-checkbox">
                             <input type="radio" name="back_design_type" value="image">
@@ -295,7 +295,7 @@
                         <label class="placement-checkbox">
                             <input type="radio" name="back_design_type" value="both">
                             <span>Yes - either option</span>
-                            <small>Team picks: name/number or your image</small>
+                            <small>Each person picks: name/number or your image</small>
                         </label>
                     </div>
 
@@ -893,9 +893,9 @@
 
         var OPTS = [
             { value: 'none',        label: 'No, front only',   desc: 'Nothing on the back' },
-            { value: 'name_number', label: 'Name & number',      desc: 'Team types their own' },
+            { value: 'name_number', label: 'Name & number',      desc: 'Each person types their own' },
             { value: 'image',       label: 'Uploaded image',     desc: 'Your logo on the back' },
-            { value: 'both',        label: 'Either option',      desc: 'Team picks: name/# or image' },
+            { value: 'both',        label: 'Either option',      desc: 'Each person picks: name/# or image' },
         ];
 
         names.forEach(function(name) {

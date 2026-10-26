@@ -217,7 +217,7 @@ def test_an_organizer_sees_link_qr_and_flyer_in_my_group_orders(app, seed, clien
         db.session.commit()
     login(client, CUSTOMER_EMAIL)
     html = client.get('/account/group-orders').get_data(as_text=True)
-    assert '/desoto/mill-valley/volleyball/flyer.pdf' in html and 'Link, QR and flyer' in html
+    assert '/desoto/mill-valley/volleyball/flyer.pdf' in html and 'data-share-url=' in html and 'distShareDialog' in html
     assert client.get('/desoto/mill-valley/volleyball/flyer.pdf').status_code == 200
 
 

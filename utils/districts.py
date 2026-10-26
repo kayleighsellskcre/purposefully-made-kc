@@ -111,6 +111,8 @@ def short_path(obj, school=None):
     if isinstance(obj, Organization):
         return f'/{obj.district.short_slug}/{obj.short_slug}'
     school = school or school_for_store(obj)
+    if school is None or not obj.short_slug:        # a store outside any district: its ordinary store link
+        return f'/c/{obj.slug}'
     return f'{short_path(school)}/{obj.short_slug}'
 
 
