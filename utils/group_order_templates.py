@@ -227,6 +227,8 @@ GROUP_TEMPLATES = [
 ]
 
 TEMPLATE_KEYS = {t['key'] for t in GROUP_TEMPLATES}
+ADULT_ONLY_TYPES = {'adults_only', 'business'}
+KIDS_ONLY_TYPES = {'kids_only'}
 
 
 def _facts(product):
@@ -253,8 +255,12 @@ def _pick(slot, items, taken):
     return None
 
 
-def group_order_templates(products):
-    """Templates with product_ids resolved against the active catalog."""
+def group_order_templates(products, recommended=True):
+    """Templates with product_ids resolved against the active catalog.
+
+    Every type starts with our recommended styles (see utils.group_defaults). ``recommended=False`` gives the type's
+    own slot picks instead.
+    """
     items = [(p, _bare_style(p.style_number), *_facts(p)) for p in products or []]
     resolved = []
     for template in GROUP_TEMPLATES:
@@ -264,6 +270,10 @@ def group_order_templates(products):
             if product is not None:
                 taken.append(product.id)
         entry = {k: v for k, v in template.items() if k != 'slots'}
-        entry['product_ids'] = [str(pid) for pid in taken]
+        from utils.group_defaults import KID_AGES, default_style_ids
+        ages = ('adult',) if template['key'] in ADULT_ONLY_TYPES else (KID_AGES if template['key'] in KIDS_ONLY_TYPES else None)
+        starting = default_style_ids(products, ages) if recommended else []
+        # Our recommended set; a catalog that lacks all of it keeps the type's own picks.
+        entry['product_ids'] = [str(pid) for pid in (starting or taken)]
         resolved.append(entry)
     return resolved

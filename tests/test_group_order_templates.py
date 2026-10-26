@@ -64,13 +64,13 @@ def test_adults_only_never_includes_kids_styles():
 
 def test_retired_style_falls_back_to_same_age_and_category():
     catalog = [p for p in CATALOG if p.style_number != 'BC3001'] + [_product(20, 'PC147', 'adult', 'Tee')]
-    school = _by_key(group_order_templates(catalog))['school_spirit']
+    school = _by_key(group_order_templates(catalog, recommended=False))['school_spirit']
     assert school['product_ids'][0] == '9'
 
 
 def test_fallback_skips_womens_fit_unless_asked():
     catalog = [_product(7, 'BC8800', 'adult', 'Tank', "Women's"), _product(8, 'BC3480', 'adult', 'Tank')]
-    event = _by_key(group_order_templates(catalog))['event']
+    event = _by_key(group_order_templates(catalog, recommended=False))['event']
     assert event['product_ids'] == ['8', '7']
 
 

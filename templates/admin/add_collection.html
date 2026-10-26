@@ -155,12 +155,12 @@
                     <div style="margin-bottom:0.85rem;">
                         <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.5rem;">
                             <label class="org-style-choice" id="colorModeAllLabel" style="display:flex;align-items:center;gap:0.5rem;padding:0.55rem 1rem;border:1.5px solid var(--terra-cotta,#b56c4c);border-radius:8px;cursor:pointer;font-size:0.88rem;font-weight:600;background:#fdf6f3;color:var(--terra-cotta,#b56c4c);transition:all 0.15s;">
-                                <input type="radio" name="color_restriction_mode" value="all" checked style="display:none;">
-                                🌈 All available colors <em style="font-weight:400;font-style:normal;opacity:0.8;">(recommended)</em>
+                                <input type="radio" name="color_restriction_mode" value="all" style="display:none;">
+                                🌈 All available colors
                             </label>
                             <label class="org-style-choice" id="colorModeRestrictLabel" style="display:flex;align-items:center;gap:0.5rem;padding:0.55rem 1rem;border:1.5px solid #ddd;border-radius:8px;cursor:pointer;font-size:0.88rem;font-weight:500;background:#fff;color:#555;transition:all 0.15s;">
-                                <input type="radio" name="color_restriction_mode" value="restrict" style="display:none;">
-                                🎨 Restrict to specific colors
+                                <input type="radio" name="color_restriction_mode" value="restrict" checked style="display:none;">
+                                🎨 Our recommended colors <em style="font-weight:400;font-style:normal;opacity:0.8;">(you can change them)</em>
                             </label>
                         </div>
                         <p id="colorModeHint" style="font-size:0.83rem;color:#888;margin:0;">Every color each shirt comes in will be available to shoppers. Great for most group orders!</p>
@@ -1681,8 +1681,8 @@ if (document.readyState === 'loading') {
         // Show/hide picker and update hint
         pickerWrap.style.display = allChecked ? 'none' : '';
         if (hint) hint.textContent = allChecked
-            ? 'Every color each shirt comes in will be available to shoppers. Great for most group orders!'
-            : 'Pick the specific colors shoppers can choose from. Expand each shirt below to select.';
+            ? 'Every color each shirt comes in will be available to shoppers.'
+            : 'We checked our favorite group-order colors on each shirt. Open a shirt to add or remove colors.';
         // Disable all color checkboxes when "all" mode so they don't submit
         pickerWrap.querySelectorAll('input[name="allowed_colors"]').forEach(function(box) {
             box.disabled = allChecked;

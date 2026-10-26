@@ -293,7 +293,9 @@ def test_create_form_lists_each_shirts_own_colors_with_swatches(customer_client,
     assert _shirt_colors(data, seed['tee_id']) == [['Black', '#000000', ''], ['White', '#ffffff', '']]
     # The hoodie only comes in Black, so White must not show under it.
     assert _shirt_colors(data, seed['hoodie_id']) == [['Black', '#000000', '']]
-    assert data['checked'] == []
+    # A new group order opens on our recommended colors: black and white here, since neither style has a solid blend.
+    assert {f'p:{seed["tee_id"]}||Black', f'p:{seed["tee_id"]}||White', f'p:{seed["hoodie_id"]}||Black'} <= set(data['checked'])
+    assert all(key.endswith(('||Black', '||White')) for key in data['checked'])
 
 
 def test_edit_form_prechecks_colors_saved_per_shirt(admin_client, seed, app):

@@ -3223,6 +3223,7 @@ def add_collection():
     from utils.product_filters import load_group_order_form_catalog
     from utils.fonts import GROUP_ORDER_FONTS
     from utils.group_order_templates import TEMPLATE_KEYS, group_order_templates
+    from utils.group_defaults import default_fan_color_keys
     from models import Organization
     catalog = load_group_order_form_catalog()
     selected_template = request.args.get('type')
@@ -3234,7 +3235,7 @@ def add_collection():
         products=catalog['products'],
         gallery_designs=catalog['gallery_designs'],
         fan_color_picker=catalog['fan_color_picker'],
-        fan_color_checked=[],
+        fan_color_checked=default_fan_color_keys(catalog['fan_color_picker'], catalog['products']),
         uniform_colors_by_product=catalog['uniform_colors_by_product'],
         team_store={'configured': True, 'uniform': {'enabled': False}, 'fan_product_ids': []},
         back_design_fonts=GROUP_ORDER_FONTS,
