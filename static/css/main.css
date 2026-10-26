@@ -3563,3 +3563,19 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 .gift-fields[hidden] { display: none; }
 .gift-fields label[for="gift_message"] { display: block; margin-bottom: 0.3rem; font-weight: 600; }
 .gift-fields .form-hint { margin: 0.35rem 0 0.8rem; font-size: 0.85rem; color: var(--text-secondary); }
+
+/* Select several and delete */
+.bulk-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin: 0.75rem 0; padding: 0.6rem 0.9rem; background: #fffdf9; border: 1px solid var(--border-light); border-radius: 12px; font-size: 0.88rem; }
+.bulk-select { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.7rem; }
+.bulk-label { color: var(--text-secondary); font-weight: 600; }
+.bulk-link { padding: 0; border: 0; background: none; color: var(--accent-secondary); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.bulk-link:hover { color: var(--accent-color); }
+.bulk-count { color: var(--text-secondary); margin-left: auto; }
+.bulk-delete { padding: 0.45rem 1.1rem; border-radius: 999px; border: 1.5px solid #b0483a; background: #fff; color: #b0483a; font: inherit; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; }
+.bulk-delete:hover:not(:disabled), .bulk-delete:focus-visible { background: #b0483a; color: #fff; }
+.bulk-delete:disabled { opacity: 0.4; cursor: not-allowed; }
+.bulk-check { display: inline-flex; align-items: center; margin-right: 0.6rem; cursor: pointer; }
+.bulk-check input, .bulk-col input { width: 1.1rem; height: 1.1rem; }
+.bulk-col { width: 2rem; padding-right: 0 !important; }
+.dist-danger h2 { color: #b0483a; }
+.bulk-check--org { margin: 0 0 0.35rem; }

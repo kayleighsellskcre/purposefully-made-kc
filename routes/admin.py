@@ -3326,6 +3326,25 @@ def edit_collection(collection_id):
                          catalog_filter_picker=True)
 
 
+@admin_bp.route('/collections/bulk-delete', methods=['POST'])
+@admin_required
+def collections_bulk_delete():
+    """Delete several group orders (and whole organizations) at once. Anything with orders is turned off and kept."""
+    from models import Organization
+    from utils.group_delete import remove_organization, remove_stores, summary
+    store_ids = [int(i) for i in request.form.getlist('store_id') if i.isdigit()]
+    org_ids = [int(i) for i in request.form.getlist('org_id') if i.isdigit()]
+    deleted, kept = remove_stores(Collection.query.filter(Collection.id.in_(store_ids)).all()) if store_ids else ([], [])
+    orgs = Organization.query.filter(Organization.id.in_(org_ids), Organization.district_id.is_(None)).all() if org_ids else []
+    for org in orgs:
+        _result, d, k = remove_organization(org)
+        deleted += d
+        kept += k
+    flash(summary(deleted, kept, 'group order') + (f' ({len(orgs)} organization{"s" if len(orgs) != 1 else ""} handled.)' if orgs else ''),
+          'success' if deleted or kept else 'info')
+    return redirect(url_for('admin.collections'))
+
+
 @admin_bp.route('/collections/<int:collection_id>/delete', methods=['POST'])
 @admin_required
 def delete_collection(collection_id):

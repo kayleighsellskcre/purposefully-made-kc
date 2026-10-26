@@ -92,6 +92,15 @@
     </form>
 </div>
 
+<div class="ops-card bk-card dist-danger">
+    <h2>Remove this school</h2>
+    <p class="bk-muted">Deletes {{ school.name }} with all its stores, for good. If any store has orders or sign-ups, those are never erased: the school is turned off and kept.</p>
+    <form method="post" onsubmit="return confirm('Delete {{ school.name|e }} and all its stores? Anything with orders is turned off and kept instead.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete_school">
+        <button type="submit" class="bulk-delete">Delete this school</button>
+    </form>
+</div>
+
 <div class="ops-card bk-card">
     <h2>Stores</h2>
     <table class="admin-table bk-ledger">

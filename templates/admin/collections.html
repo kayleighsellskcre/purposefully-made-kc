@@ -1,4 +1,5 @@
 {% extends "admin/base_admin.html" %}
+{% from "includes/bulk_bar.html" import bulk_bar %}
 
 {% block title %}Group Orders - Admin - Purposefully Made KC{% endblock %}
 
@@ -19,6 +20,7 @@
             <div class="collection-card-accent" aria-hidden="true"></div>
             <div class="collection-header">
                 <div class="collection-identity">
+                    <label class="bulk-check"><input type="checkbox" class="bulk-pick" form="bulkCollections" name="store_id" value="{{ collection.id }}" data-name="{{ collection.name }}" aria-label="Select {{ collection.name }}"></label>
                     <div class="collection-avatar">
                         {% if collection.cover_image %}
                         <img src="{{ collection.cover_image | image_url }}" alt="" loading="lazy">
@@ -124,6 +126,7 @@
             <button type="button" class="filter-tab" data-filter="all" id="goFilterAll">Show All</button>
         </div>
         <p class="go-filter-hint" id="goFilterHint"></p>
+        {{ bulk_bar('bulkCollections', url_for('admin.collections_bulk_delete'), 'group order') }}
 
         {# ── Organizations: one card each. Teams live inside the org's Edit page. ── #}
         {% for org in orgs %}{% if org.grouped_collections %}
@@ -137,6 +140,7 @@
                     {% endif %}
                 </div>
                 <div class="org-card-main">
+                    <label class="bulk-check bulk-check--org"><input type="checkbox" class="bulk-pick" form="bulkCollections" name="org_id" value="{{ org.id }}" data-name="{{ org.name }} (organization and its teams)" aria-label="Select {{ org.name }}"></label>
                     <span class="org-group-eyebrow">Organization{% if not org.is_active %} &middot; Hidden{% endif %}</span>
                     <h2 class="org-group-name">{{ org.name }}</h2>
                     <div class="org-card-teams">
@@ -440,4 +444,5 @@ function copyLink(url, btn) {
 .empty-state h2 { margin-bottom: 1rem; }
 .empty-state p { color: var(--text-secondary); margin-bottom: 2rem; }
 </style>
+<script src="{{ url_for('static', filename='js/bulk-delete.js') }}" defer></script>
 {% endblock %}

@@ -224,6 +224,21 @@ def profile():
     return render_template('account/profile.html')
 
 
+@account_bp.route('/group-orders/delete', methods=['POST'])
+@login_required
+def delete_group_orders():
+    """Delete several of your own group orders at once. Anything with orders or sign-ups is turned off and kept."""
+    from utils.group_delete import remove_stores, summary
+    ids = [int(i) for i in request.form.getlist('store_id') if i.isdigit()]
+    owned = Collection.created_by_user_id == current_user.id
+    if getattr(current_user, 'is_admin', False):
+        owned = owned | Collection.created_by_user_id.is_(None)
+    stores = Collection.query.filter(Collection.id.in_(ids), owned).all() if ids else []
+    deleted, kept = remove_stores(stores)
+    flash(summary(deleted, kept, 'group order'), 'success' if deleted or kept else 'info')
+    return redirect(url_for('account.my_group_orders'))
+
+
 @account_bp.route('/group-orders')
 @login_required
 def my_group_orders():

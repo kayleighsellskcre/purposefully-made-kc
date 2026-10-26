@@ -798,72 +798,9 @@ def _file_safe(text):
 
 
 def flyer_pdf(obj, school=None):
-    """One letter-size page: who it is for, the QR large, the link written out and the deadline."""
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import letter
-    from reportlab.lib.utils import ImageReader
-    from reportlab.pdfgen import canvas
-
-    w, h = letter
-    if isinstance(obj, District):
-        top, title, sub, deadline, color, tagline = obj.name, obj.name, 'Spirit wear for every school', \
-            obj.order_deadline, colors.HexColor('#B87C6F'), None
-    elif isinstance(obj, Organization):
-        top = obj.district.name
-        title, sub = obj.name, (f'Home of the {obj.mascot}' if obj.mascot else None)
-        deadline, color, tagline = school_deadline(obj), colors.HexColor(accent(obj)), None
-    else:
-        school = school or school_for_store(obj)
-        top = school.name if school else ''
-        title = obj.name
-        sub = f'Home of the {school.mascot}' if school and school.mascot else None
-        deadline = obj.order_deadline or (school_deadline(school) if school else None)
-        color = colors.HexColor(accent(school)) if school else colors.HexColor('#B87C6F')
-        tagline = SPIRIT_TAGLINE if obj.store_kind == 'spirit' else None
-
-    ink, muted, sand = colors.HexColor('#3A3D48'), colors.HexColor('#7A7C86'), colors.HexColor('#E8D0B1')
-    buf = io.BytesIO()
-    c = canvas.Canvas(buf, pagesize=letter)
-    c.setTitle(f'{title} flyer')
-    c.setFillColor(colors.HexColor('#FBF6EE'))
-    c.rect(0, 0, w, h, stroke=0, fill=1)
-    c.setFillColor(color)
-    c.rect(0, h - 14, w, 14, stroke=0, fill=1)
-
-    def centered(text, y, font, size, fill):
-        c.setFont(font, size)
-        c.setFillColor(fill)
-        while c.stringWidth(text, font, size) > w - 90 and size > 12:
-            size -= 1
-            c.setFont(font, size)
-        c.drawCentredString(w / 2, y, text)
-
-    centered('PURPOSEFULLY MADE KC', h - 66, 'Helvetica-Bold', 10, color)
-    if top and top != title:
-        centered(top.upper(), h - 118, 'Helvetica', 12, muted)
-    centered(title, h - 168, 'Times-Roman', 40, ink)
-    y = h - 200
-    if sub:
-        centered(sub, y, 'Times-Italic', 17, muted)
-        y -= 26
-    if tagline:
-        centered(tagline, y, 'Times-Italic', 17, color)
-    link = short_url(obj, school)
-    qr = ImageReader(io.BytesIO(qr_png(link)))
-    side = 3.9 * 72
-    qx, qy = (w - side) / 2, h / 2 - side / 2 - 40
-    c.setFillColor(colors.white)
-    c.setStrokeColor(sand)
-    c.roundRect(qx - 18, qy - 18, side + 36, side + 36, 12, stroke=1, fill=1)
-    c.drawImage(qr, qx, qy, side, side)
-    centered('Scan to order', qy - 52, 'Helvetica-Bold', 11, color)
-    centered(link.split('://', 1)[-1], qy - 82, 'Helvetica', 20, ink)
-    if deadline:
-        centered(f"Order by {deadline.strftime('%B')} {deadline.day}", qy - 118, 'Times-Roman', 22, ink)
-    centered('Printed in Shawnee, Kansas', 46, 'Helvetica', 9, muted)
-    c.showPage()
-    c.save()
-    return buf.getvalue()
+    """One letter-size page: who it is for, the logos, a few shirts, a large QR, the link and the deadline."""
+    from utils.flyer import build
+    return build(obj, school)
 
 
 def qr_zip(obj):

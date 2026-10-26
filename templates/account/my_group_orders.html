@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "district/_cards.html" import share_button, share_dialog %}
+{% from "includes/bulk_bar.html" import bulk_bar %}
 {% block title %}My Group Orders - Purposefully Made KC{% endblock %}
 
 {% block content %}
@@ -42,6 +43,7 @@
                     <div style="background:#fff;border:1px solid var(--border-light);border-radius:var(--border-radius);padding:1.25rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
                         <div>
                             <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.3rem;flex-wrap:wrap;">
+                                <label class="bulk-check"><input type="checkbox" class="bulk-pick" form="bulkMine" name="store_id" value="{{ c.id }}" data-name="{{ c.name }}" aria-label="Select {{ c.name }}"></label>
                                 <h3 style="font-family:var(--font-heading);font-size:1.1rem;margin:0;">{{ c.name }}</h3>
                                 {% if not c.is_active %}
                                 <span style="font-size:0.7rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;background:#e0e0e0;color:#666;padding:0.2rem 0.55rem;border-radius:20px;">Inactive</span>
@@ -90,6 +92,7 @@
                 {% endmacro %}
 
                 {% if collections %}
+                {{ bulk_bar('bulkMine', url_for('account.delete_group_orders'), 'group order') }}
                 {% if standalone %}
                 <div class="mgo-list">
                     {% for c in standalone %}{{ store_row(c) }}{% endfor %}
@@ -107,6 +110,7 @@
                 </details>
                 {% endfor %}
                 {{ share_dialog() }}
+                <script src="{{ url_for('static', filename='js/bulk-delete.js') }}" defer></script>
                 {% else %}
                 <div style="text-align:center;padding:4rem 2rem;background:#fff;border-radius:var(--border-radius);border:2px dashed var(--border-color);margin-top:1.5rem;">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--border-color)" stroke-width="1.5" style="margin-bottom:1rem;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>

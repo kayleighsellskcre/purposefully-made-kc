@@ -95,6 +95,26 @@ def district_manage(district_id):
                                      request.form.get('opens') or d.order_opens_at)
                 d.order_deadline = DS._parse_dt(request.form.get('deadline')) or d.order_deadline
                 flash(f'The ordering window was applied to {n} stores.', 'success')
+            elif action == 'delete_stores':
+                from utils.group_delete import remove_stores, summary
+                ids = [int(i) for i in request.form.getlist('store_id') if i.isdigit()]
+                mine = {s.id: s for school in d.schools.all() for s in DS.stores_of(school, include_inactive=True)
+                        if s.store_kind != 'spirit'}
+                deleted, kept = remove_stores([mine[i] for i in ids if i in mine])
+                flash(summary(deleted, kept), 'success' if deleted or kept else 'info')
+            elif action == 'delete_school':
+                from utils.group_delete import remove_organization, summary
+                school = Organization.query.filter_by(id=request.form.get('school_id', type=int), district_id=d.id).first() or abort(404)
+                name = school.name
+                result, deleted, kept = remove_organization(school)
+                flash(f'{name} was deleted with its {len(deleted)} stores.' if result == 'deleted'
+                      else f'{name} has orders or sign-ups, so it was turned off and kept. ' + summary(deleted, kept), 'success')
+            elif action == 'delete_district':
+                from utils.group_delete import remove_district
+                name = d.name
+                result, deleted, kept = remove_district(d)
+                flash(f'{name} was deleted.' if result == 'deleted' else f'{name} has orders or sign-ups, so it was turned off and kept.', 'success')
+                return redirect(url_for('admin.districts'))
             elif action == 'styles':
                 n = DS.set_district_styles(d, request.form.getlist('style'))
                 flash(f'Styles saved. {n} stores now use this list. Stores whose styles you changed by hand were left alone.', 'success')
@@ -170,6 +190,13 @@ def district_school(school_id):
                             added.append(design.id)
                 n = DS.set_school_logos(school, keep + added)
                 flash(f'The school logos were saved. All {n} stores of {school.name} offer them now.', 'success')
+            elif action == 'delete_school':
+                from utils.group_delete import remove_organization, summary
+                name, district_id = school.name, school.district_id
+                result, deleted, kept = remove_organization(school)
+                flash(f'{name} was deleted with its {len(deleted)} stores.' if result == 'deleted'
+                      else f'{name} has orders or sign-ups, so it was turned off and kept. ' + summary(deleted, kept), 'success')
+                return redirect(url_for('admin.district_manage', district_id=district_id))
             elif action == 'fundraiser_paid':
                 from decimal import Decimal, InvalidOperation
                 try:

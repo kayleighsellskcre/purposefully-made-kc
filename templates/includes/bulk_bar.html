@@ -1,0 +1,15 @@
+{# A "select several, delete them" bar. The checkboxes live elsewhere on the page and point at this form with form="<id>". #}
+{% macro bulk_bar(form_id, action, noun, kinds=None, fields=None) %}
+<form id="{{ form_id }}" method="post" action="{{ action }}" class="bulk-bar" data-bulk-bar data-noun="{{ noun }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% for name, value in (fields or {}).items() %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+    <span class="bulk-select" role="group" aria-label="Choose {{ noun }}s">
+        <span class="bulk-label">Select:</span>
+        <button type="button" class="bulk-link" data-bulk-select="all">All</button>
+        {% for key, label in (kinds or []) %}<button type="button" class="bulk-link" data-bulk-select="{{ key }}">{{ label }}</button>{% endfor %}
+        <button type="button" class="bulk-link" data-bulk-select="none">None</button>
+    </span>
+    <span class="bulk-count" aria-live="polite" data-bulk-count>None selected</span>
+    <button type="submit" class="bulk-delete" data-bulk-delete disabled>Delete selected</button>
+</form>
+{% endmacro %}

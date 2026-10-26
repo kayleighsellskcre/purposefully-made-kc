@@ -1,4 +1,5 @@
 {% extends "admin/operations/base_operations.html" %}
+{% from "includes/bulk_bar.html" import bulk_bar %}
 {% block title %}{{ district.name }} - Purposefully Made KC{% endblock %}
 {% block ops_content %}
 {% from "district/_cards.html" import share_button, share_dialog %}
@@ -91,11 +92,15 @@
             <a class="bk-link" href="{{ url_for('admin.district_school_qr_zip', school_id=school.id) }}">QR codes</a>
         </span>
     </div>
+    {% set kind_pairs = [] %}
+    {% for key, heading, label in kinds %}{% if stores[school.id]|selectattr('store_kind', 'equalto', key)|list %}{% set _ = kind_pairs.append((key, heading)) %}{% endif %}{% endfor %}
+    {{ bulk_bar('bulkStores' ~ school.id, url_for('admin.district_manage', district_id=district.id), 'store', kind_pairs, {'action': 'delete_stores'}) }}
     <table class="admin-table bk-ledger">
-        <thead><tr><th>Store</th><th>Kind</th><th>Status</th><th>Colors</th><th>Order by</th><th></th></tr></thead>
+        <thead><tr><th class="bulk-col"><span class="visually-hidden">Select</span></th><th>Store</th><th>Kind</th><th>Status</th><th>Colors</th><th>Order by</th><th></th></tr></thead>
         <tbody>
         {% for c in stores[school.id] %}
         <tr>
+            <td class="bulk-col">{% if c.store_kind != 'spirit' %}<input type="checkbox" class="bulk-pick" form="bulkStores{{ school.id }}" name="store_id" value="{{ c.id }}" data-name="{{ DS.store_label(c) }} ({{ school.name }})" data-kind="{{ c.store_kind or 'sport' }}" aria-label="Select {{ DS.store_label(c) }}">{% endif %}</td>
             <td>{{ DS.store_label(c) }}</td>
             <td>{{ 'School Spirit' if c.store_kind == 'spirit' else DS.KIND_LABEL.get(c.store_kind or 'sport', 'Sport') }}</td>
             <td>{% if not c.is_active %}Off{% elif c.products %}Live, {{ c.products|length }} product{{ 's' if c.products|length != 1 }}{% else %}<span class="bk-warn">No products yet, hidden</span>{% endif %}</td>
@@ -135,5 +140,14 @@
     </form>
     <p class="bk-note">School Spirit is added for you.</p>
 </div>
+<div class="ops-card bk-card dist-danger">
+    <h2>Remove this district</h2>
+    <p class="bk-muted">Deletes {{ district.name }} with every school and store, for good. If any store has orders or sign-ups, those are never erased: the district is turned off and kept.</p>
+    <form method="post" onsubmit="return confirm('Delete {{ district.name|e }} and everything in it? Anything with orders is turned off and kept instead.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete_district">
+        <button type="submit" class="bulk-delete">Delete this district</button>
+    </form>
+</div>
+<script src="{{ url_for('static', filename='js/bulk-delete.js') }}" defer></script>
 {{ share_dialog() }}
 {% endblock %}
