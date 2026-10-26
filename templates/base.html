@@ -87,6 +87,7 @@
                     {% set _ep = request.endpoint or '' %}
                     {% set _group_eps = ['shop.group_orders', 'shop.company_apparel', 'shop.create_group_order', 'shop.edit_group_order'] %}
                     {% set _nav_here = (
+                        g.nav_here if g.nav_here else
                         'design' if _ep == 'shop.design_gallery' else
                         'group' if (_ep in _group_eps or _ep.startswith('collection.') or _ep.startswith('org.') or _ep.startswith('sponsored.')) else
                         'shop' if _ep.startswith('shop.') else

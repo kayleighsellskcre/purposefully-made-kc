@@ -5,7 +5,7 @@
   /<district>[/<school>[/<store>]]    permanent short links (redirect to the pages above)
   .../qr.png and .../flyer.pdf        the QR code and the one-page flyer for any of them
 """
-from flask import Blueprint, Response, abort, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, g, redirect, render_template, request, url_for
 from flask_login import current_user
 
 from models import District, Organization
@@ -70,6 +70,7 @@ def _district_or_404(slug):
 
 def district_page(d):
     """Page 1: every school in the district, grouped by level."""
+    g.nav_here = 'schools'                      # the menu keeps Schools lit on a district page
     admin = _is_admin()
     levels = DS.schools_by_level(d, public=not admin)
     cards = {}
