@@ -56,10 +56,15 @@ def aspect_for(item, remember=True):
     return size
 
 
+def back_logo_placement(item):
+    """'upper_back' for a small image under the collar, 'center_back' for the full back."""
+    return 'upper_back' if (dict(getattr(item, 'back_design_details', None) or {}).get('position') == 'upper') else 'center_back'
+
+
 def back_logo_dims(item):
     """{'width','height','width_display','height_display','exceeds_safe_area','known'} for a back picture."""
     aw, ah = (aspect_for(item) or (None, None))
-    chart = front_transfer_size(item.size, getattr(item, 'product', None), 'center_back', aw, ah)
+    chart = front_transfer_size(item.size, getattr(item, 'product', None), back_logo_placement(item), aw, ah)
     known = bool(aw and ah)
     return {
         'width': chart['width'], 'height': chart['height'] if known else None,

@@ -22,7 +22,7 @@ def _back_overlay_class(meta):
         meta = {}
     if meta.get('name') or meta.get('number'):
         return 'back_name_number'
-    return 'center_back'
+    return 'upper_back' if meta.get('position') == 'upper' else 'center_back'
 
 @cart_bp.route('/')
 def index():
@@ -282,6 +282,13 @@ def add():
     back_design_meta = None
     _bd_name = (data.get('back_design_name') or '').strip()
     _bd_number = (data.get('back_design_number') or '').strip()
+    # A name stacked down the back (cheer) is a name only; a small image under the collar is a back image.
+    _bd_vertical = bool(_bd_name) and (data.get('back_design_vertical') or '').strip().lower() == 'true'
+    if _bd_vertical:
+        _bd_number = ''
+    _bd_upper = (data.get('back_design_position') or '').strip().lower() == 'upper' and not (_bd_name or _bd_number)
+    if _bd_upper and back_design_url:
+        back_design_meta = {'position': 'upper'}
     if _bd_name or _bd_number:
         def _meta_float(key):
             raw = data.get(key)
@@ -306,6 +313,8 @@ def add():
             'number_scale': _meta_float('number_condense'),
             'layout_version': 2,
         }
+        if _bd_vertical:
+            back_design_meta['vertical'] = True
     
     # Save proof images (design composited on shirt) for cart display
     proof_front_url = None
@@ -357,7 +366,7 @@ def add():
         back_design_parts=(
             int(bool(_bd_name)) + int(bool(_bd_number))
             if back_design_kind == 'personalization'
-            else None
+            else (1 if _bd_upper and back_design_url else None)
         ),
         is_blank=is_blank,
         design_fee=design_fee,
@@ -447,6 +456,7 @@ def add():
         back_text_color=(back_design_meta or {}).get('text_color'),
         back_outline=(back_design_meta or {}).get('outline'),
         back_outline_color=(back_design_meta or {}).get('outline_color'),
+        back_vertical=_bd_vertical,
         customer_name=customer_name,
         measured_name_width=measured_name_w,
         measured_number_width=measured_number_w,

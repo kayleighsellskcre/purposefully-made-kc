@@ -2597,6 +2597,14 @@ textarea:focus-visible,
     left: 50%;
     transform: translate(-50%, -50%);
 }
+.pm-proof-overlay.upper_back {
+    width: 14%;
+    max-width: 16%;
+    max-height: 14%;
+    top: 24%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
 .pm-proof-overlay.left_chest {
     width: 14%;
     max-width: 16%;
@@ -3695,3 +3703,6 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 
 /* Flyer style choice */
 .dist-flyer-pick, .flyer-pick { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.4rem; margin: 0.6rem 0 0; font-size: 0.82rem; color: var(--text-secondary); }
+.back-vertical-opt { display: flex; align-items: flex-start; gap: 0.5rem; margin: 0 0 0.75rem; cursor: pointer; font-size: 0.9rem; }
+.back-vertical-opt input { margin-top: 0.2rem; }
+.back-vertical-opt small { color: var(--text-secondary); }

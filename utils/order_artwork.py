@@ -321,7 +321,7 @@ def artwork_kit(item, order=None):
         front_overlay = front_print if front_on_shirt else None
         front_overlay_style = preview_overlay_style(item, placement) if front_overlay else ''
 
-    back_placement = 'back_name_number' if personalized else 'center_back'
+    back_placement = 'back_name_number' if personalized else ('upper_back' if meta.get('position') == 'upper' else 'center_back')
     if proof_back:
         back_mockup = proof_back
         back_overlay = None

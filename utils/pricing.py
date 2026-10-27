@@ -138,7 +138,7 @@ def price_cart_item(item, product, design=None):
     back_design_parts = (
         int(bool(meta.get('name'))) + int(bool(meta.get('number')))
         if meta.get('name') or meta.get('number')
-        else None
+        else (1 if meta.get('position') == 'upper' else None)         # a small upper-back image is one print, like a name
     )
     has_front_design = bool(item.get('design_url') or item.get('design_id'))
     is_blank = not (has_front_design or has_back_design)

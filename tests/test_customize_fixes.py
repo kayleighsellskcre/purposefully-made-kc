@@ -279,7 +279,7 @@ def test_add_to_cart_refits_mockup_and_prices_partial_back_personalization(clien
     assert 'function currentBackDesignFee()' in html
     assert 'return parts * 3' in html
     assert 'currentBackDesignFee();' in html
-    assert 'A name or number is $3. Both are $6.' in html
+    assert 'A name, number or small image is $3. A name and number together, or a large image, is $6.' in html
 
 
 def test_visual_normalization_does_not_change_adult_or_youth_print_widths():

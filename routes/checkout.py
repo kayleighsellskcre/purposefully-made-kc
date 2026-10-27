@@ -930,7 +930,7 @@ def index():
             enriched['back_overlay_class'] = (
                 'back_name_number'
                 if (_back_meta.get('name') or _back_meta.get('number'))
-                else 'center_back'
+                else ('upper_back' if _back_meta.get('position') == 'upper' else 'center_back')
             )
             d_id = item.get('design_id')
             if d_id:

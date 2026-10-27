@@ -97,14 +97,15 @@ def build_dtf_shopping_list(orders):
                 width, height = inches(dims['width']), inches(dims['height']) if dims['height'] is not None else None
                 preview = back_print_url(item)
                 name = _back_logo_name(item)
-                key = ('back', preview or name.lower(), 'center_back', width, height)
+                upper = back.get('placement') == 'upper_back'
+                key = ('back', preview or name.lower(), 'upper_back' if upper else 'center_back', width, height)
                 row = logos.get(key)
                 if not row:
                     row = {
                         'design_name': name,
                         'design_id': None,
                         'collection_id': getattr(order, 'collection_id', None),
-                        'placement': 'Center Back',
+                        'placement': 'Upper Back' if upper else 'Center Back',
                         'width': width,
                         'height': height,
                         'width_display': f'{width:.2f}' if width is not None else 'N/A',

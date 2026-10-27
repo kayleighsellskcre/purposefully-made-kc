@@ -44,6 +44,8 @@ PLACEMENT_WIDTH_FACTOR = {
     'left_chest': 0.4,
     'right_chest': 0.4,
     'sleeve': 0.3,
+    # A small image just under the back collar: the same 40% of the chart width as a left-chest logo (4 in adult, 3 in youth).
+    'upper_back': 0.4,
 }
 
 # Hoodie logos sit above the kangaroo pocket. Keep the signed-off chart for
@@ -157,6 +159,7 @@ PLACEMENT_LABELS = {
     'full_front': 'Full Front',
     'full_back': 'Full Back',
     'sleeve': 'Sleeve',
+    'upper_back': 'Upper Back',
 }
 
 _YOUTH_AGE_GROUPS = frozenset(('youth', 'toddler', 'baby', 'kids', 'kid', 'infant'))
@@ -522,8 +525,36 @@ def number_group_scale(number):
     return TWO_DIGIT_WIDTH_SCALE if digits == 2 else 1.0
 
 
+# A name stacked down the back (cheer): each letter is 80% of the chart name height, with a gap of 22% of a letter,
+# and the whole run never goes past 70% of the safe print height, so it stays on the upper back.
+VERTICAL_LETTER_RATIO = 0.8
+VERTICAL_GAP_RATIO = 0.22
+VERTICAL_RUN_RATIO = 0.7
+VERTICAL_MIN_LETTER_IN = 0.6
+VERTICAL_MAX_LETTERS = 12
+SAFE_PRINT_HEIGHT_BY_AGE = {'adult': SAFE_PRINT_HEIGHT_ADULT, 'youth': SAFE_PRINT_HEIGHT_YOUTH,
+                            'toddler': SAFE_PRINT_HEIGHT_TODDLER, 'baby': SAFE_PRINT_HEIGHT_BABY}
+
+
+def vertical_letters(name):
+    """The letters that go down the back: spaces are dropped, capped so a long name stays readable."""
+    return [ch for ch in (name or '').upper() if not ch.isspace()][:VERTICAL_MAX_LETTERS]
+
+
+def vertical_name_layout(size, product=None, name=''):
+    """(letter height, gap between letters, letter count) in inches for a stacked name."""
+    count = len(vertical_letters(name))
+    if not count:
+        return 0.0, 0.0, 0
+    layout = back_layout(size, product)
+    run = safe_print_height(product, size) * VERTICAL_RUN_RATIO
+    letter = min(layout['name_height'] * VERTICAL_LETTER_RATIO, run / (count + VERTICAL_GAP_RATIO * (count - 1)))
+    letter = max(letter, VERTICAL_MIN_LETTER_IN)
+    return letter, letter * VERTICAL_GAP_RATIO, count
+
+
 def back_name_number_size(size, product=None, name='', number='', font='Bebas Neue',
-                          measured_name_width=None, measured_number_width=None):
+                          measured_name_width=None, measured_number_width=None, vertical=False):
     """Personalized back transfers. Ordered by HEIGHT. Width grows with the text.
 
     Measured widths are the natural rendered widths — the visible glyph bounds
@@ -538,6 +569,27 @@ def back_name_number_size(size, product=None, name='', number='', font='Bebas Ne
 
     name_text = (name or '').strip()
     number_text = (number or '').strip()
+
+    if vertical and name_text:
+        letter_h, letter_gap, count = vertical_name_layout(size, product, name_text)
+        metrics = FONT_METRICS.get(font) or FONT_METRICS['Bebas Neue']
+        em = letter_h / (metrics.get('cap_ratio') or DEFAULT_CAP_RATIO)
+        # The widest letter sets the width; measured_name_width is the widest letter the customizer measured.
+        widest = float(measured_name_width) if measured_name_width else em * metrics['char_width'] * 1.25
+        total_h = count * letter_h + (count - 1) * letter_gap
+        exceeds = bool(widest > max_w + 0.001 or total_h > safe_print_height(product, size) + 0.001)
+        return {
+            'order_by': 'HEIGHT', 'layout_label': layout['label'], 'category': layout['category'], 'vertical': True,
+            'name_height': letter_h, 'name_width': widest, 'name_width_natural': widest,
+            'number_height': 0.0, 'number_width': 0.0, 'number_width_natural': 0.0, 'number_digits': 0,
+            'number_scale': 1.0, 'number_scale_percent': None, 'gap': letter_gap,
+            'combined_width': widest, 'combined_height': total_h, 'condense': 1.0, 'condense_percent': None,
+            'exceeds_safe_area': exceeds, 'safe_width': max_w, 'letter_count': count,
+            'name_height_display': inches(letter_h), 'name_width_display': inches(widest),
+            'number_height_display': inches(0), 'number_width_display': inches(0),
+            'number_width_natural_display': inches(0), 'gap_display': inches(letter_gap),
+            'combined_width_display': inches(widest), 'combined_height_display': inches(total_h),
+        }
 
     if measured_name_width is not None and name_text:
         natural_name_w = float(measured_name_width)
@@ -649,6 +701,11 @@ def client_config(product=None):
         'body_lengths': GARMENT_BODY_LENGTH_IN,
         'body_length_defaults': GARMENT_BODY_LENGTH_DEFAULT,
         'collar_drop_ratio': BACK_COLLAR_DROP_RATIO,
+        'safe_height_by_age': SAFE_PRINT_HEIGHT_BY_AGE,
+        'vertical': {
+            'letter_ratio': VERTICAL_LETTER_RATIO, 'gap_ratio': VERTICAL_GAP_RATIO, 'run_ratio': VERTICAL_RUN_RATIO,
+            'min_letter': VERTICAL_MIN_LETTER_IN, 'max_letters': VERTICAL_MAX_LETTERS,
+        },
     }
 
 
@@ -671,6 +728,8 @@ def build_item_production(
     back_outline=None,
     back_outline_color=None,
     back_image_url=None,
+    back_image_position=None,
+    back_vertical=False,
     customer_name=None,
     measured_name_width=None,
     measured_number_width=None,
@@ -735,15 +794,17 @@ def build_item_production(
     if back_name or back_number:
         back = back_name_number_size(
             size, product,
-            name=back_name, number=back_number, font=back_font or 'Bebas Neue',
+            name=back_name, number=('' if back_vertical else back_number), font=back_font or 'Bebas Neue',
             measured_name_width=measured_name_width,
             measured_number_width=measured_number_width,
+            vertical=bool(back_vertical),
         )
         payload['back'] = {
             'kind': 'personalized',
             'customer_name': customer_name,
             'name': (back_name or '').strip(),
-            'number': (back_number or '').strip(),
+            'number': '' if back_vertical else (back_number or '').strip(),
+            'vertical': bool(back_vertical),
             'font': back_font or 'Bebas Neue',
             'text_color': back_text_color,
             'outline': back_outline,
@@ -792,8 +853,8 @@ def build_item_production(
             'age_group': age,
             'size': size,
             'color': color,
-            'placement': 'center_back',
-            'placement_label': 'Center Back',
+            'placement': 'upper_back' if back_image_position == 'upper' else 'center_back',
+            'placement_label': 'Upper Back' if back_image_position == 'upper' else 'Center Back',
             'order_by': 'WIDTH',
             'quantity': qty,
         }
@@ -885,6 +946,8 @@ def production_from_order_item(item, customer_name=None):
         back_outline=back.get('outline'),
         back_outline_color=back.get('outline_color'),
         back_image_url=back_image_url,
+        back_image_position=back.get('position'),
+        back_vertical=bool(back.get('vertical')),
         customer_name=customer_name or back.get('customer_name'),
         # Natural widths, so the squeeze is applied once and not compounded.
         measured_name_width=back.get('name_width_natural') or back.get('name_width'),

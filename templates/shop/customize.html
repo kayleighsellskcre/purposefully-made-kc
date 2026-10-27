@@ -2484,11 +2484,11 @@
                         </strong>
                         <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #666;">
                             {% if catalog_section == 'uniform' and back_design_type in ('name_number', 'both') %}
-                            Set by your group organizer. A name or number is $3. Both are $6.
+                            Set by your group organizer. A name, number or small image is $3. A name and number together, or a large image, is $6.
                             {% elif back_design_type == 'image' %}
                             The back design is already set by your organizer. Switch to Back View to see it on the shirt.
                             {% elif back_design_type in ('name_number', 'both') %}
-                            Skip this if you do not want a name or number. A name or number is $3. Both are $6.
+                            Skip this if you do not want a name or number. A name, number or small image is $3. A name and number together, or a large image, is $6.
                             {% else %}
                             Set by your group organizer. See options below.
                             {% endif %}
@@ -2517,12 +2517,14 @@
                         {% if not collection_restricted %}
                         <div class="back-design-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
                             <button type="button" class="btn btn-outline btn-sm back-design-tab active" data-mode="name_number">Name & Number</button>
-                            <button type="button" class="btn btn-outline btn-sm back-design-tab" data-mode="upload">Upload Image</button>
+                            <button type="button" class="btn btn-outline btn-sm back-design-tab" data-mode="upload" data-size="small">Small Image</button>
+                            <button type="button" class="btn btn-outline btn-sm back-design-tab" data-mode="upload" data-size="full">Large Image</button>
                         </div>
                         {% elif back_design_type == 'both' %}
                         <div class="back-design-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
                             <button type="button" class="btn btn-outline btn-sm back-design-tab active" data-mode="name_number">Name & Number</button>
-                            <button type="button" class="btn btn-outline btn-sm back-design-tab" data-mode="upload">Upload Image</button>
+                            <button type="button" class="btn btn-outline btn-sm back-design-tab" data-mode="upload" data-size="small">Small Image</button>
+                            <button type="button" class="btn btn-outline btn-sm back-design-tab" data-mode="upload" data-size="full">Large Image</button>
                         </div>
                         {% endif %}
                         
@@ -2536,13 +2538,13 @@
                                 {% else %}
                                 Enter the player's <strong>last name</strong>{% if back_design_type != 'image' %} and optional number{% endif %}. Your organizer asked for last names on these jerseys.
                                 {% endif %}
-                                A name or number is $3. Both are $6.
+                                A name, number or small image is $3. A name and number together, or a large image, is $6.
                                 {% else %}
-                                Optional. Leave this blank if you do not want a name or number on the back. A name or number is $3. Both are $6.
+                                Optional. Leave this blank if you do not want a name or number on the back. A name, number or small image is $3. A name and number together, or a large image, is $6.
                                 {% endif %}
                             </p>
                             {% else %}
-                            <p class="form-hint" style="margin-bottom: 1rem;">Perfect for jerseys. Enter a name, number, or both to preview the back. A name or number is $3. Both are $6.</p>
+                            <p class="form-hint" style="margin-bottom: 1rem;">Perfect for jerseys. Enter a name, number, or both to preview the back. A name, number or small image is $3. A name and number together, or a large image, is $6.</p>
                             {% endif %}
                             <div class="form-group" style="margin-bottom: 0.75rem;">
                                 {% if catalog_section == 'uniform' %}
@@ -2556,7 +2558,11 @@
                                 <input type="text" id="backDesignNameInput" class="form-control" placeholder="e.g. SMITH" maxlength="20" style="text-transform: uppercase;">
                                 {% endif %}
                             </div>
-                            <div class="form-group" style="margin-bottom: 0.75rem;">
+                            <label class="back-vertical-opt" id="backDesignVerticalWrap">
+                                <input type="checkbox" id="backDesignVerticalToggle">
+                                <span>Stack the name down the back <small>(cheer style, one letter per row)</small></span>
+                            </label>
+                            <div class="form-group" id="backDesignNumberGroup" style="margin-bottom: 0.75rem;">
                                 <label for="backDesignNumberInput">Number</label>
                                 <input type="text" id="backDesignNumberInput" class="form-control" placeholder="e.g. 23" maxlength="3" pattern="[0-9]*" inputmode="numeric">
                             </div>
@@ -2639,7 +2645,7 @@
                         </div>
                         {% elif not collection_restricted or back_design_type == 'both' %}
                         <div id="backDesignUpload" class="back-design-mode" style="display: none;">
-                            <p class="form-hint" style="margin-bottom: 0.75rem;">This image only prints on the back. It cannot be placed on the front of the shirt.</p>
+                            <p class="form-hint" style="margin-bottom: 0.75rem;" id="backImageHint">This image only prints on the back. It cannot be placed on the front of the shirt.</p>
                             <div class="upload-area" id="uploadAreaBack">
                                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 1rem;">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -2648,7 +2654,7 @@
                                 </svg>
                                 <p><strong>Upload back design</strong></p>
                                 <p class="text-muted">PNG, JPG, WEBP (Max 15MB)</p>
-                                <p class="text-muted" style="font-size:0.8rem; margin-top:0.35rem;">Starts centered in the upper back area. Drag up or down to adjust.</p>
+                                <p class="text-muted" style="font-size:0.8rem; margin-top:0.35rem;" id="backImageMove">Starts centered in the upper back area. Drag up or down to adjust.</p>
                             </div>
                             <input type="file" id="designFileBack" accept="image/*,.heic,.heif,.png,.jpg,.jpeg,.webp" style="display: none;">
                         </div>
@@ -2831,6 +2837,8 @@
         designHeight: null,
         backDesignEnabled: {% if collection_restricted and allow_back_design %}true{% else %}false{% endif %},
         backDesignMode: {% if collection_restricted and back_design_type == 'image' %}'upload'{% else %}'name_number'{% endif %},
+        backDesignSize: 'full',
+        backDesignVertical: false,
         backDesignName: '',
         backDesignNumber: '',
         backDesignFont: {% if collection_restricted and back_design_font %}"{{ back_design_font }}"{% else %}"Bebas Neue"{% endif %},
@@ -3626,7 +3634,7 @@
                 applyBackDesignPosition();
             }
             if (dragHint) {
-                const showHint = showUploadedOnBack || extraBackDesign;
+                const showHint = showUploadedOnBack || (extraBackDesign && !isSmallBackImage());
                 dragHint.style.display = showHint ? 'block' : 'none';
                 if (showHint) dragHint.textContent = 'Drag or use ▲▼ to reposition';
             }
@@ -4215,6 +4223,20 @@
         const visibleWidthRatio = backDesignImage.naturalWidth
             ? visibleArtworkWidthRatio(backDesignImage)
             : 1;
+        if (isSmallBackImage()) {
+            // Ordered at 40% of the chart width (4 in on an adult tee, 3 in youth), hanging right under the collar.
+            const factor = ((TRANSFER_SIZING && TRANSFER_SIZING.placement_factors) || {}).upper_back || 0.4;
+            const widthIn = (chartWidthForSize(previewReferenceSize()) || 10) * factor;
+            const smallPx = (box && box.pxPerInch)
+                ? widthIn * box.pxPerInch / visibleWidthRatio
+                : garmentWidth * 0.2 / visibleWidthRatio;
+            backDesignLayer.style.width = smallPx.toFixed(1) + 'px';
+            backDesignLayer.style.maxWidth = 'none';
+            backDesignLayer.style.maxHeight = '30%';
+            backDesignLayer.classList.add('is-upload');
+            backDesignLayer.classList.remove('is-fitting');
+            return;
+        }
         const maxH = 60;
         const isTank = !!(TRANSFER_SIZING && TRANSFER_SIZING.is_tank);
         const maxVsGarment = garmentWidth * (isTank ? 0.70 : 0.56);
@@ -4242,13 +4264,18 @@
         const backDesignLayer = document.getElementById('backDesignLayer');
         if (!backDesignLayer) return;
         const defaultUp = state.backDesignDefaultUpOffset ?? 0;
-        const offset = state.backDesignDragOffset || { y: -defaultUp };
+        const small = isSmallBackImage();
+        const offset = small ? { y: 0 } : (state.backDesignDragOffset || { y: -defaultUp });
         const box = garmentBox();
         if (box && box.pxPerInch) {
             // Hang the layout from a natural drop below the shoulder seam of
             // the shirt in the photo, centered on the garment body.
             const collarDrop = backCollarDropIn(previewReferenceSize());
-            if (state.backDesignMode === 'upload') {
+            if (small) {
+                backDesignLayer.style.top = (box.topPx + collarDrop * box.pxPerInch) + 'px';
+                backDesignLayer.style.left = box.centerPx + 'px';
+                backDesignLayer.style.transform = 'translate(-50%, 0)';
+            } else if (state.backDesignMode === 'upload') {
                 backDesignLayer.style.top = (
                     box.topPx + (collarDrop + 3.5) * box.pxPerInch
                 ) + 'px';
@@ -4269,7 +4296,7 @@
         const dragHint = document.getElementById('dragHint');
         const resetBackBtn = document.getElementById('resetBackPositionBtn');
         const backPositionControls = document.getElementById('backPositionControls');
-        if (state.currentView === 'back' && backDesignLayer.style.display !== 'none') {
+        if (state.currentView === 'back' && backDesignLayer.style.display !== 'none' && !small) {
             if (dragHint) {
                 dragHint.style.display = 'block';
                 dragHint.textContent = 'Drag or use ▲▼ to reposition';
@@ -4369,6 +4396,55 @@
             numberEl.style.color = textColor;
             requestBackFont(nameFont);
             requestBackFont(numberFont);
+            const verticalToggleEl = document.getElementById('backDesignVerticalToggle');
+            const stacked = !!(verticalToggleEl && verticalToggleEl.checked && name);
+            state.backDesignVertical = stacked;
+            if (stacked) {
+                // One letter per row, every letter centred on the same vertical line. Heights come from the chart.
+                const sbox = garmentBox();
+                const sPx = sbox ? sbox.pxPerInch : 0;
+                const letters = verticalLetters(name);
+                const lay = verticalLayoutIn(previewReferenceSize(), letters.length);
+                const ink = inkMetrics(nameFont, INK_REF_NAME);
+                const fontPx = sPx ? (lay.letter * sPx) / ink.ink : 0;
+                const pitch = (lay.letter + lay.gap) * sPx;
+                const safeW = safeWidthIn(previewReferenceSize());
+                numberEl.textContent = '';
+                nameEl.textContent = letters.join('\n');
+                textContainer.style.position = 'relative';
+                textContainer.style.width = (safeW * sPx) + 'px';
+                textContainer.style.height = (lay.total * sPx) + 'px';
+                nameEl.style.position = 'absolute';
+                nameEl.style.left = '50%';
+                nameEl.style.top = (-(pitch / 2 + ink.boxTop * fontPx - fontPx / 2)) + 'px';
+                nameEl.style.fontSize = fontPx + 'px';
+                nameEl.style.lineHeight = pitch + 'px';
+                nameEl.style.letterSpacing = '0';
+                nameEl.style.margin = '0';
+                nameEl.style.whiteSpace = 'pre';
+                nameEl.style.textAlign = 'center';
+                nameEl.style.transform = 'translateX(-50%)';
+                backDesignLayer.style.width = (safeW * sPx) + 'px';
+                backDesignLayer.style.maxWidth = 'none';
+                let widest = 0;
+                letters.forEach(function (l) { widest = Math.max(widest, sPx ? measureTextWidthPx(l, nameFont, fontPx, 0) / sPx : 0); });
+                state.naturalNameWidthIn = widest;
+                state.measuredNameWidthIn = widest;
+                state.naturalNumberWidthIn = 0;
+                state.measuredNumberWidthIn = 0;
+                state.nameCondense = 1;
+                state.numberCondense = 1;
+                state.nameLetterSpacingEm = 0;
+                state.numberTrackingEm = null;
+                state.backDesignName = name;
+                state.backDesignNumber = '';
+                state.backDesignFont = font;
+                state.backDesignTextColor = textColor;
+                state.backDesignOutline = outlineOn;
+                state.backDesignOutlineColor = outlineColor;
+                return;
+            }
+            nameEl.style.textAlign = '';
             const box = garmentBox();
             const pxPerInch = box ? box.pxPerInch : 0;
             const previewSize = previewReferenceSize();
@@ -4690,8 +4766,27 @@
         return 0;
     }
 
+    function isSmallBackImage() {
+        return state.backDesignMode === 'upload' && state.backDesignSize === 'small';
+    }
+
+    // A name stacked down the back: the same numbers the server uses (utils/print_sizes.vertical_name_layout).
+    function verticalLetters(name) {
+        const max = ((TRANSFER_SIZING && TRANSFER_SIZING.vertical) || {}).max_letters || 12;
+        return Array.from(String(name || '').toUpperCase().replace(/\s+/g, '')).slice(0, max);
+    }
+    function verticalLayoutIn(sizeOverride, count) {
+        const cfg = (TRANSFER_SIZING && TRANSFER_SIZING.vertical) || { letter_ratio: 0.8, gap_ratio: 0.22, run_ratio: 0.7, min_letter: 0.6 };
+        const safeH = ((TRANSFER_SIZING && TRANSFER_SIZING.safe_height_by_age) || {})[sizingAge()] || (state.isAdult ? 15.5 : 12.5);
+        const run = safeH * cfg.run_ratio;
+        let letter = Math.min(nameHeightIn(sizeOverride) * cfg.letter_ratio, run / (count + cfg.gap_ratio * (count - 1)));
+        letter = Math.max(letter, cfg.min_letter);
+        return { letter: letter, gap: letter * cfg.gap_ratio, total: count * letter + (count - 1) * letter * cfg.gap_ratio };
+    }
+
     function currentBackDesignFee() {
         if (!state.backDesignEnabled) return 0;
+        if (isSmallBackImage()) return 3;
         if (state.backDesignMode === 'name_number') {
             const parts = Number(Boolean((state.backDesignName || '').trim()))
                 + Number(Boolean((state.backDesignNumber || '').trim()));
@@ -5274,6 +5369,13 @@
             refreshOutlineColorVisibility();
             syncBackDesignPreview();
         });
+        const verticalToggle = document.getElementById('backDesignVerticalToggle');
+        if (verticalToggle) verticalToggle.addEventListener('change', function() {
+            const group = document.getElementById('backDesignNumberGroup');
+            if (group) group.style.display = this.checked ? 'none' : '';
+            if (this.checked && numberInput) numberInput.value = '';           // a stacked name is a name only
+            syncBackDesignPreview();
+        });
 
         // Quick-pick swatches set their linked color input
         document.querySelectorAll('.bd-swatches').forEach(function(group) {
@@ -5314,6 +5416,17 @@
             tab.addEventListener('click', function() {
                 const mode = this.dataset.mode;
                 state.backDesignMode = mode;
+                if (mode === 'upload') {
+                    state.backDesignSize = this.dataset.size || 'full';
+                    const hint = document.getElementById('backImageHint');
+                    const move = document.getElementById('backImageMove');
+                    const small = state.backDesignSize === 'small';
+                    if (hint) hint.textContent = small
+                        ? 'A small image printed just under the collar, about 4 inches wide. $3.'
+                        : 'A large image printed across the upper back. $6.';
+                    if (move) move.style.display = small ? 'none' : '';
+                    state.backDesignDragOffset = null;
+                }
                 tabs.forEach(t => t.classList.remove('active'));
                 this.classList.add('active');
                 if (nameNumberPanel) nameNumberPanel.style.display = mode === 'name_number' ? 'block' : 'none';
@@ -5325,6 +5438,7 @@
                     designPreviewBack.classList.remove('active');
                     designPreviewBack.style.display = 'none';
                 }
+                if (mode === 'upload' && state.backDesignUrl) applyBackUploadFit();
                 updateDesignLayerVisibility();
                 updateTotalPrice();
             });
@@ -5648,6 +5762,7 @@
         }
         
         function backHasContent() {
+            if (isSmallBackImage() || (state.backDesignMode === 'name_number' && state.backDesignVertical)) return false;   // these sit in a fixed spot
             return state.backDesignEnabled && (
                 (state.backDesignMode === 'name_number' && (state.backDesignName || state.backDesignNumber)) ||
                 (state.backDesignMode === 'upload' && state.backDesignUrl)
@@ -5681,6 +5796,58 @@
         }, { passive: false });
     }
     
+    async function generateStackedNameImage(name, font) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const nameFont = backNameFontFamily(font);
+        const dpi = 300;
+        const letters = verticalLetters(name);
+        const lay = verticalLayoutIn(undefined, letters.length);
+        const letterPx = lay.letter * dpi;
+        const gapPx = lay.gap * dpi;
+        try {
+            if (document.fonts && document.fonts.load) await document.fonts.load(backCssFont(letterPx || 200, nameFont));
+            if (document.fonts && document.fonts.ready) await document.fonts.ready;
+        } catch (e) {}
+        if (!(document.fonts && document.fonts.check && document.fonts.check(backCssFont(80, nameFont)))) {
+            PMKC.showFlash('The jersey font is still loading. Please wait a moment and add to cart again.', 'error');
+            return null;
+        }
+        const ink = inkMetrics(nameFont, INK_REF_NAME);
+        const fontPx = letterPx / ink.ink;
+        ctx.font = backCssFont(fontPx, nameFont);
+        let widest = 1;
+        letters.forEach(function (l) { widest = Math.max(widest, ctx.measureText(l).width); });
+        const pad = Math.ceil(fontPx * 0.05);
+        canvas.width = Math.ceil(widest + pad * 2);
+        canvas.height = Math.ceil(letters.length * letterPx + (letters.length - 1) * gapPx + pad * 2);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = backCssFont(fontPx, nameFont);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillStyle = state.backDesignTextColor || '#ffffff';
+        ctx.strokeStyle = state.backDesignOutlineColor || '#000000';
+        ctx.lineJoin = 'round';
+        ctx.miterLimit = 2;
+        ctx.lineWidth = Math.max(4, Math.round(fontPx * 0.08));
+        letters.forEach(function (l, i) {
+            const y = pad + i * (letterPx + gapPx) + ink.ascent * fontPx;
+            if (state.backDesignOutline !== false) ctx.strokeText(l, canvas.width / 2, y);
+            ctx.fillText(l, canvas.width / 2, y);
+        });
+        state.naturalNameWidthIn = widest / dpi;
+        state.measuredNameWidthIn = widest / dpi;
+        state.naturalNumberWidthIn = 0;
+        state.measuredNumberWidthIn = 0;
+        state.nameCondense = 1;
+        state.numberCondense = 1;
+        return await new Promise(function (resolve) {
+            canvas.toBlob(function (blob) {
+                resolve(blob ? new File([blob], 'back_name_stacked.png', { type: 'image/png' }) : null);
+            }, 'image/png');
+        });
+    }
+
     function generateBackDesignNameNumberImage() {
         return new Promise(async (resolve) => {
             const canvas = document.createElement('canvas');
@@ -5691,6 +5858,7 @@
             const nameFont = backNameFontFamily(font);
             const numberFont = backNumberFontFamily(font);
             if (!name && !number) return resolve(null);
+            if (state.backDesignVertical && name) return resolve(await generateStackedNameImage(name, font));
 
             const dpi = 300;
             const nameH = nameHeightIn();
@@ -6117,6 +6285,7 @@
                         formData.append('back_design_text_color', state.backDesignTextColor || '');
                         formData.append('back_design_outline', state.backDesignOutline ? 'true' : 'false');
                         formData.append('back_design_outline_color', state.backDesignOutline ? (state.backDesignOutlineColor || '') : '');
+                        if (state.backDesignVertical) formData.append('back_design_vertical', 'true');
                         if (state.nameLetterSpacingEm != null) formData.append('name_letter_spacing_em', state.nameLetterSpacingEm);
                         if (state.numberTrackingEm != null) formData.append('number_tracking_em', state.numberTrackingEm);
                         if (state.nameCondense != null) formData.append('name_condense', state.nameCondense);
@@ -6124,8 +6293,10 @@
                         }
                     } else if (state.backDesignFile) {
                         formData.append('back_design', state.backDesignFile);
+                        if (isSmallBackImage()) formData.append('back_design_position', 'upper');
                     } else if (state.backDesignUrl) {
                         formData.append('back_design_url', state.backDesignUrl);
+                        if (isSmallBackImage()) formData.append('back_design_position', 'upper');
                     }
                 }
 

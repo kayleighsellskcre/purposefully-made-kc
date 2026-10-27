@@ -183,6 +183,7 @@ def snapshot_from_item(item, customer_name=None):
         'number_width_natural_display': back.get('number_width_natural_display'),
         'layout_label': back.get('layout_label'),
         'kind': 'personalized',
+        'vertical': bool(back.get('vertical') or meta.get('vertical')),
         'placement': 'center_back',
         'placement_label': 'Center Back',
         'order_by': 'HEIGHT',
@@ -318,6 +319,46 @@ def render_piece_png(snapshot, piece='back', dpi=PRODUCTION_DPI):
     return render_snapshot_png(snapshot_for_piece(snapshot, piece), dpi=dpi)
 
 
+def _render_vertical_png(snapshot, name, font_name, dpi):
+    """A name stacked down the back: one letter per row, each centred on the same vertical line."""
+    letters = [ch for ch in name if not ch.isspace()][:12]
+    letter_h = _num(snapshot.get('name_height'), 0) or 0
+    gap = _num(snapshot.get('gap'), 0) or 0
+    if not letters or not letter_h:
+        raise ValueError('Snapshot is missing the saved letter height')
+    face = name_font_name(font_name)
+    if not font_available(face):
+        raise FileNotFoundError(f'The production font "{face}" is not installed on the server.')
+    letter_px = letter_h * dpi
+    gap_px = gap * dpi
+    font_px = _font_px_for_ink(face, letter_px, 'H')
+    font = _load_font(face, font_px)
+    fill = _hex_rgba(snapshot.get('text_color'))
+    stroke = _hex_rgba(snapshot.get('outline_color'), (0, 0, 0, 255))
+    stroke_w = max(1, int(round(font_px * 0.08))) if snapshot.get('outline') else 0
+    layers = [_draw_line_layer(ch, font, fill, stroke, stroke_w, 0, font_px, 1.0) for ch in letters]
+    boxes = [_ink_bounds(layer) for layer in layers]
+    ink_w = max((b[2] - b[0]) for b in boxes)
+    target_w = _num(snapshot.get('combined_width'))
+    canvas_w = max(ink_w, int(round(target_w * dpi)) if target_w else 0, 1)
+    canvas_h = int(round(len(letters) * letter_px + (len(letters) - 1) * gap_px))
+    if canvas_w > MAX_EDGE_PX or canvas_h > MAX_EDGE_PX or (canvas_w * canvas_h) > MAX_PIXELS:
+        raise ValueError(f'Production image too large to render safely ({canvas_w}x{canvas_h}px).')
+    canvas = Image.new('RGBA', (canvas_w, canvas_h), (0, 0, 0, 0))
+    try:
+        for i, (layer, box) in enumerate(zip(layers, boxes)):
+            x = int(round(canvas_w / 2 - (box[2] - box[0]) / 2 - box[0]))
+            y = int(round(i * (letter_px + gap_px)))
+            canvas.paste(layer, (x, y - box[1]), layer)
+        return _png_bytes(canvas, dpi)
+    finally:
+        for image in layers + [canvas]:
+            try:
+                image.close()
+            except Exception:
+                pass
+
+
 def render_snapshot_png(snapshot, dpi=PRODUCTION_DPI):
     """Render a transparent production PNG from a saved snapshot. Never uses new chart defaults."""
     name = (snapshot.get('name') or '').strip().upper()
@@ -327,6 +368,8 @@ def render_snapshot_png(snapshot, dpi=PRODUCTION_DPI):
         raise ValueError('Snapshot has no name or number')
     if not font_available(font_name):
         raise FileNotFoundError(f'The production font "{font_name}" is not installed on the server.')
+    if snapshot.get('vertical') and name:
+        return _render_vertical_png(snapshot, name, font_name, dpi)
 
     name_h = _num(snapshot.get('name_height'), 0) or 0
     number_h = _num(snapshot.get('number_height'), 0) or 0
@@ -573,7 +616,7 @@ def validate_snapshot_png(snapshot, image_bytes, dpi=PRODUCTION_DPI):
 
     expected_w = _num(snapshot.get('combined_width'))
     expected_h = _num(snapshot.get('combined_height'))
-    if expected_w:
+    if expected_w and not snapshot.get('vertical'):          # a stacked name's width is its widest letter, not a saved width
         actual_w = metrics.get('width_px', 0) / dpi
         if abs(actual_w - expected_w) > max(VALIDATE_TOLERANCE_IN, expected_w * 0.08):
             failures.append({
