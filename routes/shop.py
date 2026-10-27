@@ -1036,7 +1036,7 @@ def customize(product_slug):
             back_design_type = 'none'
         if allow_back_design and back_design_type in ('image', 'both'):
             preset_back_design = load_design_dict(getattr(coll, 'back_design_id', None))
-            if back_design_type == 'image':                 # the shopper picks from every back image of the group
+            if back_design_type in ('image', 'both'):       # the shopper picks from every back image of the group
                 from utils.group_designs import back_options as _back_options
                 back_options = _back_options(coll)
     

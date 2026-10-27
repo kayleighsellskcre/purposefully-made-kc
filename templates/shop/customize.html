@@ -2350,6 +2350,7 @@
                         </div>
                         {# Linked art colors: the same chooser the design gallery uses #}
                         <div id="logoColorChooser" class="logo-color-chooser" hidden>
+                            <button type="button" class="logo-color-close" aria-label="Done">&times;</button>
                             <p class="logo-color-chooser-label">Pick a color for <strong id="logoColorChooserTitle"></strong></p>
                             <div id="logoColorChooserGrid" class="logo-color-chooser-grid"></div>
                         </div>
@@ -2416,6 +2417,7 @@
 
                         {# ── Color chooser (unchanged) ── #}
                         <div id="logoColorChooser" class="logo-color-chooser" hidden>
+                            <button type="button" class="logo-color-close" aria-label="Done">&times;</button>
                             <p class="logo-color-chooser-label">Pick a color for <strong id="logoColorChooserTitle"></strong></p>
                             <div id="logoColorChooserGrid" class="logo-color-chooser-grid"></div>
                         </div>
@@ -2473,6 +2475,31 @@
                     <a href="{{ url_for('shop.design_gallery', product_id=product.id) }}" class="btn btn-outline btn-sm" style="margin-top: 0.75rem; display: inline-block;">Browse full design gallery</a>
                     {% endif %}
                     {% endif %}
+                <!-- Placement Selection -->
+                <div class="panel-section" id="placementSection" style="display: none;">
+                    <h3>Placement</h3>
+                    <p style="font-size: 0.85rem; color: #666; margin-bottom: 1rem;">Choose where you want your design placed when wearing the shirt</p>
+                    <div class="placement-grid" id="placementGrid">
+                        <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="center_chest">
+                            <strong>Center Chest</strong>
+                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Medium size, centered</small>
+                        </div>
+                        <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="left_chest">
+                            <strong>Left Chest</strong>
+                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Small logo, your left</small>
+                        </div>
+                        <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="right_chest">
+                            <strong>Right Chest</strong>
+                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Small logo, your right</small>
+                        </div>
+                        <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="center_back">
+                            <strong>Center Back</strong>
+                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Medium size, centered</small>
+                        </div>
+                    </div>
+                </div>
+                
+
                 <!-- Back design toggle (part of Step 3) -->
                 {% if not collection_restricted or allow_back_design %}
                 <div class="panel-section" id="backDesignSection" style="display: block;">
@@ -2658,7 +2685,20 @@
                         {% elif not collection_restricted or back_design_type == 'both' %}
                         <div id="backDesignUpload" class="back-design-mode" style="display: none;">
                             <p class="form-hint" style="margin-bottom: 0.75rem;" id="backImageHint">This image only prints on the back. It cannot be placed on the front of the shirt.</p>
+                            {% if collection_restricted and back_options %}
+                            {# The organizer uploaded back images: the shopper picks from them (no upload of their own). #}
+                            <div class="back-picker" id="backPicker">
+                                {% for opt in back_options %}
+                                <button type="button" class="back-pick{% if loop.first %} active{% endif %}" data-back-main="{{ opt.id }}" title="{{ opt.title }}">
+                                    <img src="{{ opt.url }}" alt="{{ opt.title }}" loading="lazy" decoding="async">
+                                </button>
+                                {% endfor %}
+                            </div>
+                            <div class="back-colors" id="backColors" hidden></div>
+                            <div class="upload-area" id="uploadAreaBack" hidden>
+                            {% else %}
                             <div class="upload-area" id="uploadAreaBack">
+                            {% endif %}
                                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: 0 auto 1rem;">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                     <polyline points="17 8 12 3 7 8"></polyline>
@@ -2670,8 +2710,8 @@
                             </div>
                             <input type="file" id="designFileBack" accept="image/*,.heic,.heif,.png,.jpg,.jpeg,.webp" style="display: none;">
                         </div>
-                        <div class="design-preview" id="designPreviewBack" style="display: none;">
-                            <img src="" alt="Back Design Preview" id="designPreviewImageBack">
+                        <div class="design-preview{% if back_options %} back-preview-fixed{% endif %}" id="designPreviewBack" style="display: none;">
+                            <img src="{{ back_options[0].url if back_options else '' }}" alt="Back Design Preview" id="designPreviewImageBack">
                             <button class="btn btn-outline btn-sm" id="removeDesignBack">Remove Back Design</button>
                         </div>
                         {% else %}
@@ -2684,31 +2724,6 @@
                 {% endif %}{# end allow_back_design #}
                 </div>
                 
-                <!-- Placement Selection -->
-                <div class="panel-section" id="placementSection" style="display: none;">
-                    <h3>Placement</h3>
-                    <p style="font-size: 0.85rem; color: #666; margin-bottom: 1rem;">Choose where you want your design placed when wearing the shirt</p>
-                    <div class="placement-grid" id="placementGrid">
-                        <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="center_chest">
-                            <strong>Center Chest</strong>
-                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Medium size, centered</small>
-                        </div>
-                        <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="left_chest">
-                            <strong>Left Chest</strong>
-                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Small logo, your left</small>
-                        </div>
-                        <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="right_chest">
-                            <strong>Right Chest</strong>
-                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Small logo, your right</small>
-                        </div>
-                        <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="center_back">
-                            <strong>Center Back</strong>
-                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Medium size, centered</small>
-                        </div>
-                    </div>
-                </div>
-                
-
                 <!-- Quantity -->
                 <div class="panel-section"{% if multi_size %} hidden{% endif %}>
                     <h3>Quantity</h3>
@@ -3157,7 +3172,20 @@
             chooser.hidden = false;
             applyFromVariant(variants[0], card.dataset.designTitle, card.querySelector('img'));
             card.classList.add('selected');
-            chooser.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            // On a phone the colors open as a card over the page (the price bar and a long list of logos hid them before).
+            if (!isPhoneColorSheet()) chooser.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        function isPhoneColorSheet() { return window.matchMedia('(max-width: 768px)').matches; }
+        if (chooser) {
+            const closeBtn = chooser.querySelector('.logo-color-close');
+            if (closeBtn) closeBtn.addEventListener('click', function () { chooser.hidden = true; });
+            // Choosing a color on a phone puts the card away so the shirt shows.
+            chooserGrid.addEventListener('click', function (e) {
+                if (isPhoneColorSheet() && e.target.closest('.logo-color-option')) setTimeout(function () { chooser.hidden = true; }, 350);
+            });
+            document.addEventListener('click', function (e) {
+                if (isPhoneColorSheet() && !chooser.hidden && !e.target.closest('#logoColorChooser') && !e.target.closest('.logo-gallery-item')) chooser.hidden = true;
+            });
         }
 
         grid.addEventListener('click', function(e) {

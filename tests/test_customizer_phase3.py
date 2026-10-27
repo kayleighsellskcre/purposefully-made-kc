@@ -74,7 +74,7 @@ def test_customizer_design_tabs_use_the_gallery_collection_names(guest, app, see
 
 def test_back_design_toggle_sits_inside_the_design_step(guest, seed):
     html = _page(guest, seed)
-    assert html.index('id="designPaneTabs"') < html.index('id="backDesignSection"') < html.index('id="placementSection"')
+    assert html.index('id="designPaneTabs"') < html.index('id="placementSection"') < html.index('id="backDesignSection"')
 
 
 def test_top_block_shows_price_and_brand_line(guest, seed):

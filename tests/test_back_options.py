@@ -99,3 +99,41 @@ def test_the_stacked_name_is_rendered_one_centered_letter_per_row(app):
         centers.append((box[0] + box[2]) / 2)
     assert all(abs(c - image.width / 2) < image.width * 0.06 for c in centers)
     assert PL.validate_snapshot_png(snapshot, data, dpi=100)[0]
+
+
+def _group_with_back_images(app, seed, kind):
+    from models import Collection, Design
+    from utils import group_designs as GD
+    with app.app_context():
+        coll = db.session.get(Collection, seed['collection_id'])
+        coll.allow_back_design, coll.back_design_type, coll.restrict_options = True, kind, True
+        extra = Design(filename='b2.png', file_path='uploads/designs/b2.png', title='Back two', is_gallery=True)
+        db.session.add(extra)
+        db.session.flush()
+        GD.set_back_ids(coll, [seed['free_design_id'], extra.id])
+        db.session.commit()
+        return coll.slug
+
+
+def test_a_group_that_offers_either_option_shows_its_own_back_images(app, seed):
+    slug = _group_with_back_images(app, seed, 'both')
+    shopper = app.test_client()
+    shopper.get(f'/c/{slug}')
+    html = shopper.get(f"/shop/customize/{seed['tee_slug']}").get_data(as_text=True)
+    assert 'id="backPicker"' in html and html.count('class="back-pick') >= 2
+    assert 'id="uploadAreaBack" hidden' in html                         # the group's images, not an upload box of their own
+
+
+def test_placement_sits_with_the_logo_choice_before_the_back_options(app, seed):
+    shopper = app.test_client()
+    html = shopper.get(f"/shop/customize/{seed['tee_slug']}").get_data(as_text=True)
+    assert 0 < html.index('id="placementSection"') < html.index('id="backDesignSection"')
+    assert html.index('Choose Logo or Design') < html.index('id="placementSection"')
+
+
+def test_a_tapped_logo_opens_its_colors_as_a_card_on_a_phone(app, seed):
+    shopper = app.test_client()
+    html = shopper.get(f"/shop/customize/{seed['tee_slug']}").get_data(as_text=True)
+    assert 'isPhoneColorSheet' in html and 'logo-color-close' in html
+    css = Path('static/css/main.css').read_text(encoding='utf-8')
+    assert '.logo-color-chooser:not([hidden]) { position: fixed' in css
