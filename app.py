@@ -240,6 +240,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS allowed_colors TEXT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS allowed_design_ids TEXT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS showcase_design_ids TEXT",
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS back_design_ids TEXT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS allowed_placements TEXT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS allow_custom_upload BOOLEAN DEFAULT TRUE",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS back_design_font VARCHAR(50)",
@@ -922,6 +923,8 @@ def create_app(config_class=Config):
     app.jinja_env.globals['PAYMENT_OPTIONS'] = _PAYMENT_OPTIONS
     from utils.group_designs import sources as _design_sources
     app.jinja_env.globals['group_design_sources'] = _design_sources
+    from utils.group_designs import back_families as _back_families
+    app.jinja_env.globals['group_back_designs'] = _back_families
 
     @app.template_filter('closes_in')
     def closes_in_filter(collection):

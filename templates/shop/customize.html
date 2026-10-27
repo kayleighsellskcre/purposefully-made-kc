@@ -2632,7 +2632,19 @@
                         {% if collection_restricted and back_design_type == 'image' %}
                         <div id="backDesignUpload" class="back-design-mode" style="display: block;">
                             {% if preset_back_design %}
+                            {% if back_options and (back_options|length > 1 or back_options[0].colors) %}
+                            <p class="form-hint" style="margin-bottom: 0.5rem;">Pick the back design for this shirt. It prints on the back only.</p>
+                            <div class="back-picker" id="backPicker">
+                                {% for opt in back_options %}
+                                <button type="button" class="back-pick{% if loop.first %} active{% endif %}" data-back-main="{{ opt.id }}" title="{{ opt.title }}">
+                                    <img src="{{ opt.url }}" alt="{{ opt.title }}" loading="lazy" decoding="async">
+                                </button>
+                                {% endfor %}
+                            </div>
+                            <div class="back-colors" id="backColors" hidden></div>
+                            {% else %}
                             <p class="form-hint" style="margin-bottom: 0.75rem;">Already on the back of this shirt. It cannot be moved to the front.</p>
+                            {% endif %}
                             <div class="design-preview active" id="designPreviewBack" style="display: block;">
                                 <img src="{{ preset_back_design.url }}" alt="Back design" id="designPreviewImageBack">
                             </div>
@@ -2984,6 +2996,7 @@
         setupQuantity();
         setupDesignUpload();
         setupBackDesignUpload();
+        setupBackPicker();
         setupPlacement();
         setupDesignDrag();
         setupBackDesignDrag();
@@ -5292,6 +5305,81 @@
         setupArtworkInspector();
     }
     
+    // The group's back images: pick a main design, then a color version (it starts on the one that shows best on the shirt).
+    const BACK_OPTIONS = {{ (back_options or [])|tojson }};
+    function shirtBrightness() {
+        const dot = document.querySelector('.color-card.selected .color-dot');
+        const m = dot && getComputedStyle(dot).backgroundColor.match(/\d+(\.\d+)?/g);
+        return m && m.length >= 3 ? 0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2] : null;
+    }
+    function setupBackPicker() {
+        const picker = document.getElementById('backPicker');
+        const colorsEl = document.getElementById('backColors');
+        const preview = document.getElementById('designPreviewImageBack');
+        if (!picker || !colorsEl || !BACK_OPTIONS.length) return;
+        let main = BACK_OPTIONS[0];
+        let manual = null;
+        function versions() {
+            return [{ id: main.id, url: main.url, label: main.label || 'Main', brightness: main.brightness }].concat(main.colors || []);
+        }
+        function show(url) {
+            state.backDesignUrl = url;
+            if (preview) preview.src = url;
+            colorsEl.querySelectorAll('.back-color').forEach(b => b.classList.toggle('active', b.dataset.url === url));
+            updateBackDesignPreview();
+            updateDesignLayerVisibility();
+            updateTotalPrice();
+        }
+        function best() {
+            const list = versions();
+            if (manual && list.some(v => v.url === manual)) return manual;
+            const shirt = shirtBrightness();
+            if (shirt === null || list.length === 1) return list[0].url;
+            let pick = list[0], gap = -1;
+            list.forEach(v => {
+                const g = Math.abs(shirt - (v.brightness == null ? 128 : v.brightness));
+                if (g > gap) { gap = g; pick = v; }
+            });
+            return pick.url;
+        }
+        function drawColors() {
+            const list = versions();
+            colorsEl.innerHTML = '';
+            colorsEl.hidden = list.length < 2;
+            if (list.length < 2) return;
+            const lead = document.createElement('span');
+            lead.textContent = 'Color:';
+            colorsEl.appendChild(lead);
+            list.forEach(v => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'back-color';
+                b.dataset.url = v.url;
+                const img = document.createElement('img');
+                img.src = v.url;
+                img.alt = '';
+                b.appendChild(img);
+                b.appendChild(document.createTextNode(v.label || 'Color'));
+                b.addEventListener('click', () => { manual = v.url; show(v.url); });
+                colorsEl.appendChild(b);
+            });
+        }
+        picker.addEventListener('click', function (e) {
+            const btn = e.target.closest('.back-pick');
+            if (!btn) return;
+            main = BACK_OPTIONS.find(o => String(o.id) === btn.dataset.backMain) || main;
+            manual = null;
+            picker.querySelectorAll('.back-pick').forEach(b => b.classList.toggle('active', b === btn));
+            drawColors();
+            show(best());
+        });
+        document.addEventListener('click', function (e) {
+            if (e.target.closest('.color-card')) setTimeout(() => show(best()), 60);      // a new shirt color: re-pick the best version
+        });
+        drawColors();
+        setTimeout(() => show(best()), 400);
+    }
+
     function setupBackDesignUpload() {
         const uploadAreaBack = document.getElementById('uploadAreaBack');
         const fileInputBack = document.getElementById('designFileBack');

@@ -303,21 +303,36 @@
                     </div>
 
                     <div id="back-image-upload-section" {% if bdt not in ('image', 'both') %}style="display:none"{% endif %}>
-                        <p class="form-hint" style="margin-top:1rem"><strong>Back-only image.</strong> This prints on the back of every shirt and will not show as a front logo option.</p>
-                        {% if collection.locked_back_design %}
-                        <div style="display:flex;align-items:center;gap:0.75rem;margin:0.75rem 0;">
-                            <img src="{{ collection.locked_back_design.file_path | image_url }}" alt="Back design" style="width:72px;height:72px;object-fit:contain;background:#f7f3ea;border-radius:8px;">
-                            <div>
-                                <p style="margin:0;font-size:0.9rem;">{{ collection.locked_back_design.title or collection.locked_back_design.original_filename or 'Back design' }}</p>
-                                <label style="display:flex;gap:0.4rem;align-items:center;margin-top:0.35rem;font-size:0.8rem;cursor:pointer;">
-                                    <input type="checkbox" name="clear_back_design" value="on">
-                                    Remove this back image
+                        <p class="form-hint" style="margin-top:1rem"><strong>Back-only images.</strong> Upload one or several. They print on the back only and will not show as front logo options. With more than one, each person picks theirs.</p>
+                        <input type="hidden" name="back_designs_listed" value="1">
+                        {% set back_families = group_back_designs(collection) %}
+                        {% if back_families %}
+                        <div class="back-art-list">
+                            {% for fam in back_families %}
+                            <div class="back-art-card">
+                                <label class="back-art-keep">
+                                    <input type="checkbox" name="back_design_ids" value="{{ fam.id }}" checked>
+                                    <img src="{{ fam.url }}" alt="{{ fam.title }}" loading="lazy" decoding="async">
+                                    <span>{{ fam.title }}</span>
                                 </label>
+                                {% for c in fam.colors %}
+                                <input type="hidden" name="back_design_ids" value="{{ c.id }}">
+                                <span class="linked-color">
+                                    <img src="{{ c.url }}" alt="{{ c.label }}" loading="lazy" decoding="async">
+                                    <span>{{ c.label }}</span>
+                                    {% if not is_user_edit %}<button type="submit" form="unlinkBack{{ c.id }}" title="Make this its own back image again" aria-label="Unlink {{ c.label }}">&times;</button>{% endif %}
+                                </span>
+                                {% endfor %}
+                                {% if not is_user_edit and back_families|length > 1 %}
+                                <label class="showcase-opt"><input type="checkbox" name="back_pick" value="{{ fam.id }}" form="linkBackDesigns"> Same design, other color</label>
+                                {% endif %}
                             </div>
+                            {% endfor %}
                         </div>
-                        <input type="hidden" id="back_design_id" name="back_design_id" value="{{ collection.back_design_id }}">
-                        {% else %}
-                        <input type="hidden" id="back_design_id" name="back_design_id" value="">
+                        <p class="form-hint">Untick a back image to remove it from this group order.</p>
+                        {% if not is_user_edit and back_families|length > 1 %}
+                        <button type="submit" form="linkBackDesigns" class="btn btn-outline btn-sm">Link ticked back images as colors</button>
+                        {% endif %}
                         {% endif %}
                         <div class="collection-upload-area" id="backUploadArea" role="button" tabindex="0"
                              aria-controls="back_design_upload"
@@ -325,11 +340,15 @@
                             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom:0.4rem" aria-hidden="true">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
                             </svg>
-                            <p><strong>Upload a back image</strong></p>
+                            <p><strong>Upload back images</strong> (one or several)</p>
                             <p class="text-muted">PNG, JPG, WEBP. This stays on the back only.</p>
                         </div>
-                        <input type="file" id="back_design_upload" name="back_design_upload" accept=".png,.jpg,.jpeg,.webp" style="display:none">
+                        <input type="file" id="back_design_upload" name="back_design_upload" accept=".png,.jpg,.jpeg,.webp" multiple style="display:none">
                         <div id="backUploadPreview" class="upload-preview-list" style="display:none"></div>
+                        <label class="back-link-new" id="linkNewBackWrap" style="display:none">
+                            <input type="checkbox" name="link_new_back_uploads" value="on">
+                            <span>These back images are the same design in different colors: link them as one (the first becomes the main image)</span>
+                        </label>
                     </div>
 
                     <div id="back-font-section" {% if bdt == 'none' or bdt == 'image' %}style="display:none"{% endif %}>
@@ -548,6 +567,16 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         </form>
         {% endfor %}
+        <form id="linkBackDesigns" method="post" style="display:none;"
+              action="{{ url_for('admin.collection_back_designs_link', collection_id=collection.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+        {% for fam in group_back_designs(collection) %}{% for c in fam.colors %}
+        <form id="unlinkBack{{ c.id }}" method="post" style="display:none;"
+              action="{{ url_for('admin.collection_back_design_unlink', collection_id=collection.id, design_id=c.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+        {% endfor %}{% endfor %}
         <form id="linkDesigns" method="post" style="display:none;"
               action="{{ url_for('admin.collection_designs_link', collection_id=collection.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

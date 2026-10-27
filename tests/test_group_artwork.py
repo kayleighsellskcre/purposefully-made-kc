@@ -163,3 +163,52 @@ def test_linking_colors_keeps_the_show_at_top_tick_on_the_main_design(app, seed,
         store = db.session.get(Collection, store_id)
         assert json.loads(store.showcase_design_ids) == [art[0]]
         assert db.session.get(Design, art[1]).parent_design_id == art[0]
+
+
+def test_a_group_can_have_several_back_images_with_colors_tied_to_a_main_one(app, seed, admin_client):
+    from utils import group_designs as GD2
+    school_id, stores, art = _school(app, seed)
+    with app.app_context():
+        store = db.session.get(Collection, stores['Cheer'])
+        store_id = store.id
+        GD2.set_back_ids(store, [art[0], art[1], art[2]])
+        db.session.commit()
+        assert GD2.back_ids(store) == art and store.back_design_id == art[0]
+        assert not set(art) & set(allowed_design_ids(store))                    # never offered as a front choice
+    resp = admin_client.post(f'/admin/collections/{store_id}/back-designs/link', data={'back_pick': [art[0], art[1]]}, follow_redirects=True)
+    assert resp.status_code == 200
+    with app.app_context():
+        store = db.session.get(Collection, store_id)
+        fams = GD2.back_families(store)
+        assert [f['id'] for f in fams] == [art[0], art[2]]                         # two main images
+        assert [c['id'] for c in fams[0]['colors']] == [art[1]] and fams[1]['colors'] == []
+        # removing the main takes its colors with it
+        GD2.set_back_ids(store, [art[1], art[2]])
+        assert GD2.back_ids(store) == [art[2]] and store.back_design_id == art[2]
+    page = admin_client.get(f'/admin/collections/{store_id}/edit').get_data(as_text=True)      # the edit page lists them with their colors
+    assert page.count('class="back-art-card"') == 2 and 'unlinkBack' in page and 'linkBackDesigns' in page
+    resp = admin_client.post(f'/admin/collections/{store_id}/back-designs/{art[1]}/unlink')
+    assert resp.status_code in (302, 200)
+
+
+def test_saving_the_form_keeps_ticked_back_images_and_links_new_uploads(app, seed):
+    from werkzeug.datastructures import MultiDict
+    from utils import group_designs as GD2
+    from utils.group_orders import apply_locked_back_design
+    school_id, stores, art = _school(app, seed)
+    with app.test_request_context('/', method='POST', data=MultiDict([
+            ('back_designs_listed', '1'), ('back_design_ids', str(art[0])), ('back_design_ids', str(art[1])),
+            ('new_back_designs', str(art[0])), ('new_back_designs', str(art[1])), ('link_new_back_uploads', 'on')])):
+        store = db.session.get(Collection, stores['Cheer'])
+        apply_locked_back_design(store, None)
+        db.session.commit()
+        assert GD2.back_ids(store) == [art[0], art[1]]
+        assert db.session.get(Design, art[1]).parent_design_id == art[0]
+    with app.test_request_context('/', method='POST', data=MultiDict([('back_designs_listed', '1'), ('back_design_ids', str(art[0]))])):
+        store = db.session.get(Collection, stores['Cheer'])
+        apply_locked_back_design(store, None)
+        assert GD2.back_ids(store) == [art[0]]                                     # unticking the color removed it
+    with app.test_request_context('/', method='POST', data=MultiDict([('back_designs_listed', '1')])):
+        store = db.session.get(Collection, stores['Cheer'])
+        apply_locked_back_design(store, None)
+        assert GD2.back_ids(store) == [] and store.back_design_id is None

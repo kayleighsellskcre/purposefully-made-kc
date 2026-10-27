@@ -22,6 +22,7 @@ from flask import (
 from pathlib import Path
 from flask_login import current_user
 from models import db, Organization, OrgSection, Collection
+from utils.group_designs import back_ids
 
 org_bp = Blueprint('org', __name__)
 
@@ -595,7 +596,7 @@ def fan_wear_delete_design(slug, design_id):
             flash(f'This design is the jersey logo for {labels.get(coll.id, "a team")}. '
                   'Change that team\'s jersey logo first, then delete it.', 'error')
             return back
-        if getattr(coll, 'back_design_id', None) == design_id:
+        if design_id in back_ids(coll):
             flash(f'This design is the back print for {labels.get(coll.id, "a team")}. '
                   'Change it there first, then delete it.', 'error')
             return back

@@ -407,7 +407,7 @@ def test_create_form_offers_a_back_only_image_upload(customer_client):
     html = customer_client.get('/shop/group-orders/create').get_data(as_text=True)
     assert 'id="back-image-upload-section"' in html
     assert 'name="back_design_upload"' in html
-    assert 'name="back_design_id"' in html
+    assert 'name="back_designs_listed"' in html and 'multiple' in html
     assert 'Back-only image' in html
     assert 'This stays on the back only' in html
 

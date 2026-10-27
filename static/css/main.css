@@ -3706,3 +3706,16 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 .back-vertical-opt { display: flex; align-items: flex-start; gap: 0.5rem; margin: 0 0 0.75rem; cursor: pointer; font-size: 0.9rem; }
 .back-vertical-opt input { margin-top: 0.2rem; }
 .back-vertical-opt small { color: var(--text-secondary); }
+.back-art-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem; margin: 0.75rem 0; }
+.back-art-card { border: 1px solid var(--border-color, #e8d0b1); border-radius: 10px; padding: 0.6rem; background: #fff; display: flex; flex-direction: column; gap: 0.4rem; }
+.back-art-keep { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; cursor: pointer; font-size: 0.8rem; text-align: center; }
+.back-art-keep img { width: 100%; max-height: 110px; object-fit: contain; background: #f7f3ea; border-radius: 8px; }
+.back-link-new { display: flex; align-items: flex-start; gap: 0.5rem; margin-top: 0.6rem; cursor: pointer; font-size: 0.85rem; }
+.back-picker { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0; }
+.back-pick { border: 2px solid #e8d0b1; border-radius: 10px; background: #fff; padding: 0.3rem; width: 84px; cursor: pointer; }
+.back-pick img { width: 100%; height: 64px; object-fit: contain; display: block; }
+.back-pick.active { border-color: var(--terra-cotta, #b87c6f); }
+.back-colors { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0 0 0.75rem; align-items: center; font-size: 0.8rem; }
+.back-color { border: 2px solid #e8d0b1; border-radius: 999px; background: #fff; padding: 0.15rem 0.6rem 0.15rem 0.2rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; }
+.back-color img { width: 26px; height: 26px; object-fit: contain; border-radius: 50%; background: #f7f3ea; }
+.back-color.active { border-color: var(--terra-cotta, #b87c6f); }

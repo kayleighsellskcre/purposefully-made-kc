@@ -1809,40 +1809,43 @@ def apply_locked_back_design(collection, user=None):
     import json
     from flask import request
 
+    from utils.group_designs import back_ids, link_as_colors, set_back_ids
+
+    def _ints(values):
+        return [int(v) for v in values if str(v).strip().isdigit()]
+
     if request.form.get('clear_back_design') == 'on':
-        collection.back_design_id = None
+        set_back_ids(collection, [])
         return None
 
-    raw = (request.form.get('back_design_id') or '').strip()
-    if raw:
-        try:
-            did = int(raw)
-        except (TypeError, ValueError):
-            did = None
-        if did:
-            design = Design.query.get(did)
+    # The page lists every back image (the ticked ones stay; new uploads are added as they are chosen). Older pages
+    # only sent the one back_design_id, so that still works.
+    if request.form.get('back_designs_listed'):
+        ids = _ints(request.form.getlist('back_design_ids'))
+    else:
+        ids = back_ids(collection)
+        ids += [i for i in _ints([request.form.get('back_design_id') or '']) if i not in ids]
+    new_ids = [i for i in _ints(request.form.getlist('new_back_designs')) if i in ids]
+
+    from routes.admin import _save_collection_design
+    for f in (request.files.getlist('back_design_upload') if request.files else []):
+        if f and getattr(f, 'filename', None):
+            try:
+                design = _save_collection_design(f, getattr(user, 'id', None))
+            except Exception:
+                design = None
             if design:
-                collection.back_design_id = did
+                ids.append(design.id)
+                new_ids.append(design.id)
 
-    f = request.files.get('back_design_upload') if request.files else None
-    if f and getattr(f, 'filename', None):
-        from routes.admin import _save_collection_design
-        uid = getattr(user, 'id', None)
-        try:
-            design = _save_collection_design(f, uid)
-        except Exception:
-            design = None
-        if design:
-            collection.back_design_id = design.id
-
-    locked_id = getattr(collection, 'back_design_id', None)
-    if not locked_id:
-        return None
-    ids = allowed_design_ids(collection)
-    if locked_id in ids:
-        ids = [i for i in ids if i != locked_id]
-        collection.allowed_design_ids = json.dumps(ids) if ids else None
-    return locked_id
+    if request.form.get('link_new_back_uploads') == 'on' and len(new_ids) >= 2:
+        designs = [d for d in (db.session.get(Design, i) for i in new_ids) if d is not None]
+        if len(designs) >= 2:
+            link_as_colors(designs)
+            db.session.flush()
+    ids = [i for i in ids if db.session.get(Design, i) is not None]
+    set_back_ids(collection, ids)
+    return getattr(collection, 'back_design_id', None)
 
 
 def apply_collection_form(collection, user, *, allow_slug=False, require_products=True):

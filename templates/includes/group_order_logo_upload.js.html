@@ -143,12 +143,12 @@
     var input = document.getElementById('back_design_upload');
     var preview = document.getElementById('backUploadPreview');
     var uploadArea = document.getElementById('backUploadArea');
-    var hidden = document.getElementById('back_design_id');
     var form = document.querySelector('.collection-form');
-    if (!input || !preview || !form || !hidden) return;
+    if (!input || !preview || !form) return;
 
     var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
     var ACCEPTED = /\.(png|jpe?g|webp)$/i;
+    var linkBox = document.getElementById('linkNewBackWrap');
 
     function busy(state) {
         if (!uploadArea) return;
@@ -156,15 +156,30 @@
         uploadArea.style.opacity = state ? '0.6' : '';
     }
 
+    function note(text, bad) {
+        var div = document.createElement('div');
+        div.className = 'upload-preview-item';
+        div.innerHTML = '<span style="font-size:0.75rem;color:' + (bad ? '#dc3545' : 'var(--text-secondary)') + '"></span>';
+        div.firstChild.textContent = text;
+        preview.appendChild(div);
+        preview.style.display = 'flex';
+        return div;
+    }
+
+    function addHidden(name, value) {
+        var el = document.createElement('input');
+        el.type = 'hidden';
+        el.name = name;
+        el.value = value;
+        form.appendChild(el);
+    }
+
     function uploadOne(original) {
         if (!ACCEPTED.test(original.name)) {
-            preview.innerHTML = '<div class="upload-preview-item"><span style="color:#dc3545;font-size:0.75rem">' +
-                original.name + ' - needs to be PNG, JPG, or WEBP</span></div>';
-            preview.style.display = 'flex';
+            note(original.name + ' - needs to be PNG, JPG, or WEBP', true);
             return Promise.resolve();
         }
-        preview.innerHTML = '<div class="upload-preview-item"><span style="font-size:0.75rem;color:var(--text-secondary)">Uploading back image…</span></div>';
-        preview.style.display = 'flex';
+        var pending = note('Uploading ' + original.name + '…');
         busy(true);
 
         var ready = (window.PMKC && window.PMKC.shrinkImage)
@@ -186,27 +201,24 @@
                 return res.json().catch(function() { return {}; });
             }).then(function(data) {
                 if (!data.success || !data.design_id) {
-                    preview.innerHTML = '<div class="upload-preview-item"><span style="color:#dc3545;font-size:0.75rem">' +
-                        (data.error || 'Failed - try again') + '</span></div>';
+                    pending.firstChild.style.color = '#dc3545';
+                    pending.firstChild.textContent = data.error || 'Failed - try again';
                     return;
                 }
-                hidden.value = String(data.design_id);
-                var clearBox = form.querySelector('input[name="clear_back_design"]');
-                if (clearBox) clearBox.checked = false;
-                preview.innerHTML = '';
-                var div = document.createElement('div');
-                div.className = 'upload-preview-item';
+                addHidden('back_design_ids', String(data.design_id));
+                addHidden('new_back_designs', String(data.design_id));
+                pending.innerHTML = '';
                 var img = document.createElement('img');
                 img.src = data.url;
                 img.alt = original.name;
-                div.appendChild(img);
+                pending.appendChild(img);
                 var span = document.createElement('span');
                 span.textContent = original.name + ' (back only)';
-                div.appendChild(span);
-                preview.appendChild(div);
+                pending.appendChild(span);
+                if (linkBox && preview.querySelectorAll('img').length > 1) linkBox.style.display = 'flex';
             }).catch(function() {
-                preview.innerHTML = '<div class="upload-preview-item"><span style="color:#dc3545;font-size:0.75rem">' +
-                    'Timed out - try a smaller file</span></div>';
+                pending.firstChild.style.color = '#dc3545';
+                pending.firstChild.textContent = 'Timed out - try a smaller file';
             }).finally(function() {
                 clearTimeout(timer);
                 busy(false);
@@ -214,10 +226,18 @@
         });
     }
 
+    function uploadAll(files) {
+        var chain = Promise.resolve();
+        Array.prototype.forEach.call(files || [], function(f) {
+            chain = chain.then(function() { return uploadOne(f); });
+        });
+        return chain;
+    }
+
     input.addEventListener('change', function() {
-        var file = (this.files && this.files[0]) || null;
+        var files = Array.prototype.slice.call(this.files || []);
         this.value = '';
-        if (file) uploadOne(file);
+        uploadAll(files);
     });
 
     if (uploadArea) {
@@ -235,8 +255,7 @@
         uploadArea.addEventListener('drop', function(e) {
             e.preventDefault();
             uploadArea.classList.remove('is-dragover');
-            var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-            if (file) uploadOne(file);
+            uploadAll(e.dataTransfer && e.dataTransfer.files);
         });
     }
 })();

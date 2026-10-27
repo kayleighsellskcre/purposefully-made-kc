@@ -951,6 +951,7 @@ def customize(product_slug):
     allow_back_design = True
     back_design_name_part = 'last'
     preset_back_design = None
+    back_options = []
     catalog_section = None
     uniform_kit = None
     uniform_locked_color = None
@@ -1035,6 +1036,9 @@ def customize(product_slug):
             back_design_type = 'none'
         if allow_back_design and back_design_type in ('image', 'both'):
             preset_back_design = load_design_dict(getattr(coll, 'back_design_id', None))
+            if back_design_type == 'image':                 # the shopper picks from every back image of the group
+                from utils.group_designs import back_options as _back_options
+                back_options = _back_options(coll)
     
     # Cotton + CVC versions of this shirt are one item: add the other fabric's colors, each
     # color remembering its own vendor style (the page switches style/price when one is picked).
@@ -1261,4 +1265,5 @@ def customize(product_slug):
                          uniform_logo_locked=uniform_logo_locked,
                          garment_metrics_seed=garment_metrics_seed,
                          preset_back_design=preset_back_design,
+                         back_options=back_options,
                          fulfillment_note=group_fulfillment_customer_note(coll))

@@ -184,6 +184,9 @@ class Collection(db.Model):
     # Organizer artwork that prints only on the back. Kept off allowed_design_ids
     # so it never appears as a front-placement choice.
     back_design_id = db.Column(db.Integer, db.ForeignKey('design.id'), nullable=True)
+    # Every back image of this group (JSON list, main images and their color versions). back_design_id stays the
+    # first main one, so everything that only needs "the back image" keeps working.
+    back_design_ids = db.Column(db.Text)
 
     # Optional two-lane team store. JSON keeps the uniform product + fixed
     # Home/Away colors separate from the existing fan-wear product/color rules.

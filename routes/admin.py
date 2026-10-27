@@ -3480,6 +3480,41 @@ def collection_designs_link(collection_id):
     return back
 
 
+@admin_bp.route('/collections/<int:collection_id>/back-designs/link', methods=['POST'])
+@admin_required
+def collection_back_designs_link(collection_id):
+    """Make the ticked back images color versions of one main back image."""
+    from utils.group_designs import back_ids, link_as_colors
+    collection = Collection.query.get_or_404(collection_id)
+    have = back_ids(collection)
+    picked = sorted({int(r) for r in request.form.getlist('back_pick') if str(r).isdigit() and int(r) in have}, key=have.index)
+    designs = [d for d in (db.session.get(Design, i) for i in picked) if d is not None]
+    back = redirect(url_for('admin.edit_collection', collection_id=collection_id))
+    if len(designs) < 2:
+        flash('Tick two or more back images that are the same layout in different colors.', 'error')
+        return back
+    if designs[0].parent_design_id:
+        flash('Pick a main back image that is not already a color of another one.', 'error')
+        return back
+    linked = link_as_colors(designs)
+    db.session.commit()
+    flash(f'Linked {linked} color{"s" if linked != 1 else ""} to "{designs[0].title or "the main back image"}".', 'success')
+    return back
+
+
+@admin_bp.route('/collections/<int:collection_id>/back-designs/<int:design_id>/unlink', methods=['POST'])
+@admin_required
+def collection_back_design_unlink(collection_id, design_id):
+    """Make a linked back color its own back image again (it stays on the back list)."""
+    Collection.query.get_or_404(collection_id)
+    design = Design.query.get_or_404(design_id)
+    if design.parent_design_id:
+        design.parent_design_id = None
+        db.session.commit()
+        flash('That color is its own back image again.', 'success')
+    return redirect(url_for('admin.edit_collection', collection_id=collection_id))
+
+
 @admin_bp.route('/collections/<int:collection_id>/designs/<int:design_id>/unlink', methods=['POST'])
 @admin_required
 def collection_design_unlink(collection_id, design_id):
@@ -3510,8 +3545,8 @@ def collection_design_remove(collection_id, design_id):
     ids = _json.loads(collection.allowed_design_ids) if collection.allowed_design_ids else []
     ids = [i for i in ids if i != design_id]
     collection.allowed_design_ids = _json.dumps(ids) if ids else None
-    if getattr(collection, 'back_design_id', None) == design_id:
-        collection.back_design_id = None
+    from utils.group_designs import forget_back_design
+    forget_back_design(collection, design_id)
 
     # Delete the design record and its file
     try:
