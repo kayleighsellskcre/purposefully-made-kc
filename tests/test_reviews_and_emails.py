@@ -319,7 +319,7 @@ def test_kind_words_page_is_kind_when_empty(guest, seed):
 def test_footer_and_sitemap_link_appear_only_with_reviews(guest, app, seed):
     from utils import reviews_public
     reviews_public.clear_cache()
-    assert 'Kind Words</a>' in guest.get('/about').get_data(as_text=True)       # the link is always there
+    assert 'Kind Words</a>' not in guest.get('/about').get_data(as_text=True)    # no reviews yet: no empty page to visit
     assert '/reviews' not in guest.get('/sitemap.xml').get_data(as_text=True)
     _seed_reviews(app)
     assert 'Kind Words</a>' in guest.get('/about').get_data(as_text=True)

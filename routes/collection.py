@@ -49,6 +49,22 @@ def flyer(slug):
                     headers={'Content-Disposition': f'{disposition}; filename="{DS._file_safe(collection.name)} flyer.pdf"'})
 
 
+@collection_bp.route('/<slug>/flyer.png')
+def flyer_image(slug):
+    """The flyer as an image to save or text to someone. Falls back to the PDF if images cannot be made here."""
+    from flask import abort
+    from utils import districts as DS
+    collection = Collection.query.filter_by(slug=slug).first_or_404()
+    if not collection.is_active:
+        abort(404)
+    data = DS.flyer_png(collection, style=request.args.get('style'))
+    if data is None:
+        return redirect(url_for('collection.flyer', slug=slug, style=request.args.get('style')))
+    disposition = 'attachment' if request.args.get('download') else 'inline'
+    return Response(data, mimetype='image/png',
+                    headers={'Content-Disposition': f'{disposition}; filename="{DS._file_safe(collection.name)} flyer.png"'})
+
+
 @collection_bp.route('/<slug>/qr.png')
 def qr_code(slug):
     """Return a QR code PNG for this collection's share URL."""

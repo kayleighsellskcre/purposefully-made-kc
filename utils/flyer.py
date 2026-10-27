@@ -216,6 +216,23 @@ _MOSAIC = {
 }
 
 
+def with_chest_logo(shirt_png, logo_png):
+    """The shirt photo with the group's logo placed on the chest, so people see the actual shirt."""
+    try:
+        from PIL import Image
+        shirt = Image.open(io.BytesIO(shirt_png)).convert('RGBA')
+        art = Image.open(io.BytesIO(logo_png)).convert('RGBA')
+        art.thumbnail((int(shirt.width * .38), int(shirt.height * .24)))
+        if art.width < 12 or art.height < 12:
+            return shirt_png
+        shirt.alpha_composite(art, ((shirt.width - art.width) // 2, max(0, int(shirt.height * .43 - art.height / 2))))
+        out = io.BytesIO()
+        shirt.save(out, format='PNG')
+        return out.getvalue()
+    except Exception:
+        return shirt_png
+
+
 def normalize_style(value):
     value = (value or '').strip().lower()
     return value if value in STYLE_KEYS else 'collage'
@@ -254,6 +271,9 @@ def build(obj, school=None, style=None):
     images = load_images(plan['logos'] + [u for u, _ in plan['shirts']])
     logos = [images[u] for u in plan['logos'] if u in images]
     shirts = [(images[u], cap) for u, cap in plan['shirts'] if u in images]
+    if logos:
+        shirts = [(with_chest_logo(png, logos[0]), cap) for png, cap in shirts]
+    wordmark = load_image('/static/img/logo-wordmark.png')
 
     w, h = letter
     accent_hex = plan['school_color'] or '#B87C6F'
@@ -336,10 +356,17 @@ def build(obj, school=None, style=None):
             c.setFillColor(muted)
             c.drawString(tx, yy, 'Sent home with your child.' if plan['delivery'] == 'sent' else 'Pick up at the school.')
 
-    def header(top, fill=ink, soft=muted, brand=None, size=34):
-        """Brand line, school line, title and tagline; returns the y below them."""
+    def header(top, fill=ink, soft=muted, brand=None, size=34, use_wordmark=True):
+        """Brand mark, school line, title and tagline; returns the y below them."""
         y = top
-        centered('PURPOSEFULLY MADE KC', y, 'Helvetica-Bold', 8.5, brand or accent)
+        if use_wordmark and wordmark:
+            mark = ImageReader(io.BytesIO(wordmark))
+            mw, mh = mark.getSize()
+            height_pt = 56
+            c.drawImage(mark, (w - height_pt * mw / mh) / 2, top - height_pt + 14, height_pt * mw / mh, height_pt, mask='auto')
+            y -= 36
+        else:
+            centered('PURPOSEFULLY MADE KC', y, 'Helvetica-Bold', 8.5, brand or accent)
         y -= 24
         if plan['top'] and plan['top'] != plan['title']:
             centered(plan['top'].upper(), y, 'Helvetica', 10, soft)
@@ -431,7 +458,7 @@ def build(obj, school=None, style=None):
         block_h = 272
         c.setFillColor(accent)
         c.rect(0, h - block_h, w, block_h, stroke=0, fill=1)
-        header(h - 58, fill=on_block, soft=soft, brand=on_block, size=40)
+        header(h - 58, fill=on_block, soft=soft, brand=on_block, size=40, use_wordmark=False)
         edge = h - block_h
         y = edge - 40
         if logos:
@@ -475,3 +502,18 @@ def _big_qr(c, qr, y, w, colors, sand, accent, ink, plan, shown_link, centered):
     if plan['deadline']:
         d = plan['deadline']
         centered(f"Order by {d.strftime('%B')} {d.day}, {d.year}", qy - 92, 'Times-Roman', 20, ink)
+
+
+def build_png(obj, school=None, style=None):
+    """The flyer as a high-resolution PNG, or None when the renderer is not installed."""
+    try:
+        import pypdfium2 as pdfium
+    except ImportError:
+        return None
+    pdf = pdfium.PdfDocument(build(obj, school, style))
+    try:
+        out = io.BytesIO()
+        pdf[0].render(scale=3).to_pil().convert('RGB').save(out, format='PNG', optimize=True, dpi=(216, 216))
+        return out.getvalue()
+    finally:
+        pdf.close()

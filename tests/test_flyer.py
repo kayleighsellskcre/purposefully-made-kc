@@ -55,7 +55,8 @@ def test_every_style_places_the_pictures_on_one_page_with_a_small_qr(app, seed, 
             pages, images, text = _pages_and_images(DS.flyer_pdf(store, school, style))
             assert pages == 1, style
             assert images >= 7, style                       # two logos, four shirts, the QR code
-            assert 'SCAN TO ORDER' in text and 'PURPOSEFULLY MADE KC' in text.upper()
+            assert 'SCAN TO ORDER' in text
+            assert ('PURPOSEFULLY MADE KC' in text.upper()) == (style == 'bold')     # the others carry the PM wordmark picture
             assert ('PICK YOUR STYLE' in text) == (style != 'collage')
         text = _pages_and_images(DS.flyer_pdf(store, school, 'showcase'))[2]
         assert 'TEE' in text and 'HOODIE' in text
@@ -114,3 +115,33 @@ def test_every_level_makes_a_real_flyer_without_any_monkeypatching(app, seed):
         for obj, sc in ((store, school), (school, None), (district, None)):
             pages, images, text = _pages_and_images(DS.flyer_pdf(obj, sc))
             assert pages == 1 and images >= 1
+
+
+def test_the_flyer_can_be_saved_as_an_image(app, seed, guest):
+    ids = _setup(app, seed)
+    with app.app_context():
+        slug = db.session.get(Collection, ids[2]).slug
+    resp = guest.get(f'/c/{slug}/flyer.png?style=bold&download=1')
+    if resp.status_code == 302:                      # image renderer not installed here: it hands over the PDF instead
+        assert '/flyer.pdf' in resp.headers['Location']
+        return
+    assert resp.status_code == 200 and resp.data[:4] == b'\x89PNG' and 'attachment' in resp.headers['Content-Disposition']
+    from PIL import Image
+    assert Image.open(io.BytesIO(resp.data)).size[0] > 1500
+
+
+def test_group_logo_goes_on_the_shirt_photo_and_a_bad_picture_is_left_as_it_was(app):
+    shirt, logo = _png('#3366aa'), _png('#ffffff')
+    placed = FL.with_chest_logo(shirt, logo)
+    assert placed != shirt and placed[:4] == b'\x89PNG'
+    assert FL.with_chest_logo(b'not an image', logo) == b'not an image'
+
+
+def test_every_district_level_has_an_image_flyer_too(app, seed, guest):
+    ids = _setup(app, seed)
+    with app.app_context():
+        district, school, store = _objects(app, ids)
+        paths = [f'/{district.short_slug}/flyer.png', f'/{district.short_slug}/{school.short_slug}/flyer.png']
+    for path in paths:
+        resp = guest.get(path)
+        assert resp.status_code in (200, 302), path

@@ -814,6 +814,12 @@ def flyer_pdf(obj, school=None, style=None):
     return build(obj, school, style)
 
 
+def flyer_png(obj, school=None, style=None):
+    """The same flyer as a PNG image (None when the image renderer is not installed)."""
+    from utils.flyer import build_png
+    return build_png(obj, school, style)
+
+
 def qr_zip(obj):
     """A zip of QR PNGs named by store, for a school or a whole district."""
     schools = [obj] if isinstance(obj, Organization) else obj.schools.all()
