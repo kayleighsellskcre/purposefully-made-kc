@@ -114,7 +114,7 @@ def _store_logo_urls(store, school):
             urls.append(image_url(school.logo_url))
     if getattr(store, 'cover_image', None):
         urls.append(image_url(store.cover_image))
-    return list(dict.fromkeys(urls))[:3]
+    return list(dict.fromkeys(urls))[:6]
 
 
 def _school_logo_urls(school):
@@ -132,7 +132,7 @@ def _district_logo_urls(district):
         first = _school_logo_urls(school)
         if first:
             urls.append(first[0])
-    return list(dict.fromkeys(urls))[:4]
+    return list(dict.fromkeys(urls))[:6]
 
 
 def _shirt_picks(products, store=None, limit=8):
@@ -182,7 +182,7 @@ def _plan(obj, school):
         spirit = DS.spirit_store(obj)
         products = list((spirit or (stores[0] if stores else None)).products) if (spirit or stores) else []
         plan.update(top=obj.district.name, title=obj.name, sub=f'Home of the {obj.mascot}' if obj.mascot else None,
-                    deadline=DS.school_deadline(obj), logos=_school_logo_urls(obj)[:4],
+                    deadline=DS.school_deadline(obj), logos=_school_logo_urls(obj)[:6],
                     shirts=_shirt_picks(products, spirit), school_color=DS.accent(obj),
                     delivery='sent' if (obj.delivery_mode or 'send_home') == 'send_home' else 'pickup')
     else:
@@ -216,16 +216,79 @@ _MOSAIC = {
 }
 
 
-def with_chest_logo(shirt_png, logo_png):
-    """The shirt photo with the group's logo placed on the chest, so people see the actual shirt."""
+# Where a design sits on each garment, as fractions of the garment photo once it is trimmed to the garment:
+# (top of the design, width available, tallest it may be). Hoodies start lower because of the hood.
+_CHEST = {
+    'tee': (.18, .44, .30), 'hoodie': (.28, .38, .28), 'sweatshirt': (.20, .40, .28), 'long sleeve': (.18, .36, .28),
+    'tank': (.22, .44, .28), 'v-neck': (.20, .40, .28), 'onesie': (.22, .40, .28),
+}
+
+
+def trim_to_garment(shirt_png):
+    """The garment photo cropped to the garment itself (the product photos are surrounded by white), so it fills its tile."""
     try:
         from PIL import Image
-        shirt = Image.open(io.BytesIO(shirt_png)).convert('RGBA')
-        art = Image.open(io.BytesIO(logo_png)).convert('RGBA')
-        art.thumbnail((int(shirt.width * .38), int(shirt.height * .24)))
-        if art.width < 12 or art.height < 12:
+        im = Image.open(io.BytesIO(shirt_png)).convert('RGBA')
+        box = im.convert('L').point(lambda v: 255 if v < 244 else 0).getbbox()
+        if not box or (box[2] - box[0]) * (box[3] - box[1]) < im.width * im.height * .2:
             return shirt_png
-        shirt.alpha_composite(art, ((shirt.width - art.width) // 2, max(0, int(shirt.height * .43 - art.height / 2))))
+        pad = int(max(box[2] - box[0], box[3] - box[1]) * .03)
+        im = im.crop((max(0, box[0] - pad), max(0, box[1] - pad), min(im.width, box[2] + pad), min(im.height, box[3] + pad)))
+        out = io.BytesIO()
+        im.save(out, format='PNG')
+        return out.getvalue()
+    except Exception:
+        return shirt_png
+
+
+def _brightness(png, center_only=False):
+    """0 (black) to 255 (white): the average of the visible pixels of a picture, or of the middle of a garment."""
+    try:
+        from PIL import Image
+        im = Image.open(io.BytesIO(png)).convert('RGBA')
+        if center_only:
+            im = im.crop((int(im.width * .3), int(im.height * .3), int(im.width * .7), int(im.height * .6)))
+        im.thumbnail((48, 48))
+        total = count = 0
+        for r, g, b, a in im.getdata():
+            if a > 40:
+                total += .299 * r + .587 * g + .114 * b
+                count += 1
+        return total / count if count else 128
+    except Exception:
+        return 128
+
+
+def pick_logos(shirt_pngs, logo_pngs):
+    """The index of the logo each garment wears: the one that shows best against that garment's color, taking turns so
+    every logo gets used."""
+    garment = [_brightness(trim_to_garment(p), True) for p in shirt_pngs]
+    art = [_brightness(p) for p in logo_pngs]
+    uses = [0] * len(logo_pngs)
+    picks = []
+    for g in garment:
+        best = max(range(len(logo_pngs)), key=lambda i: abs(g - art[i]) - 45 * uses[i])
+        uses[best] += 1
+        picks.append(best)
+    return picks
+
+
+def with_chest_logo(shirt_png, logo_png, kind=None):
+    """The shirt photo with a logo placed on the chest the way it would print on that kind of garment."""
+    try:
+        from PIL import Image
+        shirt = Image.open(io.BytesIO(trim_to_garment(shirt_png))).convert('RGBA')
+        art = Image.open(io.BytesIO(logo_png)).convert('RGBA')
+        box = art.getbbox()
+        if box:
+            art = art.crop(box)
+        top, wide, tall = _CHEST.get((kind or 'tee').strip().lower(), _CHEST['tee'])
+        scale = min(shirt.width * wide / art.width, shirt.height * tall / art.height)
+        size = (int(art.width * scale), int(art.height * scale))
+        if size[0] < 12 or size[1] < 12:
+            return shirt_png
+        art = art.resize(size, Image.LANCZOS)
+        shirt.alpha_composite(art, ((shirt.width - size[0]) // 2, int(shirt.height * top)))
         out = io.BytesIO()
         shirt.save(out, format='PNG')
         return out.getvalue()
@@ -271,8 +334,11 @@ def build(obj, school=None, style=None):
     images = load_images(plan['logos'] + [u for u, _ in plan['shirts']])
     logos = [images[u] for u in plan['logos'] if u in images]
     shirts = [(images[u], cap) for u, cap in plan['shirts'] if u in images]
-    if logos:
-        shirts = [(with_chest_logo(png, logos[0]), cap) for png, cap in shirts]
+    if logos:                                                  # every garment wears one of the group's logos, the one that shows best
+        wears = pick_logos([p for p, _ in shirts], logos)
+        shirts = [(with_chest_logo(png, logos[k], cap), cap) for (png, cap), k in zip(shirts, wears)]
+    else:
+        shirts = [(trim_to_garment(png), cap) for png, cap in shirts]
     wordmark = load_image('/static/img/logo-wordmark.png')
 
     w, h = letter
@@ -307,24 +373,39 @@ def build(obj, school=None, style=None):
         c.roundRect(x, y, tw, th, 9, stroke=1, fill=1)
         im = ImageReader(io.BytesIO(png))
         iw, ih = im.getSize()
-        pad = 9
-        room = th - (14 if caption else 0)
+        pad = 6 if caption else 9
+        band = 19 if caption else 0
+        room = th - band
         scale = min((tw - 2 * pad) / iw, (room - 2 * pad) / ih)
         dw, dh = iw * scale, ih * scale
-        c.drawImage(im, x + (tw - dw) / 2, y + (14 if caption else 0) + (room - dh) / 2, dw, dh, mask='auto')
+        c.drawImage(im, x + (tw - dw) / 2, y + band + (room - dh) / 2, dw, dh, mask='auto')
         if caption:
-            size = text_fit(caption.upper(), 'Helvetica-Bold', 6.5, tw - 8, 5)
+            size = text_fit(caption.upper(), 'Helvetica-Bold', 8.5, tw - 8, 6)
             c.setFont('Helvetica-Bold', size)
-            c.setFillColor(muted)
-            c.drawCentredString(x + tw / 2, y + 6, caption.upper())
+            c.setFillColor(ink)
+            c.drawCentredString(x + tw / 2, y + 7, caption.upper())
 
     def row(items, y, size, with_caption=False, gap=14):
         n = len(items)
         x = (w - (n * size + (n - 1) * gap)) / 2
         for item in items:
             png, cap = item if with_caption else (item, None)
-            tile(x, y, size, size, png, cap, '#FBF9F4' if with_caption else WHITE)
+            tile(x, y, size, size, png, cap, WHITE)
             x += size + gap
+
+    def grid(items, top, bottom, gap=12):
+        """Captioned shirt tiles in as few, as large rows as fit between top and bottom; the last row is centred."""
+        n = len(items)
+        cols = n if n <= 4 else 3 if n <= 6 else 4
+        rows = -(-n // cols)
+        size = min(150, (w - 90 - gap * (cols - 1)) / cols, (top - bottom - gap * (rows - 1)) / rows)
+        y0 = top - max(0, (top - bottom - (rows * size + (rows - 1) * gap)) / 2)
+        for r in range(rows):
+            chunk = items[r * cols:(r + 1) * cols]
+            x = (w - (len(chunk) * size + (len(chunk) - 1) * gap)) / 2
+            for png, cap in chunk:
+                tile(x, y0 - (r + 1) * size - r * gap, size, size, png, cap, WHITE)
+                x += size + gap
 
     def qr_footer(base, on_band=False):
         """The small QR card with its words beside it, centred; base is the bottom of the block."""
@@ -401,7 +482,7 @@ def build(obj, school=None, style=None):
             items = []
             if logos:
                 items.append((logos[0], None, WHITE))
-            rest_shirts = [(p, cap, '#FBF9F4') for p, cap in shirts]
+            rest_shirts = [(p, cap, WHITE) for p, cap in shirts]
             rest_logos = [(p, None, WHITE) for p in logos[1:]]
             items += _interleave(rest_shirts, rest_logos)
             if not logos and items == []:
@@ -410,7 +491,7 @@ def build(obj, school=None, style=None):
             cols, rows, cells = _MOSAIC[n]
             top, bottom = y - 26, 168
             gap = 10
-            cs = min((w - 110 - gap * (cols - 1)) / cols, (top - bottom - gap * (rows - 1)) / rows)
+            cs = min((w - 90 - gap * (cols - 1)) / cols, (top - bottom - gap * (rows - 1)) / rows)
             gw, gh = cols * cs + (cols - 1) * gap, rows * cs + (rows - 1) * gap
             gx, gy = (w - gw) / 2, bottom + (top - bottom - gh) / 2
             for (png, cap, fill), (cc, rr, cw, ch) in zip(items[:n], cells):
@@ -426,24 +507,17 @@ def build(obj, school=None, style=None):
         frame()
         y = header(h - 56, size=38)
         if have_pictures:
-            top, bottom = y - 14, 176
-            shown, picks = logos[:3], shirts[:4]
-            logo_size = 0
+            top, bottom = y - 18, 172
+            avail = top - bottom
+            shown, picks = logos[:4], shirts[:8]
+            logo_h = 0
             if shown:
-                logo_size = min(175 if len(shown) == 1 else 150, (top - bottom) * (0.5 if picks else 0.8))
-            shirt_size = 0
+                logo_h = min(170, avail * (0.38 if picks else 0.8), (w - 90 - 12 * (len(shown) - 1)) / len(shown))
+                row(shown, top - logo_h, logo_h, gap=12)
             if picks:
-                shirt_size = min(118, (w - 110 - 14 * (len(picks) - 1)) / len(picks), top - bottom - logo_size - 70)
-            total = (logo_size + 28 if shown else 0) + (30 + shirt_size + 6 if picks else 0)
-            y = top - max(0, (top - bottom - total) / 2)
-            if shown:
-                y -= logo_size
-                row(shown, y, logo_size)
-                y -= 28
-            if picks:
-                centered('PICK YOUR STYLE', y, 'Helvetica-Bold', 8, accent)
-                y -= shirt_size + 12
-                row(picks, y, shirt_size, with_caption=True)
+                gtop = top - (logo_h + 16 if shown else 0)
+                centered('PICK YOUR STYLE', gtop - 8, 'Helvetica-Bold', 9, accent)
+                grid(picks, gtop - 26, bottom)
             qr_footer(66)
         else:
             _big_qr(c, qr, y, w, colors, sand, accent, ink, plan, shown_link, centered)
@@ -455,27 +529,20 @@ def build(obj, school=None, style=None):
         soft = colors.Color(on_block.red, on_block.green, on_block.blue, alpha=0.78)
         c.setFillColor(cream)
         c.rect(0, 0, w, h, stroke=0, fill=1)
-        block_h = 272
+        block_h = 262
         c.setFillColor(accent)
         c.rect(0, h - block_h, w, block_h, stroke=0, fill=1)
         header(h - 58, fill=on_block, soft=soft, brand=on_block, size=40, use_wordmark=False)
         edge = h - block_h
         y = edge - 40
         if logos:
-            shown = logos[:3]
-            size = 130 if len(shown) <= 2 else 112
-            y = edge - size / 2
-            row(shown, y, size)
-            y -= 26
+            shown = logos[:4]
+            size = min(150, (w - 90 - 12 * (len(shown) - 1)) / len(shown))
+            row(shown, edge - size / 2, size, gap=12)
+            y = edge - size / 2 - 20
         if shirts:
-            picks = shirts[:4]
-            floor = 176
-            size = min(118, (w - 110 - 14 * (len(picks) - 1)) / len(picks), y - floor - 40)
-            gap_free = y - floor - (30 + size + 6)
-            y -= max(0, gap_free / 2)
-            centered('PICK YOUR STYLE', y, 'Helvetica-Bold', 8, accent)
-            y -= size + 12
-            row(picks, y, size, with_caption=True)
+            centered('PICK YOUR STYLE', y, 'Helvetica-Bold', 9, accent)
+            grid(shirts[:8], y - 16, 164)
         c.setFillColor(sand)
         c.rect(0, 0, w, 150, stroke=0, fill=1)
         if have_pictures:

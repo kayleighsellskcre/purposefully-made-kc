@@ -145,3 +145,48 @@ def test_every_district_level_has_an_image_flyer_too(app, seed, guest):
     for path in paths:
         resp = guest.get(path)
         assert resp.status_code in (200, 302), path
+
+
+def _garment(color, inset=300):
+    """A product-style photo: a garment-colored shape on a white background."""
+    from PIL import Image
+    im = Image.new('RGBA', (1000, 1250), '#ffffff')
+    im.paste(Image.new('RGBA', (1000 - 2 * inset, 1250 - 2 * inset), color), (inset, inset))
+    out = io.BytesIO()
+    im.save(out, format='PNG')
+    return out.getvalue()
+
+
+def test_the_garment_photo_is_trimmed_so_it_fills_its_tile():
+    from PIL import Image
+    trimmed = Image.open(io.BytesIO(FL.trim_to_garment(_garment('#223366'))))
+    assert trimmed.width < 500 and trimmed.height < 700
+
+
+def test_every_garment_wears_a_logo_that_shows_against_its_color_and_all_logos_get_used():
+    dark, light = _png('#111111'), _png('#f5f5f5')
+    shirts = [_garment('#111111'), _garment('#f0f0f0'), _garment('#111111'), _garment('#f0f0f0')]
+    picks = FL.pick_logos(shirts, [dark, light])
+    assert picks[0] == 1 and picks[1] == 0          # light art on the dark garment, dark art on the light one
+    assert set(picks) == {0, 1}
+
+
+def test_the_logo_sits_in_the_chest_area_of_the_trimmed_garment():
+    from PIL import Image
+    shirt = _garment('#e0e0e0')
+    placed = Image.open(io.BytesIO(FL.with_chest_logo(shirt, _png('#cc0000'), 'Hoodie'))).convert('RGB')
+    w, h = placed.size
+    reds = [(x, y) for x in range(0, w, 4) for y in range(0, h, 4) if placed.getpixel((x, y))[0] > 150 > placed.getpixel((x, y))[1]]
+    assert reds
+    assert all(h * .25 < y < h * .65 for _x, y in reds)               # on the chest, not the hem or the collar
+    assert abs(sum(x for x, _y in reds) / len(reds) - w / 2) < w * .05   # and centred
+
+
+def test_every_logo_appears_on_the_page_with_up_to_four_in_the_showcase(app, seed, monkeypatch):
+    ids = _setup(app, seed)
+    _fake_pictures(monkeypatch, logos=4, shirts=6)
+    with app.app_context():
+        district, school, store = _objects(app, ids)
+        for style in ('collage', 'showcase', 'bold'):
+            pages, images, _text = _pages_and_images(DS.flyer_pdf(store, school, style))
+            assert pages == 1 and images >= 8, style      # four logos, at least three shirts, the QR code
