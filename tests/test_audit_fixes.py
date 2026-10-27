@@ -52,3 +52,9 @@ def test_school_deadlines_show_the_year(app, seed, guest):
         db.session.commit()
     html = guest.get('/org/desoto-usd-232/mill-valley-high').get_data(as_text=True)
     assert 'Order by October 25, 2027' in html
+
+
+def test_every_store_list_and_share_page_offers_the_flyer(app, seed, admin_client, guest):
+    flyer = f"/c/{seed['collection_slug']}/flyer.pdf"
+    assert flyer in admin_client.get('/admin/collections').get_data(as_text=True)
+    assert flyer in guest.get(f"/c/{seed['collection_slug']}/share").get_data(as_text=True)

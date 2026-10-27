@@ -35,3 +35,6 @@ dist/
 build/
 *.egg-info/
 private/
+
+# Test run reports (scrap output)
+pytest_full*.txt
