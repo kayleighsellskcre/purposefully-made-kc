@@ -3257,9 +3257,9 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 /* Hidden spam trap: real visitors never see it, bots fill it in */
 .cf-hp { position: absolute !important; left: -9999px !important; width: 1px; height: 1px; overflow: hidden; }
 
-/* Admin pages always use the compact header, so the badge never sits on top of the admin toolbar. */
+/* Admin pages show the same PM badge as every other page; their content starts below it. */
 @media (min-width: 769px) {
-    .is-admin .navbar .logo-image { height: 56px !important; top: 6px; border-width: 2px; }
+    .is-admin .ops-page { padding-top: 3.4rem; }
 }
 
 /* Small laptops and tablets held sideways: the menu gets a little tighter still */

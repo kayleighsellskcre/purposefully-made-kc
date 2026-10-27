@@ -33,3 +33,9 @@ def test_company_apparel_uses_the_standard_page_header(guest):
 def test_group_store_pages_share_one_header_without_ornaments(guest, seed):
     store = guest.get(f'/c/{seed["collection_slug"]}').get_data(as_text=True)
     assert 'class="team-orn"' not in store and 'class="page-header' in store
+
+
+def test_admin_pages_use_the_same_logo_size_as_the_rest_of_the_site():
+    css = open('static/css/main.css', encoding='utf-8').read()
+    assert '.is-admin .navbar .logo-image' not in css
+    assert '.is-admin .ops-page { padding-top: 3.4rem; }' in css
