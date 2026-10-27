@@ -3393,6 +3393,73 @@ def delete_collection(collection_id):
     return redirect(url_for('admin.collections'))
 
 
+@admin_bp.route('/collections/<int:collection_id>/designs/link-colors', methods=['POST'])
+@admin_required
+def collection_designs_link(collection_id):
+    """Make the ticked designs color options of one main design (the gallery's color families)."""
+    import json as _json
+    from utils.design_metadata import unique_variant_label
+    collection = Collection.query.get_or_404(collection_id)
+    allowed = _json.loads(collection.allowed_design_ids) if collection.allowed_design_ids else []
+    picked = []
+    for raw in request.form.getlist('design_ids'):
+        try:
+            did = int(raw)
+        except (TypeError, ValueError):
+            continue
+        if did in allowed and did not in picked:
+            picked.append(did)
+    picked.sort(key=allowed.index)                       # the one listed first becomes the main design
+    designs = [Design.query.get(i) for i in picked]
+    designs = [d for d in designs if d is not None]
+    back = redirect(url_for('admin.edit_collection', collection_id=collection_id))
+    if len(designs) < 2:
+        flash('Tick two or more designs that are the same layout in different colors.', 'error')
+        return back
+    main = designs[0]
+    if main.parent_design_id:
+        flash('Pick a main design that is not already a color of another design.', 'error')
+        return back
+    if not (main.variant_label or '').strip():
+        first = (main.color_families or '').split(',')[0].strip().title()
+        main.variant_label = unique_variant_label(main, first or 'Color 1')
+    linked = 0
+    for child in designs[1:]:
+        if child.parent_design_id or child.color_variants.count():
+            continue                                    # already part of a family: leave it alone
+        first = (child.color_families or '').split(',')[0].strip().title()
+        child.variant_label = unique_variant_label(main, first or f'Color {linked + 2}')
+        child.parent_design_id = main.id
+        child.title = main.title or child.title
+        linked += 1
+    try:
+        db.session.commit()
+        flash(f'Linked {linked} color{"s" if linked != 1 else ""} to "{main.title or "the main design"}". Shoppers now see one design with a color choice.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('collection_designs_link failed: %s', e)
+        flash('Could not link those designs. Please try again.', 'error')
+    return back
+
+
+@admin_bp.route('/collections/<int:collection_id>/designs/<int:design_id>/unlink', methods=['POST'])
+@admin_required
+def collection_design_unlink(collection_id, design_id):
+    """Make a linked color a separate design again."""
+    import json as _json
+    collection = Collection.query.get_or_404(collection_id)
+    design = Design.query.get_or_404(design_id)
+    if design.parent_design_id:
+        design.parent_design_id = None
+        ids = _json.loads(collection.allowed_design_ids) if collection.allowed_design_ids else []
+        if design.id not in ids:
+            ids.append(design.id)
+            collection.allowed_design_ids = _json.dumps(ids)
+        db.session.commit()
+        flash('That color is its own design again.', 'success')
+    return redirect(url_for('admin.edit_collection', collection_id=collection_id))
+
+
 @admin_bp.route('/collections/<int:collection_id>/designs/<int:design_id>/remove', methods=['POST'])
 @admin_required
 def collection_design_remove(collection_id, design_id):

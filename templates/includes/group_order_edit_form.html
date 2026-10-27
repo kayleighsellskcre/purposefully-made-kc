@@ -159,6 +159,24 @@
                                 <input type="checkbox" name="showcase_designs" value="{{ d.id }}" {% if d.id in (showcase_design_ids_list or []) %}checked{% endif %}>
                                 Show at top
                             </label>
+                            {% if not is_user_edit and gallery_designs|length > 1 %}
+                            <label class="showcase-opt">
+                                <input type="checkbox" name="design_ids" value="{{ d.id }}" form="linkDesigns">
+                                Same design, other color
+                            </label>
+                            {% endif %}
+                            {% if d.linked_colors %}
+                            <div class="linked-colors" aria-label="Colors linked to this design">
+                                <span class="linked-colors-title">{{ d.variant_label or 'Main' }} + {{ d.linked_colors|length }} more color{{ 's' if d.linked_colors|length != 1 }}</span>
+                                {% for c in d.linked_colors %}
+                                <span class="linked-color">
+                                    <img src="{{ c.file_path | image_url }}" alt="{{ c.variant_label or 'Color' }}" loading="lazy" decoding="async">
+                                    <span>{{ c.variant_label or 'Color' }}</span>
+                                    {% if not is_user_edit %}<button type="submit" form="unlinkDesign{{ c.id }}" title="Make this its own design again" aria-label="Unlink {{ c.variant_label or 'color' }}">&times;</button>{% endif %}
+                                </span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
                             {% if not is_user_edit %}
                             {# Button only. Its form is emitted after the collection
                                form closes, and is targeted here by id. A <form>
@@ -175,6 +193,12 @@
                         </div>
                         {% endfor %}
                     </div>
+                    {% if not is_user_edit and gallery_designs|length > 1 %}
+                    <div class="link-colors-bar">
+                        <p class="form-hint" style="margin:0">Uploaded the same layout in different colors? Tick <strong>Same design, other color</strong> on each one, then link them. The first one ticked in the list becomes the main image and the rest become its colors.</p>
+                        <button type="submit" form="linkDesigns" class="btn btn-outline btn-sm">Link ticked designs as colors</button>
+                    </div>
+                    {% endif %}
                     <p class="form-hint" style="margin-top:0.75rem">Check <strong>Show at top</strong> on this group’s logos you want shoppers to see first.</p>
                     {% endif %}
                     <label class="showcase-new-opt" style="display:flex;align-items:flex-start;gap:0.5rem;margin-top:0.85rem;cursor:pointer;">
@@ -478,6 +502,16 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         </form>
         {% endfor %}
+        <form id="linkDesigns" method="post" style="display:none;"
+              action="{{ url_for('admin.collection_designs_link', collection_id=collection.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+        {% for d in gallery_designs or [] %}{% for c in d.linked_colors or [] %}
+        <form id="unlinkDesign{{ c.id }}" method="post" style="display:none;"
+              action="{{ url_for('admin.collection_design_unlink', collection_id=collection.id, design_id=c.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+        {% endfor %}{% endfor %}
         {% endif %}
     </div>
 </div>

@@ -2001,7 +2001,20 @@ def designs_for_group_order_form(collection, user=None):
         design.id: design
         for design in Design.query.filter(Design.id.in_(ids)).all()
     }
-    return [by_id[did] for did in ids if did in by_id]
+    # A design that is a color of another allowed design is listed under it, not as its own card
+    shown = []
+    for did in ids:
+        design = by_id.get(did)
+        if design is None:
+            continue
+        if design.parent_design_id and design.parent_design_id in by_id:
+            parent = by_id[design.parent_design_id]
+            parent.linked_colors = getattr(parent, 'linked_colors', []) + [design]
+            continue
+        shown.append(design)
+    for design in shown:
+        design.linked_colors = getattr(design, 'linked_colors', [])
+    return shown
 
 
 def ordering_blocked(collection, product_id=None):
