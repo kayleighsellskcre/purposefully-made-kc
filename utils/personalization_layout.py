@@ -184,6 +184,10 @@ def snapshot_from_item(item, customer_name=None):
         'layout_label': back.get('layout_label'),
         'kind': 'personalized',
         'vertical': bool(back.get('vertical') or meta.get('vertical')),
+        'neck_image_url': back.get('neck_image_url') or meta.get('neck_image_url'),
+        'neck_width': _num(back.get('neck_width') or meta.get('neck_width')),
+        'neck_height': _num(back.get('neck_height') or meta.get('neck_height')),
+        'neck_gap': _num(back.get('neck_gap') or meta.get('neck_gap')),
         'placement': 'center_back',
         'placement_label': 'Center Back',
         'order_by': 'HEIGHT',
@@ -319,6 +323,37 @@ def render_piece_png(snapshot, piece='back', dpi=PRODUCTION_DPI):
     return render_snapshot_png(snapshot_for_piece(snapshot, piece), dpi=dpi)
 
 
+def art_aspect(url):
+    """Width / height of the visible part of a picture (transparent margins ignored), or None when it cannot be read."""
+    try:
+        from utils.flyer import _read
+        raw = _read(url)
+        art = Image.open(BytesIO(raw)).convert('RGBA')
+        box = art.getbbox()
+        if box:
+            art = art.crop(box)
+        return art.width / art.height if art.height else None
+    except Exception:
+        return None
+
+
+def _load_art(url, width_px):
+    """The picture at ``url`` as an RGBA image scaled to ``width_px`` wide, or None when it cannot be read."""
+    try:
+        from utils.flyer import _read
+        raw = _read(url)
+        if not raw:
+            return None
+        art = Image.open(BytesIO(raw)).convert('RGBA')
+        box = art.getbbox()
+        if box:
+            art = art.crop(box)
+        scale = width_px / art.width
+        return art.resize((max(1, width_px), max(1, int(round(art.height * scale)))), Image.LANCZOS)
+    except Exception:
+        return None
+
+
 def _render_vertical_png(snapshot, name, font_name, dpi):
     """A name stacked down the back: one letter per row, each centred on the same vertical line."""
     letters = [ch for ch in name if not ch.isspace()][:12]
@@ -339,16 +374,25 @@ def _render_vertical_png(snapshot, name, font_name, dpi):
     layers = [_draw_line_layer(ch, font, fill, stroke, stroke_w, 0, font_px, 1.0) for ch in letters]
     boxes = [_ink_bounds(layer) for layer in layers]
     ink_w = max((b[2] - b[0]) for b in boxes)
+    # A small image under the collar sits on top of the same transfer, with the saved gap before the first letter.
+    neck = None
+    neck_h_px = 0
+    if snapshot.get('neck_image_url') and snapshot.get('neck_width'):
+        neck = _load_art(snapshot['neck_image_url'], int(round(snapshot['neck_width'] * dpi)))
+        if neck is not None:
+            neck_h_px = neck.height + int(round((snapshot.get('neck_gap') or 0) * dpi))
     target_w = _num(snapshot.get('combined_width'))
-    canvas_w = max(ink_w, int(round(target_w * dpi)) if target_w else 0, 1)
-    canvas_h = int(round(len(letters) * letter_px + (len(letters) - 1) * gap_px))
+    canvas_w = max(ink_w, int(round(target_w * dpi)) if target_w else 0, neck.width if neck is not None else 0, 1)
+    canvas_h = int(round(len(letters) * letter_px + (len(letters) - 1) * gap_px)) + neck_h_px
     if canvas_w > MAX_EDGE_PX or canvas_h > MAX_EDGE_PX or (canvas_w * canvas_h) > MAX_PIXELS:
         raise ValueError(f'Production image too large to render safely ({canvas_w}x{canvas_h}px).')
     canvas = Image.new('RGBA', (canvas_w, canvas_h), (0, 0, 0, 0))
     try:
+        if neck is not None:
+            canvas.paste(neck, (int(round((canvas_w - neck.width) / 2)), 0), neck)
         for i, (layer, box) in enumerate(zip(layers, boxes)):
             x = int(round(canvas_w / 2 - (box[2] - box[0]) / 2 - box[0]))
-            y = int(round(i * (letter_px + gap_px)))
+            y = int(round(i * (letter_px + gap_px))) + neck_h_px
             canvas.paste(layer, (x, y - box[1]), layer)
         return _png_bytes(canvas, dpi)
     finally:

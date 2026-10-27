@@ -136,7 +136,7 @@ def price_cart_item(item, product, design=None):
         item.get('back_design_url') or meta.get('name') or meta.get('number')
     )
     back_design_parts = (
-        int(bool(meta.get('name'))) + int(bool(meta.get('number')))
+        int(bool(meta.get('name'))) + int(bool(meta.get('number'))) + int(bool(meta.get('neck_image_url')))
         if meta.get('name') or meta.get('number')
         else (1 if meta.get('position') == 'upper' else None)         # a small upper-back image is one print, like a name
     )

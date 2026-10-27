@@ -593,7 +593,7 @@
                         <div><dt>Placement</dt><dd>Center Back</dd></div>
                         <div><dt>Combined layout</dt><dd>{{ prod.back.combined_width_display }}″ W × {{ prod.back.combined_height_display }}″ H</dd></div>
                         {% if prod.back.vertical %}
-                        <div><dt>Layout</dt><dd>Name stacked down the back, one letter per row, {{ prod.back.gap_display }}″ between letters</dd></div>
+                        <div><dt>Layout</dt><dd>Name stacked down the back, one letter per row, {{ prod.back.gap_display }}″ between letters{% if prod.back.neck_image_url %}, with a small image under the collar on the same transfer ({{ prod.back.neck_width|round(1) }}″ wide){% endif %}</dd></div>
                         {% else %}
                         <div><dt>Spacing</dt><dd>{{ prod.back.gap_display }}″ (visible name bottom to number top)</dd></div>
                         {% endif %}

@@ -3771,3 +3771,31 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
     .logo-color-chooser-label { padding-right: 2rem; }
 }
 .back-preview-fixed { display: none !important; }   /* the shirt already shows the picked back image */
+.back-pick { position: relative; }
+.back-pick-dot { position: absolute; top: -6px; right: -6px; min-width: 1.35rem; height: 1.35rem; padding: 0 0.3rem; border-radius: 999px; background: var(--terra-cotta, #b87c6f); color: #fff; font-size: 0.72rem; font-weight: 700; line-height: 1.35rem; text-align: center; pointer-events: none; }
+.back-colors { display: block; margin: 0 0 1rem; padding: 0.9rem; border: 2px solid var(--terra-cotta, #b87c6f); border-radius: 14px; background: #fffaf5; }
+.back-colors[hidden] { display: none; }
+.back-colors-lead { margin: 0 0 0.6rem; font-size: 0.9rem; color: var(--text-primary, #3a3d48); display: flex; flex-wrap: wrap; gap: 0.25rem 0.6rem; align-items: baseline; }
+.back-colors-lead span { font-size: 0.8rem; color: var(--text-secondary); }
+.back-colors-row { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.back-colors .back-color { flex-direction: column; border-radius: 12px; padding: 0.4rem; gap: 0.25rem; min-width: 74px; font-size: 0.78rem; }
+.back-colors .back-color img { width: 56px; height: 56px; border-radius: 8px; }
+.back-colors .back-color.active { background: #fff; box-shadow: 0 0 0 3px rgba(184, 124, 111, 0.25); }
+.back-stack-opt { margin: 1rem 0 0; padding-top: 0.9rem; border-top: 1px solid rgba(232, 208, 177, 0.7); }
+.back-stack-opt label[for] { display: block; margin: 0.4rem 0 0.25rem; font-size: 0.85rem; font-weight: 600; }
+.back-stack-add { display: block; margin: 0 0 0.9rem; padding: 0.5rem 0.9rem; border: 2px dashed var(--terra-cotta, #b87c6f); border-radius: 999px; background: #fff; color: var(--terra-cotta, #b87c6f); font: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; }
+.back-stack-add[hidden] { display: none; }
+.logo-gallery-empty { margin: 0.75rem 0; padding: 0.9rem 1rem; border: 1px dashed var(--border-color, #e8d0b1); border-radius: 12px; background: #fffaf5; color: var(--text-secondary); font-size: 0.9rem; text-align: center; }
+/* Group and district pages on a phone: even tiles, centered single cards, prices and buttons that never break in half. */
+.dist-card-art { position: relative; }
+.dist-card-art img { position: absolute; inset: 1.1rem; width: calc(100% - 2.2rem); height: calc(100% - 2.2rem); }
+@media (max-width: 640px) {
+    .dist-grid, .dist-grid.dist-grid-sm { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.8rem; }
+    .dist-grid > .dist-card { flex: 0 1 calc(50% - 0.4rem); max-width: calc(50% - 0.4rem); }
+    .dist-grid > .dist-store-card-big { flex-basis: 100%; max-width: 100%; }
+}
+@media (max-width: 520px) {
+    .design-board .design-card-content .price-row { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+    .design-board .design-card-content .price { white-space: nowrap; font-size: 1.15rem; }
+    .design-board .design-card-content .cta { display: block; width: 100%; box-sizing: border-box; text-align: center; white-space: nowrap; }
+}

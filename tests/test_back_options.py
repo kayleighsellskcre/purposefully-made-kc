@@ -122,6 +122,7 @@ def test_a_group_that_offers_either_option_shows_its_own_back_images(app, seed):
     html = shopper.get(f"/shop/customize/{seed['tee_slug']}").get_data(as_text=True)
     assert 'id="backPicker"' in html and html.count('class="back-pick') >= 2
     assert 'id="uploadAreaBack" hidden' in html                         # the group's images, not an upload box of their own
+    assert 'id="backStackWrap"' in html and 'id="backStackAddImage"' in html     # a stacked name can ride along with the small image
 
 
 def test_placement_sits_with_the_logo_choice_before_the_back_options(app, seed):
@@ -137,3 +138,49 @@ def test_a_tapped_logo_opens_its_colors_as_a_card_on_a_phone(app, seed):
     assert 'isPhoneColorSheet' in html and 'logo-color-close' in html
     css = Path('static/css/main.css').read_text(encoding='utf-8')
     assert '.logo-color-chooser:not([hidden]) { position: fixed' in css
+
+
+def test_a_stacked_name_can_carry_a_small_image_under_the_collar_for_six_dollars(client, seed):
+    _add(client, product_id=seed['tee_id'], size='M', color='Black', quantity=1, placement='center_chest',
+         design_id=seed['free_design_id'], back_design_name='Mia', back_design_vertical='true', back_design_combo='true',
+         back_design_position='upper', back_design=(BytesIO(_png_bytes()), 'neck.png'))
+    with client.session_transaction() as sess:
+        item = dict(sess['cart'][0])
+    try:
+        assert item['unit_price'] == 36.00                                   # $3 for the name + $3 for the image
+        meta = item['back_design_meta']
+        assert meta['vertical'] is True and meta['neck_image_url'] == item['back_design_url'] and meta['neck_aspect'] == 1.5
+        back = item['transfer_production']['back']
+        assert back['neck_image_url'] and abs(back['neck_width'] - 4.0) < 0.01
+        stack = 3 * back['name_height'] + 2 * back['gap']
+        assert abs(back['combined_height'] - (stack + back['neck_height'] + back['neck_gap'])) < 0.01
+    finally:
+        Path(item['back_design_url'].lstrip('/')).unlink(missing_ok=True)
+
+
+def test_the_name_and_image_transfer_has_the_image_on_top_and_the_letters_centered_below(app):
+    with app.app_context():
+        aspect = PL.art_aspect('/static/img/logo.png')
+        assert aspect
+        snapshot = PS.build_item_production(size='M', back_name='Mia', back_font='Bebas Neue', back_text_color='#ffffff',
+                                            back_outline=True, back_outline_color='#000000', back_vertical=True,
+                                            back_neck_image_url='/static/img/logo.png', back_neck_aspect=aspect)['back']
+        snapshot = dict(snapshot, complete=True)
+        data = PL.render_snapshot_png(snapshot, dpi=100)
+    image = Image.open(io.BytesIO(data)).convert('RGBA')
+    assert abs(image.height / 100 - snapshot['combined_height']) < snapshot['combined_height'] * 0.08
+    neck_px = int(snapshot['neck_height'] * 100)
+    top = image.crop((0, 0, image.width, neck_px)).getchannel('A').getbbox()
+    below = image.crop((0, neck_px + int(snapshot['neck_gap'] * 100), image.width, image.height)).getchannel('A').getbbox()
+    assert top and below and top[3] <= neck_px + 2                              # the picture sits above the gap
+    assert abs((below[0] + below[2]) / 2 - image.width / 2) < image.width * 0.06  # the letters are centered under it
+
+
+def test_checkout_reprices_the_name_and_image_at_six_dollars(app, seed):
+    with app.app_context():
+        tee = db.session.get(Product, seed['tee_id'])
+        line = {'back_design_url': '/x/neck.png', 'design_id': seed['free_design_id'], 'size': 'M', 'placement': 'center_chest',
+                'back_design_meta': {'name': 'MIA', 'vertical': True, 'neck_image_url': '/x/neck.png'}}
+        assert price_cart_item(line, tee) == 36.00
+        line['back_design_meta'] = {'name': 'MIA', 'vertical': True}
+        assert price_cart_item(line, tee) == 33.00

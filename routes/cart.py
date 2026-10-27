@@ -289,6 +289,12 @@ def add():
     _bd_upper = (data.get('back_design_position') or '').strip().lower() == 'upper' and not (_bd_name or _bd_number)
     if _bd_upper and back_design_url:
         back_design_meta = {'position': 'upper'}
+    # A stacked name with a small image under the collar: one transfer, the image on top of the letters. The upload
+    # then holds the small image, not a picture of the name.
+    _neck_aspect = None
+    if _bd_vertical and back_design_url and (data.get('back_design_combo') or '').strip().lower() == 'true':
+        from utils.personalization_layout import art_aspect
+        _neck_aspect = art_aspect(back_design_url)
     if _bd_name or _bd_number:
         def _meta_float(key):
             raw = data.get(key)
@@ -315,6 +321,8 @@ def add():
         }
         if _bd_vertical:
             back_design_meta['vertical'] = True
+        if _neck_aspect:
+            back_design_meta.update({'neck_image_url': back_design_url, 'neck_aspect': _neck_aspect, 'position': 'upper'})
     
     # Save proof images (design composited on shirt) for cart display
     proof_front_url = None
@@ -364,7 +372,7 @@ def add():
         placement=placement,
         has_back_design=has_back,
         back_design_parts=(
-            int(bool(_bd_name)) + int(bool(_bd_number))
+            int(bool(_bd_name)) + int(bool(_bd_number)) + int(bool(_neck_aspect))
             if back_design_kind == 'personalization'
             else (1 if _bd_upper and back_design_url else None)
         ),
@@ -457,6 +465,8 @@ def add():
         back_outline=(back_design_meta or {}).get('outline'),
         back_outline_color=(back_design_meta or {}).get('outline_color'),
         back_vertical=_bd_vertical,
+        back_neck_image_url=back_design_url if _neck_aspect else None,
+        back_neck_aspect=_neck_aspect,
         customer_name=customer_name,
         measured_name_width=measured_name_w,
         measured_number_width=measured_number_w,

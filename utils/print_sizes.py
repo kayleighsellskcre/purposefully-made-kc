@@ -541,20 +541,31 @@ def vertical_letters(name):
     return [ch for ch in (name or '').upper() if not ch.isspace()][:VERTICAL_MAX_LETTERS]
 
 
-def vertical_name_layout(size, product=None, name=''):
-    """(letter height, gap between letters, letter count) in inches for a stacked name."""
+NECK_GAP_IN = 0.5          # space between a small collar image and the stacked name under it
+
+
+def neck_image_layout(size, product=None, aspect=None):
+    """(width, height, gap) in inches of a small image under the collar (aspect = width / height)."""
+    width = front_transfer_size(size, product, 'upper_back')['width']
+    height = width / aspect if aspect and aspect > 0 else width
+    return width, height, NECK_GAP_IN
+
+
+def vertical_name_layout(size, product=None, name='', reserved=0.0):
+    """(letter height, gap between letters, letter count) in inches for a stacked name.
+    ``reserved`` is the height already taken above it (a small collar image and its gap)."""
     count = len(vertical_letters(name))
     if not count:
         return 0.0, 0.0, 0
     layout = back_layout(size, product)
-    run = safe_print_height(product, size) * VERTICAL_RUN_RATIO
+    run = max(safe_print_height(product, size) * VERTICAL_RUN_RATIO - reserved, VERTICAL_MIN_LETTER_IN * count)
     letter = min(layout['name_height'] * VERTICAL_LETTER_RATIO, run / (count + VERTICAL_GAP_RATIO * (count - 1)))
     letter = max(letter, VERTICAL_MIN_LETTER_IN)
     return letter, letter * VERTICAL_GAP_RATIO, count
 
 
 def back_name_number_size(size, product=None, name='', number='', font='Bebas Neue',
-                          measured_name_width=None, measured_number_width=None, vertical=False):
+                          measured_name_width=None, measured_number_width=None, vertical=False, neck_aspect=None):
     """Personalized back transfers. Ordered by HEIGHT. Width grows with the text.
 
     Measured widths are the natural rendered widths — the visible glyph bounds
@@ -571,24 +582,29 @@ def back_name_number_size(size, product=None, name='', number='', font='Bebas Ne
     number_text = (number or '').strip()
 
     if vertical and name_text:
-        letter_h, letter_gap, count = vertical_name_layout(size, product, name_text)
+        neck_w = neck_h = neck_gap = 0.0
+        if neck_aspect:                                   # a small image under the collar, printed on the same transfer
+            neck_w, neck_h, neck_gap = neck_image_layout(size, product, neck_aspect)
+        letter_h, letter_gap, count = vertical_name_layout(size, product, name_text, reserved=(neck_h + neck_gap) if neck_aspect else 0.0)
         metrics = FONT_METRICS.get(font) or FONT_METRICS['Bebas Neue']
         em = letter_h / (metrics.get('cap_ratio') or DEFAULT_CAP_RATIO)
         # The widest letter sets the width; measured_name_width is the widest letter the customizer measured.
         widest = float(measured_name_width) if measured_name_width else em * metrics['char_width'] * 1.25
-        total_h = count * letter_h + (count - 1) * letter_gap
-        exceeds = bool(widest > max_w + 0.001 or total_h > safe_print_height(product, size) + 0.001)
+        total_h = count * letter_h + (count - 1) * letter_gap + ((neck_h + neck_gap) if neck_aspect else 0.0)
+        widest_all = max(widest, neck_w)
+        exceeds = bool(widest_all > max_w + 0.001 or total_h > safe_print_height(product, size) + 0.001)
         return {
             'order_by': 'HEIGHT', 'layout_label': layout['label'], 'category': layout['category'], 'vertical': True,
             'name_height': letter_h, 'name_width': widest, 'name_width_natural': widest,
             'number_height': 0.0, 'number_width': 0.0, 'number_width_natural': 0.0, 'number_digits': 0,
             'number_scale': 1.0, 'number_scale_percent': None, 'gap': letter_gap,
-            'combined_width': widest, 'combined_height': total_h, 'condense': 1.0, 'condense_percent': None,
+            'combined_width': widest_all, 'combined_height': total_h, 'condense': 1.0, 'condense_percent': None,
             'exceeds_safe_area': exceeds, 'safe_width': max_w, 'letter_count': count,
+            'neck_width': neck_w, 'neck_height': neck_h, 'neck_gap': neck_gap if neck_aspect else 0.0,
             'name_height_display': inches(letter_h), 'name_width_display': inches(widest),
             'number_height_display': inches(0), 'number_width_display': inches(0),
             'number_width_natural_display': inches(0), 'gap_display': inches(letter_gap),
-            'combined_width_display': inches(widest), 'combined_height_display': inches(total_h),
+            'combined_width_display': inches(widest_all), 'combined_height_display': inches(total_h),
         }
 
     if measured_name_width is not None and name_text:
@@ -702,6 +718,7 @@ def client_config(product=None):
         'body_length_defaults': GARMENT_BODY_LENGTH_DEFAULT,
         'collar_drop_ratio': BACK_COLLAR_DROP_RATIO,
         'safe_height_by_age': SAFE_PRINT_HEIGHT_BY_AGE,
+        'neck_gap': NECK_GAP_IN,
         'vertical': {
             'letter_ratio': VERTICAL_LETTER_RATIO, 'gap_ratio': VERTICAL_GAP_RATIO, 'run_ratio': VERTICAL_RUN_RATIO,
             'min_letter': VERTICAL_MIN_LETTER_IN, 'max_letters': VERTICAL_MAX_LETTERS,
@@ -730,6 +747,8 @@ def build_item_production(
     back_image_url=None,
     back_image_position=None,
     back_vertical=False,
+    back_neck_image_url=None,
+    back_neck_aspect=None,
     customer_name=None,
     measured_name_width=None,
     measured_number_width=None,
@@ -798,6 +817,7 @@ def build_item_production(
             measured_name_width=measured_name_width,
             measured_number_width=measured_number_width,
             vertical=bool(back_vertical),
+            neck_aspect=back_neck_aspect if (back_vertical and back_neck_image_url) else None,
         )
         payload['back'] = {
             'kind': 'personalized',
@@ -805,6 +825,8 @@ def build_item_production(
             'name': (back_name or '').strip(),
             'number': '' if back_vertical else (back_number or '').strip(),
             'vertical': bool(back_vertical),
+            'neck_image_url': back_neck_image_url if back_vertical else None,
+            'neck_width': back.get('neck_width'), 'neck_height': back.get('neck_height'), 'neck_gap': back.get('neck_gap'),
             'font': back_font or 'Bebas Neue',
             'text_color': back_text_color,
             'outline': back_outline,
@@ -948,6 +970,8 @@ def production_from_order_item(item, customer_name=None):
         back_image_url=back_image_url,
         back_image_position=back.get('position'),
         back_vertical=bool(back.get('vertical')),
+        back_neck_image_url=back.get('neck_image_url'),
+        back_neck_aspect=back.get('neck_aspect'),
         customer_name=customer_name or back.get('customer_name'),
         # Natural widths, so the squeeze is applied once and not compounded.
         measured_name_width=back.get('name_width_natural') or back.get('name_width'),

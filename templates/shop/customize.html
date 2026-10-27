@@ -1839,7 +1839,8 @@
 .color-picker-dropdown .color-grid-professional {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.65rem;
-    max-height: min(52dvh, 520px);
+    max-height: min(52vh, 520px);
+    max-height: min(52svh, 520px);
     min-height: 0;
     padding: 0.65rem;
     overflow-y: auto;
@@ -1854,7 +1855,8 @@
     }
     .preview-section {
         top: 88px;
-        height: calc(100dvh - 160px);
+        height: calc(100vh - 160px);
+        height: calc(100svh - 160px);
         min-height: 390px;
         max-height: none;
         padding: 0.75rem;
@@ -1923,7 +1925,8 @@
 
 @media (min-width: 969px) and (max-height: 620px) {
     .preview-section {
-        height: calc(100dvh - 145px);
+        height: calc(100vh - 145px);
+        height: calc(100svh - 145px);
         min-height: 330px;
     }
 }
@@ -1940,7 +1943,8 @@
     }
     .preview-canvas {
         width: 100%;
-        height: min(56dvh, 560px);
+        height: min(56vh, 560px);
+        height: min(56svh, 560px);
         min-height: 330px;
         max-width: none;
         aspect-ratio: auto;
@@ -1972,7 +1976,8 @@
         border-radius: 10px;
     }
     .preview-canvas {
-        height: min(48dvh, 420px);
+        height: min(48vh, 420px);
+        height: min(48svh, 420px);
         min-height: 280px;
         border-radius: 9px;
     }
@@ -2475,6 +2480,9 @@
                     <a href="{{ url_for('shop.design_gallery', product_id=product.id) }}" class="btn btn-outline btn-sm" style="margin-top: 0.75rem; display: inline-block;">Browse full design gallery</a>
                     {% endif %}
                     {% endif %}
+                    {% if collection_restricted and not gallery_designs and not preset_design and not uniform_logo_locked %}
+                    <p class="logo-gallery-empty">No logos have been added to this group yet. The organizer can add them from the group's edit page.</p>
+                    {% endif %}
                 <!-- Placement Selection -->
                 <div class="panel-section" id="placementSection" style="display: none;">
                     <h3>Placement</h3>
@@ -2589,6 +2597,7 @@
                                 <input type="checkbox" id="backDesignVerticalToggle">
                                 <span>Stack the name down the back <small>(cheer style, one letter per row)</small></span>
                             </label>
+                            <button type="button" class="back-stack-add" id="backStackAddImage" hidden>+ Add a small image under the collar too</button>
                             <div class="form-group" id="backDesignNumberGroup" style="margin-bottom: 0.75rem;">
                                 <label for="backDesignNumberInput">Number</label>
                                 <input type="text" id="backDesignNumberInput" class="form-control" placeholder="e.g. 23" maxlength="3" pattern="[0-9]*" inputmode="numeric">
@@ -2663,8 +2672,9 @@
                             <p class="form-hint" style="margin-bottom: 0.5rem;">Pick the back design for this shirt. It prints on the back only.</p>
                             <div class="back-picker" id="backPicker">
                                 {% for opt in back_options %}
-                                <button type="button" class="back-pick{% if loop.first %} active{% endif %}" data-back-main="{{ opt.id }}" title="{{ opt.title }}">
+                                <button type="button" class="back-pick{% if loop.first %} active{% endif %}" data-back-main="{{ opt.id }}" title="{{ opt.title }}{% if opt.colors %} ({{ opt.colors|length + 1 }} colors){% endif %}">
                                     <img src="{{ opt.url }}" alt="{{ opt.title }}" loading="lazy" decoding="async">
+                                    {% if opt.colors %}<span class="back-pick-dot">{{ opt.colors|length + 1 }}</span>{% endif %}
                                 </button>
                                 {% endfor %}
                             </div>
@@ -2689,8 +2699,9 @@
                             {# The organizer uploaded back images: the shopper picks from them (no upload of their own). #}
                             <div class="back-picker" id="backPicker">
                                 {% for opt in back_options %}
-                                <button type="button" class="back-pick{% if loop.first %} active{% endif %}" data-back-main="{{ opt.id }}" title="{{ opt.title }}">
+                                <button type="button" class="back-pick{% if loop.first %} active{% endif %}" data-back-main="{{ opt.id }}" title="{{ opt.title }}{% if opt.colors %} ({{ opt.colors|length + 1 }} colors){% endif %}">
                                     <img src="{{ opt.url }}" alt="{{ opt.title }}" loading="lazy" decoding="async">
+                                    {% if opt.colors %}<span class="back-pick-dot">{{ opt.colors|length + 1 }}</span>{% endif %}
                                 </button>
                                 {% endfor %}
                             </div>
@@ -2709,6 +2720,17 @@
                                 <p class="text-muted" style="font-size:0.8rem; margin-top:0.35rem;" id="backImageMove">Starts centered in the upper back area. Drag up or down to adjust.</p>
                             </div>
                             <input type="file" id="designFileBack" accept="image/*,.heic,.heif,.png,.jpg,.jpeg,.webp" style="display: none;">
+                            <div class="back-stack-opt" id="backStackWrap" hidden>
+                                <label class="back-vertical-opt">
+                                    <input type="checkbox" id="backStackToggle">
+                                    <span>Also stack a name down the back <small>(+$3, printed right below the image)</small></span>
+                                </label>
+                                <div id="backStackFields" hidden>
+                                    <label for="backStackName">Name</label>
+                                    <input type="text" id="backStackName" class="form-control" maxlength="12" placeholder="e.g. STACY" style="text-transform: uppercase;">
+                                    <p class="form-hint">Uses the font and colors from the Name &amp; Number tab.</p>
+                                </div>
+                            </div>
                         </div>
                         <div class="design-preview{% if back_options %} back-preview-fixed{% endif %}" id="designPreviewBack" style="display: none;">
                             <img src="{{ back_options[0].url if back_options else '' }}" alt="Back Design Preview" id="designPreviewImageBack">
@@ -3023,7 +3045,12 @@
         seedArtworkFitsFromDom();
         prefetchAllGarmentMetrics();
         prefetchArtworkFits();
+        let lastCanvasW = 0, lastCanvasH = 0;
         window.addEventListener('resize', function() {
+            const canvas = document.getElementById('previewCanvas');
+            const w = canvas ? canvas.clientWidth : 0, h = canvas ? canvas.clientHeight : 0;
+            if (w === lastCanvasW && h === lastCanvasH) return;      // the preview did not change size: leave the art alone
+            lastCanvasW = w; lastCanvasH = h;
             applyDesignFit();
             updateBackDesignPreview();
             applyBackDesignPosition();
@@ -4390,6 +4417,53 @@
                `-2px 0 0 ${c}, 2px 0 0 ${c}, 0 -2px 0 ${c}, 0 2px 0 ${c}`;
     }
 
+    // Paint a stacked name into the back layer: one letter per row, every letter centred. Returns the widest letter (inches).
+    function paintStackedName(name, look, reservedIn) {
+        const textContainer = document.getElementById('backDesignTextContainer');
+        const nameEl = document.getElementById('backDesignName');
+        const numberEl = document.getElementById('backDesignNumber');
+        const nameFont = backNameFontFamily(look.font);
+        requestBackFont(nameFont);
+        const sbox = garmentBox();
+        const sPx = sbox ? sbox.pxPerInch : 0;
+        const letters = verticalLetters(name);
+        const lay = verticalLayoutIn(previewReferenceSize(), letters.length, reservedIn);
+        const ink = inkMetrics(nameFont, INK_REF_NAME);
+        const fontPx = sPx ? (lay.letter * sPx) / ink.ink : 0;
+        const pitch = (lay.letter + lay.gap) * sPx;
+        const safeW = safeWidthIn(previewReferenceSize());
+        numberEl.textContent = '';
+        nameEl.textContent = letters.join('\n');
+        nameEl.style.fontFamily = '"' + nameFont + '", sans-serif';
+        nameEl.style.fontWeight = backFontWeight(nameFont);
+        nameEl.style.color = look.textColor;
+        nameEl.style.textShadow = look.outlineOn ? buildBackOutlineShadow(look.outlineColor) : 'none';
+        textContainer.style.position = 'relative';
+        textContainer.style.width = (safeW * sPx) + 'px';
+        textContainer.style.height = (lay.total * sPx) + 'px';
+        nameEl.style.position = 'absolute';
+        nameEl.style.left = '50%';
+        nameEl.style.top = (-(pitch / 2 + ink.boxTop * fontPx - fontPx / 2)) + 'px';
+        nameEl.style.fontSize = fontPx + 'px';
+        nameEl.style.lineHeight = pitch + 'px';
+        nameEl.style.letterSpacing = '0';
+        nameEl.style.margin = '0';
+        nameEl.style.whiteSpace = 'pre';
+        nameEl.style.textAlign = 'center';
+        nameEl.style.transform = 'translateX(-50%)';
+        let widest = 0;
+        letters.forEach(function (l) { widest = Math.max(widest, sPx ? measureTextWidthPx(l, nameFont, fontPx, 0) / sPx : 0); });
+        state.naturalNameWidthIn = widest;
+        state.measuredNameWidthIn = widest;
+        state.naturalNumberWidthIn = 0;
+        state.measuredNumberWidthIn = 0;
+        state.nameCondense = 1;
+        state.numberCondense = 1;
+        state.nameLetterSpacingEm = 0;
+        state.numberTrackingEm = null;
+        return { widest: widest, safeW: safeW, pxPerInch: sPx };
+    }
+
     function updateBackDesignPreview() {
         const backDesignLayer = document.getElementById('backDesignLayer');
         const textContainer = document.getElementById('backDesignTextContainer');
@@ -4442,41 +4516,9 @@
             state.backDesignVertical = stacked;
             if (stacked) {
                 // One letter per row, every letter centred on the same vertical line. Heights come from the chart.
-                const sbox = garmentBox();
-                const sPx = sbox ? sbox.pxPerInch : 0;
-                const letters = verticalLetters(name);
-                const lay = verticalLayoutIn(previewReferenceSize(), letters.length);
-                const ink = inkMetrics(nameFont, INK_REF_NAME);
-                const fontPx = sPx ? (lay.letter * sPx) / ink.ink : 0;
-                const pitch = (lay.letter + lay.gap) * sPx;
-                const safeW = safeWidthIn(previewReferenceSize());
-                numberEl.textContent = '';
-                nameEl.textContent = letters.join('\n');
-                textContainer.style.position = 'relative';
-                textContainer.style.width = (safeW * sPx) + 'px';
-                textContainer.style.height = (lay.total * sPx) + 'px';
-                nameEl.style.position = 'absolute';
-                nameEl.style.left = '50%';
-                nameEl.style.top = (-(pitch / 2 + ink.boxTop * fontPx - fontPx / 2)) + 'px';
-                nameEl.style.fontSize = fontPx + 'px';
-                nameEl.style.lineHeight = pitch + 'px';
-                nameEl.style.letterSpacing = '0';
-                nameEl.style.margin = '0';
-                nameEl.style.whiteSpace = 'pre';
-                nameEl.style.textAlign = 'center';
-                nameEl.style.transform = 'translateX(-50%)';
-                backDesignLayer.style.width = (safeW * sPx) + 'px';
+                const painted = paintStackedName(name, { font: font, textColor: textColor, outlineOn: outlineOn, outlineColor: outlineColor }, 0);
+                backDesignLayer.style.width = (painted.safeW * painted.pxPerInch) + 'px';
                 backDesignLayer.style.maxWidth = 'none';
-                let widest = 0;
-                letters.forEach(function (l) { widest = Math.max(widest, sPx ? measureTextWidthPx(l, nameFont, fontPx, 0) / sPx : 0); });
-                state.naturalNameWidthIn = widest;
-                state.measuredNameWidthIn = widest;
-                state.naturalNumberWidthIn = 0;
-                state.measuredNumberWidthIn = 0;
-                state.nameCondense = 1;
-                state.numberCondense = 1;
-                state.nameLetterSpacingEm = 0;
-                state.numberTrackingEm = null;
                 state.backDesignName = name;
                 state.backDesignNumber = '';
                 state.backDesignFont = font;
@@ -4591,6 +4633,29 @@
             }
             if (backDesignImage.complete && backDesignImage.naturalWidth) {
                 applyBackUploadFit();
+            }
+            // A stacked name that goes with a small image sits right below it (the layer stacks its children).
+            const comboName = comboStackName();
+            if (comboName) {
+                const box = garmentBox();
+                const px = box ? box.pxPerInch : 0;
+                const factor = ((TRANSFER_SIZING && TRANSFER_SIZING.placement_factors) || {}).upper_back || 0.4;
+                const widthIn = (chartWidthForSize(previewReferenceSize()) || 10) * factor;
+                const aspect = backDesignImage.naturalWidth && backDesignImage.naturalHeight ? backDesignImage.naturalWidth / backDesignImage.naturalHeight : 1;
+                const gapIn = (TRANSFER_SIZING && TRANSFER_SIZING.neck_gap) || 0.5;
+                const look = backTextStyle();
+                textContainer.style.display = 'block';
+                backDesignImage.style.order = '0';          // the image first, then the name below it
+                textContainer.style.order = '1';
+                paintStackedName(comboName, look, widthIn / aspect + gapIn);
+                textContainer.style.marginTop = (gapIn * px) + 'px';
+                backDesignLayer.style.maxHeight = 'none';
+                state.backDesignName = comboName;
+                state.backDesignNumber = '';
+            } else {
+                textContainer.style.marginTop = '';
+                textContainer.style.order = '';
+                backDesignImage.style.order = '';
             }
         }
     }
@@ -4816,18 +4881,51 @@
         const max = ((TRANSFER_SIZING && TRANSFER_SIZING.vertical) || {}).max_letters || 12;
         return Array.from(String(name || '').toUpperCase().replace(/\s+/g, '')).slice(0, max);
     }
-    function verticalLayoutIn(sizeOverride, count) {
+    function verticalLayoutIn(sizeOverride, count, reservedIn) {
         const cfg = (TRANSFER_SIZING && TRANSFER_SIZING.vertical) || { letter_ratio: 0.8, gap_ratio: 0.22, run_ratio: 0.7, min_letter: 0.6 };
         const safeH = ((TRANSFER_SIZING && TRANSFER_SIZING.safe_height_by_age) || {})[sizingAge()] || (state.isAdult ? 15.5 : 12.5);
-        const run = safeH * cfg.run_ratio;
+        const run = Math.max(safeH * cfg.run_ratio - (reservedIn || 0), cfg.min_letter * count);
         let letter = Math.min(nameHeightIn(sizeOverride) * cfg.letter_ratio, run / (count + cfg.gap_ratio * (count - 1)));
         letter = Math.max(letter, cfg.min_letter);
         return { letter: letter, gap: letter * cfg.gap_ratio, total: count * letter + (count - 1) * letter * cfg.gap_ratio };
     }
 
+    // The stacked name that goes with a small collar image (the name field lives in the Small Image tab).
+    function comboStackName() {
+        if (!isSmallBackImage()) return '';
+        const on = document.getElementById('backStackToggle');
+        const input = document.getElementById('backStackName');
+        return (on && on.checked && input) ? input.value.trim().toUpperCase() : '';
+    }
+    function backTextStyle() {
+        const val = (id, fallback) => { const el = document.getElementById(id); return el && el.value ? el.value : fallback; };
+        const toggle = document.getElementById('backDesignOutlineToggle');
+        return {
+            font: val('backDesignFont', state.backDesignFont || 'Bebas Neue'),
+            textColor: val('backDesignTextColor', state.backDesignTextColor || '#ffffff'),
+            outlineOn: toggle ? toggle.checked : (state.backDesignOutline !== false),
+            outlineColor: val('backDesignOutlineColor', state.backDesignOutlineColor || '#000000'),
+        };
+    }
+    function appendSmallBackFields(formData) {
+        if (!isSmallBackImage()) return;
+        formData.append('back_design_position', 'upper');
+        const name = comboStackName();
+        if (!name) return;
+        const look = backTextStyle();
+        formData.append('back_design_name', name);
+        formData.append('back_design_vertical', 'true');
+        formData.append('back_design_combo', 'true');
+        formData.append('back_design_font', look.font);
+        formData.append('back_design_text_color', look.textColor);
+        formData.append('back_design_outline', look.outlineOn ? 'true' : 'false');
+        formData.append('back_design_outline_color', look.outlineOn ? look.outlineColor : '');
+        if (state.naturalNameWidthIn) formData.append('name_width_in', state.naturalNameWidthIn);
+    }
+
     function currentBackDesignFee() {
         if (!state.backDesignEnabled) return 0;
-        if (isSmallBackImage()) return 3;
+        if (isSmallBackImage()) return 3 + (comboStackName() ? 3 : 0);
         if (state.backDesignMode === 'name_number') {
             const parts = Number(Boolean((state.backDesignName || '').trim()))
                 + Number(Boolean((state.backDesignNumber || '').trim()));
@@ -5375,10 +5473,13 @@
             colorsEl.innerHTML = '';
             colorsEl.hidden = list.length < 2;
             if (list.length < 2) return;
-            const lead = document.createElement('span');
-            lead.textContent = 'Color:';
+            const lead = document.createElement('p');
+            lead.className = 'back-colors-lead';
+            lead.innerHTML = '<strong>Pick a color</strong> <span>' + list.length + ' colors for this design</span>';
             colorsEl.appendChild(lead);
-            list.forEach(v => {
+            const row = document.createElement('div');
+            row.className = 'back-colors-row';
+            list.forEach((v, i) => {
                 const b = document.createElement('button');
                 b.type = 'button';
                 b.className = 'back-color';
@@ -5387,10 +5488,13 @@
                 img.src = v.url;
                 img.alt = '';
                 b.appendChild(img);
-                b.appendChild(document.createTextNode(v.label || 'Color'));
+                const label = document.createElement('span');
+                label.textContent = v.label || ('Color ' + (i + 1));
+                b.appendChild(label);
                 b.addEventListener('click', () => { manual = v.url; show(v.url); });
-                colorsEl.appendChild(b);
+                row.appendChild(b);
             });
+            colorsEl.appendChild(row);
         }
         picker.addEventListener('click', function (e) {
             const btn = e.target.closest('.back-pick');
@@ -5400,6 +5504,7 @@
             picker.querySelectorAll('.back-pick').forEach(b => b.classList.toggle('active', b === btn));
             drawColors();
             show(best());
+            if (!colorsEl.hidden) colorsEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         });
         document.addEventListener('click', function (e) {
             if (e.target.closest('.color-card')) setTimeout(() => show(best()), 60);      // a new shirt color: re-pick the best version
@@ -5486,11 +5591,31 @@
             syncBackDesignPreview();
         });
         const verticalToggle = document.getElementById('backDesignVerticalToggle');
+        const addImageBtn = document.getElementById('backStackAddImage');
+        const smallTab = document.querySelector('.back-design-tab[data-size="small"]');
         if (verticalToggle) verticalToggle.addEventListener('change', function() {
             const group = document.getElementById('backDesignNumberGroup');
             if (group) group.style.display = this.checked ? 'none' : '';
             if (this.checked && numberInput) numberInput.value = '';           // a stacked name is a name only
+            if (addImageBtn) addImageBtn.hidden = !(this.checked && smallTab);
             syncBackDesignPreview();
+        });
+        // The stacked name can ride along with a small image under the collar; it is never added on its own.
+        const stackToggle = document.getElementById('backStackToggle');
+        const stackFields = document.getElementById('backStackFields');
+        const stackName = document.getElementById('backStackName');
+        if (stackToggle) stackToggle.addEventListener('change', function () {
+            if (stackFields) stackFields.hidden = !this.checked;
+            if (this.checked && stackName) stackName.focus();
+            syncBackDesignPreview();
+        });
+        if (stackName) ['input', 'change', 'keyup'].forEach(ev => stackName.addEventListener(ev, syncBackDesignPreview));
+        if (addImageBtn && smallTab) addImageBtn.addEventListener('click', function () {
+            if (stackName && nameInput) stackName.value = (nameInput.value || '').trim().toUpperCase();
+            if (stackToggle && !stackToggle.checked) { stackToggle.checked = true; if (stackFields) stackFields.hidden = false; }
+            smallTab.click();
+            const wrap = document.getElementById('backDesignUpload');
+            if (wrap) wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
 
         // Quick-pick swatches set their linked color input
@@ -5541,6 +5666,8 @@
                         ? 'A small image printed just under the collar, about 4 inches wide. $3.'
                         : 'A large image printed across the upper back. $6.';
                     if (move) move.style.display = small ? 'none' : '';
+                    const stackWrap = document.getElementById('backStackWrap');
+                    if (stackWrap) stackWrap.hidden = !small;
                     state.backDesignDragOffset = null;
                 }
                 tabs.forEach(t => t.classList.remove('active'));
@@ -6409,10 +6536,10 @@
                         }
                     } else if (state.backDesignFile) {
                         formData.append('back_design', state.backDesignFile);
-                        if (isSmallBackImage()) formData.append('back_design_position', 'upper');
+                        appendSmallBackFields(formData);
                     } else if (state.backDesignUrl) {
                         formData.append('back_design_url', state.backDesignUrl);
-                        if (isSmallBackImage()) formData.append('back_design_position', 'upper');
+                        appendSmallBackFields(formData);
                     }
                 }
 

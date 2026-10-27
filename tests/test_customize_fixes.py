@@ -248,8 +248,8 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
 
 def test_mockup_viewport_keeps_whole_shirt_and_view_buttons_visible(client, seed):
     html = client.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
-    assert 'height: calc(100dvh - 160px)' in html
-    assert 'height: min(48dvh, 420px)' in html
+    assert 'height: calc(100svh - 160px)' in html
+    assert 'height: min(48svh, 420px)' in html
     assert 'object-fit: contain' in html
     assert 'grid-template-columns: 116px minmax(0, 1fr)' in html
     assert '.preview-info .pos-controls-row' in html
