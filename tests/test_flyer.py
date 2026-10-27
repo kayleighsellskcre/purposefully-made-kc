@@ -46,39 +46,35 @@ def _fake_pictures(monkeypatch, logos=2, shirts=2):
     monkeypatch.setattr(FL, 'load_image', lambda url: _png('#%06x' % (hash(url) % 0xFFFFFF)))
 
 
-def test_every_style_places_the_pictures_on_one_page_with_a_small_qr(app, seed, monkeypatch):
+def test_the_flyer_is_one_page_with_the_logos_the_shirts_and_a_small_qr(app, seed, monkeypatch):
     ids = _setup(app, seed)
     _fake_pictures(monkeypatch, logos=2, shirts=4)
     with app.app_context():
         district, school, store = _objects(app, ids)
-        for style in ('collage', 'showcase', 'bold'):
-            pages, images, text = _pages_and_images(DS.flyer_pdf(store, school, style))
-            assert pages == 1, style
-            assert images >= 7, style                       # two logos, four shirts, the QR code
-            assert 'SCAN TO ORDER' in text
-            assert ('PURPOSEFULLY MADE KC' in text.upper()) == (style == 'bold')     # the others carry the PM wordmark picture
-            assert ('PICK YOUR STYLE' in text) == (style != 'collage')
-        text = _pages_and_images(DS.flyer_pdf(store, school, 'showcase'))[2]
+        pages, images, text = _pages_and_images(DS.flyer_pdf(store, school))
+        assert pages == 1
+        assert images >= 7                                   # two logos, four shirts, the QR code
+        assert 'SCAN TO ORDER' in text and 'PICK YOUR STYLE' in text
         assert 'TEE' in text and 'HOODIE' in text
 
 
-def test_the_collage_adapts_to_any_number_of_pictures(app, seed, monkeypatch):
+def test_every_logo_and_shirt_is_on_the_page_whatever_the_count(app, seed, monkeypatch):
     ids = _setup(app, seed)
     with app.app_context():
         district, school, store = _objects(app, ids)
-        for logos, shirts in ((1, 0), (0, 3), (1, 1), (2, 3), (4, 8), (3, 12)):
+        for logos, shirts in ((1, 0), (0, 3), (1, 1), (2, 3), (4, 8), (6, 8), (8, 8), (9, 12)):
             _fake_pictures(monkeypatch, logos=logos, shirts=shirts)
-            pages, images, _text = _pages_and_images(DS.flyer_pdf(store, school, 'collage'))
-            assert pages == 1 and images >= 1 + min(9, logos + shirts) - 1
+            pages, images, _text = _pages_and_images(DS.flyer_pdf(store, school))
+            shown = min(logos, 8) + min(shirts, 8)
+            assert pages == 1 and images == shown + 2, (logos, shirts)          # plus the QR code and the PM wordmark
 
 
-def test_an_unknown_style_falls_back_to_the_collage(app, seed, guest):
+def test_any_old_style_link_still_gives_the_one_flyer(app, seed, guest):
     ids = _setup(app, seed)
-    assert FL.normalize_style('nonsense') == 'collage' and FL.normalize_style('BOLD') == 'bold'
     with app.app_context():
         slug = db.session.get(Collection, ids[2]).slug
-    for style in ('collage', 'showcase', 'bold', 'nonsense'):
-        resp = guest.get(f'/c/{slug}/flyer.pdf?style={style}')
+    for style in ('', '?style=collage', '?style=showcase', '?style=bold', '?style=nonsense'):
+        resp = guest.get(f'/c/{slug}/flyer.pdf{style}')
         assert resp.status_code == 200 and resp.data[:4] == b'%PDF'
 
 
@@ -121,7 +117,7 @@ def test_the_flyer_can_be_saved_as_an_image(app, seed, guest):
     ids = _setup(app, seed)
     with app.app_context():
         slug = db.session.get(Collection, ids[2]).slug
-    resp = guest.get(f'/c/{slug}/flyer.png?style=bold&download=1')
+    resp = guest.get(f'/c/{slug}/flyer.png?download=1')
     if resp.status_code == 302:                      # image renderer not installed here: it hands over the PDF instead
         assert '/flyer.pdf' in resp.headers['Location']
         return
@@ -180,13 +176,3 @@ def test_the_logo_sits_in_the_chest_area_of_the_trimmed_garment():
     assert reds
     assert all(h * .25 < y < h * .65 for _x, y in reds)               # on the chest, not the hem or the collar
     assert abs(sum(x for x, _y in reds) / len(reds) - w / 2) < w * .05   # and centred
-
-
-def test_every_logo_appears_on_the_page_with_up_to_four_in_the_showcase(app, seed, monkeypatch):
-    ids = _setup(app, seed)
-    _fake_pictures(monkeypatch, logos=4, shirts=6)
-    with app.app_context():
-        district, school, store = _objects(app, ids)
-        for style in ('collage', 'showcase', 'bold'):
-            pages, images, _text = _pages_and_images(DS.flyer_pdf(store, school, style))
-            assert pages == 1 and images >= 8, style      # four logos, at least three shirts, the QR code

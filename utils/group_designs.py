@@ -34,6 +34,42 @@ def attach(store, design_ids, show_at_top=False):
     return len(new)
 
 
+def link_as_colors(designs):
+    """Make ``designs[0]`` the main design and the rest its color options. Returns how many colors were linked."""
+    from utils.design_metadata import unique_variant_label
+    main = designs[0]
+    if main.parent_design_id:
+        return 0
+    if not (main.variant_label or '').strip():
+        first = (main.color_families or '').split(',')[0].strip().title()
+        main.variant_label = unique_variant_label(main, first or 'Color 1')
+    linked = 0
+    for child in designs[1:]:
+        if child.parent_design_id or child.color_variants.count():
+            continue                                    # already part of a family: leave it alone
+        first = (child.color_families or '').split(',')[0].strip().title()
+        child.variant_label = unique_variant_label(main, first or f'Color {linked + 2}')
+        child.parent_design_id = main.id
+        child.title = main.title or child.title
+        linked += 1
+    return linked
+
+
+def link_uploaded_colors(new_upload_ids, form):
+    """When the owner says the files she just uploaded are one layout in different colors, link them as they are saved.
+    Returns the uploads that are main designs now (the first one), so only that one is also shown at the top."""
+    for raw in form.getlist('new_uploaded_designs'):            # pictures the page uploaded the moment they were chosen
+        if str(raw).isdigit() and int(raw) not in new_upload_ids:
+            new_upload_ids = list(new_upload_ids) + [int(raw)]
+    if form.get('link_new_uploads') != 'on' or len(new_upload_ids) < 2:
+        return new_upload_ids
+    designs = [d for d in (db.session.get(Design, i) for i in new_upload_ids) if d is not None]
+    if len(designs) < 2 or not link_as_colors(designs):
+        return new_upload_ids
+    db.session.flush()
+    return [designs[0].id]
+
+
 def detach(store, design_id):
     """Take a design off ``store``'s list. The artwork itself stays, and so does every other group that offers it."""
     design_id = int(design_id)

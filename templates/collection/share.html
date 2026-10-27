@@ -34,15 +34,9 @@
                     <a href="{{ url_for('collection.qr_code', slug=collection.slug) }}"
                        download="{{ collection.slug }}-qr.png"
                        class="btn btn-outline btn-sm">⬇ Download QR Code</a>
-                    <span class="flyer-pick">Print a flyer:
-                        <a href="{{ url_for('collection.flyer', slug=collection.slug, style='collage') }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Collage</a>
-                        <a href="{{ url_for('collection.flyer', slug=collection.slug, style='showcase') }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Showcase</a>
-                        <a href="{{ url_for('collection.flyer', slug=collection.slug, style='bold') }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Bold</a>
-                    </span>
-                    <span class="flyer-pick">Or save as an image:
-                        <a href="{{ url_for('collection.flyer_image', slug=collection.slug, style='collage', download=1) }}" class="btn btn-outline btn-sm">Collage</a>
-                        <a href="{{ url_for('collection.flyer_image', slug=collection.slug, style='showcase', download=1) }}" class="btn btn-outline btn-sm">Showcase</a>
-                        <a href="{{ url_for('collection.flyer_image', slug=collection.slug, style='bold', download=1) }}" class="btn btn-outline btn-sm">Bold</a>
+                    <span class="flyer-pick">Flyer:
+                        <a href="{{ url_for('collection.flyer', slug=collection.slug) }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Print</a>
+                        <a href="{{ url_for('collection.flyer_image', slug=collection.slug, download=1) }}" class="btn btn-outline btn-sm">Save as image</a>
                     </span>
                     <p class="qr-hint">Point your phone camera at the QR code to open the group order link instantly.</p>
                 </div>

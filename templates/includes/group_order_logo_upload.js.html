@@ -69,6 +69,11 @@
                 hidden.name = 'allowed_designs';
                 hidden.value = data.design_id;
                 form.appendChild(hidden);
+                var fresh = document.createElement('input');          // tells the server this one was just uploaded
+                fresh.type = 'hidden';
+                fresh.name = 'new_uploaded_designs';
+                fresh.value = data.design_id;
+                form.appendChild(fresh);
 
                 div.innerHTML = '';
                 div.dataset.designId = String(data.design_id);

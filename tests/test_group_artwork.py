@@ -118,3 +118,48 @@ def test_a_stores_artwork_never_shows_up_in_another_stores_customizer(app, seed,
 
 def stores_id(app, slug):
     return Collection.query.filter_by(slug=slug).first().id
+
+
+def test_the_logo_strip_shows_every_main_design_with_the_ticked_ones_first(app, seed):
+    from utils.group_orders import load_showcase_designs
+    school_id, stores, art = _school(app, seed)
+    with app.app_context():
+        store = db.session.get(Collection, stores['Cheer'])
+        GD.attach(store, art)
+        db.session.get(Design, art[1]).parent_design_id = art[0]            # a color version of the first design
+        store.showcase_design_ids = json.dumps([art[2]])                    # only the third is ticked "Show at top"
+        db.session.commit()
+        shown = [d['id'] for d in load_showcase_designs(store)]
+        assert shown == [art[2], art[0]]                                    # ticked first, then the other main design, no color version
+        store.showcase_design_ids = None
+        db.session.commit()
+        assert [d['id'] for d in load_showcase_designs(store)] == [art[0], art[2]]
+
+
+def test_files_uploaded_together_can_be_linked_as_colors_on_the_spot(app, seed):
+    from werkzeug.datastructures import MultiDict
+    school_id, stores, art = _school(app, seed)
+    with app.app_context():
+        shown = GD.link_uploaded_colors([], MultiDict([('new_uploaded_designs', str(i)) for i in art[:2]] + [('link_new_uploads', 'on')]))
+        assert shown == [art[0]]                                           # only the main image is also shown at the top
+        first, second, third = (db.session.get(Design, i) for i in art)
+        assert second.parent_design_id == first.id and first.parent_design_id is None and third.parent_design_id is None
+        assert second.variant_label and first.variant_label
+        # without the tick nothing is linked
+        assert GD.link_uploaded_colors([], MultiDict([('new_uploaded_designs', str(art[2]))])) == [art[2]]
+
+
+def test_linking_colors_keeps_the_show_at_top_tick_on_the_main_design(app, seed, admin_client):
+    school_id, stores, art = _school(app, seed)
+    with app.app_context():
+        store = db.session.get(Collection, stores['Cheer'])
+        GD.attach(store, art[:2])
+        store.showcase_design_ids = json.dumps([art[1]])                   # ticked on the color that is about to be linked
+        db.session.commit()
+        store_id = store.id
+    resp = admin_client.post(f'/admin/collections/{store_id}/designs/link-colors', data={'design_ids': [art[0], art[1]]}, follow_redirects=True)
+    assert resp.status_code == 200
+    with app.app_context():
+        store = db.session.get(Collection, store_id)
+        assert json.loads(store.showcase_design_ids) == [art[0]]
+        assert db.session.get(Design, art[1]).parent_design_id == art[0]

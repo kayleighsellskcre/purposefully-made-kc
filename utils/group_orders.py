@@ -1342,9 +1342,15 @@ def showcase_design_ids(collection):
 
 
 def load_showcase_designs(collection):
-    """Ordered design dicts for the storefront logo strip (subset of allowed designs)."""
-    allowed = set(allowed_design_ids(collection))
-    ids = [i for i in showcase_design_ids(collection) if i in allowed]
+    """Ordered design dicts for the storefront logo strip and the flyer: the designs ticked "Show at top" first, then
+    every other main design in the group (a color version stays under its main image)."""
+    offered = allowed_design_ids(collection)
+    allowed = set(offered)
+    ids = [i for i in dict.fromkeys(showcase_design_ids(collection)) if i in allowed]
+    rest = [i for i in offered if i not in ids]
+    if rest:
+        ids += [d.id for d in sorted(Design.query.filter(Design.id.in_(rest), Design.parent_design_id.is_(None)).all(),
+                                     key=lambda d: rest.index(d.id))]
     if not ids:
         return []
     designs = Design.query.filter(Design.id.in_(ids)).all()
@@ -1914,6 +1920,8 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
         collection.restrict_options = True
 
     # Hero logos at the top of the storefront — must be in allowed_design_ids.
+    from utils.group_designs import link_uploaded_colors
+    new_upload_ids = link_uploaded_colors(new_upload_ids, request.form)
     showcase_ids = resolve_showcase_design_ids(
         design_ids,
         form_showcase=request.form.getlist('showcase_designs'),

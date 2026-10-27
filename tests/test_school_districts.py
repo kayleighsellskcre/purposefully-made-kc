@@ -189,7 +189,7 @@ def test_the_share_box_is_on_the_district_school_and_store_pages(app, seed, gues
     _make(app, seed)
     for path in ('/org/desoto-usd-232', '/org/desoto-usd-232/mill-valley-high', '/desoto/mill-valley/football'):
         html = guest.get(path, follow_redirects=True).get_data(as_text=True)
-        assert 'data-share-url=' in html and 'distShareDialog' in html and 'Download QR (PNG)' in html and 'Print a flyer' in html and 'data-flyer-style="collage"' in html
+        assert 'data-share-url=' in html and 'distShareDialog' in html and 'Download QR (PNG)' in html and 'data-flyer-print' in html and 'data-flyer-image' in html
 
 
 def test_the_qr_zip_is_named_by_store(app, seed, client, login):

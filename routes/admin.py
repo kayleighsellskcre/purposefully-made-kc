@@ -3156,6 +3156,8 @@ def add_collection():
                 collection.restrict_options = True
 
             from utils.group_orders import resolve_showcase_design_ids
+            from utils.group_designs import link_uploaded_colors
+            new_upload_ids = link_uploaded_colors(new_upload_ids, request.form)
             showcase_ids = resolve_showcase_design_ids(
                 allowed_design_ids,
                 form_showcase=request.form.getlist('showcase_designs'),
@@ -3438,7 +3440,6 @@ def collection_design_copy_to(collection_id, design_id):
 def collection_designs_link(collection_id):
     """Make the ticked designs color options of one main design (the gallery's color families)."""
     import json as _json
-    from utils.design_metadata import unique_variant_label
     collection = Collection.query.get_or_404(collection_id)
     allowed = _json.loads(collection.allowed_design_ids) if collection.allowed_design_ids else []
     picked = []
@@ -3460,18 +3461,15 @@ def collection_designs_link(collection_id):
     if main.parent_design_id:
         flash('Pick a main design that is not already a color of another design.', 'error')
         return back
-    if not (main.variant_label or '').strip():
-        first = (main.color_families or '').split(',')[0].strip().title()
-        main.variant_label = unique_variant_label(main, first or 'Color 1')
-    linked = 0
-    for child in designs[1:]:
-        if child.parent_design_id or child.color_variants.count():
-            continue                                    # already part of a family: leave it alone
-        first = (child.color_families or '').split(',')[0].strip().title()
-        child.variant_label = unique_variant_label(main, first or f'Color {linked + 2}')
-        child.parent_design_id = main.id
-        child.title = main.title or child.title
-        linked += 1
+    from utils.group_designs import link_as_colors
+    linked = link_as_colors(designs)
+    if linked:                                          # a "Show at top" tick on any of them now belongs to the main design
+        shown = _json.loads(collection.showcase_design_ids) if collection.showcase_design_ids else []
+        children = {d.id for d in designs[1:] if d.parent_design_id == main.id}
+        if children & set(shown) and main.id not in shown:
+            shown.append(main.id)
+        shown = [i for i in shown if i not in children]
+        collection.showcase_design_ids = _json.dumps(shown) if shown else None
     try:
         db.session.commit()
         flash(f'Linked {linked} color{"s" if linked != 1 else ""} to "{main.title or "the main design"}". Shoppers now see one design with a color choice.', 'success')

@@ -114,7 +114,7 @@ def _store_logo_urls(store, school):
             urls.append(image_url(school.logo_url))
     if getattr(store, 'cover_image', None):
         urls.append(image_url(store.cover_image))
-    return list(dict.fromkeys(urls))[:6]
+    return list(dict.fromkeys(urls))[:8]
 
 
 def _school_logo_urls(school):
@@ -132,7 +132,7 @@ def _district_logo_urls(district):
         first = _school_logo_urls(school)
         if first:
             urls.append(first[0])
-    return list(dict.fromkeys(urls))[:6]
+    return list(dict.fromkeys(urls))[:8]
 
 
 def _shirt_picks(products, store=None, limit=8):
@@ -182,7 +182,7 @@ def _plan(obj, school):
         spirit = DS.spirit_store(obj)
         products = list((spirit or (stores[0] if stores else None)).products) if (spirit or stores) else []
         plan.update(top=obj.district.name, title=obj.name, sub=f'Home of the {obj.mascot}' if obj.mascot else None,
-                    deadline=DS.school_deadline(obj), logos=_school_logo_urls(obj)[:6],
+                    deadline=DS.school_deadline(obj), logos=_school_logo_urls(obj)[:8],
                     shirts=_shirt_picks(products, spirit), school_color=DS.accent(obj),
                     delivery='sent' if (obj.delivery_mode or 'send_home') == 'send_home' else 'pickup')
     else:
@@ -199,22 +199,6 @@ def _plan(obj, school):
 
 
 # ── drawing ────────────────────────────────────────────────────────────────────────────────
-
-STYLES = (('collage', 'Collage'), ('showcase', 'Showcase'), ('bold', 'Bold'))
-STYLE_KEYS = tuple(k for k, _ in STYLES)
-
-# Mosaic layouts for the collage: (columns, rows, [(col, row, wide, tall)]). Row 0 is the top; the first tile is the hero.
-_MOSAIC = {
-    1: (1, 1, [(0, 0, 1, 1)]),
-    2: (2, 1, [(0, 0, 1, 1), (1, 0, 1, 1)]),
-    3: (3, 2, [(0, 0, 2, 2), (2, 0, 1, 1), (2, 1, 1, 1)]),
-    4: (4, 2, [(0, 0, 2, 2), (2, 0, 2, 1), (2, 1, 1, 1), (3, 1, 1, 1)]),
-    5: (4, 2, [(0, 0, 2, 2), (2, 0, 1, 1), (3, 0, 1, 1), (2, 1, 1, 1), (3, 1, 1, 1)]),
-    6: (3, 3, [(0, 0, 2, 2), (2, 0, 1, 1), (2, 1, 1, 1), (0, 2, 1, 1), (1, 2, 1, 1), (2, 2, 1, 1)]),
-    9: (4, 3, [(0, 0, 2, 2), (2, 0, 1, 1), (3, 0, 1, 1), (2, 1, 1, 1), (3, 1, 1, 1),
-               (0, 2, 1, 1), (1, 2, 1, 1), (2, 2, 1, 1), (3, 2, 1, 1)]),
-}
-
 
 # Where a design sits on each garment, as fractions of the garment photo once it is trimmed to the garment:
 # (top of the design, width available, tallest it may be). Hoodies start lower because of the hood.
@@ -296,40 +280,14 @@ def with_chest_logo(shirt_png, logo_png, kind=None):
         return shirt_png
 
 
-def normalize_style(value):
-    value = (value or '').strip().lower()
-    return value if value in STYLE_KEYS else 'collage'
-
-
-def _mosaic_count(n):
-    return 9 if n >= 9 else 6 if n >= 6 else n          # 7 and 8 pictures use the six-tile layout
-
-
-def _interleave(a, b):
-    out = []
-    for i in range(max(len(a), len(b))):
-        if i < len(a):
-            out.append(a[i])
-        if i < len(b):
-            out.append(b[i])
-    return out
-
-
-def _is_light(hex_color):
-    h = hex_color.lstrip('#')
-    r, g, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))
-    return (0.299 * r + 0.587 * g + 0.114 * b) > 200
-
-
 def build(obj, school=None, style=None):
-    """The flyer as PDF bytes, in one of the three styles."""
+    """The flyer as PDF bytes. (``style`` is accepted so older links keep working; there is one flyer.)"""
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.utils import ImageReader
     from reportlab.pdfgen import canvas
     from utils import districts as DS
 
-    style = normalize_style(style)
     plan = _plan(obj, school)
     images = load_images(plan['logos'] + [u for u, _ in plan['shirts']])
     logos = [images[u] for u in plan['logos'] if u in images]
@@ -393,18 +351,24 @@ def build(obj, school=None, style=None):
             tile(x, y, size, size, png, cap, WHITE)
             x += size + gap
 
-    def grid(items, top, bottom, gap=12):
-        """Captioned shirt tiles in as few, as large rows as fit between top and bottom; the last row is centred."""
-        n = len(items)
+    def grid_shape(n):
         cols = n if n <= 4 else 3 if n <= 6 else 4
-        rows = -(-n // cols)
-        size = min(150, (w - 90 - gap * (cols - 1)) / cols, (top - bottom - gap * (rows - 1)) / rows)
-        y0 = top - max(0, (top - bottom - (rows * size + (rows - 1) * gap)) / 2)
+        return cols, -(-n // cols)
+
+    def measure(n, height, biggest=150, gap=12):
+        """(tile size, total height) of n tiles laid out in as few, as large rows as fit in ``height``."""
+        cols, rows = grid_shape(n)
+        size = min(biggest, (w - 90 - gap * (cols - 1)) / cols, (height - gap * (rows - 1)) / rows)
+        return size, rows * size + (rows - 1) * gap
+
+    def grid(items, top, size, gap=12):
+        """Tiles of ``size`` from ``top`` down; the last row is centred."""
+        cols, rows = grid_shape(len(items))
         for r in range(rows):
             chunk = items[r * cols:(r + 1) * cols]
             x = (w - (len(chunk) * size + (len(chunk) - 1) * gap)) / 2
             for png, cap in chunk:
-                tile(x, y0 - (r + 1) * size - r * gap, size, size, png, cap, WHITE)
+                tile(x, top - (r + 1) * size - r * gap, size, size, png, cap, WHITE)
                 x += size + gap
 
     def qr_footer(base, on_band=False):
@@ -475,81 +439,31 @@ def build(obj, school=None, style=None):
 
     have_pictures = bool(logos or shirts)
 
-    if style == 'collage':
-        frame()
-        y = header(h - 56, size=32)
-        if have_pictures:
-            items = []
-            if logos:
-                items.append((logos[0], None, WHITE))
-            rest_shirts = [(p, cap, WHITE) for p, cap in shirts]
-            rest_logos = [(p, None, WHITE) for p in logos[1:]]
-            items += _interleave(rest_shirts, rest_logos)
-            if not logos and items == []:
-                items = rest_shirts
-            n = _mosaic_count(len(items))
-            cols, rows, cells = _MOSAIC[n]
-            top, bottom = y - 26, 168
-            gap = 10
-            cs = min((w - 90 - gap * (cols - 1)) / cols, (top - bottom - gap * (rows - 1)) / rows)
-            gw, gh = cols * cs + (cols - 1) * gap, rows * cs + (rows - 1) * gap
-            gx, gy = (w - gw) / 2, bottom + (top - bottom - gh) / 2
-            for (png, cap, fill), (cc, rr, cw, ch) in zip(items[:n], cells):
-                tx = gx + cc * (cs + gap)
-                ty = gy + gh - (rr + ch) * cs - rr * gap
-                tile(tx, ty, cw * cs + (cw - 1) * gap, ch * cs + (ch - 1) * gap, png, cap, fill)
-            qr_footer(66)
-        else:
-            _big_qr(c, qr, y, w, colors, sand, accent, ink, plan, shown_link, centered)
-        footer_line()
-
-    elif style == 'showcase':
-        frame()
-        y = header(h - 56, size=38)
-        if have_pictures:
-            top, bottom = y - 18, 172
-            avail = top - bottom
-            shown, picks = logos[:4], shirts[:8]
-            logo_h = 0
-            if shown:
-                logo_h = min(170, avail * (0.38 if picks else 0.8), (w - 90 - 12 * (len(shown) - 1)) / len(shown))
-                row(shown, top - logo_h, logo_h, gap=12)
-            if picks:
-                gtop = top - (logo_h + 16 if shown else 0)
-                centered('PICK YOUR STYLE', gtop - 8, 'Helvetica-Bold', 9, accent)
-                grid(picks, gtop - 26, bottom)
-            qr_footer(66)
-        else:
-            _big_qr(c, qr, y, w, colors, sand, accent, ink, plan, shown_link, centered)
-        footer_line()
-
-    else:  # bold: a block of the school's color with the title, logos resting on its edge
-        light = _is_light(accent_hex)
-        on_block = ink if light else colors.white
-        soft = colors.Color(on_block.red, on_block.green, on_block.blue, alpha=0.78)
-        c.setFillColor(cream)
-        c.rect(0, 0, w, h, stroke=0, fill=1)
-        block_h = 262
-        c.setFillColor(accent)
-        c.rect(0, h - block_h, w, block_h, stroke=0, fill=1)
-        header(h - 58, fill=on_block, soft=soft, brand=on_block, size=40, use_wordmark=False)
-        edge = h - block_h
-        y = edge - 40
-        if logos:
-            shown = logos[:4]
-            size = min(150, (w - 90 - 12 * (len(shown) - 1)) / len(shown))
-            row(shown, edge - size / 2, size, gap=12)
-            y = edge - size / 2 - 20
-        if shirts:
-            centered('PICK YOUR STYLE', y, 'Helvetica-Bold', 9, accent)
-            grid(shirts[:8], y - 16, 164)
-        c.setFillColor(sand)
-        c.rect(0, 0, w, 150, stroke=0, fill=1)
-        if have_pictures:
-            qr_footer(40, on_band=True)
-        else:
-            _big_qr(c, qr, edge - 40, w, colors, sand, accent, ink, plan, shown_link, centered)
-        centered('Made with purpose, in Shawnee, Kansas', 22, 'Helvetica', 8, ink)
+    frame()
+    y = header(h - 56, size=38)
+    if have_pictures:
+        top, bottom = y - 18, 172
+        shown, picks = [(png, None) for png in logos[:8]], shirts[:8]
+        label = 42 if shown and picks else 26 if picks else 0          # room for "PICK YOUR STYLE" and the gaps around it
+        avail = top - bottom
+        logo_size = logo_total = 0
+        if shown:
+            rows = grid_shape(len(shown))[1]
+            logo_size, logo_total = measure(len(shown), avail * (0.8 if not picks else 0.4 if rows == 1 else 0.5), 170)
+        shirt_size = shirt_total = 0
+        if picks:
+            shirt_size, shirt_total = measure(len(picks), avail - logo_total - label)
+        y = top - max(0, (avail - logo_total - label - shirt_total) / 2)         # the whole block sits centred
+        if shown:
+            grid(shown, y, logo_size)
+            y -= logo_total + 16
+        if picks:
+            centered('PICK YOUR STYLE', y - 8, 'Helvetica-Bold', 9, accent)
+            grid(picks, y - 26, shirt_size)
+        qr_footer(66)
+    else:
+        _big_qr(c, qr, y, w, colors, sand, accent, ink, plan, shown_link, centered)
+    footer_line()
 
     c.showPage()
     c.save()

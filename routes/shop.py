@@ -571,6 +571,8 @@ def create_group_order():
                     collection.restrict_options = True
 
             from utils.group_orders import resolve_showcase_design_ids
+            from utils.group_designs import link_uploaded_colors
+            new_upload_ids = link_uploaded_colors(new_upload_ids, request.form)
             showcase_ids = resolve_showcase_design_ids(
                 allowed_design_ids,
                 form_showcase=request.form.getlist('showcase_designs'),

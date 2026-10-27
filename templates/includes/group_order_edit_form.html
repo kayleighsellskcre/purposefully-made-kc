@@ -143,6 +143,10 @@
                        itself and then clears this input. #}
                     <input type="file" id="design_uploads" name="design_uploads" accept=".png,.jpg,.jpeg,.webp" multiple style="display:none">
                     <div id="uploadPreview" class="upload-preview-list" style="display:none"></div>
+                    <label class="showcase-new-opt" style="display:flex;align-items:flex-start;gap:0.5rem;margin-top:0.6rem;cursor:pointer;">
+                        <input type="checkbox" name="link_new_uploads" value="on" style="margin-top:0.2rem;">
+                        <span class="form-hint" style="margin:0">The files I am uploading are the same design in different colors: link them as one (the first becomes the main image)</span>
+                    </label>
                     {% if not is_user_edit %}{% set design_siblings, design_other_stores = group_design_sources(collection) %}{% endif %}
                     {% if design_siblings %}
                     <details class="borrow-art">

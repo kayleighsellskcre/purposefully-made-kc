@@ -19,10 +19,10 @@
             document.getElementById('distShareDownload').href = qr + '?download=1';
             var flyer = btn.getAttribute('data-share-flyer');
             dialog.querySelectorAll('[data-flyer-image]').forEach(function (a) {
-                a.href = flyer.replace('/flyer.pdf', '/flyer.png') + (flyer.indexOf('?') < 0 ? '?' : '&') + 'style=' + a.getAttribute('data-flyer-image') + '&download=1';
+                a.href = flyer.replace('/flyer.pdf', '/flyer.png') + '?download=1';
             });
-            dialog.querySelectorAll('[data-flyer-style]').forEach(function (a) {
-                a.href = flyer + (flyer.indexOf('?') < 0 ? '?' : '&') + 'style=' + a.getAttribute('data-flyer-style');
+            dialog.querySelectorAll('[data-flyer-print]').forEach(function (a) {
+                a.href = flyer;
             });
             copy.textContent = 'Copy';
             if (dialog.showModal) { dialog.showModal(); } else { dialog.setAttribute('open', ''); }
