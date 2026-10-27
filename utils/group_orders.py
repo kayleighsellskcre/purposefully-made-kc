@@ -1304,8 +1304,8 @@ def org_fanwear_design_ids(collection):
     own = allowed_design_ids(collection)
     try:
         org, section = org_for_collection(collection)
-        if not org:
-            return own
+        if not org or org.district_id:
+            return own        # a district school's stores each keep their own artwork; nothing is pooled across them
         teams = [sec.collection for sec in _team_sections(org)]
         # "Jersey only" is about the artwork, so it holds across every team.
         skip = set()

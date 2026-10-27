@@ -83,3 +83,38 @@ def test_the_edit_page_offers_artwork_from_sibling_groups(app, seed, admin_clien
     assert 'Use artwork from another group' in html and f'value="{art[2]}" form="attachDesigns"' in html
     admin_client.post(f"/admin/collections/{stores['Band']}/designs/attach", data={'design_ids': [art[2]]})
     assert art[2] in _ids(app, stores['Band']) and art[2] in _ids(app, stores['Volleyball'])
+
+
+def test_a_stores_artwork_never_shows_up_in_another_stores_customizer(app, seed, guest):
+    """The bug: every store of a school pooled the artwork of all its sibling stores in the style picker."""
+    import json as _json
+
+    from models import Product
+    with app.app_context():
+        tee = db.session.get(Product, seed['tee_id'])
+        d = DS.set_up_district('Desoto USD 232', [('Mill Valley High', 'high', ['Cheer', 'Volleyball'], {})])
+        school = d.schools.first()
+        stores = {DS.store_label(s): s for s in DS.stores_of(school, True)}
+        for s in stores.values():
+            s.products.append(tee)
+        cheer = Design(filename='CHEERLOGO.png', file_path='uploads/designs/CHEERLOGO.png', title='Cheer Logo', is_gallery=False,
+                       uploaded_by_user_id=seed['admin_id'])
+        db.session.add(cheer)
+        db.session.flush()
+        stores['Cheer'].allowed_design_ids = _json.dumps([cheer.id])
+        stores['Cheer'].showcase_design_ids = _json.dumps([cheer.id])
+        db.session.commit()
+        slugs = {name: s.slug for name, s in stores.items()}
+        tee_slug, cheer_id = tee.slug, cheer.id
+    for name, slug in slugs.items():
+        guest.get(f'/c/{slug}')
+        html = guest.get(f'/shop/customize/{tee_slug}').get_data(as_text=True)
+        assert ('CHEERLOGO' in html) == (name == 'Cheer'), name
+    from utils.group_orders import design_allowed_for_collection
+    with app.app_context():
+        assert design_allowed_for_collection(db.session.get(Design, cheer_id), db.session.get(Collection, stores_id(app, slugs['Cheer'])))
+        assert not design_allowed_for_collection(db.session.get(Design, cheer_id), db.session.get(Collection, stores_id(app, slugs['Volleyball'])))
+
+
+def stores_id(app, slug):
+    return Collection.query.filter_by(slug=slug).first().id
