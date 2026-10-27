@@ -33,13 +33,13 @@
         <div class="about-occasions">
             <span class="section-eyebrow">Every Reason to Celebrate</span>
             <div class="occasion-tiles">
-                <a class="occasion-tile" href="{{ url_for('shop.design_gallery', collection='sports-game-day') }}"><strong>Teams and Organizations</strong><span>Matching looks for the whole roster.</span></a>
-                <a class="occasion-tile" href="{{ url_for('shop.design_gallery', collection='school-spirit') }}"><strong>Schools and Graduations</strong><span>Class shirts, spirit wear, senior gear.</span></a>
+                {% if live_gallery is none or 'sports-game-day' in live_gallery %}<a class="occasion-tile" href="{{ url_for('shop.design_gallery', collection='sports-game-day') }}"><strong>Teams and Organizations</strong><span>Matching looks for the whole roster.</span></a>{% endif %}
+                {% if live_gallery is none or 'school-spirit' in live_gallery %}<a class="occasion-tile" href="{{ url_for('shop.design_gallery', collection='school-spirit') }}"><strong>Schools and Graduations</strong><span>Class shirts, spirit wear, senior gear.</span></a>{% endif %}
                 <a class="occasion-tile" href="{{ url_for('shop.design_gallery', collection='family-relationships') }}"><strong>Weddings and Bridal Parties</strong><span>Getting-ready shirts and bachelorette sets.</span></a>
-                <a class="occasion-tile" href="{{ url_for('shop.design_gallery', q='birthday') }}"><strong>Birthdays and Milestones</strong><span>The gift everyone actually wears.</span></a>
+                {% if live_gallery is none or 'q:birthday' in live_gallery %}<a class="occasion-tile" href="{{ url_for('shop.design_gallery', q='birthday') }}"><strong>Birthdays and Milestones</strong><span>The gift everyone actually wears.</span></a>{% endif %}
                 <a class="occasion-tile" href="{{ url_for('shop.design_gallery', collection='family-relationships') }}"><strong>Family Vacations and Trips</strong><span>Reunions, beach trips and matching travel looks.</span></a>
-                <a class="occasion-tile" href="{{ url_for('shop.design_gallery', collection='holidays-seasons') }}"><strong>Holidays and Celebrations</strong><span>Every holiday, a little more fun.</span></a>
-                <a class="occasion-tile" href="{{ url_for('shop.design_gallery', collection='music-entertainment') }}"><strong>Concerts and Shows</strong><span>Show-day looks for the whole group.</span></a>
+                {% if live_gallery is none or 'holidays-seasons' in live_gallery %}<a class="occasion-tile" href="{{ url_for('shop.design_gallery', collection='holidays-seasons') }}"><strong>Holidays and Celebrations</strong><span>Every holiday, a little more fun.</span></a>{% endif %}
+                {% if live_gallery is none or 'music-entertainment' in live_gallery %}<a class="occasion-tile" href="{{ url_for('shop.design_gallery', collection='music-entertainment') }}"><strong>Concerts and Shows</strong><span>Show-day looks for the whole group.</span></a>{% endif %}
                 <a class="occasion-tile" href="{{ url_for('shop.design_gallery') }}"><strong>Just Because</strong><span>A great shirt with your own design on it.</span></a>
             </div>
         </div>

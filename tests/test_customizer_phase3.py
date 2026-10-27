@@ -39,13 +39,14 @@ def test_order_bar_holds_total_button_and_shipping_note(guest, seed):
     html = _page(guest, seed)
     bar = html.split('id="orderBar"')[1]
     assert 'id="totalPrice"' in bar and 'id="addToCart"' in bar
-    assert 'Shipping is $11.' in bar and 'Pickup is available at checkout.' in bar and 'Estimated ready by' in bar
+    assert 'Shipping is $11' in bar and 'free local pickup in Shawnee, Kansas' in bar and 'Estimated ready by' in bar
 
 
 def test_design_step_has_upload_and_gallery_tabs(guest, seed):
     html = _page(guest, seed)
     assert 'id="designPaneTabs"' in html and 'data-pane="upload"' in html
-    assert 'By uploading, you let us add it to our design gallery.' in html
+    assert 'Your artwork stays private. We use it only to print your order.' in html
+    assert 'let us add it to our design gallery' not in html
 
 
 def test_heart_and_size_guide_link(guest, seed):

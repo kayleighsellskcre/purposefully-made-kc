@@ -1185,7 +1185,7 @@ def test_group_fulfillment_note_follows_shipping_and_abby_instructions():
 
     retail = group_fulfillment_customer_note(None)
     assert 'Shipping is $11' in retail
-    assert 'Pickup is available at checkout' in retail
+    assert 'free local pickup in Shawnee, Kansas' in retail
 
     abby = SimpleNamespace(
         shipping_enabled=False,

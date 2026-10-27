@@ -13,7 +13,7 @@
         <h1>{{ school.name }}</h1>
         {% if school.mascot %}<p class="dist-mascot">Home of the {{ school.mascot }}</p>{% endif %}
         <span class="dist-colors" aria-hidden="true"><i style="background: {{ accent }}"></i><i style="background: {{ accent2 }}"></i></span>
-        {% if deadline %}<p class="dist-lead">Order by {{ deadline|kc_date('%B %-d') }}</p>{% endif %}
+        {% if deadline %}<p class="dist-lead">Order by {{ deadline|kc_date('%B %-d, %Y') }}</p>{% endif %}
         {% if school.delivery_mode == 'pickup' %}<p class="dist-fine">Pickup at the school.</p>
         {% else %}<p class="dist-fine">Orders are sent home with your child.</p>{% endif %}
         <div class="dist-hero-actions">{{ share_button(share, school.name) }}</div>

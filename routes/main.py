@@ -84,10 +84,27 @@ def _owner():
     }
 
 
+def _live_gallery_links():
+    """Gallery collection keys (and "q:<word>" searches) that have at least one design, so no link leads to an empty page."""
+    try:
+        from models import Design
+        from utils import design_gallery as dg
+        from utils.design_variants import gallery_cards_for_public
+        from utils.cloud_storage import image_url as resolve_image_url
+        cards = dg.enrich_cards(gallery_cards_for_public(Design, resolve_url=resolve_image_url))
+    except Exception:
+        return None                                      # could not check: show every link rather than none
+    live = {key for key in ('sports-game-day', 'school-spirit', 'family-relationships', 'holidays-seasons', 'music-entertainment')
+            if dg.collection_members(cards, key, None)}
+    if dg.search_cards(cards, 'birthday', pool=cards):
+        live.add('q:birthday')
+    return live
+
+
 @main_bp.route('/about')
 def about():
     """About page"""
-    return render_template('about.html', owner=_owner())
+    return render_template('about.html', owner=_owner(), live_gallery=_live_gallery_links())
 
 @main_bp.route('/track', methods=['GET', 'POST'])
 # Public: it looks orders up, so cap the guesses. Viewing the form is never counted.
@@ -339,7 +356,7 @@ def sitemap_xml():
 def privacy():
     """Privacy Policy page"""
     # Fixed to the day this text was last published, not the current date.
-    return render_template('privacy.html', privacy_last_updated='September 21, 2026')
+    return render_template('privacy.html', privacy_last_updated='October 26, 2026')
 
 @main_bp.route('/reviews')
 def reviews_page():

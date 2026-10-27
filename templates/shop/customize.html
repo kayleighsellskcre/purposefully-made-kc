@@ -2305,8 +2305,11 @@
                         </div>
                         <input type="file" id="designFileMain" accept="image/*,.heic,.heif,.png,.jpg,.jpeg,.webp" style="display: none;">
                         <p class="upload-rights-note">
-                            By uploading, you let us add it to our design gallery. <a href="{{ url_for('main.terms') }}">Learn more</a>
+                            Your artwork stays private. We use it only to print your order. <a href="{{ url_for('main.terms') }}#artwork">Learn more</a>
                         </p>
+                        {% if current_user.is_authenticated %}
+                        <label class="upload-share-opt"><input type="checkbox" id="shareInGallery"> Also offer my design in the public gallery <small>We review it first. Leave this off to keep it private.</small></label>
+                        {% endif %}
                     </div>
                     </div>{# end upload pane #}
                     {% if _has_mine %}
@@ -2741,7 +2744,7 @@
                     If Add to Cart is greyed out, choose a size and upload or select a design.
                 </p>
                 {% endif %}
-                <p class="production-timeline-note">{{ fulfillment_note|default('Shipping is $11, or free local pickup. ' ~ ready_note) }}</p>
+                <p class="production-timeline-note">{{ fulfillment_note|default('Shipping is $11, or free local pickup in Shawnee, Kansas. We email the exact address and times when your order is ready. ' ~ ready_note) }}</p>
                 </div>{# end order-bar #}
             </div>
         </div>
@@ -5063,6 +5066,7 @@
                 const formData = new FormData();
                 formData.append('file', file);
                 if (mode) formData.append('bg_removal', mode);
+                if (document.getElementById('shareInGallery') && document.getElementById('shareInGallery').checked) formData.append('share_in_gallery', 'true');
 
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 45000);

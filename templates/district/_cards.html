@@ -46,7 +46,7 @@
         <span class="dist-card-name">{{ school.name }}</span>
         {% if school.mascot %}<span class="dist-card-sub">{{ school.mascot }}</span>{% endif %}
         {% if not info.live %}<span class="dist-card-note">Not live yet</span>
-        {% elif info.deadline %}<span class="dist-card-date">Order by {{ info.deadline|kc_date('%b %-d') }}</span>{% endif %}
+        {% elif info.deadline %}<span class="dist-card-date">Order by {{ info.deadline|kc_date('%b %-d, %Y') }}</span>{% endif %}
         {% if info.countdown %}<span class="closes-pill closes-pill-sm">{{ info.countdown }}</span>{% endif %}
     </span>
 </a>
@@ -62,7 +62,7 @@
         <span class="dist-card-name">{{ c.label }}</span>
         {% if tagline %}<span class="dist-card-sub">{{ tagline }}</span>{% endif %}
         {% if not c.live %}<span class="dist-card-note">Not live yet</span>
-        {% elif c.store.order_deadline %}<span class="dist-card-date">Order by {{ c.store.order_deadline|kc_date('%b %-d') }}</span>{% endif %}
+        {% elif c.store.order_deadline %}<span class="dist-card-date">Order by {{ c.store.order_deadline|kc_date('%b %-d, %Y') }}</span>{% endif %}
         {% if c.store|closes_in %}<span class="closes-pill closes-pill-sm">{{ c.store|closes_in }}</span>{% endif %}
     </span>
 </a>
