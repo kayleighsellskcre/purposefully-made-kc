@@ -159,6 +159,15 @@ def _flyer_response(obj, school=None):
                     headers={'Content-Disposition': f'{disposition}; filename="{name} flyer.pdf"'})
 
 
+def _flyer_image_response(obj, school=None):
+    name = DS._file_safe(getattr(obj, 'name', 'flyer'))
+    disposition = 'attachment' if request.args.get('download') else 'inline'
+    return Response(DS.flyer_png(obj, school, request.args.get('style')), mimetype='image/png',
+                    headers={'Content-Disposition': f'{disposition}; filename="{name} flyer.png"',
+                             'Cache-Control': 'private, no-store, no-cache, max-age=0, must-revalidate',
+                             'CDN-Cache-Control': 'no-store', 'Pragma': 'no-cache'})
+
+
 @district_bp.route('/<d_short>/qr.png')
 def district_qr(d_short):
     return _qr_response(_resolve(d_short))
@@ -167,6 +176,11 @@ def district_qr(d_short):
 @district_bp.route('/<d_short>/flyer.pdf')
 def district_flyer(d_short):
     return _flyer_response(_resolve(d_short))
+
+
+@district_bp.route('/<d_short>/flyer.png')
+def district_flyer_image(d_short):
+    return _flyer_image_response(_resolve(d_short))
 
 
 @district_bp.route('/<d_short>/<s_short>/qr.png')
@@ -179,6 +193,11 @@ def school_flyer(d_short, s_short):
     return _flyer_response(_resolve(d_short, s_short))
 
 
+@district_bp.route('/<d_short>/<s_short>/flyer.png')
+def school_flyer_image(d_short, s_short):
+    return _flyer_image_response(_resolve(d_short, s_short))
+
+
 @district_bp.route('/<d_short>/<s_short>/<store_short>/qr.png')
 def store_qr(d_short, s_short, store_short):
     school = _resolve(d_short, s_short)
@@ -189,3 +208,9 @@ def store_qr(d_short, s_short, store_short):
 def store_flyer(d_short, s_short, store_short):
     school = _resolve(d_short, s_short)
     return _flyer_response(_resolve(d_short, s_short, store_short), school)
+
+
+@district_bp.route('/<d_short>/<s_short>/<store_short>/flyer.png')
+def store_flyer_image(d_short, s_short, store_short):
+    school = _resolve(d_short, s_short)
+    return _flyer_image_response(_resolve(d_short, s_short, store_short), school)

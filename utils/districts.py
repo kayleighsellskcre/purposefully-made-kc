@@ -814,6 +814,12 @@ def flyer_pdf(obj, school=None, style=None):
     return build(obj, school, style)
 
 
+def flyer_png(obj, school=None, style=None):
+    """High-resolution image flyer in one of the three share-page layouts."""
+    from utils.flyer import build_png
+    return build_png(obj, school, style)
+
+
 def qr_zip(obj):
     """A zip of QR PNGs named by store, for a school or a whole district."""
     schools = [obj] if isinstance(obj, Organization) else obj.schools.all()
@@ -833,7 +839,7 @@ def share_info(obj, school=None):
     """What the Share box needs: link, QR and flyer addresses."""
     path = short_path(obj, school)
     return {'url': short_url(obj, school), 'display': short_display(obj, school),
-            'qr': f'{path}/qr.png', 'flyer': f'{path}/flyer.pdf'}
+            'qr': f'{path}/qr.png', 'flyer': f'{path}/flyer.png'}
 
 
 def resolve_short(d_short, s_short=None, store_short=None):

@@ -1,4 +1,4 @@
-/* Share box: the link with Copy, the QR code, Download QR and Print flyer. One dialog per page. */
+/* Share box: the link with Copy, the QR code, and image-first flyers. One dialog per page. */
 (function () {
     if (window.__shareKit) { return; }
     window.__shareKit = true;
@@ -19,7 +19,7 @@
             document.getElementById('distShareDownload').href = qr + '?download=1';
             var flyer = btn.getAttribute('data-share-flyer');
             dialog.querySelectorAll('[data-flyer-style]').forEach(function (a) {
-                a.href = flyer + (flyer.indexOf('?') < 0 ? '?' : '&') + 'style=' + a.getAttribute('data-flyer-style');
+                a.href = flyer + (flyer.indexOf('?') < 0 ? '?' : '&') + 'style=' + a.getAttribute('data-flyer-style') + '&download=1';
             });
             copy.textContent = 'Copy';
             if (dialog.showModal) { dialog.showModal(); } else { dialog.setAttribute('open', ''); }
