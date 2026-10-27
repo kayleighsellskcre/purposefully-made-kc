@@ -30,8 +30,12 @@
     <img id="distShareQr" class="dist-share-qr" alt="QR code for this link" width="220" height="220">
     <div class="dist-share-actions">
         <a id="distShareDownload" class="dist-btn dist-btn-line" download>Download QR (PNG)</a>
-        <a id="distShareFlyer" class="dist-btn dist-btn-line" target="_blank" rel="noopener">Print flyer</a>
     </div>
+    <p class="dist-flyer-pick">Print a flyer:
+        <a data-flyer-style="collage" class="dist-btn dist-btn-line" target="_blank" rel="noopener">Collage</a>
+        <a data-flyer-style="showcase" class="dist-btn dist-btn-line" target="_blank" rel="noopener">Showcase</a>
+        <a data-flyer-style="bold" class="dist-btn dist-btn-line" target="_blank" rel="noopener">Bold</a>
+    </p>
 </dialog>
 <script src="{{ url_for('static', filename='js/share_kit.js') }}" defer></script>
 {% endmacro %}

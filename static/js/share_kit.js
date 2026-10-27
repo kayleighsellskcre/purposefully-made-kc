@@ -17,7 +17,10 @@
             var qr = btn.getAttribute('data-share-qr');
             document.getElementById('distShareQr').src = qr;
             document.getElementById('distShareDownload').href = qr + '?download=1';
-            document.getElementById('distShareFlyer').href = btn.getAttribute('data-share-flyer');
+            var flyer = btn.getAttribute('data-share-flyer');
+            dialog.querySelectorAll('[data-flyer-style]').forEach(function (a) {
+                a.href = flyer + (flyer.indexOf('?') < 0 ? '?' : '&') + 'style=' + a.getAttribute('data-flyer-style');
+            });
             copy.textContent = 'Copy';
             if (dialog.showModal) { dialog.showModal(); } else { dialog.setAttribute('open', ''); }
         }

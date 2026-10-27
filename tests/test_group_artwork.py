@@ -1,0 +1,85 @@
+"""Artwork belongs to one group unless the owner puts it in another, and moving it around is easy."""
+import json
+
+from models import Collection, Design, Organization, db
+from utils import districts as DS
+from utils import group_designs as GD
+from utils.group_orders import allowed_design_ids
+
+
+def _school(app, seed):
+    with app.app_context():
+        d = DS.set_up_district('Desoto USD 232', [('Mill Valley High', 'high', ['Cheer', 'Volleyball', 'Band'], {})])
+        school = d.schools.first()
+        stores = {DS.store_label(s): s.id for s in DS.stores_of(school, True)}
+        art = [Design(filename=f'art{i}.png', file_path=f'uploads/designs/art{i}.png', title=f'Art {i}', is_gallery=True,
+                      uploaded_by_user_id=seed['admin_id']) for i in range(3)]
+        db.session.add_all(art)
+        db.session.commit()
+        return school.id, stores, [a.id for a in art]
+
+
+def _ids(app, store_id):
+    with app.app_context():
+        return allowed_design_ids(db.session.get(Collection, store_id))
+
+
+def test_artwork_added_to_one_store_does_not_appear_in_the_others(app, seed):
+    school_id, stores, art = _school(app, seed)
+    with app.app_context():
+        GD.attach(db.session.get(Collection, stores['Cheer']), art[:2], show_at_top=True)
+        db.session.commit()
+    assert set(art[:2]) <= set(_ids(app, stores['Cheer']))
+    for other in ('Volleyball', 'Band', 'Spirit'):
+        if other in stores:
+            assert not set(art) & set(_ids(app, stores[other]))
+
+
+def test_a_main_logo_can_be_kept_in_just_one_store(app, seed, admin_client):
+    school_id, stores, art = _school(app, seed)
+    with app.app_context():
+        DS.set_school_logos(db.session.get(Organization, school_id), [art[0]])
+        db.session.commit()
+    assert all(art[0] in _ids(app, sid) for sid in stores.values())          # a main logo goes to every store, on purpose
+    resp = admin_client.post(f'/admin/districts/school/{school_id}', data={
+        'action': 'logo_to_store', 'design_id': art[0], 'store_id': stores['Cheer']}, follow_redirects=True)
+    assert resp.status_code == 200 and b'belongs to Mill Valley Cheer only' in resp.data
+    assert art[0] in _ids(app, stores['Cheer'])
+    assert not any(art[0] in _ids(app, sid) for name, sid in stores.items() if name != 'Cheer')
+    with app.app_context():
+        assert DS.school_logos(db.session.get(Organization, school_id)) == []
+
+
+def test_taking_a_design_off_one_group_keeps_the_artwork_and_the_other_groups(app, seed, admin_client):
+    school_id, stores, art = _school(app, seed)
+    with app.app_context():
+        for name in ('Cheer', 'Band'):
+            GD.attach(db.session.get(Collection, stores[name]), [art[0]], show_at_top=True)
+        db.session.commit()
+    admin_client.post(f"/admin/collections/{stores['Cheer']}/designs/{art[0]}/detach")
+    assert art[0] not in _ids(app, stores['Cheer']) and art[0] in _ids(app, stores['Band'])
+    with app.app_context():
+        assert db.session.get(Design, art[0]) is not None
+        assert art[0] not in json.loads(db.session.get(Collection, stores['Cheer']).showcase_design_ids or '[]')
+
+
+def test_a_design_can_be_copied_to_another_group_from_the_edit_page(app, seed, admin_client):
+    school_id, stores, art = _school(app, seed)
+    with app.app_context():
+        GD.attach(db.session.get(Collection, stores['Cheer']), art[:2])
+        db.session.commit()
+    admin_client.post(f"/admin/collections/{stores['Cheer']}/designs/{art[0]}/copy-to", data={'target_id': stores['Band']})
+    assert art[0] in _ids(app, stores['Band']) and art[0] in _ids(app, stores['Cheer'])
+    html = admin_client.get(f"/admin/collections/{stores['Cheer']}/edit").get_data(as_text=True)
+    assert 'Also use in...' in html and f'id="copyDesign{art[0]}"' in html and f'id="detachDesign{art[0]}"' in html
+
+
+def test_the_edit_page_offers_artwork_from_sibling_groups(app, seed, admin_client):
+    school_id, stores, art = _school(app, seed)
+    with app.app_context():
+        GD.attach(db.session.get(Collection, stores['Volleyball']), [art[2]])
+        db.session.commit()
+    html = admin_client.get(f"/admin/collections/{stores['Band']}/edit").get_data(as_text=True)
+    assert 'Use artwork from another group' in html and f'value="{art[2]}" form="attachDesigns"' in html
+    admin_client.post(f"/admin/collections/{stores['Band']}/designs/attach", data={'design_ids': [art[2]]})
+    assert art[2] in _ids(app, stores['Band']) and art[2] in _ids(app, stores['Volleyball'])

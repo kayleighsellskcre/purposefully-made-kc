@@ -85,8 +85,15 @@ def load_images(urls):
     urls = [u for u in dict.fromkeys(urls) if u]
     if not urls:
         return {}
+    from flask import current_app
+    app = current_app._get_current_object()
+
+    def fetch(url):
+        with app.app_context():                           # the worker threads need the app to find files on disk
+            return load_image(url)
+
     with ThreadPoolExecutor(max_workers=6) as pool:
-        results = list(pool.map(load_image, urls))
+        results = list(pool.map(fetch, urls))
     return {u: r for u, r in zip(urls, results) if r}
 
 
@@ -128,15 +135,16 @@ def _district_logo_urls(district):
     return list(dict.fromkeys(urls))[:4]
 
 
-def _shirt_picks(products, store=None, limit=4):
-    """[(picture address, caption)] for up to ``limit`` shirts: one of each kind, tees and hoodies first."""
+def _shirt_picks(products, store=None, limit=8):
+    """[(picture address, caption)] for up to ``limit`` shirts: one of each kind first (tees and hoodies lead),
+    then more colors of the same styles so even a small store shows what it offers."""
     from flask import current_app
     from utils.group_orders import allowed_colors_for_product
     from utils.mockups import get_carousel_colors_for_product
-    chosen, seen = [], set()
     ranked = sorted(products, key=lambda p: (SHIRT_ORDER.index(p.category) if p.category in SHIRT_ORDER else 99, p.id))
+    pools, seen = [], set()
     for product in ranked:
-        if len(chosen) >= limit or not getattr(product, 'is_active', True):
+        if not getattr(product, 'is_active', True):
             continue
         age = (getattr(product, 'age_group', None) or 'adult').lower()
         key = (product.category, age in ('adult', 'unisex', ''))
@@ -147,10 +155,17 @@ def _shirt_picks(products, store=None, limit=4):
             variants = get_carousel_colors_for_product(product, current_app, allowed_colors=allowed)
         except Exception:
             variants = []
-        url = next((v.get('front_image_url') for v in variants if v.get('front_image_url')), None)
-        if url:
+        found = [(v.get('front_image_url'), v.get('color_name')) for v in variants if v.get('front_image_url')]
+        if found:
             seen.add(key)
-            chosen.append((url, product.category or 'Shirt'))
+            pools.append((product.category or 'Shirt', found))
+    chosen = [(found[0][0], cat) for cat, found in pools][:limit]
+    depth = 1
+    while len(chosen) < limit and any(len(found) > depth for _c, found in pools):
+        for cat, found in pools:
+            if len(found) > depth and len(chosen) < limit:
+                chosen.append((found[depth][0], (found[depth][1] or cat)))
+        depth += 1
     return chosen
 
 
@@ -185,146 +200,278 @@ def _plan(obj, school):
 
 # ── drawing ────────────────────────────────────────────────────────────────────────────────
 
-def build(obj, school=None):
-    """The flyer as PDF bytes."""
+STYLES = (('collage', 'Collage'), ('showcase', 'Showcase'), ('bold', 'Bold'))
+STYLE_KEYS = tuple(k for k, _ in STYLES)
+
+# Mosaic layouts for the collage: (columns, rows, [(col, row, wide, tall)]). Row 0 is the top; the first tile is the hero.
+_MOSAIC = {
+    1: (1, 1, [(0, 0, 1, 1)]),
+    2: (2, 1, [(0, 0, 1, 1), (1, 0, 1, 1)]),
+    3: (3, 2, [(0, 0, 2, 2), (2, 0, 1, 1), (2, 1, 1, 1)]),
+    4: (4, 2, [(0, 0, 2, 2), (2, 0, 2, 1), (2, 1, 1, 1), (3, 1, 1, 1)]),
+    5: (4, 2, [(0, 0, 2, 2), (2, 0, 1, 1), (3, 0, 1, 1), (2, 1, 1, 1), (3, 1, 1, 1)]),
+    6: (3, 3, [(0, 0, 2, 2), (2, 0, 1, 1), (2, 1, 1, 1), (0, 2, 1, 1), (1, 2, 1, 1), (2, 2, 1, 1)]),
+    9: (4, 3, [(0, 0, 2, 2), (2, 0, 1, 1), (3, 0, 1, 1), (2, 1, 1, 1), (3, 1, 1, 1),
+               (0, 2, 1, 1), (1, 2, 1, 1), (2, 2, 1, 1), (3, 2, 1, 1)]),
+}
+
+
+def normalize_style(value):
+    value = (value or '').strip().lower()
+    return value if value in STYLE_KEYS else 'collage'
+
+
+def _mosaic_count(n):
+    return 9 if n >= 9 else 6 if n >= 6 else n          # 7 and 8 pictures use the six-tile layout
+
+
+def _interleave(a, b):
+    out = []
+    for i in range(max(len(a), len(b))):
+        if i < len(a):
+            out.append(a[i])
+        if i < len(b):
+            out.append(b[i])
+    return out
+
+
+def _is_light(hex_color):
+    h = hex_color.lstrip('#')
+    r, g, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))
+    return (0.299 * r + 0.587 * g + 0.114 * b) > 200
+
+
+def build(obj, school=None, style=None):
+    """The flyer as PDF bytes, in one of the three styles."""
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.utils import ImageReader
     from reportlab.pdfgen import canvas
     from utils import districts as DS
 
+    style = normalize_style(style)
     plan = _plan(obj, school)
     images = load_images(plan['logos'] + [u for u, _ in plan['shirts']])
     logos = [images[u] for u in plan['logos'] if u in images]
     shirts = [(images[u], cap) for u, cap in plan['shirts'] if u in images]
 
     w, h = letter
-    accent = colors.HexColor(plan['school_color'])
+    accent_hex = plan['school_color'] or '#B87C6F'
+    accent = colors.HexColor(accent_hex)
     ink, muted, sand, cream = colors.HexColor(INK), colors.HexColor(MUTED), colors.HexColor(SAND), colors.HexColor(CREAM)
     link = DS.short_url(obj, school)
     qr = ImageReader(io.BytesIO(DS.qr_png(link)))
+    shown_link = link.split('://', 1)[-1]
 
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=letter)
     c.setTitle(f"{plan['title']} flyer")
-    c.setFillColor(cream)
-    c.rect(0, 0, w, h, stroke=0, fill=1)
-    c.setFillColor(accent)
-    c.rect(0, h - 14, w, 14, stroke=0, fill=1)
-    c.setStrokeColor(sand)
-    c.setLineWidth(0.8)
-    c.rect(26, 26, w - 52, h - 52 - 14, stroke=1, fill=0)
+
+    def text_fit(text, font, size, max_width, floor=10):
+        while c.stringWidth(text, font, size) > max_width and size > floor:
+            size -= 0.5
+        return size
 
     def centered(text, y, font, size, fill, x=None, max_width=None):
         max_width = max_width or (w - 110)
+        size = text_fit(text, font, size, max_width, 9)
         c.setFont(font, size)
         c.setFillColor(fill)
-        while c.stringWidth(text, font, size) > max_width and size > 11:
-            size -= 1
-            c.setFont(font, size)
         c.drawCentredString(w / 2 if x is None else x, y, text)
 
-    def tile(x, y, size, png, caption=None):
-        c.setFillColor(colors.white)
+    def tile(x, y, tw, th, png, caption=None, fill=WHITE):
+        """A rounded white card (x, y is the bottom left) with the picture fitted inside it."""
+        c.setFillColor(colors.HexColor(fill))
         c.setStrokeColor(sand)
-        c.roundRect(x, y, size, size, 10, stroke=1, fill=1)
+        c.setLineWidth(0.8)
+        c.roundRect(x, y, tw, th, 9, stroke=1, fill=1)
         im = ImageReader(io.BytesIO(png))
         iw, ih = im.getSize()
         pad = 9
-        scale = min((size - 2 * pad) / iw, (size - 2 * pad) / ih)
+        room = th - (14 if caption else 0)
+        scale = min((tw - 2 * pad) / iw, (room - 2 * pad) / ih)
         dw, dh = iw * scale, ih * scale
-        c.drawImage(im, x + (size - dw) / 2, y + (size - dh) / 2, dw, dh, mask='auto')
+        c.drawImage(im, x + (tw - dw) / 2, y + (14 if caption else 0) + (room - dh) / 2, dw, dh, mask='auto')
         if caption:
-            centered(caption.upper(), y - 13, 'Helvetica-Bold', 7.5, muted, x=x + size / 2, max_width=size + 14)
+            size = text_fit(caption.upper(), 'Helvetica-Bold', 6.5, tw - 8, 5)
+            c.setFont('Helvetica-Bold', size)
+            c.setFillColor(muted)
+            c.drawCentredString(x + tw / 2, y + 6, caption.upper())
 
-    def row(items, y, size, caption=False, gap=16):
+    def row(items, y, size, with_caption=False, gap=14):
         n = len(items)
-        total = n * size + (n - 1) * gap
-        x = (w - total) / 2
+        x = (w - (n * size + (n - 1) * gap)) / 2
         for item in items:
-            png, cap = item if caption else (item, None)
-            tile(x, y, size, png, cap)
+            png, cap = item if with_caption else (item, None)
+            tile(x, y, size, size, png, cap, '#FBF9F4' if with_caption else WHITE)
             x += size + gap
 
-    y = h - 62
-    centered('PURPOSEFULLY MADE KC', y, 'Helvetica-Bold', 9.5, accent)
-    y -= 30
-    if plan['top'] and plan['top'] != plan['title']:
-        centered(plan['top'].upper(), y, 'Helvetica', 11, muted)
-        y -= 38
-    else:
-        y -= 14
-    centered(plan['title'], y, 'Times-Roman', 40, ink)
-    if plan['sub']:
-        y -= 28
-        centered(plan['sub'], y, 'Times-Italic', 17, muted)
-    if plan['tagline']:
-        y -= 25
-        centered(plan['tagline'], y, 'Times-Italic', 17, accent)
-
-    # the school's logos, then a few of the shirts people can choose
-    if logos:
-        size = 92 if len(logos) <= 3 else 80
-        y -= size + 26
-        row(logos, y, size)
-    if shirts:
-        y -= 28
-        centered('PICK YOUR STYLE', y, 'Helvetica-Bold', 8.5, accent)
-        size = 96 if len(shirts) <= 3 else 90
-        y -= size + 14
-        row(shirts, y, size, caption=True)
-        y -= 14
-
-    # the QR code and the words under or beside it
-    floor = 70
-    if logos or shirts:
-        avail = y - floor - 20
-        side = max(120, min(210, avail - 36))
-        qx = 58
-        qy = floor + (avail - side) / 2 + 6
+    def qr_footer(base, on_band=False):
+        """The small QR card with its words beside it, centred; base is the bottom of the block."""
+        side = 82
+        text_w = 250
+        total = side + 16 + 20 + text_w
+        x = (w - total) / 2
         c.setFillColor(colors.white)
         c.setStrokeColor(sand)
-        c.roundRect(qx - 14, qy - 14, side + 28, side + 28, 12, stroke=1, fill=1)
-        c.drawImage(qr, qx, qy, side, side)
-        tx = qx + side + 28 + 24
-        tw = w - 58 - tx
-        mid = qy + side / 2
-        lines = [('Scan to order', 'Helvetica-Bold', 13, accent)]
-        c.setFillColor(accent)
-        c.setFont('Helvetica-Bold', 13)
-        c.drawString(tx, mid + 58, 'SCAN TO ORDER')
+        c.roundRect(x, base, side + 16, side + 16, 9, stroke=1, fill=1)
+        c.drawImage(qr, x + 8, base + 8, side, side)
+        tx = x + side + 16 + 20
+        mid = base + (side + 16) / 2
+        c.setFillColor(accent if not on_band else ink)
+        c.setFont('Helvetica-Bold', 8.5)
+        c.drawString(tx, mid + 26, 'SCAN TO ORDER')
         c.setFillColor(ink)
-        shown = link.split('://', 1)[-1]
-        size_link = 16
-        c.setFont('Helvetica', size_link)
-        while c.stringWidth(shown, 'Helvetica', size_link) > tw and size_link > 9:
-            size_link -= 1
-            c.setFont('Helvetica', size_link)
-        c.drawString(tx, mid + 30, shown)
-        yy = mid
+        size = text_fit(shown_link, 'Helvetica', 9, text_w, 6)
+        c.setFont('Helvetica', size)
+        c.drawString(tx, mid + 11, shown_link)
+        yy = mid - 12
         if plan['deadline']:
             d = plan['deadline']
-            c.setFont('Times-Roman', 22)
-            c.setFillColor(ink)
-            c.drawString(tx, yy - 6, f"Order by {d.strftime('%B')} {d.day}")
-            yy -= 34
+            c.setFont('Times-Roman', 17)
+            c.drawString(tx, yy, f"Order by {d.strftime('%B')} {d.day}, {d.year}")
+            yy -= 17
         if plan['delivery']:
-            c.setFont('Helvetica', 10.5)
+            c.setFont('Helvetica', 8.5)
             c.setFillColor(muted)
-            c.drawString(tx, yy - 4, 'Sent home with your child.' if plan['delivery'] == 'sent' else 'Pick up at the school.')
-    else:
-        side = 3.9 * 72 if y > 360 else 3.2 * 72
-        qx, qy = (w - side) / 2, h / 2 - side / 2 - 30
-        c.setFillColor(colors.white)
+            c.drawString(tx, yy, 'Sent home with your child.' if plan['delivery'] == 'sent' else 'Pick up at the school.')
+
+    def header(top, fill=ink, soft=muted, brand=None, size=34):
+        """Brand line, school line, title and tagline; returns the y below them."""
+        y = top
+        centered('PURPOSEFULLY MADE KC', y, 'Helvetica-Bold', 8.5, brand or accent)
+        y -= 24
+        if plan['top'] and plan['top'] != plan['title']:
+            centered(plan['top'].upper(), y, 'Helvetica', 10, soft)
+            y -= 34
+        else:
+            y -= 12
+        centered(plan['title'], y, 'Times-Roman', size, fill)
+        for line, font, fsz, col in ((plan['sub'], 'Times-Italic', 15, soft), (plan['tagline'], 'Times-Italic', 15, brand or accent)):
+            if line:
+                y -= 24
+                centered(line, y, font, fsz, col)
+        return y
+
+    def frame():
+        c.setFillColor(cream)
+        c.rect(0, 0, w, h, stroke=0, fill=1)
+        c.setFillColor(accent)
+        c.rect(0, h - 12, w, 12, stroke=0, fill=1)
         c.setStrokeColor(sand)
-        c.roundRect(qx - 18, qy - 18, side + 36, side + 36, 12, stroke=1, fill=1)
-        c.drawImage(qr, qx, qy, side, side)
-        centered('SCAN TO ORDER', qy - 52, 'Helvetica-Bold', 11, accent)
-        centered(link.split('://', 1)[-1], qy - 82, 'Helvetica', 20, ink)
-        if plan['deadline']:
-            d = plan['deadline']
-            centered(f"Order by {d.strftime('%B')} {d.day}", qy - 118, 'Times-Roman', 22, ink)
-    centered('Made with purpose, in Shawnee, Kansas', 46, 'Helvetica', 8.5, muted)
+        c.setLineWidth(0.8)
+        c.rect(22, 22, w - 44, h - 44 - 12, stroke=1, fill=0)
+
+    def footer_line():
+        centered('Made with purpose, in Shawnee, Kansas', 34, 'Helvetica', 8, muted)
+
+    have_pictures = bool(logos or shirts)
+
+    if style == 'collage':
+        frame()
+        y = header(h - 56, size=32)
+        if have_pictures:
+            items = []
+            if logos:
+                items.append((logos[0], None, WHITE))
+            rest_shirts = [(p, cap, '#FBF9F4') for p, cap in shirts]
+            rest_logos = [(p, None, WHITE) for p in logos[1:]]
+            items += _interleave(rest_shirts, rest_logos)
+            if not logos and items == []:
+                items = rest_shirts
+            n = _mosaic_count(len(items))
+            cols, rows, cells = _MOSAIC[n]
+            top, bottom = y - 26, 168
+            gap = 10
+            cs = min((w - 110 - gap * (cols - 1)) / cols, (top - bottom - gap * (rows - 1)) / rows)
+            gw, gh = cols * cs + (cols - 1) * gap, rows * cs + (rows - 1) * gap
+            gx, gy = (w - gw) / 2, bottom + (top - bottom - gh) / 2
+            for (png, cap, fill), (cc, rr, cw, ch) in zip(items[:n], cells):
+                tx = gx + cc * (cs + gap)
+                ty = gy + gh - (rr + ch) * cs - rr * gap
+                tile(tx, ty, cw * cs + (cw - 1) * gap, ch * cs + (ch - 1) * gap, png, cap, fill)
+            qr_footer(66)
+        else:
+            _big_qr(c, qr, y, w, colors, sand, accent, ink, plan, shown_link, centered)
+        footer_line()
+
+    elif style == 'showcase':
+        frame()
+        y = header(h - 56, size=38)
+        if have_pictures:
+            top, bottom = y - 14, 176
+            shown, picks = logos[:3], shirts[:4]
+            logo_size = 0
+            if shown:
+                logo_size = min(175 if len(shown) == 1 else 150, (top - bottom) * (0.5 if picks else 0.8))
+            shirt_size = 0
+            if picks:
+                shirt_size = min(118, (w - 110 - 14 * (len(picks) - 1)) / len(picks), top - bottom - logo_size - 70)
+            total = (logo_size + 28 if shown else 0) + (30 + shirt_size + 6 if picks else 0)
+            y = top - max(0, (top - bottom - total) / 2)
+            if shown:
+                y -= logo_size
+                row(shown, y, logo_size)
+                y -= 28
+            if picks:
+                centered('PICK YOUR STYLE', y, 'Helvetica-Bold', 8, accent)
+                y -= shirt_size + 12
+                row(picks, y, shirt_size, with_caption=True)
+            qr_footer(66)
+        else:
+            _big_qr(c, qr, y, w, colors, sand, accent, ink, plan, shown_link, centered)
+        footer_line()
+
+    else:  # bold: a block of the school's color with the title, logos resting on its edge
+        light = _is_light(accent_hex)
+        on_block = ink if light else colors.white
+        soft = colors.Color(on_block.red, on_block.green, on_block.blue, alpha=0.78)
+        c.setFillColor(cream)
+        c.rect(0, 0, w, h, stroke=0, fill=1)
+        block_h = 272
+        c.setFillColor(accent)
+        c.rect(0, h - block_h, w, block_h, stroke=0, fill=1)
+        header(h - 58, fill=on_block, soft=soft, brand=on_block, size=40)
+        edge = h - block_h
+        y = edge - 40
+        if logos:
+            shown = logos[:3]
+            size = 130 if len(shown) <= 2 else 112
+            y = edge - size / 2
+            row(shown, y, size)
+            y -= 26
+        if shirts:
+            picks = shirts[:4]
+            floor = 176
+            size = min(118, (w - 110 - 14 * (len(picks) - 1)) / len(picks), y - floor - 40)
+            gap_free = y - floor - (30 + size + 6)
+            y -= max(0, gap_free / 2)
+            centered('PICK YOUR STYLE', y, 'Helvetica-Bold', 8, accent)
+            y -= size + 12
+            row(picks, y, size, with_caption=True)
+        c.setFillColor(sand)
+        c.rect(0, 0, w, 150, stroke=0, fill=1)
+        if have_pictures:
+            qr_footer(40, on_band=True)
+        else:
+            _big_qr(c, qr, edge - 40, w, colors, sand, accent, ink, plan, shown_link, centered)
+        centered('Made with purpose, in Shawnee, Kansas', 22, 'Helvetica', 8, ink)
+
     c.showPage()
     c.save()
     return buf.getvalue()
+
+
+def _big_qr(c, qr, y, w, colors, sand, accent, ink, plan, shown_link, centered):
+    """A flyer with no pictures yet: one centred QR card, so the page is never empty."""
+    side = 190
+    qx, qy = (w - side) / 2, max(150, y - side - 70)
+    c.setFillColor(colors.white)
+    c.setStrokeColor(sand)
+    c.roundRect(qx - 14, qy - 14, side + 28, side + 28, 12, stroke=1, fill=1)
+    c.drawImage(qr, qx, qy, side, side)
+    centered('SCAN TO ORDER', qy - 40, 'Helvetica-Bold', 10, accent)
+    centered(shown_link, qy - 62, 'Helvetica', 14, ink)
+    if plan['deadline']:
+        d = plan['deadline']
+        centered(f"Order by {d.strftime('%B')} {d.day}, {d.year}", qy - 92, 'Times-Roman', 20, ink)

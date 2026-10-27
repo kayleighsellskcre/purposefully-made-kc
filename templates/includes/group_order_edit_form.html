@@ -143,6 +143,23 @@
                        itself and then clears this input. #}
                     <input type="file" id="design_uploads" name="design_uploads" accept=".png,.jpg,.jpeg,.webp" multiple style="display:none">
                     <div id="uploadPreview" class="upload-preview-list" style="display:none"></div>
+                    {% if not is_user_edit %}{% set design_siblings, design_other_stores = group_design_sources(collection) %}{% endif %}
+                    {% if design_siblings %}
+                    <details class="borrow-art">
+                        <summary>Use artwork from another group</summary>
+                        <p class="form-hint">Tick any design below to offer it in this group order too. It stays in its own group as well.</p>
+                        {% for sib, sib_designs in design_siblings %}
+                        <p class="borrow-art-title">{{ sib.name }}</p>
+                        <div class="borrow-art-grid">
+                            {% for sd in sib_designs %}
+                            <label class="borrow-art-pick"><input type="checkbox" name="design_ids" value="{{ sd.id }}" form="attachDesigns">
+                                <img src="{{ sd.file_path | image_url }}" alt="{{ sd.title or sd.original_filename or 'Design' }}" loading="lazy" decoding="async"></label>
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
+                        <button type="submit" form="attachDesigns" class="btn btn-outline btn-sm">Add the ticked designs</button>
+                    </details>
+                    {% endif %}
                     {% if gallery_designs %}
                     <p class="form-hint" style="margin-top:1rem"><strong>Artwork already uploaded to this group order:</strong></p>
                     <div class="design-choice-grid">
@@ -164,6 +181,17 @@
                                 <input type="checkbox" name="design_ids" value="{{ d.id }}" form="linkDesigns">
                                 Same design, other color
                             </label>
+                            {% endif %}
+                            {% if not is_user_edit %}
+                            <div class="design-move">
+                                <select name="target_id" form="copyDesign{{ d.id }}" aria-label="Also use this design in another group">
+                                    <option value="">Also use in...</option>
+                                    {% for other in design_other_stores %}<option value="{{ other.id }}">{{ other.name }}</option>{% endfor %}
+                                </select>
+                                <button type="submit" form="copyDesign{{ d.id }}" class="design-move-btn">Add</button>
+                                <button type="submit" form="detachDesign{{ d.id }}" class="design-move-btn design-move-off"
+                                        onclick="return confirm('Take this design off this group order only? The artwork stays on file.')">Take off this group</button>
+                            </div>
                             {% endif %}
                             {% if d.linked_colors %}
                             <div class="linked-colors" aria-label="Colors linked to this design">
@@ -499,6 +527,20 @@
         {% for d in gallery_designs or [] %}
         <form id="removeDesign{{ d.id }}" method="post" style="display:none;"
               action="{{ url_for('admin.collection_design_remove', collection_id=collection.id, design_id=d.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+        {% endfor %}
+        <form id="attachDesigns" method="post" style="display:none;"
+              action="{{ url_for('admin.collection_designs_attach', collection_id=collection.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+        {% for d in gallery_designs or [] %}
+        <form id="copyDesign{{ d.id }}" method="post" style="display:none;"
+              action="{{ url_for('admin.collection_design_copy_to', collection_id=collection.id, design_id=d.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+        <form id="detachDesign{{ d.id }}" method="post" style="display:none;"
+              action="{{ url_for('admin.collection_design_detach', collection_id=collection.id, design_id=d.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         </form>
         {% endfor %}

@@ -155,7 +155,7 @@ def _qr_response(obj, school=None):
 def _flyer_response(obj, school=None):
     name = DS._file_safe(getattr(obj, 'name', 'flyer'))
     disposition = 'attachment' if request.args.get('download') else 'inline'
-    return Response(DS.flyer_pdf(obj, school), mimetype='application/pdf',
+    return Response(DS.flyer_pdf(obj, school, request.args.get('style')), mimetype='application/pdf',
                     headers={'Content-Disposition': f'{disposition}; filename="{name} flyer.pdf"'})
 
 

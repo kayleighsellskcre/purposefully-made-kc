@@ -40,18 +40,51 @@ def _pages_and_images(data):
     return len(reader.pages), images, ' '.join(p.extract_text() for p in reader.pages)
 
 
-def test_pictures_that_load_are_placed_and_the_flyer_stays_one_page(app, seed, monkeypatch):
+def _fake_pictures(monkeypatch, logos=2, shirts=2):
+    monkeypatch.setattr(FL, '_store_logo_urls', lambda s, sc: [f'/x/logo{i}.png' for i in range(logos)])
+    monkeypatch.setattr(FL, '_shirt_picks', lambda products, store=None, limit=8: [(f'/x/s{i}.png', ('Tee', 'Hoodie', 'Tank')[i % 3]) for i in range(shirts)])
+    monkeypatch.setattr(FL, 'load_image', lambda url: _png('#%06x' % (hash(url) % 0xFFFFFF)))
+
+
+def test_every_style_places_the_pictures_on_one_page_with_a_small_qr(app, seed, monkeypatch):
+    ids = _setup(app, seed)
+    _fake_pictures(monkeypatch, logos=2, shirts=4)
+    with app.app_context():
+        district, school, store = _objects(app, ids)
+        for style in ('collage', 'showcase', 'bold'):
+            pages, images, text = _pages_and_images(DS.flyer_pdf(store, school, style))
+            assert pages == 1, style
+            assert images >= 7, style                       # two logos, four shirts, the QR code
+            assert 'SCAN TO ORDER' in text and 'PURPOSEFULLY MADE KC' in text.upper()
+            assert ('PICK YOUR STYLE' in text) == (style != 'collage')
+        text = _pages_and_images(DS.flyer_pdf(store, school, 'showcase'))[2]
+        assert 'TEE' in text and 'HOODIE' in text
+
+
+def test_the_collage_adapts_to_any_number_of_pictures(app, seed, monkeypatch):
     ids = _setup(app, seed)
     with app.app_context():
         district, school, store = _objects(app, ids)
-        monkeypatch.setattr(FL, '_store_logo_urls', lambda s, sc: ['/x/logo1.png', '/x/logo2.png'])
-        monkeypatch.setattr(FL, '_shirt_picks', lambda products, store=None, limit=4: [('/x/s1.png', 'Tee'), ('/x/s2.png', 'Hoodie')])
-        monkeypatch.setattr(FL, 'load_image', lambda url: _png('#%06x' % (hash(url) % 0xFFFFFF)))
-        pages, images, text = _pages_and_images(DS.flyer_pdf(store, school))
-    assert pages == 1
-    assert images >= 5  # two logos, two shirts, the QR code
-    assert 'PICK YOUR STYLE' in text and 'TEE' in text and 'HOODIE' in text
-    assert 'SCAN TO ORDER' in text
+        for logos, shirts in ((1, 0), (0, 3), (1, 1), (2, 3), (4, 8), (3, 12)):
+            _fake_pictures(monkeypatch, logos=logos, shirts=shirts)
+            pages, images, _text = _pages_and_images(DS.flyer_pdf(store, school, 'collage'))
+            assert pages == 1 and images >= 1 + min(9, logos + shirts) - 1
+
+
+def test_an_unknown_style_falls_back_to_the_collage(app, seed, guest):
+    ids = _setup(app, seed)
+    assert FL.normalize_style('nonsense') == 'collage' and FL.normalize_style('BOLD') == 'bold'
+    with app.app_context():
+        slug = db.session.get(Collection, ids[2]).slug
+    for style in ('collage', 'showcase', 'bold', 'nonsense'):
+        resp = guest.get(f'/c/{slug}/flyer.pdf?style={style}')
+        assert resp.status_code == 200 and resp.data[:4] == b'%PDF'
+
+
+def test_pictures_stored_on_this_server_load_inside_worker_threads(app):
+    with app.app_context():
+        urls = ['/static/img/logo.png']
+        assert set(FL.load_images(urls)) == set(urls)
 
 
 def test_pictures_that_fail_to_load_are_left_out_and_the_flyer_still_prints(app, seed, monkeypatch):

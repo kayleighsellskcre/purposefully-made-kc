@@ -46,8 +46,8 @@
 </div>
 
 <div class="ops-card bk-card">
-    <h2>Main logos</h2>
-    <p class="bk-muted">Upload the school's logos once. Every store of {{ school.name }} (sports, activities, events, teachers and staff) offers them, next to any extra logo a store has of its own. Tick a logo to keep it, untick to remove it from every store.</p>
+    <h2>Main logos <small>(every store gets these)</small></h2>
+    <p class="bk-muted">Only put logos here that belong to the whole school, like the mascot. Every store of {{ school.name }} offers these. A logo for one team or club, like the cheer logos, belongs in that store's own artwork instead. If one landed here by mistake, use "Keep a logo in just one store" below.</p>
     <form method="post" enctype="multipart/form-data" class="dist-logo-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="logos">
         {% if logos %}
@@ -63,6 +63,15 @@
         </label>
         <button type="submit" class="btn btn-primary">Save logos</button>
     </form>
+    {% if logos and stores %}
+    <form method="post" class="dist-logo-move">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="logo_to_store">
+        <strong>Keep a logo in just one store</strong>
+        <label>Logo <select name="design_id">{% for logo in logos %}<option value="{{ logo.id }}">{{ logo.title }}</option>{% endfor %}</select></label>
+        <label>Store <select name="store_id">{% for s in stores %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select></label>
+        <button type="submit" class="btn btn-outline btn-sm">Move it</button>
+    </form>
+    {% endif %}
 </div>
 
 <div class="ops-card bk-card">

@@ -920,6 +920,8 @@ def create_app(config_class=Config):
 
     from utils.group_orders import PAYMENT_OPTIONS as _PAYMENT_OPTIONS
     app.jinja_env.globals['PAYMENT_OPTIONS'] = _PAYMENT_OPTIONS
+    from utils.group_designs import sources as _design_sources
+    app.jinja_env.globals['group_design_sources'] = _design_sources
 
     @app.template_filter('closes_in')
     def closes_in_filter(collection):

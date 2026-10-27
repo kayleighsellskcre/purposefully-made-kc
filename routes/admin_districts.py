@@ -191,6 +191,13 @@ def district_school(school_id):
                             added.append(design.id)
                 n = DS.set_school_logos(school, keep + added)
                 flash(f'The school logos were saved. All {n} stores of {school.name} offer them now.', 'success')
+            elif action == 'logo_to_store':
+                store = next((s for s in DS.stores_of(school, include_inactive=True) if str(s.id) == request.form.get('store_id')), None)
+                design_id = request.form.get('design_id', type=int)
+                if store is None or not design_id:
+                    raise DS.DistrictError('Choose a logo and a store.')
+                DS.move_logo_to_store(school, design_id, store)
+                flash(f'That logo now belongs to {store.name} only. The other stores no longer offer it.', 'success')
             elif action == 'delete_school':
                 from utils.group_delete import remove_organization, summary
                 name, district_id = school.name, school.district_id

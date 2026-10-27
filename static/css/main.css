@@ -2744,10 +2744,9 @@ textarea:focus-visible,
 .nav-link--current,
 .nav-link--current:hover { color: var(--terra-cotta); background: rgba(184, 124, 111, 0.08); box-shadow: inset 0 -2px 0 var(--terra-cotta); }
 
-/* The logo badge keeps its size at the top of a page, and tucks into the bar once you scroll. */
-.logo-image { transition: height 0.22s ease, top 0.22s ease, border-width 0.22s ease; }
+/* The logo badge keeps one size on every page and while you scroll: a touch smaller than before so it clears the content. */
 @media (min-width: 769px) {
-    .navbar.is-scrolled .logo-image { height: 56px !important; top: 6px; border-width: 2px; }
+    .logo-image { height: 112px !important; top: -6px; }
     /* Left-aligned content that starts right under the header clears the badge. */
     .group-order-banner-inner { padding-left: 11rem; }
     .account-page { padding-top: 3.25rem; }
@@ -3677,3 +3676,22 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 .made-stats { color: var(--terra-cotta); font-weight: 600; }
 .od-share { margin-top: 0.4rem; border: 0; background: none; color: var(--terra-cotta); font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0; }
 @media (max-width: 720px) { .made-card { grid-template-columns: 1fr; } .made-item { flex-wrap: wrap; } }
+
+/* Artwork: borrow from another group, or keep a logo in one store */
+.design-move { display: grid; gap: 0.25rem; margin-top: 0.35rem; max-width: 9.5rem; }
+.design-move select { font-size: 0.72rem; padding: 0.2rem; max-width: 100%; }
+.design-move-btn { border: 1px solid var(--border-color, #e0d8d0); background: #fff; border-radius: 6px; font: inherit; font-size: 0.7rem; padding: 0.15rem 0.4rem; cursor: pointer; }
+.design-move-off { color: #b04a3a; border-color: transparent; text-decoration: underline; padding-left: 0; }
+.borrow-art { margin-top: 1rem; padding: 0.7rem 0.9rem; background: rgba(184, 124, 111, 0.08); border-radius: 10px; }
+.borrow-art summary { cursor: pointer; font-weight: 700; }
+.borrow-art-title { margin: 0.8rem 0 0.3rem; font-size: 0.8rem; font-weight: 700; color: var(--terra-cotta); }
+.borrow-art-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.borrow-art-pick { position: relative; display: block; width: 78px; height: 78px; border: 1px solid var(--border-light, #e8e0d8); border-radius: 8px; background: #fff; cursor: pointer; }
+.borrow-art-pick img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
+.borrow-art-pick input { position: absolute; top: 4px; left: 4px; }
+.dist-logo-move { display: flex; flex-wrap: wrap; align-items: end; gap: 0.6rem 1rem; margin-top: 1.1rem; padding-top: 1rem; border-top: 1px solid var(--border-light, #e8e0d8); }
+.dist-logo-move strong { flex: 1 1 100%; }
+.dist-logo-move label { display: grid; gap: 0.2rem; font-size: 0.8rem; font-weight: 600; }
+
+/* Flyer style choice */
+.dist-flyer-pick, .flyer-pick { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.4rem; margin: 0.6rem 0 0; font-size: 0.82rem; color: var(--text-secondary); }

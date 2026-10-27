@@ -45,7 +45,7 @@ def flyer(slug):
     if not collection.is_active:
         abort(404)
     disposition = 'attachment' if request.args.get('download') else 'inline'
-    return Response(DS.flyer_pdf(collection), mimetype='application/pdf',
+    return Response(DS.flyer_pdf(collection, style=request.args.get('style')), mimetype='application/pdf',
                     headers={'Content-Disposition': f'{disposition}; filename="{DS._file_safe(collection.name)} flyer.pdf"'})
 
 

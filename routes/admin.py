@@ -3393,6 +3393,46 @@ def delete_collection(collection_id):
     return redirect(url_for('admin.collections'))
 
 
+@admin_bp.route('/collections/<int:collection_id>/designs/attach', methods=['POST'])
+@admin_required
+def collection_designs_attach(collection_id):
+    """Offer artwork from another group in this one."""
+    from utils.group_designs import attach
+    collection = Collection.query.get_or_404(collection_id)
+    n = attach(collection, request.form.getlist('design_ids'), show_at_top=bool(request.form.get('show_at_top')))
+    db.session.commit()
+    flash(f'Added {n} design{"s" if n != 1 else ""} to this group order.' if n else 'Tick the designs you want to add.', 'success' if n else 'error')
+    return redirect(url_for('admin.edit_collection', collection_id=collection_id))
+
+
+@admin_bp.route('/collections/<int:collection_id>/designs/<int:design_id>/detach', methods=['POST'])
+@admin_required
+def collection_design_detach(collection_id, design_id):
+    """Take a design off this group order only. The artwork and every other group are untouched."""
+    from utils.group_designs import detach
+    collection = Collection.query.get_or_404(collection_id)
+    detach(collection, design_id)
+    db.session.commit()
+    flash('Taken off this group order. It is still on file and in any other group that uses it.', 'success')
+    return redirect(url_for('admin.edit_collection', collection_id=collection_id))
+
+
+@admin_bp.route('/collections/<int:collection_id>/designs/<int:design_id>/copy-to', methods=['POST'])
+@admin_required
+def collection_design_copy_to(collection_id, design_id):
+    """Also offer this design in another group."""
+    from utils.group_designs import attach
+    Collection.query.get_or_404(collection_id)
+    target = Collection.query.get(request.form.get('target_id', type=int) or 0)
+    if target is None:
+        flash('Choose a group first.', 'error')
+    else:
+        attach(target, [design_id])
+        db.session.commit()
+        flash(f'Now also offered in {target.name}.', 'success')
+    return redirect(url_for('admin.edit_collection', collection_id=collection_id))
+
+
 @admin_bp.route('/collections/<int:collection_id>/designs/link-colors', methods=['POST'])
 @admin_required
 def collection_designs_link(collection_id):

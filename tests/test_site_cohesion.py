@@ -18,8 +18,11 @@ def test_menu_marks_the_page_you_are_on(guest):
     assert 'nav-link--current' in _link(shop, 'Shop') and 'aria-current' not in _link(shop, 'Group Orders')
 
 
-def test_logo_script_is_on_every_page(guest):
-    assert 'js/header-scroll.js' in guest.get('/about').get_data(as_text=True)
+def test_the_logo_keeps_one_size_while_scrolling(guest):
+    html = guest.get('/about').get_data(as_text=True)
+    assert 'header-scroll.js' not in html                      # nothing shrinks the badge on scroll any more
+    css = open('static/css/main.css', encoding='utf-8').read()
+    assert '.navbar.is-scrolled .logo-image' not in css
 
 
 def test_company_apparel_uses_the_standard_page_header(guest):

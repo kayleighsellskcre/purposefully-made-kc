@@ -34,8 +34,11 @@
                     <a href="{{ url_for('collection.qr_code', slug=collection.slug) }}"
                        download="{{ collection.slug }}-qr.png"
                        class="btn btn-outline btn-sm">⬇ Download QR Code</a>
-                    <a href="{{ url_for('collection.flyer', slug=collection.slug) }}" target="_blank" rel="noopener"
-                       class="btn btn-outline btn-sm">Print flyer</a>
+                    <span class="flyer-pick">Print a flyer:
+                        <a href="{{ url_for('collection.flyer', slug=collection.slug, style='collage') }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Collage</a>
+                        <a href="{{ url_for('collection.flyer', slug=collection.slug, style='showcase') }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Showcase</a>
+                        <a href="{{ url_for('collection.flyer', slug=collection.slug, style='bold') }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Bold</a>
+                    </span>
                     <p class="qr-hint">Point your phone camera at the QR code to open the group order link instantly.</p>
                 </div>
             </div>

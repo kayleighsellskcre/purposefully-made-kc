@@ -564,6 +564,17 @@ def set_school_logos(school, design_ids):
     return n
 
 
+def move_logo_to_store(school, design_id, store):
+    """Take a logo off the school's main logos (so every other store stops offering it) and keep it in one store."""
+    design_id = int(design_id)
+    main = school_logo_id_list(school)
+    if design_id not in main:
+        raise DistrictError('That logo is not one of the main logos.')
+    set_school_logos(school, [i for i in main if i != design_id])
+    from utils.group_designs import attach
+    attach(store, [design_id], show_at_top=True)
+
+
 def available_colors(district):
     """Colors the district's styles come in: [{name, label, hex, swatch}], by name.
 
@@ -797,10 +808,10 @@ def _file_safe(text):
     return re.sub(r'[^\w\- ]+', '', text or '').strip() or 'qr'
 
 
-def flyer_pdf(obj, school=None):
-    """One letter-size page: who it is for, the logos, a few shirts, a large QR, the link and the deadline."""
+def flyer_pdf(obj, school=None, style=None):
+    """One letter-size page in one of three styles (collage, showcase, bold): logos, shirts, a small QR, the link and the deadline."""
     from utils.flyer import build
-    return build(obj, school)
+    return build(obj, school, style)
 
 
 def qr_zip(obj):
