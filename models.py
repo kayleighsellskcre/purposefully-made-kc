@@ -412,6 +412,19 @@ class SavedCartItem(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class SharedDesign(db.Model):
+    """A design a customer shared by link or QR code: the style, color and artwork, never a name, size or quantity."""
+    __tablename__ = 'shared_design'
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(32), unique=True, nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), index=True)
+    title = db.Column(db.String(200))
+    line = db.Column(db.JSON, nullable=False)
+    views = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 class District(db.Model):
     """A school district: schools (Organizations) sit under it by level.
 
@@ -968,7 +981,9 @@ class OrderItem(db.Model):
     # from several stores of the same organization (Basketball + Volleyball + Fan
     # Wear). Empty on older orders: those belong to the order's own store.
     collection_id = db.Column(db.Integer, index=True)
-    
+    # The shared-design link this item was ordered through (counted for the person who shared it)
+    shared_design_id = db.Column(db.Integer, db.ForeignKey('shared_design.id'), index=True)
+
     # Quantity and pricing
     quantity = db.Column(db.Integer, nullable=False, default=1)
     unit_price = db.Column(db.Float, nullable=False)

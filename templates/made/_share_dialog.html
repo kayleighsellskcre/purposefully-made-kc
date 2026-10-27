@@ -1,0 +1,15 @@
+{# The Share this design window: link, copy, QR code. Opened by any button with data-share-design="<url that makes the link>". #}
+<dialog class="made-dialog" id="madeShareDialog" aria-labelledby="madeShareTitle">
+    <button type="button" class="made-close" data-made-close aria-label="Close">&times;</button>
+    <h2 id="madeShareTitle">Share this design</h2>
+    <p class="made-note">Anyone with this link can see your artwork and order this shirt in their own size. Your name and anything on the back stay private.</p>
+    <div class="made-row">
+        <input type="text" id="madeShareInput" readonly aria-label="Link to share">
+        <button type="button" id="madeShareCopy" class="btn btn-primary btn-sm">Copy</button>
+    </div>
+    <img id="madeShareQr" class="made-qr" alt="QR code for this design" width="200" height="200">
+    <div class="made-actions"><a id="madeShareDownload" class="btn btn-outline btn-sm" download>Download QR code</a></div>
+    {% if current_user.is_authenticated %}<p class="made-note"><a href="{{ url_for('made.mine') }}">See your shared designs</a> and how many orders came from them.</p>
+    {% else %}<p class="made-note">Sign in to see how many orders come from your link.</p>{% endif %}
+</dialog>
+<script src="{{ url_for('static', filename='js/share-design.js') }}" defer></script>

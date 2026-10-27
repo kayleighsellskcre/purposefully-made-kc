@@ -66,6 +66,7 @@
                             <div class="od-item-pricing">
                                 <p class="od-unit">${{ "%.2f"|format(item.unit_price) }} each</p>
                                 <p class="od-subtotal">${{ "%.2f"|format(item.subtotal) }}</p>
+                                {% if not item.collection_id and (item.design_id or item.design_file_name) %}<button type="button" class="od-share" data-share-design="/made/share/order-item/{{ item.id }}">Share this design</button>{% endif %}
                             </div>
                         </div>
                         {% endfor %}
@@ -175,4 +176,5 @@
 .od-summary-total span:last-child { color:var(--accent-color); }
 @media (max-width:900px) { .od-grid { grid-template-columns:1fr; } }
 </style>
+{% include 'made/_share_dialog.html' %}
 {% endblock %}

@@ -1345,6 +1345,7 @@ def build_order_items(order, cart, rid='-'):
                 ),
                 uniform_kit=_clip(cart_item.get('uniform_kit'), 20),
                 collection_id=_int_or_none(cart_item.get('collection_id')) or (0 if has_group_lines else None),
+                shared_design_id=_int_or_none(cart_item.get('shared_design_id')),
                 quantity=qty,
                 unit_price=unit_price,
                 subtotal=qty * unit_price,

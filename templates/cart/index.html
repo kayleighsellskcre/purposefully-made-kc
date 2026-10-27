@@ -79,6 +79,8 @@
                         <p class="price">${{ "%.2f"|format(item.item_total) }}</p>
                         {# Every row's button reads simply "Remove" otherwise, so a
                            screen reader user cannot tell which item they are on. #}
+                        {% if not item.store_name and (item.get('design_id') or item.get('design_url')) %}<button type="button" class="btn-save-later" data-share-design="/made/share/cart/{{ loop.index0 }}"
+                                aria-label="Share {{ item.product.name }}, {{ item.color }} with a link or QR code">Share this design</button>{% endif %}
                         <button type="button" class="btn-save-later" data-save-for-later="{{ loop.index0 }}"
                                 aria-label="Save {{ item.product.name }}, {{ item.color }}, size {{ item.size }} for later">Save for later</button>
                         <button type="button" class="btn-remove" data-index="{{ loop.index0 }}"
@@ -521,4 +523,5 @@ document.querySelectorAll('.btn-remove').forEach(button => {
 });
 </script>
 <script src="{{ url_for('static', filename='js/saved-for-later.js') }}" defer></script>
+{% include 'made/_share_dialog.html' %}
 {% endblock %}

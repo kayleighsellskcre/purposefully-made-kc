@@ -163,6 +163,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS gallery_reviewed_at TIMESTAMP",
                     "ALTER TABLE design ADD COLUMN IF NOT EXISTS gallery_reviewed_by_id INTEGER REFERENCES \"user\"(id)",
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS back_design_meta TEXT",
+                    "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS shared_design_id INTEGER REFERENCES shared_design(id)",
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS back_design_file_name VARCHAR(500)",
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS print_width DOUBLE PRECISION",
                     "ALTER TABLE order_item ADD COLUMN IF NOT EXISTS print_height DOUBLE PRECISION",
@@ -620,6 +621,8 @@ def create_app(config_class=Config):
     app.register_blueprint(invoice_pay_bp)
     from routes.districts import district_bp
     app.register_blueprint(district_bp)
+    from routes.made import made_bp
+    app.register_blueprint(made_bp)
 
     # ── CSRF exemptions ──────────────────────────────────────────────────────
     # Stripe / PayPal webhooks POST with their own signatures, not our CSRF token.
