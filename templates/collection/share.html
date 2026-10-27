@@ -34,13 +34,40 @@
                     <a href="{{ url_for('collection.qr_code', slug=collection.slug) }}"
                        download="{{ collection.slug }}-qr.png"
                        class="btn btn-outline btn-sm">⬇ Download QR Code</a>
-                    <span class="flyer-pick">Print a flyer:
-                        <a href="{{ url_for('collection.flyer', slug=collection.slug, style='collage') }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Collage</a>
-                        <a href="{{ url_for('collection.flyer', slug=collection.slug, style='showcase') }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Showcase</a>
-                        <a href="{{ url_for('collection.flyer', slug=collection.slug, style='bold') }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Bold</a>
-                    </span>
-                    <p class="qr-hint">Point your phone camera at the QR code to open the group order link instantly.</p>
                 </div>
+                <p class="qr-hint">Point your phone camera at the QR code to open the group order link instantly.</p>
+
+                <section class="flyer-chooser" aria-labelledby="flyer-chooser-title">
+                    <div class="flyer-chooser-heading">
+                        <span class="flyer-eyebrow">A shareable finish</span>
+                        <h2 id="flyer-chooser-title">Choose your flyer style</h2>
+                        <p>Your group name, PM logo, apparel, and live order QR are added automatically.</p>
+                    </div>
+                    <div class="flyer-options">
+                        {% for style, label, description in [
+                            ('collage', 'The Collage', 'A lively mix of the apparel options.'),
+                            ('catalog', 'The Catalog', 'A clean, easy-to-browse product grid.'),
+                            ('editorial', 'The Editorial', 'One standout look with supporting styles.')
+                        ] %}
+                        <article class="flyer-option">
+                            <a class="flyer-preview-link"
+                               href="{{ url_for('collection.flyer_image', slug=collection.slug, style=style) }}"
+                               target="_blank" rel="noopener"
+                               aria-label="Preview {{ label }} flyer for {{ collection.name }}">
+                                <img src="{{ url_for('collection.flyer_image', slug=collection.slug, style=style) }}"
+                                     alt="{{ label }} flyer preview for {{ collection.name }}"
+                                     loading="lazy" width="1870" height="2420">
+                            </a>
+                            <div class="flyer-option-copy">
+                                <h3>{{ label }}</h3>
+                                <p>{{ description }}</p>
+                                <a href="{{ url_for('collection.flyer_image', slug=collection.slug, style=style, download=1) }}"
+                                   class="btn btn-primary btn-sm">Download flyer image</a>
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </section>
             </div>
 
             <a href="{{ url_for('collection.view', slug=collection.slug) }}" class="btn btn-outline">View Group Order</a>
@@ -191,7 +218,7 @@
 </div>
 <style>
 .share-page { padding: 4rem 0; min-height: 60vh; }
-.share-card { max-width: 560px; margin: 0 auto; background: #fff; padding: 2.5rem; border-radius: var(--border-radius); box-shadow: var(--box-shadow); }
+.share-card { max-width: 1160px; margin: 0 auto; background: #fff; padding: 2.5rem; border-radius: var(--border-radius); box-shadow: var(--box-shadow); }
 .share-card h1 { font-family: var(--font-heading); margin-bottom: 0.5rem; }
 .share-subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; }
 .share-url-box { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
@@ -212,6 +239,22 @@
 .qr-actions { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
 .btn-sm { padding: 0.45rem 1rem; font-size: 0.85rem; }
 .qr-hint { font-size: 0.8rem; color: var(--text-secondary); margin: 0; }
+.flyer-chooser { margin:2.4rem -.5rem 0; padding:2rem .5rem 0; border-top:1px solid #e8e2d8; }
+.flyer-chooser-heading { max-width:38rem; margin:0 auto 1.5rem; text-align:center; }
+.flyer-eyebrow { display:block; margin-bottom:.45rem; color:#a7784e; font-size:.7rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
+.flyer-chooser-heading h2 { margin:0 0 .45rem; color:var(--text-primary,#26313a); font-family:var(--font-heading); font-size:1.55rem; }
+.flyer-chooser-heading p { margin:0; color:var(--text-secondary); font-size:.9rem; }
+.flyer-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; }
+.flyer-option { overflow:hidden; border:1px solid #e6e0d6; border-radius:14px; background:#fff; box-shadow:0 8px 24px rgba(36,49,61,.06); }
+.flyer-preview-link { display:block; overflow:hidden; border-bottom:1px solid #e6e0d6; background:#f7f4ee; }
+.flyer-preview-link img { display:block; width:100%; height:390px; object-fit:cover; object-position:top; transition:transform .25s ease; }
+.flyer-preview-link:hover img { transform:scale(1.025); }
+.flyer-option-copy { padding:1rem; }
+.flyer-option-copy h3 { margin:0 0 .25rem; color:var(--text-primary,#26313a); font-family:var(--font-heading); font-size:1.12rem; }
+.flyer-option-copy p { min-height:2.5em; margin:0 0 .85rem; color:var(--text-secondary); font-size:.84rem; }
+.flyer-option-copy .btn { width:100%; justify-content:center; }
+@media(max-width:850px) { .flyer-options { grid-template-columns:1fr; } .flyer-preview-link img { height:auto; max-height:620px; object-fit:contain; } }
+@media(max-width:520px) { .share-card { padding:1.25rem; } .flyer-chooser { margin-left:-.25rem; margin-right:-.25rem; padding-left:.25rem; padding-right:.25rem; } }
 .roster-card { max-width: 560px; margin: 2rem auto 0; background: #fff; padding: 2rem 2.5rem 2.25rem; border-radius: var(--border-radius); box-shadow: var(--box-shadow); }
 .roster-card h2 { font-family: var(--font-heading); font-size: 1.25rem; margin-bottom: 0.4rem; }
 .roster-count { font-size: 1.05rem; margin: 0 0 0.6rem; }

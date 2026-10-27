@@ -475,3 +475,158 @@ def _big_qr(c, qr, y, w, colors, sand, accent, ink, plan, shown_link, centered):
     if plan['deadline']:
         d = plan['deadline']
         centered(f"Order by {d.strftime('%B')} {d.day}, {d.year}", qy - 92, 'Times-Roman', 20, ink)
+
+
+def build_png(obj, school=None, style=None):
+    """High-resolution image flyer with PM branding, the live group name, and a real QR."""
+    from PIL import Image, ImageDraw, ImageFont
+    from utils import districts as DS
+
+    style = (style or 'collage').strip().lower()
+    if style not in {'collage', 'catalog', 'editorial'}:
+        style = 'collage'
+    plan = _plan(obj, school)
+    image_data = load_images(plan['logos'] + [url for url, _ in plan['shirts']])
+    shirt_items = [(image_data[url], label) for url, label in plan['shirts'] if url in image_data]
+    group_logo = next((image_data[url] for url in plan['logos'] if url in image_data), None)
+
+    # US Letter portrait, rendered as a crisp image so the product photography feels natural.
+    width, height = 1870, 2420  # 220 DPI at 8.5 x 11 inches
+    cream, ink, muted, sand, white = '#F8F5EF', '#24313D', '#7A7C79', '#D9C8AA', '#FFFFFF'
+    page = Image.new('RGB', (width, height), cream)
+    draw = ImageDraw.Draw(page)
+    draw.rounded_rectangle((34, 34, width - 34, height - 34), radius=24, outline=sand, width=3)
+
+    root = os.path.dirname(os.path.dirname(__file__))
+    fonts = {
+        'serif': [os.path.join(root, 'static/fonts/CormorantGaramond-Regular.ttf'),
+                  '/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf',
+                  '/usr/share/fonts/truetype/liberation2/LiberationSerif-Regular.ttf'],
+        'sans': [os.path.join(root, 'static/fonts/Oswald-Bold.ttf'),
+                 '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+                 '/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf'],
+        'body': ['/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+                 '/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf'],
+    }
+
+    def get_font(size, kind='body'):
+        for path in fonts[kind]:
+            if os.path.isfile(path):
+                try:
+                    return ImageFont.truetype(path, size)
+                except OSError:
+                    pass
+        return ImageFont.load_default()
+
+    def center(text, y, use_font, fill, x=None):
+        draw.text((width // 2 if x is None else x, y), text, font=use_font, fill=fill, anchor='mm')
+
+    def png_image(data, limit):
+        image = Image.open(io.BytesIO(data)).convert('RGBA')
+        image.thumbnail(limit, Image.Resampling.LANCZOS)
+        return image
+
+    def put_group_art(product):
+        if not group_logo:
+            return product
+        art = png_image(group_logo, (int(product.width * .38), int(product.height * .24)))
+        if art.width < 12 or art.height < 12:
+            return product
+        # The shirt picks are front-facing garment mockups; this puts the selected group mark on the chest.
+        product.alpha_composite(art, ((product.width - art.width) // 2,
+                                      max(0, int(product.height * .43 - art.height / 2))))
+        return product
+
+    pm_bytes = load_image('/static/img/logo-wordmark.png')
+    if pm_bytes:
+        pm = png_image(pm_bytes, (286, 206))
+        page.paste(pm, ((width - pm.width) // 2, 54), pm)
+    center('GROUP ORDER', 282, get_font(27, 'sans'), muted)
+
+    title_font = get_font(66, 'serif')
+    name = (plan.get('title') or 'Group Apparel').strip()
+    max_title = width - 230
+    lines, line = [], ''
+    for word in name.split():
+        candidate = f'{line} {word}'.strip()
+        if draw.textbbox((0, 0), candidate, font=title_font)[2] > max_title and line:
+            lines.append(line)
+            line = word
+        else:
+            line = candidate
+    if line:
+        lines.append(line)
+    lines = lines[:2]
+    title_y = 365 if len(lines) == 1 else 342
+    for i, value in enumerate(lines):
+        center(value, title_y + i * 78, title_font, ink)
+    deck_y = title_y + len(lines) * 78 + 30
+    center('A curated collection for your team, school, or community', deck_y,
+           get_font(25, 'body'), muted)
+
+    def product_card(data, label, size):
+        product = png_image(data, (size[0] - 28, size[1] - 76))
+        product = put_group_art(product)
+        card = Image.new('RGBA', size, white)
+        card.alpha_composite(product, ((size[0] - product.width) // 2,
+                                       12 + max(0, (size[1] - 66 - product.height) // 2)))
+        card_draw = ImageDraw.Draw(card)
+        card_draw.line((24, size[1] - 56, size[0] - 24, size[1] - 56), fill=sand, width=2)
+        card_draw.text((size[0] // 2, size[1] - 30), (label or 'APPAREL').upper(),
+                       font=get_font(20, 'sans'), fill=ink, anchor='mm')
+        card_draw.rounded_rectangle((1, 1, size[0] - 2, size[1] - 2),
+                                    radius=18, outline='#E4DDD1', width=3)
+        return card
+
+    # Product picks are garments only. Apparel accessories are not included in these layouts.
+    shown = shirt_items[:6]
+    top = deck_y + 66
+    bottom = 1918
+    if shown:
+        if style == 'collage':
+            positions = [(85, top, 790, 710), (900, top, 885, 440),
+                         (900, top + 465, 885, 445), (85, top + 735, 560, 430),
+                         (670, top + 735, 560, 430), (1255, top + 735, 530, 430)]
+        elif style == 'catalog':
+            gap, left = 28, 82
+            card_w = (width - 2 * left - 2 * gap) // 3
+            card_h = min(575, (bottom - top - 28) // 2)
+            positions = [(left + col * (card_w + gap), top + row * (card_h + gap), card_w, card_h)
+                         for row in range(2) for col in range(3)]
+        else:  # editorial hero with three coordinated product cards
+            positions = [(82, top, 1020, 1320), (1120, top, 665, 426),
+                         (1120, top + 447, 665, 426), (1120, top + 894, 665, 426)]
+        for (data, label), (x, y, card_width, card_height) in zip(shown, positions):
+            card = product_card(data, label, (card_width, card_height))
+            page.paste(card, (x, y), card)
+    else:
+        center('T-shirts  •  Sweatshirts  •  Hoodies', top + 460,
+               get_font(38, 'serif'), muted)
+        if group_logo:
+            art = png_image(group_logo, (500, 360))
+            page.paste(art, ((width - art.width) // 2, top + 530), art)
+
+    # Each image carries a real code that opens the current group order.
+    qr_bytes = DS.qr_png(DS.short_url(obj, school))
+    qr = Image.open(io.BytesIO(qr_bytes)).convert('RGB').resize((230, 230), Image.Resampling.NEAREST)
+    footer_y = 1985
+    draw.line((94, footer_y, width - 94, footer_y), fill=sand, width=3)
+    qr_x, qr_y = 1280, footer_y + 48
+    draw.rounded_rectangle((qr_x - 16, qr_y - 16, qr_x + 246, qr_y + 246),
+                           radius=12, fill=white, outline=sand, width=3)
+    page.paste(qr, (qr_x, qr_y))
+    draw.text((qr_x + 115, qr_y + 278), 'SCAN TO SHOP', font=get_font(22, 'sans'),
+              fill=ink, anchor='mm')
+    draw.text((110, qr_y + 52), 'MADE FOR YOUR GROUP', font=get_font(24, 'sans'), fill=muted)
+    draw.text((110, qr_y + 101), 'Your people. Your style.', font=get_font(43, 'serif'), fill=ink)
+    if plan.get('deadline'):
+        deadline = plan['deadline']
+        draw.text((110, qr_y + 176),
+                  f"Order by {deadline.strftime('%B')} {deadline.day}, {deadline.year}",
+                  font=get_font(25, 'body'), fill=muted)
+    draw.text((110, height - 93), 'PURPOSEFULLY MADE  •  KANSAS CITY',
+              font=get_font(17, 'sans'), fill=muted)
+
+    out = io.BytesIO()
+    page.save(out, format='PNG', optimize=True, dpi=(220, 220))
+    return out.getvalue()
