@@ -3719,3 +3719,47 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 .back-color { border: 2px solid #e8d0b1; border-radius: 999px; background: #fff; padding: 0.15rem 0.6rem 0.15rem 0.2rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; }
 .back-color img { width: 26px; height: 26px; object-fit: contain; border-radius: 50%; background: #f7f3ea; }
 .back-color.active { border-color: var(--terra-cotta, #b87c6f); }
+
+/* Admin on a phone: cards never wider than the screen, wide tables scroll inside their card, forms stack. */
+@media (max-width: 640px) {
+    .is-admin .ops-card, .is-admin .bk-card { min-width: 0; max-width: 100%; box-sizing: border-box; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .is-admin .ops-grid { grid-template-columns: minmax(0, 1fr); }
+    .is-admin .ops-form-inline { flex-direction: column; align-items: stretch; }
+    .is-admin .ops-form-inline > * { width: 100%; max-width: 100%; box-sizing: border-box; }
+    .is-admin .admin-table { width: max-content; min-width: 100%; }
+    .is-admin .admin-table td { max-width: 15rem; }
+    .is-admin .admin-table a, .is-admin .admin-table .btn { white-space: nowrap; }
+    .is-admin .dist-admin-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .is-admin .dist-admin-actions .btn { width: 100%; justify-content: center; text-align: center; white-space: normal; }
+    .is-admin .bk-form .bk-check, .is-admin label.bk-check { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.15rem 0.5rem; }
+    .is-admin .bk-check small { flex-basis: 100%; margin-left: 1.65rem; }
+}
+.ops-field { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); }
+.ops-field input { width: 6rem; }
+@media (max-width: 640px) { .is-admin .ops-field { display: flex; justify-content: space-between; } .is-admin .ops-field input { flex: 1; width: auto; max-width: 60%; } }
+@media (max-width: 640px) {
+    .is-admin .ep-card { padding: 1.1rem; min-width: 0; max-width: 100%; box-sizing: border-box; }
+    .is-admin .ep-card input, .is-admin .ep-card select, .is-admin .ep-card textarea { max-width: 100%; box-sizing: border-box; }
+}
+@media (max-width: 640px) {
+    .is-admin .cg-btn { white-space: nowrap; }
+    .is-admin .cg-subs li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.5rem; }
+    .is-admin .cg-subs .nm { flex: 1 1 100%; }
+    .is-admin .cg-subs li form.inline:first-of-type { flex: 1 1 12rem; display: flex; gap: 0.4rem; }
+    .is-admin .cg-subs li form.inline:first-of-type input[type="text"] { flex: 1; min-width: 0; }
+    .is-admin .cg-top form.inline:first-of-type { display: flex; gap: 0.4rem; flex: 1 1 100%; }
+    .is-admin .cg-top form.inline:first-of-type input[type="text"] { flex: 1; min-width: 0; }
+    .is-admin .bk-picker label, .is-admin .bk-picker select, .is-admin .bk-picker input { width: 100%; box-sizing: border-box; }
+    .is-admin .bk-picker .btn, .is-admin .bk-picker button { width: 100%; justify-content: center; }
+    .is-admin .bk-table { width: max-content; min-width: 100%; }
+    .is-admin .bk-table td, .is-admin .bk-table th { white-space: nowrap; }
+    .is-admin .bk-table td { max-width: 16rem; overflow: hidden; text-overflow: ellipsis; }
+}
+@media (max-width: 640px) {
+    .is-admin .admin-table td, .is-admin .admin-table th { white-space: nowrap; }
+    .is-admin .admin-table td { max-width: 16rem; overflow: hidden; text-overflow: ellipsis; }
+}
+@media (max-width: 640px) {
+    .is-admin div:has(> #fixSkusBtn) { flex-direction: column; align-items: stretch; }
+    .is-admin #fixSkusBtn, .is-admin #reprocessBtn { width: 100%; min-height: 44px; }
+}

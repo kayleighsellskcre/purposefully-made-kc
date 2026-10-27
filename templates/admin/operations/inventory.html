@@ -13,9 +13,9 @@
             <input type="text" name="brand" placeholder="Brand (e.g. 3001)" required>
             <input type="text" name="color" placeholder="Color" required>
             <input type="text" name="size" placeholder="Size" required>
-            <input type="number" name="quantity" placeholder="Qty" value="0" min="0">
+            <label class="ops-field"><span>Qty</span><input type="number" name="quantity" placeholder="Qty" value="0" min="0"></label>
             <input type="number" name="cost_per_unit" step="0.01" placeholder="Cost">
-            <input type="number" name="reorder_threshold" placeholder="Reorder" value="5">
+            <label class="ops-field"><span>Reorder at</span><input type="number" name="reorder_threshold" placeholder="Reorder" value="5"></label>
             <button type="submit" class="btn btn-primary">Add</button>
         </form>
         <div class="ops-table-scroll">
@@ -28,7 +28,7 @@
                     <td>{{ item.quantity }}</td><td>{{ "$%.2f"|format(item.cost_per_unit or 0) }}</td><td>{{ item.reorder_threshold }}</td>
                     <td>
                         <form method="POST" action="{{ url_for('admin.update_apparel_inventory', id=item.id) }}" class="ops-qty-form">
-                            <input type="number" name="quantity" value="{{ item.quantity }}" min="0" class="ops-qty-input">
+                            <label class="ops-field"><span>Qty</span><input type="number" name="quantity" value="{{ item.quantity }}" min="0" class="ops-qty-input"></label>
                             <button type="submit" class="btn btn-sm">Update</button>
                         </form>
                     </td>
@@ -44,10 +44,10 @@
         <form method="POST" action="{{ url_for('admin.add_supply') }}" class="ops-form-inline">
             <input type="text" name="category" placeholder="Category" required>
             <input type="text" name="name" placeholder="Name" required>
-            <input type="number" name="quantity" placeholder="Qty" value="0" min="0">
-            <input type="text" name="unit" placeholder="Unit" value="ea">
+            <label class="ops-field"><span>Qty</span><input type="number" name="quantity" placeholder="Qty" value="0" min="0"></label>
+            <label class="ops-field"><span>Unit</span><input type="text" name="unit" placeholder="Unit" value="ea"></label>
             <input type="number" name="cost_per_unit" step="0.01" placeholder="Cost">
-            <input type="number" name="reorder_threshold" placeholder="Reorder" value="0">
+            <label class="ops-field"><span>Reorder at</span><input type="number" name="reorder_threshold" placeholder="Reorder" value="0"></label>
             <button type="submit" class="btn btn-primary">Add</button>
         </form>
         <div class="ops-table-scroll">
@@ -60,7 +60,7 @@
                     <td>{{ "$%.2f"|format(item.cost_per_unit or 0) }}</td><td>{{ item.reorder_threshold }}</td>
                     <td>
                         <form method="POST" action="{{ url_for('admin.update_supply', id=item.id) }}" class="ops-qty-form">
-                            <input type="number" name="quantity" value="{{ item.quantity }}" min="0" class="ops-qty-input">
+                            <label class="ops-field"><span>Qty</span><input type="number" name="quantity" value="{{ item.quantity }}" min="0" class="ops-qty-input"></label>
                             <button type="submit" class="btn btn-sm">Update</button>
                         </form>
                     </td>
@@ -77,9 +77,9 @@
     <form method="POST" action="{{ url_for('admin.add_transfer_inventory') }}" class="ops-form-inline">
         <input type="text" name="design_name" placeholder="Design name" required>
         <input type="text" name="size" placeholder="Size (adult/youth)">
-        <input type="number" name="quantity" placeholder="Qty" value="0" min="0">
+        <label class="ops-field"><span>Qty</span><input type="number" name="quantity" placeholder="Qty" value="0" min="0"></label>
         <input type="number" name="cost_per_sheet" step="0.01" placeholder="Cost/sheet">
-        <input type="number" name="reorder_threshold" placeholder="Reorder" value="0" min="0">
+        <label class="ops-field"><span>Reorder at</span><input type="number" name="reorder_threshold" placeholder="Reorder" value="0" min="0"></label>
         <select name="vendor_id"><option value="">Vendor</option>{% for v in vendors %}<option value="{{ v.id }}">{{ v.name }}</option>{% endfor %}</select>
         <input type="text" name="delivery_time" placeholder="Delivery time">
         <button type="submit" class="btn btn-primary">Add</button>
@@ -92,7 +92,7 @@
             <tr><td>{{ t.design_name }}</td><td>{{ t.size or '-' }}</td><td>{{ t.quantity }}</td>
                 <td>{{ "$%.2f"|format(t.cost_per_sheet or 0) }}</td><td>{{ t.reorder_threshold or 0 }}</td><td>{{ t.vendor.name if t.vendor else '-' }}</td>
                 <td><form method="POST" action="{{ url_for('admin.update_transfer_inventory', id=t.id) }}" class="ops-qty-form">
-                    <input type="number" name="quantity" value="{{ t.quantity }}" min="0" class="ops-qty-input" aria-label="Quantity of {{ t.design_name }}">
+                    <label class="ops-field"><span>Qty</span><input type="number" name="quantity" value="{{ t.quantity }}" min="0" class="ops-qty-input" aria-label="Quantity of {{ t.design_name }}"></label>
                     <button type="submit" class="btn btn-sm">Update</button></form></td></tr>
             {% else %}<tr><td colspan="7" class="text-muted">No transfers yet.</td></tr>{% endfor %}
         </tbody>
