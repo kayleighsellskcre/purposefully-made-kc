@@ -195,9 +195,7 @@ def test_a_longer_stacked_name_keeps_its_letters_and_tightens_the_gap_first():
         gaps = [r[1] for r in rows]
         assert letters[0] == base and gaps[0] == base * PS.VERTICAL_GAP_RATIO          # a short name: full letters, full gap
         assert letters == sorted(letters, reverse=True) and gaps == sorted(gaps, reverse=True)   # a longer name never grows either
-        tight = [i for i, (l, g) in enumerate(zip(letters, gaps)) if l == base and g < base * PS.VERTICAL_GAP_RATIO]
-        assert tight, size                                                             # there are names that keep the letters and tighten the gap
-        assert max(tight) < max(i for i, l in enumerate(letters) if l < base)          # and the letters only shrink after that
+        assert all(g >= l * PS.VERTICAL_MIN_GAP_RATIO - 1e-9 for l, g in zip(letters, gaps)), size   # letters never touch, however long the name
         for letter, gap, count in rows:
             assert count * letter + (count - 1) * gap <= run + 0.01
 

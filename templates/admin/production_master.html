@@ -156,8 +156,13 @@
                             {% else %}
                             <p><strong>{{ row.name or '-' }}{% if row.number %} #{{ row.number }}{% endif %}</strong></p>
                             <p>{{ (row.age_group or '')|title }} {{ row.size }} &middot; <strong>{{ row.size_code }}</strong></p>
+                            {% if row.vertical %}
+                            {% if row.neck_height %}<p class="print-size">Small image: <strong>{{ '%.1f'|format(row.neck_width) }}″ W × {{ '%.1f'|format(row.neck_height) }}″ H</strong></p>{% endif %}
+                            <p class="print-size">Stacked name: <strong>{{ row.letter_count }} letters, each {{ row.name_height_display }}″ tall, {{ row.name_width_display }}″ wide at the widest</strong></p>
+                            {% else %}
                             <p>Name {{ row.name_width_display }}″ × {{ row.name_height_display }}″</p>
                             <p>Number {{ row.number_width_display }}″ × {{ row.number_height_display }}″</p>
+                            {% endif %}
                             {% if row.combined_width_display %}<p class="print-size">Whole back: <strong>{{ row.combined_width_display }}″ W × {{ row.combined_height_display }}″ H</strong></p>{% endif %}
                             {% endif %}
                             <p class="qty-badge">Qty: {{ row.quantity }}</p>

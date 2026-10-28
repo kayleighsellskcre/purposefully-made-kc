@@ -526,12 +526,12 @@ def number_group_scale(number):
 
 
 # A name stacked down the back (cheer): every letter is 90% of the chart's name height, with a gap of 22% of a letter. A longer
-# name keeps the same letters and tightens the gap (down to 4% of a letter) before the letters shrink at all, and the whole
-# run never goes past 80% of the safe print height, so it stays on the upper back.
+# name keeps the same letters and tightens the gap (never below 14% of a letter, so letters never touch) before the letters
+# shrink, and the whole run never goes past 95% of the safe print height.
 VERTICAL_LETTER_RATIO = 0.9
 VERTICAL_GAP_RATIO = 0.22
-VERTICAL_MIN_GAP_RATIO = 0.04
-VERTICAL_RUN_RATIO = 0.8
+VERTICAL_MIN_GAP_RATIO = 0.14
+VERTICAL_RUN_RATIO = 0.95
 VERTICAL_MIN_LETTER_IN = 0.6
 VERTICAL_MAX_LETTERS = 12
 SAFE_PRINT_HEIGHT_BY_AGE = {'adult': SAFE_PRINT_HEIGHT_ADULT, 'youth': SAFE_PRINT_HEIGHT_YOUTH,
@@ -833,7 +833,7 @@ def build_item_production(
             'number': '' if back_vertical else (back_number or '').strip(),
             'vertical': bool(back_vertical),
             'neck_image_url': back_neck_image_url if back_vertical else None,
-            'neck_width': back.get('neck_width'), 'neck_height': back.get('neck_height'), 'neck_gap': back.get('neck_gap'),
+            'neck_width': back.get('neck_width'), 'neck_height': back.get('neck_height'), 'neck_gap': back.get('neck_gap'), 'letter_count': back.get('letter_count'),
             'font': back_font or 'Bebas Neue',
             'text_color': back_text_color,
             'outline': back_outline,

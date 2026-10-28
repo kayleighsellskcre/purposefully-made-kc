@@ -4888,7 +4888,7 @@
         return Array.from(String(name || '').toUpperCase().replace(/\s+/g, '')).slice(0, max);
     }
     function verticalLayoutIn(sizeOverride, count, reservedIn) {
-        const cfg = (TRANSFER_SIZING && TRANSFER_SIZING.vertical) || { letter_ratio: 1, gap_ratio: 0.22, min_gap_ratio: 0.06, run_ratio: 0.8, min_letter: 0.6 };
+        const cfg = (TRANSFER_SIZING && TRANSFER_SIZING.vertical) || { letter_ratio: 1, gap_ratio: 0.22, min_gap_ratio: 0.14, run_ratio: 0.95, min_letter: 0.6 };
         const safeH = ((TRANSFER_SIZING && TRANSFER_SIZING.safe_height_by_age) || {})[sizingAge()] || (state.isAdult ? 15.5 : 12.5);
         const run = Math.max(safeH * cfg.run_ratio - (reservedIn || 0), cfg.min_letter * count);
         const base = nameHeightIn(sizeOverride) * cfg.letter_ratio;
@@ -6335,6 +6335,36 @@
                             } catch (e) { /* tainted canvas from CDN - skip */ }
                         }
 
+                        function drawLetters(el) {
+                            if (!el || !el.firstChild || el.firstChild.nodeType !== 3 || !el.textContent.trim()) return;
+                            const cs = getComputedStyle(el);
+                            const node = el.firstChild;
+                            const range = document.createRange();
+                            ctx.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'alphabetic';
+                            ctx.lineJoin = 'round';
+                            const outline = cs.textShadow && cs.textShadow !== 'none' ? (cs.textShadow.match(/rgba?\([^)]*\)/) || [])[0] : '';
+                            for (let i = 0; i < node.length; i++) {
+                                const ch = node.data.charAt(i);
+                                if (!ch.trim()) continue;
+                                range.setStart(node, i);
+                                range.setEnd(node, i + 1);
+                                const r = range.getBoundingClientRect();
+                                if (!r.width) continue;
+                                const m = ctx.measureText(ch);
+                                const x = r.left - prect.left + r.width / 2;
+                                const y = r.top - prect.top + (m.fontBoundingBoxAscent || r.height * 0.8);
+                                if (outline) {
+                                    ctx.strokeStyle = outline;
+                                    ctx.lineWidth = Math.max(2, parseFloat(cs.fontSize) * 0.08);
+                                    ctx.strokeText(ch, x, y);
+                                }
+                                ctx.fillStyle = cs.color;
+                                ctx.fillText(ch, x, y);
+                            }
+                        }
+
                         function drawEl(el) {
                             if (!el) return;
                             const r = el.getBoundingClientRect();
@@ -6358,10 +6388,9 @@
                                 const backImg = document.getElementById('backDesignImage');
                                 if (backImg && backImg.style.display !== 'none') {
                                     drawEl(backImg);
-                                } else {
-                                    // Name/number are text nodes - rasterize the layer via SVG foreignObject fallback: skip
-                                    // Admin will size the back overlay from print geometry instead.
                                 }
+                                // The name (and number) are text, so each letter is drawn where the preview shows it.
+                                ['backDesignName', 'backDesignNumber'].forEach(function (id) { drawLetters(document.getElementById(id)); });
                             }
                         }
 

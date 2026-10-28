@@ -20,9 +20,11 @@ def _back_overlay_class(meta):
             meta = {}
     if not isinstance(meta, dict):
         meta = {}
+    if meta.get('position') == 'upper':
+        return 'upper_back'                               # a small image sits under the collar, even with a name stacked below it
     if meta.get('name') or meta.get('number'):
         return 'back_name_number'
-    return 'upper_back' if meta.get('position') == 'upper' else 'center_back'
+    return 'center_back'
 
 @cart_bp.route('/')
 def index():
