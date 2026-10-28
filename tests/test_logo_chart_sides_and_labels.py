@@ -60,3 +60,10 @@ def test_print_labels_defaults_to_ready_to_press(admin_client, app, seed):
     assert 'Readyone' in default and 'Pressedone' not in default
     picked = admin_client.get('/admin/orders/print-labels?stage=pressed').get_data(as_text=True)
     assert 'Pressedone' in picked and 'Readyone' not in picked
+
+
+def test_print_labels_page_lets_you_mark_used_boxes_and_remembers_them(admin_client, app, seed):
+    with app.app_context():
+        _order(seed, 'ready_to_press', 'Mapone')
+    html = admin_client.get('/admin/orders/print-labels').get_data(as_text=True)
+    assert 'id="plMap"' in html and 'id="plNewSheet"' in html and 'pm_label_used_boxes' in html

@@ -3844,3 +3844,14 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
     .vote-link-row { flex-direction: column; }
     .vote-submit-bar .btn { width: 100%; }
 }
+
+/* Print labels: which boxes on the sheet are already used */
+.pl-map { display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; background: #fff; border: 1px solid var(--border-light); border-radius: 16px; padding: 1.1rem 1.4rem; margin: 0 0 1.25rem; }
+.pl-map-text { flex: 1 1 240px; }
+.pl-map-text h2 { font-family: var(--font-heading); font-size: 1.15rem; margin: 0 0 0.25rem; }
+.pl-map-text p { margin: 0 0 0.75rem; color: var(--text-secondary); font-size: 0.92rem; }
+.pl-map-grid { display: grid; grid-template-columns: repeat(3, 3.6rem); gap: 0.3rem; }
+.pl-map-box { height: 2rem; border: 1px solid var(--border-light); border-radius: 6px; background: var(--ivory-silk); color: var(--text-secondary); font: 600 0.75rem/1 var(--font-body, inherit); cursor: pointer; }
+.pl-map-box.on { background: repeating-linear-gradient(45deg, #e6e1d8, #e6e1d8 4px, #f3efe8 4px, #f3efe8 8px); color: #9a9288; text-decoration: line-through; }
+.pl-map-box:focus-visible { outline: 2px solid var(--midnight-charcoal); outline-offset: 2px; }
+@media screen { .label-cell.empty.used { background: repeating-linear-gradient(45deg, #ece7de, #ece7de 5px, #f6f3ec 5px, #f6f3ec 10px); border: 1px dashed #cfc8bb; } }

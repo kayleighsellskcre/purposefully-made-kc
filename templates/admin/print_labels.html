@@ -141,8 +141,8 @@
 
 .label-sheet {
     width: 8.5in;
-    height: 11in;
-    padding: 0.5in 0.1875in;
+    height: 10.95in;
+    padding: 0.58in 0.1875in 0;
     margin: 0 auto 1.5rem;
     box-sizing: border-box;
     background: #fff;
@@ -414,9 +414,9 @@
 
     .label-sheet {
         width: 8.5in !important;
-        height: 11in !important;
-        max-height: 11in !important;
-        padding: 0.5in 0.1875in !important;
+        height: 10.95in !important;
+        max-height: 10.95in !important;
+        padding: 0.58in 0.1875in 0 !important;
         margin: 0 !important;
         border: none !important;
         box-shadow: none !important;
@@ -503,11 +503,11 @@
                 <div class="pl-filter-actions">
                     <div class="pl-summary-badge">
                         <strong>{{ orders|length }}</strong> order{{ 's' if orders|length != 1 }} &rarr;
-                        <strong>{{ ((orders|length + 29) / 30)|int }}</strong> sheet{{ 's' if ((orders|length + 29) / 30)|int != 1 }} needed
+                        <strong id="plSheetCount">{{ ((orders|length + 29) / 30)|int }}</strong> sheet<span id="plSheetPlural">{{ 's' if ((orders|length + 29) / 30)|int != 1 }}</span> needed
                     </div>
                     <div class="pl-action-btns">
                         <button type="submit" class="btn btn-outline btn-sm">Apply Filters</button>
-                        <button type="button" class="pl-print-btn" onclick="window.print()">
+                        <button type="button" class="pl-print-btn" id="plPrint">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                                 <polyline points="6 9 6 2 18 2 18 9"/>
                                 <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
@@ -529,6 +529,14 @@
         </div>
         {% else %}
         <!-- Label Sheets -->
+        <section class="pl-map no-print" aria-label="Which label boxes are already used">
+            <div class="pl-map-text">
+                <h2>Used label boxes</h2>
+                <p id="plMapNote">Tap any box on your sheet that is already used. Labels skip those boxes.</p>
+                <button type="button" class="btn btn-outline btn-sm" id="plNewSheet">New sheet, all boxes open</button>
+            </div>
+            <div class="pl-map-grid" id="plMap" role="group" aria-label="Sheet of 30 label boxes"></div>
+        </section>
         <div class="labels-preview">
             <p class="pl-preview-hint no-print">Swipe sideways to preview · Print for full-size Avery sheet</p>
             {% set labels_per_sheet = 30 %}
@@ -612,6 +620,78 @@
 </div>
 
 <script>
+/* Skip label boxes that are already used. The boxes you last printed into are remembered on this device. */
+(function () {
+    var KEY = 'pm_label_used_boxes', PER = 30;
+    var preview = document.querySelector('.labels-preview');
+    var map = document.getElementById('plMap');
+    if (!preview || !map) return;
+    var cells = [].slice.call(preview.querySelectorAll('.label-cell:not(.empty)'));
+    var note = document.getElementById('plMapNote');
+    var used = [];
+    var nextUsed = [];
+    var remembered = false;
+    try {
+        var stored = JSON.parse(localStorage.getItem(KEY) || '[]');
+        if (Array.isArray(stored)) used = stored.filter(function (n) { return n >= 0 && n < PER; });
+        remembered = used.length > 0;
+    } catch (e) { used = []; }
+    if (remembered) note.textContent = 'Picked up where your last print stopped. Tap a box to change it.';
+
+    function box(cls) { var d = document.createElement('div'); d.className = 'label-cell empty' + (cls ? ' ' + cls : ''); return d; }
+
+    function layout() {
+        [].slice.call(preview.querySelectorAll('.label-sheet')).forEach(function (s) { s.remove(); });
+        var i = 0, sheet = 0, occupied = [];
+        while (i < cells.length) {
+            var sheetEl = document.createElement('div'); sheetEl.className = 'label-sheet';
+            var grid = document.createElement('div'); grid.className = 'label-grid';
+            occupied = [];
+            for (var slot = 0; slot < PER; slot++) {
+                if (sheet === 0 && used.indexOf(slot) > -1) { grid.appendChild(box('used')); occupied.push(slot); }
+                else if (i < cells.length) { grid.appendChild(cells[i++]); occupied.push(slot); }
+                else grid.appendChild(box(''));
+            }
+            sheetEl.appendChild(grid); preview.appendChild(sheetEl); sheet++;
+        }
+        nextUsed = occupied.length >= PER ? [] : occupied;
+        var count = document.getElementById('plSheetCount'), plural = document.getElementById('plSheetPlural');
+        if (count) count.textContent = sheet;
+        if (plural) plural.textContent = sheet === 1 ? '' : 's';
+    }
+
+    function drawMap() {
+        map.innerHTML = '';
+        for (var n = 0; n < PER; n++) {
+            (function (slot) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'pl-map-box' + (used.indexOf(slot) > -1 ? ' on' : '');
+                b.setAttribute('aria-pressed', used.indexOf(slot) > -1 ? 'true' : 'false');
+                b.setAttribute('aria-label', 'Box ' + (slot + 1) + (used.indexOf(slot) > -1 ? ', used' : ', open'));
+                b.textContent = slot + 1;
+                b.addEventListener('click', function () {
+                    var at = used.indexOf(slot);
+                    if (at > -1) used.splice(at, 1); else used.push(slot);
+                    drawMap(); layout();
+                });
+                map.appendChild(b);
+            })(n);
+        }
+    }
+
+    document.getElementById('plNewSheet').addEventListener('click', function () {
+        used = []; try { localStorage.removeItem(KEY); } catch (e) {}
+        note.textContent = 'New sheet: every box is open.';
+        drawMap(); layout();
+    });
+    document.getElementById('plPrint').addEventListener('click', function () {
+        try { localStorage.setItem(KEY, JSON.stringify(nextUsed)); } catch (e) {}
+        window.print();
+    });
+    drawMap(); layout();
+})();
+
 /* Toggle pill visual state when checkbox changes */
 document.querySelectorAll('.pl-pill input[type="checkbox"]').forEach(function(cb) {
     cb.addEventListener('change', function() {
