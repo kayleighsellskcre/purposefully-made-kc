@@ -50,6 +50,24 @@ PASSWORD = 'TestPassw0rd!23'
 SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL']
 
 
+@pytest.fixture(scope='session', autouse=True)
+def _tidy_uploads():
+    """The tests upload real files into static/uploads (that is how the code paths are exercised). Take away whatever a run
+    added once it ends, so the folder never fills with test leftovers (a full run used to leave thousands of copies)."""
+    from pathlib import Path
+    root = Path(_ROOT) / 'static' / 'uploads'
+
+    def files():
+        return {p for p in root.rglob('*') if p.is_file()} if root.exists() else set()
+    before = files()
+    yield
+    for path in files() - before:
+        try:
+            path.unlink()
+        except OSError:
+            pass
+
+
 @pytest.fixture(scope='session')
 def app():
     from app import create_app
