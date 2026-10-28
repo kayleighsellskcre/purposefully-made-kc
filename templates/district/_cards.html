@@ -1,13 +1,6 @@
 {# Cards shared by the district page and the school page: one style at every level. #}
-{% macro crumbs(items) %}
-<nav class="crumbs dist-crumbs" aria-label="Breadcrumb">
-    <ol class="crumbs-list">
-        {% for label, url in items %}
-        {% if loop.last %}<li aria-current="page">{{ label }}</li>{% else %}<li><a href="{{ url }}">{{ label }}</a></li>{% endif %}
-        {% endfor %}
-    </ol>
-</nav>
-{% endmacro %}
+{# The trail of page names ("District > Schools > School > Store") is intentionally not shown anywhere. #}
+{% macro crumbs(items) %}{% endmacro %}
 
 {% macro share_button(share, title, label='Share') %}
 <button type="button" class="dist-share-btn" data-share-title="{{ title }}" data-share-url="{{ share.url }}"

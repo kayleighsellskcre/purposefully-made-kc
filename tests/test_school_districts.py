@@ -93,7 +93,6 @@ def test_the_school_page_leads_with_school_spirit_and_hides_stores_without_produ
     assert html.index('School Spirit') < html.index('Football') < html.index('Volleyball')
     assert 'Staff' not in html.split('Sports and activities')[-1].split('</section>')[0]   # Staff has no products yet
     assert 'Home of the Jaguars' in html
-    assert 'Desoto USD 232' in html and 'High Schools' in html      # breadcrumbs
 
 
 def test_staff_store_goes_last_when_it_has_products(app, seed, guest):
@@ -112,7 +111,6 @@ def test_a_store_page_links_to_school_spirit_and_shows_breadcrumbs(app, seed, gu
     ids = _make(app, seed)
     html = guest.get('/desoto/mill-valley/volleyball', follow_redirects=True).get_data(as_text=True)
     assert 'Also see School Spirit' in html
-    assert 'Desoto USD 232' in html and 'Mill Valley High' in html
     spirit = guest.get('/desoto/mill-valley/school-spirit', follow_redirects=True).get_data(as_text=True)
     assert 'Also see School Spirit' not in spirit
 
