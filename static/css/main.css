@@ -3916,3 +3916,17 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 .gift-submit { width: 100%; }
 .gift-thanks { text-align: center; padding: 2rem 1.4rem; }
 @media (max-width: 600px) { .gift-two { grid-template-columns: 1fr; } }
+
+/* A winner's page, laid out like normal ordering: a shirt that follows the picks, then the steps */
+.gift-wrap:has(.gift-layout) { max-width: 1040px; }
+.gift-layout { display: grid; grid-template-columns: minmax(280px, 400px) 1fr; gap: 1.5rem; align-items: start; }
+.gift-preview { position: sticky; top: 5.5rem; }
+.gift-shirt { aspect-ratio: 1; background: #fff; border: 1px solid var(--border-light); border-radius: 16px; }
+.gift-shirt .pm-proof-overlay { width: 36%; max-width: 40%; max-height: 40%; top: 36%; }
+.gift-picked { text-align: center; color: var(--text-secondary); margin: 0.6rem 0 0; font-size: 0.9rem; }
+@media (max-width: 760px) {
+    .gift-layout { grid-template-columns: 1fr; }
+    .gift-preview { position: sticky; top: 3.6rem; z-index: 5; background: var(--ivory-silk, #f5f0e1); padding: 0.4rem 0; }
+    .gift-shirt { aspect-ratio: auto; height: 34svh; }
+    .gift-picked { margin-top: 0.3rem; }
+}

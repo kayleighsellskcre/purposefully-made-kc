@@ -88,3 +88,18 @@ def test_only_listed_designs_and_shirts_can_be_picked(app, seed, admin):
     assert resp.status_code == 400
     with app.app_context():
         assert Order.query.filter_by(payment_method='donation').count() == 0
+
+
+def test_winners_only_see_the_colors_the_group_allows(app, seed, admin):
+    did = _donation(app, seed, admin)
+    with app.app_context():
+        group = db.session.get(Collection, seed['collection_id'])
+        group.allowed_colors = json.dumps(['Black'])
+        db.session.commit()
+    token = _links(app, did)[0]
+    html = app.test_client().get(f'/gift/{token}').get_data(as_text=True)
+    assert 'name="color" value="Black"' in html and 'name="color" value="White"' not in html
+    resp = app.test_client().post(f'/gift/{token}', data={
+        'product_id': seed['tee_id'], 'design_id': seed['free_design_id'], 'color': 'White', 'size': 'M',
+        'first_name': 'Pat', 'email': 'pat@example.com'})
+    assert resp.status_code == 400

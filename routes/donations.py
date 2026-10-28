@@ -3,7 +3,6 @@ from flask import Blueprint, abort, current_app, flash, redirect, render_templat
 
 from utils import donations as D
 from utils.json_fields import parse_json_list
-from utils.mockups import get_color_variants_data_for_product
 from utils.sizes import sort_sizes
 
 donations_bp = Blueprint('donations', __name__)
@@ -12,9 +11,7 @@ donations_bp = Blueprint('donations', __name__)
 def _choices(donation):
     out = []
     for p in D.available_products(donation):
-        colors = [{'name': c['color_name'], 'hex': c.get('color_hex') or '#cccccc'}
-                  for c in get_color_variants_data_for_product(p, current_app._get_current_object())]
-        out.append({'product': p, 'colors': colors, 'sizes': sort_sizes(parse_json_list(p.available_sizes))})
+        out.append({'product': p, 'colors': D.colors_for(donation, p), 'sizes': sort_sizes(parse_json_list(p.available_sizes))})
     return out
 
 

@@ -58,6 +58,21 @@ def available_products(donation):
     return [found[i] for i in chosen if i in found and found[i].is_active]
 
 
+def colors_for(donation, product):
+    """The colors a winner can pick on this shirt: only what the chosen group allows (every color if it set no limit).
+    Each is {'name', 'hex', 'image'} where image is the shirt photo in that color."""
+    from flask import current_app
+    from utils.color_names import color_in_allowed_set
+    from utils.group_orders import allowed_colors_for_product
+    from utils.mockups import get_color_variants_data_for_product
+    allowed = allowed_colors_for_product(product, donation.collection) if donation.collection else None
+    out = []
+    for c in get_color_variants_data_for_product(product, current_app._get_current_object()):
+        if color_in_allowed_set(c['color_name'], allowed):
+            out.append({'name': c['color_name'], 'hex': c.get('color_hex') or '#cccccc', 'image': c.get('front_image')})
+    return out
+
+
 def create_donation(*, recipient, occasion, donated_on, winners, collection_id, product_ids, note):
     recipient = ' '.join((recipient or '').split())[:200]
     if not recipient:
@@ -108,10 +123,7 @@ def place_claim(claim, form):
     if design is None or design not in available_designs(donation):
         return None, 'Please choose a design.'
     color = ' '.join((form.get('color') or '').split())
-    from flask import current_app
-    from utils.mockups import get_color_variants_data_for_product
-    colors = {c['color_name'] for c in get_color_variants_data_for_product(product, current_app._get_current_object())}
-    if color not in colors:
+    if color not in {c['name'] for c in colors_for(donation, product)}:
         return None, 'Please choose a color.'
     size = (form.get('size') or '').strip()
     if size not in set(parse_json_list(product.available_sizes)):
