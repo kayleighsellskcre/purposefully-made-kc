@@ -184,3 +184,63 @@ def test_checkout_reprices_the_name_and_image_at_six_dollars(app, seed):
         assert price_cart_item(line, tee) == 36.00
         line['back_design_meta'] = {'name': 'MIA', 'vertical': True}
         assert price_cart_item(line, tee) == 33.00
+
+
+def test_a_longer_stacked_name_keeps_its_letters_and_tightens_the_gap_first():
+    for size in ('M', 'YM'):
+        run = PS.safe_print_height(None, size) * PS.VERTICAL_RUN_RATIO
+        base = PS.back_layout(size, None)['name_height'] * PS.VERTICAL_LETTER_RATIO
+        rows = [PS.vertical_name_layout(size, None, 'A' * n) for n in range(2, 13)]
+        letters = [r[0] for r in rows]
+        gaps = [r[1] for r in rows]
+        assert letters[0] == base and gaps[0] == base * PS.VERTICAL_GAP_RATIO          # a short name: full letters, full gap
+        assert letters == sorted(letters, reverse=True) and gaps == sorted(gaps, reverse=True)   # a longer name never grows either
+        tight = [i for i, (l, g) in enumerate(zip(letters, gaps)) if l == base and g < base * PS.VERTICAL_GAP_RATIO]
+        assert tight, size                                                             # there are names that keep the letters and tighten the gap
+        assert max(tight) < max(i for i, l in enumerate(letters) if l < base)          # and the letters only shrink after that
+        for letter, gap, count in rows:
+            assert count * letter + (count - 1) * gap <= run + 0.01
+
+
+def test_the_organizer_can_offer_one_font_several_or_all(app, seed):
+    from werkzeug.datastructures import MultiDict
+    from models import Collection
+    from utils.group_orders import apply_back_fonts
+    with app.app_context():
+        coll = db.session.get(Collection, seed['collection_id'])
+        apply_back_fonts(coll, MultiDict([('back_design_fonts_listed', '1'), ('back_design_fonts', 'Oswald'), ('back_design_fonts', 'Anton')]))
+        assert coll.back_fonts_list == ['Oswald', 'Anton'] and coll.back_design_font is None
+        apply_back_fonts(coll, MultiDict([('back_design_fonts_listed', '1'), ('back_design_fonts', 'Anton')]))
+        assert coll.back_fonts_list == ['Anton'] and coll.back_design_font == 'Anton'            # one font stays locked, as before
+        apply_back_fonts(coll, MultiDict([('back_design_fonts_listed', '1'), ('back_design_fonts', 'Not A Font')]))
+        assert coll.back_fonts_list == [] and coll.back_design_font is None                      # none: every font is offered
+        apply_back_fonts(coll, MultiDict([('back_design_font', 'Teko')]))                        # an older page still works
+        assert coll.back_design_font == 'Teko'
+
+
+def test_shoppers_pick_only_from_the_fonts_the_organizer_offered(app, seed):
+    import json
+    from models import Collection
+    with app.app_context():
+        coll = db.session.get(Collection, seed['collection_id'])
+        coll.allow_back_design, coll.back_design_type, coll.restrict_options = True, 'name_number', True
+        coll.back_design_font, coll.back_design_fonts = None, json.dumps(['Oswald', 'Anton'])
+        db.session.commit()
+        slug = coll.slug
+    shopper = app.test_client()
+    shopper.get(f'/c/{slug}')
+    html = shopper.get(f"/shop/customize/{seed['tee_slug']}").get_data(as_text=True)
+    select = html.split('id="backDesignFont"')[1].split('</select>')[0]
+    assert 'value="Oswald"' in select and 'value="Anton"' in select and 'Bebas Neue' not in select
+
+
+def test_the_group_forms_let_the_organizer_tick_more_than_one_font(app, seed, admin_client):
+    html = admin_client.get(f"/admin/collections/{seed['collection_id']}/edit").get_data(as_text=True)
+    assert 'type="checkbox" name="back_design_fonts"' in html and 'type="radio" name="back_design_font"' not in html
+    assert 'name="back_design_fonts_listed"' in html
+
+
+def test_the_group_page_keeps_the_expanding_filter_and_drops_the_duplicate_chips():
+    source = Path('templates/collection/view.html').read_text(encoding='utf-8')
+    assert 'quickFilterRow' not in source and 'qf-pill' not in source
+    assert "include 'includes/catalog_filter.html'" in source

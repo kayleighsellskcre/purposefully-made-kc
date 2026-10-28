@@ -1799,6 +1799,20 @@ def claim_pending_group_orders(user):
     return rows
 
 
+def apply_back_fonts(collection, form):
+    """Save the font choice: tick one to lock it, several to let people choose among them, none to offer every font."""
+    from utils.fonts import GROUP_ORDER_FONTS
+    valid = [value for value, _label in GROUP_ORDER_FONTS]
+    if form.get('back_design_fonts_listed'):
+        picked = [f for f in form.getlist('back_design_fonts') if f in valid]
+    else:                                                # an older page that only sends the one font
+        one = (form.get('back_design_font') or '').strip()
+        picked = [one] if one else []
+    picked = list(dict.fromkeys(picked))
+    collection.back_design_fonts = json.dumps(picked) if len(picked) > 1 else None
+    collection.back_design_font = picked[0] if len(picked) == 1 else None
+
+
 def apply_locked_back_design(collection, user=None):
     """Store organizer artwork that prints only on the back.
 
@@ -1933,7 +1947,7 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
     )
     collection.showcase_design_ids = json.dumps(showcase_ids) if showcase_ids else None
 
-    collection.back_design_font = request.form.get('back_design_font') or None
+    apply_back_fonts(collection, request.form)
     # Create sends these; edit does not. Only overwrite when the form has them
     # so a successful admin save cannot blank the organizer's style lock.
     if 'back_design_text_color' in request.form:

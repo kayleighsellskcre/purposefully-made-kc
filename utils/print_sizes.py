@@ -525,11 +525,13 @@ def number_group_scale(number):
     return TWO_DIGIT_WIDTH_SCALE if digits == 2 else 1.0
 
 
-# A name stacked down the back (cheer): each letter is 80% of the chart name height, with a gap of 22% of a letter,
-# and the whole run never goes past 70% of the safe print height, so it stays on the upper back.
-VERTICAL_LETTER_RATIO = 0.8
+# A name stacked down the back (cheer): every letter is 90% of the chart's name height, with a gap of 22% of a letter. A longer
+# name keeps the same letters and tightens the gap (down to 4% of a letter) before the letters shrink at all, and the whole
+# run never goes past 80% of the safe print height, so it stays on the upper back.
+VERTICAL_LETTER_RATIO = 0.9
 VERTICAL_GAP_RATIO = 0.22
-VERTICAL_RUN_RATIO = 0.7
+VERTICAL_MIN_GAP_RATIO = 0.04
+VERTICAL_RUN_RATIO = 0.8
 VERTICAL_MIN_LETTER_IN = 0.6
 VERTICAL_MAX_LETTERS = 12
 SAFE_PRINT_HEIGHT_BY_AGE = {'adult': SAFE_PRINT_HEIGHT_ADULT, 'youth': SAFE_PRINT_HEIGHT_YOUTH,
@@ -559,9 +561,14 @@ def vertical_name_layout(size, product=None, name='', reserved=0.0):
         return 0.0, 0.0, 0
     layout = back_layout(size, product)
     run = max(safe_print_height(product, size) * VERTICAL_RUN_RATIO - reserved, VERTICAL_MIN_LETTER_IN * count)
-    letter = min(layout['name_height'] * VERTICAL_LETTER_RATIO, run / (count + VERTICAL_GAP_RATIO * (count - 1)))
-    letter = max(letter, VERTICAL_MIN_LETTER_IN)
-    return letter, letter * VERTICAL_GAP_RATIO, count
+    base = layout['name_height'] * VERTICAL_LETTER_RATIO
+    gaps = count - 1
+    if base * (count + VERTICAL_GAP_RATIO * gaps) <= run:                 # room for the full letters and the full gap
+        return base, base * VERTICAL_GAP_RATIO, count
+    if gaps and base * (count + VERTICAL_MIN_GAP_RATIO * gaps) <= run:     # same letters, the gap tightens with the name
+        return base, (run - count * base) / gaps, count
+    letter = max(run / (count + VERTICAL_MIN_GAP_RATIO * gaps), VERTICAL_MIN_LETTER_IN)   # a very long name: the letters shrink too
+    return letter, letter * VERTICAL_MIN_GAP_RATIO, count
 
 
 def back_name_number_size(size, product=None, name='', number='', font='Bebas Neue',
@@ -720,7 +727,7 @@ def client_config(product=None):
         'safe_height_by_age': SAFE_PRINT_HEIGHT_BY_AGE,
         'neck_gap': NECK_GAP_IN,
         'vertical': {
-            'letter_ratio': VERTICAL_LETTER_RATIO, 'gap_ratio': VERTICAL_GAP_RATIO, 'run_ratio': VERTICAL_RUN_RATIO,
+            'letter_ratio': VERTICAL_LETTER_RATIO, 'gap_ratio': VERTICAL_GAP_RATIO, 'min_gap_ratio': VERTICAL_MIN_GAP_RATIO, 'run_ratio': VERTICAL_RUN_RATIO,
             'min_letter': VERTICAL_MIN_LETTER_IN, 'max_letters': VERTICAL_MAX_LETTERS,
         },
     }

@@ -187,6 +187,20 @@ class Collection(db.Model):
     # Every back image of this group (JSON list, main images and their color versions). back_design_id stays the
     # first main one, so everything that only needs "the back image" keeps working.
     back_design_ids = db.Column(db.Text)
+    # JSON list when the organizer offers several fonts to choose from (one font stays in back_design_font, locked).
+    back_design_fonts = db.Column(db.Text)
+
+    @property
+    def back_fonts_list(self):
+        """The fonts the organizer picked: several, one (locked), or none (every font is offered)."""
+        import json as _json
+        try:
+            picked = _json.loads(self.back_design_fonts) if self.back_design_fonts else []
+        except (TypeError, ValueError):
+            picked = []
+        if not picked and self.back_design_font:
+            picked = [self.back_design_font]
+        return [f for f in picked if isinstance(f, str)]
 
     # Optional two-lane team store. JSON keeps the uniform product + fixed
     # Home/Away colors separate from the existing fan-wear product/color rules.

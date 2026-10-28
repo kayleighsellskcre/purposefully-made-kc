@@ -478,7 +478,8 @@ def create_group_order():
                 collection.allowed_design_ids = json.dumps(allowed_design_ids)
             if allowed_design_ids or allowed_colors_json:
                 collection.restrict_options = True
-            collection.back_design_font = request.form.get('back_design_font') or None
+            from utils.group_orders import apply_back_fonts
+            apply_back_fonts(collection, request.form)
             # Uniform back-design style controls
             collection.back_design_text_color = request.form.get('back_design_text_color') or None
             collection.back_design_outline = request.form.get('back_design_outline') != 'off'
@@ -942,6 +943,7 @@ def customize(product_slug):
     allow_custom_upload = True  # default: show upload area
     allowed_placements = None  # None = all allowed
     back_design_font = None
+    back_fonts_allowed = []     # several fonts the organizer offers: the shopper picks among these
     back_design_text_color = None
     back_design_outline = None   # None = use customer's choice
     back_design_outline_color = None
@@ -1001,6 +1003,8 @@ def customize(product_slug):
         )
         allow_custom_upload = getattr(coll, 'allow_custom_upload', True)
         back_design_font = getattr(coll, 'back_design_font', None)
+        _picked_fonts = coll.back_fonts_list if hasattr(coll, 'back_fonts_list') else []
+        back_fonts_allowed = _picked_fonts if len(_picked_fonts) > 1 else []
         back_design_text_color = getattr(coll, 'back_design_text_color', None)
         _outline = getattr(coll, 'back_design_outline', None)
         back_design_outline = _outline if _outline is not None else True
@@ -1240,13 +1244,14 @@ def customize(product_slug):
                          gallery_designs=gallery_designs,
                          design_collections=design_collections,
                          my_designs=my_designs,
-                         customize_back_fonts=CUSTOMIZE_BACK_FONTS,
+                         customize_back_fonts=([(v, l) for v, l in GROUP_ORDER_FONTS if v in back_fonts_allowed] or CUSTOMIZE_BACK_FONTS),
                          current_user=current_user,
                          collection_restricted=collection_restricted,
                          in_group_order=bool(coll),
                          allow_custom_upload=allow_custom_upload,
                          allowed_placements=allowed_placements,
                          back_design_font=back_design_font,
+                         back_fonts_allowed=back_fonts_allowed,
                          back_design_text_color=back_design_text_color,
                          back_design_outline=back_design_outline,
                          back_design_outline_color=back_design_outline_color,

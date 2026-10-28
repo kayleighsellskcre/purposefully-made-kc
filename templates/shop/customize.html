@@ -2602,6 +2602,8 @@
                                 <label for="backDesignNumberInput">Number</label>
                                 <input type="text" id="backDesignNumberInput" class="form-control" placeholder="e.g. 23" maxlength="3" pattern="[0-9]*" inputmode="numeric">
                             </div>
+                            <div id="backTextLookHome"></div>
+                            <div id="backTextLook">
                             <div class="form-group" style="margin-bottom: 0.75rem;">
                                 <label for="backDesignFont">Font style</label>
                                 {% if collection_restricted and back_design_font %}
@@ -2661,6 +2663,7 @@
                                 </div>
                             </div>
                             {% endif %}
+                            </div>
                             <p class="form-hint" style="margin-top: 0.5rem; font-size: 0.8rem;">Select "Back View" above to see the back. Name, number, font, and colors update instantly.</p>
                         </div>
                         {% endif %}
@@ -2728,7 +2731,7 @@
                                 <div id="backStackFields" hidden>
                                     <label for="backStackName">Name</label>
                                     <input type="text" id="backStackName" class="form-control" maxlength="12" placeholder="e.g. STACY" style="text-transform: uppercase;">
-                                    <p class="form-hint">Uses the font and colors from the Name &amp; Number tab.</p>
+                                    <div id="backStackLookSlot"></div>
                                 </div>
                             </div>
                         </div>
@@ -4882,12 +4885,21 @@
         return Array.from(String(name || '').toUpperCase().replace(/\s+/g, '')).slice(0, max);
     }
     function verticalLayoutIn(sizeOverride, count, reservedIn) {
-        const cfg = (TRANSFER_SIZING && TRANSFER_SIZING.vertical) || { letter_ratio: 0.8, gap_ratio: 0.22, run_ratio: 0.7, min_letter: 0.6 };
+        const cfg = (TRANSFER_SIZING && TRANSFER_SIZING.vertical) || { letter_ratio: 1, gap_ratio: 0.22, min_gap_ratio: 0.06, run_ratio: 0.8, min_letter: 0.6 };
         const safeH = ((TRANSFER_SIZING && TRANSFER_SIZING.safe_height_by_age) || {})[sizingAge()] || (state.isAdult ? 15.5 : 12.5);
         const run = Math.max(safeH * cfg.run_ratio - (reservedIn || 0), cfg.min_letter * count);
-        let letter = Math.min(nameHeightIn(sizeOverride) * cfg.letter_ratio, run / (count + cfg.gap_ratio * (count - 1)));
-        letter = Math.max(letter, cfg.min_letter);
-        return { letter: letter, gap: letter * cfg.gap_ratio, total: count * letter + (count - 1) * letter * cfg.gap_ratio };
+        const base = nameHeightIn(sizeOverride) * cfg.letter_ratio;
+        const gaps = count - 1;
+        let letter = base, gap = base * cfg.gap_ratio;
+        if (base * (count + cfg.gap_ratio * gaps) > run) {
+            if (gaps && base * (count + cfg.min_gap_ratio * gaps) <= run) {
+                gap = (run - count * base) / gaps;                      // same letters, a tighter gap for a longer name
+            } else {
+                letter = Math.max(run / (count + cfg.min_gap_ratio * gaps), cfg.min_letter);   // a very long name: the letters shrink too
+                gap = letter * cfg.min_gap_ratio;
+            }
+        }
+        return { letter: letter, gap: gap, total: count * letter + gaps * gap };
     }
 
     // The stacked name that goes with a small collar image (the name field lives in the Small Image tab).
@@ -5590,6 +5602,19 @@
             refreshOutlineColorVisibility();
             syncBackDesignPreview();
         });
+        // One set of font and color controls: it sits in the Name tab, and moves into the stacked-name block of the
+        // Small Image tab while that block is in use, so nobody has to go back and forth.
+        const lookBox = document.getElementById('backTextLook');
+        const lookHome = document.getElementById('backTextLookHome');
+        const lookSlot = document.getElementById('backStackLookSlot');
+        function placeLook() {
+            if (!lookBox || !lookHome || !lookSlot) return;
+            const toggle = document.getElementById('backStackToggle');
+            const inStack = isSmallBackImage() && toggle && toggle.checked;
+            if (inStack && lookBox.parentNode !== lookSlot) lookSlot.appendChild(lookBox);
+            if (!inStack && lookBox.parentNode === lookSlot) lookHome.parentNode.insertBefore(lookBox, lookHome.nextSibling);
+        }
+        document.querySelectorAll('.back-design-tab').forEach(t => t.addEventListener('click', function () { setTimeout(placeLook, 0); }));
         const verticalToggle = document.getElementById('backDesignVerticalToggle');
         const addImageBtn = document.getElementById('backStackAddImage');
         const smallTab = document.querySelector('.back-design-tab[data-size="small"]');
@@ -5606,6 +5631,7 @@
         const stackName = document.getElementById('backStackName');
         if (stackToggle) stackToggle.addEventListener('change', function () {
             if (stackFields) stackFields.hidden = !this.checked;
+            placeLook();
             if (this.checked && stackName) stackName.focus();
             syncBackDesignPreview();
         });
@@ -5614,6 +5640,7 @@
             if (stackName && nameInput) stackName.value = (nameInput.value || '').trim().toUpperCase();
             if (stackToggle && !stackToggle.checked) { stackToggle.checked = true; if (stackFields) stackFields.hidden = false; }
             smallTab.click();
+            setTimeout(placeLook, 0);
             const wrap = document.getElementById('backDesignUpload');
             if (wrap) wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });

@@ -3075,7 +3075,8 @@ def add_collection():
             if allowed_design_ids or allowed_colors_json:
                 collection.restrict_options = True
 
-            collection.back_design_font = request.form.get('back_design_font') or None
+            from utils.group_orders import apply_back_fonts
+            apply_back_fonts(collection, request.form)
             # Uniform back-design style controls
             collection.back_design_text_color = request.form.get('back_design_text_color') or None
             collection.back_design_outline = request.form.get('back_design_outline') != 'off'
