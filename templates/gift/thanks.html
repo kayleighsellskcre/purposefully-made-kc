@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Thank you - Purposefully Made KC{% endblock %}
+{% block content %}
+<section class="gift-page">
+    <div class="gift-wrap">
+        <span class="gift-eyebrow">A gift for you</span>
+        <h1>Thank you, your shirt is on its way</h1>
+        <div class="gift-card gift-thanks">
+            <p>Your choice was received. We will email you when your shirt is ready. Thank you for supporting {{ donation.recipient }}.</p>
+            {% if claim.order %}<p class="gift-fine">Order {{ claim.order.order_number }}</p>{% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -34,13 +34,15 @@ TYPE_LABELS = {
 }
 
 FEE_CATEGORY = 'Commissions and fees'
+DONATION_CATEGORY = 'Charitable donations (at cost)'
+DONATION_METHOD = 'donation'            # Order.payment_method of a free order given away
 
 # Schedule C lines are a guide for the CPA to confirm. Equipment is recorded as Supplies (the Equipment box).
 EXPENSE_CATEGORIES = [
     ('Advertising', '8'), ('Car and truck (mileage)', '9'), (FEE_CATEGORY, '10'), ('Contract labor', '11'),
     ('Insurance', '15'), ('Legal and professional', '17'), ('Office expense', '18'), ('Rent', '20'),
     ('Repairs', '21'), ('Supplies', '22'), ('Taxes and licenses', '23'), ('Travel', '24a'), ('Meals', '24b'),
-    ('Utilities', '25'), ('Software and subscriptions', '27a'), ('Shipping and postage', '27a'), ('Other', '27a'),
+    ('Utilities', '25'), ('Charitable donations (at cost)', '27a'), ('Software and subscriptions', '27a'), ('Shipping and postage', '27a'), ('Other', '27a'),
 ]
 EXPENSE_LINE = dict(EXPENSE_CATEGORIES)
 PAY_METHODS = ['Card', 'Cash', 'Check', 'Venmo', 'PayPal', 'Bank transfer', 'Other']
@@ -100,7 +102,7 @@ def sync_source(source_key, desired, *, when, current, estimate_types=(), when_m
         if delta == 0:
             continue
         first = (source_key, entry_type) not in current
-        category = FEE_CATEGORY if entry_type == FEE else None
+        category = FEE_CATEGORY if entry_type == FEE else (DONATION_CATEGORY if entry_type == EXPENSE else None)
         first_when = (when_map or {}).get(entry_type) or when          # a refund counts on the day it went out
         _add(entry_type, delta, when=first_when if first else datetime.utcnow(), source_key=source_key, category=category,
              is_estimate=entry_type in estimate_types,
@@ -152,6 +154,10 @@ def order_desired(order):
     paid = (order.payment_status or '') in ('paid', 'refunded') or bool(order.is_refunded)
     if not paid:
         return {}, ()
+    if (order.payment_method or '') == DONATION_METHOD:
+        # Given away: what it cost us is a donation, valued at cost (blank plus transfer), never at the retail price.
+        cost = to_cents(order.cost_of_goods or 0)
+        return ({EXPENSE: -cost} if cost else {}), ((EXPENSE,) if cost and not order.cogs_is_actual else ())
     merchandise, shipping, tax = to_cents(order.subtotal), to_cents(order.shipping_cost), to_cents(order.tax)
     want = {SALE: merchandise, SHIPPING: shipping, TAX: tax}
     estimates = []

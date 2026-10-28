@@ -7419,5 +7419,6 @@ def mark_order_paid(order_id):
 
 # The Reports, Ledger and Expenses pages live in their own file but share this blueprint and its locks.
 from routes import admin_books  # noqa: E402,F401
+from routes import admin_donations  # noqa: E402,F401
 # School district setup, QR codes and reports.
 from routes import admin_districts  # noqa: E402,F401

@@ -1660,3 +1660,34 @@ class VoteChoice(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     response_id = db.Column(db.Integer, db.ForeignKey('vote_response.id'), nullable=False, index=True)
     option_id = db.Column(db.Integer, db.ForeignKey('vote_option.id'), nullable=False, index=True)
+
+
+class Donation(db.Model):
+    """Something given away, such as shirts for a school silent auction. Each winner gets their own private link to pick a shirt."""
+    __tablename__ = 'donation'
+    id = db.Column(db.Integer, primary_key=True)
+    recipient = db.Column(db.String(200), nullable=False)
+    occasion = db.Column(db.String(200))
+    donated_on = db.Column(db.Date, nullable=False)                      # Kansas City day it counts
+    winners_expected = db.Column(db.Integer, default=1)
+    collection_id = db.Column(db.Integer, db.ForeignKey('collection.id'))   # designs come from this group, if chosen
+    product_ids = db.Column(db.Text)                                      # JSON list of the shirt styles winners can pick from
+    design_ids = db.Column(db.Text)                                       # JSON list of designs winners can pick from (empty = all of the group's)
+    note = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    claims = db.relationship('DonationClaim', backref='donation', cascade='all, delete-orphan', order_by='DonationClaim.id')
+    collection = db.relationship('Collection', foreign_keys=[collection_id])
+
+
+class DonationClaim(db.Model):
+    """One winner: their private link and, once they choose, the free order it made."""
+    __tablename__ = 'donation_claim'
+    id = db.Column(db.Integer, primary_key=True)
+    donation_id = db.Column(db.Integer, db.ForeignKey('donation.id'), nullable=False, index=True)
+    token = db.Column(db.String(32), unique=True, nullable=False, index=True)
+    winner_name = db.Column(db.String(120))
+    winner_email = db.Column(db.String(120))
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'))
+    claimed_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    order = db.relationship('Order', foreign_keys=[order_id])

@@ -1,0 +1,65 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Donations - Admin - Purposefully Made KC{% endblock %}
+{% block admin_content %}
+<div class="admin-page">
+    <div class="container dn-wrap">
+        <div class="admin-header">
+            <span class="adm-eyebrow">Admin / Group Orders</span>
+            <h1>Donations</h1>
+            <a href="{{ url_for('admin.collections') }}" class="btn btn-outline btn-sm">Back to Group Orders</a>
+        </div>
+        <p class="dn-lead">Shirts you give away, such as a school silent auction. Each winner gets a private link to pick their color and design. What the shirts cost you is written off as a donation in your books.</p>
+
+        <details class="dn-card" {% if not rows %}open{% endif %}>
+            <summary class="dn-summary">Record a new donation</summary>
+            <form method="post" class="dn-form">
+                <div class="dn-grid">
+                    <label>Who is it for?
+                        <input name="recipient" required maxlength="200" placeholder="Riverview Elementary PTA">
+                    </label>
+                    <label>What is the occasion? <small>(optional)</small>
+                        <input name="occasion" maxlength="200" placeholder="December silent auction">
+                    </label>
+                    <label>Date
+                        <input type="date" name="donated_on" required value="{{ today }}">
+                    </label>
+                    <label>How many winners?
+                        <input type="number" name="winners" min="1" max="50" value="4" required>
+                    </label>
+                </div>
+                <label>Take the designs from this group <small>(winners choose from them)</small>
+                    <select name="collection_id">
+                        <option value="">Choose a group</option>
+                        {% for c in collections %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                    </select>
+                </label>
+                <fieldset class="dn-tees">
+                    <legend>Shirt styles winners can pick</legend>
+                    {% for t in tees %}
+                    <label class="dn-check"><input type="checkbox" name="product_id" value="{{ t.id }}" {% if loop.first %}checked{% endif %}> {{ t.name }}</label>
+                    {% else %}
+                    <p class="dn-fine">No T-shirt styles are set up yet.</p>
+                    {% endfor %}
+                </fieldset>
+                <label>A note for yourself <small>(optional)</small>
+                    <input name="note" placeholder="Promised at the October PTA meeting">
+                </label>
+                <button class="btn btn-primary" type="submit">Save donation</button>
+            </form>
+        </details>
+
+        {% for r in rows %}
+        <a class="dn-card dn-row" href="{{ url_for('admin.donation_view', donation_id=r.donation.id) }}">
+            <div>
+                <strong>{{ r.donation.recipient }}</strong>
+                <span>{{ r.donation.occasion or 'Donation' }} &middot; {{ r.donation.donated_on.strftime('%b %d, %Y') }}</span>
+            </div>
+            <div class="dn-row-right">
+                <span>{{ r.chosen }} of {{ r.donation.claims|length }} chosen</span>
+                <span>${{ '%.2f'|format(r.cost) }} at cost{{ ' (estimate)' if r.estimate and r.chosen else '' }}</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

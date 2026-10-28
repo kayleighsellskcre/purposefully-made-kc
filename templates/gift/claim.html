@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Choose your shirt - Purposefully Made KC{% endblock %}
+{% block content %}
+<section class="gift-page">
+    <div class="gift-wrap">
+        <span class="gift-eyebrow">A gift for you</span>
+        <h1>Choose your shirt</h1>
+        <p class="gift-lead">{% if claim.winner_name %}Congratulations, {{ claim.winner_name }}! {% endif %}Thank you for supporting {{ donation.recipient }}{% if donation.occasion %} at the {{ donation.occasion }}{% endif %}. Your shirt is a gift from Purposefully Made KC, so there is nothing to pay. Pick your color, design and size.</p>
+        {% if not choices or not designs %}
+        <div class="gift-card"><p>This gift is not quite ready yet. Please check back soon, or contact us and we will help.</p></div>
+        {% else %}
+        <form method="post" class="gift-form" id="giftForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="gift-card">
+                <h2>1. Your design</h2>
+                <div class="gift-designs">
+                    {% for d in designs %}
+                    <label class="gift-design">
+                        <input type="radio" name="design_id" value="{{ d.id }}" required {% if form.get('design_id') == d.id|string %}checked{% endif %}>
+                        <span class="gift-art"><img src="{{ d.file_path | image_url }}" alt="{{ d.title or 'Design' }}" loading="lazy"></span>
+                        <span class="gift-name">{{ d.title or 'Design' }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="gift-card">
+                <h2>2. Your shirt</h2>
+                {% for c in choices %}
+                <div class="gift-style" data-product="{{ c.product.id }}">
+                    {% if choices|length > 1 %}
+                    <label class="gift-check"><input type="radio" name="product_id" value="{{ c.product.id }}" {% if form.get('product_id') == c.product.id|string or (not form and loop.first) %}checked{% endif %}> {{ c.product.name }}</label>
+                    {% else %}
+                    <input type="hidden" name="product_id" value="{{ c.product.id }}">
+                    <p class="gift-fine">{{ c.product.name }}</p>
+                    {% endif %}
+                    <div class="gift-colors" role="radiogroup" aria-label="Color">
+                        {% for col in c.colors %}
+                        <label class="gift-color" title="{{ col.name }}">
+                            <input type="radio" name="color" value="{{ col.name }}" required {% if form.get('color') == col.name %}checked{% endif %}>
+                            <span class="gift-dot" style="background: {{ col.hex }}"></span>
+                            <span class="gift-colorname">{{ col.name }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+                <label class="gift-label" for="giftSize">Size</label>
+                <select id="giftSize" name="size" class="gift-input" required>
+                    <option value="">Choose a size</option>
+                    {% for s in choices[0].sizes %}<option value="{{ s }}" {% if form.get('size') == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+                </select>
+            </div>
+
+            <div class="gift-card">
+                <h2>3. Where to find you</h2>
+                <div class="gift-two">
+                    <input class="gift-input" name="first_name" placeholder="First name" required value="{{ form.get('first_name', (claim.winner_name or '').split(' ')[0]) }}">
+                    <input class="gift-input" name="last_name" placeholder="Last name" value="{{ form.get('last_name', (claim.winner_name or '').split(' ')[1:]|join(' ')) }}">
+                </div>
+                <input class="gift-input" type="email" name="email" placeholder="Email" required value="{{ form.get('email', claim.winner_email or '') }}">
+                <input class="gift-input" type="tel" name="phone" placeholder="Phone (optional)" value="{{ form.get('phone', '') }}">
+                <div class="gift-pick">
+                    <label class="gift-check"><input type="radio" name="fulfillment" value="pickup" {% if form.get('fulfillment') != 'shipping' %}checked{% endif %}> I will pick it up</label>
+                    <label class="gift-check"><input type="radio" name="fulfillment" value="shipping" {% if form.get('fulfillment') == 'shipping' %}checked{% endif %}> Please ship it to me</label>
+                </div>
+                <div id="giftShip" class="gift-ship">
+                    <input class="gift-input" name="shipping_street" placeholder="Street address" value="{{ form.get('shipping_street', '') }}">
+                    <div class="gift-two">
+                        <input class="gift-input" name="shipping_city" placeholder="City" value="{{ form.get('shipping_city', '') }}">
+                        <input class="gift-input" name="shipping_state" placeholder="State" value="{{ form.get('shipping_state', '') }}">
+                    </div>
+                    <input class="gift-input" name="shipping_zip" placeholder="ZIP" value="{{ form.get('shipping_zip', '') }}">
+                </div>
+            </div>
+            <button class="btn btn-primary gift-submit" type="submit">Send my choice</button>
+            <p class="gift-fine">Once you send it, your shirt goes into production. We will email you when it is ready.</p>
+        </form>
+        <script>
+        (function () {
+            var ship = document.getElementById('giftShip');
+            function sync() { var on = document.querySelector('input[name=fulfillment][value=shipping]').checked; ship.style.display = on ? 'block' : 'none'; }
+            document.querySelectorAll('input[name=fulfillment]').forEach(function (r) { r.addEventListener('change', sync); });
+            sync();
+        })();
+        </script>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

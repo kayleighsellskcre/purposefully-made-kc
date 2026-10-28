@@ -1,0 +1,76 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ donation.recipient }} - Donation - Admin - Purposefully Made KC{% endblock %}
+{% block admin_content %}
+<div class="admin-page">
+    <div class="container dn-wrap">
+        <div class="admin-header">
+            <span class="adm-eyebrow">Admin / Group Orders / Donations</span>
+            <h1>{{ donation.recipient }}</h1>
+            <a href="{{ url_for('admin.donations') }}" class="btn btn-outline btn-sm">All donations</a>
+        </div>
+        <p class="dn-lead">{{ donation.occasion or 'Donation' }}, {{ donation.donated_on.strftime('%B %d, %Y') }}.{% if donation.note %} {{ donation.note }}{% endif %}</p>
+
+        <div class="dn-card dn-stats">
+            <div><strong>{{ count }} of {{ donation.claims|length }}</strong><span>winners have chosen</span></div>
+            <div><strong>${{ '%.2f'|format(cost) }}</strong><span>written off so far, at cost{{ ' (an estimate until your real costs are in)' if estimate and count else '' }}</span></div>
+        </div>
+        <p class="dn-fine">Each chosen shirt is a free order that goes through production and Order blanks like any other. Its cost appears in Reports as "Charitable donations (at cost)", not as cost of goods. Ask your CPA to confirm that the recipient qualifies.</p>
+
+        <h2 class="dn-h2">Winners</h2>
+        {% for c in donation.claims %}
+        <div class="dn-card dn-claim">
+            <form method="post" action="{{ url_for('admin.donation_winner', donation_id=donation.id) }}" class="dn-claim-form">
+                <input type="hidden" name="claim_id" value="{{ c.id }}">
+                <span class="dn-num">{{ loop.index }}</span>
+                <input name="winner_name" value="{{ c.winner_name or '' }}" placeholder="Winner's name" maxlength="120" aria-label="Winner {{ loop.index }} name">
+                <input name="winner_email" value="{{ c.winner_email or '' }}" placeholder="Email (optional)" maxlength="120" aria-label="Winner {{ loop.index }} email">
+                <button class="btn btn-outline btn-sm" type="submit">Save</button>
+            </form>
+            {% if c.order %}
+            <p class="dn-status dn-done">Chosen: {{ c.order.items.first().color if c.order.items.first() else '' }}
+                {{ c.order.items.first().size if c.order.items.first() else '' }}.
+                <a href="{{ url_for('admin.order_detail', order_id=c.order.id) }}">Order {{ c.order.order_number }}</a></p>
+            {% else %}
+            <div class="dn-link-row">
+                <input class="dn-link" readonly value="{{ links[c.id] }}" aria-label="Private link for winner {{ loop.index }}">
+                <button type="button" class="btn btn-primary btn-sm dn-copy">Copy link</button>
+                {% if c.winner_email %}<a class="btn btn-outline btn-sm" href="mailto:{{ c.winner_email }}?subject={{ ('Choose your shirt from ' ~ 'Purposefully Made KC')|urlencode }}&body={{ ('Congratulations! Pick your color and design here: ' ~ links[c.id])|urlencode }}">Email it</a>{% endif %}
+                <span class="dn-status">Waiting for them to choose</span>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        <form method="post" action="{{ url_for('admin.donation_winner', donation_id=donation.id) }}">
+            <input type="hidden" name="action" value="add">
+            <button class="btn btn-outline btn-sm" type="submit">Add another winner</button>
+        </form>
+
+        <h2 class="dn-h2">What winners can choose</h2>
+        <p class="dn-fine">Shirt styles: {% for p in products %}{{ p.name }}{{ ', ' if not loop.last }}{% else %}none yet{% endfor %}.</p>
+        {% if designs %}
+        <form method="post" action="{{ url_for('admin.donation_designs', donation_id=donation.id) }}" class="dn-card">
+            <p class="dn-fine">Tick the designs winners can pick from. Leave all unticked to offer every design from {{ donation.collection.name if donation.collection else 'the group' }}.</p>
+            <div class="dn-designs">
+                {% for d in designs %}
+                <label class="dn-design"><input type="checkbox" name="design_id" value="{{ d.id }}" {% if d.id in chosen %}checked{% endif %}>
+                    <img src="{{ d.file_path | image_url }}" alt="{{ d.title or 'Design' }}" loading="lazy">
+                    <span>{{ d.title or 'Design ' ~ d.id }}</span></label>
+                {% endfor %}
+            </div>
+            <button class="btn btn-primary btn-sm" type="submit">Save designs</button>
+        </form>
+        {% else %}
+        <p class="dn-fine">No designs yet. Pick a group that has designs when you record the donation.</p>
+        {% endif %}
+    </div>
+</div>
+<script>
+document.querySelectorAll('.dn-copy').forEach(function (b) {
+    b.addEventListener('click', function () {
+        var i = b.parentNode.querySelector('.dn-link'); i.select();
+        try { navigator.clipboard.writeText(i.value); } catch (e) { document.execCommand('copy'); }
+        b.textContent = 'Copied';
+    });
+});
+</script>
+{% endblock %}
