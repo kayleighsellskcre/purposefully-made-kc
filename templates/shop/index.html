@@ -199,7 +199,7 @@
             {% set _q = request.args.get('q') or None %}
             {% set _srt = (selected_sort if selected_sort and selected_sort != 'featured' else None) %}
             <a href="{{ url_for('shop.index', q=_q, sort=_srt) }}" class="shop-chip {% if not _cat and not _age %}shop-chip--on{% endif %}">All</a>
-            <a href="{{ url_for('shop.index', category='Tee', q=_q, sort=_srt) }}" class="shop-chip {% if _cat == 'Tee' %}shop-chip--on{% endif %}">Tees</a>
+            <a href="{{ url_for('shop.index', category='Tee', q=_q, sort=_srt) }}" class="shop-chip {% if _cat == 'Tee' %}shop-chip--on{% endif %}">T-Shirts</a>
             <a href="{{ url_for('shop.index', category='Long Sleeve', q=_q, sort=_srt) }}" class="shop-chip {% if _cat == 'Long Sleeve' %}shop-chip--on{% endif %}">Long Sleeve</a>
             <a href="{{ url_for('shop.index', category='Sweatshirt', q=_q, sort=_srt) }}" class="shop-chip {% if _cat == 'Sweatshirt' %}shop-chip--on{% endif %}">Sweatshirts</a>
             <a href="{{ url_for('shop.index', category='Hoodie', q=_q, sort=_srt) }}" class="shop-chip {% if _cat == 'Hoodie' %}shop-chip--on{% endif %}">Hoodies</a>

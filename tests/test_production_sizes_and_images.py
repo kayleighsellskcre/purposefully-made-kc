@@ -164,3 +164,27 @@ def test_a_saved_back_picture_carries_its_label_and_plain_gives_the_original(app
     first, second = Image.open(io.BytesIO(labeled.data)), Image.open(io.BytesIO(plain.data))
     assert second.size == (400, 200) and first.height > second.height and first.width == second.width
     assert 'YM_' in labeled.headers['Content-Disposition']
+
+
+def test_the_same_back_picture_at_the_same_size_is_one_card_ordered_once(app, seed, admin_client, back_picture):
+    _order(app, seed, 'SZ-SAME1', [dict(back_design_file_name=back_picture, size='M', quantity=1, product_id=seed['youth_id'])])
+    _order(app, seed, 'SZ-SAME2', [dict(back_design_file_name=back_picture, size='M', quantity=1, product_id=seed['youth_id'])])
+    _order(app, seed, 'SZ-SAME3', [dict(back_design_file_name=back_picture, size='L', quantity=1, product_id=seed['youth_id'])])
+    page = admin_client.get('/admin/production/master?stage=order_received').get_data(as_text=True)
+    assert page.count('Back design: zz test back wide') == 2            # YM once (for both orders) and YL once
+    assert 'YM_' in page and '_x2_weekly' in page                       # the YM file says x2
+    zipped = admin_client.get('/admin/production/master/images.zip?stage=order_received')
+    names = zipfile.ZipFile(io.BytesIO(zipped.data)).namelist()
+    assert len(names) == 2 and any(n.startswith('YM_') and '_x2_' in n for n in names)
+
+
+def test_the_pictures_on_the_cards_are_the_labeled_files_so_saving_one_keeps_its_details(app, seed, admin_client, back_picture):
+    _order(app, seed, 'SZ-PIC', [dict(back_design_file_name=back_picture, size='M', quantity=2, product_id=seed['youth_id'])])
+    page = admin_client.get('/admin/production/master?stage=order_received').get_data(as_text=True)
+    src = page.split('<img src="')[-1].split('"')[0] if '/save/back' in page else ''
+    marker = '/save/back?'
+    assert marker in page and 'inline=1' in page.split(marker)[1][:300]       # the card's picture comes from the labeled file
+    from PIL import Image as _Image
+    url = page.split('<img src="')[[i for i, part in enumerate(page.split('<img src="')) if marker in part.split('"')[0]][0]].split('"')[0].replace('&amp;', '&')
+    shown = admin_client.get(url)
+    assert shown.status_code == 200 and _Image.open(io.BytesIO(shown.data)).height > 200       # taller than the 200px art: the label is in it

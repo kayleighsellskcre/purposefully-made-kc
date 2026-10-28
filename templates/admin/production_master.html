@@ -107,8 +107,8 @@
                     {% for group in design_list %}
                     <div class="design-master-card">
                         {% if group.design and group.design.file_path %}
-                            <a href="{{ group.design.file_path | image_url }}" target="_blank" rel="noopener" class="design-master-preview design-master-preview-link" title="Click to open full size. Right-click to save.">
-                            <img src="{{ group.design.file_path | image_url }}" alt="{{ group.design.filename or 'Design' }}">
+                            <a href="{{ group.preview_url or (group.design.file_path | image_url) }}" target="_blank" rel="noopener" class="design-master-preview design-master-preview-link" title="Click to open full size. Right-click to save.">
+                            <img src="{{ group.preview_url or (group.design.file_path | image_url) }}" alt="{{ group.design.filename or 'Design' }}"{% if group.preview_url %} onerror="this.onerror=null;this.src='{{ group.design.file_path | image_url }}'"{% endif %}>
                             <span class="design-click-hint">Click to open & save</span>
                         </a>
                         {% else %}
@@ -139,7 +139,7 @@
                         {% if row.print_url %}
                         <div class="design-master-preview">
                             {% if row.size_code %}<span class="size-tag" title="Shirt size">{{ row.size_code }}</span>{% endif %}
-                            <img src="{{ row.print_url }}" alt="{{ row.name or row.logo_name or 'Back' }} {{ row.number or '' }}">
+                            <img src="{{ row.preview_url or row.print_url }}" alt="{{ row.name or row.logo_name or 'Back' }} {{ row.number or '' }}"{% if row.preview_url %} onerror="this.onerror=null;this.src='{{ row.print_url }}'"{% endif %}>
                         </div>
                         {% else %}
                         <div class="design-master-preview">

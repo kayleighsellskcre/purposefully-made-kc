@@ -3588,6 +3588,7 @@ def _master_art_files(orders):
     from utils.size_codes import size_order
     files = []
     seen_fronts = {}
+    seen_backs = {}
     for order in orders:
         for item in order.items:
             prod = production_from_order_item(item, customer_name=order.full_name) or {}
@@ -3612,6 +3613,17 @@ def _master_art_files(orders):
                     dims = back_logo_dims(item)
                     width, height = dims['width'], dims['height']
                     label = 'back-' + (_back_logo_name(item).replace('Back design: ', '') or 'design')
+                    from utils.order_artwork import back_print_url as _back_url
+                    same = (_back_url(item), code, round(width or 0, 2), round(height or 0, 2))
+                    if same in seen_backs:                       # the same back picture at the same size: one file, one total
+                        seen_backs[same]['qty'] += qty
+                        seen_backs[same]['order_number'] = 'weekly'
+                        continue
+                    rec = {'order': order, 'item': item, 'side': 'back', 'codes': {code}, 'qty': qty, 'width': width,
+                           'height': height, 'label': label, 'order_number': order.order_number}
+                    seen_backs[same] = rec
+                    files.append(rec)
+                    continue
                 elif back.get('name') or back.get('number'):
                     width, height = back.get('combined_width'), back.get('combined_height')
                     label = 'back-' + ' '.join(p for p in (back.get('name'), str(back.get('number') or '')) if p)
@@ -3699,6 +3711,7 @@ def production_master():
     from utils.dtf_orders import _back_logo_name
     design_groups = {}
     personal_list = []
+    merged_images = {}
     for order in orders:
         for item in order.items:
             prod = production_from_order_item(item, customer_name=order.full_name)
@@ -3733,6 +3746,13 @@ def production_master():
                     back.update({'logo_name': _back_logo_name(item).replace('Back design: ', '') or 'Back design',
                                  'logo_width_display': dims['width_display'], 'logo_height_display': dims['height_display'],
                                  'logo_exceeds': dims['exceeds_safe_area']})
+                    # The same back picture at the same shirt size and print size is one file, ordered once with the total.
+                    same = (back.get('print_url') or '', code, dims['width_display'], dims['height_display'])
+                    if same in merged_images:
+                        merged_images[same]['quantity'] = (merged_images[same].get('quantity') or 0) + (back.get('quantity') or 0)
+                        merged_images[same]['order_number'] = 'weekly'
+                        continue
+                    merged_images[same] = back
                 personal_list.append(back)
 
     design_list = sorted(design_groups.values(), key=lambda x: (getattr(x['design'], 'filename', '') or x.get('design_name') or '', x['placement']))
@@ -3750,6 +3770,8 @@ def production_master():
             group['file_name'] = match['name']
             group['file_url'] = url_for('admin.save_item_artwork', order_id=match['order'].id, item_id=match['item'].id,
                                         side='front', name=match['name'])
+            group['preview_url'] = url_for('admin.save_item_artwork', order_id=match['order'].id, item_id=match['item'].id,
+                                           side='front', name=match['name'], inline=1)
     for row in personal_list:                                 # and so does each name / back picture
         if row.get('order_id') and row.get('item_id'):
             from utils.production_images import file_name as _file_name
@@ -3760,6 +3782,8 @@ def production_master():
                 label = 'back-' + ' '.join(p for p in (row.get('name'), str(row.get('number') or '')) if p)
                 width, height = row.get('combined_width'), row.get('combined_height')
             row['file_name'] = _file_name(row.get('size_code'), width, height, label, row.get('quantity'), row.get('order_number'))
+            row['preview_url'] = url_for('admin.save_item_artwork', order_id=row['order_id'], item_id=row['item_id'], side='back',
+                                         name=row['file_name'], inline=1)
     collections = Collection.query.all()
 
     return render_template('admin/production_master.html',

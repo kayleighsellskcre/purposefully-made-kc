@@ -20,6 +20,8 @@ EXTENDED_SIZE_SURCHARGES = {
     '2XL': 2.00, '2X': 2.00, 'XXL': 2.00,
     '3XL': 3.00, '3X': 3.00, 'XXXL': 3.00,
     '4XL': 4.00, '4X': 4.00,
+    '5XL': 5.00, '5X': 5.00,         # the same $1 a step as 2XL to 4XL: 5XL had no upcharge at all, so it cost less than 4XL
+    '6XL': 6.00, '6X': 6.00,
 }
 
 # A second print location on the back. A single personalized line costs half

@@ -2242,9 +2242,10 @@
                     <p class="step-hint">
                         {%- if available_sizes %}{% if multi_size %}Tap a size to add it. Tap again below to change how many.{% else %}Select your size.{% endif %}
                         {%- else %}Sizes for this style aren't listed yet.{% endif %}
+                        {%- if available_sizes %} Not sure of the fit? {% if product.size_chart %}<a href="#" onclick="toggleSizeChart(); return false;">See this style's size chart</a>{% else %}<a href="{{ url_for('main.size_guide') }}" target="_blank" rel="noopener">See the size guide</a>{% endif %}.{% endif %}
                     </p>
                     <div class="size-grid-professional" id="sizeGrid">
-                        {% set _size_upcharges = {'2XL': 2, '2X': 2, 'XXL': 2, '3XL': 3, '3X': 3, 'XXXL': 3, '4XL': 4, '4X': 4} %}
+                        {% set _size_upcharges = {'2XL': 2, '2X': 2, 'XXL': 2, '3XL': 3, '3X': 3, 'XXXL': 3, '4XL': 4, '4X': 4, '5XL': 5, '5X': 5, '6XL': 6, '6X': 6} %}
                         {% for size in available_sizes|sort_sizes %}
                         {% set _up = _size_upcharges.get(size|upper, 0) if is_adult else 0 %}
                         <div class="size-card" role="button" tabindex="0" aria-pressed="false"
@@ -4872,6 +4873,8 @@
         if (s === '2XL' || s === '2X' || s === 'XXL') return 2;
         if (s === '3XL' || s === '3X' || s === 'XXXL') return 3;
         if (s === '4XL' || s === '4X') return 4;
+        if (s === '5XL' || s === '5X') return 5;
+        if (s === '6XL' || s === '6X') return 6;
         return 0;
     }
 

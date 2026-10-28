@@ -92,7 +92,9 @@ def school_page(district_slug, school_slug):
     admin = _is_admin()
     stores = DS.stores_of(school) if admin else DS.live_stores(school)
     spirit = next((s for s in stores if s.store_kind == 'spirit'), None)
-    sections = DS.store_sections([s for s in stores if s.store_kind != 'spirit'])
+    others = [s for s in stores if s.store_kind != 'spirit']
+    sponsored = [s for s in others if s.payment_mode == 'company_sponsored']      # their own link, never mixed with everyday shopping
+    sections = DS.store_sections([s for s in others if s.payment_mode != 'company_sponsored'])
 
     def card(store):
         image, emoji = _store_art(store)
@@ -101,6 +103,7 @@ def school_page(district_slug, school_slug):
     logo = _logo(school) or next((x['url'] for x in DS.school_logos(school)), None)     # a main logo stands in
     return render_template('district/school.html', district=d, school=school, logo=logo,
                            spirit=card(spirit) if spirit else None,
+                           sponsored=[card(s) for s in sponsored],
                            sections=[(kind, heading, [card(s) for s in group]) for kind, heading, group in sections],
                            deadline=DS.school_deadline(school),
                            share=DS.share_info(school), level_heading=DS.level_heading(school), accent=DS.accent(school), accent2=DS.accent2(school),

@@ -322,3 +322,12 @@ def test_a_proof_on_disk_is_used_without_doubling_static(client, seed):
     body = client.get('/cart/').get_data(as_text=True)
     assert 'src="/static/img/homepage-mockup-flatlay.jpg"' in body
     assert '/static/static/' not in body
+
+
+def test_the_cart_says_what_delivery_costs_and_the_remove_button_removes_in_one_tap(client, seed):
+    add_to_cart(client, seed)
+    page = client.get('/cart/').get_data(as_text=True)
+    assert 'Pickup is free. Shipping is $11.00 flat' in page and 'Calculated at checkout' not in page
+    assert page.count('Subtotal:') == 1                                           # no second "Subtotal" row posing as the total
+    assert "Tap again to remove" not in page and "dataset.confirming" not in page
+    assert client.post('/cart/remove/0').get_json()['cart_count'] == 0

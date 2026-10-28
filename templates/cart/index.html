@@ -100,14 +100,9 @@
                 
                 <div class="summary-row">
                     <span>Shipping:</span>
-                    <span class="shipping">Calculated at checkout</span>
+                    <span class="shipping">{{ shipping_note }}</span>
                 </div>
-                
-                <div class="summary-row total">
-                    <span>Subtotal:</span>
-                    <span class="total-amount">${{ "%.2f"|format(subtotal) }}</span>
-                </div>
-                <p class="cart-tax-note">Tax and shipping are added at checkout.</p>
+                <p class="cart-tax-note">Sales tax is added at checkout, once you choose pickup or shipping.</p>
                 <p class="cart-tax-note">{{ ready_note }}</p>
 
                 {% if fan_wear_url and not org_url %}
@@ -482,43 +477,22 @@ document.querySelectorAll('.quantity-input').forEach(input => {
     });
 });
 
-// Remove item - inline confirm (no browser dialog)
+// Remove item: one tap removes it right away ("Save for later" is there for anyone who wants it back)
 document.querySelectorAll('.btn-remove').forEach(button => {
     button.addEventListener('click', async function() {
         const index = this.dataset.index;
         const originalText = this.textContent;
-
-        // If already in confirm state, execute removal
-        if (this.dataset.confirming === 'true') {
-            this.textContent = 'Removing…';
-            this.disabled = true;
-            try {
-                const response = await fetch(`/cart/remove/${index}`, { method: 'POST' });
-                if (response.ok) { window.location.reload(); }
-            } catch (error) {
-                PMKC.showFlash('Failed to remove item', 'error');
-                this.textContent = originalText;
-                this.disabled = false;
-                delete this.dataset.confirming;
-            }
-            return;
+        this.textContent = 'Removing…';
+        this.disabled = true;
+        try {
+            const response = await fetch(`/cart/remove/${index}`, { method: 'POST', headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
+            if (!response.ok) { throw new Error('remove failed'); }
+            window.location.reload();
+        } catch (error) {
+            PMKC.showFlash('We could not remove that item. Please try again.', 'error');
+            this.textContent = originalText;
+            this.disabled = false;
         }
-
-        // First click - ask for confirmation inline
-        this.dataset.confirming = 'true';
-        this.textContent = 'Tap again to remove';
-        this.style.color = 'var(--terra-cotta)';
-        this.style.fontWeight = '600';
-
-        // Auto-reset after 3 seconds if no second click
-        setTimeout(() => {
-            if (this.dataset.confirming === 'true') {
-                delete this.dataset.confirming;
-                this.textContent = originalText;
-                this.style.color = '';
-                this.style.fontWeight = '';
-            }
-        }, 3000);
     });
 });
 </script>

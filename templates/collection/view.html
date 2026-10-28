@@ -540,10 +540,17 @@
         {% endif %}
         {% if collection.payment_mode == 'company_sponsored' %}
         {% set _n = collection.sponsor_items_per_person or 1 %}
-        <div class="sponsor-banner" style="max-width:640px;margin:1.25rem auto 0;padding:1rem 1.25rem;border:1px solid rgba(184,124,111,.35);background:rgba(184,124,111,.08);border-radius:14px;text-align:center;">
-            <strong>{{ collection.sponsor_message or 'A sponsor is covering your apparel!' }}</strong>
-            <p style="margin:.35rem 0 0;color:var(--text-secondary);">Choose {{ _n }} item{{ 's' if _n != 1 }}. There is nothing to pay{% if collection.sponsor_budget_per_person %} for items up to ${{ '%.2f'|format(collection.sponsor_budget_per_person) }} each{% endif %}.</p>
-        </div>
+        <section class="sponsor-panel" aria-label="How this sponsored order works">
+            <h2>{{ collection.sponsor_message or 'A sponsor is covering your apparel!' }}</h2>
+            <p class="sponsor-panel-lead">This is a sponsored order. It is separate from everyday spirit wear.</p>
+            <dl class="sponsor-terms">
+                <div><dt>The sponsor covers</dt><dd>{{ _n }} item{{ 's' if _n != 1 }} each{% if collection.sponsor_budget_per_person %}, up to ${{ '%.2f'|format(collection.sponsor_budget_per_person) }} per item{% endif %}. There is nothing to pay for those.</dd></div>
+                <div><dt>You pay for</dt><dd>Anything extra: more items, or the part of an item's price above the limit, plus sales tax on that part.</dd></div>
+                <div><dt>Shipping</dt><dd>{% if collection.shipping_enabled %}Pickup is free. If you want your order shipped, shipping is yours to pay.{% else %}Pickup is free. Shipping is not offered for this order.{% endif %}</dd></div>
+                <div><dt>Sales tax on covered items</dt><dd>It is billed to the sponsor's organizer, not to you.</dd></div>
+                <div><dt>When the organizer is billed</dt><dd>Once, for all approved covered items. Covered items are printed after that bill is paid.</dd></div>
+            </dl>
+        </section>
         {% endif %}
         {% if showcase_designs %}
         <div class="group-order-showcase" aria-label="Group order logos">

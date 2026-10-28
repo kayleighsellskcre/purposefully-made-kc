@@ -25,13 +25,20 @@
         {% if spirit %}
         <div class="dist-spirit">{{ store_card(spirit, accent, big=True, tagline=tagline) }}</div>
         {% endif %}
+        {% if sponsored %}
+        <h2 class="dist-level-title" id="sponsored">Sponsored orders</h2>
+        <p class="dist-fine dist-sponsor-intro">These stores are covered by a sponsor, so they have their own link and their own rules. Everyday spirit wear is separate.</p>
+        <div class="dist-grid dist-grid-sm">
+            {% for c in sponsored %}{{ store_card(c, accent) }}{% endfor %}
+        </div>
+        {% endif %}
         {% for kind, heading, group in sections %}
         <h2 class="dist-level-title" id="{{ kind }}">{{ heading }}</h2>
         <div class="dist-grid dist-grid-sm">
             {% for c in group %}{{ store_card(c, accent) }}{% endfor %}
         </div>
         {% endfor %}
-        {% if not spirit and not sections %}
+        {% if not spirit and not sections and not sponsored %}
         <p class="dist-empty">Stores are opening soon. Check back shortly.</p>
         {% endif %}
     </div>

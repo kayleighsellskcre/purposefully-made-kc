@@ -106,8 +106,17 @@ def index():
             })
             subtotal += item_total
     
+    # What delivery costs, said in the cart so the total never surprises anyone at checkout.
+    from flask import current_app as _app
+    flat = float(_app.config.get('SHIPPING_FLAT_RATE') or 0)
+    if active_group_order is not None and not getattr(active_group_order, 'shipping_enabled', True):
+        shipping_note = 'No shipping charge for this group order. You choose pickup or send-home at checkout.'
+    elif flat:
+        shipping_note = f'Pickup is free. Shipping is ${flat:.2f} flat. You choose at checkout.'
+    else:
+        shipping_note = 'Pickup or shipping, you choose at checkout.'
     from utils.saved_items import saved_for_page
-    return render_template('cart/index.html', saved_items=saved_for_page(), 
+    return render_template('cart/index.html', saved_items=saved_for_page(), shipping_note=shipping_note,
                          cart_items=cart_items,
                          subtotal=subtotal,
                          active_group_order=active_group_order,

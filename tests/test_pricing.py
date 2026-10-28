@@ -44,6 +44,7 @@ def test_small_logo_discount_does_not_apply_to_full_front(app, seed):
     ('2XL', 2), ('2X', 2), ('XXL', 2),
     ('3XL', 3), ('3X', 3), ('XXXL', 3),
     ('4XL', 4), ('4X', 4),
+    ('5XL', 5), ('5X', 5), ('6XL', 6),            # a bigger size never costs less than a smaller one
 ])
 def test_extended_size_surcharge_for_adult(app, seed, size, expected_extra):
     with app.app_context():

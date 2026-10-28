@@ -35,7 +35,7 @@ def test_sort_by_most_popular_and_unknown_sort_is_ignored(guest, app, seed):
 
 def test_toolbar_chips_and_cards(guest):
     html = guest.get('/shop/').get_data(as_text=True)
-    for text in ('class="filter-bar shop-toolbar"', 'id="sortSelect"', 'Tees', 'Long Sleeve', 'Sweatshirts',
+    for text in ('class="filter-bar shop-toolbar"', 'id="sortSelect"', 'T-Shirts', 'Long Sleeve', 'Sweatshirts',
                  'Hoodies', 'Kids &amp; Baby', 'Ordering for a team or group?', 'Customize'):
         assert text in html, text
     for gone in ('Refine Your Selection', 'class="product-category"', 'Choose Age Group',
