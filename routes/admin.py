@@ -779,7 +779,7 @@ def save_item_artwork(order_id, item_id, side):
                     'dtf persist-failed order=%s item=%s piece=%s',
                     order.id, item.id, piece,
                 )
-            filename = download_filename(order, item, side)
+            filename = download_filename(order, item, side, request.args.get('name'))
             return send_file(
                 BytesIO(data),
                 as_attachment=not inline,
@@ -790,7 +790,7 @@ def save_item_artwork(order_id, item_id, side):
     if not url:
         flash('No print file is saved for that side.', 'error')
         return redirect(url_for('admin.order_detail', order_id=order.id))
-    filename = download_filename(order, item, side)
+    filename = download_filename(order, item, side, request.args.get('name'))
     local = local_file_for_url(current_app, url)
     inline = request.args.get('inline')
     if local:
@@ -3591,6 +3591,7 @@ def _master_art_files(orders):
                     rec = {'order': order, 'item': item, 'side': 'front', 'codes': set(), 'qty': 0, 'width': front.get('width'),
                            'height': front.get('height'), 'label': front.get('design_name') or item.design_file_name or 'logo',
                            'order_number': 'weekly'}
+                    rec['key'] = key
                     seen_fronts[key] = rec
                     files.append(rec)
                 rec['codes'].add(code)
@@ -3696,7 +3697,7 @@ def production_master():
             if front:
                 pw = front.get('width')
                 ph = front.get('height')
-                key = (item.design_id, item.placement or '', inches(pw), inches(ph))
+                key = (item.design_id, item.placement or '', round(pw or 0, 2), round(ph or 0, 2))
                 if key not in design_groups:
                     design_groups[key] = {
                         'design': item.design,
@@ -3729,8 +3730,26 @@ def production_master():
     for group in design_list:
         group['sizes_text'] = breakdown(group['sizes'])
 
+    master_files = _master_art_files(orders)
     art_files = [{'name': f['name'], 'url': url_for('admin.save_item_artwork', order_id=f['order'].id, item_id=f['item'].id,
-                                                    side=f['side'], inline=1)} for f in _master_art_files(orders)]
+                                                    side=f['side'], inline=1)} for f in master_files]
+    by_key = {f['key']: f for f in master_files if f.get('key')}
+    for key, group in design_groups.items():                 # each logo card shows, and downloads under, its sized file name
+        match = by_key.get(key)
+        if match:
+            group['file_name'] = match['name']
+            group['file_url'] = url_for('admin.save_item_artwork', order_id=match['order'].id, item_id=match['item'].id,
+                                        side='front', name=match['name'])
+    for row in personal_list:                                 # and so does each name / back picture
+        if row.get('order_id') and row.get('item_id'):
+            from utils.production_images import file_name as _file_name
+            if row.get('kind') == 'image':
+                label = 'back-' + (row.get('logo_name') or 'design')
+                width, height = row.get('logo_width_display'), row.get('logo_height_display')
+            else:
+                label = 'back-' + ' '.join(p for p in (row.get('name'), str(row.get('number') or '')) if p)
+                width, height = row.get('combined_width'), row.get('combined_height')
+            row['file_name'] = _file_name(row.get('size_code'), width, height, label, row.get('quantity'), row.get('order_number'))
     collections = Collection.query.all()
 
     return render_template('admin/production_master.html',
@@ -4619,6 +4638,40 @@ def _decide(rel, status):
     rel.decided_at = datetime.utcnow()
 
 
+def _identical_groups(rows):
+    """({design id: how many identical copies it belongs to}, {design id: its group}) from the open "same artwork" pairs.
+    Four identical files make six pairs; they are one group of copies, and this finds the group."""
+    parent = {}
+
+    def find(x):
+        parent.setdefault(x, x)
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+    for r in rows:
+        parent[find(r.design_id)] = find(r.related_design_id)
+    size = {}
+    for x in list(parent):
+        size[find(x)] = size.get(find(x), 0) + 1
+    return {x: size[find(x)] for x in parent}, {x: find(x) for x in parent}
+
+
+def _copies_of(rel):
+    """Every open "same artwork" pair among the copies that rel's two designs belong to, and those design ids."""
+    from models import DesignRelation
+    rows = DesignRelation.query.filter_by(relation_type='exact_duplicate', status='suggested').all()
+    ids = {rel.design_id, rel.related_design_id}
+    grew = True
+    while grew:
+        grew = False
+        for r in rows:
+            if (r.design_id in ids) != (r.related_design_id in ids):
+                ids |= {r.design_id, r.related_design_id}
+                grew = True
+    return [r for r in rows if r.design_id in ids and r.related_design_id in ids], ids
+
+
 def _group_as_colors(rel):
     """Make one design the color option of another, using the gallery's existing color-family feature."""
     from utils.design_metadata import unique_variant_label
@@ -4657,8 +4710,14 @@ def design_matches():
             _decide(rel, 'dismissed')
             flash('Okay, I will not suggest that pair again.', 'info')
         elif action == 'connect':
-            _decide(rel, 'confirmed')
-            flash('Connected. They will show as related designs.', 'success')
+            if rel.relation_type == 'exact_duplicate':           # keep every copy of the same artwork in one click
+                pairs, ids = _copies_of(rel)
+                for pair in pairs or [rel]:
+                    _decide(pair, 'confirmed')
+                flash(f'Kept all {len(ids) or 2} copies of this artwork.', 'success')
+            else:
+                _decide(rel, 'confirmed')
+                flash('Connected. They will show as related designs.', 'success')
         elif action == 'make_set':
             rel.relation_type = 'matching_set'
             _decide(rel, 'confirmed')
@@ -4673,6 +4732,10 @@ def design_matches():
             extra.is_gallery = False
             rel.action = 'hidden'
             _decide(rel, 'confirmed')
+            from models import DesignRelation as _DR                     # the other pairs that included the hidden copy are settled too
+            for other in _DR.query.filter_by(relation_type='exact_duplicate', status='suggested').filter(
+                    db.or_(_DR.design_id == extra.id, _DR.related_design_id == extra.id)).all():
+                _decide(other, 'confirmed')
             flash(f'"{extra.title or "The extra copy"}" is hidden from customers. Nothing was deleted, and you can undo this.', 'success')
         elif action == 'undo':
             if rel.action == 'grouped':
@@ -4700,9 +4763,19 @@ def design_matches():
         def side(d):
             return {'design': d, 'url': image_url(d.file_path) if d.file_path else '',
                     'colors': ', '.join(f.title() for f in (d.color_families or '').split(',') if f)}
-        return {'rel': rel, 'a': side(rel.design), 'b': side(rel.related), 'score': int(round((rel.score or 0) * 100))}
+        return {'rel': rel, 'a': side(rel.design), 'b': side(rel.related), 'score': int(round((rel.score or 0) * 100)),
+                'copies': groups.get(rel.design_id, 2) if rel.relation_type == 'exact_duplicate' else 0}
     open_rows = (DesignRelation.query.filter_by(relation_type=kind, status='suggested')
                  .order_by(DesignRelation.score.desc()).limit(60).all())
+    groups = {}
+    if kind == 'exact_duplicate':                                       # one card for each group of copies, not one per pair
+        groups, roots = _identical_groups(open_rows)
+        seen_groups, kept = set(), []
+        for r in open_rows:
+            if roots[r.design_id] not in seen_groups:
+                seen_groups.add(roots[r.design_id])
+                kept.append(r)
+        open_rows = kept
     done_rows = (DesignRelation.query.filter_by(status='confirmed').filter(DesignRelation.action.isnot(None))
                  .order_by(DesignRelation.decided_at.desc()).limit(15).all())
     return render_template('admin/design_matches.html', tabs=tabs, tab=tab, cards=[card(r) for r in open_rows],

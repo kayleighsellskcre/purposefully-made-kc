@@ -64,7 +64,7 @@
             </div>
             {% endfor %}
         </div>
-        <p class="dm-why"><b>{{ labels[rel.relation_type] }}</b> &middot; {{ rel.reason }} &middot; {{ c.score }}% sure</p>
+        <p class="dm-why"><b>{{ labels[rel.relation_type] }}</b> &middot; {{ rel.reason }} &middot; {{ c.score }}% sure{% if c.copies > 2 %} &middot; <b>{{ c.copies }} copies</b> of this artwork in all{% endif %}</p>
         <form method="post" class="dm-actions">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="relation_id" value="{{ rel.id }}">

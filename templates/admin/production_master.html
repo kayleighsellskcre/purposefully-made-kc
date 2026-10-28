@@ -122,6 +122,10 @@
                             <p>Print size: {% if group.print_width %}{{ group.print_width|inches }}″ W × {{ (group.print_height or group.print_width)|inches }}″ H{% else %}N/A{% endif %}</p>
                             {% if group.sizes_text %}<p class="sizes-line"><strong>Sizes:</strong> {{ group.sizes_text }}</p>{% endif %}
                             <p class="qty-badge">Qty: {{ group.quantity }}</p>
+                            {% if group.file_name %}
+                            <p class="file-name"><small>Saved as</small><br><code>{{ group.file_name }}</code></p>
+                            <a class="btn btn-primary btn-sm" href="{{ group.file_url }}" style="margin-top:0.5rem;">Save this file</a>
+                            {% endif %}
                         </div>
                     </div>
                     {% endfor %}
@@ -157,8 +161,9 @@
                             {% if row.combined_width_display %}<p class="print-size">Whole back: <strong>{{ row.combined_width_display }}″ W × {{ row.combined_height_display }}″ H</strong></p>{% endif %}
                             {% endif %}
                             <p class="qty-badge">Qty: {{ row.quantity }}</p>
+                            {% if row.file_name %}<p class="file-name"><small>Saved as</small><br><code>{{ row.file_name }}</code></p>{% endif %}
                             {% if row.order_id and row.item_id %}
-                            <a class="btn btn-primary btn-sm od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=row.order_id, item_id=row.item_id, side='back') }}" style="margin-top:0.65rem;">Download back PNG</a>
+                            <a class="btn btn-primary btn-sm od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=row.order_id, item_id=row.item_id, side='back', name=row.file_name) }}" style="margin-top:0.65rem;">Save this file</a>
                             {% endif %}
                         </div>
                     </div>

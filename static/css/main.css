@@ -3597,19 +3597,6 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 }
 
 /* Schools directory page */
-.sd-wrap { max-width: 980px; margin: 0 auto; padding: 3rem 1.25rem 4rem; }
-.sd-head { text-align: center; margin-bottom: 2.25rem; }
-.sd-head h1 { font-family: var(--font-heading, inherit); font-size: clamp(2rem, 4vw, 2.8rem); margin: 0 0 0.6rem; }
-.sd-head p { color: var(--text-secondary); max-width: 34rem; margin: 0 auto; line-height: 1.6; }
-.sd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.25rem; }
-.sd-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.6rem; padding: 1.75rem 1.25rem; background: #fff; border: 1px solid var(--border-light, #eadfd0); border-radius: 14px; text-decoration: none; color: var(--text-primary); transition: transform .18s, box-shadow .18s; }
-.sd-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(58, 61, 72, 0.10); }
-.sd-logo { width: 84px; height: 84px; object-fit: contain; }
-.sd-mark { width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; background: rgba(184, 124, 111, 0.12); color: var(--terra-cotta); font-size: 1.9rem; font-family: var(--font-heading, inherit); }
-.sd-card h2 { margin: 0; font-size: 1.25rem; }
-.sd-count { color: var(--text-secondary); font-size: 0.9rem; }
-.sd-go { margin-top: 0.4rem; color: var(--terra-cotta); font-weight: 600; font-size: 0.85rem; letter-spacing: 0.06em; text-transform: uppercase; }
-.sd-empty { text-align: center; color: var(--text-secondary); padding: 2rem 0; }
 .sd-strip { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.75rem 1.25rem; margin: 0 auto 2rem; padding: 1rem 1.5rem; max-width: 760px; background: rgba(184, 124, 111, 0.08); border-radius: 12px; text-align: center; }
 .sd-strip strong { font-family: var(--font-heading, inherit); font-size: 1.1rem; }
 @media (min-width: 969px) and (max-width: 1240px) {

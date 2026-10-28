@@ -180,7 +180,44 @@ def _safe_name(value, fallback='file'):
     return text[:60] or fallback
 
 
-def download_filename(order, item, side):
+def sized_filename(order, item, side):
+    """The name a print file is saved under: shirt size code, print size, picture, quantity and order, like
+    ``YM_8.5x7in_Falcons_x4_PMKC-1001.png``, so every saved file sorts and orders itself."""
+    from utils.print_sizes import production_from_order_item
+    from utils.production_images import code_for, file_name
+    prod = production_from_order_item(item, customer_name=getattr(order, 'full_name', None)) or {}
+    code, qty, number = code_for(item), item.quantity, getattr(order, 'order_number', None) or order.id
+    meta = getattr(item, 'back_design_details', None) or {}
+    back = prod.get('back') or {}
+    if side == 'front':
+        front = prod.get('front') or {}
+        return file_name(code, front.get('width'), front.get('height'), front.get('design_name') or item.design_file_name or 'logo', qty, number)
+    if side == 'back' and back.get('kind') == 'image':
+        from utils.back_logo_size import back_logo_dims
+        from utils.dtf_orders import _back_logo_name
+        dims = back_logo_dims(item)
+        label = 'back-' + (_back_logo_name(item).replace('Back design: ', '') or 'design')
+        return file_name(code, dims['width'], dims['height'], label, qty, number)
+    if side == 'back':
+        label = 'back-' + ' '.join(p for p in (meta.get('name'), str(meta.get('number') or '')) if p)
+        return file_name(code, back.get('combined_width'), back.get('combined_height'), label, qty, number)
+    if side == 'back-name':
+        return file_name(code, back.get('name_width'), back.get('name_height'), 'name-' + str(meta.get('name') or ''), qty, number)
+    if side == 'back-number':
+        return file_name(code, back.get('number_width'), back.get('number_height'), 'number-' + str(meta.get('number') or ''), qty, number)
+    raise ValueError(side)
+
+
+def download_filename(order, item, side, override=None):
+    """Named by size when we can work it out (see sized_filename); ``override`` is a name the page already chose."""
+    if override:
+        clean = _safe_name(str(override).rsplit('.png', 1)[0].replace('+', '_'), '')
+        if clean:
+            return clean + '.png'
+    try:
+        return sized_filename(order, item, side)
+    except Exception:
+        pass
     order_no = _safe_name(getattr(order, 'order_number', None) or order.id, 'order')
     meta = getattr(item, 'back_design_details', None) or {}
     if not isinstance(meta, dict):

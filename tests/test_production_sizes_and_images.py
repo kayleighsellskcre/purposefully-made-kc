@@ -45,9 +45,9 @@ class _P:                      # a stand-in product for the size-letter rules
 
 def test_size_letters():
     assert size_code('M', _P('youth')) == 'YM' and size_code('XL', _P('youth')) == 'YXL' and size_code('S', _P('youth')) == 'YS'
-    assert size_code('M', _P('adult')) == 'M' and size_code('2XL', _P('adult')) == '2XL' and size_code('XXL', _P('adult')) == '2XL'
-    assert size_code('Youth L') == 'YL' and size_code('3XL') == '3XL' and size_code('XS') == 'XS' and size_code('4XL') == '4XL'
-    assert breakdown({'L': 1, 'YM': 2, '2XL': 1}) == 'YM ×2 · L ×1 · 2XL ×1'
+    assert size_code('M', _P('adult')) == 'AM' and size_code('2XL', _P('adult')) == 'A2XL' and size_code('XXL', _P('adult')) == 'A2XL'
+    assert size_code('Youth L') == 'YL' and size_code('3XL') == 'A3XL' and size_code('XS') == 'AXS' and size_code('4XL') == 'A4XL'
+    assert breakdown({'AL': 1, 'YM': 2, 'A2XL': 1}) == 'YM ×2 · AL ×1 · A2XL ×1'
 
 
 def test_a_back_picture_gets_a_real_width_and_height_and_remembers_its_shape(app, seed, back_picture):
@@ -74,8 +74,8 @@ def test_the_dtf_list_shows_back_height_and_the_sizes_ordered(app, seed, back_pi
         data = build_dtf_shopping_list(Order.query.filter(Order.id.in_(ids)).all())
         back = next(r for r in data['logos'] if r['placement'] == 'Center Back')
         assert back['height'] and back['height_display'] != 'see file' and back['quantity'] == 3
-        assert back['sizes_text'] == 'M ×3' and back['size_tag'] == 'M'
-        assert '[M ×3]' in data['logo_copy']
+        assert back['sizes_text'] == 'AM ×3' and back['size_tag'] == 'AM'
+        assert '[AM ×3]' in data['logo_copy']
         assert all('sizes' in r for r in data['csv_rows'])
 
 
@@ -102,11 +102,32 @@ def test_save_all_zip_has_every_picture_named_by_size(app, seed, admin_client, b
     assert r.status_code == 200 and r.mimetype == 'application/zip'
     names = zipfile.ZipFile(io.BytesIO(r.data)).namelist()
     assert len(names) == 2
-    assert any(n.startswith('XL_') and 'in_' in n and '_x2_' in n and n.endswith('.png') for n in names)
-    assert any(n.startswith('S_') for n in names)
+    assert any(n.startswith('AXL_') and 'in_' in n and '_x2_' in n and n.endswith('.png') for n in names)
+    assert any(n.startswith('AS_') for n in names)
 
 
 def test_save_all_with_nothing_to_save_says_so_and_only_admins_can_use_it(app, seed, admin_client):
     r = admin_client.get('/admin/production/master/images.zip?stage=order_received', follow_redirects=True)
     assert 'no print pictures' in r.get_data(as_text=True).lower()
     assert app.test_client().get('/admin/production/master/images.zip').status_code in (302, 401, 403)
+
+
+def test_every_saved_print_file_is_named_by_shirt_size_print_size_and_quantity(app, seed):
+    from utils.order_artwork import download_filename
+    oid = _order(app, seed, 'SZ-NAME', [dict(size='L', quantity=3, design_id=seed['free_design_id']),
+                                         dict(size='M', quantity=1, product_id=seed['youth_id'], design_id=seed['free_design_id'])])
+    with app.app_context():
+        order = db.session.get(Order, oid)
+        adult, youth = order.items[0], order.items[1]
+        name = download_filename(order, adult, 'front')
+        assert name.startswith('AL_') and 'in_' in name and '_x3_' in name and 'SZ-NAME' in name and name.endswith('.png')
+        assert download_filename(order, youth, 'front').startswith('YM_')
+        assert download_filename(order, adult, 'front', 'AM+AL_9x9in_Falcons_x6_weekly.png') == 'AM_AL_9x9in_Falcons_x6_weekly.png'   # a name the page chose
+
+
+def test_the_logo_cards_show_the_sized_file_name_and_a_save_button(app, seed, admin_client):
+    _order(app, seed, 'SZ-CARD', [dict(size='L', quantity=2, design_id=seed['free_design_id']),
+                                  dict(size='XL', quantity=1, design_id=seed['free_design_id'])])
+    page = admin_client.get('/admin/production/master?stage=order_received').get_data(as_text=True)
+    assert 'Saved as' in page and 'Save this file' in page
+    assert 'AL' in page.split('Saved as')[1][:200] or 'AXL' in page.split('Saved as')[1][:200]

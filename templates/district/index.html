@@ -1,24 +1,34 @@
 {% extends "base.html" %}
 {% block title %}School Districts | Purposefully Made KC{% endblock %}
 {% block content %}
-<div class="sd-wrap">
-    <header class="sd-head">
+<section class="dist-hero">
+    <div class="container dist-narrow">
+        <p class="dist-eyebrow">School spirit wear</p>
         <h1>School Districts</h1>
-        <p>Find your district, then your school, then your team, club or classroom. Every store has its own ordering window, so you only see what is open.</p>
-    </header>
-    {% if districts %}
-    <div class="sd-grid">
-        {% for item in districts %}
-        <a class="sd-card" href="{{ item.url }}">
-            {% if item.logo %}<img class="sd-logo" src="{{ item.logo }}" alt="" loading="lazy">{% else %}<span class="sd-mark" aria-hidden="true">{{ item.district.name[:1] }}</span>{% endif %}
-            <h2>{{ item.district.name }}</h2>
-            <span class="sd-count">{{ item.schools }} school{{ '' if item.schools == 1 else 's' }}</span>
-            <span class="sd-go">Find your school</span>
-        </a>
-        {% endfor %}
+        <p class="dist-lead">Find your district, then your school, then your team, club or classroom. Every store has its own ordering window, so you only see what is open.</p>
     </div>
-    {% else %}
-    <p class="sd-empty">No school stores are open right now. Check back soon, or <a href="{{ url_for('main.contact') }}">contact us</a> to set up your school.</p>
-    {% endif %}
-</div>
+</section>
+
+<section class="dist-body">
+    <div class="container dist-wide">
+        {% if districts %}
+        <div class="dist-grid">
+            {% for item in districts %}
+            <a class="dist-card dist-school-card" href="{{ item.url }}" style="--card-accent: var(--accent-color)">
+                <span class="dist-card-art">
+                    {% if item.logo %}<img src="{{ item.logo }}" alt="" loading="lazy">{% else %}<span class="dist-monogram" aria-hidden="true">{{ item.district.name[:1] }}</span>{% endif %}
+                </span>
+                <span class="dist-card-body">
+                    <span class="dist-card-name">{{ item.district.name }}</span>
+                    <span class="dist-card-sub">{{ item.schools }} school{{ '' if item.schools == 1 else 's' }}</span>
+                    <span class="dist-card-date">Find your school</span>
+                </span>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="dist-empty">No school stores are open right now. Check back soon, or <a href="{{ url_for('main.contact') }}">contact us</a> to set up your school.</p>
+        {% endif %}
+    </div>
+</section>
 {% endblock %}
