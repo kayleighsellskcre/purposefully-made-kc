@@ -525,6 +525,19 @@ def create_app(config_class=Config):
         except Exception:
             pass
 
+        # Put right any product that was given another brand's photos by the old mockup-folder matching
+        try:
+            from utils.mockups import repair_crossed_mockup_images
+            cleared, removed = repair_crossed_mockup_images(db.session)
+            if cleared or removed:
+                import sys
+                print(f'Crossed mockups repaired: {cleared} pictures cleared, {removed} colors removed.', file=sys.stderr, flush=True)
+        except Exception:
+            db.session.rollback()
+            import sys, traceback
+            print('crossed mockup repair failed:', file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+
         # Repair broken SanMar /p/STYLE spec links → CDN measurement PDFs
         try:
             from utils.spec_sheets import rewrite_broken_spec_sheet_urls

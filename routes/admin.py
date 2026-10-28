@@ -730,6 +730,7 @@ def save_item_artwork(order_id, item_id, side):
         back_print_url,
         download_filename,
         front_print_url,
+        labeled_png,
         local_file_for_url,
         remote_url_allowed,
     )
@@ -780,6 +781,8 @@ def save_item_artwork(order_id, item_id, side):
                     order.id, item.id, piece,
                 )
             filename = download_filename(order, item, side, request.args.get('name'))
+            if not request.args.get('plain'):
+                data = labeled_png(data, filename)               # the size label is part of the saved picture
             return send_file(
                 BytesIO(data),
                 as_attachment=not inline,
@@ -794,7 +797,10 @@ def save_item_artwork(order_id, item_id, side):
     local = local_file_for_url(current_app, url)
     inline = request.args.get('inline')
     if local:
-        return send_file(local, as_attachment=not inline, download_name=filename)
+        if request.args.get('plain'):
+            return send_file(local, as_attachment=not inline, download_name=filename)
+        with open(local, 'rb') as handle:
+            return send_file(BytesIO(labeled_png(handle.read(), filename)), as_attachment=not inline, download_name=filename, mimetype='image/png')
     fetch_url = url
     if url.startswith('/'):
         fetch_url = request.host_url.rstrip('/') + url
@@ -806,6 +812,10 @@ def save_item_artwork(order_id, item_id, side):
             with urlopen(req, timeout=20) as resp:
                 data = resp.read()
                 mime = resp.headers.get('Content-Type') or 'image/png'
+            if not request.args.get('plain'):
+                labeled = labeled_png(data, filename)
+                if labeled is not data:
+                    data, mime = labeled, 'image/png'
             return send_file(BytesIO(data), as_attachment=not inline, download_name=filename, mimetype=mime)
         except Exception:
             current_app.logger.exception('artwork download failed for order %s item %s %s', order_id, item_id, side)
@@ -3732,7 +3742,7 @@ def production_master():
 
     master_files = _master_art_files(orders)
     art_files = [{'name': f['name'], 'url': url_for('admin.save_item_artwork', order_id=f['order'].id, item_id=f['item'].id,
-                                                    side=f['side'], inline=1)} for f in master_files]
+                                                    side=f['side'], inline=1, name=f['name'])} for f in master_files]
     by_key = {f['key']: f for f in master_files if f.get('key')}
     for key, group in design_groups.items():                 # each logo card shows, and downloads under, its sized file name
         match = by_key.get(key)

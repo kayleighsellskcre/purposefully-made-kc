@@ -345,3 +345,48 @@ def test_berry_uses_the_cdn_when_only_black_is_on_disk(mockup_app):
     )
     url = mockups.get_mockup_url_for_variant(product, variant, 'front', mockup_app)
     assert url == 'https://cdn.example/berry-front.jpg'
+
+
+def test_another_brands_style_never_borrows_a_bella_folder_with_the_same_number(mockup_app):
+    """Independent Trading SS3001Y is not Bella+Canvas 3001Y: it must not show Bella's youth tee photos."""
+    bella = style_dir(mockup_app, '3001Y')
+    write(bella, 'BELLA_+_CANVAS_3001Y_Lavender_Blue_Front_High.jpg')
+    own = style_dir(mockup_app, 'SS3001Y')
+    write(own, 'SS3001Y_Army_front.jpg')
+    assert find(mockup_app, 'SS3001Y', 'Lavender Blue', 'front') is None
+    assert find(mockup_app, 'SS3001Y', 'Army', 'front') == '/static/uploads/mockups/SS3001Y/SS3001Y_Army_front.jpg'
+    names = {c['color_name'] for c in mockups.discover_colors_from_mockup_folder(mockup_app, 'SS3001Y')}
+    assert names == {'Army'}                                                      # no Bella colors added to its color list
+    assert mockups._style_aliases('SS3001Y') == ['SS3001Y']
+    assert mockups._style_aliases('BC3001Y') == ['BC3001Y', '3001Y']
+    assert mockups._style_aliases('3001Y') == ['3001Y', 'BC3001Y']
+
+
+def test_a_product_that_was_given_another_brands_photos_is_put_right(app, seed):
+    import json
+    from models import Product, ProductColorVariant, db
+    stock = json.dumps({'S': 5})
+    none = json.dumps({'S': 0})
+    with app.app_context():
+        independent = Product(style_number='SS3001Y', name='Youth Midweight Crewneck', category='Sweatshirt', age_group='youth',
+                              base_price=34.0, is_active=True)
+        bella = Product(style_number='BC3001Y', name='Bella Youth Tee', category='Tee', age_group='youth', base_price=24.0, is_active=True)
+        db.session.add_all([independent, bella])
+        db.session.flush()
+        own = ProductColorVariant(product_id=independent.id, color_name='Army', size_inventory=stock,
+                                  front_image_url='/static/uploads/mockups/SS3001Y/SS3001Y_Army_front.jpg')
+        crossed = ProductColorVariant(product_id=independent.id, color_name='Lavender Blue', size_inventory=none,
+                                      front_image_url='/static/uploads/mockups/3001Y/BELLA_+_CANVAS_3001Y_Lavender_Blue_Front_High.jpg')
+        crossed_stocked = ProductColorVariant(product_id=independent.id, color_name='Navy', size_inventory=stock,
+                                              front_image_url='/static/uploads/mockups/3001Y/BELLA_+_CANVAS_3001Y_Navy_Front_High.jpg')
+        real = ProductColorVariant(product_id=bella.id, color_name='Lavender Blue', size_inventory=none,
+                                   front_image_url='/static/uploads/mockups/3001Y/BELLA_+_CANVAS_3001Y_Lavender_Blue_Front_High.jpg')
+        db.session.add_all([own, crossed, crossed_stocked, real])
+        db.session.commit()
+        ids = (own.id, crossed.id, crossed_stocked.id, real.id)
+        assert mockups.repair_crossed_mockup_images() == (1, 1)
+        assert db.session.get(ProductColorVariant, ids[0]).front_image_url.endswith('SS3001Y_Army_front.jpg')   # its own photo stays
+        assert db.session.get(ProductColorVariant, ids[1]) is None                                              # the borrowed, stockless color is gone
+        assert db.session.get(ProductColorVariant, ids[2]).front_image_url is None                              # one with stock keeps its place, photo cleared
+        assert db.session.get(ProductColorVariant, ids[3]).front_image_url                                      # Bella's own is untouched
+        assert mockups.repair_crossed_mockup_images() == (0, 0)

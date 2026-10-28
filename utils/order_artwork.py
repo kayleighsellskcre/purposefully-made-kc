@@ -180,6 +180,48 @@ def _safe_name(value, fallback='file'):
     return text[:60] or fallback
 
 
+def label_from_filename(name):
+    """The words for the label: shirt sizes, print size and quantity, read from a sized file name such as
+    YM_8x7.2in_Falcons_x4_PMKC-1001.png (which becomes "YM   8 x 7.2 in   x4")."""
+    stem = str(name or '').rsplit('.', 1)[0]
+    found = re.search(r'(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)in', stem)
+    if not found:
+        return ''
+    codes = stem[:found.start()].strip('_').replace('_', ' ')
+    qty = re.findall(r'_x(\d+)(?=_|$)', stem)
+    parts = [codes, f'{found.group(1)} x {found.group(2)} in', f'x{qty[-1]}' if qty else '']
+    return '   '.join(p for p in parts if p)
+
+
+def labeled_png(data, name):
+    """The print file with a small, slim label (shirt size, print size, quantity) written under the artwork itself, so the
+    information travels with the picture when it is saved and sent to be printed. If anything goes wrong the original
+    picture is returned unchanged."""
+    text = label_from_filename(name)
+    if not text or not data:
+        return data
+    try:
+        from io import BytesIO
+        from PIL import Image, ImageDraw, ImageFont
+        art = Image.open(BytesIO(data)).convert('RGBA')
+        dpi = art.info.get('dpi') or (300, 300)
+        size = max(22, int(art.width * 0.04))
+        font = ImageFont.truetype(str(Path(__file__).resolve().parent.parent / 'static' / 'fonts' / 'BebasNeue-Regular.ttf'), size)
+        probe = ImageDraw.Draw(Image.new('RGBA', (8, 8)))
+        box = probe.textbbox((0, 0), text, font=font)
+        text_w, text_h = box[2] - box[0], box[3] - box[1]
+        pad = max(8, int(size * 0.45))
+        width = max(art.width, text_w + pad * 2)
+        canvas = Image.new('RGBA', (width, art.height + text_h + pad * 2), (0, 0, 0, 0))
+        canvas.paste(art, ((width - art.width) // 2, 0), art)
+        ImageDraw.Draw(canvas).text(((width - text_w) // 2 - box[0], art.height + pad - box[1]), text, font=font, fill=(58, 61, 72, 255))
+        out = BytesIO()
+        canvas.save(out, format='PNG', dpi=(float(dpi[0]) or 300, float(dpi[1]) or 300))
+        return out.getvalue()
+    except Exception:
+        return data
+
+
 def sized_filename(order, item, side):
     """The name a print file is saved under: shirt size code, print size, picture, quantity and order, like
     ``YM_8.5x7in_Falcons_x4_PMKC-1001.png``, so every saved file sorts and orders itself."""

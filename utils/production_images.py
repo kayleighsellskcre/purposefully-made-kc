@@ -75,6 +75,8 @@ def zip_bytes(entries, host_url=None):
             if not data:
                 missing.append(name)
                 continue
+            from utils.order_artwork import labeled_png
+            data = labeled_png(data, name)                          # the size label is part of every saved picture
             base, n = name, 2
             while name in used:
                 name, n = base.replace('.png', f'-{n}.png'), n + 1

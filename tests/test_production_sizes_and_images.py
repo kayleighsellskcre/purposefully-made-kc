@@ -131,3 +131,36 @@ def test_the_logo_cards_show_the_sized_file_name_and_a_save_button(app, seed, ad
     page = admin_client.get('/admin/production/master?stage=order_received').get_data(as_text=True)
     assert 'Saved as' in page and 'Save this file' in page
     assert 'AL' in page.split('Saved as')[1][:200] or 'AXL' in page.split('Saved as')[1][:200]
+
+
+def test_the_label_words_are_read_from_the_sized_file_name():
+    from utils.order_artwork import label_from_filename
+    assert label_from_filename('AM_AL_9x9in_Falcons_x6_weekly.png') == 'AM AL   9 x 9 in   x6'
+    assert label_from_filename('YM_8.5x7in_back-MIA_x1_PMKC-1001.png') == 'YM   8.5 x 7 in   x1'
+    assert label_from_filename('whatever.png') == ''
+
+
+def test_the_size_label_is_written_into_the_saved_picture(app):
+    from utils.order_artwork import labeled_png
+    art = Image.new('RGBA', (600, 400), (30, 60, 120, 255))
+    out = io.BytesIO()
+    art.save(out, format='PNG', dpi=(300, 300))
+    labeled = Image.open(io.BytesIO(labeled_png(out.getvalue(), 'YM_8x7in_Falcons_x4_PMKC-1.png'))).convert('RGBA')
+    assert labeled.width == 600 and labeled.height > 400                                   # a thin strip was added under the artwork
+    assert labeled.crop((0, 0, 600, 400)).getchannel('A').getextrema() == (255, 255)       # the artwork itself is untouched
+    strip = labeled.crop((0, 400, 600, labeled.height))
+    assert strip.getchannel('A').getbbox()                                                  # there is writing in the strip
+    assert labeled_png(out.getvalue(), 'no-size-in-this-name.png') == out.getvalue()        # no size words, nothing added
+    assert labeled_png(b'not a picture', 'YM_8x7in_x_x1.png') == b'not a picture'          # an unreadable picture is left alone
+
+
+def test_a_saved_back_picture_carries_its_label_and_plain_gives_the_original(app, seed, admin_client, back_picture):
+    oid = _order(app, seed, 'SZ-LBL', [dict(back_design_file_name=back_picture, size='M', quantity=2, product_id=seed['youth_id'])])
+    with app.app_context():
+        item_id = OrderItem.query.filter_by(order_id=oid).one().id
+    labeled = admin_client.get(f'/admin/orders/{oid}/items/{item_id}/save/back')
+    plain = admin_client.get(f'/admin/orders/{oid}/items/{item_id}/save/back?plain=1')
+    assert labeled.status_code == plain.status_code == 200
+    first, second = Image.open(io.BytesIO(labeled.data)), Image.open(io.BytesIO(plain.data))
+    assert second.size == (400, 200) and first.height > second.height and first.width == second.width
+    assert 'YM_' in labeled.headers['Content-Disposition']

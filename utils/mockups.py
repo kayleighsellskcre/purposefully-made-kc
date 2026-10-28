@@ -105,11 +105,14 @@ def _style_aliases(style_number):
     if not style:
         return []
     aliases = [style]
-    bare = re.sub(r'^[A-Za-z+&]+', '', style)
-    if bare and bare != style:
-        aliases.append(bare)
-    if bare and bare[0].isdigit() and not style.upper().startswith('BC'):
-        aliases.append('BC' + bare)
+    # Only Bella+Canvas codes are written with a BC in front of the SanMar number. Another brand's style
+    # (Independent Trading SS3001Y, Port & Company PC61...) must never borrow the folder of a Bella style that
+    # happens to end in the same number: that put a Bella youth tee on an Independent Trading youth sweatshirt.
+    upper = style.upper()
+    if upper.startswith('BC') and style[2:3].isdigit():
+        aliases.append(style[2:])
+    elif style[0].isdigit():
+        aliases.append('BC' + style)
     out = []
     for alias in aliases:
         if alias and alias not in out:
@@ -472,6 +475,47 @@ def get_color_variants_data_for_product(product, app):
     return color_variants_data
 
 
+def repair_crossed_mockup_images(session=None):
+    """Undo the old folder mix-up: another brand's product (Independent Trading SS3001Y) was given the photos and the
+    extra colors of a Bella+Canvas folder with the same number (3001Y). Returns (pictures cleared, colors removed).
+
+    A picture is cleared only when it sits in the folder the old rule borrowed (the style without its letters, or
+    that with BC in front) and the product is not itself a BC or all-digit style. A color that is left with no picture
+    and no stock (the old code made those on its own) is removed; anything with stock keeps its place."""
+    import json
+    from models import Product, ProductColorVariant, db
+    session = session or db.session
+    pattern = re.compile(r'/uploads/mockups/([^/]+)/', re.I)
+    cleared = removed = 0
+    for product in Product.query.all():
+        style = str(product.style_number or '').strip()
+        bare = re.sub(r'^[A-Za-z+&]+', '', style)
+        if not style or not bare or bare == style or style.upper().startswith('BC'):
+            continue                                         # a BC or all-digit style is the folder's real owner
+        borrowed = {bare.lower(), ('bc' + bare).lower()}
+        for variant in ProductColorVariant.query.filter_by(product_id=product.id).all():
+            touched = False
+            for attr in ('front_image_url', 'back_image_url', 'side_image_url'):
+                match = pattern.search(getattr(variant, attr) or '')
+                if match and match.group(1).lower() in borrowed:
+                    setattr(variant, attr, None)
+                    touched = True
+            if not touched:
+                continue
+            try:
+                stock = any(json.loads(variant.size_inventory or '{}').values())
+            except (TypeError, ValueError, AttributeError):
+                stock = True
+            if not (variant.front_image_url or variant.back_image_url or variant.side_image_url) and not stock:
+                session.delete(variant)
+                removed += 1
+            else:
+                cleared += 1
+    if cleared or removed:
+        session.commit()
+    return cleared, removed
+
+
 def ensure_variant_mockup_urls(app):
     """
     Fill missing front_image_url/back_image_url on ProductColorVariant from mockup folder.
@@ -705,7 +749,7 @@ def get_first_shop_image_url(product, app, carousel=None):
     import re as _re
     style = (getattr(product, 'style_number', None) or '').strip()
     if style:
-        style_bare = _re.sub(r'^[A-Za-z+& ]+', '', style)
+        style_bare = style[2:] if style.upper().startswith('BC') and style[2:3].isdigit() else style
         for candidate in dict.fromkeys([style_bare, style]):
             if not candidate:
                 continue
