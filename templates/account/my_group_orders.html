@@ -34,7 +34,10 @@
                         <span class="account-content-eyebrow">Account</span>
                         <h1>My Group Orders</h1>
                     </div>
-                    <a href="{{ url_for('shop.create_group_order') }}" class="btn btn-primary btn-sm">+ New Group Order</a>
+                    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                        <a href="{{ url_for('votes.mine') }}" class="btn btn-secondary btn-sm">Take a Vote</a>
+                        <a href="{{ url_for('shop.create_group_order') }}" class="btn btn-primary btn-sm">+ New Group Order</a>
+                    </div>
                 </div>
 
                 {% macro store_row(c) %}

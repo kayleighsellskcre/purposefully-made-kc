@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Results - {{ poll.title }}{% endblock %}
+{% block content %}
+<section class="vote-page">
+    <div class="vote-wrap vote-wide">
+        <span class="vote-eyebrow">Results</span>
+        <h1>{{ poll.title }}</h1>
+        {% if made %}<p class="vote-lead">Your vote is ready. Send this link to the people you want to hear from.</p>{% endif %}
+        <div class="vote-card vote-share">
+            <label class="vote-label" for="voteLink">Link to send</label>
+            <div class="vote-link-row">
+                <input class="vote-input" id="voteLink" type="text" readonly value="{{ link }}">
+                <button class="btn btn-primary btn-sm" type="button" id="voteCopy">Copy link</button>
+            </div>
+            <div class="vote-actions">
+                <img class="vote-qr" src="{{ url_for('votes.qr', token=poll.token) }}" alt="QR code for this vote" width="110" height="110">
+                <div>
+                    <p class="vote-fine">{{ poll.responses|length }} vote{{ '' if poll.responses|length == 1 else 's' }} so far. Only you can see who picked what.</p>
+                    <form method="post" action="{{ url_for('votes.toggle', token=poll.token) }}" style="display:inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="btn btn-secondary btn-sm" type="submit">{{ 'Close this vote' if poll.is_open else 'Reopen this vote' }}</button>
+                    </form>
+                    <a class="btn btn-secondary btn-sm" href="{{ url_for('votes.download', token=poll.token) }}">Download results</a>
+                </div>
+            </div>
+        </div>
+        <div class="vote-grid vote-results">
+            {% for r in rows %}
+            <div class="vote-option vote-result">
+                <span class="vote-option-art"><img src="{{ r.option.image_url }}" alt="Design {{ r.number }}" loading="lazy"></span>
+                <span class="vote-option-bar"><b>{{ r.number }}</b><i>{{ r.count }} vote{{ '' if r.count == 1 else 's' }}</i></span>
+                {% if r.names %}<span class="vote-names">{{ r.names|join(', ') }}</span>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% if poll.responses %}
+        <h2 class="vote-h2">Who voted</h2>
+        <div class="vote-card">
+            {% for resp in poll.responses %}
+            <div class="vote-who"><strong>{{ resp.voter_name }}</strong>
+                <span>{% for c in resp.picks|sort(attribute='option_id') %}{{ poll.options|selectattr('id', 'equalto', c.option_id)|map(attribute='position')|first }}{{ ', ' if not loop.last }}{% endfor %}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        <p class="vote-fine"><a href="{{ url_for('votes.mine') }}">All my votes</a></p>
+    </div>
+</section>
+<script>
+document.getElementById('voteCopy').addEventListener('click', function () {
+    var i = document.getElementById('voteLink'); i.select();
+    try { navigator.clipboard.writeText(i.value); } catch (e) { document.execCommand('copy'); }
+    this.textContent = 'Copied';
+});
+</script>
+{% endblock %}

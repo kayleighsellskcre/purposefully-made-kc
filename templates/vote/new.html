@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Take a Vote - Purposefully Made KC{% endblock %}
+{% block content %}
+<section class="vote-page">
+    <div class="vote-wrap">
+        <span class="vote-eyebrow">Take a vote</span>
+        <h1>Let everyone pick their favorites</h1>
+        <p class="vote-lead">Add your own designs, send one link, and see who chose what. Only you can see the results, and every vote you make is its own.</p>
+        <form method="post" enctype="multipart/form-data" class="vote-card" id="voteNewForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label class="vote-label" for="voteTitle">Name of this vote</label>
+            <input class="vote-input" id="voteTitle" name="title" type="text" maxlength="200" required value="{{ title }}" placeholder="Example: Falcons shirt design">
+            <label class="vote-label" for="voteNote">A short note for voters <small>(optional)</small></label>
+            <input class="vote-input" id="voteNote" name="note" type="text" maxlength="500" value="{{ note }}" placeholder="Pick the ones you love most">
+            <label class="vote-label" for="votePics">Your designs</label>
+            <input class="vote-input" id="votePics" name="pictures" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple required>
+            <p class="vote-fine">Choose two to twelve pictures. They are numbered in the order you add them.</p>
+            <div class="vote-preview" id="votePreview"></div>
+            <button class="btn btn-primary" type="submit">Create my vote</button>
+        </form>
+    </div>
+</section>
+<script>
+(function () {
+    var input = document.getElementById('votePics'), box = document.getElementById('votePreview');
+    input.addEventListener('change', function () {
+        box.innerHTML = '';
+        Array.prototype.forEach.call(input.files, function (f, i) {
+            var card = document.createElement('div'); card.className = 'vote-thumb';
+            var img = document.createElement('img'); img.src = URL.createObjectURL(f); img.alt = 'Design ' + (i + 1);
+            var n = document.createElement('span'); n.textContent = i + 1;
+            card.appendChild(img); card.appendChild(n); box.appendChild(card);
+        });
+    });
+})();
+</script>
+{% endblock %}

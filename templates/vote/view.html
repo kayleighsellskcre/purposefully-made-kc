@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ poll.title }} - Vote{% endblock %}
+{% block content %}
+<section class="vote-page">
+    <div class="vote-wrap vote-wide">
+        <span class="vote-eyebrow">Vote</span>
+        <h1>{{ poll.title }}</h1>
+        {% if poll.note %}<p class="vote-lead">{{ poll.note }}</p>{% endif %}
+        {% if sent %}
+        <div class="vote-card vote-thanks">
+            <h2>Thank you, your vote is in</h2>
+            <p>Your picks were sent. You can vote again with the same name to change them.</p>
+        </div>
+        {% elif not poll.is_open %}
+        <div class="vote-card vote-thanks"><h2>This vote is closed</h2><p>Thank you for stopping by.</p></div>
+        {% else %}
+        <form method="post" id="voteForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <p class="vote-lead">Tap the designs you like, type your name, then press Submit. Your vote only counts once you press Submit.</p>
+            <div class="vote-grid">
+                {% for o in poll.options %}
+                <label class="vote-option">
+                    <input type="checkbox" name="pick" value="{{ o.id }}" {% if o.id|string in picked %}checked{% endif %}>
+                    <span class="vote-option-art"><img src="{{ o.image_url }}" alt="Design {{ o.position }}" loading="lazy"></span>
+                    <span class="vote-option-bar"><b>{{ o.position }}</b><i>Pick</i></span>
+                </label>
+                {% endfor %}
+            </div>
+            <div class="vote-submit-bar">
+                <input class="vote-input" name="voter_name" type="text" maxlength="120" required value="{{ name }}" placeholder="Your name" aria-label="Your name">
+                <span class="vote-count" id="voteCount">0 picked</span>
+                <button class="btn btn-primary" type="submit">Submit my vote</button>
+            </div>
+        </form>
+        <script>
+        (function () {
+            var boxes = document.querySelectorAll('#voteForm input[name=pick]'), out = document.getElementById('voteCount');
+            function update() { var n = 0; boxes.forEach(function (b) { if (b.checked) n++; }); out.textContent = n + ' picked'; }
+            boxes.forEach(function (b) { b.addEventListener('change', update); });
+            update();
+        })();
+        </script>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

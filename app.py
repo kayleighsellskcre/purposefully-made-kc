@@ -638,6 +638,8 @@ def create_app(config_class=Config):
     app.register_blueprint(district_bp)
     from routes.made import made_bp
     app.register_blueprint(made_bp)
+    from routes.votes import votes_bp
+    app.register_blueprint(votes_bp)
 
     # ── CSRF exemptions ──────────────────────────────────────────────────────
     # Stripe / PayPal webhooks POST with their own signatures, not our CSRF token.

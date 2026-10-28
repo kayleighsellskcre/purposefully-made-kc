@@ -1621,3 +1621,42 @@ class AiGeneration(db.Model):
     had_reference = db.Column(db.Boolean, default=False)
     ok = db.Column(db.Boolean)                                              # None while it is still running
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class VotePoll(db.Model):
+    """One vote someone set up with their own pictures. Every poll has its own token, options and answers, so two polls never share anything."""
+    __tablename__ = 'vote_poll'
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(32), unique=True, nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), index=True, nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    note = db.Column(db.String(500))
+    is_open = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    options = db.relationship('VoteOption', backref='poll', cascade='all, delete-orphan', order_by='VoteOption.position')
+    responses = db.relationship('VoteResponse', backref='poll', cascade='all, delete-orphan', order_by='VoteResponse.created_at')
+
+
+class VoteOption(db.Model):
+    __tablename__ = 'vote_option'
+    id = db.Column(db.Integer, primary_key=True)
+    poll_id = db.Column(db.Integer, db.ForeignKey('vote_poll.id'), nullable=False, index=True)
+    image_url = db.Column(db.String(500), nullable=False)
+    position = db.Column(db.Integer, default=0)
+
+
+class VoteResponse(db.Model):
+    """One person's submitted vote in one poll."""
+    __tablename__ = 'vote_response'
+    id = db.Column(db.Integer, primary_key=True)
+    poll_id = db.Column(db.Integer, db.ForeignKey('vote_poll.id'), nullable=False, index=True)
+    voter_name = db.Column(db.String(120), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    picks = db.relationship('VoteChoice', backref='response', cascade='all, delete-orphan')
+
+
+class VoteChoice(db.Model):
+    __tablename__ = 'vote_choice'
+    id = db.Column(db.Integer, primary_key=True)
+    response_id = db.Column(db.Integer, db.ForeignKey('vote_response.id'), nullable=False, index=True)
+    option_id = db.Column(db.Integer, db.ForeignKey('vote_option.id'), nullable=False, index=True)
