@@ -13,7 +13,6 @@
 {% block content %}
 <div class="page-header shop-page-header">
     <div class="container">
-        <span class="eyebrow">Luxury Custom Apparel</span>
         <h1>Shop Custom Apparel</h1>
         <p class="lead">Bella+Canvas, Comfort Colors and more, printed with your design.</p>
         <p class="shop-group-link">Ordering for a team or group? <a href="{{ url_for('shop.group_orders') }}">Start a group order</a></p>
@@ -236,7 +235,7 @@
                             {% if product.is_customer_favorite %}
                             <span class="fav-badge fav-badge-overlay">
                                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 7.1-1.01L12 2z"/></svg>
-                                Customer Favorite
+                                <span class="fav-word">Customer </span>Favorite
                             </span>
                             {% endif %}
 

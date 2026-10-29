@@ -884,6 +884,23 @@ def create_app(config_class=Config):
         from utils.cloud_storage import image_url as resolve_image_url
         return resolve_image_url(path_or_url)
 
+    @app.template_filter('fit_title')
+    def fit_title_filter(name, prefix=''):
+        """A product page title kept to 60 characters with the site name on the end."""
+        from utils.product_names import fit_title
+        return fit_title(name, prefix)
+
+    @app.template_filter('real_deadline')
+    def real_deadline_filter(value):
+        from utils.districts import real_deadline
+        return real_deadline(value)
+
+    @app.template_filter('store_title')
+    def store_title_filter(collection):
+        """A store's page-title name, without a phone number or the organizer's name."""
+        from utils.group_orders import store_title
+        return store_title(collection)
+
     @app.template_filter('display_name')
     def display_name_filter(product_or_name, style_number=None):
         """Customer-facing product title without the registered mark or style code."""

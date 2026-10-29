@@ -370,7 +370,8 @@ def index():
         _now = datetime.now()
     # Statistics
     total_orders    = Order.query.count()
-    pending_orders  = Order.query.filter(Order.status.in_(['new', 'paid'])).count()
+    from utils.production_stages import orders_for_stages
+    pending_orders  = orders_for_stages(['order_received']).count()           # exactly what the Order Received list shows
     in_production   = Order.query.filter_by(status='in_production').count()
     ready_for_pickup = Order.query.filter_by(status='ready').count()
     total_revenue   = db.session.query(db.func.sum(Order.total)).filter(

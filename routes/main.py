@@ -1,4 +1,4 @@
-from flask import Blueprint, Response, render_template, session, current_app, send_file, send_from_directory, request, flash, redirect, url_for
+from flask import Blueprint, abort, Response, render_template, session, current_app, send_file, send_from_directory, request, flash, redirect, url_for
 from models import Product, Collection
 from utils.rate_limit import post_only
 from utils.admin_gate import require_admin_or_404
@@ -360,8 +360,10 @@ def privacy():
 
 @main_bp.route('/reviews')
 def reviews_page():
-    """Kind Words: every approved review and photo, as a quiet collage."""
-    from utils.reviews_public import approved, tiles
+    """Kind Words: every approved review and photo, as a quiet collage. It does not exist until there are three to show."""
+    from utils.reviews_public import approved, has_reviews, tiles
+    if not has_reviews():
+        abort(404)
     items = tiles(approved(limit=120))
     return render_template('reviews.html', tiles=items,
                            has_photos=any(t['kind'] == 'photo' for t in items),

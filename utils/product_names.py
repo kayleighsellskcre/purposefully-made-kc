@@ -30,3 +30,19 @@ def display_product_name(product_or_name, style_number=None):
     else:
         text = _TRAILING_STYLE.sub('', text).strip(' .')
     return text or re.sub(r'\s+', ' ', str(product_or_name)).strip() or 'Product'
+
+
+TITLE_SUFFIX = ' - Purposefully Made KC'
+TITLE_LIMIT = 60
+
+
+def fit_title(name, prefix='', suffix=TITLE_SUFFIX, limit=TITLE_LIMIT):
+    """prefix + name, trimmed at a word so that with the suffix the whole page title is at most ``limit`` characters."""
+    name = re.sub(r'\s+', ' ', str(name or '')).strip()
+    room = limit - len(prefix) - len(suffix)
+    if len(name) <= room:
+        return prefix + name
+    if len(name) <= limit - len(suffix):
+        return name                                  # the whole name matters more than the word "Customize"
+    cut = name[:max(room, 1)].rsplit(' ', 1)[0] if ' ' in name[:max(room, 1) + 1] else name[:max(room, 1)]
+    return prefix + cut.rstrip(' ,.-&/')

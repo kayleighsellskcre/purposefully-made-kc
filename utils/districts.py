@@ -16,7 +16,7 @@ import io
 import json
 import re
 import zipfile
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from slugify import slugify
 
@@ -32,6 +32,7 @@ STORE_KINDS = [
     ('sport', 'Sports', 'Sport'),
     ('activity', 'Activities and clubs', 'Activity or club'),
     ('event', 'Events', 'Event'),
+    ('family', 'Classes and family', 'Class or family'),
     ('teacher', 'Teachers and classrooms', 'Teacher or classroom'),
     ('staff', 'Staff', 'Staff'),
 ]
@@ -43,9 +44,11 @@ _ACTIVITY_WORDS = ('band', 'choir', 'orchestra', 'drama', 'theater', 'theatre', 
                    'science', 'quiz', 'scholars', 'student')
 _EVENT_WORDS = ('festival', 'carnival', 'field day', 'dance', 'fun run', 'walk', 'night', 'fundraiser', 'picnic',
                 'graduation', 'homecoming', 'prom', 'spirit week', 'reunion', 'field trip', 'camp')
+_FAMILY_WORDS = ('senior', 'family', 'families', 'alumni', 'class of', 'parent', 'grandparent', 'booster', 'supporter', 'fan wear')
 _TEACHER_WORDS = ('mr.', 'mrs.', 'ms.', 'miss ', 'dr.', 'class', 'classroom', 'grade', 'teacher')
 KIND_PREFIXES = {'sport': 'sport', 'sports': 'sport', 'activity': 'activity', 'club': 'activity', 'activities': 'activity',
-                 'event': 'event', 'events': 'event', 'teacher': 'teacher', 'class': 'teacher', 'classroom': 'teacher',
+                 'event': 'event', 'events': 'event', 'family': 'family', 'families': 'family', 'teacher': 'teacher',
+                 'class': 'teacher', 'classroom': 'teacher',
                  'staff': 'staff'}
 
 SPIRIT_LABEL = 'School Spirit'
@@ -214,11 +217,12 @@ def schools_by_level(district, public=True):
 def school_deadline(school, stores=None):
     """The date shown on a school card: the soonest upcoming store deadline, else the school's or district's window."""
     now = datetime.utcnow()
-    dates = [s.order_deadline for s in (stores if stores is not None else live_stores(school)) if s.order_deadline]
+    dates = [real_deadline(s.order_deadline) for s in (stores if stores is not None else live_stores(school))]
+    dates = [d for d in dates if d]
     upcoming = sorted(d for d in dates if d >= now)
     if upcoming:
         return upcoming[0]
-    return school.order_deadline or school.district.order_deadline or (max(dates) if dates else None)
+    return real_deadline(school.order_deadline) or real_deadline(school.district.order_deadline) or (max(dates) if dates else None)
 
 
 def level_heading(school):
@@ -367,6 +371,8 @@ def guess_kind(label):
     text = (label or '').strip().lower()
     if text == STAFF_LABEL.lower():
         return 'staff'
+    if any(w in text for w in _FAMILY_WORDS):
+        return 'family'
     if any(w in text for w in _TEACHER_WORDS):
         return 'teacher'
     if any(w in text for w in _EVENT_WORDS):
@@ -391,7 +397,7 @@ def parse_store_entry(entry):
 
 
 DEFAULT_ICON = '\U0001F3F7\ufe0f'
-_KIND_ICON = {'teacher': '\U0001F34E', 'event': '\U0001F389', 'activity': '\U0001F3AD', 'staff': DEFAULT_ICON}
+_KIND_ICON = {'teacher': '\U0001F34E', 'event': '\U0001F389', 'activity': '\U0001F3AD', 'family': '\u2764\ufe0f', 'staff': DEFAULT_ICON}
 
 
 def add_store(school, label, *, kind=None):
@@ -414,11 +420,26 @@ def add_store(school, label, *, kind=None):
     return store
 
 
+def effective_kind(store):
+    """The group a store is shown in. A store still filed under Sports whose name says Seniors or Family is shown with the classes."""
+    kind = store.store_kind or 'sport'
+    if kind in ('sport', 'teacher') and any(w in store_label(store).lower() for w in _FAMILY_WORDS):
+        return 'family'
+    return kind
+
+
+def real_deadline(value):
+    """A deadline worth showing: one that is set and not a far-off placeholder (over 13 months away)."""
+    if not value:
+        return None
+    return value if value <= datetime.utcnow() + timedelta(days=400) else None
+
+
 def store_sections(stores):
     """[(kind, heading, [stores])] in page order, leaving out types with nothing in them. School Spirit is not in here."""
     out = []
     for kind, heading, _label in STORE_KINDS:
-        group = [st for st in stores if (st.store_kind or 'sport') == kind]
+        group = [st for st in stores if effective_kind(st) == kind]
         if group:
             out.append((kind, heading, group))
     return out

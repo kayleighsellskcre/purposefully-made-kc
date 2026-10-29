@@ -309,11 +309,22 @@ def test_kind_words_page_shows_approved_reviews_and_permitted_photos(guest, app,
     assert 'data-filter="photo"' in html and 'data-filter="quote"' in html
 
 
-def test_kind_words_page_is_kind_when_empty(guest, seed):
+def test_kind_words_page_does_not_exist_until_there_are_three_reviews(guest, app, seed):
     from utils import reviews_public
     reviews_public.clear_cache()
-    html = guest.get('/reviews').get_data(as_text=True)
-    assert 'first kind words are on their way' in html
+    assert guest.get('/reviews').status_code == 404                      # nothing yet
+    def two():
+        db.session.add(Review(name='Amy K.', body='Loved them', status='approved'))
+        db.session.add(Review(name='Wes', body='Just words', status='approved'))
+        db.session.commit()
+    _in_db(app, two)
+    reviews_public.clear_cache()
+    assert guest.get('/reviews').status_code == 404                      # two is still not enough
+    assert 'Kind Words</a>' not in guest.get('/about').get_data(as_text=True)
+    _in_db(app, lambda: (db.session.add(Review(name='Pat', body='Nice', status='approved')), db.session.commit()))
+    reviews_public.clear_cache()
+    assert guest.get('/reviews').status_code == 200                      # the third one opens it
+    assert 'Kind Words</a>' in guest.get('/about').get_data(as_text=True)
 
 
 def test_footer_and_sitemap_link_appear_only_with_reviews(guest, app, seed):

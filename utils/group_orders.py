@@ -2067,3 +2067,29 @@ def ordering_blocked(collection, product_id=None):
     if product_id and collection_has_products(collection) and not product_in_collection(collection, product_id):
         return 'That style is not part of this group order. Please pick from the styles on the group store.'
     return None
+
+
+_PHONE_IN_TITLE = None
+
+
+def store_title(collection):
+    """The name to put in a page title: the store's display name, never a phone number or the organizer's own name."""
+    import re
+    global _PHONE_IN_TITLE
+    if _PHONE_IN_TITLE is None:
+        _PHONE_IN_TITLE = re.compile(r'\(?\b\d{3}\)?[\s.\-]*\d{3}[\s.\-]*\d{4}\b|\b\d{10,11}\b')
+    raw = (getattr(collection, 'card_title', None) or getattr(collection, 'name', None) or '').strip()
+    text = _PHONE_IN_TITLE.sub('', raw)
+    who = getattr(collection, 'created_by', None)
+    names = set()
+    if who is not None:
+        first, last = (getattr(who, 'first_name', '') or '').strip(), (getattr(who, 'last_name', '') or '').strip()
+        names |= {n for n in (f'{first} {last}'.strip(), first and last and f'{last}, {first}') if n}
+    for name in sorted(names, key=len, reverse=True):
+        text = re.sub(re.escape(name), '', text, flags=re.I)
+    text = re.sub(r'\s{2,}', ' ', text)
+    text = re.sub(r'^[\s\-|:,.()\u2013\u2014]+|[\s\-|:,.()\u2013\u2014]+$', '', text)
+    if text:
+        return text
+    org, _section = org_for_collection(collection) if collection is not None else (None, None)
+    return (getattr(org, 'name', None) or 'Group Store')

@@ -40,12 +40,15 @@ def tiles(reviews):
     return out
 
 
+MIN_REVIEWS = 3          # the Kind Words page and its links stay hidden until there are this many to show
+
+
 def has_reviews():
-    """True when at least one approved review can be shown. Cached briefly so every page can ask."""
+    """True when there are enough approved reviews to give Kind Words its own page. Cached briefly so every page can ask."""
     now = time.time()
     if now - _CACHE['at'] < _TTL_SECONDS:
         return _CACHE['has']
-    _CACHE.update(at=now, has=bool(approved(limit=1)))
+    _CACHE.update(at=now, has=len(approved(limit=MIN_REVIEWS)) >= MIN_REVIEWS)
     return _CACHE['has']
 
 

@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Contact Us - Purposefully Made KC{% endblock %}
-{% block meta_description %}Questions about an order, a group order, or a custom design? Get in touch with Purposefully Made KC and we will get back to you.{% endblock %}
+{% block meta_description %}Questions about an order, a group order, or a custom design? Get in touch with Purposefully Made KC and I will get back to you.{% endblock %}
 
 {% block content %}
 
 <!-- Page Header -->
 <div class="page-header">
     <div class="container">
-        <span class="eyebrow">We Would Love to Hear From You</span>
+        <span class="eyebrow">Contact</span>
         <h1>Let's Connect</h1>
-        <p class="lead">Whether you have a question, a big idea, or just need some help getting started, we are always happy to talk.</p>
+        <p class="lead">A question, a big idea, or a little help getting started. Send it over.</p>
     </div>
 </div>
 <!-- Flash Messages -->
@@ -34,7 +34,6 @@
             <!-- Left: Info -->
             <div class="contact-info-col">
                 <span class="contact-col-eyebrow">Reach Out</span>
-                <p class="contact-intro">We are not a big box operation. We are a small business based in Kansas City that puts genuine care into every order and every conversation. When you reach out, a real person reads it and responds.</p>
 
                 <div class="contact-methods">
                     <div class="contact-method">
@@ -99,17 +98,13 @@
                     <p>I read every message myself.<br><strong>{{ owner.name }}</strong></p>
                 </div>
                 {% endif %}
-                <div class="contact-reassurance">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" style="color:var(--accent-color);flex-shrink:0;margin-top:2px;"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-                    <p>Not sure what you need? That is completely okay. Tell us about your occasion and we will figure it out together.</p>
-                </div>
             </div>
 
             <!-- Right: Form -->
             <div class="contact-form-col">
                 <div class="contact-form-card">
                     <div class="contact-form-card-header">
-                        <h2 class="contact-form-title">Send Us a Message</h2>
+                        <h2 class="contact-form-title">Send a Message</h2>
                         <p class="contact-form-subtitle">Quick question? <a href="{{ url_for('main.faq') }}">The FAQ may have your answer.</a></p>
                     </div>
 

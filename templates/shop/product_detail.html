@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ product|display_name }} - Purposefully Made KC{% endblock %}
+{% block title %}{{ product|display_name|fit_title }} - Purposefully Made KC{% endblock %}
 
 {% block meta_description %}{% if product.description %}{{ product.description|striptags|truncate(155, true, '…') }}{% else %}Customise a {{ product|display_name }}{% if product.display_brand %} by {{ product.display_brand }}{% endif %} with your own design. Choose your colour, size and placement - printed to order by Purposefully Made KC.{% endif %}{% endblock %}
 

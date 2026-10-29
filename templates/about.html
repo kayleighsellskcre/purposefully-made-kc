@@ -1,33 +1,33 @@
 {% extends "base.html" %}
 {% block title %}About Us - Purposefully Made KC{% endblock %}
-{% block meta_description %}Purposefully Made KC is a Kansas City custom apparel studio. Learn how we print, the garment brands we use, and what to expect when you order.{% endblock %}
+{% block meta_description %}Purposefully Made KC is a Kansas City custom apparel studio. Learn how I print, the garment brands I use, and what to expect when you order.{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div class="container">
-        <span class="eyebrow">Our Story</span>
+        <span class="eyebrow">My Story</span>
         <h1>Made with Purpose, Worn with Pride</h1>
-        <p class="lead">We believe every occasion deserves something special to wear. From game days to wedding days, we are here to make it happen.</p>
+        <p class="lead">I believe every occasion deserves something special to wear. From game days to wedding days, I am here to make it happen.</p>
     </div>
 </div>
 
 <section class="about-wrap">
     <div class="container">
 
-        {% if owner.photo or owner.note %}
         <div class="about-owner">
-            {% if owner.photo %}<img class="about-owner-photo" src="{{ owner.photo }}" alt="{{ owner.name }}, owner of Purposefully Made KC" width="120" height="120">{% endif %}
+            {% if owner.photo %}<img class="about-owner-photo" src="{{ owner.photo }}" alt="{{ owner.name }}, owner of Purposefully Made KC" width="120" height="120">
+            {% else %}<span class="about-owner-photo about-owner-mono" aria-hidden="true">{{ (owner.name or 'P')[:1] }}</span>{% endif %}
             <div>
                 {% if owner.note %}<p class="about-owner-note">{{ owner.note }}</p>{% endif %}
                 <p class="about-owner-name">{{ owner.name }}</p>
+                <p class="about-owner-role">Owner, Purposefully Made KC</p>
             </div>
         </div>
-        {% endif %}
 
         <div class="about-who">
-            <span class="section-eyebrow">Who We Are</span>
-            <p>Purposefully Made KC was born from a simple belief: custom apparel should feel as good as it looks, and ordering it should be just as enjoyable. We are a small Kansas City business, and every order is made just for you.</p>
-            <p>We print with DTF (Direct-to-Film) on garments from Bella+Canvas, Comfort Colors, District, Independent Trading Co. and MV Sport, so colors stay vibrant and prints last wash after wash.</p>
+            <span class="section-eyebrow">Who I Am</span>
+            <p>I started Purposefully Made KC on a simple belief: custom apparel should feel as good as it looks, and ordering it should be just as enjoyable. This is a small Kansas City business, and I make every order just for you.</p>
+            <p>I print with DTF (Direct-to-Film) on garments from Bella+Canvas, Comfort Colors, District, Independent Trading Co., MV Sport, Port &amp; Company and Rabbit Skins, so colors stay vibrant and prints last wash after wash.</p>
         </div>
 
         <div class="about-occasions">
@@ -46,7 +46,7 @@
 
         <div class="about-personal">
             <span class="section-eyebrow">Made Personally</span>
-            <p>Behind every order is a real person reading your message, looking over your design and making sure it is right. I read every message myself.</p>
+            <p>Behind every order is me, reading your message, looking over your design and making sure it is right. I read every message myself.</p>
         </div>
 
         <div class="about-cta">

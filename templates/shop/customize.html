@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Customize {{ product|display_name }} - Purposefully Made KC{% endblock %}
+{% block title %}{{ product|display_name|fit_title('Customize ') }} - Purposefully Made KC{% endblock %}
 
 {% block meta_description %}Design your own {{ product|display_name }}{% if product.display_brand %} by {{ product.display_brand }}{% endif %}. Pick a colour and size, upload your artwork or choose from our gallery, and see it previewed before you order.{% endblock %}
 
@@ -1839,12 +1839,10 @@
 .color-picker-dropdown .color-grid-professional {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.65rem;
-    max-height: min(52vh, 520px);
-    max-height: min(52svh, 520px);
+    max-height: none;
     min-height: 0;
     padding: 0.65rem;
-    overflow-y: auto;
-    overscroll-behavior: contain;
+    overflow: visible;                 /* the page scrolls, never a box inside it */
 }
 
 @media (min-width: 969px) {
@@ -2279,11 +2277,7 @@
                     <h3>Choose Logo or Design</h3>
                     <p class="step-hint">{% if catalog_section == 'fan' %}Pick the jersey look or a matching design.{% elif collection_restricted %}Pick the group logo below{% else %}Upload your own or pick from the gallery{% endif %}</p>
                     {% if not collection_restricted %}
-                    <div style="margin-bottom:1rem;text-align:center;">
-                        <a href="{{ url_for('custom_request.index') }}" style="display:inline-flex;align-items:center;gap:0.5rem;font-size:0.95rem;color:#fff;text-decoration:none;font-weight:700;padding:0.6rem 1.25rem;border-radius:24px;background:var(--terra-cotta);box-shadow:0 2px 8px rgba(184,124,111,0.35);letter-spacing:0.01em;transition:background 0.2s,box-shadow 0.2s;" onmouseover="this.style.background='#a05a4a';this.style.boxShadow='0 4px 14px rgba(184,124,111,0.45)'" onmouseout="this.style.background='var(--terra-cotta)';this.style.boxShadow='0 2px 8px rgba(184,124,111,0.35)'">
-                            ✨ Need a logo recreated? We can do that!
-                        </a>
-                    </div>
+                    <p class="recreate-link"><a href="{{ url_for('custom_request.index') }}">Need a logo recreated? I can do that.</a></p>
                     {% endif %}
 
                     {% if not collection_restricted %}
@@ -2762,7 +2756,7 @@
                 <!-- Order bar: stays at the bottom of the panel while the customer scrolls -->
                 <div class="order-bar" id="orderBar">
                 <!-- Price Summary -->
-                <div class="price-summary">
+                <div class="price-summary" hidden>
                     <details class="price-details">
                     <summary>Price details</summary>
                     <div class="price-row">
@@ -4949,6 +4943,10 @@
     }
     
     function updateTotalPrice() {
+        // The price waits until a size is chosen, so it is never a guess.
+        const sizeChosen = MULTI_SIZE ? totalQty() >= 1 : !!state.selectedSize;
+        const summaryBox = document.querySelector('#orderBar .price-summary');
+        if (summaryBox) summaryBox.hidden = !sizeChosen;
         const totalPrice = document.getElementById('totalPrice');
         const unitPrice = document.getElementById('unitPrice');
         const placementDiscountRow = document.getElementById('placementDiscountRow');

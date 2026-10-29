@@ -8,6 +8,14 @@ from tests.conftest import ADMIN_EMAIL, CUSTOMER_EMAIL
 from utils import districts as DS
 
 
+
+def _next_nov_15():
+    """The coming November 15, so the deadline is a real one (a date years away is treated as a placeholder and hidden)."""
+    from datetime import date
+    today = date.today()
+    year = today.year if today <= date(today.year, 11, 15) else today.year + 1
+    return f'{year}-11-15'
+
 def _make(app, seed, live=('Football', 'Volleyball')):
     """Desoto with a high school (Mill Valley) and an elementary (Riverview). Returns ids."""
     with app.app_context():
@@ -16,7 +24,7 @@ def _make(app, seed, live=('Football', 'Volleyball')):
             'Desoto USD 232',
             [('Mill Valley High', 'high', ['Football', 'Volleyball', 'Staff'], {'mascot': 'Jaguars', 'primary_color': '#1f4e79'}),
              ('Riverview Elementary', 'elementary', ['Band'], {'mascot': 'Falcons'})],
-            deadline='2099-11-15')
+            deadline=_next_nov_15())
         schools = {s.short_slug: s for s in d.schools.all()}
         mill = schools['mill-valley']
         for store in DS.stores_of(mill, include_inactive=True):

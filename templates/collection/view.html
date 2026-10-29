@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{% if fan_page and org_nav %}{{ org_nav.org.name }} Fan Wear{% else %}{{ collection.card_title or collection.name }}{% endif %} - Purposefully Made KC{% endblock %}
+{% block title %}{% if fan_page and org_nav %}{{ org_nav.org.name }} Fan Wear{% else %}{{ collection|store_title }}{% endif %} - Purposefully Made KC{% endblock %}
 
 {% block meta_description %}{% if collection.description %}{{ collection.description|striptags|truncate(155, true, '…') }}{% else %}Order your {{ collection.name }} apparel. Pick your size and pay for your own items - we print and sort the whole group order.{% endif %}{% endblock %}
 
