@@ -52,7 +52,7 @@ def donation_view(donation_id):
     designs = D.group_designs(donation.collection)
     return render_template('admin/donations/view.html', donation=donation, links={c.id: _claim_link(c) for c in donation.claims},
                            collections=Collection.query.order_by(Collection.name).all(), styles=D.style_options(donation.collection),
-                           picked=set(D._ids(donation.product_ids)), today=L.kc_today().isoformat(),
+                           picked=D.ticked(donation), today=L.kc_today().isoformat(),
                            products=D.available_products(donation), designs=designs, chosen=chosen, cost=cost, count=count,
                            estimate=estimate)
 

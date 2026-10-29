@@ -4003,3 +4003,25 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 .gift-nudge[hidden] { display: none; }
 .gift-nudge-btn { border: 1px solid var(--border-light); background: #fff; border-radius: 999px; padding: 0.35rem 0.8rem; font: inherit; font-size: 0.8rem; cursor: pointer; color: var(--midnight-charcoal); }
 .gift-nudge-btn:hover { border-color: var(--terra-cotta); }
+
+/* Carousels of styles and designs, and arrows on the shirt photo */
+.gift-rail-wrap { position: relative; display: flex; align-items: center; gap: 0.35rem; }
+.gift-rail { flex: 1; min-width: 0; display: flex; gap: 0.7rem; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 0.3rem 0.15rem; }
+.gift-rail::-webkit-scrollbar { display: none; }
+.gift-rail > * { scroll-snap-align: start; }
+.gift-rail-btn, .gift-arrow { flex: 0 0 auto; width: 2.2rem; height: 2.2rem; border-radius: 50%; border: 1px solid var(--border-light); background: rgba(255, 255, 255, 0.95); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--midnight-charcoal); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); transition: all 0.2s ease; }
+.gift-rail-btn:hover, .gift-arrow:hover { background: var(--terra-cotta); color: #fff; border-color: var(--terra-cotta); }
+.gift-arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 12; width: 2.3rem; height: 2.3rem; }
+.gift-arrow[hidden] { display: none; }
+.gift-arrow-prev { left: 0.6rem; } .gift-arrow-next { right: 0.6rem; }
+.gift-styles.gift-rail { display: flex; }
+.gift-styles .gift-style-card { flex: 0 0 11.5rem; display: grid; grid-template-rows: auto auto auto; justify-content: stretch; gap: 0.25rem; padding: 0.6rem; text-align: center; }
+.gift-style-photo { display: block; aspect-ratio: 1; border-radius: 10px; background: #fff; overflow: hidden; }
+.gift-style-photo img { width: 100%; height: 100%; object-fit: contain; mix-blend-mode: multiply; }
+.gift-style-meta { font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
+.gift-style-card[hidden] { display: none !important; }
+.gift-designs.gift-rail { display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto); grid-auto-columns: 7.6rem; gap: 0.7rem; }
+@media (max-width: 600px) { .gift-styles .gift-style-card { flex-basis: 9.5rem; } .gift-designs.gift-rail { grid-auto-columns: 6.4rem; } .gift-rail-btn { width: 1.9rem; height: 1.9rem; } }
+.gift-layout > * { min-width: 0; }
+.gift-layout { grid-template-columns: minmax(280px, 400px) minmax(0, 1fr); }
+@media (max-width: 760px) { .gift-layout { grid-template-columns: minmax(0, 1fr); } }

@@ -36,12 +36,56 @@ def tee_products():
 
 def style_options(collection=None):
     """Shirt styles that can be offered: plain tees plus every style the chosen group sells, adult before youth."""
+    from utils.style_pairs import blend_pairs
     seen, rows = set(), []
     for p in tee_products() + ([p for p in collection.products if p.is_active] if collection else []):
         if p.id not in seen:
             seen.add(p.id)
             rows.append(p)
+    hidden = {blend.id for _cotton, blend in blend_pairs(rows)}          # shown once, with the cotton version
+    rows = [p for p in rows if p.id not in hidden]
     return sorted(rows, key=lambda p: ((p.age_group or 'adult') != 'adult', p.name or ''))
+
+
+def ticked(donation):
+    """Product ids to show ticked: a pair counts as ticked when either fabric was chosen."""
+    from utils.style_pairs import blend_pairs
+    chosen = set(_ids(donation.product_ids))
+    products = Product.query.filter(Product.id.in_(chosen)).all() if chosen else []
+    out = set(chosen)
+    for cotton, blend in blend_pairs(products + Product.query.filter_by(is_active=True).all()):
+        if cotton.id in chosen or blend.id in chosen:
+            out.add(cotton.id)
+    return out
+
+
+def families(donation):
+    """What a winner picks first: one entry per shirt, with the cotton and blend colors together.
+    {'key', 'product' (the one to name it by), 'age', 'colors': [{'name', 'hex', 'image', 'product_id'}], 'sizes', 'photo'}"""
+    from utils.sizes import sort_sizes
+    from utils.style_pairs import blend_pairs
+    products = available_products(donation)
+    twin_of = {blend.id: cotton for cotton, blend in blend_pairs(products)}
+    twins = {cotton.id: blend for cotton, blend in blend_pairs(products)}
+    out = []
+    for p in products:
+        if p.id in twin_of:
+            continue                                                       # listed under its cotton version
+        members = [p] + ([twins[p.id]] if p.id in twins else [])
+        colors, seen = [], set()
+        for m in members:
+            for c in colors_for(donation, m):
+                key = (c['name'] or '').strip().lower()
+                if key not in seen:
+                    seen.add(key)
+                    colors.append({**c, 'product_id': m.id})
+        sizes = []
+        for m in members:
+            sizes += [s for s in parse_json_list(m.available_sizes) if s not in sizes]
+        photo = next((c['image'] for c in colors if c.get('image')), None)
+        out.append({'key': p.id, 'product': p, 'members': members, 'age': p.age_group or 'adult', 'colors': colors,
+                    'sizes': sort_sizes(sizes), 'photo': photo})
+    return out
 
 
 def group_designs(collection):
@@ -60,8 +104,14 @@ def available_designs(donation):
     return [d for d in pool if d.id in chosen] if chosen else pool
 
 
+def with_twins(ids):
+    """Ticking a shirt also offers its cotton or cotton/poly blend twin, as the shop shows them as one."""
+    from utils.style_pairs import expand_with_blends
+    return expand_with_blends(ids)
+
+
 def available_products(donation):
-    chosen = _ids(donation.product_ids)
+    chosen = with_twins(_ids(donation.product_ids))
     if not chosen:
         return []
     found = {p.id: p for p in Product.query.filter(Product.id.in_(chosen)).all()}

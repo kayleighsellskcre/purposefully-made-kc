@@ -150,3 +150,30 @@ def test_a_moved_logo_is_remembered_on_the_order(app, seed, admin):
         item = Order.query.filter_by(payment_method='donation').one().items.first()
         assert item.position_y == 0.75
     assert 'lower than standard' in admin.get(f'/admin/donations/{did}').get_data(as_text=True)
+
+
+def test_cotton_and_blend_versions_show_as_one_style_with_all_colors(app, seed, admin):
+    from models import Product, ProductColorVariant
+    with app.app_context():
+        blend = Product(style_number='3001CVC', name='Unisex Heather CVC Short Sleeve Tee', category='Tee', age_group='adult',
+                        base_price=32.0, wholesale_cost=7.0, is_active=True, available_sizes=json.dumps(['S', 'M', 'L']),
+                        available_colors=json.dumps(['Heather Grey']))
+        db.session.add(blend)
+        db.session.flush()
+        db.session.add(ProductColorVariant(product_id=blend.id, color_name='Heather Grey', color_hex='#999999',
+                                           front_image_url='/static/img/logo.png', size_inventory=json.dumps({'M': 9})))
+        db.session.commit()
+        blend_id = blend.id
+    did = _donation(app, seed, admin)                                   # only the plain tee is ticked
+    token = _links(app, did)[0]
+    html = app.test_client().get(f'/gift/{token}').get_data(as_text=True)
+    assert html.count('name="family"') == 1                              # one shirt, not two
+    assert 'name="color" value="Black"' in html and 'name="color" value="Heather Grey"' in html
+    resp = app.test_client().post(f'/gift/{token}', data={
+        'product_id': blend_id, 'design_id': seed['free_design_id'], 'color': 'Heather Grey', 'size': 'M',
+        'first_name': 'Pat', 'email': 'pat@example.com', 'fulfillment': 'pickup'})
+    assert resp.status_code == 302                                       # the color decides which vendor style is made
+    with app.app_context():
+        assert Order.query.filter_by(payment_method='donation').one().items.first().product_id == blend_id
+    form = admin.get(f'/admin/donations/{did}').get_data(as_text=True)
+    assert form.count('name="product_id"') == 1                           # ticked once in the admin form too

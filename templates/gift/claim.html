@@ -2,7 +2,7 @@
 {% block title %}Choose your shirt - Purposefully Made KC{% endblock %}
 {% block content %}
 {% set ages = [] %}
-{% for c in choices %}{% set age = (c.product.age_group or 'adult') %}{% if age not in ages %}{% set _ = ages.append(age) %}{% endif %}{% endfor %}
+{% for c in choices %}{% set age = c.age %}{% if age not in ages %}{% set _ = ages.append(age) %}{% endif %}{% endfor %}
 <section class="gift-page">
     <div class="gift-wrap">
         <span class="gift-eyebrow">A gift for you</span>
@@ -13,6 +13,7 @@
         {% else %}
         <form method="post" class="gift-form gift-layout" id="giftForm">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="product_id" id="giftProduct" value="{{ form.get('product_id', '') }}">
 
             <aside class="gift-preview" aria-label="Your shirt">
                 <div class="pm-proof gift-shirt" id="giftFrame">
@@ -30,6 +31,8 @@
                     </div>
                     <img class="pm-proof-base" id="giftShirt" src="{{ url_for('static', filename='img/placeholder-product.svg') }}" alt="Your shirt" data-blank="{{ url_for('static', filename='img/placeholder-product.svg') }}" style="display:none" onerror="if (this.src !== this.dataset.blank) this.src = this.dataset.blank;">
                     <img class="pm-proof-overlay center_chest" id="giftArt" src="" alt="" style="display:none">
+                    <button type="button" class="gift-arrow gift-arrow-prev" id="giftPrev" aria-label="Previous color" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+                    <button type="button" class="gift-arrow gift-arrow-next" id="giftNext" aria-label="Next color" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
                 </div>
                 <p class="gift-picked" id="giftPicked"></p>
                 <div class="gift-nudge" id="giftNudge" hidden>
@@ -51,20 +54,27 @@
                         {% endfor %}
                     </div>
                     {% endif %}
-                    <div class="gift-styles">
-                        {% for c in choices %}
-                        <label class="gift-style-card" data-age="{{ c.product.age_group or 'adult' }}">
-                            <input type="radio" name="product_id" value="{{ c.product.id }}" required {% if form.get('product_id') == c.product.id|string or choices|length == 1 %}checked{% endif %}>
-                            <span class="gift-style-name">{{ c.product.name }}</span>
-                            {% if ages|length > 1 %}<span class="gift-style-age">{{ (c.product.age_group or 'adult')|title }}</span>{% endif %}
-                        </label>
-                        {% endfor %}
+                    <div class="gift-rail-wrap">
+                        <button type="button" class="gift-rail-btn" data-rail="giftStyles" data-dir="-1" aria-label="Previous styles"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+                        <div class="gift-rail gift-styles" id="giftStyles">
+                            {% for c in choices %}
+                            <label class="gift-style-card" data-age="{{ c.age }}">
+                                <input type="radio" name="family" value="{{ c.key }}" required {% if form.get('product_id') in c.members|map(attribute='id')|map('string')|list or choices|length == 1 %}checked{% endif %}>
+                                <span class="gift-style-photo">{% if c.photo %}<img src="{{ c.photo | image_url }}" alt="" loading="lazy" onerror="this.style.display='none'">{% endif %}</span>
+                                <span class="gift-style-name">{{ c.product|display_name }}</span>
+                                <span class="gift-style-meta">{{ c.colors|length }} color{{ 's' if c.colors|length != 1 }}{% if ages|length > 1 %} &middot; {{ c.age|title }}{% endif %}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        <button type="button" class="gift-rail-btn" data-rail="giftStyles" data-dir="1" aria-label="More styles"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
                     </div>
                 </div>
 
                 <div class="gift-card">
                     <h2><span class="gift-step-num">2</span>Choose a design</h2>
-                    <div class="gift-designs">
+                    <div class="gift-rail-wrap">
+                        <button type="button" class="gift-rail-btn" data-rail="giftDesigns" data-dir="-1" aria-label="Previous designs"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+                    <div class="gift-rail gift-designs" id="giftDesigns">
                         {% for d in designs %}
                         <label class="gift-design">
                             <input type="radio" name="design_id" value="{{ d.id }}" data-img="{{ d.file_path | image_url }}" data-name="{{ d.title or 'Design' }}" required {% if form.get('design_id') == d.id|string %}checked{% endif %}>
@@ -73,17 +83,19 @@
                         </label>
                         {% endfor %}
                     </div>
+                        <button type="button" class="gift-rail-btn" data-rail="giftDesigns" data-dir="1" aria-label="More designs"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+                    </div>
                 </div>
 
                 <div class="gift-card">
                     <h2><span class="gift-step-num">3</span>Choose a color and size</h2>
                     <p class="gift-fine" id="giftNeedStyle">Choose a style above first.</p>
                     {% for c in choices %}
-                    <div class="gift-by-style" data-product="{{ c.product.id }}" hidden>
+                    <div class="gift-by-style" data-family="{{ c.key }}" hidden>
                         <div class="gift-colors" role="radiogroup" aria-label="Color">
                             {% for col in c.colors %}
                             <label class="gift-color" title="{{ col.name }}">
-                                <input type="radio" name="color" value="{{ col.name }}" data-img="{{ col.image | image_url if col.image else '' }}" required {% if form.get('color') == col.name and form.get('product_id') == c.product.id|string %}checked{% endif %}>
+                                <input type="radio" name="color" value="{{ col.name }}" data-product="{{ col.product_id }}" data-img="{{ col.image | image_url if col.image else '' }}" required {% if form.get('color') == col.name and form.get('product_id') == col.product_id|string %}checked{% endif %}>
                                 <span class="gift-dot" style="background: {{ col.hex }}"></span>
                                 <span class="gift-colorname">{{ col.name }}</span>
                             </label>
@@ -94,7 +106,7 @@
                         <label class="gift-label">Size
                             <select name="size" class="gift-input" required>
                                 <option value="">Choose a size</option>
-                                {% for s in c.sizes %}<option value="{{ s }}" {% if form.get('size') == s and form.get('product_id') == c.product.id|string %}selected{% endif %}>{{ s }}</option>{% endfor %}
+                                {% for s in c.sizes %}<option value="{{ s }}" {% if form.get('size') == s and form.get('product_id') in c.members|map(attribute='id')|map('string')|list %}selected{% endif %}>{{ s }}</option>{% endfor %}
                             </select>
                         </label>
                     </div>
@@ -154,15 +166,35 @@
                 var visible = [].filter.call(form.querySelectorAll('.gift-style-card'), function (c) { return !c.hidden; });
                 if (visible.length === 1) visible[0].querySelector('input').checked = true;
             }
+            var hidden = document.getElementById('giftProduct');
             function product() {
-                var p = checked('product_id'), pid = p ? p.value : '';
-                document.getElementById('giftNeedStyle').hidden = !!pid;
+                var f = checked('family'), fid = f ? f.value : '';
+                document.getElementById('giftNeedStyle').hidden = !!fid;
                 form.querySelectorAll('.gift-by-style').forEach(function (box) {
-                    var on = box.dataset.product === pid;
+                    var on = box.dataset.family === fid;
                     box.hidden = !on;
+                    if (!on) box.querySelectorAll('input[type=radio]').forEach(function (el) { el.checked = false; });
                     box.querySelectorAll('input, select').forEach(function (el) { el.disabled = !on; });
                 });
+                var c = form.querySelector('.gift-by-style:not([hidden]) input[name=color]:checked');
+                hidden.value = c ? c.dataset.product : '';
             }
+            // Arrows on the photo step through the colors, like the shop
+            function stepColor(dir) {
+                var radios = [].slice.call(form.querySelectorAll('.gift-by-style:not([hidden]) input[name=color]'));
+                if (!radios.length) return;
+                var i = radios.findIndex(function (r) { return r.checked; });
+                radios[(i + dir + radios.length) % radios.length].click();
+            }
+            document.getElementById('giftPrev').addEventListener('click', function () { stepColor(-1); });
+            document.getElementById('giftNext').addEventListener('click', function () { stepColor(1); });
+            // The style and design carousels
+            form.querySelectorAll('.gift-rail-btn').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    var rail = document.getElementById(b.dataset.rail);
+                    rail.scrollBy({ left: Number(b.dataset.dir) * rail.clientWidth * 0.8, behavior: 'smooth' });
+                });
+            });
             var guide = document.getElementById('giftGuide');
             var FALLBACK = { top: 0.12, height: 0.70, center: 0.5 };
             var offsetIn = parseFloat(document.getElementById('giftOffset').value) || 0, perInNow = 0;
@@ -187,9 +219,9 @@
             art.addEventListener('pointerup', endDrag); art.addEventListener('pointercancel', endDrag);
             // Draw the design at its real print size against the shirt, the way the ordering page does.
             function place() {
-                var p = checked('product_id'), d = checked('design_id');
-                if (!p || !d || art.style.display === 'none' || !shirt.naturalWidth) return;
-                var info = SIZING[p.value], size = info && info.designs[d.value];
+                var pid = document.getElementById('giftProduct').value, d = checked('design_id');
+                if (!pid || !d || art.style.display === 'none' || !shirt.naturalWidth) return;
+                var info = SIZING[pid], size = info && info.designs[d.value];
                 if (!info || !size) return;
                 var m = metrics[shirt.src] || FALLBACK;
                 var frame = document.getElementById('giftFrame'), fr = frame.getBoundingClientRect();
@@ -218,7 +250,7 @@
             function show() {
                 var d = checked('design_id'), c = form.querySelector('.gift-by-style:not([hidden]) input[name=color]:checked');
                 var sz = form.querySelector('.gift-by-style:not([hidden]) select[name=size]');
-                var done = { fit: !!checked('fit'), style: !!checked('product_id'), design: !!d, color: !!c, size: !!(sz && sz.value) };
+                var done = { fit: !!checked('fit'), style: !!checked('family'), design: !!d, color: !!c, size: !!(sz && sz.value) };
                 var next = null;
                 guide.querySelectorAll('li').forEach(function (li) {
                     var yes = done[li.dataset.step];
@@ -233,11 +265,13 @@
                 if (photo && shirt.src !== new URL(c.dataset.img, location.href).href) shirt.src = c.dataset.img;
                 if (d && photo) { art.src = d.dataset.img; art.style.display = 'block'; place(); measure(); } else art.style.display = 'none';
                 nudge.hidden = !(d && photo);
+                document.getElementById('giftPrev').hidden = document.getElementById('giftNext').hidden = !photo;
                 says.textContent = (d || c) ? [d ? d.dataset.name : '', c ? c.value : ''].filter(Boolean).join(' on ') : '';
             }
             form.addEventListener('change', function (e) { if (e.target.tagName === 'SELECT') show(); });
             function where() { if (home) home.hidden = !(checked('fulfillment') && checked('fulfillment').value === 'send_home'); }
-            form.addEventListener('change', function (e) { if (e.target.name === 'fit') fit(); if (e.target.name === 'fit' || e.target.name === 'product_id') product(); where(); show(); });
+            form.addEventListener('change', function (e) { if (e.target.name === 'fit') fit(); if (e.target.name === 'fit' || e.target.name === 'family') product();
+                if (e.target.name === 'color') hidden.value = e.target.dataset.product; where(); show(); });
             fit(); product(); where(); show();
         })();
         </script>

@@ -2,17 +2,17 @@
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, url_for
 
 from utils import donations as D
-from utils.json_fields import parse_json_list
-from utils.sizes import sort_sizes
 
 donations_bp = Blueprint('donations', __name__)
 
 
 def _choices(donation):
-    out = []
-    for p in D.available_products(donation):
-        out.append({'product': p, 'colors': D.colors_for(donation, p), 'sizes': sort_sizes(parse_json_list(p.available_sizes))})
-    return out
+    """One entry per shirt (its cotton and blend versions together), with every color it can be had in."""
+    return D.families(donation)
+
+
+def _sizing(choices, designs):
+    return D.preview_sizing([m for c in choices for m in c['members']], designs)
 
 
 @donations_bp.route('/gift/<token>', methods=['GET', 'POST'])
@@ -30,7 +30,7 @@ def claim(token):
             designs = D.available_designs(donation)
             choices = _choices(donation)
             return render_template('gift/claim.html', claim=claim, donation=donation, choices=choices, designs=designs,
-                                   form=request.form, sizing=D.preview_sizing([c['product'] for c in choices], designs)), 400
+                                   form=request.form, sizing=_sizing(choices, designs)), 400
         try:
             from routes.checkout import queue_order_confirmation_email
             queue_order_confirmation_email(order.id)
@@ -40,4 +40,4 @@ def claim(token):
     designs = D.available_designs(donation)
     choices = _choices(donation)
     return render_template('gift/claim.html', claim=claim, donation=donation, choices=choices, designs=designs, form={},
-                           sizing=D.preview_sizing([c['product'] for c in choices], designs))
+                           sizing=_sizing(choices, designs))
