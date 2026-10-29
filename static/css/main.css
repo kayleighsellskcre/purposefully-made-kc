@@ -3948,3 +3948,49 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 .gift-style-card[hidden], .gift-by-style[hidden], .gift-ship[hidden] { display: none !important; }
 .gift-ship { display: block; }
 .gift-label { display: block; font-weight: 600; font-size: 0.9rem; }
+
+/* Winner page polish: the shirt sits in the same tan frame as the ordering page */
+.gift-preview { background: linear-gradient(135deg, var(--ivory-silk, #f5f0e1), var(--cashmere-sand, #e8d0b1)); border: 1px solid rgba(184, 124, 111, 0.25); border-radius: 20px; padding: 0.9rem; }
+.gift-shirt { aspect-ratio: 4 / 5; border-radius: 14px; }
+.gift-shirt .pm-proof-base { padding: 6%; }
+.gift-picked { font-style: italic; }
+.gift-style-age { flex-shrink: 0; white-space: nowrap; }
+.gift-style-name { line-height: 1.3; }
+.gift-card { box-shadow: 0 1px 2px rgba(58, 61, 72, 0.04); }
+@media (max-width: 760px) { .gift-preview { padding: 0.5rem; border-radius: 16px; } .gift-shirt { aspect-ratio: auto; } }
+
+/* The quiet guide that stands in for the shirt photo until a color is chosen */
+.gift-guide { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.55rem; padding: 1.5rem 1.25rem; text-align: center; background: linear-gradient(135deg, #fdf8f4, #f5ede4); }
+.gift-guide[hidden] { display: none; }
+.gift-guide-eyebrow { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--terra-cotta); }
+.gift-guide-title { font-family: var(--font-heading); font-size: 1.45rem; font-weight: 500; color: #8b6f5e; margin: 0 0 0.35rem; line-height: 1.2; }
+.gift-guide-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; text-align: left; }
+.gift-guide-steps li { display: flex; align-items: center; gap: 0.65rem; font-size: 0.95rem; color: #b09080; }
+.gift-guide-steps li.is-next { color: var(--midnight-charcoal); font-weight: 600; }
+.gift-guide-steps li.is-done { color: var(--olive-stone, #939f80); }
+.gift-tick { flex: 0 0 auto; width: 1.15rem; height: 1.15rem; border-radius: 50%; border: 1.5px solid currentColor; display: inline-block; position: relative; }
+.is-done .gift-tick { background: var(--olive-stone, #939f80); border-color: var(--olive-stone, #939f80); }
+.is-done .gift-tick::after { content: ""; position: absolute; left: 0.32rem; top: 0.1rem; width: 0.28rem; height: 0.55rem; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.is-next .gift-tick { border-color: var(--terra-cotta); box-shadow: 0 0 0 3px rgba(184, 124, 111, 0.18); }
+.gift-guide-foot { margin-top: 0.4rem; font-size: 0.78rem; font-style: italic; color: #b09080; }
+
+/* The steps, tidied */
+.gift-card h2 { display: flex; align-items: center; gap: 0.6rem; }
+.gift-step-num { flex: 0 0 auto; width: 1.7rem; height: 1.7rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(184, 124, 111, 0.14); color: var(--terra-cotta); font: 700 0.85rem/1 var(--font-body, inherit); }
+.gift-card { padding: 1.35rem 1.45rem; border-radius: 18px; }
+.gift-steps { display: grid; gap: 0.2rem; }
+.gift-art, .gift-style-card, .gift-pill span, .gift-dot { transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease; }
+.gift-design:hover .gift-art, .gift-style-card:hover { border-color: rgba(184, 124, 111, 0.55); }
+.gift-color:hover .gift-dot { transform: scale(1.08); }
+.gift-name { line-height: 1.25; }
+.gift-submit { padding: 0.95rem 1.2rem; font-size: 1rem; letter-spacing: 0.04em; }
+.gift-input:focus, .gift-card select:focus { outline: 2px solid rgba(184, 124, 111, 0.45); outline-offset: 1px; border-color: var(--terra-cotta); }
+.gift-pick .gift-check { padding: 0.7rem 0.9rem; border: 1px solid var(--border-light); border-radius: 12px; background: #fff; }
+.gift-pick .gift-check:has(input:checked) { border-color: var(--terra-cotta); background: rgba(184, 124, 111, 0.07); }
+@media (max-width: 760px) { .gift-guide { position: static; padding: 1rem; } .gift-shirt { min-height: 0; } .gift-guide-steps { grid-template-columns: 1fr 1fr; gap: 0.35rem 0.9rem; } .gift-guide-title { font-size: 1.15rem; } .gift-guide-foot { display: none; } }
+@media (max-width: 760px) {
+    .gift-preview:not(.has-photo) { position: static; }
+    .gift-preview:not(.has-photo) .gift-shirt { height: auto; aspect-ratio: auto; }
+    .gift-preview:not(.has-photo) .gift-guide { position: static; }
+    .gift-preview:not(.has-photo) .gift-picked { display: none; }
+}
