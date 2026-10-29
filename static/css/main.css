@@ -4068,3 +4068,12 @@ a.contact-method-value { display: inline-block; padding: 0.55rem 0; }
 .gift-steps { grid-template-columns: minmax(0, 1fr); }
 .gift-steps > .gift-card, .gift-rail-wrap { min-width: 0; max-width: 100%; }
 .gift-rail { max-width: 100%; }
+
+/* Everything on the winner page is in view at once: styles and designs wrap into a grid, nothing scrolls sideways */
+.gift-rail-wrap { display: block; }
+.gift-rail { display: grid; overflow: visible; scroll-snap-type: none; padding: 0.15rem; }
+.gift-styles.gift-rail { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.7rem; }
+.gift-styles .gift-style-card { flex: none; min-width: 0; }
+.gift-designs.gift-rail { grid-auto-flow: row; grid-template-rows: none; grid-auto-columns: auto; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 0.6rem; }
+@media (max-width: 600px) { .gift-styles.gift-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); } .gift-designs.gift-rail { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.gift-rail { overflow-x: clip; }

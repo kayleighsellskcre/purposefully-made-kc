@@ -55,7 +55,6 @@
                     </div>
                     {% endif %}
                     <div class="gift-rail-wrap">
-                        <button type="button" class="gift-rail-btn" data-rail="giftStyles" data-dir="-1" aria-label="Previous styles"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
                         <div class="gift-rail gift-styles" id="giftStyles">
                             {% for c in choices %}
                             <label class="gift-style-card" data-age="{{ c.age }}">
@@ -66,14 +65,12 @@
                             </label>
                             {% endfor %}
                         </div>
-                        <button type="button" class="gift-rail-btn" data-rail="giftStyles" data-dir="1" aria-label="More styles"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
                     </div>
                 </div>
 
                 <div class="gift-card">
                     <h2><span class="gift-step-num">2</span>Choose a design</h2>
                     <div class="gift-rail-wrap">
-                        <button type="button" class="gift-rail-btn" data-rail="giftDesigns" data-dir="-1" aria-label="Previous designs"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
                     <div class="gift-rail gift-designs" id="giftDesigns">
                         {% for d in designs %}
                         <label class="gift-design">
@@ -83,7 +80,6 @@
                         </label>
                         {% endfor %}
                     </div>
-                        <button type="button" class="gift-rail-btn" data-rail="giftDesigns" data-dir="1" aria-label="More designs"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
                     </div>
                 </div>
 
@@ -188,13 +184,6 @@
             }
             document.getElementById('giftPrev').addEventListener('click', function () { stepColor(-1); });
             document.getElementById('giftNext').addEventListener('click', function () { stepColor(1); });
-            // The style and design carousels
-            form.querySelectorAll('.gift-rail-btn').forEach(function (b) {
-                b.addEventListener('click', function () {
-                    var rail = document.getElementById(b.dataset.rail);
-                    rail.scrollBy({ left: Number(b.dataset.dir) * rail.clientWidth * 0.8, behavior: 'smooth' });
-                });
-            });
             var guide = document.getElementById('giftGuide');
             var FALLBACK = { top: 0.12, height: 0.70, center: 0.5 };
             var offsetIn = parseFloat(document.getElementById('giftOffset').value) || 0, perInNow = 0;

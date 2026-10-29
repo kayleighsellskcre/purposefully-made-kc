@@ -177,3 +177,11 @@ def test_cotton_and_blend_versions_show_as_one_style_with_all_colors(app, seed, 
         assert Order.query.filter_by(payment_method='donation').one().items.first().product_id == blend_id
     form = admin.get(f'/admin/donations/{did}').get_data(as_text=True)
     assert form.count('name="product_id"') == 1                           # ticked once in the admin form too
+
+
+def test_the_winner_page_has_no_sideways_carousels(app, seed, admin):
+    did = _donation(app, seed, admin)
+    html = app.test_client().get(f'/gift/{_links(app, did)[0]}').get_data(as_text=True)
+    assert 'gift-rail-btn' not in html                              # no arrows: styles and designs wrap and are all in view
+    css = open('static/css/main.css', encoding='utf-8').read()
+    assert '.gift-styles.gift-rail { display: grid; grid-template-columns: repeat(auto-fill' in css
