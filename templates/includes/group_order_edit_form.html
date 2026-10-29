@@ -167,9 +167,9 @@
                     {% if gallery_designs %}
                     <p class="form-hint" style="margin-top:1rem"><strong>Artwork already uploaded to this group order:</strong></p>
                     <datalist id="design-section-names">{% for n in design_section_list %}<option value="{{ n }}">{% endfor %}</datalist>
-                    <div class="design-choice-grid">
+                    <div class="design-choice-grid design-grid-roomy">
                         {% for d in gallery_designs %}
-                        <div class="design-choice-wrapper" style="position:relative;">
+                        <div class="design-choice-wrapper design-tile" style="position:relative;">
                             <label class="design-choice-card">
                                 <input type="checkbox" name="allowed_designs" value="{{ d.id }}" {% if d.id in allowed_design_ids_list %}checked{% endif %}>
                                 <div class="design-choice-preview">
@@ -181,17 +181,21 @@
                                 <input type="text" name="design_name_{{ d.id }}" value="{{ d.title or d.original_filename or '' }}" maxlength="200" aria-label="Name of this design" placeholder="Name">
                                 <input type="text" name="design_section_{{ d.id }}" value="{{ (design_sections_map or {}).get(d.id, '') }}" maxlength="60" list="design-section-names" aria-label="Heading for this design on the store page" placeholder="Heading (optional)">
                             </div>
-                            <label class="showcase-opt">
-                                <input type="checkbox" name="showcase_designs" value="{{ d.id }}" {% if d.id in (showcase_design_ids_list or []) %}checked{% endif %}>
-                                Show at top
-                            </label>
-                            {% if not is_user_edit and gallery_designs|length > 1 %}
-                            <label class="showcase-opt">
-                                <input type="checkbox" name="design_ids" value="{{ d.id }}" form="linkDesigns">
-                                Same design, other color
-                            </label>
-                            {% endif %}
+                            <div class="design-ticks">
+                                <label class="showcase-opt">
+                                    <input type="checkbox" name="showcase_designs" value="{{ d.id }}" {% if d.id in (showcase_design_ids_list or []) %}checked{% endif %}>
+                                    Show at top
+                                </label>
+                                {% if not is_user_edit and gallery_designs|length > 1 %}
+                                <label class="showcase-opt">
+                                    <input type="checkbox" name="design_ids" value="{{ d.id }}" form="linkDesigns">
+                                    Same design, other color
+                                </label>
+                                {% endif %}
+                            </div>
                             {% if not is_user_edit %}
+                            <details class="design-more">
+                            <summary>More</summary>
                             <div class="design-move">
                                 <select name="target_id" form="copyDesign{{ d.id }}" aria-label="Also use this design in another group">
                                     <option value="">Also use in...</option>
@@ -201,6 +205,7 @@
                                 <button type="submit" form="detachDesign{{ d.id }}" class="design-move-btn design-move-off"
                                         onclick="return confirm('Take this design off this group order only? The artwork stays on file.')">Take off this group</button>
                             </div>
+                            </details>
                             {% endif %}
                             {% if d.linked_colors %}
                             <div class="linked-colors" aria-label="Colors linked to this design">
@@ -236,8 +241,8 @@
                         <span><b id="designBulkCount">0</b> selected</span>
                         <button type="button" class="btn btn-outline btn-sm" id="designBulkAll">Select all</button>
                         <button type="button" class="btn btn-outline btn-sm" id="designBulkNone">Clear</button>
-                        <button type="submit" form="bulkDesigns" name="action" value="detach" class="btn btn-outline btn-sm js-bulk-go" data-ask="Take the selected designs off this group order? The artwork stays on file.">Take off this group</button>
-                        <button type="submit" form="bulkDesigns" name="action" value="delete" class="btn btn-sm design-bulk-delete js-bulk-go" data-ask="Permanently delete the selected designs? This cannot be undone.">Delete selected</button>
+                        <button type="submit" form="bulkDesigns" class="btn btn-outline btn-sm js-bulk-go" data-action="detach" data-ask="Take the selected designs off this group order? The artwork stays on file.">Take off this group</button>
+                        <button type="submit" form="bulkDesigns" class="btn btn-sm design-bulk-delete js-bulk-go" data-action="delete" data-ask="Permanently delete the selected designs? This cannot be undone.">Delete selected</button>
                     </div>
                     {% endif %}
                     {% if not is_user_edit and gallery_designs|length > 1 %}
@@ -572,6 +577,7 @@
         <form id="bulkDesigns" method="post" style="display:none;"
               action="{{ url_for('admin.collection_designs_bulk', collection_id=collection.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" id="bulkAction" value="">
         </form>
         <form id="attachDesigns" method="post" style="display:none;"
               action="{{ url_for('admin.collection_designs_attach', collection_id=collection.id) }}">
@@ -998,23 +1004,10 @@ function confirmDelete(btn) {
         b.addEventListener('click', function (e) {
             var n = picks().filter(function (c) { return c.checked; }).length;
             if (!n) { e.preventDefault(); alert('Tick the designs you want to change first.'); return; }
-            if (!confirm(b.getAttribute('data-ask') + ' (' + n + ' selected)')) e.preventDefault();
+            if (!confirm(b.getAttribute('data-ask') + ' (' + n + ' selected)')) { e.preventDefault(); return; }
+            document.getElementById('bulkAction').value = b.getAttribute('data-action');     // set here, not on the button: the site greys a clicked button before the form is read
         });
     });
-
-    // After saving or removing something, come back to the same place on the page instead of the top.
-    var KEY = 'editScroll:' + location.pathname;
-    document.addEventListener('submit', function () {
-        try { sessionStorage.setItem(KEY, JSON.stringify({ y: window.scrollY, t: Date.now() })); } catch (err) {}
-    }, true);
-    try {
-        var saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
-        sessionStorage.removeItem(KEY);
-        if (saved && Date.now() - saved.t < 60000 && !location.hash) {
-            var go = function () { window.scrollTo(0, saved.y); };
-            go(); window.addEventListener('load', go); setTimeout(go, 300);
-        }
-    } catch (err) {}
 })();
 </script>
 {% include 'includes/group_order_wide_layout.html' %}

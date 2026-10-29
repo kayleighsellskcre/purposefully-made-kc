@@ -112,3 +112,12 @@ def test_the_edit_page_has_select_boxes_and_a_bulk_bar(app, seed, admin_client):
     school_id, store_id, slug, ids = _store(app, seed, TITLES)
     html = admin_client.get(f'/admin/collections/{store_id}/edit').get_data(as_text=True)
     assert html.count('js-design-pick') >= 3 and 'designBulkBar' in html and 'Delete selected' in html
+
+
+def test_bulk_buttons_do_not_depend_on_their_own_value(app, seed, admin_client):
+    """The site greys a clicked button before the form is read, which drops the button's own name and value, so the
+    chosen action has to travel in a hidden field that the click fills in."""
+    school_id, store_id, slug, ids = _store(app, seed, TITLES)
+    html = admin_client.get(f'/admin/collections/{store_id}/edit').get_data(as_text=True)
+    assert 'id="bulkAction"' in html and 'data-action="delete"' in html and 'data-action="detach"' in html
+    assert 'name="action" value="delete"' not in html
