@@ -33,12 +33,12 @@ def _local_path(url):
     if path.startswith('/uploads/'):
         for base in ('uploads', os.path.join('static', 'uploads')):
             candidate = os.path.normpath(os.path.join(root, base, path[len('/uploads/'):]))
-            if candidate.startswith(os.path.join(root, base)) and os.path.isfile(candidate):
+            if candidate.startswith(os.path.join(root, base) + os.sep) and os.path.isfile(candidate):
                 return candidate
         return None
     if path.startswith('/static/'):
         candidate = os.path.normpath(os.path.join(root, 'static', path[len('/static/'):]))
-        if candidate.startswith(os.path.join(root, 'static')) and os.path.isfile(candidate):
+        if candidate.startswith(os.path.join(root, 'static') + os.sep) and os.path.isfile(candidate):
             return candidate
     return None
 
@@ -51,6 +51,10 @@ def _read(url):
         with open(local, 'rb') as fh:
             return fh.read(MAX_BYTES)
     if url.startswith(('http://', 'https://')):
+        from flask import current_app
+        from utils.asset_urls import is_fetchable_url
+        if not is_fetchable_url(url, current_app):
+            return None                                   # never open an address that is not ours
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 PMKC-flyer', 'Referer': 'https://purposefullymadekc.com/'})
         with urllib.request.urlopen(req, timeout=FETCH_SECONDS) as resp:
             return resp.read(MAX_BYTES)

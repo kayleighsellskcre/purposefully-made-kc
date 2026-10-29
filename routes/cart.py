@@ -126,6 +126,13 @@ def index():
                          org_url=org_url)
 
 
+def _own_picture(url):
+    """A picture address the cart may keep: our own folders and storage, or a garment photo host the shop already uses."""
+    from flask import current_app
+    from utils.asset_urls import is_fetchable_url
+    return is_fetchable_url(url, current_app, request.host_url)
+
+
 @cart_bp.route('/add', methods=['POST'])
 def add():
     """Add item to cart"""
@@ -135,15 +142,24 @@ def add():
     else:
         data = request.form
     
-    product_id = int(data.get('product_id'))
+    # A request with a missing or non-numeric field is answered, never allowed to crash the page.
+    if not hasattr(data, 'get'):
+        return jsonify({'error': 'That request could not be read. Please try again.'}), 400
+    try:
+        product_id = int(data.get('product_id'))
+        quantity = int(data.get('quantity', 1))
+        _up = data.get('unit_price')
+        unit_price_override = float(_up) if _up not in (None, '') else None
+        _specs = data.get('print_specs', '{}')
+        print_specs = json.loads(_specs or '{}') if isinstance(_specs, str) else (_specs or {})
+        if not isinstance(print_specs, dict):
+            raise ValueError('print_specs')
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Something was missing from that request. Please try again.'}), 400
     size = data.get('size')
     color = data.get('color')
-    quantity = int(data.get('quantity', 1))
     design_id = data.get('design_id')
     placement = data.get('placement')
-    _up = data.get('unit_price')
-    unit_price_override = float(_up) if _up is not None else None
-    print_specs = json.loads(data.get('print_specs', '{}')) if isinstance(data.get('print_specs'), str) else data.get('print_specs', {})
     
     # Validate
     product = Product.query.get(product_id)
@@ -269,6 +285,8 @@ def add():
             design_id = None
     elif data.get('design_url'):
         design_url = data.get('design_url')
+        if not _own_picture(design_url):
+            return jsonify({'error': 'That picture could not be used. Please upload it again.'}), 400
 
     if collection and catalog_section == 'uniform':
         from utils.group_orders import load_design_dict, resolve_uniform_design_id
@@ -287,6 +305,8 @@ def add():
             back_design_url = store_upload(back_file, 'designs', 'cart_back')
     elif data.get('back_design_url'):
         back_design_url = data.get('back_design_url')
+        if not _own_picture(back_design_url):
+            return jsonify({'error': 'That picture could not be used. Please upload it again.'}), 400
 
     # Capture readable back-design details (name/number/colors) so they appear
     # in the order record and production sheet, not just baked into the image.

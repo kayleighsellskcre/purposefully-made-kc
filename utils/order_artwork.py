@@ -462,14 +462,8 @@ def local_file_for_url(app, url):
 
 
 def remote_url_allowed(app, url, host_url=None):
-    if not url or not url.startswith(('http://', 'https://')):
+    """True only for an http(s) address on our own storage or site, decided by its real host name."""
+    from utils.asset_urls import is_own_asset_url
+    if not url or not str(url).lower().startswith(('http://', 'https://')):
         return False
-    public = (app.config.get('R2_PUBLIC_URL') or '').rstrip('/')
-    if public and url.startswith(public):
-        return True
-    if host_url and url.startswith(host_url):
-        return True
-    lowered = url.lower()
-    if 'r2.dev' in lowered or 'r2.cloudflarestorage.com' in lowered:
-        return True
-    return False
+    return is_own_asset_url(url, app, host_url)
