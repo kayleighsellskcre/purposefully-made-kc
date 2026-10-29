@@ -421,6 +421,22 @@ def create_app(config_class=Config):
                     'ON "order" (paypal_order_id) WHERE paypal_order_id IS NOT NULL',
                     'CREATE UNIQUE INDEX IF NOT EXISTS uq_order_payment_intent_id '
                     'ON "order" (payment_intent_id) WHERE payment_intent_id IS NOT NULL',
+                    # Look-ups that run on every account, product and group page. Postgres does not index a
+                    # foreign key by itself, so each of these was a full table scan that slows as orders grow.
+                    'CREATE INDEX IF NOT EXISTS ix_order_user_id ON "order" (user_id)',
+                    'CREATE INDEX IF NOT EXISTS ix_order_collection_id ON "order" (collection_id)',
+                    'CREATE INDEX IF NOT EXISTS ix_order_item_order_id ON order_item (order_id)',
+                    'CREATE INDEX IF NOT EXISTS ix_order_item_product_id ON order_item (product_id)',
+                    'CREATE INDEX IF NOT EXISTS ix_order_item_design_id ON order_item (design_id)',
+                    'CREATE INDEX IF NOT EXISTS ix_product_color_variant_product_id ON product_color_variant (product_id)',
+                    'CREATE INDEX IF NOT EXISTS ix_favorite_user_id ON favorite (user_id)',
+                    'CREATE INDEX IF NOT EXISTS ix_favorite_product_id ON favorite (product_id)',
+                    'CREATE INDEX IF NOT EXISTS ix_address_user_id ON address (user_id)',
+                    'CREATE INDEX IF NOT EXISTS ix_design_uploaded_by_user_id ON design (uploaded_by_user_id)',
+                    'CREATE INDEX IF NOT EXISTS ix_custom_design_request_user_id ON custom_design_request (user_id)',
+                    'CREATE INDEX IF NOT EXISTS ix_collection_created_by_user_id ON collection (created_by_user_id)',
+                    'CREATE INDEX IF NOT EXISTS ix_ledger_entry_collection_id ON ledger_entry (collection_id)',
+                    'CREATE INDEX IF NOT EXISTS ix_financial_entry_order_id ON financial_entry (order_id)',
                 ):
                     try:
                         conn.execute(text(index_sql))
