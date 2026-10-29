@@ -242,6 +242,8 @@ def create_app(config_class=Config):
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS showcase_design_ids TEXT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS back_design_ids TEXT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS back_design_fonts TEXT",
+                    "ALTER TABLE donation ADD COLUMN IF NOT EXISTS pickup_place VARCHAR(200)",
+                    "ALTER TABLE donation ADD COLUMN IF NOT EXISTS send_home BOOLEAN DEFAULT TRUE",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS allowed_placements TEXT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS allow_custom_upload BOOLEAN DEFAULT TRUE",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS back_design_font VARCHAR(50)",

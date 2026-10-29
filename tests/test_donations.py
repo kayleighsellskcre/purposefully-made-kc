@@ -23,7 +23,7 @@ def _donation(app, seed, admin):
         db.session.commit()
     resp = admin.post('/admin/donations', data={
         'recipient': 'Riverview Elementary PTA', 'occasion': 'December silent auction', 'donated_on': '2026-12-05',
-        'winners': '4', 'collection_id': seed['collection_id'], 'product_id': [seed['tee_id']], 'note': ''})
+        'winners': '4', 'collection_id': seed['collection_id'], 'product_id': [seed['tee_id']], 'note': '', 'send_home': '1'})
     assert resp.status_code == 302
     return int(resp.headers['Location'].rstrip('/').split('/')[-1])
 
@@ -103,3 +103,37 @@ def test_winners_only_see_the_colors_the_group_allows(app, seed, admin):
         'product_id': seed['tee_id'], 'design_id': seed['free_design_id'], 'color': 'White', 'size': 'M',
         'first_name': 'Pat', 'email': 'pat@example.com'})
     assert resp.status_code == 400
+
+
+def test_a_winner_can_have_it_sent_home_with_their_child(app, seed, admin):
+    did = _donation(app, seed, admin)
+    token = _links(app, did)[0]
+    base = {'product_id': seed['tee_id'], 'design_id': seed['free_design_id'], 'color': 'Black', 'size': 'M',
+            'first_name': 'Pat', 'email': 'pat@example.com', 'fulfillment': 'send_home'}
+    assert app.test_client().post(f'/gift/{token}', data=base).status_code == 400        # child, teacher and grade are needed
+    ok = app.test_client().post(f'/gift/{token}', data={**base, 'child_name': 'Sam', 'teacher_name': 'Mrs. Lee', 'child_grade': '3rd'})
+    assert ok.status_code == 302
+    with app.app_context():
+        order = Order.query.filter_by(payment_method='donation').one()
+        assert order.send_home_with_child and order.child_name == 'Sam' and order.teacher_name == 'Mrs. Lee' and order.child_grade == '3rd'
+
+
+def test_the_donation_can_be_edited_and_offers_youth_styles(app, seed, admin):
+    did = _donation(app, seed, admin)
+    resp = admin.post(f'/admin/donations/{did}/edit', data={
+        'recipient': 'Riverview Elementary PTA', 'occasion': 'Silent auction', 'donated_on': '2026-12-06',
+        'collection_id': seed['collection_id'], 'product_id': [seed['tee_id'], seed['youth_id']],
+        'pickup_place': 'Riverview front office', 'send_home': '1', 'note': ''})
+    assert resp.status_code == 302
+    html = app.test_client().get(f'/gift/{_links(app, did)[0]}').get_data(as_text=True)
+    assert 'Youth Jersey Short Sleeve Tee' in html and 'name="fit"' in html and 'Riverview front office' in html
+    page = admin.get(f'/admin/donations/{did}').get_data(as_text=True)
+    assert 'Edit this donation' in page and 'Silent auction' in page
+
+
+def test_an_empty_winner_slot_can_be_removed_but_a_chosen_one_stays(app, seed, admin):
+    did = _donation(app, seed, admin)
+    with app.app_context():
+        claim_id = db.session.get(Donation, did).claims[0].id
+    admin.post(f'/admin/donations/{did}/winner', data={'action': 'remove', 'claim_id': claim_id})
+    assert len(_links(app, did)) == 3

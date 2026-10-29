@@ -34,6 +34,16 @@ def tee_products():
             and (p.age_group or 'adult') == 'adult']
 
 
+def style_options(collection=None):
+    """Shirt styles that can be offered: plain tees plus every style the chosen group sells, adult before youth."""
+    seen, rows = set(), []
+    for p in tee_products() + ([p for p in collection.products if p.is_active] if collection else []):
+        if p.id not in seen:
+            seen.add(p.id)
+            rows.append(p)
+    return sorted(rows, key=lambda p: ((p.age_group or 'adult') != 'adult', p.name or ''))
+
+
 def group_designs(collection):
     from utils.group_orders import allowed_design_ids
     ids = allowed_design_ids(collection) if collection else []
@@ -73,16 +83,33 @@ def colors_for(donation, product):
     return out
 
 
-def create_donation(*, recipient, occasion, donated_on, winners, collection_id, product_ids, note):
+def _clean_fields(recipient, occasion, donated_on, pickup_place, product_ids, note):
     recipient = ' '.join((recipient or '').split())[:200]
     if not recipient:
         raise ValueError('Who is the donation for?')
     if not donated_on:
         raise ValueError('Choose the date of the donation.')
+    if not product_ids:
+        raise ValueError('Tick at least one shirt style.')
+    return dict(recipient=recipient, occasion=(occasion or '').strip()[:200] or None, donated_on=donated_on,
+                pickup_place=' '.join((pickup_place or '').split())[:200] or None,
+                product_ids=json.dumps([int(i) for i in product_ids]), note=(note or '').strip() or None)
+
+
+def update_donation(donation, *, recipient, occasion, donated_on, collection_id, pickup_place, send_home, product_ids, note):
+    fields = _clean_fields(recipient, occasion, donated_on, pickup_place, product_ids, note)
+    for key, value in fields.items():
+        setattr(donation, key, value)
+    donation.collection_id = collection_id or None
+    donation.send_home = bool(send_home)
+    db.session.commit()
+    return donation
+
+
+def create_donation(*, recipient, occasion, donated_on, winners, collection_id, product_ids, note, pickup_place=None, send_home=True):
+    fields = _clean_fields(recipient, occasion, donated_on, pickup_place, product_ids, note)
     winners = max(1, min(int(winners or 1), 50))
-    donation = Donation(recipient=recipient, occasion=(occasion or '').strip()[:200] or None, donated_on=donated_on,
-                        winners_expected=winners, collection_id=collection_id or None,
-                        product_ids=json.dumps([int(i) for i in product_ids]), note=(note or '').strip() or None)
+    donation = Donation(winners_expected=winners, collection_id=collection_id or None, send_home=bool(send_home), **fields)
     db.session.add(donation)
     db.session.flush()
     for _ in range(winners):                      # one empty slot per winner, each with its own private link
@@ -133,13 +160,12 @@ def place_claim(claim, form):
     email = (form.get('email') or '').strip()[:120]
     if not first or not email or not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
         return None, 'Please add your name and a good email so we can reach you.'
-    ship = form.get('fulfillment') == 'shipping'
-    street = ' '.join((form.get('shipping_street') or '').split())[:200]
-    city = ' '.join((form.get('shipping_city') or '').split())[:100]
-    state = ' '.join((form.get('shipping_state') or '').split())[:50]
-    zip_code = ' '.join((form.get('shipping_zip') or '').split())[:20]
-    if ship and not (street and city and state and zip_code):
-        return None, 'Please add the full address to ship to, or choose pickup.'
+    send_home = bool(donation.send_home) and form.get('fulfillment') == 'send_home'
+    child = ' '.join((form.get('child_name') or '').split())[:120]
+    teacher = ' '.join((form.get('teacher_name') or '').split())[:120]
+    grade = ' '.join((form.get('child_grade') or '').split())[:40]
+    if send_home and not (child and teacher and grade):
+        return None, "Please add your child's name, their teacher and their grade so it can be sent home with them."
 
     production = build_item_production(
         product=product, size=size, color=color, placement='center_chest', quantity=1, design_name=design.title,
@@ -151,9 +177,8 @@ def place_claim(claim, form):
             'print_width': front.get('width'), 'print_height': front.get('height')}
     order = Order(
         email=email, first_name=first, last_name=last, phone=(form.get('phone') or '').strip()[:20],
-        fulfillment_method='shipping' if ship else 'pickup',
-        shipping_recipient=f'{first} {last}'.strip() if ship else None, shipping_street=street if ship else None,
-        shipping_city=city if ship else None, shipping_state=state if ship else None, shipping_zip=zip_code if ship else None,
+        fulfillment_method='pickup', send_home_with_child=send_home,
+        child_name=child if send_home else None, teacher_name=teacher if send_home else None, child_grade=grade if send_home else None,
         subtotal=0.0, shipping_cost=0.0, tax=0.0, total=0.0, payment_method='donation', payment_status='paid', amount_paid=0.0,
         paid_at=datetime.utcnow(), status='paid', production_stage='order_received', due_date=default_due_date(),
         occasion_note=f'Donation: {donation.recipient}'[:200],

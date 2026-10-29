@@ -1,11 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Choose your shirt - Purposefully Made KC{% endblock %}
 {% block content %}
+{% set ages = [] %}
+{% for c in choices %}{% set age = (c.product.age_group or 'adult') %}{% if age not in ages %}{% set _ = ages.append(age) %}{% endif %}{% endfor %}
 <section class="gift-page">
     <div class="gift-wrap">
         <span class="gift-eyebrow">A gift for you</span>
         <h1>Choose your shirt</h1>
-        <p class="gift-lead">{% if claim.winner_name %}Congratulations, {{ claim.winner_name }}! {% endif %}Thank you for supporting {{ donation.recipient }}{% if donation.occasion %} at the {{ donation.occasion }}{% endif %}. Your shirt is a gift from Purposefully Made KC, so there is nothing to pay. Pick your color, design and size.</p>
+        <p class="gift-lead">{% if claim.winner_name %}Congratulations, {{ claim.winner_name }}! {% endif %}Thank you for supporting {{ donation.recipient }}{% if donation.occasion %} at the {{ donation.occasion }}{% endif %}. Your shirt is a gift from Purposefully Made KC, so there is nothing to pay.</p>
         {% if not choices or not designs %}
         <div class="gift-card"><p>This gift is not quite ready yet. Please check back soon, or contact us and we will help.</p></div>
         {% else %}
@@ -17,12 +19,32 @@
                     <img class="pm-proof-base" id="giftShirt" src="" alt="Your shirt">
                     <img class="pm-proof-overlay center_chest" id="giftArt" src="" alt="" style="display:none">
                 </div>
-                <p class="gift-picked" id="giftPicked">Pick a design and a color to see your shirt.</p>
+                <p class="gift-picked" id="giftPicked">Pick a style, a design and a color to see your shirt.</p>
             </aside>
 
             <div class="gift-steps">
                 <div class="gift-card">
-                    <h2>1. Choose a design</h2>
+                    <h2>1. What would you like?</h2>
+                    {% if ages|length > 1 %}
+                    <div class="gift-fit" role="radiogroup" aria-label="Adult or youth">
+                        {% for age in ages %}
+                        <label class="gift-pill"><input type="radio" name="fit" value="{{ age }}" {% if form.get('fit') == age %}checked{% endif %}><span>{{ age|title }}</span></label>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <div class="gift-styles">
+                        {% for c in choices %}
+                        <label class="gift-style-card" data-age="{{ c.product.age_group or 'adult' }}">
+                            <input type="radio" name="product_id" value="{{ c.product.id }}" required {% if form.get('product_id') == c.product.id|string or choices|length == 1 %}checked{% endif %}>
+                            <span class="gift-style-name">{{ c.product.name }}</span>
+                            <span class="gift-style-age">{{ (c.product.age_group or 'adult')|title }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="gift-card">
+                    <h2>2. Choose a design</h2>
                     <div class="gift-designs">
                         {% for d in designs %}
                         <label class="gift-design">
@@ -35,58 +57,61 @@
                 </div>
 
                 <div class="gift-card">
-                    <h2>2. Choose a color</h2>
+                    <h2>3. Choose a color and size</h2>
+                    <p class="gift-fine" id="giftNeedStyle">Choose a style above first.</p>
                     {% for c in choices %}
-                    <div class="gift-style" data-product="{{ c.product.id }}">
-                        {% if choices|length > 1 %}
-                        <label class="gift-check"><input type="radio" name="product_id" value="{{ c.product.id }}" {% if form.get('product_id') == c.product.id|string or (not form and loop.first) %}checked{% endif %}> {{ c.product.name }}</label>
-                        {% else %}
-                        <input type="hidden" name="product_id" value="{{ c.product.id }}">
-                        <p class="gift-fine">{{ c.product.name }}</p>
-                        {% endif %}
+                    <div class="gift-by-style" data-product="{{ c.product.id }}" hidden>
                         <div class="gift-colors" role="radiogroup" aria-label="Color">
                             {% for col in c.colors %}
                             <label class="gift-color" title="{{ col.name }}">
-                                <input type="radio" name="color" value="{{ col.name }}" data-img="{{ (col.image or '') | image_url if col.image else '' }}" required {% if form.get('color') == col.name %}checked{% endif %}>
+                                <input type="radio" name="color" value="{{ col.name }}" data-img="{{ col.image | image_url if col.image else '' }}" required {% if form.get('color') == col.name and form.get('product_id') == c.product.id|string %}checked{% endif %}>
                                 <span class="gift-dot" style="background: {{ col.hex }}"></span>
                                 <span class="gift-colorname">{{ col.name }}</span>
                             </label>
                             {% else %}
-                            <p class="gift-fine">No colors are available yet. Please contact us.</p>
+                            <p class="gift-fine">No colors are available for this style yet. Please contact us.</p>
                             {% endfor %}
                         </div>
+                        <label class="gift-label">Size
+                            <select name="size" class="gift-input" required>
+                                <option value="">Choose a size</option>
+                                {% for s in c.sizes %}<option value="{{ s }}" {% if form.get('size') == s and form.get('product_id') == c.product.id|string %}selected{% endif %}>{{ s }}</option>{% endfor %}
+                            </select>
+                        </label>
                     </div>
                     {% endfor %}
                 </div>
 
                 <div class="gift-card">
-                    <h2>3. Choose a size</h2>
-                    <select id="giftSize" name="size" class="gift-input" required>
-                        <option value="">Choose a size</option>
-                        {% for s in choices[0].sizes %}<option value="{{ s }}" {% if form.get('size') == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
-                    </select>
-                </div>
-
-                <div class="gift-card">
-                    <h2>4. Where to find you</h2>
+                    <h2>4. About you</h2>
                     <div class="gift-two">
                         <input class="gift-input" name="first_name" placeholder="First name" required value="{{ form.get('first_name', (claim.winner_name or '').split(' ')[0]) }}">
                         <input class="gift-input" name="last_name" placeholder="Last name" value="{{ form.get('last_name', (claim.winner_name or '').split(' ')[1:]|join(' ')) }}">
                     </div>
                     <input class="gift-input" type="email" name="email" placeholder="Email" required value="{{ form.get('email', claim.winner_email or '') }}">
                     <input class="gift-input" type="tel" name="phone" placeholder="Phone (optional)" value="{{ form.get('phone', '') }}">
+                </div>
+
+                <div class="gift-card">
+                    <h2>5. Getting your shirt</h2>
                     <div class="gift-pick">
-                        <label class="gift-check"><input type="radio" name="fulfillment" value="pickup" {% if form.get('fulfillment') != 'shipping' %}checked{% endif %}> I will pick it up</label>
-                        <label class="gift-check"><input type="radio" name="fulfillment" value="shipping" {% if form.get('fulfillment') == 'shipping' %}checked{% endif %}> Please ship it to me</label>
+                        <label class="gift-check"><input type="radio" name="fulfillment" value="pickup" {% if form.get('fulfillment') != 'send_home' %}checked{% endif %}> I will pick it up{% if donation.pickup_place %} at the {{ donation.pickup_place }}{% endif %}</label>
+                        {% if donation.send_home %}
+                        <label class="gift-check"><input type="radio" name="fulfillment" value="send_home" {% if form.get('fulfillment') == 'send_home' %}checked{% endif %}> Send it home with my child</label>
+                        {% endif %}
                     </div>
-                    <div id="giftShip" class="gift-ship">
-                        <input class="gift-input" name="shipping_street" placeholder="Street address" value="{{ form.get('shipping_street', '') }}">
+                    {% if donation.send_home %}
+                    <div id="giftHome" class="gift-ship" hidden>
+                        <input class="gift-input" name="child_name" placeholder="Child's name" value="{{ form.get('child_name', '') }}">
                         <div class="gift-two">
-                            <input class="gift-input" name="shipping_city" placeholder="City" value="{{ form.get('shipping_city', '') }}">
-                            <input class="gift-input" name="shipping_state" placeholder="State" value="{{ form.get('shipping_state', '') }}">
+                            <input class="gift-input" name="teacher_name" placeholder="Teacher's name" value="{{ form.get('teacher_name', '') }}">
+                            <select class="gift-input" name="child_grade">
+                                <option value="">Grade</option>
+                                {% for g in ['Pre-K', 'K', '1st', '2nd', '3rd', '4th', '5th', '6th'] %}<option value="{{ g }}" {% if form.get('child_grade') == g %}selected{% endif %}>{{ g }}</option>{% endfor %}
+                            </select>
                         </div>
-                        <input class="gift-input" name="shipping_zip" placeholder="ZIP" value="{{ form.get('shipping_zip', '') }}">
                     </div>
+                    {% endif %}
                 </div>
                 <button class="btn btn-primary gift-submit" type="submit">Send my choice</button>
                 <p class="gift-fine">Once you send it, your shirt goes into production. We will email you when it is ready.</p>
@@ -95,17 +120,39 @@
         <script>
         (function () {
             var form = document.getElementById('giftForm');
-            var ship = document.getElementById('giftShip');
             var shirt = document.getElementById('giftShirt'), art = document.getElementById('giftArt'), says = document.getElementById('giftPicked');
-            function sync() { var on = form.querySelector('input[name=fulfillment][value=shipping]').checked; ship.style.display = on ? 'block' : 'none'; }
-            function show() {
-                var d = form.querySelector('input[name=design_id]:checked'), c = form.querySelector('input[name=color]:checked');
-                if (c && c.dataset.img) shirt.src = c.dataset.img; else if (!shirt.getAttribute('src')) { var first = form.querySelector('input[name=color][data-img]:not([data-img=""])'); if (first) shirt.src = first.dataset.img; }
-                if (d) { art.src = d.dataset.img; art.style.display = 'block'; } else art.style.display = 'none';
-                says.textContent = (d || c) ? [d ? d.dataset.name : '', c ? c.value : ''].filter(Boolean).join(' on ') : 'Pick a design and a color to see your shirt.';
+            var home = document.getElementById('giftHome');
+            function checked(name) { return form.querySelector('input[name=' + name + ']:checked'); }
+            function fit() {
+                var f = checked('fit');
+                form.querySelectorAll('.gift-style-card').forEach(function (card) {
+                    var hide = !!(f && card.dataset.age !== f.value);
+                    card.hidden = hide;
+                    if (hide) card.querySelector('input').checked = false;
+                });
+                var visible = [].filter.call(form.querySelectorAll('.gift-style-card'), function (c) { return !c.hidden; });
+                if (visible.length === 1) visible[0].querySelector('input').checked = true;
             }
-            form.addEventListener('change', function (e) { sync(); show(); });
-            sync(); show();
+            function product() {
+                var p = checked('product_id'), pid = p ? p.value : '';
+                document.getElementById('giftNeedStyle').hidden = !!pid;
+                form.querySelectorAll('.gift-by-style').forEach(function (box) {
+                    var on = box.dataset.product === pid;
+                    box.hidden = !on;
+                    box.querySelectorAll('input, select').forEach(function (el) { el.disabled = !on; });
+                });
+            }
+            function show() {
+                var d = checked('design_id'), c = form.querySelector('.gift-by-style:not([hidden]) input[name=color]:checked');
+                var any = form.querySelector('.gift-by-style:not([hidden]) input[name=color][data-img]:not([data-img=""])');
+                if (c && c.dataset.img) shirt.src = c.dataset.img; else if (any) shirt.src = any.dataset.img; else shirt.removeAttribute('src');
+                if (d) { art.src = d.dataset.img; art.style.display = 'block'; } else art.style.display = 'none';
+                var p = checked('product_id'), name = p ? p.parentNode.querySelector('.gift-style-name').textContent : '';
+                says.textContent = (d || c) ? [d ? d.dataset.name : '', c ? c.value : ''].filter(Boolean).join(' on ') : (name || 'Pick a style, a design and a color to see your shirt.');
+            }
+            function where() { if (home) home.hidden = !(checked('fulfillment') && checked('fulfillment').value === 'send_home'); }
+            form.addEventListener('change', function (e) { if (e.target.name === 'fit') fit(); if (e.target.name === 'fit' || e.target.name === 'product_id') product(); where(); show(); });
+            fit(); product(); where(); show();
         })();
         </script>
         {% endif %}

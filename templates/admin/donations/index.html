@@ -12,40 +12,8 @@
 
         <details class="dn-card" {% if not rows %}open{% endif %}>
             <summary class="dn-summary">Record a new donation</summary>
-            <form method="post" class="dn-form">
-                <div class="dn-grid">
-                    <label>Who is it for?
-                        <input name="recipient" required maxlength="200" placeholder="Riverview Elementary PTA">
-                    </label>
-                    <label>What is the occasion? <small>(optional)</small>
-                        <input name="occasion" maxlength="200" placeholder="December silent auction">
-                    </label>
-                    <label>Date
-                        <input type="date" name="donated_on" required value="{{ today }}">
-                    </label>
-                    <label>How many winners?
-                        <input type="number" name="winners" min="1" max="50" value="4" required>
-                    </label>
-                </div>
-                <label>Take the designs from this group <small>(winners choose from them)</small>
-                    <select name="collection_id">
-                        <option value="">Choose a group</option>
-                        {% for c in collections %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
-                    </select>
-                </label>
-                <fieldset class="dn-tees">
-                    <legend>Shirt styles winners can pick</legend>
-                    {% for t in tees %}
-                    <label class="dn-check"><input type="checkbox" name="product_id" value="{{ t.id }}" {% if loop.first %}checked{% endif %}> {{ t.name }}</label>
-                    {% else %}
-                    <p class="dn-fine">No T-shirt styles are set up yet.</p>
-                    {% endfor %}
-                </fieldset>
-                <label>A note for yourself <small>(optional)</small>
-                    <input name="note" placeholder="Promised at the October PTA meeting">
-                </label>
-                <button class="btn btn-primary" type="submit">Save donation</button>
-            </form>
+            {% set form_action = url_for('admin.donations') %}
+            {% include 'admin/donations/_form.html' %}
         </details>
 
         {% for r in rows %}

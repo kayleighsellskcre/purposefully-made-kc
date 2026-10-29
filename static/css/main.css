@@ -3930,3 +3930,21 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
     .gift-shirt { aspect-ratio: auto; height: 34svh; }
     .gift-picked { margin-top: 0.3rem; }
 }
+
+.dn-kind { font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.72rem; margin: 0.6rem 0 0.2rem; }
+.dn-inline { display: inline; }
+.dn-send-home { align-self: end; }
+.gift-fit { display: flex; gap: 0.6rem; margin-bottom: 0.9rem; }
+.gift-pill { position: relative; flex: 1; text-align: center; }
+.gift-pill input, .gift-style-card input { position: absolute; opacity: 0; pointer-events: none; }
+.gift-pill span { display: block; padding: 0.7rem; border: 2px solid var(--border-light); border-radius: 12px; font-weight: 600; cursor: pointer; background: #fff; }
+.gift-pill:has(input:checked) span { border-color: var(--terra-cotta); background: rgba(184, 124, 111, 0.1); }
+.gift-styles { display: grid; gap: 0.5rem; }
+.gift-style-card { position: relative; display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; padding: 0.75rem 0.95rem; border: 2px solid var(--border-light); border-radius: 12px; background: #fff; cursor: pointer; }
+.gift-style-card:has(input:checked) { border-color: var(--terra-cotta); box-shadow: 0 0 0 3px rgba(184, 124, 111, 0.2); }
+.gift-style-card:has(input:focus-visible), .gift-pill:has(input:focus-visible) span { outline: 2px solid var(--midnight-charcoal); outline-offset: 2px; }
+.gift-style-name { font-weight: 600; font-size: 0.92rem; }
+.gift-style-age { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
+.gift-style-card[hidden], .gift-by-style[hidden], .gift-ship[hidden] { display: none !important; }
+.gift-ship { display: block; }
+.gift-label { display: block; font-weight: 600; font-size: 0.9rem; }

@@ -26,7 +26,8 @@ def donations():
                 donated_on=L.parse_day(request.form.get('donated_on')), winners=request.form.get('winners', type=int),
                 collection_id=request.form.get('collection_id', type=int),
                 product_ids=[int(i) for i in request.form.getlist('product_id') if i.isdigit()],
-                note=request.form.get('note'))
+                note=request.form.get('note'), pickup_place=request.form.get('pickup_place'),
+                send_home=bool(request.form.get('send_home')))
         except ValueError as exc:
             db.session.rollback()
             flash(str(exc), 'error')
@@ -38,8 +39,8 @@ def donations():
         cost, count, estimate = D.cost_so_far(d)
         rows.append({'donation': d, 'chosen': count, 'cost': cost, 'estimate': estimate})
     collections = Collection.query.order_by(Collection.name).all()
-    return render_template('admin/donations/index.html', rows=rows, collections=collections, tees=D.tee_products(),
-                           today=L.kc_today().isoformat())
+    return render_template('admin/donations/index.html', rows=rows, collections=collections, styles=D.style_options(),
+                           today=L.kc_today().isoformat(), donation=None, picked=set())
 
 
 @admin_bp.route('/donations/<int:donation_id>')
@@ -50,8 +51,27 @@ def donation_view(donation_id):
     chosen = set(D._ids(donation.design_ids))
     designs = D.group_designs(donation.collection)
     return render_template('admin/donations/view.html', donation=donation, links={c.id: _claim_link(c) for c in donation.claims},
+                           collections=Collection.query.order_by(Collection.name).all(), styles=D.style_options(donation.collection),
+                           picked=set(D._ids(donation.product_ids)), today=L.kc_today().isoformat(),
                            products=D.available_products(donation), designs=designs, chosen=chosen, cost=cost, count=count,
                            estimate=estimate)
+
+
+@admin_bp.route('/donations/<int:donation_id>/edit', methods=['POST'])
+@admin_required
+def donation_edit(donation_id):
+    donation = db.session.get(Donation, donation_id) or abort(404)
+    try:
+        D.update_donation(
+            donation, recipient=request.form.get('recipient'), occasion=request.form.get('occasion'),
+            donated_on=L.parse_day(request.form.get('donated_on')), collection_id=request.form.get('collection_id', type=int),
+            pickup_place=request.form.get('pickup_place'), send_home=bool(request.form.get('send_home')),
+            product_ids=[int(i) for i in request.form.getlist('product_id') if i.isdigit()], note=request.form.get('note'))
+        flash('Saved.', 'success')
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), 'error')
+    return redirect(url_for('admin.donation_view', donation_id=donation.id))
 
 
 @admin_bp.route('/donations/<int:donation_id>/winner', methods=['POST'])
@@ -61,6 +81,15 @@ def donation_winner(donation_id):
     if request.form.get('action') == 'add':
         db.session.add(DonationClaim(donation_id=donation.id, token=D.new_token()))
         donation.winners_expected = (donation.winners_expected or 0) + 1
+    elif request.form.get('action') == 'remove':
+        claim = db.session.get(DonationClaim, request.form.get('claim_id', type=int) or 0)
+        if claim is None or claim.donation_id != donation.id:
+            abort(404)
+        if claim.order_id:
+            flash('That winner has already chosen a shirt, so it stays on record.', 'info')
+        else:
+            db.session.delete(claim)
+            donation.winners_expected = max(1, (donation.winners_expected or 1) - 1)
     else:
         claim = db.session.get(DonationClaim, request.form.get('claim_id', type=int) or 0)
         if claim is None or claim.donation_id != donation.id:

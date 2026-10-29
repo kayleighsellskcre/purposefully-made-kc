@@ -1670,6 +1670,8 @@ class Donation(db.Model):
     occasion = db.Column(db.String(200))
     donated_on = db.Column(db.Date, nullable=False)                      # Kansas City day it counts
     winners_expected = db.Column(db.Integer, default=1)
+    pickup_place = db.Column(db.String(200))                              # where winners collect their shirt, such as the school front office
+    send_home = db.Column(db.Boolean, default=True)                       # winners may choose to have it sent home with their child
     collection_id = db.Column(db.Integer, db.ForeignKey('collection.id'))   # designs come from this group, if chosen
     product_ids = db.Column(db.Text)                                      # JSON list of the shirt styles winners can pick from
     design_ids = db.Column(db.Text)                                       # JSON list of designs winners can pick from (empty = all of the group's)

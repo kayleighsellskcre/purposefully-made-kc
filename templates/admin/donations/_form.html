@@ -1,0 +1,48 @@
+{# One form for recording a donation and for editing it. Expects: form_action, donation (None when new), collections, styles, picked, today. #}
+{% set d = donation %}
+<form method="post" action="{{ form_action }}" class="dn-form">
+    <div class="dn-grid">
+        <label>Who is it for?
+            <input name="recipient" required maxlength="200" placeholder="Riverview Elementary PTA" value="{{ d.recipient if d else '' }}">
+        </label>
+        <label>What is the occasion? <small>(optional)</small>
+            <input name="occasion" maxlength="200" placeholder="December silent auction" value="{{ (d.occasion or '') if d else '' }}">
+        </label>
+        <label>Date
+            <input type="date" name="donated_on" required value="{{ d.donated_on.isoformat() if d else today }}">
+        </label>
+        {% if not d %}
+        <label>How many winners?
+            <input type="number" name="winners" min="1" max="50" value="4" required>
+        </label>
+        {% endif %}
+    </div>
+    <label>Take the designs and colors from this group <small>(winners choose from them)</small>
+        <select name="collection_id">
+            <option value="">Choose a group</option>
+            {% for c in collections %}<option value="{{ c.id }}" {% if d and d.collection_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+        </select>
+    </label>
+    <fieldset class="dn-tees">
+        <legend>Shirt styles winners can pick</legend>
+        {% for kind, label in (('adult', 'Adult'), ('youth', 'Youth')) %}
+        {% set group = styles|selectattr('age_group', 'equalto', kind)|list %}
+        {% if group %}<p class="dn-fine dn-kind">{{ label }}</p>{% endif %}
+        {% for t in group %}
+        <label class="dn-check"><input type="checkbox" name="product_id" value="{{ t.id }}" {% if t.id in picked or (not d and loop.first and kind == 'adult') %}checked{% endif %}> {{ t.name }}</label>
+        {% endfor %}
+        {% endfor %}
+        {% if not styles %}<p class="dn-fine">No shirt styles are set up yet.</p>{% endif %}
+        <p class="dn-fine">Once you pick a group and save, every style that group sells shows here too, so you can add a hoodie or long sleeve.</p>
+    </fieldset>
+    <div class="dn-grid">
+        <label>Where do winners pick up? <small>(optional)</small>
+            <input name="pickup_place" maxlength="200" placeholder="Riverview front office" value="{{ (d.pickup_place or '') if d else 'Riverview front office' }}">
+        </label>
+        <label class="dn-check dn-send-home"><input type="checkbox" name="send_home" value="1" {% if not d or d.send_home %}checked{% endif %}> Winners can choose to have it sent home with their child</label>
+    </div>
+    <label>A note for yourself <small>(optional)</small>
+        <input name="note" placeholder="Promised at the October PTA meeting" value="{{ (d.note or '') if d else '' }}">
+    </label>
+    <button class="btn btn-primary" type="submit">{{ 'Save changes' if d else 'Save donation' }}</button>
+</form>

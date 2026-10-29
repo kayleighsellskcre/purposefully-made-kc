@@ -16,6 +16,12 @@
         </div>
         <p class="dn-fine">Each chosen shirt is a free order that goes through production and Order blanks like any other. Its cost appears in Reports as "Charitable donations (at cost)", not as cost of goods. Ask your CPA to confirm that the recipient qualifies.</p>
 
+        <details class="dn-card">
+            <summary class="dn-summary">Edit this donation</summary>
+            {% set form_action = url_for('admin.donation_edit', donation_id=donation.id) %}
+            {% include 'admin/donations/_form.html' %}
+        </details>
+
         <h2 class="dn-h2">Winners</h2>
         {% for c in donation.claims %}
         <div class="dn-card dn-claim">
@@ -36,6 +42,10 @@
                 <button type="button" class="btn btn-primary btn-sm dn-copy">Copy link</button>
                 {% if c.winner_email %}<a class="btn btn-outline btn-sm" href="mailto:{{ c.winner_email }}?subject={{ ('Choose your shirt from ' ~ 'Purposefully Made KC')|urlencode }}&body={{ ('Congratulations! Pick your color and design here: ' ~ links[c.id])|urlencode }}">Email it</a>{% endif %}
                 <span class="dn-status">Waiting for them to choose</span>
+                <form method="post" action="{{ url_for('admin.donation_winner', donation_id=donation.id) }}" class="dn-inline">
+                    <input type="hidden" name="action" value="remove"><input type="hidden" name="claim_id" value="{{ c.id }}">
+                    <button class="btn btn-outline btn-sm" type="submit" aria-label="Remove winner {{ loop.index }}">Remove</button>
+                </form>
             </div>
             {% endif %}
         </div>
