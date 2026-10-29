@@ -40,19 +40,19 @@
             {# Optional reference image #}
             <p class="ai-label" style="margin-top:1.25rem;">Got a reference image? (optional)</p>
             <div class="ai-ref-upload" id="aiRefUploadArea" onclick="document.getElementById('aiReferenceInput').click()">
-                <input type="file" id="aiReferenceInput" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none">
+                <input type="file" id="aiReferenceInput" aria-label="Add a reference picture" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none">
                 <div class="ai-ref-placeholder" id="aiRefPlaceholder">
                     <span class="ai-ref-icon">🖼️</span>
                     <span>Upload a photo or screenshot for the AI to draw from</span>
                 </div>
                 <div class="ai-ref-preview-wrap" id="aiRefPreviewWrap" style="display:none">
-                    <img id="aiRefPreviewImg" src="" alt="Reference" class="ai-ref-preview-img">
+                    <img id="aiRefPreviewImg" alt="Reference" class="ai-ref-preview-img">
                     <button type="button" class="ai-ref-remove" id="aiRefRemoveBtn" onclick="event.stopPropagation(); aiRemoveReference()">✕ Remove</button>
                 </div>
             </div>
 
             <p class="ai-label" style="margin-top:1.25rem;">Describe your design</p>
-            <textarea id="aiPromptInput" class="ai-textarea"
+            <textarea id="aiPromptInput" aria-label="Describe the design you want" class="ai-textarea"
                 placeholder="e.g. A football surrounded by sunflowers in a vintage style..."
                 maxlength="800" rows="4"></textarea>
             <div class="ai-char-count"><span id="aiCharCount">0</span>/800</div>
@@ -78,7 +78,7 @@
             <div class="ai-result-inner">
                 <div class="ai-preview-wrap">
                     <div class="ai-preview-bg">
-                        <img id="aiResultImg" src="" alt="Your AI-generated design" class="ai-result-img">
+                        <img id="aiResultImg" alt="Your AI-generated design" class="ai-result-img">
                     </div>
                     <div class="ai-result-actions">
                         <button type="button" class="btn btn-primary" id="aiSaveBtn" onclick="aiSaveDesign()">💾 Save to My Designs</button>
@@ -89,7 +89,7 @@
                     {# Tweak panel - hidden until user clicks "Tweak Your Design" #}
                     <div class="ai-tweak-panel" id="aiTweakPanel" style="display:none;">
                         <p class="ai-label" style="margin-top:0.75rem;">What would you like to change?</p>
-                        <textarea id="aiTweakInput" class="ai-textarea" rows="2"
+                        <textarea id="aiTweakInput" aria-label="Describe what to change" class="ai-textarea" rows="2"
                             placeholder="e.g. make the colors brighter, add a banner that says 'Jake', change to vintage style..."
                             maxlength="400"></textarea>
                         <button type="button" class="btn btn-primary ai-tweak-apply-btn" onclick="aiApplyTweak()">Apply Tweak →</button>

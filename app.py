@@ -781,7 +781,11 @@ def create_app(config_class=Config):
         try:
             payload = request.get_json(silent=True, force=True) or {}
             report = payload.get('csp-report', payload)
-            app.logger.warning('CSP report-only violation: %s', report)
+            from utils.csp_log import should_log
+            log_it, skipped = should_log(report)         # one line per kind of report per hour, not one per page view
+            if log_it:
+                short = {k: v for k, v in report.items() if k not in ('original-policy', 'referrer', 'status-code', 'disposition')} if isinstance(report, dict) else report
+                app.logger.warning('CSP report-only violation (%s more of this kind since the last note): %s', skipped, short)
         except Exception:
             pass
         return '', 204

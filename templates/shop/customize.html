@@ -2302,7 +2302,7 @@
                             <p><strong>Upload your own design</strong></p>
                             <p class="text-muted">PNG, JPG, HEIC, WEBP</p>
                         </div>
-                        <input type="file" id="designFileMain" accept="image/*,.heic,.heif,.png,.jpg,.jpeg,.webp" style="display: none;">
+                        <input type="file" id="designFileMain" aria-label="Upload your logo or design" accept="image/*,.heic,.heif,.png,.jpg,.jpeg,.webp" style="display: none;">
                         <p class="upload-rights-note">
                             Your artwork stays private. We use it only to print your order. <a href="{{ url_for('main.terms') }}#artwork">Learn more</a>
                         </p>
@@ -2375,7 +2375,7 @@
                         {# ── Search bar (hidden until tab selected) ── #}
                         <div class="design-search-wrap" id="designSearchWrap" style="display:none;">
                             <span class="design-search-icon">🔍</span>
-                            <input type="text" class="design-search-input" id="designSearchInput"
+                            <input type="text" class="design-search-input" id="designSearchInput" aria-label="Search designs"
                                    placeholder="Search designs…" autocomplete="off"
                                    oninput="onDesignSearch(this.value)">
                             <button class="design-search-clear" id="designSearchClear"
@@ -2431,8 +2431,8 @@
                             <span id="aiStatusText">Background removed. Transparent PNG ready.</span>
                         </div>
                         <div class="ai-stage bg-checker" id="aiStage">
-                            <img src="" alt="Original upload" id="designOriginalImage" class="ai-img ai-img-original">
-                            <img src="" alt="Design preview" id="designPreviewImage" class="ai-img ai-img-result">
+                            <img alt="Original upload" id="designOriginalImage" class="ai-img ai-img-original">
+                            <img alt="Design preview" id="designPreviewImage" class="ai-img ai-img-result">
                         </div>
                         <div class="ai-controls">
                             <div class="ai-toggle" id="aiViewToggle" role="group" aria-label="Compare before and after">
@@ -2465,7 +2465,7 @@
                             <button type="button" id="aiZoomClose" aria-label="Close">&times;</button>
                         </div>
                         <div class="ai-zoom-stage" id="aiZoomStage">
-                            <img src="" alt="Zoomed artwork" id="aiZoomImg">
+                            <img alt="Zoomed artwork" id="aiZoomImg">
                         </div>
                         <div class="ai-zoom-hint">Scroll to pan &bull; use + / &minus; to zoom &bull; click the background to close</div>
                     </div>
@@ -2685,7 +2685,7 @@
                             {% else %}
                             <p class="form-hint">Your organizer chose a back image for this order.</p>
                             <div class="design-preview" id="designPreviewBack" style="display: none;">
-                                <img src="" alt="Back Design Preview" id="designPreviewImageBack">
+                                <img alt="Back Design Preview" id="designPreviewImageBack">
                             </div>
                             {% endif %}
                         </div>
@@ -2716,7 +2716,7 @@
                                 <p class="text-muted">PNG, JPG, WEBP (Max 15MB)</p>
                                 <p class="text-muted" style="font-size:0.8rem; margin-top:0.35rem;" id="backImageMove">Starts centered in the upper back area. Drag up or down to adjust.</p>
                             </div>
-                            <input type="file" id="designFileBack" accept="image/*,.heic,.heif,.png,.jpg,.jpeg,.webp" style="display: none;">
+                            <input type="file" id="designFileBack" aria-label="Upload a back design" accept="image/*,.heic,.heif,.png,.jpg,.jpeg,.webp" style="display: none;">
                             <div class="back-stack-opt" id="backStackWrap" hidden>
                                 <label class="back-vertical-opt">
                                     <input type="checkbox" id="backStackToggle">
@@ -2730,12 +2730,12 @@
                             </div>
                         </div>
                         <div class="design-preview{% if back_options %} back-preview-fixed{% endif %}" id="designPreviewBack" style="display: none;">
-                            <img src="{{ back_options[0].url if back_options else '' }}" alt="Back Design Preview" id="designPreviewImageBack">
+                            <img {% if back_options %}src="{{ back_options[0].url }}" {% endif %}alt="Back Design Preview" id="designPreviewImageBack">
                             <button class="btn btn-outline btn-sm" id="removeDesignBack">Remove Back Design</button>
                         </div>
                         {% else %}
                         <div class="design-preview" id="designPreviewBack" style="display: none;">
-                            <img src="" alt="Back Design Preview" id="designPreviewImageBack">
+                            <img alt="Back Design Preview" id="designPreviewImageBack">
                         </div>
                         {% endif %}
                     </div>
