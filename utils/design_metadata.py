@@ -24,6 +24,11 @@ def clean_filename_title(filename: str) -> str:
     return " ".join(word.capitalize() if word.islower() else word for word in stem.split())[:200]
 
 
+def title_from_filename(name: str) -> str:
+    """A readable name from a file name that keeps what is already written: MV and JAGS stay capitals, dashes stay dashes."""
+    return " ".join(word.capitalize() if word.islower() else word for word in (name or "").replace("_", " ").split())
+
+
 def is_generic_title(title: str) -> bool:
     value = re.sub(r"\s+", " ", (title or "").strip())
     return not value or bool(_GENERIC_TITLE.fullmatch(value))

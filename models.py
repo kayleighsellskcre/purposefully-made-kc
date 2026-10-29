@@ -163,6 +163,7 @@ class Collection(db.Model):
     allowed_design_ids = db.Column(db.Text)  # JSON: [1, 2, ...]
     # Logos shown at the top of the group-order storefront (subset of allowed_design_ids)
     showcase_design_ids = db.Column(db.Text)  # JSON: [1, 2, ...]
+    design_sections = db.Column(db.Text)  # JSON: {"<design id>": "heading"}, optional headings for the store's design list
     allowed_placements = db.Column(db.Text)  # JSON: ["center_chest", "left_chest", "right_chest", "center_back"]
     allow_custom_upload = db.Column(db.Boolean, default=True)  # When restricted, team can still upload their own design
     back_design_font = db.Column(db.String(50))  # Organizer's chosen font for name/number on back

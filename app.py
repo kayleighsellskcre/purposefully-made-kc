@@ -240,6 +240,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS allowed_colors TEXT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS allowed_design_ids TEXT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS showcase_design_ids TEXT",
+                    "ALTER TABLE collection ADD COLUMN IF NOT EXISTS design_sections TEXT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS back_design_ids TEXT",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS back_design_fonts TEXT",
                     "ALTER TABLE donation ADD COLUMN IF NOT EXISTS pickup_place VARCHAR(200)",

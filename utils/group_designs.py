@@ -175,3 +175,78 @@ def sources(store):
     others = (Collection.query.filter(Collection.is_active.is_(True), Collection.id != store.id)
               .order_by(Collection.name).all())
     return siblings, others
+
+
+# ---- headings and names for a group's artwork --------------------------------------------------------------------
+
+def sections_map(store):
+    """{design id: heading} the owner typed for this group's artwork (a design with no heading is not in it)."""
+    try:
+        raw = json.loads(getattr(store, 'design_sections', None) or '{}')
+    except (TypeError, ValueError):
+        return {}
+    if not isinstance(raw, dict):
+        return {}
+    return {int(k): str(v).strip() for k, v in raw.items() if str(k).isdigit() and str(v).strip()}
+
+
+def section_names(store):
+    """Headings already used in this group, in the order they first appear (offered as suggestions on the edit page)."""
+    return list(dict.fromkeys(sections_map(store).values()))
+
+
+def save_design_labels(store, form, user=None):
+    """Read ``design_section_<id>`` and ``design_name_<id>`` from the edit form.
+
+    Headings belong to this group only. A new name is saved on the artwork itself, so only an admin or the person who
+    uploaded it can change it (other groups may be using the same picture). Returns how many names changed."""
+    allowed = _ids(store.allowed_design_ids)
+    mine = {i: v for i, v in sections_map(store).items() if i in allowed}
+    for i in allowed:
+        key = f'design_section_{i}'
+        if key in form:
+            heading = ' '.join((form.get(key) or '').split())[:60]
+            if heading:
+                mine[i] = heading
+            else:
+                mine.pop(i, None)
+    store.design_sections = json.dumps({str(k): v for k, v in mine.items()}) if mine else None
+    renamed = 0
+    is_admin = bool(getattr(user, 'is_admin', False))
+    for d in (Design.query.filter(Design.id.in_(allowed)).all() if allowed else []):
+        key = f'design_name_{d.id}'
+        if key not in form:
+            continue
+        name = ' '.join((form.get(key) or '').split())[:200]
+        if not name or name == (d.title or ''):
+            continue
+        if is_admin or (user is not None and d.uploaded_by_user_id == getattr(user, 'id', None)):
+            d.title = name
+            renamed += 1
+    return renamed
+
+
+def store_picker(store):
+    """The full design list of a group for the store page: [{'name': heading or None, 'designs': [{id, url, title}]}].
+
+    Main designs only (a color version stays under its main image), in the group's own order. Titles are shown exactly as
+    stored. Designs with no heading go under the first heading's group only when no headings are used at all."""
+    from utils.cloud_storage import image_url
+    ids = _ids(store.allowed_design_ids)
+    if not ids:
+        return []
+    mains = {d.id: d for d in Design.query.filter(Design.id.in_(ids), Design.parent_design_id.is_(None)).all()}
+    heads = sections_map(store)
+    groups = {}
+    for i in ids:
+        d = mains.get(i)
+        if d is None:
+            continue
+        groups.setdefault(heads.get(i), []).append(
+            {'id': d.id, 'url': image_url(d.file_path), 'title': d.title or d.original_filename or 'Design'})
+    order = [h for h in dict.fromkeys(heads.get(i) for i in ids) if h in groups]
+    if None in groups and heads:
+        order.append(None)                          # designs with no heading come last, under "More designs"
+    elif None in groups:
+        order = [None]
+    return [{'name': ('More designs' if h is None and heads else h), 'designs': groups[h]} for h in order]

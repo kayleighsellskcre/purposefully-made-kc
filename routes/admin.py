@@ -191,6 +191,9 @@ def _save_collection_design(file, user_id):
     return design
 
 
+from utils.design_metadata import title_from_filename
+
+
 def _save_uploaded_design(file, user_id, *, process_artwork=True):
     """Save an uploaded file to the Design gallery. Returns Design or None."""
     if not file or not file.filename:
@@ -221,7 +224,7 @@ def _save_uploaded_design(file, user_id, *, process_artwork=True):
     if not file_path:
         current_app.logger.error('Gallery design upload returned no path (%s)', filename)
         return None
-    title = name.replace('_', ' ').title()
+    title = title_from_filename(name)
     design = Design(
         filename=unique_name,
         original_filename=file.filename,
@@ -293,7 +296,7 @@ def _save_design_for_user(file, user_id, title=None, design_fee=0):
         original_filename=file.filename,
         file_path=file_path,
         is_gallery=False,
-        title=title or name.replace('_', ' ').title(),
+        title=title or title_from_filename(name),
         folder='custom_orders',
         uploaded_by_user_id=user_id,
         design_fee=float(design_fee or 0),
@@ -3177,6 +3180,8 @@ def add_collection():
                 showcase_new_uploads=request.form.get('showcase_new_uploads') == 'on',
             )
             collection.showcase_design_ids = json.dumps(showcase_ids) if showcase_ids else None
+            from utils.group_designs import save_design_labels
+            save_design_labels(collection, request.form, current_user)
 
             # ── Multi-team organization (optional) ──────────────────────────
             # Built in the same transaction as the store: either everything
@@ -3290,7 +3295,7 @@ def edit_collection(collection_id):
             if upload_count:
                 msg += f' with {upload_count} new design(s) uploaded'
             flash(msg + '.', 'success')
-            return redirect(url_for('admin.collections'))
+            return redirect(url_for('admin.edit_collection', collection_id=collection.id))
 
         except IntegrityError as e:
             db.session.rollback()
@@ -3319,6 +3324,7 @@ def edit_collection(collection_id):
     showcase_design_ids_list = json.loads(collection.showcase_design_ids) if getattr(collection, 'showcase_design_ids', None) else []
     allowed_placements_list = json.loads(collection.allowed_placements) if collection.allowed_placements else ['center_chest', 'left_chest', 'right_chest', 'center_back']
     from utils.group_orders import fanwear_excluded_ids, org_sync_info
+    from utils.group_designs import section_names, sections_map
     fanwear_excluded_ids_list = fanwear_excluded_ids(collection)
     from utils.fonts import GROUP_ORDER_FONTS
     return render_template('admin/edit_collection.html',
@@ -3331,6 +3337,8 @@ def edit_collection(collection_id):
                          team_store=team_store_config(collection),
                          allowed_design_ids_list=allowed_design_ids_list,
                          showcase_design_ids_list=showcase_design_ids_list,
+                         design_sections_map=sections_map(collection),
+                         design_section_list=section_names(collection),
                          allowed_placements_list=allowed_placements_list,
                          fanwear_excluded_ids_list=fanwear_excluded_ids_list,
                          sync_org=org_sync_info(collection),
@@ -3575,6 +3583,44 @@ def collection_design_remove(collection_id, design_id):
         current_app.logger.exception('collection_design_remove failed: %s', e)
         flash('Could not remove design. Please try again.', 'error')
 
+    return redirect(url_for('admin.edit_collection', collection_id=collection_id))
+
+
+@admin_bp.route('/collections/<int:collection_id>/designs/bulk', methods=['POST'])
+@admin_required
+def collection_designs_bulk(collection_id):
+    """Take every ticked design off this group order, or delete them all, in one step."""
+    import json as _json
+    from utils.group_designs import detach, forget_back_design
+    collection = Collection.query.get_or_404(collection_id)
+    ids = [int(i) for i in request.form.getlist('pick') if str(i).isdigit()]
+    action = request.form.get('action')
+    if not ids or action not in ('detach', 'delete'):
+        flash('Tick the designs you want to change first.', 'error')
+        return redirect(url_for('admin.edit_collection', collection_id=collection_id))
+    try:
+        if action == 'detach':
+            for design_id in ids:
+                detach(collection, design_id)
+            flash(f'Took {len(ids)} design{"s" if len(ids) != 1 else ""} off this group order. The artwork is still on file.', 'success')
+        else:
+            kept = [i for i in (_json.loads(collection.allowed_design_ids) if collection.allowed_design_ids else []) if i not in ids]
+            collection.allowed_design_ids = _json.dumps(kept) if kept else None
+            gone = 0
+            for design in Design.query.filter(Design.id.in_(ids)).all():
+                forget_back_design(collection, design.id)
+                try:
+                    _delete_design_file(design)
+                except Exception as e:
+                    current_app.logger.warning('Could not delete design file for design %s: %s', design.id, e)
+                db.session.delete(design)
+                gone += 1
+            flash(f'Deleted {gone} design{"s" if gone != 1 else ""}.', 'success')
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('collection_designs_bulk failed: %s', e)
+        flash('Could not change those designs. Please try again.', 'error')
     return redirect(url_for('admin.edit_collection', collection_id=collection_id))
 
 
@@ -5167,7 +5213,7 @@ def promote_design_to_gallery(design_id):
     try:
         design.is_gallery = True
         if not design.title:
-            design.title = (design.original_filename or 'Design').rsplit('.', 1)[0].replace('_', ' ').replace('-', ' ').title()[:100]
+            design.title = title_from_filename((design.original_filename or 'Design').rsplit('.', 1)[0])[:100]
         db.session.commit()
         flash(f'"{design.title}" added to the gallery.', 'success')
     except Exception as e:

@@ -246,7 +246,9 @@ def view(slug):
     from utils.product_filters import group_products_by_family
     product_families = group_products_by_family(products)
     age_matching_note = None
-    showcase_designs = load_showcase_designs(collection)
+    showcase_designs = load_showcase_designs(collection, only_top=True)
+    from utils.group_designs import store_picker
+    design_picker = store_picker(collection)
 
     # ── Org navigation: sibling team tabs + ONE shared Fan Wear link ──────────
     from utils.group_orders import (
@@ -286,6 +288,7 @@ def view(slug):
             ]
         except Exception:
             pass  # fall back to collection's own showcase_designs
+        design_picker = []
 
     return render_template('collection/view.html',
                          collection=collection,
@@ -297,6 +300,8 @@ def view(slug):
                          uniform_products=uniform_products,
                          uniform_kits=uniform_kits,
                          showcase_designs=showcase_designs,
+                         design_picker=design_picker,
+                         design_picker_count=sum(len(s['designs']) for s in design_picker),
                          catalog_filter_opts=filter_opts,
                          org_nav=org_nav,
                          school_ctx=_school_context(collection, org),

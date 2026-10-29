@@ -166,6 +166,7 @@
                     {% endif %}
                     {% if gallery_designs %}
                     <p class="form-hint" style="margin-top:1rem"><strong>Artwork already uploaded to this group order:</strong></p>
+                    <datalist id="design-section-names">{% for n in design_section_list %}<option value="{{ n }}">{% endfor %}</datalist>
                     <div class="design-choice-grid">
                         {% for d in gallery_designs %}
                         <div class="design-choice-wrapper" style="position:relative;">
@@ -176,6 +177,10 @@
                                 </div>
                                 <span>{{ d.title or d.original_filename or 'Design' }}</span>
                             </label>
+                            <div class="design-label-fields">
+                                <input type="text" name="design_name_{{ d.id }}" value="{{ d.title or d.original_filename or '' }}" maxlength="200" aria-label="Name of this design" placeholder="Name">
+                                <input type="text" name="design_section_{{ d.id }}" value="{{ (design_sections_map or {}).get(d.id, '') }}" maxlength="60" list="design-section-names" aria-label="Heading for this design on the store page" placeholder="Heading (optional)">
+                            </div>
                             <label class="showcase-opt">
                                 <input type="checkbox" name="showcase_designs" value="{{ d.id }}" {% if d.id in (showcase_design_ids_list or []) %}checked{% endif %}>
                                 Show at top
@@ -210,6 +215,7 @@
                             </div>
                             {% endif %}
                             {% if not is_user_edit %}
+                            <label class="design-pick-box" title="Select this design"><input type="checkbox" name="pick" value="{{ d.id }}" form="bulkDesigns" class="js-design-pick" aria-label="Select {{ d.title or 'this design' }}"></label>
                             {# Button only. Its form is emitted after the collection
                                form closes, and is targeted here by id. A <form>
                                at this point sits inside the collection form, and
@@ -225,6 +231,15 @@
                         </div>
                         {% endfor %}
                     </div>
+                    {% if not is_user_edit and gallery_designs|length > 1 %}
+                    <div class="design-bulk-bar" id="designBulkBar">
+                        <span><b id="designBulkCount">0</b> selected</span>
+                        <button type="button" class="btn btn-outline btn-sm" id="designBulkAll">Select all</button>
+                        <button type="button" class="btn btn-outline btn-sm" id="designBulkNone">Clear</button>
+                        <button type="submit" form="bulkDesigns" name="action" value="detach" class="btn btn-outline btn-sm js-bulk-go" data-ask="Take the selected designs off this group order? The artwork stays on file.">Take off this group</button>
+                        <button type="submit" form="bulkDesigns" name="action" value="delete" class="btn btn-sm design-bulk-delete js-bulk-go" data-ask="Permanently delete the selected designs? This cannot be undone.">Delete selected</button>
+                    </div>
+                    {% endif %}
                     {% if not is_user_edit and gallery_designs|length > 1 %}
                     <div class="link-colors-bar">
                         <p class="form-hint" style="margin:0">Uploaded the same layout in different colors? Tick <strong>Same design, other color</strong> on each one, then link them. The first one ticked in the list becomes the main image and the rest become its colors.</p>
@@ -554,6 +569,10 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         </form>
         {% endfor %}
+        <form id="bulkDesigns" method="post" style="display:none;"
+              action="{{ url_for('admin.collection_designs_bulk', collection_id=collection.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
         <form id="attachDesigns" method="post" style="display:none;"
               action="{{ url_for('admin.collection_designs_attach', collection_id=collection.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -963,6 +982,39 @@ function confirmDelete(btn) {
         if (!mode) return;
         enhanced.forEach(function (e) { e.open(mode === 'open'); });
     });
+})();
+</script>
+<script>
+(function () {
+    // Select several designs, then take them off or delete them in one step.
+    var picks = function () { return Array.prototype.slice.call(document.querySelectorAll('.js-design-pick')); };
+    var count = document.getElementById('designBulkCount');
+    function refresh() { if (count) count.textContent = picks().filter(function (c) { return c.checked; }).length; }
+    document.addEventListener('change', function (e) { if (e.target.classList && e.target.classList.contains('js-design-pick')) refresh(); });
+    var all = document.getElementById('designBulkAll'), none = document.getElementById('designBulkNone');
+    if (all) all.addEventListener('click', function () { picks().forEach(function (c) { c.checked = true; }); refresh(); });
+    if (none) none.addEventListener('click', function () { picks().forEach(function (c) { c.checked = false; }); refresh(); });
+    Array.prototype.forEach.call(document.querySelectorAll('.js-bulk-go'), function (b) {
+        b.addEventListener('click', function (e) {
+            var n = picks().filter(function (c) { return c.checked; }).length;
+            if (!n) { e.preventDefault(); alert('Tick the designs you want to change first.'); return; }
+            if (!confirm(b.getAttribute('data-ask') + ' (' + n + ' selected)')) e.preventDefault();
+        });
+    });
+
+    // After saving or removing something, come back to the same place on the page instead of the top.
+    var KEY = 'editScroll:' + location.pathname;
+    document.addEventListener('submit', function () {
+        try { sessionStorage.setItem(KEY, JSON.stringify({ y: window.scrollY, t: Date.now() })); } catch (err) {}
+    }, true);
+    try {
+        var saved = JSON.parse(sessionStorage.getItem(KEY) || 'null');
+        sessionStorage.removeItem(KEY);
+        if (saved && Date.now() - saved.t < 60000 && !location.hash) {
+            var go = function () { window.scrollTo(0, saved.y); };
+            go(); window.addEventListener('load', go); setTimeout(go, 300);
+        }
+    } catch (err) {}
 })();
 </script>
 {% include 'includes/group_order_wide_layout.html' %}

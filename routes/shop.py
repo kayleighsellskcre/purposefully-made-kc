@@ -581,6 +581,8 @@ def create_group_order():
                 showcase_new_uploads=request.form.get('showcase_new_uploads') == 'on',
             )
             collection.showcase_design_ids = json.dumps(showcase_ids) if showcase_ids else None
+            from utils.group_designs import save_design_labels
+            save_design_labels(collection, request.form, current_user)
             if upload_count or showcase_ids:
                 db.session.commit()
 
@@ -737,6 +739,7 @@ def edit_group_order(slug):
 
     catalog = load_group_order_form_catalog()
     from utils.group_orders import fan_color_checked_keys, fanwear_excluded_ids, org_sync_info, team_store_config
+    from utils.group_designs import section_names, sections_map
     fan_color_checked = fan_color_checked_keys(
         collection, collection.products, catalog['uniform_colors_by_product']
     )
@@ -754,6 +757,8 @@ def edit_group_order(slug):
         team_store=team_store_config(collection),
         allowed_design_ids_list=allowed_design_ids_list,
         showcase_design_ids_list=showcase_design_ids_list,
+        design_sections_map=sections_map(collection),
+        design_section_list=section_names(collection),
         allowed_placements_list=allowed_placements_list,
         fanwear_excluded_ids_list=fanwear_excluded_ids(collection),
         sync_org=org_sync_info(collection),

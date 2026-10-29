@@ -940,6 +940,27 @@
     </div>
 </section>
 
+{% if design_picker %}
+<section class="store-picker-wrap">
+    <div class="container">
+        <details class="store-picker" open>
+            <summary>All designs <span class="store-picker-count">{{ design_picker_count }}</span></summary>
+            {% for sec in design_picker %}
+            {% if sec.name %}<h3 class="store-picker-heading">{{ sec.name }}</h3>{% endif %}
+            <ul class="store-picker-grid">
+                {% for d in sec.designs %}
+                <li class="store-picker-tile" title="{{ d.title }}">
+                    <span class="store-picker-img"><img src="{{ d.url }}" alt="{{ d.title }}" loading="lazy" decoding="async"></span>
+                    <span class="store-picker-name">{{ d.title }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endfor %}
+        </details>
+    </div>
+</section>
+{% endif %}
+
 <script>
 (function() {
     // Jerseys always show first. Fan wear opens from the centered button

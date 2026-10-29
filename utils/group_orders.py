@@ -1341,14 +1341,15 @@ def showcase_design_ids(collection):
     return ids
 
 
-def load_showcase_designs(collection):
+def load_showcase_designs(collection, only_top=False):
     """Ordered design dicts for the storefront logo strip and the flyer: the designs ticked "Show at top" first, then
-    every other main design in the group (a color version stays under its main image)."""
+    every other main design in the group (a color version stays under its main image). ``only_top`` keeps just the
+    ticked ones (the store page strip; the full list is the picker below the products)."""
     offered = allowed_design_ids(collection)
     allowed = set(offered)
     ids = [i for i in dict.fromkeys(showcase_design_ids(collection)) if i in allowed]
     rest = [i for i in offered if i not in ids]
-    if rest:
+    if rest and not only_top:
         ids += [d.id for d in sorted(Design.query.filter(Design.id.in_(rest), Design.parent_design_id.is_(None)).all(),
                                      key=lambda d: rest.index(d.id))]
     if not ids:

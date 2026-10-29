@@ -76,7 +76,7 @@
 
 <div class="ops-card bk-card">
     <h2>Orders and fundraiser</h2>
-    <p class="bk-muted">{{ report.orders }} orders, {{ report.items }} items, ${{ '%.2f' % report.revenue }} in sales.
+    <p class="bk-muted">{{ report.orders }} orders, {{ report['items'] }} items, ${{ '%.2f' % report.revenue }} in sales.
         {% if school.fundraiser_cents %}Fundraiser ${{ '%.2f' % (school.fundraiser_cents / 100) }} per item: <strong>${{ '%.2f' % (report.owed_cents / 100) }}</strong> owed, ${{ '%.2f' % (report.paid_cents / 100) }} paid back, <strong>${{ '%.2f' % (report.balance_cents / 100) }}</strong> still to pay.{% endif %}</p>
     {% if school.fundraiser_cents %}
     <form method="post" class="bk-form">
@@ -121,7 +121,7 @@
             <td>{{ 'School Spirit' if row.store.store_kind == 'spirit' else DS.KIND_LABEL.get(row.store.store_kind or 'sport', 'Sport') }}</td>
             <td><code>{{ DS.short_path(row.store, school) }}</code></td>
             <td>{{ DS.colors_source(row.store, school) }} <a class="bk-link" href="{{ url_for('admin.district_store_colors', store_id=row.store.id) }}">Change</a></td>
-            <td>{{ row.orders }}</td><td>{{ row.items }}</td>
+            <td>{{ row.orders }}</td><td>{{ row['items'] }}</td>
             <td><a class="bk-link" href="{{ url_for('admin.edit_collection', collection_id=row.store.id) }}">Edit products</a>
                 <a class="bk-link" href="{{ url_for('admin.district_copy_store', store_id=row.store.id) }}">Copy to other schools</a></td>
         </tr>
