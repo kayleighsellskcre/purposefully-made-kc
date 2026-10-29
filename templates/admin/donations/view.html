@@ -35,7 +35,9 @@
             {% if c.order %}
             <p class="dn-status dn-done">Chosen: {{ c.order.items.first().color if c.order.items.first() else '' }}
                 {{ c.order.items.first().size if c.order.items.first() else '' }}.
-                <a href="{{ url_for('admin.order_detail', order_id=c.order.id) }}">Order {{ c.order.order_number }}</a></p>
+                <a href="{{ url_for('admin.order_detail', order_id=c.order.id) }}">Order {{ c.order.order_number }}</a>
+                {% set moved = c.order.items.first().position_y if c.order.items.first() else None %}
+                {% if moved %}<span class="dn-status">Logo placed {{ '%.2f'|format(moved|abs) }} in {{ 'lower' if moved > 0 else 'higher' }} than standard</span>{% endif %}</p>
             {% else %}
             <div class="dn-link-row">
                 <input class="dn-link" readonly value="{{ links[c.id] }}" aria-label="Private link for winner {{ loop.index }}">

@@ -115,7 +115,7 @@ def preview_sizing(products, designs):
         sizes = parse_json_list(p.available_sizes)
         youth = (p.age_group or 'adult') == 'youth'
         ref = next((s for s in (['YM'] if youth else ['M']) if s in sizes), sizes[len(sizes) // 2] if sizes else ('YM' if youth else 'M'))
-        row = {'body': garment_body_length_in(ref, p), 'drop': 2.0 if classify_age(p, ref) == 'youth' else 3.0, 'designs': {}}
+        row = {'body': garment_body_length_in(ref, p), 'drop': 2.75 if classify_age(p, ref) == 'youth' else 3.75, 'designs': {}}
         for d in designs:
             t = front_transfer_size(ref, p, 'center_chest', d.width, d.height)
             row['designs'][str(d.id)] = [round(t['width'], 2), round(t['height'], 2)]
@@ -177,6 +177,10 @@ def place_claim(claim, form):
     email = (form.get('email') or '').strip()[:120]
     if not first or not email or not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
         return None, 'Please add your name and a good email so we can reach you.'
+    try:
+        offset = max(-3.0, min(6.0, round(float(form.get('offset_in') or 0), 2)))      # inches the logo was moved down (up is negative)
+    except (TypeError, ValueError):
+        offset = 0.0
     send_home = bool(donation.send_home) and form.get('fulfillment') == 'send_home'
     child = ' '.join((form.get('child_name') or '').split())[:120]
     teacher = ' '.join((form.get('teacher_name') or '').split())[:120]
@@ -191,7 +195,7 @@ def place_claim(claim, form):
     front = (production or {}).get('front') or {}
     line = {'product_id': product.id, 'design_id': design.id, 'color': color, 'size': size, 'quantity': 1, 'unit_price': 0.0,
             'placement': 'center_chest', 'print_type': 'DTF', 'transfer_production': production,
-            'print_width': front.get('width'), 'print_height': front.get('height')}
+            'print_width': front.get('width'), 'print_height': front.get('height'), 'position_y': offset or None}
     order = Order(
         email=email, first_name=first, last_name=last, phone=(form.get('phone') or '').strip()[:20],
         fulfillment_method='pickup', send_home_with_child=send_home,

@@ -3995,3 +3995,11 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
     .gift-preview:not(.has-photo) .gift-picked { display: none; }
 }
 .gift-shirt .pm-proof-overlay { object-fit: contain; filter: none; transition: none; }
+
+/* Move the design on the shirt */
+.gift-shirt .pm-proof-overlay { pointer-events: auto; cursor: grab; touch-action: none; }
+.gift-shirt .pm-proof-overlay.is-dragging { cursor: grabbing; }
+.gift-nudge { display: flex; align-items: center; justify-content: center; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; font-size: 0.82rem; color: var(--text-secondary); }
+.gift-nudge[hidden] { display: none; }
+.gift-nudge-btn { border: 1px solid var(--border-light); background: #fff; border-radius: 999px; padding: 0.35rem 0.8rem; font: inherit; font-size: 0.8rem; cursor: pointer; color: var(--midnight-charcoal); }
+.gift-nudge-btn:hover { border-color: var(--terra-cotta); }

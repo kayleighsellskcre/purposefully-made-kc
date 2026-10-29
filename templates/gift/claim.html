@@ -32,6 +32,13 @@
                     <img class="pm-proof-overlay center_chest" id="giftArt" src="" alt="" style="display:none">
                 </div>
                 <p class="gift-picked" id="giftPicked"></p>
+                <div class="gift-nudge" id="giftNudge" hidden>
+                    <span>Move your design</span>
+                    <button type="button" class="gift-nudge-btn" data-move="-0.25" aria-label="Move the design up">&uarr; Up</button>
+                    <button type="button" class="gift-nudge-btn" data-move="0.25" aria-label="Move the design down">&darr; Down</button>
+                    <button type="button" class="gift-nudge-btn" data-move="0" aria-label="Put the design back">Reset</button>
+                </div>
+                <input type="hidden" name="offset_in" id="giftOffset" value="{{ form.get('offset_in', '0') }}">
             </aside>
 
             <div class="gift-steps">
@@ -158,6 +165,26 @@
             }
             var guide = document.getElementById('giftGuide');
             var FALLBACK = { top: 0.12, height: 0.70, center: 0.5 };
+            var offsetIn = parseFloat(document.getElementById('giftOffset').value) || 0, perInNow = 0;
+            var nudge = document.getElementById('giftNudge');
+            function setOffset(v) {
+                offsetIn = Math.max(-3, Math.min(6, Math.round(v * 100) / 100));
+                document.getElementById('giftOffset').value = offsetIn;
+                place();
+            }
+            nudge.addEventListener('click', function (e) {
+                var b = e.target.closest('[data-move]'); if (!b) return;
+                var step = parseFloat(b.dataset.move);
+                setOffset(step === 0 ? 0 : offsetIn + step);
+            });
+            // Click and drag the design up or down
+            var drag = null;
+            art.addEventListener('pointerdown', function (e) {
+                drag = { y: e.clientY, start: offsetIn }; art.setPointerCapture(e.pointerId); art.classList.add('is-dragging'); e.preventDefault();
+            });
+            art.addEventListener('pointermove', function (e) { if (drag && perInNow) setOffset(drag.start + (e.clientY - drag.y) / perInNow); });
+            function endDrag() { drag = null; art.classList.remove('is-dragging'); }
+            art.addEventListener('pointerup', endDrag); art.addEventListener('pointercancel', endDrag);
             // Draw the design at its real print size against the shirt, the way the ordering page does.
             function place() {
                 var p = checked('product_id'), d = checked('design_id');
@@ -171,11 +198,12 @@
                 var dw = shirt.naturalWidth * scale, dh = shirt.naturalHeight * scale;
                 var left = pad + (cw - dw) / 2, top = pad + (ch - dh) / 2;
                 var perIn = (dh * m.height) / info.body;
+                perInNow = perIn;
                 var w = size[0] * perIn, h = size[1] * perIn;
                 art.style.maxWidth = 'none'; art.style.maxHeight = 'none';
                 art.style.width = w + 'px'; art.style.height = h + 'px';
                 art.style.left = (left + dw * (m.center != null ? m.center : 0.5)) + 'px';
-                art.style.top = (top + dh * m.top + info.drop * perIn + h / 2) + 'px';
+                art.style.top = (top + dh * m.top + (info.drop + offsetIn) * perIn + h / 2) + 'px';
             }
             function measure() {
                 var src = shirt.src;
@@ -204,6 +232,7 @@
                 shirt.style.display = photo ? 'block' : 'none';
                 if (photo && shirt.src !== new URL(c.dataset.img, location.href).href) shirt.src = c.dataset.img;
                 if (d && photo) { art.src = d.dataset.img; art.style.display = 'block'; place(); measure(); } else art.style.display = 'none';
+                nudge.hidden = !(d && photo);
                 says.textContent = (d || c) ? [d ? d.dataset.name : '', c ? c.value : ''].filter(Boolean).join(' on ') : '';
             }
             form.addEventListener('change', function (e) { if (e.target.tagName === 'SELECT') show(); });

@@ -137,3 +137,16 @@ def test_an_empty_winner_slot_can_be_removed_but_a_chosen_one_stays(app, seed, a
         claim_id = db.session.get(Donation, did).claims[0].id
     admin.post(f'/admin/donations/{did}/winner', data={'action': 'remove', 'claim_id': claim_id})
     assert len(_links(app, did)) == 3
+
+
+def test_a_moved_logo_is_remembered_on_the_order(app, seed, admin):
+    did = _donation(app, seed, admin)
+    token = _links(app, did)[0]
+    resp = app.test_client().post(f'/gift/{token}', data={
+        'product_id': seed['tee_id'], 'design_id': seed['free_design_id'], 'color': 'Black', 'size': 'M',
+        'first_name': 'Pat', 'email': 'pat@example.com', 'fulfillment': 'pickup', 'offset_in': '0.75'})
+    assert resp.status_code == 302
+    with app.app_context():
+        item = Order.query.filter_by(payment_method='donation').one().items.first()
+        assert item.position_y == 0.75
+    assert 'lower than standard' in admin.get(f'/admin/donations/{did}').get_data(as_text=True)
