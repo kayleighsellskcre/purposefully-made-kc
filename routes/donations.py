@@ -27,13 +27,17 @@ def claim(token):
         order, error = D.place_claim(claim, request.form)
         if error:
             flash(error, 'error')
-            return render_template('gift/claim.html', claim=claim, donation=donation, choices=_choices(donation),
-                                   designs=D.available_designs(donation), form=request.form), 400
+            designs = D.available_designs(donation)
+            choices = _choices(donation)
+            return render_template('gift/claim.html', claim=claim, donation=donation, choices=choices, designs=designs,
+                                   form=request.form, sizing=D.preview_sizing([c['product'] for c in choices], designs)), 400
         try:
             from routes.checkout import queue_order_confirmation_email
             queue_order_confirmation_email(order.id)
         except Exception:
             current_app.logger.exception('donation order %s: confirmation email not queued', order.id)
         return redirect(url_for('donations.claim', token=claim.token))
-    return render_template('gift/claim.html', claim=claim, donation=donation, choices=_choices(donation),
-                           designs=D.available_designs(donation), form={})
+    designs = D.available_designs(donation)
+    choices = _choices(donation)
+    return render_template('gift/claim.html', claim=claim, donation=donation, choices=choices, designs=designs, form={},
+                           sizing=D.preview_sizing([c['product'] for c in choices], designs))

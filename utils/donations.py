@@ -106,6 +106,23 @@ def update_donation(donation, *, recipient, occasion, donated_on, collection_id,
     return donation
 
 
+def preview_sizing(products, designs):
+    """What the shirt preview needs to draw a design to scale: {product id: {'body': garment length in inches, 'drop': inches
+    below the collar, 'designs': {design id: [print width, print height] in inches}}}, all at a reference size."""
+    from utils.print_sizes import classify_age, front_transfer_size, garment_body_length_in
+    out = {}
+    for p in products:
+        sizes = parse_json_list(p.available_sizes)
+        youth = (p.age_group or 'adult') == 'youth'
+        ref = next((s for s in (['YM'] if youth else ['M']) if s in sizes), sizes[len(sizes) // 2] if sizes else ('YM' if youth else 'M'))
+        row = {'body': garment_body_length_in(ref, p), 'drop': 2.0 if classify_age(p, ref) == 'youth' else 3.0, 'designs': {}}
+        for d in designs:
+            t = front_transfer_size(ref, p, 'center_chest', d.width, d.height)
+            row['designs'][str(d.id)] = [round(t['width'], 2), round(t['height'], 2)]
+        out[str(p.id)] = row
+    return out
+
+
 def create_donation(*, recipient, occasion, donated_on, winners, collection_id, product_ids, note, pickup_place=None, send_home=True):
     fields = _clean_fields(recipient, occasion, donated_on, pickup_place, product_ids, note)
     winners = max(1, min(int(winners or 1), 50))

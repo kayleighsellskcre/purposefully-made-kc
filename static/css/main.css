@@ -3994,3 +3994,4 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
     .gift-preview:not(.has-photo) .gift-guide { position: static; }
     .gift-preview:not(.has-photo) .gift-picked { display: none; }
 }
+.gift-shirt .pm-proof-overlay { object-fit: contain; filter: none; transition: none; }

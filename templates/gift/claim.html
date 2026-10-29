@@ -131,6 +131,8 @@
         </form>
         <script>
         (function () {
+            var SIZING = {{ sizing|tojson }};
+            var metrics = {};
             var form = document.getElementById('giftForm');
             var shirt = document.getElementById('giftShirt'), art = document.getElementById('giftArt'), says = document.getElementById('giftPicked');
             var home = document.getElementById('giftHome');
@@ -155,6 +157,36 @@
                 });
             }
             var guide = document.getElementById('giftGuide');
+            var FALLBACK = { top: 0.12, height: 0.70, center: 0.5 };
+            // Draw the design at its real print size against the shirt, the way the ordering page does.
+            function place() {
+                var p = checked('product_id'), d = checked('design_id');
+                if (!p || !d || art.style.display === 'none' || !shirt.naturalWidth) return;
+                var info = SIZING[p.value], size = info && info.designs[d.value];
+                if (!info || !size) return;
+                var m = metrics[shirt.src] || FALLBACK;
+                var frame = document.getElementById('giftFrame'), fr = frame.getBoundingClientRect();
+                var pad = fr.width * 0.06, cw = fr.width - 2 * pad, ch = fr.height - 2 * pad;
+                var scale = Math.min(cw / shirt.naturalWidth, ch / shirt.naturalHeight);
+                var dw = shirt.naturalWidth * scale, dh = shirt.naturalHeight * scale;
+                var left = pad + (cw - dw) / 2, top = pad + (ch - dh) / 2;
+                var perIn = (dh * m.height) / info.body;
+                var w = size[0] * perIn, h = size[1] * perIn;
+                art.style.maxWidth = 'none'; art.style.maxHeight = 'none';
+                art.style.width = w + 'px'; art.style.height = h + 'px';
+                art.style.left = (left + dw * (m.center != null ? m.center : 0.5)) + 'px';
+                art.style.top = (top + dh * m.top + info.drop * perIn + h / 2) + 'px';
+            }
+            function measure() {
+                var src = shirt.src;
+                if (!src || metrics[src] !== undefined || /placeholder-product/.test(src)) return place();
+                metrics[src] = null;
+                fetch('/api/garment-metrics?src=' + encodeURIComponent(src)).then(function (r) { return r.json(); })
+                    .then(function (data) { metrics[src] = data && data.ok ? data : FALLBACK; place(); })
+                    .catch(function () { metrics[src] = FALLBACK; place(); });
+            }
+            shirt.addEventListener('load', measure);
+            window.addEventListener('resize', place);
             function show() {
                 var d = checked('design_id'), c = form.querySelector('.gift-by-style:not([hidden]) input[name=color]:checked');
                 var sz = form.querySelector('.gift-by-style:not([hidden]) select[name=size]');
@@ -170,8 +202,8 @@
                 guide.hidden = photo;
                 document.getElementById('giftFrame').parentNode.classList.toggle('has-photo', photo);
                 shirt.style.display = photo ? 'block' : 'none';
-                if (photo) shirt.src = c.dataset.img;
-                if (d && photo) { art.src = d.dataset.img; art.style.display = 'block'; } else art.style.display = 'none';
+                if (photo && shirt.src !== new URL(c.dataset.img, location.href).href) shirt.src = c.dataset.img;
+                if (d && photo) { art.src = d.dataset.img; art.style.display = 'block'; place(); measure(); } else art.style.display = 'none';
                 says.textContent = (d || c) ? [d ? d.dataset.name : '', c ? c.value : ''].filter(Boolean).join(' on ') : '';
             }
             form.addEventListener('change', function (e) { if (e.target.tagName === 'SELECT') show(); });
