@@ -12,6 +12,28 @@ from pathlib import Path
 cart_bp = Blueprint('cart', __name__, url_prefix='/cart')
 
 
+def _make_back_preview(back, size, product):
+    """(picture address, CSS position) of the whole back print for a small image with a name stacked under it, or (None, None)."""
+    back = back or {}
+    if not (back.get('vertical') and back.get('neck_image_url')):
+        return None, None
+    try:
+        from flask import current_app
+        from utils.cloud_storage import image_url, upload_bytes
+        from utils.personalization_layout import render_snapshot_png
+        from utils.print_sizes import garment_body_length_in
+        png = render_snapshot_png(back, dpi=72)
+        stored = upload_bytes(png, current_app._get_current_object(), 'back_preview.png', subfolder='proofs',
+                              public_id_prefix='back_preview')
+        per_in = 70.0 / float(garment_body_length_in(size, product) or 29.0)             # the shirt fills about 70% of the picture
+        style = f"top:{12 + 0.9 * per_in:.1f}%;height:{float(back.get('combined_height') or 0) * per_in:.1f}%"
+        return image_url(stored), style
+    except Exception:
+        from flask import current_app
+        current_app.logger.exception('could not make the back preview')
+        return None, None
+
+
 def _back_overlay_class(meta):
     if isinstance(meta, str):
         try:
@@ -62,6 +84,7 @@ def index():
     # Enrich cart items with product details
     cart_items = []
     subtotal = 0
+    previews_added = False
     
     for item in cart:
         if not isinstance(item, dict) or not item.get('product_id'):
@@ -87,8 +110,19 @@ def index():
             else:
                 display_front = front_image
                 front_design = item.get('design_url') if (item.get('design_url') and placement in FRONT_PLACEMENTS) else None
+            if not item.get('back_preview_url') and item.get('back_design_url') and (item.get('transfer_production') or {}).get('back'):
+                made_url, made_style = _make_back_preview(item['transfer_production']['back'], item.get('size'), product)
+                if made_url:
+                    item['back_preview_url'], item['back_preview_style'] = made_url, made_style
+                    previews_added = True
             back_display = proof_back or back_image
             back_overlay = None if proof_back else item.get('back_design_url')
+            back_class = _back_overlay_class(item.get('back_design_meta'))
+            back_style = ''
+            if item.get('back_preview_url'):
+                # image and stacked name together, drawn on the shirt photo (the camera snapshot cannot be trusted with the letters)
+                back_display, back_overlay = back_image, item['back_preview_url']
+                back_class, back_style = 'combo_back', item.get('back_preview_style') or ''
 
             cart_items.append({
                 **item,
@@ -103,11 +137,16 @@ def index():
                 'back_fallback': back_image if proof_back and back_image and proof_back != back_image else None,
                 'design_overlay': front_design,
                 'back_overlay': back_overlay,
-                'back_overlay_class': _back_overlay_class(item.get('back_design_meta')),
+                'back_overlay_class': back_class,
+                'back_overlay_style': back_style,
+                'has_back_proof': bool(proof_back) and not item.get('back_preview_url'),
                 'placement': placement
             })
             subtotal += item_total
     
+    if previews_added:
+        save_cart(cart)                                           # keep the pictures just made so they are not made again
+
     # What delivery costs, said in the cart so the total never surprises anyone at checkout.
     from flask import current_app as _app
     flat = float(_app.config.get('SHIPPING_FLAT_RATE') or 0)
@@ -150,6 +189,8 @@ def add():
         quantity = int(data.get('quantity', 1))
         _up = data.get('unit_price')
         unit_price_override = float(_up) if _up not in (None, '') else None
+        _ri = data.get('replace_index')                      # set when the customer is editing a line already in the cart
+        replace_index = int(_ri) if _ri not in (None, '') else None
         _specs = data.get('print_specs', '{}')
         print_specs = json.loads(_specs or '{}') if isinstance(_specs, str) else (_specs or {})
         if not isinstance(print_specs, dict):
@@ -538,6 +579,10 @@ def add():
         print_width = transfer_production['back'].get('combined_width')
         print_height = transfer_production['back'].get('combined_height')
     
+    # A stacked name under a small collar image: the picture the customer uploaded is only the small image, so a picture of the
+    # whole print (image and letters) is made here, from the saved layout, to show on the shirt in the cart.
+    back_preview_url, back_preview_style = _make_back_preview((transfer_production or {}).get('back'), size, product)
+
     # Create cart item
     cart_item = {
         'product_id': product_id,
@@ -552,6 +597,8 @@ def add():
         'back_design_url': back_design_url,
         'back_design_kind': back_design_kind,
         'back_design_meta': back_design_meta,
+        'back_preview_url': back_preview_url,
+        'back_preview_style': back_preview_style,
         'proof_front_url': proof_front_url,
         'proof_back_url': proof_back_url,
         'print_width': print_width,
@@ -579,6 +626,11 @@ def add():
             return True
         return stores_share_an_org(cid, new_cid)
 
+    old_line = None                                          # the cart line being edited, kept by reference so removals cannot shift it
+    if replace_index is not None and 0 <= replace_index < len(cart) and isinstance(cart[replace_index], dict) \
+            and cart[replace_index].get('product_id') == product_id:
+        old_line = cart[replace_index]
+
     mixed = [item for item in cart if isinstance(item, dict) and not _compatible(item)]
     mixed_notice = None
     if mixed:
@@ -588,9 +640,15 @@ def add():
         mixed_notice = (f'Your {removed_name} items were taken out of the cart, because one cart can only '
                         'hold one group at a time.')
     
-    # Check if identical item exists
+    # An edited line takes the place of the one it came from. Anything else joins an identical line or is added.
     found = False
-    for item in cart:
+    if old_line is not None:
+        for pos, line in enumerate(cart):
+            if line is old_line:
+                cart[pos] = cart_item
+                found = True
+                break
+    for item in ([] if found else cart):
         if (item['product_id'] == product_id and 
             item['size'] == size and 
             item['color'] == color and

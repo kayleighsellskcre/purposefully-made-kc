@@ -908,6 +908,34 @@ def product_detail(product_slug):
                          fulfillment_note=group_fulfillment_customer_note(get_active_collection()))
 
 
+def _cart_line_for_edit(product):
+    """What the customizer needs to reopen a cart line (?edit=<line number>): None unless it is a line of this very product."""
+    index = request.args.get('edit', type=int)
+    if index is None:
+        return None
+    from utils.cart_store import get_cart
+    cart = get_cart()
+    if not (0 <= index < len(cart)) or not isinstance(cart[index], dict):
+        return None
+    line = cart[index]
+    if str(line.get('product_id')) != str(product.id):
+        return None
+    meta = line.get('back_design_meta')
+    if isinstance(meta, str):
+        try:
+            meta = json.loads(meta)
+        except ValueError:
+            meta = None
+    try:
+        design_id = int(line.get('design_id')) if line.get('design_id') not in (None, '') else None
+    except (TypeError, ValueError):
+        design_id = None
+    return {'index': index, 'color': line.get('color'), 'size': line.get('size'), 'quantity': line.get('quantity') or 1,
+            'placement': line.get('placement'), 'design_id': design_id, 'design_url': line.get('design_url'),
+            'back_url': line.get('back_design_url'), 'back_kind': line.get('back_design_kind'),
+            'back_meta': meta if isinstance(meta, dict) else None}
+
+
 @shop_bp.route('/customize/<product_slug>')
 def customize(product_slug):
     """Product customizer interface"""
@@ -1080,7 +1108,9 @@ def customize(product_slug):
         merged_partner = None
 
     # Check for pre-selected design from gallery
-    design_id = request.args.get('design_id', type=int)
+    # Editing something already in the cart: the customizer opens with that item's choices filled in.
+    edit_line = _cart_line_for_edit(product)
+    design_id = request.args.get('design_id', type=int) or (edit_line or {}).get('design_id')
     preset_design = None
     if coll and catalog_section == 'uniform':
         locked_logo = load_design_dict(resolve_uniform_design_id(coll, uniform_kit))
@@ -1103,6 +1133,9 @@ def customize(product_slug):
                 'title': (d.title or d.original_filename or 'Design')
             }
     
+    if edit_line and not preset_design and not uniform_logo_locked and edit_line.get('design_url'):
+        preset_design = {'id': None, 'url': edit_line['design_url'], 'title': 'Your design'}     # a logo the customer uploaded
+
     # Gallery designs for inline "choose logo" section (mains + color variants)
     gallery_designs = []
     try:
@@ -1270,5 +1303,6 @@ def customize(product_slug):
                          uniform_logo_locked=uniform_logo_locked,
                          garment_metrics_seed=garment_metrics_seed,
                          preset_back_design=preset_back_design,
+                         edit_line=edit_line,
                          back_options=back_options,
                          fulfillment_note=group_fulfillment_customer_note(coll))

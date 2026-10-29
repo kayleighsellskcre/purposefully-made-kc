@@ -4058,3 +4058,13 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 .pw-toggle { padding: 9px; }
 a.contact-method-value { display: inline-block; padding: 0.55rem 0; }
 .footer-contact a { display: inline-block; padding: 0.55rem 0; }
+
+/* A small collar image with a name stacked under it, drawn on the back of the shirt in the cart */
+.pm-proof-overlay.combo_back { left: 50%; transform: translateX(-50%); width: auto; max-width: 40%; max-height: none; object-fit: contain; filter: none; }
+
+.edit-note { margin: 0 0 0.6rem; padding: 0.55rem 0.8rem; border-radius: 10px; background: rgba(184, 124, 111, 0.1); color: var(--terra-cotta); font-size: 0.85rem; text-align: center; }
+.cart-edit-link { text-decoration: underline; }
+/* The step cards never grow past the column: a long carousel scrolls inside its own card */
+.gift-steps { grid-template-columns: minmax(0, 1fr); }
+.gift-steps > .gift-card, .gift-rail-wrap { min-width: 0; max-width: 100%; }
+.gift-rail { max-width: 100%; }

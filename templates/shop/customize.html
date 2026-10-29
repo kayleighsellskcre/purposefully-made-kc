@@ -2791,7 +2791,8 @@
                     🗓 Orders Open {{ collection_opens_label }}
                 </button>
                 {% else %}
-                <button class="btn btn-primary btn-block" id="addToCart" disabled style="opacity:0.65;cursor:not-allowed;">Add to Cart</button>
+                {% if edit_line %}<p class="edit-note">You are changing an item from your cart. Make your changes, then press Update Item.</p>{% endif %}
+                <button class="btn btn-primary btn-block" id="addToCart" disabled style="opacity:0.65;cursor:not-allowed;">{{ 'Update Item' if edit_line else 'Add to Cart' }}</button>
                 <p class="add-to-cart-hint" id="addToCartHint" aria-live="polite">
                     If Add to Cart is greyed out, choose a size and upload or select a design.
                 </p>
@@ -2916,6 +2917,8 @@
         lockedFitKey: null,
         lockedFitMeasured: false
     };
+    const EDIT_LINE = {{ edit_line | tojson if edit_line else 'null' }};          // a cart line being edited, or null
+    const ADD_LABEL = EDIT_LINE ? 'Update Item' : 'Add to Cart';
     const requireBackName = {{ 'true' if catalog_section == 'uniform' else 'false' }};
     const isUniformKit = {{ 'true' if catalog_section == 'uniform' else 'false' }};
     const TRANSFER_SIZING = {{ transfer_sizing | default({}) | tojson }};
@@ -3058,6 +3061,8 @@
         if (presetDesign && presetDesign.url) {
             applyPresetDesign(presetDesign);
         }
+        // Editing a line from the cart: fill in what the customer chose before
+        if (EDIT_LINE) window.setTimeout(applyEditLine, 200);
 
         // Color pre-select happens in setupColorSelection() via selectColor(firstColor)
         // - do not delay-click here (that raced with the customer's first tap).
@@ -3070,6 +3075,89 @@
         }
     });
     
+    // Reopen a cart line: color, size, quantity, placement, the front design and the back design, as they were chosen.
+    function applyEditLine() {
+        const L = EDIT_LINE;
+        if (!L) return;
+        const fire = function (el, types) { if (el) types.forEach(function (t) { el.dispatchEvent(new Event(t, { bubbles: true })); }); };
+        try {
+            const want = String(L.color || '').trim().toLowerCase();
+            const card = Array.from(document.querySelectorAll('.color-card')).find(function (c) {
+                return (c.dataset.color || '').trim().toLowerCase() === want;
+            });
+            if (card) window.selectColor(card);
+            const sizeCard = Array.from(document.querySelectorAll('.size-card')).find(function (c) { return c.dataset.size === L.size; });
+            if (sizeCard) {
+                window.selectSize(sizeCard);
+                const qty = Math.max(1, parseInt(L.quantity, 10) || 1);
+                if (MULTI_SIZE) {
+                    state.sizeQty = {};
+                    state.sizeQty[L.size] = qty;
+                    state.selectedSize = L.size;
+                    capQuantityToStock();
+                } else {
+                    const qi = document.getElementById('quantity');
+                    if (qi) { qi.value = qty; fire(qi, ['input', 'change']); }
+                }
+            }
+            const place = document.querySelector('.placement-option[data-placement="' + L.placement + '"]');
+            if (place && L.placement) place.click();
+
+            const meta = L.back_meta || {};
+            const combo = !!(meta.vertical && meta.neck_image_url);
+            const tab = function (sel) { return document.querySelector('.back-design-tab' + sel); };
+            const byId = function (id) { return document.getElementById(id); };
+            const setLook = function () {
+                const font = byId('backDesignFont'), color = byId('backDesignTextColor'), ot = byId('backDesignOutlineToggle'), oc = byId('backDesignOutlineColor');
+                if (font && meta.font) { font.value = meta.font; fire(font, ['change']); }
+                if (color && meta.text_color) { color.value = meta.text_color; fire(color, ['input', 'change']); }
+                if (ot) { ot.checked = !!meta.outline; fire(ot, ['change']); }
+                if (oc && meta.outline_color) { oc.value = meta.outline_color; fire(oc, ['input', 'change']); }
+            };
+            const showBackPicture = function (url) {
+                state.backDesignFile = null;
+                state.backDesignUrl = url;
+                const img = byId('designPreviewImageBack');
+                if (img) img.src = url;
+                const box = byId('designPreviewBack');
+                if (box) { box.classList.add('active'); box.style.display = 'block'; }
+            };
+            if (combo) {                                       // a small image under the collar with a name stacked below it
+                const small = tab('[data-size="small"]');
+                if (small) small.click();
+                showBackPicture(L.back_url);
+                const toggle = byId('backStackToggle');
+                if (toggle) { toggle.checked = true; fire(toggle, ['change']); }
+                const nm = byId('backStackName');
+                if (nm) { nm.value = meta.name || ''; fire(nm, ['input', 'change', 'keyup']); }
+                setLook();
+            } else if (meta.name || meta.number) {             // a name and number (or a name stacked down the back)
+                const nameTab = tab('[data-mode="name_number"]');
+                if (nameTab) nameTab.click();
+                const name = byId('backDesignNameInput'), number = byId('backDesignNumberInput');
+                if (name) { name.value = meta.name || ''; fire(name, ['input', 'change', 'keyup']); }
+                if (meta.vertical) {
+                    const vt = byId('backDesignVerticalToggle');
+                    if (vt) { vt.checked = true; fire(vt, ['change']); }
+                } else if (number) {
+                    number.value = meta.number || '';
+                    fire(number, ['input', 'change', 'keyup']);
+                }
+                setLook();
+            } else if (L.back_url) {                           // a picture on the back, small or large
+                const t = tab(meta.position === 'upper' ? '[data-size="small"]' : '[data-size="full"]');
+                if (t) t.click();
+                showBackPicture(L.back_url);
+            }
+            updateBackDesignPreview();
+            updateDesignLayerVisibility();
+            updateTotalPrice();
+            refreshAddToCartButton();
+        } catch (err) {
+            console.warn('Could not fill in the item being edited', err);
+        }
+    }
+
     function singleAllowedPlacement() {
         return Array.isArray(state.allowedPlacements) && state.allowedPlacements.length === 1;
     }
@@ -6507,7 +6595,7 @@
             }
             
             // Show loading
-            this.textContent = 'Adding to Cart...';
+            this.textContent = EDIT_LINE ? 'Saving...' : 'Adding to Cart...';
             this.disabled = true;
             
             try {
@@ -6530,11 +6618,13 @@
                 }
                 let addedCount = 0;
                 let lastResult = {};
+                let editReplaced = false;
                 for (const line of orderLines) {
                 const unitPrice = flatPrice + getSizeUpcharge(line.size);
                 
                 const formData = new FormData();
                 formData.append('product_id', state.productId);
+                if (EDIT_LINE && !editReplaced) { formData.append('replace_index', EDIT_LINE.index); editReplaced = true; }     // the first line takes the place of the one being edited
                 {% if catalog_section %}
                 formData.append('catalog_section', {{ catalog_section|tojson }});
                 {% endif %}
@@ -6565,7 +6655,7 @@
                         const backFile = await generateBackDesignNameNumberImage();
                         state.selectedSize = previewSize;
                         if (!backFile) {
-                            this.textContent = 'Add to Cart';
+                            this.textContent = ADD_LABEL;
                             this.disabled = false;
                             return;
                         }
@@ -6630,7 +6720,7 @@
                 window.location.href = '/cart';
             } catch (error) {
                 PMKC.showFlash(error.message || 'Something went wrong adding to cart. Please try again.', 'error');
-                this.textContent = 'Add to Cart';
+                this.textContent = ADD_LABEL;
                 this.disabled = false;
             }
         });

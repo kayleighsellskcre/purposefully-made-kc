@@ -19,11 +19,11 @@
             <div class="cart-items">
                 {% for item in cart_items %}
                 <div class="cart-item">
-                    <div class="item-image{% if item.back_overlay %} item-image-pair{% endif %}">
+                    <div class="item-image{% if item.back_overlay or item.has_back_proof %} item-image-pair{% endif %}">
                         {% if item.display_image %}
-                        {{ garment_proof(item.display_image, item.design_overlay, item.placement or 'center_chest', 'Front' if item.back_overlay else none, fallback_url=item.display_fallback) }}
-                        {% if item.back_overlay %}
-                        {{ garment_proof(item.back_image, item.back_overlay, item.back_overlay_class or 'center_back', 'Back', fallback_url=item.back_fallback) }}
+                        {{ garment_proof(item.display_image, item.design_overlay, item.placement or 'center_chest', 'Front' if (item.back_overlay or item.has_back_proof) else none, fallback_url=item.display_fallback) }}
+                        {% if item.back_overlay or item.has_back_proof %}
+                        {{ garment_proof(item.back_image, item.back_overlay, item.back_overlay_class or 'center_back', 'Back', overlay_style=item.back_overlay_style, fallback_url=item.back_fallback) }}
                         {% endif %}
                         {% else %}
                         <img src="{{ url_for('static', filename='img/placeholder-product.svg') }}"
@@ -81,6 +81,8 @@
                            screen reader user cannot tell which item they are on. #}
                         {% if not item.store_name and (item.get('design_id') or item.get('design_url')) %}<button type="button" class="btn-save-later" data-share-design="/made/share/cart/{{ loop.index0 }}"
                                 aria-label="Share {{ item.product.name }}, {{ item.color }} with a link or QR code">Share this design</button>{% endif %}
+                        <a class="btn-save-later cart-edit-link" href="{{ url_for('shop.customize', product_slug=item.product.slug, edit=loop.index0, catalog_section=item.get('catalog_section') or none, uniform_kit=item.get('uniform_kit') or none) }}"
+                           aria-label="Edit {{ item.product.name }}, {{ item.color }}, size {{ item.size }}">Edit</a>
                         <button type="button" class="btn-save-later" data-save-for-later="{{ loop.index0 }}"
                                 aria-label="Save {{ item.product.name }}, {{ item.color }}, size {{ item.size }} for later">Save for later</button>
                         <button type="button" class="btn-remove" data-index="{{ loop.index0 }}"
