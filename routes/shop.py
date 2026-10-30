@@ -687,6 +687,31 @@ def create_group_order():
 _GROUP_ORDER_FONTS = GROUP_ORDER_FONTS
 
 
+@shop_bp.route('/group-orders/<slug>/teams/add', methods=['POST'])
+@login_required
+def group_order_add_teams(slug):
+    """Organizer version of adding teams: turn this group order into a multi-team group."""
+    from utils.group_orders import user_can_manage_collection
+    from utils.group_org import OrgSetupError, add_teams_to_group
+    collection = Collection.query.filter_by(slug=slug).first_or_404()
+    if not user_can_manage_collection(collection):
+        flash('You can only edit group orders you created.', 'error')
+        return redirect(url_for('account.my_group_orders'))
+    try:
+        org, stores = add_teams_to_group(collection, request.form.getlist('org_team_names[]'),
+                                         request.form.get('first_team_name'), current_user)
+        db.session.commit()
+        flash(f'Added {len(stores)} team{"s" if len(stores) != 1 else ""} to {org.name}. Each has its own store and link.', 'success')
+    except OrgSetupError as e:
+        db.session.rollback()
+        flash(str(e), 'error')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('group_order_add_teams failed: %s', e)
+        flash('Could not add those teams. Please try again.', 'error')
+    return redirect(url_for('shop.edit_group_order', slug=collection.slug))
+
+
 @shop_bp.route('/group-orders/<slug>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_group_order(slug):

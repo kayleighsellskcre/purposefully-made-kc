@@ -343,3 +343,54 @@ def add_store_to_org(collection, form):
             sort_order=OrgSection.query.filter_by(organization_id=org.id).count(),
         ))
     return org
+
+
+def add_teams_to_group(collection, team_names, first_team_name, user):
+    """Make an existing group order a multi-team group, or add teams to one that already is.
+
+    The store you are editing becomes (or stays) a team; every new team gets a copy of it with its own link.
+    Returns (organization, new_stores). Does not commit. Raises OrgSetupError for bad input.
+    """
+    from utils.group_orders import org_for_collection
+    names = [n.strip() for n in team_names if n and n.strip()]
+    if not names:
+        raise OrgSetupError('Type at least one team name.')
+    if len({n.lower() for n in names}) != len(names):
+        raise OrgSetupError('Each team needs a different name.')
+    org, section = org_for_collection(collection)
+    if org is not None and getattr(org, 'district_id', None):
+        raise OrgSetupError('School district stores are managed under Districts.')
+    taken = {(s.label or '').strip().lower() for s in OrgSection.query.filter_by(organization_id=org.id).all()} if org else set()
+    first = (first_team_name or '').strip()
+    if org is None:
+        if not first:
+            raise OrgSetupError('Type the team name this store is for (for example Basketball).')
+        taken.add(first.lower())
+    for n in names:
+        if n.lower() in taken:
+            raise OrgSetupError(f'There is already a team called {n}.')
+    if org is None:
+        org_name = collection.name.strip()
+        org = Organization(name=org_name, slug=_unique_slug(Organization, org_name),
+                           created_by_user_id=getattr(user, 'id', None), is_active=True)
+        db.session.add(org)
+        db.session.flush()
+        collection.name = f'{first}: {org_name}'
+        db.session.add(OrgSection(organization_id=org.id, collection_id=collection.id, label=first[:100],
+                                  icon=sport_icon(first), sort_order=0))
+        db.session.flush()
+    org_name = org.name
+    order = OrgSection.query.filter_by(organization_id=org.id).count()
+    stores = []
+    for name in names:
+        store = _copy_store(collection, name=f'{name}: {org_name}', slug=_unique_slug(Collection, f'{org_name}-{name}'))
+        db.session.add(store)
+        db.session.flush()
+        db.session.add(OrgSection(organization_id=org.id, collection_id=store.id, label=name[:100],
+                                  icon=sport_icon(name), sort_order=order))
+        order += 1
+        stores.append(store)
+    db.session.flush()
+    from utils.org_fan_store import sync_org_fan_store
+    sync_org_fan_store(org)
+    return org, stores

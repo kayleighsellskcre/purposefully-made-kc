@@ -564,6 +564,43 @@
                 {% endif %}
             </div>
         </form>
+        {% set team_org, team_section = group_org_of(collection) %}
+        <section class="form-section add-teams" id="addTeams">
+            <h2>Teams</h2>
+            {% if team_org %}
+            <p class="form-hint">This store is the <strong>{{ team_section.label }}</strong> team of <strong>{{ team_org.name }}</strong>. Add another team and it gets its own store and link, set up like this one.</p>
+            {% else %}
+            <p class="form-hint">Does this group have more than one team or sport? Add the others here. Each team gets its own store and link, set up like this one, and shoppers find them all on one page.</p>
+            {% endif %}
+            <form method="post" class="add-teams-form"
+                  action="{% if is_user_edit %}{{ url_for('shop.group_order_add_teams', slug=collection.slug) }}{% else %}{{ url_for('admin.collection_add_teams', collection_id=collection.id) }}{% endif %}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% if not team_org %}
+                <label class="add-teams-label" for="firstTeamName">This store is for which team?</label>
+                <input type="text" id="firstTeamName" name="first_team_name" class="form-control" maxlength="100" placeholder="e.g. Basketball">
+                {% endif %}
+                <label class="add-teams-label" for="newTeam1">{% if team_org %}New teams{% else %}Other teams{% endif %}</label>
+                <div id="newTeamList" class="add-teams-list">
+                    <input type="text" id="newTeam1" name="org_team_names[]" class="form-control" maxlength="100" placeholder="e.g. Soccer">
+                </div>
+                <p class="add-teams-actions">
+                    <button type="button" class="btn btn-outline btn-sm" id="newTeamMore">+ Add another team</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Add these teams</button>
+                </p>
+            </form>
+            {% if team_org %}<p class="form-hint"><a class="bk-link" href="{{ url_for('org.manage', slug=team_org.slug) }}">Manage all teams in {{ team_org.name }} &rarr;</a></p>{% endif %}
+        </section>
+        <script>
+        (function () {
+            var more = document.getElementById('newTeamMore'), list = document.getElementById('newTeamList');
+            if (!more || !list) return;
+            more.addEventListener('click', function () {
+                var box = document.createElement('input');
+                box.type = 'text'; box.name = 'org_team_names[]'; box.className = 'form-control'; box.maxLength = 100; box.placeholder = 'Another team';
+                list.appendChild(box); box.focus();
+            });
+        })();
+        </script>
         {% if not is_user_edit %}
         <form id="delete-form" action="{{ url_for('admin.delete_collection', collection_id=collection.id) }}" method="POST" style="display: none;"></form>
         {# One per gallery design, out here where the parser keeps them. The `or []`

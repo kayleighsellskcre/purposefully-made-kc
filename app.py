@@ -981,6 +981,8 @@ def create_app(config_class=Config):
     app.jinja_env.globals['PAYMENT_OPTIONS'] = _PAYMENT_OPTIONS
     from utils.group_designs import sources as _design_sources
     app.jinja_env.globals['group_design_sources'] = _design_sources
+    from utils.group_orders import org_for_collection as _org_for_collection
+    app.jinja_env.globals['group_org_of'] = _org_for_collection
     from utils.group_designs import back_families as _back_families
     app.jinja_env.globals['group_back_designs'] = _back_families
 
