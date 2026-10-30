@@ -345,10 +345,12 @@ def add_store_to_org(collection, form):
     return org
 
 
-def add_teams_to_group(collection, team_names, first_team_name, user):
+def add_teams_to_group(collection, team_names, first_team_name, user, form=None):
     """Make an existing group order a multi-team group, or add teams to one that already is.
 
     The store you are editing becomes (or stays) a team; every new team gets a copy of it with its own link.
+    With ``org_style_mode=different`` in ``form`` each new team gets the jerseys picked for it (a team with none
+    becomes a fan wear only store); otherwise each copies this store's jerseys and can be changed on its own page.
     Returns (organization, new_stores). Does not commit. Raises OrgSetupError for bad input.
     """
     from utils.group_orders import org_for_collection
@@ -380,12 +382,18 @@ def add_teams_to_group(collection, team_names, first_team_name, user):
                                   icon=sport_icon(first), sort_order=0))
         db.session.flush()
     org_name = org.name
+    uniforms = None
+    if form is not None and form.get('org_style_mode') == 'different':
+        uniforms = [team_uniform_from_form(form, idx, name, set()) for idx, name in enumerate(names)]
+    fan_ids = [i for i in (_as_int(v) for v in _load_config(collection).get('fan_product_ids') or []) if i]
     order = OrgSection.query.filter_by(organization_id=org.id).count()
     stores = []
-    for name in names:
+    for idx, name in enumerate(names):
         store = _copy_store(collection, name=f'{name}: {org_name}', slug=_unique_slug(Collection, f'{org_name}-{name}'))
         db.session.add(store)
         db.session.flush()
+        if uniforms is not None:
+            _apply_uniform(store, uniforms[idx], fan_ids)
         db.session.add(OrgSection(organization_id=org.id, collection_id=store.id, label=name[:100],
                                   icon=sport_icon(name), sort_order=order))
         order += 1

@@ -4125,3 +4125,9 @@ a.contact-method-value { display: inline-block; padding: 0.55rem 0; }
 .add-teams-label { font-weight: 600; font-size: 0.9rem; margin-top: 0.4rem; }
 .add-teams-list { display: grid; gap: 0.5rem; }
 .add-teams-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; margin: 0.4rem 0 0; }
+.add-teams-style { display: grid; gap: 0.4rem; margin-top: 0.6rem; }
+.add-teams-choice { display: flex; gap: 0.5rem; align-items: flex-start; font-size: 0.9rem; cursor: pointer; }
+.team-jersey-cards { display: grid; gap: 0.7rem; margin-top: 0.4rem; }
+.team-jersey-card { display: grid; gap: 0.5rem; padding: 0.9rem 1rem; background: #fff; border: 1px solid var(--border-light); border-radius: 14px; }
+.team-jersey-field { display: grid; gap: 0.2rem; font-size: 0.82rem; font-weight: 600; }
+.team-jersey-field select { font-weight: 400; }

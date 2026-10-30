@@ -48,3 +48,26 @@ def test_only_admins_can_add_teams_here(app, seed, guest):
     assert resp.status_code in (302, 401, 403)
     with app.app_context():
         assert OrgSection.query.count() == 0
+
+
+def test_new_teams_can_get_their_own_jerseys(app, seed, admin_client):
+    from models import Product
+    from utils.group_orders import team_store_config
+    cid = seed['collection_id']
+    with app.app_context():
+        base = db.session.get(Collection, cid)
+        shirt = base.products[0]
+        color = (shirt.color_variants[0].color_name if getattr(shirt, 'color_variants', None) else None)
+    if not color:
+        import pytest
+        pytest.skip('seed shirt has no color variants')
+    data = {'org_team_names[]': ['Soccer', 'Cheer'], 'first_team_name': 'Basketball', 'org_style_mode': 'different',
+            'org_team_uniform_product_id[]': [str(shirt.id), ''], 'org_team_home_color[]': [color, ''],
+            'org_team_youth_product_id[]': ['', ''], 'org_team_away_product_id[]': ['', ''],
+            'org_team_away_color[]': ['', ''], 'org_team_away_youth_product_id[]': ['', '']}
+    assert admin_client.post(f'/admin/collections/{cid}/teams/add', data=data).status_code == 302
+    with app.app_context():
+        soccer = Collection.query.filter(Collection.name.like('Soccer: %')).one()
+        cheer = Collection.query.filter(Collection.name.like('Cheer: %')).one()
+        assert team_store_config(soccer)['uniform']['enabled'] is True
+        assert team_store_config(cheer)['uniform']['enabled'] is False

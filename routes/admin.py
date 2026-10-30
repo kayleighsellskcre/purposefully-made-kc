@@ -3594,7 +3594,7 @@ def collection_add_teams(collection_id):
     collection = Collection.query.get_or_404(collection_id)
     try:
         org, stores = add_teams_to_group(collection, request.form.getlist('org_team_names[]'),
-                                         request.form.get('first_team_name'), current_user)
+                                         request.form.get('first_team_name'), current_user, request.form)
         db.session.commit()
         flash(f'Added {len(stores)} team{"s" if len(stores) != 1 else ""} to {org.name}. Each has its own store and link.', 'success')
     except OrgSetupError as e:

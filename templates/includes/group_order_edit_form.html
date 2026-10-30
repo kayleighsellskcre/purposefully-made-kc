@@ -585,6 +585,14 @@
                 </div>
                 <p class="add-teams-actions">
                     <button type="button" class="btn btn-outline btn-sm" id="newTeamMore">+ Add another team</button>
+                </p>
+                <div class="add-teams-style">
+                    <p class="add-teams-label">Do the new teams wear the same jerseys as this store, or their own?</p>
+                    <label class="add-teams-choice"><input type="radio" name="org_style_mode" value="same" checked> Same jerseys as this store (you can change each team later)</label>
+                    <label class="add-teams-choice"><input type="radio" name="org_style_mode" value="different"> Each team has its own jerseys</label>
+                    <div id="teamJerseyCards" class="team-jersey-cards" hidden></div>
+                </div>
+                <p class="add-teams-actions">
                     <button type="submit" class="btn btn-primary btn-sm">Add these teams</button>
                 </p>
             </form>
@@ -593,11 +601,66 @@
         <script>
         (function () {
             var more = document.getElementById('newTeamMore'), list = document.getElementById('newTeamList');
+            var cards = document.getElementById('teamJerseyCards');
+            var addForm = document.querySelector('.add-teams-form');
+            var radios = addForm.querySelectorAll('input[name="org_style_mode"]');
             if (!more || !list) return;
+            // Style choices come from this page's own jersey picker (same styles, same colors per style)
+            function styleSource() { return document.getElementById('uniform_product_id'); }
+            function select(name, label, optional, colors) {
+                var wrap = document.createElement('label'); wrap.className = 'team-jersey-field';
+                wrap.appendChild(document.createTextNode(label + (optional ? ' (optional)' : '')));
+                var sel = document.createElement('select'); sel.name = name; sel.className = 'form-control';
+                if (colors) {
+                    var blank = document.createElement('option'); blank.value = ''; blank.textContent = 'Choose the style first'; sel.appendChild(blank);
+                } else {
+                    var src = styleSource();
+                    if (src) Array.prototype.forEach.call(src.options, function (o) { sel.appendChild(o.cloneNode(true)); });
+                    Array.prototype.forEach.call(sel.options, function (o) { o.selected = false; });
+                    if (sel.options.length) sel.options[0].selected = true;
+                }
+                wrap.appendChild(sel); return { wrap: wrap, sel: sel };
+            }
+            function link(styleSel, colorSel) {
+                styleSel.addEventListener('change', function () {
+                    var all = window._uniformColors || {}, mine = all[styleSel.value] || [];
+                    colorSel.innerHTML = '';
+                    var blank = document.createElement('option'); blank.value = ''; blank.textContent = mine.length ? 'Choose a color' : 'Choose the style first'; colorSel.appendChild(blank);
+                    mine.forEach(function (c) { var o = document.createElement('option'); o.value = c; o.textContent = c; colorSel.appendChild(o); });
+                });
+            }
+            function teamNames() { return Array.prototype.map.call(list.querySelectorAll('input[name="org_team_names[]"]'), function (i) { return i.value.trim(); }); }
+            function build() {
+                var saved = Array.prototype.map.call(cards.querySelectorAll('.team-jersey-card'), function (c) {
+                    var v = {}; c.querySelectorAll('select').forEach(function (s) { v[s.name] = s.value; }); return v;
+                });
+                cards.innerHTML = '';
+                teamNames().forEach(function (name, idx) {
+                    var card = document.createElement('div'); card.className = 'team-jersey-card';
+                    var h = document.createElement('strong'); h.textContent = name || ('New team ' + (idx + 1)); card.appendChild(h);
+                    var homeS = select('org_team_uniform_product_id[]', 'Home jersey style'), homeC = select('org_team_home_color[]', 'Home color', false, true);
+                    var youthS = select('org_team_youth_product_id[]', 'Youth style', true);
+                    var awayS = select('org_team_away_product_id[]', 'Away jersey style', true), awayC = select('org_team_away_color[]', 'Away color', true, true);
+                    link(homeS.sel, homeC.sel); link(awayS.sel, awayC.sel);
+                    [homeS, homeC, youthS, awayS, awayC].forEach(function (f) { card.appendChild(f.wrap); });
+                    var spare = document.createElement('input'); spare.type = 'hidden'; spare.name = 'org_team_away_youth_product_id[]'; card.appendChild(spare);
+                    var prev = saved[idx] || {};
+                    [[homeS.sel, 'org_team_uniform_product_id[]'], [homeC.sel, 'org_team_home_color[]'], [youthS.sel, 'org_team_youth_product_id[]'],
+                     [awayS.sel, 'org_team_away_product_id[]'], [awayC.sel, 'org_team_away_color[]']].forEach(function (p) {
+                        if (prev[p[1]]) { p[0].value = prev[p[1]]; p[0].dispatchEvent(new Event('change')); p[0].value = prev[p[1]]; }
+                    });
+                    cards.appendChild(card);
+                });
+            }
+            function mode() { var r = addForm.querySelector('input[name="org_style_mode"]:checked'); return r ? r.value : 'same'; }
+            function refresh() { cards.hidden = mode() !== 'different'; if (!cards.hidden) build(); }
+            radios.forEach(function (r) { r.addEventListener('change', refresh); });
+            list.addEventListener('input', function () { if (mode() === 'different') build(); });
             more.addEventListener('click', function () {
                 var box = document.createElement('input');
                 box.type = 'text'; box.name = 'org_team_names[]'; box.className = 'form-control'; box.maxLength = 100; box.placeholder = 'Another team';
                 list.appendChild(box); box.focus();
+                if (mode() === 'different') build();
             });
         })();
         </script>
