@@ -1,7 +1,7 @@
 """Who owes you: ages, recording cash/Venmo payments onto the books, and the optional 7/14/30 day reminders."""
 import json
 import threading
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
@@ -34,10 +34,16 @@ def _unthrottled():
     L._LAST_SYNC['at'] = 0.0
 
 
+def _kc_noon(days_old):
+    """Midday Kansas City, days_old days ago, as stored UTC, so the test never lands on a midnight edge."""
+    noon = datetime.combine(L.kc_today() - timedelta(days=days_old), datetime.min.time()).replace(hour=12, tzinfo=L.CENTRAL)
+    return noon.astimezone(timezone.utc).replace(tzinfo=None)
+
+
 def _invoice(number='INV-T-1', days_old=0, email='cust@example.com', total_units=100.0):
     inv = ManualInvoice(number=number, customer_name='Dana Smith', email=email, tax_rate=0.0,
                         items_json=json.dumps([{'description': 'Shirts', 'qty': 1, 'unit': total_units}]),
-                        issued_at=datetime.utcnow() - timedelta(days=days_old, hours=1))
+                        issued_at=_kc_noon(days_old))
     db.session.add(inv)
     db.session.commit()
     return inv
