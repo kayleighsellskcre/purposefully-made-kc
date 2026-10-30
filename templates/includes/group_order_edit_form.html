@@ -148,6 +148,7 @@
                         <span class="form-hint" style="margin:0">The files I am uploading are the same design in different colors: link them as one (the first becomes the main image)</span>
                     </label>
                     {% if not is_user_edit %}{% set design_siblings, design_other_stores = group_design_sources(collection) %}{% endif %}
+                    {% if not is_user_edit %}<p class="form-hint"><a class="bk-link" href="{{ url_for('admin.artwork_pack', collection_id=collection.id) }}">Add an artwork pack (a folder with design-manifest.json)</a></p>{% endif %}
                     {% if design_siblings %}
                     <details class="borrow-art">
                         <summary>Use artwork from another group</summary>

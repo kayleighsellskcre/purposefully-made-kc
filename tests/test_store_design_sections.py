@@ -121,3 +121,54 @@ def test_bulk_buttons_do_not_depend_on_their_own_value(app, seed, admin_client):
     html = admin_client.get(f'/admin/collections/{store_id}/edit').get_data(as_text=True)
     assert 'id="bulkAction"' in html and 'data-action="delete"' in html and 'data-action="detach"' in html
     assert 'name="action" value="delete"' not in html
+
+
+def _png(color):
+    from io import BytesIO
+    from PIL import Image
+    buf = BytesIO()
+    Image.new('RGBA', (20, 20), color).save(buf, 'PNG')
+    return buf.getvalue()
+
+
+def _post_item(client, store_id, entry, data, dry=False):
+    import hashlib
+    from io import BytesIO
+    form = {'design_id': entry['design_id'], 'name': entry['name'], 'category': entry['category'],
+            'sha256': entry.get('sha256') or hashlib.sha256(data).hexdigest(), 'file': (BytesIO(data), 'x.png')}
+    if dry:
+        form['dry_run'] = '1'
+    return client.post(f'/admin/collections/{store_id}/artwork-pack/item', data=form, content_type='multipart/form-data').get_json()
+
+
+def test_artwork_pack_adds_matches_and_sorts_into_headings(app, seed, admin_client):
+    school_id, store_id, slug, ids = _store(app, seed, ['Go jags pennant', 'B', 'C'])
+    png = _png((200, 30, 30, 120))
+    # an existing design with the same name is matched, not duplicated
+    assert _post_item(admin_client, store_id, {'design_id': 'MV-29', 'name': 'Go jags pennant', 'category': 'general-spirit'}, png)['status'] == 'matched'
+    # checking does not save anything
+    assert _post_item(admin_client, store_id, {'design_id': 'MV-44', 'name': 'Jag dad sunglasses', 'category': 'family-fanwear'}, png, dry=True)['status'] == 'added'
+    with app.app_context():
+        assert len(json.loads(db.session.get(Collection, store_id).allowed_design_ids)) == 3
+    assert _post_item(admin_client, store_id, {'design_id': 'MV-44', 'name': 'Jag dad sunglasses', 'category': 'family-fanwear'}, png)['status'] == 'added'
+    assert _post_item(admin_client, store_id, {'design_id': 'MV-44', 'name': 'Jag dad sunglasses', 'category': 'family-fanwear'}, png)['status'] == 'matched'
+    with app.app_context():
+        store = db.session.get(Collection, store_id)
+        assert len(json.loads(store.allowed_design_ids)) == 4
+        new = Design.query.filter_by(sku='MV-44').one()
+        assert new.title == 'Jag Dad Sunglasses' and GD.sections_map(store)[new.id] == 'Family'
+
+
+def test_artwork_pack_refuses_a_damaged_or_wrong_file(app, seed, admin_client):
+    school_id, store_id, slug, ids = _store(app, seed, ['Something else', 'B', 'C'])
+    entry = {'design_id': 'MV-01', 'name': 'Calm jaguar', 'category': 'general-spirit'}
+    assert _post_item(admin_client, store_id, dict(entry, sha256='0' * 64), _png((1, 2, 3, 255)))['status'] == 'problem'
+    assert _post_item(admin_client, store_id, entry, b'not a picture')['status'] == 'problem'
+    assert _post_item(admin_client, store_id, dict(entry, category='cheer'), _png((1, 2, 3, 255)))['status'] == 'problem'
+
+
+def test_artwork_pack_page_is_linked_and_admin_only(app, seed, admin_client):
+    school_id, store_id, slug, ids = _store(app, seed, ['One', 'B', 'C'])
+    html = admin_client.get(f'/admin/collections/{store_id}/edit').get_data(as_text=True)
+    assert f'/admin/collections/{store_id}/artwork-pack' in html
+    assert b'design-manifest.json' in admin_client.get(f'/admin/collections/{store_id}/artwork-pack').data

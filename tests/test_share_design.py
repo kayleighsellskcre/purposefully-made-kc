@@ -31,15 +31,15 @@ def test_sharing_a_cart_item_gives_a_link_and_qr_without_anything_personal(app, 
     assert qr.status_code == 200 and qr.data[:4] == b'\x89PNG'
 
 
-def test_group_store_items_and_items_without_artwork_cannot_be_shared(app, seed):
+def test_items_without_artwork_cannot_be_shared_but_group_store_items_can(app, seed):
     _set_cart(app, CUSTOMER_EMAIL, [_line(seed, collection_id=seed['collection_id']),
                                     _line(seed, design_id=None, design_url=None)])
     shopper = _signed_in(app)
-    for index in (0, 1):
-        resp = _share(shopper, index)
-        assert resp.status_code == 400 and not resp.get_json()['success']
+    assert _share(shopper, 0).get_json()['success']
+    resp = _share(shopper, 1)
+    assert resp.status_code == 400 and not resp.get_json()['success']
     with app.app_context():
-        assert SharedDesign.query.count() == 0
+        assert SharedDesign.query.count() == 1
 
 
 def test_anyone_with_the_link_picks_a_size_and_adds_it_to_their_cart(app, seed):

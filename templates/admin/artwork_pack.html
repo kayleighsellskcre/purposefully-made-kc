@@ -1,0 +1,110 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Add artwork pack - Admin - Purposefully Made KC{% endblock %}
+{% block admin_content %}
+<div class="admin-page">
+    <div class="container pack-wrap">
+        <div class="admin-header">
+            <span class="adm-eyebrow">Admin / Group Orders</span>
+            <h1>Add an artwork pack</h1>
+            <a href="{{ url_for('admin.edit_collection', collection_id=collection.id) }}" class="btn btn-outline btn-sm">Back to {{ collection.name }}</a>
+        </div>
+        <p class="pack-lead">Adds the pack's designs to <strong>{{ collection.name }}</strong> as artwork choices, not as separate products. Pictures are stored exactly as they are. A design that is already in this group is matched by its ID or name and is not added twice.</p>
+        <ol class="pack-steps">
+            <li>Unzip the pack on your computer (right-click the zip, Extract All).</li>
+            <li>Choose the unzipped folder below.</li>
+            <li>Press <b>Check first</b> to see what would be added. Nothing is saved yet.</li>
+            <li>Press <b>Add to this group</b>.</li>
+        </ol>
+        <div class="pack-box">
+            <label class="btn btn-outline btn-sm pack-pick">Choose the unzipped folder
+                <input type="file" id="packFolder" webkitdirectory directory multiple hidden>
+            </label>
+            <span id="packFound" class="pack-note">No folder chosen yet.</span>
+            <div class="pack-actions">
+                <button type="button" class="btn btn-outline" id="packCheck" disabled>Check first</button>
+                <button type="button" class="btn btn-primary" id="packAdd" disabled>Add to this group</button>
+            </div>
+            <progress id="packBar" value="0" max="1" hidden></progress>
+            <p id="packSummary" class="pack-summary" aria-live="polite"></p>
+            <ul id="packList" class="pack-list"></ul>
+        </div>
+    </div>
+</div>
+<script>
+(function () {
+    var ITEM_URL = {{ url_for('admin.artwork_pack_item', collection_id=collection.id) | tojson }};
+    var pack = null;                                   // {entries: [...], files: {path: File}}
+    var folder = document.getElementById('packFolder'), found = document.getElementById('packFound');
+    var check = document.getElementById('packCheck'), add = document.getElementById('packAdd');
+    var bar = document.getElementById('packBar'), summary = document.getElementById('packSummary'), list = document.getElementById('packList');
+
+    function say(text) { summary.textContent = text; }
+    function row(kind, text) { var li = document.createElement('li'); li.className = 'pack-' + kind; li.textContent = text; list.appendChild(li); }
+
+    folder.addEventListener('change', function () {
+        pack = null; list.innerHTML = ''; say(''); check.disabled = add.disabled = true;
+        var files = {}, manifest = null;
+        Array.prototype.forEach.call(folder.files, function (f) {
+            var rel = f.webkitRelativePath.split('/').slice(1).join('/');
+            files[rel] = f;
+            if (rel === 'design-manifest.json') manifest = f;
+        });
+        if (!manifest) { found.textContent = 'That folder has no design-manifest.json. Choose the unzipped pack folder itself.'; return; }
+        manifest.text().then(function (text) {
+            var entries = JSON.parse(text).designs || [];
+            var missing = entries.filter(function (e) { return !files[e.file]; });
+            pack = { entries: entries, files: files };
+            found.textContent = entries.length + ' designs listed, ' + (entries.length - missing.length) + ' pictures found.';
+            missing.forEach(function (e) { row('bad', e.name + ': the picture file is missing from the folder'); });
+            check.disabled = false;
+            add.disabled = true;
+        }).catch(function () { found.textContent = 'The pack list could not be read.'; });
+    });
+
+    function run(dry) {
+        if (!pack) return;
+        list.innerHTML = ''; check.disabled = add.disabled = true; bar.hidden = false; bar.max = pack.entries.length; bar.value = 0;
+        var counts = { added: 0, matched: 0, problem: 0 }, i = 0;
+        (function next() {
+            if (i >= pack.entries.length) {
+                bar.hidden = true;
+                say((dry ? 'Check finished. ' : 'Finished. ') + counts.added + (dry ? ' would be added, ' : ' added, ') + counts.matched + ' already there, ' + counts.problem + ' with a problem.');
+                check.disabled = false;
+                add.disabled = !dry || counts.added === 0 ? true : false;
+                return;
+            }
+            var e = pack.entries[i++], fd = new FormData();
+            ['design_id', 'name', 'category', 'sha256'].forEach(function (k) { fd.append(k, e[k] || ''); });
+            if (dry) fd.append('dry_run', '1');
+            if (pack.files[e.file]) fd.append('file', pack.files[e.file], e.file.split('/').pop());
+            fetch(ITEM_URL, { method: 'POST', body: fd, credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .catch(function () { return { status: 'problem', name: e.name, reason: 'the connection dropped' }; })
+                .then(function (res) {
+                    counts[res.status] = (counts[res.status] || 0) + 1;
+                    row(res.status === 'problem' ? 'bad' : res.status, res.name + (res.status === 'matched' ? ': already in this group' : res.status === 'added' ? (dry ? ': would be added' : ': added') : ': ' + res.reason));
+                    bar.value = i; next();
+                });
+        })();
+    }
+    check.addEventListener('click', function () { run(true); });
+    add.addEventListener('click', function () { if (confirm('Add these designs to {{ collection.name }}?')) run(false); });
+})();
+</script>
+<style>
+.pack-wrap { max-width: 760px; }
+.pack-lead { margin: 0.5rem 0 1rem; }
+.pack-steps { margin: 0 0 1.2rem 1.2rem; line-height: 1.7; }
+.pack-box { background: #fff; border: 1px solid var(--border-light); border-radius: 16px; padding: 1.2rem; }
+.pack-pick { cursor: pointer; }
+.pack-note { margin-left: 0.6rem; font-size: 0.9rem; }
+.pack-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; margin: 1rem 0; }
+#packBar { width: 100%; }
+.pack-summary { font-weight: 600; }
+.pack-list { list-style: none; margin: 0.6rem 0 0; padding: 0; max-height: 24rem; overflow: auto; font-size: 0.85rem; }
+.pack-list li { padding: 0.25rem 0; border-bottom: 1px solid var(--border-light); }
+.pack-added::before { content: '+ '; color: #2f7a4d; }
+.pack-matched::before { content: '= '; opacity: 0.6; }
+.pack-bad { color: #b04a3a; }
+</style>
+{% endblock %}
