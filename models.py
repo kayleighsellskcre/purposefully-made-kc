@@ -182,6 +182,7 @@ class Collection(db.Model):
     back_design_type = db.Column(db.String(20), default='both')
     # Jersey name line: 'first' or 'last' so parents know what to type.
     back_design_name_part = db.Column(db.String(20), default='last')
+    allow_stacked_name = db.Column(db.Boolean, default=True)  # organizer lets shoppers stack the name down the back
     # Organizer artwork that prints only on the back. Kept off allowed_design_ids
     # so it never appears as a front-placement choice.
     back_design_id = db.Column(db.Integer, db.ForeignKey('design.id'), nullable=True)

@@ -2587,11 +2587,13 @@
                                 <input type="text" id="backDesignNameInput" class="form-control" placeholder="e.g. SMITH" maxlength="20" style="text-transform: uppercase;">
                                 {% endif %}
                             </div>
+                            {% if allow_stacked_name %}
                             <label class="back-vertical-opt" id="backDesignVerticalWrap">
                                 <input type="checkbox" id="backDesignVerticalToggle">
                                 <span>Stack the name down the back <small>(cheer style, one letter per row)</small></span>
                             </label>
                             <button type="button" class="back-stack-add" id="backStackAddImage" hidden>+ Add a small image under the collar too</button>
+                            {% endif %}
                             <div class="form-group" id="backDesignNumberGroup" style="margin-bottom: 0.75rem;">
                                 <label for="backDesignNumberInput">Number</label>
                                 <input type="text" id="backDesignNumberInput" class="form-control" placeholder="e.g. 23" maxlength="3" pattern="[0-9]*" inputmode="numeric">
@@ -2717,6 +2719,7 @@
                                 <p class="text-muted" style="font-size:0.8rem; margin-top:0.35rem;" id="backImageMove">Starts centered in the upper back area. Drag up or down to adjust.</p>
                             </div>
                             <input type="file" id="designFileBack" aria-label="Upload a back design" accept="image/*,.heic,.heif,.png,.jpg,.jpeg,.webp" style="display: none;">
+                            {% if allow_stacked_name %}
                             <div class="back-stack-opt" id="backStackWrap" hidden>
                                 <label class="back-vertical-opt">
                                     <input type="checkbox" id="backStackToggle">
@@ -2728,6 +2731,7 @@
                                     <div id="backStackLookSlot"></div>
                                 </div>
                             </div>
+                            {% endif %}
                         </div>
                         <div class="design-preview{% if back_options %} back-preview-fixed{% endif %}" id="designPreviewBack" style="display: none;">
                             <img {% if back_options %}src="{{ back_options[0].url }}" {% endif %}alt="Back Design Preview" id="designPreviewImageBack">

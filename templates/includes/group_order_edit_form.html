@@ -387,6 +387,12 @@
                                 <small>Parents type JORDAN</small>
                             </label>
                         </div>
+                        <input type="hidden" name="stacked_name_present" value="1">
+                        <label class="placement-checkbox" style="margin-bottom:0.75rem">
+                            <input type="checkbox" name="allow_stacked_name" value="on" {% if collection.allow_stacked_name is none or collection.allow_stacked_name %}checked{% endif %}>
+                            <span>Allow stacked names</span>
+                            <small>Shoppers can stack the name down the back, one letter per row (cheer style). Turn this off to keep names across the back only.</small>
+                        </label>
                         <p class="form-hint" style="margin-top:1rem">Choose the fonts for name &amp; number on the back. Tick one to set it for everyone, or tick several and each person picks from those. Tick none to offer every font.</p>
                         <input type="hidden" name="back_design_fonts_listed" value="1">
                         <div class="font-choice-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.75rem;margin-top:0.5rem">

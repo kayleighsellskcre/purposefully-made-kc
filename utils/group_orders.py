@@ -1973,6 +1973,8 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
         collection.back_design_type  = bdt if bdt in ('name_number', 'image', 'both') else 'both'
         name_part = (request.form.get('back_design_name_part') or 'last').strip().lower()
         collection.back_design_name_part = name_part if name_part in ('first', 'last') else 'last'
+        if 'stacked_name_present' in request.form:
+            collection.allow_stacked_name = request.form.get('allow_stacked_name') == 'on'
 
     apply_locked_back_design(collection, user)
 

@@ -1010,6 +1010,7 @@ def customize(product_slug):
     back_design_type = 'both'   # 'none' | 'name_number' | 'image' | 'both'
     allow_back_design = True
     back_design_name_part = 'last'
+    allow_stacked_name = True
     preset_back_design = None
     back_options = []
     catalog_section = None
@@ -1073,6 +1074,7 @@ def customize(product_slug):
         allow_back_design = bool(_allow) if _allow is not None else True
         name_part = (getattr(coll, 'back_design_name_part', None) or 'last').strip().lower()
         back_design_name_part = name_part if name_part in ('first', 'last') else 'last'
+        allow_stacked_name = getattr(coll, 'allow_stacked_name', None) is not False
         if has_colors:
             allowed = allowed_colors_for_product(product, coll)
             if allowed is not None:
@@ -1322,6 +1324,7 @@ def customize(product_slug):
                          back_design_type=back_design_type,
                          allow_back_design=allow_back_design,
                          back_design_name_part=back_design_name_part,
+                         allow_stacked_name=allow_stacked_name,
                          allowed_design_ids=allowed_design_ids,
                          is_adult=is_adult,
                          transfer_sizing=transfer_sizing,
