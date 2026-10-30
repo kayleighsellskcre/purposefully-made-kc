@@ -20,11 +20,12 @@ def clean_line(line):
     """(shareable line, reason). Exactly one of them is None."""
     if not isinstance(line, dict) or not line.get('product_id'):
         return None, 'That item could not be found.'
-    if line.get('catalog_section') or line.get('uniform_kit'):
-        return None, 'This item is shared with its store link instead.'     # group store designs ARE shareable: KEEP leaves the store off
     if not (line.get('design_id') or line.get('design_url')):
         return None, 'Add your artwork first, then share it.'
     out = {k: line.get(k) for k in KEEP if line.get(k) is not None}
+    meta = line.get('back_design_meta') if isinstance(line.get('back_design_meta'), dict) else {}
+    if (meta.get('name') or meta.get('number')) and not meta.get('neck_image_url'):
+        out.pop('back_design_url', None)                   # a picture of a name or number on the back is personal
     tp = out.get('transfer_production')
     if isinstance(tp, dict):
         tp = dict(tp)

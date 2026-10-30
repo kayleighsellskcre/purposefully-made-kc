@@ -100,7 +100,7 @@
                     <span class="subtotal">${{ "%.2f"|format(subtotal) }}</span>
                 </div>
                 
-                <div class="summary-row">
+                <div class="summary-row summary-row-note">
                     <span>Shipping:</span>
                     <span class="shipping">{{ shipping_note }}</span>
                 </div>
@@ -347,6 +347,15 @@
     border-bottom: 1px solid rgba(232,208,177,0.3);
     font-size: 0.9rem;
     color: var(--text-secondary);
+}
+
+.summary-row.summary-row-note {
+    display: block;
+}
+
+.summary-row.summary-row-note > span:first-child {
+    display: block;
+    margin-bottom: 0.2rem;
 }
 
 .summary-row.total {

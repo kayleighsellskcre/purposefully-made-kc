@@ -3586,27 +3586,6 @@ def collection_design_remove(collection_id, design_id):
     return redirect(url_for('admin.edit_collection', collection_id=collection_id))
 
 
-@admin_bp.route('/collections/<int:collection_id>/teams/add', methods=['POST'])
-@admin_required
-def collection_add_teams(collection_id):
-    """Turn this group order into a multi-team group (or add teams to it): one store per team."""
-    from utils.group_org import OrgSetupError, add_teams_to_group
-    collection = Collection.query.get_or_404(collection_id)
-    try:
-        org, stores = add_teams_to_group(collection, request.form.getlist('org_team_names[]'),
-                                         request.form.get('first_team_name'), current_user, request.form)
-        db.session.commit()
-        flash(f'Added {len(stores)} team{"s" if len(stores) != 1 else ""} to {org.name}. Each has its own store and link.', 'success')
-    except OrgSetupError as e:
-        db.session.rollback()
-        flash(str(e), 'error')
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.exception('collection_add_teams failed: %s', e)
-        flash('Could not add those teams. Please try again.', 'error')
-    return redirect(url_for('admin.edit_collection', collection_id=collection_id))
-
-
 @admin_bp.route('/collections/<int:collection_id>/designs/bulk', methods=['POST'])
 @admin_required
 def collection_designs_bulk(collection_id):
