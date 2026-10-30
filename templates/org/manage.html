@@ -65,6 +65,18 @@
                             {% if coll %}
                             <button type="button" class="om-copy-team" data-url="{{ request.host_url.rstrip('/') }}{{ url_for('collection.view', slug=coll.slug) }}">Copy team link</button>
                             {% endif %}
+                            {% if available_collections %}
+                            <form method="post" onsubmit="return confirm('Use the store you picked for {{ section.label|e }}? The store it replaces is turned off, not deleted.')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="action" value="swap_store">
+                                <input type="hidden" name="section_id" value="{{ section.id }}">
+                                <select name="collection_id" required style="width:100%">
+                                    <option value="">Use a different store...</option>
+                                    {% for c in available_collections %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                                </select>
+                                <button type="submit" style="width:100%">Switch to this store</button>
+                            </form>
+                            {% endif %}
                             <form method="post" onsubmit="return confirm('Take {{ section.label|e }} off this page? The store itself is kept.')">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="action" value="delete_section">

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, Response
+from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, session, current_app, Response
 from flask_login import current_user, login_required
 from models import db, Collection, Product, ProductColorVariant, Design
 from utils.mockups import get_carousel_colors_for_product, get_first_shop_image_url, product_has_shop_image
@@ -111,13 +111,31 @@ def leave():
     return redirect(url_for('shop.index'))
 
 
+# Links that were handed out and now belong to another store: old link -> current link.
+RETIRED_LINKS = {'basketball-rainbow-cheetahs': 'rainbow-cheetahs'}
+
+
+def retired_link_target(slug):
+    """The live store an old link should forward to, or None."""
+    target = RETIRED_LINKS.get(slug)
+    if not target or target == slug:
+        return None
+    live = Collection.query.filter_by(slug=target, is_active=True).first()
+    return live.slug if live else None
+
+
 @collection_bp.route('/<slug>')
 def view(slug):
     """View collection landing page - design board of available items"""
     collection = Collection.query.options(
         joinedload(Collection.products)
-    ).filter_by(slug=slug, is_active=True).first_or_404()
-    
+    ).filter_by(slug=slug, is_active=True).first()
+    if collection is None:
+        forward = retired_link_target(slug)
+        if forward:
+            return redirect(url_for('collection.view', slug=forward), code=301)
+        abort(404)
+
     # Check password if protected (admins always get in)
     from utils.group_orders import access_code_required
     if access_code_required(collection):

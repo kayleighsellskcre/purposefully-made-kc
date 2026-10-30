@@ -397,6 +397,28 @@ def manage(slug):
                 db.session.commit()
                 flash(f'"{label}" added with its own store and link, set up like {source.label}. Press Edit {label} to change its jerseys.', 'success')
 
+        elif action == 'swap_store':
+            # Point a team at a different store. Nothing in either store changes: orders, payments and rosters stay put.
+            section = OrgSection.query.filter_by(id=request.form.get('section_id', type=int), organization_id=org.id).first()
+            new_store = Collection.query.get(request.form.get('collection_id', type=int) or 0)
+            if section is None or new_store is None:
+                flash('Choose the team and the store to use.', 'error')
+            elif new_store.id == section.collection_id:
+                flash('That team already uses this store.', 'error')
+            elif OrgSection.query.filter_by(organization_id=org.id, collection_id=new_store.id).first():
+                flash('That store is already on this page.', 'error')
+            else:
+                old_store = section.collection
+                section.collection_id = new_store.id
+                db.session.flush()
+                # The store that was replaced is turned off (kept, never deleted) unless another page still uses it.
+                if old_store is not None and not OrgSection.query.filter_by(collection_id=old_store.id).count():
+                    old_store.is_active = False
+                from utils.org_fan_store import sync_org_fan_store
+                sync_org_fan_store(org)
+                db.session.commit()
+                flash(f'{section.label} now uses "{new_store.name}". The store it replaced was turned off, not deleted.', 'success')
+
         elif action == 'add_section':
             label = (request.form.get('label') or '').strip()
             icon = (request.form.get('icon') or '🏷️').strip()
@@ -462,7 +484,7 @@ def manage(slug):
         fan_store = None
     from utils.group_orders import order_counts_by_collection
     order_counts = order_counts_by_collection()
-    in_org = {sec.collection_id for sec in OrgSection.query.all()}
+    in_org = {sec.collection_id for sec in OrgSection.query.filter_by(organization_id=org.id).all()}
     available_collections = [
         c for c in Collection.query.filter_by(is_active=True).order_by(Collection.name).all()
         if c.id not in in_org
