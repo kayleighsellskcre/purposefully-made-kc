@@ -84,7 +84,27 @@
         <details class="om-add">
             <summary>+ Add a team</summary>
             <div class="om-add-body">
+                <form method="post" class="om-add-body" style="padding:0">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="new_team">
+                    <div class="om-add-row">
+                        <div><label class="om-label" for="omNewIcon">Icon</label><input type="text" id="omNewIcon" name="icon" placeholder="auto" maxlength="4"></div>
+                        <div><label class="om-label" for="omNewLabel">New team name</label><input type="text" id="omNewLabel" name="label" placeholder="e.g. Soccer" maxlength="100" required></div>
+                    </div>
+                    {% if sections|length > 1 %}
+                    <div>
+                        <label class="om-label" for="omCopy">Start it like</label>
+                        <select id="omCopy" name="copy_from">
+                            {% for s in sections if s.collection %}<option value="{{ s.id }}">{{ s.label }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    <p class="om-hint" style="margin:0">Makes a new store under {{ org.name }} with its own link, copied from the team above. Then press Edit on it to change its jerseys.</p>
+                    <div><button type="submit" class="om-chip om-chip--primary">Add team</button></div>
+                </form>
                 {% if available_collections %}
+                <details class="om-link-existing" style="margin-top:0.8rem">
+                <summary class="om-hint">Or link a store I already made</summary>
                 <form method="post" class="om-add-body" style="padding:0">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="action" value="add_section">
@@ -99,14 +119,10 @@
                         <div><label class="om-label" for="omIcon">Icon</label><input type="text" id="omIcon" name="icon" value="🏷️" maxlength="4"></div>
                         <div><label class="om-label" for="omLabel">Team name</label><input type="text" id="omLabel" name="label" placeholder="e.g. Soccer" maxlength="100" required></div>
                     </div>
-                    <div><button type="submit" class="om-chip om-chip--primary">Add team</button></div>
+                    <div><button type="submit" class="om-chip om-chip--primary">Link this store</button></div>
                 </form>
+                </details>
                 {% endif %}
-                <p class="om-hint" style="margin:0">
-                    {% if available_collections %}Don't see it?{% else %}All your stores are already here.{% endif %}
-                    {% if is_admin %}<a href="{{ url_for('admin.add_collection') }}">Create a new team store &rarr;</a>{% else %}<a href="{{ url_for('shop.create_group_order') }}">Create a new team store &rarr;</a>{% endif %}
-                    Then come back and add it here.
-                </p>
             </div>
         </details>
     </section>

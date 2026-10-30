@@ -369,6 +369,34 @@ def manage(slug):
                 db.session.commit()
                 flash('Team updated.', 'success')
 
+        elif action == 'new_team':
+            # A brand new team store, copied from a team you already have, so you only change what is different.
+            from utils.group_org import _copy_store, _unique_slug, sport_icon
+            from utils.group_orders import _is_fan_label
+            label = (request.form.get('label') or '').strip()
+            teams = [s for s in OrgSection.query.filter_by(organization_id=org.id).order_by(OrgSection.sort_order).all()
+                     if s.collection is not None and not _is_fan_label(s.label)]
+            source = next((s for s in teams if s.id == request.form.get('copy_from', type=int)), teams[0] if teams else None)
+            if not label:
+                flash('Type the new team name, for example Soccer.', 'error')
+            elif source is None:
+                flash('Add a first team before copying one.', 'error')
+            elif label.lower() in {(s.label or '').strip().lower() for s in OrgSection.query.filter_by(organization_id=org.id).all()}:
+                flash(f'There is already a team called {label}.', 'error')
+            else:
+                store = _copy_store(source.collection, name=f'{label}: {org.name}'[:200],
+                                    slug=_unique_slug(Collection, f'{org.name}-{label}'))
+                db.session.add(store)
+                db.session.flush()
+                order = db.session.query(db.func.max(OrgSection.sort_order)).filter_by(organization_id=org.id).scalar() or 0
+                db.session.add(OrgSection(organization_id=org.id, collection_id=store.id, label=label[:100],
+                                          icon=(request.form.get('icon') or '').strip()[:10] or sport_icon(label), sort_order=order + 1))
+                db.session.flush()
+                from utils.org_fan_store import sync_org_fan_store
+                sync_org_fan_store(org)
+                db.session.commit()
+                flash(f'"{label}" added with its own store and link, set up like {source.label}. Press Edit {label} to change its jerseys.', 'success')
+
         elif action == 'add_section':
             label = (request.form.get('label') or '').strip()
             icon = (request.form.get('icon') or '🏷️').strip()
