@@ -125,6 +125,7 @@ def test_a_refund_takes_back_the_sale_and_the_tax(app, seed):
         db.session.commit()
         L.sync_all(force=True)
         o.is_refunded, o.payment_status = True, 'refunded'
+        o.refunded_at = datetime(2026, 10, 20, 18, 0)  # the refund is dated in the month the test reads
         db.session.commit()
         L.sync_all(force=True)
         p = L.pnl(date(2026, 10, 1), date(2026, 10, 31))

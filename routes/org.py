@@ -409,8 +409,17 @@ def manage(slug):
                 flash('That store is already on this page.', 'error')
             else:
                 old_store = section.collection
+                # A store lives on one organization page: take it off any other page it was on (the store itself is untouched).
+                elsewhere = OrgSection.query.filter(OrgSection.collection_id == new_store.id,
+                                                    OrgSection.organization_id != org.id).all()
+                other_orgs = {sec.organization for sec in elsewhere}
+                for sec in elsewhere:
+                    db.session.delete(sec)
                 section.collection_id = new_store.id
                 db.session.flush()
+                from utils.org_fan_store import sync_org_fan_store as _sync_other
+                for other in other_orgs:
+                    _sync_other(other)
                 # The store that was replaced is turned off (kept, never deleted) unless another page still uses it.
                 if old_store is not None and not OrgSection.query.filter_by(collection_id=old_store.id).count():
                     old_store.is_active = False

@@ -44,3 +44,21 @@ def test_old_link_forwards_to_the_store_that_took_its_place(client, app, seed):
         assert client.get('/c/never-existed').status_code == 404
     finally:
         C.RETIRED_LINKS.pop('gone-store', None)
+
+
+def test_switching_takes_the_store_off_its_old_organization_page(admin_client, app, seed):
+    from models import Organization, db
+    _build(admin_client, app, seed)
+    slug = _org_slug(app)
+    old_id, new_id = _older_store(app)
+    with app.app_context():
+        other = Organization(name='Old Rainbow Cheetahs', slug='old-rainbow-cheetahs', is_active=False)
+        db.session.add(other)
+        db.session.flush()
+        db.session.add(OrgSection(organization_id=other.id, collection_id=old_id, label='Basketball'))
+        section_id = OrgSection.query.filter_by(collection_id=new_id).one().id
+        db.session.commit()
+    admin_client.post(f'/org/{slug}/manage', data={'action': 'swap_store', 'section_id': section_id, 'collection_id': old_id})
+    with app.app_context():
+        pages = [s.organization.slug for s in OrgSection.query.filter_by(collection_id=old_id).all()]
+        assert pages == [slug]
