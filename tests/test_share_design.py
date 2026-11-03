@@ -125,3 +125,19 @@ def test_the_cart_and_a_past_order_offer_the_share_button(app, seed):
     resp = shopper.post(f'/made/share/order-item/{item_id}')
     assert resp.status_code == 200 and resp.get_json()['success']
     assert _signed_in(app, OTHER_EMAIL).post(f'/made/share/order-item/{item_id}').status_code == 404
+
+
+def test_link_works_for_a_style_with_no_saved_sizes_and_draws_the_logo_on_the_shirt(app, seed):
+    from models import Product
+    _set_cart(app, CUSTOMER_EMAIL, [_line(seed, design_url='/static/uploads/x.png', proof_image='/static/uploads/proofs/gone.png')])
+    token = _token(_share(_signed_in(app)))
+    with app.app_context():
+        for p in Product.query.all():
+            p.available_sizes = None
+        db.session.commit()
+    page = app.test_client().get(f'/made/{token}')
+    html = page.get_data(as_text=True)
+    assert 'cannot be ordered right now' not in html and 'name="size"' in html
+    assert 'pm-proof-overlay' in html and '/static/uploads/x.png' in html
+    resp = app.test_client().post(f'/made/{token}/add', data={'size': 'M', 'quantity': 1})
+    assert resp.status_code == 302 and '/cart' in resp.headers['Location']

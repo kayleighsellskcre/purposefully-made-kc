@@ -77,14 +77,11 @@ def line_for(share, size, quantity=1):
 
 def sizes_with_prices(share):
     """[(size, unit price)] for the sizes still offered, or ([], reason)."""
-    import json
+    from utils.sizes import shop_sizes_for_product
     product = db.session.get(Product, share.line.get('product_id') or 0)
     if product is None or not product.is_active:
         return [], 'we no longer carry this style'
-    try:
-        sizes = json.loads(product.available_sizes) if product.available_sizes else []
-    except (TypeError, ValueError):
-        sizes = []
+    sizes = shop_sizes_for_product(product)    # same list the shop page offers, even when none were saved
     out = []
     for size in sizes:
         line, _reason = line_for(share, size)

@@ -59,13 +59,20 @@ def view(token):
     share.views = (share.views or 0) + 1
     db.session.commit()
     from models import Product
-    from utils.order_artwork import existing_image_url, mockup_urls
+    from utils.order_artwork import FRONT_PLACEMENTS, existing_image_url, mockup_urls
     product = db.session.get(Product, share.line.get('product_id') or 0)
     sizes, unavailable = SD.sizes_with_prices(share)
     front, _back = mockup_urls(product, share.line.get('color')) if product else (None, None)
-    image = existing_image_url(share.line.get('proof_front_url') or share.line.get('proof_image')) or front
+    placement = share.line.get('placement') or 'center_chest'
+    proof = existing_image_url(share.line.get('proof_front_url') or share.line.get('proof_image'))
+    # Same as the cart: the saved picture when it is still on file, otherwise the logo drawn on the shirt photo.
+    image = proof or front
+    overlay = None
+    if not proof and share.line.get('design_url') and placement in FRONT_PLACEMENTS:
+        overlay = share.line['design_url']
     return render_template('made/view.html', share=share, product=product, sizes=sizes, unavailable=unavailable,
-                           image=image, qr=url_for('made.qr', token=share.token), link=_link(share))
+                           image=image, overlay=overlay, fallback=front if proof else None, placement=placement,
+                           qr=url_for('made.qr', token=share.token), link=_link(share))
 
 
 @made_bp.route('/made/<token>/add', methods=['POST'])
