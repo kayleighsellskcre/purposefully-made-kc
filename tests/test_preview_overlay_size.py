@@ -32,3 +32,9 @@ def test_preview_overlay_side_chest_is_smaller():
 def test_preview_ref_pct_is_roomy():
     assert PREVIEW_REF_PCT >= 36
     assert PREVIEW_REF_WIDTH_IN == 10.0
+
+
+def test_small_prints_are_drawn_small_not_padded_up():
+    four = preview_overlay_style({'size': 'M', 'print_width': 4.0, 'print_height': 4.0, 'product': None}, 'center_chest')
+    ten = preview_overlay_style({'size': 'M', 'print_width': 10.0, 'print_height': 10.0, 'product': None}, 'center_chest')
+    assert 'width:15.2%' in four and 'width:38.0%' in ten

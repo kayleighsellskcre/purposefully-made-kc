@@ -343,7 +343,7 @@ def preview_overlay_style(item, placement='center_chest'):
         elif tall > 1.2:
             pct *= 0.94
         max_h = 46.0
-        pct = min(max(pct, 26.0), 44.0)
+        pct = min(max(pct, 10.0), 44.0)       # true to scale: a 4 in print is 15%, not padded up to 26%
         max_h = min(max_h, 50.0)
         top, left = 38, 50
 
