@@ -68,10 +68,16 @@ def view(token):
     # Same as the cart: the saved picture when it is still on file, otherwise the logo drawn on the shirt photo.
     image = proof or front
     overlay = None
+    overlay_style = ''
     if not proof and share.line.get('design_url') and placement in FRONT_PLACEMENTS:
         overlay = share.line['design_url']
+        from utils.order_artwork import preview_overlay_style
+        mid = sizes[len(sizes) // 2][0] if sizes else 'M'
+        overlay_style = preview_overlay_style({'size': mid, 'print_width': share.line.get('print_width'),
+                                               'print_height': share.line.get('print_height'), 'product': product},
+                                              placement, front)
     return render_template('made/view.html', share=share, product=product, sizes=sizes, unavailable=unavailable,
-                           image=image, overlay=overlay, fallback=front if proof else None, placement=placement,
+                           image=image, overlay=overlay, overlay_style=overlay_style, fallback=front if proof else None, placement=placement,
                            qr=url_for('made.qr', token=share.token), link=_link(share))
 
 

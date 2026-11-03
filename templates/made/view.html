@@ -7,7 +7,7 @@
     <p class="made-eyebrow">Designed by a Purposefully Made KC customer</p>
     <div class="made-card">
         <div class="made-photo">
-            {% if image %}{{ garment_proof(image, overlay, placement, none, fallback_url=fallback) }}{% endif %}
+            {% if image %}{{ garment_proof(image, overlay, placement, none, overlay_style=overlay_style, fallback_url=fallback) }}{% endif %}
         </div>
         <div class="made-info">
             <h1>{{ product|display_name if product else 'Custom shirt' }}</h1>
