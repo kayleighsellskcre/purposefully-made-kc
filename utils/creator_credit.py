@@ -44,6 +44,31 @@ def _own_order(order, share):
     return bool(email and owner and (owner.email or '').strip().lower() == email)
 
 
+def credit_for(user_id, merchandise_subtotal):
+    """Store credit to use on an order of this much merchandise: the whole balance, but always leaving $1 to pay.
+
+    Zero when the customer turned automatic use off.
+    """
+    from models import User
+    user = db.session.get(User, user_id) if user_id else None
+    if user is None or user.use_credit is False:
+        return 0.0
+    return round(max(0.0, min(balance(user_id), float(merchandise_subtotal or 0.0) - 1.0)), 2)
+
+
+def spend_for_order(order):
+    """Write down the credit this order used (the amount is already on order.credit_applied). Safe to call twice."""
+    amount = round(float(getattr(order, 'credit_applied', 0.0) or 0.0), 2)
+    if amount <= 0 or not order.user_id:
+        return 0.0
+    if CreditEntry.query.filter_by(user_id=order.user_id, kind='spent', order_id=order.id).first():
+        return 0.0
+    db.session.add(CreditEntry(user_id=order.user_id, amount=-amount, kind='spent', order_id=order.id,
+                               note=f'Used on order {order.order_number}'))
+    db.session.flush()
+    return amount
+
+
 def earn_for_order(order):
     """Credit each creator for this order's shared-design items. Safe to call twice. Returns the number of credits added."""
     if order is None or order.payment_status != 'paid' or order.is_refunded:
@@ -75,6 +100,12 @@ def earn_for_order(order):
 def reverse_for_order(order):
     """Take back what this order earned (it was refunded). Safe to call twice."""
     taken = 0
+    spent = CreditEntry.query.filter_by(order_id=order.id, kind='spent').first()
+    if spent is not None and not CreditEntry.query.filter_by(order_id=order.id, kind='restored').first():
+        # the credit this refunded order used goes back to the person who used it
+        db.session.add(CreditEntry(user_id=spent.user_id, amount=-spent.amount, kind='restored', order_id=order.id,
+                                   note=f'Refunded order {order.order_number}'))
+        taken += 1
     for row in CreditEntry.query.filter_by(order_id=order.id, kind='earned').all():
         if CreditEntry.query.filter_by(user_id=row.user_id, kind='reversed', order_id=order.id,
                                        shared_design_id=row.shared_design_id).first():

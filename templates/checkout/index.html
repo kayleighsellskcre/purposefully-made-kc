@@ -362,8 +362,14 @@
                     {% else %}
                     <div class="summary-row">
                         <span>Subtotal:</span>
-                        <span id="subtotal-amount">${{ "%.2f"|format(totals.subtotal) }}</span>
+                        <span id="subtotal-amount">${{ "%.2f"|format(totals.gross_subtotal if totals.credit_applied else totals.subtotal) }}</span>
                     </div>
+                    {% if totals.credit_applied %}
+                    <div class="summary-row">
+                        <span>Your store credit:</span>
+                        <span id="credit-amount">-${{ "%.2f"|format(totals.credit_applied) }}</span>
+                    </div>
+                    {% endif %}
                     <div class="summary-row">
                         <span>Shipping:</span>
                         <span id="shipping-amount">${{ "%.2f"|format(totals.shipping_cost) }}</span>

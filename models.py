@@ -17,6 +17,7 @@ class User(UserMixin, db.Model):
     phone = db.Column(db.String(20))
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    use_credit = db.Column(db.Boolean, default=True)           # spend earned store credit automatically at checkout
 
     # Brute-force lockout: track consecutive bad passwords
     failed_logins = db.Column(db.Integer, default=0, nullable=True)
@@ -959,6 +960,7 @@ class Order(db.Model):
     refund_checked_at = db.Column(db.DateTime)                 # last time PayPal was asked about refunds
     tax_jurisdiction = db.Column(db.String(20))                # local, ks_shipped, out_of_state (where it was taxed)
     tax_rate_percent = db.Column(db.Float)                     # the rate actually charged, e.g. 9.5
+    credit_applied = db.Column(db.Float, default=0.0)          # store credit used; subtotal above is already net of it
     
     # Tracking
     tracking_number = db.Column(db.String(200))

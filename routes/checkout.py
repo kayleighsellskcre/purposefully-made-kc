@@ -524,7 +524,11 @@ def reprice_cart(cart, persist=True):
     return corrections
 
 
-def calculate_totals(cart, shipping_method='pickup', *, family_promo=False, ship_state=None, ship_zip=None):
+def _credit_uid():
+    return current_user.id if current_user.is_authenticated else None
+
+
+def calculate_totals(cart, shipping_method='pickup', *, family_promo=False, ship_state=None, ship_zip=None, credit_user_id=None):
     """Calculate order totals.
 
     Assumes reprice_cart() has already run, so item unit prices are trusted
@@ -544,6 +548,14 @@ def calculate_totals(cart, shipping_method='pickup', *, family_promo=False, ship
         subtotal += qty * unit
     subtotal = round(subtotal, 2)
 
+    # Store credit is a discount on the shirts, so it lowers the amount tax is charged on.
+    credit_applied = 0.0
+    if credit_user_id:
+        from utils.creator_credit import credit_for
+        credit_applied = credit_for(credit_user_id, subtotal)
+    gross_subtotal = subtotal
+    subtotal = round(subtotal - credit_applied, 2)
+
     shipping_cost = 0
     if shipping_method == 'shipping':
         shipping_cost = current_app.config['SHIPPING_FLAT_RATE']
@@ -561,6 +573,8 @@ def calculate_totals(cart, shipping_method='pickup', *, family_promo=False, ship
     
     return {
         'subtotal': subtotal,
+        'gross_subtotal': gross_subtotal,
+        'credit_applied': credit_applied,
         'shipping_cost': shipping_cost,
         'tax': tax,
         'flat_fee': 0.0,
@@ -725,7 +739,7 @@ def paypal_create_order():
     reprice_cart(cart)
     shipping_method = data.get('shipping_method', 'pickup')
     _state, _zip = _ship_fields(data)
-    totals = calculate_totals(cart, shipping_method, ship_state=_state, ship_zip=_zip)
+    totals = calculate_totals(cart, shipping_method, ship_state=_state, ship_zip=_zip, credit_user_id=_credit_uid())
 
     token = _get_paypal_access_token(current_app)
     if not token:
@@ -895,7 +909,7 @@ def index():
         flash('Some prices in your cart were updated to current pricing.', 'info')
     from utils.family_promo import get_session_family_promo
     family_promo_active = bool(get_session_family_promo())
-    totals = calculate_totals(cart, family_promo=family_promo_active)
+    totals = calculate_totals(cart, family_promo=family_promo_active, credit_user_id=_credit_uid())
 
     from utils.order_artwork import FRONT_PLACEMENTS, existing_image_url, mockup_urls
     enriched_cart = []
@@ -1102,7 +1116,7 @@ def create_payment_intent():
     # Price the intent from the database, never from the session's stored prices.
     reprice_cart(cart)
     _state, _zip = _ship_fields(data)
-    totals = calculate_totals(cart, shipping_method, ship_state=_state, ship_zip=_zip)
+    totals = calculate_totals(cart, shipping_method, ship_state=_state, ship_zip=_zip, credit_user_id=_credit_uid())
     
     try:
         intent = stripe.PaymentIntent.create(
@@ -1467,7 +1481,7 @@ def _build_order_from_capture(cap, *, overrides=None, send_email=True):
     fulfillment = overrides.get('fulfillment') or customer.get('shipping_method') or 'pickup'
     ship = customer.get('shipping_info') or customer.get('paypal_shipping_info') or {}
 
-    totals = calculate_totals(cart, fulfillment, ship_state=ship.get('state'), ship_zip=ship.get('zip'))
+    totals = calculate_totals(cart, fulfillment, ship_state=ship.get('state'), ship_zip=ship.get('zip'), credit_user_id=cap.user_id)
     is_stripe = cap.provider == 'stripe'
 
     # Same checks the normal save step makes. The money is already taken, so
@@ -1519,6 +1533,7 @@ def _build_order_from_capture(cap, *, overrides=None, send_email=True):
         tax=totals['tax'],
         tax_jurisdiction=totals.get('tax_jurisdiction'),
         tax_rate_percent=totals.get('tax_rate_percent'),
+        credit_applied=totals.get('credit_applied') or 0.0,
         total=totals['total'],
         payment_method='stripe' if is_stripe else 'paypal',
         payment_status='underpaid' if underpaid else 'paid',
@@ -1549,6 +1564,8 @@ def _build_order_from_capture(cap, *, overrides=None, send_email=True):
     try:
         db.session.add(order)
         db.session.flush()
+        from utils.creator_credit import spend_for_order
+        spend_for_order(order)
         try:
             from utils.stock import reserve_cart_inventory
             reserve_cart_inventory(cart)  # paid already: never block on stock
@@ -1834,7 +1851,8 @@ def _complete_order():
 
         reprice_cart(cart)
         totals = calculate_totals(cart, shipping_method, family_promo=family_promo_active,
-                                  ship_state=(shipping_info or {}).get('state'), ship_zip=(shipping_info or {}).get('zip'))
+                                  ship_state=(shipping_info or {}).get('state'), ship_zip=(shipping_info or {}).get('zip'),
+                                  credit_user_id=_credit_uid())
 
         if not email:
             return _json_error('Please enter your email so we can send the order confirmation.', 'EMAIL_REQUIRED', 400, request_id=rid)
@@ -1912,7 +1930,7 @@ def _complete_order():
                         saved_cart = json.loads(saved_cap.cart_json) or []
                     except ValueError:
                         saved_cart = []
-                saved_totals = calculate_totals(saved_cart, shipping_method, ship_state=(shipping_info or {}).get('state'), ship_zip=(shipping_info or {}).get('zip')) if saved_cart else None
+                saved_totals = calculate_totals(saved_cart, shipping_method, ship_state=(shipping_info or {}).get('state'), ship_zip=(shipping_info or {}).get('zip'), credit_user_id=_credit_uid()) if saved_cart else None
                 if saved_totals and int(round(saved_totals['total'] * 100)) == captured_cents:
                     cart, totals = saved_cart, saved_totals
                     prepaid_issues.append(
@@ -1994,6 +2012,7 @@ def _complete_order():
             tax=totals['tax'],
             tax_jurisdiction=totals.get('tax_jurisdiction'),
             tax_rate_percent=totals.get('tax_rate_percent'),
+            credit_applied=totals.get('credit_applied') or 0.0,
             total=totals['total'],
             payment_method=payment_method,
             payment_status='pending' if is_cash else ('underpaid' if underpaid else 'paid'),
@@ -2031,6 +2050,8 @@ def _complete_order():
 
         db.session.add(order)
         db.session.flush()
+        from utils.creator_credit import spend_for_order
+        spend_for_order(order)
 
         try:
             saved_items = build_order_items(order, cart, rid)

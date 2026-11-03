@@ -129,7 +129,15 @@ def mine():
         orders, pieces = SD.results(s)
         rows.append({'share': s, 'link': _link(s), 'orders': orders, 'pieces': pieces, 'earned': CC.earned_by_share(s.id)})
     return render_template('account/shared_designs.html', rows=rows, credit=CC.balance(current_user.id),
-                           credit_rate=CC.rate_percent())
+                           credit_rate=CC.rate_percent(), use_credit=current_user.use_credit is not False)
+
+
+@made_bp.route('/account/store-credit/toggle', methods=['POST'])
+@login_required
+def credit_toggle():
+    current_user.use_credit = current_user.use_credit is False
+    db.session.commit()
+    return redirect(url_for('made.mine'))
 
 
 @made_bp.route('/account/shared-designs/<int:share_id>/toggle', methods=['POST'])

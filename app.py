@@ -211,6 +211,8 @@ def create_app(config_class=Config):
                     "ALTER TABLE manual_invoice ADD COLUMN IF NOT EXISTS refunded_cents BIGINT DEFAULT 0",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS tax_jurisdiction VARCHAR(20)",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS tax_rate_percent DOUBLE PRECISION",
+                    "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS credit_applied DOUBLE PRECISION DEFAULT 0",
+                    "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS use_credit BOOLEAN DEFAULT TRUE",
                     "ALTER TABLE ledger_entry ADD COLUMN IF NOT EXISTS jurisdiction VARCHAR(20)",
                     "ALTER TABLE ledger_entry ADD COLUMN IF NOT EXISTS taxable BOOLEAN",
                     "ALTER TABLE ledger_entry ADD COLUMN IF NOT EXISTS tax_rate_percent DOUBLE PRECISION",
