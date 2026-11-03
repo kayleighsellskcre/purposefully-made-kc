@@ -3934,6 +3934,32 @@
         return fallback;
     }
 
+    // Visible width of the shirt body in a front photo, in inches (see
+    // GARMENT_CHEST_WIDTH_IN). Same lookup shape as bodyLengthIn.
+    function chestWidthIn(sizeOverride) {
+        const table = (TRANSFER_SIZING && TRANSFER_SIZING.chest_widths) || {};
+        const defaults = (TRANSFER_SIZING && TRANSFER_SIZING.chest_width_defaults) || {};
+        const category = productCategory();
+        const sizes = table[category] || {};
+        const fallback = defaults[category] || 17;
+        const key = normBackSize(sizeOverride !== undefined ? sizeOverride : state.selectedSize);
+        if (sizes[key] != null) return sizes[key];
+        const month = key.match(/^(\d+)(?:TO\d+)?M$/);
+        if (month || ['NB', 'N', 'PREMIE'].includes(key)) {
+            const baby = table.baby || {};
+            const months = month ? parseInt(month[1], 10) : 0;
+            const bands = Object.keys(baby)
+                .filter(k => /^\d+M$/.test(k))
+                .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+            for (let i = 0; i < bands.length; i++) {
+                if (months <= parseInt(bands[i], 10)) return baby[bands[i]];
+            }
+            return baby['24M'] || fallback;
+        }
+        if (key.charAt(0) === 'Y' && sizes[key.slice(1)] != null) return sizes[key.slice(1)];
+        return fallback;
+    }
+
     function backCollarDropIn(sizeOverride) {
         const ratio = (TRANSFER_SIZING && TRANSFER_SIZING.collar_drop_ratio) || 0.12;
         return bodyLengthIn(sizeOverride) * ratio;
@@ -4032,13 +4058,26 @@
         const widthPx = rect.width * (s.width || 0.72);
         const bodyIn = bodyLengthIn(previewReferenceSize());
         if (!heightPx || !widthPx || !bodyIn) return null;
+        // Horizontal inches: widths of logos come from the body width in the photo,
+        // because the photos are taller and narrower than the length chart assumes.
+        // Never bigger than the old length-based scale, never below 55% of it, and
+        // only when the body was measured on its own (sweatshirt sleeves hang
+        // against the body, so their "body" would include the sleeves).
+        const pxPerInchH = heightPx / bodyIn;
+        let pxPerInchW = pxPerInchH;
+        const chestIn = chestWidthIn(previewReferenceSize());
+        if (s.torso && s.torso <= 0.72 && chestIn) {
+            pxPerInchW = Math.min(pxPerInchH, Math.max(pxPerInchH * 0.55, rect.width * s.torso / chestIn));
+        }
         return {
             topPx: rect.top + rect.height * s.top,
             heightPx: heightPx,
             leftPx: rect.left + rect.width * (s.left || 0.14),
             widthPx: widthPx,
             centerPx: rect.left + rect.width * (s.center != null ? s.center : 0.5),
-            pxPerInch: heightPx / bodyIn,
+            pxPerInch: pxPerInchH,
+            pxPerInchW: pxPerInchW,
+            torsoMeasured: !!(s.torso && s.torso <= 0.72),
             measured: s.source === 'measured',
         };
     }
@@ -4332,11 +4371,16 @@
             const chartW = chartWidthForSize(previewReferenceSize())
                 || ((TRANSFER_SIZING && TRANSFER_SIZING.preview_ref_width) || 10);
             const pocketFactor = isTank ? 0.42 : 0.4;
-            layerWidthPx = (chartW * pocketFactor) * box.pxPerInch / visibleWidthRatio;
+            layerWidthPx = (chartW * pocketFactor) * box.pxPerInchW / visibleWidthRatio;
         } else if (isTank && !isSideChest && box && box.pxPerInch) {
             const widthIn = chartWidthForSize(state.selectedSize)
                 || ((TRANSFER_SIZING && TRANSFER_SIZING.preview_ref_width) || 10);
-            layerWidthPx = widthIn * box.pxPerInch / visibleWidthRatio;
+            layerWidthPx = widthIn * box.pxPerInchW / visibleWidthRatio;
+        } else if (box && box.torsoMeasured && box.pxPerInchW) {
+            // Center chest: drawn at the width that was ordered for this size.
+            const widthIn = chartWidthForSize(state.selectedSize)
+                || ((TRANSFER_SIZING && TRANSFER_SIZING.preview_ref_width) || 10);
+            layerWidthPx = widthIn * box.pxPerInchW / visibleWidthRatio;
         } else {
             layerWidthPx = garmentWidth * targetRatio / visibleWidthRatio;
         }
@@ -4385,7 +4429,7 @@
             const factor = ((TRANSFER_SIZING && TRANSFER_SIZING.placement_factors) || {}).upper_back || 0.4;
             const widthIn = (chartWidthForSize(previewReferenceSize()) || 10) * factor;
             const smallPx = (box && box.pxPerInch)
-                ? widthIn * box.pxPerInch / visibleWidthRatio
+                ? widthIn * box.pxPerInchW / visibleWidthRatio
                 : garmentWidth * 0.2 / visibleWidthRatio;
             backDesignLayer.style.width = smallPx.toFixed(1) + 'px';
             backDesignLayer.style.maxWidth = 'none';
@@ -4404,6 +4448,10 @@
             const widthIn = chartWidthForSize(state.selectedSize)
                 || ((TRANSFER_SIZING && TRANSFER_SIZING.preview_ref_width) || 10);
             layerWidthPx = widthIn * box.pxPerInch / visibleWidthRatio;
+        } else if (box && box.torsoMeasured && box.pxPerInchW) {
+            const widthIn = chartWidthForSize(state.selectedSize)
+                || ((TRANSFER_SIZING && TRANSFER_SIZING.preview_ref_width) || 10);
+            layerWidthPx = widthIn * box.pxPerInchW / visibleWidthRatio;
         } else {
             const targetRatio = isTank ? 0.58 : 0.46;
             layerWidthPx = garmentWidth * targetRatio / visibleWidthRatio;
@@ -5894,8 +5942,8 @@
             // toward the sleeve or armpit on wide garment silhouettes.
             if (isSideChest && box.pxPerInch) {
                 const pocketOffsetIn = isTank ? 2.7 : 3.25;
-                if (placement === 'left_chest') visualCenter += pocketOffsetIn * box.pxPerInch;
-                if (placement === 'right_chest') visualCenter -= pocketOffsetIn * box.pxPerInch;
+                if (placement === 'left_chest') visualCenter += pocketOffsetIn * (box.pxPerInchW || box.pxPerInch);
+                if (placement === 'right_chest') visualCenter -= pocketOffsetIn * (box.pxPerInchW || box.pxPerInch);
             } else {
                 const chestShift = isTank ? 0.12 : 0.16;
                 if (placement === 'left_chest') visualCenter += box.widthPx * chestShift;

@@ -204,7 +204,8 @@ def _silhouette(data):
     if width_frac < _MIN_WIDTH_FRAC:
         return {'ok': False, 'reason': 'width_out_of_range', 'width': round(width_frac, 4)}
 
-    return {
+    torso_frac = _torso_fraction(mask, top, bottom, w)
+    result = {
         'ok': True,
         'top': round(top / float(h), 5),
         'bottom': round(bottom / float(h), 5),
@@ -217,6 +218,36 @@ def _silhouette(data):
         'image_height': img.size[1],
         'source': 'measured',
     }
+    if torso_frac:
+        result['torso'] = torso_frac
+    return result
+
+
+def _torso_fraction(mask, top, bottom, width):
+    """Width of the shirt body (no sleeves) as a fraction of the image width.
+
+    Measured low on the garment, between 60% and 82% of its height, where sleeves
+    are either gone (tees, tanks) or hang apart from the body (long sleeves).
+    The widest unbroken run on each row is the body; the middle value over those
+    rows is steady against a stray gap.
+    """
+    height = bottom - top
+    widths = []
+    for y in range(top + int(height * 0.60), top + int(height * 0.82) + 1):
+        if y >= mask.shape[0]:
+            break
+        cols = np.where(mask[y])[0]
+        if cols.size == 0:
+            continue
+        best = run = 1
+        for gap in np.diff(cols):
+            run = run + gap if gap <= 2 else 1
+            best = max(best, run)
+        widths.append(best)
+    if not widths:
+        return None
+    frac = float(np.median(widths)) / float(width)
+    return round(frac, 5) if 0.10 <= frac <= 0.98 else None
 
 
 def _backdrop_color(rgb):

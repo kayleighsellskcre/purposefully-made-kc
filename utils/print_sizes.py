@@ -127,6 +127,30 @@ GARMENT_BODY_LENGTH_IN = {
         '9M': 14.0, '12M': 14.5, '18M': 15.5, '24M': 16.5,
     },
 }
+# Width of the shirt body as it looks in a front mockup photo (a ghost-mannequin
+# front is narrower than the flat half-chest). The customizer divides the body
+# width it measures in the photo by this to get horizontal pixels per inch, so a
+# logo ordered 8" wide is drawn 8" wide against the shirt, not as a share of the
+# whole photo. Preview only; estimates, never a production measurement.
+GARMENT_CHEST_WIDTH_IN = {
+    'adult': {
+        'XS': 14.5, 'S': 15.5, 'M': 17.0, 'L': 18.5, 'XL': 20.0,
+        '2XL': 21.5, '3XL': 23.0, '4XL': 24.5, '5XL': 26.0, '6XL': 27.0,
+    },
+    'youth': {
+        'YXS': 12.5, 'YS': 13.5, 'YM': 15.0, 'YL': 16.5, 'YXL': 17.5,
+        'XS': 12.5, 'S': 13.5, 'M': 15.0, 'L': 16.5, 'XL': 17.5,
+        '2': 12.5, '4': 12.5, '6': 13.5, '8': 15.0, '10': 15.0,
+        '12': 16.5, '14': 16.5, '16': 17.5,
+    },
+    'toddler': {'2T': 11.0, '3T': 11.5, '4T': 12.5, '5T': 13.0},
+    'baby': {
+        'NB': 9.0, 'PREMIE': 8.5, '0M': 9.0, '3M': 9.5, '6M': 10.0,
+        '9M': 10.5, '12M': 11.0, '18M': 11.5, '24M': 12.0,
+    },
+}
+GARMENT_CHEST_WIDTH_DEFAULT = {'adult': 17.0, 'youth': 15.0, 'toddler': 12.0, 'baby': 10.0}
+
 GARMENT_BODY_LENGTH_DEFAULT = {
     'adult': 29.0, 'youth': 22.0, 'toddler': 16.5, 'baby': 14.0,
 }
@@ -712,6 +736,8 @@ def client_config(product=None):
         'gap_youth': NAME_NUMBER_GAP_YOUTH,
         'safe_height_adult': SAFE_PRINT_HEIGHT_ADULT,
         'safe_height_youth': SAFE_PRINT_HEIGHT_YOUTH,
+        'chest_widths': GARMENT_CHEST_WIDTH_IN,
+        'chest_width_defaults': GARMENT_CHEST_WIDTH_DEFAULT,
         'preview_ref_width': PREVIEW_REF_WIDTH_IN,
         'preview_ref_pct': PREVIEW_REF_PCT,
         'fonts': FONT_METRICS,
