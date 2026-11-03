@@ -26,7 +26,7 @@ def fetch_supplier_stock(product, ss_client=None, timeout=30):
     style = getattr(product, 'style_number', '') or ''
     brand = getattr(product, 'brand', None)
     for supplier, fetch in (
-        ('SanMar', lambda: _fetch_sanmar(style, timeout=timeout)),
+        ('SanMar', lambda: _fetch_sanmar(style, timeout=timeout, brand=brand)),
         ('S&S', lambda: _fetch_ss(style, brand=brand, ss_client=ss_client, timeout=timeout)),
     ):
         data = fetch()

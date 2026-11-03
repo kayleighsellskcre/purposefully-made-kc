@@ -36,6 +36,9 @@ def style_candidates(style_number, brand=None) -> list[str]:
 
     add(raw)
     upper = raw.upper()
+    # Some Bella+Canvas styles are saved without the BC (3501T); SanMar only knows them as BC3501T.
+    if 'BELLA' in str(brand or '').upper() and raw[:1].isdigit():
+        add('BC' + raw)
     for prefix in _PREFIXES:
         if upper.startswith(prefix) and len(upper) > len(prefix):
             rest = raw[len(prefix):]
@@ -98,14 +101,14 @@ def _merge_color_maps(*maps) -> dict:
     return {names[ck]: sizes for ck, sizes in merged.items()}
 
 
-def _fetch_sanmar(style_number, timeout=30) -> dict:
+def _fetch_sanmar(style_number, timeout=30, brand=None) -> dict:
     from services.sanmar_api import SanMarAPI, check_credentials
 
     creds = check_credentials()
     if not creds.get('ok'):
         return {}
     api = SanMarAPI()
-    for candidate in style_candidates(style_number):
+    for candidate in style_candidates(style_number, brand):
         try:
             data = api.fetch_inventory_for_style(candidate, timeout=timeout)
         except TypeError:
@@ -145,7 +148,7 @@ def fetch_combined_inventory(product, ss_client=None, timeout=30) -> dict:
     brand = getattr(product, 'brand', None)
     # One supplier per style: SanMar when it knows the style, otherwise S&S. Adding the two together
     # double counted stock and let one supplier's colors leak into the other's style.
-    sanmar = _fetch_sanmar(style, timeout=timeout)
+    sanmar = _fetch_sanmar(style, timeout=timeout, brand=brand)
     if sanmar:
         return _merge_color_maps(sanmar)
     return _merge_color_maps(_fetch_ss(style, brand=brand, ss_client=ss_client, timeout=timeout))

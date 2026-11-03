@@ -117,11 +117,11 @@ def test_sanmar_stock_parser_sums_warehouses(monkeypatch):
 
 def test_supplier_choice_sanmar_first_then_ss(monkeypatch):
     from services import inventory_sync
-    monkeypatch.setattr(inventory_sync, '_fetch_sanmar', lambda style, timeout=30: {})
+    monkeypatch.setattr(inventory_sync, '_fetch_sanmar', lambda style, timeout=30, brand=None: {})
     monkeypatch.setattr(inventory_sync, '_fetch_ss', lambda style, brand=None, ss_client=None, timeout=30: {'Red': {'M': 3}})
     supplier, totals = CA.fetch_supplier_colors(SimpleNamespace(style_number='3001', brand='Bella+Canvas'))
     assert supplier == 'S&S' and totals == {'red': 3}
-    monkeypatch.setattr(inventory_sync, '_fetch_sanmar', lambda style, timeout=30: {'Red': {'M': 1}})
+    monkeypatch.setattr(inventory_sync, '_fetch_sanmar', lambda style, timeout=30, brand=None: {'Red': {'M': 1}})
     supplier, _ = CA.fetch_supplier_colors(SimpleNamespace(style_number='PC54', brand='Port & Company'))
     assert supplier == 'SanMar'
 
@@ -147,7 +147,7 @@ def test_bc3005_names_are_cleaned_without_touching_other_colors(app):
 
 def test_stock_for_a_style_comes_from_one_supplier_not_both(monkeypatch):
     from services import inventory_sync
-    monkeypatch.setattr(inventory_sync, '_fetch_sanmar', lambda style, timeout=30: {'Black': {'M': 5}})
+    monkeypatch.setattr(inventory_sync, '_fetch_sanmar', lambda style, timeout=30, brand=None: {'Black': {'M': 5}})
     monkeypatch.setattr(inventory_sync, '_fetch_ss', lambda *a, **k: {'Black': {'M': 7}, 'Pink': {'M': 9}})
     got = inventory_sync.fetch_combined_inventory(SimpleNamespace(style_number='PC54', brand='Port & Company'))
     assert got == {'Black': {'M': 5}}
@@ -209,4 +209,11 @@ def test_group_store_and_district_pickers_do_not_offer_dropped_colors(app, seed)
         offered = catalog['uniform_colors_by_product'].get(str(tee.id), [])
         assert 'Black' in offered and 'White' not in offered
         assert 'White' not in catalog['colors_by_brand'].get(tee.brand or 'Other', [])
+
+
+def test_bella_styles_saved_without_bc_are_looked_up_at_sanmar_as_bc():
+    from services.inventory_sync import style_candidates
+    assert 'BC3501T' in style_candidates('3501T', 'Bella+Canvas')
+    assert 'BC3501T' not in style_candidates('3501T', 'Rabbit Skins')
+    assert 'BC54' not in style_candidates('PC54', 'Port & Company')
 
