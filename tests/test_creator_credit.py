@@ -138,3 +138,18 @@ def test_turning_automatic_use_off_saves_the_credit(app, seed):
         assert calculate_totals([{'product_id': seed['tee_id'], 'quantity': 2, 'unit_price': 30.00}], 'pickup',
                                 credit_user_id=uid)['credit_applied'] == 0.0
     assert 'Automatic use is off' in shopper.get('/account/shared-designs').get_data(as_text=True)
+
+
+def test_the_order_page_and_emails_show_the_store_credit_line(app, seed):
+    from flask import render_template
+    uid = _creator_id(app)
+    with app.app_context():
+        order = Order(order_number='PMKC-CC10', email=CUSTOMER_EMAIL, user_id=uid, first_name='C', last_name='C', subtotal=40.0,
+                      total=43.9, credit_applied=10.0, payment_status='paid', status='paid', payment_method='stripe')
+        db.session.add(order)
+        db.session.commit()
+        oid = order.id
+    page = _signed_in(app).get(f'/account/orders/PMKC-CC10')
+    assert page.status_code == 200
+    html = page.get_data(as_text=True)
+    assert 'Store credit' in html and '-$10.00' in html and '$50.00' in html
