@@ -289,7 +289,39 @@ def _is_composite_proof(url):
     )
 
 
-def preview_overlay_style(item, placement='center_chest'):
+# Admin picture of a plain front logo: drawn true to the shirt body in the photo, then
+# eased up a quarter so it reads clearly. 1.0 would be the exact printed proportion.
+ADMIN_LOGO_EASE = 1.25
+
+
+def _width_pct_from_photo(mockup_url, product, size, ordered_in):
+    """Logo width as a % of the mockup photo, from the shirt body measured in that photo.
+
+    Body width in the photo divided by the visible chest width for the size gives
+    inches-to-pixels, never larger than the shirt-length scale and never below 55% of
+    it. None when the body cannot be measured on its own (sweatshirt sleeves touch the
+    body), so callers keep the fixed 10 in = 38% rule.
+    """
+    if not mockup_url or not ordered_in:
+        return None
+    try:
+        from flask import current_app
+        from services.garment_metrics import measure
+        from utils.print_sizes import garment_body_length_in, garment_chest_width_in
+        m = measure(mockup_url, current_app)
+        torso = m.get('torso') if m.get('ok') else None
+        if not torso or torso > 0.72 or not m.get('image_width'):
+            return None
+        body_in = garment_body_length_in(size, product)
+        chest_in = garment_chest_width_in(size, product)
+        per_in_h = m['height'] * m['image_height'] / float(body_in) / float(m['image_width'])
+        per_in_w = min(per_in_h, max(per_in_h * 0.55, torso / float(chest_in)))
+        return float(ordered_in) * per_in_w * 100.0 * ADMIN_LOGO_EASE
+    except Exception:
+        return None
+
+
+def preview_overlay_style(item, placement='center_chest', mockup_url=None):
     """Match customize.html applyDesignFit for live admin overlays (preview only)."""
     from utils.print_sizes import (
         PREVIEW_REF_PCT,
@@ -330,6 +362,18 @@ def preview_overlay_style(item, placement='center_chest'):
         ordered = PREVIEW_REF_WIDTH_IN
 
     pct = float(PREVIEW_REF_PCT) * (ordered / float(PREVIEW_REF_WIDTH_IN))
+    if not is_side:
+        scaled = _width_pct_from_photo(mockup_url, product, size, ordered)
+        if scaled:
+            pct = scaled
+            if tall > 1.4:
+                pct *= 0.88
+            elif tall > 1.2:
+                pct *= 0.94
+            return (
+                f'width:{pct:.1f}%;max-width:none;max-height:50.0%;'
+                f'top:38%;left:50%;transform:translate(-50%,-50%);'
+            )
 
     if is_side:
         pct *= 0.42
@@ -392,13 +436,17 @@ def artwork_kit(item, order=None):
         meta = {}
     personalized = bool(meta.get('name') or meta.get('number'))
 
-    if proof_front:
+    # The saved checkout picture draws a plain front logo larger than it prints, so
+    # the admin redraws it from the garment photo; the saved picture only stands in
+    # when there is no print file to redraw. Customers still see their own picture.
+    if proof_front and not (front_print and front_on_shirt):
         front_mockup = proof_front
         front_overlay = None
         front_overlay_style = ''
     else:
         front_overlay = front_print if front_on_shirt else None
-        front_overlay_style = preview_overlay_style(item, placement) if front_overlay else ''
+        front_overlay_style = preview_overlay_style(item, placement, front_mockup) if front_overlay else ''
+        proof_front = None
 
     back_placement = 'back_name_number' if personalized else ('upper_back' if meta.get('position') == 'upper' else 'center_back')
     if proof_back:

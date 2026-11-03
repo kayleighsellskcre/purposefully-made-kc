@@ -32,3 +32,20 @@ def test_preview_overlay_side_chest_is_smaller():
 def test_preview_ref_pct_is_roomy():
     assert PREVIEW_REF_PCT >= 36
     assert PREVIEW_REF_WIDTH_IN == 10.0
+
+
+def test_admin_redraws_a_plain_front_logo_instead_of_the_saved_picture(app):
+    from types import SimpleNamespace as NS
+    from utils.order_artwork import artwork_kit
+    item = NS(design=None, design_file_name='/static/uploads/x.png', proof_image='/static/uploads/proofs/proof_front_1.png',
+              proof_back_image=None, placement='center_chest', color='Black', size='M', print_width=8.0, print_height=8.0,
+              product=None, back_design_details=None)
+    with app.test_request_context():
+        kit = artwork_kit(item)
+    assert kit['front_overlay_url'] and 'width:' in kit['front_overlay_style']
+    assert not kit['proof_front_url']
+
+
+def test_chest_widths_and_body_measure_exist_for_the_admin_redraw():
+    from utils.print_sizes import garment_chest_width_in
+    assert garment_chest_width_in('M', None) > garment_chest_width_in('YM', None) > 0
