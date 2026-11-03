@@ -34,6 +34,7 @@ def display_product_name(product_or_name, style_number=None):
 
 TITLE_SUFFIX = ' - Purposefully Made KC'
 TITLE_LIMIT = 60
+_BRAND_LEAD = re.compile(r'^(?:bella\s*\+\s*canvas|comfort colors|gildan|port & company|next level|independent trading co\.?|rabbit skins)\s+', re.I)
 
 
 def fit_title(name, prefix='', suffix=TITLE_SUFFIX, limit=TITLE_LIMIT):
@@ -42,7 +43,15 @@ def fit_title(name, prefix='', suffix=TITLE_SUFFIX, limit=TITLE_LIMIT):
     room = limit - len(prefix) - len(suffix)
     if len(name) <= room:
         return prefix + name
+    shorter = _BRAND_LEAD.sub('', name)              # the brand is the least useful part of a long title
+    if shorter != name:
+        if len(shorter) <= room:
+            return prefix + shorter
+        if len(shorter) <= limit - len(suffix):
+            return shorter
+        name = shorter
     if len(name) <= limit - len(suffix):
         return name                                  # the whole name matters more than the word "Customize"
-    cut = name[:max(room, 1)].rsplit(' ', 1)[0] if ' ' in name[:max(room, 1) + 1] else name[:max(room, 1)]
-    return prefix + cut.rstrip(' ,.-&/')
+    room = max(limit - len(suffix), 1)               # too long even alone: drop the prefix, keep as much of the name as fits
+    cut = name[:room].rsplit(' ', 1)[0] if ' ' in name[:room + 1] else name[:room]
+    return cut.rstrip(' ,.-&/')
