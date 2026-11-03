@@ -1099,7 +1099,9 @@
     min-height: 220px;
     height: 240px;
 }
-.od-kit-proofs .pm-proof { height: 240px; }
+.od-kit-proofs .pm-proof { height: 240px; aspect-ratio: 4 / 5; flex: 0 0 auto; }
+/* The picture box is exactly the photo's shape. It used to stretch to the full column, and the logo's width
+   (a % of that box) was then measured against a box three times wider than the shirt. */
 .od-print-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

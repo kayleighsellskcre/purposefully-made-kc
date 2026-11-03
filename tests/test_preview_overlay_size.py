@@ -49,3 +49,9 @@ def test_admin_redraws_a_plain_front_logo_instead_of_the_saved_picture(app):
 def test_chest_widths_and_body_measure_exist_for_the_admin_redraw():
     from utils.print_sizes import garment_chest_width_in
     assert garment_chest_width_in('M', None) > garment_chest_width_in('YM', None) > 0
+
+
+def test_admin_proof_box_is_the_shape_of_the_photo_so_logo_percentages_mean_something():
+    from pathlib import Path
+    css = Path(__file__).resolve().parents[1].joinpath('templates/admin/order_detail.html').read_text(encoding='utf-8')
+    assert '.od-kit-proofs .pm-proof { height: 240px; aspect-ratio: 4 / 5; flex: 0 0 auto; }' in css
