@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash
 from flask_login import current_user
 from models import Product, Design
-from utils.order_artwork import FRONT_PLACEMENTS, existing_image_url, mockup_urls, preview_overlay_style
+from utils.order_artwork import FRONT_PLACEMENTS, existing_image_url, mockup_urls
 from utils.cart_store import get_cart, save_cart, clear_cart, cart_count, cart_fingerprint
 from werkzeug.utils import secure_filename
 from utils.cloud_storage import image_url as _resolve_image_url
@@ -136,7 +136,6 @@ def index():
                 'display_fallback': front_image if proof_front and front_image and proof_front != front_image else None,
                 'back_fallback': back_image if proof_back and back_image and proof_back != back_image else None,
                 'design_overlay': front_design,
-                'design_overlay_style': preview_overlay_style({**item, 'product': product}, placement) if front_design else '',
                 'back_overlay': back_overlay,
                 'back_overlay_class': back_class,
                 'back_overlay_style': back_style,
