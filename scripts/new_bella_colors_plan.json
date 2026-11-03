@@ -1,0 +1,194 @@
+[
+ {
+  "style": "BC3005",
+  "color": "Charcoal Black Slub",
+  "hex": "#323335",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_charcoal-blacktriblend.gif",
+  "front": "/static/images/products/BC3005/BC3005_Charcoal_Black_Slub_front_flat.jpg",
+  "back": "/static/images/products/BC3005/BC3005_Charcoal_Black_Slub_back_flat.jpg"
+ },
+ {
+  "style": "BC3005",
+  "color": "Charcoal Marble",
+  "hex": "#414244",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_charcoalmarble.gif",
+  "front": "/static/images/products/BC3005/BC3005_Charcoal_Marble_front_flat.jpg",
+  "back": "/static/images/products/BC3005/BC3005_Charcoal_Marble_back_flat.jpg"
+ },
+ {
+  "style": "BC3005",
+  "color": "Navy Marble",
+  "hex": "#384663",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_navymarble.gif",
+  "front": "/static/images/products/BC3005/BC3005_Navy_Marble_front_flat.jpg",
+  "back": "/static/images/products/BC3005/BC3005_Navy_Marble_back_flat.jpg"
+ },
+ {
+  "style": "BC3005",
+  "color": "True Royal Marble",
+  "hex": "#275c8e",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_trueroyalmarble.gif",
+  "front": "/static/images/products/BC3005/BC3005_True_Royal_Marble_front_flat.jpg",
+  "back": "/static/images/products/BC3005/BC3005_True_Royal_Marble_back_flat.jpg"
+ },
+ {
+  "style": "BC3480",
+  "color": "Aqua Triblend",
+  "hex": "#109db9",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_aquatriblend.gif",
+  "front": "/static/images/products/BC3480/BC3480_Aqua_Triblend_front_flat.jpg",
+  "back": "/static/images/products/BC3480/BC3480_Aqua_Triblend_back_flat.jpg"
+ },
+ {
+  "style": "BC3480",
+  "color": "Black Heather",
+  "hex": "#262626",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_blackheather.gif",
+  "front": "/static/images/products/BC3480/BC3480_Black_Heather_front_flat.jpg",
+  "back": "/static/images/products/BC3480/BC3480_Black_Heather_back_flat.jpg"
+ },
+ {
+  "style": "BC3480",
+  "color": "Charcoal-Black Triblend",
+  "hex": "#383838",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_charcoal-blacktriblend.gif",
+  "front": "/static/images/products/BC3480/BC3480_Charcoal_Black_Triblend_front_flat.jpg",
+  "back": "/static/images/products/BC3480/BC3480_Charcoal_Black_Triblend_back_flat.jpg"
+ },
+ {
+  "style": "BC3480",
+  "color": "Grey Triblend",
+  "hex": "#7e7f79",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_greytriblend.gif",
+  "front": "/static/images/products/BC3480/BC3480_Grey_Triblend_front_flat.jpg",
+  "back": "/static/images/products/BC3480/BC3480_Grey_Triblend_back_flat.jpg"
+ },
+ {
+  "style": "BC3480",
+  "color": "White Fleck Triblend",
+  "hex": "#d4d7dc",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_whiteflecktriblend.gif",
+  "front": "/static/images/products/BC3480/BC3480_White_Fleck_Triblend_front_flat.jpg",
+  "back": "/static/images/products/BC3480/BC3480_White_Fleck_Triblend_back_flat.jpg"
+ },
+ {
+  "style": "BC8800",
+  "color": "Coral",
+  "hex": "#e57464",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_coral.gif",
+  "front": "/static/images/products/BC8800/BC8800_Coral_front_flat.jpg",
+  "back": "/static/images/products/BC8800/BC8800_Coral_back_flat.jpg"
+ },
+ {
+  "style": "BC8800",
+  "color": "Dark Grey",
+  "hex": "#373b3e",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_darkgrey.gif",
+  "front": "/static/images/products/BC8800/BC8800_Dark_Grey_front_flat.jpg",
+  "back": "/static/images/products/BC8800/BC8800_Dark_Grey_back_flat.jpg"
+ },
+ {
+  "style": "BC8800",
+  "color": "Heather Deep Teal",
+  "hex": "#3b6677",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_heatherdeepteal.gif",
+  "front": "/static/images/products/BC8800/BC8800_Heather_Deep_Teal_front_flat.jpg",
+  "back": "/static/images/products/BC8800/BC8800_Heather_Deep_Teal_back_flat.jpg"
+ },
+ {
+  "style": "BC8800",
+  "color": "Kelly",
+  "hex": "#157358",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_kelly.gif",
+  "front": "/static/images/products/BC8800/BC8800_Kelly_front_flat.jpg",
+  "back": "/static/images/products/BC8800/BC8800_Kelly_back_flat.jpg"
+ },
+ {
+  "style": "BC8800",
+  "color": "Mauve Marble",
+  "hex": "#a96869",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_mauvemarble.gif",
+  "front": "/static/images/products/BC8800/BC8800_Mauve_Marble_front_flat.jpg",
+  "back": "/static/images/products/BC8800/BC8800_Mauve_Marble_back_flat.jpg"
+ },
+ {
+  "style": "BC8800",
+  "color": "Military Green",
+  "hex": "#535c4b",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_militarygreen.gif",
+  "front": "/static/images/products/BC8800/BC8800_Military_Green_front_flat.jpg",
+  "back": "/static/images/products/BC8800/BC8800_Military_Green_back_flat.jpg"
+ },
+ {
+  "style": "BC8800",
+  "color": "Neon Pink",
+  "hex": "#fe7f91",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_neonpink.gif",
+  "front": "/static/images/products/BC8800/BC8800_Neon_Pink_front_flat.jpg",
+  "back": "/static/images/products/BC8800/BC8800_Neon_Pink_back_flat.jpg"
+ },
+ {
+  "style": "BC8800",
+  "color": "Peach",
+  "hex": "#fbd1bb",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_peach.gif",
+  "front": "/static/images/products/BC8800/BC8800_Peach_front_flat.jpg",
+  "back": "/static/images/products/BC8800/BC8800_Peach_back_flat.jpg"
+ },
+ {
+  "style": "BC8800",
+  "color": "Peach Slub",
+  "hex": "#dfbea2",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_peachtriblend.gif",
+  "front": "/static/images/products/BC8800/BC8800_Peach_Slub_front_flat.jpg",
+  "back": "/static/images/products/BC8800/BC8800_Peach_Slub_back_flat.jpg"
+ },
+ {
+  "style": "BC8800",
+  "color": "Soft Pink",
+  "hex": "#fbe3e3",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_softpink.gif",
+  "front": "/static/images/products/BC8800/BC8800_Soft_Pink_front_flat.jpg",
+  "back": "/static/images/products/BC8800/BC8800_Soft_Pink_back_flat.jpg"
+ },
+ {
+  "style": "BC8800",
+  "color": "Solid Black Slub",
+  "hex": "#212222",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_solidblacktriblend.gif",
+  "front": "/static/images/products/BC8800/BC8800_Solid_Black_Slub_front_flat.jpg",
+  "back": "/static/images/products/BC8800/BC8800_Solid_Black_Slub_back_flat.jpg"
+ },
+ {
+  "style": "BC8800",
+  "color": "Sunset",
+  "hex": "#db937b",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_sunset.gif",
+  "front": "/static/images/products/BC8800/BC8800_Sunset_front_flat.jpg",
+  "back": "/static/images/products/BC8800/BC8800_Sunset_back_flat.jpg"
+ },
+ {
+  "style": "BC8800",
+  "color": "Teal",
+  "hex": "#46c0b5",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_teal.gif",
+  "front": "/static/images/products/BC8800/BC8800_Teal_front_flat.jpg",
+  "back": "/static/images/products/BC8800/BC8800_Teal_back_flat.jpg"
+ },
+ {
+  "style": "BC8800",
+  "color": "True Royal",
+  "hex": "#13386d",
+  "swatch": "",
+  "front": "/static/images/products/BC8800/BC8800_True_Royal_front_flat.jpg",
+  "back": "/static/images/products/BC8800/BC8800_True_Royal_back_flat.jpg"
+ },
+ {
+  "style": "BC8800",
+  "color": "True Royal Marble",
+  "hex": "#285a99",
+  "swatch": "https://cdnm.sanmar.com/swatch/gifs/bc_trueroyalmarble.gif",
+  "front": "/static/images/products/BC8800/BC8800_True_Royal_Marble_front_flat.jpg",
+  "back": "/static/images/products/BC8800/BC8800_True_Royal_Marble_back_flat.jpg"
+ }
+]

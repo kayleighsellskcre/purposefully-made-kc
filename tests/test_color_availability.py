@@ -197,3 +197,16 @@ def test_live_checkout_check_never_blocks_on_an_unrecognised_color_name(app, see
         cart = [{'product_id': tee.id, 'color': 'Black', 'size': 'M', 'quantity': 1}]
         monkeypatch.setattr(CA, 'fetch_supplier_stock', lambda p, ss_client=None, timeout=8: ('SanMar', {'Jet Black': {'M': 0}}))
         assert CA.live_cart_stock_error(cart) is None
+
+
+def test_group_store_and_district_pickers_do_not_offer_dropped_colors(app, seed):
+    from utils.product_filters import load_group_order_form_catalog
+    with app.app_context():
+        tee = _tee(seed)
+        tee.supplier_hidden_colors = json.dumps(['White'])
+        db.session.commit()
+        catalog = load_group_order_form_catalog()
+        offered = catalog['uniform_colors_by_product'].get(str(tee.id), [])
+        assert 'Black' in offered and 'White' not in offered
+        assert 'White' not in catalog['colors_by_brand'].get(tee.brand or 'Other', [])
+

@@ -651,8 +651,10 @@ def load_group_order_form_catalog():
             seen_colors: set[str] = set()
             product_hex = {}  # {product_id: {display label: hex}}
             product_swatch = {}  # {product_id: {display label: manufacturer swatch image}}
+            from utils.color_visibility import visible_pair_filter
+            shown = visible_pair_filter(ids)  # colors the supplier dropped are not offered to group stores
             for product_id, brand, color, color_hex, swatch_url in rows:
-                if not color:
+                if not color or not shown(product_id, color):
                     continue
                 uniform_colors_by_product.setdefault(str(product_id), []).append(color)
                 brand_key = brand or 'Other'
