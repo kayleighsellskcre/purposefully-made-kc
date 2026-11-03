@@ -101,41 +101,13 @@
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                     Designs
                 </a>
-                <a href="{{ url_for('admin.design_library_overview') }}" class="ops-drop-item {% if request.endpoint == 'admin.design_library_overview' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
-                    Library Overview
-                </a>
-                <a href="{{ url_for('admin.design_browse') }}" class="ops-drop-item {% if request.endpoint == 'admin.design_browse' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
-                    Find &amp; Bulk Edit
-                </a>
-                <a href="{{ url_for('admin.design_categories') }}" class="ops-drop-item {% if request.endpoint == 'admin.design_categories' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h10M4 18h6"/><path d="M18 15v6M15 18h6"/></svg>
-                    Collections &amp; Categories
-                </a>
-                <a href="{{ url_for('admin.design_tags') }}" class="ops-drop-item {% if request.endpoint == 'admin.design_tags' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-                    Design Tags
-                </a>
-                <a href="{{ url_for('admin.design_review') }}" class="ops-drop-item {% if request.endpoint == 'admin.design_review' %}ops-drop-active{% endif %}" role="menuitem">
+                {{ ops_item('admin.design_browse', 'Design library', ['admin.design_library_overview','admin.design_categories','admin.design_tags']) }}
+                <a href="{{ url_for('admin.design_review') }}" class="ops-drop-item {% if request.endpoint in ['admin.design_review','admin.design_matches','admin.gallery_queue'] %}ops-drop-active{% endif %}" role="menuitem">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-                    Design Review
-                    {% set _dr = design_review_count() %}{% if _dr %}<span class="ops-drop-badge">{{ _dr }}</span>{% endif %}
+                    Review &amp; approve
+                    {% set _dr = (design_review_count() or 0) + (design_matches_count() or 0) + (gallery_pending_count or 0) %}{% if _dr %}<span class="ops-drop-badge">{{ _dr }}</span>{% endif %}
                 </a>
-                <a href="{{ url_for('admin.design_organize') }}" class="ops-drop-item {% if request.endpoint == 'admin.design_organize' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18M3 12h18M3 17h12"/></svg>
-                    Organize Library
-                </a>
-                <a href="{{ url_for('admin.design_matches') }}" class="ops-drop-item {% if request.endpoint == 'admin.design_matches' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M11 7h3a3 3 0 013 3v3"/></svg>
-                    Duplicates &amp; Versions
-                    {% set _dm = design_matches_count() %}{% if _dm %}<span class="ops-drop-badge">{{ _dm }}</span>{% endif %}
-                </a>
-                <a href="{{ url_for('admin.gallery_queue') }}" class="ops-drop-item {% if request.endpoint == 'admin.gallery_queue' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                    Gallery Queue
-                    {% if gallery_pending_count and gallery_pending_count > 0 %}<span class="ops-drop-badge">{{ gallery_pending_count }}</span>{% endif %}
-                </a>
+                {{ ops_item('admin.design_organize', 'Organize library') }}
                 <a href="{{ url_for('admin.affirmations') }}" class="ops-drop-item {% if request.endpoint == 'admin.affirmations' %}ops-drop-active{% endif %}" role="menuitem">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
                     Daily Affirmations
@@ -177,6 +149,8 @@
     [('admin.payouts', 'Payouts'), ('admin.payout_check', 'Month-by-month check')],
     [('admin.sales_tax_report', 'Sales tax'), ('admin.tax_exempt_customers', 'Tax-exempt customers')],
     [('admin.inventory', 'Inventory'), ('admin.low_stock', 'Running low')],
+    [('admin.design_browse', 'Find & bulk edit'), ('admin.design_library_overview', 'Overview'), ('admin.design_categories', 'Collections & categories'), ('admin.design_tags', 'Tags')],
+    [('admin.design_review', 'Design review'), ('admin.design_matches', 'Duplicates & versions'), ('admin.gallery_queue', 'Gallery queue')],
 ] %}
 {% set _same = {'admin.reports_refresh': 'admin.reports', 'admin.save_inventory_costs': 'admin.inventory', 'admin.operations_inventory': 'admin.inventory'} %}
 {% set _here = _same.get(_ep, _ep) %}

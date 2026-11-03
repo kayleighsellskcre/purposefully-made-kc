@@ -38,3 +38,9 @@ private/
 
 # Test run reports (scrap output)
 pytest_full*.txt
+
+# local scratch and one-off backups
+pytest_*.txt
+tmp_pc_imgs/
+*_backup_*.json
+*_backup_*.txt

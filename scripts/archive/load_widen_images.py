@@ -1,3 +1,4 @@
+import os
 """
 load_widen_images.py
 Standalone psycopg2 script — no Flask needed.
@@ -7,7 +8,7 @@ Run from project root in Cursor terminal:
 import psycopg2, psycopg2.extras
 from datetime import datetime
 
-DB_URL = "postgresql://postgres:BovffUcjWrrjTLtBuOOKvrEAedMubugv@yamabiko.proxy.rlwy.net:14645/railway"
+DB_URL = os.environ["DATABASE_URL"]
 
 # Scraped from SanMar Media Library (Widen/medialibrary1.com)
 # Format: {style_number: {color_name: {front: url, back: url}}}

@@ -55,16 +55,12 @@
         <div class="prod-tool-group">
             <span class="prod-tool-group-label">SanMar / S&amp;S stock</span>
             <div class="prod-tool-buttons">
-                <button type="button" class="prod-tool-btn prod-tool-btn--primary" onclick="openModal('sanmarSyncModal')">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                    Sync Catalog
-                </button>
                 <form method="POST" action="{{ url_for('admin.sync_sanmar_inventory') }}" style="display:inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="prod-tool-btn"
-                            onclick="return confirm('Refresh live in-stock quantities from SanMar and S&S for every active style?')">
+                            onclick="return confirm('Refresh stock from SanMar and S&S for every active style now? This also runs every morning by itself.')">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                        Sync Live Inventory
+                        Refresh stock now
                     </button>
                 </form>
                 <label class="prod-tool-btn" style="cursor:pointer;" title="Upload the BellaCanvasData CSV downloaded from SanMar Data Library">
@@ -274,9 +270,6 @@
             <h3>No products yet</h3>
             <p>Add your first product manually or sync from S&amp;S Activewear.</p>
             <div class="prod-empty-actions">
-                {% if api_configured %}
-                <button class="btn btn-primary" onclick="openModal('fullSyncModal')">Sync ALL Bella+Canvas</button>
-                {% endif %}
                 <a href="{{ url_for('admin.add_product') }}" class="btn btn-outline">Add Product Manually</a>
             </div>
         </div>
@@ -289,143 +282,6 @@
 <!-- ═══════════════════════════════
      MODALS
 ═══════════════════════════════ -->
-
-<!-- Fill Missing Images Modal -->
-<div id="backfillModal" class="prod-modal" role="dialog" aria-modal="true" aria-labelledby="backfillTitle">
-    <div class="prod-modal-card">
-        <div class="prod-modal-header">
-            <h2 id="backfillTitle">Fill Missing Product Images</h2>
-            <button class="prod-modal-close" onclick="closeModal('backfillModal')" aria-label="Close">&times;</button>
-        </div>
-        <div class="prod-modal-body">
-            <p>Finds every color variant missing a front or back image and fetches the correct flat/ghost product image from S&amp;S Activewear.</p>
-            <div class="prod-modal-list">
-                <div class="prod-modal-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Clean flat product shots, <strong>no models</strong>
-                </div>
-                <div class="prod-modal-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Front and back images for every color variant
-                </div>
-                <div class="prod-modal-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Only fills gaps, existing images are not overwritten
-                </div>
-            </div>
-            <p class="prod-modal-note">May take a few minutes. Do not close this tab.</p>
-            <form action="{{ url_for('admin.backfill_images') }}" method="POST">
-                <div class="prod-modal-actions">
-                    <button type="button" class="btn btn-outline" onclick="closeModal('backfillModal')">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Fill Missing Images</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- SanMar Sync Modal -->
-<div id="sanmarSyncModal" class="prod-modal" role="dialog" aria-modal="true" aria-labelledby="sanmarSyncTitle">
-    <div class="prod-modal-card">
-        <div class="prod-modal-header">
-            <h2 id="sanmarSyncTitle">Sync Products from SanMar</h2>
-            <button class="prod-modal-close" onclick="closeModal('sanmarSyncModal')" aria-label="Close">&times;</button>
-        </div>
-        <div class="prod-modal-body">
-            <p>Downloads your curated styles from SanMar's SFTP server (Daily Inventory &amp; Pricing file) and syncs everything into your store.</p>
-            <div class="prod-modal-list">
-                <div class="prod-modal-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Adds new styles and updates existing ones
-                </div>
-                <div class="prod-modal-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Syncs live inventory, pricing, and color variants
-                </div>
-                <div class="prod-modal-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Pulls front/back images and color hex codes
-                </div>
-            </div>
-            <p class="prod-modal-note">Runs in the background - you can leave this page. Check back in a few minutes. Requires SanMar FTP credentials in Railway.</p>
-            <form action="{{ url_for('admin.sync_sanmar_dip') }}" method="POST">
-                <div class="prod-modal-actions">
-                    <button type="button" class="btn btn-outline" onclick="closeModal('sanmarSyncModal')">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Start SanMar Sync</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Full Bella+Canvas Sync Modal -->
-<div id="fullSyncModal" class="prod-modal" role="dialog" aria-modal="true" aria-labelledby="fullSyncTitle">
-    <div class="prod-modal-card">
-        <div class="prod-modal-header">
-            <h2 id="fullSyncTitle">Sync ALL Bella+Canvas</h2>
-            <button class="prod-modal-close" onclick="closeModal('fullSyncModal')" aria-label="Close">&times;</button>
-        </div>
-        <div class="prod-modal-body">
-            <p>Syncs the <strong>complete Bella+Canvas catalog</strong> (160+ styles) from S&amp;S Activewear.</p>
-            <div class="prod-modal-list">
-                <div class="prod-modal-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Adds any new styles not yet in your store
-                </div>
-                <div class="prod-modal-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Updates colors, sizes, and live inventory
-                </div>
-                <div class="prod-modal-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Typically takes 3–5 minutes to complete
-                </div>
-            </div>
-            <p class="prod-modal-note">The page will load while the sync runs. Do not close the tab.</p>
-            <form action="{{ url_for('admin.sync_all_bella_canvas') }}" method="POST">
-                <div class="prod-modal-actions">
-                    <button type="button" class="btn btn-outline" onclick="closeModal('fullSyncModal')">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Start Full Sync</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Sync Mockup Styles Modal -->
-<div id="syncModal" class="prod-modal" role="dialog" aria-modal="true" aria-labelledby="syncTitle">
-    <div class="prod-modal-card">
-        <div class="prod-modal-header">
-            <h2 id="syncTitle">Sync Mockup Styles</h2>
-            <button class="prod-modal-close" onclick="closeModal('syncModal')" aria-label="Close">&times;</button>
-        </div>
-        <div class="prod-modal-body">
-            <p>Syncs <strong>only styles that have mockup folders</strong> in <code>uploads/mockups/</code> from S&amp;S Activewear.</p>
-            <div class="prod-modal-list">
-                <div class="prod-modal-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Discovers style folders from your mockups (e.g. 3001, 3001CVC)
-                </div>
-                <div class="prod-modal-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Fetches colors, sizes, and live inventory from S&amp;S
-                </div>
-                <div class="prod-modal-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Links your mockup images to each color variant
-                </div>
-            </div>
-            <p class="prod-modal-note"><strong>Tip:</strong> Use <em>Link Mockup Images</em> to add styles and link images without needing the S&amp;S API.</p>
-            <form action="{{ url_for('admin.sync_api') }}" method="POST">
-                <div class="prod-modal-actions">
-                    <button type="button" class="btn btn-outline" onclick="closeModal('syncModal')">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Start Sync</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 
 <style>
 /* ═══════════════════════
@@ -1407,42 +1263,6 @@ function escHtml(s) {
         .replace(/"/g, '&quot;');
 }
 
-function runSanmarTest() {
-    var btn = document.getElementById('sanmarTestBtn');
-    var result = document.getElementById('sanmarTestResult');
-    var csrfToken = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
-
-    btn.disabled = true;
-    btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Testing…';
-    result.hidden = true;
-
-    fetch('{{ url_for("admin.test_sanmar_connection") }}', {
-        method: 'POST',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRFToken': csrfToken,
-        }
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        result.hidden = false;
-        result.className = 'sanmar-test-result ' + (data.ok ? 'sanmar-test-ok' : 'sanmar-test-fail');
-        var msg = escHtml(data.ok ? '✓ ' : '✗ ') + escHtml(data.message);
-        var html = '<strong>' + msg + '</strong>';
-        if (data.details) html += '<p>' + escHtml(data.details) + '</p>';
-        result.innerHTML = html;
-    })
-    .catch(function(err) {
-        result.hidden = false;
-        result.className = 'sanmar-test-result sanmar-test-fail';
-        result.innerHTML = '<strong>✗ Request failed</strong><p>' + escHtml(String(err)) + '</p>';
-    })
-    .finally(function() {
-        btn.disabled = false;
-        btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.95 1.18 2 2 0 012.92 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg> Test Connection';
-    });
-}
-
 function showToast(msg) {
     let t = document.getElementById('prodToast');
     if (!t) {
@@ -1463,66 +1283,5 @@ function showToast(msg) {
     t._hide = setTimeout(function() { t.style.opacity = '0'; }, 3000);
 }
 </script>
-
-<!-- SanMar Test Connection Modal -->
-<div id="sanmarTestModal" class="prod-modal" role="dialog" aria-modal="true" aria-labelledby="sanmarTestTitle">
-    <div class="prod-modal-card">
-        <div class="prod-modal-header">
-            <h2 id="sanmarTestTitle">Test SanMar Connection</h2>
-            <button class="prod-modal-close" onclick="closeModal('sanmarTestModal')" aria-label="Close">&times;</button>
-        </div>
-        <div class="prod-modal-body">
-            <p>Sends a single test request to SanMar (style 3001C) to verify your credentials before running a full sync.</p>
-            <div id="sanmarTestResult" class="sanmar-test-result" hidden></div>
-            <p class="prod-modal-note">
-                Credentials needed in Railway → Variables:<br>
-                <code>SANMAR_CUSTOMER_NUMBER</code> &nbsp;·&nbsp;
-                <code>SANMAR_USERNAME</code> &nbsp;·&nbsp;
-                <code>SANMAR_PASSWORD</code>
-            </p>
-            <div class="prod-modal-actions">
-                <button type="button" class="btn btn-outline" onclick="closeModal('sanmarTestModal')">Close</button>
-                <button type="button" class="btn btn-primary" id="sanmarTestBtn" onclick="runSanmarTest()">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.95 1.18 2 2 0 012.92 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
-                    Test Connection
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-
-<div id="unlinkSSModal" class="prod-modal" role="dialog" aria-modal="true" aria-labelledby="unlinkSSTitle">
-    <div class="prod-modal-card">
-        <div class="prod-modal-header">
-            <h2 id="unlinkSSTitle">Unlink S&amp;S from Bella+Canvas</h2>
-            <button class="prod-modal-close" onclick="closeModal('unlinkSSModal')" aria-label="Close">&times;</button>
-        </div>
-        <div class="prod-modal-body">
-            <p>Removes the S&amp;S Activewear API binding from all Bella+Canvas products so they can be managed by SanMar going forward.</p>
-            <div class="prod-modal-list">
-                <div class="prod-modal-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Clears the S&amp;S SKU reference from every color variant
-                </div>
-                <div class="prod-modal-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    Removes the S&amp;S API data blob from each product
-                </div>
-                <div class="prod-modal-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    <strong>Prices, images, sizes, and colors are untouched</strong>
-                </div>
-            </div>
-            <p class="prod-modal-note">After this, use <strong>Sync Bella+Canvas from SanMar</strong>. Your current prices will be preserved automatically on every future sync.</p>
-            <form action="{{ url_for('admin.unlink_ss_bella_canvas') }}" method="POST">
-                <div class="prod-modal-actions">
-                    <button type="button" class="btn btn-outline" onclick="closeModal('unlinkSSModal')">Cancel</button>
-                    <button type="submit" class="btn btn-danger">Unlink S&amp;S Data</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
 {% endblock %}
