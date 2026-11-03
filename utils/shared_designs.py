@@ -61,10 +61,28 @@ def get_active(token):
     return share if share is not None and share.is_active else None
 
 
-def line_for(share, size, quantity=1):
-    """A cart line for this shared design in ``size``, priced from today's price list, and why it cannot be ordered."""
+def colors_offered(share, product=None):
+    """[{'name', 'hex', 'image'}] colors this style is sold in right now (the shop's own list), for the color picker."""
+    from flask import current_app
+    from utils.mockups import get_color_variants_data_for_product
+    product = product or db.session.get(Product, share.line.get('product_id') or 0)
+    if product is None:
+        return []
+    out = []
+    for c in get_color_variants_data_for_product(product, current_app):
+        if c.get('color_name') and c.get('front_image'):
+            out.append({'name': c['color_name'], 'hex': c.get('color_hex') or '#cccccc', 'image': c['front_image']})
+    return out
+
+
+def line_for(share, size, quantity=1, color=None):
+    """A cart line for this shared design in ``size`` (and ``color`` if they picked another), priced from today's price list, and why it cannot be ordered."""
     from utils.reorder import reprice_line, why_not_orderable
     line = dict(share.line)
+    if color and color != line.get('color'):
+        line['color'] = color
+        for key in ('proof_front_url', 'proof_image'):      # the saved picture is the original color
+            line.pop(key, None)
     line['size'] = size
     line['quantity'] = max(1, min(int(quantity or 1), 100))
     reason = why_not_orderable(line)

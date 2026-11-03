@@ -11,10 +11,19 @@
         </div>
         <div class="made-info">
             <h1>{{ product|display_name if product else 'Custom shirt' }}</h1>
-            <p class="made-spec">{{ share.line.color }}{% if share.line.placement %} &middot; {{ share.line.placement.replace('_', ' ').title() }}{% endif %}</p>
+            <p class="made-spec"><span id="madeColorName">{{ share.line.color }}</span>{% if share.line.placement %} &middot; {{ share.line.placement.replace('_', ' ').title() }}{% endif %}</p>
             {% if sizes %}
             <form method="post" action="{{ url_for('made.add', token=share.token) }}" class="made-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% if colors %}
+                <div class="made-colors" role="radiogroup" aria-label="Color">
+                    <input type="hidden" name="color" id="madeColor" value="{{ share.line.color }}">
+                    <span class="made-colors-label">Color</span>
+                    <div class="made-swatches">
+                        {% for c in colors %}<button type="button" class="made-swatch{% if c.name == share.line.color %} is-on{% endif %}" role="radio" aria-checked="{{ 'true' if c.name == share.line.color else 'false' }}" title="{{ c.name }}" aria-label="{{ c.name }}" data-color="{{ c.name }}" data-image="{{ c.image | image_url }}" style="background: {{ c.hex }}"></button>{% endfor %}
+                    </div>
+                </div>
+                {% endif %}
                 <label>Size
                     <select name="size" id="madeSize">
                         {% for size, price in sizes %}<option value="{{ size }}" data-price="{{ '%.2f'|format(price) }}">{{ size }}</option>{% endfor %}
@@ -35,6 +44,17 @@
 </div>
 <script>
 (function () {
+    var colorInput = document.getElementById('madeColor'), colorName = document.getElementById('madeColorName');
+    document.querySelectorAll('.made-swatch').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.made-swatch').forEach(function (b) { b.classList.remove('is-on'); b.setAttribute('aria-checked', 'false'); });
+            btn.classList.add('is-on'); btn.setAttribute('aria-checked', 'true');
+            colorInput.value = btn.getAttribute('data-color');
+            if (colorName) { colorName.textContent = btn.getAttribute('data-color'); }
+            var base = document.querySelector('.made-photo .pm-proof-base');
+            if (base) { base.removeAttribute('data-fallback'); base.src = btn.getAttribute('data-image'); }
+        });
+    });
     var select = document.getElementById('madeSize'), price = document.getElementById('madePrice');
     if (select && price) { select.addEventListener('change', function () { price.textContent = select.options[select.selectedIndex].getAttribute('data-price'); }); }
 })();

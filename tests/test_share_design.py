@@ -141,3 +141,20 @@ def test_link_works_for_a_style_with_no_saved_sizes_and_draws_the_logo_on_the_sh
     assert 'pm-proof-overlay' in html and '/static/uploads/x.png' in html
     resp = app.test_client().post(f'/made/{token}/add', data={'size': 'M', 'quantity': 1})
     assert resp.status_code == 302 and '/cart' in resp.headers['Location']
+
+
+def test_a_friend_can_pick_another_color_and_it_lands_in_the_cart(app, seed):
+    from models import ProductColorVariant
+    _set_cart(app, CUSTOMER_EMAIL, [_line(seed, design_url='/static/uploads/x.png')])
+    token = _token(_share(_signed_in(app)))
+    with app.app_context():
+        names = [v.color_name for v in ProductColorVariant.query.filter_by(product_id=SharedDesign.query.one().line['product_id']).all()]
+    other = next(n for n in names if n != 'Black')
+    friend = app.test_client()
+    html = friend.get(f'/made/{token}').get_data(as_text=True)
+    assert 'made-swatch' in html and f'data-color="{other}"' in html
+    friend.post(f'/made/{token}/add', data={'size': 'M', 'quantity': 1, 'color': other})
+    friend.post(f'/made/{token}/add', data={'size': 'L', 'quantity': 1, 'color': 'Not A Color'})
+    with friend.session_transaction() as sess:
+        colors = [l['color'] for l in sess['cart']]
+    assert other in colors and 'Black' in colors and 'Not A Color' not in colors

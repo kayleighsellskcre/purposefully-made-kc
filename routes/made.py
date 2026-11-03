@@ -69,7 +69,10 @@ def view(token):
     image = proof or front
     overlay = None
     overlay_style = ''
-    if not proof and share.line.get('design_url') and placement in FRONT_PLACEMENTS:
+    colors = SD.colors_offered(share, product)
+    if share.line.get('design_url') and placement in FRONT_PLACEMENTS and front:
+        image, proof = front, None          # drawn live, so it follows the color they pick
+    if share.line.get('design_url') and placement in FRONT_PLACEMENTS:
         overlay = share.line['design_url']
         from utils.order_artwork import preview_overlay_style
         mid = sizes[len(sizes) // 2][0] if sizes else 'M'
@@ -77,7 +80,7 @@ def view(token):
                                                'print_height': share.line.get('print_height'), 'product': product},
                                               placement, front)
     return render_template('made/view.html', share=share, product=product, sizes=sizes, unavailable=unavailable,
-                           image=image, overlay=overlay, overlay_style=overlay_style, fallback=front if proof else None, placement=placement,
+                           image=image, overlay=overlay, overlay_style=overlay_style, colors=colors if len(colors) > 1 else [], fallback=front if proof else None, placement=placement,
                            qr=url_for('made.qr', token=share.token), link=_link(share))
 
 
@@ -86,7 +89,10 @@ def add(token):
     share = SD.get_active(token)
     if share is None:
         abort(404)
-    line, reason = SD.line_for(share, request.form.get('size'), request.form.get('quantity', 1, type=int))
+    color = (request.form.get('color') or '').strip() or None
+    if color and color != share.line.get('color') and color not in {c['name'] for c in SD.colors_offered(share)}:
+        color = None
+    line, reason = SD.line_for(share, request.form.get('size'), request.form.get('quantity', 1, type=int), color)
     if line is None:
         from flask import flash
         flash(f'Sorry, this cannot be ordered right now: {reason}.', 'error')
