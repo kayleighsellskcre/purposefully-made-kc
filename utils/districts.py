@@ -607,10 +607,12 @@ def available_colors(district):
         return []
     found = {}
     rows = ProductColorVariant.query.filter(ProductColorVariant.product_id.in_(ids)).order_by(ProductColorVariant.id).all()
+    from utils.color_visibility import visible_pair_filter
+    shown = visible_pair_filter(ids)
     for row in rows:
         name = (row.color_name or '').strip()
         label = display_color_name(name) if name else None
-        if not name or not label:
+        if not name or not label or not shown(row.product_id, name):
             continue
         entry = found.setdefault(name, {'name': name, 'label': label, 'hex': None, 'swatch': None, 'styles': 0})
         entry['hex'] = entry['hex'] or row.color_hex

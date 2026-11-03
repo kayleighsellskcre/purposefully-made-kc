@@ -614,6 +614,8 @@ class Product(db.Model):
     # Product specs
     available_sizes = db.Column(db.Text)  # JSON string: ["XS", "S", "M", "L", "XL", "2XL", "3XL"]
     available_colors = db.Column(db.Text)  # JSON string
+    supplier_hidden_colors = db.Column(db.Text)  # JSON list of colors the supplier check hid (not carried / zero stock)
+    supplier_sold_out_sizes = db.Column(db.Text)  # JSON {color: [sizes]} the supplier shows at zero stock (for the morning email)
     
     # Mockup configuration
     front_mockup_template = db.Column(db.String(500))  # Path to base front image

@@ -4916,6 +4916,7 @@
             const qty = hasInventoryData ? stockQty(inventory, size) : null;
             const isOutOfStock = hasInventoryData && qty <= 0;
             card.classList.toggle('out-of-stock', isOutOfStock);
+            card.style.display = isOutOfStock ? 'none' : '';  // a size the supplier has none of is hidden, and returns by itself
             if (isOutOfStock && card.classList.contains('selected')) {
                 card.classList.remove('selected');
                 if (state.selectedSize === size) state.selectedSize = null;

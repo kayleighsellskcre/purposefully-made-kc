@@ -79,9 +79,11 @@ def _colors_for(product_ids):
     rows = db.session.query(
         ProductColorVariant.product_id, ProductColorVariant.color_name
     ).filter(ProductColorVariant.product_id.in_(product_ids)).all() if product_ids else []
+    from utils.color_visibility import visible_pair_filter
+    shown = visible_pair_filter(product_ids)
     colors = {}
     for pid, color in rows:
-        if color:
+        if color and shown(pid, color):
             colors.setdefault(pid, set()).add(color)
     return colors
 

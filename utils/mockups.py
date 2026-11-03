@@ -435,9 +435,13 @@ def get_color_variants_data_for_product(product, app):
     listed_sizes = parse_json_list(getattr(product, 'available_sizes', None))
     raw_variants = list(getattr(product, 'color_variants', []) or [])
     shop_sizes = shop_sizes_for_product(product, raw_variants)
+    from utils.color_visibility import color_is_visible, visibility_rules
+    rules = visibility_rules(product)
     color_variants_data = []
     seen_colors = set()
     for variant in raw_variants:
+        if not color_is_visible(variant.color_name, rules):
+            continue
         inventory = _shop_inventory_for_variant(variant.size_inventory, shop_sizes, listed_sizes)
         front_image = get_mockup_url_for_variant(product, variant, 'front', app)
         back_image = get_mockup_url_for_variant(product, variant, 'back', app)
@@ -453,6 +457,8 @@ def get_color_variants_data_for_product(product, app):
     for extra in discover_colors_from_mockup_folder(app, product.style_number):
         if extra['color_name'] in seen_colors or not (extra.get('front_image') or extra.get('back_image')):
             continue
+        if not color_is_visible(extra['color_name'], rules):
+            continue
         seen_colors.add(extra['color_name'])
         color_variants_data.append({
             'color_name': extra['color_name'],
@@ -462,7 +468,7 @@ def get_color_variants_data_for_product(product, app):
             'inventory': _shop_inventory_for_variant(extra.get('inventory', {}), shop_sizes, listed_sizes)
         })
     for color_name in parse_json_list(getattr(product, 'available_colors', None)):
-        if color_name in seen_colors:
+        if color_name in seen_colors or not color_is_visible(color_name, rules):
             continue
         seen_colors.add(color_name)
         color_variants_data.append({
@@ -574,16 +580,19 @@ def get_carousel_colors_for_product(product, app, allowed_colors=None, variants=
     """
     from utils.json_fields import parse_json_list
 
+    from utils.color_visibility import color_is_visible, visibility_rules
+
     result = []
     seen = set()
     pending_names = []
+    rules = visibility_rules(product)
 
     if variants is None:
         variants = getattr(product, 'color_variants', []) or []
 
     # 1. DB variants - prefer mockup folder URL over DB URL (DB may have old S&S CDN links)
     for v in variants:
-        if v.color_name in seen:
+        if v.color_name in seen or not color_is_visible(v.color_name, rules):
             continue
         if allowed_colors is not None:
             from utils.color_names import color_in_allowed_set
@@ -606,7 +615,7 @@ def get_carousel_colors_for_product(product, app, allowed_colors=None, variants=
 
     # 2. Colors from mockup folder not yet in result
     for c in discover_colors_from_mockup_folder(app, product.style_number):
-        if c['color_name'] in seen:
+        if c['color_name'] in seen or not color_is_visible(c['color_name'], rules):
             continue
         if allowed_colors is not None:
             from utils.color_names import color_in_allowed_set
@@ -621,7 +630,7 @@ def get_carousel_colors_for_product(product, app, allowed_colors=None, variants=
     # 3. Colours that exist in the catalog but have no photo yet still count,
     # so the shop card does not read "0 colors" while the customizer shows 35.
     for name in pending_names + parse_json_list(getattr(product, 'available_colors', None)):
-        if not name or name in seen:
+        if not name or name in seen or not color_is_visible(name, rules):
             continue
         if allowed_colors is not None:
             from utils.color_names import color_in_allowed_set

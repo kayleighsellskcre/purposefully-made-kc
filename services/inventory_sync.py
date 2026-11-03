@@ -143,9 +143,12 @@ def _fetch_ss(style_number, brand=None, ss_client=None, timeout=30) -> dict:
 def fetch_combined_inventory(product, ss_client=None, timeout=30) -> dict:
     style = getattr(product, 'style_number', '') or ''
     brand = getattr(product, 'brand', None)
+    # One supplier per style: SanMar when it knows the style, otherwise S&S. Adding the two together
+    # double counted stock and let one supplier's colors leak into the other's style.
     sanmar = _fetch_sanmar(style, timeout=timeout)
-    ss = _fetch_ss(style, brand=brand, ss_client=ss_client, timeout=timeout)
-    return _merge_color_maps(sanmar, ss)
+    if sanmar:
+        return _merge_color_maps(sanmar)
+    return _merge_color_maps(_fetch_ss(style, brand=brand, ss_client=ss_client, timeout=timeout))
 
 
 def apply_inventory_to_product(product, warehouse_map) -> int:

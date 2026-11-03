@@ -900,7 +900,8 @@ def product_detail(product_slug):
         return _canonical_product_redirect(product, 'shop.product_detail')
     product.display_brand = infer_brand(product)
     available_sizes = shop_sizes_for_product(product)
-    available_colors = parse_json_list(product.available_colors)
+    from utils.color_visibility import visible_color_names
+    available_colors = visible_color_names(product, parse_json_list(product.available_colors))
     print_area_config = parse_json_object(product.print_area_config)
     color_variants_data = get_color_variants_data_for_product(product, current_app)
     from utils.group_orders import get_active_collection, group_fulfillment_customer_note
@@ -967,7 +968,8 @@ def customize(product_slug):
         return _canonical_product_redirect(product, 'shop.customize')
     product.display_brand = infer_brand(product)
     available_sizes = shop_sizes_for_product(product)
-    available_colors = parse_json_list(product.available_colors)
+    from utils.color_visibility import visible_color_names
+    available_colors = visible_color_names(product, parse_json_list(product.available_colors))
     print_area_config = parse_json_object(product.print_area_config)
     color_variants_data = get_color_variants_data_for_product(product, current_app)
 

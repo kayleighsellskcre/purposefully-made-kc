@@ -617,11 +617,58 @@ def sync_live_inventory_job(app):
             from services.inventory_sync import sync_all_inventory
             print("=" * 80, file=sys.stderr, flush=True)
             print(f"LIVE INVENTORY JOB STARTED - {datetime.now()}", file=sys.stderr, flush=True)
-            sync_all_inventory()
+            stats = sync_all_inventory()
+            from services.color_availability import SYNC_OK_KEY, _record, send_sync_problem
+            if stats.get('products') and stats.get('errors', 0) <= max(2, stats['products'] // 10) and stats.get('updated_products'):
+                _record(SYNC_OK_KEY, 'Last time the supplier stock refresh finished')
+            else:
+                send_sync_problem(f"The stock refresh ran but only updated {stats.get('updated_products', 0)} of "
+                                  f"{stats.get('products', 0)} styles ({stats.get('errors', 0)} errors).")
         except Exception as e:
             print(f"LIVE INVENTORY JOB FAILED: {e}", file=sys.stderr, flush=True)
             import traceback
             traceback.print_exc(file=sys.stderr)
+            try:
+                from services.color_availability import send_sync_problem
+                send_sync_problem(f'The stock refresh crashed: {e}')
+            except Exception:
+                pass
+
+
+def color_availability_job(app):
+    """Nightly: hide colors the supplier no longer carries (or has zero stock of) and email what changed."""
+    with app.app_context():
+        try:
+            with _one_worker_at_a_time(731020) as mine:
+                if not mine:
+                    return
+                from services.color_availability import run_color_check
+                result = run_color_check()
+                print(f"COLOR CHECK: {result['checked']} styles checked, "
+                      f"{sum(len(v) for v in result['newly_hidden'].values())} newly hidden, "
+                      f"{len(result['unchecked'])} unchecked", file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f"COLOR CHECK FAILED: {exc}", file=sys.stderr, flush=True)
+            try:
+                from services.color_availability import send_sync_problem
+                send_sync_problem(f'The color and size check crashed: {exc}')
+            except Exception:
+                pass
+
+
+def stock_watchdog_job(app):
+    """6 AM: if the overnight stock refresh or color check did not finish, email the owner."""
+    with app.app_context():
+        try:
+            with _one_worker_at_a_time(731021) as mine:
+                if not mine:
+                    return
+                from services.color_availability import watchdog
+                problems = watchdog()
+                if problems:
+                    print(f"STOCK WATCHDOG: {problems}", file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f"STOCK WATCHDOG FAILED: {exc}", file=sys.stderr, flush=True)
 
 
 def sync_dip_inventory_job(app):
@@ -706,6 +753,24 @@ def init_scheduler(app):
             trigger=CronTrigger(hour=4, minute=0, timezone=CHICAGO),
             id='nightly_dip_inventory',
             name='Nightly DIP File Inventory Sync (SanMar SFTP)',
+            replace_existing=True
+        )
+
+        # Which colors the suppliers carry right now: 4:30 AM Chicago, after the inventory syncs.
+        scheduler.add_job(
+            func=lambda: color_availability_job(app),
+            trigger=CronTrigger(hour=4, minute=30, timezone=CHICAGO),
+            id='color_availability',
+            name='Nightly supplier color check',
+            replace_existing=True
+        )
+
+        # 6:00 AM Chicago: tell the owner if the overnight stock sync or color check did not finish.
+        scheduler.add_job(
+            func=lambda: stock_watchdog_job(app),
+            trigger=CronTrigger(hour=6, minute=0, timezone=CHICAGO),
+            id='stock_watchdog',
+            name='Morning stock sync watchdog',
             replace_existing=True
         )
 
@@ -842,6 +907,7 @@ def init_scheduler(app):
         print("  - Nightly S&S image sync: 2:00 AM America/Chicago", file=sys.stderr, flush=True)
         print("  - Nightly live inventory (SanMar + S&S): 3:00 AM America/Chicago", file=sys.stderr, flush=True)
         print("  - Nightly DIP file inventory (SanMar SFTP): 4:00 AM America/Chicago", file=sys.stderr, flush=True)
+        print("  - Nightly supplier color check: 4:30 AM America/Chicago", file=sys.stderr, flush=True)
         print("  - Deadline-day reminders: 8-11 AM America/Chicago", file=sys.stderr, flush=True)
         print("  - S&S image sync running in 30 seconds (startup)", file=sys.stderr, flush=True)
         print("=" * 80, file=sys.stderr, flush=True)

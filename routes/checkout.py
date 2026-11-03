@@ -686,6 +686,16 @@ def continue_handoff(token):
     return redirect(url_for('checkout.index'))
 
 
+def _live_stock_error(cart):
+    """One last live look at the supplier before anyone pays. Never blocks on a supplier outage."""
+    try:
+        from services.color_availability import live_cart_stock_error
+        return live_cart_stock_error(cart)
+    except Exception:
+        current_app.logger.exception('live stock check skipped')
+        return None
+
+
 @checkout_bp.route('/paypal/create-order', methods=['POST'])
 def paypal_create_order():
     """Create a PayPal Orders v2 order and return its ID to the client."""
@@ -698,6 +708,9 @@ def paypal_create_order():
     cart = get_cart()
     if not cart:
         return jsonify({'error': 'Cart is empty'}), 400
+    live_err = _live_stock_error(cart)
+    if live_err:
+        return jsonify({'error': live_err}), 400
 
     from utils.group_orders import get_active_collection, ordering_blocked
     collection = get_active_collection(cart)
@@ -1081,6 +1094,9 @@ def create_payment_intent():
         ok, stock_err, _remaining = check_stock(product, color, size, qty)
         if not ok:
             return jsonify({'error': stock_err}), 400
+    live_err = _live_stock_error(cart)
+    if live_err:
+        return jsonify({'error': live_err}), 400
 
     shipping_method = data.get('shipping_method', 'pickup')
     # Price the intent from the database, never from the session's stored prices.

@@ -750,49 +750,120 @@ class SanMarAPI:
         Returns {color: {size: qty}} for a single style.
         qty is an integer (0 if out of stock). Multiple warehouse rows are summed.
         """
-        customer_number, username, password = get_credentials()
-        body = self._INV_SOAP_TEMPLATE.format(
-            style=style,
-            customer_number=customer_number,
-            username=username,
-            password=password,
-        ).encode('utf-8')
+        return self.fetch_style_color_stock(style, timeout=timeout)
 
+    _STOCK_ENDPOINT = 'https://ws.sanmar.com:8080/SanMarWebService/SanMarWebServicePort'
+
+    _STOCK_SOAP_TEMPLATE = """<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+    xmlns:web="http://webservice.integration.sanmar.com/">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <web:getInventoryQtyForStyleColorSize>
+      <arg0>{customer_number}</arg0>
+      <arg1>{username}</arg1>
+      <arg2>{password}</arg2>
+      <arg3>{style}</arg3>
+    </web:getInventoryQtyForStyleColorSize>
+  </soapenv:Body>
+</soapenv:Envelope>"""
+
+    def fetch_style_color_stock(self, style: str, timeout: int = 30) -> dict:
+        """
+        {catalog color: {size: total qty across warehouses}} for one style, from SanMar's
+        getInventoryQtyForStyleColorSize. Empty dict when SanMar does not know the style or the
+        call fails (callers treat empty as "no answer", never as "carries nothing").
+        """
+        from xml.sax.saxutils import escape
+        customer_number, username, password = get_credentials()
+        body = self._STOCK_SOAP_TEMPLATE.format(
+            style=escape(style), customer_number=escape(customer_number),
+            username=escape(username), password=escape(password),
+        ).encode('utf-8')
         req = Request(
-            self._INVENTORY_ENDPOINT,
-            data=body,
-            headers={'Content-Type': 'text/xml; charset=utf-8', 'SOAPAction': ''},
-            method='POST',
+            self._STOCK_ENDPOINT, data=body,
+            headers={'Content-Type': 'text/xml; charset=utf-8', 'SOAPAction': ''}, method='POST',
         )
         try:
             with urlopen(req, timeout=timeout) as resp:
                 raw = resp.read()
-        except Exception as exc:
-            print(f'[SanMarAPI] Inventory fetch failed for {style}: {exc}', file=sys.stderr)
-            return {}
-
-        try:
             root = ET.fromstring(raw)
-        except ET.ParseError:
+        except Exception as exc:
+            print(f'[SanMarAPI] Stock fetch failed for {style}: {exc}', file=sys.stderr)
             return {}
 
-        inventory: dict[str, dict[str, int]] = {}
-        for elem in root.iter():
-            local = elem.tag.split('}')[-1] if '}' in elem.tag else elem.tag
-            if local != 'listResponse':
+        stock: dict[str, dict[str, int]] = {}
+        for sku in root.iter():
+            if (sku.tag.split('}')[-1] if '}' in sku.tag else sku.tag) != 'sku':
                 continue
-            color = _ns_find(elem, 'catalogColor') or _ns_find(elem, 'color') or ''
-            size  = normalize_size(_ns_find(elem, 'size') or '')
-            qty_s = _ns_find(elem, 'qty') or _ns_find(elem, 'quantity') or '0'
-            try:
-                qty = int(float(qty_s))
-            except (ValueError, TypeError):
-                qty = 0
-            if color and size:
-                inventory.setdefault(color, {})
-                inventory[color][size] = inventory[color].get(size, 0) + max(0, qty)
+            color = (_ns_find(sku, 'color') or '').strip()
+            size = normalize_size(_ns_find(sku, 'size') or '')
+            if not color or not size:
+                continue
+            qty = 0
+            for node in sku.iter():
+                if (node.tag.split('}')[-1] if '}' in node.tag else node.tag) == 'qty':
+                    try:
+                        qty += max(0, int(float((node.text or '0').strip() or 0)))
+                    except ValueError:
+                        pass
+            bucket = stock.setdefault(color, {})
+            bucket[size] = bucket.get(size, 0) + qty
+        if not stock:
+            return stock
+        # The stock service names colors by SanMar's short code (AthlHthr); the shop uses the full name.
+        full_names = self.fetch_color_names(style, timeout=timeout)
+        if not full_names:
+            return stock
+        renamed: dict[str, dict[str, int]] = {}
+        for color, sizes in stock.items():
+            bucket = renamed.setdefault(full_names.get(color, color), {})
+            for size, qty in sizes.items():
+                # A color listed under both its code and its name is one color: take the larger count, never the sum.
+                bucket[size] = max(bucket.get(size, 0), qty)
+        return renamed
 
-        return inventory
+    _INFO_ENDPOINT = 'https://ws.sanmar.com:8080/SanMarWebService/SanMarProductInfoServicePort'
+
+    _COLOR_NAMES_SOAP_TEMPLATE = """<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+    xmlns:impl="http://impl.webservice.integration.sanmar.com/">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <impl:getProductInfoByStyleColorSize>
+      <arg0><style>{style}</style></arg0>
+      <arg1>
+        <sanMarCustomerNumber>{customer_number}</sanMarCustomerNumber>
+        <sanMarUserName>{username}</sanMarUserName>
+        <sanMarUserPassword>{password}</sanMarUserPassword>
+      </arg1>
+    </impl:getProductInfoByStyleColorSize>
+  </soapenv:Body>
+</soapenv:Envelope>"""
+
+    def fetch_color_names(self, style: str, timeout: int = 30) -> dict:
+        """{SanMar mainframe color code: full color name} for one style (AthlHthr -> Athletic Heather)."""
+        from xml.sax.saxutils import escape
+        customer_number, username, password = get_credentials()
+        body = self._COLOR_NAMES_SOAP_TEMPLATE.format(
+            style=escape(style), customer_number=escape(customer_number),
+            username=escape(username), password=escape(password),
+        ).encode('utf-8')
+        req = Request(self._INFO_ENDPOINT, data=body,
+                      headers={'Content-Type': 'text/xml; charset=utf-8', 'SOAPAction': ''}, method='POST')
+        try:
+            with urlopen(req, timeout=timeout) as resp:
+                root = ET.fromstring(resp.read())
+        except Exception as exc:
+            print(f'[SanMarAPI] Color names failed for {style}: {exc}', file=sys.stderr)
+            return {}
+        names: dict[str, str] = {}
+        for info in root.iter():
+            if (info.tag.split('}')[-1] if '}' in info.tag else info.tag) != 'productBasicInfo':
+                continue
+            code = _ns_find(info, 'catalogColor')
+            full = _ns_find(info, 'color')
+            if code and full:
+                names[code] = full
+        return names
 
     def sync_inventory_for_all_styles(self, style_list: list[str]) -> dict:
         """

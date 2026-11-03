@@ -1361,6 +1361,13 @@ def products():
         # Get last sync time
         last_sync = ProductColorVariant.query.order_by(ProductColorVariant.last_synced.desc()).first()
         last_sync_time = last_sync.last_synced if last_sync else None
+        try:
+            from datetime import datetime as _dt
+            from services.color_availability import SYNC_OK_KEY
+            from utils.site_settings import get_setting
+            last_sync_time = _dt.fromisoformat(get_setting(SYNC_OK_KEY, '')) or last_sync_time
+        except (TypeError, ValueError):
+            pass  # no supplier stock sync recorded yet: fall back to the newest color row
 
         return render_template('admin/products.html',
                              products=products,
