@@ -2995,18 +2995,6 @@ def production_master_move():
     return redirect(ops_url('admin.transfer_production', stage=['ready_to_press'], collection=cid))
 
 
-@admin_bp.route('/production')
-@admin_required
-def production():
-    """Production center dashboard"""
-    # Get orders in production or ready for production
-    orders = Order.query.filter(
-        Order.status.in_(['paid', 'in_production'])
-    ).order_by(Order.created_at).all()
-    
-    return render_template('admin/production.html', orders=orders)
-
-
 @admin_bp.route('/production/blank-apparel-list')
 @admin_required
 def blank_apparel_list():

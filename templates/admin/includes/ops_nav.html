@@ -1,9 +1,9 @@
 {# Shared admin top nav - desktop hover menus, phone accordion #}
-{% set daily_eps = ['admin.orders','admin.completed_orders','admin.order_detail','admin.production_workflow','admin.production_master','admin.transfer_production','admin.order_transfer_summary','admin.print_labels','admin.dtf_batch_sheets','admin.logo_chart','admin.production_bulk_sheet','admin.blank_apparel_list','admin.custom_design_requests','admin.custom_design_request_detail','admin.production','admin.notifications','admin.notifications_open','admin.packaging_sop'] %}
+{% set daily_eps = ['admin.orders','admin.completed_orders','admin.order_detail','admin.production_workflow','admin.production_master','admin.transfer_production','admin.order_transfer_summary','admin.print_labels','admin.dtf_batch_sheets','admin.logo_chart','admin.production_bulk_sheet','admin.blank_apparel_list','admin.custom_design_requests','admin.custom_design_request_detail','admin.pickup_desk','admin.pickup_order','admin.notifications','admin.notifications_open','admin.packaging_sop'] %}
 {% set store_eps = ['admin.products','admin.add_product','admin.edit_product','admin.collections','admin.add_collection','admin.edit_collection','admin.donations','admin.donation_view','admin.design_gallery','admin.gallery_queue','admin.designs','admin.design_library_overview','admin.design_browse','admin.design_categories','admin.design_tags','admin.design_review','admin.design_organize','admin.design_matches','admin.affirmations','admin.organizations','admin.districts','admin.district_new','admin.district_manage','admin.district_school','admin.district_copy_store','admin.district_report'] %}
 {% set money_eps = ['admin.reports','admin.reports_refresh','admin.ledger','admin.expenses','admin.recurring_expenses','admin.equipment_log','admin.receivables','admin.payouts','admin.payout_check','admin.financial','admin.invoices','admin.invoice_new','admin.invoice_view','admin.invoice_edit'] %}
 {% set tax_eps = ['admin.sales_tax_report','admin.tax_exempt_customers','admin.mileage','admin.inventory_count','admin.cpa_package'] %}
-{% set shop_eps = ['admin.inventory','admin.save_inventory_costs','admin.operations_inventory','admin.low_stock','admin.vendors','admin.customers','admin.reviews','admin.growth','admin.ai_usage','admin.site_settings'] %}
+{% set shop_eps = ['admin.inventory','admin.save_inventory_costs','admin.operations_inventory','admin.low_stock','admin.vendors','admin.customers','admin.reviews','admin.growth','admin.ai_usage','admin.site_settings','admin.site_errors'] %}
 {# One list of menu entries per group: (page, label, other pages that count as "here"). One plain icon keeps them tidy. #}
 {% macro ops_item(endpoint, label, here=none) %}
 <a href="{{ url_for(endpoint) }}" class="ops-drop-item {% if request.endpoint == endpoint or (here and request.endpoint in here) %}ops-drop-active{% endif %}" role="menuitem">
@@ -67,6 +67,7 @@
                     Notifications
                     {% if admin_unread_notifications %}<span class="ops-drop-badge">{{ admin_unread_notifications }}</span>{% endif %}
                 </a>
+                {{ ops_item('admin.pickup_desk', 'Pickup desk', ['admin.pickup_order']) }}
                 {{ ops_item('admin.packaging_sop', 'Packaging guide') }}
             </div>
         </div>
@@ -138,6 +139,7 @@
                 {{ ops_item('admin.growth', 'Growth') }}
                 {{ ops_item('admin.ai_usage', 'AI studio use') }}
                 {{ ops_item('admin.site_settings', 'Site settings') }}
+                {{ ops_item('admin.site_errors', 'Site errors') }}
         {% endcall %}
     </div>
 </nav>
