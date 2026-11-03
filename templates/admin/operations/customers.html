@@ -2,8 +2,8 @@
 {% block title %}Customers & Marketing - Purposefully Made KC{% endblock %}
 {% block ops_content %}
         <span class="adm-eyebrow">Admin / Business</span>
-        <h1 class="ops-title">Customer & Marketing Tracker</h1>
-<p class="ops-subtitle">Repeat customers, school/team groups, event contacts.</p>
+        <h1 class="ops-title">Customers</h1>
+<p class="ops-subtitle">Everyone who has ordered more than once. Group order links are under Group orders.</p>
 
 <div class="ops-grid">
     <div class="ops-card">
@@ -16,21 +16,6 @@
                 {% for r in repeat_customers %}
                 <tr><td>{{ r.name }}</td><td>{{ r.email }}</td><td>{{ r.order_count }}</td><td>{{ r.last_order|central('%b %d, %Y') }}</td><td>${{ '%.2f'|format(r.spent) }}</td></tr>
                 {% else %}<tr><td colspan="5" class="text-muted">No repeat customers yet.</td></tr>{% endfor %}
-            </tbody>
-        </table>
-        </div>
-    </div>
-    <div class="ops-card">
-        <h2>School / Team / Event Group Orders</h2>
-        <p class="text-muted">Shareable group order links</p>
-        <div class="ops-table-scroll">
-        <table class="admin-table">
-            <thead><tr><th>Name</th><th>Orders</th><th>Link</th></tr></thead>
-            <tbody>
-                {% for c in collections %}
-                <tr><td>{{ c.name }}</td><td>{{ store_order_count(c) }}</td>
-                    <td><a href="{{ url_for('collection.view', slug=c.slug) }}" target="_blank">View</a></td></tr>
-                {% else %}<tr><td colspan="3" class="text-muted">No group orders yet.</td></tr>{% endfor %}
             </tbody>
         </table>
         </div>

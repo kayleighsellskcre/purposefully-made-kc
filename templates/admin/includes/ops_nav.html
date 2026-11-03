@@ -3,6 +3,8 @@
 {% set store_eps = ['admin.products','admin.add_product','admin.edit_product','admin.collections','admin.add_collection','admin.edit_collection','admin.donations','admin.donation_view','admin.design_gallery','admin.gallery_queue','admin.designs','admin.design_library_overview','admin.design_browse','admin.design_categories','admin.design_tags','admin.design_review','admin.design_organize','admin.design_matches','admin.affirmations','admin.organizations','admin.districts','admin.district_new','admin.district_manage','admin.district_school','admin.district_copy_store','admin.district_report'] %}
 {% set money_eps = ['admin.reports','admin.reports_refresh','admin.ledger','admin.expenses','admin.recurring_expenses','admin.equipment_log','admin.receivables','admin.payouts','admin.payout_check','admin.financial','admin.invoices','admin.invoice_new','admin.invoice_view','admin.invoice_edit'] %}
 {% set tax_eps = ['admin.sales_tax_report','admin.tax_exempt_customers','admin.mileage','admin.inventory_count','admin.cpa_package'] %}
+{% set stock_eps = ['admin.inventory','admin.save_inventory_costs','admin.operations_inventory','admin.low_stock','admin.vendors','admin.add_vendor','admin.edit_vendor'] %}
+{% set biz_eps = ['admin.customers','admin.reviews','admin.growth','admin.add_growth_metric','admin.edit_growth_metric','admin.ai_usage','admin.site_settings','admin.site_errors'] %}
 {% set shop_eps = ['admin.inventory','admin.save_inventory_costs','admin.operations_inventory','admin.low_stock','admin.vendors','admin.customers','admin.reviews','admin.growth','admin.ai_usage','admin.site_settings','admin.site_errors'] %}
 {# One list of menu entries per group: (page, label, other pages that count as "here"). One plain icon keeps them tidy. #}
 {% macro ops_item(endpoint, label, here=none) %}
@@ -82,22 +84,7 @@
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
                     Products
                 </a>
-                <a href="{{ url_for('admin.collections') }}" class="ops-drop-item {% if request.endpoint in ['admin.collections','admin.add_collection','admin.edit_collection'] %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
-                    Collections
-                </a>
-                <a href="{{ url_for('admin.donations') }}" class="ops-drop-item {% if request.endpoint in ['admin.donations','admin.donation_view'] %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-                    Donations
-                </a>
-                <a href="{{ url_for('admin.organizations') }}" class="ops-drop-item {% if request.endpoint == 'admin.organizations' %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"/><path d="M6 20v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><circle cx="4" cy="12" r="2"/><path d="M2 20v-1a3 3 0 013-3h1"/><circle cx="20" cy="12" r="2"/><path d="M22 20v-1a3 3 0 00-3-3h-1"/></svg>
-                    Organizations
-                </a>
-                <a href="{{ url_for('admin.districts') }}" class="ops-drop-item {% if request.endpoint in ['admin.districts','admin.district_new','admin.district_manage','admin.district_school','admin.district_copy_store','admin.district_report'] %}ops-drop-active{% endif %}" role="menuitem">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg>
-                    School districts
-                </a>
+                {{ ops_item('admin.collections', 'Group orders', ['admin.add_collection','admin.edit_collection','admin.donations','admin.donation_view','admin.donation_edit','admin.organizations','admin.districts','admin.district_new','admin.district_manage','admin.district_school','admin.district_copy_store','admin.district_store_colors','admin.district_report']) }}
                 <a href="{{ url_for('admin.designs') }}" class="ops-drop-item {% if request.endpoint in ['admin.designs','admin.design_gallery'] %}ops-drop-active{% endif %}" role="menuitem">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                     Designs
@@ -131,12 +118,15 @@
                 {{ ops_item('admin.cpa_package', 'CPA package') }}
         {% endcall %}
 
-        {% call ops_group('Stock & Shop', request.endpoint in shop_eps) %}
+        {% call ops_group('Stock', request.endpoint in stock_eps) %}
                 {{ ops_item('admin.inventory', 'Inventory', ['admin.save_inventory_costs','admin.operations_inventory','admin.low_stock']) }}
-                {{ ops_item('admin.vendors', 'Vendors') }}
+                {{ ops_item('admin.vendors', 'Vendors', ['admin.add_vendor','admin.edit_vendor']) }}
+        {% endcall %}
+
+        {% call ops_group('Business', request.endpoint in biz_eps) %}
                 {{ ops_item('admin.customers', 'Customers') }}
                 {{ ops_item('admin.reviews', 'Reviews') }}
-                {{ ops_item('admin.growth', 'Growth') }}
+                {{ ops_item('admin.growth', 'Growth', ['admin.add_growth_metric','admin.edit_growth_metric']) }}
                 {{ ops_item('admin.ai_usage', 'AI studio use') }}
                 {{ ops_item('admin.site_settings', 'Site settings') }}
                 {{ ops_item('admin.site_errors', 'Site errors') }}
@@ -147,14 +137,15 @@
 {# Pages that belong together show as tabs, so each menu entry is one thing, not a long list. #}
 {% set _ep = request.endpoint %}
 {% set _tab_families = [
-    [('admin.reports', 'Profit & Loss'), ('admin.expenses', 'Expenses'), ('admin.recurring_expenses', 'Monthly bills'), ('admin.equipment_log', 'Equipment'), ('admin.ledger', 'Every entry')],
+    [('admin.reports', 'Profit & Loss'), ('admin.financial', 'Revenue buckets'), ('admin.expenses', 'Expenses'), ('admin.recurring_expenses', 'Monthly bills'), ('admin.equipment_log', 'Equipment'), ('admin.ledger', 'Every entry')],
     [('admin.payouts', 'Payouts'), ('admin.payout_check', 'Month-by-month check')],
     [('admin.sales_tax_report', 'Sales tax'), ('admin.tax_exempt_customers', 'Tax-exempt customers')],
-    [('admin.inventory', 'Inventory'), ('admin.low_stock', 'Running low')],
+    [('admin.inventory', 'DTF costs'), ('admin.operations_inventory', 'Stock counts'), ('admin.low_stock', 'Running low')],
+    [('admin.collections', 'Group orders'), ('admin.donations', 'Donations'), ('admin.organizations', 'Organizations'), ('admin.districts', 'School districts')],
     [('admin.design_browse', 'Find & bulk edit'), ('admin.design_library_overview', 'Overview'), ('admin.design_categories', 'Collections & categories'), ('admin.design_tags', 'Tags')],
     [('admin.design_review', 'Design review'), ('admin.design_matches', 'Duplicates & versions'), ('admin.gallery_queue', 'Gallery queue')],
 ] %}
-{% set _same = {'admin.reports_refresh': 'admin.reports', 'admin.save_inventory_costs': 'admin.inventory', 'admin.operations_inventory': 'admin.inventory'} %}
+{% set _same = {'admin.reports_refresh': 'admin.reports', 'admin.save_inventory_costs': 'admin.inventory', 'admin.add_collection': 'admin.collections', 'admin.edit_collection': 'admin.collections', 'admin.donation_view': 'admin.donations', 'admin.donation_edit': 'admin.donations', 'admin.district_new': 'admin.districts', 'admin.district_manage': 'admin.districts', 'admin.district_school': 'admin.districts', 'admin.district_copy_store': 'admin.districts', 'admin.district_store_colors': 'admin.districts', 'admin.district_report': 'admin.districts'} %}
 {% set _here = _same.get(_ep, _ep) %}
 {% for _fam in _tab_families %}
     {% if _here in _fam|map('first')|list %}

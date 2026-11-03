@@ -2,7 +2,7 @@
 {% block title %}Inventory - Operations - Purposefully Made KC{% endblock %}
 {% block ops_content %}
         <span class="adm-eyebrow">Admin / Operations</span>
-        <h1 class="ops-title">Inventory Management</h1>
+        <h1 class="ops-title">Stock counts</h1>
 <p class="ops-subtitle">Track apparel, transfers, and supplies. Set a reorder number on anything you want to hear about when it runs low; 0 means do not track.</p>
 {% if low_count %}<p class="bk-warn"><a href="{{ url_for('admin.low_stock') }}">{{ low_count }} item{{ '' if low_count == 1 else 's' }} running low</a></p>{% endif %}
 
