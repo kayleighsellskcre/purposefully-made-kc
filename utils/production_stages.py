@@ -54,6 +54,11 @@ def apply_stage(order, stage):
         order.updated_at = datetime.utcnow()
         if not getattr(order, 'completed_at', None):
             order.completed_at = order.updated_at     # starts the 15 day clock for the review request
+        try:
+            from utils.creator_credit import earn_for_order
+            earn_for_order(order)                     # the person whose shared design this was gets their store credit
+        except Exception:
+            pass
         return True
     if stage not in STAGE_MAP:
         return False

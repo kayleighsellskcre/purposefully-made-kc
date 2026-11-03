@@ -9,6 +9,7 @@ from flask import Blueprint, Response, abort, jsonify, redirect, render_template
 from flask_login import current_user, login_required
 
 from models import OrderItem, SharedDesign, db
+from utils import creator_credit as CC
 from utils import shared_designs as SD
 from utils.cart_store import cart_count, get_cart, save_cart
 
@@ -126,8 +127,9 @@ def mine():
     rows = []
     for s in shares:
         orders, pieces = SD.results(s)
-        rows.append({'share': s, 'link': _link(s), 'orders': orders, 'pieces': pieces})
-    return render_template('account/shared_designs.html', rows=rows)
+        rows.append({'share': s, 'link': _link(s), 'orders': orders, 'pieces': pieces, 'earned': CC.earned_by_share(s.id)})
+    return render_template('account/shared_designs.html', rows=rows, credit=CC.balance(current_user.id),
+                           credit_rate=CC.rate_percent())
 
 
 @made_bp.route('/account/shared-designs/<int:share_id>/toggle', methods=['POST'])

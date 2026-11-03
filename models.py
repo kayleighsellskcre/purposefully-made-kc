@@ -444,6 +444,20 @@ class SharedDesign(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class CreditEntry(db.Model):
+    """One line in a customer's store-credit ledger. Positive = earned, negative = spent or taken back. Never edited, never expires."""
+    __tablename__ = 'credit_entry'
+    __table_args__ = (db.UniqueConstraint('user_id', 'kind', 'order_id', 'shared_design_id', name='uq_credit_entry_once'),)
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    amount = db.Column(db.Float, nullable=False)
+    kind = db.Column(db.String(20), nullable=False)          # earned | reversed | spent
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), index=True)
+    shared_design_id = db.Column(db.Integer, db.ForeignKey('shared_design.id'), index=True)
+    note = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 class District(db.Model):
     """A school district: schools (Organizations) sit under it by level.
 

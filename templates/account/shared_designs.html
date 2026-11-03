@@ -31,6 +31,9 @@
                         <h1>Shared Designs</h1>
                     </div>
                 </div>
+                {% if rows or credit %}
+                <div class="made-credit"><span>Your store credit</span><strong>${{ '%.2f'|format(credit) }}</strong><small>You earn {{ '%g'|format(credit_rate) }}% of the shirt price on every order that comes through your link, once it is picked up or shipped. It never expires.</small></div>
+                {% endif %}
                 {% if rows %}
                 <p class="made-note">Each link opens the exact shirt you made. Everyone orders in their own size. Turn a link off any time to stop sharing it.</p>
                 <div class="made-list">
@@ -41,7 +44,7 @@
                             <strong>{{ r.share.title }}</strong>
                             <span>{{ r.share.line.color }} &middot; shared {{ r.share.created_at|kc_date('%b %-d, %Y') }}</span>
                             <span class="made-url">{{ r.link.split('://', 1)[-1] }}</span>
-                            <span class="made-stats">{{ r.share.views or 0 }} view{{ '' if (r.share.views or 0) == 1 else 's' }} &middot; {{ r.orders }} order{{ '' if r.orders == 1 else 's' }} ({{ r.pieces }} shirt{{ '' if r.pieces == 1 else 's' }})</span>
+                            <span class="made-stats">{{ r.share.views or 0 }} view{{ '' if (r.share.views or 0) == 1 else 's' }} &middot; {{ r.orders }} order{{ '' if r.orders == 1 else 's' }} ({{ r.pieces }} shirt{{ '' if r.pieces == 1 else 's' }}){% if r.earned %} &middot; ${{ '%.2f'|format(r.earned) }} earned{% endif %}</span>
                         </div>
                         <form method="post" action="{{ url_for('made.toggle', share_id=r.share.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

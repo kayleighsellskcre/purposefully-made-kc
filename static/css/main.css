@@ -4125,3 +4125,7 @@ a.contact-method-value { display: inline-block; padding: 0.55rem 0; }
 .made-swatches { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .made-swatch { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.25); cursor: pointer; padding: 0; }
 .made-swatch.is-on { box-shadow: 0 0 0 3px var(--terra-cotta, #b87c6f); }
+
+.made-credit { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.9rem; margin: 0 0 1.2rem; padding: 0.9rem 1.1rem; border-radius: 14px; background: rgba(184, 124, 111, 0.1); }
+.made-credit strong { font-size: 1.6rem; color: var(--terra-cotta, #b87c6f); }
+.made-credit small { flex-basis: 100%; opacity: 0.8; }

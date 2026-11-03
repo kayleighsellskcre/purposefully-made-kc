@@ -1257,6 +1257,9 @@ def update_order_details(order_id):
     if now_refunded and not order.is_refunded:
         order.refunded_at = datetime.utcnow()          # the day the refund counts in the books
     order.is_refunded = now_refunded
+    if now_refunded:
+        from utils.creator_credit import reverse_for_order
+        reverse_for_order(order)
     order.refund_notes = request.form.get('refund_notes')
     db.session.commit()
     flash('Order details updated', 'success')
@@ -5882,6 +5885,15 @@ def site_settings():
                 flash('Saved. Customers now see the new ready date.', 'success')
             else:
                 flash(f'Enter a whole number from {ready_date.MIN_DAYS} to {ready_date.MAX_DAYS}.', 'error')
+        elif section == 'credit':
+            try:
+                pct = float((request.form.get('credit_percent') or '').strip())
+                if not 0 <= pct <= 20:
+                    raise ValueError
+                set_setting('creator_credit_percent', f'{pct:g}', 'Store credit creators earn on shared-design orders (%)')
+                flash(f'Saved. Orders picked up or shipped from now on earn {pct:g}%.', 'success')
+            except ValueError:
+                flash('Enter a percent from 0 to 20.', 'error')
         elif section == 'emails':
             set_setting(FLAG_KEY, '1' if request.form.get('customer_status_emails') else '0', 'Email customers as orders move')
             set_setting(PICKUP_ADDRESS_KEY, (request.form.get('pickup_address') or '').strip()[:300], 'Where customers pick up orders')
@@ -5914,6 +5926,7 @@ def site_settings():
                            business_days=ready_date.get_business_days(),
                            preview=ready_date.format_day(ready_date.ready_by()),
                            min_days=ready_date.MIN_DAYS, max_days=ready_date.MAX_DAYS,
+                           credit_percent=get_setting('creator_credit_percent', '2'),
                            emails_on=get_flag(FLAG_KEY, True), tax_percent=sales_tax.rate_percent(),
                            pickup_address=get_setting(PICKUP_ADDRESS_KEY, '') or BUSINESS_PICKUP,
                            pickup_notes=get_setting(PICKUP_NOTES_KEY, ''),
