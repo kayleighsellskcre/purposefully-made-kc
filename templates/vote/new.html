@@ -19,7 +19,7 @@
             <input class="vote-input" id="voteNote" name="note" type="text" maxlength="500" value="{{ note }}" placeholder="Pick the ones you love most">
             <label class="vote-label" for="votePics">Your designs</label>
             <input class="vote-input" id="votePics" name="pictures" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple required>
-            <p class="vote-fine" id="voteCount">Choose two to sixty pictures. You can add more in several rounds, and remove any with the &times;. They are numbered in the order shown.</p>
+            <p class="vote-fine" id="voteCount">Choose two to sixty pictures. Pictures keep their full quality. You can add more in several rounds, and remove any with the &times;.</p>
             <div class="vote-preview" id="votePreview"></div>
             <button class="btn btn-primary" type="submit" id="voteGo">Create my vote</button>
         </form>
@@ -29,39 +29,51 @@
 (function () {
     var input = document.getElementById('votePics'), box = document.getElementById('votePreview'),
         note = document.getElementById('voteCount'), form = document.getElementById('voteNewForm'),
-        go = document.getElementById('voteGo'), MAX = 60, files = [], busy = 0;
-    var intro = note.textContent;
+        go = document.getElementById('voteGo'), MAX = 60, files = [], busy = 0,
+        token = form.querySelector('[name=csrf_token]').value, intro = note.textContent;
     function sync() {
-        var dt = new DataTransfer();
-        files.forEach(function (f) { dt.items.add(f); });
-        input.files = dt.files;
         input.required = files.length === 0;
+        Array.prototype.slice.call(form.querySelectorAll('[name=picture_url]')).forEach(function (e) { e.remove(); });
+        files.forEach(function (f) {
+            var h = document.createElement('input'); h.type = 'hidden'; h.name = 'picture_url'; h.value = f.url; form.appendChild(h);
+        });
     }
-    function draw() {
+    function draw(message) {
         box.innerHTML = '';
         files.forEach(function (f, i) {
             var card = document.createElement('div'); card.className = 'vote-thumb';
-            var img = document.createElement('img'); img.src = URL.createObjectURL(f); img.alt = 'Design ' + (i + 1);
+            var img = document.createElement('img'); img.src = f.local; img.alt = 'Design ' + (i + 1);
             var n = document.createElement('span'); n.textContent = i + 1;
             var x = document.createElement('button'); x.type = 'button'; x.className = 'vote-x';
             x.setAttribute('aria-label', 'Remove design ' + (i + 1)); x.innerHTML = '&times;';
             x.addEventListener('click', function () { files.splice(i, 1); sync(); draw(); });
             card.appendChild(img); card.appendChild(n); card.appendChild(x); box.appendChild(card);
         });
-        note.textContent = files.length ? files.length + ' picture' + (files.length === 1 ? '' : 's') + ' ready. Add more any time, or tap × to remove one.' : intro;
+        note.textContent = message || (files.length ? files.length + ' picture' + (files.length === 1 ? '' : 's') + ' ready. Add more any time, or tap \u00d7 to remove one.' : intro);
     }
     input.addEventListener('change', function () {
         var added = Array.prototype.slice.call(input.files || []);
         if (!added.length) return;
-        busy++; go.disabled = true; note.textContent = 'Getting your pictures ready...';
-        Promise.all(added.map(function (f) {
-            return window.PMKC && PMKC.shrinkImage ? PMKC.shrinkImage(f, 1400) : f;
-        })).then(function (small) {
-            files = files.concat(small).slice(0, MAX);
-            sync(); draw();
-        }).then(function () { busy--; if (!busy) go.disabled = false; });
+        input.value = '';
+        busy++; go.disabled = true;
+        var done = 0, failed = 0;
+        note.textContent = 'Uploading 0 of ' + added.length + '...';
+        added.reduce(function (chain, f) {
+            return chain.then(function () {
+                if (files.length >= MAX) { failed++; return; }
+                var fd = new FormData(); fd.append('picture', f); fd.append('csrf_token', token);
+                return fetch('/vote/upload', { method: 'POST', body: fd, credentials: 'same-origin' })
+                    .then(function (r) { return r.json().then(function (j) { return r.ok ? j : Promise.reject(j); }); })
+                    .then(function (j) { files.push({ url: j.url, local: URL.createObjectURL(f) }); done++; sync(); draw('Uploading ' + (done + failed) + ' of ' + added.length + '...'); })
+                    .catch(function () { failed++; });
+            });
+        }, Promise.resolve()).then(function () {
+            sync();
+            draw(failed ? failed + ' picture' + (failed === 1 ? '' : 's') + ' did not upload. Please add ' + (failed === 1 ? 'it' : 'them') + ' again.' : '');
+            busy--; if (!busy) go.disabled = false;
+        });
     });
+    form.addEventListener('submit', function (e) { if (busy) e.preventDefault(); });
 })();
 </script>
-<script src="{{ url_for('static', filename='js/image-shrink.js') }}" defer></script>
 {% endblock %}

@@ -41,7 +41,7 @@
         {% if vote_designs %}
         <h2 class="dist-level-title" id="favorites">Our favorite designs</h2>
         <div class="org-fav-grid">
-            {% for u in vote_designs %}<span class="org-fav"><img src="{{ u }}" alt="Favorite design {{ loop.index }}" loading="lazy" decoding="async"></span>{% endfor %}
+            {% for u in vote_designs %}<a class="org-fav" href="{{ u }}" target="_blank" rel="noopener" title="Open full size to save"><img src="{{ u | thumb(640) }}" alt="Favorite design {{ loop.index }}" loading="lazy" decoding="async"></a>{% endfor %}
         </div>
         {% endif %}
         {% if not spirit and not sections and not sponsored %}

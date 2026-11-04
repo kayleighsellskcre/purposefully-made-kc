@@ -56,7 +56,7 @@
         <form method="post" action="{{ url_for('votes.add_pictures', token=poll.token) }}" enctype="multipart/form-data" class="vote-card vote-add" id="voteAddForm">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label class="vote-label" for="voteAddPics">Add more pictures</label>
-            <input class="vote-input" id="voteAddPics" name="pictures" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple required data-shrink="1400">
+            <input class="vote-input" id="voteAddPics" name="pictures" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple required>
             <button class="btn btn-secondary btn-sm" type="submit">Add to this vote</button>
         </form>
         {% if poll.responses %}
@@ -72,7 +72,6 @@
         <p class="vote-fine"><a href="{{ url_for('votes.mine') }}">All my votes</a></p>
     </div>
 </section>
-<script src="{{ url_for('static', filename='js/image-shrink.js') }}" defer></script>
 <script>
 document.getElementById('voteCopy').addEventListener('click', function () {
     var i = document.getElementById('voteLink'); i.select();

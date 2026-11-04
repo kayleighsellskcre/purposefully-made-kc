@@ -8,7 +8,7 @@
   GET      /vote/<token>/results.csv  download results (the maker only)
   GET      /account/votes             your votes
 """
-from flask import Blueprint, Response, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required
 
 from models import VotePoll, db
@@ -46,6 +46,24 @@ def _org_for_new():
     return org
 
 
+def _my_uploads(urls):
+    """Only pictures this person uploaded in this visit (through /vote/upload) can be attached to a vote."""
+    allowed = set(session.get('vote_uploads', []))
+    return [u for u in urls if u in allowed]
+
+
+@votes_bp.route('/vote/upload', methods=['POST'])
+@login_required
+def upload():
+    """One picture at a time, at full size, so a big batch never hits the request limit and print quality is kept."""
+    f = request.files.get('picture')
+    if not f or not f.filename or not V.is_picture(f):
+        return jsonify(error='Pictures need to be PNG, JPG, WEBP or GIF files.'), 400
+    url = store_upload(f, 'votes', 'vote')
+    session['vote_uploads'] = (session.get('vote_uploads', []) + [url])[-200:]
+    return jsonify(url=url)
+
+
 @votes_bp.route('/vote/new', methods=['GET', 'POST'])
 @login_required
 def new():
@@ -53,19 +71,20 @@ def new():
     if request.method == 'POST':
         title = (request.form.get('title') or '').strip()
         files = [f for f in request.files.getlist('pictures') if f and f.filename]
+        ready = _my_uploads(request.form.getlist('picture_url'))
         error = None
         if not title:
             error = 'Give your vote a name so people know what they are picking.'
-        elif len(files) < V.MIN_PICTURES:
+        elif len(files) + len(ready) < V.MIN_PICTURES:
             error = 'Add at least two pictures to vote on.'
-        elif len(files) > V.MAX_PICTURES:
+        elif len(files) + len(ready) > V.MAX_PICTURES:
             error = f'Please add no more than {V.MAX_PICTURES} pictures.'
         elif not all(V.is_picture(f) for f in files):
             error = 'Pictures need to be PNG, JPG, WEBP or GIF files.'
         if error:
             flash(error, 'error')
             return render_template('vote/new.html', title=title, note=request.form.get('note', ''), org=org), 400
-        urls = [store_upload(f, 'votes', 'vote') for f in files]
+        urls = ready + [store_upload(f, 'votes', 'vote') for f in files]
         poll = V.create_poll(current_user, title, request.form.get('note'), urls, org=org)
         return redirect(url_for('votes.results', token=poll.token, made=1))
     return render_template('vote/new.html', title=(f'{org.name} design vote' if org else ''), note='', org=org)
@@ -121,15 +140,17 @@ def winners(token):
 def add_pictures(token):
     poll = _mine_or_404(token)
     files = [f for f in request.files.getlist('pictures') if f and f.filename]
-    if not files:
+    ready = _my_uploads(request.form.getlist('picture_url'))
+    total = len(files) + len(ready)
+    if not total:
         flash('Choose at least one picture to add.', 'error')
     elif not all(V.is_picture(f) for f in files):
         flash('Pictures need to be PNG, JPG, WEBP or GIF files.', 'error')
-    elif len(poll.options) + len(files) > V.MAX_PICTURES:
+    elif len(poll.options) + total > V.MAX_PICTURES:
         flash(f'A vote can have up to {V.MAX_PICTURES} pictures.', 'error')
     else:
-        V.add_pictures(poll, [store_upload(f, 'votes', 'vote') for f in files])
-        flash(f'Added {len(files)} picture{"" if len(files) == 1 else "s"}.', 'success')
+        V.add_pictures(poll, ready + [store_upload(f, 'votes', 'vote') for f in files])
+        flash(f'Added {total} picture{"" if total == 1 else "s"}.', 'success')
     return redirect(url_for('votes.results', token=poll.token))
 
 

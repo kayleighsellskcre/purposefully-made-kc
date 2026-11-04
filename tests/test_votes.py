@@ -197,3 +197,15 @@ def test_maker_can_delete_a_mistake_and_add_more_pictures(app, maker):
     assert len(_poll(app, token)) == 3
     html = maker.get(f'/vote/{token}/results').get_data(as_text=True)
     assert 'Delete this picture' in html and 'Add more pictures' in html
+
+
+def test_pictures_upload_one_at_a_time_at_full_size_and_only_your_own_can_be_attached(app, maker):
+    first = maker.post('/vote/upload', data={'picture': (_png('red'), 'a.png')}, content_type='multipart/form-data').get_json()['url']
+    second = maker.post('/vote/upload', data={'picture': (_png('blue'), 'b.png')}, content_type='multipart/form-data').get_json()['url']
+    assert maker.post('/vote/upload', data={'picture': (_png('red'), 'a.txt')}, content_type='multipart/form-data').status_code == 400
+    assert app.test_client().post('/vote/upload', data={'picture': (_png('red'), 'a.png')}).status_code in (302, 401)
+    resp = maker.post('/vote/new', data={'title': 'Big batch', 'picture_url': [first, second, 'https://evil.example/x.png']})
+    assert resp.status_code == 302
+    token = resp.headers['Location'].split('/vote/')[1].split('/')[0]
+    with app.app_context():
+        assert [o.image_url for o in V.get_poll(token).options] == [first, second]
