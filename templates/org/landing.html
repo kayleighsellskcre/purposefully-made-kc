@@ -206,7 +206,7 @@
             </span>
             <span class="org-fan-art" aria-hidden="true">
                 {% if fan_art %}
-                    {% for u in fan_art[:3] %}<span class="org-fan-tile"><img src="{{ u }}" alt="" loading="lazy" decoding="async"></span>{% endfor %}
+                    {% for u in fan_art[:3] %}<span class="org-fan-tile"><img src="{{ u | thumb(240) }}" alt="" loading="lazy" decoding="async"></span>{% endfor %}
                 {% else %}
                     <span class="org-fan-emoji">👕</span>
                 {% endif %}
@@ -224,7 +224,7 @@
             <h2>Our Favorite Designs</h2>
         </div>
         <div class="org-fav-grid">
-            {% for u in vote_designs %}<span class="org-fav"><img src="{{ u }}" alt="Favorite design {{ loop.index }}" loading="lazy" decoding="async"></span>{% endfor %}
+            {% for u in vote_designs %}<span class="org-fav"><img src="{{ u | thumb(320) }}" alt="Favorite design {{ loop.index }}" loading="lazy" decoding="async"></span>{% endfor %}
         </div>
         {% endif %}
 

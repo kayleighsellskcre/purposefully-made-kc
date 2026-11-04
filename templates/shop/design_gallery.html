@@ -174,7 +174,7 @@
                  data-uploaded="{{ design.uploaded_at }}"
                  data-original-order="{{ loop.index0 }}">
                 <div class="gallery-card-image gallery-design-carousel">
-                    <img src="{{ design.url }}"
+                    <img src="{{ design.url | thumb(320) }}"
                          class="gallery-carousel-image"
                          alt="{{ design.title }}"
                          loading="lazy">

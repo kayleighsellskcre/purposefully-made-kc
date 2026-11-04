@@ -292,6 +292,17 @@ def test_checkout_opens_with_something_in_the_cart(client, seed):
     assert client.get('/checkout/').status_code == 200
 
 
+def test_checkout_fields_let_a_phone_fill_in_contact_and_address(client, seed):
+    """Without these hints a phone cannot offer the saved name, email, phone and address, so checkout is slower to type."""
+    add_to_cart(client, seed)
+    html = client.get('/checkout/').get_data(as_text=True)
+    for field, hint in (('email', 'email'), ('first_name', 'given-name'), ('last_name', 'family-name'), ('phone', 'tel'),
+                        ('ship_street', 'shipping address-line1'), ('ship_city', 'shipping address-level2'),
+                        ('ship_zip', 'shipping postal-code')):
+        tag = html.split(f'id="{field}"', 1)[1].split('>', 1)[0]
+        assert f'autocomplete="{hint}"' in tag, field
+
+
 # ── Shirt photos ─────────────────────────────────────────────────────────────
 
 def test_the_cart_shows_the_shirt_photo(client, seed):

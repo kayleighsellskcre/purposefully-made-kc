@@ -777,7 +777,10 @@ def create_app(config_class=Config):
             "base-uri 'self'; "
             "report-uri /csp-report;"
         )
-        response.headers['Content-Security-Policy-Report-Only'] = report_only_csp
+        # Off by default: with it on, every visitor's browser sent dozens of report requests to the app on each page
+        # (about 70 on a product page). Set CSP_REPORT_ONLY=1 on Railway to turn the diagnostic back on.
+        if os.environ.get('CSP_REPORT_ONLY') == '1':
+            response.headers['Content-Security-Policy-Report-Only'] = report_only_csp
         # Let browsers and Cloudflare keep site files instead of asking again on every page.
         if request.path.startswith('/static/') and response.status_code == 200 and 'Cache-Control' in response.headers:
             path = request.path.lower()
@@ -923,6 +926,30 @@ def create_app(config_class=Config):
         """Return the correct src for a stored image — CDN URL or local static path."""
         from utils.cloud_storage import image_url as resolve_image_url
         return resolve_image_url(path_or_url)
+
+    @app.template_filter('thumb')
+    def thumb_filter(url, width=320):
+        """A small copy of a big stored picture, for list pages."""
+        from utils.thumbs import thumb_url
+        try:
+            return thumb_url(url, width)
+        except Exception:
+            return url
+
+    @app.route('/thumb')
+    def thumb():
+        from flask import Response, redirect
+        from utils.thumbs import make_thumb
+        url = request.args.get('u', '')
+        try:
+            data = make_thumb(app, url, request.args.get('w', type=int))
+        except Exception:
+            data = None
+        if not data:
+            from urllib.parse import urlparse
+            from utils.thumbs import _allowed_host
+            return redirect(url, code=302) if urlparse(url).netloc.lower() == _allowed_host(app) else ('', 404)
+        return Response(data, mimetype='image/webp', headers={'Cache-Control': 'public, max-age=31536000, immutable'})
 
     @app.template_filter('fit_title')
     def fit_title_filter(name, prefix=''):

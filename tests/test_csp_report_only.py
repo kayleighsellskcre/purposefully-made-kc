@@ -7,6 +7,20 @@ in one pass on a site that processes real payments.
 """
 
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _diagnostic_on(monkeypatch):
+    monkeypatch.setenv('CSP_REPORT_ONLY', '1')
+
+
+def test_report_only_csp_is_off_unless_asked_for(guest, monkeypatch):
+    """Every page used to make browsers send dozens of reports to the app; now it only happens when switched on."""
+    monkeypatch.delenv('CSP_REPORT_ONLY')
+    assert not guest.get('/').headers.get('Content-Security-Policy-Report-Only')
+
+
 def test_enforcing_csp_is_unchanged(guest):
     resp = guest.get('/')
     csp = resp.headers.get('Content-Security-Policy', '')

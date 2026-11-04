@@ -4174,3 +4174,15 @@ body .made-eyebrow { font-size: 0.95rem; }
 .vote-pick .vote-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
 .vote-onpage { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.7rem; font-size: 0.95rem; font-weight: 600; cursor: pointer; }
 .vote-onpage input { width: 1.2rem; height: 1.2rem; }
+
+/* Phones: fingertip-sized buttons and labels nobody has to squint at */
+.footer-keyhole { padding: 0.8rem 0.9rem; margin: -0.8rem -0.5rem -0.8rem 0.1rem; }
+@media (max-width: 768px) {
+    body .nav-search-btn, body .title-heart, body .pw-toggle { min-width: 44px; min-height: 44px; }
+    body .filter-toggle, body .shop-search-input { min-height: 44px; }
+    body .design-pane-tab, body .spec-sheet-link { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+    body .fav-badge, body .family-age-chip, body .product-brand-line, body .size-upcharge-badge, body .preview-note { font-size: 0.75rem; }
+    body .size-upcharge-badge, body .preview-color-badge span { font-size: 0.75rem !important; }
+    body .footer-col-title { font-size: 0.8rem; }
+    body .footer-bottom { font-size: 0.8rem; }
+}

@@ -366,7 +366,7 @@
                 <div class="dir-card" data-name="{{ org.name | lower }}" data-desc="{{ (org.description or '') | lower }}" data-visibility="public">
                     {% if item.fan_art %}
                     <div class="dir-card-img dir-card-img--fan">
-                        <div class="dir-fan-circles">{% for u in item.fan_art[:4] %}<span><img src="{{ u }}" alt="" loading="lazy" decoding="async"></span>{% endfor %}</div>
+                        <div class="dir-fan-circles">{% for u in item.fan_art[:4] %}<span><img src="{{ u | thumb(240) }}" alt="" loading="lazy" decoding="async"></span>{% endfor %}</div>
                     </div>
                     {% else %}
                     <div class="dir-card-img">
@@ -396,7 +396,7 @@
                     {% if c.cover_image %}
                     <div class="dir-card-img has-cover">
                         <div class="dir-card-art-frame">
-                            <img src="{{ c.cover_image | image_url }}" alt="{{ card_label }} artwork for {{ c.name }}"
+                            <img src="{{ c.cover_image | image_url | thumb(480) }}" alt="{{ card_label }} artwork for {{ c.name }}"
                                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
                             <div class="dir-card-lettermark" style="display:none"><span>{{ card_label }}</span></div>
                         </div>

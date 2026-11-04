@@ -354,7 +354,7 @@
             {% set o = card.org %}
             <a class="hg-card" href="{{ url_for('org.landing', slug=o.slug) }}">
                 <div class="hg-art{% if card.fan_art %} hg-art--fan{% endif %}">
-                    {% if card.fan_art %}<span class="hg-circles">{% for u in card.fan_art[:4] %}<span><img src="{{ u }}" alt="" loading="lazy" decoding="async"></span>{% endfor %}</span>
+                    {% if card.fan_art %}<span class="hg-circles">{% for u in card.fan_art[:4] %}<span><img src="{{ u | thumb(240) }}" alt="" loading="lazy" decoding="async"></span>{% endfor %}</span>
                     {% else %}<span class="hg-letter">{{ o.name[:1] }}</span>{% endif %}
                 </div>
                 <div class="hg-body">
@@ -368,7 +368,7 @@
             {% set c = card.collection %}
             <a class="hg-card" href="{{ url_for('collection.view', slug=c.slug) }}">
                 <div class="hg-art">
-                    {% if c.cover_image %}<img class="hg-cover" src="{{ c.cover_image | image_url }}" alt="" loading="lazy" decoding="async">
+                    {% if c.cover_image %}<img class="hg-cover" src="{{ c.cover_image | image_url | thumb(480) }}" alt="" loading="lazy" decoding="async">
                     {% else %}<span class="hg-letter">{{ (c.card_title or c.name)[:1] }}</span>{% endif %}
                 </div>
                 <div class="hg-body">
