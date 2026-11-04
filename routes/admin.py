@@ -1262,6 +1262,9 @@ def update_order_details(order_id):
         reverse_for_order(order)
     order.refund_notes = request.form.get('refund_notes')
     db.session.commit()
+    if now_refunded:
+        from utils.customer_emails import notify_refund
+        notify_refund(order.id)
     flash('Order details updated', 'success')
     return redirect(url_for('admin.order_detail', order_id=order_id))
 

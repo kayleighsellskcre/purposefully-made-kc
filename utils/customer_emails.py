@@ -188,6 +188,29 @@ def notify_stage_change(order_id, stage):
         return False
 
 
+def notify_refund(order_id):
+    """Tell the customer a refund is on its way. Once per order, never raises, and a refund no one has recorded sends nothing."""
+    try:
+        from utils.site_settings import get_flag
+        order = db.session.get(Order, order_id)
+        if (order is None or not get_flag(FLAG_KEY, True) or not (order.email or '').strip()
+                or not (order.is_refunded or (order.refunded_cents or 0) > 0)):
+            return False
+        cents = int(order.refunded_cents or 0)
+        amount = f'${cents / 100:,.2f}' if cents > 0 else (f'${float(order.total or 0):,.2f}' if order.total else None)
+        if not _claim(order.id, Order.refund_notified_at):
+            return False
+        paragraphs = [f'Hi {_first_name(order)}, we have refunded your order'
+                      + (f' ({amount})' if amount else '') + '.',
+                      'It goes back to the way you paid. Banks and card companies usually take 5 to 10 business days to show it.']
+        details = _order_details(order) + ([('Refund', amount)] if amount else [])
+        return _send(order.email.strip(), 'Your refund is on its way', 'Your refund is on its way', paragraphs,
+                     details=details, note='Questions? Just reply to this email and we will help.')
+    except Exception:
+        current_app.logger.exception('refund email failed for order %s', order_id)
+        return False
+
+
 def notify_in_background(order_ids, stage):
     """Send after the admin's page has been answered, so clicking a button never waits on email."""
     ids = [i for i in order_ids if i]

@@ -229,6 +229,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS ready_notified_at TIMESTAMP",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS completed_notified_at TIMESTAMP",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS review_email_sent_at TIMESTAMP",
+                    "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS refund_notified_at TIMESTAMP",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS review_token VARCHAR(40)",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS child_grade VARCHAR(40)",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS child_name VARCHAR(120)",

@@ -230,3 +230,12 @@ def test_checking_for_real_fees_replaces_estimates_and_the_ledger_follows(admin_
     assert _in_db(app, check) == (3.64, True, -364)              # one adjustment entry carries the 35 cent difference
     again = admin_client.get('/admin/operations/reports?period=custom&from=2026-10-01&to=2026-10-31').get_data(as_text=True)
     assert 'Check for real fees now' not in again
+
+
+def test_customer_is_emailed_once_when_a_refund_is_recorded(app, seed, monkeypatch, outbox):
+    _in_db(app, _paid_order)
+    _hook(app, monkeypatch, _refund_event())
+    _hook(app, monkeypatch, _refund_event())
+    mails = [m for m in outbox if 'refund' in m.subject.lower()]
+    assert len(mails) == 1 and mails[0].recipients == ['amy@example.com']
+    assert '$120.50' in mails[0].html or '$120.50' in (mails[0].body or '')

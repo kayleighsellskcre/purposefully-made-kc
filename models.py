@@ -922,6 +922,7 @@ class Order(db.Model):
     ready_notified_at = db.Column(db.DateTime)
     completed_notified_at = db.Column(db.DateTime)
     review_email_sent_at = db.Column(db.DateTime)
+    refund_notified_at = db.Column(db.DateTime)
     review_token = db.Column(db.String(40), index=True)
     child_grade = db.Column(db.String(40))
     child_name = db.Column(db.String(120))

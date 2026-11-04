@@ -50,6 +50,8 @@ def apply_stripe_charge_refund(charge, event_time=None):
             order.refund_notes = note
         db.session.commit()
         L.sync_all(force=True)
+        from utils.customer_emails import notify_refund
+        notify_refund(order.id)
         return f'order {order.order_number}'
     invoice = (ManualInvoice.query.filter_by(card_paid_intent_id=intent_id).first()
                or ManualInvoice.query.filter_by(payment_intent_id=intent_id).first())
@@ -122,6 +124,7 @@ def check_paypal_refunds(limit=40, days=180):
                                  Order.paypal_order_id.isnot(None), Order.created_at >= cutoff)
               .order_by(Order.refund_checked_at.isnot(None), Order.refund_checked_at).limit(limit).all())
     changed = 0
+    refunded_ids = []
     for order in orders:
         order.refund_checked_at = datetime.utcnow()
         try:
@@ -134,7 +137,11 @@ def check_paypal_refunds(limit=40, days=180):
             fully = total >= L.to_cents(order.total)
             if _apply_refund(order, total, when or datetime.utcnow(), fully):
                 changed += 1
+                refunded_ids.append(order.id)
     db.session.commit()
+    from utils.customer_emails import notify_refund
+    for oid in refunded_ids:
+        notify_refund(oid)
     return changed
 
 
