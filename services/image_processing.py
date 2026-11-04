@@ -97,11 +97,20 @@ def process_artwork_bytes(data: bytes, mode: str = 'auto', engine=None) -> dict:
         return _encode(out, 'preserved', original_size, changed=True)
 
     try:
-        img, orig_rgb = _fit_working_size(img)
+        full = _cap_side(img, MAX_KEEP_SIDE)
+        work, orig_rgb = _fit_working_size(full)
         bg_color, mad = _border_profile(orig_rgb)
 
-        out = _strip_background_color(img, orig_rgb, bg_color, mad, mode)
-        out = _autocrop(out)
+        out = _strip_background_color(work, orig_rgb, bg_color, mad, mode)
+        # The cut is found on a shrunken copy (fast), but the print file keeps
+        # the customer's real pixels: only the transparency is scaled back up.
+        # Shrinking a 4000 px photo to 1600 px here used to throw away the
+        # sharpness DTF needs.
+        if out.size != full.size:
+            alpha = out.getchannel('A').resize(full.size, Image.LANCZOS)
+            out = full.copy()
+            out.putalpha(alpha)
+        out = _autocrop(out, padding=max(8, int(max(out.size) / 200)))
         return _encode(out, 'algorithmic', original_size, changed=True)
     except (MemoryError, Exception):
         return _encode(img, 'none', original_size, changed=False)
@@ -158,6 +167,8 @@ def issue_messages(validation: dict) -> list:
             msgs.append('Some background may still be visible. Try uploading a cleaner version with a solid background.')
         elif issue == 'artwork_mostly_removed':
             msgs.append('Most of the artwork was removed - try uploading a higher-contrast version.')
+        elif issue == 'soft_for_print':
+            msgs.append('This picture is a little small, so a large print may look slightly soft. A bigger or sharper file will print crisper. Small prints like a pocket logo should be fine.')
         elif issue == 'low_resolution':
             msgs.append('Image resolution is low. For best print quality, use at least 300 DPI.')
     return msgs
@@ -166,6 +177,18 @@ def issue_messages(validation: dict) -> list:
 # ---------------------------------------------------------------------------
 # rembg
 # ---------------------------------------------------------------------------
+
+SOFT_PRINT_SIDE = 1500
+MAX_KEEP_SIDE = 6000  # longest side we keep; far beyond what a 12 in print needs at 300 DPI
+
+
+def _cap_side(img: Image.Image, max_side: int) -> Image.Image:
+    w, h = img.size
+    if max(w, h) <= max_side:
+        return img
+    s = max_side / max(w, h)
+    return img.resize((max(1, int(w * s)), max(1, int(h * s))), Image.LANCZOS)
+
 
 def _fit_working_size(img: Image.Image, max_side: int = 1600):
     w, h = img.size
@@ -403,6 +426,9 @@ def _validate(img: Image.Image, original_size, changed: bool) -> dict:
         w, h = img.size
         if w < 200 or h < 200:
             issues.append('low_resolution')
+        elif max(w, h) < SOFT_PRINT_SIDE:
+            # A 10 in chest print at 150 DPI needs about 1500 px across.
+            issues.append('soft_for_print')
     except Exception:
         pass
     return {'ok': len(issues) == 0, 'issues': issues, 'metrics': metrics}
