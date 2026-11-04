@@ -70,6 +70,9 @@
                   {% if note %}
                   <p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:#888;font-family:Arial,sans-serif;">{{ note }}</p>
                   {% endif %}
+                  {% if footer_link %}
+                  <p style="margin:14px 0 0;font-size:12px;color:#888;font-family:Arial,sans-serif;"><a href="{{ footer_link.url }}" style="color:#888;">{{ footer_link.label }}</a></p>
+                  {% endif %}
                 </td>
               </tr>
             </table>

@@ -280,6 +280,8 @@ def create_app(config_class=Config):
                     # Logged-in cart shared across phone + computer
                     "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS cart_json TEXT",
                     "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS cart_updated_at TIMESTAMP",
+                    "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS cart_reminder_sent_at TIMESTAMP",
+                    "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS cart_reminders_off BOOLEAN DEFAULT FALSE",
                     # collection.created_by_user_id — tracks who created a group order (for delete-design permission)
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER REFERENCES \"user\"(id)",
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS pending_organizer_email VARCHAR(120)",

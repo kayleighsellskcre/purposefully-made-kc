@@ -32,6 +32,8 @@ class User(UserMixin, db.Model):
     # Logged-in cart shared across devices (JSON array of cart line dicts)
     cart_json = db.Column(db.Text, nullable=True)
     cart_updated_at = db.Column(db.DateTime, nullable=True)
+    cart_reminder_sent_at = db.Column(db.DateTime, nullable=True)   # last 'you left something' email
+    cart_reminders_off = db.Column(db.Boolean, default=False)       # unsubscribed from those emails
 
     # Relationships
     addresses = db.relationship('Address', backref='user', lazy='dynamic', cascade='all, delete-orphan')

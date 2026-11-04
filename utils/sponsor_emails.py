@@ -14,7 +14,7 @@ from threading import Thread
 from flask import current_app
 
 
-def _send(to, subject, heading, paragraphs, *, button=None, details=None, note=None, attachments=None):
+def _send(to, subject, heading, paragraphs, *, button=None, details=None, note=None, attachments=None, footer_link=None):
     from flask_mail import Message
     from routes.checkout import _render_email
     from utils.mailer import (admin_base_url, mail_configured, reply_to,
@@ -25,7 +25,7 @@ def _send(to, subject, heading, paragraphs, *, button=None, details=None, note=N
     if not to or not mail_configured(app):
         return False
     html = _render_email('email/sponsor_update.html', heading=heading, paragraphs=paragraphs,
-                         button=button, details=details or [], note=note)
+                         button=button, details=details or [], note=note, footer_link=footer_link)
     plain_lines = [heading, ''] + paragraphs
     if details:
         plain_lines += [''] + [f'{k}: {v}' for k, v in details]
@@ -33,6 +33,8 @@ def _send(to, subject, heading, paragraphs, *, button=None, details=None, note=N
         plain_lines += ['', f"{button['label']}: {button['url']}"]
     if note:
         plain_lines += ['', note]
+    if footer_link:
+        plain_lines += ['', f"{footer_link['label']}: {footer_link['url']}"]
     plain_lines += ['', 'Made with purpose, for you.', 'Purposefully Made KC']
     msg = Message(subject=subject, recipients=to, body='\n'.join(plain_lines), html=html,
                   sender=sender(app), reply_to=reply_to(app))

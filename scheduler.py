@@ -92,6 +92,21 @@ def growth_sync_job(app):
             print(f"growth sync failed: {exc}", file=sys.stderr, flush=True)
 
 
+def cart_reminder_job(app):
+    """Daytime, hourly: remind signed-in shoppers about a cart they left a day ago."""
+    with app.app_context():
+        try:
+            with _one_worker_at_a_time(731013) as mine:
+                if not mine:
+                    return
+                from utils.cart_reminders import send_due
+                sent = send_due()
+                if sent:
+                    print(f"CART REMINDERS: {sent} sent", file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f"cart reminders failed: {exc}", file=sys.stderr, flush=True)
+
+
 def books_sync_job(app):
     """Keep the ledger current: every paid order, invoice and fee, written once."""
     with app.app_context():
@@ -781,6 +796,14 @@ def init_scheduler(app):
             trigger=CronTrigger(hour='8-11', minute=0, timezone=CHICAGO),
             id='deadline_reminders',
             name='Group order deadline-day reminders',
+            replace_existing=True
+        )
+
+        scheduler.add_job(
+            func=lambda: cart_reminder_job(app),
+            trigger=CronTrigger(hour='9-19', minute=17, timezone=CHICAGO),
+            id='cart_reminders',
+            name='Cart reminder emails',
             replace_existing=True
         )
 

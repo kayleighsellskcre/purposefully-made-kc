@@ -352,6 +352,17 @@ def sitemap_xml():
     return Response('\n'.join(parts), mimetype='application/xml')
 
 
+@main_bp.route('/unsubscribe/cart/<token>')
+def unsubscribe_cart(token):
+    from models import db
+    from utils.cart_reminders import user_from_token
+    user = user_from_token(token)
+    if user is not None and not user.cart_reminders_off:
+        user.cart_reminders_off = True
+        db.session.commit()
+    return render_template('unsubscribed.html', ok=user is not None)
+
+
 @main_bp.route('/privacy')
 def privacy():
     """Privacy Policy page"""

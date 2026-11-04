@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Email preferences - Purposefully Made KC{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <span class="eyebrow">Email preferences</span>
+        <h1>{{ "You are unsubscribed" if ok else "That link did not work" }}</h1>
+        <p class="lead">{{ "We will not send you cart reminder emails anymore. You will still get receipts and order updates." if ok else "Please reply to any of our emails and we will take care of it for you." }}</p>
+    </div>
+</div>
+<section class="container" style="padding: 2rem 0 5rem; text-align: center;">
+    <a class="btn btn-primary" href="{{ url_for('main.index') }}">Back to the shop</a>
+</section>
+{% endblock %}
