@@ -4144,3 +4144,13 @@ a.contact-method-value { display: inline-block; padding: 0.55rem 0; }
 .backroom-door h1 { margin: 0 0 0.6rem; }
 .backroom-form { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.4rem; }
 .backroom-form input[type=text] { min-width: 14rem; text-align: center; letter-spacing: 0.1em; text-transform: uppercase; }
+
+/* Elegant reading size: the text people actually read is never under 1rem, and page title bands share one height
+   (taller only when a page has extra lines in its header). */
+body .go-option-note, body .dir-card-desc, body .feature-text, body .hg-desc, body .cf-hint, body .contact-method-value { font-size: 1rem; line-height: 1.55; }
+body .hg-meta { font-size: 0.95rem; }
+@media (min-width: 769px) {
+    body .page-header { min-height: 9.75rem; display: flex; align-items: center; justify-content: center; }
+    body .page-header .container { width: 100%; }
+}
+body .main-content .page-header p, body .main-content .page-header .lead { font-size: 1.05rem; }
