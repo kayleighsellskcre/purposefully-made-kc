@@ -211,6 +211,59 @@ def notify_refund(order_id):
         return False
 
 
+CANCELLABLE_STAGES = (None, '', 'order_received', 'waiting_supplies')
+
+
+def can_request_cancel(order):
+    """A customer may ask to cancel until we start pressing: not yet printed, shipped, finished, cancelled or refunded."""
+    return (order.status in ('new', 'paid', 'pending') and (order.production_stage or None) in CANCELLABLE_STAGES
+            and not order.is_refunded and not order.cancel_requested_at)
+
+
+def request_cancel(order, reason=''):
+    """Record the request, tell the owner, and reassure the customer. Returns False when it is too late."""
+    if not can_request_cancel(order):
+        return False
+    order.cancel_requested_at = datetime.utcnow()
+    order.cancel_reason = ' '.join((reason or '').split())[:300] or None
+    db.session.commit()
+    try:
+        from flask_mail import Message
+
+        from utils import mailer
+        app = current_app._get_current_object()
+        body = (f"{_first_name(order)} ({order.email}) asked to cancel order {order.order_number} (${float(order.total or 0):,.2f}, "
+                f"paid by {order.payment_method or 'unknown'}).\n"
+                + (f"Reason: {order.cancel_reason}\n" if order.cancel_reason else '')
+                + f"\nOpen it: {mailer.admin_base_url(app)}/admin/orders/{order.id}\n"
+                  "To cancel: press Cancel this order there, then refund the payment in Stripe or PayPal.")
+        mailer.send(app, Message(subject=f'Cancellation request: {order.order_number}',
+                                 recipients=[mailer.admin_recipient(app)], body=body), 'cancellation request alert')
+    except Exception:
+        current_app.logger.exception('cancel request alert failed for %s', order.order_number)
+    if (order.email or '').strip():
+        _send(order.email.strip(), 'We got your cancellation request', 'We got your request',
+              [f'Hi {_first_name(order)}, we received your request to cancel this order and will take care of it very soon.',
+               'We will email you again as soon as it is cancelled and your refund is on its way.'],
+              details=_order_details(order), note='Changed your mind? Just reply and tell us.')
+    return True
+
+
+def notify_cancelled(order):
+    """Tell the customer their order is cancelled. Never raises."""
+    try:
+        if not (order.email or '').strip():
+            return False
+        return _send(order.email.strip(), 'Your order is cancelled', 'Your order is cancelled',
+                     [f'Hi {_first_name(order)}, your order has been cancelled.',
+                      'If you paid by card or PayPal, your refund is on its way back to you and we will email you again when it is sent.'
+                      if order.payment_status in ('paid', 'refunded') else 'You have not been charged anything.'],
+                     details=_order_details(order), note='Questions? Just reply to this email.')
+    except Exception:
+        current_app.logger.exception('cancel email failed for order %s', order.order_number)
+        return False
+
+
 def notify_in_background(order_ids, stage):
     """Send after the admin's page has been answered, so clicking a button never waits on email."""
     ids = [i for i in order_ids if i]

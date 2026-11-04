@@ -1,5 +1,58 @@
 {% extends "admin/operations/base_operations.html" %}
-{% block title %}Site Settings - Purposefully Made KC{% endblock %}
+{% block title %}Site Settings - Purposefully Made KC<div class="ops-card" style="max-width:600px;margin-top:1rem;">
+    <h2>Free shipping</h2>
+    <p>Shipped orders of this much or more (after any promo code) get free shipping. Customers see "Add $X more for free shipping" as they get close. Leave blank to turn it off. Today shipping is a flat rate.</p>
+    <form method="post" style="display:flex;align-items:flex-end;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="section" value="shipping">
+        <label style="display:flex;flex-direction:column;gap:0.25rem;font-weight:600;">
+            Order total ($)
+            <input type="number" name="free_shipping_min" value="{{ free_shipping_min }}" min="0" step="1" placeholder="Off" style="width:8rem;">
+        </label>
+        <button type="submit" class="btn btn-primary">Save</button>
+    </form>
+</div>
+<div class="ops-card" style="max-width:760px;margin-top:1rem;">
+    <h2>Promo codes</h2>
+    <p>Customers type a code in "Have a promo code?" at checkout. A code takes a percent and/or dollars off the shirts (never shipping or tax) and can make shipping free. Customers always pay at least $1.</p>
+    {% if coupon_rows %}
+    <table style="width:100%;border-collapse:collapse;margin:0.75rem 0;font-size:0.92rem;">
+        <thead><tr style="text-align:left;"><th>Code</th><th>What it does</th><th>Used</th><th>Ends</th><th></th></tr></thead>
+        <tbody>
+        {% for c in coupon_rows %}
+        <tr style="border-top:1px solid var(--border-light);{% if not c.active %}opacity:0.55;{% endif %}">
+            <td><strong>{{ c.code }}</strong></td>
+            <td>{% if c.percent_off %}{{ '%g'|format(c.percent_off) }}% off {% endif %}{% if c.amount_off %}${{ '%.2f'|format(c.amount_off) }} off {% endif %}{% if c.free_shipping %}free shipping {% endif %}{% if c.min_subtotal %}(min ${{ '%.0f'|format(c.min_subtotal) }}){% endif %}</td>
+            <td>{{ c.uses or 0 }}{% if c.max_uses %} of {{ c.max_uses }}{% endif %}</td>
+            <td>{{ c.expires_at.strftime('%b %d, %Y') if c.expires_at else 'No end' }}</td>
+            <td>
+                <form method="post" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="section" value="coupon_toggle">
+                    <input type="hidden" name="coupon_id" value="{{ c.id }}">
+                    <button class="btn btn-secondary btn-sm" type="submit">{{ 'Turn off' if c.active else 'Turn on' }}</button>
+                    <button class="btn btn-secondary btn-sm" type="submit" name="delete" value="1" onclick="return confirm('Delete {{ c.code }}? Past orders keep their discount.')">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    <form method="post" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0.75rem;margin-top:0.75rem;align-items:end;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="section" value="coupon_new">
+        <label style="display:flex;flex-direction:column;gap:0.25rem;font-weight:600;">Code<input type="text" name="code" maxlength="40" required placeholder="SPRING10"></label>
+        <label style="display:flex;flex-direction:column;gap:0.25rem;font-weight:600;">Percent off<input type="number" name="percent_off" min="0" max="100" step="0.5" placeholder="10"></label>
+        <label style="display:flex;flex-direction:column;gap:0.25rem;font-weight:600;">Or dollars off<input type="number" name="amount_off" min="0" step="0.01" placeholder="5"></label>
+        <label style="display:flex;flex-direction:column;gap:0.25rem;font-weight:600;">Minimum order ($)<input type="number" name="min_subtotal" min="0" step="1" placeholder="Optional"></label>
+        <label style="display:flex;flex-direction:column;gap:0.25rem;font-weight:600;">Last day<input type="date" name="expires_at"></label>
+        <label style="display:flex;flex-direction:column;gap:0.25rem;font-weight:600;">Use limit<input type="number" name="max_uses" min="1" step="1" placeholder="Unlimited"></label>
+        <label style="display:flex;align-items:center;gap:0.5rem;font-weight:600;"><input type="checkbox" name="free_shipping" value="1"> Free shipping</label>
+        <button type="submit" class="btn btn-primary">Make this code</button>
+    </form>
+</div>
+{% endblock %}
 {% block ops_content %}
 <span class="adm-eyebrow">Admin / Operations</span>
 <h1 class="ops-title">Site Settings</h1>

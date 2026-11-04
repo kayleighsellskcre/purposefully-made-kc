@@ -1111,6 +1111,24 @@ def update_order_status(order_id):
     return redirect(url_for('admin.order_detail', order_id=order_id))
 
 
+@admin_bp.route('/orders/<int:order_id>/cancel', methods=['POST'])
+@admin_required
+def cancel_order(order_id):
+    """Mark an order cancelled and tell the customer. Refunding the money is done in Stripe or PayPal."""
+    order = Order.query.get_or_404(order_id)
+    if order.status == 'cancelled':
+        flash('That order is already cancelled.', 'info')
+        return redirect(url_for('admin.order_detail', order_id=order_id))
+    order.status = 'cancelled'
+    order.production_stage = None
+    db.session.commit()
+    from utils.customer_emails import notify_cancelled
+    notify_cancelled(order)
+    paid = order.payment_status in ('paid', 'refunded') and not order.is_refunded
+    flash('Order cancelled and the customer was emailed.' + (' Now refund the payment in Stripe or PayPal.' if paid else ''), 'success')
+    return redirect(url_for('admin.order_detail', order_id=order_id))
+
+
 @admin_bp.route('/orders/<int:order_id>/tracking', methods=['POST'])
 @admin_required
 def order_tracking(order_id):
@@ -5897,6 +5915,52 @@ def site_settings():
                 flash(f'Saved. Orders picked up or shipped from now on earn {pct:g}%.', 'success')
             except ValueError:
                 flash('Enter a percent from 0 to 20.', 'error')
+        elif section == 'shipping':
+            raw = (request.form.get('free_shipping_min') or '').strip().lstrip('$')
+            try:
+                value = float(raw) if raw else 0.0
+                if value < 0 or value > 100000:
+                    raise ValueError
+                set_setting('free_shipping_min', f'{value:g}' if value else '', 'Order total that makes shipping free (blank = off)')
+                flash(f'Saved. Shipping is free on orders of ${value:,.2f} or more.' if value else 'Saved. Free shipping is off.', 'success')
+            except ValueError:
+                flash('Enter a dollar amount like 75, or leave it blank to turn it off.', 'error')
+        elif section == 'coupon_new':
+            from models import Coupon
+            from utils import coupons as CP
+            from datetime import timedelta
+            code = CP.normalize(request.form.get('code'))
+            def _num(name):
+                raw = (request.form.get(name) or '').strip().lstrip('$')
+                return float(raw) if raw else None
+            try:
+                pct, amt, mini = _num('percent_off'), _num('amount_off'), _num('min_subtotal')
+                uses = int(request.form.get('max_uses') or 0) or None
+                ends = datetime.fromisoformat(request.form['expires_at']) + timedelta(days=1) - timedelta(seconds=1) if request.form.get('expires_at') else None
+                free = bool(request.form.get('free_shipping'))
+                if not code or not code.isalnum():
+                    flash('A code is letters and numbers only, like SPRING10.', 'error')
+                elif Coupon.query.filter_by(code=code).first():
+                    flash(f'{code} already exists. Turn it off or pick another name.', 'error')
+                elif not (pct or amt or free) or (pct and not 0 < pct <= 100) or (amt is not None and amt < 0):
+                    flash('Give the code a percent (1 to 100), a dollar amount, or free shipping.', 'error')
+                else:
+                    db.session.add(Coupon(code=code, percent_off=pct, amount_off=amt, free_shipping=free, min_subtotal=mini,
+                                          max_uses=uses, expires_at=ends))
+                    db.session.commit()
+                    flash(f'Code {code} is ready.', 'success')
+            except (ValueError, KeyError):
+                flash('Please check the numbers and date you entered.', 'error')
+        elif section == 'coupon_toggle':
+            from models import Coupon
+            row = db.session.get(Coupon, int(request.form.get('coupon_id') or 0))
+            if row is not None:
+                if request.form.get('delete'):
+                    db.session.delete(row)
+                else:
+                    row.active = not row.active
+                db.session.commit()
+                flash('Saved.', 'success')
         elif section == 'emails':
             set_setting(FLAG_KEY, '1' if request.form.get('customer_status_emails') else '0', 'Email customers as orders move')
             set_setting(PICKUP_ADDRESS_KEY, (request.form.get('pickup_address') or '').strip()[:300], 'Where customers pick up orders')
@@ -5925,11 +5989,14 @@ def site_settings():
             flash('Saved. Your photo and note now show on About and Contact.', 'success')
         return redirect(url_for('admin.site_settings'))
     from routes.main import _owner
+    from models import Coupon
     return render_template('admin/operations/site_settings.html',
                            business_days=ready_date.get_business_days(),
                            preview=ready_date.format_day(ready_date.ready_by()),
                            min_days=ready_date.MIN_DAYS, max_days=ready_date.MAX_DAYS,
                            credit_percent=get_setting('creator_credit_percent', '2'),
+                           free_shipping_min=get_setting('free_shipping_min', ''),
+                           coupon_rows=Coupon.query.order_by(Coupon.created_at.desc()).all(),
                            emails_on=get_flag(FLAG_KEY, True), tax_percent=sales_tax.rate_percent(),
                            pickup_address=get_setting(PICKUP_ADDRESS_KEY, '') or BUSINESS_PICKUP,
                            pickup_notes=get_setting(PICKUP_NOTES_KEY, ''),

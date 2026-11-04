@@ -925,6 +925,8 @@ class Order(db.Model):
     completed_notified_at = db.Column(db.DateTime)
     review_email_sent_at = db.Column(db.DateTime)
     refund_notified_at = db.Column(db.DateTime)
+    cancel_requested_at = db.Column(db.DateTime)      # the customer asked to cancel
+    cancel_reason = db.Column(db.String(300))
     review_token = db.Column(db.String(40), index=True)
     child_grade = db.Column(db.String(40))
     child_name = db.Column(db.String(120))
@@ -984,6 +986,8 @@ class Order(db.Model):
     refund_checked_at = db.Column(db.DateTime)                 # last time PayPal was asked about refunds
     tax_jurisdiction = db.Column(db.String(20))                # local, ks_shipped, out_of_state (where it was taxed)
     tax_rate_percent = db.Column(db.Float)                     # the rate actually charged, e.g. 9.5
+    coupon_code = db.Column(db.String(40))                        # discount code used on this order
+    discount_applied = db.Column(db.Float, default=0.0)        # what the code took off; subtotal above is already net of it
     credit_applied = db.Column(db.Float, default=0.0)          # store credit used; subtotal above is already net of it
     
     # Tracking
@@ -1664,6 +1668,22 @@ class AiGeneration(db.Model):
     kc_date = db.Column(db.Date, nullable=False, index=True)                # Kansas City day
     had_reference = db.Column(db.Boolean, default=False)
     ok = db.Column(db.Boolean)                                              # None while it is still running
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class Coupon(db.Model):
+    """A discount code the owner makes: a percent or dollar amount off the shirts, and/or free shipping."""
+    __tablename__ = 'coupon'
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(40), unique=True, nullable=False, index=True)    # always upper case
+    percent_off = db.Column(db.Float)
+    amount_off = db.Column(db.Float)
+    free_shipping = db.Column(db.Boolean, default=False)
+    min_subtotal = db.Column(db.Float)
+    max_uses = db.Column(db.Integer)
+    uses = db.Column(db.Integer, default=0)
+    expires_at = db.Column(db.DateTime)
+    active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 

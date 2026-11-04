@@ -44,6 +44,20 @@
         </div>
     </div>
 
+    {% if order.status == 'cancelled' %}
+    <div class="od-card" style="margin-bottom:1rem;"><strong>This order is cancelled.</strong></div>
+    {% else %}
+    <div class="od-card" style="margin-bottom:1rem;{% if order.cancel_requested_at %}border-left:4px solid var(--terra-cotta);{% endif %}">
+        {% if order.cancel_requested_at %}
+        <p style="margin:0 0 0.5rem;"><strong>The customer asked to cancel</strong> on {{ order.cancel_requested_at|central('%b %d') }}{% if order.cancel_reason %}: &ldquo;{{ order.cancel_reason }}&rdquo;{% endif %}.</p>
+        {% endif %}
+        <form method="POST" action="{{ url_for('admin.cancel_order', order_id=order.id) }}" style="margin:0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="od-btn" onclick="return confirm('Cancel this order and email the customer? Refund the payment in Stripe or PayPal afterward.')">Cancel this order</button>
+        </form>
+    </div>
+    {% endif %}
+
     <!-- 4-card Info Grid -->
     <div class="od-grid">
 
@@ -643,8 +657,14 @@
         <div class="od-totals">
             <div class="od-total-row">
                 <span>Subtotal</span>
-                <span>${{ "%.2f"|format(order.subtotal + (order.credit_applied or 0)) }}</span>
+                <span>${{ "%.2f"|format(order.subtotal + (order.credit_applied or 0) + (order.discount_applied or 0)) }}</span>
             </div>
+            {% if order.discount_applied %}
+            <div class="od-total-row">
+                <span>Promo {{ order.coupon_code }}</span>
+                <span>-${{ "%.2f"|format(order.discount_applied) }}</span>
+            </div>
+            {% endif %}
             {% if order.credit_applied %}
             <div class="od-total-row">
                 <span>Store credit used</span>

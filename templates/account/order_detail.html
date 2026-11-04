@@ -27,6 +27,23 @@
             </div>
         </div>
 
+        {% if order.cancel_requested_at and order.status != 'cancelled' %}
+        <div class="account-form-card" style="margin-bottom:1rem;">
+            <p style="margin:0;">We got your cancellation request on {{ order.cancel_requested_at|central('%B %d') }}. We will email you as soon as it is cancelled and your refund is on its way.</p>
+        </div>
+        {% elif can_cancel %}
+        <div class="account-form-card" style="margin-bottom:1rem;">
+            <details>
+                <summary style="cursor:pointer;font-weight:600;min-height:44px;display:flex;align-items:center;">Need to cancel this order?</summary>
+                <form method="post" action="{{ url_for('account.cancel_request', order_number=order.order_number) }}" style="margin-top:0.5rem;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <p style="margin:0 0 0.6rem;color:var(--text-secondary);">You can cancel until we start printing. We will email you when it is done and your refund is on its way.</p>
+                    <input type="text" name="reason" maxlength="300" class="form-control" placeholder="Why? (optional)" style="margin-bottom:0.6rem;">
+                    <button type="submit" class="btn btn-secondary" onclick="return confirm('Ask to cancel this order?')">Ask to cancel</button>
+                </form>
+            </details>
+        </div>
+        {% endif %}
         <div class="od-grid">
 
             <!-- Items Card -->
@@ -82,8 +99,14 @@
                     <h2>Order Summary</h2>
                     <div class="od-summary-row">
                         <span>Subtotal</span>
-                        <span>${{ "%.2f"|format(order.subtotal + (order.credit_applied or 0)) }}</span>
+                        <span>${{ "%.2f"|format(order.subtotal + (order.credit_applied or 0) + (order.discount_applied or 0)) }}</span>
                     </div>
+                    {% if order.discount_applied %}
+                    <div class="od-summary-row">
+                        <span>Promo {{ order.coupon_code }}</span>
+                        <span>-${{ "%.2f"|format(order.discount_applied) }}</span>
+                    </div>
+                    {% endif %}
                     {% if order.credit_applied %}
                     <div class="od-summary-row">
                         <span>Store credit</span>

@@ -33,12 +33,27 @@ def order_detail(order_number):
     ).first_or_404()
     from utils.group_orders import group_pickup_details, group_pickup_heading
     coll = getattr(order, 'collection', None)
+    from utils.customer_emails import can_request_cancel
     return render_template(
         'account/order_detail.html',
         order=order,
+        can_cancel=can_request_cancel(order),
         pickup_heading=group_pickup_heading(coll),
         pickup_details=group_pickup_details(coll),
     )
+
+
+@account_bp.route('/orders/<order_number>/cancel-request', methods=['POST'])
+@login_required
+def cancel_request(order_number):
+    """Ask to cancel an order that has not been printed yet. The owner approves and refunds."""
+    from utils.customer_emails import request_cancel
+    order = Order.query.filter_by(order_number=order_number, user_id=current_user.id).first_or_404()
+    if request_cancel(order, request.form.get('reason')):
+        flash('We got your request and will email you as soon as it is cancelled.', 'success')
+    else:
+        flash('This order has already started, so it cannot be cancelled here. Please reply to your receipt email and we will help.', 'error')
+    return redirect(url_for('account.order_detail', order_number=order.order_number))
 
 
 @account_bp.route('/reorder/<order_number>', methods=['POST'])

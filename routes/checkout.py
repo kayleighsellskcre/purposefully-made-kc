@@ -524,11 +524,24 @@ def reprice_cart(cart, persist=True):
     return corrections
 
 
+def _coupon_code():
+    """The promo code this shopper applied (the page checks it is still good every time totals are worked out)."""
+    return session.get('coupon_code') or None
+
+
+def _pending_customer(data):
+    """What the checkout form sent, plus the promo code the server knows about, saved so a later recovery prices the same."""
+    out = {k: data.get(k) for k in PENDING_CHECKOUT_FIELDS if data.get(k) not in (None, '')}
+    if _coupon_code():
+        out['coupon_code'] = _coupon_code()
+    return out
+
+
 def _credit_uid():
     return current_user.id if current_user.is_authenticated else None
 
 
-def calculate_totals(cart, shipping_method='pickup', *, family_promo=False, ship_state=None, ship_zip=None, credit_user_id=None):
+def calculate_totals(cart, shipping_method='pickup', *, family_promo=False, ship_state=None, ship_zip=None, credit_user_id=None, coupon_code=None):
     """Calculate order totals.
 
     Assumes reprice_cart() has already run, so item unit prices are trusted
@@ -548,16 +561,29 @@ def calculate_totals(cart, shipping_method='pickup', *, family_promo=False, ship
         subtotal += qty * unit
     subtotal = round(subtotal, 2)
 
-    # Store credit is a discount on the shirts, so it lowers the amount tax is charged on.
+    # A promo code and store credit are both discounts on the shirts, so they lower the amount tax is charged on.
+    from utils import coupons
+    coupon, discount_applied = None, 0.0
+    if coupon_code:
+        found = coupons.find(coupon_code)
+        if found is not None and coupons.problem(found, subtotal) is None:
+            coupon, discount_applied = found, coupons.discount_for(found, subtotal)
+    gross_subtotal = subtotal
+    subtotal = round(subtotal - discount_applied, 2)
+    merchandise_after_code = subtotal
+
     credit_applied = 0.0
     if credit_user_id:
         from utils.creator_credit import credit_for
         credit_applied = credit_for(credit_user_id, subtotal)
-    gross_subtotal = subtotal
     subtotal = round(subtotal - credit_applied, 2)
 
+    free_min = coupons.free_shipping_min()
+    free_shipping = bool((coupon is not None and coupon.free_shipping)
+                         or (free_min and merchandise_after_code + 0.005 >= free_min))
+    free_away = round(free_min - merchandise_after_code, 2) if (free_min and not free_shipping) else 0.0
     shipping_cost = 0
-    if shipping_method == 'shipping':
+    if shipping_method == 'shipping' and not free_shipping:
         shipping_cost = current_app.config['SHIPPING_FLAT_RATE']
     
     # Kansas sales tax on the merchandise only (shipping is not taxed). Shipped to another state: no Kansas tax.
@@ -575,6 +601,10 @@ def calculate_totals(cart, shipping_method='pickup', *, family_promo=False, ship
         'subtotal': subtotal,
         'gross_subtotal': gross_subtotal,
         'credit_applied': credit_applied,
+        'discount_applied': discount_applied,
+        'coupon_code': coupon.code if coupon is not None else None,
+        'free_shipping': free_shipping,
+        'free_ship_away': free_away,
         'shipping_cost': shipping_cost,
         'tax': tax,
         'flat_fee': 0.0,
@@ -739,7 +769,7 @@ def paypal_create_order():
     reprice_cart(cart)
     shipping_method = data.get('shipping_method', 'pickup')
     _state, _zip = _ship_fields(data)
-    totals = calculate_totals(cart, shipping_method, ship_state=_state, ship_zip=_zip, credit_user_id=_credit_uid())
+    totals = calculate_totals(cart, shipping_method, ship_state=_state, ship_zip=_zip, credit_user_id=_credit_uid(), coupon_code=_coupon_code())
 
     token = _get_paypal_access_token(current_app)
     if not token:
@@ -767,7 +797,7 @@ def paypal_create_order():
                 from utils.payment_safety import record_pending_payment
                 record_pending_payment(
                     'paypal', paypal_id, cart=cart,
-                    customer={k: data.get(k) for k in PENDING_CHECKOUT_FIELDS if data.get(k) not in (None, '')},
+                    customer=_pending_customer(data),
                     collection_id=collection.id if collection else None,
                     user_id=current_user.id if current_user.is_authenticated else None,
                 )
@@ -909,7 +939,7 @@ def index():
         flash('Some prices in your cart were updated to current pricing.', 'info')
     from utils.family_promo import get_session_family_promo
     family_promo_active = bool(get_session_family_promo())
-    totals = calculate_totals(cart, family_promo=family_promo_active, credit_user_id=_credit_uid())
+    totals = calculate_totals(cart, family_promo=family_promo_active, credit_user_id=_credit_uid(), coupon_code=_coupon_code())
 
     from utils.order_artwork import FRONT_PLACEMENTS, existing_image_url, mockup_urls
     enriched_cart = []
@@ -1025,11 +1055,12 @@ def index():
                          allow_cash_payment=allow_cash_payment,
                          family_promo_active=family_promo_active,
                          family_promo_code=get_session_family_promo() or '',
+                         coupon_active=totals.get('coupon_code'),
                          stripe_public_key=current_app.config.get('STRIPE_PUBLIC_KEY'),
                          business_phone=BUSINESS['phone'],
                          paypal_client_id=paypal_client_id,
                          paypal_mode=paypal_mode,
-                         shipping_flat_rate=current_app.config.get('SHIPPING_FLAT_RATE', 11.00))
+                         shipping_flat_rate=0 if totals.get('free_shipping') else current_app.config.get('SHIPPING_FLAT_RATE', 11.00))
 
 
 @checkout_bp.route('/apply-promo', methods=['POST'])
@@ -1051,6 +1082,7 @@ def apply_promo():
     reprice_cart(cart)
     if not code:
         clear_session_family_promo()
+        session.pop('coupon_code', None)
         _state, _zip = _ship_fields(data)
         totals = calculate_totals(cart, data.get('shipping_method') or 'pickup', ship_state=_state, ship_zip=_zip)
         return jsonify({
@@ -1062,8 +1094,23 @@ def apply_promo():
         })
 
     if not is_family_promo_code(code):
-        return jsonify({'success': False, 'error': 'That promo code is not valid.'}), 400
+        from utils import coupons
+        found = coupons.find(code)
+        if found is None:
+            return jsonify({'success': False, 'error': 'That promo code is not valid.'}), 400
+        gross = calculate_totals(cart, 'pickup')['subtotal']
+        why = coupons.problem(found, gross)
+        if why:
+            return jsonify({'success': False, 'error': why}), 400
+        clear_session_family_promo()
+        session['coupon_code'] = found.code
+        _state, _zip = _ship_fields(data)
+        totals = calculate_totals(cart, data.get('shipping_method') or 'pickup', ship_state=_state, ship_zip=_zip,
+                                  credit_user_id=_credit_uid(), coupon_code=found.code)
+        return jsonify({'success': True, 'family_promo': False, 'promo_code': found.code, 'totals': totals,
+                        'message': f'Code applied: {coupons.describe(found)}.'})
 
+    session.pop('coupon_code', None)
     applied = set_session_family_promo(code)
     totals = calculate_totals(cart, family_promo=True)
     return jsonify({
@@ -1116,7 +1163,7 @@ def create_payment_intent():
     # Price the intent from the database, never from the session's stored prices.
     reprice_cart(cart)
     _state, _zip = _ship_fields(data)
-    totals = calculate_totals(cart, shipping_method, ship_state=_state, ship_zip=_zip, credit_user_id=_credit_uid())
+    totals = calculate_totals(cart, shipping_method, ship_state=_state, ship_zip=_zip, credit_user_id=_credit_uid(), coupon_code=_coupon_code())
     
     try:
         intent = stripe.PaymentIntent.create(
@@ -1203,7 +1250,7 @@ def prepare():
             record_pending_card_payment(
                 intent_id,
                 cart=cart,
-                customer={k: data.get(k) for k in PENDING_CHECKOUT_FIELDS if data.get(k) not in (None, '')},
+                customer=_pending_customer(data),
                 collection_id=next((i.get('collection_id') for i in cart if isinstance(i, dict) and i.get('collection_id')), None),
                 user_id=current_user.id if current_user.is_authenticated else None,
             )
@@ -1481,7 +1528,7 @@ def _build_order_from_capture(cap, *, overrides=None, send_email=True):
     fulfillment = overrides.get('fulfillment') or customer.get('shipping_method') or 'pickup'
     ship = customer.get('shipping_info') or customer.get('paypal_shipping_info') or {}
 
-    totals = calculate_totals(cart, fulfillment, ship_state=ship.get('state'), ship_zip=ship.get('zip'), credit_user_id=cap.user_id)
+    totals = calculate_totals(cart, fulfillment, ship_state=ship.get('state'), ship_zip=ship.get('zip'), credit_user_id=cap.user_id, coupon_code=customer.get('coupon_code'))
     is_stripe = cap.provider == 'stripe'
 
     # Same checks the normal save step makes. The money is already taken, so
@@ -1534,6 +1581,8 @@ def _build_order_from_capture(cap, *, overrides=None, send_email=True):
         tax_jurisdiction=totals.get('tax_jurisdiction'),
         tax_rate_percent=totals.get('tax_rate_percent'),
         credit_applied=totals.get('credit_applied') or 0.0,
+        coupon_code=totals.get('coupon_code'),
+        discount_applied=totals.get('discount_applied') or 0.0,
         total=totals['total'],
         payment_method='stripe' if is_stripe else 'paypal',
         payment_status='underpaid' if underpaid else 'paid',
@@ -1566,6 +1615,8 @@ def _build_order_from_capture(cap, *, overrides=None, send_email=True):
         db.session.flush()
         from utils.creator_credit import spend_for_order
         spend_for_order(order)
+        from utils.coupons import record_use
+        record_use(order)
         try:
             from utils.stock import reserve_cart_inventory
             reserve_cart_inventory(cart)  # paid already: never block on stock
@@ -1852,7 +1903,7 @@ def _complete_order():
         reprice_cart(cart)
         totals = calculate_totals(cart, shipping_method, family_promo=family_promo_active,
                                   ship_state=(shipping_info or {}).get('state'), ship_zip=(shipping_info or {}).get('zip'),
-                                  credit_user_id=_credit_uid())
+                                  credit_user_id=_credit_uid(), coupon_code=_coupon_code())
 
         if not email:
             return _json_error('Please enter your email so we can send the order confirmation.', 'EMAIL_REQUIRED', 400, request_id=rid)
@@ -1930,7 +1981,7 @@ def _complete_order():
                         saved_cart = json.loads(saved_cap.cart_json) or []
                     except ValueError:
                         saved_cart = []
-                saved_totals = calculate_totals(saved_cart, shipping_method, ship_state=(shipping_info or {}).get('state'), ship_zip=(shipping_info or {}).get('zip'), credit_user_id=_credit_uid()) if saved_cart else None
+                saved_totals = calculate_totals(saved_cart, shipping_method, ship_state=(shipping_info or {}).get('state'), ship_zip=(shipping_info or {}).get('zip'), credit_user_id=_credit_uid(), coupon_code=_coupon_code()) if saved_cart else None
                 if saved_totals and int(round(saved_totals['total'] * 100)) == captured_cents:
                     cart, totals = saved_cart, saved_totals
                     prepaid_issues.append(
@@ -2013,6 +2064,8 @@ def _complete_order():
             tax_jurisdiction=totals.get('tax_jurisdiction'),
             tax_rate_percent=totals.get('tax_rate_percent'),
             credit_applied=totals.get('credit_applied') or 0.0,
+            coupon_code=totals.get('coupon_code'),
+            discount_applied=totals.get('discount_applied') or 0.0,
             total=totals['total'],
             payment_method=payment_method,
             payment_status='pending' if is_cash else ('underpaid' if underpaid else 'paid'),
@@ -2052,6 +2105,8 @@ def _complete_order():
         db.session.flush()
         from utils.creator_credit import spend_for_order
         spend_for_order(order)
+        from utils.coupons import record_use
+        record_use(order)
 
         try:
             saved_items = build_order_items(order, cart, rid)

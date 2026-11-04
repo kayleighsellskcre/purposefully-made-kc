@@ -198,21 +198,21 @@
                 
                 <!-- Promo code -->
                 <div class="checkout-section" id="promo-section">
-                  <details class="promo-disclosure"{% if family_promo_active or family_promo_code %} open{% endif %}>
+                  <details class="promo-disclosure"{% if family_promo_active or family_promo_code or coupon_active %} open{% endif %}>
                     <summary>Have a promo code?</summary>
                     <div class="promo-row">
                         <input type="text" id="promo_code" class="form-control" autocomplete="off"
                                placeholder="Enter code"
-                               value="{{ family_promo_code or '' }}"
-                               {% if family_promo_active %}readonly{% endif %}>
-                        {% if family_promo_active %}
+                               value="{{ family_promo_code or coupon_active or '' }}"
+                               {% if family_promo_active or coupon_active %}readonly{% endif %}>
+                        {% if family_promo_active or coupon_active %}
                         <button type="button" class="btn btn-secondary" id="clear-promo">Clear</button>
                         {% else %}
                         <button type="button" class="btn btn-secondary" id="apply-promo">Apply</button>
                         {% endif %}
                     </div>
                     <p class="promo-message" id="promo-message" role="status" aria-live="polite">
-                        {% if family_promo_active %}Promo applied.{% endif %}
+                        {% if family_promo_active or coupon_active %}Promo applied.{% endif %}
                     </p>
                   </details>
                 </div>
@@ -362,8 +362,14 @@
                     {% else %}
                     <div class="summary-row">
                         <span>Subtotal:</span>
-                        <span id="subtotal-amount">${{ "%.2f"|format(totals.gross_subtotal if totals.credit_applied else totals.subtotal) }}</span>
+                        <span id="subtotal-amount">${{ "%.2f"|format(totals.gross_subtotal if (totals.credit_applied or totals.discount_applied) else totals.subtotal) }}</span>
                     </div>
+                    {% if totals.discount_applied %}
+                    <div class="summary-row">
+                        <span>Promo {{ totals.coupon_code }}:</span>
+                        <span id="discount-amount">-${{ "%.2f"|format(totals.discount_applied) }}</span>
+                    </div>
+                    {% endif %}
                     {% if totals.credit_applied %}
                     <div class="summary-row">
                         <span>Your store credit:</span>
@@ -374,6 +380,11 @@
                         <span>Shipping:</span>
                         <span id="shipping-amount">${{ "%.2f"|format(totals.shipping_cost) }}</span>
                     </div>
+                    {% if totals.free_shipping %}
+                    <p class="summary-note" id="free-ship-note">Shipping is free on this order.</p>
+                    {% elif totals.free_ship_away %}
+                    <p class="summary-note" id="free-ship-note">Add ${{ "%.2f"|format(totals.free_ship_away) }} more for free shipping.</p>
+                    {% endif %}
                     <div class="summary-row">
                         <span>Tax:</span>
                         <span id="tax-amount">${{ "%.2f"|format(totals.tax) }}</span>
