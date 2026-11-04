@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from dotenv import load_dotenv
 from sqlalchemy.pool import StaticPool
 
@@ -20,8 +21,11 @@ class Config:
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_SECURE = SESSION_COOKIE_SECURE
     REMEMBER_COOKIE_SAMESITE = 'Lax'
-    # Sessions expire after 8 hours of inactivity
-    PERMANENT_SESSION_LIFETIME = 28800  # seconds
+    # Customers stay signed in until they log out themselves: a year, renewed every time they visit. The remember
+    # cookie is the backup that signs them back in if the browser drops the session cookie.
+    PERMANENT_SESSION_LIFETIME = 60 * 60 * 24 * 365  # seconds
+    REMEMBER_COOKIE_DURATION = timedelta(days=365)
+    REMEMBER_COOKIE_REFRESH_EACH_REQUEST = True
 
     # ── CSRF Protection (Flask-WTF) ────────────────────────────────────────────
     WTF_CSRF_ENABLED = True

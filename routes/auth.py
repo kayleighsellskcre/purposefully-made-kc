@@ -167,7 +167,7 @@ def login():
     if request.method == 'POST':
         email = (request.form.get('email') or '').strip().lower()
         password = request.form.get('password', '')
-        remember = request.form.get('remember', False)
+        remember = True            # signed in until they log out themselves
 
         # Generic message regardless of whether the user exists (prevents user enumeration)
         _bad = lambda: (flash('Invalid email or password. Please try again.', 'error'),
@@ -284,7 +284,7 @@ def register():
         db.session.commit()
 
         _start_fresh_login_session()
-        login_user(user)
+        login_user(user, remember=True)
         from utils.cart_store import adopt_guest_cart_on_login
         adopt_guest_cart_on_login(user, session.pop('_pending_guest_cart', None))
         from utils.saved_items import adopt_guest_saved
