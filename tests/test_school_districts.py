@@ -436,3 +436,39 @@ def test_school_stores_have_no_separate_fan_wear_tab(app, seed, guest):
     _make(app, seed)
     html = guest.get('/desoto/mill-valley/football', follow_redirects=True).get_data(as_text=True)
     assert '👕 Fan Wear' not in html and 'School Spirit' in html
+
+
+def test_the_school_pages_do_not_ask_the_database_school_by_school(app, seed):
+    """A school launch sends many families to these pages at once, so the number of database lookups must stay small."""
+    from sqlalchemy import event
+    ids = _make(app, seed)
+    with app.app_context():
+        d = db.session.get(District, ids['district'])
+        d.listed = True
+        db.session.commit()
+        slug = d.slug
+    counts = []
+    def count(conn, cursor, statement, params, context, executemany):
+        counts.append(statement)
+    from models import db as _db
+    with app.app_context():
+        event.listen(_db.engine, 'before_cursor_execute', count)
+    try:
+        client = app.test_client()
+        for path in ('/school-districts', f'/org/{slug}'):
+            counts.clear()
+            resp = client.get(path)
+            assert resp.status_code == 200
+            assert len(counts) < 45, f'{path} used {len(counts)} lookups'
+    finally:
+        with app.app_context():
+            event.remove(_db.engine, 'before_cursor_execute', count)
+
+
+def test_site_files_are_kept_by_browsers_instead_of_asked_for_every_page(app, seed):
+    client = app.test_client()
+    css = client.get('/static/css/main.css?v=123')
+    assert css.status_code == 200 and 'max-age=31536000' in css.headers['Cache-Control']
+    logo = client.get('/static/img/logo-monogram.png')
+    assert 'max-age=86400' in logo.headers['Cache-Control']
+    assert logo.content_length < 60000, 'the header logo should be small, it loads on every page'

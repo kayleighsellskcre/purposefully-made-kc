@@ -778,6 +778,15 @@ def create_app(config_class=Config):
             "report-uri /csp-report;"
         )
         response.headers['Content-Security-Policy-Report-Only'] = report_only_csp
+        # Let browsers and Cloudflare keep site files instead of asking again on every page.
+        if request.path.startswith('/static/') and response.status_code == 200 and 'Cache-Control' in response.headers:
+            path = request.path.lower()
+            if path.endswith('.css') and request.args.get('v'):          # the stylesheet's version changes whenever the file does
+                response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+            elif path.endswith(('.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif', '.ico', '.woff', '.woff2')):
+                response.headers['Cache-Control'] = 'public, max-age=86400'
+            elif path.endswith('.js') or path.endswith('.css'):
+                response.headers['Cache-Control'] = 'public, max-age=3600'
         return response
 
     @app.route('/csp-report', methods=['POST'])

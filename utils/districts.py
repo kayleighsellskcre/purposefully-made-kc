@@ -171,13 +171,38 @@ def school_for_store(store):
     return org if org is not None and org.district_id else None
 
 
+def begin_memo():
+    """Read-only public pages ask once per request for stores to be remembered, so a school's stores are looked up once, not five times."""
+    from flask import g
+    g.ds_store_memo = {}
+
+
+def prime_stores(schools):
+    """Load every store (and its products) for these schools in one go, so the page does not ask the database school by school."""
+    from sqlalchemy.orm import joinedload, selectinload
+    ids = [s.id for s in schools]
+    if ids:
+        from flask import g, has_request_context
+        rows = OrgSection.query.filter(OrgSection.organization_id.in_(ids)).options(
+            joinedload(OrgSection.collection).selectinload(Collection.products)).all()
+        if has_request_context():
+            g.ds_primed = getattr(g, 'ds_primed', []) + rows        # the session only keeps loaded rows while something holds them
+
+
 def stores_of(school, include_inactive=False):
     """The school's stores in display order (School Spirit first, Staff last)."""
+    from flask import g, has_request_context
+    memo = getattr(g, 'ds_store_memo', None) if has_request_context() else None
+    key = (school.id, bool(include_inactive))
+    if memo is not None and key in memo:
+        return list(memo[key])
     out = []
     for sec in school.sections.order_by(OrgSection.sort_order, OrgSection.id).all():
         if sec.collection and (include_inactive or sec.collection.is_active):
             sec.collection._label = sec.label
             out.append(sec.collection)
+    if memo is not None:
+        memo[key] = list(out)
     return out
 
 
@@ -205,8 +230,10 @@ def schools_by_level(district, public=True):
     For visitors a school with nothing live is hidden. The owner (public=False) sees every school.
     """
     out = []
+    everyone = district.schools.all()
+    prime_stores(everyone)
     for key, heading in LEVELS:
-        schools = [s for s in district.schools.all() if s.is_active and s.level == key]
+        schools = [s for s in everyone if s.is_active and s.level == key]
         if public:
             schools = [s for s in schools if live_stores(s)]
         if schools:

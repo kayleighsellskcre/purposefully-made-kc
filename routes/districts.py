@@ -54,6 +54,7 @@ def _logo(obj):
 @district_bp.route('/school-districts')
 def directory():
     """Every listed district, so families can find their school without a link."""
+    DS.begin_memo()
     items = []
     for d in District.query.filter_by(is_active=True, listed=True).order_by(District.name).all():
         count = sum(1 for level in DS.schools_by_level(d, public=True) for _ in level[2])
@@ -79,6 +80,7 @@ def _vote_designs(org):
 def district_page(d):
     """Page 1: every school in the district, grouped by level."""
     g.nav_here = 'schools'                      # the menu keeps Schools lit on a district page
+    DS.begin_memo()
     admin = _is_admin()
     levels = DS.schools_by_level(d, public=not admin)
     cards = {}
@@ -97,6 +99,8 @@ def district_page(d):
 def school_page(district_slug, school_slug):
     d = _district_or_404(district_slug)
     school = Organization.query.filter_by(district_id=d.id, school_slug=school_slug, is_active=True).first_or_404()
+    DS.begin_memo()
+    DS.prime_stores([school])
     admin = _is_admin()
     stores = DS.stores_of(school) if admin else DS.live_stores(school)
     spirit = next((s for s in stores if s.store_kind == 'spirit'), None)
