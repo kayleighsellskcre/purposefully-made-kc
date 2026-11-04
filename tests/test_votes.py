@@ -175,3 +175,25 @@ def test_a_team_store_vote_shows_winners_on_that_team_page_and_the_edit_page_has
     admin.post(f'/vote/{token}/winners', data={'top': '1'})
     r = app.test_client().get(f'/c/{slug}'); page = r.get_data(as_text=True)
     assert 'Our Favorite Designs' in page and page.count('class="org-fav"') == 1
+
+
+def test_maker_can_delete_a_mistake_and_add_more_pictures(app, maker):
+    token = _make(maker, n=3)
+    ids = _poll(app, token)
+    voter = app.test_client()
+    voter.post(f'/vote/{token}', data={'voter_name': 'Sam', 'pick': [ids[0], ids[2]]})
+    assert maker.post(f'/vote/{token}/pictures/{ids[0]}/delete').status_code == 302
+    left = _poll(app, token)
+    assert left == ids[1:]
+    with app.app_context():
+        poll = V.get_poll(token)
+        assert sorted(o.position for o in poll.options) == [1, 2]
+        assert [len(r.picks) for r in poll.responses] == [1]
+    # two is the floor, and strangers cannot delete
+    maker.post(f'/vote/{token}/pictures/{left[0]}/delete')
+    assert len(_poll(app, token)) == 2
+    assert app.test_client().post(f'/vote/{token}/pictures/{left[0]}/delete').status_code in (302, 401)
+    maker.post(f'/vote/{token}/pictures', data={'pictures': [(_png('green'), 'new.png')]}, content_type='multipart/form-data')
+    assert len(_poll(app, token)) == 3
+    html = maker.get(f'/vote/{token}/results').get_data(as_text=True)
+    assert 'Delete this picture' in html and 'Add more pictures' in html

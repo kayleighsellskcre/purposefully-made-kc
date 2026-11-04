@@ -4186,3 +4186,10 @@ body .made-eyebrow { font-size: 0.95rem; }
     body .footer-col-title { font-size: 0.8rem; }
     body .footer-bottom { font-size: 0.8rem; }
 }
+
+/* Vote pictures: remove and delete */
+.vote-x { position: absolute; top: 0.35rem; right: 0.35rem; width: 44px; height: 44px; border: 0; border-radius: 50%; background: rgba(255,255,255,0.92); color: var(--midnight-charcoal); font-size: 1.5rem; line-height: 1; cursor: pointer; box-shadow: 0 2px 8px rgba(58,61,72,0.2); }
+.vote-x:hover, .vote-x:focus-visible { background: var(--terra-cotta); color: #fff; }
+.vote-del { display: block; width: 100%; min-height: 44px; border: 0; border-top: 1px solid var(--border-light); background: transparent; color: var(--text-secondary); font: inherit; font-size: 0.82rem; cursor: pointer; }
+.vote-del:hover, .vote-del:focus-visible { color: #9b3d33; background: rgba(155,61,51,0.07); }
+.vote-add .btn { margin-top: 0.8rem; }

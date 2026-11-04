@@ -38,6 +38,29 @@ def create_poll(user, title, note, urls, org=None):
     return poll
 
 
+def add_pictures(poll, urls):
+    """Add pictures to a vote that already exists; they are numbered after the ones already there."""
+    last = max([o.position or 0 for o in poll.options] or [0])
+    for i, url in enumerate(urls):
+        poll.options.append(VoteOption(image_url=url, position=last + i + 1))
+    db.session.commit()
+
+
+def remove_picture(poll, option_id):
+    """Delete one picture (and any votes for it). The rest are renumbered 1, 2, 3... so there are no gaps."""
+    option = next((o for o in poll.options if o.id == option_id), None)
+    if option is None:
+        return False
+    VoteChoice.query.filter_by(option_id=option.id).delete()
+    poll.options.remove(option)
+    db.session.delete(option)
+    db.session.flush()
+    for n, o in enumerate(sorted(poll.options, key=lambda o: (o.position or 0, o.id)), start=1):
+        o.position = n
+    db.session.commit()
+    return True
+
+
 def submit(poll, name, option_ids):
     """Record a vote. Returns (response, error). The same name voting again in this poll replaces their earlier vote."""
     name = ' '.join(str(name or '').split())[:120]

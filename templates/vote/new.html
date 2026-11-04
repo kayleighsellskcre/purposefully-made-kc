@@ -19,24 +19,49 @@
             <input class="vote-input" id="voteNote" name="note" type="text" maxlength="500" value="{{ note }}" placeholder="Pick the ones you love most">
             <label class="vote-label" for="votePics">Your designs</label>
             <input class="vote-input" id="votePics" name="pictures" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple required>
-            <p class="vote-fine">Choose two to sixty pictures. They are numbered in the order you add them.</p>
+            <p class="vote-fine" id="voteCount">Choose two to sixty pictures. You can add more in several rounds, and remove any with the &times;. They are numbered in the order shown.</p>
             <div class="vote-preview" id="votePreview"></div>
-            <button class="btn btn-primary" type="submit">Create my vote</button>
+            <button class="btn btn-primary" type="submit" id="voteGo">Create my vote</button>
         </form>
     </div>
 </section>
 <script>
 (function () {
-    var input = document.getElementById('votePics'), box = document.getElementById('votePreview');
-    input.addEventListener('change', function () {
+    var input = document.getElementById('votePics'), box = document.getElementById('votePreview'),
+        note = document.getElementById('voteCount'), form = document.getElementById('voteNewForm'),
+        go = document.getElementById('voteGo'), MAX = 60, files = [], busy = 0;
+    var intro = note.textContent;
+    function sync() {
+        var dt = new DataTransfer();
+        files.forEach(function (f) { dt.items.add(f); });
+        input.files = dt.files;
+        input.required = files.length === 0;
+    }
+    function draw() {
         box.innerHTML = '';
-        Array.prototype.forEach.call(input.files, function (f, i) {
+        files.forEach(function (f, i) {
             var card = document.createElement('div'); card.className = 'vote-thumb';
             var img = document.createElement('img'); img.src = URL.createObjectURL(f); img.alt = 'Design ' + (i + 1);
             var n = document.createElement('span'); n.textContent = i + 1;
-            card.appendChild(img); card.appendChild(n); box.appendChild(card);
+            var x = document.createElement('button'); x.type = 'button'; x.className = 'vote-x';
+            x.setAttribute('aria-label', 'Remove design ' + (i + 1)); x.innerHTML = '&times;';
+            x.addEventListener('click', function () { files.splice(i, 1); sync(); draw(); });
+            card.appendChild(img); card.appendChild(n); card.appendChild(x); box.appendChild(card);
         });
+        note.textContent = files.length ? files.length + ' picture' + (files.length === 1 ? '' : 's') + ' ready. Add more any time, or tap × to remove one.' : intro;
+    }
+    input.addEventListener('change', function () {
+        var added = Array.prototype.slice.call(input.files || []);
+        if (!added.length) return;
+        busy++; go.disabled = true; note.textContent = 'Getting your pictures ready...';
+        Promise.all(added.map(function (f) {
+            return window.PMKC && PMKC.shrinkImage ? PMKC.shrinkImage(f, 1400) : f;
+        })).then(function (small) {
+            files = files.concat(small).slice(0, MAX);
+            sync(); draw();
+        }).then(function () { busy--; if (!busy) go.disabled = false; });
     });
 })();
 </script>
+<script src="{{ url_for('static', filename='js/image-shrink.js') }}" defer></script>
 {% endblock %}

@@ -116,6 +116,34 @@ def winners(token):
     return redirect(url_for('votes.results', token=poll.token))
 
 
+@votes_bp.route('/vote/<token>/pictures', methods=['POST'])
+@login_required
+def add_pictures(token):
+    poll = _mine_or_404(token)
+    files = [f for f in request.files.getlist('pictures') if f and f.filename]
+    if not files:
+        flash('Choose at least one picture to add.', 'error')
+    elif not all(V.is_picture(f) for f in files):
+        flash('Pictures need to be PNG, JPG, WEBP or GIF files.', 'error')
+    elif len(poll.options) + len(files) > V.MAX_PICTURES:
+        flash(f'A vote can have up to {V.MAX_PICTURES} pictures.', 'error')
+    else:
+        V.add_pictures(poll, [store_upload(f, 'votes', 'vote') for f in files])
+        flash(f'Added {len(files)} picture{"" if len(files) == 1 else "s"}.', 'success')
+    return redirect(url_for('votes.results', token=poll.token))
+
+
+@votes_bp.route('/vote/<token>/pictures/<int:option_id>/delete', methods=['POST'])
+@login_required
+def delete_picture(token, option_id):
+    poll = _mine_or_404(token)
+    if len(poll.options) <= V.MIN_PICTURES:
+        flash('A vote needs at least two pictures. Add another one first, or delete the whole vote.', 'error')
+    elif V.remove_picture(poll, option_id):
+        flash('Picture deleted. The rest are renumbered.', 'success')
+    return redirect(url_for('votes.results', token=poll.token))
+
+
 @votes_bp.route('/vote/<token>/toggle', methods=['POST'])
 @login_required
 def toggle(token):

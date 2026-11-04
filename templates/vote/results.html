@@ -46,11 +46,19 @@
                 <span class="vote-option-art"><img src="{{ r.option.image_url }}" alt="Design {{ r.number }}" loading="lazy"></span>
                 <span class="vote-option-bar"><b>{{ r.number }}</b><i>{{ r.count }} vote{{ '' if r.count == 1 else 's' }}</i></span>
                 {% if r.names %}<span class="vote-names">{{ r.names|join(', ') }}</span>{% endif %}
+                <button class="vote-del" type="submit" form="del{{ r.option.id }}" onclick="return confirm('Delete design {{ r.number }}? Any votes for it are removed too.')">Delete this picture</button>
                 {% if poll.group %}<label class="vote-onpage"><input type="checkbox" name="on_page" value="{{ r.option.id }}"{% if r.option.on_page %} checked{% endif %}> Show on group page</label>{% endif %}
             </div>
             {% endfor %}
         </div>
         {% if poll.group %}</form>{% endif %}
+        {% for r in rows %}<form id="del{{ r.option.id }}" method="post" action="{{ url_for('votes.delete_picture', token=poll.token, option_id=r.option.id) }}" hidden><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"></form>{% endfor %}
+        <form method="post" action="{{ url_for('votes.add_pictures', token=poll.token) }}" enctype="multipart/form-data" class="vote-card vote-add" id="voteAddForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label class="vote-label" for="voteAddPics">Add more pictures</label>
+            <input class="vote-input" id="voteAddPics" name="pictures" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple required data-shrink="1400">
+            <button class="btn btn-secondary btn-sm" type="submit">Add to this vote</button>
+        </form>
         {% if poll.responses %}
         <h2 class="vote-h2">Who voted</h2>
         <div class="vote-card">
@@ -64,6 +72,7 @@
         <p class="vote-fine"><a href="{{ url_for('votes.mine') }}">All my votes</a></p>
     </div>
 </section>
+<script src="{{ url_for('static', filename='js/image-shrink.js') }}" defer></script>
 <script>
 document.getElementById('voteCopy').addEventListener('click', function () {
     var i = document.getElementById('voteLink'); i.select();
