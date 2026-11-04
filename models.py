@@ -17,6 +17,7 @@ class User(UserMixin, db.Model):
     phone = db.Column(db.String(20))
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_keyholder = db.Column(db.Boolean, default=False)       # let into The Backroom: only keyholders earn store credit
     club_reveal_seen = db.Column(db.Boolean, default=False)   # has been shown the one-time Made Club welcome after first earning
     use_credit = db.Column(db.Boolean, default=True)           # spend earned store credit automatically at checkout
 
@@ -458,6 +459,25 @@ class CreditEntry(db.Model):
     shared_design_id = db.Column(db.Integer, db.ForeignKey('shared_design.id'), index=True)
     note = db.Column(db.String(200))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class KeyCode(db.Model):
+    """A one-time key the owner hands out. Typing it at the footer keyhole lets that customer into The Backroom."""
+    __tablename__ = 'key_code'
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), unique=True, nullable=False, index=True)    # 10 letters and digits, no dash
+    note = db.Column(db.String(200))                                            # who it is for
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    used_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    used_at = db.Column(db.DateTime)
+
+    @staticmethod
+    def clean(raw):
+        return ''.join(ch for ch in (raw or '').upper() if ch.isalnum())
+
+    @property
+    def pretty(self):
+        return f'{self.code[:5]}-{self.code[5:]}'
 
 
 class District(db.Model):

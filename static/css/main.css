@@ -4136,3 +4136,11 @@ a.contact-method-value { display: inline-block; padding: 0.55rem 0; }
 .made-psst strong { color: var(--terra-cotta, #b87c6f); }
 .made-reveal { margin: 0 0 1.2rem; padding: 1rem 1.2rem; border-radius: 14px; border: 1px solid var(--terra-cotta, #b87c6f); background: rgba(184, 124, 111, 0.14); line-height: 1.5; }
 .made-reveal strong { display: block; font-size: 1.15rem; color: var(--terra-cotta, #b87c6f); }
+
+.footer-keyhole { display: inline-block; margin-left: 0.6rem; vertical-align: middle; color: inherit; opacity: 0.22; transition: opacity 0.2s; }
+.footer-keyhole:hover, .footer-keyhole:focus-visible { opacity: 0.8; }
+.backroom-door { padding: 5rem 0; text-align: center; }
+.backroom-door .backroom-eyebrow { font-size: 0.85rem; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.6; margin: 0 0 0.4rem; }
+.backroom-door h1 { margin: 0 0 0.6rem; }
+.backroom-form { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.4rem; }
+.backroom-form input[type=text] { min-width: 14rem; text-align: center; letter-spacing: 0.1em; text-transform: uppercase; }

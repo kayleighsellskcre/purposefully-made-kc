@@ -214,6 +214,7 @@ def create_app(config_class=Config):
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS credit_applied DOUBLE PRECISION DEFAULT 0",
                     "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS use_credit BOOLEAN DEFAULT TRUE",
                     "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS club_reveal_seen BOOLEAN DEFAULT FALSE",
+                    "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS is_keyholder BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE ledger_entry ADD COLUMN IF NOT EXISTS jurisdiction VARCHAR(20)",
                     "ALTER TABLE ledger_entry ADD COLUMN IF NOT EXISTS taxable BOOLEAN",
                     "ALTER TABLE ledger_entry ADD COLUMN IF NOT EXISTS tax_rate_percent DOUBLE PRECISION",

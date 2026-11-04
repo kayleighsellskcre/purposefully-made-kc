@@ -9,7 +9,8 @@
     </div>
     <img id="madeShareQr" class="made-qr" alt="QR code for this design" width="200" height="200">
     <div class="made-actions"><a id="madeShareDownload" class="btn btn-outline btn-sm" download>Download QR code</a></div>
-    {% if current_user.is_authenticated %}<p class="made-psst"><strong>Psst.</strong> You are in <a href="{{ url_for('made.mine') }}">The Made Club</a>. When people order through this link, you earn store credit that never expires.</p>
-    {% else %}<p class="made-psst"><strong>Psst.</strong> Sign in first and every order through this link earns you store credit that never expires.</p>{% endif %}
+    {% if current_user.is_authenticated and current_user.is_keyholder %}<p class="made-psst"><strong>Psst.</strong> You hold a key to <a href="{{ url_for('made.mine') }}">The Backroom</a>. When people order through this link, you earn store credit that never expires.</p>
+    {% elif current_user.is_authenticated %}<p class="made-note"><a href="{{ url_for('made.mine') }}">See your shared designs</a> and how many orders came from them.</p>
+    {% else %}<p class="made-note">Sign in to see how many orders come from your link.</p>{% endif %}
 </dialog>
 <script src="{{ url_for('static', filename='js/share-design.js') }}" defer></script>

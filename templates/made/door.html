@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}The Unmarked Door - Purposefully Made KC{% endblock %}
+{% block content %}
+<section class="backroom-door">
+    <div class="container">
+        <p class="backroom-eyebrow">Well, well, well&hellip;</p>
+        <h1>Look what you found.</h1>
+        <p>Not everyone gets through this door. Have a key?</p>
+        {% if current_user.is_authenticated %}
+        <form method="post" action="{{ url_for('made.unlock') }}" class="backroom-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="text" name="code" placeholder="Your key" autocomplete="off" autocapitalize="characters" required maxlength="30" aria-label="Your key">
+            <button type="submit" class="btn btn-primary">Open the door</button>
+        </form>
+        {% else %}
+        <p><a class="btn btn-primary" href="{{ url_for('auth.login', next=url_for('made.door')) }}">Sign in to use your key</a></p>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

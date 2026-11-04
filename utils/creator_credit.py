@@ -1,6 +1,6 @@
 """Store credit for people whose shared designs get orders.
 
-A creator earns a small percent of the item price (never tax or shipping) on every order that came through their
+A keyholder (a member of The Backroom) earns a small percent of the item price (never tax or shipping) on every order that came through their
 link, once it is picked up or shipped. It is a ledger of CreditEntry rows: earned, taken back if the order is
 refunded, and spent at checkout. Credit never expires. People who order through their own link earn nothing.
 """
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from sqlalchemy import func
 
-from models import CreditEntry, OrderItem, SharedDesign, db
+from models import CreditEntry, OrderItem, SharedDesign, User, db
 from utils.site_settings import get_setting
 
 RATE_KEY = 'creator_credit_percent'
@@ -90,6 +90,9 @@ def earn_for_order(order):
         share = db.session.get(SharedDesign, share_id)
         if share is None or not share.user_id or _own_order(order, share):
             continue
+        owner = db.session.get(User, share.user_id)
+        if owner is None or not owner.is_keyholder:
+            continue                       # only keyholders of The Backroom earn
         if CreditEntry.query.filter_by(user_id=share.user_id, kind='earned', order_id=order.id, shared_design_id=share_id).first():
             continue
         amount = round(subtotal * rate / 100.0, 2)

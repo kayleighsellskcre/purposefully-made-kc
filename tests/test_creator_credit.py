@@ -1,12 +1,21 @@
 """Creators earn store credit (default 2%) when an order through their link is picked up or shipped."""
 from datetime import datetime
 
+import pytest
+
 from models import CreditEntry, Order, OrderItem, SharedDesign, User, db
 from tests.conftest import CUSTOMER_EMAIL
 from tests.test_save_for_later import _line, _set_cart, _signed_in
 from tests.test_share_design import _share
 from utils import creator_credit as CC
 from utils.production_stages import apply_stage
+
+
+@pytest.fixture(autouse=True)
+def _the_customer_holds_a_key(app, seed):
+    with app.app_context():
+        User.query.filter_by(email=CUSTOMER_EMAIL).first().is_keyholder = True
+        db.session.commit()
 
 
 def _order(app, seed, email='friend@example.com', user_id=None, number='PMKC-CC1'):
@@ -160,7 +169,7 @@ def test_first_earning_shows_a_one_time_welcome_in_the_made_club(app, seed):
     shopper = _signed_in(app)
     _share(shopper)
     html = shopper.get('/account/shared-designs').get_data(as_text=True)
-    assert 'The Made Club' in html and 'You are in.' not in html
+    assert 'The Backroom' in html and 'You are in.' not in html
     oid = _order(app, seed)
     with app.app_context():
         apply_stage(db.session.get(Order, oid), 'picked_up')

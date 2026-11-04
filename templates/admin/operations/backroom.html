@@ -1,0 +1,58 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}The Backroom - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Operations</span>
+<h1 class="ops-title">The Backroom</h1>
+<p class="ops-subtitle">Only keyholders earn {{ '%g'|format(rate) }}% store credit on orders through their shared designs. Anyone can still share a design and anyone can order from a link. You get an email each time a design is shared.</p>
+
+<div class="ops-card" style="max-width:760px;margin-bottom:1rem;">
+    <h2>Give someone a key</h2>
+    <form method="post" action="{{ url_for('admin.backroom_grant') }}" style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:flex-end;margin-top:0.5rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label style="display:flex;flex-direction:column;gap:0.25rem;font-weight:600;">Their account email
+            <input type="email" name="email" required style="min-width:18rem;">
+        </label>
+        <button type="submit" class="btn btn-primary">Give key</button>
+    </form>
+    <h3 style="margin-top:1.2rem;">Or make a one-time key code to send them</h3>
+    <p>They type it at the little keyhole at the bottom of the site, after signing in.</p>
+    <form method="post" action="{{ url_for('admin.backroom_code') }}" style="display:flex;gap:0.6rem;flex-wrap:wrap;align-items:flex-end;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label style="display:flex;flex-direction:column;gap:0.25rem;font-weight:600;">Who is it for (just for you)
+            <input type="text" name="note" maxlength="200" style="min-width:18rem;">
+        </label>
+        <button type="submit" class="btn btn-outline">Make a key code</button>
+    </form>
+    {% if unused %}
+    <table class="ops-table" style="margin-top:1rem;"><thead><tr><th>Key</th><th>For</th><th></th></tr></thead><tbody>
+        {% for c in unused %}<tr><td><strong>{{ c.pretty }}</strong></td><td>{{ c.note or '' }}</td>
+            <td><form method="post" action="{{ url_for('admin.backroom_code_delete', code_id=c.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-outline btn-sm">Delete</button></form></td></tr>{% endfor %}
+    </tbody></table>
+    {% endif %}
+</div>
+
+<div class="ops-card" style="max-width:760px;margin-bottom:1rem;">
+    <h2>Keyholders ({{ keyholders|length }})</h2>
+    {% if keyholders %}
+    <table class="ops-table"><thead><tr><th>Name</th><th>Email</th><th></th></tr></thead><tbody>
+        {% for u in keyholders %}<tr><td>{{ u.full_name or '' }}</td><td>{{ u.email }}</td>
+            <td><form method="post" action="{{ url_for('admin.backroom_revoke', user_id=u.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-outline btn-sm">Take key back</button></form></td></tr>{% endfor %}
+    </tbody></table>
+    {% else %}<p>No keyholders yet.</p>{% endif %}
+    {% if used %}<h3 style="margin-top:1rem;">Keys that were used</h3>
+    <table class="ops-table"><tbody>{% for c in used %}<tr><td>{{ c.pretty }}</td><td>{{ c.note or '' }}</td><td>{{ users[c.used_by_user_id].email if users.get(c.used_by_user_id) else '' }}</td><td>{{ c.used_at|kc_date('%b %-d, %Y') if c.used_at else '' }}</td></tr>{% endfor %}</tbody></table>{% endif %}
+</div>
+
+<div class="ops-card" style="max-width:760px;">
+    <h2>Shared designs</h2>
+    {% if shares %}
+    <table class="ops-table"><thead><tr><th>Shared</th><th>By</th><th>Design</th><th>Views</th><th>Orders</th><th>Earned</th></tr></thead><tbody>
+        {% for r in shares %}<tr>
+            <td>{{ r.share.created_at|kc_date('%b %-d') }}</td>
+            <td>{% if r.owner %}{{ r.owner.email }}{% if not r.owner.is_keyholder %} <small>(no key)</small>{% endif %}{% else %}Not signed in{% endif %}</td>
+            <td><a href="{{ url_for('made.view', token=r.share.token) }}" target="_blank" rel="noopener">{{ r.share.title }}</a></td>
+            <td>{{ r.share.views or 0 }}</td><td>{{ r.orders }}</td><td>{% if r.earned %}${{ '%.2f'|format(r.earned) }}{% else %}-{% endif %}</td></tr>{% endfor %}
+    </tbody></table>
+    {% else %}<p>Nothing shared yet.</p>{% endif %}
+</div>
+{% endblock %}

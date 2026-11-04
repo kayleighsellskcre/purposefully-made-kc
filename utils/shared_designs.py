@@ -53,7 +53,34 @@ def share_line(line, user=None):
                          title=(product.name if product else 'Custom shirt')[:200])
     db.session.add(share)
     db.session.commit()
+    notify_owner(share, user)
     return share, None
+
+
+def notify_owner(share, user):
+    """Tell the owner a design was just shared. Never raises: a mail problem must not stop the customer's share."""
+    try:
+        from flask import current_app, request
+        from flask_mail import Message
+
+        from utils import mailer
+        app = current_app._get_current_object()
+        link = request.url_root.rstrip('/') + '/made/' + share.token
+        if user is not None:
+            who = f"{(getattr(user, 'full_name', '') or '').strip() or user.email} <{user.email}>"
+            who += ' (a keyholder: earns credit)' if getattr(user, 'is_keyholder', False) else ' (not a keyholder: earns nothing)'
+        else:
+            who = 'Someone who is not signed in'
+        body = (f"A design was just shared.\n\nWho: {who}\nDesign: {share.title} in {share.line.get('color') or 'its color'}\n"
+                f"Link: {link}\n\nSee every shared design: {mailer.admin_base_url(app)}/admin/backroom\n")
+        mailer.send(app, Message(subject=f'Design shared: {share.title}', recipients=[mailer.admin_recipient(app)], body=body),
+                    'shared design alert')
+    except Exception:
+        try:
+            from flask import current_app
+            current_app.logger.exception('shared design alert failed')
+        except Exception:
+            pass
 
 
 def get_active(token):

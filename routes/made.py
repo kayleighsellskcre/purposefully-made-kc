@@ -5,7 +5,7 @@
   GET  /made/<token>                   the shared design: pick a size, add it to the cart
   GET  /made/<token>/qr.png            its QR code
 """
-from flask import Blueprint, Response, abort, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from models import OrderItem, SharedDesign, db
@@ -129,7 +129,7 @@ def mine():
         orders, pieces = SD.results(s)
         rows.append({'share': s, 'link': _link(s), 'orders': orders, 'pieces': pieces, 'earned': CC.earned_by_share(s.id)})
     reveal = None
-    if not current_user.club_reveal_seen:
+    if current_user.is_keyholder and not current_user.club_reveal_seen:
         first = CC.first_earned(current_user.id)
         if first is not None:
             reveal = first
@@ -137,6 +137,33 @@ def mine():
             db.session.commit()
     return render_template('account/shared_designs.html', rows=rows, credit=CC.balance(current_user.id),
                            credit_rate=CC.rate_percent(), use_credit=current_user.use_credit is not False, reveal=reveal)
+
+
+@made_bp.route('/backroom')
+def door():
+    """The unmarked door: a keyholder walks straight in, everyone else is asked for a key."""
+    if _user() is not None and current_user.is_keyholder:
+        return redirect(url_for('made.mine'))
+    return render_template('made/door.html')
+
+
+@made_bp.route('/backroom/unlock', methods=['POST'])
+@login_required
+def unlock():
+    from datetime import datetime
+
+    from models import KeyCode
+    code = KeyCode.clean(request.form.get('code'))
+    row = KeyCode.query.filter_by(code=code).first() if code else None
+    if row is None or row.used_by_user_id:
+        flash('That key does not fit this door.', 'error')
+        return redirect(url_for('made.door'))
+    row.used_by_user_id = current_user.id
+    row.used_at = datetime.utcnow()
+    current_user.is_keyholder = True
+    db.session.commit()
+    flash('Welcome to The Backroom. Keep this between us.', 'success')
+    return redirect(url_for('made.mine'))
 
 
 @made_bp.route('/account/store-credit/toggle', methods=['POST'])
