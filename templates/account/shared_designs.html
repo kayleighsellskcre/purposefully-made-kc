@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Shared Designs - Purposefully Made KC{% endblock %}
+{% block title %}The Made Club - Purposefully Made KC{% endblock %}
 {% block content %}
 <div class="account-page">
     <div class="container">
@@ -17,7 +17,7 @@
                     <a href="{{ url_for('account.my_designs') }}" class="account-nav-link">My Designs</a>
                     <a href="{{ url_for('custom_request.my_requests') }}" class="account-nav-link">My Requests</a>
                     <a href="{{ url_for('account.my_group_orders') }}" class="account-nav-link">My Group Orders</a>
-                    <a href="{{ url_for('made.mine') }}" class="account-nav-link active">Shared Designs</a>
+                    <a href="{{ url_for('made.mine') }}" class="account-nav-link active">The Made Club</a>
                     <a href="{{ url_for('account.addresses') }}" class="account-nav-link">Addresses</a>
                     <a href="{{ url_for('account.profile') }}" class="account-nav-link">Profile</a>
                     {% include 'includes/account_admin_link.html' %}
@@ -27,10 +27,13 @@
             <div class="account-content">
                 <div class="account-content-header">
                     <div>
-                        <span class="account-content-eyebrow">Account</span>
-                        <h1>Shared Designs</h1>
+                        <span class="account-content-eyebrow">Members only</span>
+                        <h1>The Made Club</h1>
                     </div>
                 </div>
+                {% if reveal %}
+                <div class="made-reveal" role="status"><strong>You are in.</strong> A design you shared just earned you <b>${{ '%.2f'|format(reveal.amount) }}</b> in store credit. It never expires, and it is yours to save or spend. Keep sharing quietly.</div>
+                {% endif %}
                 {% if rows or credit %}
                 <div class="made-credit"><span>Your store credit</span><strong>${{ '%.2f'|format(credit) }}</strong><small>You earn {{ '%g'|format(credit_rate) }}% of the shirt price on every order that comes through your link, once it is picked up or shipped. It never expires.</small>
                     <form method="post" action="{{ url_for('made.credit_toggle') }}" class="made-credit-use">
@@ -59,7 +62,7 @@
                     {% endfor %}
                 </div>
                 {% else %}
-                <p class="made-note">Nothing shared yet. Put a design in your cart, or open a past order, and choose <strong>Share this design</strong>.</p>
+                <p class="made-note">Nothing shared yet. Put a design in your cart, or open a past order, and choose <strong>Share this design</strong>. Pass the link along to a friend and you earn store credit when they order.</p>
                 {% endif %}
             </div>
         </div>

@@ -17,6 +17,7 @@ class User(UserMixin, db.Model):
     phone = db.Column(db.String(20))
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    club_reveal_seen = db.Column(db.Boolean, default=False)   # has been shown the one-time Made Club welcome after first earning
     use_credit = db.Column(db.Boolean, default=True)           # spend earned store credit automatically at checkout
 
     # Brute-force lockout: track consecutive bad passwords

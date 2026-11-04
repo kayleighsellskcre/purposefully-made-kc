@@ -31,6 +31,12 @@ def balance(user_id):
     return _sum(CreditEntry.user_id == user_id)
 
 
+def first_earned(user_id):
+    """The first credit this person earned from a shared design (for the one-time welcome), or None."""
+    return (CreditEntry.query.filter_by(user_id=user_id, kind='earned')
+            .order_by(CreditEntry.created_at, CreditEntry.id).first())
+
+
 def earned_by_share(share_id):
     return _sum(CreditEntry.shared_design_id == share_id, CreditEntry.kind.in_(['earned', 'reversed']))
 

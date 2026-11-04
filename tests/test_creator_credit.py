@@ -153,3 +153,18 @@ def test_the_order_page_and_emails_show_the_store_credit_line(app, seed):
     assert page.status_code == 200
     html = page.get_data(as_text=True)
     assert 'Store credit' in html and '-$10.00' in html and '$50.00' in html
+
+
+def test_first_earning_shows_a_one_time_welcome_in_the_made_club(app, seed):
+    _set_cart(app, CUSTOMER_EMAIL, [_line(seed)])
+    shopper = _signed_in(app)
+    _share(shopper)
+    html = shopper.get('/account/shared-designs').get_data(as_text=True)
+    assert 'The Made Club' in html and 'You are in.' not in html
+    oid = _order(app, seed)
+    with app.app_context():
+        apply_stage(db.session.get(Order, oid), 'picked_up')
+        db.session.commit()
+    first = shopper.get('/account/shared-designs').get_data(as_text=True)
+    assert 'You are in.' in first and '$2.00' in first
+    assert 'You are in.' not in shopper.get('/account/shared-designs').get_data(as_text=True)

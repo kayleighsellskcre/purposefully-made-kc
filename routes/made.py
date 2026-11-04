@@ -128,8 +128,15 @@ def mine():
     for s in shares:
         orders, pieces = SD.results(s)
         rows.append({'share': s, 'link': _link(s), 'orders': orders, 'pieces': pieces, 'earned': CC.earned_by_share(s.id)})
+    reveal = None
+    if not current_user.club_reveal_seen:
+        first = CC.first_earned(current_user.id)
+        if first is not None:
+            reveal = first
+            current_user.club_reveal_seen = True
+            db.session.commit()
     return render_template('account/shared_designs.html', rows=rows, credit=CC.balance(current_user.id),
-                           credit_rate=CC.rate_percent(), use_credit=current_user.use_credit is not False)
+                           credit_rate=CC.rate_percent(), use_credit=current_user.use_credit is not False, reveal=reveal)
 
 
 @made_bp.route('/account/store-credit/toggle', methods=['POST'])
