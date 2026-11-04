@@ -38,6 +38,12 @@
             {% for c in group %}{{ store_card(c, accent) }}{% endfor %}
         </div>
         {% endfor %}
+        {% if vote_designs %}
+        <h2 class="dist-level-title" id="favorites">Our favorite designs</h2>
+        <div class="org-fav-grid">
+            {% for u in vote_designs %}<span class="org-fav"><img src="{{ u }}" alt="Favorite design {{ loop.index }}" loading="lazy" decoding="async"></span>{% endfor %}
+        </div>
+        {% endif %}
         {% if not spirit and not sections and not sponsored %}
         <p class="dist-empty">Stores are opening soon. Check back shortly.</p>
         {% endif %}

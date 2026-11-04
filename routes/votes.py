@@ -29,9 +29,22 @@ def _mine_or_404(token):
     return poll
 
 
+def _org_for_new():
+    """A vote made for a group (admins only): /vote/new?org=<slug>."""
+    slug = request.values.get('org')
+    if not slug or not getattr(current_user, 'is_admin', False):
+        return None
+    from models import Organization
+    org = Organization.query.filter_by(slug=slug).first()
+    if org is None:
+        abort(404)
+    return org
+
+
 @votes_bp.route('/vote/new', methods=['GET', 'POST'])
 @login_required
 def new():
+    org = _org_for_new()
     if request.method == 'POST':
         title = (request.form.get('title') or '').strip()
         files = [f for f in request.files.getlist('pictures') if f and f.filename]
@@ -46,11 +59,11 @@ def new():
             error = 'Pictures need to be PNG, JPG, WEBP or GIF files.'
         if error:
             flash(error, 'error')
-            return render_template('vote/new.html', title=title, note=request.form.get('note', '')), 400
+            return render_template('vote/new.html', title=title, note=request.form.get('note', ''), org=org), 400
         urls = [store_upload(f, 'votes', 'vote') for f in files]
-        poll = V.create_poll(current_user, title, request.form.get('note'), urls)
+        poll = V.create_poll(current_user, title, request.form.get('note'), urls, org=org)
         return redirect(url_for('votes.results', token=poll.token, made=1))
-    return render_template('vote/new.html', title='', note='')
+    return render_template('vote/new.html', title=(f'{org.name} design vote' if org else ''), note='', org=org)
 
 
 @votes_bp.route('/vote/<token>', methods=['GET', 'POST'])
@@ -83,6 +96,19 @@ def qr(token):
 def results(token):
     poll = _mine_or_404(token)
     return render_template('vote/results.html', poll=poll, link=_link(poll), rows=V.tally(poll), made=bool(request.args.get('made')))
+
+
+@votes_bp.route('/vote/<token>/winners', methods=['POST'])
+@login_required
+def winners(token):
+    poll = _mine_or_404(token)
+    if poll.org_id is None:
+        abort(404)
+    top = request.form.get('top', type=int)
+    n = V.set_on_page(poll, request.form.getlist('on_page'), top=top if top in (1, 2, 3, 4, 5, 6) else None)
+    flash(f'{n} design{"" if n == 1 else "s"} now show on the {poll.organization.name} page.' if n else
+          f'No designs are showing on the {poll.organization.name} page.', 'success')
+    return redirect(url_for('votes.results', token=poll.token))
 
 
 @votes_bp.route('/vote/<token>/toggle', methods=['POST'])

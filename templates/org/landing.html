@@ -218,6 +218,16 @@
         <p class="org-empty">This group store is being set up. Check back soon!</p>
     {% endif %}
 
+        {% if vote_designs %}
+        <div class="org-section-head org-favs">
+            <span class="eyebrow">Voted by our families</span>
+            <h2>Our Favorite Designs</h2>
+        </div>
+        <div class="org-fav-grid">
+            {% for u in vote_designs %}<span class="org-fav"><img src="{{ u }}" alt="Favorite design {{ loop.index }}" loading="lazy" decoding="async"></span>{% endfor %}
+        </div>
+        {% endif %}
+
         <p class="org-footer-note">Questions? <a href="{{ url_for('main.contact') }}">Contact us</a> anytime.</p>
     </div>
 </section>

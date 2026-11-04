@@ -173,6 +173,15 @@
         {% endif %}
     </section>
 
+    {% if is_admin %}
+    <section class="om-card">
+        <h2>Design vote</h2>
+        <p class="om-sub">Let families vote on designs. They only type their name, no account. You pick the winners and they appear on this group's page.</p>
+        <p><a class="btn btn-primary btn-sm" href="{{ url_for('votes.new', org=org.slug) }}">Start a design vote</a></p>
+        {% for p in org.vote_polls %}<p><a href="{{ url_for('votes.results', token=p.token) }}">{{ p.title }}</a> ({{ p.responses|length }} vote{{ '' if p.responses|length == 1 else 's' }})</p>{% endfor %}
+    </section>
+    {% endif %}
+
     {# ── 2. Look ──────────────────────────────────────────────── #}
     <form method="post" enctype="multipart/form-data" class="om-card">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

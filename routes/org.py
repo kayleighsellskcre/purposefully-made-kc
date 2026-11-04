@@ -193,6 +193,14 @@ def _apply_photo_changes(org):
 
 # ── public: landing page ──────────────────────────────────────────────────────
 
+def _vote_designs(org):
+    try:
+        from utils import votes as V
+        return V.page_designs(org)
+    except Exception:
+        return []
+
+
 @org_bp.route('/org/<slug>')
 def landing(slug):
     from models import District
@@ -243,6 +251,7 @@ def landing(slug):
                            section_art=section_art, fan_art=fan_art,
                            hero_photos=[p['url'] for p in org_photos(org) if p['hero'] and not p['hidden']],
                            fan_wear_url=fan_wear_url, welcome=welcome,
+                           vote_designs=_vote_designs(org),
                            lead_collection=lead,
                            lead_not_open=bool(lead and is_not_yet_open(lead)))
 

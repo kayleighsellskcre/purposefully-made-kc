@@ -7,7 +7,7 @@ import secrets
 
 from models import VoteChoice, VoteOption, VotePoll, VoteResponse, db
 
-MAX_PICTURES = 12
+MAX_PICTURES = 60
 MIN_PICTURES = 2
 IMAGE_TYPES = ('png', 'jpg', 'jpeg', 'webp', 'gif')
 
@@ -25,8 +25,9 @@ def is_picture(file_storage):
     return '.' in name and name.rsplit('.', 1)[-1] in IMAGE_TYPES
 
 
-def create_poll(user, title, note, urls):
-    poll = VotePoll(token=new_token(), user_id=user.id, title=title.strip()[:200], note=(note or '').strip()[:500] or None)
+def create_poll(user, title, note, urls, org=None):
+    poll = VotePoll(token=new_token(), user_id=user.id, title=title.strip()[:200], note=(note or '').strip()[:500] or None,
+                    org_id=org.id if org is not None else None)
     for i, url in enumerate(urls):
         poll.options.append(VoteOption(image_url=url, position=i + 1))
     db.session.add(poll)
@@ -87,3 +88,34 @@ def csv_text(poll):
     for row in tally(poll):
         w.writerow([row['number'], row['count']])
     return out.getvalue()
+
+
+def set_on_page(poll, option_ids=None, top=None):
+    """Choose which designs of a group's vote show on the group's page. Either the ticked ids or the top N by votes."""
+    if top:
+        chosen = {r['option'].id for r in tally(poll)[:top] if r['count'] > 0}
+    else:
+        valid = {o.id for o in poll.options}
+        chosen = set()
+        for raw in option_ids or []:
+            try:
+                oid = int(raw)
+            except (TypeError, ValueError):
+                continue
+            if oid in valid:
+                chosen.add(oid)
+    for o in poll.options:
+        o.on_page = o.id in chosen
+    db.session.commit()
+    return len(chosen)
+
+
+def page_designs(org):
+    """The chosen designs for a group's page, best-voted first."""
+    from models import VoteOption, VotePoll
+    out = []
+    polls = VotePoll.query.filter_by(org_id=org.id).order_by(VotePoll.created_at.desc()).all()
+    for poll in polls:
+        rows = [r for r in tally(poll) if r['option'].on_page]
+        out.extend(r['option'].image_url for r in rows)
+    return out

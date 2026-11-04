@@ -1,11 +1,15 @@
 {% extends "base.html" %}
 {% block title %}{{ poll.title }} - Vote{% endblock %}
 {% block content %}
+<div class="page-header">
+    <div class="container">
+        <span class="eyebrow">{{ poll.organization.name if poll.organization else 'Vote' }}</span>
+        <h1>{{ poll.title }}</h1>
+        {% if poll.note %}<p class="lead">{{ poll.note }}</p>{% endif %}
+    </div>
+</div>
 <section class="vote-page">
     <div class="vote-wrap vote-wide">
-        <span class="vote-eyebrow">Vote</span>
-        <h1>{{ poll.title }}</h1>
-        {% if poll.note %}<p class="vote-lead">{{ poll.note }}</p>{% endif %}
         {% if sent %}
         <div class="vote-card vote-thanks">
             <h2>Thank you, your vote is in</h2>

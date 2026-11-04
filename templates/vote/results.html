@@ -1,11 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Results - {{ poll.title }}{% endblock %}
 {% block content %}
+<div class="page-header">
+    <div class="container">
+        <span class="eyebrow">Results</span>
+        <h1>{{ poll.title }}</h1>
+        {% if made %}<p class="lead">Your vote is ready. Send this link to the people you want to hear from.</p>{% endif %}
+    </div>
+</div>
 <section class="vote-page">
     <div class="vote-wrap vote-wide">
-        <span class="vote-eyebrow">Results</span>
-        <h1>{{ poll.title }}</h1>
-        {% if made %}<p class="vote-lead">Your vote is ready. Send this link to the people you want to hear from.</p>{% endif %}
         <div class="vote-card vote-share">
             <label class="vote-label" for="voteLink">Link to send</label>
             <div class="vote-link-row">
@@ -24,15 +28,29 @@
                 </div>
             </div>
         </div>
+        {% if poll.organization %}
+        <form method="post" action="{{ url_for('votes.winners', token=poll.token) }}" id="winnersForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="vote-card vote-pick">
+                <p class="vote-fine"><strong>Choose the winners.</strong> Tick the designs to show on the <a href="{{ url_for('org.landing', slug=poll.organization.slug) }}">{{ poll.organization.name }}</a> page, then save. Or let the votes decide.</p>
+                <div class="vote-actions">
+                    <button class="btn btn-primary btn-sm" type="submit">Save my picks</button>
+                    <button class="btn btn-secondary btn-sm" type="submit" name="top" value="3">Use the top 3</button>
+                    <button class="btn btn-secondary btn-sm" type="submit" name="top" value="6">Use the top 6</button>
+                </div>
+            </div>
+        {% endif %}
         <div class="vote-grid vote-results">
             {% for r in rows %}
             <div class="vote-option vote-result">
                 <span class="vote-option-art"><img src="{{ r.option.image_url }}" alt="Design {{ r.number }}" loading="lazy"></span>
                 <span class="vote-option-bar"><b>{{ r.number }}</b><i>{{ r.count }} vote{{ '' if r.count == 1 else 's' }}</i></span>
                 {% if r.names %}<span class="vote-names">{{ r.names|join(', ') }}</span>{% endif %}
+                {% if poll.organization %}<label class="vote-onpage"><input type="checkbox" name="on_page" value="{{ r.option.id }}"{% if r.option.on_page %} checked{% endif %}> Show on group page</label>{% endif %}
             </div>
             {% endfor %}
         </div>
+        {% if poll.organization %}</form>{% endif %}
         {% if poll.responses %}
         <h2 class="vote-h2">Who voted</h2>
         <div class="vote-card">

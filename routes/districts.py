@@ -68,6 +68,14 @@ def _district_or_404(slug):
     return d
 
 
+def _vote_designs(org):
+    try:
+        from utils import votes as V
+        return V.page_designs(org)
+    except Exception:
+        return []
+
+
 def district_page(d):
     """Page 1: every school in the district, grouped by level."""
     g.nav_here = 'schools'                      # the menu keeps Schools lit on a district page
@@ -107,7 +115,7 @@ def school_page(district_slug, school_slug):
                            sections=[(kind, heading, [card(s) for s in group]) for kind, heading, group in sections],
                            deadline=DS.school_deadline(school),
                            share=DS.share_info(school), level_heading=DS.level_heading(school), accent=DS.accent(school), accent2=DS.accent2(school),
-                           tagline=DS.SPIRIT_TAGLINE)
+                           tagline=DS.SPIRIT_TAGLINE, vote_designs=_vote_designs(school))
 
 
 # ── short links ───────────────────────────────────────────────────────────────────────────

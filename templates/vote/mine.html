@@ -1,10 +1,14 @@
 {% extends "base.html" %}
 {% block title %}My Votes - Purposefully Made KC{% endblock %}
 {% block content %}
+<div class="page-header">
+    <div class="container">
+        <span class="eyebrow">Account</span>
+        <h1>My votes</h1>
+    </div>
+</div>
 <section class="vote-page">
     <div class="vote-wrap">
-        <span class="vote-eyebrow">Account</span>
-        <h1>My votes</h1>
         <p><a class="btn btn-primary btn-sm" href="{{ url_for('votes.new') }}">Take a new vote</a></p>
         {% for p in polls %}
         <a class="vote-card vote-row" href="{{ url_for('votes.results', token=p.token) }}">

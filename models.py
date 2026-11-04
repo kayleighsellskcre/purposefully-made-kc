@@ -1673,7 +1673,9 @@ class VotePoll(db.Model):
     title = db.Column(db.String(200), nullable=False)
     note = db.Column(db.String(500))
     is_open = db.Column(db.Boolean, default=True)
+    org_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=True, index=True)   # the group this vote is for
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    organization = db.relationship('Organization', backref='vote_polls')
     options = db.relationship('VoteOption', backref='poll', cascade='all, delete-orphan', order_by='VoteOption.position')
     responses = db.relationship('VoteResponse', backref='poll', cascade='all, delete-orphan', order_by='VoteResponse.created_at')
 
@@ -1684,6 +1686,7 @@ class VoteOption(db.Model):
     poll_id = db.Column(db.Integer, db.ForeignKey('vote_poll.id'), nullable=False, index=True)
     image_url = db.Column(db.String(500), nullable=False)
     position = db.Column(db.Integer, default=0)
+    on_page = db.Column(db.Boolean, default=False)       # chosen to show on the group's page
 
 
 class VoteResponse(db.Model):

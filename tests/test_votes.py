@@ -103,3 +103,57 @@ def test_closed_vote_takes_no_more_votes(app, maker):
     ids = _poll(app, token)
     maker.post(f'/vote/{token}/toggle')
     assert app.test_client().post(f'/vote/{token}', data={'voter_name': 'Sam', 'pick': ids[0]}).status_code == 400
+
+
+# ── group votes: voters type a name, the owner picks winners, winners appear on the group page ──
+def _admin(app):
+    from tests.conftest import ADMIN_EMAIL
+    c = app.test_client()
+    assert _login(c, ADMIN_EMAIL).status_code == 200
+    return c
+
+
+def _group(app):
+    from models import Organization
+    with app.app_context():
+        db.session.add(Organization(name='Mill Valley Cheer', slug='mill-valley-cheer', is_active=True))
+        db.session.commit()
+
+
+def test_group_vote_winners_show_on_the_group_page(app, seed):
+    _group(app)
+    admin = _admin(app)
+    data = {'title': 'Cheer designs', 'org': 'mill-valley-cheer', 'pictures': [(_png((i * 40, 10, 10)), f'd{i}.png') for i in range(4)]}
+    resp = admin.post('/vote/new?org=mill-valley-cheer', data=data, content_type='multipart/form-data')
+    assert resp.status_code == 302
+    token = resp.headers['Location'].split('/vote/')[1].split('/')[0]
+    with app.app_context():
+        assert VotePoll.query.filter_by(token=token).one().org_id is not None
+    ids = _poll(app, token)
+    assert len(ids) == 4
+    assert 'Mill Valley Cheer' in app.test_client().get(f'/vote/{token}').get_data(as_text=True)
+    for name, picks in (('Ann', ids[2:3]), ('Bo', ids[2:4]), ('Cy', ids[3:4])):          # no account, just a name
+        c = app.test_client()
+        r = c.post(f'/vote/{token}', data={'voter_name': name, 'pick': [str(i) for i in picks]})
+        assert r.status_code == 302
+    public = app.test_client()
+    assert 'Our Favorite Designs' not in public.get('/org/mill-valley-cheer').get_data(as_text=True)
+    admin.post(f'/vote/{token}/winners', data={'top': '1'})
+    with app.app_context():
+        from models import VoteOption
+        on = [o.id for o in VoteOption.query.filter_by(on_page=True).all()]
+        assert len(on) == 1
+    page = public.get('/org/mill-valley-cheer').get_data(as_text=True)
+    assert 'Our Favorite Designs' in page and page.count('class="org-fav"') == 1
+    admin.post(f'/vote/{token}/winners', data={'on_page': [str(ids[0]), str(ids[1])]})
+    assert public.get('/org/mill-valley-cheer').get_data(as_text=True).count('class="org-fav"') == 2
+
+
+def test_only_the_owner_can_tie_a_vote_to_a_group(app, seed, maker):
+    _group(app)
+    data = {'title': 'x', 'pictures': [(_png((i * 40, 10, 10)), f'd{i}.png') for i in range(2)]}
+    resp = maker.post('/vote/new?org=mill-valley-cheer', data=data, content_type='multipart/form-data')
+    token = resp.headers['Location'].split('/vote/')[1].split('/')[0]
+    with app.app_context():
+        assert VotePoll.query.filter_by(token=token).one().org_id is None
+    assert maker.post(f'/vote/{token}/winners', data={'top': '1'}).status_code == 404
