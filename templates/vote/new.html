@@ -12,7 +12,7 @@
     <div class="vote-wrap">
         <form method="post" enctype="multipart/form-data" class="vote-card" id="voteNewForm">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            {% if org %}<input type="hidden" name="org" value="{{ org.slug }}">{% endif %}
+            {% if org %}<input type="hidden" name="{{ 'org' if org.slug is defined and org.__class__.__name__ == 'Organization' else 'collection' }}" value="{{ org.slug if org.__class__.__name__ == 'Organization' else org.id }}">{% endif %}
             <label class="vote-label" for="voteTitle">Name of this vote</label>
             <input class="vote-input" id="voteTitle" name="title" type="text" maxlength="200" required value="{{ title }}" placeholder="Example: Falcons shirt design">
             <label class="vote-label" for="voteNote">A short note for voters <small>(optional)</small></label>

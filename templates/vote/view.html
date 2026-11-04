@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-header">
     <div class="container">
-        <span class="eyebrow">{{ poll.organization.name if poll.organization else 'Vote' }}</span>
+        <span class="eyebrow">{{ poll.group.name if poll.group else 'Vote' }}</span>
         <h1>{{ poll.title }}</h1>
         {% if poll.note %}<p class="lead">{{ poll.note }}</p>{% endif %}
     </div>

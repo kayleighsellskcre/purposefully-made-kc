@@ -157,3 +157,21 @@ def test_only_the_owner_can_tie_a_vote_to_a_group(app, seed, maker):
     with app.app_context():
         assert VotePoll.query.filter_by(token=token).one().org_id is None
     assert maker.post(f'/vote/{token}/winners', data={'top': '1'}).status_code == 404
+
+
+def test_a_team_store_vote_shows_winners_on_that_team_page_and_the_edit_page_has_the_button(app, seed):
+    from models import Collection
+    admin = _admin(app)
+    with app.app_context():
+        cid = Collection.query.first().id
+        slug = Collection.query.first().slug
+    edit = admin.get(f'/admin/collections/{cid}/edit').get_data(as_text=True)
+    assert f'/vote/new?collection={cid}' in edit and 'Start a design vote' in edit
+    data = {'title': 'Team designs', 'collection': str(cid), 'pictures': [(_png((i * 40, 10, 10)), f'd{i}.png') for i in range(3)]}
+    resp = admin.post(f'/vote/new?collection={cid}', data=data, content_type='multipart/form-data')
+    token = resp.headers['Location'].split('/vote/')[1].split('/')[0]
+    ids = _poll(app, token)
+    app.test_client().post(f'/vote/{token}', data={'voter_name': 'Ann', 'pick': [str(ids[1])]})
+    admin.post(f'/vote/{token}/winners', data={'top': '1'})
+    r = app.test_client().get(f'/c/{slug}'); page = r.get_data(as_text=True)
+    assert 'Our Favorite Designs' in page and page.count('class="org-fav"') == 1

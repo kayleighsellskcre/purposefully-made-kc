@@ -1675,7 +1675,18 @@ class VotePoll(db.Model):
     is_open = db.Column(db.Boolean, default=True)
     org_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=True, index=True)   # the group this vote is for
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    collection_id = db.Column(db.Integer, db.ForeignKey('collection.id'), nullable=True, index=True)   # or one team store
     organization = db.relationship('Organization', backref='vote_polls')
+    collection = db.relationship('Collection', backref='vote_polls')
+
+    @property
+    def group(self):
+        """The group (school group or single team store) whose page shows the chosen designs."""
+        return self.organization or self.collection
+
+    @property
+    def group_endpoint(self):
+        return ('org.landing', {'slug': self.organization.slug}) if self.organization else ('collection.view', {'slug': self.collection.slug})
     options = db.relationship('VoteOption', backref='poll', cascade='all, delete-orphan', order_by='VoteOption.position')
     responses = db.relationship('VoteResponse', backref='poll', cascade='all, delete-orphan', order_by='VoteResponse.created_at')
 

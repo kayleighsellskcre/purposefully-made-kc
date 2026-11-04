@@ -28,11 +28,11 @@
                 </div>
             </div>
         </div>
-        {% if poll.organization %}
+        {% if poll.group %}
         <form method="post" action="{{ url_for('votes.winners', token=poll.token) }}" id="winnersForm">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="vote-card vote-pick">
-                <p class="vote-fine"><strong>Choose the winners.</strong> Tick the designs to show on the <a href="{{ url_for('org.landing', slug=poll.organization.slug) }}">{{ poll.organization.name }}</a> page, then save. Or let the votes decide.</p>
+                <p class="vote-fine"><strong>Choose the winners.</strong> Tick the designs to show on the <a href="{{ url_for(poll.group_endpoint[0], **poll.group_endpoint[1]) }}">{{ poll.group.name }}</a> page, then save. Or let the votes decide.</p>
                 <div class="vote-actions">
                     <button class="btn btn-primary btn-sm" type="submit">Save my picks</button>
                     <button class="btn btn-secondary btn-sm" type="submit" name="top" value="3">Use the top 3</button>
@@ -46,11 +46,11 @@
                 <span class="vote-option-art"><img src="{{ r.option.image_url }}" alt="Design {{ r.number }}" loading="lazy"></span>
                 <span class="vote-option-bar"><b>{{ r.number }}</b><i>{{ r.count }} vote{{ '' if r.count == 1 else 's' }}</i></span>
                 {% if r.names %}<span class="vote-names">{{ r.names|join(', ') }}</span>{% endif %}
-                {% if poll.organization %}<label class="vote-onpage"><input type="checkbox" name="on_page" value="{{ r.option.id }}"{% if r.option.on_page %} checked{% endif %}> Show on group page</label>{% endif %}
+                {% if poll.group %}<label class="vote-onpage"><input type="checkbox" name="on_page" value="{{ r.option.id }}"{% if r.option.on_page %} checked{% endif %}> Show on group page</label>{% endif %}
             </div>
             {% endfor %}
         </div>
-        {% if poll.organization %}</form>{% endif %}
+        {% if poll.group %}</form>{% endif %}
         {% if poll.responses %}
         <h2 class="vote-h2">Who voted</h2>
         <div class="vote-card">

@@ -308,8 +308,9 @@ def view(slug):
             pass  # fall back to collection's own showcase_designs
         design_picker = []
 
+    from routes.org import _vote_designs
     return render_template('collection/view.html',
-                         collection=collection,
+                         collection=collection, vote_designs=_vote_designs(collection),
                          products=products,
                          product_families=product_families,
                          age_matching_note=age_matching_note,

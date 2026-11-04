@@ -26,8 +26,11 @@ def is_picture(file_storage):
 
 
 def create_poll(user, title, note, urls, org=None):
+    collection = None
+    if org is not None and org.__class__.__name__ == 'Collection':
+        org, collection = None, org
     poll = VotePoll(token=new_token(), user_id=user.id, title=title.strip()[:200], note=(note or '').strip()[:500] or None,
-                    org_id=org.id if org is not None else None)
+                    org_id=org.id if org is not None else None, collection_id=collection.id if collection is not None else None)
     for i, url in enumerate(urls):
         poll.options.append(VoteOption(image_url=url, position=i + 1))
     db.session.add(poll)
@@ -114,7 +117,8 @@ def page_designs(org):
     """The chosen designs for a group's page, best-voted first."""
     from models import VoteOption, VotePoll
     out = []
-    polls = VotePoll.query.filter_by(org_id=org.id).order_by(VotePoll.created_at.desc()).all()
+    key = 'collection_id' if org.__class__.__name__ == 'Collection' else 'org_id'
+    polls = VotePoll.query.filter_by(**{key: org.id}).order_by(VotePoll.created_at.desc()).all()
     for poll in polls:
         rows = [r for r in tally(poll) if r['option'].on_page]
         out.extend(r['option'].image_url for r in rows)

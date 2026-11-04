@@ -31,8 +31,13 @@ def _mine_or_404(token):
 
 def _org_for_new():
     """A vote made for a group (admins only): /vote/new?org=<slug>."""
+    if not getattr(current_user, 'is_admin', False):
+        return None
+    if request.values.get('collection', type=int):
+        from models import Collection
+        return db.get_or_404(Collection, request.values.get('collection', type=int))
     slug = request.values.get('org')
-    if not slug or not getattr(current_user, 'is_admin', False):
+    if not slug:
         return None
     from models import Organization
     org = Organization.query.filter_by(slug=slug).first()
@@ -102,12 +107,12 @@ def results(token):
 @login_required
 def winners(token):
     poll = _mine_or_404(token)
-    if poll.org_id is None:
+    if poll.group is None:
         abort(404)
     top = request.form.get('top', type=int)
     n = V.set_on_page(poll, request.form.getlist('on_page'), top=top if top in (1, 2, 3, 4, 5, 6) else None)
-    flash(f'{n} design{"" if n == 1 else "s"} now show on the {poll.organization.name} page.' if n else
-          f'No designs are showing on the {poll.organization.name} page.', 'success')
+    flash(f'{n} design{"" if n == 1 else "s"} now show on the {poll.group.name} page.' if n else
+          f'No designs are showing on the {poll.group.name} page.', 'success')
     return redirect(url_for('votes.results', token=poll.token))
 
 

@@ -940,6 +940,20 @@
     </div>
 </section>
 
+{% if vote_designs %}
+<section class="design-board-favs">
+    <div class="container">
+        <div class="org-section-head org-favs">
+            <span class="eyebrow">Voted by our families</span>
+            <h2>Our Favorite Designs</h2>
+        </div>
+        <div class="org-fav-grid">
+            {% for u in vote_designs %}<span class="org-fav"><img src="{{ u }}" alt="Favorite design {{ loop.index }}" loading="lazy" decoding="async"></span>{% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
 {% if design_picker %}
 <section class="store-picker-wrap">
     <div class="container">

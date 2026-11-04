@@ -13,6 +13,9 @@
             {% else %}
             <div class="admin-header-actions">
                 <a href="{{ url_for('admin.logo_chart', collection=collection.id) }}" class="btn btn-primary">Logo chart</a>
+                {% set vote_polls = collection.vote_polls %}
+                <a href="{{ url_for('votes.new', collection=collection.id) }}" class="btn btn-primary">Start a design vote</a>
+                {% for vp in vote_polls %}<a href="{{ url_for('votes.results', token=vp.token) }}" class="btn btn-outline">Vote: {{ vp.title }} ({{ vp.responses|length }})</a>{% endfor %}
                 <a href="{{ url_for('admin.collections') }}" class="btn btn-outline">Back to Group Orders</a>
             </div>
             {% endif %}
