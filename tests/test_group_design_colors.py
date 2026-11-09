@@ -102,3 +102,9 @@ def test_edit_page_shows_make_main_and_delete_on_colors(app, seed, admin_client)
     _all_ids(app, seed, [main_id] + kid_ids)
     html = admin_client.get(f'/admin/collections/{seed["collection_id"]}/edit').get_data(as_text=True)
     assert 'Make main' in html and f'removeColor{kid_ids[0]}' in html
+
+
+def test_edit_page_lists_colors_even_when_only_the_main_is_on_the_group_list(app, seed, admin_client):
+    main_id, kid_ids = _family(app, seed)          # the group's own list holds only the main design
+    html = admin_client.get(f'/admin/collections/{seed["collection_id"]}/edit').get_data(as_text=True)
+    assert 'Make main' in html and f'removeColor{kid_ids[1]}' in html

@@ -2042,6 +2042,15 @@ def designs_for_group_order_form(collection, user=None):
         shown.append(design)
     for design in shown:
         design.linked_colors = getattr(design, 'linked_colors', [])
+    # Colors linked to a design but not on this group's own list still belong to it (shoppers see them), so list
+    # them too: otherwise the only thing the owner can delete or reorder here is the whole design.
+    if shown:
+        listed = {c.id for d in shown for c in d.linked_colors} | set(by_id)
+        extra = Design.query.filter(Design.parent_design_id.in_([d.id for d in shown])).order_by(Design.id).all()
+        by_parent = {d.id: d for d in shown}
+        for child in extra:
+            if child.id not in listed and child.parent_design_id in by_parent:
+                by_parent[child.parent_design_id].linked_colors.append(child)
     return shown
 
 
