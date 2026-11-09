@@ -770,6 +770,25 @@ def edit_group_order(slug):
     )
 
 
+@shop_bp.route('/group-orders/<slug>/designs/<int:design_id>/make-main', methods=['POST'])
+@login_required
+def group_order_make_main(slug, design_id):
+    """The organizer picks which color of a design shoppers see first."""
+    from utils.group_designs import _ids, make_main
+    from utils.group_orders import user_can_manage_collection
+    collection = Collection.query.filter_by(slug=slug).first_or_404()
+    if not user_can_manage_collection(collection):
+        abort(403)
+    design = Design.query.get_or_404(design_id)
+    allowed = _ids(collection.allowed_design_ids)
+    if not design.parent_design_id or not (design.id in allowed or design.parent_design_id in allowed):
+        abort(404)                                  # only a color of a design this group offers
+    if make_main(collection, design):
+        db.session.commit()
+        flash('That color is now the main picture.', 'success')
+    return redirect(url_for('shop.edit_group_order', slug=slug))
+
+
 MAX_GALLERY_CARDS = 300
 
 

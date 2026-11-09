@@ -108,3 +108,22 @@ def test_edit_page_lists_colors_even_when_only_the_main_is_on_the_group_list(app
     main_id, kid_ids = _family(app, seed)          # the group's own list holds only the main design
     html = admin_client.get(f'/admin/collections/{seed["collection_id"]}/edit').get_data(as_text=True)
     assert 'Make main' in html and f'removeColor{kid_ids[1]}' in html
+
+
+def test_organizer_route_picks_the_main_color_and_a_stranger_is_refused(app, seed, client, customer_client):
+    main_id, kid_ids = _family(app, seed)
+    _all_ids(app, seed, [main_id] + kid_ids)
+    url = f'/shop/group-orders/{seed["collection_slug"]}/designs/{kid_ids[0]}/make-main'
+    assert customer_client.post(url).status_code == 403
+    with app.app_context():
+        assert db.session.get(Design, kid_ids[0]).parent_design_id == main_id
+
+
+def test_organizer_route_works_for_the_owner(app, seed, admin_client):
+    main_id, kid_ids = _family(app, seed)
+    _all_ids(app, seed, [main_id] + kid_ids)
+    resp = admin_client.post(f'/shop/group-orders/{seed["collection_slug"]}/designs/{kid_ids[1]}/make-main')
+    assert resp.status_code == 302
+    with app.app_context():
+        assert db.session.get(Design, kid_ids[1]).parent_design_id is None
+        assert db.session.get(Design, main_id).parent_design_id == kid_ids[1]
