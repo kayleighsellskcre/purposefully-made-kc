@@ -218,7 +218,11 @@
                                 <span class="linked-color">
                                     <img src="{{ c.file_path | image_url }}" alt="{{ c.variant_label or 'Color' }}" loading="lazy" decoding="async">
                                     <span>{{ c.variant_label or 'Color' }}</span>
-                                    {% if not is_user_edit %}<button type="submit" form="unlinkDesign{{ c.id }}" title="Make this its own design again" aria-label="Unlink {{ c.variant_label or 'color' }}">&times;</button>{% endif %}
+                                    {% if not is_user_edit %}
+                                    <button type="submit" form="mainDesign{{ c.id }}" class="linked-color-main" title="Make this the main picture" style="font-size:11px;padding:2px 6px;">Make main</button>
+                                    <button type="submit" form="unlinkDesign{{ c.id }}" title="Make this its own design again" aria-label="Unlink {{ c.variant_label or 'color' }}">&times;</button>
+                                    <button type="submit" form="removeColor{{ c.id }}" title="Delete this color" aria-label="Delete {{ c.variant_label or 'color' }}" onclick="return confirm('Delete this color? The other colors stay.')" style="color:#dc2626;">&#128465;</button>
+                                    {% endif %}
                                 </span>
                                 {% endfor %}
                             </div>
@@ -618,6 +622,14 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         </form>
         {% for d in gallery_designs or [] %}{% for c in d.linked_colors or [] %}
+        <form id="mainDesign{{ c.id }}" method="post" style="display:none;"
+              action="{{ url_for('admin.collection_design_make_main', collection_id=collection.id, design_id=c.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+        <form id="removeColor{{ c.id }}" method="post" style="display:none;"
+              action="{{ url_for('admin.collection_design_remove_color', collection_id=collection.id, design_id=c.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
         <form id="unlinkDesign{{ c.id }}" method="post" style="display:none;"
               action="{{ url_for('admin.collection_design_unlink', collection_id=collection.id, design_id=c.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

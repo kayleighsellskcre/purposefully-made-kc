@@ -2629,6 +2629,48 @@ def collection_design_unlink(collection_id, design_id):
     return redirect(url_for('admin.edit_collection', collection_id=collection_id))
 
 
+@admin_bp.route('/collections/<int:collection_id>/designs/<int:design_id>/make-main', methods=['POST'])
+@admin_required
+def collection_design_make_main(collection_id, design_id):
+    """Pick which color is the main picture shoppers see first for a design."""
+    from utils.group_designs import make_main
+    collection = Collection.query.get_or_404(collection_id)
+    design = Design.query.get_or_404(design_id)
+    if make_main(collection, design):
+        db.session.commit()
+        flash('That color is now the main picture.', 'success')
+    return redirect(url_for('admin.edit_collection', collection_id=collection_id))
+
+
+@admin_bp.route('/collections/<int:collection_id>/designs/<int:design_id>/remove-color', methods=['POST'])
+@admin_required
+def collection_design_remove_color(collection_id, design_id):
+    """Delete one color of a design. The main picture and the other colors stay."""
+    import json as _json
+    from utils.group_designs import detach, uses
+    collection = Collection.query.get_or_404(collection_id)
+    design = Design.query.get_or_404(design_id)
+    if not design.parent_design_id:
+        flash('Use the red x on the design to delete the whole design.', 'error')
+        return redirect(url_for('admin.edit_collection', collection_id=collection_id))
+    design.parent_design_id = None
+    detach(collection, design.id)
+    db.session.flush()
+    try:
+        in_orders = design.order_items.count() > 0
+    except Exception:
+        in_orders = False
+    if not in_orders and not uses(design.id):
+        try:
+            _delete_design_file(design)
+        except Exception as e:
+            current_app.logger.warning('Could not delete color file %s: %s', design.id, e)
+        db.session.delete(design)
+    db.session.commit()
+    flash('That color was deleted.', 'success')
+    return redirect(url_for('admin.edit_collection', collection_id=collection_id))
+
+
 @admin_bp.route('/collections/<int:collection_id>/designs/<int:design_id>/remove', methods=['POST'])
 @admin_required
 def collection_design_remove(collection_id, design_id):

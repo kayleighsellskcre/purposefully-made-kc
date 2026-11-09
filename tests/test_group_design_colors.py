@@ -59,3 +59,46 @@ def test_the_customizer_offers_the_color_choice_in_a_group_store(app, seed, clie
     html = client.get(f'/shop/customize/{seed["tee_slug"]}?catalog_section=fan').get_data(as_text=True)
     assert 'data-has-colors="1"' in html
     assert 'Black' in html and 'White' in html and 'cheer-Black.png' in html
+
+
+def _all_ids(app, seed, ids):
+    with app.app_context():
+        coll = db.session.get(Collection, seed['collection_id'])
+        coll.allowed_design_ids = json.dumps(ids)
+        db.session.commit()
+
+
+def test_owner_can_choose_which_color_is_the_main_picture(app, seed, admin_client):
+    main_id, kid_ids = _family(app, seed)
+    _all_ids(app, seed, [main_id] + kid_ids)
+    resp = admin_client.post(f'/admin/collections/{seed["collection_id"]}/designs/{kid_ids[0]}/make-main')
+    assert resp.status_code == 302
+    with app.app_context():
+        assert db.session.get(Design, kid_ids[0]).parent_design_id is None
+        assert db.session.get(Design, main_id).parent_design_id == kid_ids[0]
+        assert db.session.get(Design, kid_ids[1]).parent_design_id == kid_ids[0]
+        cards = G.load_collection_designs(db.session.get(Collection, seed['collection_id']))
+        assert cards[0]['id'] == kid_ids[0] and cards[0]['color_count'] == 3
+
+
+def test_owner_can_delete_one_color_and_the_rest_stay(app, seed, admin_client):
+    main_id, kid_ids = _family(app, seed)
+    _all_ids(app, seed, [main_id] + kid_ids)
+    resp = admin_client.post(f'/admin/collections/{seed["collection_id"]}/designs/{kid_ids[1]}/remove-color')
+    assert resp.status_code == 302
+    with app.app_context():
+        assert db.session.get(Design, kid_ids[1]) is None
+        assert db.session.get(Design, kid_ids[0]).parent_design_id == main_id
+        assert db.session.get(Design, main_id) is not None
+        assert kid_ids[1] not in json.loads(db.session.get(Collection, seed['collection_id']).allowed_design_ids)
+    # the main design itself is not deleted through this button
+    admin_client.post(f'/admin/collections/{seed["collection_id"]}/designs/{main_id}/remove-color')
+    with app.app_context():
+        assert db.session.get(Design, main_id) is not None
+
+
+def test_edit_page_shows_make_main_and_delete_on_colors(app, seed, admin_client):
+    main_id, kid_ids = _family(app, seed)
+    _all_ids(app, seed, [main_id] + kid_ids)
+    html = admin_client.get(f'/admin/collections/{seed["collection_id"]}/edit').get_data(as_text=True)
+    assert 'Make main' in html and f'removeColor{kid_ids[0]}' in html

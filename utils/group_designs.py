@@ -250,3 +250,37 @@ def store_picker(store):
     elif None in groups:
         order = [None]
     return [{'name': ('More designs' if h is None and heads else h), 'designs': groups[h]} for h in order]
+
+
+# ---- choosing the main picture of a color family -----------------------------------------------------------------
+
+def make_main(store, chosen):
+    """Make ``chosen`` (a color of some main design) the main picture, and the old main one of its colors.
+
+    The group keeps its place in the list, its heading and its "show at top" tick. Nothing is published anywhere else.
+    Returns the new main design, or None when ``chosen`` is not a color."""
+    old = db.session.get(Design, chosen.parent_design_id) if chosen.parent_design_id else None
+    if old is None:
+        return None
+    siblings = [c for c in old.color_variants.all() if c.id != chosen.id]
+    chosen.parent_design_id = None
+    db.session.flush()
+    for sib in siblings:
+        sib.parent_design_id = chosen.id
+    old.parent_design_id = chosen.id
+    if not (old.variant_label or '').strip():
+        old.variant_label = 'Main'
+    chosen.title = old.title or chosen.title
+
+    def swap(ids):
+        return [chosen.id if i == old.id else i for i in ids]
+
+    store.allowed_design_ids = _dump(swap(_ids(store.allowed_design_ids)))
+    store.showcase_design_ids = _dump(swap(_ids(store.showcase_design_ids)))
+    if chosen.id not in _ids(store.allowed_design_ids):                      # old main was not on this list: keep chosen on it
+        store.allowed_design_ids = _dump(_ids(store.allowed_design_ids) + [chosen.id])
+    sections = sections_map(store)
+    if old.id in sections:
+        sections[chosen.id] = sections.pop(old.id)
+        store.design_sections = json.dumps({str(k): v for k, v in sections.items()})
+    return chosen
