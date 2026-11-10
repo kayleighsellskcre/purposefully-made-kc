@@ -1373,7 +1373,7 @@
     object-fit: contain;
     display: block;
 }
-.ai-img-original { display: none; }
+.ai-stage .ai-img-original { display: none; }          /* needs the .ai-stage prefix: ".ai-stage .ai-img { display:block }" is more specific, and used to show the before AND after pictures side by side, each cut off */
 .ai-stage.show-before .ai-img-original { display: block; }
 .ai-stage.show-before .ai-img-result { display: none; }
 .ai-controls {
@@ -1416,6 +1416,10 @@
     gap: 0.35rem;
 }
 .ai-white-note { font-size: 0.8rem; color: #555; margin-top: 0.5rem; }
+.ai-more { margin-top: 0.5rem; }
+.ai-more > summary { cursor: pointer; font-size: 0.85rem; color: var(--text-secondary); min-height: 44px; display: flex; align-items: center; }
+.ai-controls { justify-content: flex-end; }
+.ai-more .ai-controls { justify-content: flex-start; margin-top: 0.3rem; }
 .ai-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
 .ai-zoom-modal {
     position: fixed;
@@ -2428,13 +2432,21 @@
                     <div class="design-preview artwork-inspector" id="designPreview">
                         <div class="ai-status" id="aiStatus" hidden>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                            <span id="aiStatusText">Background removed. Transparent PNG ready.</span>
+                            <span id="aiStatusText">Your design is ready.</span>
                         </div>
                         <div class="ai-stage bg-checker" id="aiStage">
                             <img alt="Original upload" id="designOriginalImage" class="ai-img ai-img-original">
                             <img alt="Design preview" id="designPreviewImage" class="ai-img ai-img-result">
                         </div>
                         <div class="ai-controls">
+                            <button type="button" class="ai-zoom-btn" id="aiZoomBtn" title="Zoom in to inspect edges">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                                Zoom in
+                            </button>
+                        </div>
+                        <details class="ai-more">
+                            <summary>Compare with my original</summary>
+                            <div class="ai-controls">
                             <div class="ai-toggle" id="aiViewToggle" role="group" aria-label="Compare before and after">
                                 <button type="button" class="ai-toggle-btn active" data-view="after">After</button>
                                 <button type="button" class="ai-toggle-btn" data-view="before">Before</button>
@@ -2444,14 +2456,11 @@
                                 <button type="button" class="ai-bg-btn" data-bg="light" title="Light background">Light</button>
                                 <button type="button" class="ai-bg-btn" data-bg="dark" title="Dark background">Dark</button>
                             </div>
-                            <button type="button" class="ai-zoom-btn" id="aiZoomBtn" title="Zoom in to inspect edges">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-                                Zoom
-                            </button>
-                        </div>
+                            </div>
+                        </details>
                         <p class="ai-white-note" id="aiWhiteNote" hidden>White artwork detected. Shown on a contrasting background so you can see it. The final print file stays transparent.</p>
                             <div class="ai-actions">
-                            <button class="btn btn-outline btn-sm" id="removeDesign">Remove Design</button>
+                            <button class="btn btn-outline btn-sm" id="removeDesign">Choose a different design</button>
                         </div>
                     </div>
                     
@@ -5304,11 +5313,7 @@
             if (data && data.background_removed) {
                 aiStatus.hidden = false;
                 if (aiStatusText) {
-                    aiStatusText.textContent = data.engine === 'ai'
-                        ? 'AI background removal complete. Transparent PNG ready.'
-                        : (data.engine === 'preserved'
-                            ? 'Transparent artwork ready'
-                            : 'Background removed. Transparent PNG ready.');
+                    aiStatusText.textContent = 'Your design is ready.';
                 }
             } else {
                 aiStatus.hidden = true;

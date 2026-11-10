@@ -231,3 +231,10 @@ def test_customizer_resizes_the_logo_once_the_shirt_photo_has_loaded(app, seed):
     html = app.test_client().get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
     assert 'mockupLoaded' in html                              # no size is remembered before the photo is on screen
     assert "mockupForFit.addEventListener('load'" in html      # and the logo is sized again when it arrives
+
+
+def test_uploaded_design_panel_is_plain_and_shows_one_picture(app, seed):
+    html = app.test_client().get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
+    assert 'Your design is ready.' in html and 'Transparent PNG ready' not in html
+    assert '.ai-stage .ai-img-original { display: none; }' in html       # before/after are never both showing
+    assert '<details class="ai-more">' in html and 'Choose a different design' in html
