@@ -46,13 +46,14 @@ def compose(mockup_url, design_url, style):
         ah = sh * max_h_pct / 100.0
         aw = ah * art.width / max(art.height, 1)
     art = art.resize((max(1, int(aw)), max(1, int(ah))), Image.LANCZOS)
-    base = Image.new('RGBA', shirt.size, BACKDROP + (255,))
+    backdrop = tuple(shirt.convert('RGB').getpixel((2, 2)))        # the photo's own background, so the side margins blend in
+    base = Image.new('RGBA', shirt.size, backdrop + (255,))
     base.alpha_composite(shirt)
     base.alpha_composite(art, (int(sw * left_pct / 100.0 - art.width / 2), int(sh * top_pct / 100.0 - art.height / 2)))
 
     scale = min(CANVAS[0] / sw, CANVAS[1] / sh)           # the whole shirt fits inside the 1200 x 630 frame
     fitted = base.resize((max(1, int(sw * scale)), max(1, int(sh * scale))), Image.LANCZOS)
-    canvas = Image.new('RGB', CANVAS, BACKDROP)
+    canvas = Image.new('RGB', CANVAS, backdrop)
     canvas.paste(fitted.convert('RGB'), ((CANVAS[0] - fitted.width) // 2, (CANVAS[1] - fitted.height) // 2))
     out = io.BytesIO()
     canvas.save(out, 'JPEG', quality=88, optimize=True)
