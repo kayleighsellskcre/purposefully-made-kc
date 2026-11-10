@@ -63,6 +63,19 @@ def _fill(store, org, teams, state, lead):
     lead_cfg = team_store_config(lead)
     fan_ids = state['fan_product_ids']
     cfg = _config(store)
+    # Designs added on the Fan Wear store itself belong to Fan Wear alone. They are told apart from designs that merely
+    # came from a team (and were later taken off it) by remembering which ones were pooled at the last sync. The first sync
+    # only records that baseline, so nothing already there is ever kept by mistake.
+    pooled_now = sorted({int(i) for i in state['design_ids']})
+    own = []
+    if 'fan_pooled_ids' in cfg:
+        before = {int(i) for i in cfg.get('fan_pooled_ids') or []}
+        try:
+            current = [int(i) for i in json.loads(store.allowed_design_ids or '[]') if str(i).isdigit()]
+        except (TypeError, ValueError):
+            current = []
+        own = [i for i in current if i not in pooled_now and i not in before]
+    cfg['fan_pooled_ids'] = pooled_now
     cfg.update({
         'version': 1,
         _FLAG: True,
@@ -79,6 +92,7 @@ def _fill(store, org, teams, state, lead):
     store.products = [by_id[i] for i in fan_ids if i in by_id]
     store.allowed_colors = lead.allowed_colors
     shown = list(state['shown_design_ids'])
+    shown = own + [i for i in shown if i not in own]      # Fan Wear's own artwork first, then the teams' pooled designs
     store.allowed_design_ids = json.dumps(shown) if shown else None
     store.showcase_design_ids = None
     store.order_opens_at, store.order_deadline = _span(teams)

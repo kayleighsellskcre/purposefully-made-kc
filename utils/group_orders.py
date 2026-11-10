@@ -1325,6 +1325,17 @@ def org_fanwear_design_ids(collection):
                 if did not in seen and did not in skip:
                     seen.add(did)
                     merged.append(did)
+        else:
+            # Fan Wear artwork added on the Fan Wear store itself also shows on a team's Fan Wear page.
+            try:
+                from utils.org_fan_store import fan_store_for
+                fan = fan_store_for(org)
+                for did in (allowed_design_ids(fan) if fan is not None else []):
+                    if did not in seen and did not in skip:
+                        seen.add(did)
+                        merged.append(did)
+            except Exception:
+                pass
         return merged or own
     except Exception:
         return own

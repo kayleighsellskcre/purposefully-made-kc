@@ -299,3 +299,25 @@ def test_admin_orders_can_be_filtered_to_just_fan_wear(admin_client, app, seed):
     html = admin_client.get(f'/admin/orders?collection={fan_id}&status=all').get_data(as_text=True)
     assert 'FAN-5001' in html and 'TEAM-5001' not in html
     assert 'Fan Wear: Rainbow Cheetahs' in html                      # named in the store filter
+
+
+def test_a_design_added_on_the_fan_wear_store_stays_there_and_is_not_needed_in_a_team(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    from models import Design
+    with app.app_context():
+        sync_org_fan_store(_org(app))                                     # first sync records the baseline
+        db.session.commit()
+        fan = fan_store_for(_org(app))
+        extra = Design(filename='fan-only.png', file_path='uploads/designs/fan-only.png', title='Fan only')
+        db.session.add(extra)
+        db.session.flush()
+        fan.allowed_design_ids = json.dumps(json.loads(fan.allowed_design_ids or '[]') + [extra.id])
+        db.session.commit()
+        sync_org_fan_store(_org(app))
+        db.session.commit()
+        fan = fan_store_for(_org(app))
+        assert extra.id in json.loads(fan.allowed_design_ids)            # a sync no longer wipes it
+        team = Collection.query.filter_by(name=TEAM).one()
+        assert extra.id not in json.loads(team.allowed_design_ids or '[]')   # and no team needed it
+        from utils.group_orders import org_fanwear_design_ids
+        assert extra.id in org_fanwear_design_ids(team)                    # a team's Fan Wear page offers it too
