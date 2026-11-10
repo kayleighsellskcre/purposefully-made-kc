@@ -68,6 +68,7 @@ def view(token):
     proof = existing_image_url(share.line.get('proof_front_url') or share.line.get('proof_image'))
     # Same as the cart: the saved picture when it is still on file, otherwise the logo drawn on the shirt photo.
     image = proof or front
+    share_image = proof or front              # what a Facebook/text link preview shows: the picture of this exact design
     overlay = None
     overlay_style = ''
     colors = SD.colors_offered(share, product)
@@ -81,7 +82,7 @@ def view(token):
                                                'print_height': share.line.get('print_height'), 'product': product},
                                               placement, front)
     return render_template('made/view.html', share=share, product=product, sizes=sizes, unavailable=unavailable,
-                           image=image, overlay=overlay, overlay_style=overlay_style, colors=colors if len(colors) > 1 else [], fallback=front if proof else None, placement=placement,
+                           image=image, share_image=share_image, overlay=overlay, overlay_style=overlay_style, colors=colors if len(colors) > 1 else [], fallback=front if proof else None, placement=placement,
                            qr=url_for('made.qr', token=share.token), link=_link(share))
 
 

@@ -2,6 +2,12 @@
 {% from "macros/garment_proof.html" import garment_proof %}
 {% block title %}{{ product|display_name if product else 'Custom shirt' }} | Purposefully Made KC{% endblock %}
 {% block robots %}noindex, nofollow{% endblock %}
+{% block og_description %}Tap to pick your size and order this exact design.{% endblock %}
+{% block og_image %}{% if share_image %}{% if share_image.startswith('http') %}{{ share_image }}{% else %}{{ site_origin }}{{ share_image }}{% endif %}{% else %}{{ site_origin }}/static/img/og-card.jpg{% endif %}{% endblock %}
+{% block og_image_alt %}{{ product|display_name if product else 'Custom shirt' }} with this design{% endblock %}
+{% block og_image_type %}{% endblock %}
+{% block og_image_width %}{% endblock %}
+{% block og_image_height %}{% endblock %}
 {% block content %}
 <div class="made-wrap">
     <p class="made-eyebrow">Designed by a Purposefully Made KC customer</p>

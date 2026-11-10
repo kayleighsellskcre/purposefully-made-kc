@@ -158,3 +158,17 @@ def test_a_friend_can_pick_another_color_and_it_lands_in_the_cart(app, seed):
     with friend.session_transaction() as sess:
         colors = [l['color'] for l in sess['cart']]
     assert other in colors and 'Black' in colors and 'Not A Color' not in colors
+
+
+def test_link_preview_shows_the_picture_of_the_design_not_the_generic_card(app, seed):
+    _set_cart(app, CUSTOMER_EMAIL, [_line(seed, proof_front_url='/static/img/og-card.jpg')])
+    token = _token(_share(_signed_in(app)))
+    html = app.test_client().get(f'/made/{token}').get_data(as_text=True)
+    assert 'property="og:image"' in html
+    assert 'order this exact design' in html
+    assert 'og:image:width' not in html                      # real size is unknown, so none is claimed
+    # with no saved picture the shirt photo is used instead; either way it is never the generic card alone
+    _set_cart(app, CUSTOMER_EMAIL, [_line(seed)])
+    token2 = _token(_share(_signed_in(app)))
+    html2 = app.test_client().get(f'/made/{token2}').get_data(as_text=True)
+    assert 'property="og:image"' in html2
