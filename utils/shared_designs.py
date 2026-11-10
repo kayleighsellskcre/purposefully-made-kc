@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import secrets
 
-from models import Order, OrderItem, Product, SharedDesign, db
+from models import Collection, Order, OrderItem, Product, SharedDesign, db
 
 # What a shared line keeps. Anything else on a cart line is left behind.
 KEEP = ('product_id', 'color', 'design_id', 'design_url', 'placement', 'back_design_url', 'proof_front_url',
@@ -33,6 +33,8 @@ def clean_line(line):
         out['transfer_production'] = tp
     out['back_design_kind'] = 'image' if out.get('back_design_url') else None
     out['quantity'] = 1
+    if line.get('collection_id'):                          # remembered only to limit the colors; it does not put a friend's order in that group
+        out['color_limit_collection_id'] = line['collection_id']
     return out, None
 
 
@@ -95,9 +97,17 @@ def colors_offered(share, product=None):
     product = product or db.session.get(Product, share.line.get('product_id') or 0)
     if product is None:
         return []
+    # A design made inside a group order only offers the colors that group chose (plus the color it was made in).
+    allowed = None
+    store = db.session.get(Collection, share.line['color_limit_collection_id']) if share.line.get('color_limit_collection_id') else None
+    if store is not None:
+        from utils.group_orders import allowed_colors_for_product
+        allowed = allowed_colors_for_product(product, store)
+        if allowed is not None and share.line.get('color'):
+            allowed = set(allowed) | {share.line['color']}
     out = []
     for c in get_color_variants_data_for_product(product, current_app):
-        if c.get('color_name') and c.get('front_image'):
+        if c.get('color_name') and c.get('front_image') and (allowed is None or c['color_name'] in allowed):
             out.append({'name': c['color_name'], 'hex': c.get('color_hex') or '#cccccc', 'image': c['front_image']})
     return out
 
@@ -106,6 +116,7 @@ def line_for(share, size, quantity=1, color=None):
     """A cart line for this shared design in ``size`` (and ``color`` if they picked another), priced from today's price list, and why it cannot be ordered."""
     from utils.reorder import reprice_line, why_not_orderable
     line = dict(share.line)
+    line.pop('color_limit_collection_id', None)
     if color and color != line.get('color'):
         line['color'] = color
         for key in ('proof_front_url', 'proof_image'):      # the saved picture is the original color

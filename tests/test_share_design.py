@@ -198,3 +198,30 @@ def test_compose_puts_the_logo_on_the_shirt(tmp_path, app):
         import io
         data = compose(str(shirt), str(art), 'width:40%;max-width:none;max-height:50%;top:38%;left:50%;transform:translate(-50%,-50%);')
     assert data is None or Image.open(io.BytesIO(data)).size == (1200, 630)
+
+
+def test_a_group_design_only_offers_the_colors_that_group_chose(app, seed):
+    import json
+
+    from models import Collection
+    from utils.shared_designs import colors_offered
+    _set_cart(app, CUSTOMER_EMAIL, [_line(seed, collection_id=seed['collection_id'])])
+    token = _token(_share(_signed_in(app)))
+    with app.app_context():
+        share = SharedDesign.query.filter_by(token=token).one()
+        everything = {c['name'] for c in colors_offered(share)}
+        coll = db.session.get(Collection, seed['collection_id'])
+        from utils.group_orders import serialize_allowed_colors_from_form
+        coll.allowed_colors = serialize_allowed_colors_from_form(['Black'])
+        db.session.commit()
+        limited = {c['name'] for c in colors_offered(share)}
+    assert limited <= {'Black'} and limited <= everything
+
+
+def test_cart_row_leads_with_the_design_name_and_keeps_the_price_on_one_line(app, seed):
+    shopper = app.test_client()
+    with shopper.session_transaction() as sess:
+        sess['cart'] = [_line(seed, proof_front_url=None, unit_price=45.0, quantity=1)]
+    html = shopper.get('/cart/').get_data(as_text=True)
+    assert 'item-design-name' in html and 'item-product-line' in html
+    assert 'white-space: nowrap' in html and 'minmax(0, 1fr)' in html
