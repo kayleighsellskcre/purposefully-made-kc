@@ -35,7 +35,12 @@
                         {# h2, not h3: the cart h1 is followed by these line items
                            and then an "Order Summary" h2, so an h3 here made the
                            outline jump a level and then go backwards. #}
+                        {% if item.design_title %}
+                        <h2 class="item-design-name">{{ item.design_title }}</h2>
+                        <p class="item-product-line">{{ item.product|display_name }}</p>
+                        {% else %}
                         <h2>{{ item.product|display_name }}</h2>
+                        {% endif %}
                         {% if item.store_name %}<p class="item-transfer"><strong>For {{ item.store_name }}</strong></p>{% endif %}
                         {% if item.get('catalog_section') == 'uniform' %}
                         <p class="item-transfer"><strong>{{ (item.get('uniform_kit') or 'player')|title }} Player Uniform</strong></p>
@@ -273,6 +278,9 @@
 }
 
 
+.item-product-line { color: var(--text-secondary); font-size: 0.9rem; margin: -0.25rem 0 0.6rem; }
+.item-design-name { overflow-wrap: anywhere; }
+
 /* Sized explicitly so promoting this from h3 to h2 changed the outline without
    changing a pixel. */
 .item-details h2 {
@@ -308,7 +316,16 @@
     font-weight: 600;
     color: var(--accent-color);
     margin-bottom: 0.5rem;
+    white-space: nowrap;            /* a price never splits across two lines */
 }
+.btn-save-later, .btn-remove, .summary-row span { white-space: nowrap; }
+/* Sharing a design brings people to the shop, so it reads as a button, not a footnote. */
+.item-price [data-share-design] {
+    display: inline-flex; align-items: center; justify-content: center; margin: 0 0 0.4rem auto;
+    padding: 0.55rem 1.1rem; min-height: 44px; border-radius: 999px; text-decoration: none;
+    background: var(--accent-color); color: #fff; font-weight: 600;
+}
+.item-price [data-share-design]:hover, .item-price [data-share-design]:focus-visible { color: #fff; filter: brightness(1.08); }
 
 .btn-remove {
     background: none;
@@ -398,7 +415,7 @@
 
 @media (max-width: 900px) {
     .cart-container {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);      /* 1fr alone lets a wide row push the whole page off the screen */
     }
     .cart-summary {
         position: static;
@@ -407,29 +424,47 @@
 
 @media (max-width: 768px) {
     .cart-item {
-        grid-template-columns: 80px 1fr;
-        gap: 1rem;
+        grid-template-columns: 110px minmax(0, 1fr);
+        gap: 0.9rem;
     }
+    .cart-item { padding: 1rem; }
+    .item-details h2 { font-size: 1.35rem; margin-bottom: 0.35rem; }
     .item-image {
-        width: 80px;
-        height: 100px;
+        width: 110px;
+        height: 140px;
     }
     .item-image-pair {
-        width: 168px;
-        min-width: 168px;
+        width: 230px;
+        min-width: 230px;
     }
     .item-image-pair .pm-proof {
-        height: 100px;
+        height: 140px;
     }
     .item-details {
         text-align: left;
     }
+    /* The price gets its own line; the buttons sit below it and wrap onto a new row
+       instead of squeezing each other until a word breaks in half. */
     .item-price {
         grid-column: 1 / -1;
         display: flex;
-        justify-content: space-between;
+        flex-wrap: wrap;
+        justify-content: flex-start;
         align-items: center;
+        gap: 0.15rem 1.1rem;
         width: 100%;
+        text-align: left;
+    }
+    .item-price .price {
+        flex: 1 0 100%;
+        margin: 0 0 0.25rem;
+    }
+    .item-price [data-share-design] { flex: 1 0 100%; margin: 0 0 0.4rem; }
+    .item-price .btn-save-later {
+        margin: 0;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
     }
     .btn-remove {
         min-height: 44px;
@@ -442,20 +477,22 @@
 
 @media (max-width: 480px) {
     .cart-item {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
         text-align: center;
     }
     .item-image {
         margin: 0 auto;
-        width: 120px;
-        height: 140px;
+        width: 190px;
+        height: 230px;
     }
     .item-image-pair {
-        width: 220px;
+        width: min(320px, 100%);
+        min-width: 0;
     }
     .item-image-pair .pm-proof {
-        height: 140px;
+        height: 230px;
     }
+    .item-price { justify-content: center; text-align: center; }
 }
 </style>
 

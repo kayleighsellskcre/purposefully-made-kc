@@ -86,6 +86,11 @@ def index():
     subtotal = 0
     previews_added = False
     
+    # The design's own name leads each cart row; the shirt is the smaller line under it.
+    from models import Design
+    _design_ids = {int(i['design_id']) for i in cart if isinstance(i, dict) and str(i.get('design_id') or '').isdigit()}
+    design_titles = {d.id: (d.title or '').strip() for d in Design.query.filter(Design.id.in_(_design_ids)).all()} if _design_ids else {}
+
     for item in cart:
         if not isinstance(item, dict) or not item.get('product_id'):
             continue
@@ -129,6 +134,7 @@ def index():
                 'store_name': store_names.get(item.get('collection_id') or None),
                 'product': product,
                 'item_total': item_total,
+                'design_title': design_titles.get(int(item['design_id'])) if str(item.get('design_id') or '').isdigit() else None,
                 'image_url': display_front or None,
                 'front_image': display_front,
                 'back_image': back_display,
