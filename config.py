@@ -93,6 +93,10 @@ class Config:
     
     # OpenAI / AI Design Studio
     OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+    # The picture model for the AI Design Studio. OpenAI retires image models every few months; gpt-image-1 was shut
+    # down on Oct 23, 2026. If the model below is ever retired, the site tries the next one in IMAGE_MODEL_FALLBACKS.
+    OPENAI_IMAGE_MODEL = (os.environ.get('OPENAI_IMAGE_MODEL') or 'gpt-image-2.6-flare').strip()
+    IMAGE_MODEL_FALLBACKS = ('gpt-image-2.6-flare', 'gpt-image-2.6-sunburst', 'gpt-image-2')
 
     # Stripe settings
     STRIPE_PUBLIC_KEY = os.environ.get('STRIPE_PUBLIC_KEY')
