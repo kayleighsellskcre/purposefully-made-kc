@@ -1358,8 +1358,20 @@ def build_order_items(order, cart, rid='-'):
                 continue
             design_id = _int_or_none(cart_item.get('design_id'))
             design = Design.query.get(design_id) if design_id else None
+            # Copy every picture this order needs to permanent storage now, while the files still exist.
+            from utils.durable_files import make_durable
+            _app = current_app._get_current_object()
+            if design is not None and design.file_path:
+                kept = make_durable(_app, design.file_path)
+                if kept != design.file_path:
+                    design.file_path = kept
+            elif cart_item.get('design_url'):
+                cart_item['design_url'] = make_durable(_app, cart_item['design_url'])
+            for _k in ('back_design_url', 'proof_front_url', 'proof_back_url', 'proof_image'):
+                if cart_item.get(_k):
+                    cart_item[_k] = make_durable(_app, cart_item[_k], subfolder='proofs' if 'proof' in _k else 'designs')
             back_url = cart_item.get('back_design_url')
-            back_filename = _clip((back_url or '').split('/')[-1] if back_url else None, 500)
+            back_filename = _clip(back_url if (back_url or '').startswith('http') else ((back_url or '').split('/')[-1] if back_url else None), 500)
             back_meta = cart_item.get('back_design_meta')
             if isinstance(back_meta, str):
                 try:
@@ -1399,7 +1411,8 @@ def build_order_items(order, cart, rid='-'):
             design_filename = _clip(design.filename if design else None, 500)
             if not design_filename:
                 design_url = cart_item.get('design_url') or ''
-                design_filename = _clip(design_url.split('/')[-1] if design_url else None, 500)
+                # A permanent address is kept whole, so the print file opens from it; a bare filename only works on the temporary disk.
+                design_filename = _clip(design_url if design_url.startswith('http') else (design_url.split('/')[-1] if design_url else None), 500)
             qty = max(1, _int_or_none(cart_item.get('quantity')) or 1)
             unit_price = _float_or_none(cart_item.get('unit_price'))
             if unit_price is None:

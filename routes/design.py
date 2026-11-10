@@ -151,13 +151,31 @@ def upload():
         from utils.cloud_storage import r2_configured, _upload_to_r2
         stored_path = f"uploads/designs/{unique_name}"
         if r2_configured(current_app._get_current_object()):
-            try:
-                with open(filepath, 'rb') as f_obj:
-                    from werkzeug.datastructures import FileStorage
-                    fs = FileStorage(stream=f_obj, filename=unique_name)
-                    stored_path = _upload_to_r2(fs, current_app._get_current_object(), 'designs', 'design')
-            except Exception:
-                pass
+            # A picture left on the server's own disk is erased at the next site update, and the print file with it.
+            # So try a few times, and if cloud storage still says no, tell the customer now instead of saving a doomed copy.
+            saved_remote = False
+            for attempt in range(3):
+                try:
+                    with open(filepath, 'rb') as f_obj:
+                        from werkzeug.datastructures import FileStorage
+                        fs = FileStorage(stream=f_obj, filename=unique_name)
+                        stored_path = _upload_to_r2(fs, current_app._get_current_object(), 'designs', 'design')
+                    saved_remote = True
+                    break
+                except Exception:
+                    current_app.logger.exception('design upload to cloud storage failed (try %s)', attempt + 1)
+                    time.sleep(0.6 * (attempt + 1))
+            if not saved_remote:
+                try:
+                    from utils.cloud_storage import _warn_admin_cloud_down
+                    _warn_admin_cloud_down('design')
+                except Exception:
+                    pass
+                try:
+                    Path(filepath).unlink()
+                except OSError:
+                    pass
+                return jsonify({'error': 'We could not save your picture just now. Please try again in a moment.'}), 503
 
         url = stored_path if stored_path.startswith('http') else f"/static/{stored_path}"
         width, height = None, None

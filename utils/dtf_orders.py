@@ -59,7 +59,7 @@ def build_dtf_shopping_list(orders):
             if front:
                 width = inches(front.get('width'))
                 height = inches(front.get('height'))
-                name = (front.get('design_name') or item.design_file_name or 'Logo').strip() or 'Logo'
+                name = (front.get('design_name') or (item.design_file_name or '').split('?')[0].rsplit('/', 1)[-1] or 'Logo').strip() or 'Logo'
                 placement = front.get('placement_label') or _label(item.placement)
                 preview = front_print_url(item)
                 key = (

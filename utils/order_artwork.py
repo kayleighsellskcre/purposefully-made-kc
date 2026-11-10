@@ -233,7 +233,7 @@ def sized_filename(order, item, side):
     back = prod.get('back') or {}
     if side == 'front':
         front = prod.get('front') or {}
-        return file_name(code, front.get('width'), front.get('height'), front.get('design_name') or item.design_file_name or 'logo', qty, number)
+        return file_name(code, front.get('width'), front.get('height'), front.get('design_name') or (item.design_file_name or '').split('?')[0].rsplit('/', 1)[-1] or 'logo', qty, number)
     if side == 'back' and back.get('kind') == 'image':
         from utils.back_logo_size import back_logo_dims
         from utils.dtf_orders import _back_logo_name

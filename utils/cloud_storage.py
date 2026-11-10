@@ -51,7 +51,22 @@ def upload_image(file_storage, app, subfolder='uploads', public_id_prefix='img',
     if process_artwork:
         file_storage = _maybe_process_artwork(file_storage)
     if r2_configured(app):
-        return _upload_to_r2(file_storage, app, subfolder, public_id_prefix)
+        # Cloud storage sometimes stumbles for a moment. Try a few times before giving up, because every caller that
+        # gives up falls back to the server's own disk, which is erased at the next site update.
+        import time
+        last = None
+        for attempt in range(3):
+            try:
+                try:
+                    file_storage.stream.seek(0)
+                except Exception:
+                    pass
+                return _upload_to_r2(file_storage, app, subfolder, public_id_prefix)
+            except Exception as exc:
+                last = exc
+                app.logger.warning('cloud upload try %s failed for %s: %s', attempt + 1, subfolder, exc)
+                time.sleep(0.5 * (attempt + 1))
+        raise last
     return _save_locally(file_storage, app, subfolder, public_id_prefix)
 
 

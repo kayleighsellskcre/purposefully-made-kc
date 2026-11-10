@@ -990,7 +990,7 @@ def production_from_order_item(item, customer_name=None):
         if design.width and design.height:
             aspect_w, aspect_h = design.width, design.height
     if not design_name:
-        design_name = getattr(item, 'design_file_name', None)
+        design_name = str(getattr(item, 'design_file_name', None) or '').split('?')[0].rsplit('/', 1)[-1] or None     # a stored web address shows as just its file name
 
     back = getattr(item, 'back_design_details', None) or {}
     has_front = bool(design or getattr(item, 'design_file_name', None) or getattr(item, 'design_id', None))

@@ -484,16 +484,22 @@ def ai_design_save():
         (save_dir / filename).write_bytes(img_bytes)
         file_path = f'uploads/ai_designs/{filename}'  # relative — served from static/
 
-        # Promote to R2 if configured so images survive redeployments
-        try:
-            from utils.cloud_storage import r2_configured, upload_bytes
-            app_obj = current_app._get_current_object()
-            if r2_configured(app_obj):
+        # Move it to permanent storage so it survives site updates. If that fails the customer is told, rather than being
+        # handed a design that disappears at the next update.
+        from utils.cloud_storage import r2_configured, upload_bytes
+        app_obj = current_app._get_current_object()
+        if r2_configured(app_obj):
+            try:
                 r2_url = upload_bytes(img_bytes, app_obj, filename, subfolder='ai_designs')
-                if r2_url:
-                    file_path = r2_url
-        except Exception as r2_err:
-            current_app.logger.warning('R2 upload skipped for AI design: %s', r2_err)
+            except Exception as r2_err:
+                current_app.logger.exception('permanent storage failed for AI design: %s', r2_err)
+                try:
+                    (save_dir / filename).unlink()
+                except OSError:
+                    pass
+                return jsonify({'ok': False, 'error': 'Could not save your design just now. Please try again in a moment.'})
+            if r2_url:
+                file_path = r2_url
 
         design = Design(
             filename=filename,

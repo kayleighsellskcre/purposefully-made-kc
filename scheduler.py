@@ -107,6 +107,36 @@ def cart_reminder_job(app):
             print(f"cart reminders failed: {exc}", file=sys.stderr, flush=True)
 
 
+def promote_files_job(app):
+    """Every 10 minutes: rescue any picture still on the server's temporary disk."""
+    with app.app_context():
+        try:
+            with _one_worker_at_a_time(731015) as mine:
+                if not mine:
+                    return
+                from utils.durable_files import promote_local_files
+                moved = promote_local_files(app)
+                if moved:
+                    print(f"FILES RESCUED: {moved} moved to permanent storage", file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f"promote files failed: {exc}", file=sys.stderr, flush=True)
+
+
+def artwork_audit_job(app):
+    """Every morning: tell the owner about any recent order whose print file has gone missing."""
+    with app.app_context():
+        try:
+            with _one_worker_at_a_time(731014) as mine:
+                if not mine:
+                    return
+                from utils.artwork_audit import alert_if_missing
+                missing = alert_if_missing(app)
+                if missing:
+                    print(f"ARTWORK AUDIT: {missing} missing", file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f"artwork audit failed: {exc}", file=sys.stderr, flush=True)
+
+
 def books_sync_job(app):
     """Keep the ledger current: every paid order, invoice and fee, written once."""
     with app.app_context():
@@ -804,6 +834,22 @@ def init_scheduler(app):
             trigger=CronTrigger(hour='9-19', minute=17, timezone=CHICAGO),
             id='cart_reminders',
             name='Cart reminder emails',
+            replace_existing=True
+        )
+
+        from apscheduler.triggers.interval import IntervalTrigger      # imported here: a later import in this function would make the name unusable above it
+        scheduler.add_job(
+            func=lambda: promote_files_job(app),
+            trigger=IntervalTrigger(minutes=10),
+            id='promote_local_files',
+            name='Move pictures to permanent storage',
+            replace_existing=True
+        )
+        scheduler.add_job(
+            func=lambda: artwork_audit_job(app),
+            trigger=CronTrigger(hour=8, minute=5, timezone=CHICAGO),
+            id='artwork_audit',
+            name='Missing print file check',
             replace_existing=True
         )
 

@@ -440,7 +440,8 @@
                         {% if kit.has_front_print %}
                         <div class="pm-print-file">
                             <div class="pm-print-preview">
-                                <img src="{{ kit.front_print_url }}" alt="Front print file">
+                                <img src="{{ kit.front_print_url }}" alt="Front print file" onerror="this.style.display='none';this.nextElementSibling.hidden=false;">
+                                <p class="od-field-hint" hidden style="padding:1rem;text-align:center;"><strong>This print file is missing from storage.</strong><br>Ask the customer to send the artwork again.<br><small style="word-break:break-all;">{{ kit.front_print_url }}</small></p>
                             </div>
                             <div class="pm-print-meta">
                                 <h3>Front transfer</h3>
@@ -456,6 +457,14 @@
                                 </p>
                                 <a class="od-btn od-btn-save" href="{{ url_for('admin.save_item_artwork', order_id=order.id, item_id=item.id, side='front') }}">Download front PNG</a>
                                 <p class="od-field-hint od-save-hint">Press and hold the picture, then tap Add to Photos.</p>
+                                <details class="od-replace-art" style="margin-top:0.6rem;">
+                                    <summary style="cursor:pointer;min-height:44px;display:flex;align-items:center;">Replace this print file</summary>
+                                    <form method="post" enctype="multipart/form-data" action="{{ url_for('admin.replace_item_artwork', order_id=order.id, item_id=item.id) }}" style="display:grid;gap:0.5rem;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="file" name="artwork" accept=".png,.jpg,.jpeg,.webp" required>
+                                        <button type="submit" class="od-btn">Save new print file</button>
+                                    </form>
+                                </details>
                             </div>
                         </div>
                         {% endif %}

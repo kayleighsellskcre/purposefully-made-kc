@@ -725,6 +725,34 @@ def preview_item_artwork(order_id, item_id, side):
     return send_file(BytesIO(data), mimetype='image/png', max_age=60)
 
 
+@admin_bp.route('/orders/<int:order_id>/items/<int:item_id>/replace-artwork', methods=['POST'])
+@admin_required
+def replace_item_artwork(order_id, item_id):
+    """Give an order line its print file again (the customer sent the artwork again, or it was lost)."""
+    from utils.cloud_storage import image_url, r2_configured, store_upload
+    order = Order.query.get_or_404(order_id)
+    item = OrderItem.query.filter_by(id=item_id, order_id=order.id).first_or_404()
+    back = redirect(url_for('admin.order_detail', order_id=order.id))
+    upload = request.files.get('artwork')
+    ext = (upload.filename.rsplit('.', 1)[-1].lower() if upload and upload.filename and '.' in upload.filename else '')
+    if not upload or ext not in ('png', 'jpg', 'jpeg', 'webp'):
+        flash('Choose a PNG, JPG or WEBP file first.', 'error')
+        return back
+    url = store_upload(upload, 'designs', 'order')
+    if r2_configured(current_app._get_current_object()) and not str(url).startswith('http'):
+        flash('The file could not be saved to permanent storage, so nothing was changed. Please try again.', 'error')
+        return back
+    design = item.design
+    if design is not None and not design.is_gallery:
+        design.file_path = url                            # this customer's own upload: the print file is now the new one
+    else:
+        item.design_id = None                             # never overwrite a gallery design: this line gets its own file
+        item.design_file_name = url
+    db.session.commit()
+    flash('Print file replaced. It is saved permanently.', 'success')
+    return back
+
+
 @admin_bp.route('/orders/<int:order_id>/items/<int:item_id>/save/<side>')
 @admin_required
 def save_item_artwork(order_id, item_id, side):
@@ -2765,7 +2793,7 @@ def _master_art_files(orders):
                 rec = seen_fronts.get(key)
                 if rec is None:
                     rec = {'order': order, 'item': item, 'side': 'front', 'codes': set(), 'qty': 0, 'width': front.get('width'),
-                           'height': front.get('height'), 'label': front.get('design_name') or item.design_file_name or 'logo',
+                           'height': front.get('height'), 'label': front.get('design_name') or (item.design_file_name or '').split('?')[0].rsplit('/', 1)[-1] or 'logo',
                            'order_number': 'weekly'}
                     rec['key'] = key
                     seen_fronts[key] = rec
