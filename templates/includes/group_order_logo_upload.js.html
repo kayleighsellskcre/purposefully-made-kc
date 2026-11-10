@@ -49,7 +49,7 @@
             fd.append('bg_removal', 'none');
 
             var ctrl = new AbortController();
-            var timer = setTimeout(function() { ctrl.abort(); }, 20000);
+            var timer = setTimeout(function() { ctrl.abort(); }, 90000);
 
             return fetch('/design/upload', {
                 method: 'POST',
@@ -87,9 +87,10 @@
                 if (typeof window.PMKCRefreshUniformLogos === 'function') {
                     window.PMKCRefreshUniformLogos();
                 }
-            }).catch(function() {
+            }).catch(function(err) {
                 div.innerHTML = '<span style="color:#dc3545;font-size:0.75rem">' +
-                    'Timed out - try a smaller file</span>';
+                    (err && err.name === 'AbortError' ? 'Took too long - check your connection and try again'
+                        : 'Could not upload - check your connection and try again') + '</span>';
             }).finally(function() {
                 clearTimeout(timer);
             });
@@ -191,7 +192,7 @@
             fd.append('file', file);
             fd.append('bg_removal', 'none');
             var ctrl = new AbortController();
-            var timer = setTimeout(function() { ctrl.abort(); }, 20000);
+            var timer = setTimeout(function() { ctrl.abort(); }, 90000);
             return fetch('/design/upload', {
                 method: 'POST',
                 body: fd,
@@ -216,9 +217,11 @@
                 span.textContent = original.name + ' (back only)';
                 pending.appendChild(span);
                 if (linkBox && preview.querySelectorAll('img').length > 1) linkBox.style.display = 'flex';
-            }).catch(function() {
+            }).catch(function(err) {
                 pending.firstChild.style.color = '#dc3545';
-                pending.firstChild.textContent = 'Timed out - try a smaller file';
+                pending.firstChild.textContent = (err && err.name === 'AbortError')
+                    ? 'Took too long - check your connection and try again'
+                    : 'Could not upload - check your connection and try again';
             }).finally(function() {
                 clearTimeout(timer);
                 busy(false);

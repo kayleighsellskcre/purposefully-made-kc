@@ -789,6 +789,25 @@ def group_order_make_main(slug, design_id):
     return redirect(url_for('shop.edit_group_order', slug=slug))
 
 
+@shop_bp.route('/group-orders/<slug>/designs/<int:design_id>/card-picture', methods=['POST'])
+@login_required
+def group_order_card_picture(slug, design_id):
+    """Use this design as the picture on the group's card (the school page shows the first "Show at top" design)."""
+    from utils.group_designs import _dump, _ids
+    from utils.group_orders import user_can_manage_collection
+    collection = Collection.query.filter_by(slug=slug).first_or_404()
+    if not user_can_manage_collection(collection):
+        abort(403)
+    allowed = _ids(collection.allowed_design_ids)
+    if design_id not in allowed:
+        abort(404)
+    shown = [i for i in _ids(collection.showcase_design_ids) if i != design_id]
+    collection.showcase_design_ids = _dump([design_id] + shown)
+    db.session.commit()
+    flash("That design is now the picture on this group's card.", 'success')
+    return redirect(url_for('shop.edit_group_order', slug=slug))
+
+
 MAX_GALLERY_CARDS = 300
 
 

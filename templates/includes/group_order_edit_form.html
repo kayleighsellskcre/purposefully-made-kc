@@ -190,6 +190,7 @@
                                     <input type="checkbox" name="showcase_designs" value="{{ d.id }}" {% if d.id in (showcase_design_ids_list or []) %}checked{% endif %}>
                                     Show at top
                                 </label>
+                                <button type="submit" form="cardPicture{{ d.id }}" class="design-move-btn" title="Use this design as the picture on the group's card" style="font-size:12px;">Use on card</button>
                                 {% if not is_user_edit and gallery_designs|length > 1 %}
                                 <label class="showcase-opt">
                                     <input type="checkbox" name="design_ids" value="{{ d.id }}" form="linkDesigns">
@@ -643,6 +644,12 @@
         </form>
         {% endfor %}{% endfor %}
         {% endif %}
+        {% for d in gallery_designs or [] %}
+        <form id="cardPicture{{ d.id }}" method="post" style="display:none;"
+              action="{{ url_for('shop.group_order_card_picture', slug=collection.slug, design_id=d.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+        {% endfor %}
     </div>
 </div>
 

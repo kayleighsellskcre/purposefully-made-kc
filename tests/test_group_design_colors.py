@@ -127,3 +127,18 @@ def test_organizer_route_works_for_the_owner(app, seed, admin_client):
     with app.app_context():
         assert db.session.get(Design, kid_ids[1]).parent_design_id is None
         assert db.session.get(Design, main_id).parent_design_id == kid_ids[1]
+
+
+def test_owner_picks_the_card_picture_by_moving_a_design_first(app, seed, admin_client):
+    main_id, kid_ids = _family(app, seed)          # allowed: [main, free design]
+    free = seed['free_design_id']
+    with app.app_context():
+        coll = db.session.get(Collection, seed['collection_id'])
+        coll.showcase_design_ids = json.dumps([main_id, free])
+        db.session.commit()
+    resp = admin_client.post(f'/shop/group-orders/{seed["collection_slug"]}/designs/{free}/card-picture')
+    assert resp.status_code == 302
+    with app.app_context():
+        assert json.loads(db.session.get(Collection, seed['collection_id']).showcase_design_ids) == [free, main_id]
+    html = admin_client.get(f'/admin/collections/{seed["collection_id"]}/edit').get_data(as_text=True)
+    assert f'cardPicture{free}' in html and 'Use on card' in html
