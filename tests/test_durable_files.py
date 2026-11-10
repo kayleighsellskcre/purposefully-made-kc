@@ -122,3 +122,8 @@ def test_shared_uploader_retries_before_giving_up(app, monkeypatch):
     with app.app_context():
         out = cs.upload_image(FileStorage(io.BytesIO(b'x'), filename='a.png'), app, subfolder='designs')
     assert out == 'https://cdn.example.com/ok.png' and calls['n'] == 3
+
+
+def test_admin_picture_of_a_logo_is_drawn_true_to_size_not_enlarged():
+    from utils.order_artwork import ADMIN_LOGO_EASE
+    assert ADMIN_LOGO_EASE == 1.0

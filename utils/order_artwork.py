@@ -289,9 +289,10 @@ def _is_composite_proof(url):
     )
 
 
-# Admin picture of a plain front logo: drawn true to the shirt body in the photo, then
-# eased up a quarter so it reads clearly. 1.0 would be the exact printed proportion.
-ADMIN_LOGO_EASE = 1.25
+# Admin picture of a plain front logo: drawn true to the shirt body in the photo.
+# 1.0 is the exact printed proportion. It used to be 1.25 ("eased up so it reads clearly"),
+# which made every order look like its design was a quarter bigger than it will print.
+ADMIN_LOGO_EASE = 1.0
 
 
 def _width_pct_from_photo(mockup_url, product, size, ordered_in):
