@@ -66,29 +66,32 @@ def _run_image_generation(app, job_id: str, api_key: str, enhanced_prompt: str,
             import requests as req_lib
             auth_header = {'Authorization': f'Bearer {api_key}'}
 
+            img_bytes = None
             if reference_b64:
                 # Strip the data-URL prefix (data:image/png;base64,...)
                 raw = reference_b64.split(',', 1)[1] if ',' in reference_b64 else reference_b64
                 img_bytes = _b64.b64decode(raw)
-                resp = req_lib.post(
-                    'https://api.openai.com/v1/images/edits',
-                    headers=auth_header,
-                    files={'image': ('reference.png', _io.BytesIO(img_bytes), 'image/png')},
-                    data={
-                        'model': 'gpt-image-1',
-                        'prompt': enhanced_prompt,
-                        'n': '1',
-                        'size': '1024x1024',
-                        'quality': 'high',
-                    },
-                    timeout=120,
-                )
-            else:
-                resp = req_lib.post(
+
+            def _call(model):
+                if img_bytes is not None:
+                    return req_lib.post(
+                        'https://api.openai.com/v1/images/edits',
+                        headers=auth_header,
+                        files={'image': ('reference.png', _io.BytesIO(img_bytes), 'image/png')},
+                        data={
+                            'model': model,
+                            'prompt': enhanced_prompt,
+                            'n': '1',
+                            'size': '1024x1024',
+                            'quality': 'high',
+                        },
+                        timeout=150,
+                    )
+                return req_lib.post(
                     'https://api.openai.com/v1/images/generations',
                     headers={**auth_header, 'Content-Type': 'application/json'},
                     json={
-                        'model': 'gpt-image-1',
+                        'model': model,
                         'prompt': enhanced_prompt,
                         'n': 1,
                         'size': '1024x1024',
@@ -96,8 +99,24 @@ def _run_image_generation(app, job_id: str, api_key: str, enhanced_prompt: str,
                         'background': 'transparent',
                         'output_format': 'png',
                     },
-                    timeout=120,
+                    timeout=150,
                 )
+
+            from utils import ai_errors
+            first = (app.config.get('OPENAI_IMAGE_MODEL') or 'gpt-image-2.6-flare').strip()
+            models = [first] + [m for m in app.config.get('IMAGE_MODEL_FALLBACKS', ()) if m != first]
+            for model in models:
+                resp = _call(model)
+                if resp.status_code == 200:
+                    break
+                try:
+                    err_obj = resp.json().get('error') or {}
+                except Exception:
+                    err_obj = {}
+                if not ai_errors.is_model_problem(resp.status_code, str(err_obj.get('message') or resp.text[:400]),
+                                                  str(err_obj.get('code') or err_obj.get('type') or '')):
+                    break                      # a real problem (credits, busy, wording): trying another model will not help
+                app.logger.warning('AI image model %s unavailable, trying the next one', model)
             if resp.status_code != 200:
                 api_err = resp.text[:400]
                 app.logger.warning('AI image error %s: %s', resp.status_code, api_err)
@@ -108,7 +127,6 @@ def _run_image_generation(app, job_id: str, api_key: str, enhanced_prompt: str,
                     code = str(err_obj.get('code') or err_obj.get('type') or '')
                 except Exception:
                     err_msg = api_err
-                from utils import ai_errors
                 kind = ai_errors.classify(resp.status_code, err_msg, code)
                 ai_errors.alert_owner(app, kind, resp.status_code, err_msg)      # the provider's wording goes to the owner, never the customer
                 _write_job(job_id, {'status': 'error', 'error': ai_errors.customer_message(kind), 'kind': kind})

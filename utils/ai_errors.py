@@ -18,9 +18,21 @@ REWORD = 'We could not make that one. Try describing it a little differently, wi
 GENERIC = 'Something went wrong making your design. Please try again.'
 
 
-def classify(status, message='', code=''):
-    """'credits' (we ran out or the key is bad), 'busy', 'reword' or 'other'."""
+MODEL_WORDS = ('model_not_found', 'does not exist', 'deprecated', 'has been shut down', 'no longer available',
+               'not supported', 'invalid model', 'unknown model', 'retired')
+
+
+def is_model_problem(status, message='', code=''):
+    """OpenAI turned the picture model off or does not know it (so a newer model should be tried)."""
     text = f'{message} {code}'.lower()
+    return status in (400, 404) and 'model' in text and any(w in text for w in MODEL_WORDS)
+
+
+def classify(status, message='', code=''):
+    """'credits' (we ran out or the key is bad), 'model' (the picture model was retired), 'busy', 'reword' or 'other'."""
+    text = f'{message} {code}'.lower()
+    if is_model_problem(status, message, code):
+        return 'model'
     if status in (401, 402, 403) or any(w in text for w in ('no credits', 'insufficient_quota', 'billing', 'quota', 'incorrect api key', 'invalid_api_key')):
         return 'credits'
     if status == 429 or 'rate limit' in text or 'rate_limit' in text:
@@ -31,12 +43,12 @@ def classify(status, message='', code=''):
 
 
 def customer_message(kind):
-    return {'credits': BUSY, 'busy': TRY_LATER, 'reword': REWORD}.get(kind, GENERIC)
+    return {'credits': BUSY, 'model': BUSY, 'busy': TRY_LATER, 'reword': REWORD}.get(kind, GENERIC)
 
 
 def alert_owner(app, kind, status, message):
     """Email the owner when the picture maker is down for a reason only they can fix. Never raises."""
-    if kind != 'credits':
+    if kind not in ('credits', 'model'):
         return False
     try:
         from utils.site_settings import get_setting, set_setting
@@ -51,13 +63,19 @@ def alert_owner(app, kind, status, message):
         from flask_mail import Message
 
         from utils import mailer
+        if kind == 'model':
+            reason = ('OpenAI no longer offers the picture model the site uses (they retire older models every few months).\n'
+                      'Fix: set OPENAI_IMAGE_MODEL in Railway to OpenAI\'s current image model, or ask Claude to update it.\n\n')
+            subject = 'AI Design Studio is paused: OpenAI picture model needs updating'
+        else:
+            reason = ('The most likely reason is that the OpenAI account is out of credits.\n'
+                      'Fix: sign in at https://platform.openai.com/settings/organization/billing/ and add credits '
+                      '(turning on auto-recharge there keeps this from happening again).\n\n')
+            subject = 'AI Design Studio is paused: check OpenAI credits'
         body = ('The AI Design Studio could not make a picture, so customers are being told it is taking a short break.\n\n'
-                'The most likely reason is that the OpenAI account is out of credits.\n'
-                'Fix: sign in at https://platform.openai.com/settings/organization/billing/ and add credits '
-                '(turning on auto-recharge there keeps this from happening again).\n\n'
-                f'OpenAI said ({status}): {str(message)[:300]}\n\n'
+                + reason + f'OpenAI said ({status}): {str(message)[:300]}\n\n'
                 'You will get at most one of these emails every 12 hours.')
-        return bool(mailer.send(app, Message(subject='AI Design Studio is paused: check OpenAI credits',
+        return bool(mailer.send(app, Message(subject=subject,
                                              recipients=[mailer.admin_recipient(app)], body=body), 'ai credits alert'))
     except Exception:
         app.logger.exception('could not send the AI credits alert')
