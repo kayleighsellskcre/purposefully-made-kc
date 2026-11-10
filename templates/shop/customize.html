@@ -3050,12 +3050,28 @@
         prefetchAllGarmentMetrics();
         prefetchArtworkFits();
         let lastCanvasW = 0, lastCanvasH = 0;
+        // When the shirt photo finishes loading its real size is known: size the logo again from it.
+        const mockupForFit = document.getElementById('mockupImage');
+        if (mockupForFit) {
+            mockupForFit.addEventListener('load', function() {
+                state.lockedFitKey = null;
+                applyDesignFit();
+                applyDesignPosition();
+                // The back image, pocket-size name/number and every other art placed from the
+                // shirt's measured size have the same wait for the photo.
+                applyBackUploadFit();
+                updateBackDesignPreview();
+                applyBackDesignPosition();
+            });
+        }
         window.addEventListener('resize', function() {
             const canvas = document.getElementById('previewCanvas');
             const w = canvas ? canvas.clientWidth : 0, h = canvas ? canvas.clientHeight : 0;
             if (w === lastCanvasW && h === lastCanvasH) return;      // the preview did not change size: leave the art alone
             lastCanvasW = w; lastCanvasH = h;
+            state.lockedFitKey = null;                               // a different preview size needs a new fit
             applyDesignFit();
+            applyBackUploadFit();
             updateBackDesignPreview();
             applyBackDesignPosition();
         });
@@ -4347,8 +4363,13 @@
         designLayer.style.maxWidth = 'none';
         designLayer.style.maxHeight = maxH.toFixed(1) + '%';
         designLayer.classList.remove('is-fitting');
+        // Only remember this size once the shirt photo is on screen. Before it loads, the
+        // photo's size is unknown and the whole preview box stands in for it, which made the
+        // logo far too big on a phone that loaded the photo a moment after the page.
+        const mockupEl = document.getElementById('mockupImage');
+        const mockupLoaded = !!(mockupEl && mockupEl.naturalWidth);
         if (designLayer.classList.contains('visible') && hasCachedFit
-            && shirtMeasured) {
+            && shirtMeasured && mockupLoaded) {
             state.lockedFitKey = lockKey;
             state.lockedFitMeasured = true;
         }

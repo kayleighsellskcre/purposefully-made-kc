@@ -225,3 +225,9 @@ def test_cart_row_leads_with_the_design_name_and_keeps_the_price_on_one_line(app
     html = shopper.get('/cart/').get_data(as_text=True)
     assert 'item-design-name' in html and 'item-product-line' in html
     assert 'white-space: nowrap' in html and 'minmax(0, 1fr)' in html
+
+
+def test_customizer_resizes_the_logo_once_the_shirt_photo_has_loaded(app, seed):
+    html = app.test_client().get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
+    assert 'mockupLoaded' in html                              # no size is remembered before the photo is on screen
+    assert "mockupForFit.addEventListener('load'" in html      # and the logo is sized again when it arrives

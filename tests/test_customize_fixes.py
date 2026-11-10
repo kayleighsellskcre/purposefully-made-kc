@@ -226,7 +226,7 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     assert "if (isUniformKit) {" in html
     assert "designLayer.classList.add('is-fitting');" in html
     assert 'Jerseys stay hidden until' in html
-    assert "&& shirtMeasured)" in html
+    assert "&& shirtMeasured && mockupLoaded)" in html
     assert '(!isUniformKit || shirtMeasured)' not in html
     assert "source: 'fallback'" in html
     assert "source: 'measured' });" not in html
