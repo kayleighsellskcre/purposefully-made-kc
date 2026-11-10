@@ -101,11 +101,17 @@ def _run_image_generation(app, job_id: str, api_key: str, enhanced_prompt: str,
             if resp.status_code != 200:
                 api_err = resp.text[:400]
                 app.logger.warning('AI image error %s: %s', resp.status_code, api_err)
+                code = ''
                 try:
-                    err_msg = (resp.json().get('error') or {}).get('message', api_err)
+                    err_obj = resp.json().get('error') or {}
+                    err_msg = err_obj.get('message', api_err)
+                    code = str(err_obj.get('code') or err_obj.get('type') or '')
                 except Exception:
                     err_msg = api_err
-                _write_job(job_id, {'status': 'error', 'error': f'Generation failed: {err_msg}'})
+                from utils import ai_errors
+                kind = ai_errors.classify(resp.status_code, err_msg, code)
+                ai_errors.alert_owner(app, kind, resp.status_code, err_msg)      # the provider's wording goes to the owner, never the customer
+                _write_job(job_id, {'status': 'error', 'error': ai_errors.customer_message(kind), 'kind': kind})
                 return
 
             item = resp.json()['data'][0]

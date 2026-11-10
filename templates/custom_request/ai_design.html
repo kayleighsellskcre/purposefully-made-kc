@@ -126,6 +126,7 @@
         <div class="ai-error" id="aiError" style="display:none;">
             <p id="aiErrorText">Something went wrong. Please try again.</p>
             <button type="button" class="btn btn-outline" onclick="aiBack()">Try Again</button>
+            <p style="margin:1rem 0 0;font-size:0.95rem;">Or <a href="{{ url_for('shop.design_gallery') }}">browse the Design Gallery</a> or <a href="{{ url_for('custom_request.index') }}">send us your idea</a> and we will make it for you.</p>
         </div>
 
         {# ── Rate limit notice ── #}
