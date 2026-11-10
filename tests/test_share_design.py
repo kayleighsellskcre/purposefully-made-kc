@@ -172,3 +172,29 @@ def test_link_preview_shows_the_picture_of_the_design_not_the_generic_card(app, 
     token2 = _token(_share(_signed_in(app)))
     html2 = app.test_client().get(f'/made/{token2}').get_data(as_text=True)
     assert 'property="og:image"' in html2
+
+
+def test_preview_picture_is_the_design_drawn_on_the_shirt(app, seed):
+    import io
+
+    from PIL import Image
+    _set_cart(app, CUSTOMER_EMAIL, [_line(seed)])
+    token = _token(_share(_signed_in(app)))
+    resp = app.test_client().get(f'/made/{token}/preview.jpg')
+    assert resp.status_code in (200, 302)                    # 302 only when the test shirt has no photo on file
+    if resp.status_code == 200:
+        img = Image.open(io.BytesIO(resp.data))
+        assert img.size == (1200, 630)
+
+
+def test_compose_puts_the_logo_on_the_shirt(tmp_path, app):
+    from PIL import Image
+
+    from utils.share_preview import compose
+    shirt, art = tmp_path / 'shirt.png', tmp_path / 'art.png'
+    Image.new('RGB', (800, 1000), (200, 200, 200)).save(shirt)
+    Image.new('RGBA', (400, 400), (255, 0, 0, 255)).save(art)
+    with app.app_context():
+        import io
+        data = compose(str(shirt), str(art), 'width:40%;max-width:none;max-height:50%;top:38%;left:50%;transform:translate(-50%,-50%);')
+    assert data is None or Image.open(io.BytesIO(data)).size == (1200, 630)

@@ -69,6 +69,7 @@ def view(token):
     # Same as the cart: the saved picture when it is still on file, otherwise the logo drawn on the shirt photo.
     image = proof or front
     share_image = proof or front              # what a Facebook/text link preview shows: the picture of this exact design
+    saved_proof = bool(proof)
     overlay = None
     overlay_style = ''
     colors = SD.colors_offered(share, product)
@@ -81,9 +82,36 @@ def view(token):
         overlay_style = preview_overlay_style({'size': mid, 'print_width': share.line.get('print_width'),
                                                'print_height': share.line.get('print_height'), 'product': product},
                                               placement, front)
+        if front and not saved_proof:           # no saved picture: draw the logo on the shirt photo for the preview
+            share_image = url_for('made.preview', token=share.token, c=(share.line.get('color') or '')[:40])   # the logo drawn on the shirt
     return render_template('made/view.html', share=share, product=product, sizes=sizes, unavailable=unavailable,
                            image=image, share_image=share_image, overlay=overlay, overlay_style=overlay_style, colors=colors if len(colors) > 1 else [], fallback=front if proof else None, placement=placement,
                            qr=url_for('made.qr', token=share.token), link=_link(share))
+
+
+@made_bp.route('/made/<token>/preview.jpg')
+def preview(token):
+    """The shirt with this design on it, 1200 x 630: what Facebook and texts show for the link."""
+    share = SD.get_active(token)
+    if share is None:
+        abort(404)
+    from models import Product
+    from utils.order_artwork import FRONT_PLACEMENTS, mockup_urls, preview_overlay_style
+    from utils.share_preview import compose
+    product = db.session.get(Product, share.line.get('product_id') or 0)
+    front, _back = mockup_urls(product, share.line.get('color')) if product else (None, None)
+    placement = share.line.get('placement') or 'center_chest'
+    design = share.line.get('design_url')
+    data = None
+    if front and design and placement in FRONT_PLACEMENTS:
+        sizes, _unavailable = SD.sizes_with_prices(share)
+        mid = sizes[len(sizes) // 2][0] if sizes else 'M'
+        style = preview_overlay_style({'size': mid, 'print_width': share.line.get('print_width'),
+                                       'print_height': share.line.get('print_height'), 'product': product}, placement, front)
+        data = compose(front, design, style)
+    if data is None:
+        return redirect(front or url_for('static', filename='img/og-card.jpg'))
+    return Response(data, mimetype='image/jpeg', headers={'Cache-Control': 'public, max-age=3600'})
 
 
 @made_bp.route('/made/<token>/add', methods=['POST'])
