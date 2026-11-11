@@ -1,6 +1,7 @@
 {% set is_user_edit = is_user_edit|default(false) %}
 {% set collection_product_ids = collection_product_ids|default([]) %}
 {% set fan_product_ids = team_store.fan_product_ids if team_store and team_store.configured else collection_product_ids %}
+{% set fan_org = fan_store_org(collection) if collection is defined else none %}
 <div class="admin-page">
     <div class="container">
         <div class="admin-header">
@@ -52,8 +53,18 @@
                 {% include 'includes/group_order_kind_fields.html' %}
             </div>
 
+            {% if fan_org %}
+            <div class="form-section">
+                <h2 style="margin-top:0;">This is the Fan Wear store for {{ fan_org.name }}</h2>
+                <p class="form-hint" style="margin:0 0 0.6rem;">Its styles, colors, dates, description, cover, password and "Show at top" follow the Fan Wear page and the teams, so changing them here would be undone the next time it refreshes. Artwork you add here stays here.</p>
+                {% if not is_user_edit %}<a class="btn btn-outline btn-sm" href="{{ url_for('org.fan_wear', slug=fan_org.slug) }}">Edit Fan Wear styles and colors &rarr;</a>{% endif %}
+            </div>
+            {% endif %}
+
             {% set jersey_logo_picker_here = true %}
+            <div{% if fan_org %} hidden{% endif %}>
             {% include 'includes/group_order_team_store.html' %}
+            </div>
 
             {% if sync_org %}
             <div class="form-section">
@@ -66,7 +77,7 @@
 
             {# In a group with several teams the fan styles and colors are managed on the Fan Wear page. They stay in the form,
                hidden, so saving this page leaves them exactly as they are. #}
-            <div class="form-section"{% if sync_org %} hidden{% endif %}>
+            <div class="form-section"{% if sync_org or fan_org %} hidden{% endif %}>
                 <h2><span data-copy="team">Family &amp; Fan Wear</span><span data-copy="general">Styles to Offer</span></h2>
                 <p class="form-hint" data-copy="team">Offer extra styles besides the jersey, like tees, hoodies, and cute matching looks for family and friends. Check both youth and adult if both ages will order. Leave this empty for a uniform-only store.</p>
                 <p class="form-hint" data-copy="general">Check the styles your group can order. If kids and grown-ups are both ordering, check the youth and adult versions so everyone can match.</p>
@@ -113,7 +124,7 @@
                 <p class="form-hint">Set up colors, designs, placements, and back options. Everyone ordering will only see what you allow.</p>
 
                 {# ── 1. Colors ──────────────────────────────────────────── #}
-                <div class="organizer-block"{% if sync_org %} hidden{% endif %}>
+                <div class="organizer-block"{% if sync_org or fan_org %} hidden{% endif %}>
                     <div class="organizer-block-label">
                         <span class="organizer-step">1</span>
                         <div>

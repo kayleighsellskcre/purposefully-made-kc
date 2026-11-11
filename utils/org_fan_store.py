@@ -170,3 +170,17 @@ def retire_org_fan_store(org):
     if store is not None and is_auto_fan_store(store):
         store.is_active = False
         store.show_in_directory = False
+
+
+def managing_org(collection):
+    """The organization when ``collection`` is its automatic Fan Wear store, else None.
+
+    That store's styles and colors follow the Fan Wear page (and the teams), so its own edit page points there.
+    """
+    try:
+        if collection is None or not is_auto_fan_store(collection):
+            return None
+        from utils.group_orders import org_for_collection
+        return org_for_collection(collection)[0]
+    except Exception:
+        return None

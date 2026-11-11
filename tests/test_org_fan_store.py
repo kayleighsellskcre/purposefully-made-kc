@@ -350,3 +350,15 @@ def test_unticking_the_jersey_logo_fan_wear_toggle_now_sticks(admin_client, app,
     with app.app_context():
         cfg = json.loads(db.session.get(Collection, coll_id).team_store_config)
         assert cfg['fan_show_jersey_logo'] is False
+
+
+def test_the_fan_wear_stores_own_edit_page_points_to_the_real_fan_wear_controls(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    fan_id, _slug = _fan(app)
+    page = admin_client.get(f'/admin/collections/{fan_id}/edit').get_data(as_text=True)
+    assert 'This is the Fan Wear store for Rainbow Cheetahs' in page
+    assert 'Edit Fan Wear styles and colors' in page
+    team_id = None
+    with app.app_context():
+        team_id = Collection.query.filter_by(name=TEAM).one().id
+    assert 'This is the Fan Wear store for' not in admin_client.get(f'/admin/collections/{team_id}/edit').get_data(as_text=True)

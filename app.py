@@ -1036,6 +1036,8 @@ def create_app(config_class=Config):
     app.jinja_env.globals['group_design_sources'] = _design_sources
     from utils.group_designs import back_families as _back_families
     app.jinja_env.globals['group_back_designs'] = _back_families
+    from utils.org_fan_store import managing_org as _managing_org
+    app.jinja_env.globals['fan_store_org'] = _managing_org
 
     @app.template_filter('closes_in')
     def closes_in_filter(collection):
