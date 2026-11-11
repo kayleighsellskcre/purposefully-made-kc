@@ -142,3 +142,20 @@ def test_owner_picks_the_card_picture_by_moving_a_design_first(app, seed, admin_
         assert json.loads(db.session.get(Collection, seed['collection_id']).showcase_design_ids) == [free, main_id]
     html = admin_client.get(f'/admin/collections/{seed["collection_id"]}/edit').get_data(as_text=True)
     assert f'cardPicture{free}' in html and 'Use on card' in html
+
+
+def test_a_jersey_logo_cannot_be_taken_off_or_deleted_by_accident(app, seed, admin_client):
+    import json as _json
+
+    from models import Collection, Design, db
+    main_id, kid_ids = _family(app, seed)
+    with app.app_context():
+        coll = db.session.get(Collection, seed['collection_id'])
+        coll.team_store_config = _json.dumps({'version': 1, 'uniform': {'enabled': True, 'product_ids': [], 'home_design_id': main_id}})
+        db.session.commit()
+    base = f'/admin/collections/{seed["collection_id"]}/designs/{main_id}'
+    assert admin_client.post(base + '/detach').status_code == 302
+    assert admin_client.post(base + '/remove').status_code == 302
+    with app.app_context():
+        assert main_id in _json.loads(db.session.get(Collection, seed['collection_id']).allowed_design_ids)
+        assert db.session.get(Design, main_id) is not None

@@ -2535,8 +2535,11 @@ def collection_designs_attach(collection_id):
 @admin_required
 def collection_design_detach(collection_id, design_id):
     """Take a design off this group order only. The artwork and every other group are untouched."""
-    from utils.group_designs import detach
+    from utils.group_designs import JERSEY_LOGO_MESSAGE, detach, jersey_logo_ids
     collection = Collection.query.get_or_404(collection_id)
+    if design_id in jersey_logo_ids(collection):
+        flash(JERSEY_LOGO_MESSAGE, 'error')
+        return redirect(url_for('admin.edit_collection', collection_id=collection_id))
     detach(collection, design_id)
     db.session.commit()
     flash('Taken off this group order. It is still on file and in any other group that uses it.', 'success')
@@ -2706,6 +2709,10 @@ def collection_design_remove(collection_id, design_id):
     import json as _json
     collection = Collection.query.get_or_404(collection_id)
     design = Design.query.get_or_404(design_id)
+    from utils.group_designs import JERSEY_LOGO_MESSAGE, jersey_logo_ids
+    if design_id in jersey_logo_ids(collection):
+        flash(JERSEY_LOGO_MESSAGE, 'error')
+        return redirect(url_for('admin.edit_collection', collection_id=collection_id))
 
     # Remove from allowed_design_ids
     ids = _json.loads(collection.allowed_design_ids) if collection.allowed_design_ids else []
@@ -2740,7 +2747,14 @@ def collection_designs_bulk(collection_id):
     from utils.group_designs import detach, forget_back_design
     collection = Collection.query.get_or_404(collection_id)
     ids = [int(i) for i in request.form.getlist('pick') if str(i).isdigit()]
+    from utils.group_designs import JERSEY_LOGO_MESSAGE, jersey_logo_ids
+    protected = [i for i in ids if i in jersey_logo_ids(collection)]
+    if protected:
+        flash(JERSEY_LOGO_MESSAGE, 'error')          # the jersey logo stays; everything else ticked still goes
+        ids = [i for i in ids if i not in protected]
     action = request.form.get('action')
+    if not ids and protected:
+        return redirect(url_for('admin.edit_collection', collection_id=collection_id))
     if not ids or action not in ('detach', 'delete'):
         flash('Tick the designs you want to change first.', 'error')
         return redirect(url_for('admin.edit_collection', collection_id=collection_id))

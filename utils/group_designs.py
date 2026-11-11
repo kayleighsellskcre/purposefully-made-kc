@@ -284,3 +284,18 @@ def make_main(store, chosen):
         sections[chosen.id] = sections.pop(old.id)
         store.design_sections = json.dumps({str(k): v for k, v in sections.items()})
     return chosen
+
+
+def jersey_logo_ids(store):
+    """Designs this group uses as its Home or Away jersey logo. Taking one off the group or deleting it leaves the jerseys
+    without a logo, so the admin pages refuse and say so."""
+    try:
+        from utils.group_orders import team_store_config
+        uniform = (team_store_config(store) or {}).get('uniform') or {}
+        return {int(i) for i in (uniform.get('home_design_id'), uniform.get('away_design_id')) if i}
+    except Exception:
+        return set()
+
+
+JERSEY_LOGO_MESSAGE = ('That design is the Home or Away jersey logo for this group, so it was left alone. '
+                       'Change the jersey logo in Player Uniforms first, then take it off.')
