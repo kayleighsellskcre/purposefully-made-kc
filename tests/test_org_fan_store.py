@@ -321,3 +321,32 @@ def test_a_design_added_on_the_fan_wear_store_stays_there_and_is_not_needed_in_a
         assert extra.id not in json.loads(team.allowed_design_ids or '[]')   # and no team needed it
         from utils.group_orders import org_fanwear_design_ids
         assert extra.id in org_fanwear_design_ids(team)                    # a team's Fan Wear page offers it too
+
+
+def test_a_team_edit_page_in_a_group_points_to_the_group_fan_wear_page_and_keeps_fan_settings_when_saved(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    from tests.test_jersey_and_fan_wear import _checked_products, _store
+    coll_id = _store(app, TEAM)[0]
+    page = admin_client.get(f'/admin/collections/{coll_id}/edit').get_data(as_text=True)
+    assert 'managed once for the whole group' in page and 'Edit Fan Wear for the whole group' in page
+    assert 'Team designs only.' in page
+    before = _checked_products(admin_client, coll_id)
+    assert before                                                     # the fan styles are still in the page, only hidden
+    with app.app_context():
+        team = db.session.get(Collection, coll_id)
+        fan_before = team_store_config(team)['fan_product_ids']
+    _save_edit(admin_client, app, lambda data: None)                  # press Save without touching anything
+    with app.app_context():
+        team = db.session.get(Collection, coll_id)
+        assert team_store_config(team)['fan_product_ids'] == fan_before
+    assert _checked_products(admin_client, coll_id) == before
+
+
+def test_unticking_the_jersey_logo_fan_wear_toggle_now_sticks(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    from tests.test_jersey_and_fan_wear import _store
+    coll_id = _store(app, TEAM)[0]
+    _save_edit(admin_client, app, lambda data: data.pop('fan_show_jersey_logo', None))
+    with app.app_context():
+        cfg = json.loads(db.session.get(Collection, coll_id).team_store_config)
+        assert cfg['fan_show_jersey_logo'] is False

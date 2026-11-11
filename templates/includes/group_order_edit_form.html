@@ -58,12 +58,15 @@
             {% if sync_org %}
             <div class="form-section">
                 <input type="hidden" name="sync_fan_to_org" value="on">
-                <p class="form-hint" style="margin:0">Fan Wear styles and colors are shared by every team in <strong>{{ sync_org.name }}</strong>. Changes here apply to all teams.
-                {% if not is_user_edit %}<a href="{{ url_for('org.fan_wear', slug=sync_org.slug) }}">Edit Fan Wear for the whole group &rarr;</a>{% endif %}</p>
+                <h2 style="margin-top:0;">Fan Wear</h2>
+                <p class="form-hint" style="margin:0 0 0.6rem;">Fan Wear (styles, colors, and the designs fans can pick) is managed once for the whole group, <strong>{{ sync_org.name }}</strong>, not on each team. This page is for this team's jerseys and team designs.</p>
+                {% if not is_user_edit %}<a class="btn btn-outline btn-sm" href="{{ url_for('org.fan_wear', slug=sync_org.slug) }}">Edit Fan Wear for the whole group &rarr;</a>{% endif %}
             </div>
             {% endif %}
 
-            <div class="form-section">
+            {# In a group with several teams the fan styles and colors are managed on the Fan Wear page. They stay in the form,
+               hidden, so saving this page leaves them exactly as they are. #}
+            <div class="form-section"{% if sync_org %} hidden{% endif %}>
                 <h2><span data-copy="team">Family &amp; Fan Wear</span><span data-copy="general">Styles to Offer</span></h2>
                 <p class="form-hint" data-copy="team">Offer extra styles besides the jersey, like tees, hoodies, and cute matching looks for family and friends. Check both youth and adult if both ages will order. Leave this empty for a uniform-only store.</p>
                 <p class="form-hint" data-copy="general">Check the styles your group can order. If kids and grown-ups are both ordering, check the youth and adult versions so everyone can match.</p>
@@ -110,7 +113,7 @@
                 <p class="form-hint">Set up colors, designs, placements, and back options. Everyone ordering will only see what you allow.</p>
 
                 {# ── 1. Colors ──────────────────────────────────────────── #}
-                <div class="organizer-block">
+                <div class="organizer-block"{% if sync_org %} hidden{% endif %}>
                     <div class="organizer-block-label">
                         <span class="organizer-step">1</span>
                         <div>
@@ -130,6 +133,7 @@
                             <strong>What design goes on the front?</strong>
                             <p class="form-hint" style="margin:0" data-copy="team">Upload the jersey logo. If Home and Away need different files, upload both, then mark them in Player Uniforms above. Add extra matching designs so family and fans can represent without wearing the exact jersey graphic.</p>
                             <p class="form-hint" style="margin:0" data-copy="general">Upload your logo or design. You can add a few if you'd like to give people options.</p>
+                            {% if sync_org %}<p class="form-hint" style="margin:0.3rem 0 0;"><strong>Team designs only.</strong> Artwork for family and fans goes on the Fan Wear page for the whole group, so it does not need to be here. The jersey logo must be.</p>{% endif %}
                         </div>
                     </div>
                     <div class="collection-upload-area" id="uploadArea" role="button" tabindex="0"

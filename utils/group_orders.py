@@ -895,6 +895,11 @@ def set_collection_products_from_form(collection):
                 allowed_logo_ids.add(did)
         home_design_id = _as_int(request.form.get('uniform_home_design_id'))
         away_design_id = _as_int(request.form.get('uniform_away_design_id'))
+        from flask import flash
+        for _label, _chosen in (('Home', home_design_id), ('Away', away_design_id)):
+            if _chosen and _chosen not in allowed_logo_ids:
+                flash(f"The {_label} jersey logo you picked is not in this group's design list, so {_label} jerseys have no logo. "
+                      'Add the design under "What design goes on the front?" and pick it again.', 'warning')
         if home_design_id not in allowed_logo_ids:
             home_design_id = None
         if away_design_id not in allowed_logo_ids:
@@ -968,9 +973,10 @@ def set_collection_products_from_form(collection):
             ),
             # True = jersey logo appears as a design choice on fan wear (default on).
             # Coaches can uncheck to hide it so fans see only other uploaded designs.
+            # An unticked box sends nothing, so the page also sends a marker saying the box was on the page.
             'fan_show_jersey_logo': (
                 request.form.get('fan_show_jersey_logo') == 'on'
-                if 'fan_show_jersey_logo' in request.form
+                if ('fan_show_jersey_logo' in request.form or 'fan_show_jersey_logo_present' in request.form)
                 else True
             ),
             # Design IDs the admin wants EXCLUDED from the sibling Fan Wear store.
