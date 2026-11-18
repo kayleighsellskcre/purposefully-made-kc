@@ -84,7 +84,12 @@ def test_the_jersey_rules_survive_saving_from_a_page_without_the_jersey_boxes(ad
 
 
 def test_the_edit_page_shows_the_jersey_choices_and_remembers_them(admin_client, app, seed):
+    """A store that sells jerseys and Fan Wear itself (no separate Fan Wear store) has both sets of choices."""
     _build(admin_client, app, seed)
+    from models import OrgSection
+    with app.app_context():
+        OrgSection.query.filter_by(collection_id=Collection.query.filter_by(name=TEAM).one().id).delete()
+        db.session.commit()
     _save_edit(admin_client, app, lambda d: _jersey_rules(d, ['center_chest'], stacked=False))
     with app.app_context():
         coll_id = Collection.query.filter_by(name=TEAM).one().id
@@ -162,3 +167,24 @@ def test_a_store_without_an_organization_keeps_jerseys_and_fan_wear_together(adm
         db.session.commit()
     page = client.get(f'/c/{_slug_of(app, TEAM)}').get_data(as_text=True)
     assert 'catalog_section=fan' in page or 'id="fanWearToggle"' in page
+
+
+def test_a_team_edit_page_with_a_separate_fan_wear_store_has_no_fan_wear_wording(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    with app.app_context():
+        coll_id = Collection.query.filter_by(name=TEAM).one().id
+    page = admin_client.get(f'/admin/collections/{coll_id}/edit').get_data(as_text=True)
+    assert 'Where can the design be placed?' in page and 'placed on Fan Wear' not in page
+    assert 'Allow stacked names on Fan Wear' not in page and 'Jersey choices' not in page
+
+
+def test_a_lone_jersey_store_keeps_both_sets_of_choices_on_its_edit_page(admin_client, app, seed):
+    _build(admin_client, app, seed)
+    from models import OrgSection
+    with app.app_context():
+        coll = Collection.query.filter_by(name=TEAM).one()
+        coll_id = coll.id
+        OrgSection.query.filter_by(collection_id=coll_id).delete()
+        db.session.commit()
+    page = admin_client.get(f'/admin/collections/{coll_id}/edit').get_data(as_text=True)
+    assert 'placed on Fan Wear' in page and 'Jersey choices' in page

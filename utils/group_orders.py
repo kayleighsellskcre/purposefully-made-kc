@@ -1141,6 +1141,25 @@ def _team_sections(org):
     return out
 
 
+def separate_fan_store(collection):
+    """The org's own live Fan Wear store when this is a jersey team store of that org, else None.
+
+    Such a team store sells jerseys only: Fan Wear lives on that other store. Standalone stores,
+    district schools, stores with no jersey, and the Fan Wear store itself get None.
+    """
+    try:
+        if collection is None or not team_store_config(collection)['uniform']['enabled']:
+            return None
+        org, _section = org_for_collection(collection)
+        if not org or org.district_id:
+            return None
+        from utils.org_fan_store import fan_store_for
+        fan = fan_store_for(org)
+        return fan if fan is not None and fan.id != collection.id and fan.is_active else None
+    except Exception:
+        return None
+
+
 def org_fan_hub(org):
     """The ONE store every Fan Wear button in this org opens.
 

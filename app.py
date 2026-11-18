@@ -1038,6 +1038,8 @@ def create_app(config_class=Config):
     app.jinja_env.globals['group_back_designs'] = _back_families
     from utils.org_fan_store import managing_org as _managing_org
     app.jinja_env.globals['fan_store_org'] = _managing_org
+    from utils.group_orders import separate_fan_store as _separate_fan_store
+    app.jinja_env.globals['has_separate_fan_store'] = lambda c: _separate_fan_store(c) is not None
 
     @app.template_filter('closes_in')
     def closes_in_filter(collection):

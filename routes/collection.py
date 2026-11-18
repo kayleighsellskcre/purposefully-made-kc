@@ -182,14 +182,11 @@ def view(slug):
         uniform_ids.add(uniform['product_id'])
     # A jersey store of an organization that has its own live Fan Wear store sells only jerseys:
     # Fan Wear lives on its own page, so none of it (styles, button, link) shows here.
-    hide_fan = False
-    _team_org, _team_sec = org_for_collection(collection)
-    if uniform['enabled'] and _team_org and not _team_org.district_id:
-        from utils.org_fan_store import fan_store_for
-        _fan_store = fan_store_for(_team_org)
-        hide_fan = bool(_fan_store and _fan_store.id != collection.id and _fan_store.is_active)
-        if hide_fan and request.args.get('path') == 'fan':
-            return redirect(url_for('collection.view', slug=_fan_store.slug))
+    from utils.group_orders import separate_fan_store
+    _fan_store = separate_fan_store(collection)
+    hide_fan = _fan_store is not None
+    if hide_fan and request.args.get('path') == 'fan':
+        return redirect(url_for('collection.view', slug=_fan_store.slug))
     uniform_product = None
     uniform_products = []
     uniform_kits = []
