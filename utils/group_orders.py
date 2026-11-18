@@ -401,6 +401,12 @@ def team_store_config(collection):
                 if pid and pid in product_ids and pid not in cleaned:
                     cleaned.append(pid)
         kit_product_ids[kit] = cleaned if enabled else []
+    raw_placements = parsed.get('jersey_placements')
+    jersey_placements = None
+    if isinstance(raw_placements, list):
+        jersey_placements = [p for p in raw_placements if p in _PLACEMENT_KEYS] or None
+    raw_stacked = parsed.get('jersey_allow_stacked_name')
+    jersey_stacked = raw_stacked if isinstance(raw_stacked, bool) else None
     return {
         'version': 1,
         'configured': bool(parsed),
@@ -416,6 +422,9 @@ def team_store_config(collection):
             'away_product_ids': kit_product_ids['away'],
         },
         'fan_product_ids': cleaned_fan,
+        # Jersey-only rules; None = the jerseys follow the whole store (see uniform_rules)
+        'jersey_placements': jersey_placements,
+        'jersey_allow_stacked_name': jersey_stacked,
         'fan_personalization_enabled': bool(
             parsed.get('fan_personalization_enabled', False)
         ),
@@ -795,8 +804,57 @@ def _keep_team_store_on_edit(collection, checked_ids):
             int(x) for x in request.form.getlist('fanwear_excluded_ids')
             if str(x).strip().isdigit()
         ]
+    for key in JERSEY_RULE_KEYS:
+        cfg.pop(key, None)
+    cfg.update(jersey_rules_to_save(collection, request.form))
     collection.team_store_config = json.dumps(cfg, separators=(',', ':'))
     return selected, None
+
+
+JERSEY_RULE_KEYS = ('jersey_placements', 'jersey_allow_stacked_name')
+_PLACEMENT_KEYS = ('center_chest', 'left_chest', 'right_chest', 'center_back')
+
+
+def jersey_rules_to_save(collection, form):
+    """The jersey-only rules to store in the store config (only the ones that differ from the whole store).
+
+    A store sells jerseys and Fan Wear side by side, and each can have its own placements and its own
+    stacked-name choice. A jersey rule that matches the store-wide one is not stored, so the jerseys keep
+    following the store until the organizer sets something different. A form without the jersey boxes
+    (older pages, other editors) leaves the saved rules as they are.
+    """
+    current = team_store_config(collection)
+    if 'jersey_rules_present' not in form:
+        return {
+            key: current[key] for key in JERSEY_RULE_KEYS if current.get(key) is not None
+        }
+    out = {}
+    store_placements = [p for p in parse_json_list(getattr(collection, 'allowed_placements', None) or '')
+                        if p in _PLACEMENT_KEYS] or list(_PLACEMENT_KEYS)
+    chosen = [p for p in form.getlist('jersey_placements') if p in _PLACEMENT_KEYS]
+    if chosen and set(chosen) != set(store_placements):
+        out['jersey_placements'] = chosen
+    stacked = form.get('jersey_allow_stacked_name') == 'on'
+    if stacked != (getattr(collection, 'allow_stacked_name', None) is not False):
+        out['jersey_allow_stacked_name'] = stacked
+    return out
+
+
+def uniform_rules(collection):
+    """(placements, allow_stacked_name) a jersey follows in this store.
+
+    ``placements`` is a list, or None for "any spot". The jersey's own setting wins when the
+    organizer made one; otherwise the jerseys follow the whole store. Fan Wear always follows
+    the whole store.
+    """
+    config = team_store_config(collection)
+    placements = config['jersey_placements']
+    if placements is None:
+        placements = parse_json_list(getattr(collection, 'allowed_placements', None) or '') or None
+    stacked = config['jersey_allow_stacked_name']
+    if stacked is None:
+        stacked = getattr(collection, 'allow_stacked_name', None) is not False
+    return placements, stacked
 
 
 def set_collection_products_from_form(collection):
@@ -987,6 +1045,7 @@ def set_collection_products_from_form(collection):
                 if 'fan_controls_present' in request.form
                 else fanwear_excluded_ids(collection)
             ),
+            **jersey_rules_to_save(collection, request.form),
         }, separators=(',', ':'))
     else:
         collection.team_store_config = None

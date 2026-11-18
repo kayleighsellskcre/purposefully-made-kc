@@ -264,7 +264,11 @@ def add():
                     'error': 'That color is not offered for this group order.'
                 }), 400
         from utils.json_fields import parse_json_list
-        placements = set(parse_json_list(collection.allowed_placements or ''))
+        from utils.group_orders import uniform_rules
+        if catalog_section == 'uniform':
+            placements = set(uniform_rules(collection)[0] or [])
+        else:
+            placements = set(parse_json_list(collection.allowed_placements or ''))
         if placements and placement not in placements:
             return jsonify({
                 'error': 'That design placement is not offered for this group order.'
@@ -362,7 +366,13 @@ def add():
     _bd_number = (data.get('back_design_number') or '').strip()
     # A name stacked down the back (cheer) is a name only; a small image under the collar is a back image.
     _bd_vertical = bool(_bd_name) and (data.get('back_design_vertical') or '').strip().lower() == 'true'
-    if _bd_vertical and collection is not None and getattr(collection, 'allow_stacked_name', None) is False:
+    if _bd_vertical and collection is not None:
+        from utils.group_orders import uniform_rules
+        _stacked_ok = (uniform_rules(collection)[1] if catalog_section == 'uniform'
+                       else getattr(collection, 'allow_stacked_name', None) is not False)
+    else:
+        _stacked_ok = True
+    if not _stacked_ok:
         return jsonify({'error': 'This group order does not offer stacked names. Please use a name across the back.'}), 400
     if _bd_vertical:
         _bd_number = ''

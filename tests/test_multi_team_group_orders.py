@@ -108,15 +108,14 @@ def test_youth_cannot_buy_an_away_kit_the_team_does_not_offer(admin_client, app,
         assert error and 'Away uniform' in error
 
 
-def test_team_store_shows_jerseys_first_and_a_fan_wear_button(admin_client, client, app, seed):
+def test_team_store_shows_only_jerseys_and_leaves_fan_wear_to_its_own_page(admin_client, client, app, seed):
     admin_client.post('/admin/collections/add', data=_wizard(seed), follow_redirects=True)
     _, slug, _, _ = _store(app, 'Basketball: Rainbow Cheetahs')
     html = client.get(f'/c/{slug}').get_data(as_text=True)
     assert 'What are you shopping for?' not in html
     assert '<section class="uniform-section" id="uniformSection">' in html
-    assert 'Shop Family &amp; Fan Wear' in html
-    assert html.index('id="uniformSection"') < html.index('id="fanWearToggle"') < html.index('id="fanWearSection"')
-    # Fan wear waits behind the button so jerseys are what shoppers see first.
+    # Fan Wear has its own store, so no Fan Wear button or styles on the team page.
+    assert 'Shop Family &amp; Fan Wear' not in html and 'id="fanWearToggle"' not in html
     fan_tag = html[html.index('id="fanWearSection"'):html.index('id="fanWearSection"') + 80]
     assert 'hidden' in fan_tag
     # The team bar lists every team plus Fan Wear.

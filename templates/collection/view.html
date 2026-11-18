@@ -736,7 +736,7 @@
         {% endif %}
 
         <div class="fan-wear-section" id="fanWearSection"
-             {% if has_uniform_lane %}hidden{% endif %}>
+             {% if has_uniform_lane or hide_fan %}hidden{% endif %}>
         {% if fan_page and org_nav %}
         <div class="design-board-intro fan-intro">
             <h2>Choose Your Style</h2>

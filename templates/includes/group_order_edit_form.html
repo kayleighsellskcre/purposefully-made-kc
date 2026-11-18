@@ -288,8 +288,8 @@
                     <div class="organizer-block-label">
                         <span class="organizer-step">3</span>
                         <div>
-                            <strong>Where can the design be placed?</strong>
-                            <p class="form-hint" style="margin:0">Leave all checked to allow any spot.</p>
+                            <strong>Where can the design be placed{% if team_store and team_store.uniform.enabled %} on Fan Wear{% endif %}?</strong>
+                            <p class="form-hint" style="margin:0">Leave all checked to allow any spot.{% if team_store and team_store.uniform.enabled %} Jerseys have their own choices just below.{% endif %}</p>
                         </div>
                     </div>
                     <div class="placement-checkboxes">
@@ -311,6 +311,35 @@
                         </label>
                     </div>
                 </div>
+
+                {% if team_store and team_store.uniform.enabled %}
+                {% set jersey_pl = team_store.jersey_placements or allowed_placements_list %}
+                {% set jersey_stacked = team_store.jersey_allow_stacked_name if team_store.jersey_allow_stacked_name is not none else (collection.allow_stacked_name is none or collection.allow_stacked_name) %}
+                <div class="organizer-block" id="jerseyRulesBlock">
+                    <input type="hidden" name="jersey_rules_present" value="1">
+                    <div class="organizer-block-label">
+                        <span class="organizer-step">3b</span>
+                        <div>
+                            <strong>Jersey choices</strong>
+                            <p class="form-hint" style="margin:0">These apply to the player jerseys only. Fan Wear keeps the choices above.</p>
+                        </div>
+                    </div>
+                    <p class="form-hint" style="margin:0.5rem 0 0.25rem"><strong>Where can the jersey design be placed?</strong> For front only, tick just Center Chest or Left Chest.</p>
+                    <div class="placement-checkboxes">
+                        {% for key, label, note in [('center_chest','Center Chest','Medium, centered'),('left_chest','Left Chest','Small, pocket-style'),('right_chest','Right Chest','Small, pocket-style'),('center_back','Center Back','Medium, centered')] %}
+                        <label class="placement-checkbox">
+                            <input type="checkbox" name="jersey_placements" value="{{ key }}" {% if key in jersey_pl %}checked{% endif %}>
+                            <span>{{ label }}</span><small>{{ note }}</small>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <label class="placement-checkbox" style="margin-top:0.75rem">
+                        <input type="checkbox" name="jersey_allow_stacked_name" value="on" {% if jersey_stacked %}checked{% endif %}>
+                        <span>Allow stacked names on jerseys</span>
+                        <small>Untick to keep jersey names across the back only. Fan Wear keeps its own choice under the back options.</small>
+                    </label>
+                </div>
+                {% endif %}
                 </div>
 
                 {# ── 4. Back design ─────────────────────────────────────── #}
@@ -413,7 +442,7 @@
                         <input type="hidden" name="stacked_name_present" value="1">
                         <label class="placement-checkbox" style="margin-bottom:0.75rem">
                             <input type="checkbox" name="allow_stacked_name" value="on" {% if collection.allow_stacked_name is none or collection.allow_stacked_name %}checked{% endif %}>
-                            <span>Allow stacked names</span>
+                            <span>Allow stacked names{% if team_store and team_store.uniform.enabled %} on Fan Wear{% endif %}</span>
                             <small>Shoppers can stack the name down the back, one letter per row (cheer style). Turn this off to keep names across the back only.</small>
                         </label>
                         <p class="form-hint" style="margin-top:1rem">Choose the fonts for name &amp; number on the back. Tick one to set it for everyone, or tick several and each person picks from those. Tick none to offer every font.</p>

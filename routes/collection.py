@@ -153,6 +153,7 @@ def view(slug):
         is_not_yet_open,
         load_design_dict,
         load_showcase_designs,
+        org_for_collection,
         resolve_uniform_design_id,
         team_store_config,
         uniform_kit_offered,
@@ -179,6 +180,16 @@ def view(slug):
     uniform_ids = set(uniform.get('product_ids') or [])
     if uniform.get('product_id'):
         uniform_ids.add(uniform['product_id'])
+    # A jersey store of an organization that has its own live Fan Wear store sells only jerseys:
+    # Fan Wear lives on its own page, so none of it (styles, button, link) shows here.
+    hide_fan = False
+    _team_org, _team_sec = org_for_collection(collection)
+    if uniform['enabled'] and _team_org and not _team_org.district_id:
+        from utils.org_fan_store import fan_store_for
+        _fan_store = fan_store_for(_team_org)
+        hide_fan = bool(_fan_store and _fan_store.id != collection.id and _fan_store.is_active)
+        if hide_fan and request.args.get('path') == 'fan':
+            return redirect(url_for('collection.view', slug=_fan_store.slug))
     uniform_product = None
     uniform_products = []
     uniform_kits = []
@@ -225,9 +236,9 @@ def view(slug):
                 uniform_product = product
                 uniform_kits = kits
             uniform_products.append({'product': product, 'kits': kits})
-            if product.id not in fan_ids:
+            if product.id not in fan_ids or hide_fan:
                 continue          # jersey only; otherwise carry on and list it as Fan Wear too
-        if store_config['configured'] and product.id not in fan_ids:
+        if hide_fan or (store_config['configured'] and product.id not in fan_ids):
             continue
         allowed_colors = allowed_colors_for_product(product, collection)
         variants = get_carousel_colors_for_product(product, current_app, allowed_colors=allowed_colors)
@@ -270,7 +281,7 @@ def view(slug):
 
     # ── Org navigation: sibling team tabs + ONE shared Fan Wear link ──────────
     from utils.group_orders import (
-        org_fan_wear_url, org_fanwear_design_ids, org_for_collection,
+        org_fan_wear_url, org_fanwear_design_ids,
     )
     org_nav = None
     org, org_section = org_for_collection(collection)
@@ -325,6 +336,7 @@ def view(slug):
                          org_nav=org_nav,
                          school_ctx=_school_context(collection, org),
                          fan_page=fan_page,
+                         hide_fan=hide_fan,
                          banner_name=(org_nav['org'].name
                                       if fan_page and 'fan' in (org_section.label or '').lower() else None))
 

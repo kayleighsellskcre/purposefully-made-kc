@@ -46,8 +46,10 @@ def test_every_fan_wear_button_points_to_the_same_page(admin_client, client, app
 
 def test_fan_page_hides_jerseys_and_shows_org_designs(admin_client, client, app, seed):
     a, b, c = _build(admin_client, app, seed)
-    _, slug, _, _ = _store(app, 'Soccer: Rainbow Cheetahs')
-    page = client.get(f'/c/{slug}?path=fan').get_data(as_text=True)
+    with app.app_context():
+        org = Organization.query.filter_by(name='Rainbow Cheetahs').one()
+        slug = org_fan_hub(org)[0].slug
+    page = client.get(f'/c/{slug}').get_data(as_text=True)
     assert 'Fan Wear' in page and 'Rainbow Cheetahs' in page
     assert 'id="uniformSection"' not in page
 

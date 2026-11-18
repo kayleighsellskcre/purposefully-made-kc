@@ -1103,7 +1103,11 @@ def customize(product_slug):
         if has_designs:
             from utils.group_orders import with_linked_colors
             allowed_design_ids = with_linked_colors(collection_design_id_list(coll))
-        if has_placements:
+        if catalog_section == 'uniform':
+            # a jersey follows its own placements and stacked-name choice when the organizer set them
+            from utils.group_orders import uniform_rules
+            allowed_placements, allow_stacked_name = uniform_rules(coll)
+        elif has_placements:
             allowed_placements = parse_json_list(coll.allowed_placements)
         lane_config = team_store_config(coll)
         if (

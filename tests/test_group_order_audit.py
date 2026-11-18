@@ -51,9 +51,9 @@ def test_a_team_that_closes_stops_taking_cart_items(admin_client, client, app, s
     _build(admin_client, app, seed)
     name = 'Basketball: Rainbow Cheetahs'
     slug = _slug_of(app, name)
-    client.get(f'/c/{slug}?path=fan')                       # shopper is inside the store
+    client.get(f'/c/{slug}')                       # shopper is inside the store
     _set(app, name, order_deadline=datetime.utcnow() - timedelta(days=2))
-    page = client.get(f'/c/{slug}?path=fan').get_data(as_text=True)
+    page = client.get(f'/c/{slug}').get_data(as_text=True)
     assert 'Ordering is closed' in page
     with client.session_transaction() as sess:
         sess['collection_id'] = _store(app, name)[0]         # still attached from before the deadline

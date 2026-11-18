@@ -59,7 +59,11 @@ def test_the_store_shows_a_jersey_shirt_in_both_the_jersey_and_fan_wear_sections
     _build(admin_client, app, seed)
     _save_edit(admin_client, app, lambda d: d.update(products=[str(seed['tee_id']), str(seed['hoodie_id'])]))
     slug = _slug_of(app, TEAM)
-    page = client.get(f'/c/{slug}?path=fan').get_data(as_text=True)
+    from models import Organization
+    from utils.group_orders import org_fan_hub
+    with app.app_context():
+        fan_slug = org_fan_hub(Organization.query.filter_by(name='Rainbow Cheetahs').one())[0].slug
+    page = client.get(f'/c/{fan_slug}').get_data(as_text=True)                       # the separate Fan Wear store
     assert f"/shop/customize/{seed['tee_slug']}?catalog_section=fan" in page          # a Fan Wear card
     home = client.get(f'/c/{slug}').get_data(as_text=True)
     assert 'catalog_section=uniform' in home                                          # and still a jersey
