@@ -3,3 +3,4 @@
 #   py -3.12 -m pip install -r requirements-dev.txt
 -r requirements.txt
 pytest>=8.0.0
+pytest-xdist>=3.5.0       # runs the tests on all cores: python -m pytest -n 8 (about twice as fast)
