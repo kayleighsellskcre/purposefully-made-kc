@@ -145,7 +145,7 @@ def clean_payload(raw) -> dict:
         'fulfillment': 'pickup' if data.get('fulfillment') == 'pickup' else 'shipping',
         'ship': {k: str(ship.get(k) or '').strip()[:200] for k in ('street', 'street_2', 'city', 'state', 'zip')},
         'billing': 'individual' if data.get('billing') == 'individual' else 'one',
-        'shipping': _money(data.get('shipping')),
+        'shipping': 0.0 if data.get('fulfillment') == 'pickup' else _money(data.get('shipping')),   # pickup never charges shipping, even if an amount was typed first
         'tax_percent': min(_money(data.get('tax_percent')), 30.0),
         'note': str(data.get('note') or '').strip()[:400],
         'collection_id': data.get('collection_id'),

@@ -214,3 +214,10 @@ def test_cancelling_an_invoice_billed_order_points_at_the_open_invoice(admin_cli
         order_id = Order.query.one().id
     html = admin_client.post(f'/admin/orders/{order_id}/cancel', follow_redirects=True).get_data(as_text=True)
     assert 'billed on an invoice' in html
+
+
+def test_pickup_never_charges_shipping_even_if_an_amount_was_typed(admin_client, app):
+    _enter(admin_client, app, fulfillment='pickup', shipping='12.00')
+    with app.app_context():
+        order = Order.query.one()
+        assert order.shipping_cost == 0.0 and order.total == 105.12
