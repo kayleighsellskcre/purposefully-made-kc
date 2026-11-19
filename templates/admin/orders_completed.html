@@ -39,7 +39,7 @@
                             <td><strong>{{ order.order_number }}</strong></td>
                             <td>{{ order.full_name }}</td>
                             <td>{{ order.email }}</td>
-                            <td>{{ order.items.count() }}</td>
+                            <td>{{ item_counts.get(order.id, 0) }}</td>
                             <td>${{ "%.2f"|format(order.total) }}</td>
                             <td><span class="badge badge-{{ order.status }}">{{ order.status.replace('_', ' ').title() }}</span></td>
                             <td>{{ (order.updated_at or order.created_at)|central('%b %d, %Y') }}</td>

@@ -150,7 +150,7 @@
                     <div class="wf-card-meta">
                         <span>${{ "%.2f"|format(order.total) }}</span>
                         <span class="wf-meta-sep">&bull;</span>
-                        <span>{{ order.items.count() }} item{% if order.items.count() != 1 %}s{% endif %}</span>
+                        <span>{{ item_counts.get(order.id, 0) }} item{% if item_counts.get(order.id, 0) != 1 %}s{% endif %}</span>
                         <span class="wf-meta-sep">&bull;</span>
                         <span>{{ order.created_at|central('%b %d') }}</span>
                     </div>
@@ -234,7 +234,7 @@
                 <div class="wf-card-meta">
                     <span>${{ "%.2f"|format(order.total) }}</span>
                     <span class="wf-meta-sep">&bull;</span>
-                    <span>{{ order.items.count() }} item{% if order.items.count() != 1 %}s{% endif %}</span>
+                    <span>{{ item_counts.get(order.id, 0) }} item{% if item_counts.get(order.id, 0) != 1 %}s{% endif %}</span>
                     <span class="wf-meta-sep">&bull;</span>
                     <span>{{ order.created_at|central('%b %d') }}</span>
                 </div>

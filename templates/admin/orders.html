@@ -164,7 +164,7 @@
                     {% if order.send_home_with_child %}<span class="ord-sub ord-sendhome">Send home: {{ order.child_name or 'child' }}{% if order.teacher_name %} · {{ order.teacher_name }}{% endif %}</span>{% endif %}
                 </td>
                 <td class="ord-email">{{ order.email }}</td>
-                <td class="ord-center">{{ order.items.count() }}</td>
+                <td class="ord-center">{{ item_counts.get(order.id, 0) }}</td>
                 <td class="ord-total"><strong>${{ "%.2f"|format(order.total) }}</strong></td>
                 <td><span class="ord-badge ord-badge--{{ stage_key }}">{{ stage_label }}</span></td>
                 <td><span class="ord-type">{{ (order.order_type or 'retail').title() }}</span></td>
@@ -202,7 +202,7 @@
             </div>
             <div class="ord-card-footer">
                 <div class="ord-card-meta">
-                    <span>{{ order.items.count() }} item{% if order.items.count() != 1 %}s{% endif %}</span>
+                    <span>{{ item_counts.get(order.id, 0) }} item{% if item_counts.get(order.id, 0) != 1 %}s{% endif %}</span>
                     <span class="ord-card-sep">&bull;</span>
                     <span>{{ (order.order_type or 'retail').title() }}</span>
                     <span class="ord-card-sep">&bull;</span>

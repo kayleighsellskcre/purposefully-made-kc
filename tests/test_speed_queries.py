@@ -57,3 +57,40 @@ def test_prefetch_gives_each_product_its_own_colors(app, client):
                 names = {c['color_name'] for c in get_carousel_colors_for_product(p, app)}
                 assert names == {'Black', 'White'}
         assert counter.count == 0
+
+
+def _add_orders(app, seed, how_many, start=0):
+    from models import Order, OrderItem
+    with app.app_context():
+        for i in range(start, start + how_many):
+            o = Order(order_number=f'SPD-{i:04d}', email='x@example.com', first_name='X', last_name='Y',
+                      subtotal=30, total=30, status='paid', production_stage='order_received')
+            db.session.add(o)
+            db.session.flush()
+            for _ in range(2):
+                db.session.add(OrderItem(order_id=o.id, product_id=seed['tee_id'], product_name='Tee', size='M',
+                                         color='Black', quantity=1, unit_price=30, subtotal=30))
+        db.session.commit()
+
+
+def test_admin_order_board_query_count_does_not_grow_with_orders(app, seed, admin_client):
+    _add_orders(app, seed, 3)
+    with _QueryCounter() as small:
+        resp = admin_client.get('/admin/operations/workflow')
+        assert resp.status_code == 200
+    _add_orders(app, seed, 20, start=3)
+    with _QueryCounter() as big:
+        resp = admin_client.get('/admin/operations/workflow')
+        assert resp.status_code == 200
+    assert b'2 items' in resp.data                       # the per-card item count still shows
+    assert big.count <= small.count + 3, (small.count, big.count)
+
+
+def test_item_counts_for_counts_lines_per_order(app, seed):
+    from models import Order
+    from utils.production_stages import item_counts_for
+    _add_orders(app, seed, 2)
+    with app.app_context():
+        orders = Order.query.all()
+        assert item_counts_for(orders) == {o.id: 2 for o in orders}
+        assert item_counts_for([]) == {}

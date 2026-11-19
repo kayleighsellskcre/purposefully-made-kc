@@ -118,3 +118,18 @@ def normalize_stage_arg(value):
         'all': 'all',
     }
     return aliases.get(value, value if value in STAGE_LABELS or value == 'all' else 'order_received')
+
+
+def item_counts_for(orders):
+    """{order id: number of item lines} for many orders in ONE query.
+
+    The admin lists used to ask the database "how many items?" separately for every order card
+    (hundreds of round trips on a busy board).
+    """
+    from models import OrderItem, db
+    ids = [o.id for o in orders]
+    if not ids:
+        return {}
+    rows = (db.session.query(OrderItem.order_id, db.func.count(OrderItem.id))
+            .filter(OrderItem.order_id.in_(ids)).group_by(OrderItem.order_id).all())
+    return {oid: n for oid, n in rows}

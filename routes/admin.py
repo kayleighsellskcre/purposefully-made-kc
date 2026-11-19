@@ -565,8 +565,10 @@ def orders():
         db.session.rollback()
         unsaved_payment_count = 0
     
+    from utils.production_stages import item_counts_for
     return render_template('admin/orders.html', 
                          orders=orders,
+                         item_counts=item_counts_for(orders.items),
                          collections=collections,
                          unsaved_payment_count=unsaved_payment_count,
                          selected_status=stage,
@@ -596,7 +598,8 @@ def orders_completed():
         if key not in by_month:
             by_month[key] = []
         by_month[key].append(order)
-    return render_template('admin/orders_completed.html', by_month=by_month)
+    from utils.production_stages import item_counts_for
+    return render_template('admin/orders_completed.html', by_month=by_month, item_counts=item_counts_for(orders))
 
 
 @admin_bp.route('/orders/<int:order_id>')
@@ -5717,7 +5720,9 @@ def production_workflow():
         db.session.rollback()
         unsaved_payment_count = 0
     from datetime import datetime
+    from utils.production_stages import item_counts_for
     return render_template('admin/operations/workflow.html', stages=stages, orders_by_stage=orders_by_stage,
+                           item_counts=item_counts_for([o for rows in orders_by_stage.values() for o in rows]),
                            now=datetime.utcnow(), selected_order_type=order_type, selected_sort=sort,
                            unsaved_payment_count=unsaved_payment_count)
 
