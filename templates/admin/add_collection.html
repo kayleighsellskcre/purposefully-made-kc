@@ -178,7 +178,7 @@
                         <span class="organizer-step">2</span>
                         <div>
                             <strong>What design goes on the front?</strong>
-                            <p class="form-hint" style="margin:0" data-copy="team">Upload your logo(s) here. After uploading, the <strong>Jersey logos</strong> section below will let you assign which goes on the Home jersey, Away jersey, and each team. You can also add extra designs for fan wear.</p>
+                            <p class="form-hint" style="margin:0" data-copy="team">Upload the designs for family and fans here (Fan Wear). With several teams, each team's jersey logo is uploaded under its own team in the jersey section below, so the two stay separate.</p>
                             <p class="form-hint" style="margin:0" data-copy="general">Upload your logo or design. You can add a few if you'd like to give people options.</p>
                         </div>
                     </div>
@@ -335,6 +335,19 @@
                                 <input type="radio" name="back_design_name_part" value="first">
                                 <span>First name</span>
                                 <small>Parents type JORDAN</small>
+                            </label>
+                        </div>
+                        <input type="hidden" name="stacked_name_present" value="1">
+                        <div class="placement-checkboxes" style="margin-bottom:0.75rem">
+                            <label class="placement-checkbox">
+                                <input type="checkbox" name="allow_stacked_name" value="on" checked>
+                                <span>Allow stacked names on jerseys</span>
+                                <small>The name can run down the back, one letter per row (cheer style). Untick to keep jersey names across the back.</small>
+                            </label>
+                            <label class="placement-checkbox">
+                                <input type="checkbox" name="fan_allow_stacked_name" value="on" checked>
+                                <span>Allow stacked names on Fan Wear</span>
+                                <small>The same choice for family and fan wear. Each can be changed later on its own store.</small>
                             </label>
                         </div>
                         <p class="form-hint" style="margin-top:1rem">Choose the fonts for name &amp; number on the back. Tick one to set it for everyone, or tick several and each person picks from those. Tick none to offer every font.</p>
@@ -1121,49 +1134,69 @@
         });
 
         wrap.innerHTML = '';
-        var uploadedDesigns = collectUploadedDesigns();
 
-        // Helper: build a logo grid for one jersey side
-        function makeLogoGrid(hiddenInput, savedId, includeSameAsHome) {
-            var grid = document.createElement('div');
-            grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.4rem;';
-            if (includeSameAsHome) {
-                var sameBtn = document.createElement('button');
-                sameBtn.type = 'button';
-                sameBtn.className = 'jersey-logo-option' + (!savedId ? ' is-selected' : '');
-                sameBtn.dataset.designId = '';
-                var sameSp = document.createElement('span');
-                sameSp.textContent = 'Same as Home';
-                sameBtn.appendChild(sameSp);
-                sameBtn.addEventListener('click', function() {
-                    hiddenInput.value = '';
-                    grid.querySelectorAll('.jersey-logo-option').forEach(function(b) { b.classList.remove('is-selected'); });
-                    sameBtn.classList.add('is-selected');
-                });
-                grid.appendChild(sameBtn);
-            }
-            uploadedDesigns.forEach(function(design) {
-                var isSelected = design.id === savedId;
-                var btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'jersey-logo-option' + (isSelected ? ' is-selected' : '');
-                btn.dataset.designId = design.id;
-                if (design.url) {
-                    var img = document.createElement('img');
-                    img.src = design.url; img.alt = '';
-                    btn.appendChild(img);
+        // Helper: one jersey side gets its OWN upload (not a pick from every design in the group),
+        // so a team's jersey logo stays separate from the Fan Wear designs above.
+        var csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+        window.PMKCJerseyLogos = window.PMKCJerseyLogos || {};
+        function makeLogoUploader(hiddenInput, savedId, sameAsHome) {
+            var box = document.createElement('div');
+            box.style.cssText = 'display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-top:0.4rem;';
+            var thumb = document.createElement('div');
+            thumb.style.cssText = 'width:72px;height:72px;border:1.5px dashed #d9c3b6;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;color:#999;text-align:center;background:#fff;overflow:hidden;';
+            var msg = document.createElement('span');
+            msg.style.cssText = 'font-size:0.78rem;color:#777;';
+            function show(id) {
+                var meta = id && window.PMKCJerseyLogos[id];
+                thumb.innerHTML = '';
+                if (meta && meta.url) {
+                    var im = document.createElement('img');
+                    im.src = meta.url; im.alt = ''; im.style.cssText = 'width:100%;height:100%;object-fit:contain;';
+                    thumb.appendChild(im);
+                } else {
+                    thumb.textContent = sameAsHome ? 'Same as Home' : 'No logo yet';
                 }
-                var sp = document.createElement('span');
-                sp.textContent = design.title || 'Logo';
-                btn.appendChild(sp);
-                btn.addEventListener('click', function() {
-                    hiddenInput.value = btn.dataset.designId;
-                    grid.querySelectorAll('.jersey-logo-option').forEach(function(b) { b.classList.remove('is-selected'); });
-                    btn.classList.add('is-selected');
-                });
-                grid.appendChild(btn);
+            }
+            show(savedId);
+            var pick = document.createElement('button');
+            pick.type = 'button';
+            pick.className = 'btn btn-outline btn-sm';
+            pick.textContent = savedId && window.PMKCJerseyLogos[savedId] ? 'Replace logo' : 'Upload logo';
+            var file = document.createElement('input');
+            file.type = 'file'; file.accept = '.png,.jpg,.jpeg,.webp'; file.style.display = 'none';
+            pick.addEventListener('click', function() { file.click(); });
+            file.addEventListener('change', function() {
+                var original = file.files && file.files[0];
+                file.value = '';
+                if (!original) return;
+                if (!/\.(png|jpe?g|webp)$/i.test(original.name)) { msg.textContent = 'Needs to be PNG, JPG, or WEBP'; return; }
+                msg.textContent = 'Uploading...'; pick.disabled = true;
+                var ready = (window.PMKC && window.PMKC.shrinkImage) ? window.PMKC.shrinkImage(original) : Promise.resolve(original);
+                ready.then(function(f) {
+                    var fd = new FormData(); fd.append('file', f); fd.append('bg_removal', 'none');
+                    return fetch('/design/upload', {method: 'POST', body: fd, headers: csrf ? {'X-CSRFToken': csrf} : {}});
+                }).then(function(r) { return r.json().catch(function() { return {}; }); }).then(function(data) {
+                    if (!data.success || !data.design_id) { msg.textContent = data.error || 'Failed - try again'; return; }
+                    var id = String(data.design_id);
+                    window.PMKCJerseyLogos[id] = {url: data.url, title: original.name};
+                    hiddenInput.value = id;
+                    // the logo must be in the group's design list for the server to accept it on a jersey
+                    var form = document.querySelector('.collection-form');
+                    [['allowed_designs', id], ['new_uploaded_designs', id]].forEach(function(pair) {
+                        var h = document.createElement('input'); h.type = 'hidden'; h.name = pair[0]; h.value = pair[1]; form.appendChild(h);
+                    });
+                    show(id); pick.textContent = 'Replace logo'; msg.textContent = 'Saved';
+                }).catch(function() { msg.textContent = 'Could not upload - check your connection and try again'; })
+                  .finally(function() { pick.disabled = false; });
             });
-            return grid;
+            box.appendChild(thumb); box.appendChild(pick); box.appendChild(file); box.appendChild(msg);
+            if (sameAsHome) {
+                var same = document.createElement('button');
+                same.type = 'button'; same.className = 'btn btn-outline btn-sm'; same.textContent = 'Same as Home';
+                same.addEventListener('click', function() { hiddenInput.value = ''; show(''); msg.textContent = 'Away uses the Home logo'; });
+                box.appendChild(same);
+            }
+            return box;
         }
 
         names.forEach(function(name) {
@@ -1188,48 +1221,35 @@
             lbl.textContent = name + ' jersey logo';
             card.appendChild(lbl);
 
-            if (!uploadedDesigns.length) {
-                var hint = document.createElement('p');
-                hint.style.cssText = 'font-size:0.8rem;color:#999;margin:0;';
-                hint.textContent = 'Upload a logo above and it will appear here.';
-                card.appendChild(hint);
+            // Home logo
+            var homeRestoredId = savedHome[name] || '';
+            var homeHidden = document.createElement('input');
+            homeHidden.type = 'hidden';
+            homeHidden.name = 'org_team_jersey_logo_id[]';
+            homeHidden.value = homeRestoredId;
+            card.appendChild(homeHidden);
+
+            var homeLbl = document.createElement('p');
+            homeLbl.style.cssText = 'font-size:0.8rem;font-weight:600;color:#555;margin:0 0 0.2rem;';
+            homeLbl.textContent = hasAway ? 'Home jersey logo:' : 'Jersey logo:';
+            card.appendChild(homeLbl);
+            card.appendChild(makeLogoUploader(homeHidden, homeRestoredId, false));
+
+            // Away logo (only when the team has an away jersey)
+            var awayHidden = document.createElement('input');
+            awayHidden.type = 'hidden';
+            awayHidden.name = 'org_team_away_jersey_logo_id[]';
+            card.appendChild(awayHidden);
+            if (hasAway) {
+                var awayLbl = document.createElement('p');
+                awayLbl.style.cssText = 'font-size:0.8rem;font-weight:600;color:#555;margin:0.75rem 0 0.2rem;';
+                awayLbl.textContent = 'Away jersey logo:';
+                card.appendChild(awayLbl);
+                var awaySavedId = (name in savedAway) ? savedAway[name] : '';
+                awayHidden.value = awaySavedId;
+                card.appendChild(makeLogoUploader(awayHidden, awaySavedId, true));
             } else {
-                // ── Home logo ────────────────────────────────────────────
-                var homeRestoredId = savedHome[name] || uploadedDesigns[0].id;
-                var homeHidden = document.createElement('input');
-                homeHidden.type = 'hidden';
-                homeHidden.name = 'org_team_jersey_logo_id[]';
-                homeHidden.value = homeRestoredId;
-                card.appendChild(homeHidden);
-
-                var homeLbl = document.createElement('p');
-                homeLbl.style.cssText = 'font-size:0.8rem;font-weight:600;color:#555;margin:0 0 0.2rem;';
-                homeLbl.textContent = hasAway ? 'Home jersey logo:' : 'Jersey logo:';
-                card.appendChild(homeLbl);
-                card.appendChild(makeLogoGrid(homeHidden, homeRestoredId, false));
-
-                // ── Away logo (only shown if team has an away jersey) ─────
-                if (hasAway) {
-                    var awayLbl = document.createElement('p');
-                    awayLbl.style.cssText = 'font-size:0.8rem;font-weight:600;color:#555;margin:0.75rem 0 0.2rem;';
-                    awayLbl.textContent = 'Away jersey logo:';
-                    card.appendChild(awayLbl);
-
-                    var awaySavedId = (name in savedAway) ? savedAway[name] : '';
-                    var awayHidden = document.createElement('input');
-                    awayHidden.type = 'hidden';
-                    awayHidden.name = 'org_team_away_jersey_logo_id[]';
-                    awayHidden.value = awaySavedId;
-                    card.appendChild(awayHidden);
-                    card.appendChild(makeLogoGrid(awayHidden, awaySavedId, true));
-                } else {
-                    // No away jersey — submit blank placeholder so array indices stay aligned
-                    var awayPlaceholder = document.createElement('input');
-                    awayPlaceholder.type = 'hidden';
-                    awayPlaceholder.name = 'org_team_away_jersey_logo_id[]';
-                    awayPlaceholder.value = '';
-                    card.appendChild(awayPlaceholder);
-                }
+                awayHidden.value = '';   // no Away jersey: keep the array indexes lined up
             }
             wrap.appendChild(card);
         });

@@ -2214,6 +2214,14 @@ def add_collection():
                 collection.back_design_name_part = (
                     name_part if name_part in ('first', 'last') else 'last'
                 )
+            # Stacked names are chosen separately for jerseys and for Fan Wear. A jersey team store takes the
+            # jersey choice; Fan Wear has its own store (set below) or, with no organization, shares this store.
+            _jersey_stacked = _fan_stacked = None
+            if 'stacked_name_present' in request.form:
+                _jersey_stacked = request.form.get('allow_stacked_name') == 'on'
+                _fan_stacked = request.form.get('fan_allow_stacked_name') == 'on'
+                has_org = request.form.get('org_action', '') in ('new', 'existing')
+                collection.allow_stacked_name = _jersey_stacked if has_org else _fan_stacked
             from utils.group_orders import apply_locked_back_design
             apply_locked_back_design(collection, current_user)
 
@@ -2314,6 +2322,19 @@ def add_collection():
                         f'Organization page created. Share '
                         f'purposefullymadekc.com/org/{org.slug} with your organizer.'
                     )
+
+            if _jersey_stacked is not None:
+                if org_action == 'new' and org:
+                    from utils.org_fan_store import fan_store_for
+                    fan_store = fan_store_for(org)
+                    if fan_store is not None:
+                        fan_store.allow_stacked_name = _fan_stacked
+                elif org_action not in ('new', 'existing') and _jersey_stacked != _fan_stacked:
+                    from utils.group_orders import team_store_config
+                    if team_store_config(collection)['uniform']['enabled']:
+                        cfg = json.loads(collection.team_store_config)
+                        cfg['jersey_allow_stacked_name'] = _jersey_stacked
+                        collection.team_store_config = json.dumps(cfg, separators=(',', ':'))
 
             db.session.commit()
 

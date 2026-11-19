@@ -188,3 +188,42 @@ def test_a_lone_jersey_store_keeps_both_sets_of_choices_on_its_edit_page(admin_c
         db.session.commit()
     page = admin_client.get(f'/admin/collections/{coll_id}/edit').get_data(as_text=True)
     assert 'placed on Fan Wear' in page and 'Jersey choices' in page
+
+
+def test_a_team_page_shows_no_design_strip_or_all_designs_list(admin_client, client, app, seed):
+    _build(admin_client, app, seed)
+    page = client.get(f'/c/{_slug_of(app, TEAM)}').get_data(as_text=True)
+    assert 'All designs' not in page and 'store-picker-count' not in page
+    assert 'id="uniformSection"' in page
+
+
+def _make(admin_client, app, seed, **extra):
+    from tests.test_multi_team_group_orders import _designs, _wizard
+    a, b, c = _designs(app, seed)
+    data = _wizard(seed, allowed_designs=[str(a), str(b), str(c)],
+                   **{'org_team_jersey_logo_id[]': [str(a), str(b), '']}, **extra)
+    resp = admin_client.post('/admin/collections/add', data=data, follow_redirects=True)
+    assert resp.status_code == 200
+
+
+def _stacked(app, name):
+    with app.app_context():
+        return Collection.query.filter_by(name=name).one().allow_stacked_name
+
+
+def test_the_create_page_asks_separately_about_stacked_names_for_jerseys_and_fan_wear(admin_client):
+    page = admin_client.get('/admin/collections/add').get_data(as_text=True)
+    assert 'Allow stacked names on jerseys' in page and 'Allow stacked names on Fan Wear' in page
+    assert 'name="fan_allow_stacked_name"' in page and 'makeLogoUploader' in page
+
+
+def test_creating_a_group_saves_jersey_and_fan_wear_stacked_names_separately(admin_client, app, seed):
+    _make(admin_client, app, seed, stacked_name_present='1', allow_stacked_name=None, fan_allow_stacked_name='on')
+    assert _stacked(app, TEAM) is False                         # jerseys: no stacked names
+    assert _stacked(app, 'Fan Wear: Rainbow Cheetahs') is True  # Fan Wear: allowed
+
+
+def test_creating_a_group_can_allow_stacked_on_jerseys_but_not_fan_wear(admin_client, app, seed):
+    _make(admin_client, app, seed, stacked_name_present='1', allow_stacked_name='on', fan_allow_stacked_name=None)
+    assert _stacked(app, TEAM) is True
+    assert _stacked(app, 'Fan Wear: Rainbow Cheetahs') is False

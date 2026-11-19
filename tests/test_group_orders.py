@@ -968,7 +968,7 @@ def test_create_form_asks_school_team_or_other(customer_client):
     assert 'Youth uniform style' in html
     assert 'Home jersey logo' in html
     assert 'Away jersey logo' in html
-    assert 'extra designs for fan wear' in html.lower()
+    assert 'designs for family and fans' in html.lower()
 
 
 def test_create_requires_a_group_kind(customer_client, seed, app):

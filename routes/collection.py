@@ -316,6 +316,12 @@ def view(slug):
             pass  # fall back to collection's own showcase_designs
         design_picker = []
 
+    if hide_fan:
+        # A jersey team's page is about its jerseys: the logo is already on each jersey card. The
+        # design strip and the "All designs" list belong to Fan Wear, which has its own page.
+        showcase_designs = []
+        design_picker = []
+
     from routes.org import _vote_designs
     return render_template('collection/view.html',
                          collection=collection, vote_designs=_vote_designs(collection),
