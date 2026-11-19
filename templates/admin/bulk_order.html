@@ -22,7 +22,7 @@
 .bo-tbl { width: 100%; border-collapse: collapse; margin-top: .8rem; }
 .bo-tbl th { text-align: left; font-size: .66rem; letter-spacing: .16em; text-transform: uppercase; color: var(--text-secondary); padding: .3rem; }
 .bo-tbl td { padding: .2rem; }
-.bo-tbl .n { width: 26%; } .bo-tbl .s { width: 15%; } .bo-tbl .b { width: 22%; } .bo-tbl .u { width: 11%; } .bo-tbl .q { width: 9%; } .bo-tbl .a { width: 14%; white-space: nowrap; text-align: right; }
+.bo-tbl .n { width: 20%; } .bo-tbl .s { width: 12%; } .bo-tbl .b { width: 17%; } .bo-tbl .u { width: 9%; } .bo-tbl .q { width: 8%; } .bo-tbl .em { width: 20%; display: none; } .bo.indiv .bo-tbl .em { display: table-cell; } .bo-tbl .a { width: 14%; white-space: nowrap; text-align: right; }
 .bo-mini { border: 0; background: transparent; color: var(--terra-cotta); cursor: pointer; font-size: .8rem; padding: .3rem .4rem; }
 .bo-btn { background: transparent; border: 1.5px dashed var(--terra-cotta); color: var(--terra-cotta); border-radius: 999px; padding: .5rem 1.1rem; font: 600 .76rem 'Inter', sans-serif; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; margin: .6rem .5rem 0 0; }
 .bo-paste { margin-top: .8rem; display: none; }
@@ -104,6 +104,12 @@
                     <label class="f">ZIP<input type="text" id="sZip" maxlength="12"></label>
                 </div>
             </div>
+            <p class="bo-sub" style="margin-top:1rem">How is it paid?</p>
+            <div class="bo-seg" style="margin-bottom:1rem">
+                <label><input type="radio" name="billing" value="one" checked> One invoice for everything</label>
+                <label><input type="radio" name="billing" value="individual"> An invoice for each person</label>
+            </div>
+            <p class="bo-note" id="indivNote" style="display:none;margin:-.4rem 0 1rem">Each person gets their own invoice with their shirts, their tax and the shipping charge below. Put their email in the Email column to send it. You can also add it on the invoice. The order is released to production once every invoice is paid.</p>
             <div class="bo-grid" style="margin-top:.9rem">
                 <label class="f">Shipping charge<input type="number" step="0.01" min="0" id="shipAmt" value=""></label>
                 <label class="f">Sales tax % (Kansas)<input type="number" step="0.001" min="0" max="30" id="taxPct" value="{{ tax_percent }}"></label>
@@ -164,10 +170,10 @@
               '<label class="f">Design<select class="b-design">' + dOpts + '</select></label>' +
               '<button type="button" class="bo-mini b-del">Remove item</button>' +
             '</div>' +
-            '<table class="bo-tbl"><thead><tr><th class="n">Name</th><th class="s">Size</th><th class="b">Name on back</th><th class="u">Number</th><th class="q">Qty</th><th class="a"></th></tr></thead><tbody></tbody></table>' +
+            '<table class="bo-tbl"><thead><tr><th class="n">Name</th><th class="s">Size</th><th class="b">Name on back</th><th class="u">Number</th><th class="q">Qty</th><th class="em">Email</th><th class="a"></th></tr></thead><tbody></tbody></table>' +
             '<button type="button" class="bo-btn b-add">+ Add a person</button>' +
             '<button type="button" class="bo-btn b-pastebtn">Paste from Excel or Sheets</button>' +
-            '<div class="bo-paste"><p class="bo-sub">Copy the cells (Name, Size, Name on back, Number, Qty) and paste here. A header row is fine.</p>' +
+            '<div class="bo-paste"><p class="bo-sub">Copy the cells (Name, Size, Name on back, Number, Qty, and Email if each person gets their own invoice) and paste here. A header row is fine.</p>' +
               '<textarea class="b-paste" placeholder="Sarah Jones&#9;YM&#9;JONES&#9;12&#9;1"></textarea>' +
               '<button type="button" class="bo-btn b-pasteok">Add these rows</button></div>';
         blocksEl.appendChild(div);
@@ -218,6 +224,7 @@
             '<td class="b"><input type="text" class="r-back" maxlength="60" value="' + esc(r.back_name) + '"></td>' +
             '<td class="u"><input type="text" class="r-num" maxlength="10" value="' + esc(r.number) + '"></td>' +
             '<td class="q"><input type="number" class="r-qty" min="1" max="99" value="' + (r.qty || 1) + '"></td>' +
+            '<td class="em"><input type="email" class="r-email" maxlength="200" value="' + esc(r.email) + '"></td>' +
             '<td class="a"><button type="button" class="bo-mini r-dup">Copy</button><button type="button" class="bo-mini r-del">Remove</button></td>';
         div.querySelector('tbody').appendChild(tr);
         tr.querySelector('.r-qty').addEventListener('input', recalc);
@@ -236,14 +243,14 @@
             div.querySelectorAll('tbody tr').forEach(function (tr) {
                 rows.push({person: tr.querySelector('.r-person').value, size: tr.querySelector('.r-size').value,
                            back_name: tr.querySelector('.r-back').value, number: tr.querySelector('.r-num').value,
-                           qty: tr.querySelector('.r-qty').value});
+                           qty: tr.querySelector('.r-qty').value, email: tr.querySelector('.r-email').value});
             });
             groups.push({product_id: div.querySelector('.b-prod').value, color: div.querySelector('.b-color').value,
                          price: div.querySelector('.b-price').value, design_id: div.querySelector('.b-design').value, rows: rows});
         });
         var pickup = document.querySelector('input[name=fulfill]:checked').value === 'pickup';
         return {customer: {name: $('cName').value, company: $('cCompany').value, email: $('cEmail').value, phone: $('cPhone').value},
-                collection_id: $('cCollection').value, fulfillment: pickup ? 'pickup' : 'shipping',
+                collection_id: $('cCollection').value, billing: document.querySelector('input[name=billing]:checked').value, fulfillment: pickup ? 'pickup' : 'shipping',
                 ship: {street: $('sStreet').value, city: $('sCity').value, state: $('sState').value, zip: $('sZip').value},
                 shipping: $('shipAmt').value, tax_percent: $('taxPct').value, note: $('note').value, groups: groups};
     }
@@ -264,6 +271,13 @@
         $('sShip').textContent = money(ship); $('sTot').textContent = money(sub + Math.round(tax * 100) / 100 + ship);
     }
 
+    document.querySelectorAll('input[name=billing]').forEach(function (r) {
+        r.addEventListener('change', function () {
+            var indiv = document.querySelector('input[name=billing]:checked').value === 'individual';
+            document.querySelector('.bo').classList.toggle('indiv', indiv);
+            $('indivNote').style.display = indiv ? '' : 'none';
+        });
+    });
     document.querySelectorAll('input[name=fulfill]').forEach(function (r) {
         r.addEventListener('change', function () {
             $('shipFields').style.display = r.value === 'pickup' && r.checked ? 'none' : '';
@@ -284,6 +298,7 @@
             $('cCollection').value = d.collection_id || '';
             var s = d.ship || {}; $('sStreet').value = s.street || ''; $('sCity').value = s.city || ''; $('sState').value = s.state || ''; $('sZip').value = s.zip || '';
             $('shipAmt').value = d.shipping || ''; $('taxPct').value = d.tax_percent || $('taxPct').value; $('note').value = d.note || '';
+            if (d.billing === 'individual') { document.querySelector('input[name=billing][value=individual]').click(); }
             if (d.fulfillment === 'pickup') { document.querySelector('input[name=fulfill][value=pickup]').click(); }
             (d.groups || []).forEach(function (g) { addBlock(g); restored = true; });
         } catch (e) { /* start fresh */ }

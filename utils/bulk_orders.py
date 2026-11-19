@@ -32,6 +32,7 @@ _HEADER_WORDS = {
     'number': 'number', 'no': 'number', 'no.': 'number', '#': 'number', 'jersey number': 'number', 'num': 'number',
     'qty': 'qty', 'quantity': 'qty', 'count': 'qty',
     'color': 'color', 'colour': 'color',
+    'email': 'email', 'e-mail': 'email', 'email address': 'email',
 }
 _DEFAULT_ORDER = ['person', 'size', 'back_name', 'number', 'qty']
 
@@ -62,7 +63,7 @@ def parse_paste(text: str):
                 columns = mapped
                 continue
             columns = _DEFAULT_ORDER
-        row = {'person': '', 'size': '', 'back_name': '', 'number': '', 'qty': 1, 'color': ''}
+        row = {'person': '', 'size': '', 'back_name': '', 'number': '', 'qty': 1, 'color': '', 'email': ''}
         for key, cell in zip(columns, cells):
             if not key:
                 continue
@@ -125,7 +126,8 @@ def clean_payload(raw) -> dict:
             if not size:
                 raise BulkOrderError(f'Please pick a size for {person or back_name or "every row"}.')
             rows.append({'person': person, 'size': size, 'qty': qty, 'back_name': back_name,
-                         'number': number, 'color': str(r.get('color') or '').strip()[:100]})
+                         'number': number, 'color': str(r.get('color') or '').strip()[:100],
+                         'email': str(r.get('email') or '').strip()[:200]})
         if rows:
             groups.append({'product_id': product_id, 'color': str(g.get('color') or '').strip()[:100],
                            'price': _money(g.get('price')), 'design_id': g.get('design_id'), 'rows': rows})
@@ -142,6 +144,7 @@ def clean_payload(raw) -> dict:
         'phone': str(cust.get('phone') or '').strip()[:40],
         'fulfillment': 'pickup' if data.get('fulfillment') == 'pickup' else 'shipping',
         'ship': {k: str(ship.get(k) or '').strip()[:200] for k in ('street', 'street_2', 'city', 'state', 'zip')},
+        'billing': 'individual' if data.get('billing') == 'individual' else 'one',
         'shipping': _money(data.get('shipping')),
         'tax_percent': min(_money(data.get('tax_percent')), 30.0),
         'note': str(data.get('note') or '').strip()[:400],
@@ -166,7 +169,11 @@ def invoice_lines(groups, products):
 
 
 def create_bulk_order(payload: dict):
-    """Make the Order and its invoice. Returns (order, invoice). Raises BulkOrderError."""
+    """Make the Order and its invoice(s). Returns (order, [invoices]). Raises BulkOrderError.
+
+    One invoice for everything by default. With billing 'individual' each person gets their own invoice
+    (their shirts, their tax, and the shipping charge typed on the form), and all of them stay on the one order.
+    """
     from models import Collection, Design, ManualInvoice, Order, Product, db
     from routes.checkout import build_order_items
     from sqlalchemy.exc import IntegrityError
@@ -188,8 +195,8 @@ def create_bulk_order(payload: dict):
         except (TypeError, ValueError):
             pass
 
-    lines = invoice_lines(payload['groups'], products)
-    totals = invoice_totals(lines, payload['tax_percent'], payload['shipping'], 0)
+    payers = _payers(payload, products)
+    totals = {k: round(sum(p['totals'][k] for p in payers), 2) for k in ('subtotal', 'tax', 'shipping', 'total')}
 
     collection_id = None
     try:
@@ -245,38 +252,67 @@ def create_bulk_order(payload: dict):
 
     address = ', '.join(p for p in [ship['street'], ship['street_2'], ship['city'],
                                      ' '.join(x for x in [ship['state'], ship['zip']] if x)] if p)
-    invoice = None
-    for _attempt in range(3):                 # two quick saves could pick the same number
+    invoices = []
+    for payer in payers:
         invoice = ManualInvoice(
             number=next_invoice_number(db.session, ManualInvoice, datetime.now().year),
-            kind='invoice', customer_name=payload['name'], company=payload['company'],
-            email=payload['email'], phone=payload['phone'], address=address,
-            note=payload['note'], items_json=json.dumps(lines),
+            kind='invoice', customer_name=payer['name'], company=payload['company'],
+            email=payer['email'], phone=payload['phone'], address=address,
+            note=payload['note'], items_json=json.dumps(payer['lines']),
             tax_rate=payload['tax_percent'], shipping=payload['shipping'], discount=0.0,
             amount_paid=0.0, order_id=order.id, issued_at=datetime.utcnow(),
         )
         db.session.add(invoice)
         try:
-            db.session.flush()
-            break
+            db.session.flush()                # the next invoice number counts this one
         except IntegrityError:
             db.session.rollback()
             raise BulkOrderError('Could not save the order. Please try again.')
-    order.admin_notes = f'Entered by hand. Billed on invoice {invoice.number}.'
+        invoices.append(invoice)
+    numbers = ', '.join(i.number for i in invoices)
+    order.admin_notes = f'Entered by hand. Billed on invoice{"s" if len(invoices) > 1 else ""} {numbers}.'
     db.session.commit()
-    return order, invoice
+    return order, invoices
+
+
+def _payers(payload, products):
+    """Who gets an invoice: [{name, email, lines, totals}]. One payer, or one per person."""
+    from utils.receipts import invoice_totals
+    if payload.get('billing') != 'individual':
+        lines = invoice_lines(payload['groups'], products)
+        return [{'name': payload['name'], 'email': payload['email'], 'lines': lines,
+                 'totals': invoice_totals(lines, payload['tax_percent'], payload['shipping'], 0)}]
+    people = OrderedDict()
+    for g in payload['groups']:
+        for r in g['rows']:
+            key = r['person'].lower() or '\0'
+            entry = people.setdefault(key, {'name': r['person'] or payload['name'], 'email': '', 'groups': OrderedDict()})
+            entry['email'] = entry['email'] or r['email']
+            entry['groups'].setdefault(id(g), {**g, 'rows': []})['rows'].append(r)
+    out = []
+    for entry in people.values():
+        lines = invoice_lines(list(entry['groups'].values()), products)
+        out.append({'name': entry['name'], 'email': entry['email'], 'lines': lines,
+                    'totals': invoice_totals(lines, payload['tax_percent'], payload['shipping'], 0)})
+    return out
 
 
 # ── Keeping the order in step with its invoice ──────────────────────────────────────────────
 
-def invoice_for_order(order):
+def invoices_for_order(order):
     from models import ManualInvoice
-    return ManualInvoice.query.filter_by(order_id=order.id).order_by(ManualInvoice.id).first()
+    return ManualInvoice.query.filter_by(order_id=order.id).order_by(ManualInvoice.id).all()
+
+
+def invoice_for_order(order):
+    found = invoices_for_order(order)
+    return found[0] if found else None
 
 
 def sync_order_from_invoice(inv):
     """After any payment on a bulk order's invoice: update the order. Never marks it 'paid',
-    because the invoice is the money record and the books must count it once."""
+    because the invoices are the money record and the books must count each one once.
+    With several invoices the order is released once every one of them is paid."""
     if not getattr(inv, 'order_id', None):
         return None
     from models import Order, db
@@ -284,9 +320,9 @@ def sync_order_from_invoice(inv):
     order = db.session.get(Order, inv.order_id)
     if order is None:
         return None
-    doc = doc_from_invoice(inv)
-    order.amount_paid = doc['paid']
-    if doc['paid'] > 0 and doc['balance'] <= 0.004:
+    docs = [doc_from_invoice(i) for i in invoices_for_order(order)]
+    order.amount_paid = round(sum(d['paid'] for d in docs), 2)
+    if docs and all(d['paid'] > 0 and d['balance'] <= 0.004 for d in docs):
         order.payment_status = INVOICE_PAID
         order.paid_at = inv.paid_at or datetime.utcnow()
         if order.status == 'new':

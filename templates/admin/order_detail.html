@@ -237,11 +237,14 @@
                     <span class="od-info-val">${{ '%.2f'|format(order.amount_paid) }}</span>
                 </div>
                 {% endif %}
-                {% if order.payment_status in ('awaiting_payment', 'invoice_paid') and bulk_invoice %}
+                {% if order.payment_status in ('awaiting_payment', 'invoice_paid') and bulk_invoices %}
                 <div class="od-underpaid" {% if order.payment_status == 'invoice_paid' %}style="border-color:#b9d8bb;background:#f2faf2;color:#2f6b34"{% endif %}>
-                    <strong>{% if order.payment_status == 'invoice_paid' %}Paid in full on invoice {{ bulk_invoice.number }}.{% else %}Awaiting payment on invoice {{ bulk_invoice.number }}.{% endif %}</strong>
-                    <span>The invoice is the payment record. Send it, see what is owed, or record a payment there.</span>
-                    <a href="{{ url_for('admin.invoice_view', invoice_id=bulk_invoice.id) }}">Open the invoice</a>
+                    <strong>{% if order.payment_status == 'invoice_paid' %}Paid in full.{% else %}Awaiting payment.{% endif %}
+                        {{ 'Invoice' if bulk_invoices|length == 1 else 'Invoices' }}:</strong>
+                    <span>The invoices are the payment record. Open one to send it, see what is owed, or record a payment.</span>
+                    {% for inv in bulk_invoices %}
+                    <a href="{{ url_for('admin.invoice_view', invoice_id=inv.id) }}">{{ inv.number }} &middot; {{ inv.customer_name }}{% if (inv.amount_paid or 0) > 0 %} &middot; ${{ '%.2f'|format(inv.amount_paid) }} paid{% endif %}</a>
+                    {% endfor %}
                 </div>
                 {% endif %}
                 {% if order.payment_status == 'underpaid' %}

@@ -69,7 +69,7 @@ def test_order_page_points_to_the_invoice(admin_client, app):
         order_id = Order.query.one().id
         number = ManualInvoice.query.one().number
     html = admin_client.get(f'/admin/orders/{order_id}').get_data(as_text=True)
-    assert 'Awaiting payment on invoice ' + number in html and 'For Sarah Jones' in html
+    assert 'Awaiting payment.' in html and number in html and 'For Sarah Jones' in html
 
 
 def test_paying_the_invoice_releases_the_order_and_the_books_count_it_once(admin_client, app):
@@ -168,3 +168,35 @@ def test_a_draft_can_be_deleted(admin_client, app):
     assert admin_client.post(f'/admin/orders/enter/drafts/{draft_id}/delete').status_code == 302
     with app.app_context():
         assert BulkOrderDraft.query.count() == 0
+
+
+def test_individual_invoices_one_per_person_and_the_order_waits_for_all(admin_client, app):
+    from utils import receivables
+    payload = _payload(app, billing='individual', shipping='0')
+    payload['groups'][0]['rows'] = [
+        {'person': 'Sarah Jones', 'size': 'YM', 'back_name': 'JONES', 'number': '12', 'qty': 1, 'email': 'sarah@example.com'},
+        {'person': 'Emma Smith', 'size': 'YL', 'back_name': 'SMITH', 'number': '8', 'qty': 2},
+    ]
+    resp = admin_client.post('/admin/orders/enter', data={'order_json': json.dumps(payload)})
+    assert resp.status_code == 302 and '/admin/orders/' in resp.headers['Location']
+    with app.app_context():
+        order = Order.query.one()
+        invs = ManualInvoice.query.order_by(ManualInvoice.id).all()
+        assert [i.customer_name for i in invs] == ['Sarah Jones', 'Emma Smith']
+        assert invs[0].email == 'sarah@example.com' and all(i.order_id == order.id for i in invs)
+        assert invs[0].number != invs[1].number
+        # $24 + 9.5% = 26.28 and 2 x $24 + 9.5% = 52.56; the order is the sum of its invoices
+        assert order.subtotal == 72.0 and order.tax == 6.84 and order.total == 78.84
+        receivables.record_payment(invs[0].id, 26.28, 'Cash')
+        order = Order.query.one()
+        assert order.payment_status == 'awaiting_payment' and order.amount_paid == 26.28   # one of two paid
+        receivables.record_payment(invs[1].id, 52.56, 'Cash')
+        order = Order.query.one()
+        assert order.payment_status == 'invoice_paid' and order.status == 'paid'
+    page = admin_client.get(f'/admin/orders/{order.id}').get_data(as_text=True)
+    assert 'Sarah Jones' in page and 'Emma Smith' in page
+
+
+def test_paste_can_carry_an_email_column():
+    rows = B.parse_paste('Name\tSize\tEmail\nSarah Jones\tYM\tsarah@example.com')
+    assert rows[0]['email'] == 'sarah@example.com' and rows[0]['size'] == 'YM'

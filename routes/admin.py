@@ -671,11 +671,11 @@ def order_detail(order_id):
         'margin_pct': profit_margin_pct(order),
     }
 
-    from utils.bulk_orders import invoice_for_order
+    from utils.bulk_orders import invoices_for_order
     return render_template(
         'admin/order_detail.html',
         order=order,
-        bulk_invoice=invoice_for_order(order) if order.payment_method == 'invoice' else None,
+        bulk_invoices=invoices_for_order(order) if order.payment_method == 'invoice' else [],
         get_print_width=get_print_width,
         get_display_print_width=get_display_print_width,
         item_productions=item_productions,

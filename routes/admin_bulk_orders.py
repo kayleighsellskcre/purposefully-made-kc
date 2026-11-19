@@ -46,13 +46,17 @@ def bulk_order_new():
             flash('Draft saved. Pick it up again from "Saved drafts" on this page.', 'success')
             return redirect(url_for('admin.bulk_order_new', draft=saved.id))
         try:
-            order, invoice = B.create_bulk_order(B.clean_payload(draft))
+            order, invoices = B.create_bulk_order(B.clean_payload(draft))
             if draft_id:
                 BulkOrderDraft.query.filter_by(id=draft_id).delete()
                 db.session.commit()
+            if len(invoices) == 1:
+                flash(f'Order {order.order_number} is in New Orders, marked Awaiting Payment. '
+                      f'Invoice {invoices[0].number} is ready: send it from here.', 'success')
+                return redirect(url_for('admin.invoice_view', invoice_id=invoices[0].id))
             flash(f'Order {order.order_number} is in New Orders, marked Awaiting Payment. '
-                  f'Invoice {invoice.number} is ready: send it from here.', 'success')
-            return redirect(url_for('admin.invoice_view', invoice_id=invoice.id))
+                  f'{len(invoices)} invoices were made, one for each person. Open each to send it.', 'success')
+            return redirect(url_for('admin.order_detail', order_id=order.id))
         except B.BulkOrderError as exc:
             db.session.rollback()
             error = str(exc)
