@@ -176,6 +176,7 @@
                     <span class="od-info-label">Print</span>
                     <span class="od-info-val">
                         <a href="{{ url_for('admin.order_packing_slip', order_id=order.id) }}" target="_blank" rel="noopener">Packing slip{% if order.gift_hide_prices %} (no prices){% endif %}</a>
+                        &middot; <a href="{{ url_for('admin.order_mockups_pdf', order_id=order.id) }}">Shirt mockups (PDF)</a>
                         {% if order.is_gift %} &middot; <a href="{{ url_for('admin.order_gift_card', order_id=order.id) }}" target="_blank" rel="noopener">Gift card</a>{% endif %}
                     </span>
                 </div>

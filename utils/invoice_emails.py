@@ -15,17 +15,40 @@ def _lines_text(doc):
     return '; '.join(f"{l['qty']:g} × {l['name']}" for l in doc['lines'])
 
 
+def mockup_attachments(inv):
+    """A PDF with a front and back mockup of each shirt on this invoice (empty when there is nothing to draw)."""
+    try:
+        from models import Order
+        from utils.order_artwork import items_of
+        from utils.order_mockups import mockup_pdf
+        from models import ManualInvoice, db
+        order = db.session.get(Order, inv.order_id) if inv.order_id else None
+        if not order:
+            return []
+        items = items_of(order)
+        if ManualInvoice.query.filter_by(order_id=order.id).count() > 1:       # one invoice per person: only their shirts
+            items = [i for i in items if (i.notes or '') == f'For {inv.customer_name}']
+        pdf = mockup_pdf(order, items, title=f'Your shirt mockups - invoice {inv.number}') if items else None
+        return [(f'Mockups-{inv.number}.pdf', 'application/pdf', pdf)] if pdf else []
+    except Exception:
+        current_app.logger.exception('mockup PDF could not be made for %s', getattr(inv, 'number', '?'))
+        return []
+
+
 def send_invoice(inv):
     """Email the customer their invoice with a Pay button. Returns True if it was handed to the mailer."""
     from utils.invoice_pay import pay_url
     doc = _doc(inv)
     first = (doc['attn'] or doc['name'] or '').split(' ')[0]
+    mockups = mockup_attachments(inv)
     return _safe(
         _send, inv.email, f"Your invoice from Purposefully Made KC ({inv.number})",
         f"Your invoice, ${doc['balance']:,.2f}",
         [f"Hi{' ' + first if first else ''}! Thank you so much for your order. "
          "Your invoice is ready, and you can pay it by card with the button below.",
-         'Prefer Venmo, cash or a check? Just reply to this email and we will sort it out.'],
+         'Prefer Venmo, cash or a check? Just reply to this email and we will sort it out.']
+        + (['Mockups of your shirts, front and back, are attached as a PDF so you can see exactly what we will make.'] if mockups else []),
+        attachments=mockups,
         button={'label': 'View & pay invoice', 'url': pay_url(inv)},
         details=[('Invoice', inv.number), ('Items', _lines_text(doc)),
                  ('Total', f"${doc['total']:,.2f}"), ('Balance due', f"${doc['balance']:,.2f}")],

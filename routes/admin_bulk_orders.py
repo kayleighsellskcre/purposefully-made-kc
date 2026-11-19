@@ -129,3 +129,20 @@ def bulk_order_parse():
     """Turn pasted spreadsheet text into rows (the page fills its table with them)."""
     text = (request.get_json(silent=True) or {}).get('text') or request.form.get('text') or ''
     return jsonify({'rows': B.parse_paste(text)})
+
+
+@admin_bp.route('/orders/<int:order_id>/mockups.pdf')
+@admin_required
+def order_mockups_pdf(order_id):
+    """A PDF of front and back mockups for every different shirt in the order, to download and send."""
+    from io import BytesIO
+    from flask import send_file
+    from models import Order
+    from utils.order_mockups import mockup_pdf
+    order = Order.query.get_or_404(order_id)
+    pdf = mockup_pdf(order)
+    if not pdf:
+        flash('There is no shirt picture to draw for this order yet.', 'error')
+        return redirect(url_for('admin.order_detail', order_id=order.id))
+    return send_file(BytesIO(pdf), mimetype='application/pdf', as_attachment=True,
+                     download_name=f'Mockups-{order.order_number}.pdf')
