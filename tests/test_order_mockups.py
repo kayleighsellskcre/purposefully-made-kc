@@ -122,9 +122,12 @@ def test_outline_can_be_turned_off_and_new_entered_orders_start_without_one(app,
 def test_order_page_draws_the_name_and_number_on_the_back_mockup(app, seed, admin_client):
     oid = _order(app, seed, [('42', 'Andrews', 'M')])
     html = admin_client.get(f'/admin/orders/{oid}').get_data(as_text=True)
-    assert '/preview/back' in html                          # the back picture is drawn on request
+    assert html.count('/preview/back') >= 2                 # the back mockup AND the save-for-DTF panel draw it on request
     with app.app_context():
+        from utils.order_artwork import artwork_kit
         item = Order.query.get(oid).items.all()[0]
         iid = item.id
+        with app.test_request_context('/'):
+            assert artwork_kit(item)['back_overlay_url']      # was empty, so the shirt showed a blank back
     resp = admin_client.get(f'/admin/orders/{oid}/items/{iid}/preview/back')
     assert resp.status_code == 200 and resp.mimetype == 'image/png' and len(resp.data) > 500
