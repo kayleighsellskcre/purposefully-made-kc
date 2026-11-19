@@ -178,7 +178,7 @@ def create_bulk_order(payload: dict):
     from routes.checkout import build_order_items
     from sqlalchemy.exc import IntegrityError
     from utils.order_costs import default_due_date
-    from utils.receipts import invoice_totals, next_invoice_number
+    from utils.receipts import next_invoice_number
 
     products = {}
     for g in payload['groups']:

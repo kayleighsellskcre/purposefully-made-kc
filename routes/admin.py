@@ -1155,7 +1155,10 @@ def cancel_order(order_id):
     from utils.customer_emails import notify_cancelled
     notify_cancelled(order)
     paid = order.payment_status in ('paid', 'refunded') and not order.is_refunded
-    flash('Order cancelled and the customer was emailed.' + (' Now refund the payment in Stripe or PayPal.' if paid else ''), 'success')
+    note = ' Now refund the payment in Stripe or PayPal.' if paid else ''
+    if order.payment_method == 'invoice':
+        note = ' It was billed on an invoice: open the invoice to delete it or refund what was paid, so no reminders go out.'
+    flash('Order cancelled and the customer was emailed.' + note, 'success')
     return redirect(url_for('admin.order_detail', order_id=order_id))
 
 

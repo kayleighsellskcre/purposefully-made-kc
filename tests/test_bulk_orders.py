@@ -131,6 +131,7 @@ def test_deleting_the_order_keeps_the_invoice(admin_client, app):
 
 
 def test_only_the_admin_can_enter_an_order(client):
+    assert client.get('/admin/orders/enter/token').status_code in (302, 401, 403)
     assert client.get('/admin/orders/enter').status_code in (302, 401, 403)
     assert client.post('/admin/orders/enter', data={'order_json': '{}'}).status_code in (302, 400, 401, 403)
 
@@ -200,3 +201,16 @@ def test_individual_invoices_one_per_person_and_the_order_waits_for_all(admin_cl
 def test_paste_can_carry_an_email_column():
     rows = B.parse_paste('Name\tSize\tEmail\nSarah Jones\tYM\tsarah@example.com')
     assert rows[0]['email'] == 'sarah@example.com' and rows[0]['size'] == 'YM'
+
+
+def test_the_entry_page_can_get_a_fresh_form_token(admin_client):
+    got = admin_client.get('/admin/orders/enter/token')
+    assert got.status_code == 200 and 'token' in got.get_json()
+
+
+def test_cancelling_an_invoice_billed_order_points_at_the_open_invoice(admin_client, app):
+    _enter(admin_client, app)
+    with app.app_context():
+        order_id = Order.query.one().id
+    html = admin_client.post(f'/admin/orders/{order_id}/cancel', follow_redirects=True).get_data(as_text=True)
+    assert 'billed on an invoice' in html

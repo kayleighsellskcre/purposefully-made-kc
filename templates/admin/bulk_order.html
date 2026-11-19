@@ -288,6 +288,21 @@
     $('boAddBlock').addEventListener('click', function () { addBlock({}); });
     $('boForm').addEventListener('submit', function () { $('orderJson').value = JSON.stringify(collect()); });
 
+    // A form token only lasts an hour. Typing a big order can take longer, so keep it fresh
+    // (otherwise Save would fail and the typing would be lost).
+    function refreshToken() {
+        fetch('{{ url_for("admin.bulk_order_token") }}', {credentials: 'same-origin'})
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (!d || !d.token) { return; }
+                CSRF = d.token;
+                document.querySelectorAll('#boForm input[name=csrf_token]').forEach(function (el) { el.value = d.token; });
+                var meta = document.querySelector('meta[name="csrf-token"]'); if (meta) { meta.content = d.token; }
+            }).catch(function () { /* try again next time */ });
+    }
+    setInterval(refreshToken, 20 * 60 * 1000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) { refreshToken(); } });
+
     // Keep what was typed if the server sent the form back with a message.
     var restored = false;
     if (DRAFT) {

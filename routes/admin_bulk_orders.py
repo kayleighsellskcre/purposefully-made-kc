@@ -102,6 +102,14 @@ def bulk_order_draft_delete(draft_id):
     return redirect(url_for('admin.bulk_order_new'))
 
 
+@admin_bp.route('/orders/enter/token')
+@admin_required
+def bulk_order_token():
+    """A fresh form token. A long order can take more than the hour a token lasts, and the page asks for a new one."""
+    from flask_wtf.csrf import generate_csrf
+    return jsonify({'token': generate_csrf()})
+
+
 @admin_bp.route('/orders/enter/parse', methods=['POST'])
 @admin_required
 def bulk_order_parse():
