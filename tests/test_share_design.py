@@ -238,3 +238,35 @@ def test_uploaded_design_panel_is_plain_and_shows_one_picture(app, seed):
     assert 'Your design is ready.' in html and 'Transparent PNG ready' not in html
     assert '.ai-stage .ai-img-original { display: none; }' in html       # before/after are never both showing
     assert '<details class="ai-more">' in html and 'Choose a different design' in html
+
+
+def test_shared_look_matches_the_cart():
+    from utils.share_preview import cart_style
+    assert 'width:38%' in cart_style('center_chest') and 'top:38%' in cart_style('center_chest')
+    assert 'width:14%' in cart_style('left_chest') and 'left:62%' in cart_style('left_chest')
+    assert cart_style(None) == cart_style('center_chest')
+
+
+def test_preview_crops_the_empty_photo_so_the_shirt_fills_the_picture(app):
+    import io
+    import os
+
+    from PIL import Image, ImageChops
+    from utils.share_preview import cart_style, compose
+    static = os.path.join(app.root_path, 'static')
+    shirt_path, art_path = os.path.join(static, '_t_shirt.png'), os.path.join(static, '_t_art.png')
+    photo = Image.new('RGB', (1000, 1250), (255, 255, 255))
+    photo.paste(Image.new('RGB', (500, 600), (210, 190, 170)), (250, 300))       # a small shirt in a big empty photo
+    photo.save(shirt_path)
+    Image.new('RGBA', (400, 400), (255, 0, 0, 255)).save(art_path)
+    try:
+        with app.app_context():
+            data = compose('/static/_t_shirt.png', '/static/_t_art.png', cart_style('center_chest'))
+    finally:
+        os.remove(shirt_path)
+        os.remove(art_path)
+    out = Image.open(io.BytesIO(data))
+    assert out.size == (1200, 630)
+    backdrop = Image.new('RGB', out.size, out.getpixel((2, 2)))
+    box = ImageChops.difference(out, backdrop).convert('L').point(lambda p: 255 if p > 14 else 0).getbbox()
+    assert box[3] - box[1] > 630 * 0.8          # the shirt fills most of the height, not half of it
