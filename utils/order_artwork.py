@@ -57,14 +57,19 @@ def mockup_urls(product, color):
     color = (color or '').strip() or None
     variant = None
     if color:
-        variant = ProductColorVariant.query.filter_by(
-            product_id=product.id,
-            color_name=color,
-        ).first()
+        from utils.mockups import _cached_variants
+        pool = _cached_variants(product)        # already loaded for this request by a list page, else None
+        if pool is not None:
+            variant = next((v for v in pool if v.color_name == color), None)
+        else:
+            variant = ProductColorVariant.query.filter_by(
+                product_id=product.id,
+                color_name=color,
+            ).first()
         if not variant:
             color_key = color.lower()
             color_compact = color_key.replace(' ', '').replace('-', '').replace('_', '')
-            for v in ProductColorVariant.query.filter_by(product_id=product.id).all():
+            for v in (pool if pool is not None else ProductColorVariant.query.filter_by(product_id=product.id).all()):
                 name = (v.color_name or '').strip()
                 if not name:
                     continue
@@ -516,3 +521,50 @@ def remote_url_allowed(app, url, host_url=None):
     if not url or not str(url).lower().startswith(('http://', 'https://')):
         return False
     return is_own_asset_url(url, app, host_url)
+
+
+def preload_order_items(orders, deep=True):
+    """Load the items of many orders, plus their products, designs and colors, in a handful of queries.
+
+    Press sheets and production lists walk every item of every open order. Each item then asked the
+    database for its product, its design and its color photo separately: roughly 5 questions per shirt.
+    This loads them all up front for the current request; `items_of(order)` then reads from it.
+    deep=False loads only the items (for lists that just count them or read their store).
+    Read-only pages only.
+    """
+    from flask import g, has_request_context
+    if not has_request_context():
+        return
+    from models import OrderItem, Product, Design, db
+    from utils.mockups import prefetch_color_variants
+    orders = [o for o in orders if getattr(o, 'id', None) is not None]
+    by_order = {o.id: [] for o in orders}
+    if not by_order:
+        g._items_by_order = {**(g.get('_items_by_order') or {}), **by_order}
+        return
+    items = OrderItem.query.filter(OrderItem.order_id.in_(list(by_order))).order_by(OrderItem.id).all()
+    for item in items:
+        by_order[item.order_id].append(item)
+    if not deep:
+        g._items_by_order = {**(g.get('_items_by_order') or {}), **by_order}
+        g._preload_keep = (g.get('_preload_keep') or []) + [items]
+        return
+    product_ids = {i.product_id for i in items if i.product_id}
+    design_ids = {i.design_id for i in items if i.design_id}
+    products = Product.query.filter(Product.id.in_(product_ids)).all() if product_ids else []
+    designs = Design.query.filter(Design.id.in_(design_ids)).all() if design_ids else []
+    prefetch_color_variants(products)
+    g._items_by_order = {**(g.get('_items_by_order') or {}), **by_order}
+    # Hold on to everything so the session keeps these objects for the rest of the request.
+    g._preload_keep = (g.get('_preload_keep') or []) + [items, products, designs]
+
+
+def items_of(order):
+    """The order's items: from preload_order_items() when it ran this request, otherwise a normal query."""
+    from flask import g, has_request_context
+    if has_request_context():
+        preloaded = (g.get('_items_by_order') or {}).get(getattr(order, 'id', None))
+        if preloaded is not None:
+            return preloaded
+    items = getattr(order, 'items', None)
+    return items.all() if hasattr(items, 'all') else list(items or [])

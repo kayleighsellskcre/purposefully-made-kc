@@ -44,10 +44,12 @@ def _copy_block(style_number, color, sizes):
 
 def build_blank_shopping_list(orders):
     """Aggregate order lines into vendor → style → color → sizes."""
+    from utils.order_artwork import preload_order_items, items_of
+    preload_order_items(orders, deep=False)
     product_ids = {
         item.product_id
         for order in orders
-        for item in order.items
+        for item in items_of(order)
         if item.product_id
     }
     products = {p.id: p for p in Product.query.filter(Product.id.in_(product_ids)).all()} if product_ids else {}
@@ -56,7 +58,7 @@ def build_blank_shopping_list(orders):
     buckets = defaultdict(lambda: defaultdict(int))
     wholesale = {}
     for order in orders:
-        for item in order.items:
+        for item in items_of(order):
             product = products.get(item.product_id)
             brand = infer_brand(product or item) or ''
             style = item.style_number or (getattr(product, 'style_number', None) if product else '') or ''

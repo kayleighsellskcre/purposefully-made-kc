@@ -42,7 +42,8 @@ def extra_design_ids_from_orders(orders, collection_id=None):
     for order in orders or []:
         if collection_id is not None and getattr(order, 'collection_id', None) != collection_id:
             continue
-        items = order.items.all() if hasattr(getattr(order, 'items', None), 'all') else list(getattr(order, 'items', None) or [])
+        from utils.order_artwork import items_of      # uses the page's bulk load when there is one
+        items = items_of(order)
         for item in items:
             did = getattr(item, 'design_id', None)
             if did and did not in seen:

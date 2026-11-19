@@ -1727,7 +1727,8 @@ def order_store_ids(order):
     ids = []
     if order.collection_id:
         ids.append(order.collection_id)
-    for item in order.items:
+    from utils.order_artwork import items_of
+    for item in items_of(order):
         if item.collection_id and item.collection_id not in ids:
             ids.append(item.collection_id)
     return ids
@@ -1735,13 +1736,15 @@ def order_store_ids(order):
 
 def order_items_for_store(order, collection_id):
     """The shirts of this order that belong to one store (0 marks a regular shop item)."""
-    return [i for i in order.items
+    from utils.order_artwork import items_of
+    return [i for i in items_of(order)
             if (i.collection_id if i.collection_id is not None else order.collection_id) == collection_id]
 
 
 def order_has_regular_items(order):
     """True when a group order also carries regular shop items."""
-    return any(i.collection_id == 0 for i in order.items)
+    from utils.order_artwork import items_of
+    return any(i.collection_id == 0 for i in items_of(order))
 
 
 def order_group_label(order):

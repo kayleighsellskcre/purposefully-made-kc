@@ -566,6 +566,8 @@ def orders():
         unsaved_payment_count = 0
     
     from utils.production_stages import item_counts_for
+    from utils.order_artwork import preload_order_items
+    preload_order_items(orders.items, deep=False)
     return render_template('admin/orders.html', 
                          orders=orders,
                          item_counts=item_counts_for(orders.items),
@@ -915,12 +917,14 @@ def _collect_press_shirts(orders):
     from utils.print_sizes import production_from_order_item
     from utils.order_artwork import front_print_url, mockup_urls, back_print_url
     from utils.ops_flow import packing_sort_key
+    from utils.order_artwork import preload_order_items, items_of
+    preload_order_items(orders)
     shirts = []
     for order in orders:
         customer_name = (order.full_name or '').strip() or (order.email or 'Customer')
         packing = packing_sort_key(order)
         pending = []
-        items = order.items.all() if hasattr(order.items, 'all') else list(order.items)
+        items = items_of(order)
         for item_seq, item in enumerate(items):
             prod = production_from_order_item(item, customer_name=customer_name)
             # If no design is linked (manually-created orders), still show the
@@ -1019,9 +1023,11 @@ def _sort_press_shirts(shirts, group_by='label'):
 def _collect_order_productions(orders):
     from utils.print_sizes import production_from_order_item, flatten_production_rows
     from utils.order_artwork import front_print_url, mockup_urls, resolve_print_url
+    from utils.order_artwork import preload_order_items, items_of
+    preload_order_items(orders)
     productions = []
     for order in orders:
-        for item in order.items:
+        for item in items_of(order):
             prod = production_from_order_item(item, customer_name=order.full_name)
             if not prod:
                 continue
@@ -2828,8 +2834,10 @@ def _master_art_files(orders):
     files = []
     seen_fronts = {}
     seen_backs = {}
+    from utils.order_artwork import preload_order_items, items_of
+    preload_order_items(orders)
     for order in orders:
-        for item in order.items:
+        for item in items_of(order):
             prod = production_from_order_item(item, customer_name=order.full_name) or {}
             code = code_for(item)
             qty = int(item.quantity or 1)
@@ -2914,8 +2922,10 @@ def production_master():
 
     # Blank apparel totals
     apparel_totals = {}
+    from utils.order_artwork import preload_order_items, items_of
+    preload_order_items(orders)
     for order in orders:
-        for item in order.items:
+        for item in items_of(order):
             section = (
                 f'{(item.uniform_kit or "Player").title()} Uniform'
                 if item.catalog_section == 'uniform'
@@ -2951,8 +2961,10 @@ def production_master():
     design_groups = {}
     personal_list = []
     merged_images = {}
+    from utils.order_artwork import preload_order_items, items_of
+    preload_order_items(orders)
     for order in orders:
-        for item in order.items:
+        for item in items_of(order):
             prod = production_from_order_item(item, customer_name=order.full_name)
             code = size_code(item.size, getattr(item, 'product', None))
             front = (prod or {}).get('front')
@@ -3515,8 +3527,10 @@ def production_bulk_sheet():
     
     # Group by design + placement, aggregate by (size, print_width) so youth vs adult are separate
     groups = {}
+    from utils.order_artwork import preload_order_items, items_of
+    preload_order_items(orders)
     for order in orders:
-        for item in order.items:
+        for item in items_of(order):
             if not item.design_id:
                 continue
             key = (item.design_id, item.placement or '')
@@ -5721,6 +5735,8 @@ def production_workflow():
         unsaved_payment_count = 0
     from datetime import datetime
     from utils.production_stages import item_counts_for
+    from utils.order_artwork import preload_order_items
+    preload_order_items([o for rows in orders_by_stage.values() for o in rows], deep=False)
     return render_template('admin/operations/workflow.html', stages=stages, orders_by_stage=orders_by_stage,
                            item_counts=item_counts_for([o for rows in orders_by_stage.values() for o in rows]),
                            now=datetime.utcnow(), selected_order_type=order_type, selected_sort=sort,
