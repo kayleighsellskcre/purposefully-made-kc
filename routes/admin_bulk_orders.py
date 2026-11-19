@@ -146,3 +146,47 @@ def order_mockups_pdf(order_id):
         return redirect(url_for('admin.order_detail', order_id=order.id))
     return send_file(BytesIO(pdf), mimetype='application/pdf', as_attachment=True,
                      download_name=f'Mockups-{order.order_number}.pdf')
+
+
+@admin_bp.route('/orders/<int:order_id>/edit-shirts', methods=['GET', 'POST'])
+@admin_required
+def order_edit_shirts(order_id):
+    """Change the style, color, size, names and numbers on an order that was already entered."""
+    from models import ManualInvoice, Order
+    from utils import order_edit as E
+    from utils.order_artwork import items_of
+    order = Order.query.get_or_404(order_id)
+    items = items_of(order)
+    if request.method == 'POST':
+        rows = []
+        f = request.form
+        for i in items:
+            try:
+                pid = int(f.get(f'product_{i.id}') or i.product_id)
+            except (TypeError, ValueError):
+                pid = i.product_id
+            rows.append({'item_id': i.id, 'product_id': pid, 'color': (f.get(f'color_{i.id}') or '').strip(),
+                         'size': (f.get(f'size_{i.id}') or '').strip(),
+                         'name': f.get(f'name_{i.id}') or '', 'number': f.get(f'number_{i.id}') or ''})
+        changed = E.apply_shirt_edits(order, rows, font=(f.get('font') or '').strip() or None,
+                                      text_color=(f.get('text_color') or '').strip() or None,
+                                      placement=(f.get('placement') or '').strip() or None)
+        reworded = E.sync_invoice_lines(order) if changed else False
+        has_invoice = ManualInvoice.query.filter_by(order_id=order.id).count() > 0
+        message = f'Saved. {changed} shirt{"" if changed == 1 else "s"} changed.'
+        if reworded:
+            message += ' The invoice wording now matches.'
+        elif changed and has_invoice:
+            message += ' The invoice was left as it is (its prices are not the same as the shirts), so check it.'
+        flash(message, 'success')
+        return redirect(url_for('admin.order_detail', order_id=order.id))
+    first = next((i for i in items if i.back_design_details), None)
+    meta = (first.back_design_details if first else None) or {}
+    catalog = _catalog()
+    return render_template(
+        'admin/order_edit_shirts.html', order=order, items=items, catalog=catalog,
+        catalog_map={str(c['id']): {'colors': c['colors'], 'sizes': c['sizes']} for c in catalog},
+        fonts=[{'value': v, 'label': l} for v, l in GROUP_ORDER_FONTS], font=meta.get('font') or '',
+        text_color=meta.get('text_color') or '#ffffff', placement=(items[0].placement if items else 'center_chest'),
+        colors=[('#000000', 'Black'), ('#ffffff', 'White'), ('#1e3a8a', 'Navy'), ('#b91c1c', 'Red'), ('#d4a017', 'Gold'),
+                ('#6b7280', 'Gray'), ('#166534', 'Green'), ('#6d28d9', 'Purple'), ('#ea580c', 'Orange')])

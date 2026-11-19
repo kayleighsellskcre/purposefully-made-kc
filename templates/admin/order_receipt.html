@@ -176,7 +176,7 @@ table.rc-items { width: 100%; border-collapse: collapse; }
         <div class="rc-send-row">
             <form method="post" action="{{ url_for('admin.invoice_send', invoice_id=invoice.id) }}"><button type="submit" class="rc-primary">Email invoice{% if invoice.email %} to {{ invoice.email }}{% endif %}</button></form>
             {% if sms_link %}<a href="{{ sms_link }}" class="rc-textbtn">Text the link</a>{% endif %}
-            {% if invoice.order_id %}<a href="{{ url_for('admin.order_mockups_pdf', order_id=invoice.order_id) }}" class="rc-textbtn">Download shirt mockups (PDF)</a>{% endif %}
+            {% if invoice.order_id %}<a href="{{ url_for('admin.order_mockups_pdf', order_id=invoice.order_id) }}" class="rc-textbtn">Download shirt mockups (PDF)</a> <a href="{{ url_for('admin.order_edit_shirts', order_id=invoice.order_id) }}" class="rc-textbtn">Edit shirts</a>{% endif %}
             <form method="post" action="{{ url_for('admin.invoice_pay_link', invoice_id=invoice.id) }}" onsubmit="return confirm('Turn the pay link off? The link and QR code will stop working.');"><input type="hidden" name="action" value="off"><button type="submit">Turn link off</button></form>
         </div>
         <p class="rc-send-note">{% if invoice.pay_link_sent_at %}Last emailed {{ invoice.pay_link_sent_at|central('%b %d') }}. {% endif %}The QR code is on the printed invoice. The emailed invoice comes with a PDF of front and back mockups of each shirt. {% if not invoice.email %}Add an email (Edit) to send it by email. {% endif %}{% if not invoice.phone %}Add a phone number (Edit) to text it.{% endif %}</p>

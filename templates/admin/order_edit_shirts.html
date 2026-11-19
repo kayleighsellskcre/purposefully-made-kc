@@ -1,0 +1,103 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Edit shirts - Order {{ order.order_number }} - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<style>
+.es { max-width: 1000px; margin: 0 auto; padding-bottom: 3rem; }
+.es-head { margin: 1rem 0 1.2rem; }
+.es-head h1 { margin: .15rem 0 .35rem; }
+.es-head p { color: var(--text-secondary); margin: 0; }
+.es-card { background: #fff; border: 1px solid var(--border-light, #eadfd2); border-radius: 16px; padding: 1.2rem 1.4rem; margin-bottom: 1.2rem; }
+.es-top { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+.es label.f { display: flex; flex-direction: column; gap: .3rem; font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--text-secondary); }
+.es input[type=text], .es select { font: 400 1rem 'Inter', sans-serif; padding: .55rem .65rem; border: 1px solid var(--border-color, #e3d6c8); border-radius: 10px; background: #fffdf9; min-width: 0; width: 100%; box-sizing: border-box; }
+.es table { width: 100%; border-collapse: collapse; }
+.es th { text-align: left; font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; color: var(--text-secondary); padding: .3rem; }
+.es td { padding: .25rem; vertical-align: middle; }
+.es td.num input { width: 5rem; } .es td.size select { width: 6rem; }
+.es-note { color: var(--text-secondary); font-size: .85rem; margin: .8rem 0 0; }
+.es-bar { display: flex; gap: .8rem; flex-wrap: wrap; align-items: center; }
+@media (max-width: 760px) {
+  .es table, .es thead, .es tbody, .es tr, .es td { display: block; }
+  .es thead { display: none; }
+  .es tr { border: 1px solid var(--border-light, #eadfd2); border-radius: 12px; padding: .6rem; margin-bottom: .7rem; }
+  .es td::before { content: attr(data-label); display: block; font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--text-secondary); }
+  .es td.num input, .es td.size select { width: 100%; }
+}
+</style>
+<div class="es">
+    <div class="es-head">
+        <a href="{{ url_for('admin.order_detail', order_id=order.id) }}">&larr; Back to order {{ order.order_number }}</a>
+        <h1>Edit shirts</h1>
+        <p>Change the style, color, size, name or number on any shirt. Prices and quantities stay as invoiced; change those on the invoice.</p>
+    </div>
+    <form method="post">
+        <div class="es-card">
+            <div class="es-top">
+                <label class="f" style="flex:1 1 180px">Name and number font
+                    <select name="font">
+                        {% for f in fonts %}<option value="{{ f.value }}" {% if f.value == font %}selected{% endif %}>{{ f.label }}</option>{% endfor %}
+                    </select>
+                </label>
+                <label class="f" style="flex:1 1 160px">Name and number color
+                    <select name="text_color">
+                        {% for hex, label in colors %}<option value="{{ hex }}" {% if hex == text_color %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                    </select>
+                </label>
+                <label class="f" style="flex:1 1 160px">Logo on the front
+                    <select name="placement">
+                        {% for value, label in [('center_chest', 'Center chest'), ('left_chest', 'Left chest'), ('right_chest', 'Right chest')] %}
+                        <option value="{{ value }}" {% if value == placement %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                    </select>
+                </label>
+            </div>
+        </div>
+        <div class="es-card">
+            <table>
+                <thead><tr><th>Style</th><th>Color</th><th>Size</th><th>Number</th><th>Name on back</th><th>For</th></tr></thead>
+                <tbody>
+                {% for item in items %}
+                {% set meta = item.back_design_details or {} %}
+                <tr data-item="{{ item.id }}">
+                    <td data-label="Style">
+                        <select name="product_{{ item.id }}" class="e-product">
+                            {% for c in catalog %}<option value="{{ c.id }}" {% if c.id == item.product_id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+                        </select>
+                    </td>
+                    <td data-label="Color"><input type="text" name="color_{{ item.id }}" value="{{ item.color }}" list="colors_{{ item.id }}" class="e-color" maxlength="100">
+                        <datalist id="colors_{{ item.id }}"></datalist></td>
+                    <td class="size" data-label="Size"><select name="size_{{ item.id }}" class="e-size" data-current="{{ item.size }}"><option>{{ item.size }}</option></select></td>
+                    <td class="num" data-label="Number"><input type="text" name="number_{{ item.id }}" value="{{ meta.get('number', '') }}" maxlength="10"></td>
+                    <td data-label="Name on back"><input type="text" name="name_{{ item.id }}" value="{{ meta.get('name', '') }}" maxlength="60"></td>
+                    <td data-label="For">{{ (item.notes or '')|replace('For ', '') }}{% if item.quantity and item.quantity > 1 %} (x{{ item.quantity }}){% endif %}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <p class="es-note">Changing a name, number, font or color draws a fresh print file for that shirt. Quantities and prices are not changed here.</p>
+        </div>
+        <div class="es-bar">
+            <button type="submit" class="btn btn-primary">Save changes</button>
+            <a class="btn" href="{{ url_for('admin.order_detail', order_id=order.id) }}">Cancel</a>
+        </div>
+    </form>
+</div>
+<script>
+(function () {
+    var MAP = {{ catalog_map|tojson }};
+    function fill(tr, keepColor) {
+        var info = MAP[tr.querySelector('.e-product').value] || {colors: [], sizes: []};
+        var dl = tr.querySelector('datalist'), sel = tr.querySelector('.e-size'), cur = sel.value || sel.dataset.current;
+        dl.innerHTML = info.colors.map(function (c) { return '<option value="' + c.replace(/"/g, '&quot;') + '">'; }).join('');
+        var sizes = info.sizes.slice();
+        if (cur && sizes.indexOf(cur) < 0) { sizes.push(cur); }
+        sel.innerHTML = sizes.map(function (s) { return '<option' + (s === cur ? ' selected' : '') + '>' + s + '</option>'; }).join('');
+    }
+    document.querySelectorAll('.es tbody tr').forEach(function (tr) {
+        fill(tr);
+        tr.querySelector('.e-product').addEventListener('change', function () { fill(tr); });
+    });
+})();
+</script>
+{% endblock %}

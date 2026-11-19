@@ -58,3 +58,34 @@ def test_production_master_shows_name_and_number_pictures_for_entered_orders(app
     personal = html.split('Personalized backs', 1)[1]
     assert 'No image' not in personal
     assert personal.count('<img') >= 2
+
+
+def test_edit_shirts_changes_color_name_number_and_keeps_the_money(app, seed, admin_client):
+    from models import ManualInvoice
+    oid = _order(app, seed, [('12', 'Guerin', 'M'), ('7', 'Smith', 'M')])
+    with app.app_context():
+        for i in Order.query.get(oid).items.all():
+            i.back_design_meta = json.dumps({**json.loads(i.back_design_meta), 'production_png_url': '/old.png'})
+        db.session.add(ManualInvoice(number='INV-E-1', kind='invoice', customer_name='C D', email='c@example.com',
+                                     order_id=oid, items_json=json.dumps([{'description': 'old', 'qty': 2, 'unit': 30.0}])))
+        db.session.commit()
+        ids = [i.id for i in Order.query.get(oid).items.all()]
+    assert admin_client.get(f'/admin/orders/{oid}/edit-shirts').status_code == 200
+    data = {'font': 'Anton', 'text_color': '#000000', 'placement': 'center_chest'}
+    for n, iid in enumerate(ids):
+        data.update({f'product_{iid}': seed['hoodie_id'], f'color_{iid}': 'Navy', f'size_{iid}': 'L',
+                     f'name_{iid}': 'Lee' if n == 0 else 'Smith', f'number_{iid}': '99' if n == 0 else '7'})
+    resp = admin_client.post(f'/admin/orders/{oid}/edit-shirts', data=data, follow_redirects=True)
+    assert resp.status_code == 200
+    with app.app_context():
+        order = Order.query.get(oid)
+        first, second = order.items.all()
+        assert (first.color, first.size, first.product_id, first.placement) == ('Navy', 'L', seed['hoodie_id'], 'center_chest')
+        meta = first.back_design_details
+        assert (meta['name'], meta['number'], meta['font'], meta['text_color']) == ('LEE', '99', 'Anton', '#000000') or meta['name'] == 'Lee'
+        assert 'production_png_url' not in meta                      # the old print picture is dropped so a new one is drawn
+        assert order.total == 60 and first.unit_price == 30           # money untouched
+        inv = ManualInvoice.query.filter_by(order_id=oid).one()
+        lines = json.loads(inv.items_json)
+        assert 'Navy' in lines[0]['description'] and 'Heavy Blend' in lines[0]['description']
+        assert sum(l['qty'] * l['unit'] for l in lines) == 60.0

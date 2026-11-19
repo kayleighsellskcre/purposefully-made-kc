@@ -9,15 +9,17 @@ from __future__ import annotations
 import io
 import json
 
-# Where the logo sits on the front photo, as a percent of the photo. Chest logos are drawn at a true 3.5 to 4 inches
-# (the Enter an order page uses the same numbers).
+# Where the logo sits on the front photo, as a percent of the photo: width, max height, center top, center left.
+# Sizes come from the real print sizes: the shirt photos show a 28 inch long tee 1,056 pixels tall in a 1,000 pixel
+# wide photo, so one inch of print is 3.77 percent of the photo's width.
+PCT_PER_INCH = 3.77
+HEIGHT_PCT_PER_INCH = 3.0          # the same inch, as a percent of the photo's height (photos are 4:5)
 FRONT_LOOK = {
-    'center_chest': (38, 46, 38, 50),      # width, max height, center top, center left
-    'left_chest': (9, 10, 29, 60.5),
-    'right_chest': (9, 10, 29, 39.5),
+    'center_chest': (38, 46, 38, 50),
+    'left_chest': (14, 20, 32, 62),
+    'right_chest': (14, 20, 32, 38),
 }
-CARD_COLUMNS = 3          # cards per page row is 1; each card holds a front and a back side by side
-CARDS_PER_PAGE = 3
+CARDS_PER_PAGE = 2        # each card holds a front and a back side by side
 PAGE = (1275, 1650)       # US letter at 150 dpi
 INK = (58, 61, 72)
 BG = (250, 247, 242)
@@ -60,6 +62,14 @@ def _open(url):
         return None
 
 
+def _production(item):
+    try:
+        from utils.print_sizes import production_from_order_item
+        return production_from_order_item(item)
+    except Exception:
+        return None
+
+
 def _on_backdrop(shirt):
     from PIL import Image
     backdrop = tuple(shirt.convert('RGB').getpixel((2, 2)))
@@ -93,6 +103,10 @@ def render_front(item, shirt_url, design_url):
     base, backdrop = _on_backdrop(shirt)
     if art is not None:
         w, mh, top, left = FRONT_LOOK.get((item.placement or 'center_chest'), FRONT_LOOK['center_chest'])
+        front = (_production(item) or {}).get('front') or {}
+        if front.get('width'):                                  # the width that will really be printed
+            w = float(front['width']) * PCT_PER_INCH
+            mh = max(mh, float(front.get('height') or 0) * HEIGHT_PCT_PER_INCH * 1.05)
         _paste_logo(base, art, w, mh, top, left)
     return _finish(base, backdrop)
 
@@ -120,13 +134,29 @@ def render_back(item, shirt_url, back_art_url=None):
         color = _hex(meta.get('text_color'))
         draw = ImageDraw.Draw(base)
 
-        def text(value, size_pct_w, top_pct):
-            font = ImageFont.truetype(str(path), max(8, int(W * size_pct_w / 100.0))) if path else ImageFont.load_default()
-            draw.text((W / 2, H * top_pct / 100.0), value, font=font, fill=color + (255,), anchor='mt')
+        back = (_production(item) or {}).get('back') or {}
+        name_in, number_in = float(back.get('name_height') or 2.0), float(back.get('number_height') or 7.0)
+
+        def text(value, cap_in, top_pct, max_w_pct=None):
+            """Draw the text with capital letters cap_in inches tall, its top at top_pct of the photo's height."""
+            if not path:
+                draw.text((W / 2, H * top_pct / 100.0), value, fill=color + (255,), anchor='mt')
+                return
+            cap_px = W * cap_in * PCT_PER_INCH / 100.0
+            probe = ImageFont.truetype(str(path), 100)
+            box = probe.getbbox('H')
+            size = max(8, int(100 * cap_px / max(1, box[3] - box[1])))
+            font = ImageFont.truetype(str(path), size)
+            if max_w_pct and font.getlength(value) > W * max_w_pct / 100.0:          # a long name gets narrower, not taller
+                size = max(8, int(size * (W * max_w_pct / 100.0) / font.getlength(value)))
+                font = ImageFont.truetype(str(path), size)
+            cap_top = font.getbbox('H')[1]
+            draw.text((W / 2, H * top_pct / 100.0 - cap_top), value, font=font, fill=color + (255,), anchor='mt')
         if name:
-            text(name, max(3.5, min(6.5, 66.0 / max(5, len(name)))), 20)         # about 2 inches tall
+            text(name, name_in, 18, max_w_pct=36)
         if number:
-            text(number, 23, 30)                                                    # about 7 inches tall
+            gap = float(back.get('name_number_gap') or 3.0)
+            text(number, number_in, 18 + (name_in + gap) * HEIGHT_PCT_PER_INCH if name else 24)
     return _finish(base, backdrop)
 
 
