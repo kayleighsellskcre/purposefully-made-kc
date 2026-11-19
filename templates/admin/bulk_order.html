@@ -47,9 +47,26 @@
 
     {% if error %}<div class="bo-error">{{ error }}</div>{% endif %}
 
+    {% if drafts %}
+    <section class="bo-card" id="boDrafts">
+        <h2>Saved drafts</h2>
+        <p class="bo-sub">Orders you started and set aside while you wait for missing details.</p>
+        {% for d in drafts %}
+        <div style="display:flex;gap:.8rem;align-items:center;padding:.3rem 0">
+            <a href="{{ url_for('admin.bulk_order_new', draft=d.id) }}"><strong>{{ d.title }}</strong></a>
+            <span style="color:var(--text-secondary);font-size:.85rem">saved {{ d.updated_at.strftime('%b %d') }}</span>
+            <form method="post" action="{{ url_for('admin.bulk_order_draft_delete', draft_id=d.id) }}" onsubmit="return confirm('Delete this draft?')" style="margin-left:auto">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="bo-mini" type="submit">Delete</button>
+            </form>
+        </div>
+        {% endfor %}
+    </section>
+    {% endif %}
+
     <form method="post" id="boForm" autocomplete="off">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="order_json" id="orderJson" value="">
+        <input type="hidden" name="draft_id" value="{{ draft_id or '' }}">
 
         <section class="bo-card">
             <h2>Who is it for?</h2>
@@ -104,6 +121,7 @@
 
         <div style="display:flex;gap:.75rem;flex-wrap:wrap">
             <button type="submit" class="btn btn-primary">Create order and invoice</button>
+            <button type="submit" name="action" value="draft" class="btn btn-outline" formnovalidate>Save as draft</button>
             <a href="{{ url_for('admin.production_workflow') }}" class="btn btn-outline">Cancel</a>
         </div>
     </form>

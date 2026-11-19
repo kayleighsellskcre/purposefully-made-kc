@@ -139,3 +139,32 @@ def test_the_entry_page_opens_and_the_button_is_on_the_board(admin_client):
     page = admin_client.get('/admin/orders/enter')
     assert page.status_code == 200 and 'Enter an order' in page.get_data(as_text=True)
     assert '/admin/orders/enter' in admin_client.get('/admin/operations/workflow').get_data(as_text=True)
+
+
+def test_a_half_finished_order_can_be_saved_as_a_draft_and_finished_later(admin_client, app):
+    from models import BulkOrderDraft
+    unfinished = _payload(app, customer={'name': '', 'company': 'Lions'})
+    unfinished['groups'][0]['rows'][0]['size'] = ''
+    resp = admin_client.post('/admin/orders/enter', data={'order_json': json.dumps(unfinished), 'action': 'draft'})
+    assert resp.status_code == 302
+    with app.app_context():
+        draft = BulkOrderDraft.query.one()
+        assert draft.title == 'Lions' and Order.query.count() == 0
+        draft_id = draft.id
+    page = admin_client.get(f'/admin/orders/enter?draft={draft_id}').get_data(as_text=True)
+    assert 'Saved drafts' in page and 'Sarah Jones' in page            # reopens with what was typed
+    done = _payload(app)
+    resp = admin_client.post('/admin/orders/enter', data={'order_json': json.dumps(done), 'draft_id': str(draft_id)})
+    assert resp.status_code == 302 and '/admin/invoices/' in resp.headers['Location']
+    with app.app_context():
+        assert BulkOrderDraft.query.count() == 0 and Order.query.count() == 1
+
+
+def test_a_draft_can_be_deleted(admin_client, app):
+    from models import BulkOrderDraft
+    admin_client.post('/admin/orders/enter', data={'order_json': json.dumps(_payload(app)), 'action': 'draft'})
+    with app.app_context():
+        draft_id = BulkOrderDraft.query.one().id
+    assert admin_client.post(f'/admin/orders/enter/drafts/{draft_id}/delete').status_code == 302
+    with app.app_context():
+        assert BulkOrderDraft.query.count() == 0

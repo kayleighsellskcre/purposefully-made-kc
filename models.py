@@ -1517,6 +1517,16 @@ class ManualInvoice(db.Model):
         return f'<ManualInvoice {self.number}>'
 
 
+class BulkOrderDraft(db.Model):
+    """An order being typed in on "Enter an order", saved so it can be finished later."""
+    __tablename__ = 'bulk_order_draft'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200))
+    payload_json = db.Column(db.Text, nullable=False, default='{}')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class DesignTag(db.Model):
     """One standard tag (Mom, Football, Vintage...). Synonyms and related tags make search forgiving."""
     __tablename__ = 'design_tag'
