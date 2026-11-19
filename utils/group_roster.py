@@ -318,7 +318,9 @@ def add_bulk_entries(collection, item, text):
             skipped.append(f'{who} is already on the list in {size}')
             continue
         have.add(key)
-        db.session.add(GroupRosterEntry(collection_id=collection.id, first_name=first, last_name=last, size=size))
+        db.session.add(GroupRosterEntry(
+            collection_id=collection.id, first_name=first, last_name=last, size=size,
+            back_name=(row.get('back_name') or '')[:60] or None, number=(row.get('number') or '')[:10] or None))
         added += 1
     if added:
         db.session.commit()
@@ -343,7 +345,12 @@ def build_roster_cart(collection, item, entries):
     design_name = (design or {}).get('title')
 
     lines = []
-    for size, qty in size_counts(entries).items():
+    # People with a name or number on the back each get their own line; everyone else is counted by size.
+    named = [e for e in entries if e.back_name or e.number]
+    plain = [e for e in entries if not (e.back_name or e.number)]
+    groups = [(size, qty, None) for size, qty in size_counts(plain).items()]
+    groups += [(e.size, 1, e) for e in named]
+    for size, qty, person in groups:
         unit_price = calculate_unit_price(
             product,
             size=size,
@@ -378,7 +385,8 @@ def build_roster_cart(collection, item, entries):
             'placement': item.get('placement'),
             'back_design_url': (back or {}).get('url'),
             'back_design_kind': 'image' if back else None,
-            'back_design_meta': None,
+            'back_design_meta': ({k: v for k, v in (('name', person.back_name), ('number', person.number)) if v}
+                                 if person is not None else None),
             'proof_front_url': None,
             'proof_back_url': None,
             'print_width': front.get('width'),
@@ -406,15 +414,15 @@ def roster_xlsx(collection) -> bytes:
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = 'Roster'
-    ws.append(['#', 'First name', 'Last name', 'Size', 'Submitted'])
+    ws.append(['#', 'First name', 'Last name', 'Size', 'Name on back', 'Number', 'Submitted'])
     for cell in ws[1]:
         cell.font = Font(bold=True)
     for n, e in enumerate(summary['entries'], start=1):
         ws.append([
-            n, e.first_name, e.last_name, e.size,
+            n, e.first_name, e.last_name, e.size, e.back_name or '', e.number or '',
             format_central(e.created_at, '%b %d, %Y %I:%M %p') if e.created_at else '',
         ])
-    for col, width in zip('ABCDE', (5, 18, 18, 8, 22)):
+    for col, width in zip('ABCDEFG', (5, 18, 18, 8, 16, 8, 22)):
         ws.column_dimensions[col].width = width
 
     totals = wb.create_sheet('Size totals')

@@ -113,13 +113,14 @@
             {% if roster.entries %}
             <div class="roster-table-wrap">
                 <table class="roster-table">
-                    <thead><tr><th>#</th><th>Name</th><th>Size</th>{% if not roster.closed %}<th><span class="sr-only">Remove</span></th>{% endif %}</tr></thead>
+                    <thead><tr><th>#</th><th>Name</th><th>Size</th>{% if roster.entries|selectattr('back_name')|list or roster.entries|selectattr('number')|list %}<th>Back</th>{% endif %}{% if not roster.closed %}<th><span class="sr-only">Remove</span></th>{% endif %}</tr></thead>
                     <tbody>
                     {% for e in roster.entries %}
                     <tr>
                         <td>{{ loop.index }}</td>
                         <td>{{ e.full_name }}</td>
                         <td>{{ e.size }}</td>
+                        {% if roster.entries|selectattr('back_name')|list or roster.entries|selectattr('number')|list %}<td>{{ e.back_name or '' }}{% if e.number %} #{{ e.number }}{% endif %}</td>{% endif %}
                         {% if not roster.closed %}
                         <td class="roster-remove">
                             <form method="POST" action="{{ url_for('collection.roster_remove', slug=collection.slug, entry_id=e.id) }}" onsubmit='return confirm({{ ("Remove " ~ e.full_name ~ " from the list?")|tojson }})'>
@@ -142,7 +143,7 @@
                 <summary>Add everyone at once</summary>
                 <form method="POST" action="{{ url_for('collection.roster_bulk', slug=collection.slug) }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <p class="share-hint">Have the whole list? Paste it from Excel or Google Sheets, or type one person per line: first and last name, then size. Sizes offered: {{ roster_item.sizes|join(', ') }}.</p>
+                    <p class="share-hint">Have the whole list? Paste it from Excel or Google Sheets, or type one person per line: first and last name, then size, and if you want them printed, the name on the back and the number (for example <em>Sarah Jones, YM, JONES, 12</em>). Sizes offered: {{ roster_item.sizes|join(', ') }}.</p>
                     <textarea name="bulk_text" rows="6" required placeholder="Sarah Jones&#9;YM&#10;Emma Smith&#9;YL" style="width:100%;box-sizing:border-box;padding:.6rem .75rem;border:1px solid #e3d6c8;border-radius:10px;font:inherit"></textarea>
                     <button type="submit" class="btn btn-outline" style="margin-top:.6rem">Add to the list</button>
                 </form>

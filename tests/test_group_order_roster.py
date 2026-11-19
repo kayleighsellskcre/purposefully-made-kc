@@ -419,3 +419,25 @@ def test_only_the_organizer_can_bulk_add_and_not_after_paying(guest, customer_cl
     def _none():
         assert GroupRosterEntry.query.count() == 0
     _in_db(app, _none)
+
+
+def test_bulk_add_can_carry_a_back_name_and_number_into_the_order(guest, seed, app, login):
+    admin_client = guest
+    slug = _make_roster_store(app, seed)
+    login(admin_client, ADMIN_EMAIL)
+    _bulk(admin_client, slug, 'Ava Lopez\tM\tLOPEZ\t7\nBen Oh\tM\nCara Ng\tL')
+    share = admin_client.get(f'/c/{slug}/share').get_data(as_text=True)
+    assert 'LOPEZ #7' in share
+    def _check():
+        from models import Collection
+        from utils.group_roster import build_roster_cart, roster_entries, roster_item
+        c = Collection.query.filter_by(slug=slug).first()
+        lines = build_roster_cart(c, roster_item(c), roster_entries(c))
+        named = [l for l in lines if l['back_design_meta']]
+        assert len(named) == 1 and named[0]['back_design_meta'] == {'name': 'LOPEZ', 'number': '7'} and named[0]['quantity'] == 1
+        plain = {l['size']: l['quantity'] for l in lines if not l['back_design_meta']}
+        assert plain == {'M': 1, 'L': 1}                       # everyone else is still counted by size
+        assert sum(l['quantity'] for l in lines) == 3
+    _in_db(app, _check)
+    sheet = openpyxl.load_workbook(io.BytesIO(admin_client.get(f'/c/{slug}/roster.xlsx').data))['Roster']
+    assert [c.value for c in sheet[1]][4:6] == ['Name on back', 'Number'] and sheet['E2'].value == 'LOPEZ'

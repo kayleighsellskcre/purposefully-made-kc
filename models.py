@@ -303,6 +303,8 @@ class GroupRosterEntry(db.Model):
     first_name = db.Column(db.String(80), nullable=False)
     last_name = db.Column(db.String(80), nullable=False)
     size = db.Column(db.String(20), nullable=False)
+    back_name = db.Column(db.String(60))      # optional: the name printed on the back
+    number = db.Column(db.String(10))         # optional: the jersey number
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     @property

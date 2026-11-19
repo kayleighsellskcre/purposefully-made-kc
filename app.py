@@ -321,6 +321,9 @@ def create_app(config_class=Config):
                     "ALTER TABLE manual_invoice ADD COLUMN IF NOT EXISTS card_paid_intent_id VARCHAR(200)",
                     "ALTER TABLE manual_invoice ADD COLUMN IF NOT EXISTS pay_link_sent_at TIMESTAMP",
                     "CREATE UNIQUE INDEX IF NOT EXISTS ix_manual_invoice_pay_token ON manual_invoice (pay_token)",
+                    # Organizer-pays rosters: optional back name and number
+                    "ALTER TABLE group_roster_entry ADD COLUMN IF NOT EXISTS back_name VARCHAR(60)",
+                    "ALTER TABLE group_roster_entry ADD COLUMN IF NOT EXISTS number VARCHAR(10)",
                     # Bulk orders: the invoice that bills an order
                     "ALTER TABLE manual_invoice ADD COLUMN IF NOT EXISTS order_id INTEGER REFERENCES \"order\"(id)",
                     "CREATE INDEX IF NOT EXISTS ix_manual_invoice_order_id ON manual_invoice (order_id)",
