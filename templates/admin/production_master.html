@@ -136,10 +136,10 @@
                 <div class="design-cards">
                     {% for row in personal_list %}
                     <div class="design-master-card">
-                        {% if row.print_url %}
+                        {% if row.print_url or row.preview_url %}
                         <div class="design-master-preview">
                             {% if row.size_code %}<span class="size-tag" title="Shirt size">{{ row.size_code }}</span>{% endif %}
-                            <img src="{{ row.preview_url or row.print_url }}" alt="{{ row.name or row.logo_name or 'Back' }} {{ row.number or '' }}"{% if row.preview_url %} onerror="this.onerror=null;this.src='{{ row.print_url }}'"{% endif %}>
+                            <img src="{{ row.preview_url or row.print_url }}" alt="{{ row.name or row.logo_name or 'Back' }} {{ row.number or '' }}"{% if row.preview_url and row.print_url %} onerror="this.onerror=null;this.src='{{ row.print_url }}'"{% endif %}>
                         </div>
                         {% else %}
                         <div class="design-master-preview">

@@ -45,3 +45,16 @@ def test_invoice_email_attaches_the_mockups(app, seed):
         db.session.commit()
         got = invoice_emails.mockup_attachments(inv)
         assert got and got[0][0] == 'Mockups-INV-T-1.pdf' and got[0][2].startswith(b'%PDF')
+
+
+def test_production_master_shows_name_and_number_pictures_for_entered_orders(app, seed, admin_client):
+    """Orders typed in on Enter an order have no saved print file yet: the page draws each one when asked."""
+    oid = _order(app, seed, [('12', 'Guerin', 'M'), ('5', 'Wilson', 'S')])
+    resp = admin_client.get('/admin/production/master?stage=order_received')
+    assert resp.status_code == 200
+    html = resp.get_data(as_text=True)
+    assert html.count('No image') == 0 or 'Personalized backs' in html
+    assert f'/admin/orders/{oid}/items/' in html and 'inline=1' in html
+    personal = html.split('Personalized backs', 1)[1]
+    assert 'No image' not in personal
+    assert personal.count('<img') >= 2
