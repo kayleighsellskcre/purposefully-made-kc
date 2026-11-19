@@ -462,6 +462,16 @@ def artwork_kit(item, order=None):
     else:
         back_overlay = back_print
         back_overlay_style = preview_overlay_style(item, 'center_back') if back_overlay and not personalized else ''
+        if personalized and not back_overlay and getattr(item, 'id', None) and getattr(item, 'order_id', None):
+            # A name and number typed in by hand has no saved print picture yet: the admin preview draws it when asked.
+            try:
+                import zlib
+                from flask import url_for
+                version = zlib.crc32((getattr(item, 'back_design_meta', None) or '').encode('utf-8'))      # changes when the name, number, font or color does
+                back_overlay = url_for('admin.preview_item_artwork', order_id=item.order_id, item_id=item.id,
+                                       side='back', v=version)
+            except Exception:
+                back_overlay = None
 
     return {
         'front_mockup_url': front_mockup,

@@ -117,3 +117,14 @@ def test_outline_can_be_turned_off_and_new_entered_orders_start_without_one(app,
     admin_client.post(f'/admin/orders/{oid}/edit-shirts', data={**data, 'outline': '1'})
     with app.app_context():
         assert Order.query.get(oid).items.all()[0].back_design_details['outline'] is True
+
+
+def test_order_page_draws_the_name_and_number_on_the_back_mockup(app, seed, admin_client):
+    oid = _order(app, seed, [('42', 'Andrews', 'M')])
+    html = admin_client.get(f'/admin/orders/{oid}').get_data(as_text=True)
+    assert '/preview/back' in html                          # the back picture is drawn on request
+    with app.app_context():
+        item = Order.query.get(oid).items.all()[0]
+        iid = item.id
+    resp = admin_client.get(f'/admin/orders/{oid}/items/{iid}/preview/back')
+    assert resp.status_code == 200 and resp.mimetype == 'image/png' and len(resp.data) > 500
