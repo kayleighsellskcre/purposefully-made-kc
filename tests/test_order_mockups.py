@@ -89,3 +89,15 @@ def test_edit_shirts_changes_color_name_number_and_keeps_the_money(app, seed, ad
         lines = json.loads(inv.items_json)
         assert 'Navy' in lines[0]['description'] and 'Heavy Blend' in lines[0]['description']
         assert sum(l['qty'] * l['unit'] for l in lines) == 60.0
+
+
+def test_invoice_edit_page_links_to_edit_shirts(app, seed, admin_client):
+    from models import ManualInvoice
+    oid = _order(app, seed, [('12', 'Guerin', 'M')])
+    with app.app_context():
+        inv = ManualInvoice(number='INV-L-1', kind='invoice', customer_name='C D', items_json='[]', order_id=oid)
+        db.session.add(inv)
+        db.session.commit()
+        iid = inv.id
+    html = admin_client.get(f'/admin/invoices/{iid}/edit').get_data(as_text=True)
+    assert f'/admin/orders/{oid}/edit-shirts' in html

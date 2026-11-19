@@ -38,6 +38,10 @@
         <span class="adm-eyebrow">Admin / Invoices</span>
         <h1>{{ 'Edit' if inv else 'New' }} invoice or receipt</h1>
         <p>For orders you take directly, including brands that are not on your site. Fill it in, save, then print or save it as a PDF.</p>
+        {% if inv and inv.order_id %}
+        <p style="margin-top:.7rem"><a class="btn btn-primary btn-sm" href="{{ url_for('admin.order_edit_shirts', order_id=inv.order_id) }}">Edit shirt styles, colors, names and numbers</a>
+        <span style="display:block;margin-top:.35rem;font-size:.85rem">This page changes the invoice lines, quantities, prices and tax. The shirts themselves are edited on the shirts page.</span></p>
+        {% endif %}
     </div>
 
     {% if error %}<div class="iv-error">{{ error }}</div>{% endif %}
