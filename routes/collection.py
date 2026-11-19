@@ -507,6 +507,33 @@ def roster_remove(slug, entry_id):
     return redirect(url_for('collection.share', slug=slug) + '#roster')
 
 
+@collection_bp.route('/<slug>/roster/bulk', methods=['POST'])
+@login_required
+def roster_bulk(slug):
+    """The organizer adds a whole list of names and sizes at once (pasted or typed)."""
+    from utils.group_roster import add_bulk_entries, roster_closed, roster_item
+
+    collection = _managed_roster_collection(slug)
+    if not collection:
+        from flask import abort
+        abort(404)
+    if roster_closed(collection):
+        flash('This order has already been placed, so the list can no longer change.', 'error')
+        return redirect(url_for('collection.share', slug=slug))
+    item = roster_item(collection)
+    if item is None:
+        flash('Pick one shirt and one color for this group order first.', 'error')
+        return redirect(url_for('shop.edit_group_order', slug=slug))
+    added, skipped = add_bulk_entries(collection, item, request.form.get('bulk_text') or '')
+    if added:
+        flash(f'Added {added} {"person" if added == 1 else "people"} to the list.', 'success')
+    if skipped:
+        flash('Not added: ' + '; '.join(skipped[:8]) + (f'; and {len(skipped) - 8} more' if len(skipped) > 8 else ''), 'error')
+    if not added and not skipped:
+        flash('Nothing was added. Put one person on each line: first and last name, then size.', 'error')
+    return redirect(url_for('collection.share', slug=slug) + '#roster')
+
+
 @collection_bp.route('/<slug>/roster/pay', methods=['POST'])
 @login_required
 def roster_pay(slug):

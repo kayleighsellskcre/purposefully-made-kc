@@ -137,6 +137,18 @@
             <p class="share-hint">No sizes yet. Share the link above and they will show up here as people respond.</p>
             {% endif %}
 
+            {% if not roster.closed and roster_item %}
+            <details class="roster-bulk" {% if not roster.entries %}open{% endif %}>
+                <summary>Add everyone at once</summary>
+                <form method="POST" action="{{ url_for('collection.roster_bulk', slug=collection.slug) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <p class="share-hint">Have the whole list? Paste it from Excel or Google Sheets, or type one person per line: first and last name, then size. Sizes offered: {{ roster_item.sizes|join(', ') }}.</p>
+                    <textarea name="bulk_text" rows="6" required placeholder="Sarah Jones&#9;YM&#10;Emma Smith&#9;YL" style="width:100%;box-sizing:border-box;padding:.6rem .75rem;border:1px solid #e3d6c8;border-radius:10px;font:inherit"></textarea>
+                    <button type="submit" class="btn btn-outline" style="margin-top:.6rem">Add to the list</button>
+                </form>
+            </details>
+            {% endif %}
+
             <div class="roster-actions">
                 {% if roster.entries %}
                 <a href="{{ url_for('collection.roster_xlsx', slug=collection.slug, v=download_stamp()) }}" class="btn btn-outline">Download spreadsheet</a>

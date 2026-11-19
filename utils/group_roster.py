@@ -286,6 +286,45 @@ def validate_submission(form, item):
     return (first, last, size), None
 
 
+def add_bulk_entries(collection, item, text):
+    """Add pasted or typed lines (first and last name, then size) to the roster.
+
+    Returns (added, skipped) where skipped is a list of plain-English reasons. A person already on
+    the list with the same name and size is left alone, so nobody is paid for twice.
+    """
+    from models import GroupRosterEntry, db
+    from utils.bulk_orders import parse_paste
+
+    sizes = {s.lower(): s for s in (item.get('sizes') or [])}
+    have = {(e.first_name.lower(), e.last_name.lower(), e.size) for e in roster_entries(collection)}
+    added, skipped = 0, []
+    for row in parse_paste(text):
+        who = ' '.join((row.get('person') or '').split())
+        size = sizes.get((row.get('size') or '').strip().lower())
+        words = who.split(' ')
+        if size is None and not row.get('size') and len(words) >= 3 and words[-1].lower() in sizes:
+            size = sizes[words[-1].lower()]            # "Sarah Jones YM" typed on one line
+            who = ' '.join(words[:-1])
+        parts = who.split(' ', 1)
+        if len(parts) < 2 or not parts[1].strip():
+            skipped.append(f'"{who or "a blank name"}" needs a first and last name')
+            continue
+        if size is None:
+            skipped.append(f'{who} ("{row.get("size") or "no size"}" is not a size offered)')
+            continue
+        first, last = parts[0][:NAME_MAX], parts[1][:NAME_MAX]
+        key = (first.lower(), last.lower(), size)
+        if key in have:
+            skipped.append(f'{who} is already on the list in {size}')
+            continue
+        have.add(key)
+        db.session.add(GroupRosterEntry(collection_id=collection.id, first_name=first, last_name=last, size=size))
+        added += 1
+    if added:
+        db.session.commit()
+    return added, skipped
+
+
 # ── Organizer pays once ─────────────────────────────────────────────────────
 
 def build_roster_cart(collection, item, entries):

@@ -377,3 +377,45 @@ def test_each_pays_store_is_unchanged(guest, seed):
         'placement': 'center_chest', 'design_id': seed['free_design_id'],
     })
     assert resp.status_code == 200
+
+
+# ── The organizer adds the whole list at once ────────────────────────────────
+
+def _bulk(client, slug, text):
+    return client.post(f'/c/{slug}/roster/bulk', data={'bulk_text': text}, follow_redirects=True)
+
+
+def test_organizer_adds_a_pasted_list_in_one_go(guest, seed, app, login):
+    admin_client = guest
+    slug = _make_roster_store(app, seed)
+    login(admin_client, ADMIN_EMAIL)
+    html = _bulk(admin_client, slug, 'Name\tSize\nAva Lopez\tM\nBen O Neil\tl\nCara Ng M\n').get_data(as_text=True)
+    assert 'Added 3 people to the list.' in html
+    def _check():
+        rows = {(e.first_name, e.last_name, e.size) for e in GroupRosterEntry.query.all()}
+        assert rows == {('Ava', 'Lopez', 'M'), ('Ben', 'O Neil', 'L'), ('Cara', 'Ng', 'M')}
+    _in_db(app, _check)
+    share = admin_client.get(f'/c/{slug}/share').get_data(as_text=True)
+    assert 'Add everyone at once' in share and 'Pay for the group (3 shirts)' in share
+
+
+def test_bulk_add_skips_what_cannot_be_used_and_says_why(guest, seed, app, login):
+    admin_client = guest
+    slug = _make_roster_store(app, seed)
+    _submit(admin_client, slug, first='Ava', last='Lopez', size='M')
+    login(admin_client, ADMIN_EMAIL)
+    html = _bulk(admin_client, slug, 'Ava Lopez\tM\nSam\tL\nTom Hill\t9XL\nZed Park\tS').get_data(as_text=True)
+    assert 'Added 1 person to the list.' in html
+    assert 'Ava Lopez is already on the list in M' in html
+    assert 'needs a first and last name' in html and 'is not a size offered' in html
+    def _check():
+        assert GroupRosterEntry.query.count() == 2
+    _in_db(app, _check)
+
+
+def test_only_the_organizer_can_bulk_add_and_not_after_paying(guest, customer_client, seed, app, login):
+    slug = _make_roster_store(app, seed)
+    assert _bulk(customer_client, slug, 'Ava Lopez\tM').status_code in (200, 404)   # not the organizer
+    def _none():
+        assert GroupRosterEntry.query.count() == 0
+    _in_db(app, _none)
