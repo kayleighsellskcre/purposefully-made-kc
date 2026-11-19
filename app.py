@@ -88,10 +88,31 @@ def _asset_version(rel_path):
     return _ASSET_VERSIONS[rel_path]
 
 
+from flask.sessions import SecureCookieSessionInterface
+
+
+class _PublicFileSessionInterface(SecureCookieSessionInterface):
+    """Never set (or clear) the visitor's cookie while sending a picture, script or stylesheet.
+
+    Every /static file used to arrive with a `Set-Cookie: session=` header (and `Vary: Cookie`).
+    Cloudflare will not keep a copy of a response that sets a cookie, so every logo, product photo,
+    script and stylesheet was fetched from the app again for every visitor, one at a time through a
+    single worker. Without the cookie, Cloudflare and the browser can cache them. Pages are unchanged.
+    """
+    PUBLIC_FILE_PREFIXES = ('/static/', '/thumb', '/uploads/mockups/')
+
+    def save_session(self, app, session, response):
+        from flask import request
+        if request.path.startswith(self.PUBLIC_FILE_PREFIXES):
+            return None
+        return super().save_session(app, session, response)
+
+
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.request_class = SiteRequest
     app.config.from_object(config_class)
+    app.session_interface = _PublicFileSessionInterface()
 
     from markupsafe import Markup
 

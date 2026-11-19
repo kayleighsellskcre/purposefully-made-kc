@@ -94,3 +94,42 @@ def test_item_counts_for_counts_lines_per_order(app, seed):
         orders = Order.query.all()
         assert item_counts_for(orders) == {o.id: 2 for o in orders}
         assert item_counts_for([]) == {}
+
+
+def test_press_sheet_query_count_does_not_grow_with_orders(app, seed, admin_client):
+    _add_orders(app, seed, 3)
+    with _QueryCounter() as small:
+        assert admin_client.get('/admin/production/transfers').status_code == 200
+    _add_orders(app, seed, 20, start=3)
+    with _QueryCounter() as big:
+        assert admin_client.get('/admin/production/transfers').status_code == 200
+    assert big.count <= small.count + 4, (small.count, big.count)
+
+
+def test_production_master_and_blank_list_query_count_flat(app, seed, admin_client):
+    _add_orders(app, seed, 3)
+    counts = {}
+    for url in ('/admin/production/master', '/admin/production/blank-apparel-list'):
+        with _QueryCounter() as c:
+            assert admin_client.get(url).status_code == 200
+        counts[url] = c.count
+    _add_orders(app, seed, 20, start=3)
+    for url, before in counts.items():
+        with _QueryCounter() as c:
+            assert admin_client.get(url).status_code == 200
+        assert c.count <= before + 4, (url, before, c.count)
+
+
+def test_public_files_carry_no_cookie_so_they_can_be_cached(guest):
+    for path in ('/static/img/logo-monogram.png', '/static/js/main.js'):
+        resp = guest.get(path)
+        assert resp.status_code == 200
+        assert not resp.headers.getlist('Set-Cookie'), path
+        assert 'Cookie' not in (resp.headers.get('Vary') or '')
+        assert 'max-age' in resp.headers.get('Cache-Control', '')
+
+
+def test_pages_still_set_the_session_cookie(guest):
+    resp = guest.get('/')
+    assert resp.status_code == 200
+    assert any(c.startswith('session=') for c in resp.headers.getlist('Set-Cookie'))
