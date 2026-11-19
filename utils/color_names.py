@@ -1,5 +1,6 @@
 """Display-only color name cleanup. Stored catalog values are left untouched."""
 import re
+from functools import lru_cache
 
 _TEST_KEYS = {
     'test', 'testcolor', 'testcolour', 'testing', 'dummy', 'placeholder',
@@ -30,6 +31,7 @@ def _split_known_words(text):
     return text.strip()
 
 
+@lru_cache(maxsize=8192)      # a pure function of the text, called tens of thousands of times when the shop lists every color
 def display_color_name(raw):
     """Readable label for a supplier color, or None to hide it."""
     text = re.sub(r'[\s_/,-]+', ' ', (raw or '').strip())

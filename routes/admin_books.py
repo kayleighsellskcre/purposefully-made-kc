@@ -146,7 +146,10 @@ def ledger():
     if end:
         query = query.filter(LedgerEntry.kc_date <= end)
     total = query.with_entities(db.func.coalesce(db.func.sum(LedgerEntry.amount_cents), 0)).scalar()
-    ordered = query.order_by(LedgerEntry.kc_date.desc(), LedgerEntry.id.desc())
+    from sqlalchemy.orm import joinedload
+    # The order and invoice are shown on every row: fetch them with the rows, not one question per row.
+    ordered = query.order_by(LedgerEntry.kc_date.desc(), LedgerEntry.id.desc()).options(
+        joinedload(LedgerEntry.order), joinedload(LedgerEntry.invoice))
     if request.args.get('format') == 'csv':
         out = StringIO()
         writer = csv.writer(out)

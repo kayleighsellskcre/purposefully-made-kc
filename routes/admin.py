@@ -1352,7 +1352,8 @@ def products():
 
         # Size/color counts + lightest-color thumbnail in one variant pass
         from collections import defaultdict
-        from utils.mockups import lightest_front_mockup_url, sorted_front_mockup_urls, get_first_shop_image_url
+        from utils.mockups import (lightest_front_mockup_url, sorted_front_mockup_urls, get_first_shop_image_url,
+                                   get_carousel_colors_for_product)
 
         variants_by_pid = defaultdict(list)
         if products:
@@ -1376,7 +1377,7 @@ def products():
             p.color_count = variant_count if variant_count > 0 else min(json_count, 200)
             # Build ordered fallback list: local files first (guaranteed to exist),
             # then DB/CDN urls (may 404), then template url
-            local_url = get_first_shop_image_url(p, current_app)
+            local_url = get_first_shop_image_url(p, current_app, carousel=get_carousel_colors_for_product(p, current_app, variants=variants))
             db_urls = sorted_front_mockup_urls(variants)
             seen = set()
             all_urls = []
