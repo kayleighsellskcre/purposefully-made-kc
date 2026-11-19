@@ -131,3 +131,18 @@ def test_order_page_draws_the_name_and_number_on_the_back_mockup(app, seed, admi
             assert artwork_kit(item)['back_overlay_url']      # was empty, so the shirt showed a blank back
     resp = admin_client.get(f'/admin/orders/{oid}/items/{iid}/preview/back')
     assert resp.status_code == 200 and resp.mimetype == 'image/png' and len(resp.data) > 500
+
+
+def test_eight_shirts_fit_on_one_page_and_nine_take_two(app, seed):
+    import re
+    from utils.order_mockups import mockup_pdf
+    one = _order(app, seed, [(str(n), f'Player{n}', 'M') for n in range(1, 9)])
+    with app.app_context():
+        pdf = mockup_pdf(Order.query.get(one))
+        assert len(re.findall(rb'/Type\s*/Page\b', pdf)) == 1
+        db.session.add(OrderItem(order_id=one, product_id=seed['tee_id'], product_name='Tee', size='M', color='Black', quantity=1,
+                                 unit_price=30, subtotal=30, placement='left_chest',
+                                 back_design_meta=json.dumps({'name': 'Nine', 'number': '9', 'font': 'Bebas Neue', 'text_color': '#fff'})))
+        db.session.commit()
+        pdf = mockup_pdf(Order.query.get(one))
+        assert len(re.findall(rb'/Type\s*/Page\b', pdf)) == 2

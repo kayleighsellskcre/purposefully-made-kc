@@ -7,20 +7,17 @@ PDF so the customer can see exactly what they are paying for without anyone taki
 from __future__ import annotations
 
 import io
-import json
 
-# Where the logo sits on the front photo, as a percent of the photo: width, max height, center top, center left.
-# Sizes come from the real print sizes: the shirt photos show a 28 inch long tee 1,056 pixels tall in a 1,000 pixel
-# wide photo, so one inch of print is 3.77 percent of the photo's width.
-PCT_PER_INCH = 3.77
-HEIGHT_PCT_PER_INCH = 3.0          # the same inch, as a percent of the photo's height (photos are 4:5)
-FRONT_LOOK = {
-    'center_chest': (38, 46, 38, 50),
-    'left_chest': (14, 20, 32, 62),
-    'right_chest': (14, 20, 32, 38),
-}
-CARDS_PER_PAGE = 2        # each card holds a front and a back side by side
-PAGE = (1275, 1650)       # US letter at 150 dpi
+# How big the print is on the photo comes from the real print sizes. Every shirt photo shows the whole garment, so
+# one inch of print is the garment's height in the photo divided by how long that garment really is.
+GARMENT_LENGTH_IN = {'adult': 28.0, 'youth': 23.0, 'toddler': 19.0, 'baby': 16.0}
+COLLAR_TO_PRINT_IN = 4.5           # the top of a back name sits about this far below the top of the collar
+CHEST_DROP_IN = 7.5                # a chest logo's center sits about this far below the top of the collar
+CHEST_SIDE_IN = 4.3                # and this far to the side of the shirt's middle
+CENTER_TOP_IN = 4.0                # a center-chest print starts about this far below the top of the collar
+CARDS_PER_PAGE = 8                 # a grid of two columns by four rows; each card has a front and a back
+COLUMNS, ROWS = 2, 4
+PAGE = (1275, 1650)                # US letter at 150 dpi
 INK = (58, 61, 72)
 BG = (250, 247, 242)
 
@@ -45,7 +42,7 @@ def look_key(item):
     m = _meta(item)
     return (item.product_id, (item.color or '').lower(), item.design_id, (item.placement or 'center_chest'),
             (m.get('name') or '').upper(), str(m.get('number') or ''), m.get('font') or '', m.get('text_color') or '',
-            getattr(item, 'back_design_file_name', None) or '')
+            bool(m.get('outline', True)), getattr(item, 'back_design_file_name', None) or '')
 
 
 def _open(url):
@@ -78,16 +75,34 @@ def _on_backdrop(shirt):
     return base, backdrop
 
 
-def _paste_logo(base, art, width_pct, max_h_pct, top_pct, left_pct):
+def _shirt_box(base, backdrop):
+    """(left, top, right, bottom) of the garment in the photo, ignoring the plain background around it."""
+    from PIL import Image, ImageChops
+    flat = base.convert('RGB')
+    mask = ImageChops.difference(flat, Image.new('RGB', flat.size, backdrop)).convert('L').point(
+        lambda p: 255 if p > 40 else 0)
+    return mask.getbbox() or ((0, 0) + flat.size)
+
+
+def _ppi(item, box):
+    """Pixels in the photo per inch of real garment."""
+    product = getattr(item, 'product', None)
+    age = (getattr(product, 'age_group', None) or 'adult').strip().lower()
+    return max(1.0, (box[3] - box[1]) / GARMENT_LENGTH_IN.get(age, 28.0))
+
+
+def _paste_logo(base, art, width_px, max_h_px, cx, top=None, cy=None):
+    """Draw the art no wider than width_px and no taller than max_h_px, centered across at cx, and either its
+    top edge at `top` or its center at `cy`."""
     from PIL import Image
-    sw, sh = base.size
-    aw = sw * width_pct / 100.0
+    aw = width_px
     ah = aw * art.height / max(art.width, 1)
-    if ah > sh * max_h_pct / 100.0:
-        ah = sh * max_h_pct / 100.0
+    if ah > max_h_px:
+        ah = max_h_px
         aw = ah * art.width / max(art.height, 1)
     art = art.resize((max(1, int(aw)), max(1, int(ah))), Image.LANCZOS)
-    base.alpha_composite(art, (int(sw * left_pct / 100.0 - art.width / 2), int(sh * top_pct / 100.0 - art.height / 2)))
+    y = top if top is not None else cy - art.height / 2
+    base.alpha_composite(art, (int(cx - art.width / 2), int(y)))
 
 
 def _finish(base, backdrop):
@@ -96,24 +111,31 @@ def _finish(base, backdrop):
 
 
 def render_front(item, shirt_url, design_url):
-    """The front of this shirt, or None when the photo or the logo cannot be loaded."""
+    """The front of this shirt, or None when the photo cannot be loaded."""
     shirt, art = _open(shirt_url), _open(design_url)
     if shirt is None:
         return None
     base, backdrop = _on_backdrop(shirt)
     if art is not None:
-        w, mh, top, left = FRONT_LOOK.get((item.placement or 'center_chest'), FRONT_LOOK['center_chest'])
+        box = _shirt_box(base, backdrop)
+        ppi = _ppi(item, box)
+        middle = (box[0] + box[2]) / 2.0
         front = (_production(item) or {}).get('front') or {}
-        if front.get('width'):                                  # the width that will really be printed
-            w = float(front['width']) * PCT_PER_INCH
-            mh = max(mh, float(front.get('height') or 0) * HEIGHT_PCT_PER_INCH * 1.05)
-        _paste_logo(base, art, w, mh, top, left)
+        place = item.placement or 'center_chest'
+        width_in = float(front.get('width') or (3.8 if place != 'center_chest' else 10.0))
+        height_in = float(front.get('height') or width_in)
+        if place in ('left_chest', 'right_chest'):
+            side = 1 if place == 'left_chest' else -1            # the wearer's left is on the viewer's right
+            _paste_logo(base, art, width_in * ppi, height_in * ppi * 1.05, middle + side * CHEST_SIDE_IN * ppi,
+                        cy=box[1] + CHEST_DROP_IN * ppi)
+        else:
+            _paste_logo(base, art, width_in * ppi, height_in * ppi * 1.05, middle, top=box[1] + CENTER_TOP_IN * ppi)
     return _finish(base, backdrop)
 
 
 def render_back(item, shirt_url, back_art_url=None):
     """The back with the name and number (or the back logo), or None when there is nothing to show."""
-    from PIL import ImageDraw
+    from PIL import ImageDraw, ImageFont
     from utils.personalization_layout import font_path, name_font_name
     meta = _meta(item)
     name, number = (meta.get('name') or '').strip().upper(), str(meta.get('number') or '').strip()
@@ -124,41 +146,46 @@ def render_back(item, shirt_url, back_art_url=None):
     if shirt is None:
         return None
     base, backdrop = _on_backdrop(shirt)
-    W, H = base.size
+    box = _shirt_box(base, backdrop)
+    ppi = _ppi(item, box)
+    middle = (box[0] + box[2]) / 2.0
+    top = box[1] + COLLAR_TO_PRINT_IN * ppi
     if art is not None:
-        _paste_logo(base, art, 40, 40, 34, 50)
-    else:
-        from PIL import ImageFont
-        fname = name_font_name(meta.get('font') or 'Bebas Neue')
-        path = font_path(fname)
-        color = _hex(meta.get('text_color'))
-        draw = ImageDraw.Draw(base)
+        _paste_logo(base, art, 12 * ppi, 14 * ppi, middle, top=top)
+        return _finish(base, backdrop)
 
-        back = (_production(item) or {}).get('back') or {}
-        name_in, number_in = float(back.get('name_height') or 2.0), float(back.get('number_height') or 7.0)
+    path = font_path(name_font_name(meta.get('font') or 'Bebas Neue'))
+    color = _hex(meta.get('text_color'))
+    ring_color = _hex(meta.get('outline_color'), (0, 0, 0)) + (255,)
+    draw = ImageDraw.Draw(base)
+    back = (_production(item) or {}).get('back') or {}
+    name_in, number_in = float(back.get('name_height') or 2.0), float(back.get('number_height') or 7.0)
+    gap_in = max(0.0, float(back.get('combined_height') or 0) - name_in - number_in) or 3.0     # the space the print file leaves
 
-        def text(value, cap_in, top_pct, max_w_pct=None):
-            """Draw the text with capital letters cap_in inches tall, its top at top_pct of the photo's height."""
-            if not path:
-                draw.text((W / 2, H * top_pct / 100.0), value, fill=color + (255,), anchor='mt')
-                return
-            cap_px = W * cap_in * PCT_PER_INCH / 100.0
-            probe = ImageFont.truetype(str(path), 100)
-            box = probe.getbbox('H')
-            size = max(8, int(100 * cap_px / max(1, box[3] - box[1])))
+    def text(value, cap_in, top_px, max_w_in=None):
+        """Capital letters cap_in inches tall, their top edge at top_px, centered on the shirt."""
+        cap_px = cap_in * ppi
+        if not path:
+            draw.text((middle, top_px), value, fill=color + (255,), anchor='mt')
+            return
+        probe = ImageFont.truetype(str(path), 200).getbbox('H')
+        size = max(8, int(200 * cap_px / max(1, probe[3] - probe[1])))
+        font = ImageFont.truetype(str(path), size)
+        if max_w_in and font.getlength(value) > max_w_in * ppi:                    # a long name gets narrower, not taller
+            size = max(8, int(size * max_w_in * ppi / font.getlength(value)))
             font = ImageFont.truetype(str(path), size)
-            if max_w_pct and font.getlength(value) > W * max_w_pct / 100.0:          # a long name gets narrower, not taller
-                size = max(8, int(size * (W * max_w_pct / 100.0) / font.getlength(value)))
-                font = ImageFont.truetype(str(path), size)
-            cap_top = font.getbbox('H')[1]
-            ring = max(1, int(round(size * 0.08))) if meta.get('outline', True) else 0       # the same black outline the print has
-            draw.text((W / 2, H * top_pct / 100.0 - cap_top), value, font=font, fill=color + (255,), anchor='mt',
-                      stroke_width=ring, stroke_fill=_hex(meta.get('outline_color'), (0, 0, 0)) + (255,))
-        if name:
-            text(name, name_in, 18, max_w_pct=36)
+        letter = font.getbbox('H')
+        ring = max(1, int(round(size * 0.08))) if meta.get('outline', True) else 0      # the same outline the print has
+        # anchor 'ms' puts the letters' bottom edge exactly on the baseline, so the top edge lands where it should
+        draw.text((middle, top_px + (letter[3] - letter[1])), value, font=font, fill=color + (255,), anchor='ms',
+                  stroke_width=ring, stroke_fill=ring_color)
+
+    if name:
+        text(name, name_in, top, max_w_in=14.0)
         if number:
-            gap = float(back.get('name_number_gap') or 3.0)
-            text(number, number_in, 18 + (name_in + gap) * HEIGHT_PCT_PER_INCH if name else 24)
+            text(number, number_in, top + (name_in + gap_in) * ppi)
+    elif number:
+        text(number, number_in, top)
     return _finish(base, backdrop)
 
 
@@ -201,27 +228,31 @@ def _page_with_cards(cards, title, first):
     page = Image.new('RGB', PAGE, BG)
     d = ImageDraw.Draw(page)
     path = font_path('Oswald')
-    big = ImageFont.truetype(str(path), 44) if path else ImageFont.load_default()
-    mid = ImageFont.truetype(str(path), 30) if path else ImageFont.load_default()
-    small = ImageFont.truetype(str(path), 24) if path else ImageFont.load_default()
-    y = 50
+    big = ImageFont.truetype(str(path), 40) if path else ImageFont.load_default()
+    mid = ImageFont.truetype(str(path), 24) if path else ImageFont.load_default()
+    small = ImageFont.truetype(str(path), 19) if path else ImageFont.load_default()
+    margin, gutter = 50, 40
+    y0 = 40
     if first:
-        d.text((60, y), title, font=big, fill=INK)
-        y += 70
-    slot = (PAGE[1] - y - 40) // CARDS_PER_PAGE
-    for line, sizes, front, back in cards:
-        d.text((60, y), line[:70], font=mid, fill=INK)
-        d.text((60, y + 38), sizes[:95], font=small, fill=(120, 120, 130))
-        box_h, box_w = slot - 130, (PAGE[0] - 180) // 2
-        for n, img in enumerate((front, back)):
+        d.text((margin, y0), title, font=big, fill=INK)
+        y0 += 70
+    col_w = (PAGE[0] - 2 * margin - gutter) // COLUMNS
+    row_h = (PAGE[1] - y0 - 30) // ROWS
+    box_w, box_h = (col_w - 30) // 2, row_h - 100
+    for n, (line, sizes, front, back) in enumerate(cards):
+        col, row = n % COLUMNS, n // COLUMNS
+        x, y = margin + col * (col_w + gutter), y0 + row * row_h
+        d.text((x, y), line[:48], font=mid, fill=INK)
+        d.text((x, y + 30), sizes[:70], font=small, fill=(120, 120, 130))
+        for m, img in enumerate((front, back)):
             if img is None:
                 continue
             scale = min(box_w / img.width, box_h / img.height)
             pic = img.resize((max(1, int(img.width * scale)), max(1, int(img.height * scale))))
-            page.paste(pic, (60 + n * (box_w + 60) + (box_w - pic.width) // 2, y + 80))
-            d.text((60 + n * (box_w + 60) + box_w // 2, y + 80 + box_h + 4), 'FRONT' if n == 0 else 'BACK',
+            px = x + m * (box_w + 30) + (box_w - pic.width) // 2
+            page.paste(pic, (px, y + 62))
+            d.text((x + m * (box_w + 30) + box_w // 2, y + 62 + box_h + 2), 'FRONT' if m == 0 else 'BACK',
                    font=small, fill=(120, 120, 130), anchor='mt')
-        y += slot
     return page
 
 
