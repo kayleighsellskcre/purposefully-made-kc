@@ -151,7 +151,9 @@ def render_back(item, shirt_url, back_art_url=None):
                 size = max(8, int(size * (W * max_w_pct / 100.0) / font.getlength(value)))
                 font = ImageFont.truetype(str(path), size)
             cap_top = font.getbbox('H')[1]
-            draw.text((W / 2, H * top_pct / 100.0 - cap_top), value, font=font, fill=color + (255,), anchor='mt')
+            ring = max(1, int(round(size * 0.08))) if meta.get('outline', True) else 0       # the same black outline the print has
+            draw.text((W / 2, H * top_pct / 100.0 - cap_top), value, font=font, fill=color + (255,), anchor='mt',
+                      stroke_width=ring, stroke_fill=_hex(meta.get('outline_color'), (0, 0, 0)) + (255,))
         if name:
             text(name, name_in, 18, max_w_pct=36)
         if number:

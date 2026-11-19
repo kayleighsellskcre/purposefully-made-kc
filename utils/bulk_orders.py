@@ -279,7 +279,8 @@ def create_bulk_order(payload: dict):
                 meta['number'] = r['number']
             if meta:                                     # how the name and number are printed
                 meta.update({'font': g.get('font') or '', 'text_color': g.get('text_color') or '',
-                             'font_weight': 'bold', 'font_style': 'normal', 'layout_version': 2})
+                             'font_weight': 'bold', 'font_style': 'normal', 'layout_version': 2,
+                             'outline': False})          # no black outline unless you turn it on in Edit shirts
             people.append(r['person'])
             cart.append({
                 'product_id': product.id, 'design_id': design.id if design else None,

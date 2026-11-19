@@ -170,7 +170,8 @@ def order_edit_shirts(order_id):
                          'name': f.get(f'name_{i.id}') or '', 'number': f.get(f'number_{i.id}') or ''})
         changed = E.apply_shirt_edits(order, rows, font=(f.get('font') or '').strip() or None,
                                       text_color=(f.get('text_color') or '').strip() or None,
-                                      placement=(f.get('placement') or '').strip() or None)
+                                      placement=(f.get('placement') or '').strip() or None,
+                                      outline=('outline' in f))
         reworded = E.sync_invoice_lines(order) if changed else False
         has_invoice = ManualInvoice.query.filter_by(order_id=order.id).count() > 0
         message = f'Saved. {changed} shirt{"" if changed == 1 else "s"} changed.'
@@ -187,6 +188,6 @@ def order_edit_shirts(order_id):
         'admin/order_edit_shirts.html', order=order, items=items, catalog=catalog,
         catalog_map={str(c['id']): {'colors': c['colors'], 'sizes': c['sizes']} for c in catalog},
         fonts=[{'value': v, 'label': l} for v, l in GROUP_ORDER_FONTS], font=meta.get('font') or '',
-        text_color=meta.get('text_color') or '#ffffff', placement=(items[0].placement if items else 'center_chest'),
+        text_color=meta.get('text_color') or '#ffffff', outline=bool(meta.get('outline', True)), placement=(items[0].placement if items else 'center_chest'),
         colors=[('#000000', 'Black'), ('#ffffff', 'White'), ('#1e3a8a', 'Navy'), ('#b91c1c', 'Red'), ('#d4a017', 'Gold'),
                 ('#6b7280', 'Gray'), ('#166534', 'Green'), ('#6d28d9', 'Purple'), ('#ea580c', 'Orange')])

@@ -12,7 +12,7 @@ _STALE_KEYS = ('name_png_url', 'number_png_url', 'production_png_url', 'producti
 PLACEMENTS = ('center_chest', 'left_chest', 'right_chest')
 
 
-def apply_shirt_edits(order, rows, font=None, text_color=None, placement=None):
+def apply_shirt_edits(order, rows, font=None, text_color=None, placement=None, outline=None):
     """rows: [{item_id, product_id, color, size, name, number}]. Returns how many shirts changed."""
     from models import Product, db
     from utils.order_artwork import items_of
@@ -36,12 +36,13 @@ def apply_shirt_edits(order, rows, font=None, text_color=None, placement=None):
         name, number = (row.get('name') or '').strip()[:60], (row.get('number') or '').strip()[:10]
         new_font = (font or meta.get('font') or '')[:60]
         new_color = (text_color or meta.get('text_color') or '')[:20]
+        new_outline = meta.get('outline', True) if outline is None else bool(outline)
         if name or number:
-            if ((meta.get('name') or '') != name or str(meta.get('number') or '') != number
+            if (bool(meta.get('outline', True)) != new_outline or (meta.get('name') or '') != name or str(meta.get('number') or '') != number
                     or (meta.get('font') or '') != new_font or (meta.get('text_color') or '') != new_color):
                 for k in _STALE_KEYS:
                     meta.pop(k, None)
-            meta.update({'name': name, 'number': number, 'font': new_font, 'text_color': new_color,
+            meta.update({'name': name, 'number': number, 'font': new_font, 'text_color': new_color, 'outline': new_outline,
                          'font_weight': 'bold', 'font_style': 'normal', 'layout_version': 2})
             item.back_design_meta = json.dumps(meta)
         elif meta.get('name') or meta.get('number'):

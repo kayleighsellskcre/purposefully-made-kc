@@ -45,6 +45,11 @@
                         {% for hex, label in colors %}<option value="{{ hex }}" {% if hex == text_color %}selected{% endif %}>{{ label }}</option>{% endfor %}
                     </select>
                 </label>
+                <label class="f" style="flex:1 1 160px">Black outline on the name and number
+                    <span style="display:flex;gap:.5rem;align-items:center;text-transform:none;letter-spacing:0;font-size:.95rem;color:var(--text-primary)">
+                        <input type="checkbox" name="outline" value="1" {% if outline %}checked{% endif %} style="width:auto"> Outline the letters
+                    </span>
+                </label>
                 <label class="f" style="flex:1 1 160px">Logo on the front
                     <select name="placement">
                         {% for value, label in [('center_chest', 'Center chest'), ('left_chest', 'Left chest'), ('right_chest', 'Right chest')] %}

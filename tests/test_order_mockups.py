@@ -101,3 +101,19 @@ def test_invoice_edit_page_links_to_edit_shirts(app, seed, admin_client):
         iid = inv.id
     html = admin_client.get(f'/admin/invoices/{iid}/edit').get_data(as_text=True)
     assert f'/admin/orders/{oid}/edit-shirts' in html
+
+
+def test_outline_can_be_turned_off_and_new_entered_orders_start_without_one(app, seed, admin_client):
+    oid = _order(app, seed, [('12', 'Guerin', 'M')])
+    with app.app_context():
+        item = Order.query.get(oid).items.all()[0]
+        iid = item.id
+        assert item.back_design_details.get('outline', True) is True      # older orders default to an outline
+    data = {'font': 'Bebas Neue', 'text_color': '#ffffff', 'placement': 'left_chest', f'product_{iid}': seed['tee_id'],
+            f'color_{iid}': 'Black', f'size_{iid}': 'M', f'name_{iid}': 'Guerin', f'number_{iid}': '12'}
+    admin_client.post(f'/admin/orders/{oid}/edit-shirts', data=data)          # outline box not ticked
+    with app.app_context():
+        assert Order.query.get(oid).items.all()[0].back_design_details['outline'] is False
+    admin_client.post(f'/admin/orders/{oid}/edit-shirts', data={**data, 'outline': '1'})
+    with app.app_context():
+        assert Order.query.get(oid).items.all()[0].back_design_details['outline'] is True
