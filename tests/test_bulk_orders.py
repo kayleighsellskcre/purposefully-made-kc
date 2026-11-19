@@ -221,3 +221,51 @@ def test_pickup_never_charges_shipping_even_if_an_amount_was_typed(admin_client,
     with app.app_context():
         order = Order.query.one()
         assert order.shipping_cost == 0.0 and order.total == 105.12
+
+
+def test_enter_an_order_is_in_the_admin_menu(admin_client):
+    html = admin_client.get('/admin/operations/workflow').get_data(as_text=True)
+    menu = html[html.index('ops-dropdown-menu'):]
+    assert '/admin/orders/enter' in menu[:3000] and 'Enter an order' in menu[:3000]
+
+
+def test_a_typed_list_like_hash_one_dunn_size_s_is_lined_up():
+    rows = B.parse_paste('#1 Dunn (size S)\n#11 Cunningham (size M)\n#42 Andrews (size L)\n12 Sarah Jones M')
+    assert [(r['number'], r['back_name'], r['size']) for r in rows] == [
+        ('1', 'DUNN', 'S'), ('11', 'CUNNINGHAM', 'M'), ('42', 'ANDREWS', 'L'), ('12', 'JONES', 'M')]
+    assert rows[3]['person'] == 'Sarah Jones' and rows[0]['person'] == 'Dunn'
+    # spreadsheet rows still work, even mixed in
+    assert B.parse_paste('Name\tSize\nAva Lee\tYM')[0]['person'] == 'Ava Lee'
+
+
+def test_logo_placement_font_and_color_reach_the_order(admin_client, app, seed):
+    from models import OrderItem
+    p = _payload(app)
+    g = p['groups'][0]
+    g.update({'design_id': str(seed['free_design_id']), 'placement': 'left_chest', 'font': 'Anton', 'text_color': '#b91c1c'})
+    admin_client.post('/admin/orders/enter', data={'order_json': json.dumps(p)})
+    with app.app_context():
+        item = OrderItem.query.order_by(OrderItem.id).first()
+        assert item.placement == 'left_chest' and item.design_id == seed['free_design_id']
+        meta = item.back_design_details
+        assert meta['name'] == 'JONES' and meta['font'] == 'Anton' and meta['text_color'] == '#b91c1c'
+
+
+def test_needed_by_date_sets_the_due_date_and_prints_on_the_invoice(admin_client, app):
+    _enter(admin_client, app, needed_by='2026-12-20')
+    with app.app_context():
+        order = Order.query.one()
+        assert order.due_date.strftime('%Y-%m-%d') == '2026-12-20'
+        assert 'Needed by Dec 20, 2026' in ManualInvoice.query.one().note
+
+
+def test_the_form_can_fetch_shirt_photos_for_the_mockup(admin_client, seed):
+    got = admin_client.get(f'/admin/orders/enter/mockup?product_id={seed["tee_id"]}&color=Black')
+    assert got.status_code == 200 and set(got.get_json()) == {'front', 'back'}
+
+
+def test_the_page_is_built_for_a_phone_and_has_logo_font_and_mockups(admin_client):
+    html = admin_client.get('/admin/orders/enter').get_data(as_text=True)
+    for needle in ('Upload logo', 'Name and number on the back', 'Paste your list here', 'Needed by',
+                   'max-width: 720px', 'data-label', 'Save as draft'):
+        assert needle in html

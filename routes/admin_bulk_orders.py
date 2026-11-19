@@ -11,6 +11,8 @@ from models import BulkOrderDraft, Collection, Design, Product, db
 from routes.admin import admin_bp, admin_required
 from utils import bulk_orders as B
 from utils import sales_tax
+from utils.cloud_storage import image_url
+from utils.fonts import GROUP_ORDER_FONTS
 
 
 def _list(raw):
@@ -69,8 +71,9 @@ def bulk_order_new():
     drafts = BulkOrderDraft.query.order_by(BulkOrderDraft.updated_at.desc()).limit(20).all()
     return render_template(
         'admin/bulk_order.html', catalog=_catalog(), error=error, draft=draft, draft_id=draft_id, drafts=drafts,
-        designs=[{'id': d.id, 'title': d.title or d.original_filename or d.filename} for d in designs],
+        designs=[{'id': d.id, 'title': d.title or d.original_filename or d.filename, 'url': image_url(d.file_path)} for d in designs],
         collections=[{'id': c.id, 'name': c.name} for c in groups],
+        fonts=[{'value': v, 'label': l} for v, l in GROUP_ORDER_FONTS],
         tax_percent='%g' % sales_tax.rate_percent())
 
 
@@ -100,6 +103,16 @@ def bulk_order_draft_delete(draft_id):
     db.session.commit()
     flash('Draft deleted.', 'success')
     return redirect(url_for('admin.bulk_order_new'))
+
+
+@admin_bp.route('/orders/enter/mockup')
+@admin_required
+def bulk_order_mockup():
+    """The shirt photos (front and back) for an item and color, so the form can show a live mockup."""
+    from utils.order_artwork import mockup_urls
+    product = db.session.get(Product, request.args.get('product_id', type=int) or 0)
+    front, back = mockup_urls(product, request.args.get('color') or None) if product else (None, None)
+    return jsonify({'front': front, 'back': back})
 
 
 @admin_bp.route('/orders/enter/token')

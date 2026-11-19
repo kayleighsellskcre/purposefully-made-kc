@@ -20,6 +20,7 @@ from datetime import datetime
 AWAITING = 'awaiting_payment'        # the invoice has not been paid yet
 INVOICE_PAID = 'invoice_paid'        # the invoice is paid in full; the invoice is the money record
 MAX_ROWS = 400
+PLACEMENTS = ('center_chest', 'left_chest', 'right_chest')
 
 
 # ── Paste from Excel or Google Sheets ───────────────────────────────────────────────────────
@@ -45,6 +46,46 @@ def _split_line(line: str):
     return [c.strip() for c in re.split(r'\s{2,}', line.strip())]
 
 
+_SIZE_WORDS = {'xs', 's', 'm', 'l', 'xl', '2xl', '3xl', '4xl', 'xxl', 'xxxl', 'ys', 'ym', 'yl', 'yxl', 'yxs',
+               'y2xl', '2t', '3t', '4t', '5t', '6m', '12m', '18m', '24m', 'os'}
+_SIZE_PHRASE = re.compile(r'\(?\s*size\s*[:=]?\s*([A-Za-z0-9]+)\s*\)?', re.I)
+
+
+def _looks_freeform(line: str) -> bool:
+    """A line a person would type, not a spreadsheet row: "#1 Dunn (size S)", "12 Smith M"."""
+    if '\t' in line:
+        return False
+    return bool(_SIZE_PHRASE.search(line) or line.lstrip().startswith('#')
+                or re.match(r'\s*\d{1,3}[.)\-:]?\s+[A-Za-z]', line))
+
+
+def _parse_freeform(line: str):
+    """One typed line into a row: the number, the name (also printed on the back, in capitals) and the size."""
+    text, number, size = line.strip(), '', ''
+    m = _SIZE_PHRASE.search(text)
+    if m:
+        size = m.group(1).upper()
+        text = text[:m.start()] + ' ' + text[m.end():]
+    m = re.search(r'#\s*(\d{1,3})\b', text)
+    if m:
+        number = m.group(1)
+        text = text[:m.start()] + ' ' + text[m.end():]
+    else:
+        m = re.match(r'\s*(\d{1,3})[.)\-:]?\s+(?=[A-Za-z])', text)
+        if m:
+            number, text = m.group(1), text[m.end():]
+    words = text.split()
+    if not size and len(words) >= 2 and words[-1].strip('()').lower() in _SIZE_WORDS:
+        size = words[-1].strip('()').upper()
+        words = words[:-1]
+    name = ' '.join(words).strip(' -\u2013\u2014,;:()[]')
+    if not (name or number or size):
+        return None
+    last = name.split()[-1] if name else ''
+    return {'person': name[:120], 'size': size, 'back_name': last.upper()[:60], 'number': number,
+            'qty': 1, 'color': '', 'email': ''}
+
+
 def parse_paste(text: str):
     """Rows from pasted spreadsheet text. A header row is used when there is one.
 
@@ -54,6 +95,13 @@ def parse_paste(text: str):
     columns = None
     for raw in (text or '').replace('\r', '').split('\n'):
         if not raw.strip():
+            continue
+        if columns is None and _looks_freeform(raw):
+            row = _parse_freeform(raw)
+            if row:
+                rows.append(row)
+            if len(rows) >= MAX_ROWS:
+                break
             continue
         cells = _split_line(raw)
         if columns is None:
@@ -129,8 +177,12 @@ def clean_payload(raw) -> dict:
                          'number': number, 'color': str(r.get('color') or '').strip()[:100],
                          'email': str(r.get('email') or '').strip()[:200]})
         if rows:
+            placement = str(g.get('placement') or '').strip()
             groups.append({'product_id': product_id, 'color': str(g.get('color') or '').strip()[:100],
-                           'price': _money(g.get('price')), 'design_id': g.get('design_id'), 'rows': rows})
+                           'price': _money(g.get('price')), 'design_id': g.get('design_id'), 'rows': rows,
+                           'placement': placement if placement in PLACEMENTS else 'center_chest',
+                           'font': str(g.get('font') or '').strip()[:60],
+                           'text_color': str(g.get('text_color') or '').strip()[:20]})
             total_rows += len(rows)
     if not groups:
         raise BulkOrderError('Please add at least one person with a size.')
@@ -148,6 +200,7 @@ def clean_payload(raw) -> dict:
         'shipping': 0.0 if data.get('fulfillment') == 'pickup' else _money(data.get('shipping')),   # pickup never charges shipping, even if an amount was typed first
         'tax_percent': min(_money(data.get('tax_percent')), 30.0),
         'note': str(data.get('note') or '').strip()[:400],
+        'needed_by': str(data.get('needed_by') or '').strip()[:10],
         'collection_id': data.get('collection_id'),
         'groups': groups,
     }
@@ -206,6 +259,12 @@ def create_bulk_order(payload: dict):
     except (TypeError, ValueError):
         pass
 
+    needed_by = None
+    if payload.get('needed_by'):
+        try:
+            needed_by = datetime.strptime(payload['needed_by'], '%Y-%m-%d')
+        except ValueError:
+            needed_by = None
     parts = payload['name'].split(' ', 1)
     ship = payload['ship']
     cart, people = [], []
@@ -218,11 +277,15 @@ def create_bulk_order(payload: dict):
                 meta['name'] = r['back_name']
             if r['number']:
                 meta['number'] = r['number']
+            if meta:                                     # how the name and number are printed
+                meta.update({'font': g.get('font') or '', 'text_color': g.get('text_color') or '',
+                             'font_weight': 'bold', 'font_style': 'normal', 'layout_version': 2})
             people.append(r['person'])
             cart.append({
                 'product_id': product.id, 'design_id': design.id if design else None,
                 'size': r['size'], 'color': r['color'] or g['color'] or 'Unknown',
                 'quantity': r['qty'], 'unit_price': g['price'],
+                'placement': g.get('placement') or 'center_chest',
                 'back_design_meta': meta or None,
                 'collection_id': collection_id,
             })
@@ -237,7 +300,7 @@ def create_bulk_order(payload: dict):
         subtotal=totals['subtotal'], shipping_cost=totals['shipping'], tax=totals['tax'], total=totals['total'],
         tax_rate_percent=payload['tax_percent'],
         payment_method='invoice', payment_status=AWAITING, amount_paid=0.0,
-        status='new', production_stage='order_received', due_date=default_due_date(),
+        status='new', production_stage='order_received', due_date=needed_by or default_due_date(),
         customer_notes=payload['note'] or None,
     )
     db.session.add(order)
@@ -258,7 +321,8 @@ def create_bulk_order(payload: dict):
             number=next_invoice_number(db.session, ManualInvoice, datetime.now().year),
             kind='invoice', customer_name=payer['name'], company=payload['company'],
             email=payer['email'], phone=payload['phone'], address=address,
-            note=payload['note'], items_json=json.dumps(payer['lines']),
+            note='; '.join(x for x in [payload['note'], needed_by.strftime('Needed by %b %d, %Y') if needed_by else ''] if x),
+            items_json=json.dumps(payer['lines']),
             tax_rate=payload['tax_percent'], shipping=payload['shipping'], discount=0.0,
             amount_paid=0.0, order_id=order.id, issued_at=datetime.utcnow(),
         )
