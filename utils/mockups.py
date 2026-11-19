@@ -8,8 +8,24 @@ import time
 from pathlib import Path
 
 
+_ROOTS_CACHE = {}
+
+
 def _mockup_roots(app):
     """Return [(abs_dir, url_prefix), ...] most preferred first.
+
+    The answer only depends on the app's folders, which never change while it runs, so it is worked out once
+    (it was being rebuilt thousands of times per page, once for every color of every product).
+    """
+    key = (app.root_path, app.config.get('UPLOAD_FOLDER'))
+    roots = _ROOTS_CACHE.get(key)
+    if roots is None:
+        roots = _ROOTS_CACHE[key] = _compute_mockup_roots(app)
+    return list(roots)
+
+
+def _compute_mockup_roots(app):
+    """Work out the mockup search roots (see _mockup_roots).
 
     IMPORTANT: url_prefix must match where Flask actually serves the files.
     Finding a file under static/images/products but linking /static/uploads/mockups/
@@ -564,6 +580,37 @@ def ensure_variant_mockup_urls(app):
             ))
 
 
+def prefetch_color_variants(products):
+    """Load the colour variants of many products in ONE query and remember them for this request.
+
+    Without this, every product that is checked for a usable photo runs its own
+    SELECT (`Product.color_variants` is a dynamic relationship). A page that checks 60 products
+    made 60+ round trips to the database; with it, one. Read-only pages only: the cache lives
+    for the single request, and does nothing outside a request.
+    """
+    from flask import g, has_request_context
+    if not has_request_context():
+        return
+    cache = g.setdefault('_color_variant_cache', {})
+    missing = [p.id for p in products if getattr(p, 'id', None) is not None and p.id not in cache]
+    if not missing:
+        return
+    from models import ProductColorVariant
+    for pid in missing:
+        cache[pid] = []
+    for variant in ProductColorVariant.query.filter(
+            ProductColorVariant.product_id.in_(missing)).order_by(ProductColorVariant.id).all():
+        cache[variant.product_id].append(variant)
+
+
+def _cached_variants(product):
+    """This product's variants if prefetch_color_variants() already loaded them this request, else None."""
+    from flask import g, has_request_context
+    if not has_request_context():
+        return None
+    return (g.get('_color_variant_cache') or {}).get(getattr(product, 'id', None))
+
+
 def get_carousel_colors_for_product(product, app, allowed_colors=None, variants=None):
     """
     Build carousel color list for a product, merging DB variants with mockup folder.
@@ -587,6 +634,8 @@ def get_carousel_colors_for_product(product, app, allowed_colors=None, variants=
     pending_names = []
     rules = visibility_rules(product)
 
+    if variants is None:
+        variants = _cached_variants(product)
     if variants is None:
         variants = getattr(product, 'color_variants', []) or []
 

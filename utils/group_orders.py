@@ -449,6 +449,8 @@ def visible_store_products(collection):
     """Products the group store actually offers, not every attached catalog row."""
     config = team_store_config(collection)
     attached = [p for p in (collection.products or []) if getattr(p, 'is_active', True)]
+    from utils.mockups import prefetch_color_variants
+    prefetch_color_variants(attached)       # callers check each product's photo: one query, not one per product
     by_id = {p.id: p for p in attached}
     if not config['configured']:
         return attached

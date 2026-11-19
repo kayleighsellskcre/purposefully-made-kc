@@ -35,11 +35,10 @@ def serve_mockup(path):
 def index():
     """Homepage"""
     try:
-        from utils.mockups import product_has_shop_image
-        featured_products = [
-            p for p in Product.query.filter_by(is_active=True).order_by(Product.style_number).all()
-            if product_has_shop_image(p)
-        ][:8]
+        from utils.mockups import product_has_shop_image, prefetch_color_variants
+        active_products = Product.query.filter_by(is_active=True).order_by(Product.style_number).all()
+        prefetch_color_variants(active_products)       # one query for every product's colors, not one each
+        featured_products = [p for p in active_products if product_has_shop_image(p)][:8]
         from utils.group_orders import public_group_directory
         # Same list as the Group Orders page (one card per organization), minus
         # password-protected stores, which need the password to shop.
