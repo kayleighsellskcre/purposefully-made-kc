@@ -37,7 +37,7 @@
 /* live mockups */
 .bo-mocks { display: flex; gap: .8rem; margin-top: .9rem; flex-wrap: wrap; align-items: flex-start; }
 .bo-mock { width: 190px; }
-.bo-mock-frame { position: relative; width: 100%; aspect-ratio: 4 / 5; background: var(--ivory-silk, #faf6ef); border: 1px solid rgba(232,208,177,.6); border-radius: 12px; overflow: hidden; }
+.bo-mock-frame { container-type: inline-size; position: relative; width: 100%; aspect-ratio: 4 / 5; background: var(--ivory-silk, #faf6ef); border: 1px solid rgba(232,208,177,.6); border-radius: 12px; overflow: hidden; }
 .bo-mock-frame img.base { width: 100%; height: 100%; object-fit: contain; display: block; }
 .bo-mock-frame .logo { position: absolute; object-fit: contain; pointer-events: none; transform: translate(-50%, -50%); }
 .bo-mock-frame .txt { position: absolute; left: 50%; transform: translateX(-50%); text-align: center; line-height: 1; white-space: nowrap; font-weight: 700; }
@@ -199,7 +199,7 @@
     var COLORS = [['#000000','Black'],['#ffffff','White'],['#1e3a8a','Navy'],['#b91c1c','Red'],['#d4a017','Gold'],['#6b7280','Gray'],['#166534','Green'],['#6d28d9','Purple'],['#ea580c','Orange']];
     var PLACES = [['center_chest','Center chest'],['left_chest','Left chest'],['right_chest','Right chest']];
     // where the cart draws the logo on the shirt photo (same numbers, so a mockup here matches the cart)
-    var LOOK = {center_chest: {w: 38, mh: 46, top: 38, left: 50}, left_chest: {w: 14, mh: 20, top: 32, left: 62}, right_chest: {w: 14, mh: 20, top: 32, left: 38}};
+    var LOOK = {center_chest: {w: 38, mh: 46, top: 38, left: 50}, left_chest: {w: 9, mh: 10, top: 29, left: 60.5}, right_chest: {w: 9, mh: 10, top: 29, left: 39.5}};   // chest logos drawn at a true 3.5 to 4 inches
     var blocksEl = document.getElementById('boBlocks');
     var photoCache = {};
     function $(id) { return document.getElementById(id); }
@@ -372,8 +372,8 @@
             var font = st.font === 'Varsity Regular' ? 'Varsity Regular Solid' : st.font;
             var css = 'font-family:\'' + font + '\',sans-serif;color:' + st.color + ';';
             back.innerHTML = '<img class="base" src="' + esc(ph.back) + '" alt="">' +
-                (name || num ? ('<div class="txt" style="top:20%;font-size:11%;' + css + 'font-size:' + Math.max(7, Math.min(16, 118 / Math.max(5, name.length))) + 'px">' + esc(name.toUpperCase()) + '</div>' +
-                                '<div class="txt" style="top:30%;' + css + 'font-size:46px">' + esc(num) + '</div>') : '');
+                (name || num ? ('<div class="txt" style="top:20%;font-size:11%;' + css + 'font-size:' + Math.max(7, Math.min(16, 118 / Math.max(5, name.length))) + 'px;font-size:' + Math.max(3.5, Math.min(6.5, 66 / Math.max(5, name.length))) + 'cqw">' + esc(name.toUpperCase()) + '</div>' +
+                                '<div class="txt" style="top:30%;' + css + 'font-size:46px;font-size:23cqw">' + esc(num) + '</div>') : '');
         }
     }
 
