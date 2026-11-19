@@ -1,0 +1,277 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Enter an order - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<style>
+.bo { max-width: 1000px; margin: 0 auto; padding-bottom: 3rem; }
+.bo-head { margin: 1rem 0 1.5rem; }
+.bo-head h1 { margin: .15rem 0 .35rem; }
+.bo-head p { color: var(--text-secondary); margin: 0; }
+.bo-card { background: #fff; border: 1px solid var(--border-light, #eadfd2); border-radius: 16px; padding: 1.4rem 1.5rem; margin-bottom: 1.25rem; box-shadow: 0 6px 20px rgba(58,61,72,.05); }
+.bo-card h2 { font-size: 1.25rem; margin: 0 0 .25rem; }
+.bo-sub { color: var(--text-secondary); font-size: .9rem; margin: 0 0 1rem; }
+.bo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem 1.1rem; }
+.bo-grid3 { grid-template-columns: repeat(3, 1fr); }
+.bo-grid .wide { grid-column: 1 / -1; }
+.bo label.f { display: flex; flex-direction: column; gap: .3rem; font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; }
+.bo input[type=text], .bo input[type=email], .bo input[type=number], .bo select, .bo textarea { font: 400 1rem 'Inter', sans-serif; padding: .6rem .75rem; border: 1px solid var(--border-color, #e3d6c8); border-radius: 10px; background: #fffdfb; color: var(--text-primary); text-transform: none; letter-spacing: 0; width: 100%; box-sizing: border-box; }
+.bo-block { border: 1px solid var(--border-light, #eadfd2); border-radius: 14px; padding: 1rem; margin-bottom: 1rem; background: #fffaf5; }
+.bo-block-head { display: flex; gap: .8rem; flex-wrap: wrap; align-items: flex-end; }
+.bo-block-head label.f { flex: 1 1 180px; }
+.bo-tbl { width: 100%; border-collapse: collapse; margin-top: .8rem; }
+.bo-tbl th { text-align: left; font-size: .66rem; letter-spacing: .16em; text-transform: uppercase; color: var(--text-secondary); padding: .3rem; }
+.bo-tbl td { padding: .2rem; }
+.bo-tbl .n { width: 26%; } .bo-tbl .s { width: 15%; } .bo-tbl .b { width: 22%; } .bo-tbl .u { width: 11%; } .bo-tbl .q { width: 9%; } .bo-tbl .a { width: 14%; white-space: nowrap; text-align: right; }
+.bo-mini { border: 0; background: transparent; color: var(--terra-cotta); cursor: pointer; font-size: .8rem; padding: .3rem .4rem; }
+.bo-btn { background: transparent; border: 1.5px dashed var(--terra-cotta); color: var(--terra-cotta); border-radius: 999px; padding: .5rem 1.1rem; font: 600 .76rem 'Inter', sans-serif; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; margin: .6rem .5rem 0 0; }
+.bo-paste { margin-top: .8rem; display: none; }
+.bo-paste.open { display: block; }
+.bo-paste textarea { min-height: 110px; font-size: .9rem; }
+.bo-sum { margin-left: auto; max-width: 340px; margin-top: 1rem; }
+.bo-sum div { display: flex; justify-content: space-between; padding: .25rem 0; color: var(--text-secondary); }
+.bo-sum .tot { border-top: 1px solid var(--cashmere-sand, #E8D0B1); margin-top: .4rem; padding-top: .6rem; color: var(--text-primary); font-family: var(--font-heading); font-size: 1.3rem; }
+.bo-error { background: #fdecea; border: 1px solid #f3c2bc; color: #8c2f26; padding: .8rem 1rem; border-radius: 10px; margin-bottom: 1rem; }
+.bo-seg { display: flex; gap: .5rem; flex-wrap: wrap; }
+.bo-seg label { display: flex; align-items: center; gap: .4rem; border: 1px solid var(--border-color, #e3d6c8); border-radius: 999px; padding: .45rem 1rem; cursor: pointer; background: #fff; font-size: .9rem; }
+.bo-note { color: var(--text-secondary); font-size: .85rem; margin: .8rem 0 0; }
+@media (max-width: 720px) { .bo-grid, .bo-grid3 { grid-template-columns: 1fr; } .bo-tbl { display: block; overflow-x: auto; } }
+</style>
+
+<div class="bo">
+    <div class="bo-head">
+        <span class="adm-eyebrow">Admin / Orders</span>
+        <h1>Enter an order</h1>
+        <p>Type or paste everyone's names, sizes and numbers in one table. It goes into New Orders as Awaiting Payment and makes one invoice with a card pay link.</p>
+    </div>
+
+    {% if error %}<div class="bo-error">{{ error }}</div>{% endif %}
+
+    <form method="post" id="boForm" autocomplete="off">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="order_json" id="orderJson" value="">
+
+        <section class="bo-card">
+            <h2>Who is it for?</h2>
+            <div class="bo-grid">
+                <label class="f">Name<input type="text" id="cName" maxlength="200"></label>
+                <label class="f">Team or company<input type="text" id="cCompany" maxlength="200" placeholder="Optional"></label>
+                <label class="f">Email (needed to send the invoice)<input type="email" id="cEmail" maxlength="200"></label>
+                <label class="f">Phone<input type="text" id="cPhone" maxlength="40"></label>
+                <label class="f wide">Group this belongs to
+                    <select id="cCollection"><option value="">Not part of a group store</option>
+                        {% for c in collections %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                    </select>
+                </label>
+            </div>
+        </section>
+
+        <section class="bo-card">
+            <h2>What are they ordering?</h2>
+            <p class="bo-sub">One block for each kind of shirt. Add a row for each person, or paste the list from Excel or Google Sheets.</p>
+            <div id="boBlocks"></div>
+            <button type="button" class="bo-btn" id="boAddBlock">+ Add another item</button>
+        </section>
+
+        <section class="bo-card">
+            <h2>Delivery and total</h2>
+            <div class="bo-seg" style="margin-bottom:1rem">
+                <label><input type="radio" name="fulfill" value="shipping" checked> Ship it all together</label>
+                <label><input type="radio" name="fulfill" value="pickup"> Pick up together</label>
+            </div>
+            <div class="bo-grid" id="shipFields">
+                <label class="f wide">Street<input type="text" id="sStreet" maxlength="200"></label>
+                <label class="f">City<input type="text" id="sCity" maxlength="100"></label>
+                <div class="bo-grid" style="grid-template-columns:1fr 1fr">
+                    <label class="f">State<input type="text" id="sState" maxlength="30"></label>
+                    <label class="f">ZIP<input type="text" id="sZip" maxlength="12"></label>
+                </div>
+            </div>
+            <div class="bo-grid" style="margin-top:.9rem">
+                <label class="f">Shipping charge<input type="number" step="0.01" min="0" id="shipAmt" value=""></label>
+                <label class="f">Sales tax % (Kansas)<input type="number" step="0.001" min="0" max="30" id="taxPct" value="{{ tax_percent }}"></label>
+                <label class="f wide">Note on the invoice<textarea id="note" rows="2" maxlength="400" placeholder="Optional"></textarea></label>
+            </div>
+            <div class="bo-sum">
+                <div><span id="sCount">0 shirts</span><span></span></div>
+                <div><span>Subtotal</span><span id="sSub">$0.00</span></div>
+                <div><span>Tax</span><span id="sTax">$0.00</span></div>
+                <div><span>Shipping</span><span id="sShip">$0.00</span></div>
+                <div class="tot"><span>Total</span><span id="sTot">$0.00</span></div>
+            </div>
+            <p class="bo-note">One invoice for the whole order. You send it next, and the order is released to production once it is paid.</p>
+        </section>
+
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+            <button type="submit" class="btn btn-primary">Create order and invoice</button>
+            <a href="{{ url_for('admin.production_workflow') }}" class="btn btn-outline">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+(function () {
+    var CATALOG = {{ catalog|tojson }};
+    var DESIGNS = {{ designs|tojson }};
+    var DRAFT = {{ (draft or '')|tojson }};
+    var CSRF = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+    var blocksEl = document.getElementById('boBlocks');
+    var DEFAULT_SIZES = ['YXS','YS','YM','YL','YXL','XS','S','M','L','XL','2XL','3XL'];
+    function $(id) { return document.getElementById(id); }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+    function money(n) { return '$' + (Math.round(n * 100) / 100).toFixed(2); }
+    function product(id) { return CATALOG.filter(function (p) { return String(p.id) === String(id); })[0]; }
+
+    function opts(list, chosen, blank) {
+        var h = blank ? '<option value="">' + esc(blank) + '</option>' : '';
+        list.forEach(function (v) { h += '<option' + (String(v) === String(chosen) ? ' selected' : '') + '>' + esc(v) + '</option>'; });
+        return h;
+    }
+
+    function addBlock(data) {
+        data = data || {};
+        var div = document.createElement('div');
+        div.className = 'bo-block';
+        var pOpts = '<option value="">Pick an item...</option>' + CATALOG.map(function (p) {
+            return '<option value="' + p.id + '"' + (String(p.id) === String(data.product_id) ? ' selected' : '') + '>' + esc(p.name) + '</option>';
+        }).join('');
+        var dOpts = '<option value="">No design chosen yet</option>' + DESIGNS.map(function (d) {
+            return '<option value="' + d.id + '"' + (String(d.id) === String(data.design_id) ? ' selected' : '') + '>' + esc(d.title) + '</option>';
+        }).join('');
+        div.innerHTML =
+            '<div class="bo-block-head">' +
+              '<label class="f">Item<select class="b-prod">' + pOpts + '</select></label>' +
+              '<label class="f">Color<select class="b-color"></select></label>' +
+              '<label class="f" style="flex:0 1 110px">Price each<input type="number" step="0.01" min="0" class="b-price"></label>' +
+              '<label class="f">Design<select class="b-design">' + dOpts + '</select></label>' +
+              '<button type="button" class="bo-mini b-del">Remove item</button>' +
+            '</div>' +
+            '<table class="bo-tbl"><thead><tr><th class="n">Name</th><th class="s">Size</th><th class="b">Name on back</th><th class="u">Number</th><th class="q">Qty</th><th class="a"></th></tr></thead><tbody></tbody></table>' +
+            '<button type="button" class="bo-btn b-add">+ Add a person</button>' +
+            '<button type="button" class="bo-btn b-pastebtn">Paste from Excel or Sheets</button>' +
+            '<div class="bo-paste"><p class="bo-sub">Copy the cells (Name, Size, Name on back, Number, Qty) and paste here. A header row is fine.</p>' +
+              '<textarea class="b-paste" placeholder="Sarah Jones&#9;YM&#9;JONES&#9;12&#9;1"></textarea>' +
+              '<button type="button" class="bo-btn b-pasteok">Add these rows</button></div>';
+        blocksEl.appendChild(div);
+        var sel = div.querySelector('.b-prod');
+        fillProduct(div, data.color, data.price);
+        sel.addEventListener('change', function () { fillProduct(div); recalc(); });
+        div.querySelector('.b-price').addEventListener('input', recalc);
+        div.querySelector('.b-del').addEventListener('click', function () { div.remove(); recalc(); });
+        div.querySelector('.b-add').addEventListener('click', function () { addRow(div, {}); });
+        div.querySelector('.b-pastebtn').addEventListener('click', function () { div.querySelector('.bo-paste').classList.toggle('open'); });
+        div.querySelector('.b-pasteok').addEventListener('click', function () {
+            var ta = div.querySelector('.b-paste');
+            fetch('{{ url_for("admin.bulk_order_parse") }}', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF}, body: JSON.stringify({text: ta.value})})
+                .then(function (r) { return r.json(); }).then(function (res) {
+                    (res.rows || []).forEach(function (r) { addRow(div, r); });
+                    ta.value = ''; div.querySelector('.bo-paste').classList.remove('open'); recalc();
+                });
+        });
+        (data.rows || [{}]).forEach(function (r) { addRow(div, r); });
+        return div;
+    }
+
+    function sizesFor(div) {
+        var p = product(div.querySelector('.b-prod').value);
+        return p && p.sizes.length ? p.sizes : DEFAULT_SIZES;
+    }
+
+    function fillProduct(div, color, price) {
+        var p = product(div.querySelector('.b-prod').value);
+        var colors = p ? p.colors : [];
+        div.querySelector('.b-color').innerHTML = opts(colors, color, colors.length ? 'Pick a color...' : 'Type color in notes');
+        if (p) {
+            var typed = parseFloat(price);
+            div.querySelector('.b-price').value = (isNaN(typed) ? p.price : typed).toFixed(2);
+        }
+        div.querySelectorAll('.r-size').forEach(function (s) { var v = s.value; s.innerHTML = opts(sizesFor(div), v, 'Size'); });
+    }
+
+    function addRow(div, r) {
+        var tr = document.createElement('tr');
+        var size = r.size || '';
+        var sizes = sizesFor(div);
+        if (size && sizes.map(function (s) { return s.toLowerCase(); }).indexOf(size.toLowerCase()) < 0) { sizes = sizes.concat([size]); }
+        else if (size) { size = sizes.filter(function (s) { return s.toLowerCase() === size.toLowerCase(); })[0]; }
+        tr.innerHTML =
+            '<td class="n"><input type="text" class="r-person" maxlength="120" value="' + esc(r.person) + '"></td>' +
+            '<td class="s"><select class="r-size">' + opts(sizes, size, 'Size') + '</select></td>' +
+            '<td class="b"><input type="text" class="r-back" maxlength="60" value="' + esc(r.back_name) + '"></td>' +
+            '<td class="u"><input type="text" class="r-num" maxlength="10" value="' + esc(r.number) + '"></td>' +
+            '<td class="q"><input type="number" class="r-qty" min="1" max="99" value="' + (r.qty || 1) + '"></td>' +
+            '<td class="a"><button type="button" class="bo-mini r-dup">Copy</button><button type="button" class="bo-mini r-del">Remove</button></td>';
+        div.querySelector('tbody').appendChild(tr);
+        tr.querySelector('.r-qty').addEventListener('input', recalc);
+        tr.querySelector('.r-del').addEventListener('click', function () { tr.remove(); recalc(); });
+        tr.querySelector('.r-dup').addEventListener('click', function () {
+            addRow(div, {size: tr.querySelector('.r-size').value, back_name: '', number: '', qty: tr.querySelector('.r-qty').value});
+            var rows = div.querySelectorAll('tbody tr'); rows[rows.length - 1].querySelector('.r-person').focus();
+        });
+        recalc();
+    }
+
+    function collect() {
+        var groups = [];
+        blocksEl.querySelectorAll('.bo-block').forEach(function (div) {
+            var rows = [];
+            div.querySelectorAll('tbody tr').forEach(function (tr) {
+                rows.push({person: tr.querySelector('.r-person').value, size: tr.querySelector('.r-size').value,
+                           back_name: tr.querySelector('.r-back').value, number: tr.querySelector('.r-num').value,
+                           qty: tr.querySelector('.r-qty').value});
+            });
+            groups.push({product_id: div.querySelector('.b-prod').value, color: div.querySelector('.b-color').value,
+                         price: div.querySelector('.b-price').value, design_id: div.querySelector('.b-design').value, rows: rows});
+        });
+        var pickup = document.querySelector('input[name=fulfill]:checked').value === 'pickup';
+        return {customer: {name: $('cName').value, company: $('cCompany').value, email: $('cEmail').value, phone: $('cPhone').value},
+                collection_id: $('cCollection').value, fulfillment: pickup ? 'pickup' : 'shipping',
+                ship: {street: $('sStreet').value, city: $('sCity').value, state: $('sState').value, zip: $('sZip').value},
+                shipping: $('shipAmt').value, tax_percent: $('taxPct').value, note: $('note').value, groups: groups};
+    }
+
+    function recalc() {
+        var sub = 0, count = 0;
+        blocksEl.querySelectorAll('.bo-block').forEach(function (div) {
+            var price = parseFloat(div.querySelector('.b-price').value) || 0;
+            div.querySelectorAll('tbody tr').forEach(function (tr) {
+                var qty = parseInt(tr.querySelector('.r-qty').value, 10) || 0;
+                if (tr.querySelector('.r-size').value || tr.querySelector('.r-person').value) { sub += price * qty; count += qty; }
+            });
+        });
+        var tax = Math.round(sub * (parseFloat($('taxPct').value) || 0)) / 100;
+        var ship = document.querySelector('input[name=fulfill]:checked').value === 'pickup' ? 0 : (parseFloat($('shipAmt').value) || 0);
+        $('sCount').textContent = count + (count === 1 ? ' shirt' : ' shirts');
+        $('sSub').textContent = money(sub); $('sTax').textContent = money(Math.round(tax * 100) / 100);
+        $('sShip').textContent = money(ship); $('sTot').textContent = money(sub + Math.round(tax * 100) / 100 + ship);
+    }
+
+    document.querySelectorAll('input[name=fulfill]').forEach(function (r) {
+        r.addEventListener('change', function () {
+            $('shipFields').style.display = r.value === 'pickup' && r.checked ? 'none' : '';
+            recalc();
+        });
+    });
+    ['shipAmt', 'taxPct'].forEach(function (id) { $(id).addEventListener('input', recalc); });
+    $('boAddBlock').addEventListener('click', function () { addBlock({}); });
+    $('boForm').addEventListener('submit', function () { $('orderJson').value = JSON.stringify(collect()); });
+
+    // Keep what was typed if the server sent the form back with a message.
+    var restored = false;
+    if (DRAFT) {
+        try {
+            var d = JSON.parse(DRAFT);
+            $('cName').value = (d.customer || {}).name || ''; $('cCompany').value = (d.customer || {}).company || '';
+            $('cEmail').value = (d.customer || {}).email || ''; $('cPhone').value = (d.customer || {}).phone || '';
+            $('cCollection').value = d.collection_id || '';
+            var s = d.ship || {}; $('sStreet').value = s.street || ''; $('sCity').value = s.city || ''; $('sState').value = s.state || ''; $('sZip').value = s.zip || '';
+            $('shipAmt').value = d.shipping || ''; $('taxPct').value = d.tax_percent || $('taxPct').value; $('note').value = d.note || '';
+            if (d.fulfillment === 'pickup') { document.querySelector('input[name=fulfill][value=pickup]').click(); }
+            (d.groups || []).forEach(function (g) { addBlock(g); restored = true; });
+        } catch (e) { /* start fresh */ }
+    }
+    if (!restored) { addBlock({}); }
+    recalc();
+})();
+</script>
+{% endblock %}

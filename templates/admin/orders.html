@@ -51,6 +51,7 @@
         <p class="ord-lead" style="font-size:.8rem;margin-top:.2rem"><a href="{{ url_for('admin.unsaved_payments') }}">Got paid but no order showed up? Find the payment</a></p>
     </div>
     <div class="wf-header-actions">
+        <a href="{{ url_for('admin.bulk_order_new') }}" class="btn btn-primary wf-header-btn">Enter an order</a>
         <a href="{{ ops_url('admin.production_workflow') }}" class="btn btn-outline wf-header-btn" title="Every order in columns by stage">Board view</a>
         <a href="{{ ops_url('admin.production_master', stage=['order_received']) }}" class="btn btn-outline wf-header-btn">Order blanks</a>
         <a href="{{ ops_url('admin.transfer_production', stage=['ready_to_press']) }}" class="btn btn-outline wf-header-btn">Press sheets</a>

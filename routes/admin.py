@@ -671,9 +671,11 @@ def order_detail(order_id):
         'margin_pct': profit_margin_pct(order),
     }
 
+    from utils.bulk_orders import invoice_for_order
     return render_template(
         'admin/order_detail.html',
         order=order,
+        bulk_invoice=invoice_for_order(order) if order.payment_method == 'invoice' else None,
         get_print_width=get_print_width,
         get_display_print_width=get_display_print_width,
         item_productions=item_productions,
@@ -1184,6 +1186,9 @@ def delete_order(order_id):
     """Permanently delete an order and all its items."""
     order = Order.query.get_or_404(order_id)
     try:
+        from models import ManualInvoice
+        for inv in ManualInvoice.query.filter_by(order_id=order.id).all():
+            inv.order_id = None          # the invoice (and any money on it) stays on file
         for item in order.items:
             db.session.delete(item)
         db.session.delete(order)
@@ -3413,6 +3418,8 @@ def invoice_edit(invoice_id):
             return render_template('admin/invoice_form.html', inv=inv, f={**_invoice_fields(inv), **values}, error=error)
         _save_invoice(inv, values)
         db.session.commit()
+        from utils.bulk_orders import sync_order_from_invoice
+        sync_order_from_invoice(inv)      # a bulk order follows what its invoice says is paid
         return redirect(url_for('admin.invoice_view', invoice_id=inv.id))
     return render_template('admin/invoice_form.html', inv=inv, f=_invoice_fields(inv), error=None)
 
@@ -6518,6 +6525,7 @@ def mark_order_paid(order_id):
 # The Reports, Ledger and Expenses pages live in their own file but share this blueprint and its locks.
 from routes import admin_books  # noqa: E402,F401
 from routes import admin_donations  # noqa: E402,F401
+from routes import admin_bulk_orders  # noqa: E402,F401
 from routes import admin_backroom  # noqa: E402,F401
 from routes import admin_artwork_pack  # noqa: E402,F401
 # School district setup, QR codes and reports.

@@ -237,6 +237,13 @@
                     <span class="od-info-val">${{ '%.2f'|format(order.amount_paid) }}</span>
                 </div>
                 {% endif %}
+                {% if order.payment_status in ('awaiting_payment', 'invoice_paid') and bulk_invoice %}
+                <div class="od-underpaid" {% if order.payment_status == 'invoice_paid' %}style="border-color:#b9d8bb;background:#f2faf2;color:#2f6b34"{% endif %}>
+                    <strong>{% if order.payment_status == 'invoice_paid' %}Paid in full on invoice {{ bulk_invoice.number }}.{% else %}Awaiting payment on invoice {{ bulk_invoice.number }}.{% endif %}</strong>
+                    <span>The invoice is the payment record. Send it, see what is owed, or record a payment there.</span>
+                    <a href="{{ url_for('admin.invoice_view', invoice_id=bulk_invoice.id) }}">Open the invoice</a>
+                </div>
+                {% endif %}
                 {% if order.payment_status == 'underpaid' %}
                 <div class="od-underpaid">
                     <strong>Underpaid: the customer paid ${{ '%.2f'|format(order.amount_paid or 0) }} of ${{ '%.2f'|format(order.total or 0) }}.</strong>
@@ -372,6 +379,7 @@
                     <p><strong>Family &amp; Fan Wear</strong></p>
                     {% endif %}
                     <p>{{ item.style_number }} · {{ item.color }} · {{ item.size }} · {{ item.print_type or 'DTF' }} · Qty {{ item.quantity }}</p>
+                    {% if item.notes and item.notes.startswith('For ') %}<p><strong>{{ item.notes }}</strong></p>{% endif %}
                     {% if item.design %}
                     <p class="od-design-line">
                         🎨 <strong>{{ item.design.title or item.design_file_name or 'Design' }}</strong>

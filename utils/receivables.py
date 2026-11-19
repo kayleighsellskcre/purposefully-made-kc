@@ -78,6 +78,8 @@ def record_payment(invoice_id, amount_dollars, method, paid_on=None, note=None):
     row = InvoicePayment(invoice_id=inv.id, amount_cents=cents, method=method, paid_on=day, note=(note or '').strip()[:200] or None)
     db.session.add(row)
     db.session.commit()
+    from utils.bulk_orders import sync_order_from_invoice
+    sync_order_from_invoice(inv)          # a bulk order follows what its invoice says is paid
     L.sync_all(force=True)
     return row
 

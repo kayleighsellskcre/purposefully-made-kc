@@ -103,6 +103,8 @@ def apply_card_payment(inv, intent_id, cents) -> bool:
         inv.paid_at = datetime.utcnow()
     db.session.commit()
     current_app.logger.info('invoice %s paid $%.2f by card', inv.number, cents / 100.0)
+    from utils.bulk_orders import sync_order_from_invoice
+    sync_order_from_invoice(inv)          # a bulk order is released to production once paid
     from utils import invoice_emails
     invoice_emails.paid(inv, cents / 100.0)
     return True

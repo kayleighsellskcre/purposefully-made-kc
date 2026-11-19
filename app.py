@@ -321,6 +321,9 @@ def create_app(config_class=Config):
                     "ALTER TABLE manual_invoice ADD COLUMN IF NOT EXISTS card_paid_intent_id VARCHAR(200)",
                     "ALTER TABLE manual_invoice ADD COLUMN IF NOT EXISTS pay_link_sent_at TIMESTAMP",
                     "CREATE UNIQUE INDEX IF NOT EXISTS ix_manual_invoice_pay_token ON manual_invoice (pay_token)",
+                    # Bulk orders: the invoice that bills an order
+                    "ALTER TABLE manual_invoice ADD COLUMN IF NOT EXISTS order_id INTEGER REFERENCES \"order\"(id)",
+                    "CREATE INDEX IF NOT EXISTS ix_manual_invoice_order_id ON manual_invoice (order_id)",
                     # product.spec_sheet_url — SanMar CDN PDF link added during Bella+Canvas CSV import
                     "ALTER TABLE product ADD COLUMN IF NOT EXISTS spec_sheet_url VARCHAR(500)",
                     # Softness rating + short fabric blurb (seeded by style number)

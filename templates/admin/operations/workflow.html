@@ -25,6 +25,7 @@
         <a href="{{ ops_url('admin.production_master', stage=['order_received']) }}" class="btn btn-outline wf-header-btn">Order blanks</a>
         <a href="{{ ops_url('admin.transfer_production', stage=['ready_to_press']) }}" class="btn btn-outline wf-header-btn">Press sheets</a>
         <a href="{{ ops_url('admin.print_labels', stage=['ready_to_press']) }}" class="btn btn-outline wf-header-btn">Print labels</a>
+        <a href="{{ url_for('admin.bulk_order_new') }}" class="btn btn-primary wf-header-btn" title="Type or paste a whole group's names, sizes and numbers">Enter an order</a>
         <a href="{{ url_for('admin.invoice_new') }}" class="btn btn-outline wf-header-btn">Create invoice</a>
         <a href="{{ url_for('admin.orders_completed') }}" class="btn btn-outline wf-header-btn">All Completed</a>
     </div>
@@ -139,6 +140,7 @@
                         {% endif %}
                     </div>
                     <p class="wf-card-name">{{ order.full_name }}</p>
+                    {% if order.payment_status == 'awaiting_payment' %}<p class="wf-await">Awaiting payment</p>{% endif %}
                     {% if order.send_home_with_child %}
                     <p class="wf-card-send-home">Send home: {{ order.child_name or 'child' }}{% if order.teacher_name %} · {{ order.teacher_name }}{% endif %}</p>
                     {% endif %}
@@ -228,6 +230,7 @@
                     {% endif %}
                 </div>
                 <p class="wf-card-name">{{ order.full_name }}</p>
+                {% if order.payment_status == 'awaiting_payment' %}<p class="wf-await">Awaiting payment</p>{% endif %}
                 <div class="wf-card-meta">
                     <span>${{ "%.2f"|format(order.total) }}</span>
                     <span class="wf-meta-sep">&bull;</span>
@@ -485,6 +488,7 @@
     transform: translateY(-1px);
 }
 
+.wf-await { display: inline-block; margin: .15rem 0 .3rem; padding: .12rem .55rem; border-radius: 999px; background: #fffbeb; border: 1px solid #f0c48a; color: #92400e; font-size: .7rem; font-weight: 600; }
 .wf-card-top {
     display: flex;
     align-items: center;

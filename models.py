@@ -1501,6 +1501,9 @@ class ManualInvoice(db.Model):
     payment_intent_id = db.Column(db.String(200), index=True)       # the Stripe payment being collected
     card_paid_intent_id = db.Column(db.String(200))                  # the last one that was applied
     pay_link_sent_at = db.Column(db.DateTime)
+    # The bulk order this invoice bills (utils/bulk_orders). The invoice stays the money record:
+    # the books count it, and the order is only the production list with names, sizes and numbers.
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), index=True)
     paid_at = db.Column(db.DateTime)                    # when money first came in (cash basis books)
     refunded_cents = db.Column(db.BigInteger, default=0)
     refunded_at = db.Column(db.DateTime)
