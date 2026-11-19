@@ -1237,3 +1237,8 @@ def test_group_checkout_shows_organizer_instructions_not_store_pickup(client, se
     assert 'How you' in html and 'get your order' in html
     assert 'name="fulfillment" value="pickup"' in html or 'value="pickup"' in html
 
+
+
+def test_the_shop_pickup_option_says_where_pickup_is():
+    from utils.group_orders import group_pickup_details
+    assert group_pickup_details(None) == ['Free - Pick up at 4632 Woodstock Street, Shawnee, KS 66218']

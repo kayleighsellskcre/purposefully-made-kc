@@ -138,7 +138,8 @@ def group_pickup_details(collection=None):
         return lines
     if group_uses_organizer_fulfillment(collection):
         return ['Your organizer will have this order.']
-    return ['Free - Pick up at our location']
+    from utils.business_info import BUSINESS
+    return [f"Free - Pick up at {BUSINESS['pickup_address']}"]      # say where "local" is
 
 
 def group_pickup_next_step(collection=None):
