@@ -34,6 +34,8 @@
 
             {% if doc.paid > 0 %}
             <p style="text-align:center;margin:0 0 1rem;"><a class="btn btn-outline" href="{{ url_for('invoice_pay.receipt_pdf', token=token) }}" target="_blank" rel="noopener">Download your receipt (PDF)</a></p>
+            {% else %}
+            <p style="text-align:center;margin:0 0 1rem;"><a class="btn btn-outline" href="{{ url_for('invoice_pay.invoice_pdf', token=token) }}" target="_blank" rel="noopener">Download or print this invoice (PDF)</a></p>
             {% endif %}
 
             {% if notice %}

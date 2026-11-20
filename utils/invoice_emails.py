@@ -41,18 +41,30 @@ def send_invoice(inv):
     doc = _doc(inv)
     first = (doc['attn'] or doc['name'] or '').split(' ')[0]
     mockups = mockup_attachments(inv)
+    invoice_pdf = invoice_attachments(inv)
     return _safe(
         _send, inv.email, f"Your invoice from Purposefully Made KC ({inv.number})",
         f"Your invoice, ${doc['balance']:,.2f}",
         [f"Hi{' ' + first if first else ''}! Thank you so much for your order. "
          "Your invoice is ready, and you can pay it by card with the button below.",
          'Prefer Venmo, cash or a check? Just reply to this email and we will sort it out.']
+        + (['A PDF copy of your invoice is attached for your records.'] if invoice_pdf else [])
         + (['Mockups of your shirts, front and back, are attached as a PDF so you can see exactly what we will make.'] if mockups else []),
-        attachments=mockups,
+        attachments=invoice_pdf + mockups,
         button={'label': 'View & pay invoice', 'url': pay_url(inv)},
         details=[('Invoice', inv.number), ('Items', _lines_text(doc)),
                  ('Total', f"${doc['total']:,.2f}"), ('Balance due', f"${doc['balance']:,.2f}")],
     )
+
+
+def invoice_attachments(inv):
+    """The one-page invoice PDF as an email attachment, for the customer's records (empty if it could not be made)."""
+    try:
+        from utils.invoice_pay import receipt_pdf_bytes
+        return [(f"Invoice-{inv.number}.pdf", 'application/pdf', receipt_pdf_bytes(inv))]
+    except Exception:
+        current_app.logger.exception('invoice PDF could not be made for %s', getattr(inv, 'number', '?'))
+        return []
 
 
 def receipt_attachments(inv, doc=None):

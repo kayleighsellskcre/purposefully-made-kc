@@ -143,3 +143,28 @@ def test_qr_code_is_a_real_image(seed, app):
     resp = app.test_client().get(f'/pay/{token}/qr.png')
     assert resp.status_code == 200 and resp.mimetype == 'image/png'
     assert resp.data[:8] == b'\x89PNG\r\n\x1a\n'
+
+
+def test_unpaid_pay_page_offers_an_invoice_pdf_and_the_email_attaches_it(seed, app):
+    from utils import invoice_emails
+    inv_id = _invoice(app)
+    token = _facts(app, inv_id)['token'] or _in_db(app, lambda: _issue_token(inv_id))
+    client = app.test_client()
+    page = client.get(f'/pay/{token}')
+    assert page.status_code == 200 and f'/pay/{token}/invoice.pdf' in page.get_data(as_text=True)
+    pdf = client.get(f'/pay/{token}/invoice.pdf')
+    assert pdf.status_code == 200 and pdf.data.startswith(b'%PDF') and pdf.mimetype == 'application/pdf'
+    assert client.get('/pay/not-a-real-token/invoice.pdf').status_code == 404
+
+    def attached():
+        got = invoice_emails.invoice_attachments(db.session.get(ManualInvoice, inv_id))
+        return got[0][0], got[0][2][:4]
+    assert _in_db(app, attached) == ('Invoice-INV-2026-0001.pdf', b'%PDF')
+
+
+def _issue_token(inv_id):
+    from utils.invoice_pay import ensure_token
+    inv = db.session.get(ManualInvoice, inv_id)
+    ensure_token(inv)
+    db.session.commit()
+    return inv.pay_token

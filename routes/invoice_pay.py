@@ -89,6 +89,15 @@ def receipt_pdf(token):
                              'Cache-Control': 'private, no-store'})
 
 
+@invoice_pay_bp.route('/<token>/invoice.pdf')
+def invoice_pdf(token):
+    """The one-page PDF of the invoice (or the receipt once paid), for the customer's records. Only the private link opens it."""
+    inv = _invoice_or_404(token)
+    return Response(receipt_pdf_bytes(inv), mimetype='application/pdf',
+                    headers={'Content-Disposition': f'inline; filename="Invoice-{inv.number}.pdf"',
+                             'Cache-Control': 'private, no-store'})
+
+
 @invoice_pay_bp.route('/<token>/qr.png')
 def qr(token):
     inv = _invoice_or_404(token)
