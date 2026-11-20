@@ -3287,6 +3287,37 @@
             document.querySelectorAll('.logo-gallery-item').forEach(el => el.classList.remove('selected'));
         }
 
+        // Pick the version of a design that shows up on the shirt: a light one on a dark shirt, a dark one on a light shirt.
+        const INK_LIGHTNESS = { white: 1, cream: .95, ivory: .95, light: .85, yellow: .85, gold: .7, silver: .75, pink: .7, peach: .75, orange: .55, gray: .5, grey: .5,
+            red: .35, green: .35, teal: .4, blue: .3, purple: .3, maroon: .2, brown: .25, navy: .1, dark: .1, black: 0 };
+        function shirtLightness() {
+            const card = document.querySelector('.color-card.selected');
+            const dot = card && (card.querySelector('.color-dot') || card.querySelector('.color-placeholder'));
+            const m = dot && (getComputedStyle(dot).backgroundColor || '').match(/\d+(\.\d+)?/g);
+            if (m && m.length >= 3) return (0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2]) / 255;
+            const name = ((state.selectedColor && state.selectedColor.name) || '').toLowerCase();
+            if (/black|navy|charcoal|dark|forest|maroon|espresso|midnight/.test(name)) return 0.15;
+            if (/white|cream|natural|ivory|light|ash|sand/.test(name)) return 0.92;
+            return 0.5;
+        }
+        function inkLightness(label, pickLightest) {
+            const words = String(label || '').toLowerCase().match(/[a-z]+/g) || [];
+            const known = words.filter(function (w) { return w in INK_LIGHTNESS; }).map(function (w) { return INK_LIGHTNESS[w]; });
+            if (!known.length) return null;
+            return pickLightest ? Math.max.apply(null, known) : Math.min.apply(null, known);
+        }
+        function bestVariantIndex(variants) {
+            const dark = shirtLightness() < 0.4;
+            let best = 0, bestScore = -1, firstScore = -1;
+            variants.forEach(function (v, i) {
+                const ink = inkLightness(v.label, dark);
+                const score = ink === null ? 0.5 : (dark ? ink : 1 - ink);     // how much it stands out from the shirt
+                if (i === 0) firstScore = score;
+                if (score > bestScore + 1e-9) { best = i; bestScore = score; }
+            });
+            return bestScore - firstScore >= 0.15 ? best : 0;                    // only move off the first one for a clear gain
+        }
+
         function showColorChooser(card, variants) {
             if (!chooser || !chooserGrid) {
                 applyFromVariant(variants[0], card.dataset.designTitle, card.querySelector('img'));
@@ -3294,10 +3325,11 @@
             }
             chooserTitle.textContent = card.dataset.designTitle || 'this design';
             chooserGrid.innerHTML = '';
+            const startAt = bestVariantIndex(variants);
             variants.forEach(function(v, idx) {
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                btn.className = 'logo-color-option' + (idx === 0 ? ' selected' : '');
+                btn.className = 'logo-color-option' + (idx === startAt ? ' selected' : '');
                 btn.innerHTML = '<img src="' + (v.url || '') + '" alt=""><span></span>';
                 btn.querySelector('span').textContent = v.label || ('Color ' + (idx + 1));
                 btn.addEventListener('click', function() {
@@ -3311,7 +3343,7 @@
                 chooserGrid.appendChild(btn);
             });
             chooser.hidden = false;
-            applyFromVariant(variants[0], card.dataset.designTitle, card.querySelector('img'));
+            applyFromVariant(variants[startAt], card.dataset.designTitle, card.querySelector('img'));
             card.classList.add('selected');
             // On a phone the colors open as a card over the page (the price bar and a long list of logos hid them before).
             if (!isPhoneColorSheet()) chooser.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
