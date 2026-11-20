@@ -143,7 +143,7 @@ def contact():
         from utils import spam_guard
         verdict, _why = spam_guard.check(request, max_links=1)
         if verdict == 'spam':
-            flash('Thank you for reaching out! We will get back to you within 1 to 2 business days.', 'success')
+            flash('Thank you for reaching out! I will get back to you within 1 to 2 business days.', 'success')
             return redirect(url_for('main.contact'))
         if verdict == 'retry':
             flash('Please complete the quick check and send it again.', 'error')
@@ -214,7 +214,7 @@ def contact():
             import sys
             print(f"Contact email error: {e}", file=sys.stderr)
 
-        flash('Thank you for reaching out! We will get back to you within 1 to 2 business days.', 'success')
+        flash('Thank you for reaching out! I will get back to you within 1 to 2 business days.', 'success')
         return redirect(url_for('main.contact'))
 
     digits = ''.join(c for c in str(current_app.config.get('ADMIN_PHONE', '')) if c.isdigit())

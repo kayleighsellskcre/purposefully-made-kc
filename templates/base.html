@@ -292,13 +292,19 @@
                     <p class="footer-col-title">Shop</p>
                     <ul class="footer-links">
                         <li><a href="{{ url_for('shop.index') }}">All Products</a></li>
-                        <li><a href="{{ url_for('shop.group_orders') }}">Group Orders</a></li>
-                        <li><a href="{{ url_for('district.directory') }}">School Districts</a></li>
-                        <li><a href="{{ url_for('shop.company_apparel') }}">Company Apparel</a></li>
                         <li><a href="{{ url_for('shop.index', category='Tee') }}">T-Shirts</a></li>
                         <li><a href="{{ url_for('shop.index', category='Hoodie') }}">Hoodies</a></li>
                         <li><a href="{{ url_for('shop.index', age_group='kids') }}">Baby &amp; Kids</a></li>
                         <li><a href="{{ url_for('shop.design_gallery') }}">Design Gallery</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-col">
+                    <p class="footer-col-title">Groups</p>
+                    <ul class="footer-links">
+                        <li><a href="{{ url_for('shop.group_orders') }}">Group Orders</a></li>
+                        <li><a href="{{ url_for('district.directory') }}">School Districts</a></li>
+                        <li><a href="{{ url_for('shop.company_apparel') }}">Company Apparel</a></li>
                     </ul>
                 </div>
 
@@ -309,7 +315,6 @@
                         <li><a href="{{ url_for('main.faq') }}">FAQ</a></li>
                         <li><a href="{{ url_for('main.size_guide') }}">Size Guide</a></li>
                         <li><a href="{{ url_for('main.faq') }}#shipping">Shipping &amp; Returns</a></li>
-                        <li><a href="{{ url_for('main.contact') }}">Contact</a></li>
                         {% if has_reviews %}<li><a href="{{ url_for('main.reviews_page') }}">Kind Words</a></li>{% endif %}
                     </ul>
                 </div>
@@ -317,14 +322,9 @@
                 <div class="footer-col">
                     <p class="footer-col-title">Company</p>
                     <ul class="footer-links">
-                        <li><a href="{{ url_for('main.about') }}">About Us</a></li>
+                        <li><a href="{{ url_for('main.about') }}">About</a></li>
+                        <li><a href="{{ url_for('main.contact') }}">Contact</a></li>
                         <li><a href="{{ url_for('custom_request.index') }}">Custom Design</a></li>
-                    </ul>
-                </div>
-
-                <div class="footer-col">
-                    <p class="footer-col-title">Legal</p>
-                    <ul class="footer-links">
                         <li><a href="{{ url_for('main.privacy') }}">Privacy Policy</a></li>
                         <li><a href="{{ url_for('main.terms') }}">Terms of Service</a></li>
                     </ul>
