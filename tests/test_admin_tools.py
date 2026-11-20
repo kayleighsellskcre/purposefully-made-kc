@@ -4,17 +4,17 @@ from flask_mail import Message
 from models import EmailFailure, ManualInvoice, Order, db
 
 
-def _failed_email(app, to='pat@example.com'):
+def _failed_email(app, monkeypatch, to='pat@example.com'):
     from utils import mailer
+    monkeypatch.setitem(app.config, 'BREVO_API_KEY', '')            # put back after the test, so other tests keep their mail settings
+    monkeypatch.setitem(app.config, 'MAIL_SERVER', None)
     with app.app_context():
-        app.config['BREVO_API_KEY'] = ''
-        app.config['MAIL_SERVER'] = None
         assert mailer.send(app, Message(subject='Your invoice', recipients=[to], html='<p>hi</p>'), 'invoice INV-1') is False
         return EmailFailure.query.order_by(EmailFailure.id.desc()).first().id
 
 
-def test_a_failed_email_is_remembered_and_shown_on_the_dashboard(app, seed, admin_client):
-    _failed_email(app)
+def test_a_failed_email_is_remembered_and_shown_on_the_dashboard(app, seed, admin_client, monkeypatch):
+    _failed_email(app, monkeypatch)
     page = admin_client.get('/admin/email-problems').get_data(as_text=True)
     assert 'Your invoice' in page and 'pat@example.com' in page and 'Resend' in page
     assert '1 email did not send' in admin_client.get('/admin/').get_data(as_text=True)
@@ -22,7 +22,7 @@ def test_a_failed_email_is_remembered_and_shown_on_the_dashboard(app, seed, admi
 
 def test_resend_removes_it_only_when_it_really_goes(app, seed, admin_client, monkeypatch):
     from utils import mailer
-    row_id = _failed_email(app)
+    row_id = _failed_email(app, monkeypatch)
     monkeypatch.setattr(mailer, 'send', lambda *a, **k: False)
     admin_client.post(f'/admin/email-problems/{row_id}/resend')
     with app.app_context():
