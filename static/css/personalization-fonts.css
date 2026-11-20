@@ -75,11 +75,11 @@
     src: url('/static/fonts/Graduate-Regular.ttf') format('truetype');
 }
 @font-face {
-    font-family: 'Black Ops One';
+    font-family: 'Varsity Team';
     font-style: normal;
     font-weight: 400;
     font-display: block;
-    src: url('/static/fonts/BlackOpsOne-Regular.ttf') format('truetype');
+    src: url('/static/fonts/VarsityTeam-Bold.otf') format('opentype');
 }
 @font-face {
     font-family: 'Squada One';

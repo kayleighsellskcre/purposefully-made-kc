@@ -31,7 +31,7 @@ FONT_FILES = {
     'Teko': 'Teko-Bold.ttf',
     # Varsity / collegiate looks (SIL Open Font License, free for commercial use).
     'Graduate': 'Graduate-Regular.ttf',
-    'Black Ops One': 'BlackOpsOne-Regular.ttf',
+    'Varsity Team': 'VarsityTeam-Bold.otf',
     'Squada One': 'SquadaOne-Regular.ttf',
     # Matthew Welch "College" — closest free commercial match to Cricut /
     # Brøderbund Varsity Regular (classic slab-serif jersey lettering).

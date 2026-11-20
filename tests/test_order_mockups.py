@@ -153,5 +153,5 @@ def test_every_listed_back_font_has_a_real_font_file():
     from utils.fonts import CUSTOMIZE_BACK_FONTS, GROUP_ORDER_FONTS
     from utils.personalization_layout import font_path
     listed = {v for v, _ in CUSTOMIZE_BACK_FONTS + GROUP_ORDER_FONTS} - {'Freshman'}     # Freshman has no free file
-    assert {'Graduate', 'Black Ops One', 'Squada One'} <= listed
+    assert {'Varsity Team', 'Graduate', 'Squada One'} <= listed
     assert [f for f in sorted(listed) if not font_path(f)] == []

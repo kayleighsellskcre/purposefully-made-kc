@@ -11,8 +11,8 @@ CUSTOMIZE_BACK_FONTS = [
     ('Oswald', 'Oswald (Bold athletic)'),
     ('Anton', 'Anton (Strong block)'),
     ('Teko', 'Teko (College jersey)'),
+    ('Varsity Team', 'Varsity Team (Bold college block)'),
     ('Graduate', 'Graduate (Varsity collegiate)'),
-    ('Black Ops One', 'Black Ops One (Bold varsity block)'),
     ('Squada One', 'Squada One (Modern athletic numbers)'),
     ('Sports Jersey', 'Sports Jersey (Classic athletic block)'),
     ('Varsity Regular', 'Varsity Regular (Cricut-style classic)'),
@@ -22,7 +22,7 @@ CUSTOMIZE_BACK_FONTS = [
 # to Bebas Neue on the production PNG if they have no file in FONT_FILES.
 GROUP_ORDER_FONTS = [
     ('Freshman', 'Freshman (Classic college jersey)'),
-    ('Black Ops One', 'Black Ops One (Bold varsity block)'),
+    ('Varsity Team', 'Varsity Team (Bold college block)'),
     ('Graduate', 'Graduate (Collegiate style)'),
     ('Squada One', 'Squada One (Modern athletic numbers)'),
     ('Bebas Neue', 'Bebas Neue (Clean jersey)'),
