@@ -3127,9 +3127,11 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 }
 .customizer-container .design-pane-tab.active { color: var(--terra-cotta); border-bottom-color: var(--terra-cotta); }
 .customizer-container .design-pane[hidden] { display: none; }
-.customizer-container .design-pane #logoGalleryGrid, .customizer-container .design-pane #myDesignsGrid { max-height: 26rem; overflow-y: auto; overscroll-behavior: contain; }
-.customizer-container .design-picker-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 0.3rem; scrollbar-width: thin; }
-.customizer-container .design-picker-tabs .design-tab-btn { flex: 0 0 auto; white-space: nowrap; }
+/* The design gallery scrolls with the page (no little box to scroll inside), three across, and the categories wrap instead of sliding sideways. */
+.customizer-container .design-pane #myDesignsGrid { max-height: 26rem; overflow-y: auto; overscroll-behavior: contain; }
+.customizer-container .design-pane #logoGalleryGrid { grid-template-columns: repeat(3, 1fr); }
+.customizer-container .design-picker-tabs { flex-wrap: wrap; }
+.customizer-container .design-picker-tabs .design-tab-btn { white-space: nowrap; }
 .customizer-container .upload-rights-note { margin: 0.4rem 0 0; font-size: 0.78rem; line-height: 1.4; }
 .customizer-container .upload-rights-note a { color: var(--terra-cotta); font-weight: 600; }
 .customizer-container .upload-area { padding: 0.9rem 1rem; min-height: 0; }

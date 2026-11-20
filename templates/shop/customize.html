@@ -799,6 +799,7 @@
     font-weight: 700;
     line-height: 1.15rem;
     text-align: center;
+    white-space: nowrap;
     pointer-events: none;
 }
 .logo-color-chooser {
@@ -2347,7 +2348,7 @@
                                  data-variants='{{ (d.variants or []) | tojson }}'
                                  role="button" tabindex="0" title="{{ d.title }}{% if d.has_colors %} ({{ d.color_count }} colors){% endif %}">
                                 <img src="{{ d.url }}" alt="{{ d.title }}" loading="eager" fetchpriority="high" decoding="async" draggable="false">
-                                {%- if d.has_colors %}<span class="logo-gallery-color-dot">{{ d.color_count }}</span>{%- endif -%}
+                                {%- if d.has_colors %}<span class="logo-gallery-color-dot">{{ d.color_count }} colors</span>{%- endif -%}
                             </div>
                             {% endfor %}
                         </div>
@@ -2365,7 +2366,7 @@
                     <div class="logo-gallery-inline gallery-design-picker" id="logoGalleryInline">
 
                         {# ── Label + Tab bar ── #}
-                        <p class="logo-gallery-label" style="margin-bottom:0.6rem;font-weight:600;">Design Gallery: pick a category to browse</p>
+                        <p class="logo-gallery-label" style="margin-bottom:0.6rem;font-weight:600;">Design Gallery: browse everything, or pick a category</p>
                         <div class="design-picker-tabs" id="designTabBar" role="tablist" aria-label="Design categories">
                             <button class="design-tab-btn" data-tab="All" onclick="filterDesignTab(this)" role="tab" aria-selected="false">All <span class="design-tab-count">({{ gallery_designs|length }})</span></button>
                             {% for _col in design_collections %}
@@ -2402,7 +2403,7 @@
                                  role="button" tabindex="0"
                                  title="{{ d.title }}{% if d.has_colors %} ({{ d.color_count }} colors){% endif %}">
                                 <img src="{{ d.url }}" alt="{{ d.title }}" loading="lazy" decoding="async" draggable="false">
-                                {%- if d.has_colors %}<span class="logo-gallery-color-dot">{{ d.color_count }}</span>{%- endif -%}
+                                {%- if d.has_colors %}<span class="logo-gallery-color-dot">{{ d.color_count }} colors</span>{%- endif -%}
                             </div>
                             {%- endfor -%}
                         </div>
@@ -6972,9 +6973,11 @@
         _applyFilters();
     };
 
-    // On load: hide all tiles, no tab active yet
+    // On load: start on All, so designs are showing right away (no extra tap needed)
     document.addEventListener('DOMContentLoaded', function() {
-        if (document.getElementById('logoGalleryGrid')) _applyFilters();
+        var allTab = document.querySelector('.design-tab-btn[data-tab="All"]');
+        if (allTab) window.filterDesignTab(allTab);
+        else if (document.getElementById('logoGalleryGrid')) _applyFilters();
     });
 })();
 
