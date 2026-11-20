@@ -152,6 +152,27 @@ def test_every_listed_back_font_has_a_real_font_file():
     """A font in a picker must draw as itself on mockups and print files, not fall back to Bebas Neue."""
     from utils.fonts import CUSTOMIZE_BACK_FONTS, GROUP_ORDER_FONTS
     from utils.personalization_layout import font_path
-    listed = {v for v, _ in CUSTOMIZE_BACK_FONTS + GROUP_ORDER_FONTS} - {'Freshman'}     # Freshman has no free file
+    listed = {v for v, _ in CUSTOMIZE_BACK_FONTS + GROUP_ORDER_FONTS}
+    assert 'Freshman' not in listed
     assert {'Varsity Team', 'Graduate', 'Squada One'} <= listed
     assert [f for f in sorted(listed) if not font_path(f)] == []
+
+
+def test_edit_shirts_shows_the_invoice_and_sends_her_to_it_when_it_needs_a_look(app, seed, admin_client):
+    from models import ManualInvoice
+    oid = _order(app, seed, [('12', 'Guerin', 'M')])
+    with app.app_context():
+        inv = ManualInvoice(number='INV-ES-1', kind='invoice', customer_name='C D', email='c@example.com', order_id=oid,
+                            items_json='[{"description": "Something custom", "qty": 1, "unit": 99.0}]')
+        db.session.add(inv)
+        db.session.commit()
+        inv_id = inv.id
+    page = admin_client.get(f'/admin/orders/{oid}/edit-shirts').get_data(as_text=True)
+    assert 'INV-ES-1' in page and f'/invoices/{inv_id}' in page
+    with app.app_context():
+        item = Order.query.get(oid).items.first()
+        iid, pid = item.id, item.product_id
+    resp = admin_client.post(f'/admin/orders/{oid}/edit-shirts', data={
+        f'product_{iid}': pid, f'color_{iid}': item.color if False else 'Navy', f'size_{iid}': 'L',
+        f'number_{iid}': '13', f'name_{iid}': 'Guerin', 'font': 'Teko', 'text_color': '#ffffff', 'placement': 'center_chest'})
+    assert resp.status_code == 302 and f'/invoices/{inv_id}' in resp.headers['Location']     # prices differ, so go look at it

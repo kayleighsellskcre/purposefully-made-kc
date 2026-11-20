@@ -18,10 +18,9 @@ CUSTOMIZE_BACK_FONTS = [
     ('Varsity Regular', 'Varsity Regular (Cricut-style classic)'),
 ]
 
-# Organizer-facing list. Preview-only webfonts (Freshman, etc.) still fall back
-# to Bebas Neue on the production PNG if they have no file in FONT_FILES.
+# Organizer-facing list. Every font here has a real file in FONT_FILES, so mockups and print files match the preview.
+# (Freshman was removed: it has no free font file and always printed as Bebas Neue. Old orders that used it still work.)
 GROUP_ORDER_FONTS = [
-    ('Freshman', 'Freshman (Classic college jersey)'),
     ('Varsity Team', 'Varsity Team (Bold college block)'),
     ('Graduate', 'Graduate (Collegiate style)'),
     ('Squada One', 'Squada One (Modern athletic numbers)'),

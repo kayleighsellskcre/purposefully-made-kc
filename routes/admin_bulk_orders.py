@@ -178,14 +178,18 @@ def order_edit_shirts(order_id):
         if reworded:
             message += ' The invoice wording now matches.'
         elif changed and has_invoice:
-            message += ' The invoice was left as it is (its prices are not the same as the shirts), so check it.'
+            message += ' The invoice was left as it is, because its prices are not the same as the shirts. Check it below.'
         flash(message, 'success')
+        invoices = ManualInvoice.query.filter_by(order_id=order.id).all()
+        if changed and has_invoice and not reworded and len(invoices) == 1:      # take her straight to the one that needs a look
+            return redirect(url_for('admin.invoice_view', invoice_id=invoices[0].id))
         return redirect(url_for('admin.order_detail', order_id=order.id))
+    invoices = ManualInvoice.query.filter_by(order_id=order.id).order_by(ManualInvoice.id).all()
     first = next((i for i in items if i.back_design_details), None)
     meta = (first.back_design_details if first else None) or {}
     catalog = _catalog()
     return render_template(
-        'admin/order_edit_shirts.html', order=order, items=items, catalog=catalog,
+        'admin/order_edit_shirts.html', order=order, items=items, catalog=catalog, invoices=invoices,
         catalog_map={str(c['id']): {'colors': c['colors'], 'sizes': c['sizes']} for c in catalog},
         fonts=[{'value': v, 'label': l} for v, l in GROUP_ORDER_FONTS], font=meta.get('font') or '',
         text_color=meta.get('text_color') or '#ffffff', outline=bool(meta.get('outline', True)), placement=(items[0].placement if items else 'center_chest'),

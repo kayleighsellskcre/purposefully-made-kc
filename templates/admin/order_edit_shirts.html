@@ -32,6 +32,13 @@
         <h1>Edit shirts</h1>
         <p>Change the style, color, size, name or number on any shirt. Prices and quantities stay as invoiced; change those on the invoice.</p>
     </div>
+    {% if invoices %}
+    <div class="es-card" style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:center;justify-content:space-between">
+        <span>{{ 'Invoice' if invoices|length == 1 else 'Invoices' }}:
+            {% for inv in invoices %}<a href="{{ url_for('admin.invoice_view', invoice_id=inv.id) }}"><strong>{{ inv.number }}</strong></a>{% if not loop.last %}, {% endif %}{% endfor %}
+            &middot; the wording is updated for you when the prices stay the same. If they do not, you are taken to the invoice after saving.</span>
+    </div>
+    {% endif %}
     <form method="post">
         <div class="es-card">
             <div class="es-top">
