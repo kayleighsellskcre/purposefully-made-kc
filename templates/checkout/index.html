@@ -314,7 +314,7 @@
                 </button>
                 {% else %}
                 <button id="submit-payment" class="btn btn-primary btn-block btn-lg">
-                    Complete Order - $<span id="total-amount">{{ "%.2f"|format(totals.total) }}</span>
+                    <span style="white-space: nowrap;">Complete Order - $<span id="total-amount">{{ "%.2f"|format(totals.total) }}</span></span>
                 </button>
                 {% endif %}
             </div>
@@ -842,7 +842,7 @@ function restorePayButton() {
     if (familyPromoActive) {
         button.innerHTML = 'Pay Cash - $<span id="total-amount">' + amount + '</span>';
     } else {
-        button.innerHTML = 'Complete Order - $<span id="total-amount">' + amount + '</span>';
+        button.innerHTML = '<span style="white-space: nowrap;">Complete Order - $<span id="total-amount">' + amount + '</span></span>';
     }
 }
 
