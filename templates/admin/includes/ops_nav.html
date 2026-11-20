@@ -29,6 +29,9 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
             Dashboard
         </a>
+        <form method="get" action="{{ url_for('admin.admin_search') }}" class="ops-nav-search" role="search">
+            <input type="search" name="q" placeholder="Search name, email, order or invoice #" aria-label="Search the admin" autocomplete="off">
+        </form>
         <button type="button" class="ops-nav-toggle" id="opsNavToggle" aria-expanded="false" aria-controls="opsNavMenus">
             Menu
             <svg class="ops-nav-toggle-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>

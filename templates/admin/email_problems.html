@@ -1,0 +1,39 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Emails that did not send - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<style>
+.ep { max-width: 900px; margin: 0 auto; padding-bottom: 3rem; }
+.ep-card { background: #fff; border: 1px solid var(--border-light, #eadfd2); border-radius: 16px; padding: 1rem 1.2rem; margin-bottom: .9rem; }
+.ep-card h3 { margin: 0 0 .2rem; font-size: 1.05rem; }
+.ep-card p { margin: .15rem 0; color: var(--text-secondary); font-size: .92rem; }
+.ep-card .why { color: #8e2a1f; }
+.ep-bar { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: .7rem; }
+.ep-empty { text-align: center; padding: 2.5rem 1rem; color: var(--text-secondary); }
+</style>
+<div class="ep">
+    <span class="adm-eyebrow">Admin / Safety</span>
+    <h1 class="adm-page-title">Emails that did not send</h1>
+    <p class="adm-page-lead">Each one is an email a customer should have received. Press Resend to try again. It leaves this list once it goes.</p>
+    {% for r in rows %}
+    <div class="ep-card">
+        <h3>{{ r.subject or r.kind }}</h3>
+        <p>To: {{ r.to_addr or 'no address' }} &middot; {{ r.created_at.strftime('%b %d, %I:%M %p') if r.created_at else '' }} (server time)</p>
+        <p class="why">{{ r.reason }}</p>
+        {% if r.had_attachments %}<p>It had attachments, which Resend cannot include. Send invoices again from the invoice page.</p>{% endif %}
+        <div class="ep-bar">
+            <form method="post" action="{{ url_for('admin.email_problem_resend', row_id=r.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-primary btn-sm" type="submit" {% if not r.to_addr %}disabled{% endif %}>Resend</button>
+            </form>
+            <form method="post" action="{{ url_for('admin.email_problem_dismiss', row_id=r.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-outline btn-sm" type="submit">I handled it, remove</button>
+            </form>
+        </div>
+    </div>
+    {% else %}
+    <div class="ep-card ep-empty">Every email went out. Nothing to do here.</div>
+    {% endfor %}
+</div>
+{% endblock %}

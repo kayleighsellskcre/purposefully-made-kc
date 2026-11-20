@@ -1,0 +1,45 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Search - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<style>
+.sr { max-width: 860px; margin: 0 auto; padding-bottom: 3rem; }
+.sr form { display: flex; gap: .6rem; margin: 1rem 0 1.4rem; }
+.sr input[type=search] { flex: 1; font: 400 1.05rem 'Inter', sans-serif; padding: .7rem .9rem; border: 1px solid var(--border-color, #e3d6c8); border-radius: 12px; background: #fffdf9; min-width: 0; }
+.sr h2 { font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: var(--text-secondary); margin: 1.4rem 0 .5rem; }
+.sr a.row { display: flex; justify-content: space-between; gap: 1rem; padding: .7rem 1rem; background: #fff; border: 1px solid var(--border-light, #eadfd2); border-radius: 12px; margin-bottom: .45rem; text-decoration: none; color: inherit; }
+.sr a.row small { color: var(--text-secondary); }
+.sr .none { color: var(--text-secondary); }
+</style>
+<div class="sr">
+    <h1 class="adm-page-title">Search</h1>
+    <form method="get" action="{{ url_for('admin.admin_search') }}">
+        <input type="search" name="q" value="{{ q }}" placeholder="Name, email, phone, order or invoice number" autofocus autocomplete="off" aria-label="Search">
+        <button class="btn btn-primary" type="submit">Search</button>
+    </form>
+    {% if q and not (orders or invoices or customers) %}
+        <p class="none">Nothing found for &ldquo;{{ q }}&rdquo;. Try just part of the name or the last digits of a phone number.</p>
+    {% endif %}
+    {% if orders %}<h2>Orders</h2>
+        {% for o in orders %}
+        <a class="row" href="{{ url_for('admin.order_detail', order_id=o.id) }}">
+            <span><strong>{{ o.order_number }}</strong> &middot; {{ o.first_name }} {{ o.last_name }}<br><small>{{ o.email or '' }}</small></span>
+            <span><small>{{ (o.status or '')|replace('_', ' ') }}{% if o.total %} &middot; ${{ '%.2f'|format(o.total) }}{% endif %}</small></span>
+        </a>{% endfor %}
+    {% endif %}
+    {% if invoices %}<h2>Invoices</h2>
+        {% for i in invoices %}
+        <a class="row" href="{{ url_for('admin.invoice_view', invoice_id=i.id) }}">
+            <span><strong>{{ i.number }}</strong> &middot; {{ i.company or i.customer_name }}<br><small>{{ i.email or '' }}</small></span>
+            <span><small>{{ i.kind }}</small></span>
+        </a>{% endfor %}
+    {% endif %}
+    {% if customers %}<h2>Customers</h2>
+        {% for c in customers %}
+        <a class="row" href="{{ url_for('admin.orders', q=c.email) }}">
+            <span><strong>{{ c.first_name }} {{ c.last_name }}</strong><br><small>{{ c.email }}</small></span>
+            <span><small>see their orders</small></span>
+        </a>{% endfor %}
+    {% endif %}
+</div>
+{% endblock %}

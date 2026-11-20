@@ -1786,3 +1786,18 @@ class DonationClaim(db.Model):
     claimed_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     order = db.relationship('Order', foreign_keys=[order_id])
+
+
+class EmailFailure(db.Model):
+    """An email the site tried to send and could not. Listed in admin so nothing is lost silently; Resend tries it again."""
+    __tablename__ = 'email_failure'
+    id = db.Column(db.Integer, primary_key=True)
+    to_addr = db.Column(db.String(500))
+    subject = db.Column(db.String(500))
+    kind = db.Column(db.String(200))                  # what the email was, such as "invoice INV-2026-0001"
+    reason = db.Column(db.String(300))                # plain words: no email service set up, no address, service refused it
+    html = db.Column(db.Text)
+    body = db.Column(db.Text)
+    had_attachments = db.Column(db.Integer, default=0)
+    resolved = db.Column(db.Boolean, default=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)

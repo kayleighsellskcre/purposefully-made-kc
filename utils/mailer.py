@@ -126,7 +126,21 @@ def _apply_test_guard(app, msg):
     return msg
 
 
-def send(app, msg, description='email'):
+def _record_failure(app, msg, description, reason):
+    """Remember an email that did not go out so admin can see and resend it. Never raises."""
+    try:
+        from models import EmailFailure, db
+        with app.app_context():
+            db.session.add(EmailFailure(
+                to_addr=', '.join(msg.recipients or [])[:500], subject=(msg.subject or '')[:500],
+                kind=(description or 'email')[:200], reason=reason[:300], html=getattr(msg, 'html', None),
+                body=getattr(msg, 'body', None), had_attachments=len(getattr(msg, 'attachments', None) or [])))
+            db.session.commit()
+    except Exception:
+        app.logger.exception('could not record the failed email')
+
+
+def send(app, msg, description='email', record=True):
     """Send one message. Returns True on success. Never raises.
 
     Tries Brevo HTTP API first (works on Railway), then falls back to
@@ -141,9 +155,13 @@ def send(app, msg, description='email'):
             '(set BREVO_API_KEY on Railway, or MAIL_SERVER+USERNAME+PASSWORD for SMTP)',
             description,
         )
+        if record:
+            _record_failure(app, msg, description, 'No email service is set up on the site (BREVO_API_KEY).')
         return False
     if not msg.recipients:
         app.logger.error('%s not sent — no recipients', description)
+        if record:
+            _record_failure(app, msg, description, 'There was no email address to send it to.')
         return False
 
     if not msg.sender:
@@ -158,6 +176,8 @@ def send(app, msg, description='email'):
             app.logger.info('%s sent via Brevo API to %s', description, ', '.join(msg.recipients))
         else:
             app.logger.error('%s failed via Brevo API to %s', description, ', '.join(msg.recipients))
+            if record:
+                _record_failure(app, msg, description, 'The email service did not accept it. It is often a bad address.')
         return ok
 
     # ── Path 2: Flask-Mail SMTP (local dev fallback) ─────────────────────────
@@ -171,6 +191,8 @@ def send(app, msg, description='email'):
         return True
     except Exception:
         app.logger.exception('%s failed via SMTP to %s', description, ', '.join(msg.recipients))
+        if record:
+            _record_failure(app, msg, description, 'The email service did not accept it.')
         return False
     finally:
         socket.setdefaulttimeout(previous)

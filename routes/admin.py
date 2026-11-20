@@ -381,6 +381,12 @@ def index():
         Order.payment_status == 'paid'
     ).scalar() or 0
     pending_design_requests = CustomDesignRequest.query.filter_by(status='pending').count()
+    email_problems_count = 0
+    try:
+        from models import EmailFailure
+        email_problems_count = EmailFailure.query.filter_by(resolved=False).count()
+    except Exception:
+        db.session.rollback()
     recent_site_errors = 0
     try:
         from datetime import timedelta
@@ -426,6 +432,7 @@ def index():
                          recent_orders=recent_orders,
                          pending_design_requests=pending_design_requests,
                          recent_site_errors=recent_site_errors,
+                         email_problems_count=email_problems_count,
                          greeting=greeting,
                          admin_name=admin_name,
                          now=_now)
@@ -6551,6 +6558,7 @@ def mark_order_paid(order_id):
 from routes import admin_books  # noqa: E402,F401
 from routes import admin_donations  # noqa: E402,F401
 from routes import admin_bulk_orders  # noqa: E402,F401
+from routes import admin_tools  # noqa: E402,F401   (search box, emails that did not send)
 from routes import admin_backroom  # noqa: E402,F401
 from routes import admin_artwork_pack  # noqa: E402,F401
 # School district setup, QR codes and reports.

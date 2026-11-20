@@ -28,6 +28,13 @@
     display: contents;
 }
 
+.ops-nav-search { margin-left: auto; display: flex; flex: 0 1 260px; min-width: 0; }
+.ops-nav-search input {
+    width: 100%; min-width: 0; box-sizing: border-box; min-height: 40px; padding: 0.4rem 0.8rem;
+    border: 1.5px solid rgba(232,208,177,0.8); border-radius: 10px; background: #fffdf9;
+    font: 400 0.85rem inherit; font-family: inherit; color: inherit;
+}
+
 .ops-nav-toggle {
     display: none;
     align-items: center;
@@ -202,7 +209,8 @@
         width: 100%;
     }
 
-    .ops-nav-toggle { display: inline-flex; }
+    .ops-nav-toggle { display: inline-flex; margin-left: 0; }
+    .ops-nav-search { flex: 1 1 auto; margin-left: 0; }
 
     .ops-nav-menus {
         display: none;
