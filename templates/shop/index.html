@@ -235,17 +235,8 @@
                             {% if product.is_customer_favorite %}
                             <span class="fav-badge fav-badge-overlay">
                                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 7.1-1.01L12 2z"/></svg>
-                                <span class="fav-word">Customer </span>Favorite
+                                Favorite
                             </span>
-                            {% endif %}
-
-                            {# Age-group strip — only on family cards #}
-                            {% if family.is_family %}
-                            <div class="family-age-strip">
-                                {% for age in family.ages %}
-                                <span class="family-age-chip family-age-chip--{{ age }}">{{ age|capitalize }}</span>
-                                {% endfor %}
-                            </div>
                             {% endif %}
 
                             <!-- Color Preview Carousel -->
@@ -299,8 +290,9 @@
 
                         <div class="product-info">
                             {% set ncol = (product.carousel_colors|length) if product.carousel_colors else 0 %}
-                            <h2 class="product-name">{{ product|display_name }}</h2>
+                            <h2 class="product-name">{{ product|display_name|without_brand(product.display_brand) }}</h2>
                             {% if product.display_brand %}<p class="product-brand-line">{{ product.display_brand }}</p>{% endif %}
+                            {% if family.is_family %}<p class="product-ages-line">{% for age in family.ages %}{{ age|capitalize }}{% if not loop.last %} &middot; {% endif %}{% endfor %}</p>{% endif %}
                             {% if product.softness_label or ncol %}
                             <p class="product-meta-line">{{ product.softness_label if product.softness_label else '' }}{% if product.softness_label and ncol %} &middot; {% endif %}{% if ncol %}{{ ncol }} color{{ 's' if ncol != 1 }}{% endif %}</p>
                             {% endif %}
@@ -1572,10 +1564,10 @@ document.addEventListener('DOMContentLoaded', () => {
 }());
 
 
-// Show the first 12 products, reveal more on request. If the browser has no
+// Show the first 20 products, reveal more on request. If the browser has no
 // JavaScript everything simply stays visible.
 (function () {
-    const PAGE = 12;
+    const PAGE = 20;        // divides evenly into 2, 4 and 5 across, so the last row is never left with a few lonely cards
     const cards = Array.from(document.querySelectorAll('.products-grid > .product-card'));
     const wrap = document.getElementById('showMoreWrap');
     const btn = document.getElementById('showMoreBtn');

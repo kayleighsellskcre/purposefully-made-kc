@@ -2875,6 +2875,10 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 .shop-section .product-meta-line { margin: 0 0 0.4rem; font-size: 0.8rem; color: var(--accent-color); font-weight: 600; }
 .shop-section .product-price { font-size: 1.15rem; margin: auto 0 0.55rem; padding-top: 0.2rem; }
 .shop-section .product-card .btn-customize { width: 100%; }
+/* On the shop the whole card is the link, so the button is a quiet outline, not a heavy block on every card */
+.shop-section .product-card .btn-customize { background: transparent; box-shadow: none; color: var(--terra-cotta) !important; border: 1.5px solid var(--terra-cotta); }
+.shop-section .product-card:hover .btn-customize, .shop-section .product-card .btn-customize:hover { background: var(--terra-cotta); color: #fff !important; transform: none; filter: none; box-shadow: none; }
+.shop-section .product-ages-line { margin: 0 0 0.35rem; font-size: 0.78rem; color: var(--text-secondary); }
 .shop-section .family-age-strip { top: auto; bottom: 0.5rem; left: 0.5rem; right: auto; }
 @media (max-width: 1199px) { .shop-section .products-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 1023px) { .shop-section .products-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

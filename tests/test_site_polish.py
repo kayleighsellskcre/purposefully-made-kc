@@ -65,3 +65,11 @@ def test_a_ready_email_looks_like_the_receipt(app, seed):
         html = render_template('email/sponsor_update.html', heading='Ready for pickup', paragraphs=['Hi Pat.'],
                                details=[('Order', 'PMKC-1'), ('Pickup', 'Shawnee')], button=None, note=None)
     assert 'PMKC-1' in html and 'Order Number' in html and 'Shawnee, KS' in html and 'Made with purpose, for you.' in html
+
+
+def test_a_shop_card_does_not_say_the_brand_twice():
+    from utils.product_names import without_brand
+    assert without_brand('BELLA+CANVAS Unisex Jersey Short Sleeve Tee', 'Bella+Canvas') == 'Unisex Jersey Short Sleeve Tee'
+    assert without_brand('Port & Company Core Tee', 'Port & Company') == 'Core Tee'
+    assert without_brand('Unisex Tee', 'Gildan') == 'Unisex Tee'          # no brand in the title: left alone
+    assert without_brand('Gildan', 'Gildan') == 'Gildan'                  # never leave an empty title

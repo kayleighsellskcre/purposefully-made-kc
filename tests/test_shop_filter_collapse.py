@@ -401,7 +401,7 @@ def test_a_long_catalog_gets_a_show_more_button(client, app, seed):
     _add_many_products(app, 20)
     html = html_of(client)
     assert 'id="showMoreWrap"' in html and 'id="showMoreBtn"' in html
-    assert 'const PAGE = 12' in html
+    assert 'const PAGE = 20' in html
     # every product is still in the page (nothing is removed, only folded)
     assert html.count('class="product-card') >= 20
 

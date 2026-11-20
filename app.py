@@ -1013,6 +1013,11 @@ def create_app(config_class=Config):
         from utils.product_names import display_product_name
         return display_product_name(product_or_name, style_number)
 
+    @app.template_filter('without_brand')
+    def without_brand_filter(title, brand):
+        from utils.product_names import without_brand
+        return without_brand(title, brand)
+
     @app.template_filter('spec_sheet_url')
     def spec_sheet_url_filter(product):
         """External Spec Sheet URL when available (never broken SanMar CDN links)."""

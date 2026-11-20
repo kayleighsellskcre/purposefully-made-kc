@@ -32,6 +32,21 @@ def display_product_name(product_or_name, style_number=None):
     return text or re.sub(r'\s+', ' ', str(product_or_name)).strip() or 'Product'
 
 
+def without_brand(title, brand):
+    """The title with the brand taken off the front, for a card that already prints the brand on its own line."""
+    title = str(title or '').strip()
+    brand = re.sub(r'\s+', ' ', str(brand or '')).strip()
+    if not title or not brand:
+        return title
+    squash = lambda t: re.sub(r'[^a-z0-9+]', '', t.lower())
+    words = title.split(' ')
+    for n in range(1, min(len(words), 4) + 1):          # the brand can be one to four words ("Bella + Canvas", "Port & Company")
+        if squash(' '.join(words[:n])) == squash(brand):
+            rest = ' '.join(words[n:]).strip()
+            return rest or title
+    return title
+
+
 TITLE_SUFFIX = ' - Purposefully Made KC'
 TITLE_LIMIT = 60
 _BRAND_LEAD = re.compile(r'^(?:bella\s*\+\s*canvas|comfort colors|gildan|port & company|next level|independent trading co\.?|rabbit skins)\s+', re.I)
