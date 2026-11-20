@@ -418,6 +418,8 @@ def index():
         from utils.admin_notifications import backfill_pending_design_requests
         backfill_pending_design_requests()
     except Exception:
+        from utils.quiet_errors import report_quiet
+        report_quiet('catching up pending design requests')
         try:
             db.session.rollback()
         except Exception:
@@ -5044,7 +5046,8 @@ def _design_validation_meta(design):
                 'metrics': v.get('metrics', {}),
             }
     except Exception:
-        pass
+        from utils.quiet_errors import report_quiet
+        report_quiet('checking the print quality of a design')
     return meta
 
 
@@ -5192,6 +5195,8 @@ def notifications():
     try:
         backfill_pending_design_requests()
     except Exception:
+        from utils.quiet_errors import report_quiet
+        report_quiet('catching up pending design requests')
         try:
             db.session.rollback()
         except Exception:
@@ -5853,7 +5858,8 @@ def financial():
         try:
             changed |= refresh_processing_fee(o, allow_network=False)
         except Exception:
-            pass
+            from utils.quiet_errors import report_quiet
+            report_quiet(f'refreshing the card fee on order {o.order_number}')
         new_profit = true_profit(o)
         if new_profit is not None and o.profit != new_profit:
             o.profit = new_profit

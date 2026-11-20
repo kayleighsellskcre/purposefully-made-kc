@@ -53,3 +53,22 @@ def test_search_finds_orders_invoices_and_goes_straight_to_a_single_answer(app, 
 
 def test_search_needs_an_admin(app, seed):
     assert app.test_client().get('/admin/search?q=a').status_code in (302, 401, 403)
+
+
+def test_a_quiet_problem_is_listed_once_and_does_not_disturb_the_page_work(app, seed):
+    from models import SiteError
+    from utils.quiet_errors import report_quiet
+    with app.test_request_context('/admin/orders'):
+        pending = ManualInvoice(number='INV-Q-1', kind='invoice', customer_name='Q', items_json='[]')
+        db.session.add(pending)
+        db.session.commit()
+        pending.note = 'kept'                                   # unsaved work the caller is in the middle of
+        for _ in range(3):
+            try:
+                raise ValueError('card fee lookup failed')
+            except ValueError:
+                report_quiet('refreshing the card fee')
+        assert pending in db.session.dirty                  # the caller's own work is still waiting, not saved by the report
+        rows = SiteError.query.filter(SiteError.message.like('%refreshing the card fee%')).all()
+        assert len(rows) == 1 and 'the page still worked' in rows[0].message
+        db.session.rollback()
