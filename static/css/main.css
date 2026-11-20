@@ -3104,7 +3104,7 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 .customizer-page { padding-bottom: 4rem; }
 .customizer-container .customization-panel, .customizer-container .options-panel { padding-bottom: 1rem; }
 .customizer-container [id^="step"], .customizer-container .size-grid, .customizer-container .color-grid-professional { scroll-margin-bottom: 11rem; }
-.customizer-container .order-bar #addToCart.is-incomplete { opacity: 0.8; }
+.customizer-container .order-bar #addToCart.is-incomplete { opacity: 1; }   /* always the strongest button; the message says what is missing */
 .customizer-container .order-bar .add-to-cart-hint { display: none; }
 .customizer-container .order-bar p.production-timeline-note { margin: 0.4rem 0 0; padding: 0; background: none; border: 0; font-size: 0.78rem; line-height: 1.35; text-align: center; max-width: none; }
 

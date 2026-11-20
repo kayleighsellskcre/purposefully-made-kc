@@ -2805,7 +2805,7 @@
                 </button>
                 {% else %}
                 {% if edit_line %}<p class="edit-note">You are changing an item from your cart. Make your changes, then press Update Item.</p>{% endif %}
-                <button class="btn btn-primary btn-block" id="addToCart" disabled style="opacity:0.65;cursor:not-allowed;">{{ 'Update Item' if edit_line else 'Add to Cart' }}</button>
+                <button class="btn btn-primary btn-block" id="addToCart" disabled>{{ 'Update Item' if edit_line else 'Add to Cart' }}</button>
                 <p class="add-to-cart-hint" id="addToCartHint" aria-live="polite">
                     If Add to Cart is greyed out, choose a size and upload or select a design.
                 </p>
@@ -4932,7 +4932,7 @@
         if (outOfStock) {
             hint.textContent = 'That size is out of stock. Try another size or color.';
         } else if (!hasSize && !hasDesign) {
-            hint.textContent = 'If Add to Cart is greyed out, choose a size and upload or select a design.';
+            hint.textContent = 'Choose a size and a design, then add it to your cart.';
         } else if (!hasSize) {
             hint.textContent = 'Select a size to continue.';
         } else {
