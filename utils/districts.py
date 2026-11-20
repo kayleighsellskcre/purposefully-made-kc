@@ -456,10 +456,15 @@ def effective_kind(store):
 
 
 def real_deadline(value):
-    """A deadline worth showing: one that is set and not a far-off placeholder (over 13 months away)."""
+    """A deadline worth showing: one that is set and not a far-off placeholder (over 6 months away)."""
     if not value:
         return None
-    return value if value <= datetime.utcnow() + timedelta(days=400) else None
+    return value if value <= datetime.utcnow() + timedelta(days=183) else None
+
+
+def is_far_deadline(value):
+    """A deadline that is set but so far off it reads as a placeholder; the store is simply open all year."""
+    return bool(value) and real_deadline(value) is None
 
 
 def store_sections(stores):

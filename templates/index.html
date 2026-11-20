@@ -373,7 +373,7 @@
                 </div>
                 <div class="hg-body">
                     <span class="hg-name">{{ c.card_title or c.name }}</span>
-                    <span class="hg-meta">{% if card.not_yet_open and c.order_opens_at %}Opens {{ c.order_opens_at|kc_date }}{% elif c.order_deadline %}Order by {{ c.order_deadline|kc_date }}{% else %}Open now{% endif %}</span>
+                    <span class="hg-meta">{% if card.not_yet_open and c.order_opens_at %}Opens {{ c.order_opens_at|kc_date }}{% elif c.order_deadline|real_deadline %}Order by {{ c.order_deadline|kc_date }}{% else %}Open now{% endif %}</span>
                     {% if c.description %}<p class="hg-desc">{{ c.description|truncate(110, true, '…') }}</p>{% endif %}
                     <span class="hg-go">Shop this store &rarr;</span>
                 </div>

@@ -31,6 +31,9 @@ def test_only_a_real_deadline_is_shown():
     assert real_deadline(None) is None
     assert real_deadline(datetime.utcnow() + timedelta(days=20)) is not None
     assert real_deadline(datetime.utcnow() + timedelta(days=800)) is None      # a far-off placeholder
+    assert real_deadline(datetime.utcnow() + timedelta(days=340)) is None      # almost a year away reads as a placeholder too
+    from utils.districts import is_far_deadline
+    assert is_far_deadline(datetime.utcnow() + timedelta(days=340)) and not is_far_deadline(None)
 
 
 def test_seniors_and_family_are_classes_not_sports():

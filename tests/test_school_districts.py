@@ -10,11 +10,16 @@ from utils import districts as DS
 
 
 def _next_nov_15():
-    """The coming November 15, so the deadline is a real one (a date years away is treated as a placeholder and hidden)."""
-    from datetime import date
-    today = date.today()
-    year = today.year if today <= date(today.year, 11, 15) else today.year + 1
-    return f'{year}-11-15'
+    """A deadline 30 days out, so it is a real one (a date over 6 months away is treated as a placeholder and hidden)."""
+    from datetime import date, timedelta
+    return (date.today() + timedelta(days=30)).isoformat()
+
+
+def _deadline_label():
+    from datetime import date, timedelta
+    d = date.today() + timedelta(days=30)
+    return f'Order by {d:%b} {d.day}'
+
 
 def _make(app, seed, live=('Football', 'Volleyball')):
     """Desoto with a high school (Mill Valley) and an elementary (Riverview). Returns ids."""
@@ -84,7 +89,7 @@ def test_the_district_page_groups_schools_by_level_and_hides_empty_headings(app,
     # Riverview has no products yet, so a visitor does not see it
     assert 'Riverview Elementary' not in html
     assert 'Elementary Schools' not in html
-    assert 'Order by Nov 15' in html
+    assert _deadline_label() in html
 
 
 def test_the_owner_sees_every_school_on_the_district_page(app, seed, client, login):
@@ -187,7 +192,9 @@ def test_the_flyer_names_the_store_link_and_deadline(app, seed):
     content = reader.pages[0].extract_text()
     assert 'Mill Valley Volleyball' in content
     assert 'purposefullymadekc.com/desoto/mill-valley/volleyball' in content
-    assert 'Order by November 15' in content
+    from datetime import date, timedelta
+    d = date.today() + timedelta(days=30)
+    assert f'Order by {d:%B} {d.day}' in content
     assert 'Jaguars' in content
 
 

@@ -996,6 +996,11 @@ def create_app(config_class=Config):
         from utils.districts import real_deadline
         return real_deadline(value)
 
+    @app.template_filter('far_deadline')
+    def far_deadline_filter(value):
+        from utils.districts import is_far_deadline
+        return is_far_deadline(value)
+
     @app.template_filter('store_title')
     def store_title_filter(collection):
         """A store's page-title name, without a phone number or the organizer's name."""
