@@ -1068,6 +1068,8 @@ def create_app(config_class=Config):
         return format_schedule_date(dt, fmt)
 
     from utils.group_orders import PAYMENT_OPTIONS as _PAYMENT_OPTIONS
+    from utils.business_info import holiday_note as _holiday_note
+    app.jinja_env.globals['holiday_note'] = _holiday_note
     app.jinja_env.globals['PAYMENT_OPTIONS'] = _PAYMENT_OPTIONS
     from utils.group_designs import sources as _design_sources
     app.jinja_env.globals['group_design_sources'] = _design_sources

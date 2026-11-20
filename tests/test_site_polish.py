@@ -73,3 +73,11 @@ def test_a_shop_card_does_not_say_the_brand_twice():
     assert without_brand('Port & Company Core Tee', 'Port & Company') == 'Core Tee'
     assert without_brand('Unisex Tee', 'Gildan') == 'Unisex Tee'          # no brand in the title: left alone
     assert without_brand('Gildan', 'Gildan') == 'Gildan'                  # never leave an empty title
+
+
+def test_the_christmas_note_shows_until_the_cutoff_then_goes_away():
+    from datetime import date
+    from utils.business_info import holiday_note
+    assert holiday_note(date(2026, 11, 20)) == 'Christmas orders: place yours by December 1.'
+    assert holiday_note(date(2026, 12, 1)) is not None          # the cutoff day itself still counts
+    assert holiday_note(date(2026, 12, 2)) is None
