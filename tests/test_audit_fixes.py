@@ -1,5 +1,5 @@
 """Customer-facing fixes from the October 26 storefront audit."""
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from models import Design, db
 
@@ -48,10 +48,17 @@ def test_school_deadlines_show_the_year(app, seed, guest):
     from utils import districts as DS
     with app.app_context():
         d = DS.set_up_district('Desoto USD 232', [('Mill Valley High', 'high', ['Band'], {})])
-        d.order_deadline = datetime(2027, 10, 25)
+        soon = datetime.utcnow() + timedelta(days=60)
+        d.order_deadline = soon
         db.session.commit()
     html = guest.get('/org/desoto-usd-232/mill-valley-high').get_data(as_text=True)
-    assert 'Order by October 25, 2027' in html
+    assert f'Order by {soon:%B} {soon.day}, {soon.year}' in html
+    with app.app_context():                                           # a date almost a year away is a placeholder: no date shown
+        DS_d = db.session.query(type(d)).first()
+        DS_d.order_deadline = datetime.utcnow() + timedelta(days=330)
+        db.session.commit()
+    html = guest.get('/org/desoto-usd-232/mill-valley-high').get_data(as_text=True)
+    assert 'Order by October' not in html and 'dist-lead' not in html
 
 
 def test_every_store_list_and_share_page_offers_the_flyer(app, seed, admin_client, guest):
