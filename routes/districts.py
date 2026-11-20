@@ -59,6 +59,8 @@ def directory():
     for d in District.query.filter_by(is_active=True, listed=True).order_by(District.name).all():
         count = sum(1 for level in DS.schools_by_level(d, public=True) for _ in level[2])
         items.append({'district': d, 'schools': count, 'logo': _logo(d), 'url': DS.district_url(d)})
+    if len(items) == 1:                          # a single district: no list of one, go straight to its schools
+        return redirect(items[0]['url'])
     return render_template('district/index.html', districts=items)
 
 

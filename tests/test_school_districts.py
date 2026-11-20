@@ -464,7 +464,7 @@ def test_the_school_pages_do_not_ask_the_database_school_by_school(app, seed):
         client = app.test_client()
         for path in ('/school-districts', f'/org/{slug}'):
             counts.clear()
-            resp = client.get(path)
+            resp = client.get(path, follow_redirects=True)      # with one district, Schools opens it directly
             assert resp.status_code == 200
             assert len(counts) < 45, f'{path} used {len(counts)} lookups'
     finally:

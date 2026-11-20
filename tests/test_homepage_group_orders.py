@@ -113,7 +113,7 @@ def test_group_orders_page_lists_open_orders_before_the_explanations(client, see
     assert html.index('id="open-orders"') < html.index('class="go-help"')
     assert 'class="cta-section"' not in html and 'Ready to get started' not in html     # the repeat block is gone
     assert all(name in html for name in ('Everyone Pays Individually', 'The Entire Order Is Covered', 'A Set Amount Is Covered'))
-    assert 'href="#open-orders"' in html                         # "Find your group"
+    assert 'href="#find"' in html and 'href="#start"' in html     # the two doors at the top
 
 
 def test_group_orders_explanations_start_collapsed_when_there_are_open_orders(client, seed):
@@ -136,7 +136,7 @@ def test_group_orders_explanations_start_open_when_nothing_is_open(app, client, 
 
 def test_each_way_to_pay_starts_the_form_with_that_choice_selected(client, customer_client, seed):
     html = customer_client.get('/shop/group-orders').get_data(as_text=True)
-    assert html.count('Start a group order') == 3
+    assert all(label in html for label in ('Everyone pays', 'We cover it all', 'We cover a set amount'))      # each button says which way
     assert '/shop/group-orders/create?mode=whole' in html and '/shop/group-orders/create?mode=amount' in html
     for mode, checked in (('', 'each_pays'), ('?mode=whole', 'organizer_pays'), ('?mode=amount', 'company_sponsored'),
                           ('?mode=company', 'company_sponsored')):

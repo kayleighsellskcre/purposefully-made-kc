@@ -321,27 +321,21 @@
         <span class="eyebrow">Bulk Ordering</span>
         <h1>Group Orders</h1>
         <p class="lead">Custom apparel for teams, schools, and organizations. Create your options and share one link. Everyone stays matching.</p>
-        <p class="go-links">
-            {% if open_collections or open_orgs %}<a href="#open-orders">Find your group</a>{% endif %}
-            <a href="{{ url_for('district.directory') }}">School districts</a>
-            {% if current_user.is_authenticated %}<a href="{{ url_for('account.my_group_orders') }}">My group orders</a>{% endif %}
-        </p>
+        <div class="go-jump">
+            <a class="go-jump-link" href="#find">Find your store</a>
+            <a class="go-jump-link go-jump-link--solid" href="#start">Start a group order</a>
+        </div>
+        {% if current_user.is_authenticated %}<p class="go-links"><a href="{{ url_for('account.my_group_orders') }}">My group orders</a></p>{% endif %}
     </div>
 </div>
 
 <section class="group-orders-content">
     <div class="container">
-        <div class="go-choose">
-            {% for opt in PAYMENT_OPTIONS %}
-            {% set _start = url_for('shop.create_group_order', mode=opt.mode) if opt.mode else url_for('shop.create_group_order') %}
-            <div class="go-option">
-                <h2 class="go-option-title">{{ opt.title }}</h2>
-                <p>{{ opt.text }}</p>
-                <a href="{{ _start if current_user.is_authenticated else url_for('auth.login', next=_start) }}" class="btn btn-primary" aria-label="{{ opt.label }}">Start a group order</a>
-            </div>
-            {% endfor %}
+
+        <div class="directory-section" id="find">
+            <h2>Find your store</h2>
+            <p class="section-sub">Already have a link or a team name? Look below. For a school, <a href="{{ url_for('district.directory') }}">browse school districts</a>.</p>
         </div>
-        <p class="go-option-note">Covering a team at work? <a href="{{ url_for('shop.company_apparel') }}">See Company Apparel</a>.</p>
 
         {% if open_collections or open_orgs %}
         <div class="directory-section" id="open-orders">
@@ -441,6 +435,22 @@
             </div>
         </div>
         {% endif %}
+
+        <div class="directory-section" id="start">
+            <h2>Start a new group order</h2>
+            <p class="section-sub">Choose who pays. You can adjust the details while you set it up.</p>
+        </div>
+        <div class="go-choose">
+            {% for opt in PAYMENT_OPTIONS %}
+            {% set _start = url_for('shop.create_group_order', mode=opt.mode) if opt.mode else url_for('shop.create_group_order') %}
+            <div class="go-option">
+                <h2 class="go-option-title">{{ opt.title }}</h2>
+                <p>{{ opt.text }}</p>
+                <a href="{{ _start if current_user.is_authenticated else url_for('auth.login', next=_start) }}" class="btn btn-primary" aria-label="{{ opt.label }}">{{ opt.button }}</a>
+            </div>
+            {% endfor %}
+        </div>
+        <p class="go-option-note">Covering a team at work? <a href="{{ url_for('shop.company_apparel') }}">See Company Apparel</a>.</p>
 
         <details class="go-help"{% if not (open_collections or open_orgs) %} open{% endif %}>
             <summary>How group orders work &amp; common questions</summary>

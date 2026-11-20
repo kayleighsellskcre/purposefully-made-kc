@@ -81,3 +81,12 @@ def test_the_christmas_note_shows_until_the_cutoff_then_goes_away():
     assert holiday_note(date(2026, 11, 20)) == 'Christmas orders: place yours by December 1.'
     assert holiday_note(date(2026, 12, 1)) is not None          # the cutoff day itself still counts
     assert holiday_note(date(2026, 12, 2)) is None
+
+
+def test_group_orders_page_has_two_doors_and_named_payment_buttons(app, seed, guest):
+    html = guest.get('/shop/group-orders').get_data(as_text=True)
+    assert 'Find your store' in html and 'Start a group order' in html
+    assert html.index('id="find"') < html.index('id="start"')                  # finding a store comes first
+    for label in ('Everyone pays', 'We cover it all', 'We cover a set amount'):
+        assert label in html
+    assert 'Start a group order</a>' not in html.split('id="start"')[1]        # no three identical buttons

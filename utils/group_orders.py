@@ -705,15 +705,15 @@ def is_deadline_passed(collection):
 # so the three options are described the same way everywhere.
 PAYMENT_OPTIONS = [
     {'key': 'each_pays', 'mode': None, 'title': 'Everyone Pays Individually',
-     'who': 'Each person pays',
+     'who': 'Each person pays', 'button': 'Everyone pays',
      'text': 'The organizer chooses which styles and options are available. Each shopper chooses and pays for their own items.',
      'label': 'Start an order where each person pays'},
     {'key': 'organizer_pays', 'mode': 'whole', 'title': 'The Entire Order Is Covered',
-     'who': 'Organizer pays',
+     'who': 'Organizer pays', 'button': 'We cover it all',
      'text': 'The organizer chooses one style, color and design. People submit their names and sizes, and the organizer pays for the full roster.',
      'label': 'Start an organizer-paid order'},
     {'key': 'company_sponsored', 'mode': 'amount', 'title': 'A Set Amount Is Covered',
-     'who': 'A sponsor covers part',
+     'who': 'A sponsor covers part', 'button': 'We cover a set amount',
      'text': 'A sponsor covers a set number of items, with an optional limit per item. Shoppers pay for extras and any amount over the limit. The organizer pays the sponsor invoice before covered items are printed.',
      'label': 'Start a sponsor-covered order'},
 ]

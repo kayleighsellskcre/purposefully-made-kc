@@ -13,9 +13,19 @@ def _two_districts(app):
 
 def test_the_schools_page_lists_listed_districts_only(app, seed, guest):
     _two_districts(app)
+    with app.app_context():
+        second = DS.set_up_district('Olathe Schools', [('Olathe North', 'high', ['Volleyball'], {})])
+        second.listed = True
+        db.session.commit()
     html = guest.get('/school-districts').get_data(as_text=True)
-    assert 'Desoto USD 232' in html and '/org/desoto-usd-232' in html
+    assert 'Desoto USD 232' in html and '/org/desoto-usd-232' in html and 'Olathe Schools' in html
     assert 'Private Academy' not in html
+
+
+def test_with_a_single_district_the_schools_page_opens_it_directly(app, seed, guest):
+    _two_districts(app)                                        # the second one is link-only, so one district is listed
+    resp = guest.get('/school-districts')
+    assert resp.status_code == 302 and resp.headers['Location'].endswith('/org/desoto-usd-232')
 
 
 def test_a_link_only_district_still_opens_by_its_link(app, seed, guest):

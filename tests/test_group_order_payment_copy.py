@@ -47,9 +47,12 @@ def test_the_faq_payment_answer_is_a_short_list(client):
 
 def test_each_setup_button_has_its_own_accessible_name_and_the_same_look(client):
     html = client.get('/shop/group-orders').get_data(as_text=True)
-    labels = re.findall(r'class="btn btn-primary" aria-label="([^"]+)">Start a group order<', html)
+    pairs = re.findall(r'class="btn btn-primary" aria-label="([^"]+)">([^<]+)<', html)
+    pairs = [(a, b.strip()) for a, b in pairs if a.startswith('Start a')]
+    labels = [a for a, _ in pairs]
     assert labels == ['Start an order where each person pays', 'Start an organizer-paid order',
                       'Start a sponsor-covered order']
+    assert [b for _, b in pairs] == ['Everyone pays', 'We cover it all', 'We cover a set amount']      # each button says which way
     assert len(set(labels)) == 3
 
 
