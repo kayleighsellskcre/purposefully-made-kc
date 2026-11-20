@@ -129,10 +129,9 @@ def test_grade_is_a_dropdown_and_footer_has_kind_words():
     assert "e.g. 3rd or Kindergarten" not in src
 
 
-def test_signed_in_header_can_shorten_the_account_label(client, login):
+def test_signed_in_header_shows_a_person_icon_with_the_account_menu(client, login):
     from tests.conftest import CUSTOMER_EMAIL
     login(client, CUSTOMER_EMAIL)
     html = client.get('/shop/').get_data(as_text=True)
-    assert '<span class="nav-account-my">My </span>Account' in html
-    css = open('static/css/main.css', encoding='utf-8').read()
-    assert '.nav-account-my, .nav-account-chev { display: none; }' in css
+    assert 'id="navAccountBtn"' in html and 'aria-label="My account"' in html       # one icon, no wide "My Account" pill
+    assert 'Log Out' in html and '<span class="nav-account-my">' not in html
