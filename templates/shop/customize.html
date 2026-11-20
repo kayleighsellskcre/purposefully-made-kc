@@ -3608,10 +3608,32 @@
             if (countEl) countEl.textContent = categoryCounts[cat];
         });
         
+        // A style with dozens of colors opens on the favorites, with "See all" under them (search and the filters show everything).
+        const POPULAR_COLORS = ['black', 'white', 'navy', 'heather gray', 'heather grey', 'dark heather grey', 'dark grey heather', 'athletic heather', 'sport grey', 'charcoal',
+            'royal', 'true royal', 'red', 'cardinal', 'maroon', 'forest green', 'forest', 'kelly', 'sand', 'natural', 'light blue', 'carolina blue', 'pink', 'gold', 'orange', 'purple', 'ash', 'cream'];
+        const collapsible = colorCards.length > 24;
+        let showAllColors = false;
+        const popularCards = new Set();
+        colorCards.forEach(function (card) { if (popularCards.size < 18 && POPULAR_COLORS.indexOf((card.dataset.color || '').toLowerCase().trim()) !== -1) popularCards.add(card); });
+        for (let i = 0; i < colorCards.length && popularCards.size < 12; i++) popularCards.add(colorCards[i]);
+        let seeAllBtn = null;
+        if (collapsible) {
+            const grid = document.getElementById('colorGrid');
+            seeAllBtn = document.createElement('button');
+            seeAllBtn.type = 'button';
+            seeAllBtn.className = 'btn btn-outline btn-block color-see-all';
+            seeAllBtn.style.marginTop = '0.75rem';
+            seeAllBtn.textContent = 'See all ' + colorCards.length + ' colors';
+            seeAllBtn.addEventListener('click', function () { showAllColors = true; applyFilters(); });
+            grid.parentNode.insertBefore(seeAllBtn, grid.nextSibling);
+        }
+
         // Filter function
         function applyFilters() {
             const activeFilter = document.querySelector('.filter-tab.active')?.dataset.filter || 'all';
             const searchTerm = searchInput.value.toLowerCase().trim();
+            const collapsed = collapsible && !showAllColors && activeFilter === 'all' && !searchTerm;
+            if (seeAllBtn) seeAllBtn.hidden = !collapsed;
             
             let visibleCount = 0;
             
@@ -3626,7 +3648,8 @@
                 const matchesSearch = !searchTerm || colorName.includes(searchTerm);
                 
                 // Show/hide card
-                if (matchesFilter && matchesSearch) {
+                const tuckedAway = collapsed && !popularCards.has(card) && !card.classList.contains('selected');
+                if (matchesFilter && matchesSearch && !tuckedAway) {
                     card.classList.remove('hidden');
                     visibleCount++;
                 } else {
@@ -3636,7 +3659,9 @@
             
             // Update showing text
             const totalCount = colorCards.length;
-            if (visibleCount === totalCount) {
+            if (collapsed) {
+                showingText.textContent = `Showing ${visibleCount} favorites`;
+            } else if (visibleCount === totalCount) {
                 showingText.textContent = `Showing all ${totalCount} colors`;
             } else {
                 showingText.textContent = `Showing ${visibleCount} of ${totalCount} colors`;
