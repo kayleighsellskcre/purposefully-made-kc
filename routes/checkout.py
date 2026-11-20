@@ -1030,7 +1030,7 @@ def index():
     send_home_asks_grade = show_send_home and collection_asks_grade(collection)
     shipping_offered = group_shipping_offered(collection, family_promo_active)
     pickup_heading = group_pickup_heading(collection)
-    pickup_details = group_pickup_details(collection)
+    pickup_details = group_pickup_details(collection, before_payment=True)
     fulfillment_section_title = (
         "How you'll get your order" if is_group_order and not shipping_offered
         else 'Fulfillment Method'

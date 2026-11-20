@@ -126,8 +126,12 @@ def group_pickup_heading(collection=None):
     return 'Local Pickup'
 
 
-def group_pickup_details(collection=None):
-    """Body lines under the checkout pickup option."""
+def group_pickup_details(collection=None, before_payment=False):
+    """Body lines under the checkout pickup option.
+
+    `before_payment=True` is the checkout page itself: the shop's own street address is kept for the confirmation
+    and emails, so a stranger who only added a shirt to the cart sees the city, not the street.
+    """
     instructions, address = _pickup_text(collection)
     lines = []
     if address:
@@ -139,6 +143,8 @@ def group_pickup_details(collection=None):
     if group_uses_organizer_fulfillment(collection):
         return ['Your organizer will have this order.']
     from utils.business_info import BUSINESS
+    if before_payment:
+        return ['Free - Pick up in Shawnee, KS. The exact address is in your confirmation email.']
     return [f"Free - Pick up at {BUSINESS['pickup_address']}"]      # say where "local" is
 
 

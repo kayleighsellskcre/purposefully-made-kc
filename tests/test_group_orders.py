@@ -1242,3 +1242,10 @@ def test_group_checkout_shows_organizer_instructions_not_store_pickup(client, se
 def test_the_shop_pickup_option_says_where_pickup_is():
     from utils.group_orders import group_pickup_details
     assert group_pickup_details(None) == ['Free - Pick up at 4632 Woodstock Street, Shawnee, KS 66218']
+
+
+def test_checkout_page_shows_the_city_not_the_street_before_payment(app):
+    from utils.group_orders import group_pickup_details
+    before = ' '.join(group_pickup_details(None, before_payment=True))
+    assert 'Shawnee' in before and 'Woodstock' not in before and 'confirmation email' in before
+    assert 'Woodstock' in ' '.join(group_pickup_details(None))          # the confirmation still gives the full address
