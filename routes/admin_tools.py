@@ -22,14 +22,14 @@ def admin_search():
     q = (request.args.get('q') or '').strip()
     orders = invoices = customers = []
     if q:
-        like = f'%{q}%'
+        like = '%' + q.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'   # a typed % or _ is plain text, not a wildcard
         digits = ''.join(ch for ch in q if ch.isdigit())
-        order_match = db.or_(Order.order_number.ilike(like), Order.first_name.ilike(like), Order.last_name.ilike(like),
-                             Order.email.ilike(like), (Order.first_name + ' ' + Order.last_name).ilike(like))
-        invoice_match = db.or_(ManualInvoice.number.ilike(like), ManualInvoice.customer_name.ilike(like),
-                               ManualInvoice.company.ilike(like), ManualInvoice.email.ilike(like))
-        customer_match = db.or_(User.email.ilike(like), User.first_name.ilike(like), User.last_name.ilike(like),
-                                (User.first_name + ' ' + User.last_name).ilike(like))
+        order_match = db.or_(Order.order_number.ilike(like, escape='\\'), Order.first_name.ilike(like, escape='\\'), Order.last_name.ilike(like, escape='\\'),
+                             Order.email.ilike(like, escape='\\'), (Order.first_name + ' ' + Order.last_name).ilike(like, escape='\\'))
+        invoice_match = db.or_(ManualInvoice.number.ilike(like, escape='\\'), ManualInvoice.customer_name.ilike(like, escape='\\'),
+                               ManualInvoice.company.ilike(like, escape='\\'), ManualInvoice.email.ilike(like, escape='\\'))
+        customer_match = db.or_(User.email.ilike(like, escape='\\'), User.first_name.ilike(like, escape='\\'), User.last_name.ilike(like, escape='\\'),
+                                (User.first_name + ' ' + User.last_name).ilike(like, escape='\\'))
         if len(digits) >= 4:                                   # a phone number, however it was typed
             order_match = db.or_(order_match, _plain_digits(Order.phone).like(f'%{digits}%'))
             invoice_match = db.or_(invoice_match, _plain_digits(ManualInvoice.phone).like(f'%{digits}%'))

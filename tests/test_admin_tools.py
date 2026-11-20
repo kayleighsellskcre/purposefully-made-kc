@@ -72,3 +72,13 @@ def test_a_quiet_problem_is_listed_once_and_does_not_disturb_the_page_work(app, 
         rows = SiteError.query.filter(SiteError.message.like('%refreshing the card fee%')).all()
         assert len(rows) == 1 and 'the page still worked' in rows[0].message
         db.session.rollback()
+
+
+def test_a_typed_percent_or_underscore_is_plain_text_in_search(app, seed, admin_client):
+    with app.app_context():
+        db.session.add(ManualInvoice(number='INV-PCT-1', kind='invoice', customer_name='Plain Name', items_json='[]'))
+        db.session.add(ManualInvoice(number='INV-PCT-2', kind='invoice', customer_name='Other Name', items_json='[]'))
+        db.session.commit()
+    assert 'Nothing found' in admin_client.get('/admin/search?q=%25').get_data(as_text=True)      # a lone % is not "match everything"
+    assert 'Nothing found' in admin_client.get('/admin/search?q=INV_PCT').get_data(as_text=True)  # _ is not "any one letter"
+    assert admin_client.get('/admin/search?q=INV-PCT-1').status_code == 302

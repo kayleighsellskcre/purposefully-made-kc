@@ -530,10 +530,10 @@ def orders():
     
     q = (request.args.get('q') or '').strip()
     if q:
-        like = f'%{q}%'
+        like = '%' + q.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'   # a typed % or _ is plain text
         query = query.filter(or_(
-            Order.order_number.ilike(like), Order.first_name.ilike(like), Order.last_name.ilike(like),
-            Order.email.ilike(like), (Order.first_name + ' ' + Order.last_name).ilike(like),
+            Order.order_number.ilike(like, escape='\\'), Order.first_name.ilike(like, escape='\\'), Order.last_name.ilike(like, escape='\\'),
+            Order.email.ilike(like, escape='\\'), (Order.first_name + ' ' + Order.last_name).ilike(like, escape='\\'),
         ))
     sort = request.args.get('sort') or 'newest'
     if sort == 'due':
