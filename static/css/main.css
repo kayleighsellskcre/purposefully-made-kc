@@ -1024,23 +1024,25 @@ a.btn-customize:hover {
     margin-bottom: 1.5rem;
 }
 
-/* CTA Section */
+/* CTA Section: a calm cream band with a thin border, not the one dark slab on the site */
 .cta {
-    background: var(--primary-color);
-    color: #fff;
+    background: var(--ivory-silk, #fbf6ee);
+    color: var(--text-primary);
+    border-top: 1px solid rgba(232, 208, 177, 0.6);
+    border-bottom: 1px solid rgba(232, 208, 177, 0.6);
     padding: 3.5rem 0;
     text-align: center;
 }
 
 .cta-title {
-    color: #fff;
+    color: var(--text-primary);
     font-size: 2.4rem;
     margin-bottom: 1rem;
 }
 
 .cta-text {
     font-size: 1.25rem;
-    color: rgba(255,255,255,0.8);
+    color: var(--text-secondary);
     margin-bottom: 2.5rem;
 }
 
@@ -2971,6 +2973,7 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 .start-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.9rem; max-width: 880px; margin: 0 auto; }
 .start-card { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.9rem 1.1rem; background: #fff; border: 1px solid rgba(232, 208, 177, 0.7); border-radius: 14px; color: var(--text-primary); text-decoration: none; transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s; }
 .start-card:hover { border-color: var(--terra-cotta); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(58, 61, 72, 0.08); color: var(--text-primary); }
+.start-icon { width: 28px; height: 28px; color: var(--terra-cotta); margin-bottom: 0.35rem; }
 .start-card strong { font-family: var(--font-heading); font-size: 1.1rem; font-weight: 600; }
 .start-card span { font-size: 0.85rem; color: var(--text-secondary); }
 .how-steps { display: flex; justify-content: center; gap: 1.75rem; flex-wrap: wrap; list-style: none; margin: 1.1rem 0 0; padding: 0; font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); }
