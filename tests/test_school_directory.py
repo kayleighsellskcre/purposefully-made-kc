@@ -39,12 +39,12 @@ def test_the_menu_footer_and_group_orders_page_point_to_it(app, seed, guest):
     for path in ('/', '/group-orders'):
         html = guest.get(path).get_data(as_text=True)
         assert 'href="/school-districts"' in html
-    assert '>Schools</a>' in guest.get('/').get_data(as_text=True)
+    assert '>School districts</a>' in guest.get('/').get_data(as_text=True)      # under Group Orders in the menu
 
 
 def test_the_menu_keeps_schools_lit_on_the_district_and_school_pages(app, seed, guest):
     _two_districts(app)
     for path in ('/org/desoto-usd-232', '/org/desoto-usd-232/mill-valley-high'):
         html = guest.get(path).get_data(as_text=True)
-        assert 'nav-link--current" aria-current="page">Schools</a>' in html, path
-        assert 'nav-link--current" aria-current="page">Group Orders</a>' not in html
+        assert 'nav-link--current" aria-current="page">Group Orders</a>' in html, path     # Schools lives under Group Orders
+        assert 'nav-link--current" aria-current="page">Shop</a>' not in html

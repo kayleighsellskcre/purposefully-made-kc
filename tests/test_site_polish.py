@@ -90,3 +90,14 @@ def test_group_orders_page_has_two_doors_and_named_payment_buttons(app, seed, gu
     for label in ('Everyone pays', 'We cover it all', 'We cover a set amount'):
         assert label in html
     assert 'Start a group order</a>' not in html.split('id="start"')[1]        # no three identical buttons
+
+
+def test_the_header_has_four_choices_with_menus_and_an_account_icon(app, seed, guest):
+    html = guest.get('/').get_data(as_text=True)
+    nav = html.split('aria-label="Main"')[1].split('</nav>')[0]
+    for top in ('>Shop</a>', '>Group Orders</a>', '>Custom Design</a>', '>About</a>'):
+        assert top in nav
+    assert '>Schools</a>' not in nav and '>Contact</a>' in nav and '>Design Gallery</a>' in nav     # still one click away, inside the menus
+    assert 'Kids &amp; Baby' in nav and 'Company apparel' in nav and 'Find your school or team' in nav
+    assert 'Log in or create an account' in html                                                  # a person icon, not a pill
+    assert '>Register</a>' not in html.split('class="nav-icons"')[0].split('aria-label="Main"')[1].split('mobile-only')[0]

@@ -95,38 +95,35 @@
                         'about' if _ep == 'main.about' else
                         'schools' if _ep.startswith('district.') else
                         'contact' if _ep == 'main.contact' else '') %}
-                    <a href="{{ url_for('shop.index') }}" class="nav-link{% if _nav_here == 'shop' %} nav-link--current{% endif %}"{% if _nav_here == 'shop' %} aria-current="page"{% endif %}>Shop</a>
-                    <a href="{{ url_for('shop.design_gallery') }}" class="nav-link{% if _nav_here == 'design' %} nav-link--current{% endif %}"{% if _nav_here == 'design' %} aria-current="page"{% endif %}>Design Gallery</a>
-                    <a href="{{ url_for('shop.group_orders') }}" class="nav-link{% if _nav_here == 'group' %} nav-link--current{% endif %}"{% if _nav_here == 'group' %} aria-current="page"{% endif %}>Group Orders</a>
-                    <a href="{{ url_for('district.directory') }}" class="nav-link{% if _nav_here == 'schools' %} nav-link--current{% endif %}"{% if _nav_here == 'schools' %} aria-current="page"{% endif %}>Schools</a>
-                    <a href="{{ url_for('custom_request.index') }}" class="nav-link{% if _nav_here == 'recreate' %} nav-link--current{% endif %}"{% if _nav_here == 'recreate' %} aria-current="page"{% endif %}>Custom Design</a>
-                    <a href="{{ url_for('main.about') }}" class="nav-link{% if _nav_here == 'about' %} nav-link--current{% endif %}"{% if _nav_here == 'about' %} aria-current="page"{% endif %}>About</a>
-                    <a href="{{ url_for('main.contact') }}" class="nav-link{% if _nav_here == 'contact' %} nav-link--current{% endif %}"{% if _nav_here == 'contact' %} aria-current="page"{% endif %}>Contact</a>
-
-                    {# Desktop: one My Account control. Admin and Log Out live in the menu. #}
-                    {% if current_user.is_authenticated %}
-                    <span class="nav-separator desktop-only" aria-hidden="true"></span>
-                    <div class="nav-account desktop-only">
-                        <button type="button" class="nav-account-btn" id="navAccountBtn" aria-expanded="false" aria-controls="navAccountMenu" aria-haspopup="true">
-                            <span><span class="nav-account-my">My </span>Account</span>
-                            <svg class="nav-account-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                        </button>
-                        <div class="nav-account-menu" id="navAccountMenu" hidden>
-                            <a href="{{ url_for('account.index') }}">Account</a>
-                            {% if is_site_admin %}
-                            <a href="{{ url_for('admin.index') }}" class="admin-link">Admin Dashboard</a>
-                            {% endif %}
-                            <form method="post" action="{{ url_for('auth.logout') }}">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit">Log Out</button>
-                            </form>
+                    {# Four choices, with a small menu under Shop, Group Orders and About. Schools lives under Group Orders. #}
+                    {% set _shop_cur = _nav_here in ['shop', 'design'] %}
+                    {% set _group_cur = _nav_here in ['group', 'schools'] %}
+                    {% set _about_cur = _nav_here in ['about', 'contact'] %}
+                    <div class="nav-dd">
+                        <a href="{{ url_for('shop.index') }}" class="nav-link nav-dd-trigger{% if _shop_cur %} nav-link--current{% endif %}"{% if _shop_cur %} aria-current="page"{% endif %}>Shop</a>
+                        <div class="nav-dd-menu">
+                            <a href="{{ url_for('shop.index') }}" class="nav-dd-dup">All apparel</a>
+                            <a href="{{ url_for('shop.design_gallery') }}">Design Gallery</a>
+                            <a href="{{ url_for('shop.index', age_group='kids') }}">Kids &amp; Baby</a>
                         </div>
                     </div>
-                    {% else %}
-                    <span class="nav-separator desktop-only" aria-hidden="true"></span>
-                    <a href="{{ url_for('auth.login') }}" class="nav-user-link desktop-only">Login</a>
-                    <a href="{{ url_for('auth.register') }}" class="nav-user-link desktop-only">Register</a>
-                    {% endif %}
+                    <div class="nav-dd">
+                        <a href="{{ url_for('shop.group_orders') }}" class="nav-link nav-dd-trigger{% if _group_cur %} nav-link--current{% endif %}"{% if _group_cur %} aria-current="page"{% endif %}>Group Orders</a>
+                        <div class="nav-dd-menu">
+                            <a href="{{ url_for('shop.group_orders') }}#find">Find your school or team</a>
+                            <a href="{{ url_for('district.directory') }}">School districts</a>
+                            <a href="{{ url_for('shop.group_orders') }}#start">Start a group order</a>
+                            <a href="{{ url_for('shop.company_apparel') }}">Company apparel</a>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('custom_request.index') }}" class="nav-link{% if _nav_here == 'recreate' %} nav-link--current{% endif %}"{% if _nav_here == 'recreate' %} aria-current="page"{% endif %}>Custom Design</a>
+                    <div class="nav-dd">
+                        <a href="{{ url_for('main.about') }}" class="nav-link nav-dd-trigger{% if _about_cur %} nav-link--current{% endif %}"{% if _about_cur %} aria-current="page"{% endif %}>About</a>
+                        <div class="nav-dd-menu">
+                            <a href="{{ url_for('main.about') }}" class="nav-dd-dup">About</a>
+                            <a href="{{ url_for('main.contact') }}">Contact</a>
+                        </div>
+                    </div>
 
                     {# Hamburger: same account items, nested under My Account. #}
                     {% if current_user.is_authenticated %}
@@ -148,6 +145,28 @@
 
                 {# Always-visible: favorites, cart, hamburger #}
                 <div class="nav-icons">
+                    {# Desktop: a person icon next to the heart and cart. On a phone these live in the hamburger menu. #}
+                    {% if current_user.is_authenticated %}
+                    <div class="nav-account desktop-only">
+                        <button type="button" class="nav-account-btn nav-account-btn--icon" id="navAccountBtn" aria-expanded="false" aria-controls="navAccountMenu" aria-haspopup="true" aria-label="My account" title="My account">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"></path></svg>
+                        </button>
+                        <div class="nav-account-menu" id="navAccountMenu" hidden>
+                            <a href="{{ url_for('account.index') }}">My Account</a>
+                            {% if is_site_admin %}
+                            <a href="{{ url_for('admin.index') }}" class="admin-link">Admin Dashboard</a>
+                            {% endif %}
+                            <form method="post" action="{{ url_for('auth.logout') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit">Log Out</button>
+                            </form>
+                        </div>
+                    </div>
+                    {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="nav-account-link desktop-only" aria-label="Log in or create an account" title="Log in or create an account">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"></path></svg>
+                    </a>
+                    {% endif %}
                     <button type="button" class="nav-search-btn" id="siteSearchToggle" aria-label="Search the shop and designs" aria-expanded="false" aria-controls="siteSearch">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                     </button>
