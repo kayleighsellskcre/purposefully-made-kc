@@ -70,21 +70,21 @@
 @font-face {
     font-family: 'Graduate';
     font-style: normal;
-    font-weight: 400;
+    font-weight: 400 700;
     font-display: block;
     src: url('/static/fonts/Graduate-Regular.ttf') format('truetype');
 }
 @font-face {
     font-family: 'Varsity Team';
     font-style: normal;
-    font-weight: 400;
+    font-weight: 400 700;
     font-display: block;
     src: url('/static/fonts/VarsityTeam-Bold.otf') format('opentype');
 }
 @font-face {
     font-family: 'Squada One';
     font-style: normal;
-    font-weight: 400;
+    font-weight: 400 700;
     font-display: block;
     src: url('/static/fonts/SquadaOne-Regular.ttf') format('truetype');
 }
