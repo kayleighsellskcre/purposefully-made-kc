@@ -339,10 +339,10 @@
                         </div>
                         {% endif %}
                         <div class="summary-item-info">
-                            <strong>{{ item.quantity }}× {{ item.product_name or 'Item' }}</strong>
+                            <strong>{{ item.quantity }}× {{ (item.product_name or 'Item')|display_name }}</strong>
                             {% if item.store_name %}<p class="summary-design-name">For {{ item.store_name }}</p>{% endif %}
                             {% if item.design_title %}
-                            <p class="summary-design-name">{{ item.design_title }}</p>
+                            <p class="summary-design-name">{{ item.design_title }} design</p>
                             {% endif %}
                             <p>{{ item.color }} · {{ item.size }}</p>
                         </div>

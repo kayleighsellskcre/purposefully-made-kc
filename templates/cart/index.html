@@ -36,8 +36,8 @@
                            and then an "Order Summary" h2, so an h3 here made the
                            outline jump a level and then go backwards. #}
                         {% if item.design_title %}
-                        <h2 class="item-design-name">{{ item.design_title }}</h2>
-                        <p class="item-product-line">{{ item.product|display_name }}</p>
+                        <h2>{{ item.product|display_name }}</h2>
+                        <p class="item-product-line item-design-name">{{ item.design_title }} design</p>
                         {% else %}
                         <h2>{{ item.product|display_name }}</h2>
                         {% endif %}
@@ -319,13 +319,7 @@
     white-space: nowrap;            /* a price never splits across two lines */
 }
 .btn-save-later, .btn-remove, .summary-row span { white-space: nowrap; }
-/* Sharing a design brings people to the shop, so it reads as a button, not a footnote. */
-.item-price [data-share-design] {
-    display: inline-flex; align-items: center; justify-content: center; margin: 0 0 0.4rem auto;
-    padding: 0.55rem 1.1rem; min-height: 44px; border-radius: 999px; text-decoration: none;
-    background: var(--accent-color); color: #fff; font-weight: 600;
-}
-.item-price [data-share-design]:hover, .item-price [data-share-design]:focus-visible { color: #fff; filter: brightness(1.08); }
+/* Share this design is a quiet text link beside Edit and Save for later, so Checkout stays the loudest button. */
 
 .btn-remove {
     background: none;
@@ -459,7 +453,6 @@
         flex: 1 0 100%;
         margin: 0 0 0.25rem;
     }
-    .item-price [data-share-design] { flex: 1 0 100%; margin: 0 0 0.4rem; }
     .item-price .btn-save-later {
         margin: 0;
         min-height: 44px;
