@@ -4224,3 +4224,33 @@ body .made-eyebrow { font-size: 0.95rem; }
     .nav-dd-menu a { display: flex; align-items: center; min-height: 44px; padding: 0.5rem 1rem 0.5rem 2rem; font-size: 0.95rem; color: var(--text-secondary); white-space: normal; }
     .nav-icons .nav-account.desktop-only, .nav-account-link.desktop-only { display: none !important; }
 }
+
+/* ── One button system ────────────────────────────────────────────────────────────────────
+   Primary   = solid deep rose (the one thing to press on a screen)
+   Secondary = outline in the same rose (.btn-outline, .btn-secondary)
+   Text link = quiet underlined rose (.btn-link)
+   The admin keeps its own look. */
+:root { --btn-rose: #9F6154; --btn-rose-dark: #864F44; --btn-rose-tint: rgba(159, 97, 84, 0.10); }
+body:not(.is-admin) .btn::before { display: none; }
+body:not(.is-admin) .btn-primary,
+body:not(.is-admin) .btn-customize,
+body:not(.is-admin) a.btn-customize,
+body:not(.is-admin) .contact-submit { background: var(--btn-rose); border-color: var(--btn-rose); color: #fff; box-shadow: none; }
+body:not(.is-admin) .btn-primary:hover,
+body:not(.is-admin) .btn-customize:hover,
+body:not(.is-admin) a.btn-customize:hover,
+body:not(.is-admin) .contact-submit:hover { background: var(--btn-rose-dark); border-color: var(--btn-rose-dark); color: #fff; transform: none; filter: none; box-shadow: 0 4px 14px rgba(159, 97, 84, 0.28); }
+body:not(.is-admin) .btn-outline,
+body:not(.is-admin) .btn-secondary { background: transparent; border-color: var(--btn-rose); color: var(--btn-rose); box-shadow: none; }
+body:not(.is-admin) .btn-outline:hover,
+body:not(.is-admin) .btn-secondary:hover { background: var(--btn-rose-tint); border-color: var(--btn-rose-dark); color: var(--btn-rose-dark); transform: none; }
+body:not(.is-admin) .btn:disabled, body:not(.is-admin) .btn[disabled] { box-shadow: none; }
+.btn-link { display: inline; padding: 0; border: 0; background: none; color: var(--btn-rose); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.btn-link:hover, .btn-link:focus-visible { color: var(--btn-rose-dark); }
+/* Chosen states (a picked filter, a size with a quantity) match the primary button */
+body:not(.is-admin) .filter-tab.active,
+body:not(.is-admin) .back-design-tab.active,
+.customizer-container .size-card.has-qty,
+.customizer-container .size-card.has-qty.selected { background: var(--btn-rose); border-color: var(--btn-rose); }
+.shop-section .product-card .btn-customize { color: var(--btn-rose) !important; border-color: var(--btn-rose); }
+.shop-section .product-card:hover .btn-customize, .shop-section .product-card .btn-customize:hover { background: var(--btn-rose); color: #fff !important; }

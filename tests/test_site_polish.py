@@ -101,3 +101,9 @@ def test_the_header_has_four_choices_with_menus_and_an_account_icon(app, seed, g
     assert 'Kids &amp; Baby' in nav and 'Company apparel' in nav and 'Find your school or team' in nav
     assert 'Log in or create an account' in html                                                  # a person icon, not a pill
     assert '>Register</a>' not in html.split('class="nav-icons"')[0].split('aria-label="Main"')[1].split('mobile-only')[0]
+
+
+def test_buttons_follow_one_system_and_leave_the_admin_alone():
+    css = open('static/css/main.css', encoding='utf-8').read()
+    assert '--btn-rose:' in css and 'body:not(.is-admin) .btn-primary' in css       # one solid primary, not the gradient
+    assert 'body:not(.is-admin) .btn-outline' in css and '.btn-link' in css         # one outline, one text link
