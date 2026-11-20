@@ -11,6 +11,9 @@ CUSTOMIZE_BACK_FONTS = [
     ('Oswald', 'Oswald (Bold athletic)'),
     ('Anton', 'Anton (Strong block)'),
     ('Teko', 'Teko (College jersey)'),
+    ('Graduate', 'Graduate (Varsity collegiate)'),
+    ('Black Ops One', 'Black Ops One (Bold varsity block)'),
+    ('Squada One', 'Squada One (Modern athletic numbers)'),
     ('Sports Jersey', 'Sports Jersey (Classic athletic block)'),
     ('Varsity Regular', 'Varsity Regular (Cricut-style classic)'),
 ]

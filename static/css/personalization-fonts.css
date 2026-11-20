@@ -67,6 +67,27 @@
     font-display: block;
     src: url('/static/fonts/Teko-Bold.ttf') format('truetype');
 }
+@font-face {
+    font-family: 'Graduate';
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url('/static/fonts/Graduate-Regular.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Black Ops One';
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url('/static/fonts/BlackOpsOne-Regular.ttf') format('truetype');
+}
+@font-face {
+    font-family: 'Squada One';
+    font-style: normal;
+    font-weight: 400;
+    font-display: block;
+    src: url('/static/fonts/SquadaOne-Regular.ttf') format('truetype');
+}
 /* Matthew Welch "College" (free for commercial use with credit) — closest
    match to Cricut / Brøderbund Varsity Regular classic slab-serif lettering.
    Use weight 400 only; this face has no true bold and faux-bold distorts digits. */

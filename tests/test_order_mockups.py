@@ -146,3 +146,12 @@ def test_eight_shirts_fit_on_one_page_and_nine_take_two(app, seed):
         db.session.commit()
         pdf = mockup_pdf(Order.query.get(one))
         assert len(re.findall(rb'/Type\s*/Page\b', pdf)) == 2
+
+
+def test_every_listed_back_font_has_a_real_font_file():
+    """A font in a picker must draw as itself on mockups and print files, not fall back to Bebas Neue."""
+    from utils.fonts import CUSTOMIZE_BACK_FONTS, GROUP_ORDER_FONTS
+    from utils.personalization_layout import font_path
+    listed = {v for v, _ in CUSTOMIZE_BACK_FONTS + GROUP_ORDER_FONTS} - {'Freshman'}     # Freshman has no free file
+    assert {'Graduate', 'Black Ops One', 'Squada One'} <= listed
+    assert [f for f in sorted(listed) if not font_path(f)] == []
