@@ -73,4 +73,4 @@ def test_checkout_card_errors_use_kind_wording_and_show_the_shop_phone(client, s
                                    'placement': 'center_chest', 'design_id': seed['free_design_id']})
     html = client.get('/checkout/').get_data(as_text=True)
     assert 'function friendlyCardError' in html and 'expiration date does not look right' in html
-    assert '785.249.1464' in html
+    assert '(785) 249-1464' in html

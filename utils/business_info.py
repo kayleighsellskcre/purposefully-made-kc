@@ -4,7 +4,7 @@ BUSINESS = {
     'owner': 'Kayleigh Biggs',
     'name': 'Purposefully Made KC LLC',
     'email': 'purposefullymadekc@gmail.com',
-    'phone': '785.249.1464',
+    'phone': '(785) 249-1464',
     'venmo': '@Kayleigh-Biggs-1',
     'check_payable_to': 'Kayleigh Biggs',
     'pickup_address': '4632 Woodstock Street, Shawnee, KS 66218',

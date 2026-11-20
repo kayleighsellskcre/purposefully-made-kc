@@ -19,7 +19,7 @@ def _order(app, seed, *, paid=True, **over):
 def test_the_receipt_has_the_business_details_logo_and_payment_options(admin_client, app, seed):
     oid = _order(app, seed)
     html = admin_client.get(f'/admin/orders/{oid}/receipt').get_data(as_text=True)
-    for text in ('Kayleigh Biggs', 'Purposefully Made KC LLC', 'purposefullymadekc@gmail.com', '785.249.1464',
+    for text in ('Kayleigh Biggs', 'Purposefully Made KC LLC', 'purposefullymadekc@gmail.com', '(785) 249-1464',
                  'PMKC-1001', 'Unisex Jersey Tee', 'Paid in full'):
         assert text in html, text
     assert 'img/logo-invoice.png' in html
