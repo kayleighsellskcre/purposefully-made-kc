@@ -870,7 +870,7 @@
                         <div class="color-swatches">
                             {% for v in product.carousel_colors[:6] %}
                             {% set swatch_css = swatch_background(v.color_hex or (v.color_name|color_hex_fallback), v.swatch_url) %}
-                            <span class="color-swatch" title="{{ v.color_name }}" style="{% if swatch_css %}{{ swatch_css }}{% else %}background: linear-gradient(135deg, #ddd, #bbb);{% endif %}"></span>
+                            <span class="color-swatch" role="img" aria-label="{{ v.color_name }}" title="{{ v.color_name }}" style="{% if swatch_css %}{{ swatch_css }}{% else %}background: linear-gradient(135deg, #ddd, #bbb);{% endif %}"></span>
                             {% endfor %}
                             {% if product.carousel_colors|length > 6 %}
                             <span class="color-swatch-more">+{{ product.carousel_colors|length - 6 }}</span>

@@ -113,3 +113,12 @@ def test_custom_design_page_asks_for_art_you_have_the_rights_to(guest, seed):
     html = guest.get('/custom-design/').get_data(as_text=True)
     assert 'art you have the rights to' in html and 'See something you love online' not in html
     assert 'Your logo, sketch or idea' in guest.get('/').get_data(as_text=True)
+
+
+def test_color_swatches_have_names_for_screen_readers():
+    import re
+    custom = open('templates/shop/customize.html', encoding='utf-8').read()
+    swatches = re.findall(r'<button type="button" class="bd-swatch"[^>]*>', custom)
+    assert swatches and all('aria-label="' in s for s in swatches)
+    coll = open('templates/collection/view.html', encoding='utf-8').read()
+    assert 'class="color-swatch" role="img" aria-label="{{ v.color_name }}"' in coll
