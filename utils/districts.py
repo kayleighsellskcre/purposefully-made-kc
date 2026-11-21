@@ -913,3 +913,22 @@ def resolve_short(d_short, s_short=None, store_short=None):
         if store.short_slug == store_short:
             return store
     return None
+
+
+def schools_printed_for(limit=10):
+    """For the homepage: the listed districts and the schools in them that have a logo, as
+    [{'name', 'url', 'schools': [{'name', 'url', 'logo'}]}]. A district with no logos is left out."""
+    from models import District
+    from utils.cloud_storage import image_url
+    out = []
+    begin_memo()
+    for d in District.query.filter_by(is_active=True, listed=True).order_by(District.name).all():
+        schools = []
+        for _key, _heading, group in schools_by_level(d, public=True):
+            for school in group:
+                logo = image_url(school.logo_url) if school.logo_url else next((x['url'] for x in school_logos(school)), None)
+                if logo:
+                    schools.append({'name': school.name, 'url': school_url(school), 'logo': logo})
+        if schools:
+            out.append({'name': d.name, 'url': district_url(d), 'schools': schools[:limit]})
+    return out

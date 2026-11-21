@@ -46,7 +46,13 @@ def index():
         cards = [{'kind': 'org', **o} for o in orgs] + [{'kind': 'store', **c} for c in stores]
         from utils.site_content import REVIEWS as SITE_REVIEWS
         SITE_REVIEWS = _approved_reviews() + list(SITE_REVIEWS)
+        try:
+            from utils.districts import schools_printed_for
+            printed_for = schools_printed_for()
+        except Exception:
+            printed_for = []
         return render_template('index.html',
+                             printed_for=printed_for,
                              featured_products=featured_products,
                              group_cards=cards[:3],
                              group_cards_total=len(cards),

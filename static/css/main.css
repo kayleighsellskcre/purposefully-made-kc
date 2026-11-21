@@ -4266,3 +4266,11 @@ body:not(.is-admin) .dist-card { border-top: 3px solid var(--card-accent, var(--
 body:not(.is-admin) :is(.product-card, .dist-card, .start-card, .occasion-tile, .vote-card, .dn-card):hover,
 body:not(.is-admin) .dist-card:focus-visible { transform: translateY(-3px); box-shadow: var(--card-shadow-hover); border-color: var(--card-border); }
 body:not(.is-admin) .dist-card:hover, body:not(.is-admin) .dist-card:focus-visible { border-top-color: var(--card-accent, var(--accent-color)); }
+
+/* "Proudly printed for" strip: real schools, real logos */
+.printed-for { padding: 2.2rem 0 0.4rem; text-align: center; }
+.printed-for-line { margin: 0 0 0.9rem; font-family: var(--font-heading); font-size: 1.15rem; color: var(--text-primary); }
+.printed-for-line a { color: var(--btn-rose); text-decoration: none; border-bottom: 1px solid rgba(159, 97, 84, 0.4); }
+.printed-for-logos { list-style: none; margin: 0 0 1.2rem; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1.2rem 2rem; }
+.printed-for-logos img { height: 64px; width: auto; max-width: 140px; object-fit: contain; opacity: 0.9; transition: opacity .2s; }
+.printed-for-logos a:hover img { opacity: 1; }

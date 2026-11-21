@@ -122,3 +122,19 @@ def test_color_swatches_have_names_for_screen_readers():
     assert swatches and all('aria-label="' in s for s in swatches)
     coll = open('templates/collection/view.html', encoding='utf-8').read()
     assert 'class="color-swatch" role="img" aria-label="{{ v.color_name }}"' in coll
+
+
+def test_homepage_shows_schools_with_logos_and_no_group_orders_twice(guest, app, seed, monkeypatch):
+    from models import Organization, db
+    from utils import districts as DS
+    monkeypatch.setattr(DS, 'live_stores', lambda school: [object()])       # the school has something open
+    with app.app_context():
+        d = DS.set_up_district('Desoto USD 232', [('Mill Valley High', 'high', ['Band'], {})])
+        d.listed = True
+        org = Organization.query.filter_by(name='Mill Valley High').first()
+        org.logo_url = 'https://example.com/mv-logo.png'
+        db.session.commit()
+    html = guest.get('/').get_data(as_text=True)
+    assert 'Proudly printed for' in html and 'Desoto USD 232' in html and 'mv-logo.png' in html
+    assert "Everything You Need, Nothing You Don't" not in html
+    assert html.count('One link, everyone orders their own size') == 0

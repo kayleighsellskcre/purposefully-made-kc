@@ -265,11 +265,24 @@
     </div>
 </section>
 
+{% if printed_for %}
+<section class="printed-for" aria-label="Schools we print for">
+    <div class="container">
+        {% for d in printed_for %}
+        <p class="printed-for-line">Proudly printed for <a href="{{ d.url }}">{{ d.name }}</a></p>
+        <ul class="printed-for-logos">
+            {% for s in d.schools %}<li><a href="{{ s.url }}" title="{{ s.name }}"><img src="{{ s.logo }}" alt="{{ s.name }} logo" loading="lazy" height="64"></a></li>{% endfor %}
+        </ul>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
 <!-- Features -->
 <section class="features">
     <div class="container">
         <span class="features-section-eyebrow">Why Purposefully Made</span>
-        <h2 class="features-section-title">Everything You Need, Nothing You Don't</h2>
+        <h2 class="features-section-title">Made to look right</h2>
         <div class="features-grid">
             <div class="feature-card">
                 <div class="feature-icon-wrap">
@@ -290,17 +303,6 @@
                 </div>
                 <h3 class="feature-title">Premium Quality</h3>
                 <p class="feature-text">Premium brands like Bella+Canvas, Comfort Colors, and more, with professional DTF transfer printing that lasts</p>
-            </div>
-
-            <div class="feature-card">
-                <div class="feature-icon-wrap">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
-                        <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
-                    </svg>
-                </div>
-                <h3 class="feature-title">Group Orders</h3>
-                <p class="feature-text">One link, everyone orders their own size. Perfect for schools and teams</p>
             </div>
 
             <div class="feature-card">
