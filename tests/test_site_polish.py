@@ -107,3 +107,9 @@ def test_buttons_follow_one_system_and_leave_the_admin_alone():
     css = open('static/css/main.css', encoding='utf-8').read()
     assert '--btn-rose:' in css and 'body:not(.is-admin) .btn-primary' in css       # one solid primary, not the gradient
     assert 'body:not(.is-admin) .btn-outline' in css and '.btn-link' in css         # one outline, one text link
+
+
+def test_custom_design_page_asks_for_art_you_have_the_rights_to(guest, seed):
+    html = guest.get('/custom-design/').get_data(as_text=True)
+    assert 'art you have the rights to' in html and 'See something you love online' not in html
+    assert 'Your logo, sketch or idea' in guest.get('/').get_data(as_text=True)
