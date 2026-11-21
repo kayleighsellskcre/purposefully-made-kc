@@ -8,6 +8,7 @@ or its color arrows are used. Layout shift is addressed with a fixed
 aspect-ratio on the image rule rather than per-image width/height,
 since intrinsic dimensions vary across a catalog pulled from S&S/SanMar.
 """
+import html
 import json
 import re
 
@@ -46,10 +47,10 @@ def test_only_the_shown_color_ships_a_real_img_tag(client, app, seed):
     carousel = _carousel_html_for(body, seed['tee_id'])
 
     assert carousel.count('<img') == 1
-    # Every slide has a data-src (the active one included, harmlessly), but
-    # only the non-active slides matter here: there must be at least as many
-    # data-src attributes as there are colors minus the one that's shown.
-    assert carousel.count('data-src="') >= 2
+    # The other colors are not slides at all yet: they ride along as one short list that JS turns into slides
+    # the first time the card is used.
+    more = re.search(r'data-more="([^"]*)"', carousel)
+    assert more and len(json.loads(html.unescape(more.group(1)))) >= 2
 
 
 def test_deferred_slides_have_no_img_tag_inside_them(client, app, seed):
@@ -57,11 +58,11 @@ def test_deferred_slides_have_no_img_tag_inside_them(client, app, seed):
     body = client.get('/shop/').get_data(as_text=True)
     carousel = _carousel_html_for(body, seed['tee_id'])
 
-    slide_count = carousel.count('class="carousel-slide')
-    assert slide_count >= 3, 'expected at least 3 colors (Black, White, Navy)'
-    # Exactly one <img> exists in the whole carousel, so every slide but
-    # the active one is necessarily image-free.
+    assert carousel.count('class="carousel-slide') == 1, 'only the shown color is a slide in the page'
     assert carousel.count('<img') == 1
+    more = re.search(r'data-more="([^"]*)"', carousel)
+    names = [n for n, _u in json.loads(html.unescape(more.group(1)))]
+    assert 'Navy' in names and len(names) >= 2           # the other colors are still there, just as a short list
 
 
 def test_carousel_carries_the_product_name_for_js_hydration(client, app, seed):

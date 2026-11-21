@@ -138,3 +138,13 @@ def test_homepage_shows_schools_with_logos_and_no_group_orders_twice(guest, app,
     assert 'Proudly printed for' in html and 'Desoto USD 232' in html and 'mv-logo.png' in html
     assert "Everything You Need, Nothing You Don't" not in html
     assert html.count('One link, everyone orders their own size') == 0
+
+
+def test_shop_cards_carry_other_colors_as_a_short_list_not_hidden_blocks(app):
+    colors = [{'color_name': 'Black', 'front_image_url': '/a.png'}, {'color_name': 'Navy', 'front_image_url': '/b.png'},
+              {'color_name': 'Red', 'front_image_url': '/c.png'}]
+    flt = app.jinja_env.filters['other_colors']
+    assert flt(colors) == [['Navy', '/b.png'], ['Red', '/c.png']]
+    assert flt(colors[:1]) == [] and flt(None) == []
+    src = open('templates/shop/index.html', encoding='utf-8').read()
+    assert 'data-more=' in src and 'carousel_colors %}' not in src.split('color-carousel')[1][:1200]

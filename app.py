@@ -1013,6 +1013,11 @@ def create_app(config_class=Config):
         from utils.product_names import display_product_name
         return display_product_name(product_or_name, style_number)
 
+    @app.template_filter('other_colors')
+    def other_colors_filter(colors):
+        """A card's colors after the first, as [[name, picture], ...]: the short list a shop card carries instead of one hidden block per color."""
+        return [[c.get('color_name') or '', c.get('front_image_url') or ''] for c in list(colors or [])[1:]]
+
     @app.template_filter('without_brand')
     def without_brand_filter(title, brand):
         from utils.product_names import without_brand

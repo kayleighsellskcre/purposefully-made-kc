@@ -242,14 +242,11 @@
 
                             <!-- Color Preview Carousel -->
                             {% if product.carousel_colors and product.carousel_colors|length > 0 %}
-                            <div class="color-carousel" data-product-id="{{ product.id }}" data-product-name="{{ product|display_name }}">
+                            {# Only the shown color is in the page. The other colors ride along as one short list and become slides the first time the card is used. #}
+                            <div class="color-carousel" data-product-id="{{ product.id }}" data-product-name="{{ product|display_name }}"{% if product.carousel_colors|length > 1 %} data-more="{{ product.carousel_colors|other_colors|tojson|forceescape }}"{% endif %}>
                                 <div class="carousel-images">
-                                    {% for variant in product.carousel_colors %}
-                                    <div class="carousel-slide {% if loop.first %}active{% endif %}"
-                                         data-color="{{ variant.color_name }}"
-                                         {% if not loop.first %}data-src="{{ variant.front_image_url }}"{% endif %}>
-                                        {% if loop.first %}
-                                        {# Only the shown color ships a real <img> tag. #}
+                                    {% set variant = product.carousel_colors[0] %}
+                                    <div class="carousel-slide active" data-color="{{ variant.color_name }}">
                                         <img src="{{ variant.front_image_url }}"
                                              alt="{{ product|display_name }} - {{ variant.color_name }}"
                                              {% if card_index < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
@@ -260,9 +257,7 @@
                                             <p style="font-family:'Playfair Display',serif;font-size:1rem;color:#8b6f5e;font-weight:600;margin:0 0 0.4rem">This mockup skipped picture day!</p>
                                             <p style="font-size:0.8rem;color:#b09080;margin:0;line-height:1.5">No worries, you can still order.<br>Just choose your favorite design! ♡</p>
                                         </div>
-                                        {% endif %}
                                     </div>
-                                    {% endfor %}
                                 </div>
 
                                 {% if product.carousel_colors|length > 1 %}
@@ -1248,7 +1243,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const carousels = document.querySelectorAll('.color-carousel');
     
     carousels.forEach(carousel => {
-        const slides = carousel.querySelectorAll('.carousel-slide');
+        const slides = Array.from(carousel.querySelectorAll('.carousel-slide'));
+        const holder = carousel.querySelector('.carousel-images');
+        let more = [];
+        try { more = JSON.parse(carousel.getAttribute('data-more') || '[]'); } catch (e) { more = []; }
+        const total = slides.length + more.length;
         const prevBtn = carousel.querySelector('.carousel-prev');
         const nextBtn = carousel.querySelector('.carousel-next');
         const colorIndicator = carousel.querySelector('.current-color');
@@ -1262,23 +1261,26 @@ document.addEventListener('DOMContentLoaded', function() {
         function hydrateSlideImages() {
             if (hydrated) return;
             hydrated = true;
-            slides.forEach(slide => {
-                const src = slide.getAttribute('data-src');
-                if (!src || slide.querySelector('img')) return;
+            more.forEach(function (pair) {
+                const slide = document.createElement('div');
+                slide.className = 'carousel-slide';
+                slide.setAttribute('data-color', pair[0]);
                 const img = document.createElement('img');
                 img.loading = 'lazy';
                 img.decoding = 'async';
                 img.referrerPolicy = 'no-referrer';
-                img.alt = productName + ' - ' + (slide.getAttribute('data-color') || '');
+                img.alt = productName + ' - ' + pair[0];
                 img.onerror = function () {
                     this.src = '{{ url_for("static", filename="img/placeholder-product.svg") }}';
                 };
-                img.src = src;
+                img.src = pair[1];
                 slide.appendChild(img);
+                holder.appendChild(slide);
+                slides.push(slide);
             });
         }
 
-        if (slides.length <= 1) return; // Skip if only one color
+        if (total <= 1) return; // Skip if only one color
 
         function showSlide(index) {
             hydrateSlideImages();
@@ -1301,14 +1303,14 @@ document.addEventListener('DOMContentLoaded', function() {
         function nextSlide(e) {
             e.preventDefault();
             e.stopPropagation();
-            const nextIndex = (currentIndex + 1) % slides.length;
+            const nextIndex = (currentIndex + 1) % total;
             showSlide(nextIndex);
         }
 
         function prevSlide(e) {
             e.preventDefault();
             e.stopPropagation();
-            const prevIndex = (currentIndex - 1 + slides.length) % slides.length;
+            const prevIndex = (currentIndex - 1 + total) % total;
             showSlide(prevIndex);
         }
 

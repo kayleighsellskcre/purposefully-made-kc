@@ -249,7 +249,13 @@ def _carousel_colors_for(body, product_id):
         pos = match.end()
         if depth == 0:
             break
-    return re.findall(r'data-color="([^"]*)"', body[start:pos])
+    chunk = body[start:pos]
+    colors = re.findall(r'data-color="([^"]*)"', chunk)
+    more = re.search(r'data-more="([^"]*)"', chunk)         # the other colors ride along as one short list
+    if more:
+        import html as _html, json as _json
+        colors += [name for name, _url in _json.loads(_html.unescape(more.group(1)))]
+    return colors
 
 
 def test_filtering_by_a_color_family_includes_every_shade_in_it(client, app, seed):
