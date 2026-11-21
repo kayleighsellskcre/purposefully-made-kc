@@ -27,6 +27,7 @@ AUTOMATIC = (
 )
 AUTOMATIC_KEYS = {k for k, _l, _d in AUTOMATIC}
 ALWAYS_SHOW = {'music-entertainment'}           # kept visible even when empty, as before
+MIN_TILE_DESIGNS = 3                            # a front-page tile with fewer designs than this looks thin, so it is left off (its designs stay searchable)
 NEW_DAYS, TREND_DAYS = 60, 30
 FILTERS = (('recipient', 'Who it is for'), ('sport', 'Sport'), ('style', 'Style'), ('color', 'Color'))
 SOLD_OUT_STATUSES = ('cancelled', 'failed', 'refunded')
@@ -294,18 +295,26 @@ def automatic_tile_cards(autos):
 
 
 def landing_tiles(cards, autos):
-    """The tiles on the gallery front page: automatic collections first, then each collection that has designs."""
-    tiles, used = [], set()
-    for item in automatic_tile_cards(autos):
-        tiles.append({'key': item['key'], 'label': item['label'], 'count': len(item['members']),
-                      'covers': _covers(item['members'], used), 'featured': True, 'blurb': item['blurb']})
-    for coll in COLLECTIONS:
-        members = collection_members(cards, coll.key)
-        if not members and coll.key not in ALWAYS_SHOW:
-            continue
-        tiles.append({'key': coll.key, 'label': coll.label, 'count': len(members),
-                      'covers': _covers(members, used), 'featured': False, 'blurb': ''})
-    return tiles
+    """The tiles on the gallery front page: automatic collections first, then each collection that has designs.
+
+    A tile with fewer than MIN_TILE_DESIGNS designs looks thin, so it is left off. A gallery so small that
+    fewer than two tiles reach that number still shows what it has, rather than a nearly empty page."""
+    def build(minimum):
+        tiles, used = [], set()
+        for item in automatic_tile_cards(autos):
+            if len(item['members']) < minimum:
+                continue
+            tiles.append({'key': item['key'], 'label': item['label'], 'count': len(item['members']),
+                          'covers': _covers(item['members'], used), 'featured': True, 'blurb': item['blurb']})
+        for coll in COLLECTIONS:
+            members = collection_members(cards, coll.key)
+            if len(members) < minimum and not (coll.key in ALWAYS_SHOW and not members):
+                continue
+            tiles.append({'key': coll.key, 'label': coll.label, 'count': len(members),
+                          'covers': _covers(members, used), 'featured': False, 'blurb': ''})
+        return tiles
+    tiles = build(MIN_TILE_DESIGNS)
+    return tiles if sum(1 for t in tiles if t['count']) >= 2 else build(1)
 
 
 # -- Filters -----------------------------------------------------------------------------------

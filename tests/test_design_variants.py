@@ -361,3 +361,17 @@ def test_generic_camera_filename_is_not_used_as_customer_title():
     assert is_generic_title('IMG 5902') is True
     assert is_generic_title('Best Dad by Par') is False
 
+
+
+def test_gallery_front_page_leaves_off_categories_with_fewer_than_three_designs():
+    from utils import design_gallery as dg
+    def card(i, key):
+        return {'id': i, 'url': f'/u/{i}.png', 'title': f'T{i}', 'collections': [key], 'subs': []}
+    sports = dg.COLLECTIONS[0].key
+    other = dg.COLLECTIONS[1].key
+    third = dg.COLLECTIONS[2].key
+    cards = [card(i, sports) for i in (1, 2, 3)] + [card(i, third) for i in (5, 6, 7)] + [card(4, other)]
+    keys = [t['key'] for t in dg.landing_tiles(cards, {})]
+    assert sports in keys and third in keys and other not in keys
+    only_one = [t['key'] for t in dg.landing_tiles([card(9, other)], {})]
+    assert other in only_one                  # a tiny gallery still shows what it has
