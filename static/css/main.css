@@ -1309,7 +1309,7 @@ textarea.form-control {
    ============================================ */
 
 /* Large Tablets & Small Desktops (768px - 1024px) */
-@media (max-width: 1024px) {
+@media (max-width: 960px) {
     .container {
         padding: 0 1.5rem;
     }
@@ -1325,7 +1325,7 @@ textarea.form-control {
 }
 
 /* Tablets (768px - 968px) */
-@media (max-width: 968px) {
+@media (max-width: 960px) {
     html {
         font-size: 15px;
     }
@@ -1577,7 +1577,7 @@ textarea.form-control {
 }
 
 /* Landscape Mobile — phones only, not short desktop browser windows */
-@media (max-height: 600px) and (orientation: landscape) and (max-width: 900px) {
+@media (max-height: 600px) and (orientation: landscape) and (max-width: 960px) {
     .hero { padding: 2rem 1rem; }
     .hero-title { font-size: 1.75rem; }
     .features { padding: 2rem 0; }
@@ -1592,7 +1592,7 @@ textarea.form-control {
 }
 
 /* Landscape phones specifically (wide but short) */
-@media (max-width: 900px) and (orientation: landscape) {
+@media (max-width: 960px) and (orientation: landscape) {
     .customizer-container {
         grid-template-columns: 1fr 1fr !important;
     }
@@ -2013,7 +2013,7 @@ textarea.form-control {
 }
 
 /* ── Mobile ── */
-@media (max-width: 900px) {
+@media (max-width: 960px) {
     .account-layout { grid-template-columns: 1fr; gap: 1.5rem; }
     .account-sidebar { position: static; }
     .account-nav { flex-direction: row; flex-wrap: wrap; padding: 0.5rem; gap: 0; }
@@ -2299,7 +2299,7 @@ table { max-width: 100%; }
 }
 
 /* 6 ── Tablet landscape / large phones landscape (969–1180) ─── */
-@media (min-width: 969px) and (max-width: 1180px) {
+@media (min-width: 961px) and (max-width: 1180px) {
     .container { padding: 0 1.75rem; }
 }
 
@@ -2359,7 +2359,7 @@ table { max-width: 100%; }
     .fav-badge { font-size: 0.6rem; padding: 0.28rem 0.6rem; }
     .fav-badge-overlay { top: 0.5rem; left: 0.5rem; }
 }
-@media (max-width: 700px) {
+@media (max-width: 768px) {
     .fav-badge-overlay .fav-word { display: none; }      /* "Favorite" alone fits a two-across card */
 }
 
@@ -2883,9 +2883,9 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 .holiday-note { margin: 0.6rem auto 0; text-align: center; font-size: 0.9rem; font-weight: 600; color: var(--terra-cotta, #b87c6f); }
 .shop-section .product-ages-line { margin: 0 0 0.35rem; font-size: 0.78rem; color: var(--text-secondary); }
 .shop-section .family-age-strip { top: auto; bottom: 0.5rem; left: 0.5rem; right: auto; }
-@media (max-width: 1199px) { .shop-section .products-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-@media (max-width: 1023px) { .shop-section .products-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 767px) {
+@media (max-width: 1200px) { .shop-section .products-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 960px) { .shop-section .products-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 768px) {
     .shop-section .products-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; }
     .shop-section .filter-bar.shop-toolbar { position: static; flex-wrap: wrap; }
     .shop-toolbar .shop-search-form { flex: 1 1 100%; }
@@ -2995,7 +2995,7 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 .go-option { display: flex; flex-direction: column; align-items: flex-start; gap: 0.6rem; padding: 1.25rem 1.4rem; background: #fff; border: 1px solid rgba(232, 208, 177, 0.7); border-radius: 14px; }
 .main-content .go-option .go-option-title { margin: 0; font-size: var(--card-title); }
 .go-option p { margin: 0; color: var(--text-secondary); font-size: 0.92rem; line-height: 1.55; flex: 1; }
-@media (max-width: 860px) { .go-choose { grid-template-columns: 1fr; max-width: 520px; } }
+@media (max-width: 768px) { .go-choose { grid-template-columns: 1fr; max-width: 520px; } }
 .go-option-link { font-size: 0.85rem; color: var(--accent-secondary); text-decoration: underline; text-underline-offset: 3px; }
 
 /* ── Custom Design (Phase 6) ── */
@@ -3017,8 +3017,8 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 .occasion-tile strong { font-family: var(--font-heading); font-size: 0.98rem; font-weight: 600; line-height: 1.25; }
 .occasion-tile span { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4; }
 .about-cta { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
-@media (max-width: 900px) { .occasion-tiles { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 520px) { .occasion-tiles { grid-template-columns: 1fr; } .about-owner { flex-direction: column; text-align: center; } }
+@media (max-width: 960px) { .occasion-tiles { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .occasion-tiles { grid-template-columns: 1fr; } .about-owner { flex-direction: column; text-align: center; } }
 
 /* ── Contact (Phase 6) ── */
 .contact-form-subtitle a, .cf-hint a { color: var(--terra-cotta); font-weight: 600; }
@@ -3160,7 +3160,7 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 .title-heart:focus-visible { outline: 2px solid var(--terra-cotta); outline-offset: 2px; }
 
 /* Order bar on phones: pinned to the bottom of the window */
-@media (max-width: 968px) {
+@media (max-width: 960px) {
     .customizer-container .order-bar {
         position: fixed; left: 0; right: 0; bottom: 0; margin: 0; padding: 0.6rem 1rem calc(0.7rem + env(safe-area-inset-bottom));
         border-radius: 12px 12px 0 0; z-index: 40;
@@ -3228,8 +3228,8 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 .kw-close { position: absolute; top: 0.9rem; right: 1.1rem; border: 0; background: none; color: #fff; font-size: 2.2rem; line-height: 1; cursor: pointer; }
 .reviews-more { margin: 1.25rem 0 0; text-align: center; font-size: 0.92rem; }
 .reviews-more a { color: var(--terra-cotta); font-weight: 600; }
-@media (max-width: 860px) { .kw-collage { column-count: 2; } }
-@media (max-width: 520px) { .kw-collage { column-gap: 0.8rem; } .kw-tile { margin-bottom: 0.9rem; } .kw-quote blockquote { font-size: 1.05rem; } }
+@media (max-width: 768px) { .kw-collage { column-count: 2; } }
+@media (max-width: 480px) { .kw-collage { column-gap: 0.8rem; } .kw-tile { margin-bottom: 0.9rem; } .kw-quote blockquote { font-size: 1.05rem; } }
 @media (prefers-reduced-motion: reduce) { .kw-photo, .kw-photo:hover { transition: none; transform: none; } }
 
 /* Size picker: simple buttons. A tap adds one; the "Your sizes" line below changes the counts. */
@@ -3281,7 +3281,7 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 @media (max-height: 820px) { .customizer-container .order-bar p.production-timeline-note { display: none; } }
 
 /* Header: the centered menu used to run into the search and cart icons on mid-size screens */
-@media (min-width: 969px) and (max-width: 1480px) {
+@media (min-width: 961px) and (max-width: 1480px) {
     .nav-links { left: calc(50% + 48px); gap: 0.1rem; }
     .nav-links .nav-link { padding: 0.5rem 0.42rem; font-size: 0.78rem; letter-spacing: 0.05em; }
     .nav-links .nav-account-btn { padding: 0.4rem 0.6rem; font-size: 0.78rem; letter-spacing: 0.05em; min-height: 38px; }
@@ -3297,16 +3297,16 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 }
 
 /* Small laptops and tablets held sideways: the menu gets a little tighter still */
-@media (min-width: 969px) and (max-width: 1180px) {
+@media (min-width: 961px) and (max-width: 1180px) {
     .nav-links { left: calc(50% + 40px); }
     .nav-links .nav-link { padding: 0.5rem 0.28rem; font-size: 0.72rem; letter-spacing: 0.03em; }
     .nav-links .nav-account-btn { padding: 0.35rem 0.5rem; font-size: 0.72rem; letter-spacing: 0.03em; min-height: 36px; }
     .nav-links .nav-separator { margin: 0 0.15rem; }
 }
-@media (min-width: 969px) and (max-width: 1100px) {
+@media (min-width: 961px) and (max-width: 1100px) {
     .nav-account-my, .nav-account-chev { display: none; }
 }
-@media (min-width: 969px) and (max-width: 1020px) {
+@media (min-width: 961px) and (max-width: 1020px) {
     .nav-links .nav-link { padding: 0.5rem 0.18rem; font-size: 0.7rem; }
     .nav-links .nav-separator { display: none; }
     .nav-links .nav-account-btn { padding: 0.35rem 0.4rem; }
@@ -3357,7 +3357,7 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 .bk-voided td { opacity: 0.5; text-decoration: line-through; }
 .bk-voided td:last-child, .bk-voided td:nth-child(6) { text-decoration: none; }
 .bk-pages { margin: 1rem 0 0; text-align: center; font-size: 0.9rem; }
-@media (max-width: 760px) { .bk-two { grid-template-columns: 1fr; } .bk-in { padding-left: 0.9rem !important; } }
+@media (max-width: 768px) { .bk-two { grid-template-columns: 1fr; } .bk-in { padding-left: 0.9rem !important; } }
 
 /* Checkout: a quiet note under the tax line when no Kansas tax applies */
 .summary-note { margin: -0.25rem 0 0.5rem; font-size: 0.8rem; color: var(--text-secondary); }
@@ -3593,7 +3593,7 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 .saved-info strong { font-size: 0.98rem; color: var(--text-primary); }
 .saved-actions { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 0.35rem; }
 .saved-remove { padding: 0; border: 0; background: none; color: var(--text-secondary); font: inherit; font-size: 0.82rem; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
-@media (max-width: 560px) { .saved-item { flex-wrap: wrap; } .saved-actions { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; } }
+@media (max-width: 640px) { .saved-item { flex-wrap: wrap; } .saved-actions { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; } }
 
 /* Gift option at checkout */
 .gift-option { margin-top: 0.25rem; padding: 0.9rem 1rem; background: #fffdf9; border: 1px solid var(--border-light); border-radius: 12px; }
@@ -3621,7 +3621,7 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 .bulk-check--org { margin: 0 0 0.35rem; }
 
 /* Header: the menu fills the space between the logo and the icons and spreads evenly, so it never crowds either one */
-@media (min-width: 969px) {
+@media (min-width: 961px) {
     .nav-links { position: static; transform: none; left: auto; flex: 1 1 auto; min-width: 0; justify-content: center; gap: clamp(0.1rem, 0.5vw, 0.5rem); margin: 0 clamp(0.5rem, 1.5vw, 2rem) 0 clamp(0.25rem, 1vw, 1.5rem); }
     .logo { margin-left: clamp(0.75rem, 2vw, 3rem); }
     .nav-links .nav-link { padding: 0.5rem clamp(0.25rem, 0.6vw, 0.8rem); font-size: clamp(0.7rem, 0.9vw, 0.82rem); letter-spacing: clamp(0.03em, 0.4vw, 0.065em); }
@@ -3632,7 +3632,7 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 /* Schools directory page */
 .sd-strip { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.75rem 1.25rem; margin: 0 auto 2rem; padding: 1rem 1.5rem; max-width: 760px; background: rgba(184, 124, 111, 0.08); border-radius: 12px; text-align: center; }
 .sd-strip strong { font-family: var(--font-heading, inherit); font-size: 1.1rem; }
-@media (min-width: 969px) and (max-width: 1240px) {
+@media (min-width: 961px) and (max-width: 1240px) {
     .nav-links .nav-link { font-size: 0.68rem; padding: 0.5rem 0.22rem; letter-spacing: 0.03em; }
     .nav-links .nav-user-link { font-size: 0.68rem; padding: 0.4rem 0.25rem; letter-spacing: 0.03em; }
     .nav-links .nav-separator { margin: 0 0.15rem; }
@@ -3655,9 +3655,9 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 .design-board .design-card .carousel-btn { width: 36px; height: 36px; }
 .design-board .family-age-strip { top: 0.4rem; bottom: auto; left: 0.4rem; right: auto; }
 .design-board .family-age-chip { font-size: 0.6rem; padding: 0.1rem 0.45rem; }
-@media (max-width: 1199px) { .design-board .design-board-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-@media (max-width: 1023px) { .design-board .design-board-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 767px) { .design-board .design-board-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; } .design-board .design-card-content { padding: 0.6rem; } }
+@media (max-width: 1200px) { .design-board .design-board-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 960px) { .design-board .design-board-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 768px) { .design-board .design-board-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; } .design-board .design-card-content { padding: 0.6rem; } }
 
 /* Group order edit: designs linked as colors of one main design */
 .link-colors-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; margin-top: 0.85rem; padding: 0.7rem 0.9rem; background: rgba(184, 124, 111, 0.08); border-radius: 10px; }
@@ -3703,7 +3703,7 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 .made-url { word-break: break-all; }
 .made-stats { color: var(--terra-cotta); font-weight: 600; }
 .od-share { margin-top: 0.4rem; border: 0; background: none; color: var(--terra-cotta); font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0; }
-@media (max-width: 720px) { .made-card { grid-template-columns: 1fr; } .made-item { flex-wrap: wrap; } }
+@media (max-width: 768px) { .made-card { grid-template-columns: 1fr; } .made-item { flex-wrap: wrap; } }
 
 /* Artwork: borrow from another group, or keep a logo in one store */
 .design-move { display: grid; gap: 0.25rem; margin-top: 0.35rem; max-width: 9.5rem; }
@@ -3814,7 +3814,7 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
     .dist-grid > .dist-card { flex: 0 1 calc(50% - 0.4rem); max-width: calc(50% - 0.4rem); }
     .dist-grid > .dist-store-card-big { flex-basis: 100%; max-width: 100%; }
 }
-@media (max-width: 520px) {
+@media (max-width: 480px) {
     .design-board .design-card-content .price-row { flex-direction: column; align-items: stretch; gap: 0.5rem; }
     .design-board .design-card-content .price { white-space: nowrap; font-size: 1.15rem; }
     .design-board .design-card-content .cta { display: block; width: 100%; box-sizing: border-box; text-align: center; white-space: nowrap; }
@@ -3872,7 +3872,7 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 .vote-who span { color: var(--text-secondary); }
 .vote-row { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .vote-row span { color: var(--text-secondary); font-size: 0.9rem; }
-@media (max-width: 600px) {
+@media (max-width: 640px) {
     .vote-preview, .vote-grid { grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
     .vote-link-row { flex-direction: column; }
     .vote-submit-bar .btn { width: 100%; }
@@ -3919,7 +3919,7 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 .dn-designs { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.7rem; margin: 0.6rem 0 1rem; }
 .dn-design { display: grid; gap: 0.3rem; text-align: center; font-size: 0.78rem; cursor: pointer; }
 .dn-design img { width: 100%; aspect-ratio: 1; object-fit: contain; border: 1px solid var(--border-light); border-radius: 10px; background: #fff; }
-@media (max-width: 600px) { .dn-grid { grid-template-columns: 1fr; } .dn-claim-form { grid-template-columns: 1fr; } .dn-num { display: none; } .dn-row-right { text-align: left; } }
+@media (max-width: 640px) { .dn-grid { grid-template-columns: 1fr; } .dn-claim-form { grid-template-columns: 1fr; } .dn-num { display: none; } .dn-row-right { text-align: left; } }
 
 /* A winner's page */
 .gift-page { padding: 2.5rem 1rem 5rem; }
@@ -3948,7 +3948,7 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 .gift-ship { display: none; }
 .gift-submit { width: 100%; }
 .gift-thanks { text-align: center; padding: 2rem 1.4rem; }
-@media (max-width: 600px) { .gift-two { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .gift-two { grid-template-columns: 1fr; } }
 
 /* A winner's page, laid out like normal ordering: a shirt that follows the picks, then the steps */
 .gift-wrap:has(.gift-layout) { max-width: 1040px; }
@@ -3957,7 +3957,7 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 .gift-shirt { aspect-ratio: 1; background: #fff; border: 1px solid var(--border-light); border-radius: 16px; }
 .gift-shirt .pm-proof-overlay { width: 36%; max-width: 40%; max-height: 40%; top: 36%; }
 .gift-picked { text-align: center; color: var(--text-secondary); margin: 0.6rem 0 0; font-size: 0.9rem; }
-@media (max-width: 760px) {
+@media (max-width: 768px) {
     .gift-layout { grid-template-columns: 1fr; }
     .gift-preview { position: sticky; top: 3.6rem; z-index: 5; background: var(--ivory-silk, #f5f0e1); padding: 0.4rem 0; }
     .gift-shirt { aspect-ratio: auto; height: 34svh; }
@@ -3990,7 +3990,7 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 .gift-style-age { flex-shrink: 0; white-space: nowrap; }
 .gift-style-name { line-height: 1.3; }
 .gift-card { box-shadow: 0 1px 2px rgba(58, 61, 72, 0.04); }
-@media (max-width: 760px) { .gift-preview { padding: 0.5rem; border-radius: 16px; } .gift-shirt { aspect-ratio: auto; } }
+@media (max-width: 768px) { .gift-preview { padding: 0.5rem; border-radius: 16px; } .gift-shirt { aspect-ratio: auto; } }
 
 /* The quiet guide that stands in for the shirt photo until a color is chosen */
 .gift-guide { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.55rem; padding: 1.5rem 1.25rem; text-align: center; background: linear-gradient(135deg, #fdf8f4, #f5ede4); }
@@ -4020,8 +4020,8 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 .gift-input:focus, .gift-card select:focus { outline: 2px solid rgba(184, 124, 111, 0.45); outline-offset: 1px; border-color: var(--terra-cotta); }
 .gift-pick .gift-check { padding: 0.7rem 0.9rem; border: 1px solid var(--border-light); border-radius: 12px; background: #fff; }
 .gift-pick .gift-check:has(input:checked) { border-color: var(--terra-cotta); background: rgba(184, 124, 111, 0.07); }
-@media (max-width: 760px) { .gift-guide { position: static; padding: 1rem; } .gift-shirt { min-height: 0; } .gift-guide-steps { grid-template-columns: 1fr 1fr; gap: 0.35rem 0.9rem; } .gift-guide-title { font-size: 1.15rem; } .gift-guide-foot { display: none; } }
-@media (max-width: 760px) {
+@media (max-width: 768px) { .gift-guide { position: static; padding: 1rem; } .gift-shirt { min-height: 0; } .gift-guide-steps { grid-template-columns: 1fr 1fr; gap: 0.35rem 0.9rem; } .gift-guide-title { font-size: 1.15rem; } .gift-guide-foot { display: none; } }
+@media (max-width: 768px) {
     .gift-preview:not(.has-photo) { position: static; }
     .gift-preview:not(.has-photo) .gift-shirt { height: auto; aspect-ratio: auto; }
     .gift-preview:not(.has-photo) .gift-guide { position: static; }
@@ -4054,10 +4054,10 @@ input[type="file"]::file-selector-button:hover { background: var(--accent-color)
 .gift-style-meta { font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
 .gift-style-card[hidden] { display: none !important; }
 .gift-designs.gift-rail { display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto); grid-auto-columns: 7.6rem; gap: 0.7rem; }
-@media (max-width: 600px) { .gift-styles .gift-style-card { flex-basis: 9.5rem; } .gift-designs.gift-rail { grid-auto-columns: 6.4rem; } .gift-rail-btn { width: 1.9rem; height: 1.9rem; } }
+@media (max-width: 640px) { .gift-styles .gift-style-card { flex-basis: 9.5rem; } .gift-designs.gift-rail { grid-auto-columns: 6.4rem; } .gift-rail-btn { width: 1.9rem; height: 1.9rem; } }
 .gift-layout > * { min-width: 0; }
 .gift-layout { grid-template-columns: minmax(280px, 400px) minmax(0, 1fr); }
-@media (max-width: 760px) { .gift-layout { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 768px) { .gift-layout { grid-template-columns: minmax(0, 1fr); } }
 
 .about-owner-mono { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: linear-gradient(135deg, var(--ivory-silk), var(--cashmere-sand)); color: var(--terra-cotta); font-family: var(--font-heading); font-size: 2.6rem; width: 120px; height: 120px; }
 .about-owner-role { margin: 0.1rem 0 0; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
@@ -4085,7 +4085,7 @@ a.contact-method-value { display: inline-block; padding: 0.55rem 0; }
 .gift-styles.gift-rail { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.7rem; }
 .gift-styles .gift-style-card { flex: none; min-width: 0; }
 .gift-designs.gift-rail { grid-auto-flow: row; grid-template-rows: none; grid-auto-columns: auto; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 0.6rem; }
-@media (max-width: 600px) { .gift-styles.gift-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); } .gift-designs.gift-rail { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .gift-styles.gift-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); } .gift-designs.gift-rail { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .gift-rail { overflow-x: clip; }
 
 /* The full design list on a group store page: small tiles below the products, can be folded away */
