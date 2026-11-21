@@ -4254,3 +4254,15 @@ body:not(.is-admin) .back-design-tab.active,
 .customizer-container .size-card.has-qty.selected { background: var(--btn-rose); border-color: var(--btn-rose); }
 .shop-section .product-card .btn-customize { color: var(--btn-rose) !important; border-color: var(--btn-rose); }
 .shop-section .product-card:hover .btn-customize, .shop-section .product-card .btn-customize:hover { background: var(--btn-rose); color: #fff !important; }
+
+/* One card style for the public site: same corners, hairline border, soft shadow, same lift on hover.
+   The admin keeps its own look. */
+:root { --card-radius: 16px; --card-border: rgba(232, 208, 177, 0.7); --card-shadow: 0 2px 4px rgba(58, 61, 72, 0.04), 0 8px 22px rgba(58, 61, 72, 0.06); --card-shadow-hover: 0 4px 8px rgba(58, 61, 72, 0.06), 0 16px 34px rgba(58, 61, 72, 0.11); }
+body:not(.is-admin) :is(.product-card, .dist-card, .start-card, .review-card, .occasion-tile, .pk-card, .vote-card, .dn-card, .gift-card, .track-card, .made-card, .design-tile, .collection-card) {
+    border-radius: var(--card-radius); border-color: var(--card-border); box-shadow: var(--card-shadow); background: #fff;
+}
+body:not(.is-admin) :is(.product-card, .dist-card, .start-card, .occasion-tile, .vote-card, .dn-card, .collection-card) { border-style: solid; border-width: 1px; transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
+body:not(.is-admin) .dist-card { border-top: 3px solid var(--card-accent, var(--accent-color)); }
+body:not(.is-admin) :is(.product-card, .dist-card, .start-card, .occasion-tile, .vote-card, .dn-card):hover,
+body:not(.is-admin) .dist-card:focus-visible { transform: translateY(-3px); box-shadow: var(--card-shadow-hover); border-color: var(--card-border); }
+body:not(.is-admin) .dist-card:hover, body:not(.is-admin) .dist-card:focus-visible { border-top-color: var(--card-accent, var(--accent-color)); }

@@ -48,7 +48,7 @@ def test_school_deadlines_show_the_year(app, seed, guest):
     from utils import districts as DS
     with app.app_context():
         d = DS.set_up_district('Desoto USD 232', [('Mill Valley High', 'high', ['Band'], {})])
-        soon = datetime.utcnow() + timedelta(days=60)
+        soon = (datetime.utcnow() + timedelta(days=60)).replace(hour=18, minute=0)      # midday in Kansas City, so the date is the same there as in UTC
         d.order_deadline = soon
         db.session.commit()
     html = guest.get('/org/desoto-usd-232/mill-valley-high').get_data(as_text=True)
