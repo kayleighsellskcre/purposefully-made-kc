@@ -302,13 +302,13 @@ def send_review_request(order):
         db.session.commit()
     name = _first_name(order)
     return _send(
-        order.email.strip(), 'How is your order treating you?', 'We would love to hear from you',
-        [f'Hi {name}, it has been a couple of weeks since your order, and we hope you are loving it.',
-         'If you have a minute, would you tell us how it turned out? A few kind words mean the world to a small shop like ours.',
-         'And please feel free to take photos of you wearing your items and upload them. We would love to show people how great everyone looks!'],
-        button={'label': 'Share your thoughts and photos', 'url': review_url(order)},
+        order.email.strip(), 'A quiet note from Purposefully Made KC', 'Thank you, truly',
+        [f'Hi {name}, it has been a couple of weeks since your order arrived, and I hope it has been everything you pictured.',
+         'If you have a moment, I would be so grateful to hear how it turned out. Your words help other families and teams feel confident choosing us, and they mean a great deal to a small shop like mine.',
+         'A photo of you wearing it is a lovely gift too, if you feel like sharing one. With your permission, it may find a home on our site.'],
+        button={'label': 'Share your thoughts', 'url': review_url(order)},
         details=_order_details(order),
-        note='There is no pressure and no account needed. We read every note ourselves.')
+        note='No account needed, no pressure at all. I read every note myself. With gratitude, Kayleigh')
 
 
 def due_review_orders(now=None):

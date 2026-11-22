@@ -95,41 +95,15 @@
                         'about' if _ep == 'main.about' else
                         'schools' if _ep.startswith('district.') else
                         'contact' if _ep == 'main.contact' else '') %}
-                    {# Four choices, each with a small menu: Shop, Designs (gallery or have us draw it), Group Orders, About. #}
+                    {# Four plain choices, no pull-down menus. Each page links to its own siblings. #}
                     {% set _shop_cur = _nav_here == 'shop' %}
                     {% set _design_cur = _nav_here in ['design', 'recreate'] %}
                     {% set _group_cur = _nav_here in ['group', 'schools'] %}
                     {% set _about_cur = _nav_here in ['about', 'contact'] %}
-                    <div class="nav-dd">
-                        <a href="{{ url_for('shop.index') }}" class="nav-link nav-dd-trigger{% if _shop_cur %} nav-link--current{% endif %}"{% if _shop_cur %} aria-current="page"{% endif %}>Shop</a>
-                        <div class="nav-dd-menu">
-                            <a href="{{ url_for('shop.index') }}" class="nav-dd-dup">All apparel</a>
-                            <a href="{{ url_for('shop.index', age_group='kids') }}">Kids &amp; Baby</a>
-                        </div>
-                    </div>
-                    <div class="nav-dd">
-                        <a href="{{ url_for('shop.design_gallery') }}" class="nav-link nav-dd-trigger{% if _design_cur %} nav-link--current{% endif %}"{% if _design_cur %} aria-current="page"{% endif %}>Designs</a>
-                        <div class="nav-dd-menu">
-                            <a href="{{ url_for('shop.design_gallery') }}" class="nav-dd-dup">Design Gallery</a>
-                            <a href="{{ url_for('custom_request.index') }}">Have us draw it</a>
-                        </div>
-                    </div>
-                    <div class="nav-dd">
-                        <a href="{{ url_for('shop.group_orders') }}" class="nav-link nav-dd-trigger{% if _group_cur %} nav-link--current{% endif %}"{% if _group_cur %} aria-current="page"{% endif %}>Group Orders</a>
-                        <div class="nav-dd-menu">
-                            <a href="{{ url_for('shop.group_orders') }}#find">Find your school or team</a>
-                            <a href="{{ url_for('district.directory') }}">School districts</a>
-                            <a href="{{ url_for('shop.group_orders') }}#start">Start a group order</a>
-                            <a href="{{ url_for('shop.company_apparel') }}">Company apparel</a>
-                        </div>
-                    </div>
-                    <div class="nav-dd">
-                        <a href="{{ url_for('main.about') }}" class="nav-link nav-dd-trigger{% if _about_cur %} nav-link--current{% endif %}"{% if _about_cur %} aria-current="page"{% endif %}>About</a>
-                        <div class="nav-dd-menu">
-                            <a href="{{ url_for('main.about') }}" class="nav-dd-dup">About</a>
-                            <a href="{{ url_for('main.contact') }}">Contact</a>
-                        </div>
-                    </div>
+                    <a href="{{ url_for('shop.index') }}" class="nav-link{% if _shop_cur %} nav-link--current{% endif %}"{% if _shop_cur %} aria-current="page"{% endif %}>Shop</a>
+                    <a href="{{ url_for('shop.design_gallery') }}" class="nav-link{% if _design_cur %} nav-link--current{% endif %}"{% if _design_cur %} aria-current="page"{% endif %}>Designs</a>
+                    <a href="{{ url_for('shop.group_orders') }}" class="nav-link{% if _group_cur %} nav-link--current{% endif %}"{% if _group_cur %} aria-current="page"{% endif %}>Group Orders</a>
+                    <a href="{{ url_for('main.about') }}" class="nav-link{% if _about_cur %} nav-link--current{% endif %}"{% if _about_cur %} aria-current="page"{% endif %}>About</a>
 
                     {# Hamburger: same account items, nested under My Account. #}
                     {% if current_user.is_authenticated %}

@@ -97,8 +97,8 @@ def test_the_header_has_four_choices_with_menus_and_an_account_icon(app, seed, g
     nav = html.split('aria-label="Main"')[1].split('</nav>')[0]
     for top in ('>Shop</a>', '>Designs</a>', '>Group Orders</a>', '>About</a>'):
         assert top in nav
-    assert '>Schools</a>' not in nav and '>Contact</a>' in nav and '>Design Gallery</a>' in nav and '>Have us draw it</a>' in nav     # still one click away, inside the menus
-    assert 'Kids &amp; Baby' in nav and 'Company apparel' in nav and 'Find your school or team' in nav
+    assert 'nav-dd' not in nav and 'nav-dd-menu' not in nav          # plain links, no pull-down menus
+    assert '>Schools</a>' not in nav and '>Contact</a>' not in nav
     assert 'Log in or create an account' in html                                                  # a person icon, not a pill
     assert '>Register</a>' not in html.split('class="nav-icons"')[0].split('aria-label="Main"')[1].split('mobile-only')[0]
 

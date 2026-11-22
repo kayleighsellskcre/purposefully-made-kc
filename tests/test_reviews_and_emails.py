@@ -162,7 +162,7 @@ def test_review_request_goes_out_after_fifteen_days_only_once(app, seed, sent):
     first, second, token = _in_db(app, go)
     assert (first, second) == (1, 0)
     mail = sent[0]
-    assert 'photos of you wearing your items' in mail['text']
+    assert 'photo of you wearing it' in mail['text']
     assert mail['button']['url'].endswith(f'/review/{token}') and len(token) >= 16
 
 

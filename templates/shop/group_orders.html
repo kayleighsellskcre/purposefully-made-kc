@@ -323,6 +323,8 @@
         <p class="lead">Custom apparel for teams, schools, and organizations. Create your options and share one link. Everyone stays matching.</p>
         <div class="go-jump">
             <a class="go-jump-link" href="#find">Find your store</a>
+            <a class="go-jump-link" href="{{ url_for('district.directory') }}">School districts</a>
+            <a class="go-jump-link" href="{{ url_for('shop.company_apparel') }}">Company apparel</a>
             <a class="go-jump-link go-jump-link--solid" href="#start">Start a group order</a>
         </div>
         {% if current_user.is_authenticated %}<p class="go-links"><a href="{{ url_for('account.my_group_orders') }}">My group orders</a></p>{% endif %}

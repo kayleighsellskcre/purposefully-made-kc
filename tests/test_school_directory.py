@@ -39,7 +39,7 @@ def test_the_menu_footer_and_group_orders_page_point_to_it(app, seed, guest):
     for path in ('/', '/group-orders'):
         html = guest.get(path).get_data(as_text=True)
         assert 'href="/school-districts"' in html
-    assert '>School districts</a>' in guest.get('/').get_data(as_text=True)      # under Group Orders in the menu
+    assert '>School districts</a>' in guest.get('/shop/group-orders').get_data(as_text=True)      # a button on the Group Orders page
 
 
 def test_the_menu_keeps_schools_lit_on_the_district_and_school_pages(app, seed, guest):

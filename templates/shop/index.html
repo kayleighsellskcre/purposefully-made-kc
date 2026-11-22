@@ -11,6 +11,26 @@
 {% block robots %}{% if request.args %}noindex, follow{% else %}index, follow{% endif %}{% endblock %}
 
 {% block content %}
+<script>
+/* When a card's first color picture will not load, try the next colors before giving up and showing the placeholder. */
+function kbCardImgFail(img) {
+    var slide = img.parentElement, car = img.closest('.color-carousel'), more = [];
+    try { more = JSON.parse((car && car.getAttribute('data-more')) || '[]'); } catch (e) { more = []; }
+    var n = parseInt(img.getAttribute('data-tries') || '0', 10);
+    if (car && n < more.length && n < 6) {
+        img.setAttribute('data-tries', n + 1);
+        slide.setAttribute('data-color', more[n][0]);
+        var label = car.querySelector('.current-color');
+        if (label) label.textContent = more[n][0];
+        img.alt = (car.getAttribute('data-product-name') || '') + ' - ' + more[n][0];
+        img.src = more[n][1];
+        return;
+    }
+    img.style.display = 'none';
+    var msg = slide.querySelector('.no-mockup-msg');
+    if (msg) msg.style.display = 'flex';
+}
+</script>
 <div class="page-header shop-page-header">
     <div class="container">
         <span class="eyebrow">Printed to order</span>
@@ -251,7 +271,7 @@
                                              alt="{{ product|display_name }} - {{ variant.color_name }}"
                                              {% if card_index < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
                                              referrerpolicy="no-referrer"
-                                             onerror="this.style.display='none';this.parentElement.querySelector('.no-mockup-msg').style.display='flex'">
+                                             onerror="kbCardImgFail(this)">
                                         <div class="no-mockup-msg" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;background:linear-gradient(135deg,#fdf8f4 0%,#f5ede4 100%);">
                                             <div style="font-size:2.5rem;margin-bottom:0.5rem">📸</div>
                                             <p style="font-family:'Playfair Display',serif;font-size:1rem;color:#8b6f5e;font-weight:600;margin:0 0 0.4rem">This mockup skipped picture day!</p>

@@ -5470,6 +5470,18 @@
 
         const UPLOAD_PROMPT = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Upload your own design</strong></p><p class="text-muted">PNG, JPG, HEIC, WEBP</p>';
 
+        // After an upload, bring the shirt back into view so the customer sees their design on it (only if it scrolled away).
+        function showMockupAfterUpload() {
+            const canvas = document.getElementById('previewCanvas');
+            if (!canvas) return;
+            const r = canvas.getBoundingClientRect();
+            const room = window.innerHeight || document.documentElement.clientHeight;
+            if (r.top >= 0 && r.bottom <= room) return;                 // already fully visible
+            const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const top = Math.max(0, window.pageYOffset + r.top - 90);   // leave room for the header
+            window.scrollTo({ top: top, behavior: reduce ? 'auto' : 'smooth' });
+        }
+
         async function frontUpload(file, mode) {
             if (!file || !uploadAreaMain) return;
             if (file.size > 15 * 1024 * 1024) {
@@ -5551,8 +5563,9 @@
                 }
 
                 applyInspectorResult(data, file);
+                showMockupAfterUpload();
                 clearInterval(_dotTimer);
-                uploadAreaMain.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Design uploaded!</strong></p><p class="text-muted">Click to change</p>';
+                uploadAreaMain.innerHTML = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 0.5rem;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><p><strong>Design added</strong></p><p class="text-muted">See it on your shirt. Click to change</p>';
             } catch (err) {
                 clearInterval(_dotTimer);
                 let msg = err.message || 'Upload failed. Please try again.';

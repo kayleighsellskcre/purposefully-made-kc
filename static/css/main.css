@@ -4274,3 +4274,11 @@ body:not(.is-admin) .dist-card:hover, body:not(.is-admin) .dist-card:focus-visib
 .printed-for-logos { list-style: none; margin: 0 0 1.2rem; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1.2rem 2rem; }
 .printed-for-logos img { height: 64px; width: auto; max-width: 140px; object-fit: contain; opacity: 0.9; transition: opacity .2s; }
 .printed-for-logos a:hover img { opacity: 1; }
+
+/* Plain header links (no pull-downs); a link under a page title; a shorter district header so the schools show without scrolling */
+.page-header .dg-draw { margin: .6rem 0 0; font-size: .95rem; }
+.page-header .dg-draw a { color: var(--btn-rose, #9F6154); text-decoration: underline; text-underline-offset: 3px; }
+body:not(.is-admin) .dist-hero .dist-logo { max-height: 56px; margin-bottom: .5rem; }
+body:not(.is-admin) .dist-hero .dist-find { margin-top: .9rem; }
+body:not(.is-admin) .dist-hero .dist-hero-actions { margin-top: .7rem; }
+body:not(.is-admin) .dist-body { padding-top: 1.5rem; }
