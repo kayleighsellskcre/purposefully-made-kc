@@ -812,17 +812,17 @@
                         {% endif %}
 
                         {% if product.carousel_colors and product.carousel_colors|length > 0 %}
-                        <div class="color-carousel" data-product-id="{{ product.id }}">
+                        {# Only the shown color is in the page. The other colors ride along as one short list and become slides the first time the card is used. #}
+                        <div class="color-carousel" data-product-id="{{ product.id }}" data-product-name="{{ product|display_name }}"{% if product.carousel_colors|length > 1 %} data-more="{{ product.carousel_colors|other_colors|tojson|forceescape }}"{% endif %}>
                             <div class="carousel-images">
-                                {% for variant in product.carousel_colors %}
-                                <div class="carousel-slide {% if loop.first %}active{% endif %}" data-color="{{ variant.color_name }}">
+                                {% set variant = product.carousel_colors[0] %}
+                                <div class="carousel-slide active" data-color="{{ variant.color_name }}">
                                     <img src="{{ variant.front_image_url }}"
                                          alt="{{ product|display_name }} – {{ variant.color_name }}"
-                                         {% if loop.first and product_loop.index0 < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
+                                         {% if product_loop.index0 < 4 %}loading="eager" fetchpriority="high"{% else %}loading="lazy" decoding="async"{% endif %}
                                          referrerpolicy="no-referrer"
                                          onerror="this.src='{{ url_for('static', filename='img/placeholder-product.svg') }}'">
                                 </div>
-                                {% endfor %}
                             </div>
                             {% if product.carousel_colors|length > 1 %}
                             <button class="carousel-btn carousel-prev" type="button" aria-label="Previous color">
@@ -1008,14 +1008,41 @@
 })();
 
 document.querySelectorAll('.color-carousel').forEach(carousel => {
-    const slides = carousel.querySelectorAll('.carousel-slide');
+    const slides = Array.from(carousel.querySelectorAll('.carousel-slide'));
+    const holder = carousel.querySelector('.carousel-images');
     const prev = carousel.querySelector('.carousel-prev');
     const next = carousel.querySelector('.carousel-next');
     const indicator = carousel.querySelector('.current-color');
-    if (slides.length <= 1) return;
+    let more = [];
+    try { more = JSON.parse(carousel.getAttribute('data-more') || '[]'); } catch (e) { more = []; }
+    if (slides.length + more.length <= 1) return;
+
+    // The other colors become real slides the first time this card is used, not before.
+    let built = false;
+    const build = () => {
+        if (built) return;
+        built = true;
+        const name = carousel.getAttribute('data-product-name') || '';
+        more.forEach(pair => {
+            const slide = document.createElement('div');
+            slide.className = 'carousel-slide';
+            slide.setAttribute('data-color', pair[0]);
+            const img = document.createElement('img');
+            img.loading = 'lazy';
+            img.decoding = 'async';
+            img.referrerPolicy = 'no-referrer';
+            img.alt = name + ' - ' + pair[0];
+            img.onerror = function () { this.src = '{{ url_for("static", filename="img/placeholder-product.svg") }}'; };
+            img.src = pair[1];
+            slide.appendChild(img);
+            holder.appendChild(slide);
+            slides.push(slide);
+        });
+    };
 
     let i = 0;
     const go = (idx) => {
+        build();
         i = (idx + slides.length) % slides.length;
         slides.forEach((s, j) => s.classList.toggle('active', j === i));
         if (indicator) indicator.textContent = slides[i].dataset.color;

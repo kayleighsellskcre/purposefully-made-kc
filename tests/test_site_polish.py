@@ -148,3 +148,10 @@ def test_shop_cards_carry_other_colors_as_a_short_list_not_hidden_blocks(app):
     assert flt(colors[:1]) == [] and flt(None) == []
     src = open('templates/shop/index.html', encoding='utf-8').read()
     assert 'data-more=' in src and 'carousel_colors %}' not in src.split('color-carousel')[1][:1200]
+
+
+def test_collection_cards_carry_one_picture_and_a_short_list_of_other_colors():
+    page = open('templates/collection/view.html', encoding='utf-8').read()
+    assert 'data-more="{{ product.carousel_colors|other_colors|tojson|forceescape }}"' in page
+    assert 'for variant in product.carousel_colors' not in page         # no hidden slide per color
+    assert 'const build = () =>' in page                                # the other colors become slides on first use
