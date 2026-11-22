@@ -95,9 +95,9 @@ def test_group_orders_page_has_two_doors_and_named_payment_buttons(app, seed, gu
 def test_the_header_has_four_choices_with_menus_and_an_account_icon(app, seed, guest):
     html = guest.get('/').get_data(as_text=True)
     nav = html.split('aria-label="Main"')[1].split('</nav>')[0]
-    for top in ('>Shop</a>', '>Group Orders</a>', '>Custom Design</a>', '>About</a>'):
+    for top in ('>Shop</a>', '>Designs</a>', '>Group Orders</a>', '>About</a>'):
         assert top in nav
-    assert '>Schools</a>' not in nav and '>Contact</a>' in nav and '>Design Gallery</a>' in nav     # still one click away, inside the menus
+    assert '>Schools</a>' not in nav and '>Contact</a>' in nav and '>Design Gallery</a>' in nav and '>Have us draw it</a>' in nav     # still one click away, inside the menus
     assert 'Kids &amp; Baby' in nav and 'Company apparel' in nav and 'Find your school or team' in nav
     assert 'Log in or create an account' in html                                                  # a person icon, not a pill
     assert '>Register</a>' not in html.split('class="nav-icons"')[0].split('aria-label="Main"')[1].split('mobile-only')[0]
