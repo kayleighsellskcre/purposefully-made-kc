@@ -155,3 +155,15 @@ def test_collection_cards_carry_one_picture_and_a_short_list_of_other_colors():
     assert 'data-more="{{ product.carousel_colors|other_colors|tojson|forceescape }}"' in page
     assert 'for variant in product.carousel_colors' not in page         # no hidden slide per color
     assert 'const build = () =>' in page                                # the other colors become slides on first use
+
+
+def test_the_customize_page_tells_google_the_price_and_does_not_load_every_color_picture_at_once(app, seed, guest):
+    import json
+    import re
+    html = guest.get(f'/shop/customize/{seed["tee_slug"]}').get_data(as_text=True)
+    block = re.search(r'<script type="application/ld\+json">(.*?)</script>', html, re.S).group(1)
+    data = json.loads(block)
+    assert data['@type'] == 'Product' and data['offers']['priceCurrency'] == 'USD' and float(data['offers']['price']) > 0
+    assert '<meta property="og:type" content="product">' in html
+    page = open('templates/shop/customize.html', encoding='utf-8').read()
+    assert 'class="color-preview-img" loading="lazy"' in page        # the color pictures load as you scroll
