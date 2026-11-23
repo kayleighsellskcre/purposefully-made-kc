@@ -267,5 +267,5 @@ def test_the_form_can_fetch_shirt_photos_for_the_mockup(admin_client, seed):
 def test_the_page_is_built_for_a_phone_and_has_logo_font_and_mockups(admin_client):
     html = admin_client.get('/admin/orders/enter').get_data(as_text=True)
     for needle in ('Upload logo', 'Name and number on the back', 'Paste your list here', 'Needed by',
-                   'max-width: 720px', 'data-label', 'Save as draft'):
+                   'max-width: 768px', 'data-label', 'Save as draft'):
         assert needle in html
