@@ -79,7 +79,7 @@
                     {# Eager and high priority: it is the first thing visible on
                        every page, so deferring it would delay the largest
                        contentful paint. #}
-                    <img src="{{ url_for('static', filename='img/logo-monogram.png') }}" alt="Purposefully Made KC" class="logo-image" loading="eager" fetchpriority="high">
+                    <img src="{{ url_for('static', filename='img/logo-monogram.png') }}" alt="Purposefully Made KC" class="logo-image" width="302" height="260" loading="eager" fetchpriority="high">
                 </a>
                 
                 <nav class="nav-links" aria-label="Main">
@@ -245,6 +245,7 @@
                     <img src="{{ url_for('static', filename='img/logo-wordmark.png') }}"
                          alt="Purposefully Made KC"
                          class="footer-logo-img"
+                         width="321" height="231"
                          loading="lazy"
                          decoding="async"
                          data-fallback="{{ url_for('static', filename='img/logo-monogram.png') }}"

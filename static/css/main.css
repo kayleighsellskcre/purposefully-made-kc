@@ -4282,3 +4282,13 @@ body:not(.is-admin) .dist-hero .dist-logo { max-height: 56px; margin-bottom: .5r
 body:not(.is-admin) .dist-hero .dist-find { margin-top: .9rem; }
 body:not(.is-admin) .dist-hero .dist-hero-actions { margin-top: .7rem; }
 body:not(.is-admin) .dist-body { padding-top: 1.5rem; }
+
+/* People who ask their device for less motion get none: no sliding, fading or scrolling animation anywhere on the site. */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

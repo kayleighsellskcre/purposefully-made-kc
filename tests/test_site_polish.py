@@ -167,3 +167,11 @@ def test_the_customize_page_tells_google_the_price_and_does_not_load_every_color
     assert '<meta property="og:type" content="product">' in html
     page = open('templates/shop/customize.html', encoding='utf-8').read()
     assert 'class="color-preview-img" loading="lazy"' in page        # the color pictures load as you scroll
+
+
+def test_reduced_motion_is_honored_sitewide_and_the_logos_have_a_set_size(guest):
+    css = open('static/css/main.css', encoding='utf-8').read()
+    tail = css.rsplit('prefers-reduced-motion: reduce', 1)[1]
+    assert 'animation-duration: 0.01ms !important' in tail and 'transition-duration: 0.01ms !important' in tail
+    html = guest.get('/').get_data(as_text=True)
+    assert 'class="logo-image" width="302" height="260"' in html and 'width="321" height="231"' in html
