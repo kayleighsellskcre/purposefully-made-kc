@@ -1,4 +1,4 @@
-from flask import Blueprint, abort, Response, render_template, session, current_app, send_file, send_from_directory, request, flash, redirect, url_for
+from flask import Blueprint, abort, Response, render_template, current_app, send_from_directory, request, flash, redirect, url_for
 from models import Product, Collection
 from utils.rate_limit import post_only
 from utils.admin_gate import require_admin_or_404

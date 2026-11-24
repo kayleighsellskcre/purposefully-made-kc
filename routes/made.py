@@ -11,7 +11,7 @@ from flask_login import current_user, login_required
 from models import OrderItem, SharedDesign, db
 from utils import creator_credit as CC
 from utils import shared_designs as SD
-from utils.cart_store import cart_count, get_cart, save_cart
+from utils.cart_store import get_cart, save_cart
 
 made_bp = Blueprint('made', __name__)
 

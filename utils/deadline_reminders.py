@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo
 from flask import render_template
 from flask_mail import Message
 
-from models import db, Collection, GroupRosterEntry, Order, OrgSection
+from models import db, Collection, GroupRosterEntry, OrgSection
 from utils.group_orders import schedule_date_input
 from utils.mailer import admin_base_url, admin_recipient, reply_to, send
 

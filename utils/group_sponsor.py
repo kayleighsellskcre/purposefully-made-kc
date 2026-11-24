@@ -289,9 +289,9 @@ def convert_invoice_to_orders(invoice):
     Only runs for a paid invoice; a request is converted once.
     """
     from flask import current_app
-    from models import Order, SponsorSubmission, db
-    from routes.checkout import build_order_items
-    from utils.order_costs import default_due_date
+    from models import SponsorSubmission, db
+    pass
+    pass
 
     if invoice.payment_status != 'paid':
         return []

@@ -1,7 +1,6 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from models import db, Order, Address, Design, Collection
-from datetime import datetime
 
 account_bp = Blueprint('account', __name__, url_prefix='/account')
 

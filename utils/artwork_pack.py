@@ -10,7 +10,7 @@ import json
 import re
 from io import BytesIO
 
-from models import Design, db
+from models import Design
 from utils import group_designs as GD
 from utils.design_metadata import title_from_filename
 

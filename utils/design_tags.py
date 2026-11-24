@@ -281,7 +281,7 @@ def design_tag_slugs(design):
 
 def apply_auto_tags(design, slugs, confidence=None):
     """Add automatic tags to a design. Adds only: it never removes a tag, and never touches a tag you set."""
-    from models import DesignTag, DesignTagLink, db
+    from models import DesignTagLink, db
     tags = vocabulary()
     have = {l.tag_id: l for l in DesignTagLink.query.filter_by(design_id=design.id).all()}
     added = []
@@ -296,7 +296,7 @@ def apply_auto_tags(design, slugs, confidence=None):
 
 def set_manual_tags(design, slugs, user_id=None):
     """You decide the tags: exactly this list. Removed tags are remembered so automation never re-adds them."""
-    from models import DesignTag, DesignTagLink, db
+    from models import DesignTagLink, db
     tags = vocabulary(active_only=False)
     wanted = {tags[s].id: s for s in slugs if s in tags}
     current = {l.tag_id: l for l in DesignTagLink.query.filter_by(design_id=design.id).all()}

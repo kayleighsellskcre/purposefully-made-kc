@@ -105,7 +105,7 @@ def cron_sync_ss():
         db.session.commit()
 
         # Create products from mockup folders when S&S doesn't have them
-        from utils.mockups import create_products_from_mockup_folders, _find_mockup_file
+        from utils.mockups import create_products_from_mockup_folders
         created_from_mockups = create_products_from_mockup_folders(current_app)
         if created_from_mockups:
             db.session.commit()

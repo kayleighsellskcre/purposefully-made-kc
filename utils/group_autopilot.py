@@ -13,7 +13,7 @@ from datetime import date, datetime, timedelta
 
 from flask import current_app
 
-from models import Collection, GroupRosterEntry, Order, OrderItem, db
+from models import Collection, GroupRosterEntry, Order, db
 from utils.deadline_reminders import _group_key, _name_for, _plan, _share_url
 from utils.group_orders import is_deadline_passed, is_not_yet_open, orders_for_collection, schedule_date_input
 from utils.mailer import admin_base_url, admin_recipient

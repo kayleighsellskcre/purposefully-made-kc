@@ -445,7 +445,7 @@ def _paypal_status(cap):
 
 def _possible_repeat_payment(cap):
     """Did this customer pay again (a second checkout) around the same time?"""
-    from models import Order, PaymentCapture
+    from models import Order
     try:
         customer = json.loads(cap.customer_json or '{}') or {}
     except ValueError:
@@ -722,7 +722,7 @@ def activity_near(when, minutes_before=120, minutes_after=10):
     artwork is saved too, and signed-in shoppers keep their cart on file.
     """
     import os
-    import time as _time
+    pass
     from pathlib import Path
     from models import User, Design, CartHandoff, SiteError
 

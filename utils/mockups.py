@@ -5,7 +5,6 @@ Prefers SanMar garment flats (no models), then products/, then uploads/mockups.
 import os
 import re
 import time
-from pathlib import Path
 
 
 _ROOTS_CACHE = {}
@@ -804,7 +803,7 @@ def get_first_shop_image_url(product, app, carousel=None):
             return url
     # Last resort: check static/images/products/ with brand-prefix stripped
     # e.g. BC3001 → 3001, STTU755 → 755
-    import re as _re
+    pass
     style = (getattr(product, 'style_number', None) or '').strip()
     if style:
         style_bare = style[2:] if style.upper().startswith('BC') and style[2:3].isdigit() else style

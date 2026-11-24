@@ -6,10 +6,9 @@ so a design shows up everywhere it belongs without being uploaded or managed twi
 Customers see: Collection -> Subcategory -> Designs. Anything more specific (recipient, sport, style, color) is a
 filter. Fan Favorites, New Arrivals, Trending and Matching Sets build themselves from real activity.
 """
-import re
 from datetime import datetime, timedelta
 
-from models import Design, DesignCategoryLink, DesignRelation, DesignTag, DesignTagLink, Order, OrderItem, db
+from models import Design, DesignCategoryLink, DesignRelation, DesignTagLink, Order, OrderItem, db
 from utils.design_tags import _norm, search_terms, tag_related, tag_synonyms, vocabulary
 from utils.design_taxonomy import COLLECTION_BY_KEY, COLLECTIONS, label_for
 

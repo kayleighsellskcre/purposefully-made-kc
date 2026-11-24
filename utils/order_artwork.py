@@ -545,7 +545,7 @@ def preload_order_items(orders, deep=True):
     from flask import g, has_request_context
     if not has_request_context():
         return
-    from models import OrderItem, Product, Design, db
+    from models import OrderItem, Product, Design
     from utils.mockups import prefetch_color_variants
     orders = [o for o in orders if getattr(o, 'id', None) is not None]
     by_order = {o.id: [] for o in orders}

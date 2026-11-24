@@ -1,14 +1,13 @@
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash, current_app, abort
-from flask_login import current_user, login_required
+from flask_login import current_user
 from flask_mail import Message
-from models import db, Product, Order, OrderItem, Design, Address, User
+from models import db, Product, Order, OrderItem, Design, User
 from datetime import datetime, timedelta
 from threading import Thread
 import math
 import secrets
 import stripe
 from utils.business_info import BUSINESS
-import paypalrestsdk
 import json
 from utils.order_costs import default_due_date
 from utils.local_time import format_central
@@ -271,8 +270,8 @@ def send_order_confirmation_email(order, force=False):
 
 def _send_order_confirmation_email(order):
     """Send a branded HTML receipt to the customer + a dedicated alert to admin."""
-    import socket as _socket
-    import sys
+    pass
+    pass
 
     mail = current_app.extensions.get('mail')
     mail_ready = _mail_ready()
@@ -1066,12 +1065,7 @@ def index():
 @checkout_bp.route('/apply-promo', methods=['POST'])
 def apply_promo():
     """Apply or clear the family at-cost promo code for this checkout session."""
-    from utils.family_promo import (
-        is_family_promo_code,
-        set_session_family_promo,
-        clear_session_family_promo,
-        get_session_family_promo,
-    )
+    from utils.family_promo import is_family_promo_code, set_session_family_promo, clear_session_family_promo
 
     data = request.get_json(silent=True) or {}
     code = (data.get('code') or '').strip()

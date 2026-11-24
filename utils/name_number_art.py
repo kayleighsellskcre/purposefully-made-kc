@@ -8,13 +8,7 @@ import threading
 import time
 from collections import OrderedDict
 
-from utils.personalization_layout import (
-    PRODUCTION_DPI,
-    render_piece_png,
-    render_snapshot_png,
-    snapshot_from_item,
-    validate_snapshot_png,
-)
+from utils.personalization_layout import PRODUCTION_DPI, render_piece_png, snapshot_from_item, validate_snapshot_png
 
 _log = logging.getLogger(__name__)
 _CACHE_MAX = 24

@@ -21,9 +21,9 @@ from routes.admin_design_requests import _delete_design_file  # noqa: E402
 def collections():
     """Manage collections — grouped under their org when applicable."""
     from utils.group_orders import is_deadline_passed
-    from models import Organization, OrgSection, Order
+    from models import Organization, OrgSection
     from routes.org import fan_art_urls
-    from sqlalchemy import func
+    pass
 
     all_collections = Collection.query.order_by(Collection.created_at.desc()).all()
     # School district stores are managed from Districts, not mixed in here.
@@ -639,7 +639,7 @@ def collection_design_make_main(collection_id, design_id):
 @admin_required
 def collection_design_remove_color(collection_id, design_id):
     """Delete one color of a design. The main picture and the other colors stay."""
-    import json as _json
+    pass
     from utils.group_designs import detach, uses
     collection = Collection.query.get_or_404(collection_id)
     design = Design.query.get_or_404(design_id)

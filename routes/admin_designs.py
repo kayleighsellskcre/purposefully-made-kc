@@ -40,8 +40,8 @@ def _category_summary(design):
 def _apply_review_edits(design, form):
     """Your edits from the review page: saved as manual choices, remembered and locked. Returns notes to show."""
     from models import DesignCategoryLink
-    from utils.design_ai import link_manual_folders
-    from utils.design_categories import compose_extra_categories, public_extra_storage_keys, stored_music_genres
+    pass
+    from utils.design_categories import compose_extra_categories, stored_music_genres
     from utils.design_tags import clean_tags, record_correction, set_manual_tags
     from utils.design_taxonomy import is_valid_pair, legacy_key_for, COLLECTION_BY_KEY
     notes = []

@@ -1,12 +1,10 @@
-from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash
+from flask import Blueprint, render_template, request, jsonify, url_for
 from flask_login import current_user
 from models import Product, Design
 from utils.order_artwork import FRONT_PLACEMENTS, existing_image_url, mockup_urls
 from utils.cart_store import get_cart, save_cart, clear_cart, cart_count, cart_fingerprint
-from werkzeug.utils import secure_filename
 from utils.cloud_storage import image_url as _resolve_image_url
 import json
-import os
 from pathlib import Path
 
 cart_bp = Blueprint('cart', __name__, url_prefix='/cart')
@@ -347,7 +345,7 @@ def add():
             design_url = locked_logo['url']
     
     # Handle back design: uploaded file or URL (from prior upload)
-    import time as _t
+    pass
     back_design_url = None
     if 'back_design' in request.files:
         back_file = request.files['back_design']

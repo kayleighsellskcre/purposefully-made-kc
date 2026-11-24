@@ -149,7 +149,7 @@ def production_master():
     )
 
     # Design/logo totals (grouped by design, placement, print size)
-    from utils.print_sizes import production_from_order_item, inches
+    from utils.print_sizes import production_from_order_item
     from utils.order_artwork import back_print_url
     from utils.size_codes import size_code
     from utils.back_logo_size import back_logo_dims

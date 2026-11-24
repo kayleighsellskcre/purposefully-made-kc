@@ -4,7 +4,7 @@ Every collection works the same way (Music is no longer special). A "place" is e
 "collection:subcategory". The old folder fields on a design are kept in step so the rest of the site keeps working.
 """
 from models import DesignCategoryLink, db
-from utils.design_taxonomy import COLLECTION_BY_KEY, COLLECTIONS, collection_for_legacy, is_valid_pair, label_for, legacy_key_for
+from utils.design_taxonomy import COLLECTION_BY_KEY, collection_for_legacy, is_valid_pair, label_for, legacy_key_for
 
 # Music genres used to be a separate admin-only list. Each one now lives where it belongs in the one structure.
 LEGACY_GENRE_PLACES = {
@@ -101,7 +101,7 @@ def unfiled_count(designs):
 
 def apply_places(design, places, user_id=None, remember=True):
     """Save these places as your own choice (manual, locked, remembered) and keep the old folder fields in step."""
-    from utils.design_categories import compose_extra_categories, public_extra_storage_keys, stored_music_genres
+    from utils.design_categories import compose_extra_categories, stored_music_genres
     from utils.design_tags import record_correction
     before = places_label(current_places(design)) or 'none'
     DesignCategoryLink.query.filter_by(design_id=design.id).delete()

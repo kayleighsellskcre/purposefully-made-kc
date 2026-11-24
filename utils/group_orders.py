@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 
 from flask import session
 from models import Collection, Design, collection_products, db
-from utils.json_fields import parse_json_list, parse_json_object
+from utils.json_fields import parse_json_list
 
 CHICAGO = ZoneInfo('America/Chicago')
 UTC = ZoneInfo('UTC')
@@ -1928,7 +1928,7 @@ def apply_locked_back_design(collection, user=None):
     front. Instant /design/upload posts set a hidden back_design_id; a file
     input is the fallback when JavaScript does not run.
     """
-    import json
+    pass
     from flask import request
 
     from utils.group_designs import back_ids, link_as_colors, set_back_ids
@@ -1976,7 +1976,7 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
     Returns (ok, error_message, upload_count). On failure the caller should
     rollback; this function does not commit.
     """
-    from flask import current_app, request
+    from flask import request
     from utils.privacy import selectable_group_order_design_ids
     import json
 

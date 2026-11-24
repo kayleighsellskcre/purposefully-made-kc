@@ -75,7 +75,7 @@ def _warn_admin_cloud_down(subfolder):
     try:
         from datetime import datetime, timedelta
         from models import db, AdminNotification
-        from utils.admin_notifications import create_notification
+        pass
         recent = (AdminNotification.query
                   .filter(AdminNotification.kind == 'system',
                           AdminNotification.created_at >= datetime.utcnow() - timedelta(hours=1))

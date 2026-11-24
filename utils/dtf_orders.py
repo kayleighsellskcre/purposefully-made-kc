@@ -7,7 +7,7 @@ import re
 
 from utils.order_artwork import back_print_url, front_print_url
 from utils.back_logo_size import back_logo_dims
-from utils.print_sizes import front_transfer_size, inches, production_from_order_item
+from utils.print_sizes import inches, production_from_order_item
 from utils.size_codes import breakdown, size_code
 
 

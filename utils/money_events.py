@@ -5,7 +5,7 @@ refund there can happen on any day. Every function is safe to run twice with the
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 from flask import current_app
 

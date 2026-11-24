@@ -14,7 +14,6 @@ Organizer self-service:
 """
 
 import re
-import secrets
 from flask import (
     Blueprint, render_template, request, redirect, url_for,
     flash, session, abort,
@@ -227,11 +226,9 @@ def landing(slug):
     from utils.group_orders import is_not_yet_open
     welcome = (org.description or (lead.description if lead else '') or '').strip()
     # Artwork for the page: each team's own logo, and a few fan designs for the banner.
-    from utils.group_orders import (
-        allowed_design_ids, load_showcase_designs, org_fanwear_design_ids,
-    )
+    from utils.group_orders import load_showcase_designs
     from utils.cloud_storage import image_url as _img_url
-    from models import Design
+    pass
     section_art = {}
     fan_art = []
     try:
@@ -493,7 +490,7 @@ def manage(slug):
         return redirect(url_for('org.manage', slug=slug))
 
     from utils.org_fan_store import fan_store_for, is_auto_fan_store
-    from models import Order
+    pass
     sections = org.sections.order_by(OrgSection.sort_order).all()
     fan_store = fan_store_for(org)
     if fan_store is not None and is_auto_fan_store(fan_store):
@@ -557,11 +554,7 @@ def fan_wear(slug):
     """Shirt styles, colors and designs for Fan Wear, set once for every team."""
     import json
     from models import Design
-    from utils.group_orders import (
-        allowed_design_ids, apply_org_fan_wear, collection_has_color_restrictions,
-        fan_color_checked_keys, org_fan_wear_state, serialize_allowed_colors_from_form,
-        _KEEP,
-    )
+    from utils.group_orders import allowed_design_ids, apply_org_fan_wear, fan_color_checked_keys, org_fan_wear_state, serialize_allowed_colors_from_form, _KEEP
     from utils.product_filters import load_group_order_form_catalog
 
     org = _org_or_404(slug)

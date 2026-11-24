@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, url_for, session, redirect, flash, current_app, abort
+from flask import Blueprint, render_template, request, url_for, redirect, flash, current_app, abort
 from models import db, Product, Design, Collection
 from utils import sales_tax
 from flask_login import login_required, current_user
@@ -10,20 +10,7 @@ from utils.mockups import (
 )
 from utils.cloud_storage import image_url as _resolve_image_url
 from utils.json_fields import parse_json_list, parse_json_object
-from utils.product_filters import (
-    canonical_category_param,
-    catalog_filter_options,
-    group_catalog_by_age,
-    group_products_by_family,
-    infer_age,
-    infer_brand,
-    infer_category,
-    infer_fit,
-    matches_filters,
-    prepare_catalog,
-    shop_filter_options,
-    sort_catalog,
-)
+from utils.product_filters import canonical_category_param, group_catalog_by_age, group_products_by_family, infer_age, infer_brand, infer_category, infer_fit, matches_filters, shop_filter_options, sort_catalog
 from utils.sizes import shop_sizes_for_product
 from utils.product_slugs import assign_product_slug
 from utils.color_names import (
@@ -394,12 +381,8 @@ def company_apparel():
 def group_orders():
     """Group order landing page + public directory of open collections"""
     from flask_login import current_user
-    from models import Collection, OrgSection
-    from utils.group_orders import (
-        is_deadline_passed,
-        is_not_yet_open,
-        public_group_directory,
-    )
+    pass
+    from utils.group_orders import public_group_directory
 
     open_orgs, open_collections = public_group_directory()
 
@@ -415,7 +398,7 @@ def group_orders():
 @login_required
 def create_group_order():
     """Create a group order - any logged-in user with a profile"""
-    from datetime import datetime
+    pass
     
     if request.method == 'POST':
         from routes.admin import _save_collection_design
@@ -605,7 +588,7 @@ def create_group_order():
             org_action = request.form.get('org_action', '')
             if org_action == 'new':
                 try:
-                    from utils.group_org import OrgSetupError, create_org_from_wizard
+                    from utils.group_org import create_org_from_wizard
                     org, stores = create_org_from_wizard(collection, request.form, current_user)
                     db.session.commit()
                     if len(stores) > 1:
@@ -1200,7 +1183,7 @@ def customize(product_slug):
             if _is_org_fanwear:
                 _merged = org_fanwear_design_ids(coll)
                 if _merged:
-                    from models import Design as _FWDesign
+                    pass
                     from utils.group_orders import design_cards, with_linked_colors
                     gallery_designs = design_cards(_merged)
                     allowed_design_ids = with_linked_colors(_merged)

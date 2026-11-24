@@ -17,8 +17,7 @@ from flask import current_app
 def _send(to, subject, heading, paragraphs, *, button=None, details=None, note=None, attachments=None, footer_link=None):
     from flask_mail import Message
     from routes.checkout import _render_email
-    from utils.mailer import (admin_base_url, mail_configured, reply_to,
-                              send as send_mail, sender)
+    from utils.mailer import mail_configured, reply_to, send as send_mail, sender
 
     app = current_app._get_current_object()
     to = [t for t in ([to] if isinstance(to, str) else to) if t and '@' in t]

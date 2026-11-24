@@ -1,5 +1,5 @@
 """Display UTC datetimes in Kansas City time."""
-from datetime import datetime, timezone
+from datetime import timezone
 from zoneinfo import ZoneInfo
 
 CENTRAL = ZoneInfo('America/Chicago')

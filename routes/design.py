@@ -4,7 +4,6 @@ Design upload routes - simple, reliable upload for product customizer.
 from flask import Blueprint, request, jsonify, current_app, abort, send_file
 from flask_login import current_user
 from werkzeug.exceptions import HTTPException
-from werkzeug.utils import secure_filename
 from pathlib import Path
 from io import BytesIO
 from urllib.request import Request, urlopen
@@ -342,7 +341,7 @@ def preview_artwork(design_id):
 @design_bp.route('/<int:design_id>/delete', methods=['POST'])
 def delete(design_id):
     """Let an authenticated user permanently delete one of their own uploaded designs."""
-    from flask_login import login_required
+    pass
     from models import Design, db
 
     if not current_user.is_authenticated:

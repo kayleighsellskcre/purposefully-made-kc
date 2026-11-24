@@ -28,7 +28,7 @@ def doc_from_order(order, args):
     """Document for an order placed on the site. ``args`` is request.args (company, attn, po, note, kind)."""
     from utils.business_info import CARD_LABELS
     from utils.group_orders import order_group_label, order_has_regular_items, order_store_ids
-    from models import Collection, db
+    from models import Collection
 
     items = list(order.items)
     paid = money(order.amount_paid)

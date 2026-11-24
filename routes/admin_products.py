@@ -5,9 +5,8 @@ url_for('admin.something') name is exactly as before (see the import at the bott
 """
 import json
 
-from flask import render_template, request, redirect, url_for, flash, jsonify, current_app
+from flask import render_template, request, redirect, url_for, flash, current_app
 from models import db, Product, ProductColorVariant
-from werkzeug.utils import secure_filename
 
 from routes.admin import _form_money, admin_bp, admin_required  # noqa: E402
 
@@ -32,8 +31,7 @@ def products():
 
         # Size/color counts + lightest-color thumbnail in one variant pass
         from collections import defaultdict
-        from utils.mockups import (lightest_front_mockup_url, sorted_front_mockup_urls, get_first_shop_image_url,
-                                   get_carousel_colors_for_product)
+        from utils.mockups import sorted_front_mockup_urls, get_first_shop_image_url, get_carousel_colors_for_product
 
         variants_by_pid = defaultdict(list)
         if products:
@@ -127,8 +125,8 @@ def fetch_ss_images():
       Phase 2: Local static/sanmar/ files — link any already-on-disk images
     Phase 2 always runs, even if Phase 1 fails or S&S is unavailable.
     """
-    import os, sys, re
-    from datetime import datetime
+    import os, re
+    pass
     from pathlib import Path
     from models import db, Product, ProductColorVariant
 
@@ -464,7 +462,7 @@ def edit_product(product_id):
     
     if request.method == 'POST':
         from werkzeug.utils import secure_filename
-        import os
+        pass
 
         # Validate the price before touching the row, so a bad value cannot
         # leave the product half-updated.

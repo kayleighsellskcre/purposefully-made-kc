@@ -13,7 +13,6 @@ Until the new gallery goes live, applying changes nothing customers can see.
 """
 import json
 import os
-import re
 import uuid
 from datetime import datetime, timedelta
 
@@ -22,7 +21,7 @@ from utils.design_ai import (
     AUTO_THRESHOLD, classify_from_text, interpret, link_manual_folders, request_classification,
 )
 from utils.design_metadata import is_generic_title
-from utils.design_tags import apply_auto_tags, is_locked, vocabulary
+from utils.design_tags import apply_auto_tags, is_locked
 
 ACTIVE = ('queued', 'processing', 'ready')
 STALE_AFTER = timedelta(minutes=10)

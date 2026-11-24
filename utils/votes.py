@@ -138,7 +138,7 @@ def set_on_page(poll, option_ids=None, top=None):
 
 def page_designs(org):
     """The chosen designs for a group's page, best-voted first."""
-    from models import VoteOption, VotePoll
+    from models import VotePoll
     out = []
     key = 'collection_id' if org.__class__.__name__ == 'Collection' else 'org_id'
     polls = VotePoll.query.filter_by(**{key: org.id}).order_by(VotePoll.created_at.desc()).all()

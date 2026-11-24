@@ -358,7 +358,7 @@ def invoice_pdf(slug, invoice_id):
     from flask import Response
     from utils.business_info import BUSINESS
     from utils.receipt_pdf import build_receipt_pdf
-    from utils.receipts import _date_label, doc_from_company_invoice
+    from utils.receipts import doc_from_company_invoice
     collection = _organizer_collection(slug)
     invoice = _invoice_for(collection, invoice_id)
     doc = doc_from_company_invoice(invoice)

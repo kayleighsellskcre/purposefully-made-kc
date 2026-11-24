@@ -16,10 +16,7 @@ Rules that keep it honest:
 import json
 import re
 
-from utils.design_tags import (
-    _norm, apply_auto_tags, canonical_for, clean_tags, is_locked, record_correction, set_if_unlocked,
-    vocabulary,
-)
+from utils.design_tags import _norm, apply_auto_tags, clean_tags, is_locked, set_if_unlocked, vocabulary
 from utils.design_taxonomy import (
     COLLECTION_BY_KEY, COLLECTIONS, is_valid_pair, legacy_key_for,
 )

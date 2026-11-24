@@ -20,8 +20,7 @@ from datetime import date, datetime, timedelta
 
 from slugify import slugify
 
-from models import (Collection, District, Order, OrderItem, Organization, OrgSection, Product,
-                    ProductColorVariant, db)
+from models import Collection, District, Order, Organization, OrgSection, Product, ProductColorVariant, db
 
 LEVELS = [('high', 'High Schools'), ('middle', 'Middle Schools'), ('elementary', 'Elementary Schools')]
 LEVEL_ONE = {'high': 'High School', 'middle': 'Middle School', 'elementary': 'Elementary School'}
@@ -179,7 +178,7 @@ def begin_memo():
 
 def prime_stores(schools):
     """Load every store (and its products) for these schools in one go, so the page does not ask the database school by school."""
-    from sqlalchemy.orm import joinedload, selectinload
+    from sqlalchemy.orm import joinedload
     ids = [s.id for s in schools]
     if ids:
         from flask import g, has_request_context

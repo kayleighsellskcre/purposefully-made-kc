@@ -383,7 +383,7 @@ def prepare_catalog(products, *, scan_folders=True):
             style = (getattr(product, 'style_number', None) or '').strip()
             if style:
                 # DB style numbers like "BC3001" → folder "3001"; "BC3001CVC" → "3001CVC"
-                import re as _re
+                pass
                 style_bare = style[2:] if style.upper().startswith('BC') and style[2:3].isdigit() else style   # only BC is a prefix
                 for folder in dict.fromkeys([style_bare, style]):  # deduplicate, bare first
                     if not folder:

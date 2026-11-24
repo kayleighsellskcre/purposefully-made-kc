@@ -1,6 +1,6 @@
 from flask import Blueprint, abort, render_template, request, redirect, url_for, flash, session, current_app, Response
 from flask_login import current_user, login_required
-from models import db, Collection, Product, ProductColorVariant, Design
+from models import db, Collection, Design
 from utils.mockups import get_carousel_colors_for_product, get_first_shop_image_url, product_has_shop_image
 from utils.json_fields import parse_json_list
 from utils.product_filters import catalog_filter_options, prepare_catalog
@@ -72,7 +72,7 @@ def qr_code(slug):
     share_url = request.url_root.rstrip('/') + url_for('collection.view', slug=slug)
     try:
         import qrcode
-        from qrcode.image.pil import PilImage
+        pass
         qr = qrcode.QRCode(
             version=None,
             error_correction=qrcode.constants.ERROR_CORRECT_M,
@@ -724,7 +724,7 @@ def _build_group_order_xlsx(collection, include_internal=False):
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
-    from models import Order, OrderItem
+    pass
 
     # ── colour palette ──────────────────────────────────────────────────────
     HEADER_FILL  = PatternFill('solid', fgColor='B87C6F')   # terra-cotta

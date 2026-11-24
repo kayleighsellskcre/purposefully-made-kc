@@ -13,7 +13,7 @@ from __future__ import annotations
 import secrets
 from datetime import datetime, timedelta
 
-from flask import current_app, url_for
+from flask import current_app
 
 from models import Order, db
 

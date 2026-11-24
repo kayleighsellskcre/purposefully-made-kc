@@ -269,7 +269,7 @@ def preview_item_artwork(order_id, item_id, side):
 @admin_required
 def replace_item_artwork(order_id, item_id):
     """Give an order line its print file again (the customer sent the artwork again, or it was lost)."""
-    from utils.cloud_storage import image_url, r2_configured, store_upload
+    from utils.cloud_storage import r2_configured, store_upload
     order = Order.query.get_or_404(order_id)
     item = OrderItem.query.filter_by(id=item_id, order_id=order.id).first_or_404()
     back = redirect(url_for('admin.order_detail', order_id=order.id))

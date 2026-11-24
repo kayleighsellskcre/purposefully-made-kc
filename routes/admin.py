@@ -1,18 +1,11 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app, send_file, Response
-from sqlalchemy import or_
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from functools import wraps
-from models import (db, Product, Collection, Order, OrderItem, Design, User, ProductColorVariant,
-                    Vendor, ApparelInventory, TransferInventory, Supply, GrowthMetric, FinancialEntry,
-                    CustomDesignRequest, SiteError, AdminNotification)
+from models import db, Product, Order, Design, User, CustomDesignRequest, SiteError
 from werkzeug.utils import secure_filename
-from utils import sales_tax
 from datetime import datetime
 import json
-import re
 import os
-import csv
-from io import StringIO, BytesIO
 from pathlib import Path
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -808,13 +801,7 @@ def design_gallery_upload():
             return _err('Upload failed — file could not be stored. Please try again.')
 
         # ── Automatic, editable name + color metadata ──
-        from utils.design_metadata import (
-            clean_filename_title,
-            color_label_from_metadata,
-            is_generic_title,
-            suggest_design_metadata,
-            unique_variant_label,
-        )
+        from utils.design_metadata import clean_filename_title, color_label_from_metadata, is_generic_title, unique_variant_label
 
         title = (request.form.get('title') or '').strip()
         variant_label = (request.form.get('variant_label') or '').strip()[:80]
@@ -939,7 +926,7 @@ def design_gallery_upload():
 @admin_required
 def design_gallery_fix_skus():
     """Re-assign clean sequential SKUs to every gallery design, grouped by folder."""
-    import re as _re
+    pass
     try:
         # Main designs only (no variants), sorted by folder then upload date
         mains = (

@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from sqlalchemy import and_, or_
-from models import db, Order, OrderItem, Collection, GrowthMetric
+from models import db, Order, Collection, GrowthMetric
 
 
 CENTRAL = ZoneInfo('America/Chicago')
