@@ -1,5 +1,11 @@
 {% extends "admin/operations/base_operations.html" %}
-{% block title %}Site Settings - Purposefully Made KC<div class="ops-card" style="max-width:600px;margin-top:1rem;">
+{% block title %}Site Settings - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Operations</span>
+<h1 class="ops-title">Site Settings</h1>
+<p class="ops-subtitle">Small things you can change yourself.</p>
+
+<div class="ops-card" style="max-width:600px;margin-bottom:1rem;">
     <h2>Free shipping</h2>
     <p>Shipped orders of this much or more (after any promo code) get free shipping. Customers see "Add $X more for free shipping" as they get close. Leave blank to turn it off. Today shipping is a flat rate.</p>
     <form method="post" style="display:flex;align-items:flex-end;gap:0.75rem;flex-wrap:wrap;margin-top:0.75rem;">
@@ -12,7 +18,7 @@
         <button type="submit" class="btn btn-primary">Save</button>
     </form>
 </div>
-<div class="ops-card" style="max-width:760px;margin-top:1rem;">
+<div class="ops-card" style="max-width:760px;margin-bottom:1rem;">
     <h2>Promo codes</h2>
     <p>Customers type a code in "Have a promo code?" at checkout. A code takes a percent and/or dollars off the shirts (never shipping or tax) and can make shipping free. Customers always pay at least $1.</p>
     {% if coupon_rows %}
@@ -52,11 +58,6 @@
         <button type="submit" class="btn btn-primary">Make this code</button>
     </form>
 </div>
-{% endblock %}
-{% block ops_content %}
-<span class="adm-eyebrow">Admin / Operations</span>
-<h1 class="ops-title">Site Settings</h1>
-<p class="ops-subtitle">Small things you can change yourself.</p>
 
 <div class="ops-card" style="max-width:600px;margin-bottom:1rem;">
     <h2>About you</h2>

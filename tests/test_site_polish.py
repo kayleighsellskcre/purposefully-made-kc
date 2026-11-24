@@ -175,3 +175,11 @@ def test_reduced_motion_is_honored_sitewide_and_the_logos_have_a_set_size(guest)
     assert 'animation-duration: 0.01ms !important' in tail and 'transition-duration: 0.01ms !important' in tail
     html = guest.get('/').get_data(as_text=True)
     assert 'class="logo-image" width="302" height="260"' in html and 'width="321" height="231"' in html
+
+
+def test_site_settings_page_shows_free_shipping_and_promo_codes_and_has_a_clean_title(admin_client):
+    html = admin_client.get('/admin/operations/site-settings').get_data(as_text=True)
+    title = html.split('<title>')[1].split('</title>')[0]
+    assert '<' not in title and 'Site Settings' in title
+    body = html.split('Small things you can change yourself.')[1]
+    assert 'Free shipping' in body and 'Promo codes' in body and 'name="section" value="coupon_new"' in body
