@@ -416,6 +416,27 @@ def pnl(start: date, end: date):
     }
 
 
+def profit_completeness(start: date, end: date):
+    """Which sold orders in this range have no cost of goods yet, so profit can be labelled Incomplete.
+
+    missing:   orders with no cost of goods at all (blanks, transfers or other costs not entered yet)
+    estimated: orders that carry an estimated cost that will be replaced by the real one
+    The Kansas sales tax report never waits on these: it only needs the sales.
+    """
+    ids = [r[0] for r in db.session.query(LedgerEntry.order_id)
+           .filter(LedgerEntry.kc_date >= start, LedgerEntry.kc_date <= end, LedgerEntry.entry_type == SALE,
+                   LedgerEntry.order_id.isnot(None)).distinct().all()]
+    missing, estimated = [], 0
+    if ids:
+        for o in Order.query.filter(Order.id.in_(ids)).order_by(Order.id).all():
+            cost = float(o.cost_of_goods or 0)
+            if cost <= 0 and float(o.subtotal or 0) > 0:
+                missing.append({'id': o.id, 'number': o.order_number})
+            elif not o.cogs_is_actual:
+                estimated += 1
+    return {'missing': missing, 'estimated': estimated, 'incomplete': bool(missing)}
+
+
 def monthly(year: int):
     """Twelve months of the profit and loss for one year, Kansas City time."""
     out = []

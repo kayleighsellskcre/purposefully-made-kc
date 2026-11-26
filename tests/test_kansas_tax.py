@@ -231,3 +231,27 @@ def test_recording_from_stock_takes_it_off_the_shelf_and_uses_its_cost(app, seed
     assert _in_db(app, check) == (6, 350, 'Bella+Canvas 3001 Black M', 'Riverview PTA')
     bad = admin_client.post('/admin/operations/adjustments/add', data={'kind': 'given_away', 'item': 'Tee', 'quantity': '0'}, follow_redirects=True)
     assert 'Enter how many' in bad.get_data(as_text=True)
+
+
+def test_profit_is_labelled_incomplete_when_orders_have_no_cost_and_the_tax_report_does_not_wait(app, seed, admin_client):
+    def make():
+        _paid('PMKC-C1', 100.0, 9.5, datetime(2026, 8, 5, 18, 0), cost_of_goods=0.0)
+        _paid('PMKC-C2', 100.0, 9.5, datetime(2026, 8, 6, 18, 0), cost_of_goods=40.0, cogs_is_actual=True)
+        db.session.commit()
+        L.sync_all(force=True)
+        return L.profit_completeness(date(2026, 8, 1), date(2026, 8, 31)), K.build_report(date(2026, 7, 1), date(2026, 9, 30))
+    status, report = _in_db(app, make)
+    assert [m['number'] for m in status['missing']] == ['PMKC-C1'] and status['incomplete']
+    assert report['totals']['net'] == 20000                                     # the Kansas figures only need the sales
+    page = admin_client.get('/admin/operations/reports?period=custom&from=2026-08-01&to=2026-08-31').get_data(as_text=True)
+    assert 'Profit is incomplete.' in page and 'PMKC-C1' in page and 'bk-incomplete">Incomplete' in page
+
+
+def test_profit_is_not_labelled_incomplete_when_every_order_has_a_cost(app, seed, admin_client):
+    def make():
+        _paid('PMKC-C3', 100.0, 9.5, datetime(2026, 8, 5, 18, 0), cost_of_goods=40.0, cogs_is_actual=True)
+        db.session.commit()
+        L.sync_all(force=True)
+    _in_db(app, make)
+    page = admin_client.get('/admin/operations/reports?period=custom&from=2026-08-01&to=2026-08-31').get_data(as_text=True)
+    assert 'Profit is incomplete.' not in page and 'bk-incomplete">Incomplete' not in page

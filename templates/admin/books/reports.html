@@ -56,9 +56,18 @@
             <tr><td class="bk-in">{{ name }}</td><td><a href="{{ links.expenses[name] }}">{{ money(-cents) }}</a></td></tr>
             {% else %}<tr><td class="bk-in bk-muted" colspan="2">No expenses in this period.</td></tr>{% endfor %}
             <tr class="bk-total"><td>Total expenses</td><td>{{ money(-p.total_expenses) }}</td></tr>
-            <tr class="bk-grand"><td>Net profit</td><td>{{ money(p.net_profit) }}</td></tr>
+            <tr class="bk-grand"><td>Net profit{% if completeness.incomplete %} <span class="bk-incomplete">Incomplete</span>{% endif %}</td><td>{{ money(p.net_profit) }}</td></tr>
         </tbody>
     </table>
+    {% if completeness.incomplete %}
+    <div class="bk-incomplete-box">
+        <strong>Profit is incomplete.</strong> {{ completeness.missing|length }} order{{ '' if completeness.missing|length == 1 else 's' }} in this period {{ 'has' if completeness.missing|length == 1 else 'have' }} no cost of goods yet, so profit looks higher than it is. Sales, tax and your Kansas return are not affected, so you can still file while you catch up on costs.
+        <details><summary>See the orders</summary>
+            <ul>{% for o in completeness.missing[:12] %}<li><a href="{{ url_for('admin.order_detail', order_id=o.id) }}">{{ o.number }}</a></li>{% endfor %}</ul>
+            {% if completeness.missing|length > 12 %}<p class="bk-muted">and {{ completeness.missing|length - 12 }} more.</p>{% endif %}
+        </details>
+    </div>
+    {% endif %}
     {% if estimates.fees or estimates.cogs %}
     <p class="bk-note">{{ estimates.fees }} paid order{{ 's' if estimates.fees != 1 }} still use an estimated processing fee and {{ estimates.cogs }} an estimated cost of goods. They update by themselves when the real amounts arrive.
         {% if estimates.fees %}<form method="post" action="{{ url_for('admin.reports_fetch_fees') }}" class="bk-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> <button type="submit" class="bk-link">Check for real fees now</button></form>{% endif %}</p>

@@ -57,6 +57,7 @@ def reports():
         'admin/books/reports.html', p=p, label=label, totals=totals, chart_max=chart_max, period=period, periods=L.PERIODS, first=first, last=last, year=year,
         years=list(range(L.kc_today().year, L.kc_today().year - 6, -1)), links=links,
         months=months, channels=L.sales_by_channel(first, last), estimates=L.estimate_counts(), money=L.dollars,
+        completeness=L.profit_completeness(first, last),
         query={'period': period, 'year': year, 'from': first.isoformat(), 'to': last.isoformat()})
 
 

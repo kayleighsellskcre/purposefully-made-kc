@@ -4352,3 +4352,8 @@ body:not(.is-admin) .dist-body { padding-top: 1.5rem; }
 .adj-donated legend { font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); padding: 0 0.4rem; }
 .adj-table td small { display: block; font-weight: 400; margin-left: 0; margin-top: 0.15rem; color: var(--text-secondary); }
 .adj-treat select { padding: 0.4rem 0.5rem; border: 1px solid var(--border-light, #e8d0b1); border-radius: 8px; font: inherit; max-width: 15rem; }
+
+.bk-incomplete { display: inline-block; margin-left: 0.4rem; padding: 0.1rem 0.55rem; border-radius: 999px; background: #faefd8; color: #8a5a12; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; vertical-align: middle; }
+.bk-incomplete-box { margin: 0.9rem 0 0; padding: 0.8rem 1rem; border-radius: 12px; background: #fbf4e4; border: 1px solid #ecd9a8; font-size: 0.92rem; }
+.bk-incomplete-box ul { margin: 0.5rem 0 0; padding-left: 1.2rem; columns: 2; }
+.bk-incomplete-box summary { cursor: pointer; color: var(--terra-cotta); margin-top: 0.4rem; }
