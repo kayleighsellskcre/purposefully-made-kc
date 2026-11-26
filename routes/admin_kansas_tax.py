@@ -84,12 +84,12 @@ def _csv(report, live, start, end):
     w.writerow(['Kansas sales tax', f'{start.isoformat()} to {end.isoformat()}'])
     w.writerow([])
     w.writerow(['Part III: Jurisdiction details'])
-    w.writerow(['Code', 'Place', 'Gross sales', 'Refunds', 'Deductions', 'Net taxable sales', 'Rate %', 'Calculated tax', 'Tax collected'])
+    w.writerow(['Code', 'Place', 'Gross sales', 'Refunds', 'Merchandise consumed', 'Deductions', 'Net taxable sales', 'Rate %', 'Calculated tax', 'Tax collected'])
     for r in report['rows']:
-        w.writerow([r['code'], r['name'], f"{r['gross'] / 100:.2f}", f"{r['refunds'] / 100:.2f}", f"{r['deductions'] / 100:.2f}",
+        w.writerow([r['code'], r['name'], f"{r['gross'] / 100:.2f}", f"{r['refunds'] / 100:.2f}", f"{r.get('consumed', 0) / 100:.2f}", f"{r['deductions'] / 100:.2f}",
                     f"{r['net'] / 100:.2f}", f"{r['rate']:g}", f"{r['calc'] / 100:.2f}", f"{r['collected'] / 100:.2f}"])
     t = report['totals']
-    w.writerow(['Total', '', f"{t['gross'] / 100:.2f}", f"{t['refunds'] / 100:.2f}", f"{t['deductions'] / 100:.2f}",
+    w.writerow(['Total', '', f"{t['gross'] / 100:.2f}", f"{t['refunds'] / 100:.2f}", f"{t.get('consumed', 0) / 100:.2f}", f"{t['deductions'] / 100:.2f}",
                 f"{t['net'] / 100:.2f}", '', f"{t['calc'] / 100:.2f}", f"{t['collected'] / 100:.2f}"])
     w.writerow([])
     w.writerow(['Part II: Deductions'])
@@ -199,3 +199,49 @@ def kansas_tax_settings():
     except ValueError as exc:
         flash(str(exc), 'error')
     return _back(start)
+
+
+@admin_bp.route('/operations/adjustments')
+@admin_required
+def inventory_adjustments():
+    from models import ApparelInventory
+    from utils import inventory_adjust as IA
+    today = L.kc_today()
+    start, end = K.period_for(_start_param() or today)
+    rows = IA.for_period(start, end)
+    stock = ApparelInventory.query.order_by(ApparelInventory.brand, ApparelInventory.color, ApparelInventory.size).all()
+    prev_start = K.previous_period(start)[0]
+    next_start = K.next_period_start(end)
+    return render_template(
+        'admin/books/adjustments.html', rows=rows, start=start, end=end, label=K.period_label(start, end), kinds=IA.KINDS,
+        treatments=IA.TREATMENTS, stock=stock, today=today, prev_start=prev_start,
+        next_start=next_start if next_start <= today else None, consumed=IA.consumed_cents(rows), money=L.dollars, pretty=K.pretty,
+        undecided=sum(1 for r in rows if r.treatment == 'review'))
+
+
+@admin_bp.route('/operations/adjustments/add', methods=['POST'])
+@admin_required
+def inventory_adjustment_add():
+    from utils import inventory_adjust as IA
+    try:
+        row, message = IA.record(request.form, L.kc_today())
+        flash(message, 'success')
+        start = row.occurred_on
+    except ValueError as exc:
+        flash(str(exc), 'error')
+        start = L.kc_today()
+    return redirect(url_for('admin.inventory_adjustments', start=start.isoformat()))
+
+
+@admin_bp.route('/operations/adjustments/<int:row_id>/treatment', methods=['POST'])
+@admin_required
+def inventory_adjustment_treatment(row_id):
+    from models import InventoryAdjustment
+    from utils import inventory_adjust as IA
+    row = db.get_or_404(InventoryAdjustment, row_id)
+    value = request.form.get('treatment')
+    if value in dict(IA.TREATMENTS):
+        row.treatment = value
+        db.session.commit()
+        flash('Saved.', 'success')
+    return redirect(url_for('admin.inventory_adjustments', start=row.occurred_on.isoformat()))

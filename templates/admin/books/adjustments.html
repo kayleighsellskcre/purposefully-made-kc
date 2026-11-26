@@ -1,0 +1,95 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Donations and Giveaways - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Stock</span>
+<h1 class="ops-title">Donations &amp; giveaways</h1>
+<p class="ops-subtitle">One quick form for anything that leaves your shelf without a sale. It updates your stock and feeds the Kansas return.</p>
+
+<section class="ops-card bk-card">
+    <h2>Record it</h2>
+    <form method="post" action="{{ url_for('admin.inventory_adjustment_add') }}" class="bk-form ks-grid" id="adjForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="ks-wide adj-kinds" role="radiogroup" aria-label="What happened">
+            {% for key, name in kinds %}<label class="adj-kind"><input type="radio" name="kind" value="{{ key }}"{% if loop.first %} checked{% endif %}><span>{{ name }}</span></label>{% endfor %}
+        </div>
+        <label>From your stock <small>(optional)</small>
+            <select name="inventory_id" id="adjStock">
+                <option value="">Something else</option>
+                {% for s in stock %}<option value="{{ s.id }}" data-cost="{{ '%.2f'|format(s.cost_per_unit or 0) }}">{{ s.brand }}, {{ s.color }}, {{ s.size }} ({{ s.quantity }} on hand)</option>{% endfor %}
+            </select>
+        </label>
+        <label>Item <input type="text" name="item" maxlength="200" placeholder="Misprinted youth tee"></label>
+        <label>How many <input type="number" name="quantity" min="1" step="1" value="1" required></label>
+        <label>Cost of one <input type="text" inputmode="decimal" name="unit_cost" id="adjCost" placeholder="4.25"></label>
+        <label>Date <input type="date" name="occurred_on" value="{{ today.isoformat() }}" required></label>
+        <label class="ks-check"><input type="checkbox" name="paid_tax_on_purchase" value="1"> I paid sales tax when I bought it</label>
+        <label class="ks-check"><input type="checkbox" name="is_misprint" value="1"> This was a misprint</label>
+        <fieldset class="ks-wide adj-donated" id="adjDonated" hidden>
+            <legend>School or PTA details</legend>
+            <div class="ks-grid">
+                <label>School or PTA <input type="text" name="recipient" maxlength="160"></label>
+                <label>Event <input type="text" name="event" maxlength="160" placeholder="Spring auction"></label>
+                <label>Date handed over <input type="date" name="handed_over_on"></label>
+                <label>Exemption certificate <input type="text" name="exemption_certificate" maxlength="120"></label>
+                <label>Retail value for the auction listing <input type="text" inputmode="decimal" name="retail_value" placeholder="25.00"></label>
+            </div>
+        </fieldset>
+        <label class="ks-wide">Notes <input type="text" name="notes" maxlength="300"></label>
+        <div class="ks-wide"><button class="btn btn-primary" type="submit">Record it</button>
+            <span class="bk-muted">Nothing is deleted later. You can change how it is treated for tax below.</span></div>
+    </form>
+</section>
+
+<div class="ks-nav">
+    <a class="ks-step" href="{{ url_for('admin.inventory_adjustments', start=prev_start.isoformat()) }}" aria-label="Earlier period">&lsaquo;</a>
+    <strong>{{ label }}</strong> <span class="bk-muted">{{ pretty(start) }} to {{ pretty(end) }}</span>
+    {% if next_start %}<a class="ks-step" href="{{ url_for('admin.inventory_adjustments', start=next_start.isoformat()) }}" aria-label="Later period">&rsaquo;</a>{% else %}<span class="ks-step ks-step-off" aria-hidden="true">&rsaquo;</span>{% endif %}
+    <a class="btn btn-outline btn-sm ks-export" href="{{ url_for('admin.kansas_tax', start=start.isoformat()) }}">Back to Kansas Sales Tax</a>
+</div>
+
+{% if undecided %}<div class="ops-card bk-card ks-review">{{ undecided }} {{ 'needs' if undecided == 1 else 'need' }} a decision before you file. Choose how each should be treated.</div>{% endif %}
+
+<section class="ops-card bk-card">
+    <h2>{{ label }} <small>{{ rows|length }} recorded &middot; {{ money(consumed) }} reported as merchandise consumed</small></h2>
+    <div class="ops-table-scroll">
+    <table class="bk-table ks-table adj-table">
+        <thead><tr><th>What</th><th>Cost</th><th>Tax treatment</th></tr></thead>
+        <tbody>
+            {% for r in rows %}
+            <tr>
+                <td>
+                    <strong>{{ r.quantity }} x {{ r.item }}</strong>
+                    <small>{{ kinds|selectattr(0, 'equalto', r.kind)|map(attribute=1)|first }}, {{ pretty(r.occurred_on) }}{% if r.recipient %} &middot; {{ r.recipient }}{% endif %}{% if r.event %} &middot; {{ r.event }}{% endif %}{% if r.is_misprint %} &middot; misprint{% endif %}{% if r.paid_tax_on_purchase %} &middot; tax paid at purchase{% endif %}{% if r.exemption_certificate %} &middot; certificate {{ r.exemption_certificate }}{% endif %}{% if r.retail_value_cents %} &middot; retail {{ money(r.retail_value_cents) }}{% endif %}</small>
+                </td>
+                <td>{{ money(r.total_cost_cents) }}</td>
+                <td>
+                    <form method="post" action="{{ url_for('admin.inventory_adjustment_treatment', row_id=r.id) }}" class="adj-treat">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <select name="treatment" aria-label="Tax treatment" onchange="this.form.submit()">
+                            {% for key, name in treatments %}<option value="{{ key }}"{% if key == r.treatment %} selected{% endif %}>{{ name }}</option>{% endfor %}
+                        </select>
+                    </form>
+                </td>
+            </tr>
+            {% else %}<tr><td colspan="3" class="bk-muted">Nothing recorded in this period.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <p class="bk-note">A donation counts in the period it was given, with no sales. The blanks were already counted as a cost when you bought them, so nothing is added to your profit and loss.</p>
+</section>
+
+<script>
+(function () {
+    var radios = document.querySelectorAll('#adjForm input[name="kind"]');
+    var box = document.getElementById('adjDonated');
+    function sync() { var v = document.querySelector('#adjForm input[name="kind"]:checked'); box.hidden = !(v && v.value === 'donated'); }
+    radios.forEach(function (r) { r.addEventListener('change', sync); });
+    sync();
+    var stock = document.getElementById('adjStock'), cost = document.getElementById('adjCost');
+    stock.addEventListener('change', function () {
+        var o = stock.options[stock.selectedIndex];
+        if (o && o.dataset.cost && parseFloat(o.dataset.cost) > 0 && !cost.value) { cost.value = o.dataset.cost; }
+    });
+})();
+</script>
+{% endblock %}

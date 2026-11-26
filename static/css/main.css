@@ -4340,3 +4340,15 @@ body:not(.is-admin) .dist-body { padding-top: 1.5rem; }
     .ks-chip { flex: 1 1 9rem; }
     .ks-table td, .ks-table th { padding: 0.5rem 0.3rem; font-size: 0.88rem; }
 }
+
+/* Donations and giveaways (admin) */
+.adj-kinds { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.adj-kind { position: relative; display: inline-flex !important; flex-direction: row !important; }
+.adj-kind input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.adj-kind span { padding: 0.55rem 1rem; border: 1px solid var(--border-light, #e8d0b1); border-radius: 999px; background: #fff; font-size: 0.92rem; font-weight: 600; color: var(--text-primary); }
+.adj-kind input:checked + span { background: var(--terra-cotta); border-color: var(--terra-cotta); color: #fff; }
+.adj-kind input:focus-visible + span { outline: 2px solid var(--text-primary); outline-offset: 2px; }
+.adj-donated { border: 1px dashed var(--border-light, #e8d0b1); border-radius: 12px; padding: 0.8rem 1rem 1rem; margin: 0; }
+.adj-donated legend { font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); padding: 0 0.4rem; }
+.adj-table td small { display: block; font-weight: 400; margin-left: 0; margin-top: 0.15rem; color: var(--text-secondary); }
+.adj-treat select { padding: 0.4rem 0.5rem; border: 1px solid var(--border-light, #e8d0b1); border-radius: 8px; font: inherit; max-width: 15rem; }

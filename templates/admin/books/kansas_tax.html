@@ -95,21 +95,22 @@
     <h2>Part III &middot; Jurisdiction details <small>click an amount to copy it</small></h2>
     <div class="ops-table-scroll">
     <table class="bk-table ks-table">
-        <thead><tr><th>Code</th><th>Gross sales</th><th>Refunds</th><th>Deductions</th><th>Net taxable</th><th>Rate</th><th>Tax</th></tr></thead>
+        <thead><tr><th>Code</th><th>Gross sales</th><th>Refunds</th>{% if report.totals.consumed %}<th>Merchandise consumed</th>{% endif %}<th>Deductions</th><th>Net taxable</th><th>Rate</th><th>Tax</th></tr></thead>
         <tbody>
             {% for r in report.rows %}
             <tr>
                 <td><strong>{{ r.code }}</strong> <small>{{ r.name }}</small></td>
-                <td>{{ copy(r.gross) }}</td><td>{{ copy(r.refunds) }}</td><td>{{ copy(r.deductions) }}</td><td>{{ copy(r.net) }}</td>
+                <td>{{ copy(r.gross) }}</td><td>{{ copy(r.refunds) }}</td>{% if report.totals.consumed %}<td>{{ copy(r.consumed) }}</td>{% endif %}<td>{{ copy(r.deductions) }}</td><td>{{ copy(r.net) }}</td>
                 <td>{{ '%.2f'|format(r.rate) }}%</td><td>{{ copy(r.calc) }}</td>
             </tr>
             {% endfor %}
-            <tr class="bk-total"><td>Total</td><td>{{ money(report.totals.gross) }}</td><td>{{ money(report.totals.refunds) }}</td><td>{{ money(report.totals.deductions) }}</td><td>{{ money(report.totals.net) }}</td><td></td><td>{{ money(report.totals.calc) }}</td></tr>
+            <tr class="bk-total"><td>Total</td><td>{{ money(report.totals.gross) }}</td><td>{{ money(report.totals.refunds) }}</td>{% if report.totals.consumed %}<td>{{ money(report.totals.consumed) }}</td>{% endif %}<td>{{ money(report.totals.deductions) }}</td><td>{{ money(report.totals.net) }}</td><td></td><td>{{ money(report.totals.calc) }}</td></tr>
         </tbody>
     </table>
     </div>
     <p class="bk-note">Gross sales are what customers paid for merchandise, after discounts and before tax. Shipping is not included. Refunds count on the day they went out.
         <a href="{{ url_for('admin.ledger', **{'from': start.isoformat(), 'to': end.isoformat(), 'type': 'sale,discount,refund'}) }}">See every sale behind this.</a></p>
+    <p class="bk-note"><a href="{{ url_for('admin.inventory_adjustments', start=start.isoformat()) }}">Record a donation, giveaway or misprint</a>{% if report.totals.consumed %} <span class="bk-muted">Merchandise consumed is the cost of items you used or gave away that were bought without sales tax.</span>{% endif %}</p>
 </section>
 
 <section class="ops-card bk-card">
@@ -136,6 +137,7 @@
         <tbody>
             <tr><td>Tax the rates call for</td><td>{{ copy(report.totals.calc) }}</td></tr>
             <tr><td>Tax you collected from customers</td><td>{{ money(report.totals.collected) }}</td></tr>
+            {% if report.totals.calc_consumed %}<tr><td>Included: tax on merchandise you consumed <small>nothing was collected for it</small></td><td>{{ money(report.totals.calc_consumed) }}</td></tr>{% endif %}
             <tr class="bk-total"><td>{% if report.totals.diff > 0 %}Short, you owe the difference{% elif report.totals.diff < 0 %}Over collected{% else %}Difference{% endif %}</td><td>{{ money(report.totals.diff|abs) }}</td></tr>
             {% if filing and filing.return_filed_on %}
             <tr><td>Penalty</td><td>{{ money(filing.penalty_cents or 0) }}</td></tr>

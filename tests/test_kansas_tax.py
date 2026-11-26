@@ -169,3 +169,65 @@ def test_changing_the_pickup_rate_changes_what_checkout_charges(app, seed):
         return before, sales_tax.rate_percent()
     before, after = _in_db(app, make)
     assert before == 9.5 and after == 9.6
+
+
+def _adjust(app, **form):
+    from models import InventoryAdjustment
+    from utils import inventory_adjust as IA
+
+    def make():
+        row, _msg = IA.record(form, date(2026, 12, 20))
+        return row.id
+    return _in_db(app, make)
+
+
+def test_a_giveaway_bought_without_tax_is_merchandise_consumed_at_cost(app, seed):
+    _adjust(app, kind='given_away', item='Gift tee', quantity='3', unit_cost='4.25', occurred_on='2026-12-05')
+
+    def build():
+        return K.build_report(date(2026, 10, 1), date(2026, 12, 31))
+    report = _in_db(app, build)
+    [row] = report['rows']
+    assert row['consumed'] == 1275 and row['net'] == 1275 and row['calc'] == 122          # $12.75 x 9.6% = $1.22
+    assert report['totals']['consumed'] == 1275 and report['has_activity']
+
+
+def test_tax_already_paid_is_not_reported_and_a_donation_waits_for_a_decision(app, seed):
+    _adjust(app, kind='used_by_me', item='My tee', quantity='1', unit_cost='5.00', occurred_on='2026-11-02', paid_tax_on_purchase='1')
+    _adjust(app, kind='donated', item='Auction tees', quantity='6', unit_cost='5.00', occurred_on='2026-12-18', recipient='Mill Valley PTA',
+            event='Winter auction', exemption_certificate='EX-77', retail_value='25.00')
+    report = _in_db(app, lambda: K.build_report(date(2026, 10, 1), date(2026, 12, 31)))
+    assert report['totals']['consumed'] == 0
+    assert [r['kind'] for r in report['review']] == ['adjustment']
+
+
+def test_deciding_a_donation_is_reportable_moves_its_cost_into_the_return(app, seed, admin_client):
+    row_id = _adjust(app, kind='discarded', item='Misprinted tee', quantity='2', unit_cost='6.00', occurred_on='2026-12-09', is_misprint='1')
+    page = admin_client.get('/admin/operations/adjustments?start=2026-10-01').get_data(as_text=True)
+    assert 'Misprinted tee' in page and 'misprint' in page and 'Needs a decision' in page
+    assert admin_client.post(f'/admin/operations/adjustments/{row_id}/treatment', data={'treatment': 'reportable'}).status_code == 302
+    report = _in_db(app, lambda: K.build_report(date(2026, 10, 1), date(2026, 12, 31)))
+    assert report['totals']['consumed'] == 1200 and not report['review']
+    kansas = admin_client.get('/admin/operations/kansas-tax?start=2026-10-01').get_data(as_text=True)
+    assert 'Merchandise consumed' in kansas and 'Record a donation, giveaway or misprint' in kansas
+
+
+def test_recording_from_stock_takes_it_off_the_shelf_and_uses_its_cost(app, seed, admin_client):
+    def make():
+        from models import ApparelInventory, db
+        inv = ApparelInventory(brand='Bella+Canvas 3001', color='Black', size='M', quantity=10, cost_per_unit=3.5)
+        db.session.add(inv)
+        db.session.commit()
+        return inv.id
+    inv_id = _in_db(app, make)
+    resp = admin_client.post('/admin/operations/adjustments/add', data={
+        'kind': 'donated', 'inventory_id': str(inv_id), 'quantity': '4', 'occurred_on': '2026-12-10', 'recipient': 'Riverview PTA'})
+    assert resp.status_code == 302
+
+    def check():
+        from models import ApparelInventory, InventoryAdjustment
+        row = InventoryAdjustment.query.one()
+        return ApparelInventory.query.get(inv_id).quantity, row.unit_cost_cents, row.item, row.recipient
+    assert _in_db(app, check) == (6, 350, 'Bella+Canvas 3001 Black M', 'Riverview PTA')
+    bad = admin_client.post('/admin/operations/adjustments/add', data={'kind': 'given_away', 'item': 'Tee', 'quantity': '0'}, follow_redirects=True)
+    assert 'Enter how many' in bad.get_data(as_text=True)

@@ -331,7 +331,7 @@ def build_report(first: date, last: date):
             review.append({'kind': 'older', 'text': f'{label} has no tax label yet, so it is counted under {home}.', 'url': url, 'fix': 'Open'})
         if code not in juris:
             review.append({'kind': 'code', 'text': f'{label} uses code {code}, which is not in your jurisdiction list.', 'url': url, 'fix': 'Open'})
-        r = rows.setdefault(code, {'code': code, 'gross': 0, 'refunds': 0, 'deductions': 0, 'collected': 0, 'orders': 0})
+        r = rows.setdefault(code, {'code': code, 'gross': 0, 'refunds': 0, 'deductions': 0, 'consumed': 0, 'collected': 0, 'orders': 0})
         r['gross'] += s['sales'] + s['discounts']
         r['refunds'] += s['refunds']
         r['deductions'] += s['deduction']
@@ -339,22 +339,36 @@ def build_report(first: date, last: date):
         r['orders'] += 1 if s['sales'] else 0
         detail.append(s)
 
+    from utils import inventory_adjust as IA
+    adjustments = IA.for_period(first, last)
+    consumed = IA.consumed_cents(adjustments)
+    if consumed:
+        rows.setdefault(home, {'code': home, 'gross': 0, 'refunds': 0, 'deductions': 0, 'consumed': 0, 'collected': 0, 'orders': 0})
+        rows[home]['consumed'] += consumed
+    undecided = [a for a in adjustments if a.treatment == 'review']
+    if undecided:
+        worth = sum(a.total_cost_cents for a in undecided)
+        review.append({'kind': 'adjustment', 'text': f'{len(undecided)} inventory adjustment{"" if len(undecided) == 1 else "s"} ({L.dollars(worth)} at cost) still need a decision on whether they are reported as merchandise consumed.',
+                       'url': f'/admin/operations/adjustments?start={first.isoformat()}', 'fix': 'Decide'})
     table = []
     for code in sorted(rows):
         r = rows[code]
         j = juris.get(code)
         rate = float(j.rate_percent) if j else 0.0
-        net_taxable = r['gross'] + r['refunds'] - r['deductions']
-        r.update(name=(j.name if j else 'Unknown'), rate=rate, net=net_taxable, calc=int(round(net_taxable * rate / 100.0)))
+        net_taxable = r['gross'] + r['refunds'] - r['deductions'] + r['consumed']
+        r.update(name=(j.name if j else 'Unknown'), rate=rate, net=net_taxable, calc=int(round(net_taxable * rate / 100.0)),
+                 calc_consumed=int(round(r['consumed'] * rate / 100.0)))
         r['diff'] = r['calc'] - r['collected']
         table.append(r)
-    totals = {k: sum(r[k] for r in table) for k in ('gross', 'refunds', 'deductions', 'net', 'calc', 'collected', 'orders')}
+    totals = {k: sum(r[k] for r in table) for k in ('gross', 'refunds', 'deductions', 'consumed', 'net', 'calc', 'collected', 'orders')}
     totals['diff'] = totals['calc'] - totals['collected']
-    if totals['diff'] > 100:
-        review.append({'kind': 'short', 'text': f'Tax collected is {L.dollars(totals["diff"])} less than the rate calls for. Customers may have been charged an older rate. You owe Kansas the calculated amount.',
+    totals['calc_consumed'] = sum(r['calc_consumed'] for r in table)
+    if totals['diff'] - totals['calc_consumed'] > 100:
+        review.append({'kind': 'short', 'text': f'Tax collected is {L.dollars(totals["diff"] - totals["calc_consumed"])} less than the rate calls for on your sales. Customers may have been charged an older rate. You owe Kansas the calculated amount.',
                        'url': '/admin/operations/ledger', 'fix': 'See entries'})
     return {'first': first, 'last': last, 'rows': table, 'line_m': line_m, 'exempt': exempt, 'totals': totals,
-            'review': review, 'has_activity': bool(sources), 'detail': detail}
+            'review': review, 'has_activity': bool(sources or adjustments), 'detail': detail,
+            'adjustments': len(adjustments)}
 
 
 def snapshot_of(report):

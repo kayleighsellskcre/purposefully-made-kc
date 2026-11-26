@@ -23,7 +23,7 @@ def test_the_money_tax_and_shop_groups_are_short_and_plainly_named(client, login
     assert 'Business & Operations' not in menu
     assert menu['Money'] == ['Profit & Loss', 'Expenses', 'Invoices', 'Who owes you', 'Payouts']
     assert menu['Tax & Year-End'] == ['Kansas sales tax', 'Mileage', 'Year-end inventory count', 'CPA package']
-    assert menu['Stock'] == ['Inventory', 'Vendors']
+    assert menu['Stock'] == ['Inventory', 'Vendors', 'Donations & giveaways']
     assert menu['Business'] == ['Customers', 'Reviews', 'Growth', 'AI studio use', 'Site settings', 'The Backroom', 'Site errors']
     assert all(len(items) <= 7 for items in menu.values()) or 'Storefront & Content' in menu
 

@@ -3,7 +3,7 @@
 {% set store_eps = ['admin.products','admin.add_product','admin.edit_product','admin.collections','admin.add_collection','admin.edit_collection','admin.donations','admin.donation_view','admin.design_gallery','admin.gallery_queue','admin.designs','admin.design_library_overview','admin.design_browse','admin.design_categories','admin.design_tags','admin.design_review','admin.design_organize','admin.design_matches','admin.affirmations','admin.organizations','admin.districts','admin.district_new','admin.district_manage','admin.district_school','admin.district_copy_store','admin.district_report'] %}
 {% set money_eps = ['admin.reports','admin.reports_refresh','admin.ledger','admin.expenses','admin.recurring_expenses','admin.equipment_log','admin.receivables','admin.payouts','admin.payout_check','admin.financial','admin.invoices','admin.invoice_new','admin.invoice_view','admin.invoice_edit'] %}
 {% set tax_eps = ['admin.kansas_tax','admin.sales_tax_report','admin.tax_exempt_customers','admin.mileage','admin.inventory_count','admin.cpa_package'] %}
-{% set stock_eps = ['admin.inventory','admin.save_inventory_costs','admin.operations_inventory','admin.low_stock','admin.vendors','admin.add_vendor','admin.edit_vendor'] %}
+{% set stock_eps = ['admin.inventory_adjustments','admin.inventory','admin.save_inventory_costs','admin.operations_inventory','admin.low_stock','admin.vendors','admin.add_vendor','admin.edit_vendor'] %}
 {% set biz_eps = ['admin.customers','admin.reviews','admin.growth','admin.add_growth_metric','admin.edit_growth_metric','admin.ai_usage','admin.site_settings','admin.backroom','admin.site_errors'] %}
 {% set shop_eps = ['admin.inventory','admin.save_inventory_costs','admin.operations_inventory','admin.low_stock','admin.vendors','admin.customers','admin.reviews','admin.growth','admin.ai_usage','admin.site_settings','admin.site_errors'] %}
 {# One list of menu entries per group: (page, label, other pages that count as "here"). One plain icon keeps them tidy. #}
@@ -128,6 +128,7 @@
         {% call ops_group('Stock', request.endpoint in stock_eps) %}
                 {{ ops_item('admin.inventory', 'Inventory', ['admin.save_inventory_costs','admin.operations_inventory','admin.low_stock']) }}
                 {{ ops_item('admin.vendors', 'Vendors', ['admin.add_vendor','admin.edit_vendor']) }}
+                {{ ops_item('admin.inventory_adjustments', 'Donations & giveaways') }}
         {% endcall %}
 
         {% call ops_group('Business', request.endpoint in biz_eps) %}

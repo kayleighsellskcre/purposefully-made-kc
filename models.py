@@ -1837,3 +1837,33 @@ class KsFiling(db.Model):
     reminders_sent = db.Column(db.Text)                                  # json list of reminder keys already sent
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class InventoryAdjustment(db.Model):
+    """Stock that left without a sale: donated, given away, used by the owner, or thrown out (such as a misprint).
+
+    Rows are never deleted. Only the tax treatment can be changed, so every decision stays visible for the Kansas return.
+    """
+    __tablename__ = 'inventory_adjustment'
+    id = db.Column(db.Integer, primary_key=True)
+    kind = db.Column(db.String(16), nullable=False, index=True)          # donated, given_away, used_by_me, discarded
+    item = db.Column(db.String(200), nullable=False)
+    inventory_id = db.Column(db.Integer, db.ForeignKey('apparel_inventory.id'))
+    quantity = db.Column(db.Integer, nullable=False, default=1)
+    unit_cost_cents = db.Column(db.BigInteger, nullable=False, default=0)   # what it actually cost
+    occurred_on = db.Column(db.Date, nullable=False, index=True)           # the Kansas City day it counts
+    paid_tax_on_purchase = db.Column(db.Boolean, default=False)
+    treatment = db.Column(db.String(14), default='review')                 # reportable, not_reportable, review
+    recipient = db.Column(db.String(160))                                   # school or PTA
+    event = db.Column(db.String(160))
+    handed_over_on = db.Column(db.Date)
+    exemption_certificate = db.Column(db.String(120))
+    retail_value_cents = db.Column(db.BigInteger)                           # optional value shown on an auction listing
+    is_misprint = db.Column(db.Boolean, default=False)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    inventory = db.relationship('ApparelInventory', foreign_keys=[inventory_id])
+
+    @property
+    def total_cost_cents(self):
+        return int(self.quantity or 0) * int(self.unit_cost_cents or 0)
