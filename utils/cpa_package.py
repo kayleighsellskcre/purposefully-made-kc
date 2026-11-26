@@ -113,6 +113,30 @@ def sales_detail_csv(year):
                  'Refunds', 'Processing fee', 'Cost of goods'], rows)
 
 
+def kansas_returns_csv(year):
+    """Each Kansas sales tax return for the year: what was filed, what was paid, and the figures as submitted."""
+    import json
+    from models import KsFiling
+    from utils import ks_tax as K
+    first, last = _year_bounds(year)
+    rows = []
+    for f in KsFiling.query.filter(KsFiling.period_end >= first, KsFiling.period_start <= last).order_by(KsFiling.period_start).all():
+        snap = {}
+        try:
+            snap = json.loads(f.snapshot_json or '{}').get('totals', {})
+        except ValueError:
+            snap = {}
+        cents = lambda v: '' if v is None else _money(v)  # noqa: E731
+        rows.append([K.period_label(f.period_start, f.period_end), f.period_start.isoformat(), f.period_end.isoformat(),
+                     K.due_date(f.period_end, f.due_override).isoformat(), f.return_filed_on.isoformat() if f.return_filed_on else 'Not filed',
+                     f.confirmation_number or '', cents(snap.get('gross')), cents(snap.get('net')), cents(snap.get('calc')),
+                     cents(snap.get('collected')), cents(f.tax_cents), cents(f.penalty_cents), cents(f.interest_cents),
+                     cents(f.total_paid_cents), f.payment_status or '', f.payment_settles_on.isoformat() if f.payment_settles_on else '',
+                     f.notes or ''])
+    return _csv(['Period', 'Starts', 'Ends', 'Due', 'Filed on', 'Confirmation', 'Gross sales', 'Net taxable sales', 'Tax calculated',
+                 'Tax collected', 'Tax on return', 'Penalty', 'Interest', 'Total paid', 'Payment', 'Payment settles', 'Notes'], rows)
+
+
 def build_package(year, app):
     """The zip as bytes."""
     from utils.business_info import BUSINESS
@@ -169,6 +193,7 @@ def build_package(year, app):
     t = report['totals']
     tax_rows.append(['Total', t['orders'], _money(t['taxable']), _money(t['not_taxed']), _money(t['shipping']), _money(t['tax'])])
     files[f'04-Sales-Tax-{year}.csv'] = _csv(['Where taxed', 'Orders', 'Taxable sales', 'Not taxed', 'Shipping charged', 'Tax collected'], tax_rows)
+    files[f'04-Kansas-Returns-{year}.csv'] = kansas_returns_csv(year)
     files[f'05-General-Ledger-{year}.csv'] = ledger_csv(year)
     files[f'06-Sales-Detail-{year}.csv'] = sales_detail_csv(year)
     files[f'07-Expenses-{year}.csv'] = _csv(

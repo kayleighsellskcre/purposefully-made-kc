@@ -267,3 +267,20 @@ def test_the_deadline_shows_at_the_top_of_profit_and_loss_and_the_dashboard(app,
     late, quiet = _in_db(app, make)
     assert 'Q3 2026' in late['headline'] and 'Oct 26, 2026' in late['headline'] and late['needs']
     assert quiet['headline'].startswith('Next Kansas sales tax return') or 'Q2 2026' in quiet['headline']
+
+
+def test_the_cpa_package_lists_each_kansas_return_with_what_was_submitted(app, seed, admin_client):
+    def make():
+        _paid('PMKC-Z1', 100.0, 9.5, datetime(2026, 8, 5, 18, 0))
+        db.session.commit()
+        L.sync_all(force=True)
+    _in_db(app, make)
+    admin_client.post('/admin/operations/kansas-tax/save', data={
+        'start': '2026-07-01', 'action': 'filing', 'return_filed_on': '2026-10-27', 'confirmation_number': 'CONF-9',
+        'tax': '9.60', 'penalty': '1.00', 'interest': '0.20', 'total_paid': '10.80', 'payment_status': 'paid'})
+
+    def build():
+        from utils.cpa_package import kansas_returns_csv
+        return kansas_returns_csv(2026).decode('utf-8-sig')
+    text = _in_db(app, build)
+    assert 'Q3 2026' in text and 'CONF-9' in text and '2026-10-27' in text and '10.80' in text and '9.60' in text
