@@ -46,6 +46,14 @@ def rate_percent():
         return _CACHE['percent']
     percent = default_percent()
     try:
+        from utils.ks_tax import pickup_rate_percent
+        from_jurisdiction = pickup_rate_percent()          # the Kansas Sales Tax page is the one place the rate lives
+    except Exception:
+        from_jurisdiction = None
+    if from_jurisdiction is not None and MIN_PERCENT < from_jurisdiction <= MAX_PERCENT:
+        _CACHE.update(at=now, percent=from_jurisdiction)
+        return from_jurisdiction
+    try:
         from utils.site_settings import get_setting
         raw = (get_setting(SETTING_KEY, '') or '').strip()
         if raw:
@@ -69,6 +77,16 @@ def save_rate_percent(value):
         raise ValueError(f'Enter a rate between {MIN_PERCENT:g} and {MAX_PERCENT:g} percent, like 9.6.')
     from utils.site_settings import set_setting
     set_setting(SETTING_KEY, f'{percent:g}', 'Kansas sales tax rate (percent)')
+    try:
+        from models import KsJurisdiction
+        from utils.ks_tax import pickup_code
+        row = KsJurisdiction.query.filter_by(code=pickup_code()).first()
+        if row is not None:
+            row.rate_percent = percent
+            from models import db
+            db.session.commit()
+    except Exception:
+        pass
     _CACHE['at'] = 0.0
     return percent
 

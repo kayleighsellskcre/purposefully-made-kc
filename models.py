@@ -988,6 +988,7 @@ class Order(db.Model):
     refund_checked_at = db.Column(db.DateTime)                 # last time PayPal was asked about refunds
     tax_jurisdiction = db.Column(db.String(20))                # local, ks_shipped, out_of_state (where it was taxed)
     tax_rate_percent = db.Column(db.Float)                     # the rate actually charged, e.g. 9.5
+    ks_code = db.Column(db.String(12))                         # Kansas jurisdiction code this sale is reported under, such as SHAJO
     coupon_code = db.Column(db.String(40))                        # discount code used on this order
     discount_applied = db.Column(db.Float, default=0.0)        # what the code took off; subtotal above is already net of it
     credit_applied = db.Column(db.Float, default=0.0)          # store credit used; subtotal above is already net of it
@@ -1801,3 +1802,38 @@ class EmailFailure(db.Model):
     had_attachments = db.Column(db.Integer, default=0)
     resolved = db.Column(db.Boolean, default=False, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class KsJurisdiction(db.Model):
+    """A Kansas tax jurisdiction you report sales under: the state portal's code, its name and its combined rate."""
+    __tablename__ = 'ks_jurisdiction'
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(12), unique=True, nullable=False)        # for example SHAJO
+    name = db.Column(db.String(120), nullable=False)
+    rate_percent = db.Column(db.Float, nullable=False)                  # combined rate, for example 9.6
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class KsFiling(db.Model):
+    """One Kansas sales tax period: whether the return was filed, what was paid, and a frozen copy of what was filed."""
+    __tablename__ = 'ks_filing'
+    id = db.Column(db.Integer, primary_key=True)
+    period_start = db.Column(db.Date, nullable=False, unique=True, index=True)
+    period_end = db.Column(db.Date, nullable=False)
+    due_override = db.Column(db.Date)                                    # when the Kansas portal shows a different date
+    zero_activity_confirmed = db.Column(db.Boolean, default=False)
+    return_filed_on = db.Column(db.Date)
+    confirmation_number = db.Column(db.String(60))
+    tax_cents = db.Column(db.BigInteger)                                 # tax on the filed return
+    penalty_cents = db.Column(db.BigInteger)
+    interest_cents = db.Column(db.BigInteger)
+    total_paid_cents = db.Column(db.BigInteger)
+    payment_status = db.Column(db.String(12), default='unpaid')          # unpaid, scheduled, paid
+    payment_settles_on = db.Column(db.Date)
+    payment_verified_on = db.Column(db.Date)
+    notes = db.Column(db.Text)
+    snapshot_json = db.Column(db.Text)                                   # the report as it stood when marked filed
+    snapshot_at = db.Column(db.DateTime)
+    reminders_sent = db.Column(db.Text)                                  # json list of reminder keys already sent
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

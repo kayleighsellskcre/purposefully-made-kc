@@ -164,6 +164,21 @@ def books_sync_job(app):
             print(f"books sync failed: {exc}", file=sys.stderr, flush=True)
 
 
+def kansas_tax_reminder_job(app):
+    """8 AM: remind about the Kansas sales tax return before it is due (14, 7 and 2 days out, and when it is late)."""
+    with app.app_context():
+        try:
+            with _one_worker_at_a_time(731018) as mine:
+                if not mine:
+                    return
+                from utils.ks_tax import run_reminders
+                sent = run_reminders(app)
+                if sent:
+                    print(f"KANSAS TAX: {sent} reminder(s) sent", file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f"kansas tax reminders failed: {exc}", file=sys.stderr, flush=True)
+
+
 def group_autopilot_job(app):
     """9 AM: organizer emails for group orders (weekly progress, two days left, closed summary)."""
     with app.app_context():
@@ -863,6 +878,13 @@ def init_scheduler(app):
         )
 
         # Growth dashboard: every Monday at 6:30 AM Chicago, so last week is always there when you sit down
+        scheduler.add_job(
+            func=lambda: kansas_tax_reminder_job(app),
+            trigger=CronTrigger(hour=8, minute=0, timezone=CHICAGO),
+            id='kansas_tax_reminders',
+            name='Kansas sales tax reminders',
+            replace_existing=True,
+        )
         scheduler.add_job(
             func=lambda: group_autopilot_job(app),
             trigger=CronTrigger(hour=9, minute=0, timezone=CHICAGO),

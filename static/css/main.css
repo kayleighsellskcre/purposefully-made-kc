@@ -4292,3 +4292,51 @@ body:not(.is-admin) .dist-body { padding-top: 1.5rem; }
         scroll-behavior: auto !important;
     }
 }
+
+/* Kansas Sales Tax page (admin) */
+.ks-nav { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin: 0 0 1rem; }
+.ks-nav select { padding: 0.55rem 0.8rem; border: 1px solid var(--border-light, #e8d0b1); border-radius: 10px; background: #fff; font: inherit; max-width: 100%; }
+.ks-step { display: inline-flex; align-items: center; justify-content: center; width: 2.4rem; height: 2.4rem; border: 1px solid var(--border-light, #e8d0b1); border-radius: 10px; background: #fff; color: var(--text-primary); text-decoration: none; font-size: 1.3rem; line-height: 1; }
+.ks-step-off { opacity: 0.35; }
+.ks-export { margin-left: auto; }
+.ks-deadline { display: grid; grid-template-columns: 1fr auto; gap: 1rem 1.5rem; align-items: center; border-left: 4px solid #d9c9a8; }
+.ks-deadline.ks-bad { border-left-color: #b4483c; }
+.ks-deadline.ks-warn { border-left-color: #c58a2b; }
+.ks-deadline.ks-good { border-left-color: #5b8a62; }
+.ks-kicker { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); font-weight: 700; }
+.ks-deadline h2 { margin: 0.15rem 0 0.2rem; font-size: 1.5rem; }
+.ks-sub { margin: 0; color: var(--text-secondary); font-size: 0.92rem; }
+.ks-chips { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.ks-chip { padding: 0.55rem 0.85rem; border-radius: 12px; background: #f6f1e7; min-width: 9rem; }
+.ks-chip small { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); }
+.ks-chip strong { font-size: 0.95rem; }
+.ks-chip-good { background: #e6f0e6; } .ks-chip-warn { background: #faefd8; } .ks-chip-bad { background: #f7e0dc; }
+.ks-more { grid-column: 1 / -1; font-size: 0.9rem; }
+.ks-more summary { cursor: pointer; color: var(--terra-cotta); }
+.ks-inline { display: flex; align-items: flex-end; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.6rem; }
+.ks-check { flex-direction: row !important; align-items: center; gap: 0.5rem !important; font-size: 0.95rem !important; color: var(--text-primary) !important; }
+.ks-snap, .ks-clear { font-size: 0.92rem; }
+.ks-snap a { margin-left: 0.4rem; }
+.ks-changed { display: inline-block; margin-left: 0.4rem; color: #8a5a12; font-weight: 600; }
+.ks-review { border-left: 4px solid #c58a2b; }
+.ks-review-list { list-style: none; margin: 0.5rem 0 0; padding: 0; display: grid; gap: 0.6rem; }
+.ks-review-list li { display: flex; gap: 0.8rem; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 0.6rem 0; border-top: 1px solid rgba(232, 208, 177, 0.5); font-size: 0.93rem; }
+.ks-review-list li > span { flex: 1 1 18rem; }
+.ks-assign { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.ks-assign select { padding: 0.4rem 0.5rem; border: 1px solid var(--border-light, #e8d0b1); border-radius: 8px; font: inherit; }
+.ks-table td:first-child { text-align: left; }
+.ks-copy { background: none; border: 0; padding: 0.15rem 0.35rem; border-radius: 6px; font: inherit; cursor: copy; color: var(--text-primary); border-bottom: 1px dotted var(--terra-cotta); }
+.ks-copy:hover { background: #f6f1e7; }
+.ks-copy.ks-copied { background: #e6f0e6; }
+.ks-copy.ks-copied::after { content: " copied"; font-size: 0.72rem; color: #3f6b47; }
+.ks-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 0.8rem 1rem; align-items: end; }
+.ks-grid .ks-wide { grid-column: 1 / -1; }
+.ks-grid input, .ks-grid select { width: 100%; box-sizing: border-box; }
+.ks-settings summary { cursor: pointer; }
+.ks-settings h3 { margin: 1.2rem 0 0.2rem; font-size: 1rem; }
+@media (max-width: 768px) {
+    .ks-deadline { grid-template-columns: 1fr; }
+    .ks-export { margin-left: 0; }
+    .ks-chip { flex: 1 1 9rem; }
+    .ks-table td, .ks-table th { padding: 0.5rem 0.3rem; font-size: 0.88rem; }
+}

@@ -1654,3 +1654,5 @@ from routes import admin_backroom  # noqa: E402,F401
 from routes import admin_artwork_pack  # noqa: E402,F401
 # School district setup, QR codes and reports.
 from routes import admin_districts  # noqa: E402,F401
+# Kansas Sales Tax: deadlines, the portal's three parts, filing record and reminders.
+from routes import admin_kansas_tax  # noqa: E402,F401

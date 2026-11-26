@@ -250,6 +250,11 @@ def sync_all(force=False, min_gap=60):
             order.tax_jurisdiction = guessed                 # the label is kept on the order from now on
         if order.tax_rate_percent is None:
             order.tax_rate_percent = effective
+        try:
+            from utils import ks_tax
+            ks_tax.stamp_order(order)                        # the Kansas jurisdiction code is kept on the order too
+        except Exception:
+            pass
         label = (order.tax_jurisdiction, bool(order.tax and order.tax > 0), order.tax_rate_percent)
         tax_labels[('order', order.id)] = label
         when = order.paid_at or order.created_at or datetime.utcnow()

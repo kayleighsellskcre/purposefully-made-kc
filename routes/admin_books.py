@@ -238,6 +238,8 @@ def payouts():
 @admin_required
 def sales_tax_report():
     from utils import sales_tax
+    if request.args.get('format') not in ('csv', 'pdf'):
+        return redirect(url_for('admin.kansas_tax'))          # the screen lives on the Kansas Sales Tax page now
     L.sync_all()
     period, first, last, label = _period()
     report = L.sales_tax_report(first, last)

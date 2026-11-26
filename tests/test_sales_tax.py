@@ -77,7 +77,7 @@ def test_the_rate_defaults_and_can_be_changed(app, seed):
 
 def test_settings_page_saves_the_rate(admin_client, app, seed):
     page = admin_client.get('/admin/operations/site-settings').get_data(as_text=True)
-    assert 'Kansas sales tax rate' in page and 'name="rate"' in page
+    assert 'Open Kansas Sales Tax' in page and 'name="rate"' not in page
     admin_client.post('/admin/operations/site-settings', data={'section': 'tax', 'rate': '9.725'})
     assert _in_db(app, lambda: T.rate_percent()) == 9.725
     bad = admin_client.post('/admin/operations/site-settings', data={'section': 'tax', 'rate': '99'}, follow_redirects=True)
@@ -195,8 +195,8 @@ def test_report_groups_by_where_taxed_and_flags_old_out_of_state_tax(admin_clien
     assert rows['out_of_state']['not_taxed'] == 10000 and rows['out_of_state']['taxable'] == 10000
     assert report['out_of_state_tax'] == 950
     assert report['totals']['tax'] == 2850 and report['totals']['shipping'] == 4400
-    page = admin_client.get('/admin/operations/sales-tax?period=custom&from=2026-10-01&to=2026-10-31').get_data(as_text=True)
-    assert 'Shipped out of state' in page and 'collected on orders shipped out of state' in page and '$28.50' in page
+    go = admin_client.get('/admin/operations/sales-tax?period=custom&from=2026-10-01&to=2026-10-31')
+    assert go.status_code == 302 and '/admin/operations/kansas-tax' in go.headers['Location']   # the screen moved to Kansas Sales Tax
 
 
 def test_refunds_come_off_the_tax_report_on_their_own_day(app, seed):

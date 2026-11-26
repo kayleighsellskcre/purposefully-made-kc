@@ -1,0 +1,216 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Kansas Sales Tax - Purposefully Made KC{% endblock %}
+{% macro amt(cents) %}{{ '%.2f'|format((cents or 0) / 100) }}{% endmacro %}
+{% macro copy(cents) %}<button type="button" class="ks-copy" data-copy="{{ amt(cents) }}" title="Copy {{ amt(cents) }}">{{ money(cents) }}</button>{% endmacro %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Tax</span>
+<h1 class="ops-title">Kansas Sales Tax</h1>
+<p class="ops-subtitle">Pick a period, fix anything flagged, then copy each number into the Kansas portal.</p>
+
+<div class="ks-nav">
+    <a class="ks-step" href="{{ url_for('admin.kansas_tax', start=prev_start.isoformat()) }}" aria-label="Earlier period">&lsaquo;</a>
+    <form method="get" action="{{ url_for('admin.kansas_tax') }}">
+        <label class="sr-only" for="ksPeriod">Period</label>
+        <select id="ksPeriod" name="start" onchange="this.form.submit()">
+            {% for s, e, name in choices %}<option value="{{ s.isoformat() }}"{% if s == start %} selected{% endif %}>{{ name }} ({{ pretty(s) }} to {{ pretty(e) }})</option>{% endfor %}
+            {% if start not in choices|map(attribute=0)|list %}<option value="{{ start.isoformat() }}" selected>{{ label }}</option>{% endif %}
+        </select>
+    </form>
+    {% if next_start %}<a class="ks-step" href="{{ url_for('admin.kansas_tax', start=next_start.isoformat()) }}" aria-label="Later period">&rsaquo;</a>{% else %}<span class="ks-step ks-step-off" aria-hidden="true">&rsaquo;</span>{% endif %}
+    <a class="btn btn-outline btn-sm ks-export" href="{{ url_for('admin.kansas_tax', start=start.isoformat(), format='csv') }}">Download CSV</a>
+</div>
+
+<section class="ops-card bk-card ks-deadline ks-{{ status.return_tone }}">
+    <div class="ks-deadline-main">
+        <span class="ks-kicker">{{ label }} return</span>
+        <h2>{% if status.filed %}Filed {{ pretty(filing.return_filed_on) }}{% else %}Due {{ long_day(status.due) }}, {{ status.due.year }}{% endif %}</h2>
+        <p class="ks-sub">
+            {{ pretty(start) }} to {{ pretty(end) }}.
+            {% if status.overridden %}Due date set by you from the Kansas portal.
+            {% elif status.due_moved %}The 25th falls on a weekend or holiday, so it moves to the next business day.
+            {% else %}Due the 25th of the month after the period ends.{% endif %}
+        </p>
+    </div>
+    <div class="ks-chips">
+        <div class="ks-chip ks-chip-{{ status.return_tone }}"><small>Return</small><strong>{{ status.return_text }}</strong></div>
+        <div class="ks-chip ks-chip-{{ status.pay_tone }}"><small>Payment</small><strong>{{ status.pay_text }}</strong></div>
+    </div>
+    <details class="ks-more">
+        <summary>Portal shows a different date?</summary>
+        <form method="post" action="{{ url_for('admin.kansas_tax_save') }}" class="bk-form ks-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="start" value="{{ start.isoformat() }}"><input type="hidden" name="action" value="due">
+            <label>Due date <input type="date" name="due_override" value="{{ filing.due_override.isoformat() if filing and filing.due_override else '' }}"></label>
+            <button class="btn btn-outline btn-sm" type="submit">Save</button>
+            <span class="bk-muted">Leave empty to use {{ pretty(default_due) }}.</span>
+        </form>
+    </details>
+</section>
+
+{% if snapshot %}
+<div class="ops-card bk-card ks-snap">
+    <strong>These are the numbers you submitted.</strong> A copy was saved {{ pretty(filing.snapshot_at) }}, so later edits to old orders cannot change it.
+    {% if changed %}<span class="ks-changed">Your records now give different figures.</span>{% endif %}
+    {% if show_live %}<a href="{{ url_for('admin.kansas_tax', start=start.isoformat()) }}">Show what I submitted</a>{% else %}<a href="{{ url_for('admin.kansas_tax', start=start.isoformat(), live=1) }}">Show today's records instead</a>{% endif %}
+</div>
+{% endif %}
+
+{% if report.review %}
+<section class="ops-card bk-card ks-review">
+    <h2>Needs review <small>{{ report.review|length }} to look at before you file</small></h2>
+    <ul class="ks-review-list">
+        {% for item in report.review %}
+        <li>
+            <span>{{ item.text }}</span>
+            {% if item.kind == 'destination' %}
+            <form method="post" action="{{ url_for('admin.kansas_tax_assign') }}" class="ks-assign">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="start" value="{{ start.isoformat() }}"><input type="hidden" name="order_id" value="{{ item.order_id }}">
+                <select name="code" aria-label="Jurisdiction code">{% for j in jurisdictions %}<option value="{{ j.code }}">{{ j.code }} {{ '%g'|format(j.rate_percent) }}%</option>{% endfor %}</select>
+                <button class="btn btn-primary btn-sm" type="submit">Save</button>
+                <a href="{{ item.url }}">Open order</a>
+            </form>
+            {% elif item.url %}<a class="btn btn-outline btn-sm" href="{{ item.url }}">{{ item.fix }}</a>{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% elif live.has_activity and not snapshot %}
+<div class="ops-card bk-card ks-clear">Nothing needs review for this period.</div>
+{% endif %}
+
+{% if not live.has_activity and not snapshot %}
+<section class="ops-card bk-card">
+    <h2>Filing information</h2>
+    <p>Your records show no sales in {{ label }}. Kansas still wants a return, filed with zero.</p>
+    <form method="post" action="{{ url_for('admin.kansas_tax_save') }}" class="bk-form ks-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="start" value="{{ start.isoformat() }}"><input type="hidden" name="action" value="zero">
+        <label class="ks-check"><input type="checkbox" name="zero" value="1"{% if filing and filing.zero_activity_confirmed %} checked{% endif %}> I confirm there was no activity to report</label>
+        <button class="btn btn-outline btn-sm" type="submit">Save</button>
+    </form>
+</section>
+{% else %}
+<section class="ops-card bk-card">
+    <h2>Part III &middot; Jurisdiction details <small>click an amount to copy it</small></h2>
+    <div class="ops-table-scroll">
+    <table class="bk-table ks-table">
+        <thead><tr><th>Code</th><th>Gross sales</th><th>Refunds</th><th>Deductions</th><th>Net taxable</th><th>Rate</th><th>Tax</th></tr></thead>
+        <tbody>
+            {% for r in report.rows %}
+            <tr>
+                <td><strong>{{ r.code }}</strong> <small>{{ r.name }}</small></td>
+                <td>{{ copy(r.gross) }}</td><td>{{ copy(r.refunds) }}</td><td>{{ copy(r.deductions) }}</td><td>{{ copy(r.net) }}</td>
+                <td>{{ '%.2f'|format(r.rate) }}%</td><td>{{ copy(r.calc) }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="bk-total"><td>Total</td><td>{{ money(report.totals.gross) }}</td><td>{{ money(report.totals.refunds) }}</td><td>{{ money(report.totals.deductions) }}</td><td>{{ money(report.totals.net) }}</td><td></td><td>{{ money(report.totals.calc) }}</td></tr>
+        </tbody>
+    </table>
+    </div>
+    <p class="bk-note">Gross sales are what customers paid for merchandise, after discounts and before tax. Shipping is not included. Refunds count on the day they went out.
+        <a href="{{ url_for('admin.ledger', **{'from': start.isoformat(), 'to': end.isoformat(), 'type': 'sale,discount,refund'}) }}">See every sale behind this.</a></p>
+</section>
+
+<section class="ops-card bk-card">
+    <h2>Part II &middot; Deductions</h2>
+    <table class="bk-table ks-table">
+        <tbody>
+            <tr><td><strong>Line M</strong> <small>Delivered outside Kansas</small></td><td>{{ copy(report.line_m.amount) }}</td></tr>
+            {% if report.exempt.amount %}<tr><td>Tax-exempt customers <small>certificate on file</small></td><td>{{ copy(report.exempt.amount) }}</td></tr>{% endif %}
+        </tbody>
+    </table>
+    {% if report.line_m.orders %}
+    <details class="ks-more"><summary>The {{ report.line_m.orders|length }} order{{ '' if report.line_m.orders|length == 1 else 's' }} behind Line M</summary>
+        <table class="bk-table ks-table">
+            {% for o in report.line_m.orders %}<tr><td><a href="{{ o.url }}">{{ o.label }}</a> <small>{{ o.state }}{% if o.tracking %} &middot; tracking {{ o.tracking }}{% else %} &middot; no tracking saved{% endif %}</small></td><td>{{ money(o.amount) }}</td></tr>{% endfor %}
+        </table>
+    </details>
+    {% endif %}
+    <p class="bk-note">These come from the same records as Part III, so a deduction is entered once.</p>
+</section>
+
+<section class="ops-card bk-card">
+    <h2>Part I &middot; Tax due</h2>
+    <table class="bk-table ks-table">
+        <tbody>
+            <tr><td>Tax the rates call for</td><td>{{ copy(report.totals.calc) }}</td></tr>
+            <tr><td>Tax you collected from customers</td><td>{{ money(report.totals.collected) }}</td></tr>
+            <tr class="bk-total"><td>{% if report.totals.diff > 0 %}Short, you owe the difference{% elif report.totals.diff < 0 %}Over collected{% else %}Difference{% endif %}</td><td>{{ money(report.totals.diff|abs) }}</td></tr>
+            {% if filing and filing.return_filed_on %}
+            <tr><td>Penalty</td><td>{{ money(filing.penalty_cents or 0) }}</td></tr>
+            <tr><td>Interest</td><td>{{ money(filing.interest_cents or 0) }}</td></tr>
+            <tr class="bk-total"><td>Total paid to Kansas</td><td>{{ money(filing.total_paid_cents or 0) }}</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+    {% if report.totals.diff > 0 %}<p class="bk-note">Kansas calculates tax from your net taxable sales, so you owe the calculated amount even when customers were charged a little less.</p>{% endif %}
+</section>
+{% endif %}
+
+<section class="ops-card bk-card">
+    <h2>{% if status.filed %}Your filing{% else %}Record your filing{% endif %}</h2>
+    <form method="post" action="{{ url_for('admin.kansas_tax_save') }}" class="bk-form ks-grid">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="start" value="{{ start.isoformat() }}"><input type="hidden" name="action" value="filing">
+        <label>Date filed <input type="date" name="return_filed_on" value="{{ filing.return_filed_on.isoformat() if filing and filing.return_filed_on else '' }}"></label>
+        <label>Confirmation number <input type="text" name="confirmation_number" maxlength="60" value="{{ filing.confirmation_number if filing and filing.confirmation_number else '' }}"></label>
+        <label>Tax on the return <input type="text" inputmode="decimal" name="tax" placeholder="0.00" value="{{ amt(filing.tax_cents) if filing and filing.tax_cents is not none else '' }}"></label>
+        <label>Penalty <input type="text" inputmode="decimal" name="penalty" placeholder="0.00" value="{{ amt(filing.penalty_cents) if filing and filing.penalty_cents is not none else '' }}"></label>
+        <label>Interest <input type="text" inputmode="decimal" name="interest" placeholder="0.00" value="{{ amt(filing.interest_cents) if filing and filing.interest_cents is not none else '' }}"></label>
+        <label>Total paid <input type="text" inputmode="decimal" name="total_paid" placeholder="0.00" value="{{ amt(filing.total_paid_cents) if filing and filing.total_paid_cents is not none else '' }}"></label>
+        <label>Payment
+            <select name="payment_status">
+                {% set ps = (filing.payment_status if filing else 'unpaid') or 'unpaid' %}
+                <option value="unpaid"{% if ps == 'unpaid' %} selected{% endif %}>Not paid yet</option>
+                <option value="scheduled"{% if ps == 'scheduled' %} selected{% endif %}>Scheduled</option>
+                <option value="paid"{% if ps == 'paid' %} selected{% endif %}>Cleared my bank</option>
+            </select>
+        </label>
+        <label>Payment settles <input type="date" name="payment_settles_on" value="{{ filing.payment_settles_on.isoformat() if filing and filing.payment_settles_on else '' }}"></label>
+        <label class="ks-wide">Notes <input type="text" name="notes" maxlength="300" value="{{ filing.notes if filing and filing.notes else '' }}"></label>
+        <div class="ks-wide"><button class="btn btn-primary" type="submit">Save filing</button>
+            <span class="bk-muted">Saving with a filed date stops the filing reminders and keeps a copy of the numbers.</span></div>
+    </form>
+</section>
+
+<details class="ops-card bk-card ks-settings">
+    <summary><strong>Settings</strong> <small>how often you file, reminders, rates</small></summary>
+    <form method="post" action="{{ url_for('admin.kansas_tax_settings') }}" class="bk-form ks-grid">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="start" value="{{ start.isoformat() }}">
+        <label>How often you file
+            <select name="frequency">{% for key, name in frequencies %}<option value="{{ key }}"{% if key == frequency %} selected{% endif %}>{{ name }}</option>{% endfor %}</select>
+        </label>
+        <label>Remind me this many days before <input type="text" name="reminder_days" value="{{ reminder_days }}"></label>
+        <label>Your pickup place
+            <select name="pickup_code">{% for j in jurisdictions %}<option value="{{ j.code }}"{% if j.code == home %} selected{% endif %}>{{ j.code }}, {{ j.name }}</option>{% endfor %}</select>
+        </label>
+        <div class="ks-wide"><button class="btn btn-outline" type="submit">Save settings</button></div>
+    </form>
+    <h3>Jurisdictions</h3>
+    <p class="bk-muted">Your pickup place sets the rate customers are charged at checkout. Add other places when Kansas shows you their code, for example for orders shipped within Kansas.</p>
+    <table class="bk-table ks-table">
+        {% for j in jurisdictions %}<tr><td><strong>{{ j.code }}</strong> <small>{{ j.name }}</small></td><td>{{ '%.2f'|format(j.rate_percent) }}%</td></tr>{% endfor %}
+    </table>
+    <form method="post" action="{{ url_for('admin.kansas_tax_jurisdiction') }}" class="bk-form ks-grid">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="start" value="{{ start.isoformat() }}">
+        <label>Code <input type="text" name="code" maxlength="12" placeholder="SHAJO" required></label>
+        <label>Place <input type="text" name="name" maxlength="120" placeholder="Shawnee / Johnson County" required></label>
+        <label>Rate (percent) <input type="text" inputmode="decimal" name="rate" placeholder="9.6" required></label>
+        <div class="ks-wide"><button class="btn btn-outline" type="submit">Add or update</button></div>
+    </form>
+</details>
+
+<script>
+(function () {
+    document.addEventListener('click', function (e) {
+        var b = e.target.closest('.ks-copy');
+        if (!b) { return; }
+        var text = b.getAttribute('data-copy');
+        var done = function () { b.classList.add('ks-copied'); setTimeout(function () { b.classList.remove('ks-copied'); }, 1100); };
+        if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, done); }
+        else { var t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); } catch (err) {} t.remove(); done(); }
+    });
+})();
+</script>
+{% endblock %}

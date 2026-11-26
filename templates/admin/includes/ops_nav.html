@@ -2,7 +2,7 @@
 {% set daily_eps = ['admin.orders','admin.completed_orders','admin.order_detail','admin.production_workflow','admin.bulk_order_new','admin.production_master','admin.transfer_production','admin.order_transfer_summary','admin.print_labels','admin.dtf_batch_sheets','admin.logo_chart','admin.production_bulk_sheet','admin.blank_apparel_list','admin.custom_design_requests','admin.custom_design_request_detail','admin.pickup_desk','admin.pickup_order','admin.notifications','admin.notifications_open','admin.packaging_sop'] %}
 {% set store_eps = ['admin.products','admin.add_product','admin.edit_product','admin.collections','admin.add_collection','admin.edit_collection','admin.donations','admin.donation_view','admin.design_gallery','admin.gallery_queue','admin.designs','admin.design_library_overview','admin.design_browse','admin.design_categories','admin.design_tags','admin.design_review','admin.design_organize','admin.design_matches','admin.affirmations','admin.organizations','admin.districts','admin.district_new','admin.district_manage','admin.district_school','admin.district_copy_store','admin.district_report'] %}
 {% set money_eps = ['admin.reports','admin.reports_refresh','admin.ledger','admin.expenses','admin.recurring_expenses','admin.equipment_log','admin.receivables','admin.payouts','admin.payout_check','admin.financial','admin.invoices','admin.invoice_new','admin.invoice_view','admin.invoice_edit'] %}
-{% set tax_eps = ['admin.sales_tax_report','admin.tax_exempt_customers','admin.mileage','admin.inventory_count','admin.cpa_package'] %}
+{% set tax_eps = ['admin.kansas_tax','admin.sales_tax_report','admin.tax_exempt_customers','admin.mileage','admin.inventory_count','admin.cpa_package'] %}
 {% set stock_eps = ['admin.inventory','admin.save_inventory_costs','admin.operations_inventory','admin.low_stock','admin.vendors','admin.add_vendor','admin.edit_vendor'] %}
 {% set biz_eps = ['admin.customers','admin.reviews','admin.growth','admin.add_growth_metric','admin.edit_growth_metric','admin.ai_usage','admin.site_settings','admin.backroom','admin.site_errors'] %}
 {% set shop_eps = ['admin.inventory','admin.save_inventory_costs','admin.operations_inventory','admin.low_stock','admin.vendors','admin.customers','admin.reviews','admin.growth','admin.ai_usage','admin.site_settings','admin.site_errors'] %}
@@ -119,7 +119,7 @@
         {% endcall %}
 
         {% call ops_group('Tax & Year-End', request.endpoint in tax_eps) %}
-                {{ ops_item('admin.sales_tax_report', 'Sales tax', ['admin.tax_exempt_customers']) }}
+                {{ ops_item('admin.kansas_tax', 'Kansas sales tax', ['admin.sales_tax_report','admin.tax_exempt_customers']) }}
                 {{ ops_item('admin.mileage', 'Mileage') }}
                 {{ ops_item('admin.inventory_count', 'Year-end inventory count') }}
                 {{ ops_item('admin.cpa_package', 'CPA package') }}
@@ -147,7 +147,7 @@
 {% set _tab_families = [
     [('admin.reports', 'Profit & Loss'), ('admin.financial', 'Revenue buckets'), ('admin.expenses', 'Expenses'), ('admin.recurring_expenses', 'Monthly bills'), ('admin.equipment_log', 'Equipment'), ('admin.ledger', 'Every entry')],
     [('admin.payouts', 'Payouts'), ('admin.payout_check', 'Month-by-month check')],
-    [('admin.sales_tax_report', 'Sales tax'), ('admin.tax_exempt_customers', 'Tax-exempt customers')],
+    [('admin.kansas_tax', 'Kansas sales tax'), ('admin.tax_exempt_customers', 'Tax-exempt customers')],
     [('admin.inventory', 'DTF costs'), ('admin.operations_inventory', 'Stock counts'), ('admin.low_stock', 'Running low')],
     [('admin.collections', 'Group orders'), ('admin.donations', 'Donations'), ('admin.organizations', 'Organizations'), ('admin.districts', 'School districts')],
     [('admin.design_browse', 'Find & bulk edit'), ('admin.design_library_overview', 'Overview'), ('admin.design_categories', 'Collections & categories'), ('admin.design_tags', 'Tags')],
