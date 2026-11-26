@@ -251,6 +251,40 @@ def status_of(filing, end: date, today: date):
             'overridden': bool(filing and filing.due_override)}
 
 
+def banner(today: date):
+    """One line for the top of Profit & Loss and the dashboard: the return that needs the owner next.
+
+    Last period's return if it is not filed yet, otherwise the open period's. Returns None if anything goes wrong,
+    so a page never fails because of this banner.
+    """
+    try:
+        freq = frequency()
+        start, end = period_for(today, freq)
+        p_start, p_end = previous_period(start, freq)
+        prev = get_filing(p_start, p_end, create=False)
+        if prev is None or not prev.return_filed_on:
+            use_start, use_end = p_start, p_end
+        else:
+            use_start, use_end = start, end
+        filing = get_filing(use_start, use_end, create=False)
+        st = status_of(filing, use_end, today)
+        needs = st['ended'] and (not st['filed'] or st['pay_tone'] in ('warn', 'bad'))
+        if st['filed'] and st['pay'] == 'paid':
+            needs = False
+        label = period_label(use_start, use_end, freq)
+        if st['filed']:
+            headline = f'Kansas sales tax {label}: filed. {st["pay_text"]}.'
+        elif st['ended']:
+            headline = f'Kansas sales tax {label}: {st["return_text"].lower()}. Due {pretty(st["due"])}.'
+        else:
+            headline = f'Next Kansas sales tax return: {label}, due {pretty(st["due"])}.'
+        tone = st['return_tone'] if not st['filed'] else st['pay_tone']
+        return {'headline': headline, 'tone': tone if st['ended'] else 'quiet', 'needs': needs,
+                'url': f'/admin/operations/kansas-tax?start={use_start.isoformat()}'}
+    except Exception:
+        return None
+
+
 # ---- the report -------------------------------------------------------------------------------------
 
 def _cents(x):

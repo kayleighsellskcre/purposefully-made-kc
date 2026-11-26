@@ -3,6 +3,7 @@
 {% block ops_content %}
 <span class="adm-eyebrow">Admin / Books</span>
 <h1 class="ops-title">Profit &amp; Loss</h1>
+{% include 'admin/includes/ks_banner.html' %}
 <p class="ops-subtitle">Profit and loss on a cash basis, in Kansas City time. Every number opens the entries behind it.</p>
 
 <form class="bk-picker" method="get" action="{{ url_for('admin.reports') }}">

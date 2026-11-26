@@ -255,3 +255,15 @@ def test_profit_is_not_labelled_incomplete_when_every_order_has_a_cost(app, seed
     _in_db(app, make)
     page = admin_client.get('/admin/operations/reports?period=custom&from=2026-08-01&to=2026-08-31').get_data(as_text=True)
     assert 'Profit is incomplete.' not in page and 'bk-incomplete">Incomplete' not in page
+
+
+def test_the_deadline_shows_at_the_top_of_profit_and_loss_and_the_dashboard(app, seed, admin_client):
+    for path in ('/admin/operations/reports', '/admin/'):
+        html = admin_client.get(path).get_data(as_text=True)
+        assert 'class="ks-banner' in html and 'Kansas sales tax' in html and '/admin/operations/kansas-tax?start=' in html
+
+    def make():
+        return K.banner(date(2026, 10, 20)), K.banner(date(2026, 8, 1))
+    late, quiet = _in_db(app, make)
+    assert 'Q3 2026' in late['headline'] and 'Oct 26, 2026' in late['headline'] and late['needs']
+    assert quiet['headline'].startswith('Next Kansas sales tax return') or 'Q2 2026' in quiet['headline']

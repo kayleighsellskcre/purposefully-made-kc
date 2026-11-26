@@ -1,0 +1,7 @@
+{% set _kb = ks_banner() %}
+{% if _kb %}
+<a class="ks-banner ks-banner-{{ _kb.tone }}" href="{{ _kb.url }}">
+    <span>{{ _kb.headline }}</span>
+    <strong>{% if _kb.needs %}Open the report{% else %}View{% endif %} &rsaquo;</strong>
+</a>
+{% endif %}

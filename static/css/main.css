@@ -4357,3 +4357,10 @@ body:not(.is-admin) .dist-body { padding-top: 1.5rem; }
 .bk-incomplete-box { margin: 0.9rem 0 0; padding: 0.8rem 1rem; border-radius: 12px; background: #fbf4e4; border: 1px solid #ecd9a8; font-size: 0.92rem; }
 .bk-incomplete-box ul { margin: 0.5rem 0 0; padding-left: 1.2rem; columns: 2; }
 .bk-incomplete-box summary { cursor: pointer; color: var(--terra-cotta); margin-top: 0.4rem; }
+
+.ks-banner { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin: 0 0 1rem; padding: 0.7rem 1rem; border-radius: 12px; background: #f6f1e7; border-left: 4px solid #d9c9a8; color: var(--text-primary); text-decoration: none; font-size: 0.93rem; }
+.ks-banner strong { color: var(--terra-cotta); white-space: nowrap; }
+.ks-banner-warn { background: #faefd8; border-left-color: #c58a2b; }
+.ks-banner-bad { background: #f7e0dc; border-left-color: #b4483c; }
+.ks-banner-good { background: #e6f0e6; border-left-color: #5b8a62; }
+.ks-banner:hover { filter: brightness(0.98); }

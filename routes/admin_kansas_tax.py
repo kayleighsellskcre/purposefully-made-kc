@@ -12,6 +12,13 @@ from utils import ks_tax as K
 from utils import ledger as L
 
 
+@admin_bp.app_context_processor
+def _kansas_banner_for_templates():
+    def ks_banner():
+        return K.banner(L.kc_today())
+    return {'ks_banner': ks_banner}
+
+
 def _start_param():
     return K.parse_date(request.values.get('start')) if request.values.get('start') else None
 
