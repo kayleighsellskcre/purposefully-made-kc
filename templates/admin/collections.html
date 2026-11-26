@@ -104,6 +104,7 @@
                     </div>
                 </div>
             </div>
+            {% if collection.admin_notes %}<p class="go-admin-note" title="Only you see this"><strong>Your note:</strong> {{ collection.admin_notes|truncate(160) }}</p>{% endif %}
             <nav class="go-actions" aria-label="Manage {{ collection.name }}">
                 <a href="{{ url_for('admin.edit_collection', collection_id=collection.id) }}" class="go-action">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13 7 4 4"/></svg>

@@ -414,6 +414,17 @@ def edit_collection(collection_id):
                          catalog_filter_picker=True)
 
 
+@admin_bp.route('/collections/<int:collection_id>/notes', methods=['POST'])
+@admin_required
+def collection_admin_notes(collection_id):
+    """The owner's private notes on one group order. Kept apart from the shared edit form so an organizer can never reach them."""
+    collection = Collection.query.get_or_404(collection_id)
+    collection.admin_notes = (request.form.get('admin_notes') or '').strip()[:5000] or None
+    db.session.commit()
+    flash('Notes saved.', 'success')
+    return redirect(url_for('admin.edit_collection', collection_id=collection.id) + '#adminNotes')
+
+
 @admin_bp.route('/collections/bulk-delete', methods=['POST'])
 @admin_required
 def collections_bulk_delete():

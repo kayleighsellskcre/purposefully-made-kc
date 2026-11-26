@@ -4364,3 +4364,10 @@ body:not(.is-admin) .dist-body { padding-top: 1.5rem; }
 .ks-banner-bad { background: #f7e0dc; border-left-color: #b4483c; }
 .ks-banner-good { background: #e6f0e6; border-left-color: #5b8a62; }
 .ks-banner:hover { filter: brightness(0.98); }
+
+/* Owner-only notes on a group order */
+.adm-notes { background: #fbf6ea; border: 1px solid #ecd9a8; border-radius: 14px; padding: 0.9rem 1.1rem; margin: 0 0 1.25rem; }
+.adm-notes label { display: block; margin-bottom: 0.4rem; font-size: 0.93rem; }
+.adm-notes label span { display: block; font-weight: 400; color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.1rem; }
+.adm-notes textarea { width: 100%; box-sizing: border-box; padding: 0.6rem 0.75rem; border: 1px solid var(--border-light, #e8d0b1); border-radius: 10px; font: inherit; background: #fff; resize: vertical; margin-bottom: 0.5rem; }
+.go-admin-note { margin: 0 1.1rem 0.6rem; padding: 0.5rem 0.75rem; background: #fbf6ea; border-left: 3px solid #d9b873; border-radius: 6px; font-size: 0.85rem; color: var(--text-secondary); }

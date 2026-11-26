@@ -9,5 +9,13 @@
 {% endblock %}
 
 {% block admin_content %}
+<section class="adm-notes" id="adminNotes">
+    <form method="post" action="{{ url_for('admin.collection_admin_notes', collection_id=collection.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="adminNotesField"><strong>Your notes</strong> <span>Only you can see this. Customers and organizers never do. Write how you handle this group so you can do it the same way next time.</span></label>
+        <textarea id="adminNotesField" name="admin_notes" rows="4" maxlength="5000" placeholder="Pickup is at the school office. Invoice the PTA in January. Use the 2024 logo.">{{ collection.admin_notes or '' }}</textarea>
+        <button class="btn btn-outline btn-sm" type="submit">Save notes</button>
+    </form>
+</section>
 {% include 'includes/group_order_edit_form.html' %}
 {% endblock %}

@@ -147,6 +147,7 @@ class Collection(db.Model):
     name = db.Column(db.String(200), nullable=False)
     slug = db.Column(db.String(200), unique=True, nullable=False, index=True)
     description = db.Column(db.Text)
+    admin_notes = db.Column(db.Text)                       # private notes for the owner only; never shown to customers or organizers
     share_token = db.Column(db.String(64), unique=True, nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     is_password_protected = db.Column(db.Boolean, default=False)
