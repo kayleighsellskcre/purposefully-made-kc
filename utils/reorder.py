@@ -101,6 +101,7 @@ def _line_from(item):
         'back_design_meta': back_meta,
         'proof_front_url': item.proof_image,
         'proof_back_url': item.proof_back_image,
+        'preview_layout': _layout(item),
         'print_width': item.print_width,
         'print_height': item.print_height,
         'transfer_production': _json_dict(item.transfer_production),
@@ -205,3 +206,8 @@ def reprice_line(line):
         is_blank=not (design or line.get('design_url') or has_back),
         design_fee=float(getattr(design, 'design_fee', 0) or 0))
     return line
+
+
+def _layout(item):
+    from utils.preview_layout import load
+    return load(getattr(item, 'preview_layout', None))

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros/garment_proof.html" import garment_proof %}
+{% from "macros/garment_proof.html" import garment_proof, garment_layout %}
 
 {% block title %}Checkout - Purposefully Made KC{% endblock %}
 
@@ -328,9 +328,15 @@
                     {% for item in cart %}
                     <div class="summary-item">
                         {% if item.front_image %}
-                        <div class="summary-item-proofs{% if item.back_overlay %} summary-item-proofs-pair{% endif %}">
+                        <div class="summary-item-proofs{% if item.back_overlay or item.back_layout %} summary-item-proofs-pair{% endif %}">
+                            {% if item.front_layout %}
+                            {{ garment_layout(item.layout_front_image, item.layout_front_art, item.front_layout, none) }}
+                            {% else %}
                             {{ garment_proof(item.front_image, item.design_overlay, item.placement or 'center_chest', none, fallback_url=item.front_fallback) }}
-                            {% if item.back_overlay %}
+                            {% endif %}
+                            {% if item.back_layout %}
+                            {{ garment_layout(item.layout_back_image, item.layout_back_art, item.back_layout, none) }}
+                            {% elif item.back_overlay %}
                             {{ garment_proof(item.back_image, item.back_overlay, item.back_overlay_class or 'center_back', none, fallback_url=item.back_fallback) }}
                             {% endif %}
                         </div>

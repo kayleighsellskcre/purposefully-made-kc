@@ -428,6 +428,7 @@ def artwork_kit(item, order=None):
         proof_back = None
 
     front_mockup, back_mockup = mockup_urls(product, color)
+    raw_front_mockup, raw_back_mockup = front_mockup, back_mockup
     placement = placement.strip().lower().replace(' ', '_') or 'center_chest'
     front_print = front_print_url(item)
     back_print = back_print_url(item)
@@ -493,7 +494,22 @@ def artwork_kit(item, order=None):
         'has_back_print': bool(back_print) or personalized,
         'has_back_proof': bool(proof_back or ((back_print or personalized) and back_mockup)),
         'used_saved_proof': bool(proof_front or proof_back),
+        **_kit_layout(item, placement, raw_front_mockup, raw_back_mockup, front_print, back_print, front_on_shirt, personalized),
     }
+
+
+def _kit_layout(item, placement, front_mockup, back_mockup, front_print, back_print, front_on_shirt, personalized):
+    """The shirt redrawn with the customer's own placement from the customizer, when it was measured there."""
+    from utils.preview_layout import side
+    raw = item.get('preview_layout') if isinstance(item, dict) else getattr(item, 'preview_layout', None)
+    f, b = side(raw, 'front'), side(raw, 'back')
+    out = {'front_layout': None, 'back_layout': None, 'layout_front_image': front_mockup, 'layout_back_image': back_mockup,
+           'layout_front_art': front_print, 'layout_back_art': back_print}
+    if f and front_mockup and front_print and front_on_shirt:
+        out['front_layout'] = f
+    if b and back_mockup and back_print and not personalized:
+        out['back_layout'] = b
+    return out
 
 
 def local_file_for_url(app, url):

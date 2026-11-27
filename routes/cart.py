@@ -144,7 +144,8 @@ def index():
                 'back_overlay_class': back_class,
                 'back_overlay_style': back_style,
                 'has_back_proof': bool(proof_back) and not item.get('back_preview_url'),
-                'placement': placement
+                'placement': placement,
+                **_exact_layout(item, placement, front_image, back_image),
             })
             subtotal += item_total
     
@@ -167,6 +168,29 @@ def index():
                          active_group_order=active_group_order,
                          fan_wear_url=fan_wear_url,
                          org_url=org_url)
+
+
+def _exact_layout(item, placement, front_image, back_image):
+    """The shirt redrawn with the customer's own placement from the customizer, when it was measured there."""
+    from utils.preview_layout import side
+    lay = item.get('preview_layout')
+    out = {'front_layout': None, 'back_layout': None, 'layout_front_image': front_image, 'layout_back_image': back_image,
+           'layout_front_art': None, 'layout_back_art': None}
+    f, b = side(lay, 'front'), side(lay, 'back')
+    if f and front_image and item.get('design_url') and placement in FRONT_PLACEMENTS:
+        out['front_layout'], out['layout_front_art'] = f, item['design_url']
+    if b and back_image and item.get('back_design_url') and not item.get('back_preview_url'):
+        out['back_layout'], out['layout_back_art'] = b, item['back_design_url']
+    return out
+
+
+def _preview_layout():
+    """Where the art sat on the shirt in the customizer (fractions of the shirt photo), so the cart redraws it the same."""
+    from utils.preview_layout import clean
+    raw = request.form.get('preview_layout') if request.form else None
+    if raw is None and request.is_json:
+        raw = (request.get_json(silent=True) or {}).get('preview_layout')
+    return clean(raw)
 
 
 def _own_picture(url):
@@ -645,6 +669,7 @@ def add():
         'back_preview_style': back_preview_style,
         'proof_front_url': proof_front_url,
         'proof_back_url': proof_back_url,
+        'preview_layout': _preview_layout(),
         'print_width': print_width,
         'print_height': print_height,
         'transfer_production': transfer_production,

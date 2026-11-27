@@ -1078,6 +1078,7 @@ class OrderItem(db.Model):
     # Preview image
     proof_image = db.Column(db.String(500))  # Path to rendered front proof
     proof_back_image = db.Column(db.String(500))  # Path to rendered back mockup (customer-approved)
+    preview_layout = db.Column(db.Text)  # where the art sat on the shirt in the customizer (utils/preview_layout.py)
     
     # Notes
     notes = db.Column(db.Text)

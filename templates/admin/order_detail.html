@@ -2,7 +2,7 @@
 {% block title %}Order #{{ order.order_number }} - Admin - Purposefully Made KC{% endblock %}
 
 {% block admin_content %}
-{% from "macros/garment_proof.html" import garment_proof %}
+{% from "macros/garment_proof.html" import garment_proof, garment_layout %}
 <div class="od-page">
 
     <!-- Page Header -->
@@ -473,9 +473,13 @@
                 <section>
                     <h4 class="od-kit-label">How they ordered it</h4>
                     <div class="pm-proofs od-kit-proofs">
+                        {% if kit.front_layout %}{{ garment_layout(kit.layout_front_image, kit.layout_front_art, kit.front_layout, 'Front') }}{% else %}
                         {{ garment_proof(kit.front_mockup_url, kit.front_overlay_url, kit.placement, 'Front', kit.front_overlay_style) }}
+                        {% endif %}
                         {% if kit.has_back_print or kit.proof_back_url %}
+                        {% if kit.back_layout %}{{ garment_layout(kit.layout_back_image, kit.layout_back_art, kit.back_layout, 'Back') }}{% else %}
                         {{ garment_proof(kit.back_mockup_url, kit.back_overlay_url, kit.back_overlay_class or 'center_back', 'Back', kit.back_overlay_style) }}
+                        {% endif %}
                         {% endif %}
                     </div>
                 </section>

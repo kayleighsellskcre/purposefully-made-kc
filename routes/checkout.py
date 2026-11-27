@@ -980,6 +980,8 @@ def index():
                 enriched['back_fallback'] = None
                 enriched['back_overlay'] = item.get('back_design_url')
             enriched['placement'] = placement
+            from routes.cart import _exact_layout
+            enriched.update(_exact_layout(item, placement, front_image, back_image))
             _back_meta = item.get('back_design_meta') or {}
             if isinstance(_back_meta, str):
                 try:
@@ -1448,6 +1450,11 @@ def build_order_items(order, cart, rid='-'):
                 proof_image=proof_image,
                 proof_back_image=proof_back_image,
             )
+            try:
+                from utils.preview_layout import dumps as _layout_dumps
+                order_item.preview_layout = _layout_dumps(cart_item.get('preview_layout'))
+            except Exception:
+                pass
             try:
                 order_item.back_design_meta = _dumps(back_meta)
             except Exception:

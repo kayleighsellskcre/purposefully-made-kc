@@ -6782,6 +6782,29 @@
         });
     }
     
+    /* Where the art sits on the shirt photo, as fractions of the photo (0 to 1). The cart, checkout and admin redraw
+       the shirt from this, so they show exactly what the customer saw here, even when the snapshot picture is missing. */
+    function measurePreviewLayout(side) {
+        const canvas = document.getElementById('previewCanvas');
+        const mockup = document.getElementById('mockupImage');
+        const disp = mockupDisplayRect();
+        if (!canvas || !mockup || !disp || !disp.width || !disp.height || !mockup.naturalWidth) return null;
+        const img = document.getElementById(side === 'back' ? 'backDesignImage' : 'designImage');
+        const layer = document.getElementById(side === 'back' ? 'backDesignLayer' : 'designLayer');
+        if (!img || !layer || layer.style.display === 'none' || img.style.display === 'none' || !img.naturalWidth) return null;
+        const c = canvas.getBoundingClientRect();
+        const r = img.getBoundingClientRect();
+        if (!r.width || !r.height) return null;
+        // The picture is drawn "contain" inside its box: find the real drawn area.
+        const s = Math.min(r.width / img.naturalWidth, r.height / img.naturalHeight);
+        const w = img.naturalWidth * s, h = img.naturalHeight * s;
+        const left = r.left + (r.width - w) / 2 - c.left - canvas.clientLeft - disp.left;
+        const top = r.top + (r.height - h) / 2 - c.top - canvas.clientTop - disp.top;
+        const f = function (n) { return Math.round(n * 10000) / 10000; };
+        return { x: f(left / disp.width), y: f(top / disp.height), w: f(w / disp.width), h: f(h / disp.height),
+                 ar: f(mockup.naturalHeight / mockup.naturalWidth) };
+    }
+
     function capturePreviewProofBlob(side) {
         /** Snapshot the live preview (shirt + logo) for admin "how they ordered it". */
         return new Promise(function (resolve) {
@@ -6801,6 +6824,10 @@
                 if (typeof applyBackDesignPosition === 'function') applyBackDesignPosition();
                 requestAnimationFrame(function () {
                     requestAnimationFrame(function () {
+                    try {
+                        state.previewLayout = state.previewLayout || {};
+                        state.previewLayout[side] = measurePreviewLayout(side);
+                    } catch (layoutErr) { /* the cart falls back to its usual drawing */ }
                     try {
                         const preview = document.getElementById('previewCanvas');
                         if (
@@ -7017,6 +7044,7 @@
                 const previewSize = state.selectedSize;
                 let frontProof = null;
                 let backProof = null;
+                state.previewLayout = {};
                 try {
                     frontProof = await capturePreviewProofBlob('front');
                     if (hasBackDesign) {
@@ -7103,6 +7131,9 @@
                     }
                 }
 
+                if (state.previewLayout && (state.previewLayout.front || state.previewLayout.back)) {
+                    formData.append('preview_layout', JSON.stringify(state.previewLayout));
+                }
                 if (frontProof) formData.append('proof_front', frontProof, 'proof_front.png');
                 if (backProof) formData.append('proof_back', backProof, 'proof_back.png');
 

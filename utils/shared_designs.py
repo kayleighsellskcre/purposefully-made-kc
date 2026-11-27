@@ -13,7 +13,8 @@ from models import Collection, Order, OrderItem, Product, SharedDesign, db
 
 # What a shared line keeps. Anything else on a cart line is left behind.
 KEEP = ('product_id', 'color', 'design_id', 'design_url', 'placement', 'back_design_url', 'proof_front_url',
-        'proof_image', 'print_width', 'print_height', 'transfer_production', 'position_x', 'position_y', 'rotation')
+        'proof_image', 'print_width', 'print_height', 'transfer_production', 'position_x', 'position_y', 'rotation',
+        'preview_layout')
 
 
 def clean_line(line):

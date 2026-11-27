@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros/garment_proof.html" import garment_proof %}
+{% from "macros/garment_proof.html" import garment_proof, garment_layout %}
 
 {% block title %}Shopping Cart - Purposefully Made KC{% endblock %}
 
@@ -20,10 +20,17 @@
             <div class="cart-items">
                 {% for item in cart_items %}
                 <div class="cart-item">
-                    <div class="item-image{% if item.back_overlay or item.has_back_proof %} item-image-pair{% endif %}">
+                    <div class="item-image{% if item.back_overlay or item.has_back_proof or item.back_layout %} item-image-pair{% endif %}">
                         {% if item.display_image %}
-                        {{ garment_proof(item.display_image, item.design_overlay, item.placement or 'center_chest', 'Front' if (item.back_overlay or item.has_back_proof) else none, fallback_url=item.display_fallback) }}
-                        {% if item.back_overlay or item.has_back_proof %}
+                        {% set _two = item.back_overlay or item.has_back_proof or item.back_layout %}
+                        {% if item.front_layout %}
+                        {{ garment_layout(item.layout_front_image, item.layout_front_art, item.front_layout, 'Front' if _two else none) }}
+                        {% else %}
+                        {{ garment_proof(item.display_image, item.design_overlay, item.placement or 'center_chest', 'Front' if _two else none, fallback_url=item.display_fallback) }}
+                        {% endif %}
+                        {% if item.back_layout %}
+                        {{ garment_layout(item.layout_back_image, item.layout_back_art, item.back_layout, 'Back') }}
+                        {% elif item.back_overlay or item.has_back_proof %}
                         {{ garment_proof(item.back_image, item.back_overlay, item.back_overlay_class or 'center_back', 'Back', overlay_style=item.back_overlay_style, fallback_url=item.back_fallback) }}
                         {% endif %}
                         {% else %}

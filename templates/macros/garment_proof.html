@@ -15,3 +15,20 @@
     {% endif %}
 </div>
 {% endmacro %}
+
+{# The shirt exactly as the customer saw it in the customizer: the shirt photo with the art at the position and size
+   measured there (utils/preview_layout.py). Drawn as one SVG so it scales the same in any box. #}
+{% macro garment_layout(mockup_url, art_url, lay, label) %}
+{%- set vh = ((lay.ar or 1.25) * 1000)|round(1) -%}
+<div class="pm-proof pm-proof--exact">
+    {% if label %}<span class="pm-proof-label">{{ label }}</span>{% endif %}
+    <svg class="pm-proof-svg" viewBox="0 0 1000 {{ vh }}" preserveAspectRatio="xMidYMid meet" role="img"
+         aria-label="{{ (label ~ ' of shirt') if label else 'Shirt with design' }}" xmlns="http://www.w3.org/2000/svg">
+        <image href="{{ mockup_url | image_url }}" x="0" y="0" width="1000" height="{{ vh }}" preserveAspectRatio="xMidYMid meet"/>
+        {% if art_url %}
+        <image href="{{ art_url | image_url }}" x="{{ (lay.x * 1000)|round(1) }}" y="{{ (lay.y * vh)|round(1) }}"
+               width="{{ (lay.w * 1000)|round(1) }}" height="{{ (lay.h * vh)|round(1) }}" preserveAspectRatio="xMidYMid meet"/>
+        {% endif %}
+    </svg>
+</div>
+{% endmacro %}

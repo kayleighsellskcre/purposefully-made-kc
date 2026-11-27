@@ -4400,3 +4400,7 @@ body:not(.is-admin) .dist-body { padding-top: 1.5rem; }
 @media (prefers-reduced-motion: reduce) {
     .logo-image { transition: none; }
 }
+
+/* The shirt redrawn from the customizer's own measurements (macros/garment_proof.html garment_layout). */
+.pm-proof-svg { width: 100%; height: 100%; display: block; padding: 4px; box-sizing: border-box; }
+.pm-proof--exact { display: flex; align-items: center; justify-content: center; }
