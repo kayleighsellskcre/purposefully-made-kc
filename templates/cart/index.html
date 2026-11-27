@@ -37,10 +37,10 @@
                            and then an "Order Summary" h2, so an h3 here made the
                            outline jump a level and then go backwards. #}
                         {% if item.design_title %}
-                        <h2>{{ item.product|display_name }}</h2>
-                        <p class="item-product-line item-design-name">{{ item.design_title }} design</p>
+                        <h2>{{ item.product|shop_title }}</h2>
+                        <p class="item-product-line item-design-name">{{ item.design_title|design_label }}</p>
                         {% else %}
-                        <h2>{{ item.product|display_name }}</h2>
+                        <h2>{{ item.product|shop_title }}</h2>
                         {% endif %}
                         {% if item.store_name %}<p class="item-transfer"><strong>For {{ item.store_name }}</strong></p>{% endif %}
                         {% if item.get('catalog_section') == 'uniform' %}

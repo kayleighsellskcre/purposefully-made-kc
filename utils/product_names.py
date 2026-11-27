@@ -47,6 +47,23 @@ def without_brand(title, brand):
     return title
 
 
+def shop_title(product):
+    """The same friendly title a shop card shows: no mark, no style code, no brand in front."""
+    if product is None:
+        return 'Item'
+    from utils.product_filters import infer_brand
+    brand = getattr(product, 'display_brand', None) or infer_brand(product) or ''
+    return without_brand(display_product_name(product), brand)
+
+
+def design_label(title):
+    """'Lion of Judah' -> 'Lion of Judah design'; a title that already says design is left as is."""
+    title = re.sub(r'\s+', ' ', str(title or '')).strip()
+    if not title:
+        return ''
+    return title if re.search(r'\bdesigns?\b', title, re.I) else f'{title} design'
+
+
 TITLE_SUFFIX = ' - Purposefully Made KC'
 TITLE_LIMIT = 60
 _BRAND_LEAD = re.compile(r'^(?:bella\s*\+\s*canvas|comfort colors|gildan|port & company|next level|independent trading co\.?|rabbit skins)\s+', re.I)

@@ -2423,7 +2423,7 @@
                         </div>
 
                         {# ── Tap-to-browse prompt (hidden once a tab is selected) ── #}
-                        <p class="design-browse-prompt" id="designBrowsePrompt">Tap a category above to browse designs ↑</p>
+                        <p class="design-browse-prompt" id="designBrowsePrompt" style="display:none;">Tap a category above to browse designs ↑</p>
 
                         {# ── Search bar (hidden until tab selected) ── #}
                         <div class="design-search-wrap" id="designSearchWrap" style="display:none;">
@@ -7288,11 +7288,13 @@
     };
 
     // On load: start on All, so designs are showing right away (no extra tap needed)
-    document.addEventListener('DOMContentLoaded', function() {
+    function _startOnAll() {
         var allTab = document.querySelector('.design-tab-btn[data-tab="All"]');
         if (allTab) window.filterDesignTab(allTab);
         else if (document.getElementById('logoGalleryGrid')) _applyFilters();
-    });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _startOnAll);
+    else _startOnAll();
 })();
 
 // Size chart modal toggle. PMKC.dialog (static/js/a11y.js) adds Escape, keeps

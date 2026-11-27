@@ -954,6 +954,9 @@ def index():
         try:
             prod = Product.query.get(item.get('product_id'))
             enriched['product_name'] = prod.name if prod else 'Item'
+            if prod:
+                from utils.product_names import shop_title
+                enriched['product_title'] = shop_title(prod)
             front_image, back_image = mockup_urls(prod, item.get('color'))
             placement = item.get('placement') or 'center_chest'
             # Prefer the exact composite the customer approved — only if the

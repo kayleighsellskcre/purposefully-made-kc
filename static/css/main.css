@@ -4392,3 +4392,11 @@ body:not(.is-admin) .dist-body { padding-top: 1.5rem; }
 .proof-actions textarea { padding: .75rem 1rem; border: 1.5px solid var(--border-color); border-radius: 12px; font: inherit; color: var(--text-primary); resize: vertical; }
 .proof-actions .btn { align-self: flex-start; }
 .proof-done { border-color: rgba(107, 124, 89, .45); }
+
+/* Scrolled: the badge shrinks to fit inside the 68px header so it no longer hangs over sticky toolbars (Shop search bar) or content. At the top of the page it still hangs as designed. */
+@media (min-width: 769px) {
+    .navbar--scrolled .logo-image { height: 58px !important; top: 5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .logo-image { transition: none; }
+}

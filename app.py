@@ -1030,6 +1030,17 @@ def create_app(config_class=Config):
         """A card's colors after the first, as [[name, picture], ...]: the short list a shop card carries instead of one hidden block per color."""
         return [[c.get('color_name') or '', c.get('front_image_url') or ''] for c in list(colors or [])[1:]]
 
+    @app.template_filter('shop_title')
+    def shop_title_filter(product):
+        """Cart and checkout use the same title as the shop card."""
+        from utils.product_names import shop_title
+        return shop_title(product)
+
+    @app.template_filter('design_label')
+    def design_label_filter(title):
+        from utils.product_names import design_label
+        return design_label(title)
+
     @app.template_filter('without_brand')
     def without_brand_filter(title, brand):
         from utils.product_names import without_brand

@@ -477,11 +477,44 @@ def due_reminders(today: date):
     return out
 
 
+def clear_alerts_for_filed(start=None):
+    """Mark due/overdue tax notices as read once their period is filed.
+
+    A reminder can go out between filing with Kansas and marking it filed here; this keeps
+    a stale 'overdue' notice from sitting in the inbox. With start=None every filed period is swept.
+    Returns how many notices were cleared. Does not commit.
+    """
+    from models import AdminNotification
+    q = AdminNotification.query.filter(AdminNotification.kind == 'tax', AdminNotification.read_at.is_(None))
+    cleared = 0
+    for note in q.all():
+        if 'cleared' in (note.title or '').lower() or not note.url or 'start=' not in note.url:
+            continue                                  # payment-check notices stay until she marks the payment cleared
+        try:
+            p_start = date.fromisoformat(note.url.split('start=', 1)[1][:10])
+        except ValueError:
+            continue
+        if start is not None and p_start != start:
+            continue
+        p_start, p_end = period_for(p_start)
+        f = get_filing(p_start, p_end, create=False)
+        if f is not None and f.return_filed_on:
+            note.read_at = datetime.utcnow()
+            cleared += 1
+    return cleared
+
+
 def run_reminders(app, today: date | None = None):
     """Send each due reminder once: a notice in the admin and an email. Returns how many went out."""
     from utils import ledger as L
     from utils.admin_notifications import create_notification
     today = today or L.kc_today()
+    try:
+        if clear_alerts_for_filed():
+            db.session.commit()
+    except Exception as exc:                          # tidying the inbox never stops the reminders
+        db.session.rollback()
+        app.logger.warning('clearing filed tax alerts failed: %s', exc)
     sent_count = 0
     for filing, key, title, detail in due_reminders(today):
         url = f'/admin/operations/kansas-tax?start={filing.period_start.isoformat()}'

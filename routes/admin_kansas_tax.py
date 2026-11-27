@@ -143,6 +143,8 @@ def kansas_tax_save():
             filing.payment_settles_on = K.parse_date(request.form.get('payment_settles_on'))
             filing.payment_verified_on = L.kc_today() if filing.payment_status == 'paid' else None
             filing.notes = (request.form.get('notes') or '').strip() or None
+            if filing.return_filed_on:
+                K.clear_alerts_for_filed(start)
             if filing.return_filed_on and not filing.snapshot_json:
                 filing.snapshot_json = K.snapshot_of(K.build_report(start, end))
                 filing.snapshot_at = datetime.utcnow()

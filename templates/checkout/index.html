@@ -340,10 +340,10 @@
                         </div>
                         {% endif %}
                         <div class="summary-item-info">
-                            <strong>{{ item.quantity }}× {{ (item.product_name or 'Item')|display_name }}</strong>
+                            <strong>{{ item.quantity }}× {{ item.product_title or ((item.product_name or 'Item')|display_name) }}</strong>
                             {% if item.store_name %}<p class="summary-design-name">For {{ item.store_name }}</p>{% endif %}
                             {% if item.design_title %}
-                            <p class="summary-design-name">{{ item.design_title }} design</p>
+                            <p class="summary-design-name">{{ item.design_title|design_label }}</p>
                             {% endif %}
                             <p>{{ item.color }} · {{ item.size }}{% if item.print_scale in ('medium', 'oversized') %} · {{ item.print_scale|title }} print{% endif %}{% if (item.back_design_meta or {}).get('scale') == 'oversized' %} · Oversized Full Back{% endif %}</p>
                         </div>

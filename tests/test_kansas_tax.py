@@ -284,3 +284,26 @@ def test_the_cpa_package_lists_each_kansas_return_with_what_was_submitted(app, s
         return kansas_returns_csv(2026).decode('utf-8-sig')
     text = _in_db(app, build)
     assert 'Q3 2026' in text and 'CONF-9' in text and '2026-10-27' in text and '10.80' in text and '9.60' in text
+
+
+def test_an_overdue_notice_clears_once_the_period_is_marked_filed(app, seed):
+    from models import AdminNotification
+
+    def make():
+        url = '/admin/operations/kansas-tax?start=2026-07-01'
+        old = AdminNotification(kind='tax', title='Kansas sales tax for Q3 2026 is 31 days overdue', url=url)
+        check = AdminNotification(kind='tax', title='Check that your Q3 2026 Kansas tax payment cleared', url=url)
+        other = AdminNotification(kind='tax', title='Kansas sales tax for Q4 2026 is due in 7 days',
+                                  url='/admin/operations/kansas-tax?start=2026-10-01')
+        db.session.add_all([old, check, other])
+        f = K.get_filing(date(2026, 7, 1), date(2026, 9, 30))
+        f.return_filed_on = None
+        db.session.commit()
+        before = K.clear_alerts_for_filed()
+        f.return_filed_on = date(2026, 11, 25)
+        db.session.commit()
+        after = K.clear_alerts_for_filed()
+        db.session.commit()
+        return before, after, old.read_at is not None, check.read_at is None, other.read_at is None
+    before, after, old_cleared, check_kept, other_kept = _in_db(app, make)
+    assert before == 0 and after == 1 and old_cleared and check_kept and other_kept

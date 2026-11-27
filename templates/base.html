@@ -446,5 +446,16 @@
     })();
     </script>
     {% endif %}
+<script>
+/* Once the page scrolls, the hanging PM badge tucks inside the header so it never covers sticky bars or content. */
+(function () {
+    var bar = document.querySelector('.navbar');
+    if (!bar) return;
+    var ticking = false;
+    function update() { bar.classList.toggle('navbar--scrolled', window.scrollY > 40); ticking = false; }
+    window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+    update();
+})();
+</script>
 </body>
 </html>
