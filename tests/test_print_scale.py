@@ -54,3 +54,44 @@ def test_site_settings_shows_and_saves_print_sizes(app, seed, admin_client):
     admin_client.post('/admin/operations/site-settings', data={'section': 'print_sizes', 'medium_adjust': '-2', 'oversized_adjust': '7.5'})
     with app.app_context():
         assert PSC.adjustments() == {'medium': -2.0, 'standard': 0.0, 'oversized': 7.5}
+
+
+def test_the_customizer_gets_the_print_size_choices(app, seed):
+    with app.app_context():
+        tee = db.session.get(Product, seed['tee_id'])
+        cfg = PS.client_config(tee)['print_scale']
+        assert cfg['factors']['oversized'] == 1.3 and cfg['adjust']['oversized'] == 6.0 and cfg['oversized_ok'] is True
+        assert PS.client_config(None)['print_scale']['hints']['medium']
+
+
+def test_adding_to_the_cart_keeps_the_print_size_and_charges_for_it(app, seed, client):
+    from tests.test_cart_flow import add_to_cart, cart_items
+    with app.app_context():
+        base = calculate_unit_price(db.session.get(Product, seed['tee_id']), size='M', placement='center_back')
+    add_to_cart(client, seed, placement='center_back', design_id=seed['free_design_id'], print_scale='oversized')
+    line = cart_items(client)[0]
+    assert line['print_scale'] == 'oversized' and line['unit_price'] == base + 6
+    assert line['transfer_production']['front']['print_scale'] == 'oversized'
+    assert line['transfer_production']['front']['placement_label'] == 'Center Back · Oversized'
+    assert line['transfer_production']['front']['width'] == 13.0           # the transfer sheet shows what to order
+
+
+def test_a_size_that_does_not_fit_quietly_becomes_standard(app, seed, client):
+    from tests.test_cart_flow import add_to_cart, cart_items
+    r = add_to_cart(client, seed, product_id=seed['youth_id'], size='YM', placement='center_back', design_id=seed['free_design_id'], print_scale='oversized')
+    assert r.status_code == 200, r.get_data(as_text=True)
+    assert cart_items(client)[0]['print_scale'] == 'standard'
+    add_to_cart(client, seed, product_id=seed['hoodie_id'], placement='center_chest', design_id=seed['free_design_id'], print_scale='oversized')
+    assert cart_items(client)[1]['print_scale'] == 'standard'
+
+
+def test_two_print_sizes_of_the_same_shirt_are_separate_lines(app, seed, client):
+    from tests.test_cart_flow import add_to_cart, cart_items
+    add_to_cart(client, seed, placement='center_back', design_id=seed['free_design_id'], print_scale='medium')
+    add_to_cart(client, seed, placement='center_back', design_id=seed['free_design_id'], print_scale='oversized')
+    assert len(cart_items(client)) == 2
+
+
+def test_the_customizer_page_offers_print_sizes(app, seed, client):
+    html = client.get(f"/shop/customize/{seed['tee_slug']}").get_data(as_text=True)
+    assert 'id="scaleGrid"' in html and '"print_scale"' in html

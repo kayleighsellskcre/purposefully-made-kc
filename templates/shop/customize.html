@@ -1198,18 +1198,23 @@
     gap: 0.75rem;
 }
 
+.scale-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-top: 1rem; }
+.scale-grid .scale-option { padding: 0.9rem 0.5rem; }
+.scale-grid .scale-option small { display: block; margin-top: 0.2rem; }
+.scale-grid .scale-option .scale-price { font-weight: 600; color: var(--terra-cotta); }
 @media (max-width: 480px) {
+    .scale-grid { grid-template-columns: 1fr; }
     .placement-grid {
         grid-template-columns: 1fr;
         gap: 0.6rem;
     }
     
-    .placement-option {
+    .placement-option, .scale-option {
         padding: 1rem;
     }
 }
 
-.placement-option {
+.placement-option, .scale-option {
     padding: 1.25rem 1rem;
     text-align: center;
     border: 3px solid #e8e8e8;
@@ -1220,35 +1225,35 @@
     position: relative;
 }
 
-.placement-option strong {
+.placement-option strong, .scale-option strong {
     font-size: 1rem;
     color: #333;
 }
 
-.placement-option small {
+.placement-option small, .scale-option small {
     font-size: 0.75rem;
     color: #666;
 }
 
-.placement-option:hover {
+.placement-option:hover, .scale-option:hover {
     border-color: var(--terra-cotta);
     background: rgba(212, 175, 55, 0.05);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.placement-option.selected {
+.placement-option.selected, .scale-option.selected {
     border-color: var(--terra-cotta);
     background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.05));
     box-shadow: 0 4px 16px rgba(212, 175, 55, 0.3);
     transform: scale(1.03);
 }
 
-.placement-option.selected strong {
+.placement-option.selected strong, .scale-option.selected strong {
     color: var(--terra-cotta);
 }
 
-.placement-option.selected::after {
+.placement-option.selected::after, .scale-option.selected::after {
     content: '✓';
     position: absolute;
     top: 0.5rem;
@@ -2520,7 +2525,7 @@
                     <div class="placement-grid" id="placementGrid">
                         <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="center_chest">
                             <strong>Center Chest</strong>
-                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Medium size, centered</small>
+                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Centered</small>
                         </div>
                         <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="left_chest">
                             <strong>Left Chest</strong>
@@ -2532,9 +2537,16 @@
                         </div>
                         <div class="placement-option" role="button" tabindex="0" aria-pressed="false" data-placement="center_back">
                             <strong>Center Back</strong>
-                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Medium size, centered</small>
+                            <small style="display: block; margin-top: 0.25rem; opacity: 0.7;">Centered</small>
                         </div>
                     </div>
+                    {% if not collection_restricted %}
+                    <div id="scaleSection" hidden>
+                        <h3 style="margin-top:1.25rem;">Print size</h3>
+                        <p style="font-size: 0.85rem; color: #666; margin: 0;">How big the design prints. The price updates for you.</p>
+                        <div class="scale-grid" id="scaleGrid"></div>
+                    </div>
+                    {% endif %}
                 </div>
                 
 
@@ -2807,6 +2819,10 @@
                         <span>Small logo discount:</span>
                         <span style="color: #22c55e; font-weight: 600;">-$2.00</span>
                     </div>
+                    <div class="price-row" id="printScaleRow" style="display: none;">
+                        <span id="printScaleLabel">Print size:</span>
+                        <span id="printScaleAmount" style="font-weight: 600;"></span>
+                    </div>
                     <div class="price-row" id="sizeUpchargeRow" style="display: none;">
                         <span>Size upcharge (<span id="sizeUpchargeLabel"></span>):</span>
                         <span style="color: var(--terra-cotta); font-weight: 600;" id="sizeUpchargeAmount"></span>
@@ -2916,6 +2932,7 @@
         selectedSize: null,
         sizeQty: {},
         selectedPlacement: 'center_chest',
+        printScale: 'standard',
         quantity: 1,
         currentView: 'front',
         designFile: null,
@@ -3158,6 +3175,7 @@
             }
             const place = document.querySelector('.placement-option[data-placement="' + L.placement + '"]');
             if (place && L.placement) place.click();
+            if (L.print_scale && allowedScales(state.selectedPlacement).includes(L.print_scale)) chooseScale(L.print_scale);
 
             const meta = L.back_meta || {};
             const combo = !!(meta.vertical && meta.neck_image_url);
@@ -3222,6 +3240,7 @@
         const el = document.getElementById('placementSection');
         if (!el) return;
         el.style.display = singleAllowedPlacement() ? 'none' : 'block';
+        renderScaleChoices();
     }
 
     function filterPlacementOptions() {
@@ -4383,7 +4402,7 @@
         const canvasWidth = (previewCanvas && previewCanvas.clientWidth) || 400;
         const box = garmentBox();
         const src = (document.getElementById('mockupImage') && document.getElementById('mockupImage').getAttribute('src')) || '';
-        const lockKey = String(state.presetDesignId || state.designUrl || '') + '|' + src + '|' + placement;
+        const lockKey = String(state.presetDesignId || state.designUrl || '') + '|' + src + '|' + placement + '|' + activeScale();
         const shirtMeasured = !!(box && box.measured && box.widthPx);
         // Jerseys only: do not paint or lock until this shirt is measured.
         // A first paint from the 50% stand-in was locking the logo too small
@@ -4425,9 +4444,10 @@
         // (dividing by a small ink ratio would otherwise blow them up).
         // A tank body is narrower than a sleeved tee. Give left chest a little
         // more of the body than a tee, but keep it a pocket, not a medium print.
-        const maxVsGarment = garmentWidth * (isSideChest ? (isTank ? 0.22 : 0.16) : (isTank ? 0.70 : 0.50));
-        const maxVsCanvas = canvasWidth * (isSideChest ? (isTank ? 0.13 : 0.12) : 0.42);
-        const minVsGarment = garmentWidth * (isSideChest ? (isTank ? 0.13 : 0.09) : (isTank ? 0.42 : 0.28));
+        const sf = isSideChest ? 1 : scaleFactor();      // Medium / Oversized change only the center print
+        const maxVsGarment = garmentWidth * sf * (isSideChest ? (isTank ? 0.22 : 0.16) : (isTank ? 0.70 : 0.50));
+        const maxVsCanvas = canvasWidth * sf * (isSideChest ? (isTank ? 0.13 : 0.12) : 0.42);
+        const minVsGarment = garmentWidth * sf * (isSideChest ? (isTank ? 0.13 : 0.09) : (isTank ? 0.42 : 0.28));
         // Paint on the click. Waiting for the artwork-fit request left group
         // logos invisible while the server measured files.
         const visibleWidthRatio = hasCachedFit
@@ -4445,9 +4465,9 @@
         } else if (isTank && !isSideChest && box && box.pxPerInch) {
             const widthIn = chartWidthForSize(state.selectedSize)
                 || ((TRANSFER_SIZING && TRANSFER_SIZING.preview_ref_width) || 10);
-            layerWidthPx = widthIn * box.pxPerInch / visibleWidthRatio;
+            layerWidthPx = widthIn * sf * box.pxPerInch / visibleWidthRatio;
         } else {
-            layerWidthPx = garmentWidth * targetRatio / visibleWidthRatio;
+            layerWidthPx = garmentWidth * sf * targetRatio / visibleWidthRatio;
         }
         layerWidthPx = Math.min(layerWidthPx, maxVsGarment, maxVsCanvas);
         layerWidthPx = Math.max(layerWidthPx, minVsGarment);
@@ -5152,6 +5172,61 @@
         return state.backDesignFee;
     }
     
+    // ---- Print size: Medium / Standard / Oversized (same rules as utils/print_scale.py) ----
+    var SCALE_CFG = (TRANSFER_SIZING && TRANSFER_SIZING.print_scale) || null;
+    function scaleApplies(placement) {
+        return !!SCALE_CFG && ['center_chest', 'center_back', 'full_front', 'full_back'].includes(placement || 'center_chest');
+    }
+    function allowedScales(placement) {
+        if (!scaleApplies(placement)) return ['standard'];
+        const keys = ['medium', 'standard'];
+        const onBack = placement === 'center_back' || placement === 'full_back';
+        const hoodieFront = !!TRANSFER_SIZING.is_hoodie && !onBack;
+        if (SCALE_CFG.oversized_ok && !hoodieFront) keys.push('oversized');
+        return keys;
+    }
+    function activeScale() {
+        return allowedScales(state.selectedPlacement).includes(state.printScale) ? state.printScale : 'standard';
+    }
+    function scaleLabel(key) { return ({ medium: 'Medium', standard: 'Standard', oversized: 'Oversized' })[key] || 'Standard'; }
+    function printScaleAdjust() {
+        if (!scaleApplies(state.selectedPlacement) || !(state.designUrl || state.designId || state.presetDesignId)) return 0;
+        return Number(SCALE_CFG.adjust[activeScale()] || 0);
+    }
+    function scaleFactor() { return SCALE_CFG ? (SCALE_CFG.factors[activeScale()] || 1) : 1; }
+    function renderScaleChoices() {
+        const box = document.getElementById('scaleSection'), grid = document.getElementById('scaleGrid');
+        if (!box || !grid) return;
+        const keys = scaleApplies(state.selectedPlacement) ? allowedScales(state.selectedPlacement) : [];
+        box.hidden = keys.length < 2;
+        if (box.hidden) { grid.innerHTML = ''; return; }
+        const current = activeScale();
+        grid.innerHTML = '';
+        keys.forEach(function (k) {
+            const adj = Number(SCALE_CFG.adjust[k] || 0);
+            const price = adj === 0 ? 'Included' : (adj < 0 ? '-$' : '+$') + Math.abs(adj).toFixed(2);
+            const el = document.createElement('div');
+            el.className = 'scale-option' + (k === current ? ' selected' : '');
+            el.setAttribute('role', 'button');
+            el.setAttribute('tabindex', '0');
+            el.setAttribute('aria-pressed', k === current ? 'true' : 'false');
+            el.dataset.scale = k;
+            el.innerHTML = '<strong>' + scaleLabel(k) + '</strong><small>' + SCALE_CFG.hints[k] + '</small><small class="scale-price">' + price + '</small>';
+            el.addEventListener('click', function () { chooseScale(k); });
+            el.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseScale(k); } });
+            grid.appendChild(el);
+        });
+    }
+    function chooseScale(key) {
+        state.printScale = key;
+        state.lockedFitKey = null;
+        state.lockedFitMeasured = false;
+        renderScaleChoices();
+        applyDesignFit();
+        applyDesignPosition();
+        updateTotalPrice();
+    }
+
     function updateTotalPrice() {
         // The price waits until a size is chosen, so it is never a guess.
         const sizeChosen = MULTI_SIZE ? totalQty() >= 1 : !!state.selectedSize;
@@ -5185,6 +5260,16 @@
             sizeUpchargeRow.style.display = 'none';
         }
         
+        const scaleAdj = printScaleAdjust();
+        itemPrice += scaleAdj;
+        const scaleRow = document.getElementById('printScaleRow');
+        if (scaleRow) {
+            scaleRow.style.display = scaleAdj ? 'flex' : 'none';
+            const lbl = document.getElementById('printScaleLabel'), amt = document.getElementById('printScaleAmount');
+            if (lbl) lbl.textContent = 'Print size (' + scaleLabel(state.printScale) + '):';
+            if (amt) amt.textContent = (scaleAdj < 0 ? '-$' : '+$') + Math.abs(scaleAdj).toFixed(2);
+        }
+
         const backFee = currentBackDesignFee();
         itemPrice += backFee;
         const backFeeAmount = document.getElementById('backDesignFeeAmount');
@@ -6072,6 +6157,7 @@
                 state.lockedFitMeasured = false;
                 
                 designLayer.setAttribute('data-placement', placement);
+                renderScaleChoices();
                 applyDesignFit();
                 applyDesignPosition();
                 updateDesignLayerVisibility();
@@ -6731,7 +6817,7 @@
             
             try {
                 const smallLogoDiscount = (state.selectedPlacement === 'left_chest' || state.selectedPlacement === 'right_chest') ? 2 : 0;
-                const flatPrice = state.basePrice - smallLogoDiscount + currentBackDesignFee();
+                const flatPrice = state.basePrice - smallLogoDiscount + printScaleAdjust() + currentBackDesignFee();
                 const previewSize = state.selectedSize;
                 let frontProof = null;
                 let backProof = null;
@@ -6766,6 +6852,7 @@
                 formData.append('size', line.size);
                 formData.append('quantity', line.qty);
                 formData.append('placement', state.selectedPlacement);
+                formData.append('print_scale', activeScale());
                 formData.append('unit_price', unitPrice);
                 if (state.designWidth) formData.append('design_width', state.designWidth);
                 if (state.designHeight) formData.append('design_height', state.designHeight);

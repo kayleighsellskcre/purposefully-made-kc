@@ -450,6 +450,11 @@ def get_print_width_for_size(size, product=None):
     return width
 
 
+def _with_scale(label, scale):
+    """Say a Medium or Oversized print in words wherever the placement is shown, so production cannot miss it."""
+    return f'{label} · {scale.title()}' if scale in ('medium', 'oversized') else label
+
+
 def placement_label(placement):
     if not placement:
         return 'Center Chest'
@@ -737,6 +742,13 @@ def back_name_number_size(size, product=None, name='', number='', font='Bebas Ne
     }
 
 
+def _print_scale_config(product=None):
+    """What the customizer needs for the Medium / Standard / Oversized choice."""
+    from utils import print_scale as _ps
+    return {'factors': _ps.WIDTH_FACTOR, 'adjust': _ps.adjustments(), 'hints': _ps.HINTS,
+            'oversized_ok': _ps.oversized_allowed(product, None, 'center_back')}
+
+
 def client_config(product=None):
     """JSON-safe config for the customizer. Same numbers the server uses."""
     age = classify_age(product)
@@ -751,6 +763,7 @@ def client_config(product=None):
         'widths_adult': SIZE_PRINT_WIDTH_ADULT,
         'widths_youth': SIZE_PRINT_WIDTH_YOUTH,
         'placement_factors': PLACEMENT_WIDTH_FACTOR,
+        'print_scale': _print_scale_config(product),
         'back_chart': [
             {
                 'category': b['category'],
@@ -848,7 +861,7 @@ def build_item_production(
             'size': size,
             'color': color,
             'placement': placement or 'center_chest',
-            'placement_label': placement_label(placement or 'center_chest'),
+            'placement_label': _with_scale(placement_label(placement or 'center_chest'), front['scale']),
             'order_by': 'WIDTH',
             'width': front['width'],
             'height': front['height'],
@@ -869,7 +882,7 @@ def build_item_production(
             'size': size,
             'color': color,
             'placement': 'center_back',
-            'placement_label': 'Center Back',
+            'placement_label': _with_scale('Center Back', front['scale']),
             'order_by': 'WIDTH',
             'width': front['width'],
             'height': front['height'],
