@@ -546,7 +546,7 @@ def front_transfer_size(size, product=None, placement='center_chest', aspect_w=N
     max_h = safe_print_height(product, size)
     max_w = safe_print_width(size, product, placement)
     if scale == 'oversized':
-        max_h = max(max_h, _ps.OVERSIZED_SAFE_HEIGHT_ADULT)
+        max_h = max(max_h, max_h * _ps.OVERSIZED_HEIGHT_FACTOR)         # 19 in on an adult, in proportion on smaller garments
         max_w = max_w * _ps.width_factor('oversized', placement)
     exceeds = bool(width > max_w + 0.001 or height > max_h + 0.001)
     return {

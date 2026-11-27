@@ -24,12 +24,17 @@ def test_chest_logos_ignore_the_scale(app, seed):
     assert PS.front_transfer_size('M', None, 'left_chest', scale='oversized') == PS.front_transfer_size('M', None, 'left_chest')
 
 
-def test_youth_and_tanks_never_get_oversized(app, seed):
+def test_every_style_gets_oversized_except_the_front_of_a_hoodie(app, seed):
     with app.app_context():
         tee = db.session.get(Product, seed['tee_id'])
+        youth = db.session.get(Product, seed['youth_id'])
+        hoodie = db.session.get(Product, seed['hoodie_id'])
         assert 'oversized' in PSC.allowed_scales(tee, 'M', 'center_back')
-        assert PSC.effective('oversized', tee, 'YM', 'center_back') in ('standard', 'oversized')
-    assert PSC.allowed_scales(None, 'YM', 'center_back') == ['medium', 'standard']
+        assert 'oversized' in PSC.allowed_scales(youth, 'YM', 'center_back')          # youth too
+        assert 'oversized' in PSC.allowed_scales(hoodie, 'M', 'center_back')
+        assert 'oversized' not in PSC.allowed_scales(hoodie, 'M', 'center_chest')     # the pocket is in the way
+        assert PSC.oversized_allowed(youth, 'YM', 'center_back') and PSC.oversized_allowed(None, 'YM', 'center_back')
+    assert 'oversized' in PSC.allowed_scales(None, 'YM', 'center_back')
 
 
 def test_prices(app, seed):
@@ -80,7 +85,7 @@ def test_a_size_that_does_not_fit_quietly_becomes_standard(app, seed, client):
     from tests.test_cart_flow import add_to_cart, cart_items
     r = add_to_cart(client, seed, product_id=seed['youth_id'], size='YM', placement='center_back', design_id=seed['free_design_id'], print_scale='oversized')
     assert r.status_code == 200, r.get_data(as_text=True)
-    assert cart_items(client)[0]['print_scale'] == 'standard'
+    assert cart_items(client)[0]['print_scale'] == 'oversized'                     # youth gets Oversized too, sized from its own chart
     add_to_cart(client, seed, product_id=seed['hoodie_id'], placement='center_chest', design_id=seed['free_design_id'], print_scale='oversized')
     assert cart_items(client)[1]['print_scale'] == 'standard'
 
@@ -130,14 +135,14 @@ def test_an_oversized_back_picture_costs_more_and_is_ordered_bigger(client, seed
         Path(item['back_design_url'].lstrip('/')).unlink(missing_ok=True)
 
 
-def test_checkout_reprices_an_oversized_back_picture_and_a_youth_one_stays_standard(app, seed):
+def test_checkout_reprices_an_oversized_back_picture_on_adult_and_youth(app, seed):
     with app.app_context():
         tee = db.session.get(Product, seed['tee_id'])
         line = {'back_design_url': '/x/b.png', 'back_design_meta': {'scale': 'oversized'}, 'design_id': seed['free_design_id'], 'size': 'M', 'placement': 'center_chest'}
         assert price_cart_item(line, tee) == 42.00
         youth = db.session.get(Product, seed['youth_id'])
         line['size'] = 'YM'
-        assert price_cart_item(line, youth) == price_cart_item({**line, 'back_design_meta': {}}, youth)
+        assert price_cart_item(line, youth) == price_cart_item({**line, 'back_design_meta': {}}, youth) + 6.00      # the $12 oversized price replaces the $6 back charge
 
 
 def test_the_back_options_are_labelled_and_the_picked_one_stays_readable(app, seed, client):

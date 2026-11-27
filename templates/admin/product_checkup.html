@@ -1,0 +1,39 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Style checkup - Admin - Purposefully Made KC{% endblock %}
+
+{% block admin_content %}
+<style>
+.sc { max-width: 980px; margin: 0 auto; padding-bottom: 3rem; }
+.sc-chips { display: flex; gap: .5rem; flex-wrap: wrap; margin: 1rem 0 1.25rem; }
+.sc-chip { padding: .35rem .8rem; border-radius: 999px; border: 1px solid var(--border-light, #eadfd2); background: #fff; font-size: .85rem; }
+.sc-chip strong { color: var(--terra-cotta-text, #9A5F52); }
+.sc-chip.is-clear { opacity: .6; }
+.sc-row { background: #fff; border: 1px solid var(--border-light, #eadfd2); border-radius: 14px; padding: .8rem 1.1rem; margin-bottom: .6rem; display: flex; gap: 1rem; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; }
+.sc-row h3 { margin: 0; font-size: 1rem; }
+.sc-row small { color: var(--text-secondary); }
+.sc-tags { display: flex; gap: .35rem; flex-wrap: wrap; margin-top: .4rem; }
+.sc-tag { font-size: .78rem; padding: .15rem .55rem; border-radius: 999px; background: #f6eceb; color: #8a4a4a; }
+.sc-empty { text-align: center; padding: 2.5rem 1rem; color: var(--text-secondary); background: #fff; border: 1px solid var(--border-light, #eadfd2); border-radius: 16px; }
+</style>
+<div class="sc">
+    <span class="adm-eyebrow">Admin / Products</span>
+    <h1 class="adm-page-title">Style checkup</h1>
+    <p class="adm-page-lead">The shop page works the same for every style. What can differ is the information behind it. This lists the styles that are missing something the others have, so every style looks equally finished. {{ total_styles }} active styles checked.</p>
+    <div class="sc-chips">
+        {% for label, n in totals %}<span class="sc-chip{% if not n %} is-clear{% endif %}">{{ label }}: <strong>{{ n }}</strong></span>{% endfor %}
+    </div>
+    {% for r in rows %}
+    <div class="sc-row">
+        <div>
+            <h3>{{ r.product.name }}</h3>
+            <small>{{ r.product.style_number }}{% if r.product.brand %} &middot; {{ r.product.brand }}{% endif %}</small>
+            <div class="sc-tags">{% for m in r.missing %}<span class="sc-tag">{{ m }}</span>{% endfor %}</div>
+            {% for n in r.notes %}<small style="display:block;margin-top:.25rem;">{{ n }}</small>{% endfor %}
+        </div>
+        <a class="btn btn-outline btn-sm" href="{{ url_for('admin.edit_product', product_id=r.product.id) }}">Open</a>
+    </div>
+    {% else %}
+    <div class="sc-empty">Every active style has everything. Nothing to do here.</div>
+    {% endfor %}
+</div>
+{% endblock %}

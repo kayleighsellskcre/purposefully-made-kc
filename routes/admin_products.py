@@ -314,6 +314,15 @@ def sync_sanmar_inventory():
     return redirect(url_for('admin.products'))
 
 
+@admin_bp.route('/products/checkup')
+@admin_required
+def product_checkup():
+    """Which styles are missing something the other styles have (size chart, fabric, pictures, cost...)."""
+    from utils.style_checkup import checkup
+    rows, totals, total_styles = checkup()
+    return render_template('admin/product_checkup.html', rows=rows, totals=totals, total_styles=total_styles)
+
+
 @admin_bp.route('/products/fill-size-charts', methods=['POST'])
 @admin_required
 def fill_size_charts():

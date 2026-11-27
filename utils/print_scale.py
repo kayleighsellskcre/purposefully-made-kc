@@ -21,8 +21,9 @@ WIDTH_FACTOR = {'medium': 0.6, 'standard': 1.0, 'oversized': 1.3}
 BACK_OVERSIZED_FACTOR = 1.45
 BACK_PLACEMENTS = ('center_back', 'full_back')
 
-# Taller than the standard 15.5 in limit, so a big print is not flagged as too tall.
+# An Oversized print may be taller than the standard safe height (19 in against 15.5 in on an adult), on every garment size.
 OVERSIZED_SAFE_HEIGHT_ADULT = 19.0
+OVERSIZED_HEIGHT_FACTOR = OVERSIZED_SAFE_HEIGHT_ADULT / 15.5
 
 SCALE_PLACEMENTS = ('center_chest', 'center_back', 'full_front', 'full_back')
 
@@ -50,10 +51,9 @@ def applies_to(placement) -> bool:
 
 
 def oversized_allowed(product=None, size=None, placement=None) -> bool:
-    """Oversized needs room: adult garments only, no tanks, and not on the front of a hoodie (the pocket is in the way)."""
-    from utils.print_sizes import classify_category, is_hoodie, is_tank
-    if classify_category(product, size) != 'adult' or is_tank(product):
-        return False
+    """Oversized is offered on every style: adult, youth, toddler, baby, tees, tanks, hoodies. The size is worked out from
+    each garment's own chart, so it fits that garment. The one exception is the front of a hoodie (the pocket is in the way)."""
+    from utils.print_sizes import is_hoodie
     if is_hoodie(product) and (placement or 'center_chest') in ('center_chest', 'full_front'):
         return False
     return True
