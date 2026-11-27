@@ -68,18 +68,16 @@ def _clean_email(raw):
         return email, None
 
 
-@auth_bp.route('/emergency-unlock')
+@auth_bp.route('/emergency-unlock', methods=['GET', 'POST'])
 @_rate_limit_every_hit("10 per hour")
 def emergency_unlock():
-    """Emergency: unlock the admin account lockout and optionally reset password.
-    Protected by ADMIN_PROMOTE_TOKEN. Pass ?pw=newpassword to also reset password.
+    """Emergency: unlock the admin account lockout, and set a new password if needed.
 
-    The ?pw= GET password reset is left as-is for now (round 3 audit flagged
-    it - a plaintext password on a GET request lands in server/proxy logs and
-    browser history - but changing the interaction needs Kayleigh's input on
-    how she wants the recovery flow to work, so only the token check, rate
-    limit, and logging were hardened here)."""
-    if not _token_matches(request.args):
+    Protected by ADMIN_PROMOTE_TOKEN. Opening the link with ?token= unlocks the account and shows a small form for a new
+    password. The password is typed into that form and sent as a POST, never put in the web address, so it cannot end up
+    in server logs or browser history. A ?pw= in the address is ignored."""
+    source = request.form if request.method == 'POST' else request.args
+    if not _token_matches(source):
         current_app.logger.warning('emergency-unlock: rejected token from %s', request.remote_addr)
         return 'Unauthorized', 403
     admin_email = (os.environ.get('ADMIN_EMAIL') or 'purposefullymadekc@gmail.com').strip().lower()
@@ -90,13 +88,33 @@ def emergency_unlock():
     user.failed_logins = 0
     user.locked_until = None
     msg = f'Account {admin_email} unlocked.'
-    new_pw = request.args.get('pw', '').strip()
-    if new_pw and len(new_pw) >= 8:
-        user.set_password(new_pw)
-        msg += f' Password reset to provided value.'
+    if request.method == 'POST':
+        new_pw = (request.form.get('new_password') or '').strip()
+        if new_pw:
+            if len(new_pw) < 8:
+                db.session.commit()
+                return _unlock_page(f'{msg} That password is too short. Use at least 8 characters.', source.get('token')), 400
+            user.set_password(new_pw)
+            msg += ' New password saved.'
     db.session.commit()
-    current_app.logger.warning('emergency-unlock: %s unlocked from %s', admin_email, request.remote_addr)
-    return msg + ' You can now log in.', 200
+    current_app.logger.warning('emergency-unlock: %s unlocked from %s (%s)', admin_email, request.remote_addr, request.method)
+    return _unlock_page(msg + ' You can now log in.', source.get('token') if request.method == 'GET' else None), 200
+
+
+def _unlock_page(message, token=None):
+    """A bare page: the result, and (right after the link is opened) a form to set a new password if she needs one."""
+    from flask import render_template_string
+    return render_template_string(
+        '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+        '<title>Account unlock</title><body style="font-family:Georgia,serif;max-width:30rem;margin:3rem auto;padding:0 1rem;">'
+        '<p>{{ message }}</p>'
+        '{% if token %}<form method="post" action="{{ url_for(\"auth.emergency_unlock\") }}">'
+        '<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">'
+        '<input type="hidden" name="token" value="{{ token }}">'
+        '<label>Need a new password too? <input type="password" name="new_password" minlength="8" autocomplete="new-password"></label> '
+        '<button type="submit">Save</button></form>{% endif %}'
+        '<p><a href="{{ url_for(\"auth.login\") }}">Go to log in</a></p></body>',
+        message=message, token=token)
 
 
 @auth_bp.route('/promote-admin')

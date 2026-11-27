@@ -101,3 +101,31 @@ def test_repeated_wrong_guesses_get_rate_limited(client, seed, app, monkeypatch)
         limiter.reset()
         app.config['RATELIMIT_ENABLED'] = was_enabled
         limiter.enabled = bool(was_enabled)
+
+
+def test_a_password_in_the_link_is_ignored(client, seed, app, monkeypatch):
+    monkeypatch.setenv('ADMIN_PROMOTE_TOKEN', 'the-real-token')
+    monkeypatch.setenv('ADMIN_EMAIL', ADMIN_EMAIL)
+    resp = client.get('/auth/emergency-unlock?token=the-real-token&pw=NewSecret123')
+    assert resp.status_code == 200 and b'name="new_password"' in resp.data
+    with app.app_context():
+        from models import User
+        assert not User.query.filter_by(email=ADMIN_EMAIL).first().check_password('NewSecret123')
+
+
+def test_the_new_password_is_set_from_the_form_not_the_address(client, seed, app, monkeypatch):
+    monkeypatch.setenv('ADMIN_PROMOTE_TOKEN', 'the-real-token')
+    monkeypatch.setenv('ADMIN_EMAIL', ADMIN_EMAIL)
+    resp = client.post('/auth/emergency-unlock', data={'token': 'the-real-token', 'new_password': 'NewSecret123'})
+    assert resp.status_code == 200 and b'New password saved' in resp.data
+    with app.app_context():
+        from models import User
+        assert User.query.filter_by(email=ADMIN_EMAIL).first().check_password('NewSecret123')
+
+
+def test_the_form_rejects_a_wrong_token_and_a_short_password(client, seed, app, monkeypatch):
+    monkeypatch.setenv('ADMIN_PROMOTE_TOKEN', 'the-real-token')
+    monkeypatch.setenv('ADMIN_EMAIL', ADMIN_EMAIL)
+    assert client.post('/auth/emergency-unlock', data={'token': 'wrong', 'new_password': 'NewSecret123'}).status_code == 403
+    short = client.post('/auth/emergency-unlock', data={'token': 'the-real-token', 'new_password': 'abc'})
+    assert short.status_code == 400 and b'too short' in short.data
