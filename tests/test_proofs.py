@@ -177,3 +177,12 @@ def test_a_finished_order_is_not_nagged_or_listed(app, seed, outbox):
         assert P.waiting_proofs() == [] and P.run_reminders(datetime.utcnow() + timedelta(days=5)) == 0
     _in_db(app, go)
     assert len(outbox) == 1
+
+
+def test_proof_answers_are_labeled_design_proof_in_the_inbox(app, seed, admin_client):
+    from utils.admin_notifications import create_notification
+    def make():
+        create_notification(kind='proof', title='Design approved: order X', preview='ok', body='ok', url='/admin/orders/1')
+    _in_db(app, make)
+    page = admin_client.get('/admin/notifications')
+    assert b'Design proof' in page.data
