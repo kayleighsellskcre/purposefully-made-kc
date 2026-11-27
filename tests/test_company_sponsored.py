@@ -135,7 +135,7 @@ def _status_of(app, email):
 def test_employee_pays_for_extras_before_the_request_is_sent(seed, app, monkeypatch):
     guest = _guest(app)
     slug = _setup(app, seed, items=1)
-    _fake_stripe(monkeypatch, charge_cents=1971)          # $18 extra + $1.71 tax
+    _fake_stripe(monkeypatch, charge_cents=1973)          # $18 extra + $1.73 tax (9.6%)
     _fill_cart(guest, seed, qty=2)
     resp = _request(guest, slug)
     assert resp.status_code == 200 and 'Pay for your extra items' in resp.get_data(as_text=True)
@@ -155,20 +155,20 @@ def test_employee_pays_for_extras_before_the_request_is_sent(seed, app, monkeypa
     def check():                                           # only the employee's own paid item is made
         order = Order.query.one()
         assert order.payment_method == 'stripe' and order.payment_status == 'paid'
-        assert order.items.count() == 1 and order.total == 19.71
+        assert order.items.count() == 1 and order.total == 19.73
         assert order.production_stage == 'order_received'
     _in_db(app, check)
     html = guest.get(f'/c/{slug}/sponsored/confirm').get_data(as_text=True)
-    assert 'payment of $19.71' in html
+    assert 'payment of $19.73' in html
 
 
 def test_unpaid_extras_never_reach_the_organizer(seed, app, monkeypatch):
     import stripe
     guest = _guest(app)
     slug = _setup(app, seed, items=1)
-    _fake_stripe(monkeypatch, charge_cents=1971)
+    _fake_stripe(monkeypatch, charge_cents=1973)
     monkeypatch.setattr(stripe.PaymentIntent, 'retrieve',
-                        lambda pid: _Obj(id=pid, status='requires_payment_method', amount=1971))
+                        lambda pid: _Obj(id=pid, status='requires_payment_method', amount=1973))
     _fill_cart(guest, seed, qty=2)
     _request(guest, slug)
     resp = guest.get(f'/c/{slug}/sponsored/paid', follow_redirects=True)
@@ -180,11 +180,11 @@ def test_webhook_finishes_an_employee_payment_if_they_closed_the_tab(seed, app, 
     import stripe
     guest = _guest(app)
     slug = _setup(app, seed, items=1)
-    _fake_stripe(monkeypatch, charge_cents=1971)
+    _fake_stripe(monkeypatch, charge_cents=1973)
     _fill_cart(guest, seed, qty=2)
     _request(guest, slug)
     monkeypatch.setattr(stripe.Webhook, 'construct_event', lambda *a, **k: {
-        'type': 'payment_intent.succeeded', 'data': {'object': {'id': 'pi_emp_1', 'amount': 1971}}})
+        'type': 'payment_intent.succeeded', 'data': {'object': {'id': 'pi_emp_1', 'amount': 1973}}})
     hook = app.test_client()
     for _ in range(2):                                      # Stripe retries
         resp = hook.post('/checkout/stripe-webhook', data=b'{}', headers={'Stripe-Signature': 'x'})
@@ -196,7 +196,7 @@ def test_removing_a_paid_request_refunds_the_employee(seed, app, monkeypatch):
     guest = _guest(app)
     slug = _setup(app, seed, items=1, budget=10.0)
     refunds = []
-    _fake_stripe(monkeypatch, charge_cents=876, refunds=refunds)
+    _fake_stripe(monkeypatch, charge_cents=877, refunds=refunds)
     _fill_cart(guest, seed, qty=1)
     _request(guest, slug)
     guest.get(f'/c/{slug}/sponsored/paid')
@@ -217,7 +217,7 @@ def test_removing_a_paid_request_refunds_the_employee(seed, app, monkeypatch):
 def test_paid_items_start_now_and_covered_items_wait_for_the_invoice(seed, app, monkeypatch):
     guest = _guest(app)
     slug = _setup(app, seed, items=1)
-    _fake_stripe(monkeypatch, charge_cents=3071)            # $18 + $1.71 tax + $11 shipping
+    _fake_stripe(monkeypatch, charge_cents=3073)            # $18 + $1.73 tax + $11 shipping
     _fill_cart(guest, seed, qty=2)
     _request(guest, slug, fulfillment_method='shipping', street='1 Main St', city='Olathe',
              state='KS', zip='66061')
@@ -226,7 +226,7 @@ def test_paid_items_start_now_and_covered_items_wait_for_the_invoice(seed, app, 
     def now_order():
         order = Order.query.one()                           # made at payment: just the paid item
         assert order.items.count() == 1 and order.subtotal == 18.0
-        assert order.shipping_cost == 11.0 and order.tax == 1.71 and order.total == 30.71
+        assert order.shipping_cost == 11.0 and order.tax == 1.73 and order.total == 30.73
         assert order.fulfillment_method == 'shipping' and order.first_name == 'Ava'
         assert SponsorSubmission.query.first().immediate_order_id == order.id
     _in_db(app, now_order)
@@ -234,7 +234,7 @@ def test_paid_items_start_now_and_covered_items_wait_for_the_invoice(seed, app, 
     organizer = _login_as(app, CUSTOMER_EMAIL)
     organizer.post(f'/c/{slug}/manage-sponsored/invoice')
     inv = _the_invoice(app)
-    assert inv['subtotal'] == 18.0 and inv['total'] == 19.71        # company pays only its one item
+    assert inv['subtotal'] == 18.0 and inv['total'] == 19.73        # company pays only its one item
     page = organizer.get(f'/c/{slug}/manage-sponsored/invoice/{inv["id"]}').get_data(as_text=True)
     assert 'Ava Lopez' in page and page.count('$18.00') >= 2        # name on the invoice, one line
     assert _submission_count(app)[1] == 1                           # still only the paid item
@@ -247,7 +247,7 @@ def test_paid_items_start_now_and_covered_items_wait_for_the_invoice(seed, app, 
         assert len(orders) == 2
         later = orders[1]                                   # the covered item, now released
         assert later.items.count() == 1 and later.first_name == 'Ava'
-        assert later.shipping_cost == 0 and later.total == 19.71
+        assert later.shipping_cost == 0 and later.total == 19.73
         assert later.payment_method == 'company_invoice'
     _in_db(app, both_orders)
 
@@ -256,7 +256,7 @@ def test_paid_items_already_in_production_cannot_be_cancelled_or_removed(seed, a
     guest = _guest(app)
     slug = _setup(app, seed, items=1)
     refunds = []
-    _fake_stripe(monkeypatch, charge_cents=1971, refunds=refunds)
+    _fake_stripe(monkeypatch, charge_cents=1973, refunds=refunds)
     _fill_cart(guest, seed, qty=2)
     _request(guest, slug)
     guest.get(f'/c/{slug}/sponsored/paid')
@@ -330,7 +330,7 @@ def test_full_flow_nothing_is_made_until_the_invoice_is_paid(app, seed):
     customer_client.post(f'/c/{slug}/manage-sponsored/invoice')
 
     inv = _the_invoice(app)
-    assert (inv['subtotal'], inv['tax'], inv['total'], inv['status']) == (18.0, 1.71, 19.71, 'unpaid')
+    assert (inv['subtotal'], inv['tax'], inv['total'], inv['status']) == (18.0, 1.73, 19.73, 'unpaid')
     assert _in_db(app, lambda: db.session.get(Collection, seed['collection_id']).sponsor_submissions_locked)
     assert _submission_count(app)[1] == 0            # still no order
 
@@ -354,7 +354,7 @@ def test_full_flow_nothing_is_made_until_the_invoice_is_paid(app, seed):
         assert order.payment_status == 'paid' and order.status == 'paid'
         assert order.payment_method == 'company_invoice'
         assert order.collection_id == seed['collection_id']
-        assert order.total == 19.71
+        assert order.total == 19.73
         item = order.items.one()
         assert (item.size, item.color, item.quantity) == ('M', 'Black', 1)
         sub = db.session.get(SponsorSubmission, sub_id)
@@ -373,7 +373,7 @@ def test_removed_request_is_not_invoiced(app, seed):
                          data={'submission_id': skip, 'action': 'reject', 'reason': 'Not on staff'})
     customer_client.post(f'/c/{slug}/manage-sponsored/invoice')
     inv = _the_invoice(app)
-    assert inv['ids'] == [keep] and inv['total'] == 19.71
+    assert inv['ids'] == [keep] and inv['total'] == 19.73
 
 
 def test_stripe_webhook_pays_the_invoice(app, seed, monkeypatch):
@@ -400,7 +400,7 @@ def test_stripe_webhook_pays_the_invoice(app, seed, monkeypatch):
     hook.post('/checkout/stripe-webhook', data=b'{}', headers=headers)
     assert _submission_count(app)[1] == 0
 
-    monkeypatch.setattr(stripe.Webhook, 'construct_event', lambda *a, **k: fake_event(1971))
+    monkeypatch.setattr(stripe.Webhook, 'construct_event', lambda *a, **k: fake_event(1973))
     resp = hook.post('/checkout/stripe-webhook', data=b'{}', headers=headers)
     assert resp.get_json()['invoice']
     hook.post('/checkout/stripe-webhook', data=b'{}', headers=headers)  # Stripe retries
@@ -442,7 +442,7 @@ def test_emails_follow_a_request_from_start_to_production(seed, app, outbox):
 def test_declined_email_mentions_the_refund(seed, app, outbox, monkeypatch):
     guest = _guest(app)
     slug = _setup(app, seed, items=1, budget=10.0)
-    _fake_stripe(monkeypatch, charge_cents=876, refunds=[])
+    _fake_stripe(monkeypatch, charge_cents=877, refunds=[])
     _fill_cart(guest, seed, qty=1)
     _request(guest, slug)
     guest.get(f'/c/{slug}/sponsored/paid')
@@ -524,7 +524,7 @@ def test_employee_can_cancel_and_is_refunded(seed, app, outbox, monkeypatch):
     guest = _guest(app)
     slug = _setup(app, seed, items=1, budget=10.0)
     refunds = []
-    _fake_stripe(monkeypatch, charge_cents=876, refunds=refunds)
+    _fake_stripe(monkeypatch, charge_cents=877, refunds=refunds)
     _fill_cart(guest, seed, qty=1)
     _request(guest, slug)
     guest.get(f'/c/{slug}/sponsored/paid')
@@ -554,7 +554,7 @@ def test_invoice_in_batches_keeps_the_link_open(seed, app):
         invoices = CompanyInvoice.query.order_by(CompanyInvoice.id).all()
         assert len(invoices) == 2
         assert invoices[0].submission_ids != invoices[1].submission_ids
-        assert [i.total for i in invoices] == [19.71, 19.71]
+        assert [i.total for i in invoices] == [19.73, 19.73]
         assert db.session.get(Collection, seed['collection_id']).sponsor_submissions_locked
     _in_db(app, check)
 

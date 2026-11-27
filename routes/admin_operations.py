@@ -63,6 +63,15 @@ def edit_vendor(id):
 
 # ===== OPERATIONS: PRODUCTION WORKFLOW (KANBAN) =====
 
+def _proof_waiting():
+    try:
+        from utils.proofs import waiting_order_ids
+        return waiting_order_ids()
+    except Exception:
+        db.session.rollback()
+        return set()
+
+
 @admin_bp.route('/operations/workflow')
 @admin_required
 def production_workflow():
@@ -111,7 +120,7 @@ def production_workflow():
     return render_template('admin/operations/workflow.html', stages=stages, orders_by_stage=orders_by_stage,
                            item_counts=item_counts_for([o for rows in orders_by_stage.values() for o in rows]),
                            now=datetime.utcnow(), selected_order_type=order_type, selected_sort=sort,
-                           unsaved_payment_count=unsaved_payment_count)
+                           unsaved_payment_count=unsaved_payment_count, proof_waiting=_proof_waiting())
 
 
 @admin_bp.route('/orders/<int:order_id>/update-stage', methods=['POST'])
@@ -120,6 +129,11 @@ def update_order_stage(order_id):
     from utils.production_stages import FINISH_LABELS, apply_stage
     order = Order.query.get_or_404(order_id)
     stage = request.form.get('stage')
+    from utils.proofs import blocked_reason
+    held = blocked_reason(order, stage)
+    if held:
+        flash(held, 'error')
+        return redirect(request.referrer or url_for('admin.production_workflow'))
     if not apply_stage(order, stage):
         flash('Could not update that stage', 'error')
         return redirect(request.referrer or url_for('admin.production_workflow'))
@@ -175,9 +189,14 @@ def bulk_update_order_stage():
         flash('Select at least one order', 'error')
         return redirect(request.referrer or url_for('admin.orders'))
 
+    from utils.proofs import blocked_reason
     updated = 0
     moved_ids = []
+    held_numbers = []
     for order in Order.query.filter(Order.id.in_(order_ids)).all():
+        if blocked_reason(order, stage):
+            held_numbers.append(order.order_number)          # waiting on the customer's proof approval
+            continue
         if apply_stage(order, stage):
             updated += 1
             moved_ids.append(order.id)
@@ -191,10 +210,13 @@ def bulk_update_order_stage():
             'updated': updated,
             'stage': stage,
             'stage_label': MOVE_LABELS[stage],
-            'order_ids': order_ids,
+            'order_ids': [i for i in order_ids if i in moved_ids],
+            'held': held_numbers,
         })
 
     label = MOVE_LABELS[stage]
+    if held_numbers:
+        flash('Not moved, waiting on the customer to approve the proof: ' + ', '.join(held_numbers), 'error')
     flash(f'Moved {updated} order{"s" if updated != 1 else ""} to {label}', 'success')
     if stage in ('completed', 'shipped', 'picked_up'):
         return redirect(url_for('admin.orders_completed'))

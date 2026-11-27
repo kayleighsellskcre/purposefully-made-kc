@@ -141,6 +141,7 @@
                     </div>
                     <p class="wf-card-name">{{ order.full_name }}</p>
                     {% if order.payment_status == 'awaiting_payment' %}<p class="wf-await">Awaiting payment</p>{% endif %}
+                    {% if order.id in proof_waiting %}<p class="wf-await wf-proof">Waiting on approval</p>{% endif %}
                     {% if order.send_home_with_child %}
                     <p class="wf-card-send-home">Send home: {{ order.child_name or 'child' }}{% if order.teacher_name %} · {{ order.teacher_name }}{% endif %}</p>
                     {% endif %}
@@ -231,6 +232,7 @@
                 </div>
                 <p class="wf-card-name">{{ order.full_name }}</p>
                 {% if order.payment_status == 'awaiting_payment' %}<p class="wf-await">Awaiting payment</p>{% endif %}
+                {% if order.id in proof_waiting %}<p class="wf-await wf-proof">Waiting on approval</p>{% endif %}
                 <div class="wf-card-meta">
                     <span>${{ "%.2f"|format(order.total) }}</span>
                     <span class="wf-meta-sep">&bull;</span>
@@ -967,6 +969,9 @@ function toggleStage(stageId) {
             return res.json().then(function (data) {
                 if (!res.ok || !data.ok) {
                     throw new Error((data && data.error) || 'Move failed');
+                }
+                if (data.held && data.held.length) {
+                    alert('Not moved, waiting on the customer to approve the proof: ' + data.held.join(', '));
                 }
                 return data;
             });

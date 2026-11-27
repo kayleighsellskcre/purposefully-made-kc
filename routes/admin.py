@@ -1656,3 +1656,5 @@ from routes import admin_artwork_pack  # noqa: E402,F401
 from routes import admin_districts  # noqa: E402,F401
 # Kansas Sales Tax: deadlines, the portal's three parts, filing record and reminders.
 from routes import admin_kansas_tax  # noqa: E402,F401
+# Design proof approval: send a proof, the list of proofs out, approve for the customer.
+from routes import admin_proofs  # noqa: E402,F401

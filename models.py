@@ -1124,6 +1124,23 @@ class OrderItem(db.Model):
         return f'<OrderItem {self.product_name} - {self.color} {self.size}>'
 
 
+class OrderProof(db.Model):
+    """A design proof sent to the customer for one order. Each round is its own row, so the history stays."""
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False, index=True)
+    token = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    status = db.Column(db.String(20), default='waiting', index=True)     # waiting, approved, changes, replaced
+    message = db.Column(db.String(500))                  # what the shop wrote to the customer
+    response_note = db.Column(db.Text)                   # what the customer wrote back
+    approved_by = db.Column(db.String(20))               # customer, shop (approved for them, such as by phone)
+    sent_at = db.Column(db.DateTime, default=datetime.utcnow)
+    responded_at = db.Column(db.DateTime)
+    reminder_sent_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    order = db.relationship('Order', backref=db.backref('proofs', lazy='dynamic'))
+
+
 class Vendor(db.Model):
     """Vendor & supplier database"""
     id = db.Column(db.Integer, primary_key=True)

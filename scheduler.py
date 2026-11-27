@@ -194,6 +194,21 @@ def group_autopilot_job(app):
             print(f"group autopilot failed: {exc}", file=sys.stderr, flush=True)
 
 
+def proof_reminder_job(app):
+    """10 AM: one reminder to each customer who has not answered a design proof for 2 days."""
+    with app.app_context():
+        try:
+            with _one_worker_at_a_time(731018) as mine:
+                if not mine:
+                    return
+                from utils.proofs import run_reminders
+                sent = run_reminders()
+                if sent:
+                    print(f"PROOF REMINDERS: {sent} sent", file=sys.stderr, flush=True)
+        except Exception as exc:
+            print(f"proof reminders failed: {exc}", file=sys.stderr, flush=True)
+
+
 def daily_digest_job(app):
     """7 AM: the morning digest (new orders, due soon, overdue, stuck, closing stores, requests, messages)."""
     with app.app_context():
@@ -890,6 +905,13 @@ def init_scheduler(app):
             trigger=CronTrigger(hour=9, minute=0, timezone=CHICAGO),
             id='group_autopilot',
             name='Group order organizer emails',
+            replace_existing=True,
+        )
+        scheduler.add_job(
+            func=lambda: proof_reminder_job(app),
+            trigger=CronTrigger(hour=10, minute=0, timezone=CHICAGO),
+            id='proof_reminders',
+            name='Design proof reminders',
             replace_existing=True,
         )
         scheduler.add_job(

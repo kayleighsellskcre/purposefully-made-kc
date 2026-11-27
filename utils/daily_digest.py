@@ -23,7 +23,7 @@ DAILY_KEY, WEEKLY_KEY = 'daily_digest_sent', 'weekly_digest_sent'
 LINKS = {
     'orders': '/admin/orders', 'workflow': '/admin/operations/workflow', 'inbox': '/admin/notifications',
     'requests': '/admin/custom-design-requests', 'stores': '/admin/collections', 'growth': '/admin/operations/growth',
-    'blanks': '/admin/production/blank-apparel-list', 'reports': '/admin/operations/reports', 'lowstock': '/admin/operations/low-stock',
+    'blanks': '/admin/production/blank-apparel-list', 'reports': '/admin/operations/reports', 'lowstock': '/admin/operations/low-stock', 'proofs': '/admin/operations/proofs',
 }
 
 
@@ -102,6 +102,17 @@ def daily_sections(now=None):
     if pending:
         out.append({'key': 'requests', 'title': 'Recreate requests waiting', 'count': pending, 'tone': 'plain',
                     'lines': [f'{pending} waiting for you to start'], 'link': LINKS['requests'], 'link_label': 'Open the requests'})
+
+    from utils import proofs
+    asked = proofs.changes_proofs()
+    if asked:
+        out.append({'key': 'proofchanges', 'title': 'Customers asked for design changes', 'count': len(asked), 'tone': 'warn',
+                    'lines': _names(asked, lambda p: f'{_order_label(p.order)}: {p.response_note[:80]}'),
+                    'link': LINKS['proofs'], 'link_label': 'Open design proofs'})
+    waiting = proofs.waiting_proofs()
+    if waiting:
+        out.append({'key': 'proofwaiting', 'title': 'Designs waiting on a customer to approve', 'count': len(waiting), 'tone': 'plain',
+                    'lines': _names(waiting, lambda p: _order_label(p.order)), 'link': LINKS['proofs'], 'link_label': 'Open design proofs'})
 
     from utils import low_stock
     fresh = low_stock.newly_low()

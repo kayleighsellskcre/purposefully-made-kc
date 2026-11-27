@@ -210,9 +210,11 @@ def order_detail(order_id):
     }
 
     from utils.bulk_orders import invoices_for_order
+    from utils import proofs as proof_tools
     return render_template(
         'admin/order_detail.html',
         order=order,
+        proof_history=proof_tools.history(order.id),
         bulk_invoices=invoices_for_order(order) if order.payment_method == 'invoice' else [],
         get_print_width=get_print_width,
         get_display_print_width=get_display_print_width,
@@ -661,6 +663,11 @@ def update_order_status(order_id):
     admin_notes = request.form.get('admin_notes')
 
     from utils.production_stages import MOVE_LABELS, apply_stage
+    from utils.proofs import blocked_reason
+    held = blocked_reason(order, stage)
+    if held:
+        flash(held, 'error')
+        return redirect(url_for('admin.order_detail', order_id=order_id))
     if not apply_stage(order, stage):
         flash('Could not update that stage', 'error')
         return redirect(url_for('admin.order_detail', order_id=order_id))

@@ -4374,3 +4374,16 @@ body:not(.is-admin) .dist-body { padding-top: 1.5rem; }
 .adm-notes label span { display: block; font-weight: 400; color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.1rem; }
 .adm-notes textarea { width: 100%; box-sizing: border-box; padding: 0.6rem 0.75rem; border: 1px solid var(--border-light, #e8d0b1); border-radius: 10px; font: inherit; background: #fff; resize: vertical; margin-bottom: 0.5rem; }
 .go-admin-note { margin: 0 1.1rem 0.6rem; padding: 0.5rem 0.75rem; background: #fbf6ea; border-left: 3px solid #d9b873; border-radius: 6px; font-size: 0.85rem; color: var(--text-secondary); }
+
+/* Design proof approval */
+.wf-proof { background: #f3eaf7; border-color: #cdb4dc; color: #5b3a73; }
+.od-proof-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin: .6rem 0; }
+.od-proof-send { display: flex; flex-direction: column; gap: .5rem; max-width: 520px; margin-top: .6rem; }
+.od-proof-send .od-btn { align-self: flex-start; }
+.proof-narrow { max-width: 640px; }
+.proof-item .pm-proofs { margin-top: .8rem; }
+.proof-line { margin: .2rem 0 0; color: var(--text-secondary); }
+.proof-actions { margin-top: 1.2rem; }
+.proof-actions textarea { padding: .75rem 1rem; border: 1.5px solid var(--border-color); border-radius: 12px; font: inherit; color: var(--text-primary); resize: vertical; }
+.proof-actions .btn { align-self: flex-start; }
+.proof-done { border-color: rgba(107, 124, 89, .45); }

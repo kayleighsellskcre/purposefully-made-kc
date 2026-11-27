@@ -321,8 +321,11 @@ def production_master_move():
         from utils.group_orders import filter_orders_to_collection
         query = filter_orders_to_collection(query, cid)
 
+    from utils.proofs import blocked_reason
     count = 0
     for order in query.all():
+        if blocked_reason(order, target):
+            continue                                  # still waiting on the customer's proof approval
         apply_stage(order, target)
         count += 1
 

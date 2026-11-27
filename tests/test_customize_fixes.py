@@ -181,7 +181,7 @@ def test_customer_size_does_not_rescale_the_visual_mockup(client, seed):
     # transparent padding without changing production dimensions.
     assert 'function visibleArtworkWidthRatio(image)' in html
     assert 'let garmentWidth = (box && box.measured && box.widthPx)' in html
-    assert 'garmentWidth * targetRatio / visibleWidthRatio' in html
+    assert 'garmentWidth * sf * targetRatio / visibleWidthRatio' in html
     assert 'const targetRatio = isSideChest ? (isTank ? 0.18 : 0.14) : (isTank ? 0.58 : 0.40)' in html
     assert 'TRANSFER_SIZING.is_tank' in html
     assert "String(state.presetDesignId || state.designUrl || '') + '|' + src + '|' + placement" in html

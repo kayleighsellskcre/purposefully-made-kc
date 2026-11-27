@@ -58,6 +58,39 @@
     </div>
     {% endif %}
 
+    {% if order.status != 'cancelled' %}
+    {% set _proof = proof_history[0] if proof_history else none %}
+    <div class="od-card od-proof-card" style="margin-bottom:1rem;">
+        <span class="od-card-eyebrow">Optional</span>
+        <h2 class="od-card-title">Design proof</h2>
+        {% if _proof and _proof.status == 'waiting' %}
+        <p><span class="od-status-badge">Waiting on approval</span> Sent {{ _proof.sent_at|central('%b %d') }}{% if _proof.reminder_sent_at %}, reminded {{ _proof.reminder_sent_at|central('%b %d') }}{% endif %}. The order cannot move to pressing until it is approved.</p>
+        <div class="od-proof-actions">
+            <form method="POST" action="{{ url_for('admin.order_proof', order_id=order.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="resend"><button type="submit" class="od-btn od-btn-outline">Email the link again</button></form>
+            <form method="POST" action="{{ url_for('admin.order_proof', order_id=order.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="approve"><button type="submit" class="od-btn" onclick="return confirm('Mark this proof approved because the customer said yes another way?')">Approve for them</button></form>
+        </div>
+        {% elif _proof and _proof.status == 'approved' %}
+        <p><span class="od-status-badge">Approved</span> {{ _proof.responded_at|central('%b %d') }}{% if _proof.approved_by == 'shop' %} (you marked it approved){% else %} by the customer{% endif %}.</p>
+        {% elif _proof and _proof.status == 'changes' %}
+        <p><span class="od-status-badge">Changes requested</span> {{ _proof.responded_at|central('%b %d') }}: &ldquo;{{ _proof.response_note }}&rdquo;</p>
+        {% else %}
+        <p>Ask the customer to look at their design and approve it before you press. They get an email with a private link.</p>
+        {% endif %}
+        {% if not _proof or _proof.status != 'waiting' %}
+        <form method="POST" action="{{ url_for('admin.order_proof', order_id=order.id) }}" class="od-proof-send">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="send">
+            <label class="od-field-hint" for="proofMsg">A note to the customer (optional)</label>
+            <textarea id="proofMsg" name="message" class="od-textarea" rows="2" maxlength="500" placeholder="For example: please check the spelling of the name"></textarea>
+            <button type="submit" class="od-btn">{% if _proof %}Send a new proof{% else %}Send proof for approval{% endif %}</button>
+        </form>
+        {% endif %}
+        {% if proof_history|length > 1 %}
+        <p class="od-field-hint">Earlier: {% for p in proof_history[1:] %}{{ p.status.replace('_',' ') }} ({{ p.sent_at|central('%b %d') }}){% if not loop.last %}, {% endif %}{% endfor %}</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
     <!-- 4-card Info Grid -->
     <div class="od-grid">
 

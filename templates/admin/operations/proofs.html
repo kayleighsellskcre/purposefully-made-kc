@@ -1,0 +1,45 @@
+{% extends "admin/operations/base_operations.html" %}
+{% block title %}Design Proofs - Purposefully Made KC{% endblock %}
+{% block ops_content %}
+<span class="adm-eyebrow">Admin / Daily Operations</span>
+<h1 class="ops-title">Design Proofs</h1>
+<p class="ops-subtitle">Orders where a customer is looking at their design. Orders waiting on approval stay out of pressing until it is approved. After {{ days }} days of silence the customer gets one gentle reminder. To ask for a proof, open an order and use Design proof.</p>
+
+<div class="ops-card bk-card">
+    <h2 class="ops-card-title">Changes asked for ({{ changes|length }})</h2>
+    <div class="ops-table-scroll">
+    <table class="admin-table bk-ledger">
+        <thead><tr><th>Order</th><th>Customer</th><th>What they asked for</th><th>Answered</th></tr></thead>
+        <tbody>
+            {% for p in changes %}
+            <tr>
+                <td><a href="{{ url_for('admin.order_detail', order_id=p.order_id) }}">#{{ p.order.order_number }}</a></td>
+                <td>{{ p.order.full_name }}</td>
+                <td>{{ p.response_note }}</td>
+                <td>{{ p.responded_at|central('%b %d') }}</td>
+            </tr>
+            {% else %}<tr><td colspan="4" class="bk-muted">No one has asked for changes.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<div class="ops-card bk-card">
+    <h2 class="ops-card-title">Waiting on approval ({{ waiting|length }})</h2>
+    <div class="ops-table-scroll">
+    <table class="admin-table bk-ledger">
+        <thead><tr><th>Order</th><th>Customer</th><th>Sent</th><th>Reminder</th></tr></thead>
+        <tbody>
+            {% for p in waiting %}
+            <tr>
+                <td><a href="{{ url_for('admin.order_detail', order_id=p.order_id) }}">#{{ p.order.order_number }}</a></td>
+                <td>{{ p.order.full_name }}</td>
+                <td>{{ p.sent_at|central('%b %d') }}</td>
+                <td>{% if p.reminder_sent_at %}Sent {{ p.reminder_sent_at|central('%b %d') }}{% else %}<span class="bk-muted">Not yet</span>{% endif %}</td>
+            </tr>
+            {% else %}<tr><td colspan="4" class="bk-muted">No proofs are waiting.</td></tr>{% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

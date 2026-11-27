@@ -83,7 +83,7 @@ def summary(order):
     at = progress(order)
     shipping = _method(order) == 'shipping'
     info = {'order': order, 'steps': steps(order), 'cancelled': at is None, 'headline': '', 'details': [],
-            'tracking_url': None}
+            'tracking_url': None, 'proof_url': None}
     coll = getattr(order, 'collection', None)
     if at is None:
         info['headline'] = 'This order was cancelled. If that is a surprise, just reply to any email from us.'
@@ -100,6 +100,12 @@ def summary(order):
         if coll is not None and coll.order_deadline and not is_deadline_passed(coll):
             info['details'].append(('Note', f'Your group order closes {coll.order_deadline.strftime("%B")} '
                                             f'{coll.order_deadline.day}. We start printing after it closes.'))
+    from utils import proofs
+    waiting = proofs.latest(order.id)
+    if waiting is not None and waiting.status == 'waiting' and at < _READY:
+        info['headline'] = 'Your design is waiting for your approval.'
+        info['proof_url'] = f'/proof/{waiting.token}'
+        info['details'].append(('Next step', 'Look at your design and approve it. We start making your order once you do.'))
     if order.due_date and at < _READY:
         info['details'].append(('Estimated ready date', f'{order.due_date.strftime("%B")} {order.due_date.day}'))
     if order.send_home_with_child and order.child_name and at >= _READY:

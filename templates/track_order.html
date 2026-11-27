@@ -49,6 +49,7 @@
                 {% for label, value in result.details %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}
             </dl>
             {% endif %}
+            {% if result.proof_url %}<a class="btn btn-primary btn-sm" href="{{ result.proof_url }}">Look at my design</a>{% endif %}
             {% if result.tracking_url %}<a class="btn btn-outline btn-sm" href="{{ result.tracking_url }}" target="_blank" rel="noopener">Track the package</a>{% endif %}
             <p class="track-foot">Questions? Just <a href="{{ url_for('main.contact') }}">send us a message</a>.</p>
         </div>

@@ -134,6 +134,48 @@ def track_order():
     return resp
 
 
+def _proof_items(order):
+    """What the customer is asked to approve: each shirt with its front and back picture. Admin-only pictures are left out."""
+    from utils.order_artwork import artwork_kit
+    out = []
+    for item in order.items:
+        kit = artwork_kit(item, order=order)
+        back_overlay = kit.get('back_overlay_url')
+        if back_overlay and back_overlay.startswith('/admin'):
+            back_overlay = None
+        out.append({'item': item, 'kit': kit, 'back_overlay': back_overlay,
+                    'show_back': bool(kit.get('proof_back_url') or back_overlay)})
+    return out
+
+
+@main_bp.route('/proof/<token>', methods=['GET', 'POST'])
+# Public by private link, like the invoice pay link. Only the answer is a POST, so only it is capped.
+@post_only("30 per hour")
+def proof_page(token):
+    """The customer looks at their design and approves it or asks for changes."""
+    from utils import proofs as P
+    proof = P.by_token(token)
+    if proof is None:
+        abort(404)
+    order = proof.order
+    problem = None
+    if request.method == 'POST' and proof.status == 'waiting':
+        try:
+            if request.form.get('action') == 'approve':
+                P.approve(proof, by='customer')
+            else:
+                P.request_changes(proof, request.form.get('note', ''))
+        except ValueError as exc:
+            problem = str(exc)
+        if not problem:
+            return redirect(url_for('main.proof_page', token=token))
+    resp = Response(render_template('proof.html', proof=proof, order=order, items=_proof_items(order), problem=problem,
+                                    newest=(P.latest(order.id).id == proof.id)))
+    resp.headers['Cache-Control'] = 'no-store'
+    resp.headers['X-Robots-Tag'] = 'noindex'
+    return resp
+
+
 @main_bp.route('/contact', methods=['GET', 'POST'])
 # Public, unauthenticated, and it sends an email on every POST. Without a limit
 # it is a relay into the owner's inbox and burns the mail provider's quota.
