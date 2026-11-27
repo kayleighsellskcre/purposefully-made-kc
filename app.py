@@ -542,10 +542,18 @@ def create_app(config_class=Config):
                 except Exception:
                     pass
 
-            # KS sales tax is fixed at 9.5% — normalize any stale/0 rates from when
+            # Make sure the Shawnee pickup rate (9.6%) is set up on the Kansas Sales Tax page, so checkout charges it
+            # even before anyone opens that page.
+            try:
+                from utils.ks_tax import ensure_defaults as _ks_defaults
+                _ks_defaults()
+            except Exception:
+                db.session.rollback()
+
+            # Group orders follow the same Kansas rate. Normalize any stale/0 rates from when
             # organizers could edit the field.
             try:
-                _tax_pct = float(app.config.get('KS_SALES_TAX_PERCENT', 9.5))
+                _tax_pct = float(app.config.get('KS_SALES_TAX_PERCENT', 9.6))
                 with db.engine.connect() as _conn:
                     _conn.execute(text(
                         "UPDATE collection SET tax_rate = :rate "

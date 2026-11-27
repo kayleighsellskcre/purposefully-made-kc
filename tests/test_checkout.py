@@ -11,7 +11,7 @@ import pytest
 from models import db, Order, OrderItem, Product
 from routes.checkout import calculate_totals, reprice_cart
 
-TAX_RATE = 0.095
+TAX_RATE = 0.096
 SHIPPING = 11.00
 
 

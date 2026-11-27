@@ -36,11 +36,11 @@ JURISDICTION_LABELS = {
 
 
 def default_percent():
-    return float(current_app.config.get('KS_SALES_TAX_PERCENT', 9.5))
+    return float(current_app.config.get('KS_SALES_TAX_PERCENT', 9.6))
 
 
 def rate_percent():
-    """The tax rate in percent (9.5 means 9.5%), from Site settings, cached for a minute."""
+    """The tax rate in percent (9.6 means 9.6%), from Site settings, cached for a minute."""
     now = time.time()
     if _CACHE['percent'] is not None and now - _CACHE['at'] < _TTL:
         return _CACHE['percent']

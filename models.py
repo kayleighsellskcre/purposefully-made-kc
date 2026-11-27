@@ -165,7 +165,7 @@ class Collection(db.Model):
     shipping_enabled = db.Column(db.Boolean, default=True)
     # Cash / pay-at-pickup — only offered at checkout when this is on (group orders)
     allow_cash_pickup = db.Column(db.Boolean, default=False)
-    tax_rate = db.Column(db.Float, default=9.5)  # always KS 9.5%; not user-editable
+    tax_rate = db.Column(db.Float, default=9.6)  # follows the Kansas Sales Tax page (Shawnee 9.6%); not user-editable
     
     # Organizer/Admin choices - restrict what team can order (keeps everyone matching)
     restrict_options = db.Column(db.Boolean, default=False)

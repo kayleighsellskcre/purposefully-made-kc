@@ -180,13 +180,13 @@ def test_a_group_order_needs_at_least_one_product(customer_client, seed, app):
         assert Collection.query.filter_by(name=form['name']).count() == 0
 
 
-def test_tax_rate_from_the_form_is_ignored_and_fixed_at_9_5(customer_client, seed, app):
-    """Tax is fixed at KS 9.5% — form values (even garbage) must not change it."""
+def test_tax_rate_from_the_form_is_ignored_and_fixed_at_9_6(customer_client, seed, app):
+    """Tax is fixed at KS 9.6% — form values (even garbage) must not change it."""
     resp = _post(customer_client, _base_form(seed, tax_rate='nine and a half'))
     assert resp.status_code == 200
     with app.app_context():
         collection = Collection.query.filter_by(name='Riverview Spirit Wear 2026').one()
-        assert collection.tax_rate == 9.5
+        assert collection.tax_rate == 9.6
 
 
 def test_created_group_orders_always_get_fixed_tax(customer_client, seed, app):
@@ -194,7 +194,7 @@ def test_created_group_orders_always_get_fixed_tax(customer_client, seed, app):
     assert resp.status_code == 200
     with app.app_context():
         collection = Collection.query.filter_by(slug='riverview-spirit-wear-2026').one()
-        assert collection.tax_rate == 9.5
+        assert collection.tax_rate == 9.6
 
 
 def test_a_duplicate_name_gets_its_own_url(customer_client, seed, app):
@@ -705,7 +705,7 @@ def test_admin_can_save_pickup_instructions(admin_client, seed, app):
     cid = seed['collection_id']
     with app.app_context():
         collection = db.session.get(Collection, cid)
-        collection.tax_rate = 0.0  # stale value; save must force 9.5
+        collection.tax_rate = 0.0  # stale value; save must force 9.6
         collection.back_design_text_color = '#112233'
         collection.lock_back_design_style = True
         db.session.commit()
@@ -731,7 +731,7 @@ def test_admin_can_save_pickup_instructions(admin_client, seed, app):
         )
         assert saved.shipping_enabled is True
         assert saved.is_active is True
-        assert saved.tax_rate == 9.5
+        assert saved.tax_rate == 9.6
         assert saved.back_design_text_color == '#112233'
         assert saved.lock_back_design_style is True
 
@@ -791,7 +791,7 @@ def test_admin_save_always_forces_fixed_tax_rate(admin_client, seed, app):
         follow_redirects=False,
     )
     with app.app_context():
-        assert db.session.get(Collection, cid).tax_rate == 9.5
+        assert db.session.get(Collection, cid).tax_rate == 9.6
 
 
 def test_brand_scoped_colors_do_not_leak_across_brands():

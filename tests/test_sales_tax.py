@@ -62,7 +62,7 @@ def test_who_is_charged_tax():
 def test_the_rate_defaults_and_can_be_changed(app, seed):
     def go():
         first = T.rate_percent()
-        T.save_rate_percent('9.6')
+        T.save_rate_percent('9.7')
         second = (T.rate_percent(), T.rate_fraction())
         problems = []
         for bad in ('0', '20', 'abc', ''):
@@ -72,7 +72,7 @@ def test_the_rate_defaults_and_can_be_changed(app, seed):
                 problems.append(str(exc))
         return first, second, len(problems), T.rate_percent()
     first, second, problems, still = _in_db(app, go)
-    assert first == 9.5 and second == (9.6, 0.096) and problems == 4 and still == 9.6
+    assert first == 9.6 and second == (9.7, 0.09699999999999999) and problems == 4 and still == 9.7
 
 
 def test_settings_page_saves_the_rate(admin_client, app, seed):
@@ -98,14 +98,14 @@ def test_totals_follow_where_the_order_goes(app, seed):
     pickup = _totals(app, 'pickup')
     in_kansas = _totals(app, 'shipping', 'KS', '66218')
     missouri = _totals(app, 'shipping', 'MO', '64105')
-    assert (pickup['tax'], pickup['total'], pickup['tax_jurisdiction']) == (9.5, 109.5, 'local')
-    assert (in_kansas['tax'], in_kansas['total'], in_kansas['tax_jurisdiction']) == (9.5, 120.5, 'ks_shipped')
+    assert (pickup['tax'], pickup['total'], pickup['tax_jurisdiction']) == (9.6, 109.6, 'local')
+    assert (in_kansas['tax'], in_kansas['total'], in_kansas['tax_jurisdiction']) == (9.6, 120.6, 'ks_shipped')
     assert (missouri['tax'], missouri['total'], missouri['tax_jurisdiction'], missouri['tax_rate_percent']) == (0.0, 111.0, 'out_of_state', 0.0)
 
 
 def test_totals_use_the_rate_from_settings(app, seed):
-    _in_db(app, lambda: T.save_rate_percent('9.6'))
-    assert _totals(app, 'pickup')['tax'] == 9.6 and _totals(app, 'shipping', 'MO')['tax'] == 0.0
+    _in_db(app, lambda: T.save_rate_percent('9.7'))
+    assert _totals(app, 'pickup')['tax'] == 9.7 and _totals(app, 'shipping', 'MO')['tax'] == 0.0
 
 
 def test_card_payment_amount_matches_the_destination(client, seed, app):
@@ -120,7 +120,7 @@ def test_card_payment_amount_matches_the_destination(client, seed, app):
                      {'shipping_method': 'shipping', 'ship_state': 'KS', 'ship_zip': '66218'},
                      {'shipping_method': 'shipping', 'ship_state': 'MO', 'ship_zip': '64105'}):
             assert client.post('/checkout/create-payment-intent', json=body).status_code == 200
-    assert seen == [3285, 4385, 4100]            # $30 + 9.5% tax; plus $11 shipping; plus $11 shipping and no tax
+    assert seen == [3288, 4388, 4100]            # $30 + 9.6% tax; plus $11 shipping; plus $11 shipping and no tax
 
 
 def _ship(state, zip_code):
@@ -140,13 +140,13 @@ def test_out_of_state_order_is_saved_without_tax_and_labelled(client, seed, app)
 
 def test_kansas_shipment_is_taxed_and_labelled(client, seed, app):
     _fill_cart(client, seed)
-    with patch('stripe.PaymentIntent.retrieve', return_value=_stripe_intent(4385)):
+    with patch('stripe.PaymentIntent.retrieve', return_value=_stripe_intent(4388)):
         body = client.post('/checkout/complete', json=_cash_payload(
             payment_method='stripe', payment_id='pi_ks', shipping_method='shipping', shipping_info=_ship('KS', '66218'))).get_json()
     assert body['success'] is True
     with app.app_context():
         o = Order.query.filter_by(order_number=body['order_number']).one()
-        assert (o.tax, o.tax_jurisdiction, o.tax_rate_percent) == (2.85, 'ks_shipped', 9.5)
+        assert (o.tax, o.tax_jurisdiction, o.tax_rate_percent) == (2.88, 'ks_shipped', 9.6)
 
 
 def test_pickup_order_is_labelled_local(client, seed, app):
@@ -154,7 +154,7 @@ def test_pickup_order_is_labelled_local(client, seed, app):
     body = client.post('/checkout/complete', json=_cash_payload()).get_json()
     with app.app_context():
         o = Order.query.filter_by(order_number=body['order_number']).one()
-        assert (o.tax_jurisdiction, o.tax_rate_percent) == ('local', 9.5)
+        assert (o.tax_jurisdiction, o.tax_rate_percent) == ('local', 9.6)
 
 
 def test_checkout_page_has_a_state_dropdown_and_the_tax_logic(client, seed, app):
@@ -162,7 +162,7 @@ def test_checkout_page_has_a_state_dropdown_and_the_tax_logic(client, seed, app)
     html = client.get('/checkout/').get_data(as_text=True)
     assert '<select id="ship_state"' in html and '<option value="MO">Missouri</option>' in html and '<option value="KS">Kansas</option>' in html
     assert 'refreshTaxForAddress' in html and 'No Kansas sales tax on orders shipped out of state.' in html
-    assert 'const taxRate = 0.095;' in html
+    assert 'const taxRate = 0.096;' in html
 
 
 # ---- the report ----

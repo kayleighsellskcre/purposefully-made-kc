@@ -2007,7 +2007,7 @@ def apply_collection_form(collection, user, *, allow_slug=False, require_product
     collection.shipping_enabled = request.form.get('shipping_enabled') == 'on'
     collection.allow_cash_pickup = request.form.get('allow_cash_pickup') == 'on'
     apply_collection_visibility(collection)
-    # Tax is fixed at KS 9.5% — ignore any form value so it cannot be adjusted.
+    # Tax follows the Kansas rate (9.6%) — ignore any form value so it cannot be adjusted.
     from utils.sales_tax import rate_percent
     collection.tax_rate = rate_percent()
 

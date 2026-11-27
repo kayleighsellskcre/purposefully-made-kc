@@ -113,7 +113,7 @@ def test_credit_is_a_discount_that_lowers_the_tax_and_always_leaves_a_dollar(app
     with app.test_request_context():
         t = calculate_totals(cart, 'pickup', credit_user_id=uid)
         assert t['credit_applied'] == 10.0 and t['gross_subtotal'] == 60.0 and t['subtotal'] == 50.0
-        assert t['tax'] == round(50.0 * 0.095, 2) and t['total'] == round(50.0 + t['tax'], 2)
+        assert t['tax'] == round(50.0 * 0.096, 2) and t['total'] == round(50.0 + t['tax'], 2)
         small = calculate_totals([{'product_id': seed['tee_id'], 'quantity': 1, 'unit_price': 5.00}], 'pickup', credit_user_id=uid)
         assert small['credit_applied'] == 4.0 and small['subtotal'] == 1.0
         assert calculate_totals(cart, 'pickup')['credit_applied'] == 0.0           # guests never get any

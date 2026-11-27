@@ -423,7 +423,7 @@ def create_group_order():
             if slug != base_slug:
                 flash(f'URL slug adjusted to "{slug}" (original was already in use).', 'info')
 
-            # ── 3. Create the collection (tax is fixed at KS 9.5%) ───────────
+            # ── 3. Create the collection (tax follows the Kansas rate, 9.6%) ───────────
             collection = Collection(
                 name=name,
                 slug=slug,

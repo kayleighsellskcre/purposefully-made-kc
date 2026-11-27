@@ -24,7 +24,7 @@ def test_percent_code_lowers_the_amount_tax_is_charged_on(app, seed):
     with app.test_request_context():
         t = calculate_totals(CART(seed), 'pickup', coupon_code='save10')
         assert t['discount_applied'] == 6.0 and t['subtotal'] == 54.0 and t['coupon_code'] == 'SAVE10'
-        assert t['tax'] == round(54.0 * 0.095, 2) and t['total'] == round(54.0 + t['tax'], 2)
+        assert t['tax'] == round(54.0 * 0.096, 2) and t['total'] == round(54.0 + t['tax'], 2)
         assert calculate_totals(CART(seed), 'pickup')['discount_applied'] == 0.0
 
 

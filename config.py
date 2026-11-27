@@ -132,8 +132,8 @@ class Config:
     SHOW_SOCIAL_LINKS = os.environ.get('SHOW_SOCIAL_LINKS', 'false').lower() in ('1', 'true', 'yes')
 
     # Kansas sales tax — fixed site-wide; not adjustable via forms or env
-    KS_SALES_TAX_PERCENT = 9.5
-    KS_SALES_TAX_RATE = 0.095
+    KS_SALES_TAX_PERCENT = 9.6
+    KS_SALES_TAX_RATE = 0.096
 
     # Family at-cost promo: wholesale + DTF + flat fee, cash only (no tax/shipping)
     FAMILY_PROMO_CODE = os.environ.get('FAMILY_PROMO_CODE', 'AIRMATTRESS')

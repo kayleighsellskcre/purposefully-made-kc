@@ -165,10 +165,10 @@ def test_changing_the_pickup_rate_changes_what_checkout_charges(app, seed):
         from utils import sales_tax
         sales_tax.clear_cache()
         before = sales_tax.rate_percent()
-        K.save_jurisdiction('SHAJO', 'Shawnee / Johnson County', 9.6)
+        K.save_jurisdiction('SHAJO', 'Shawnee / Johnson County', 9.7)
         return before, sales_tax.rate_percent()
     before, after = _in_db(app, make)
-    assert before == 9.5 and after == 9.6
+    assert before == 9.6 and after == 9.7
 
 
 def _adjust(app, **form):
