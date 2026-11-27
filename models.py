@@ -1081,6 +1081,20 @@ class OrderItem(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     @property
+    def print_scale_label(self):
+        """'Medium print' or 'Oversized print' for a line made at one of those sizes, else empty."""
+        raw = self.transfer_production
+        if not raw:
+            return ''
+        try:
+            import json
+            data = raw if isinstance(raw, dict) else json.loads(raw)
+            scale = ((data or {}).get('front') or {}).get('print_scale')
+        except (TypeError, ValueError):
+            return ''
+        return f'{scale.title()} print' if scale in ('medium', 'oversized') else ''
+
+    @property
     def back_design_details(self):
         """Parsed back-design name/number/color metadata, or None."""
         if not self.back_design_meta:

@@ -958,7 +958,7 @@ def _cart_line_for_edit(product):
     except (TypeError, ValueError):
         design_id = None
     return {'index': index, 'color': line.get('color'), 'size': line.get('size'), 'quantity': line.get('quantity') or 1,
-            'placement': line.get('placement'), 'design_id': design_id, 'design_url': line.get('design_url'),
+            'placement': line.get('placement'), 'print_scale': line.get('print_scale'), 'design_id': design_id, 'design_url': line.get('design_url'),
             'back_url': line.get('back_design_url'), 'back_kind': line.get('back_design_kind'),
             'back_meta': meta if isinstance(meta, dict) else None}
 

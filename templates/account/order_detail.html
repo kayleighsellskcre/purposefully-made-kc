@@ -72,7 +72,7 @@
                                 <p class="od-item-name">{{ item.product_name }}</p>
                                 <p class="od-item-specs">
                                     {% if item.style_number %}Style {{ item.style_number }} &middot; {% endif %}
-                                    {{ item.color }} &middot; {{ item.size }} &middot; Qty {{ item.quantity }}
+                                    {{ item.color }} &middot; {{ item.size }}{% if item.print_scale_label %} &middot; {{ item.print_scale_label }}{% endif %} &middot; Qty {{ item.quantity }}
                                     {% if item.placement %} &middot; {{ item.placement.replace('_', ' ').title() }}{% endif %}
                                 </p>
                                 {% set tp = item.transfer_production_details %}

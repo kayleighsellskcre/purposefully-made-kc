@@ -69,7 +69,7 @@
                     <tr>
                       <td style="vertical-align:top;padding:12px 0;">
                         <p style="margin:0 0 3px;font-size:15px;font-weight:700;color:#3a3d48;font-family:'Georgia',serif;">{{ item.product_name }}</p>
-                        <p style="margin:0 0 2px;font-size:13px;color:#888;font-family:Arial,sans-serif;">{{ item.color }} · Size {{ item.size }}{% if item.placement %} · {{ item.placement.replace('_',' ').title() }}{% endif %}</p>
+                        <p style="margin:0 0 2px;font-size:13px;color:#888;font-family:Arial,sans-serif;">{{ item.color }} · Size {{ item.size }}{% if item.placement %} · {{ item.placement.replace('_',' ').title() }}{% endif %}{% if item.print_scale_label %} · {{ item.print_scale_label }}{% endif %}</p>
                         {% if item.design and item.design.title %}
                         <p style="margin:0 0 2px;font-size:12px;color:#888;font-family:Arial,sans-serif;">Design: {{ item.design.title }}</p>
                         {% endif %}

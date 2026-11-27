@@ -49,7 +49,7 @@
                         <p class="item-transfer"><strong>Family &amp; Fan Wear</strong></p>
                         {% endif %}
                         <p class="item-specs">
-                            Color: {{ item.color }} | Size: {{ item.size }}
+                            Color: {{ item.color }} | Size: {{ item.size }}{% if item.print_scale in ('medium', 'oversized') %} | Print: {{ item.print_scale|title }}{% endif %}
                             {% if item.placement %}
                             | Placement: {{ item.placement.replace('_', ' ').title() }}
                             {% endif %}

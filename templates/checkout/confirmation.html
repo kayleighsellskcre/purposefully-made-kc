@@ -97,7 +97,7 @@
                 <div class="confirmation-item">
                     <div>
                         <strong>{{ item.product_name }}</strong>
-                        <p>Style: {{ item.style_number }} | Size: {{ item.size }} | Color: {{ item.color }}</p>
+                        <p>Style: {{ item.style_number }} | Size: {{ item.size }} | Color: {{ item.color }}{% if item.print_scale_label %} | {{ item.print_scale_label }}{% endif %}</p>
                         <p>Quantity: {{ item.quantity }}</p>
                     </div>
                     <div class="item-total">${{ "%.2f"|format(item.subtotal) }}</div>

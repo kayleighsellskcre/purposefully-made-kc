@@ -95,3 +95,20 @@ def test_two_print_sizes_of_the_same_shirt_are_separate_lines(app, seed, client)
 def test_the_customizer_page_offers_print_sizes(app, seed, client):
     html = client.get(f"/shop/customize/{seed['tee_slug']}").get_data(as_text=True)
     assert 'id="scaleGrid"' in html and '"print_scale"' in html
+
+
+def test_the_cart_and_checkout_say_the_print_size(app, seed, client):
+    from tests.test_cart_flow import add_to_cart
+    add_to_cart(client, seed, placement='center_back', design_id=seed['free_design_id'], print_scale='oversized')
+    assert 'Print: Oversized' in client.get('/cart/').get_data(as_text=True)
+    add_to_cart(client, seed, placement='center_back', design_id=seed['free_design_id'], print_scale='standard')
+    assert 'Print: Standard' not in client.get('/cart/').get_data(as_text=True)
+
+
+def test_an_order_line_names_its_print_size(app, seed):
+    import json
+    from models import OrderItem
+    line = OrderItem(transfer_production=json.dumps({'front': {'print_scale': 'oversized'}}))
+    assert line.print_scale_label == 'Oversized print'
+    assert OrderItem(transfer_production=json.dumps({'front': {'print_scale': 'standard'}})).print_scale_label == ''
+    assert OrderItem().print_scale_label == ''
