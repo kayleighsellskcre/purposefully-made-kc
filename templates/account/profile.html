@@ -38,6 +38,16 @@
                     </div>
                 </div>
 
+                {% if current_user.email_confirm_sent_at and not current_user.email_confirmed_at %}
+                <div class="account-form-card" style="margin-bottom:1rem;">
+                    <p style="margin:0 0 0.75rem;">Please confirm your email address. We sent a link to <strong>{{ current_user.email }}</strong>. Check your spam folder if you do not see it.</p>
+                    <form method="POST" action="{{ url_for('auth.resend_confirmation') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-outline btn-sm">Send it again</button>
+                    </form>
+                </div>
+                {% endif %}
+
                 <form method="POST" action="{{ url_for('account.profile') }}">
                     <div class="account-form-card">
                         <h2>Personal Information</h2>

@@ -236,6 +236,8 @@ def create_app(config_class=Config):
                     "ALTER TABLE collection ADD COLUMN IF NOT EXISTS admin_notes TEXT",
                     "ALTER TABLE \"order\" ADD COLUMN IF NOT EXISTS credit_applied DOUBLE PRECISION DEFAULT 0",
                     "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS use_credit BOOLEAN DEFAULT TRUE",
+                    "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS email_confirmed_at TIMESTAMP",
+                    "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS email_confirm_sent_at TIMESTAMP",
                     "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS club_reveal_seen BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS is_keyholder BOOLEAN DEFAULT FALSE",
                     "ALTER TABLE vote_poll ADD COLUMN IF NOT EXISTS org_id INTEGER",

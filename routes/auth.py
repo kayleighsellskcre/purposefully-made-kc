@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, session, current_app
-from flask_login import login_user, logout_user, current_user
+from flask_login import login_user, logout_user, current_user, login_required
 from models import db, User
 import hmac
 import os
@@ -310,6 +310,9 @@ def register():
         claimed = claim_pending_group_orders(user)
         if claimed:
             db.session.commit()
+        from utils.background import run_in_background
+        from utils.email_confirm import send_confirmation
+        run_in_background(current_app._get_current_object(), send_confirmation, user.id)
         flash('Account created successfully!', 'success')
         if claimed:
             flash(
@@ -423,6 +426,8 @@ def reset_password(token):
             return redirect(url_for('auth.reset_password', token=token))
 
         user.set_password(password)
+        from utils.email_confirm import mark_confirmed
+        mark_confirmed(user)                     # they opened a link we emailed, so the address is real
         user.clear_reset_token()
         user.reset_login_attempts()   # clear any lockout too
         db.session.commit()
@@ -431,6 +436,32 @@ def reset_password(token):
         return redirect(url_for('auth.login'))
 
     return render_template('auth/reset_password.html', token=token)
+
+
+@auth_bp.route('/confirm-email/<token>')
+def confirm_email(token):
+    from utils.email_confirm import mark_confirmed, user_for_token
+    user = user_for_token(token)
+    if user is None:
+        flash('That confirmation link is not valid any more. Sign in and ask for a new one from My Account.', 'error')
+        return redirect(url_for('auth.login'))
+    mark_confirmed(user)
+    db.session.commit()
+    flash('Thank you. Your email address is confirmed.', 'success')
+    return redirect(url_for('account.profile') if current_user.is_authenticated else url_for('auth.login'))
+
+
+@auth_bp.route('/resend-confirmation', methods=['POST'])
+@login_required
+def resend_confirmation():
+    from utils.background import run_in_background
+    from utils.email_confirm import send_confirmation
+    if current_user.email_confirmed_at:
+        flash('Your email address is already confirmed.', 'info')
+    else:
+        run_in_background(current_app._get_current_object(), send_confirmation, current_user.id)
+        flash('We sent a new confirmation link. Check your inbox and spam folder.', 'success')
+    return redirect(url_for('account.profile'))
 
 
 @auth_bp.route('/logout', methods=['GET', 'POST'])
