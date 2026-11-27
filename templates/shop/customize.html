@@ -3206,6 +3206,9 @@
 
             const meta = L.back_meta || {};
             const combo = !!(meta.vertical && meta.neck_image_url);
+            // The back section starts switched off: switch it on first, or the back design (and its price) is lost.
+            const hasBack = !!(L.back_url || meta.name || meta.number);
+            if (hasBack && !state.backDesignEnabled && typeof window.toggleBackDesign === 'function') window.toggleBackDesign();
             const tab = function (sel) { return document.querySelector('.back-design-tab' + sel); };
             const byId = function (id) { return document.getElementById(id); };
             const setLook = function () {
@@ -3251,6 +3254,23 @@
                 showBackPicture(L.back_url);
             }
             updateBackDesignPreview();
+            // Put both designs back where they were dragged, scaled to this screen's preview size.
+            const drag = (L.layout || {}).drag;
+            if (drag && drag.cw) {
+                window.setTimeout(function () {
+                    const pc = document.getElementById('previewCanvas');
+                    const k = pc && pc.clientWidth ? pc.clientWidth / drag.cw : 1;
+                    if (drag.front && state.selectedPlacement) {
+                        state.designDragOffset = state.designDragOffset || {};
+                        state.designDragOffset[state.selectedPlacement] = { x: drag.front.x * k, y: drag.front.y * k };
+                        if (typeof applyDesignPosition === 'function') applyDesignPosition();
+                    }
+                    if (drag.back && hasBack) {
+                        state.backDesignDragOffset = { x: drag.back.x * k, y: drag.back.y * k };
+                        if (typeof applyBackDesignPosition === 'function') applyBackDesignPosition();
+                    }
+                }, 500);
+            }
             updateDesignLayerVisibility();
             updateTotalPrice();
             refreshAddToCartButton();
@@ -7132,6 +7152,12 @@
                 }
 
                 if (state.previewLayout && (state.previewLayout.front || state.previewLayout.back)) {
+                    const pc = document.getElementById('previewCanvas');
+                    const fd = (state.designDragOffset || {})[state.selectedPlacement];
+                    const bd = state.backDesignDragOffset;
+                    state.previewLayout.drag = { cw: pc ? pc.clientWidth : 0 };
+                    if (fd) state.previewLayout.drag.front = { x: Number(fd.x) || 0, y: Number(fd.y) || 0 };
+                    if (bd) state.previewLayout.drag.back = { x: Number(bd.x) || 0, y: Number(bd.y) || 0 };
                     formData.append('preview_layout', JSON.stringify(state.previewLayout));
                 }
                 if (frontProof) formData.append('proof_front', frontProof, 'proof_front.png');

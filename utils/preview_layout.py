@@ -43,6 +43,18 @@ def clean(raw):
         if None in (x, y, w, h, ar):
             continue
         out[side] = {'x': x, 'y': y, 'w': w, 'h': h, 'ar': ar}
+    drag = raw.get('drag')
+    if out and isinstance(drag, dict):                 # how far each design was dragged, so Edit puts it back
+        cw = _num(drag.get('cw'), 50, 5000)
+        kept = {}
+        for side in SIDES:
+            d = drag.get(side)
+            if isinstance(d, dict):
+                dx, dy = _num(d.get('x'), -5000, 5000), _num(d.get('y'), -5000, 5000)
+                if dx is not None and dy is not None:
+                    kept[side] = {'x': dx, 'y': dy}
+        if cw and kept:
+            out['drag'] = dict(kept, cw=cw)
     return out or None
 
 

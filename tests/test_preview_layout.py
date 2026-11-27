@@ -61,3 +61,20 @@ def test_the_admin_kit_carries_the_layout_from_the_order_line():
         OA.mockup_urls, OA.front_print_url, OA.back_print_url = real_mockups, real_front, real_back
     assert kit['front_layout'] == LAYOUT['front'] and kit['layout_front_art'] == '/static/img/art.png'
     assert kit['back_layout'] is None                    # no back print, so nothing to place
+
+
+def test_drag_offsets_are_kept_so_edit_puts_the_designs_back():
+    raw = dict(LAYOUT, drag={'cw': 420, 'front': {'x': 12, 'y': -30}, 'back': {'x': 0, 'y': 25.5}, 'junk': 1})
+    assert PL.clean(raw)['drag'] == {'cw': 420, 'front': {'x': 12, 'y': -30}, 'back': {'x': 0, 'y': 25.5}}
+    assert 'drag' not in PL.clean(dict(LAYOUT, drag={'front': {'x': 1, 'y': 1}}))      # no width to scale from
+
+
+def test_the_edit_page_gets_the_layout(client, seed):
+    client.post('/cart/add', json={'product_id': seed['tee_id'], 'size': 'M', 'color': 'Black', 'quantity': 1,
+                                   'placement': 'center_chest', 'design_url': '/static/img/logo.png',
+                                   'preview_layout': json.dumps(dict(LAYOUT, drag={'cw': 400, 'front': {'x': 5, 'y': 9}}))})
+    from models import Product
+    with client.application.app_context():
+        slug = Product.query.get(seed['tee_id']).slug
+    page = client.get(f'/shop/customize/{slug}?edit=0').get_data(as_text=True)
+    assert '"drag": {"cw": 400.0, "front": {"x": 5.0, "y": 9.0}}' in page or '"cw": 400' in page

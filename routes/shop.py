@@ -960,7 +960,7 @@ def _cart_line_for_edit(product):
     return {'index': index, 'color': line.get('color'), 'size': line.get('size'), 'quantity': line.get('quantity') or 1,
             'placement': line.get('placement'), 'print_scale': line.get('print_scale'), 'design_id': design_id, 'design_url': line.get('design_url'),
             'back_url': line.get('back_design_url'), 'back_kind': line.get('back_design_kind'),
-            'back_meta': meta if isinstance(meta, dict) else None}
+            'back_meta': meta if isinstance(meta, dict) else None, 'layout': line.get('preview_layout')}
 
 
 @shop_bp.route('/customize/<product_slug>')
