@@ -2871,7 +2871,13 @@ section.shop-section { padding: 0.7rem 0 3rem; }
 /* Product grid: 5 across, then 4, 3 and 2. Cards are about 420px tall. */
 .shop-section .products-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; }
 .shop-section .product-card { border-radius: 14px; }
-.shop-section .product-image-wrapper, .shop-section .product-image { height: 215px; }
+/* Every card photo fills the same portrait box (4:5, the shape most supplier photos are), so a tall 2:3 photo is not
+   shrunk to fit and every shirt looks the same size. A 2:3 photo loses only its empty top and bottom edge. */
+.shop-section .product-image-wrapper { height: auto; aspect-ratio: 4 / 5; }
+.shop-section .product-image-wrapper > .color-carousel, .shop-section .product-image-wrapper > .product-image { height: 100%; }
+.shop-section .product-image-wrapper .carousel-slide img, .shop-section .product-image-wrapper .product-image img {
+    width: 100%; height: 100%; aspect-ratio: auto; object-fit: cover; object-position: center 40%; padding: 0;
+}
 .shop-section .product-info { padding: 0.75rem 0.85rem 0.9rem; display: flex; flex-direction: column; flex: 1; }
 .shop-section .product-name { font-size: 1rem; line-height: 1.25; margin: 0 0 0.2rem; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.5em; }
 .shop-section .product-brand-line { margin: 0 0 0.2rem; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary); }
@@ -2892,7 +2898,6 @@ section.shop-section { padding: 0.7rem 0 3rem; }
     .shop-toolbar .shop-search-form { flex: 1 1 100%; }
     .shop-toolbar .product-count { margin-left: auto; }
     .shop-chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 0.2rem; }
-    .shop-section .product-image-wrapper, .shop-section .product-image { height: 170px; }
 }
 
 /* ── Phase 4: menu, search, footer, FAQ, size guide ── */

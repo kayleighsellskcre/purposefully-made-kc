@@ -47,3 +47,11 @@ def test_toolbar_chips_and_cards(guest):
 def test_chip_links_keep_the_sort_choice(guest):
     html = guest.get('/shop/?sort=price_desc').get_data(as_text=True)
     assert 'category=Tee&amp;sort=price_desc' in html or 'category=Tee&sort=price_desc' in html
+
+
+def test_every_shop_card_photo_fills_the_same_portrait_box():
+    """A tall 2:3 supplier photo must not be shrunk to fit: every card image fills one 4:5 box."""
+    from pathlib import Path
+    css = (Path(__file__).resolve().parent.parent / 'static' / 'css' / 'main.css').read_text(encoding='utf-8')
+    assert '.shop-section .product-image-wrapper { height: auto; aspect-ratio: 4 / 5; }' in css
+    assert 'object-fit: cover; object-position: center 40%' in css
