@@ -242,3 +242,12 @@ def test_the_group_page_keeps_the_expanding_filter_and_drops_the_duplicate_chips
     source = Path('templates/collection/view.html').read_text(encoding='utf-8')
     assert 'quickFilterRow' not in source and 'qf-pill' not in source
     assert "include 'includes/catalog_filter.html'" in source
+
+
+def test_back_picture_has_left_right_nudge_buttons_with_limits():
+    """The size is fixed by the option picked; only the position moves, and only inside the printable part of the shirt."""
+    page = (Path(__file__).resolve().parent.parent / 'templates' / 'shop' / 'customize.html').read_text(encoding='utf-8')
+    for ident in ('moveBackLeftBtn', 'moveBackRightBtn', 'clampBackOffset', 'BACK_SIDE_LIMIT_IN'):
+        assert ident in page
+    assert 'state.backDesignDragOffset.y' not in page         # the old code broke when the offset was reset to nothing
+

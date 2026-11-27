@@ -2104,6 +2104,14 @@
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
                                 Down
                             </button>
+                            <button type="button" id="moveBackLeftBtn" class="position-btn" aria-label="Move left">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                                Left
+                            </button>
+                            <button type="button" id="moveBackRightBtn" class="position-btn" aria-label="Move right">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                Right
+                            </button>
                             <button type="button" id="resetBackPositionBtn" class="position-btn-reset">Reset</button>
                         </div>
                     </div>
@@ -2769,7 +2777,7 @@
                                 </svg>
                                 <p><strong>Upload back design</strong></p>
                                 <p class="text-muted">PNG, JPG, WEBP (Max 15MB)</p>
-                                <p class="text-muted" style="font-size:0.8rem; margin-top:0.35rem;" id="backImageMove">Starts centered in the upper back area. Drag up or down to adjust.</p>
+                                <p class="text-muted" style="font-size:0.8rem; margin-top:0.35rem;" id="backImageMove">Starts centered in the upper back area. Drag it, or use the arrows, to move it a little. It stays inside the printable part of the shirt.</p>
                             </div>
                             <input type="file" id="designFileBack" aria-label="Upload a back design" accept="image/*,.heic,.heif,.png,.jpg,.jpeg,.webp" style="display: none;">
                             {% if allow_stacked_name %}
@@ -4557,13 +4565,35 @@
         backDesignLayer.classList.remove('is-fitting');
     }
     
+    // Where the back picture sits: the customer can nudge it, but never off the printable part of the shirt.
+    // The size is set by the option they picked; only the position moves, within these limits.
+    const BACK_SIDE_LIMIT_IN = 1.5;        // left or right of center
+    const BACK_HEM_MARGIN_IN = 1;          // keep this far above the bottom hem
+    function backOffset() {
+        const defaultUp = state.backDesignDefaultUpOffset ?? 0;
+        const cur = state.backDesignDragOffset;
+        return { x: (cur && Number(cur.x)) || 0, y: (cur && Number.isFinite(Number(cur.y))) ? Number(cur.y) : -defaultUp };
+    }
+    function clampBackOffset(off, box, layer) {
+        if (!box || !box.pxPerInch || state.backDesignMode !== 'upload' || !layer) return off;
+        const ppi = box.pxPerInch;
+        const w = layer.offsetWidth || 0, h = layer.offsetHeight || 0;
+        const maxX = Math.max(0, Math.min(BACK_SIDE_LIMIT_IN * ppi, ((box.widthPx - w) / 2) + 0.5 * ppi));
+        const drop = backCollarDropIn(previewReferenceSize());
+        const minY = -3.5 * ppi + h / 2;                                                       // top of the picture stays under the collar
+        const maxY = box.heightPx - BACK_HEM_MARGIN_IN * ppi - (drop + 3.5) * ppi - h / 2;     // bottom stays above the hem
+        const y = minY > maxY ? (minY + maxY) / 2 : Math.min(maxY, Math.max(minY, off.y));
+        return { x: Math.min(maxX, Math.max(-maxX, off.x || 0)), y: y };
+    }
+
     function applyBackDesignPosition() {
         const backDesignLayer = document.getElementById('backDesignLayer');
         if (!backDesignLayer) return;
         const defaultUp = state.backDesignDefaultUpOffset ?? 0;
         const small = isSmallBackImage();
-        const offset = small ? { y: 0 } : (state.backDesignDragOffset || { y: -defaultUp });
         const box = garmentBox();
+        const offset = small ? { x: 0, y: 0 } : clampBackOffset(backOffset(), box, backDesignLayer);
+        if (!small) state.backDesignDragOffset = offset;
         if (box && box.pxPerInch) {
             // Hang the layout from a natural drop below the shoulder seam of
             // the shirt in the photo, centered on the garment body.
@@ -4577,13 +4607,13 @@
                     box.topPx + (collarDrop + 3.5) * box.pxPerInch
                 ) + 'px';
                 backDesignLayer.style.left = box.centerPx + 'px';
-                backDesignLayer.style.transform = `translate(-50%, -50%) translate(0, ${offset.y}px)`;
+                backDesignLayer.style.transform = `translate(-50%, -50%) translate(${offset.x || 0}px, ${offset.y}px)`;
             } else {
                 backDesignLayer.style.top = (
                     box.topPx + collarDrop * box.pxPerInch
                 ) + 'px';
                 backDesignLayer.style.left = box.centerPx + 'px';
-                backDesignLayer.style.transform = `translate(-50%, 0) translate(0, ${offset.y}px)`;
+                backDesignLayer.style.transform = `translate(-50%, 0) translate(${offset.x || 0}px, ${offset.y}px)`;
             }
         } else {
             backDesignLayer.style.top = '';
@@ -4596,10 +4626,14 @@
         if (state.currentView === 'back' && backDesignLayer.style.display !== 'none' && !small) {
             if (dragHint) {
                 dragHint.style.display = 'block';
-                dragHint.textContent = 'Drag or use ▲▼ to reposition';
+                dragHint.textContent = state.backDesignMode === 'upload' ? 'Drag or use the arrows to reposition' : 'Drag or use ▲▼ to reposition';
             }
-            if (resetBackBtn) resetBackBtn.style.display = (offset.y !== -defaultUp) ? 'inline-block' : 'none';
+            if (resetBackBtn) resetBackBtn.style.display = (offset.y !== -defaultUp || (offset.x || 0) !== 0) ? 'inline-block' : 'none';
             if (backPositionControls) backPositionControls.style.display = 'block';
+            ['moveBackLeftBtn', 'moveBackRightBtn'].forEach(function (id) {
+                const b = document.getElementById(id);
+                if (b) b.style.display = state.backDesignMode === 'upload' ? '' : 'none';     // name and number stay centered
+            });
         } else {
             if (resetBackBtn) resetBackBtn.style.display = 'none';
             if (backPositionControls) backPositionControls.style.display = 'none';
@@ -6207,21 +6241,20 @@
 
         document.getElementById('resetBackPositionBtn')?.addEventListener('click', function() {
             const defaultUp = state.backDesignDefaultUpOffset ?? 0;
-            state.backDesignDragOffset = { y: -defaultUp };
+            state.backDesignDragOffset = { x: 0, y: -defaultUp };
             applyBackDesignPosition();
         });
 
-        // Back design up/down buttons
-        document.getElementById('moveBackUpBtn')?.addEventListener('click', function() {
-            const currentY = state.backDesignDragOffset.y || 0;
-            state.backDesignDragOffset.y = currentY - 10;
+        // Back design up/down/left/right buttons
+        const nudgeBack = function (dx, dy) {
+            const cur = backOffset();
+            state.backDesignDragOffset = { x: cur.x + dx, y: cur.y + dy };
             applyBackDesignPosition();
-        });
-        document.getElementById('moveBackDownBtn')?.addEventListener('click', function() {
-            const currentY = state.backDesignDragOffset.y || 0;
-            state.backDesignDragOffset.y = currentY + 10;
-            applyBackDesignPosition();
-        });
+        };
+        document.getElementById('moveBackUpBtn')?.addEventListener('click', function() { nudgeBack(0, -10); });
+        document.getElementById('moveBackDownBtn')?.addEventListener('click', function() { nudgeBack(0, 10); });
+        document.getElementById('moveBackLeftBtn')?.addEventListener('click', function() { nudgeBack(-10, 0); });
+        document.getElementById('moveBackRightBtn')?.addEventListener('click', function() { nudgeBack(10, 0); });
     }
     
     function setupDesignDrag() {
@@ -6322,12 +6355,12 @@
         if (!backDesignLayer || !previewCanvas) return;
         
         let isDragging = false;
-        let startY = 0, startOffsetY = 0;
+        let startY = 0, startOffsetY = 0, startX = 0, startOffsetX = 0;
         
         function onMouseMove(e) {
             if (!isDragging) return;
             e.preventDefault();
-            state.backDesignDragOffset = { y: startOffsetY + (e.clientY - startY) };
+            state.backDesignDragOffset = { x: state.backDesignMode === 'upload' ? startOffsetX + (e.clientX - startX) : 0, y: startOffsetY + (e.clientY - startY) };
             applyBackDesignPosition();
         }
         
@@ -6343,7 +6376,7 @@
         function onTouchMove(e) {
             if (!isDragging) return;
             e.preventDefault();
-            state.backDesignDragOffset = { y: startOffsetY + (e.touches[0].clientY - startY) };
+            state.backDesignDragOffset = { x: state.backDesignMode === 'upload' ? startOffsetX + (e.touches[0].clientX - startX) : 0, y: startOffsetY + (e.touches[0].clientY - startY) };
             applyBackDesignPosition();
         }
         
@@ -6371,8 +6404,9 @@
             isDragging = true;
             backDesignLayer.classList.add('dragging');
             startY = e.clientY;
-            const defaultUp = state.backDesignDefaultUpOffset ?? 0;
-            startOffsetY = (state.backDesignDragOffset || { y: -defaultUp }).y;
+            startX = e.clientX;
+            startOffsetY = backOffset().y;
+            startOffsetX = backOffset().x;
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', onMouseUp);
         });
@@ -6384,8 +6418,9 @@
             isDragging = true;
             backDesignLayer.classList.add('dragging');
             startY = e.touches[0].clientY;
-            const defaultUp = state.backDesignDefaultUpOffset ?? 0;
-            startOffsetY = (state.backDesignDragOffset || { y: -defaultUp }).y;
+            startX = e.touches[0].clientX;
+            startOffsetY = backOffset().y;
+            startOffsetX = backOffset().x;
             document.addEventListener('touchmove', onTouchMove, { passive: false });
             document.addEventListener('touchend', onTouchEnd);
         }, { passive: false });
