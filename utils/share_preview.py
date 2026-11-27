@@ -91,3 +91,67 @@ def compose(mockup_url, design_url, style):
     out = io.BytesIO()
     canvas.save(out, 'JPEG', quality=88, optimize=True)
     return out.getvalue()
+
+
+def _shirt_with_art(mockup_url, art_url, lay):
+    """The shirt photo with the art placed exactly where the customizer measured it (utils/preview_layout.py)."""
+    from PIL import Image
+
+    from utils.flyer import _read
+    try:
+        raw = _read(mockup_url)
+        if not raw:
+            return None, None
+        shirt = Image.open(io.BytesIO(raw))
+        shirt.load()
+        shirt = shirt.convert('RGBA')
+    except Exception:
+        return None, None
+    backdrop = tuple(shirt.convert('RGB').getpixel((2, 2)))
+    base = Image.new('RGBA', shirt.size, backdrop + (255,))
+    base.alpha_composite(shirt)
+    if art_url and lay:
+        try:
+            art_raw = _read(art_url)
+            art = Image.open(io.BytesIO(art_raw))
+            art.load()
+            art = art.convert('RGBA')
+            sw, sh = base.size
+            bw, bh = lay['w'] * sw, lay['h'] * sh              # the box measured in the customizer
+            k = min(bw / max(art.width, 1), bh / max(art.height, 1))     # the art fits its box, like the page draws it
+            aw, ah = max(1, int(art.width * k)), max(1, int(art.height * k))
+            art = art.resize((aw, ah), Image.LANCZOS)
+            x = int(lay['x'] * sw + (bw - aw) / 2)
+            y = int(lay['y'] * sh + (bh - ah) / 2)
+            layer = Image.new('RGBA', base.size, (0, 0, 0, 0))
+            layer.paste(art, (x, y), art)
+            base = Image.alpha_composite(base, layer)
+        except Exception:
+            pass
+    return _trim_margins(base, backdrop), backdrop
+
+
+def compose_exact(sides):
+    """JPEG bytes, 1200 x 630: each side [(mockup_url, art_url, layout), ...] drawn exactly as the customer made it,
+    front and back side by side. None when no shirt photo could be loaded."""
+    from PIL import Image
+    shirts = []
+    backdrop = BACKDROP
+    for mockup_url, art_url, lay in sides:
+        img, bd = _shirt_with_art(mockup_url, art_url, lay)
+        if img is not None:
+            shirts.append(img)
+            backdrop = bd or backdrop
+    if not shirts:
+        return None
+    gap = 30
+    slot_w = (CANVAS[0] - gap * (len(shirts) + 1)) / len(shirts)
+    canvas = Image.new('RGB', CANVAS, backdrop)
+    for i, img in enumerate(shirts):
+        k = min(slot_w / img.width, (CANVAS[1] - 2 * gap) / img.height)
+        fitted = img.resize((max(1, int(img.width * k)), max(1, int(img.height * k))), Image.LANCZOS)
+        x = int(gap + i * (slot_w + gap) + (slot_w - fitted.width) / 2)
+        canvas.paste(fitted.convert('RGB'), (x, (CANVAS[1] - fitted.height) // 2))
+    out = io.BytesIO()
+    canvas.save(out, 'JPEG', quality=88, optimize=True)
+    return out.getvalue()

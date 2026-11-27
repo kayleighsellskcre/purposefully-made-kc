@@ -14,7 +14,10 @@ from models import Collection, Order, OrderItem, Product, SharedDesign, db
 # What a shared line keeps. Anything else on a cart line is left behind.
 KEEP = ('product_id', 'color', 'design_id', 'design_url', 'placement', 'back_design_url', 'proof_front_url',
         'proof_image', 'print_width', 'print_height', 'transfer_production', 'position_x', 'position_y', 'rotation',
-        'preview_layout')
+        'preview_layout', 'print_scale')
+
+# Back picture settings a share keeps: how big it prints and where it sits. Never a name or number.
+_BACK_IMAGE_KEYS = ('scale', 'position', 'offset', 'neck_image_url', 'neck_aspect')
 
 
 def clean_line(line):
@@ -33,6 +36,14 @@ def clean_line(line):
         tp['back'] = None                                  # a name or number on the back stays with the person who made it
         out['transfer_production'] = tp
     out['back_design_kind'] = 'image' if out.get('back_design_url') else None
+    if out.get('back_design_url') and not (meta.get('name') or meta.get('number')):
+        kept = {k: meta[k] for k in _BACK_IMAGE_KEYS if meta.get(k) not in (None, '')}
+        if kept:
+            out['back_design_meta'] = kept                 # an Oversized Full Back stays oversized (and is priced that way)
+    lay = out.get('preview_layout')
+    if isinstance(lay, dict) and not out.get('back_design_url'):
+        lay = {k: v for k, v in lay.items() if k != 'back'}
+        out['preview_layout'] = lay or None
     out['quantity'] = 1
     if line.get('collection_id'):                          # remembered only to limit the colors; it does not put a friend's order in that group
         out['color_limit_collection_id'] = line['collection_id']
@@ -50,6 +61,9 @@ def share_line(line, user=None):
                      if s.is_active and all(s.line.get(k) == clean.get(k) for k in
                                             ('product_id', 'color', 'design_id', 'design_url', 'placement', 'back_design_url'))), None)
     if same is not None:
+        if same.line != clean:                              # the same design shared again: keep its link, update how it looks
+            same.line = dict(clean)
+            db.session.commit()
         return same, None
     product = db.session.get(Product, clean['product_id'])
     share = SharedDesign(token=secrets.token_urlsafe(9), user_id=user.id if user is not None else None, line=clean,
@@ -109,7 +123,8 @@ def colors_offered(share, product=None):
     out = []
     for c in get_color_variants_data_for_product(product, current_app):
         if c.get('color_name') and c.get('front_image') and (allowed is None or c['color_name'] in allowed):
-            out.append({'name': c['color_name'], 'hex': c.get('color_hex') or '#cccccc', 'image': c['front_image']})
+            out.append({'name': c['color_name'], 'hex': c.get('color_hex') or '#cccccc', 'image': c['front_image'],
+                        'back_image': c.get('back_image') or ''})
     return out
 
 

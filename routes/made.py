@@ -81,9 +81,30 @@ def view(token):
         overlay_style = cart_style(placement)       # the same size and place the cart shows
         if front and not saved_proof:           # no saved picture: draw the logo on the shirt photo for the preview
             share_image = url_for('made.preview', token=share.token, c=(share.line.get('color') or '')[:40], v=2)   # the logo drawn on the shirt (v changes when the look changes, so Facebook drops its old copy)
+    exact = _exact_sides(share, product, share.line.get('color'))
+    if exact:                                   # measured in the customizer: draw it exactly, front and back
+        share_image = url_for('made.preview', token=share.token, c=(share.line.get('color') or '')[:40], v=3)
     return render_template('made/view.html', share=share, product=product, sizes=sizes, unavailable=unavailable,
                            image=image, share_image=share_image, overlay=overlay, overlay_style=overlay_style, colors=colors if len(colors) > 1 else [], fallback=front if proof else None, placement=placement,
-                           qr=url_for('made.qr', token=share.token), link=_link(share))
+                           exact=exact, qr=url_for('made.qr', token=share.token), link=_link(share))
+
+
+def _exact_sides(share, product, color):
+    """[{'side', 'mockup', 'art', 'layout'}] for each side the customizer measured, or [] for an older share."""
+    from utils.order_artwork import FRONT_PLACEMENTS, mockup_urls
+    from utils.preview_layout import side
+    if product is None:
+        return []
+    front, back = mockup_urls(product, color)
+    lay = share.line.get('preview_layout')
+    out = []
+    f = side(lay, 'front')
+    if f and front and share.line.get('design_url') and (share.line.get('placement') or 'center_chest') in FRONT_PLACEMENTS:
+        out.append({'side': 'front', 'mockup': front, 'art': share.line['design_url'], 'layout': f})
+    b = side(lay, 'back')
+    if b and back and share.line.get('back_design_url'):
+        out.append({'side': 'back', 'mockup': back, 'art': share.line['back_design_url'], 'layout': b})
+    return out
 
 
 @made_bp.route('/made/<token>/preview.jpg')
@@ -100,7 +121,11 @@ def preview(token):
     placement = share.line.get('placement') or 'center_chest'
     design = share.line.get('design_url')
     data = None
-    if front and design and placement in FRONT_PLACEMENTS:
+    exact = _exact_sides(share, product, share.line.get('color'))
+    if exact:
+        from utils.share_preview import compose_exact
+        data = compose_exact([(e['mockup'], e['art'], e['layout']) for e in exact])
+    if data is None and front and design and placement in FRONT_PLACEMENTS:
         data = compose(front, design, cart_style(placement))
     if data is None:
         return redirect(front or url_for('static', filename='img/og-card.jpg'))

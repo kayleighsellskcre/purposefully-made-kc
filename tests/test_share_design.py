@@ -270,3 +270,35 @@ def test_preview_crops_the_empty_photo_so_the_shirt_fills_the_picture(app):
     backdrop = Image.new('RGB', out.size, out.getpixel((2, 2)))
     box = ImageChops.difference(out, backdrop).convert('L').point(lambda p: 255 if p > 14 else 0).getbbox()
     assert box[3] - box[1] > 630 * 0.8          # the shirt fills most of the height, not half of it
+
+
+def test_a_shared_design_shows_front_and_back_exactly_and_keeps_the_oversized_back(app, seed):
+    layout = {'front': {'x': 0.36, 'y': 0.24, 'w': 0.28, 'h': 0.16, 'ar': 1.25},
+              'back': {'x': 0.3, 'y': 0.2, 'w': 0.4, 'h': 0.5, 'ar': 1.25}}
+    line = _line(seed, back_design_url='/static/img/logo.png', back_design_kind='image',
+                 back_design_meta={'scale': 'oversized', 'offset': {'x_in': 0, 'y_in': 1}},
+                 print_scale='medium', preview_layout=layout, proof_front_url=None)
+    _set_cart(app, CUSTOMER_EMAIL, [line])
+    shopper = _signed_in(app)
+    token = _token(_share(shopper))
+    with app.app_context():
+        share = SharedDesign.query.one()
+        assert share.line['print_scale'] == 'medium'
+        assert share.line['back_design_meta'] == {'scale': 'oversized', 'offset': {'x_in': 0, 'y_in': 1}}
+        assert share.line['preview_layout']['back'] == layout['back']
+    page = shopper.get(f'/made/{token}').get_data(as_text=True)
+    assert page.count('pm-proof--exact') == 2 and 'made-photo--pair' in page
+    assert f'/made/{token}/preview.jpg' in page                  # the link preview is the exact front and back picture
+    pic = shopper.get(f'/made/{token}/preview.jpg')
+    assert pic.status_code == 200 and pic.mimetype == 'image/jpeg' and pic.data[:2] == b'\xff\xd8'
+
+
+def test_sharing_again_updates_an_older_link_to_the_new_look(app, seed):
+    _set_cart(app, CUSTOMER_EMAIL, [_line(seed)])
+    shopper = _signed_in(app)
+    first = _share(shopper).get_json()['url']
+    lay = {'front': {'x': 0.3, 'y': 0.2, 'w': 0.3, 'h': 0.2, 'ar': 1.25}}
+    _set_cart(app, CUSTOMER_EMAIL, [_line(seed, preview_layout=lay)])
+    assert _share(shopper).get_json()['url'] == first
+    with app.app_context():
+        assert SharedDesign.query.one().line['preview_layout'] == lay

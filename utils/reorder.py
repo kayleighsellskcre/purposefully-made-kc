@@ -204,7 +204,9 @@ def reprice_line(line):
         back_design_parts=(int(bool(meta.get('name'))) + int(bool(meta.get('number')))
                            if line.get('back_design_kind') == 'personalization' else None),
         is_blank=not (design or line.get('design_url') or has_back),
-        design_fee=float(getattr(design, 'design_fee', 0) or 0))
+        design_fee=float(getattr(design, 'design_fee', 0) or 0),
+        print_scale=line.get('print_scale'),
+        back_scale=meta.get('scale') if line.get('back_design_url') else None)
     return line
 
 

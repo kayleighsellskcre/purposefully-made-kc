@@ -4404,3 +4404,8 @@ body:not(.is-admin) .dist-body { padding-top: 1.5rem; }
 /* The shirt redrawn from the customizer's own measurements (macros/garment_proof.html garment_layout). */
 .pm-proof-svg { width: 100%; height: 100%; display: block; padding: 4px; box-sizing: border-box; }
 .pm-proof--exact { display: flex; align-items: center; justify-content: center; }
+
+/* Shared design page: the front and back drawn exactly as the customer made them, side by side. */
+.made-photo--pair { display: flex; gap: 0.75rem; align-items: stretch; }
+.made-photo .made-side { flex: 1 1 0; min-width: 0; display: flex; }
+.made-photo .made-side .pm-proof { width: 100%; height: auto; aspect-ratio: 4 / 5; flex: 1 1 auto; }
